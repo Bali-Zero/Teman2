@@ -523,6 +523,186 @@ class ConductorRouterTest(unittest.TestCase):
             plan.rejections[0].reason_codes, ("paid_anthropic_api_forbidden",)
         )
 
+    def test_local_only_profile_requires_local_candidates_without_task_pii(
+        self,
+    ) -> None:
+        local_profile = replace(
+            policy().task_profiles[0],
+            pii_policy="local_only",
+            required_capabilities=frozenset({"coding", "local_only", "pii_safe_local"}),
+        )
+        local_policy = replace(
+            policy(), task_profiles=(local_profile, *policy().task_profiles[1:])
+        )
+        cloud = candidate("cloud", model="cloud", family="test", score=0.99)
+        local = candidate(
+            "local",
+            model="local",
+            family="test",
+            score=0.90,
+            capabilities=("language", "coding", "local_only", "pii_safe_local"),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(cloud, local),
+            policy=local_policy,
+        )
+
+        self.assertFalse(plan.task.contains_pii)
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.endpoint_id, "local")
+        self.assertEqual(
+            {
+                rejection.endpoint_id: rejection.reason_codes
+                for rejection in plan.rejections
+            }["cloud"],
+            (
+                "privacy_ineligible",
+                "missing_capability:local_only",
+                "missing_capability:pii_safe_local",
+            ),
+        )
+
+    def test_non_local_only_profile_does_not_require_local_candidates_without_pii(
+        self,
+    ) -> None:
+        cloud = candidate("cloud", model="cloud", family="test", score=0.99)
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(cloud,),
+            policy=policy(),
+        )
+
+        self.assertFalse(plan.task.contains_pii)
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.endpoint_id, "cloud")
+
+    def test_capability_evidence_freshness_rejects_invalid_or_expired_evidence(
+        self,
+    ) -> None:
+        base = candidate("evidence", model="candidate", family="test", score=0.95)
+        cases = (
+            (
+                "expired",
+                replace(
+                    base.features[0],
+                    observed_at="2026-08-20",
+                    expires_at="2026-08-20",
+                ),
+                "capability_stale",
+            ),
+            (
+                "future_observation",
+                replace(base.features[0], observed_at="2026-08-22T00:00:00Z"),
+                "capability_timestamp_future",
+            ),
+            (
+                "stale_observation",
+                replace(base.features[0], observed_at="2026-08-19"),
+                "capability_stale",
+            ),
+            (
+                "malformed_observation",
+                replace(base.features[0], observed_at="not-an-iso-timestamp"),
+                "capability_timestamp_invalid",
+            ),
+            (
+                "malformed_expiry",
+                replace(base.features[0], expires_at="not-an-iso-timestamp"),
+                "capability_timestamp_invalid",
+            ),
+            (
+                "inverted_interval",
+                replace(
+                    base.features[0],
+                    observed_at="2026-08-20",
+                    expires_at="2026-08-19",
+                ),
+                "capability_timestamp_invalid",
+            ),
+        )
+
+        for name, evidence, reason in cases:
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(
+                        replace(base, features=(evidence, *base.features[1:])),
+                    ),
+                    policy=policy(),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(plan.rejections[0].reason_codes, (reason,))
+
+    def test_current_capability_evidence_remains_eligible(self) -> None:
+        base = candidate("current", model="candidate", family="test", score=0.95)
+        current = replace(base.features[0], expires_at="2026-08-22")
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(replace(base, features=(current, *base.features[1:])),),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.endpoint_id, "current")
+
+    def test_malformed_policy_and_host_structures_abstain_without_exceptions(
+        self,
+    ) -> None:
+        base_policy = policy()
+        invalid_max_age_cases = (-1, 10**100, "1", 1.5, True)
+        for max_age in invalid_max_age_cases:
+            with self.subTest(max_age=max_age):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(),
+                    policy=replace(base_policy, max_health_age_days=max_age),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(
+                    plan.abstention_reason, "policy_max_health_age_invalid"
+                )
+
+        malformed_host_cases = (
+            None,
+            "pro",
+            [HostObservation(host="pro", available=True, observed_at=AS_OF)],
+            (object(),),
+            ({"host": "pro", "available": True, "observed_at": AS_OF},),
+        )
+        for observations in malformed_host_cases:
+            with self.subTest(host_observations=repr(observations)):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(),
+                    policy=replace(base_policy, host_observations=observations),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(plan.abstention_reason, "host_observation_invalid")
+
+        valid = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(
+                candidate("valid", model="candidate", family="test", score=0.95),
+            ),
+            policy=base_policy,
+        )
+        self.assertEqual(valid.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(valid.primary.endpoint_id, "valid")
+
     def test_review_routes_to_a_different_generator_family(self) -> None:
         plan = plan_dispatch(
             session=session(),

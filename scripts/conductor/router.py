@@ -13,6 +13,7 @@ from typing import Mapping
 
 from scripts.conductor.contracts import (
     AuthSurface,
+    CapabilityEvidence,
     CandidateRejection,
     Decision,
     DispatchPlan,
@@ -31,6 +32,8 @@ from scripts.conductor.contracts import (
 
 
 logger = logging.getLogger(__name__)
+
+_MAX_HEALTH_AGE_DAYS = timedelta.max.days
 
 
 class RoutingPolicyError(ValueError):
@@ -341,7 +344,9 @@ def _rejection_for(
     ):
         reasons.append("enforcement_not_mutation_capable")
 
-    if (task.contains_pii or task.task_class is TaskClass.PII_LOCAL) and not (
+    reasons.extend(_capability_evidence_rejections(candidate, as_of, policy))
+
+    if _requires_local_pii(task, profile) and not (
         _has_capability(candidate, "local_only")
         and _has_capability(candidate, "pii_safe_local")
     ):
@@ -395,6 +400,7 @@ def _policy_clock(policy: RoutingPolicy) -> tuple[datetime | None, str | None]:
         not isinstance(policy.max_health_age_days, int)
         or isinstance(policy.max_health_age_days, bool)
         or policy.max_health_age_days < 0
+        or policy.max_health_age_days > _MAX_HEALTH_AGE_DAYS
     ):
         return None, "policy_max_health_age_invalid"
     as_of = _parse_iso_timestamp(policy.as_of)
@@ -409,11 +415,16 @@ def _host_observations(
     *,
     require_current_observation: bool = False,
 ) -> tuple[Mapping[str, HostObservation] | None, str | None]:
-    if require_current_observation and not policy.host_observations:
+    raw_observations = policy.host_observations
+    if not isinstance(raw_observations, tuple):
+        return None, "host_observation_invalid"
+    if require_current_observation and not raw_observations:
         return None, "host_observation_missing"
 
     observations: dict[str, HostObservation] = {}
-    for observation in policy.host_observations:
+    for observation in raw_observations:
+        if not isinstance(observation, HostObservation):
+            return None, "host_observation_invalid"
         if not isinstance(observation.host, str) or not observation.host:
             return None, "host_observation_host_invalid"
         if not isinstance(observation.available, bool):
@@ -474,6 +485,59 @@ def _health_timestamp_rejections(
     return ()
 
 
+def _requires_local_pii(task: TaskIntent, profile: TaskProfile) -> bool:
+    return (
+        task.contains_pii
+        or task.task_class is TaskClass.PII_LOCAL
+        or profile.pii_policy == "local_only"
+    )
+
+
+def _capability_evidence_rejections(
+    candidate: EndpointCandidate,
+    as_of: datetime,
+    policy: RoutingPolicy,
+) -> tuple[str, ...]:
+    """Return deterministic freshness failures for every capability assertion."""
+    reasons: set[str] = set()
+    for evidence in candidate.features:
+        if not isinstance(evidence, CapabilityEvidence):
+            reasons.add("capability_evidence_invalid")
+            continue
+        observed_at = _parse_iso_timestamp(evidence.observed_at)
+        if observed_at is None:
+            reasons.add("capability_timestamp_invalid")
+            continue
+        if observed_at > as_of:
+            reasons.add("capability_timestamp_future")
+            continue
+
+        expires_at = None
+        if evidence.expires_at is not None:
+            expires_at = _parse_iso_timestamp(evidence.expires_at)
+            if expires_at is None or expires_at < observed_at:
+                reasons.add("capability_timestamp_invalid")
+                continue
+            if expires_at < as_of:
+                reasons.add("capability_stale")
+                continue
+
+        if as_of - observed_at > timedelta(days=policy.max_health_age_days):
+            reasons.add("capability_stale")
+
+    return tuple(sorted(reasons, key=_capability_failure_rank))
+
+
+def _capability_failure_rank(reason: str) -> tuple[int, str]:
+    priority = {
+        "capability_evidence_invalid": 0,
+        "capability_timestamp_invalid": 1,
+        "capability_timestamp_future": 2,
+        "capability_stale": 3,
+    }
+    return priority.get(reason, 99), reason
+
+
 def _parse_iso_timestamp(value: str) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None
@@ -508,7 +572,8 @@ def _required_modalities(task: TaskIntent, profile: TaskProfile) -> tuple[str, .
 
 def _has_capability(candidate: EndpointCandidate, capability_id: str) -> bool:
     return any(
-        evidence.capability == capability_id
+        isinstance(evidence, CapabilityEvidence)
+        and evidence.capability == capability_id
         and evidence.value is True
         and evidence.kind is not EvidenceKind.UNMEASURED
         and evidence.confidence > 0
@@ -520,7 +585,8 @@ def _numeric_capability(candidate: EndpointCandidate, capability_id: str) -> int
     values: list[int] = []
     for evidence in candidate.features:
         if (
-            evidence.capability != capability_id
+            not isinstance(evidence, CapabilityEvidence)
+            or evidence.capability != capability_id
             or evidence.kind is EvidenceKind.UNMEASURED
         ):
             continue
