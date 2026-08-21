@@ -105,6 +105,15 @@ jobs:
       run_frontend_tests: ${{ steps.classify.outputs.run_frontend_tests || 'true' }}
       run_packages_core_tests: ${{ steps.classify.outputs.run_packages_core_tests || 'true' }}
       run_e2e_tests: ${{ steps.classify.outputs.run_e2e_tests || 'true' }}
+      # Static test-impact map (world-patterns-import-map.md §1.2, PR lane
+      # only — never merge_group, see impact_map.py's module docstring
+      # "SCOPE, DECLARED"). Same fail-open convention as the flags above:
+      # any failure anywhere in `impact` below leaves these two outputs
+      # unset, and backend-tests' own `|| 'true'` / empty-string check falls
+      # back to the unscoped `backend/tests/` target it already ran before
+      # this lever existed.
+      impact_run_all: ${{ steps.impact.outputs.run_all || 'true' }}
+      impact_selected_tests: ${{ steps.impact.outputs.selected_tests }}
 
     steps:
       - name: Checkout code
@@ -157,8 +166,16 @@ jobs:
       # origin/main:scripts/ci/change_map.py, unchanged by this PR), so a PR
       # that edits the classifier is itself classified as
       # suggested_jobs=all-six by the OLD copy doing the judging — no new
-      # rule needed for that. Defense in depth: these three files are also
+      # rule needed for that. Defense in depth: these files are also
       # added to CODEOWNERS TIER 1 in this same commit.
+      #
+      # impact_map.py / test_impact_map.py (added with the static
+      # test-impact lever, world-patterns-import-map.md §1.2): SAME trust
+      # boundary as change_map.py above — a PR that broke backend/ code
+      # could otherwise edit its own copy of the module-selection logic to
+      # under-select its own regression's test. Extracted unconditionally
+      # (cheap; unused on merge_group, where the `impact` step below never
+      # runs) rather than adding a second extraction step for one event type.
       - name: Extract trusted classifier (base ref)
         id: extract
         if: steps.override.outputs.active != 'true'
@@ -169,7 +186,7 @@ jobs:
           CLASSIFIER_DIR="$RUNNER_TEMP/trusted-classifier"
           mkdir -p "$CLASSIFIER_DIR"
           OK=true
-          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/hotzone_changed_files.sh; do
+          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/hotzone_changed_files.sh scripts/ci/impact_map.py scripts/ci/test_impact_map.py; do
             if ! git show "${BASE_SHA}:${f}" > "$CLASSIFIER_DIR/$(basename "$f")" 2>/dev/null; then
               echo "::warning::could not extract $f from base ref $BASE_SHA — treating classifier as untrusted for this run"
               OK=false
@@ -200,8 +217,18 @@ jobs:
           set -uo pipefail
           if [ "$EXTRACT_OK" != "true" ]; then
             echo "::error::base-ref classifier extraction failed — refusing to trust a corpus that didn't run"
+            echo "impact_ok=false" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+          # impact_map.py's own corpus is recorded as a SEPARATE `impact_ok`
+          # output rather than folded into this step's own exit code — a
+          # break in the newer, narrower test-impact-map corpus must fail
+          # open on the PR-lane module scoping below (the `impact` step),
+          # not force run_all=true on all six domain-routed jobs, which is
+          # change_map.py's unrelated concern.
+          IMPACT_RC=0
+          python3 "$CLASSIFIER_DIR/test_impact_map.py" || IMPACT_RC=$?
+          echo "impact_ok=$([ "$IMPACT_RC" -eq 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           python3 "$CLASSIFIER_DIR/test_change_map.py"
 
       # merge_group base/head SHAs (established pattern — see hot-zone-pr-gate.yml,
@@ -279,6 +306,67 @@ jobs:
           ')"
           echo "$JOB_FLAGS" >> "$GITHUB_OUTPUT"
           echo "::notice::change-map: $MAP_JSON"
+
+      # Lever L2, world-patterns-import-map.md §1.2: within backend-tests
+      # (once change_map above has already decided that job runs), select
+      # only the pytest modules impact_map.py's static import graph says
+      # this PR's changed files can reach — instead of the full
+      # `backend/tests/` (1400+ modules) that job ran unconditionally
+      # before this step existed. PR lane ONLY (`if:` below) — merge_group
+      # NEVER consults this output; it keeps running the unconditional full
+      # suite, so a wrong or incomplete impact map here costs a slow PR-lane
+      # run, never a missed regression (see the module's own "SCOPE,
+      # DECLARED" docstring for exactly what it cannot see: anything outside
+      # apps/backend-rag/backend/, dynamic imports, importlib, env-driven
+      # wiring). Reuses $CHANGED_FILE from "Enumerate and classify" above —
+      # same merge-base-anchored list, no second enumeration.
+      - name: Compute static test-impact map (PR lane only)
+        id: impact
+        if: steps.override.outputs.active != 'true' && github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          CLASSIFIER_DIR: ${{ steps.extract.outputs.dir }}
+          EXTRACT_OK: ${{ steps.extract.outputs.ok }}
+          IMPACT_OK: ${{ steps.classifier-tests.outputs.impact_ok }}
+        run: |
+          set -uo pipefail
+          CHANGED_FILE="$RUNNER_TEMP/change-map-changed-files.txt"
+
+          if [ "$EXTRACT_OK" != "true" ] || [ "$IMPACT_OK" != "true" ]; then
+            echo "::warning::impact-map classifier untrusted or its own corpus failed; backend-tests keeps the unscoped full suite"
+            echo "run_all=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! IMPACT_JSON="$(python3 "$CLASSIFIER_DIR/impact_map.py" < "$CHANGED_FILE")"; then
+            echo "::warning::impact_map.py exited non-zero; backend-tests keeps the unscoped full suite"
+            echo "run_all=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          RUN_ALL="$(IMPACT_JSON="$IMPACT_JSON" python3 -c 'import json, os; print(str(json.loads(os.environ["IMPACT_JSON"])["run_all"]).lower())')"
+          echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
+          if [ "$RUN_ALL" = "false" ]; then
+            {
+              echo "selected_tests<<IMPACT_TESTS_EOF"
+              IMPACT_JSON="$IMPACT_JSON" python3 -c 'import json, os; print("\n".join(json.loads(os.environ["IMPACT_JSON"])["selected_tests"]))'
+              echo "IMPACT_TESTS_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+          # Counts only in the loud notice — the selected-file list itself
+          # can run into the hundreds of paths (see the module docstring's
+          # app-factory hub example) and belongs in $GITHUB_OUTPUT, not a
+          # GitHub Actions annotation.
+          SUMMARY="$(IMPACT_JSON="$IMPACT_JSON" python3 -c '
+          import json, os
+          d = json.loads(os.environ["IMPACT_JSON"])
+          print(
+              f"run_all={d[\"run_all\"]} reason={d[\"reason\"]} "
+              f"selected={d.get(\"selected_test_count\", \"-\")}/{d.get(\"total_test_count\", \"-\")}"
+          )
+          ')"
+          echo "::notice::test-impact-map: $SUMMARY"
 
       - name: Publish change-map decision
         if: always()
@@ -627,6 +715,16 @@ jobs:
           INTAKE_TEST_DSN: postgresql://test:test@localhost:5432/nuzantara_test
           REDIS_URL: redis://localhost:6379
           COLLECT_COVERAGE: ${{ steps.test-scope.outputs.collect_coverage }}
+          # Static test-impact map (world-patterns-import-map.md §1.2). Both
+          # unset (empty string) on merge_group/push/schedule — the `impact`
+          # step in the `changes` job only runs on `pull_request` — so the
+          # `[ "$IMPACT_RUN_ALL" = "false" ]` check below is false there by
+          # construction and this job keeps running the full `backend/tests/`
+          # it always has. `|| 'true'` mirrors change_map's own fail-open
+          # convention for the same reason (any upstream failure/skip must
+          # never silently narrow this job).
+          IMPACT_RUN_ALL: ${{ needs.changes.outputs.impact_run_all || 'true' }}
+          IMPACT_SELECTED_TESTS: ${{ needs.changes.outputs.impact_selected_tests }}
         run: |
           cd apps/backend-rag
           set -o pipefail
@@ -646,10 +744,36 @@ jobs:
           if [ "$COLLECT_COVERAGE" = "true" ]; then
             COV_ARGS=(--cov=backend --cov-branch --cov-report=xml:coverage.xml)
           fi
+
+          # Static test-impact map: scope this invocation to only the pytest
+          # modules impact_map.py's import graph says this PR's changed
+          # files can reach, IF the PR-lane classifier trusted itself, ran,
+          # and reached a non-empty selection. $IMPACT_SELECTED_TESTS holds
+          # repo-root-relative paths (e.g. apps/backend-rag/backend/tests/…)
+          # — strip the apps/backend-rag/ prefix this step's own `cd` above
+          # already put us inside. Any other outcome (merge_group, override
+          # active, classifier/corpus untrusted, out-of-scope diff, empty
+          # impact set) leaves TEST_TARGETS as the unscoped default this job
+          # has always run.
+          TEST_TARGETS=(
+            backend/tests/
+            ../../scripts/bot/test_build_deid_corpus.py
+            ../../scripts/bot/test_wa_blind_bench.py
+          )
+          if [ "$IMPACT_RUN_ALL" = "false" ] && [ -n "$IMPACT_SELECTED_TESTS" ]; then
+            TEST_TARGETS=()
+            while IFS= read -r selected_test; do
+              [ -n "$selected_test" ] && TEST_TARGETS+=("$selected_test")
+            done < <(printf '%s\n' "$IMPACT_SELECTED_TESTS" | sed 's#^apps/backend-rag/##')
+            {
+              echo "## Test-impact map — PR lane scoped"
+              echo ""
+              echo "Selected ${#TEST_TARGETS[@]} of $(find backend/tests -name 'test_*.py' -o -name '*_test.py' | wc -l | tr -d ' ') backend test modules (static import graph — see scripts/ci/impact_map.py)."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
           PYTHONPATH=.:../crm-cell pytest \
-            backend/tests/ \
-            ../../scripts/bot/test_build_deid_corpus.py \
-            ../../scripts/bot/test_wa_blind_bench.py \
+            "${TEST_TARGETS[@]}" \
             -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             "${COV_ARGS[@]}" \
