@@ -143,6 +143,13 @@ SET statement_timeout = '60s';
 -- patching the runner, which is out of scope here. This inline guard is the
 -- self-contained substitute: query `schema_migrations` (the table
 -- `_is_applied()` actually reads, NOT `_schema_versions`) directly.
+-- Kimi K3 refuter finding (2026-08-21, CONFIRMED-minor, verified independently):
+-- the guard below originally checked only the LOG (a schema_migrations row), not
+-- the EFFECT (whether client 11500 actually carries the corrected email) -- W88/W106
+-- class ("the proxy lies about state"). A schema_migrations row without the matching
+-- data (e.g. a hand-run INSERT, or a future rollback bug of this exact shape on 277
+-- itself) would satisfy the log-only check while the real orphan predicate below
+-- still sees the typo'd row. Both conditions are now required.
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -150,6 +157,12 @@ BEGIN
         WHERE migration_name = '277_correct_ari_email_typo'
     ) THEN
         RAISE EXCEPTION 'Migration 278 requires migration 277 (ari@balizero.com typo correction for client_id 11500) to have already applied — schema_migrations has no row for 277_correct_ari_email_typo. Refusing to run: applying 278 before 277 would fold that client into the water-filling pool and assign it to Surya instead of leaving it with its real de-facto owner, Ari.';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM clients
+        WHERE id = 11500 AND lower(BTRIM(assigned_to)) = 'ari.firda@balizero.com'
+    ) THEN
+        RAISE EXCEPTION 'Migration 278 requires migration 277''s EFFECT, not just its log row: schema_migrations has a row for 277_correct_ari_email_typo, but client_id 11500 does not carry the corrected assigned_to (ari.firda@balizero.com). Refusing to run on a log/data mismatch.';
     END IF;
 END $$;
 
@@ -364,4 +377,14 @@ WHERE archive.migration_name = '278_reassign_orphaned_clients_setup_team'
   AND c.assigned_to = archive.new_assigned_to;
 
 DELETE FROM _schema_versions
+WHERE migration_name = '278_reassign_orphaned_clients_setup_team';
+
+-- Kimi K3 refuter finding (2026-08-21, CONFIRMED, same defect as 277's rollback,
+-- verified independently against migration_base.py::_is_applied()): clearing only
+-- `_schema_versions` leaves `schema_migrations` (the table _is_applied() actually
+-- reads, backend/db/migration_base.py:365) still saying 278 is applied -- the
+-- runner will never re-apply it, and worse, 278's own dependency guard above reads
+-- `schema_migrations` too, so it would still pass even after this rollback undid
+-- the reassignment. This line closes that gap.
+DELETE FROM schema_migrations
 WHERE migration_name = '278_reassign_orphaned_clients_setup_team';

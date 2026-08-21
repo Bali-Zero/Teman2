@@ -113,3 +113,12 @@ WHERE archive.migration_name = '277_correct_ari_email_typo'
 
 DELETE FROM _schema_versions
 WHERE migration_name = '277_correct_ari_email_typo';
+
+-- Kimi K3 refuter finding (2026-08-21, CONFIRMED, verified independently against
+-- migration_base.py::_is_applied() before applying): the two DELETEs above alone
+-- do not make this migration re-runnable. _is_applied() (backend/db/migration_base.py:365)
+-- reads `schema_migrations`, not `_schema_versions` -- a rollback that only clears
+-- `_schema_versions` restores the data but leaves the runner believing 277 is still
+-- applied, so it will never re-apply. This line closes that gap.
+DELETE FROM schema_migrations
+WHERE migration_name = '277_correct_ari_email_typo';
