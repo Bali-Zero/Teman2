@@ -1,0 +1,20 @@
+{
+  "qid": "Q10",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the OSS correction mechanics unsupported and abstains from deciding correction versus restart."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly identifies the corpus gap and makes no unsupported claim about OSS correction."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains on OSS correction mechanics and limits the available data without asserting missing facts."
+    }
+  ]
+}

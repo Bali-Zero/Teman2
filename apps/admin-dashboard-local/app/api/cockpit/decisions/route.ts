@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { hasValidCockpitSession } from "@/lib/cockpit-session";
 
 const execFileAsync = promisify(execFile);
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!(await hasValidCockpitSession(request))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   const decisions: Array<{
     type: string;
     title: string;

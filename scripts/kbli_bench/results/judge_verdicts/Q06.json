@@ -1,0 +1,20 @@
+{
+  "qid": "Q06",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan abstensi karena seluruh fakta LKPM yang diminta tidak tersedia dalam record."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menyatakan abstensi dan menunjuk keterbatasan data tanpa mengarang tanggal atau sanksi."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan Navigator KBLI tidak memuat fakta LKPM; tidak ada klaim regulasi tambahan."
+    }
+  ]
+}

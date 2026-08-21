@@ -1,0 +1,20 @@
+{
+  "qid": "Q09",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Despite abstaining, it asserts document examples and KBLI applicability absent from the supplied records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the general checklist unavailable and points to activity-specific KBLI pages without supplying an exhaustive list."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the general checklist unavailable and points to activity-specific KBLI pages without asserting the missing checklist."
+    }
+  ]
+}

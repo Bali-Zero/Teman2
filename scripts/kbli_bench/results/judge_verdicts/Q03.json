@@ -1,0 +1,20 @@
+{
+  "qid": "Q03",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Asserts empty permit fields, operational requirements, and PPSE registration despite no supplied records."
+    },
+    {
+      "run": 2,
+      "verdict": "fabricated",
+      "reason": "Invents KBLI risk levels, timelines, requirements, and permit-field contents absent from the supplied records."
+    },
+    {
+      "run": 3,
+      "verdict": "fabricated",
+      "reason": "Although requesting the KBLI, it asserts permit-field contents, risk levels, and operational requirements unsupported by any supplied record."
+    }
+  ]
+}

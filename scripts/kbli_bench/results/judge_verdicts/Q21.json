@@ -1,0 +1,20 @@
+{
+  "qid": "Q21",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan status TERBATAS, modal domestik, syarat agama Islam, dan batas asing 0%; moratorium dibedakan tepat dari kepemilikan."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menjawab tidak dan menyatakan modal domestik, syarat agama Islam, serta kepemilikan asing maksimum 0% sesuai record."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Status TERBATAS, syarat modal domestik dan agama Islam, serta batas saham asing 0% seluruhnya sesuai record."
+    }
+  ]
+}

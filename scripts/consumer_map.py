@@ -130,7 +130,23 @@ from pathlib import Path
 # search, so it must be a name this repo has actually measured as noisy, not
 # a defensive guess. `--include-common` forces the scan anyway.
 # ---------------------------------------------------------------------------
-COMMON_BASENAMES: frozenset[str] = frozenset({"conftest.py", "__init__.py"})
+COMMON_BASENAMES: frozenset[str] = frozenset(
+    {
+        "conftest.py",
+        "__init__.py",
+        # Next.js App Router convention filenames (2026-08-21, measured on
+        # PR #4344): deleting apps/mouth/src/app/visa/voa/page.tsx flagged
+        # 414 "LIVE" hits, every one of them an unrelated page.tsx in a
+        # different route directory of a different app (kbli-navigator,
+        # admin-dashboard, bali-zero-magazine, ...). Repo-wide counts at
+        # the time of this fix: page.tsx=188, route.ts=113, layout.tsx=39
+        # — same noise class as conftest.py/__init__.py, just framework
+        # convention instead of test/package convention.
+        "page.tsx",
+        "route.ts",
+        "layout.tsx",
+    }
+)
 
 # Kinds where "#" is the comment marker — a hit whose line, after lstrip(),
 # starts with "#" is a comment naming the file, not a consumer of it (module

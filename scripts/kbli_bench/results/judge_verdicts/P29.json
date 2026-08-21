@@ -1,0 +1,20 @@
+{
+  "qid": "P29",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because wage data is absent; no wage figure asserted."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains and provides no wage figure or unsupported regulatory fact."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly states the requested fact is unavailable and asserts no wage figure."
+    }
+  ]
+}

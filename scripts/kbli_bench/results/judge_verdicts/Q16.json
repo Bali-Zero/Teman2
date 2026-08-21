@@ -1,0 +1,20 @@
+{
+  "qid": "Q16",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Menyebut status, batas kepemilikan asing, dan empat KBLI yang tidak ada dalam record kosong."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Menampilkan status internal gate, bukan abstain deklaratif kepada pembaca seperti perilaku yang diharapkan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menyatakan celah dan tidak menjelaskan perbedaan substantif PT PMA dan PT PMDN."
+    }
+  ]
+}
