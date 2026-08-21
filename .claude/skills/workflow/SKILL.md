@@ -103,6 +103,13 @@ New patterns (compose with §3):
 - **Agent-Teams adversarial pair**: flag already armed fleet-wide — two peer sessions with
   SendMessage for iterative propose/critique rounds; cheaper than council when the shape is a
   dialogue, not a panel.
+- **`notify_when_idle` on SendMessage** (CLI ≥2.1.236): ask to be notified when the addressed
+  lane goes idle — REPLACES `ListAgents` polling between parallel lanes on the same machine.
+  Polling a lane's status burns turns and misses the transition; the idle notification is
+  push, not pull. Caveat measured 2026-08-20: an idle notification is NOT a deliverable — a
+  lane can go idle without having sent its report (happened twice in one session), so on idle
+  with no content in hand, the next move is one SendMessage demanding the report, never
+  assuming the work is done.
 - **Triage-first research**: the bundled native `/deep-research` workflow answers easy
   questions free; reserve the multi-LLM sweep for regulatory/client-facing/hard ones.
 
