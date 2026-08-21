@@ -25,10 +25,13 @@ constraints:
 acceptance:
   - "The corollary names CASE A (pull_request run exists on this head SHA -> gh run rerun) and
     CASE B (no such run -> gh workflow run --ref), each with its condition."
-  - "It states the mechanism (different check suites, rollup does not supersede) with the measured
-    suite ids, so a reader can verify rather than trust."
-  - "It records the diagnostic trap: check-runs defaults to filter=latest and shows only the green
-    run while gh pr checks shows the red one."
+  - "It states the mechanism (different check suites; the dispatch run does not enter the PR's
+    rollup at all) with the measured suite ids and run ids, so a reader can verify rather than
+    trust."
+  - "It records the diagnostic trap ACCURATELY: pagination is what hides the row (check-runs
+    returns 30 by default against ~55-63 on a PR head, so per_page=100 is mandatory and filter=all
+    alone does NOT surface the red row); filter=all separately re-adds attempts superseded within
+    their own suite; then compare check_suite.id."
   - "actionlint exit 0; the workflow's non-comment body byte-identical to origin/main."
 consumer_map:
   - "`.github/workflows/harness-floor.yml` header — read by every session that has to unblock a
