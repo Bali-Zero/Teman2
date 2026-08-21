@@ -289,8 +289,11 @@ jobs:
       # superscar #4). Found world-readable (0644) and never redacting a
       # logged command that can carry a credential in argv. Measured by run
       # length, not by line count (the first draft of this note got that
-      # wrong): 3 runs carrying secret material, 2 of them whole-token
-      # length, sat in cleartext in
+      # wrong): 3 runs carrying secret material -- 1 whole token + 2
+      # truncation-clipped partials, not "2 whole-token length" (measured by
+      # END POSITION: the two shorter runs both end EXACTLY at the 200-char
+      # truncation boundary, which is a partial cut off mid-value, not proof
+      # of a second and third full-length secret) -- sat in cleartext in
       # ~/logs/codex-spalla-trigger.jsonl. Same discipline as the steps
       # above: this is a `.sh` corpus, invisible to scripts-tests-sweep.yml's
       # pytest collection (it only globs `test_*.py`) even before accounting

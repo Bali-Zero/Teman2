@@ -23,11 +23,19 @@ set -u  # NOT -e: we want to fail open, not propagate errors.
 # live file, mode 0644 and still being appended to: 14 lines match the literal
 # `sk-ant-oat`, but a length histogram of the runs (8x10, 5x13, 1x46, 1x87,
 # 1x108) shows 13 are the bare literal with no secret material -- only 3 runs
-# carry any, and only 2 are long enough to be a whole token. CORRECTED
-# 2026-08-21 by the Gear-3 gate: the first draft of this comment said "11 real
-# values, 108 chars each", restating a LINE count as a VALUE count and the
-# maximum as "each". The leak is real; the magnitude was inflated, in the very
-# comment that preaches counting by run length. Two independent defenses, because either alone fails:
+# carry any. Of those 3, magnitude is 1 whole token + 2 truncation-clipped
+# partials, not "2 whole tokens": measured by END POSITION inside the
+# 200-char logged field, the 108-char run ends at char 151 -- well short of
+# the boundary, i.e. a complete token -- while the 87-char and 46-char runs
+# both end EXACTLY at char 200, the truncation boundary itself, which is what
+# a partial cut off mid-token looks like, not proof of two more full-length
+# secrets. CORRECTED 2026-08-21 by the Gear-3 gate, twice: the first draft of
+# this comment said "11 real values, 108 chars each" (a LINE count restated
+# as a VALUE count, and the maximum restated as "each"); a later draft said
+# "2 whole tokens" (a truncation artifact restated as two more complete
+# secrets). The leak is real; the magnitude was inflated both times, in the
+# very comment that preaches counting by run length. Two independent
+# defenses, because either alone fails:
 #   (1) umask 077 so the file can never be born readable by anyone else, plus
 #       an explicit chmod for a file that already exists at the old mode --
 #       `>>` does NOT change the mode of an existing file, so the umask alone
@@ -121,6 +129,19 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # (`mytool deploy s3cr3t`) is NOT redacted by that branch — only the prefix
 # rules above can catch it, and only if it carries a known prefix.
 #
+# OVER-MATCH residual risk (cicatrix superscar #3, the guard-over-match twin
+# of the under-match spot above): the keyword must be a delimited SEGMENT
+# (see below) to fire, but it is still a bare keyword match with no notion of
+# "is this actually a secret" -- a config line that legitimately names a
+# non-secret value with a `_KEY=`/`_TOKEN=`-suffixed identifier (e.g. an
+# internal cache-partition or feature-flag name) redacts just as hard as a
+# real credential. The guilt/innocence corpus in
+# scripts/tests/test_codex_spalla_trigger_redaction.sh proves the specific
+# forms it enumerates stay innocent; it is not a proof that no legitimately-
+# named non-secret value anywhere can still trip the keyword-segment match.
+# Given the choice between over-redacting a non-secret and under-redacting a
+# real one, this hook accepts the former.
+#
 # The wildcards on BOTH SIDES of the keyword are the load-bearing detail.
 # A redactor written as `TOKEN=` matches CLAUDE_CODE_OAUTH_TOKEN= and misses
 # CLAUDE_CODE_OAUTH_TOKEN_1= -- that exact off-by-one is how four tokens were
@@ -128,7 +149,17 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # THIS fix then required at least one char BEFORE the keyword, so it caught
 # CLAUDE_CODE_OAUTH_TOKEN_1= and missed a bare TOKEN= — the same off-by-one,
 # mirrored, found by the Gear-3 gate on this diff. Wildcards on both sides,
-# case-insensitive, plus an optional leading `--`, are what close the class.
+# case-insensitive, are what close the class -- each side is delimited by
+# `_`/`-`/string-start-or-end, plus a negative lookbehind on the left that
+# also excludes a preceding `.` (so `foo.key = x` attribute access is
+# innocent). MEASURED, not assumed: the optional leading `(?:--?)?` does NOT
+# widen coverage and does NOT even change the redacted output -- a leading
+# `-`/`--` is neither alnum nor `.`, so the lookbehind already lets the match
+# start right after it either way. Driven side-by-side (with and without
+# `(?:--?)?`) through the real hook across the full guilt+innocence+flag
+# corpus: byte-identical output in every case, including `--token=`/`-key=`
+# flag forms. It is dead weight in this regex, not a coverage or even a
+# readability lever.
 TARGET_JSON="$(printf '%s' "$TARGET" | python3 -c '
 import sys, re, json
 s = sys.stdin.read()
@@ -138,9 +169,16 @@ s = re.sub(r"gh[pousr]_[A-Za-z0-9]{8,}", "gh_<REDACTED>", s)
 s = re.sub(r"github_pat_[A-Za-z0-9_]{8,}", "github_pat_<REDACTED>", s)
 # 2. Anything ASSIGNED to a secret-ish variable name, suffixes included.
 s = re.sub(
-    r"(?i)((?:--?)?[A-Za-z0-9_-]*(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Za-z0-9_-]*)"
+    r"(?i)((?<![A-Za-z0-9.])(?:--?)?(?:[A-Za-z0-9]+[_-])*"
+    r"(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL)(?:[_-][A-Za-z0-9]+)*)"
     r"\s*[=:]\s*(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)",
-    r"\1=<REDACTED>",
+    lambda m: m.group(1) + "=<REDACTED>",
+    s,
+)
+# 3. Bearer/Authorization, which carry no keyword in a NAME at all.
+s = re.sub(
+    r"(?i)\b(Authorization\s*:\s*Bearer|Bearer)\s+[A-Za-z0-9._-]{8,}",
+    r"\1 <REDACTED>",
     s,
 )
 print(json.dumps(s[:200]))

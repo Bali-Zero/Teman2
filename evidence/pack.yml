@@ -3,11 +3,16 @@ plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-
 diff:
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
-  - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 14 matching lines, histogram 8x10/5x13/1x46/1x87/1x108 -> 3 runs with secret material, 2 of whole-token length"
-    cmd: "grep -c 'sk-ant-oat' ~/logs/codex-spalla-trigger.jsonl (-> 11); longest token-shaped run via grep -oE | awk length (-> 108); stat -f '%Lp' (-> 644)"
+  - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 14 matching lines, histogram 8x10/5x13/1x46/1x87/1x108 -> 3 runs with secret material: 1 whole token + 2 truncation-clipped partials"
+    cmd: "grep -c 'sk-ant-oat' ~/logs/codex-spalla-trigger.jsonl (-> 14); longest token-shaped run via grep -oE | awk length (-> 108); stat -f '%Lp' (-> 644)"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
     seat: session (m5)
+  - claim: "Magnitude of the 3 secret-bearing runs re-measured by END POSITION inside the 200-char logged field, not by length alone: only the 108-char run ends short of the field's end (complete token); the 87-char and 46-char runs both end EXACTLY at char 200 (the truncation boundary) -- truncation-clipped partials, not two more whole tokens"
+    cmd: "python3: json.loads each matching line's target field, locate the sk-ant-oat run, compare match.end() to len(target) and to the 200-char cap -- no value printed, only lengths/offsets/booleans"
+    exit: 0
+    ts: "2026-08-21T19:49:52Z"
+    seat: session (m5), independent of the implementer
   - claim: "Containment applied to the live file ahead of the fix"
     cmd: "chmod 0600 ~/logs/codex-spalla-trigger.jsonl; stat -f '%Lp' (-> 600); no .bak siblings; it is the only file in ~/logs with such material"
     exit: 0
@@ -18,23 +23,28 @@ receipts:
     exit: 0
     ts: "2026-08-21T15:56:47Z"
     seat: session (m5)
-  - claim: "Guilt+innocence suite passes against the fixed hook: 3 guilt, 1 innocence, 1 mode"
+  - claim: "Guilt+innocence suite passes against the fixed hook: 11 guilt, 9 innocence, 1 mode (widened from 3 guilt/1 innocence/1 mode -- the gate's central finding was 10 guilt against only 1 innocence, so 8 innocence forms + 1 Bearer guilt form were added)"
     cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
     exit: 0
-    ts: "2026-08-21T15:56:47Z"
+    ts: "2026-08-21T19:49:52Z"
     seat: session (m5), re-run independently of the implementer
-  - claim: "TARGETED mutation removing ONLY the [A-Z0-9_]* suffix wildcard fails exactly the suffixed-var case, and the suite exits non-zero"
-    cmd: "sed the wildcard out of the hook; bash scripts/tests/test_codex_spalla_trigger_redaction.sh (rc measured WITHOUT a pipe -- a pipe returns tail's rc, W97)"
+  - claim: "TARGETED mutation removing ONLY the suffix-segment wildcard `(?:[_-][A-Za-z0-9]+)*` fails exactly the suffixed-var case, and the suite exits non-zero"
+    cmd: "python3 in-place edit removing the wildcard from the hook; bash scripts/tests/test_codex_spalla_trigger_redaction.sh (rc measured WITHOUT a pipe -- a pipe returns tail's rc, W97)"
     exit: 1
-    ts: "2026-08-21T15:56:47Z"
+    ts: "2026-08-21T19:49:52Z"
     seat: session (m5)
-  - claim: "Hook restored byte-identical after the mutation; suite green again"
-    cmd: "cp /tmp/hook.orig <hook>; cmp -s (-> identical); suite rc 0"
+  - claim: "Hook restored to the exact pre-mutation diff after the mutation test; verified by `git diff` matching the original intended narrowing byte-for-byte (a first restore attempt via a /tmp backup silently failed because $$ differs across separate Bash tool invocations -- caught by re-diffing, not assumed); suite green again"
+    cmd: "git diff .claude/hooks/codex-spalla-trigger.sh (-> matches intended diff exactly); bash scripts/tests/test_codex_spalla_trigger_redaction.sh (-> rc 0)"
     exit: 0
-    ts: "2026-08-21T15:56:47Z"
+    ts: "2026-08-21T19:49:52Z"
     seat: session (m5)
+  - claim: "The optional leading `(?:--?)?` in the variable-name regex does not widen coverage AND does not change the redacted output at all -- a leading dash is neither alnum nor `.`, so the negative lookbehind already lets the match start right after it either way. Driven side-by-side (with vs without `(?:--?)?`) through the real hook across 22 cases (the full guilt+innocence corpus plus flag-form probes): zero output differences"
+    cmd: "cp hook to scratch, remove `(?:--?)?` only; diff each case's logged target between the two hooks"
+    exit: 0
+    ts: "2026-08-21T19:49:52Z"
+    seat: session (m5), independent of the implementer
 tests:
-  - "scripts/tests/test_codex_spalla_trigger_redaction.sh — 5 named cases, 3 guilt / 1 innocence / 1 mode, run against the REAL hook with a temp HOME."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh — 21 named cases, 11 guilt / 9 innocence / 1 mode, run against the REAL hook with a temp HOME."
 static:
   - "actionlint exit 0 on guard-conformance.yml"
   - "shellcheck clean on both the hook and the test"
@@ -60,17 +70,27 @@ dissent:
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
     objection: "check_guard_conformance's is_armed() is substring-based and cannot detect deletion of the run: step that executes this test — verified by simulating the removal, which still reported armed. The executor is genuine today; its removal would not be caught."
     status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: 'The corrected magnitude claim ("3 runs carry secret material, 2 of whole-token length") was itself imprecise: "whole-token length" was inferred from raw run LENGTH (87 and 46 chars), not from where the run ends. Reconstructed by END POSITION inside the 200-char logged field: the 108-char run ends at char 151, well short of the field''s end -- a complete token. The 87-char and 46-char runs both end EXACTLY at char 200, the field''s hard cap -- that is what a token gets cut off by truncation looks like, not evidence of two more full-length secrets. True statement: 1 whole token + 2 truncation-clipped partials.'
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "The suite shipped with 10 guilt cases and only 1 innocence case for a matcher that had just been WIDENED from a bounded-substring form to a segment-anchored-but-still-substring form. Guilt coverage without a matching innocence corpus does not demonstrate the widening is safe (cicatrix #3, guard-over-match)."
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "The comment's closing line credited an optional leading `(?:--?)?` with helping 'close the class' of coverage. Measured false: a leading dash is neither alnum nor `.`, so the negative lookbehind already permits the match to start immediately after it with or without that group. Removing `(?:--?)?` produced byte-identical redacted output across 22 cases including `--token=`/`-key=` flag forms -- it is not a coverage lever, and (contrary to the implementer's own guess) not even a readability lever, since the dashes survive untouched in the output either way."
+    status: CONFIRMED
 residual_risks:
   - "Redaction only closes the shapes it can name. A secret passed POSITIONALLY with no variable
     name (`mytool deploy s3cr3t`) is caught only if it carries a known prefix; the value branch
     cannot see it. Stated in the hook's own comment rather than left as an implied closed class."
   - "Redact-before-truncate widens the truncation window by shortening the string, so a secret that
     used to fall outside the 200 chars can be pulled in. Smaller exposure, not zero."
-  - "The already-leaked material remains valid: 2 whole-token-length runs plus one 46-char partial. The first draft of this pack said 11 tokens -- a LINE count read as a VALUE count, caught by the Gear-3 gate; the rotation decision hangs on this number, so it is corrected rather than quietly dropped."
+  - "The already-leaked material remains valid: 1 whole-token-length run (108 chars, ends at char 151) plus 2 truncation-clipped partials (87 and 46 chars, both ending exactly at the 200-char boundary). The first draft of this pack said 11 tokens -- a LINE count read as a VALUE count; a later draft said 2 whole tokens -- an end-of-truncation-window artifact read as two more complete secrets. Both caught by the Gear-3 gate; the rotation decision hangs on this number, so it is corrected rather than quietly dropped."
+  - "OVER-MATCH (cicatrix #3, the guard-over-match twin of the positional-secret blind spot above): the segment-anchored keyword match has no notion of 'is this actually a secret' -- a legitimately-named non-secret value using a `_KEY=`/`_TOKEN=`-suffixed identifier (an internal cache-partition name, a feature-flag name, ...) redacts just as hard as a real credential would. The guilt/innocence corpus proves the specific forms it enumerates stay innocent; it is not a proof that no such legitimately-named value anywhere can still trip the match. Between over-redacting a non-secret and under-redacting a real one, the hook accepts the former."
   - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ — the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
   - "An identical UNTRACKED .codex/hooks/ copy exists in the main checkout; git does not track it, so this diff cannot fix it."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 1400
+size_tokens: 2800
