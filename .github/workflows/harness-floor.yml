@@ -108,8 +108,10 @@ name: Harness floor recompute
 # verdict provenance. scripts/harness_fable_gate.py never verifies WHO posted a verdict — any
 # credential with `statuses: write` can post PASS on any SHA. Before the redesign that was inert
 # because nothing read the status; now it is load-bearing, so the severity went UP. Tracked in
-# modus PENDING-ARMS as design gap (b), owner: a dedicated CI-integrity lane. Its sibling, the
-# repo-wide required-check NAME-spoofing gap, has its own 2026-08-21 ledger entry.
+# modus PENDING-ARMS as design gap (b) of the 2026-08-10 entry, owner there: "me (next session)
+# for the design work". Its SIBLING — the repo-wide required-check NAME-spoofing gap — is the one
+# with its own 2026-08-21 entry earmarked for a dedicated CI-integrity lane. Two rows, two owners;
+# an earlier draft of this line gave gap (b) the sibling's owner, which the Gear-3 gate caught.
 #
 # NAME NOTE (2026-08-21): `harness/fable-gate` does NOT invoke Fable and never has — it relays a
 # verdict a Gear-3 session already reached (scripts/harness_fable_gate.py is a publisher with no

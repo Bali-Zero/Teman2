@@ -2,7 +2,7 @@ brief_ref: evidence/brief.yml
 plan_ref: "harness-floor.yml ARMING NOTE says a promotion is pending that already happened (2026-08-21); folds in superseded PR #4537"
 diff:
   files: 4
-  net_lines: "+~95 / -8, comment/docstring text plus two evidence files; zero executable lines"
+  net_lines: "+61/-4 across the two code files (39/4 yml, 22/0 py), +171/-133 counting the two evidence files; zero executable lines"
   behaviour_change: none
 receipts:
   - claim: "`Harness floor recompute` is ALREADY a required context on main; 27 contexts; app_id 15368; `harness/fable-gate` absent; strict false"
@@ -31,8 +31,8 @@ receipts:
     ts: "2026-08-21T13:34:36Z"
     seat: session (m5)
   - claim: "FLEET_TOPOLOGY.json does NOT contain the context string, and its Fable-named key was already renamed"
-    cmd: "git show origin/main:FLEET_TOPOLOGY.json | grep -c 'fable-gate'  (-> 0); grep -B3 -A6 fable_gate_gear3 (-> _renamed_from gear3_final_gate)"
-    exit: 0
+    cmd: "git show origin/main:FLEET_TOPOLOGY.json | grep -c 'fable-gate'  (prints 0, and grep exits 1 on zero matches -- the ZERO is the finding); then grep -B3 -A6 fable_gate_gear3 -> _renamed_from gear3_final_gate"
+    exit: 1
     ts: "2026-08-21T13:34:36Z"
     seat: session (m5)
   - claim: "The context string really does appear in 15 tracked files at origin/main"
@@ -60,6 +60,15 @@ dissent:
     status: CONFIRMED
   - seat: kimi-k3 (cross-family, Moonshot)
     objection: "Three added locations cite FLEET_TOPOLOGY.json as naming `harness/fable-gate`. It contains the string zero times — a phantom citation (superscar #6), inherited from #4537 and re-asserted here"
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: 'An ADDED line in harness-floor.yml attributed design gap (b) to "a dedicated CI-integrity lane". Measured: gap (b) is ledger line 933, owner "me (next session)"; the string CI-integrity occurs once in the whole ledger, at line 1108 — the SIBLING name-spoofing entry. The owner was attached to the wrong of the two rows the paragraph discusses, in the PR whose thesis is that headers must stop asserting unmeasured things'
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: 'pack net_lines "+~95 / -8" reproduces under no reading — code files are +61/-4, whole diff +171/-133, single commit so not stale from an intermediate state'
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "receipt R6 recorded exit 0, but grep -c exits 1 on zero matches — the claim reproduces, the exit field did not"
     status: CONFIRMED
   - seat: session (m5), verifying kimi-k3's finding rather than accepting it
     objection: "Deleting the citation would have hidden the sharper fact: FLEET_TOPOLOGY.json DID carry `fable_gate_gear3`, already renamed to `gear3_final_gate` by the same 2026-08-20 ruling — the file cited against renaming had itself been renamed"
