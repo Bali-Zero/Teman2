@@ -35,7 +35,7 @@
 
 ```bash
 cd apps/backend-rag
-export DATABASE_URL="postgresql://postgres:Balizero2020!@db.yxyibhwacnausqfqbrtd.supabase.co:5432/postgres"
+export DATABASE_URL="postgresql://postgres:<REDACTED_2026_08_21_see_supabase_dashboard>@db.yxyibhwacnausqfqbrtd.supabase.co:5432/postgres"
 ```
 
 ### Step 2: Esegui Script
