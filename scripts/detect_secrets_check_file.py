@@ -352,6 +352,51 @@ def selftest() -> int:
         if not found3 or hits3 != correct_results[rel_key]:
             failures.append("MATCHER false negative: correctly-keyed entry not found")
 
+    # ENTITY-not-FORM (team-lead 2026-08-21): the three cases above don't
+    # actually distinguish os.path.samefile from a naive suffix-match — in
+    # every one of them the results key IS literally the target's own path
+    # tail, so `target_str.endswith(key)` would have passed too. Proven
+    # live: mutating samefile to `target_str.endswith(key)` left this
+    # selftest fully green until this block was added. The real hazard
+    # named directly: `scripts/lint_pg_dsn_credentials.py` is a SUFFIX of
+    # `.worktrees/ops-oauth-leak/scripts/lint_pg_dsn_credentials.py` — a
+    # worktree copy and the main checkout's copy of the SAME filename would
+    # be conflated by suffix-match, in either direction. Reproduced here
+    # with two genuinely different on-disk files, `root_a/scripts/foo.py`
+    # and `root_b/scripts/foo.py`, that share the trailing path segments
+    # `scripts/foo.py`.
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        root_a = td_path / "root_a"
+        root_b = td_path / "root_b"
+        (root_a / "scripts").mkdir(parents=True)
+        (root_b / "scripts").mkdir(parents=True)
+        target_a = root_a / "scripts" / "foo.py"
+        target_a.write_text("x = 1\n", encoding="utf-8")
+        decoy_b = root_b / "scripts" / "foo.py"
+        decoy_b.write_text("y = 2\n", encoding="utf-8")
+
+        # results only names the DECOY's key (relative to root_b), and
+        # target_a is a DIFFERENT file that is genuinely clean — it must
+        # NOT inherit the decoy's finding just because their absolute paths
+        # share a trailing "scripts/foo.py".
+        decoy_only_results = {"scripts/foo.py": [{"line_number": 1, "type": "X"}]}
+        found_a, _hits_a = find_results_for_file(decoy_only_results, target_a, root_b)
+        if found_a:
+            failures.append(
+                "ENTITY-not-FORM miss: target_a matched a finding that belongs to "
+                "decoy_b — suffix/form was used instead of real file identity"
+            )
+
+        # Innocence for the matcher itself: scanned from ITS OWN root, the
+        # decoy's own key correctly resolves to the decoy.
+        found_b, hits_b = find_results_for_file(decoy_only_results, decoy_b, root_b)
+        if not found_b or hits_b != decoy_only_results["scripts/foo.py"]:
+            failures.append(
+                "ENTITY-not-FORM false negative: decoy_b, scanned from its own "
+                "root, should match its own key"
+            )
+
     # CANARY-GATE cases: the mutation-relevant tests for _evaluate. These
     # are pure (hand-built `results` dicts) because the property under
     # test — does a MISSING canary poison trust in every other "not
@@ -406,14 +451,74 @@ def selftest() -> int:
         finally:
             shutil.rmtree(outside_dir, ignore_errors=True)
 
+    # WRONG-CWD guilt+innocence (team-lead 2026-08-21, real subprocess this
+    # time — the CANARY-GATE cases above are pure/hand-built and don't
+    # exercise a real detect-secrets invocation against a NON-standard
+    # repo_root). This is the original bug's exact shape: PR #4484's bug
+    # was detect-secrets keying a finding relative to a cwd that a naive
+    # verification script's key-lookup didn't expect (e.g. scanning from
+    # the main checkout while assuming worktree-relative keys). Reproduced
+    # here portably (no dependency on THIS repo's worktree layout, so it
+    # holds identically in CI's single-checkout runner): repo_root is
+    # chosen SHALLOWER than the target files' own directory — detect-
+    # secrets then keys them with a multi-segment relative path
+    # (`sub/dir/guilty.py`, not `guilty.py`) — and both cases must survive
+    # it: the real finding must still be caught (guilt), and a genuinely
+    # clean file must NOT be misread as CANNOT-VERIFY just because its key
+    # is nested rather than flat (innocence — "the one that's always
+    # missing", per team-lead).
+    wrong_cwd_top = repo_root / ".detect_secrets_check_file_wrongcwd_scratch"
+    if wrong_cwd_top.exists():
+        shutil.rmtree(wrong_cwd_top)
+    nested = wrong_cwd_top / "sub" / "dir"
+    nested.mkdir(parents=True)
+    try:
+        # A valid baseline is required at repo_root/.secrets.baseline —
+        # reuse this repo's real plugin/filter config so the SAME plugins
+        # that catch real leaks are the ones exercised here.
+        (wrong_cwd_top / ".secrets.baseline").write_text(
+            (repo_root / ".secrets.baseline").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+
+        wrongcwd_guilty_body = "pR7mN2" + "kX9tQ4cH6wL3dY8v" + "eB5s"  # synthetic, 26 chars
+        wrongcwd_guilty = nested / "guilty.py"
+        wrongcwd_guilty.write_text(
+            'OAUTH_CLIENT_SECRET = "GOCSPX-' + wrongcwd_guilty_body + '"\n', encoding="utf-8"
+        )
+        wrongcwd_innocent = nested / "innocent.py"
+        wrongcwd_innocent.write_text(
+            'OAUTH_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET_RCLONE"]\n',
+            encoding="utf-8",
+        )
+
+        rc_wrongcwd_guilty = check_files([wrongcwd_guilty], repo_root=wrong_cwd_top)
+        if rc_wrongcwd_guilty != 1:
+            failures.append(
+                f"WRONG-CWD GUILT miss: repo_root shallower than the file's own "
+                f"directory (nested relative key) still expected exit 1, got "
+                f"{rc_wrongcwd_guilty}"
+            )
+
+        rc_wrongcwd_innocent = check_files([wrongcwd_innocent], repo_root=wrong_cwd_top)
+        if rc_wrongcwd_innocent != 0:
+            failures.append(
+                f"WRONG-CWD INNOCENCE false positive: a genuinely clean file with a "
+                f"nested relative key must stay exit 0 (clean), got "
+                f"{rc_wrongcwd_innocent} — a nested key must never itself read as "
+                "CANNOT-VERIFY"
+            )
+    finally:
+        shutil.rmtree(wrong_cwd_top, ignore_errors=True)
+
     for line in failures:
         print(f"  ✗ {line}")
     if failures:
-        print(f"selftest FAILED ({len(failures)} of 8)")
+        print(f"selftest FAILED ({len(failures)} of 12)")
         return 1
     print(
-        "selftest OK — 2 guilt/innocence (real detect-secrets, canary path included) "
-        "+ 3 matcher unit cases + 3 canary-gate unit cases"
+        "selftest OK — 4 guilt/innocence (real detect-secrets: canary path + "
+        "wrong-cwd/nested-key path) + 3 matcher unit cases + 2 entity-not-form "
+        "unit cases + 3 canary-gate unit cases"
     )
     return 0
 
