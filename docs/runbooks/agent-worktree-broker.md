@@ -199,6 +199,28 @@ OGNI sessione agent dispatch (subagent dispatch, cron-spawned `claude`, parallel
 3. Lavorare lì. Mai `git stash` / `git checkout` nel main checkout.
 4. Quando finito: commit + push + `--release <task-id>` (oppure lascia che `--cleanup` lo prenda al prossimo cron tick).
 
+## Lane report contract (2026-08-21)
+
+Two implementer lanes finished in the same day with only an idle notification
+and no report — no PR number, no worktree path, no test result. A third was
+hard-blocked pushing/PR-ing by `orchestrate_gate.py` while running as a
+subagent (fixed the same day, see `infra/claude-hooks/orchestrate_gate.py`'s
+SUBAGENT EXEMPTION note). The contract that closes both gaps:
+
+1. **Every lane ends with a report message**, never an idle notification
+   alone: PR number/URL, worktree path, checks run with their result lines
+   (pass/fail, not just "ran"), and what was left undone and why.
+2. **A lane ships through `scripts/lane_ship.sh`** — refuses a dirty or
+   main-checkout worktree, pushes with a captured exit code, reuses or
+   creates the PR, arms `gh pr merge --auto` bare, and GraphQL-verifies the
+   arm before printing one grep-able verdict line, `LANE_SHIP_OK` or
+   `LANE_SHIP_FAIL reason=<why>`. Corpus: `scripts/tests/test_lane_ship.sh`.
+3. **The orchestrator reads the worktree/PR state as truth, the report as
+   a lead.** A report claiming "shipped" with no `LANE_SHIP_OK` line (or a
+   PR that doesn't actually exist/isn't armed) is treated as unverified,
+   never as done — same discipline as `final-gate-discipline`: re-run the
+   check yourself before trusting the claim.
+
 ## Broker-aware spawn convention (W62 ANTIBODY #4)
 
 Il TTL da solo non basta: nessun consumer lo applicava. La hygiene è ora a 3 livelli, in ordine di affidabilità decrescente:

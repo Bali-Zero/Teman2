@@ -243,6 +243,14 @@ on:
       # check_watcher_coverage.py on this PR's own first run, same
       # self-conformance it exists for.
       - S7 yield dispatch gate tests
+      # Added 2026-08-21: main-red-breaker.yml (token-ceremony CI-critical-
+      # path work) triggers on `workflow_run` only — this list's contract is
+      # name-set membership, not alert-path reachability (see header comment
+      # above); caught by check_watcher_coverage.py on this PR's own first
+      # run, same self-conformance it exists for. Out-of-scope line, added
+      # ONLY because the checker requires it — main-red-breaker.yml is the
+      # owned file this PR ships.
+      - Main Red Breaker
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never

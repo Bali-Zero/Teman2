@@ -61,7 +61,7 @@ SEAM_MAP = [
     (
         "backend/app/dependencies.py",
         "import-chain SPOF (dependencies.py)",
-        "apps/backend-rag/tests/test_import_time.py",
+        "apps/backend-rag/backend/tests/unit/app/test_dependencies_critical.py",
     ),
     (
         "backend/app/setup/router_registration",

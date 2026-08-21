@@ -70,7 +70,7 @@
 #### S3. Long-running `--full-auto` loops (test green / migration grind)
 
 **Trigger:** "make tests green for X" or "rename Y across 200 files until type-check passes" — repetitive grind that doesn't fit Claude's interactive turn cadence.
-**Prompt template:** _"Run pytest until all tests in apps/backend-rag/tests/services/test_pricing pass. Iterate atomic commits. Stop when 0 failures or after 10 cycles."_
+**Prompt template:** _"Run pytest until all tests in apps/backend-rag/backend/tests/services/pricing pass. Iterate atomic commits. Stop when 0 failures or after 10 cycles."_
 **Edge:** kernel-enforced `--full-auto` autonomy + commit-loop pattern + frees Claude session for design work.
 **Expected output:** chain of small commits + final pass/fail report.
 
