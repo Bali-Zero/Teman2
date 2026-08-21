@@ -828,6 +828,43 @@ def test_probe_jules_no_sources_is_unknown_err(monkeypatch):
     assert status == ap.UNKNOWN_ERR
 
 
+def test_probe_jules_no_api_key_is_cred_unavailable(monkeypatch):
+    # guilt: real exemplar (2026-08-21, ~/.organism/arsenal/last.json on Mini) —
+    # jules_dispatch.py's get_api_key() prints "no API key" + a
+    # security add-generic-password recipe to stderr and exits 2 when the
+    # jules-api-key Keychain item was never provisioned (verified on Mini:
+    # `security find-generic-password -s jules-api-key` -> item not found).
+    # This shape carries no 401/oauth marker and previously fell through
+    # classify_generic() to a bare UNKNOWN_ERR — indistinguishable from the
+    # genuinely ambiguous empty-output case above.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/bin/python3", True))
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(
+            2,
+            "",
+            "jules_dispatch: no API key — add it with:\n"
+            "  security add-generic-password -a balizero -s jules-api-key -w '<KEY>'",
+        ),
+    )
+    status, ev, latency = ap.probe_jules(timeout=5)
+    assert status == ap.CRED_UNAVAILABLE
+
+
+def test_probe_jules_live_output_mentioning_api_key_stays_live(monkeypatch):
+    # innocence: a LIVE answer (real source lines) that happens to mention
+    # "API key" in a source name must never be reclassified as credential-dead.
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/bin/python3", True))
+    monkeypatch.setattr(
+        ap.subprocess,
+        "run",
+        lambda cmd, **kwargs: _FakeProc(0, "sources/github/org/api-key-rotator\n", ""),
+    )
+    status, ev, latency = ap.probe_jules(timeout=5)
+    assert status == ap.LIVE
+
+
 def test_deepseek_retired_not_in_all_seats_or_probe_funcs():
     # DeepSeek V4 Pro API retired 2026-07-19 (owner order, pre-auth revoked —
     # never top up). Guilt-style: it must not resurface as a probeable seat.
