@@ -132,7 +132,7 @@ The search scoring in `KBLIContextPackage` needs a look at why a literal judul t
    `ALL CODEX-RUNNER TESTS PASSED` / `ALL GATE TESTS PASSED`.
 3. Old brain probe 3: same 7/7-model auth cascade — third spaced confirmation of absence.
 
-## 6. §Meta-pattern + adversarial review of THIS report
+## 6. §Meta-pattern
 
 The malattia-delle-malattie of this run is **superscar #3 (guard-over-match) migrating into the
 product itself**: a fail-closed gate written to stop hallucinations is killing verified-true
@@ -142,6 +142,8 @@ before it ships; the benchmark just supplied the innocence cases for free. Secon
 **same-family judging with under-supplied context produced 22/30 false verdicts** (W100 —
 agreement/verdicts are not truth), which is why §8 made the session hand-check mandatory rather
 than advisory.
+
+## Adversarial review
 
 **Declared limit of the hand-check layer**: the hand-checker is the conducting session, which also
 wrote this report (generator≈grader within the session, as §8 itself mandates). Mitigation: a
