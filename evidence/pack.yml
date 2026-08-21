@@ -3,7 +3,7 @@ plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-
 diff:
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
-  - claim: "The live log held real OAuth token material, world-readable — counted, never printed"
+  - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 14 matching lines, histogram 8x10/5x13/1x46/1x87/1x108 -> 3 runs with secret material, 2 of whole-token length"
     cmd: "grep -c 'sk-ant-oat' ~/logs/codex-spalla-trigger.jsonl (-> 11); longest token-shaped run via grep -oE | awk length (-> 108); stat -f '%Lp' (-> 644)"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
@@ -48,8 +48,25 @@ dissent:
   - seat: session (m5), on its own measurement
     objection: "I first recorded the mutated suite as exiting 0, i.e. a test that fails loudly but reports success. False: I had captured tail's exit code through a pipe (W97). Re-measured without the pipe: rc=1. Nearly logged a fabricated defect against the implementer's work."
     status: RETRACTED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "The redactor closed a SUFFIX off-by-one and opened a PREFIX one of the same family: the variable-name branch required >=1 char before the keyword, so `CLAUDE_CODE_OAUTH_TOKEN_1=` matched while a bare `TOKEN=`/`KEY=`/`SECRET=`/`PASSWORD=` did not. Lowercase names, `--flag=` and header `Name: value` forms also leaked. Driven live through the real hook, 6 leaking cases."
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: 'The prose claimed "11 real sk-ant-oat values, 108 chars each" in four artifacts, and the residual-risk and rotation decision hang on it. Reconstructed by run length: only ONE run is 108 chars; the histogram is 8x10/5x13/1x46/1x87/1x108, so most matching lines carry the bare literal and no secret. A LINE count was restated as a VALUE count and the maximum as "each" — in the very brief that claims run-length discipline as its method.'
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "Redact-before-truncate is not strictly protective, as the comment implied. Redaction SHORTENS the string and pulls previously-truncated bytes into the 200-char window — proven on a 277-char command with a secret at char 253 that truncate-only had cut off."
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "check_guard_conformance's is_armed() is substring-based and cannot detect deletion of the run: step that executes this test — verified by simulating the removal, which still reported armed. The executor is genuine today; its removal would not be caught."
+    status: CONFIRMED
 residual_risks:
-  - "The 11 already-leaked tokens remain valid. Containment is done; ROTATION is a credential action only the owner can perform and is NOT closed by this diff."
+  - "Redaction only closes the shapes it can name. A secret passed POSITIONALLY with no variable
+    name (`mytool deploy s3cr3t`) is caught only if it carries a known prefix; the value branch
+    cannot see it. Stated in the hook's own comment rather than left as an implied closed class."
+  - "Redact-before-truncate widens the truncation window by shortening the string, so a secret that
+    used to fall outside the 200 chars can be pulled in. Smaller exposure, not zero."
+  - "The already-leaked material remains valid: 2 whole-token-length runs plus one 46-char partial. The first draft of this pack said 11 tokens -- a LINE count read as a VALUE count, caught by the Gear-3 gate; the rotation decision hangs on this number, so it is corrected rather than quietly dropped."
   - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ — the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
   - "An identical UNTRACKED .codex/hooks/ copy exists in the main checkout; git does not track it, so this diff cannot fix it."
 sources:

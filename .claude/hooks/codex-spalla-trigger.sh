@@ -20,8 +20,14 @@ set -u  # NOT -e: we want to fail open, not propagate errors.
 # This hook logs `tool_input.command` verbatim. A Bash tool call can carry a
 # credential in argv, so this log is secret-bearing BY CONSTRUCTION -- and it
 # was being created world-readable (0644) and never redacted. Measured on the
-# live file: 11 real `sk-ant-oat...` values, 108 chars each, mode 0644, still
-# being appended to. Two independent defenses, because either alone fails:
+# live file, mode 0644 and still being appended to: 14 lines match the literal
+# `sk-ant-oat`, but a length histogram of the runs (8x10, 5x13, 1x46, 1x87,
+# 1x108) shows 13 are the bare literal with no secret material -- only 3 runs
+# carry any, and only 2 are long enough to be a whole token. CORRECTED
+# 2026-08-21 by the Gear-3 gate: the first draft of this comment said "11 real
+# values, 108 chars each", restating a LINE count as a VALUE count and the
+# maximum as "each". The leak is real; the magnitude was inflated, in the very
+# comment that preaches counting by run length. Two independent defenses, because either alone fails:
 #   (1) umask 077 so the file can never be born readable by anyone else, plus
 #       an explicit chmod for a file that already exists at the old mode --
 #       `>>` does NOT change the mode of an existing file, so the umask alone
@@ -100,11 +106,29 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # Redact BEFORE truncating: a 200-char window can slice a token in half and
 # leave a usable prefix, and it can also carry a whole short one.
 #
-# The suffix wildcard on the variable-name branch is the load-bearing detail.
+# ORDERING CAVEAT, measured, because the obvious reading is wrong: redacting
+# BEFORE truncating is not strictly protective. Redaction SHORTENS the string,
+# which pulls bytes that the 200-char window used to cut off INTO the window.
+# Proven on a 277-char command with a secret at char 253: truncate-only left it
+# out; redact-then-truncate brought a following fragment in. The ordering is
+# still right — it is the only order that can redact a secret sitting inside
+# the window at all — but it trades one exposure for a smaller one rather than
+# eliminating exposure.
+#
+# KNOWN BLIND SPOTS of the value branch (a redactor that claims a closed class
+# is worse than one that names its holes): it only fires on `NAME=value` or
+# `NAME: value` shapes. A secret passed positionally with no name at all
+# (`mytool deploy s3cr3t`) is NOT redacted by that branch — only the prefix
+# rules above can catch it, and only if it carries a known prefix.
+#
+# The wildcards on BOTH SIDES of the keyword are the load-bearing detail.
 # A redactor written as `TOKEN=` matches CLAUDE_CODE_OAUTH_TOKEN= and misses
 # CLAUDE_CODE_OAUTH_TOKEN_1= -- that exact off-by-one is how four tokens were
-# printed by a probe that believed it was redacting. `[A-Z0-9_]*` after the
-# keyword is what closes it.
+# printed by a probe that believed it was redacting. But the first version of
+# THIS fix then required at least one char BEFORE the keyword, so it caught
+# CLAUDE_CODE_OAUTH_TOKEN_1= and missed a bare TOKEN= — the same off-by-one,
+# mirrored, found by the Gear-3 gate on this diff. Wildcards on both sides,
+# case-insensitive, plus an optional leading `--`, are what close the class.
 TARGET_JSON="$(printf '%s' "$TARGET" | python3 -c '
 import sys, re, json
 s = sys.stdin.read()
@@ -114,8 +138,8 @@ s = re.sub(r"gh[pousr]_[A-Za-z0-9]{8,}", "gh_<REDACTED>", s)
 s = re.sub(r"github_pat_[A-Za-z0-9_]{8,}", "github_pat_<REDACTED>", s)
 # 2. Anything ASSIGNED to a secret-ish variable name, suffixes included.
 s = re.sub(
-    r"\b([A-Z][A-Z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*)"
-    r"\s*[=:]\s*[\"\x27]?[^\s\"\x27]+",
+    r"(?i)((?:--?)?[A-Za-z0-9_-]*(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Za-z0-9_-]*)"
+    r"\s*[=:]\s*(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)",
     r"\1=<REDACTED>",
     s,
 )

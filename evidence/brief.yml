@@ -7,10 +7,16 @@ objective: |
   truncated to 200 chars — to `~/logs/codex-spalla-trigger.jsonl`, and never chmods it. A Bash tool
   call can carry a credential in argv, so that log is secret-bearing BY CONSTRUCTION.
 
-  Found live while hunting a different leak: 11 real `sk-ant-oat...` values, 108 chars each, mode
-  0644 (world-readable), 83 MB, still being appended to. Measured by counting and by run-length,
-  never by printing; the run-length check is what separated the real leak from a harmless 30-char
-  test fixture that also matched.
+  Found live while hunting a different leak. Mode 0644 (world-readable), 83 MB, still being appended
+  to. Magnitude, measured by RUN LENGTH rather than line count: 14 lines match the literal
+  `sk-ant-oat`, and the histogram of runs is 8x10, 5x13, 1x46, 1x87, 1x108 — so 13 are the bare
+  literal with no secret material, 3 runs carry any, and 2 are long enough to be a whole token.
+  Counted, never printed.
+
+  The first draft of this brief said "11 real values, 108 chars each" — a line count restated as a
+  value count, and the maximum restated as "each". The Gear-3 gate caught it. Recorded rather than
+  quietly corrected, because the brief claims run-length discipline as its own method and then did
+  not apply it, and because the rotation decision hangs on this number.
 
   Fix: two independent defenses plus a guilt/innocence proof, and registration so the proof
   actually runs.
@@ -38,8 +44,9 @@ consumer_map:
   - "`.codex/hooks/codex-spalla-trigger.sh` — an identical UNTRACKED copy exists in the main
     checkout only. Not in this diff because git does not track it; flagged in residual_risks."
 risks:
-  - "The 11 already-leaked tokens are NOT invalidated by this diff. Rotation is a credential action
-    only the owner can perform; containment (0600) is done, rotation is not."
+  - "The already-leaked material is NOT invalidated by this diff: 2 whole-token-length runs plus one
+    46-char partial. Rotation is a credential action only the owner can perform; containment (0600)
+    is done, rotation is not."
   - "hook-innocence-gate.yml's path filter does not cover `.claude/hooks/` at all. Widening it is a
     behaviour change with its own blast radius and is deliberately NOT done here."
 grader: independent-review-session (fresh context, not the author) + a targeted mutation re-run by the orchestrator

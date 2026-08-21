@@ -4,8 +4,11 @@
 #
 # The defect this pins: the hook logs `tool_input.command` verbatim to
 # ~/logs/codex-spalla-trigger.jsonl. Measured on the live file before the
-# fix: 11 real `sk-ant-oat...` values, 108 chars each, mode 0644 (world-
-# readable), never redacted. The fix added (a) `umask 077` + an explicit
+# fix, mode 0644 (world-readable), never redacted: 14 lines match the
+# literal `sk-ant-oat`, and the run-length histogram (8x10, 5x13, 1x46,
+# 1x87, 1x108) says 3 of those runs carry secret material and 2 are whole-
+# token length. An earlier draft of this header said "11 values, 108 chars
+# each" — a LINE count read as a VALUE count. Corrected by the Gear-3 gate. The fix added (a) `umask 077` + an explicit
 # `chmod 0600` for a log that already existed at the old mode (`>>` does NOT
 # change an existing file's mode), and (b) redaction of the secret VALUE
 # before truncation, so the log is safe even if a later rotation/copy widens
@@ -75,7 +78,7 @@ trap cleanup EXIT
 # ───────────────────────────────────────────────────────────── GUILT ──
 
 # 1. A live-shaped Anthropic OAuth token inside a Bash command — the exact
-#    historical leak shape (11 of these, 108 chars, printed in cleartext).
+#    historical leak shape (one 108-char run in the live log, cleartext).
 tmp1="$(mktemp -d)"; cleanup_dirs+=("$tmp1")
 TOKEN1="sk-ant-oat01-$(python3 -c 'import secrets; print(secrets.token_hex(48))')"  # 96 hex + prefix, 40+ chars
 run_hook "$tmp1" "Bash" "echo hello && export X=$TOKEN1"
@@ -101,6 +104,39 @@ line3="$(log_line "$tmp3")"
 ok=1
 [ -n "$line3" ] && ! printf '%s' "$line3" | grep -qF -- "$GHTOKEN" && ok=0
 case_result "guilt-github-pat-not-in-log" "$ok"
+
+# 3b. PREFIX off-by-one — the twin of case 2, found by the Gear-3 gate on
+#     this very diff. The first shipped regex required at least one char
+#     BEFORE the keyword (`[A-Z][A-Z0-9_]*TOKEN`), so it caught
+#     CLAUDE_CODE_OAUTH_TOKEN_1= and MISSED a bare TOKEN=. Closing a suffix
+#     off-by-one while opening a prefix one is the same family (#3), so each
+#     of these forms gets its own case rather than one representative.
+for _form in \
+    'export TOKEN=barePrefixSecret001' \
+    'export KEY=barePrefixSecret002' \
+    'SECRET=barePrefixSecret003' \
+    'export PASSWORD=barePrefixSecret004' \
+    'export my_token=lowercaseNameSecret005' \
+    'curl --token=flagFormSecret006'
+do
+    _tmp="$(mktemp -d)"; cleanup_dirs+=("$_tmp")
+    _needle="$(printf '%s' "$_form" | sed 's/.*=//')"
+    run_hook "$_tmp" "Bash" "$_form"
+    _line="$(log_line "$_tmp")"
+    ok=1
+    [ -n "$_line" ] && ! printf '%s' "$_line" | grep -qF -- "$_needle" && ok=0
+    case_result "guilt-prefix-and-form-variant-not-in-log [${_form%%=*}=]" "$ok"
+done
+
+# 3c. Header form: a secret after a colon inside a quoted -H argument. Not a
+#     shell assignment at all, which is why the assignment-only branch of the
+#     regex missed it before.
+tmp3c="$(mktemp -d)"; cleanup_dirs+=("$tmp3c")
+run_hook "$tmp3c" "Bash" 'curl -H "X-API-Key: headerFormSecret007" https://example.test'
+line3c="$(log_line "$tmp3c")"
+ok=1
+[ -n "$line3c" ] && ! printf '%s' "$line3c" | grep -qF -- "headerFormSecret007" && ok=0
+case_result "guilt-header-form-secret-not-in-log" "$ok"
 
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
@@ -131,7 +167,7 @@ case_result "mode-fresh-log-is-0600-not-0644 (got: ${mode:-<unreadable>})" "$ok"
 
 echo "---"
 if [ "$fails" -eq 0 ]; then
-    echo "PASS ($total cases: 3 guilt, 1 innocence, 1 mode)"
+    echo "PASS ($total cases: $((total - 2)) guilt, 1 innocence, 1 mode)"
     exit 0
 fi
 echo "FAILED: $fails/$total"
