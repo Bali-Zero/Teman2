@@ -37,7 +37,11 @@ git push origin main   # builds — see the note below, this is NOT the whole st
 > The promote now happens by itself, on a cron on Mini (`mini.vercel_autopromote`, every 15
 > minutes): it finds the newest commit on main that can change the bundle, checks whether
 > production already carries it, and promotes the existing READY build — it never rebuilds.
-> Expect your merge to be live within ~15 minutes, not instantly.
+> Budget about half an hour, not fifteen minutes and not instantly: Vercel has to finish the
+> build first, and only then can the next cron tick promote it. Measured end-to-end once, on
+> 2026-08-21: merge at 12:37:57Z, live at 13:07:00Z — **29 minutes**. That is a single
+> observation, not a distribution; the 15 minutes is only the cron's cadence, which an earlier
+> draft of this note mistook for the whole wait.
 >
 > To do it by hand from a machine where `vercel whoami` answers:
 > `python3 scripts/vercel_prod_deploy.py --dry-run` reports the gap and changes nothing;
