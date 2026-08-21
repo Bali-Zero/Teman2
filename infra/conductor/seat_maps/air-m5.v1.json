@@ -1,0 +1,93 @@
+{
+  "schema_version": "conductor-host-seat-map.v1",
+  "manifest_id": "air-m5-v1",
+  "machine": "Air-M5",
+  "as_of": "2026-08-22",
+  "classification": "non-secret-static-discovery-only",
+  "scope": {
+    "model_endpoints": "owned-by-model-intelligence-registry",
+    "account_seats": "owned-by-this-host-manifest",
+    "runtime_auth": "owned-by-fresh-runtime-proof"
+  },
+  "providers": {
+    "anthropic": {
+      "binding_surface": "claude-config-profile",
+      "canonical_roster": ["A1", "A2", "A3", "A4", "A5", "AZ"],
+      "headless_oauth_surface": {
+        "relationship_to_profiles": "separate-surface",
+        "logical_seat_mapping": "unverified"
+      },
+      "seats": [
+        {
+          "seat_id": "A1",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "A2",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "A3",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "A4",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "A5",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "AZ",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        }
+      ]
+    },
+    "openai": {
+      "binding_surface": "codex-home",
+      "canonical_roster": ["O1", "O2"],
+      "o2_alias_policy": "canonical-plus-compatibility-name-is-one-seat",
+      "seats": [
+        {
+          "seat_id": "O1",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "O2",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        }
+      ]
+    }
+  },
+  "operator_actions": [
+    "operator[profile_binding]: bind each intended Claude seat to an Air-M5-local profile",
+    "operator[interactive_login]: authenticate each intended Claude seat on Air-M5 and capture a fresh seat-specific proof",
+    "operator[profile_binding]: normalize Air-M5 O1 and O2 without treating the O2 compatibility name as another seat",
+    "operator[interactive_login]: authenticate Air-M5 O1 and O2 separately and capture fresh seat-specific proofs"
+  ]
+}
