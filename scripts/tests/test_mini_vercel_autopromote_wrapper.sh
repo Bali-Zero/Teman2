@@ -67,10 +67,19 @@ hb=$(echo "$r" | cut -f1)
 [ "$(field "$hb" status)" = "ok" ] && [ "$(field "$hb" note)" = "already current" ] \
     && ok "rc=0 + no promote -> ok/already current" || bad "rc=0 no promote" "$hb"
 
-r=$(run_case 2 'no READY production build for abc123def' Mini-Pro2)
+r=$(run_case 3 'no READY production build for abc123def' Mini-Pro2)
 hb=$(echo "$r" | cut -f1)
 [ "$(field "$hb" status)" = "warning" ] \
-    && ok "rc=2 -> warning (NOT ok, NOT error)" || bad "rc=2 must be warning" "$hb"
+    && ok "rc=3 -> warning (NOT ok, NOT error)" || bad "rc=3 must be warning" "$hb"
+
+# The one a code-only mapping gets wrong. argparse exits 2 when the cure does not know
+# --promote-only: nothing ran. If that wore "warning" it would read as the benign
+# nothing-to-promote and stay green over a dead organ for as long as nobody looked.
+r=$(run_case 2 'usage: vercel_prod_deploy.py [-h]
+vercel_prod_deploy.py: error: unrecognized arguments: --promote-only' Mini-Pro2)
+hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "error" ] \
+    && ok "rc=2 (argparse usage) -> error, NEVER warning" || bad "rc=2 must be error" "$hb"
 
 r=$(run_case 1 '::error::promote did not move the domains' Mini-Pro2)
 hb=$(echo "$r" | cut -f1)
@@ -86,6 +95,32 @@ echo "== the cure is passed --promote-only, never the building default =="
 r=$(run_case 0 'nothing to do' Mini-Pro2); tmp=$(echo "$r" | cut -f3)
 [ "$(cat "$tmp/cure-ran" 2>/dev/null)" = "--promote-only" ] \
     && ok "invoked with --promote-only" || bad "wrong flags" "$(cat "$tmp/cure-ran" 2>/dev/null)"
+
+# A blind organ is not a quiet one. When the cure cannot work out WHICH commit to promote it
+# falls back to main HEAD — which Vercel skips for all but a few merges a day — so rc=3 would
+# repeat benignly forever while nothing is ever promoted (W106b: could-not-verify is not
+# nothing-to-do). This also pins the if/else: an early `break` here is a no-op in bash and the
+# benign heartbeat would overwrite the error.
+r=$(run_case 3 'target commit   : deadbeef
+  chosen as     : main HEAD — git fetch failed, could not filter by path
+no READY production build for deadbeef' Mini-Pro2)
+hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "error" ] \
+    && ok "rc=3 with a DEGRADED target -> error, not warning" || bad "degraded target" "$hb"
+
+# A SKIP IS NOT HEALTH. If a run ever wedges, its pid stays alive and every later tick lands
+# in the single-instance branch — an "ok" heartbeat every 15 minutes while the organ cures
+# nothing. The pidfile path is fixed and outside HOME, so this case saves and restores it.
+PIDFILE=/tmp/nuzantara-mini-vercel_autopromote.pid
+SAVED=""; [ -f "$PIDFILE" ] && SAVED="$(cat "$PIDFILE")"
+sleep 30 & LIVE_PID=$!
+echo "$LIVE_PID" > "$PIDFILE"
+r=$(run_case 0 'nothing to do' Mini-Pro2)
+hb=$(echo "$r" | cut -f1); ran=$(echo "$r" | cut -f2)
+[ "$(field "$hb" status)" = "warning" ] && [ "$ran" = "NOT-RUN" ] \
+    && ok "previous run alive -> warning (never ok) AND cure skipped" || bad "pidfile skip" "$hb / $ran"
+kill "$LIVE_PID" 2>/dev/null; wait "$LIVE_PID" 2>/dev/null
+rm -f "$PIDFILE"; [ -n "$SAVED" ] && echo "$SAVED" > "$PIDFILE"
 
 echo "== innocence: neither refusal gate may run the payload =="
 

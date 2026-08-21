@@ -40,8 +40,13 @@ fi
 
 # G10_single_instance — pidfile + liveness probe + trap cleanup
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+    # WARNING, not ok. A skip is not health: if a run ever wedges (a hung network call, a
+    # stopped process), its pid stays alive and EVERY later tick lands here — an "ok"
+    # heartbeat every 15 minutes while the organ cures nothing, which is the exact
+    # green-over-dead shape of superscar #2. The organ that is skipping is not the organ
+    # that is working, and the sidecar must not spell them the same way.
     log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
-    heartbeat "ok" "skipped: previous run alive"
+    heartbeat "warning" "skipped: previous run still alive"
     exit 0
 fi
 echo $$ > "$PIDFILE"
@@ -104,12 +109,35 @@ case "$RC" in
             heartbeat "ok" "already current"
         fi
         ;;
+    3)
+        # FIRST, tell "there was nothing to promote" apart from "I could not work out WHAT to
+        # promote". When `git fetch` fails, the cure falls back to main HEAD — a commit Vercel
+        # skips for all but a few merges a day — so there is never a READY build for it and
+        # this branch would repeat benignly forever while the organ promotes nothing. That is
+        # a blind organ, not a quiet one (W106b: could-not-verify is never the same verdict as
+        # nothing-to-do). The cure NAMES this in its own output, so read the output, not the
+        # code alone (W104).
+        if printf '%s' "$OUT" | grep -q 'main HEAD — git'; then
+            heartbeat "error" "cure could not determine the target commit (git degraded)"
+            log "DEGRADED TARGET — the cure fell back to main HEAD; it will never promote"
+        else
+            # No READY build for the target commit. NOT a failure of this organ: Vercel
+            # either skipped the commit or its build failed, and both want a human's eyes
+            # rather than an unattended rebuild. Distinct status so a watcher can tell them
+            # apart. (if/else and not an early `break`: `break` outside a loop is a no-op in
+            # bash, so the benign heartbeat below would have overwritten the error above.)
+            heartbeat "warning" "no READY build to promote (rc=3)"
+            log "NO READY BUILD — nothing promoted, deliberately did not build"
+        fi
+        ;;
     2)
-        # No READY build for the target commit. NOT a failure of this organ: Vercel either
-        # skipped the commit or its build failed, and both want a human's eyes rather than
-        # an unattended rebuild. Distinct status so a silence-watcher can tell them apart.
-        heartbeat "warning" "no READY build to promote (rc=2)"
-        log "NO READY BUILD — nothing promoted, deliberately did not build"
+        # argparse's own usage code: the cure REFUSED the command line — it does not know
+        # --promote-only. Nothing ran and nothing was cured, so this must never wear the
+        # benign colour of "nothing to promote". Measured on Mini before this landed: the
+        # pre-merge copy of the script exits exactly here. This is the shape that would have
+        # made the organ green over dead for as long as nobody looked (superscar #2).
+        heartbeat "error" "cure rejected --promote-only (usage error, rc=2) — script too old?"
+        log "USAGE ERROR — the cure does not know --promote-only; NOTHING was cured"
         ;;
     *)
         heartbeat "error" "rc=$RC"   # G9: failure is VISIBLE in the sidecar too

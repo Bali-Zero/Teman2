@@ -20,7 +20,9 @@ human responses:
 
     0  nothing to do (production already current), or promoted successfully
     1  a promote was attempted and did not move the domains
-    2  no READY build for the target commit — nothing was built, deliberately
+    3  no READY build for the target commit — nothing was built, deliberately
+       (3 and not 2: argparse exits 2 on an unrecognised flag, and a wrapper that
+        cannot tell those apart reports "nothing to promote" while nothing ran)
 
 Guilt AND innocence, per superscar #3: the guilt cases prove it promotes when it should, the
 innocence cases prove it never reaches `POST /v13/deployments` and never touches the default
@@ -104,10 +106,10 @@ def test_promotes_the_staged_build_when_production_is_behind():
     assert not h.created_a_deployment
 
 
-def test_returns_2_and_builds_NOTHING_when_no_ready_build_exists():
-    """The whole point of the flag. Exit 2 is 'needs eyes', not 'cure failed'."""
+def test_returns_3_and_builds_NOTHING_when_no_ready_build_exists():
+    """The whole point of the flag. Exit 3 is 'needs eyes', not 'cure failed'."""
     with _Harness(ready=None, served=OLD) as h:
-        assert _run(["--promote-only"]) == 2
+        assert _run(["--promote-only"]) == 3
     assert h.promoted == []
     assert not h.created_a_deployment
 
@@ -135,6 +137,22 @@ def test_dry_run_still_changes_nothing_under_promote_only():
         assert _run(["--promote-only", "--dry-run"]) == 0
     assert h.promoted == []
     assert not h.created_a_deployment
+
+
+def test_the_no_build_code_is_not_argparses_own_usage_code():
+    """Guards the distinction the wrapper depends on, at the boundary that owns it.
+
+    argparse exits 2 for "unrecognised flag". If the no-build code were also 2, a wrapper
+    reading the code alone would report the benign outcome while the script had in fact
+    refused the command and cured nothing — measured live on Mini against the pre-merge copy.
+    """
+    with _Harness(ready=None, served=OLD):
+        no_build = _run(["--promote-only"])
+    with unittest.mock.patch.object(sys, "argv", ["vercel_prod_deploy.py", "--no-such-flag"]):
+        with pytest.raises(SystemExit) as exc:
+            vpd.main()
+    assert exc.value.code == 2, "argparse's usage code changed — recheck the wrapper's mapping"
+    assert no_build != exc.value.code
 
 
 def test_WITHOUT_the_flag_the_build_path_is_untouched():
