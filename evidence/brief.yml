@@ -1,42 +1,41 @@
-task_id: ops-gear-ceiling-pr4474
+task_id: ops-gate-required-unblock
 gear: 3
 l_level: L3
 gate_class: fable
 objective: |
-  Give the deterministic gear floor (compute_floor(), harness-floor.yml rule 6)
-  a matching CEILING: a diff shaped like a docs/ledger-only or small change
-  (<=2 files, <=60 net lines) must not silently declare Gear 3 while also
-  convening a council or dispatching >=3 graders, unless the pack names a
-  reasoned gear_override. Add effort_for_gear() so effort is tied to gear
-  (2026-08-21 audit lever L0/L6: 65% of declared gears are Gear 3, 70% of
-  Agent dispatches are graders, ~86% of output tokens are thinking). Harden
-  the ceiling's net-line signal so a pack cannot dodge it by under-reporting
-  its own net_lines — a measured value (git diff --numstat, merge-base
-  anchored) must take precedence over the pack's self-declared field.
+  Unblock promoting `harness/fable-gate` to a GitHub branch-protection required status
+  check — the two design problems its own ARMING NOTE (harness-floor.yml, 2026-08-10)
+  names: (a) a manually-posted commit status never carries over to the merge queue's
+  synthetic test-merge SHA; (b) a fork PR's read-only GITHUB_TOKEN breaks the workflow's
+  own `gh api` WRITE calls, hard-blocking external contributors once required. Chosen
+  fix: stop requiring the commit-status directly; require the WORKFLOW JOB itself
+  (`Harness floor recompute`, already required today), natively tied to whatever SHA it
+  runs against (real head / workflow_dispatch ref / merge_group's synthetic SHA), and
+  make it READ (never write) whether scripts/harness_fable_gate.py already posted a
+  verdict. Deliverable is the design + code that make the promotion safe, not the
+  branch-protection flip itself (operator action, §Solo-operatore).
 constraints:
-  - '.github/workflows/harness-floor.yml is a CODEOWNERS Tier-1 hot-zone; actionlint must pass and required context names ("Harness floor recompute") stay unchanged'
-  - "compute_ceiling stays a PURE function — no I/O, no git — exactly like compute_floor; any git diff --numstat call happens in the CLI/workflow layer, never inside the function itself"
-  - "compute_ceiling/effort_for_gear are NOT check_-prefixed — guard-conformance's ast-def-prefix census only picks up check_*, and these two are not guards in that registry's sense"
-  - "the FLOOR always wins over the ceiling on conflict — a hot-zone hit floors AND ceilings at 3, silently, never a contradictory verdict"
-  - "a measured net-lines source (--net-lines / --numstat-file) must take precedence over the pack's self-declared net_lines: field, with a NOTICE (never a violation) when only the self-declared value is available"
-  - 'the net-lines measurement step in harness-floor.yml is best-effort: an unresolvable merge-base must never be read as "0 net lines measured" (a false small-shape signal on a large diff)'
+  - '.github/workflows/harness-floor.yml is a CODEOWNERS Tier-1 hot-zone; actionlint must pass and required context name ("Harness floor recompute") stays unchanged'
+  - "the required check must never write a commit status on a fork-triggered pull_request event — verified by static AST source-scan (test_no_write_shaped_string_literal_appears_anywhere_in_the_code), not just behavioral tests"
+  - "a Gear-3 PR with no verdict posted yet must fail the same way a REWORK/BLOCK verdict does (fail-closed), never silently pass as 'pending'"
+  - "the 'is this PR Gear-3' decision (evidence/brief.yml presence) must be scoped to THIS PR's own diff, never to whatever happens to sit in the HEAD tree — evidence/brief.yml is a tracked file at a fixed path and is inherited by every branch from the last Gear-3 PR to touch it (found live during independent review, F1 — see this pack's dissent)"
+  - "scripts/harness_fable_gate.py (the publisher) stays untouched — its contract is sound and orthogonal to both blockers"
 acceptance:
-  - "scripts/tests/test_evidence_pack_lint.py: 59/59 pass, including guilt/innocence pairs for compute_ceiling, effort_for_gear, and the measured-vs-self-declared net_lines precedence"
-  - "python3 scripts/evidence_pack_lint.py --selftest exits 0"
-  - "infra/guard-conformance/check_guard_conformance.py reports 0 violations and the same 6 evidence-pack-lint checks as before this diff (compute_ceiling/effort_for_gear not auto-censused)"
-  - "python3 scripts/docs_sync.py --check reports no drift"
+  - "scripts/tests/test_harness_gate_read.py: 37/37 pass, including main() integration coverage and an AST write-verb proof"
+  - "scripts/tests/test_harness_floor_brief_diff_membership.sh: 4/4 pass (guilt+innocence for the diff-membership fix)"
   - "actionlint .github/workflows/harness-floor.yml exits 0"
-  - "python3 scripts/evidence_pack_lint.py validates this pack against the merge-base changed-file set"
+  - 'python3 -c ''import yaml; yaml.safe_load(open(".github/workflows/harness-floor.yml"))'' exits 0'
+  - "an independent, non-fork review session (Agent tool, fresh context) reviews the diff cold and returns PASS or PASS-WITH-CONDITIONS before this PR is armed"
 consumer_map:
-  - "harness-floor.yml Step 7b (Gear-3 pack validation) runs evidence_pack_lint.py against evidence/pack.yml on every Gear-3 PR — this is the ONLY currently-required consumer (the harness/fable-gate commit status itself is not yet a required context per the workflow's own header note)"
-  - "any future pack author declaring gear: 3 with council/grader_dispatches fields on a small/docs diff is now subject to rule 7"
-  - "wrapper scripts may call --effort-for GEAR to pick medium/xhigh without importing this module"
+  - "harness-floor.yml Step 7c (Gear-3 verdict read) is the only consumer of scripts/ci/harness_gate_read.py"
+  - "harness-floor.yml Steps 4/7b are the only consumers of the diff-membership fix"
+  - "the operator's future branch-protection edit (adding the ALREADY-required 'Harness floor recompute' job — no new name to add) is the sole remaining downstream action, per §Solo-operatore in the design doc"
 risks:
-  - "compute_ceiling is a net-new opt-in signal — a Gear-3 pack that never declares council/grader_dispatches is never flagged by this diff, so there is no retroactive gate change on packs written before this PR"
-  - "the harness-floor.yml net-lines step adds one git diff --numstat call, gated to Gear-3 PRs only — negligible additional runner time"
-  - "this PR's own diff (backend .py + tests + one workflow file) is not Gear-1-shaped by either predicate, so it never triggers its own new ceiling rule"
-grader: sonnet-5
+  - "verdict provenance/attestation (any statuses:write credential can forge a PASS) is a THIRD, separate design gap tracked in .claude/skills/modus/PENDING-ARMS.md (2026-08-10 entry, gap b) — genuinely out of this task's scope, left open, severity now escalated (the signal becomes load-bearing once the operator flips the required-check flag) — see design doc §Solo-operatore"
+  - "gh workflow run harness-floor.yml --ref <branch> (the documented retrigger flow) cannot run on any branch cut before this PR merges, since that branch's harness-floor.yml predates the workflow_dispatch trigger — an inherent one-time bootstrap limitation, not a defect"
+  - "this diff is 5 files / ~1250 net lines, over the ~400-line Agent PR Contract guideline — declared and accepted: the workflow change, its new script, and that script's test corpus are one cohesive unit that cannot be safely split without leaving code unverified in isolation"
+grader: independent-review-session (Agent tool, subagent_type general-purpose, model opus, fresh context — not the diff's author)
 budget:
-  seats: [sonnet-5]
-  fable_gate_est_tokens: 900
+  seats: [sonnet-5, opus]
+  fable_gate_est_tokens: 2200
 pii: none

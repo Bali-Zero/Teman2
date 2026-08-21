@@ -99,10 +99,38 @@ OUT=$(cd "$REPO" && /usr/bin/python3 "$CURE" --promote-only 2>&1) || RC=$?
 # Judge the OUTPUT, not only the code (W104): the log is what a human reads at 07:30.
 printf '%s\n' "$OUT" >> "$LOG"
 
+# The degraded-target marker is read on EVERY exit code, not only on rc=3. Measured live on
+# 2026-08-21 against the real Vercel account with a poisoned fetch: main HEAD HAPPENED to have
+# a READY build, so a run whose fetch was broken promoted it and exited 0 - and this wrapper,
+# which only looked for the marker under rc=3, would have written a clean `ok` and hidden a
+# dead fetch for as long as it stayed dead. The rc=3 comment below is right that Vercel skips
+# main HEAD for all but a few merges a day; USUALLY is not NEVER, and superscar #2 is exactly
+# the organ that stays green while blind. `if` and not `&&`, so no errexit can decapitate it
+# (W101).
+#
+# The pattern is the SHARED PREFIX of every fallback, not `main HEAD — git`. The cure degrades
+# three ways and only two of them say "git": the third, "main HEAD — no commit in history
+# touches a bundle path", falls back identically and was invisible to the narrower pattern --
+# so widening the exit codes while leaving the pattern narrow closed one axis and left the
+# other open, under a comment that claimed both. Raised by a cross-family refuter, which is
+# how you find out that verifying ONE axis does not license a claim about the guard. The
+# prefix names the entity (the cure fell back to main HEAD) rather than a wider form: the good
+# path says "newest bundle-relevant commit on main" and cannot match it (superscar #3).
+DEGRADED=0
+if printf '%s' "$OUT" | grep -q 'main HEAD — '; then DEGRADED=1; fi
+
 case "$RC" in
     0)
         # Both good outcomes: production was already current, or it just got promoted.
-        if printf '%s' "$OUT" | grep -q 'promoted'; then
+        if [ "$DEGRADED" = 1 ]; then
+            # The note names the STATE, not an action. rc=0 covers two different histories —
+            # it promoted main HEAD's build, or main HEAD was already what production served —
+            # and this branch cannot tell them apart. Saying "promoted" here would be a
+            # heartbeat that misdescribes what happened in the second case, which is the exact
+            # defect class this whole organ keeps finding.
+            heartbeat "warning" "degraded target — git could not be asked"
+            log "DEGRADED TARGET — the cure fell back to main HEAD and exited 0; the fetch is broken"
+        elif printf '%s' "$OUT" | grep -q 'promoted'; then
             heartbeat "ok" "promoted"
             log "PROMOTED — production moved"
         else
@@ -117,7 +145,7 @@ case "$RC" in
         # a blind organ, not a quiet one (W106b: could-not-verify is never the same verdict as
         # nothing-to-do). The cure NAMES this in its own output, so read the output, not the
         # code alone (W104).
-        if printf '%s' "$OUT" | grep -q 'main HEAD — git'; then
+        if [ "$DEGRADED" = 1 ]; then
             heartbeat "error" "cure could not determine the target commit (git degraded)"
             log "DEGRADED TARGET — the cure fell back to main HEAD; it will never promote"
         else
