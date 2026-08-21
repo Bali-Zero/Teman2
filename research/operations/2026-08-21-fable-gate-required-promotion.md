@@ -383,9 +383,17 @@ required contexts, `Harness floor recompute` among them (`app_id 15368`, GitHub 
 
 > **The context this design makes load-bearing — `Harness floor recompute` — is already required**,
 > and was before this task began: it is in `main`'s `required_status_checks.checks[]` and in the
-> repo's tracked snapshot `infra/required.d/contexts.json`. There is nothing to add. (Were it ever
-> to go missing, the ways back are `gh api repos/Bali-Zero/Teman2/branches/main/protection`,
-> `scripts/ci/setup_merge_queue_ruleset.sh`, or the Settings UI.)
+> repo's tracked snapshot `infra/required.d/contexts.json`. There is nothing to add.
+>
+> Were it ever to go missing, there are exactly **two** ways back: `gh api -X PATCH
+> repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks` supplying the FULL
+> contexts array (PATCH on that sub-resource replaces the list, it does not append), or the
+> Settings UI. **Not** `scripts/ci/setup_merge_queue_ruleset.sh`, which an earlier version of this
+> line named as a third path: that script's `canonical_body()` PUTs a single rule, `type:
+> "merge_queue"` (grouping/batching parameters), to the *rulesets* API — a different surface, with
+> no required-status-check field anywhere in its payload. **Nor** `scripts/ci/snapshot_required_contexts.py`,
+> which is read-only by its own docstring: it regenerates the advisory local snapshot and has no
+> write path back to GitHub, so it tells you WHAT the list should contain and cannot restore it.
 >
 > The actual net-new operator action, if the intent is specifically to require the
 > `harness/fable-gate` *name* rather than rely on it flowing through the job: **there is none** — this
