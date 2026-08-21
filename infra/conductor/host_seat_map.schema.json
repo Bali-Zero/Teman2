@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nuzantara.local/schemas/conductor-host-seat-map.v1.json",
+  "title": "Universal Conductor non-secret host seat map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "machine",
+    "as_of",
+    "classification",
+    "scope",
+    "providers",
+    "operator_actions"
+  ],
+  "properties": {
+    "schema_version": { "const": "conductor-host-seat-map.v1" },
+    "manifest_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "machine": { "enum": ["Pro", "Mini", "Air-M5"] },
+    "as_of": { "type": "string", "format": "date" },
+    "classification": { "const": "non-secret-static-discovery-only" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_endpoints", "account_seats", "runtime_auth"],
+      "properties": {
+        "model_endpoints": { "const": "owned-by-model-intelligence-registry" },
+        "account_seats": { "const": "owned-by-this-host-manifest" },
+        "runtime_auth": { "const": "owned-by-fresh-runtime-proof" }
+      }
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anthropic", "openai"],
+      "properties": {
+        "anthropic": { "$ref": "#/$defs/anthropic" },
+        "openai": { "$ref": "#/$defs/openai" }
+      }
+    },
+    "operator_actions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "seatStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat_id",
+        "local_binding",
+        "selector_state",
+        "runtime_auth",
+        "evidence"
+      ],
+      "properties": {
+        "seat_id": { "type": "string" },
+        "local_binding": { "enum": ["bound", "unbound", "unverified"] },
+        "selector_state": {
+          "enum": ["available", "unavailable", "unverified"]
+        },
+        "runtime_auth": { "const": "unverified" },
+        "evidence": { "enum": ["tracked-pro-seat-map", "no-host-evidence"] }
+      }
+    },
+    "anthropic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_surface",
+        "canonical_roster",
+        "headless_oauth_surface",
+        "seats"
+      ],
+      "properties": {
+        "binding_surface": { "const": "claude-config-profile" },
+        "canonical_roster": {
+          "const": ["A1", "A2", "A3", "A4", "A5", "AZ"]
+        },
+        "headless_oauth_surface": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["relationship_to_profiles", "logical_seat_mapping"],
+          "properties": {
+            "relationship_to_profiles": { "const": "separate-surface" },
+            "logical_seat_mapping": { "const": "unverified" }
+          }
+        },
+        "seats": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "A1" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "A2" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "A3" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "A4" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "A5" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "AZ" } } }
+              ]
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "openai": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_surface",
+        "canonical_roster",
+        "o2_alias_policy",
+        "seats"
+      ],
+      "properties": {
+        "binding_surface": { "const": "codex-home" },
+        "canonical_roster": { "const": ["O1", "O2"] },
+        "o2_alias_policy": {
+          "const": "canonical-plus-compatibility-name-is-one-seat"
+        },
+        "seats": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "O1" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/seatStatus" },
+                { "properties": { "seat_id": { "const": "O2" } } }
+              ]
+            }
+          ],
+          "items": false
+        }
+      }
+    }
+  }
+}
