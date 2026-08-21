@@ -26,10 +26,10 @@ divergence on any date:
     Indonesian press — both agreed on every date, zero divergence.
 
     Full year 2026 per the decree = 17 hari libur nasional + 8 cuti
-    bersama. This module carries ONLY the 4 dates from 2026-07-28 onward
-    (the only ones that can affect a forward-looking deadline computed from
-    "today" in this pilot's active window) — earlier-2026 dates are already
-    past and carry no forward-looking gate value.
+    bersama. This module materializes ONLY the closure set needed from
+    2026-07-28 onward. Earlier dates were deliberately omitted when the
+    pilot began, so this dataset cannot certify an open day before that
+    materialization boundary even though the source decree spans the year.
 
 ⚠️ COVERAGE_END = 2026-12-31. The 2027 SKB does not exist yet — this decree
 class is issued around September of the PRECEDING year (this one was
@@ -53,6 +53,7 @@ from enum import Enum
 
 __all__ = [
     "COVERAGE_END",
+    "COVERAGE_START",
     "OPERATING_CALENDAR",
     "HolidayKind",
     "OperatingCalendarDate",
@@ -100,10 +101,10 @@ OPERATING_CALENDAR: tuple[OperatingCalendarDate, ...] = (
     ),
 )
 
-# The decree covers the whole of 2026; nothing past this date has been
-# decreed yet (see module docstring). A date strictly after this boundary
-# cannot be certified open OR closed — the search must fail closed rather
-# than guess.
+# The source decree spans 2026, but the checked-in closure subset begins at
+# the pilot's materialization boundary. Coverage describes what THIS dataset
+# can actually certify, not what exists in the omitted part of the decree.
+COVERAGE_START: date = date(2026, 7, 28)
 COVERAGE_END: date = date(2026, 12, 31)
 
 _CLOSED_DATES: frozenset[date] = frozenset(d.at for d in OPERATING_CALENDAR)
@@ -126,6 +127,8 @@ def is_open(day: date) -> bool:
     `OPERATING_CALENDAR` precisely so this call can be revisited later
     without re-sourcing a single date.
     """
+    if day < COVERAGE_START or day > COVERAGE_END:
+        return False
     if day.weekday() >= 5:  # Monday=0 ... Saturday=5, Sunday=6
         return False
     return day not in _CLOSED_DATES
@@ -134,25 +137,23 @@ def is_open(day: date) -> bool:
 def last_open_day_before(day: date) -> date | None:
     """The latest open day strictly before ``day``.
 
-    Returns ``None`` in two fail-closed cases — this function must NEVER
+    Returns ``None`` in two uncovered cases — this function must NEVER
     silently guess a date:
 
-    - ``day`` itself falls after `COVERAGE_END`: any date in
-      ``(COVERAGE_END, day)`` is undecreed territory, so walking backward
-      through it would mean certifying open/closed status this module has
-      no authority to certify. Rather than assume those days are ordinary
-      working days, this returns ``None`` outright.
+    - ``day`` is at/before `COVERAGE_START` or after `COVERAGE_END`: a full
+      last-open-day calculation would cross materialized-data coverage, so
+      this returns ``None`` rather than certify an omitted date.
     - no open day was found within `_MAX_LOOKBACK_DAYS` (defensive only —
       not reachable with the current `OPERATING_CALENDAR` data, whose
       longest closed run is 4 days).
 
     Pure function of ``day`` alone — no wall-clock read.
     """
-    if day > COVERAGE_END:
+    if day <= COVERAGE_START or day > COVERAGE_END:
         return None
 
     candidate = day - timedelta(days=1)
-    earliest = day - timedelta(days=_MAX_LOOKBACK_DAYS)
+    earliest = max(COVERAGE_START, day - timedelta(days=_MAX_LOOKBACK_DAYS))
     while candidate >= earliest:
         if is_open(candidate):
             return candidate

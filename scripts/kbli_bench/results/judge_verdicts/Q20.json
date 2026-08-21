@@ -1,0 +1,20 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Batas 49% dan mayoritas tunggal benar, tetapi status TERBATAS dan pengecualian dari blokir moratorium Bali tidak dinyatakan."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Batas 49% dan mayoritas tunggal benar, tetapi status TERBATAS dan pengecualian dari blokir moratorium Bali tidak dinyatakan."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Batas 49% dan mayoritas tunggal benar, tetapi status TERBATAS dan pengecualian dari blokir moratorium Bali tidak dinyatakan."
+    }
+  ]
+}

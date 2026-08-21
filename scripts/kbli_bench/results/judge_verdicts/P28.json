@@ -1,0 +1,20 @@
+{
+  "qid": "P28",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains and provides no cost or validity figure."
+    },
+    {
+      "run": 2,
+      "verdict": "fabricated",
+      "reason": "Abstains, but invents a list of covered KBLI codes absent from the supplied records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains; accurately notes no supplied record covers the visa category."
+    }
+  ]
+}

@@ -1,0 +1,382 @@
+:root {
+  --bg-deep: #090b0b;
+  --bg-panel: #121716;
+  --fg-primary: #e8ece8;
+  --fg-active: #77d99b;
+  --fg-red: #ff796f;
+  --border: #28312e;
+  --border-active: #77d99b;
+}
+
+body {
+  margin: 0;
+  background: #090b0b;
+  color: #e8ece8;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.cockpit-widget-title {
+  color: var(--fg-active);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.cockpit-action-button {
+  background: #15201b;
+  color: var(--fg-active);
+  border: 1px solid var(--border-active);
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+
+.garuda-shell {
+  min-height: 100vh;
+  padding: 2rem clamp(1rem, 4vw, 4rem) 4rem;
+  background:
+    radial-gradient(
+      circle at 85% 0%,
+      rgba(86, 154, 116, 0.13),
+      transparent 32rem
+    ),
+    #090b0b;
+}
+
+.garuda-masthead {
+  max-width: 72rem;
+  margin: 0 auto 1.5rem;
+  border-bottom: 1px solid #34433d;
+  padding-bottom: 1.5rem;
+}
+
+.garuda-boundary {
+  display: inline-flex;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #ff796f;
+  color: #ff938a;
+  background: rgba(255, 121, 111, 0.08);
+  font:
+    700 0.74rem/1 ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+}
+
+.garuda-eyebrow {
+  margin: 1.5rem 0 0.4rem;
+  color: #77d99b;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+}
+
+.garuda-masthead h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.3rem, 7vw, 5.6rem);
+  font-weight: 400;
+  line-height: 0.95;
+}
+
+.garuda-lede {
+  max-width: 58rem;
+  margin: 1.2rem 0 0;
+  color: #b1bbb6;
+  line-height: 1.6;
+}
+
+.garuda-presets {
+  max-width: 72rem;
+  margin: 0 auto 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.garuda-presets span {
+  margin-right: 0.35rem;
+  color: #8d9993;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.garuda-presets button,
+.garuda-run {
+  border: 1px solid #3f544b;
+  background: #111815;
+  color: #dce4df;
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.garuda-presets button:hover,
+.garuda-run:hover {
+  border-color: #77d99b;
+  color: #8febae;
+}
+
+.garuda-columns {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.88fr) minmax(21rem, 1.12fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.garuda-card {
+  border: 1px solid #28312e;
+  background: rgba(17, 22, 21, 0.94);
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.garuda-card-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  border-bottom: 1px solid #28312e;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.75rem;
+}
+
+.garuda-card-heading span {
+  color: #77d99b;
+  font:
+    700 0.72rem/1 ui-monospace,
+    monospace;
+}
+
+.garuda-card-heading h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.garuda-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.garuda-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: #b9c3bd;
+  font-size: 0.8rem;
+}
+
+.garuda-form input,
+.garuda-form select {
+  min-width: 0;
+  border: 1px solid #36423d;
+  background: #0b0f0e;
+  color: #edf2ef;
+  padding: 0.7rem;
+  font: inherit;
+  color-scheme: dark;
+}
+
+.garuda-form input:focus,
+.garuda-form select:focus {
+  outline: 1px solid #77d99b;
+  border-color: #77d99b;
+}
+
+.garuda-field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.garuda-form .garuda-check {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.garuda-check input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.garuda-run {
+  margin-top: 0.4rem;
+  border-color: #77d99b;
+  color: #8febae;
+  font-weight: 700;
+}
+
+.garuda-run:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.garuda-privacy-note,
+.garuda-withheld {
+  margin: 0;
+  color: #7f8b85;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.garuda-empty {
+  min-height: 18rem;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  border: 1px dashed #34413c;
+  color: #849089;
+  text-align: center;
+}
+
+.garuda-error,
+.garuda-warning,
+.garuda-verification-warning {
+  padding: 0.85rem;
+  border: 1px solid #a85a52;
+  background: rgba(168, 90, 82, 0.1);
+  color: #ffafa7;
+}
+
+.garuda-result-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.garuda-decision {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 1rem;
+  border: 1px solid;
+}
+
+.garuda-decision span {
+  font:
+    700 0.68rem/1 ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+}
+
+.garuda-decision strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+}
+
+.garuda-decision.accept {
+  border-color: #4d9b6c;
+  color: #8febae;
+  background: rgba(77, 155, 108, 0.08);
+}
+
+.garuda-decision.decline {
+  border-color: #a85a52;
+  color: #ff938a;
+  background: rgba(168, 90, 82, 0.08);
+}
+
+.garuda-result h3 {
+  margin: 0 0 0.55rem;
+  color: #9eaaa4;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.garuda-code-list,
+.garuda-warnings {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #d4dcd7;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.garuda-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.garuda-facts div,
+.garuda-checkpoints article,
+.garuda-price,
+.garuda-calendar {
+  border: 1px solid #2c3934;
+  padding: 0.8rem;
+  background: #0d1210;
+}
+
+.garuda-facts dt,
+.garuda-price span {
+  color: #7f8b85;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.garuda-facts dd {
+  margin: 0.3rem 0 0;
+  color: #e2e8e4;
+}
+
+.garuda-checkpoints {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.55rem;
+}
+
+.garuda-checkpoints article {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.garuda-checkpoints span {
+  color: #f2bd72;
+  font:
+    700 0.72rem/1 ui-monospace,
+    monospace;
+}
+
+.garuda-checkpoints p {
+  margin: 0;
+  color: #859189;
+  font-size: 0.72rem;
+}
+
+.garuda-price {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.garuda-price strong {
+  color: #8febae;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.7rem;
+}
+
+.garuda-price small,
+.garuda-calendar p {
+  margin: 0;
+  color: #859189;
+}
+
+.garuda-calendar {
+  display: grid;
+  gap: 0.4rem;
+}
+
+@media (max-width: 820px) {
+  .garuda-columns,
+  .garuda-field-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .garuda-checkpoints,
+  .garuda-facts {
+    grid-template-columns: 1fr;
+  }
+}

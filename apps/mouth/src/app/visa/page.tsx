@@ -22,7 +22,6 @@ export default function VisaEntryPage() {
           items={[
             { value: "5,021", label: "visas filed since 2019" },
             { value: "24+", label: "visa categories supported" },
-            { value: "4.8h", label: "avg first-reply on WhatsApp" },
           ]}
         />
       }
@@ -114,23 +113,6 @@ export default function VisaEntryPage() {
           ]}
           onSelect={(opt) => tracker.branchSelected(opt.id)}
         />
-
-        {/* Secondary entries. These are not branches of the question above:
-            the VOA funnel serves BOTH arriving and already-here visitors, so
-            it cannot sit inside the "are you already in Indonesia?" binary. */}
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: "var(--text-sm, 0.88rem)",
-            color: "var(--color-text-muted)",
-            margin: 0,
-          }}
-        >
-          Arriving on a Visa on Arrival, or extending one?{" "}
-          <Link href="/visa/voa" style={{ color: "var(--accent-funnel)" }}>
-            Check your VOA (B1) →
-          </Link>
-        </p>
 
         <p
           style={{

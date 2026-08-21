@@ -1,0 +1,20 @@
+{
+  "qid": "Q15",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the relevant facts absent and abstains from answering."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the virtual-office facts absent and declines assessment."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the relevant facts absent and provides no substantive regulatory claim."
+    }
+  ]
+}

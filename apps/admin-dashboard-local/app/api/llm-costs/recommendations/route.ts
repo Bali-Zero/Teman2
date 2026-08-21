@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPool } from "../../../lib/db";
+import { getPool } from "@/app/lib/db";
+import { sameOriginJsonFailure } from "@/lib/cockpit-request-guard";
+import { hasValidCockpitSession } from "@/lib/cockpit-session";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!(await hasValidCockpitSession(request))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   const pool = await getPool();
   const { rows } = await pool.query(`
     SELECT
@@ -19,6 +25,17 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  if (!(await hasValidCockpitSession(req))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const guardFailure = sameOriginJsonFailure(req);
+  if (guardFailure) {
+    return NextResponse.json(
+      { error: guardFailure.error },
+      { status: guardFailure.status },
+    );
+  }
   const body = (await req.json()) as { id?: number; status?: string };
   const id = Number(body.id);
   const nextStatus = body.status;

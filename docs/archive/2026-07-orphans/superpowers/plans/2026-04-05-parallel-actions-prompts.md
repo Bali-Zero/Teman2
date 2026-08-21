@@ -122,7 +122,7 @@ NOTE: NO deleted_at/deleted_by columns — cannot soft-delete, must update statu
 NOTE: NO passport_expiry in Client model — expiry data is in documents table or compliance_items
 
 DB CONNECTION PATTERN (from existing scripts):
-  DB = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+  DB = "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable"
   (requires fly proxy: fly proxy 15432 -a nuzantara-postgres)
   conn = await asyncpg.connect(DB)
 
@@ -165,7 +165,7 @@ CONTEXT: 760/1105 clients (69%) have zero interaction in 30 days.
 CURRENT TEAM LOAD: Ari 112, Vino 105, Krisna 79, Surya 49, Adit 37, Sahira 30, Damar 19, Ruslana 2
 
 CLIENT MODEL: backend/app/modules/crm/models.py — assigned_to is text field (email)
-DB: postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag
+DB: postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag
 
 EMAIL SYSTEM:
 - Service: backend/services/integrations/zoho_email_service.py (ZohoEmailService)

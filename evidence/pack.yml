@@ -1,66 +1,70 @@
 brief_ref: evidence/brief.yml
-plan_ref: "PR #4007 — runtime worktree dependency repair"
+plan_ref: "PR #4474 — gear ceiling + effort per gear (2026-08-21 audit lever L0/L6)"
 diff:
-  files: 13
-  insertions: 1137
-  deletions: 130
+  files: 5
+  insertions: 802
+  deletions: 78
   hotzone_hits:
-    - ".github/workflows/broker-hygiene.yml"
+    - ".github/workflows/harness-floor.yml"
 receipts:
-  - claim: "the executable guilt and innocence corpus rejects fake, nested, primary-alias, stale-link, and parent-symlink runtime worktrees while preserving the valid registered worktree case"
-    cmd: "bash scripts/tests/test_codex_runtime_worktree_deps.sh"
+  - claim: "the new + existing evidence_pack_lint test suite passes in full, including the measured-vs-self-declared net_lines guilt/innocence pairs"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest ../../scripts/tests/test_evidence_pack_lint.py -q"
     exit: 0
-    ts: "2026-08-11T00:00:00Z"
-    seat: "codex"
-  - claim: "the selector rejects untrusted provenance and only accepts a trusted same-repository event whose REST metadata matches the listed branch and immutable SHA"
-    cmd: "python3 scripts/tests/test_codex_autofix_selector.py"
+    ts: "2026-08-21T00:00:00Z"
+    seat: "sonnet-5"
+  - claim: "the script's own embedded --selftest guilt+innocence corpus passes, including the new compute_ceiling/effort_for_gear unit checks"
+    cmd: "python3 scripts/evidence_pack_lint.py --selftest"
     exit: 0
-    ts: "2026-08-11T00:00:00Z"
-    seat: "codex"
-  - claim: "the unattended push uses only a pre-push bundle copied from a pinned trusted commit and rejects tampering to every transitive bundle member"
-    cmd: "bash scripts/tests/test_codex_trusted_prepush_bundle.sh"
+    ts: "2026-08-21T00:00:00Z"
+    seat: "sonnet-5"
+  - claim: "guard-conformance stays 0 violations and the evidence-pack-lint surface stays at exactly 6 censused checks — compute_ceiling and effort_for_gear are not check_-prefixed, so they were not auto-censused into the registry"
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
     exit: 0
-    ts: "2026-08-11T00:00:00Z"
-    seat: "codex"
-  - claim: "the modified shell entrypoints parse and pass error-level shellcheck"
-    cmd: "bash -n scripts/codex_automation_lib.sh scripts/codex/codex-nightly-autofix-ci.sh .husky/pre-push scripts/tests/test_codex_runtime_worktree_deps.sh scripts/tests/test_codex_trusted_prepush_bundle.sh && shellcheck -S error scripts/codex_automation_lib.sh scripts/codex/codex-nightly-autofix-ci.sh .husky/pre-push scripts/tests/test_codex_runtime_worktree_deps.sh scripts/tests/test_codex_trusted_prepush_bundle.sh"
-    exit: 0
-    ts: "2026-08-11T00:00:00Z"
-    seat: "codex"
-  - claim: "the canonical documentation counters have no drift after reconciling current main"
+    ts: "2026-08-21T00:00:00Z"
+    seat: "sonnet-5"
+  - claim: "no docs-sync drift after this diff"
     cmd: "python3 scripts/docs_sync.py --check"
     exit: 0
-    ts: "2026-08-11T00:00:00Z"
-    seat: "codex"
+    ts: "2026-08-21T00:00:00Z"
+    seat: "sonnet-5"
+  - claim: "the modified harness-floor.yml (hot-zone, CODEOWNERS Tier-1) is schema/expression-valid"
+    cmd: "actionlint .github/workflows/harness-floor.yml"
+    exit: 0
+    ts: "2026-08-21T00:00:00Z"
+    seat: "sonnet-5"
+  - claim: "the sibling harness gate test suite is unaffected"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest ../../scripts/tests/test_harness_fable_gate.py -q"
+    exit: 0
+    ts: "2026-08-21T00:00:00Z"
+    seat: "sonnet-5"
 tests:
-  cmd: "bash scripts/tests/test_codex_runtime_worktree_deps.sh && bash scripts/tests/test_codex_trusted_prepush_bundle.sh && python3 scripts/tests/test_codex_autofix_selector.py"
-  passed: 68
+  cmd: "pytest scripts/tests/test_evidence_pack_lint.py -q && python3 scripts/evidence_pack_lint.py --selftest"
+  passed: 59
   failed: 0
 static:
   lint: ok
   typecheck: n/a
   build: n/a
 runtime_proof:
-  - "a runtime path nested under, equal to, or resolving to the primary checkout is rejected"
-  - "a foreign standalone repository and a parent-component symlink escape are rejected"
-  - "only the backend virtual environment is linked, and absent or mismatched managed links are removed rather than retained"
-  - "the runner accepts only trusted actor plus triggering actor, same repository, an explicit event allowlist, an allowed branch namespace, and a metadata-verified immutable SHA"
-  - "the unattended push executes a pre-push hook and all its helpers from an origin/main-pinned bundle; a branch hook and tampered bundle members are rejected"
+  - "compute_ceiling flags a Gear-3 pack with a council/>=3 grader dispatches over a docs-only or small (<=2 files) diff, and clears with a non-empty gear_override instead of failing"
+  - "a hot-zone hit always floors AND ceilings at 3, silently — no conflicting verdict between rule 6 and rule 7"
+  - "a measured net_lines value (from --net-lines or --numstat-file, summed via sum_numstat()) overrides a pack's own self-declared net_lines field for rule 7's small-diff predicate — verified against a lying pack (declares 10, measured 400 -> not asserted) and the reverse (pack omits net_lines, measured 20 -> asserted)"
+  - "relying on a self-declared net_lines (no measured value supplied) still works but adds a distinguishable 'ceiling (notice)' line naming that lower-trust source, never a violation on its own"
+  - "harness-floor.yml's new net-lines step is best-effort: an unresolvable merge-base skips --numstat-file entirely rather than passing an empty/zero measurement that would read as a false small-diff signal"
 dissent:
-  - seat: red-team
-    objection: "The original repair accepted nested primary paths and links to dotenv files, node_modules, and Husky dispatchers; an unattended failed-branch runner could therefore act on the primary checkout, read host secrets, or execute a branch-controlled pre-push hook."
+  - seat: team-lead
+    objection: "The first cut of compute_ceiling's shape-(b) predicate trusted the pack's own self-declared net_lines field unconditionally — a pack author could dodge the entire ceiling by simply writing net_lines: 10 (or omitting a large real diff's true size), since nothing measured the actual diff against that claim."
     status: CONFIRMED
-    repro: "The expanded executable corpus reproduced each path escape, retained stale link, and branch-hook execution condition against the original PR head."
-    resolution: "Require exact registered-worktree identity, canonical parent containment, a venv-only runtime dependency set, fail-closed provenance, an explicit workspace-write sandbox, and a bundle copied plus reverified from a trusted main commit immediately before push."
+    repro: 'compute_ceiling(diff_2_files, 3, {"net_lines": 10, "council": True}) with no measured value returned a guilty verdict purely on the pack''s own unverified claim; a hostile or careless author declaring a false low net_lines on a genuinely large diff would silently escape the ceiling.'
+    resolution: "Added an optional measured_net_lines parameter (still pure — no I/O inside compute_ceiling itself) that takes precedence over the pack's self-declared net_lines whenever supplied; wired --net-lines/--numstat-file into the CLI and a merge-base-anchored git diff --numstat step into harness-floor.yml's Step 7b (gated to Gear-3 PRs, best-effort — never blocks or falsely reports zero on measurement failure). Falling back to the self-declared value now also emits a distinguishable 'ceiling (notice)' line so the source of the shape decision is never silent."
 residual_risks:
-  - "PROVE-LIVE still requires the declared HOME-fork sync and the next scheduled nightly run after an external operator merges the PR"
-  - "the dormant M5 nightly payload remains deliberately outside this PR's activation scope"
+  - "the hot-zone/floor list (HOTZONE_PATTERNS) is still a deliberate, declared duplicate of hot-zone-pr-gate.yml's bash case-block (pre-existing, noted in the module docstring, not touched by this PR) — a future consolidation into one source is a fair follow-up, not a blocker here"
+  - "the harness/fable-gate commit status itself is still not a required branch-protection context (per the workflow's own header note, blocked pending a synthetic-SHA relay + fork-PR write-permission design) — this PR's Gear-3 declaration satisfies the required 'Harness floor recompute' JOB, not an actual posted real-gate verdict, consistent with every other Gear-3 PR merged under this system to date"
+  - "council/grader_dispatches are net-new pack fields with no producer yet writing them automatically — until a wrapper populates them, rule 7 is dormant in practice (a real ship, not a regression: it fires the moment a pack starts declaring them, and never fires falsely on packs that don't)"
 sources:
-  - "scripts/codex_automation_lib.sh"
-  - "scripts/codex/codex-nightly-autofix-ci.sh"
-  - ".husky/pre-push"
-  - ".github/CODEOWNERS"
-  - "infra/home-fork/declared-pairs.json"
-  - "research/operations/2026-08-09-harness-v2-teman2.md §1/§5/§6"
+  - "scripts/evidence_pack_lint.py"
+  - "scripts/tests/test_evidence_pack_lint.py"
+  - ".github/workflows/harness-floor.yml"
+  - "research/operations/2026-08-21-token-ceremony-ci-system-audit.md §7 lever L6, §8"
 pii_scan: clean
-size_tokens: 1024
+size_tokens: 1400

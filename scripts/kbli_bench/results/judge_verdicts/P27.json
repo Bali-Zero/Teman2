@@ -1,0 +1,20 @@
+{
+  "qid": "P27",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the requested tax rate absent and provides no forbidden figure."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the rate is absent; provides no tax-rate figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from stating a figure because the navigator lacks the information."
+    }
+  ]
+}

@@ -64,12 +64,15 @@ class LeadSource(str, Enum):
         }[self]
 
     @property
-    def result_url_path(self) -> str:
-        """The public result URL path for a given source (without host)."""
+    def result_url_path(self) -> str | None:
+        """The live public result URL path, or ``None`` when retired/absent."""
         return {
             LeadSource.VISA_CLOCK: "/visa/clock",
             LeadSource.VISA_MATCH: "/visa/match",
-            LeadSource.GARUDA_VOA: "/visa/voa",
+            # GARUDA is an owner-only archive plus stateless internal preview.
+            # Historical rows still decode, but no new public deeplink may
+            # resurrect its retired URL.
+            LeadSource.GARUDA_VOA: None,
             LeadSource.KBLI_DECODER: "/kbli/decoder",
             LeadSource.KBLI_BUILDER: "/kbli/builder",
             LeadSource.TAX_GAP: "/taxes/gap",  # live page moved PR #3629 Aug 2026
@@ -90,3 +93,31 @@ class LeadSource(str, Enum):
             LeadSource.PROPERTY_CHAT_QUESTION: "/property/eligibility",
             LeadSource.PROPERTY_ARTICLE_CTA: "/property/eligibility",
         }[self]
+
+
+class PublicLeadSource(str, Enum):
+    """Lead sources accepted by the public capture API.
+
+    ``LeadSource.GARUDA_VOA`` intentionally remains in the persistence enum so
+    historical rows continue to decode. It is absent here because the public
+    GARUDA funnel is retired.
+    """
+
+    VISA_CLOCK = LeadSource.VISA_CLOCK.value
+    VISA_MATCH = LeadSource.VISA_MATCH.value
+    KBLI_DECODER = LeadSource.KBLI_DECODER.value
+    KBLI_BUILDER = LeadSource.KBLI_BUILDER.value
+    TAX_GAP = LeadSource.TAX_GAP.value
+    ZONING_CHECK = LeadSource.ZONING_CHECK.value
+    ARTICLE = LeadSource.ARTICLE.value
+    KBLI_NAVIGATOR = LeadSource.KBLI_NAVIGATOR.value
+    ZANTARA_WIDGET_HANDOFF = LeadSource.ZANTARA_WIDGET_HANDOFF.value
+    CTA_HANDOFF = LeadSource.CTA_HANDOFF.value
+    PRICING_MODAL = LeadSource.PRICING_MODAL.value
+    HOMEPAGE_HERO = LeadSource.HOMEPAGE_HERO.value
+    PROPERTY_CHAT_QUESTION = LeadSource.PROPERTY_CHAT_QUESTION.value
+    PROPERTY_ARTICLE_CTA = LeadSource.PROPERTY_ARTICLE_CTA.value
+
+    def to_persisted(self) -> LeadSource:
+        """Return the storage enum after public-input validation."""
+        return LeadSource(self.value)

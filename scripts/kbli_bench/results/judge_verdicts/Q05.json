@@ -1,0 +1,20 @@
+{
+  "qid": "Q05",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "abstained",
+      "reason": "Gate rejection declines to assert any requested facts."
+    },
+    {
+      "run": 2,
+      "verdict": "abstained",
+      "reason": "Gate rejection declines to assert any requested facts."
+    },
+    {
+      "run": 3,
+      "verdict": "abstained",
+      "reason": "Gate rejection declines to assert any requested facts."
+    }
+  ]
+}

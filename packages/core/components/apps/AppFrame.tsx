@@ -7,7 +7,7 @@ export interface AppFrameProps {
   subtitle?: string;
   /** Optional right-sidebar (desktop ≥900px). */
   sidebar?: ReactNode;
-  /** 3-number trust strip (AppTrustStrip) rendered above the main content. */
+  /** Trust strip (AppTrustStrip) rendered above the main content. */
   trustStrip?: ReactNode;
   children: ReactNode;
   /** Footer content (disclaimers, last-updated, etc.). */

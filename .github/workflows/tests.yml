@@ -597,6 +597,23 @@ jobs:
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell python scripts/backend_stability_gate.py
 
+      - name: Decide coverage-collection scope
+        # cicatrix-superscar #9 discipline: this is a NEW decision, made once,
+        # read everywhere it applies below — not re-derived per-step (which
+        # is how two steps drift on the same question). Coverage is only
+        # collected on merge_group/push/schedule/workflow_dispatch, never on
+        # pull_request: the coverage.xml Codecov upload and the --fail-under
+        # gate both add wall-clock to every PR for a signal that only needs
+        # to be current at the point a commit actually lands (research/
+        # operations/2026-08-21-token-ceremony-ci-system-audit.md).
+        id: test-scope
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "collect_coverage=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "collect_coverage=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
@@ -609,21 +626,33 @@ jobs:
           # their local-dev fallback (`nuzantara_dev`), which skipped 50 tests.
           INTAKE_TEST_DSN: postgresql://test:test@localhost:5432/nuzantara_test
           REDIS_URL: redis://localhost:6379
+          COLLECT_COVERAGE: ${{ steps.test-scope.outputs.collect_coverage }}
         run: |
           cd apps/backend-rag
           set -o pipefail
+          # xdist was briefly in this PR and was REMOVED 2026-08-21 (Kimi,
+          # lane continuation): under `-n auto --dist loadfile` every worker
+          # shares the SAME test Postgres (DATABASE_URL above), so a counting
+          # test in one file observed another worker's parallel writes —
+          # backend/tests/routers/test_intake_review.py::
+          # test_approve_live_claim_owned_by_other_rejected_without_write
+          # read (4, 1) where serial reads (2, 0). That is the 2026-07-14
+          # shared-Postgres scar the audit (L9(ii)) rates MED-HIGH: xdist
+          # needs per-worker DBs (nuzantara_test_gw{n}), which is its own
+          # spike PR. This PR keeps the safe levers only (queue-only
+          # coverage, npm-audit advisory, Playwright cache, main-red
+          # breaker).
+          COV_ARGS=()
+          if [ "$COLLECT_COVERAGE" = "true" ]; then
+            COV_ARGS=(--cov=backend --cov-branch --cov-report=xml:coverage.xml)
+          fi
           PYTHONPATH=.:../crm-cell pytest \
             backend/tests/ \
-            tests/test_sentry_lazy_import.py \
-            tests/test_sentry_pii_redaction.py \
-            tests/kb/test_politics_hierarchical.py \
             ../../scripts/bot/test_build_deid_corpus.py \
             ../../scripts/bot/test_wa_blind_bench.py \
             -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
-            --cov=backend \
-            --cov-branch \
-            --cov-report=xml:coverage.xml \
+            "${COV_ARGS[@]}" \
             --junit-xml=test-results-unit.xml \
             --tb=short -x 2>&1 | tee pytest-output.log || PYTEST_RC=$?
           # Measurement-only (round-3 queue-acceleration plan, L3): the
@@ -657,13 +686,18 @@ jobs:
           exit "$PYTEST_RC"
 
       - name: Check coverage threshold
+        # Only meaningful when coverage.xml was actually produced (see
+        # "Decide coverage-collection scope" above) — on pull_request there
+        # is no coverage.xml, and `coverage report` would fail on a missing
+        # data file for a reason that has nothing to do with the diff.
+        if: steps.test-scope.outputs.collect_coverage == 'true'
         run: |
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell coverage report --fail-under=55
 
       - name: Upload coverage to Codecov
-        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        if: ${{ env.HAS_CODECOV_TOKEN == 'true' && steps.test-scope.outputs.collect_coverage == 'true' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -733,7 +767,7 @@ jobs:
 
       - name: Upload MCP coverage to Codecov
         if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -798,7 +832,7 @@ jobs:
 
       - name: Upload evaluator coverage to Codecov
         if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -909,27 +943,19 @@ jobs:
         if: steps.decide.outputs.run == 'true'
         run: npm install --no-fund
 
-      - name: npm audit
-        if: steps.decide.outputs.run == 'true'
-        # The gate itself lives in scripts/ci/npm_audit_gate.py so it can carry
-        # a guilt+innocence corpus instead of being a guard nobody can execute
-        # (same shape as scripts/ci/hotzone_changed_files.sh, W102). The waiver
-        # set — and, for each entry, WHY it is unreachable — is documented at
-        # the top of that file. Waivers are scoped to a dependency PATH, so the
-        # same advisory arriving on a path we never vetted still fails.
-        #
-        # --omit=dev: audit only what we ship to production, not the test
-        # toolchain. Dev-only advisories (vitest / @vitest/coverage-v8 "UI
-        # server arbitrary file read", vite, esbuild) are exploitable only when
-        # running `vitest --ui` locally, never in CI or prod; without --omit=dev
-        # they failed the gate on EVERY PR repo-wide. Production-dependency
-        # threshold stays at high.
-        run: |
-          python3 scripts/ci/test_npm_audit_gate.py
-          npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
-          python3 scripts/ci/npm_audit_gate.py "$RUNNER_TEMP/audit.json"
-        continue-on-error: false
-
+      # `npm audit` used to live here — moved to the standalone `npm-audit`
+      # job below (2026-08-21, token-ceremony CI-critical-path audit). It
+      # queries the LIVE npm advisory database, which moves on its own
+      # schedule independent of this repo's tree (cicatrix-superscar.md
+      # family #9, W118: an advisory publish 87s before an otherwise-healthy
+      # merge turned a REQUIRED context red with zero lines of ours changed —
+      # measured 2026-08-17, ×19 in one main-red window). It was also
+      # redundant here: this job's `if:` only depends on
+      # `steps.decide.outputs.run`, never on `matrix.app`, so it ran the
+      # identical repo-root audit TWICE per PR (once per matrix leg) for no
+      # extra coverage. Advisory-only now (continue-on-error, non-required)
+      # so external advisory churn can never eject this required job from
+      # the merge queue for a reason that isn't a code change here.
       - name: Run tests (with coverage)
         if: matrix.coverage && steps.decide.outputs.run == 'true'
         run: |
@@ -1017,7 +1043,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ matrix.coverage && env.HAS_CODECOV_TOKEN == 'true' && steps.decide.outputs.run == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -1032,6 +1058,110 @@ jobs:
         with:
           name: frontend-${{ matrix.app }}-coverage
           path: apps/${{ matrix.app }}/coverage/
+
+  npm-audit:
+    name: npm audit (advisory)
+    # Split out of `frontend-tests` 2026-08-21 (token-ceremony CI-critical-
+    # path audit, research/operations/2026-08-21-token-ceremony-ci-system-
+    # audit.md) — this job is deliberately NOT in
+    # infra/required.d/contexts.json / branch protection's required list
+    # (verified via `gh api repos/.../branches/main/protection/
+    # required_status_checks` before and after this change — the contexts
+    # set is byte-identical). `npm audit` reads the LIVE npm advisory
+    # database, a resource that moves on its own schedule independent of
+    # this repo's tree (cicatrix-superscar.md family #9, W118: an advisory
+    # published 87 seconds before an otherwise-healthy merge queue entry
+    # turned a REQUIRED context red with zero lines of this repo changed —
+    # measured 2026-08-17, ×19 failures in one main-red window). A finding
+    # here is real and worth seeing; it is never grounds to eject a queue
+    # entry or block a PR whose diff never touched a dependency.
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_frontend_tests != 'false'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Two-layer advisory design (hardened after Codex red-team rounds 1-2 on
+    # this PR): (1) the audit step below NEVER exits non-zero on an advisory
+    # finding (gate exit 1) — it warns, writes a job summary, and exits 0 —
+    # so this job's check-run conclusion stays green even if the context is
+    # ever added to required checks by mistake (job-level continue-on-error
+    # alone does NOT guarantee that: it keeps the workflow green while the
+    # check run can still conclude failure). (2) MACHINERY failures still go
+    # red: the gate's own test suite, and a gate exit 2 (CANNOT VERIFY —
+    # unreadable/malformed audit report = no verdict was produced); continue-
+    # on-error keeps the workflow run green while the job shows red for a
+    # human.
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-npm-audit-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm install --no-fund
+
+      - name: npm audit
+        # The gate itself lives in scripts/ci/npm_audit_gate.py so it can carry
+        # a guilt+innocence corpus instead of being a guard nobody can execute
+        # (same shape as scripts/ci/hotzone_changed_files.sh, W102). The waiver
+        # set — and, for each entry, WHY it is unreachable — is documented at
+        # the top of that file. Waivers are scoped to a dependency PATH, so the
+        # same advisory arriving on a path we never vetted still fails.
+        #
+        # --omit=dev: audit only what we ship to production, not the test
+        # toolchain. Dev-only advisories (vitest / @vitest/coverage-v8 "UI
+        # server arbitrary file read", vite, esbuild) are exploitable only when
+        # running `vitest --ui` locally, never in CI or prod; without --omit=dev
+        # they failed the gate on EVERY PR repo-wide. Production-dependency
+        # threshold stays at high.
+        run: |
+          set -euo pipefail
+          # The gate's own test suite fails this job RED (our machinery,
+          # actionable, fail-loud) — everything below it never does.
+          python3 scripts/ci/test_npm_audit_gate.py
+          npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
+          set +e
+          python3 scripts/ci/npm_audit_gate.py "$RUNNER_TEMP/audit.json"
+          GATE_RC=$?
+          set -e
+          # Three-way, keyed on the gate's own exit-code contract
+          # (scripts/ci/npm_audit_gate.py): 1 = advisory finding (external
+          # data, never blocks); 2 = CANNOT VERIFY — unreadable/malformed
+          # report, i.e. the audit itself failed and there is NO verdict.
+          # Codex red-team round 2: mapping every nonzero code to green
+          # would let a broken audit report clean — the blind-gate disease
+          # this job's split was written to kill.
+          if [ "${GATE_RC}" -eq 1 ]; then
+            echo "::warning::npm audit advisory (non-blocking, L13) — see the job summary"
+            {
+              echo "### npm audit — advisory finding (non-blocking)"
+              echo ""
+              echo "Advisory-only since 2026-08-21 (token-ceremony audit, lever L13):"
+              echo "the finding is real and worth triaging, but it is never grounds to"
+              echo "eject a queue entry or block a PR whose diff never touched a dependency."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          elif [ "${GATE_RC}" -ne 0 ]; then
+            echo "::error::npm audit gate could not produce a verdict (exit ${GATE_RC}) — machinery/infrastructure failure, not an advisory"
+            exit "${GATE_RC}"
+          fi
 
   packages-core-tests:
     name: Shared Core Package Tests
@@ -1071,7 +1201,7 @@ jobs:
 
       - name: Upload shared core coverage to Codecov
         if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -1245,12 +1375,35 @@ jobs:
             exit 1
           }
 
+      - name: Cache Playwright browser binaries
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright browsers
         run: |
           # BOUNDED because `--with-deps` shells out to `apt-get` INSIDE
           # playwright's own process: this step carries exactly the risk cured
           # for our explicit apt call sites in scripts/ci/apt_install.sh, in a
           # place that helper cannot reach.
+          #
+          # Deliberately ALWAYS runs, cache hit or miss (2026-08-21,
+          # token-ceremony CI-critical-path audit) — do not gate this on
+          # `steps.playwright-cache.outputs.cache-hit`. `actions/cache` only
+          # persists the ~/.cache/ms-playwright DIRECTORY; GitHub-hosted
+          # runners are a fresh VM per job, so the apt-installed OS shared
+          # libraries `--with-deps` provides are NEVER preserved by that
+          # cache, cache hit or not. Skipping this step on a warm cache would
+          # restore the browser binaries but silently drop the OS deps they
+          # need to actually launch — the exact "assumed a warm cache implies
+          # a warm machine" class of bug this repo's cicatrix ledger already
+          # has several entries for. `playwright install` is itself
+          # idempotent against an already-populated cache dir (it hashes and
+          # skips any browser binary already present), so the cache still
+          # does its job — cutting the download, not the apt step — without
+          # this step needing a conditional at all.
           #
           # Measured over 13 consecutive runs of this workflow (2026-08-18):
           # eleven finish in 24-32s, one took 8m01s and still succeeded, and one

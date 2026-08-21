@@ -1,0 +1,165 @@
+name: Main Red Breaker
+
+# Task 3 of the token-ceremony CI-critical-path work (2026-08-21,
+# research/operations/2026-08-21-token-ceremony-ci-system-audit.md). ALERT
+# ONLY — this workflow never pauses merges itself; it tells a human to.
+#
+# WHAT THIS IS NOT: main-push-failure-watch.yml already alerts on Telegram
+# the moment `Tests & Coverage` completes with `conclusion: failure` on a
+# push/schedule/merge_group run of main — that is WORKFLOW-granularity, one
+# alert per red run, and it fires on the FIRST failure. This workflow asks a
+# narrower, later question: did the SAME JOB fail again, back to back? A
+# single red run is often noise (a flaky external dependency, a transient
+# network blip); a job that is red in two consecutive queue/schedule runs in
+# a row is not noise, it is main-red — the audit's own measured cause
+# (2026-08-17 `npm audit` x19, 2026-08-19 `Install Playwright browsers` x8)
+# was exactly this shape: the SAME job failing run after run while unrelated
+# PRs kept queuing behind it. That is the signal this workflow exists to
+# name explicitly, at job granularity, so a human knows WHICH job to cure
+# before re-arming more merges into the same wall.
+#
+# SCOPE: `Tests & Coverage` (tests.yml) has NO `push:` trigger at all — only
+# `pull_request`, `merge_group`, `workflow_dispatch`, `schedule`. So "on
+# merge_group/push main" here means the two event types that actually run
+# against main's lineage: `merge_group` (pre-merge validation of a PR about
+# to land) and `schedule` (the 2-hourly proof-of-health run against main's
+# current head, tests.yml's own `on.schedule` comment). `pull_request`
+# completions are deliberately excluded — those are already visible on the
+# PR itself, and alerting there would make this fire on nearly every PR in
+# the repo, defeating the "main is red" framing.
+#
+# NO `branches: [main]` FILTER on the trigger below, deliberately (matching
+# main-push-failure-watch.yml's own documented gotcha, cicatrix-superscar.md
+# family #9 W118): `workflow_run.head_branch` for a `merge_group`-triggered
+# completion is the queue's own temporary ref
+# (`gh-readonly-queue/main/pr-<n>-<sha>`), NEVER the literal string `main` —
+# a `branches: [main]` filter on the trigger would silently drop every
+# merge_group completion before this workflow is even created, which is
+# exactly the event type the audit's own evidence says matters most here.
+# The job `if:` below does the real event-type filtering instead, on
+# `github.event.workflow_run.event`, which is unaffected by head_branch
+# naming.
+
+on:
+  workflow_run:
+    workflows:
+      - "Tests & Coverage"
+    types: [completed]
+
+concurrency:
+  group: main-red-breaker-${{ github.event.workflow_run.id }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      (github.event.workflow_run.event == 'merge_group' ||
+       github.event.workflow_run.event == 'schedule')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find a job that failed in this run AND the one before it
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+        run: |
+          set -euo pipefail
+
+          # No `branch=` filter on this API call — see header comment: a
+          # merge_group run's head_branch is never the literal string
+          # `main`, so filtering on it here would hide exactly the runs
+          # this workflow exists to compare. Client-side event filter
+          # instead, same two event types the job `if:` above already
+          # requires. per_page=30 is comfortably more than 3 runs even
+          # on a day with heavy queue churn; sort_by + reverse + head -3
+          # (in the jq below) keeps only the 3 most recent.
+          RUNS_JSON=$(gh api "repos/${REPO}/actions/workflows/${WORKFLOW_ID}/runs?status=completed&per_page=30" \
+            --jq '[.workflow_runs[] | select(.event=="merge_group" or .event=="schedule")] | sort_by(.created_at) | reverse | .[0:3]')
+
+          RUN_COUNT=$(echo "${RUNS_JSON}" | jq 'length')
+          if [ "${RUN_COUNT}" -lt 2 ]; then
+            echo "fewer than 2 qualifying runs on record yet — nothing to compare"
+            echo "repeated=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # For each of the (up to 3) most-recent runs, dump every job NAME
+          # that failed in it, one per line, prefixed with its recency
+          # index (0 = the run that just completed and triggered this
+          # workflow, 1 = the one before it, 2 = the one before that).
+          : > /tmp/failing_by_run.txt
+          i=0
+          for RUN_ID in $(echo "${RUNS_JSON}" | jq -r '.[].id'); do
+            gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs" --paginate \
+              --jq '.jobs[] | select(.conclusion=="failure") | .name' \
+              | sed "s/^/${i}\t/" >> /tmp/failing_by_run.txt
+            i=$((i + 1))
+          done
+
+          # A job name is "repeated" when it failed in run 0 (the one that
+          # just completed) AND in run 1 (the immediately preceding one) —
+          # two CONSECUTIVE failures, not merely two-out-of-three. "triple"
+          # additionally requires run 2, for a stronger message when it
+          # applies. Matched by exact job name — this is already the
+          # matrix-expanded name GitHub assigns (e.g. "Frontend Tests
+          # (Next.js) (mouth, true)"), so a matrix leg failing repeatedly is
+          # distinguished from its sibling leg automatically.
+          python3 - >> "$GITHUB_OUTPUT" <<'PY'
+          from collections import defaultdict
+
+          sets = defaultdict(set)
+          with open("/tmp/failing_by_run.txt") as f:
+              for line in f:
+                  line = line.rstrip("\n")
+                  if not line:
+                      continue
+                  idx, name = line.split("\t", 1)
+                  sets[int(idx)].add(name)
+
+          run0 = sets.get(0, set())
+          run1 = sets.get(1, set())
+          run2 = sets.get(2, set())
+
+          repeated = sorted(run0 & run1)
+          triple = sorted(run0 & run1 & run2)
+
+          print(f"repeated={','.join(repeated)}")
+          print(f"triple={','.join(triple)}")
+          PY
+
+      - name: Checkout code (for the Telegram gateway script)
+        uses: actions/checkout@v7
+
+      - name: Telegram alert — same job red in consecutive queue runs
+        if: steps.check.outputs.repeated != ''
+        env:
+          # The gateway reads TELEGRAM_BOT_TOKEN / TELEGRAM_OWNER_CHAT_ID
+          # from env first (scripts/tg_notify.py token chain). Routing
+          # through tg_notify.py is not optional: lint_tg_direct_senders.py
+          # fails CI on any NEW file mentioning the Bot API directly — the
+          # consolidated-sender doctrine (2026-07-06 census, monotone
+          # grandfather). tg_notify exits 0 on every outcome (fail-open),
+          # so a missing secret degrades to a spool entry, never a red job.
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          REPEATED: ${{ steps.check.outputs.repeated }}
+          TRIPLE: ${{ steps.check.outputs.triple }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          if [ -n "${TRIPLE}" ]; then
+            N=3
+            JOBS="${TRIPLE}"
+          else
+            N=2
+            JOBS="${REPEATED}"
+          fi
+          TEXT="MAIN RED: ${JOBS} failed in ${N} consecutive queue runs — pause merges, cure main. https://github.com/${REPO}/actions/runs/${RUN_ID}"
+          # Dedup on the failing-job SET: a new combination alerts
+          # immediately, a repeat of the same one rides the gateway's
+          # throttle ladder instead of paging again.
+          KEY="main-red-$(printf '%s' "${JOBS}" | sha256sum | cut -c1-12)"
+          python3 scripts/tg_notify.py --tier p0 --source main-red-breaker --dedup-key "${KEY}" "${TEXT}"

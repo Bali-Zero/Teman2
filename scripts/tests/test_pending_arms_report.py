@@ -1029,11 +1029,19 @@ def test_real_ledger_has_zero_malformed_after_conflict_marker_cure():
         "unexpected MALFORMED entries in the real ledger: "
         + "; ".join(e.raw[:80] for e in malformed)
     )
+    # The 'Bali disclosure' row was only ever a convenient MARKER — the entry
+    # the stray conflict-marker happened to corrupt at the time this test was
+    # written — not an invariant the ledger owes forever: it was legitimately
+    # closed 2026-08-21 (arming proven live, per the ledger's own removal
+    # rule). Check it only while still open; the real regression this test
+    # guards (zero MALFORMED + --strict-phantom exit 0) doesn't need it.
     disclosure = next(
-        e for e in entries if "Bali disclosure is hover-only" in e.artifact
+        (e for e in entries if "Bali disclosure is hover-only" in e.artifact),
+        None,
     )
-    assert disclosure.owner == "me (apps/mouth lane)"
-    assert disclosure.cls == par.CLASS_TECH_DEBT
+    if disclosure is not None:
+        assert disclosure.owner == "me (apps/mouth lane)"
+        assert disclosure.cls == par.CLASS_TECH_DEBT
     assert par.main(["--ledger", str(REAL_LEDGER_PATH), "--now", NOW, "--strict-phantom"]) == 0
 # -----------------------------------------------------------------------------
 # Ledger freshness — guilt AND innocence

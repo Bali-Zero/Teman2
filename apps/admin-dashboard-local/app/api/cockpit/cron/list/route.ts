@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAllAgenticCronStatus } from "@/lib/cockpit-launchctl";
+import { hasValidCockpitSession } from "@/lib/cockpit-session";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!(await hasValidCockpitSession(request))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   const statuses = await getAllAgenticCronStatus();
   const counts = {
     running: statuses.filter((s) => s.state === "running").length,

@@ -110,8 +110,8 @@
 - **source**: `packages/core/components/apps/AppTrustStrip.tsx`
 - **use when**: trust, social proof
 - **props**:
-  - `items`: `[TrustNumber, TrustNumber, TrustNumber]`
-- **example**: `<AppTrustStrip items={/* [TrustNumber, TrustNumber, TrustNumber] */} />`
+  - `items`: `[TrustNumber, TrustNumber] | [TrustNumber, TrustNumber, TrustNumber]`
+- **example**: `<AppTrustStrip items={/* [TrustNumber, TrustNumber] | [TrustNumber, TrustNumber, TrustNumber] */} />`
 
 ## `AppWhatsAppCTA`
 
@@ -382,9 +382,9 @@
 - **use when**: trust, social proof
 - **props**:
   - `clientCount`: `number`
-  - `rating`: `number`
-  - `responseMinutes`: `number`
-- **example**: `<TrustBand clientCount={/* number */} rating={/* number */} responseMinutes={/* number */} />`
+  - `rating`: `string`
+  - `reviewCount`: `number`
+- **example**: `<TrustBand clientCount={/* number */} rating={/* string */} reviewCount={/* number */} />`
 
 ## `WhatsAppFAB`
 

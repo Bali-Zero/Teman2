@@ -85,15 +85,21 @@ def build_whatsapp_url(
             lines.append(f"• {label}: {value}")
         lines.append("")
 
-    if result_hash:
-        lines.append(f"Reference: {host}{source.result_url_path}/{result_hash}")
+    result_path = source.result_url_path
+    if result_hash and result_path:
+        lines.append(f"Reference: {host}{result_path}/{result_hash}")
     lines.append(f"Lead ID: {lead_intent_id}")
 
     body = "\n".join(lines)
     encoded = quote(body, safe="")
     url = f"https://wa.me/{number}?text={encoded}"
 
-    # Log the raw body at DEBUG for troubleshooting; never log the
-    # full URL at INFO since encoded bodies can exceed 2KB and clutter.
-    logger.debug("wa deeplink source=%s body=%r", source.value, body)
+    # The body may contain visitor-supplied context. Log only bounded metadata,
+    # never the raw body or encoded URL.
+    logger.debug(
+        "wa deeplink built source=%s context_rows=%d has_reference=%s",
+        source.value,
+        len(context_rows),
+        bool(result_hash and result_path),
+    )
     return url
