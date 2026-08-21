@@ -2,17 +2,18 @@
 
 > **PONTE, non enciclopedia.** ~99 cicatrici si raggruppano in 10 superscar (famiglie) + orfane.
 > Per famiglia: **malattia** (difetto strutturale), **segnale-precoce**, **antidoto strutturale**,
-> **membri** (riferimento a 3-8 parole — il corpo pieno vive SOLO in `cicatrix-scars.md`/`-archive.md`,
-> mai qui). Dettaglio → `scar query "<tema>"` (lessicale su entrambi i file-corpo; `--list` indice,
-> `--family N` salta a un cluster) o grep il W-number.
+> **membri** (3-8 parole — il corpo vive in `cicatrix-scars.md`/`-archive.md`, mai qui; unica
+> eccezione le righe **PR-1 landing**, senza W-number, col corpo in `PENDING-ARMS.md`, che il gate
+> di completezza non sa risolvere). Dettaglio → grep il W-number, o `scar query "<tema>"`/`--list`/
+> `--family N`. ⚠️ **Anche questo file può esserti arrivato STALE**: dove il main checkout è tenuto
+> indietro di proposito (M5, centinaia di commit) la copia iniettata E quella letta da `scar` sono
+> entrambe vecchie — il riferimento è `git show origin/main:<path>`.
 >
-> **Perché esiste:** il blob piatto pesava ~28k token/sessione (W77: "cataloga il trauma ma non lo
-> promuove a struttura"). **Corretto 2026-08-21 (audit boot-tax):** ricaduto nella propria malattia —
-> corpi lunghi incollati qui invece che in `cicatrix-scars.md`, ~72KB/sessione+subagent
-> (`research/operations/2026-08-21-token-ceremony-ci-system-audit.md`). Spostati verbatim 13 corpi (3
-> disambiguati da collisioni numero: `W81-armamento-sospeso`, `W81b-dlq-blind-heal-loop`,
-> `W84-tcc-dead`). Budget **≤14KB**, `scripts/tests/test_superscar_budget.py`. Genesi: clustering
-> Gemini 3.5 Flash High + gate W65 + review Antonello, 2026-06-14.
+> **Budget ≤14KB**, armato da `scripts/tests/test_superscar_budget.py` (byte + completezza: ogni
+> W-number citato qui deve avere un corpo reale). Questo file è iniettato a OGNI sessione e OGNI
+> subagent: ciò che aggiungi lo paga tutta la flotta, per sempre. Tre nomi sono disambiguati da
+> collisioni di numero — `W81-armamento-sospeso`, `W81b-dlq-blind-heal-loop`, `W84-tcc-dead`.
+> Storia e metodo: `research/operations/2026-08-21-token-ceremony-ci-system-audit.md`.
 >
 > **Dominanza:** #1 HOME-fork, #2 Esiste≠Armato, #5 Sibling-race, #4 Secret-clear coprono 65-75%.
 
@@ -34,7 +35,7 @@ non dichiarati, exit 1|2|4.
 **MEMBRI:** W50/W51/W52 (madre — wrapper/plist/script fork) · W68/W72/W73 (bridge `~/.openclaw/bin/`) ·
 W70 (path-drift Air) · W76 (repomap su checkout stale) · M5-dev-env (venv+marketplace path sbagliato) ·
 TAC wa-mirror (HOME-fork non promossa) · W81-armamento-sospeso (deploy worktree sparito, 2026-06-15).
-**→ dettaglio:** archive (W50/W51/W52/W68/W76/M5-dev-env) + cicatrix-scars.md (W70/W81-armamento-sospeso) · `scar query "home-fork"`
+**→ dettaglio:** archive (W50/W51/W52/W68/W76/M5-dev-env) + cicatrix-scars.md (W70/W81-armamento-sospeso)
 
 > _Cross-famiglia:_ **W84-tcc-dead** (#2) imparentata — wrapper sotto `~/Desktop` TCC-protetto.
 
@@ -63,8 +64,8 @@ access-wall, dev identity su proxy PROD) · W97 (display-cap `[:40]` letto come 
 W101-recidiva-fly-backup (PARTIAL: Fase 2 mai parte) · W104 (`redis-cli` esce 0 con NOAUTH su stdout) ·
 W107 (curato 1 wrapper su 5) · W108 (19/20 cron muti, 2 cause) · W110 (heartbeat sull'organo sbagliato)
 · W116 (allarme su esito giusto, cura codice morto) · W118 (11h fermo, nessun check rosso) · W120
-(sentinella della famiglia stessa disarmata) · W121 (mutation su bytecode avvelenato).
-**→ dettaglio:** cicatrix-scars.md (resto) + archive (W34/W32/W64/W69/W71/W74/503) · `scar query "esiste non armato"`
+(sentinella della famiglia stessa disarmata).
+**→ dettaglio:** cicatrix-scars.md (resto) + archive (W34/W32/W64/W69/W71/W74/503)
 
 ---
 
@@ -91,8 +92,8 @@ font-inject) · W105 (troncatura primo segmento `.worktrees/`) · W109 (esenzion
 contenuto) · W112 (Prettier riscrive i propri record di cicatrice) · W115 (veto post-selezione, non
 filtro pre) · W117 (`_strip_noise` svuota payload prima dell'esenzione) · W119 (`\s` separatore
 attraversa il newline).
-**→ dettaglio:** cicatrix-scars.md (resto) + archive (W68/W72) · `scar query "guard over-match"`
-**PR-1 landing (no W-number, corpo in `PENDING-ARMS.md`):** `git branch -D` da worktree ha blast radius repo-wide ma la guardia giudica solo cwd/target.
+**→ dettaglio:** cicatrix-scars.md (resto) + archive (W68/W72)
+**PR-1 landing** (corpo in `PENDING-ARMS.md`): `git branch -D` da worktree è repo-wide, la guardia giudica il cwd.
 
 ---
 
@@ -111,7 +112,7 @@ se world-readable storicamente.
 **MEMBRI:** P0 2026-06-03 (`apps/cell/.env` readable) · W65 (skills-bridge `.bak` 64-hex key) · W75
 (fly-ssh secret leak su pipe) · P0 2026-05-21 (postgres pw in 32 file) · 2026-04-29 (plist
 world-readable).
-**→ dettaglio:** cicatrix-scars.md (P0-cell.env) + archive (2026-05-21/04-29/W65/W75) · `scar query "secret cleartext"`
+**→ dettaglio:** cicatrix-scars.md (P0-cell.env) + archive (2026-05-21/04-29/W65/W75)
 
 ---
 
@@ -129,7 +130,7 @@ processo vivo AND già su origin/main); leave-dirty verso lavoro sibling.
 **MEMBRI:** W62 (6 worktree abbandonati, TTL violato) · W63 (nested worktree) · W80 (reap con commit
 non-mergiati) · agent-library-evolver (REPO_ROOT condiviso) · W59 (sibling-race madre) · 2026-04-29
 (untracked persi).
-**→ dettaglio:** cicatrix-scars.md (W80/W59) + archive (W62/W63/evolver) · `scar query "sibling worktree"`
+**→ dettaglio:** cicatrix-scars.md (W80/W59) + archive (W62/W63/evolver)
 
 ---
 
@@ -147,7 +148,7 @@ allucina (W65).
 **MEMBRI:** META 2026-06-05 (13-agent autopsy, 3 file:line fantasma) · W74 (phantom scorer.py) · W65
 (refuter falso-refuta) · W78 (cicatrice-sbagliata-propagata) · W100 (blind agreement, 7 false-clean su
 8) · W90 (ground-truth verifier stantio) · W113 (la correzione stessa mente). Linea: W65→W90→W100→W113.
-**→ dettaglio:** cicatrix-scars.md (W78/resto) + archive (META-autopsy/W65/W74) · `scar query "phantom citation"`
+**→ dettaglio:** cicatrix-scars.md (W78/resto) + archive (META-autopsy/W65/W74)
 
 ---
 
@@ -164,7 +165,7 @@ KeepAlive.
 
 **MEMBRI:** W67/W67b (wa-mirror reconnect storm) · W60 (Fly api flapping) · 2026-04-29 (53
 LaunchAgents, 13% corretti).
-**→ dettaglio:** archive (W60/04-29/W67/W67b) · `scar query "keepalive daemon cron"`
+**→ dettaglio:** archive (W60/04-29/W67/W67b)
 
 ---
 
@@ -181,7 +182,7 @@ single-attempt.
 
 **MEMBRI:** W49 (canva watchdog 98 TimeoutError) · W55 (Telegram single-attempt drop) · W32 (interface
 error ignorato) · W47 (solo numero citato, nessun dettaglio).
-**→ dettaglio:** archive (W49/W55/W32) + cicatrix-scars.md (W47) · `scar query "network flap proxy retry"`
+**→ dettaglio:** archive (W49/W55/W32) + cicatrix-scars.md (W47)
 
 ---
 
@@ -203,9 +204,9 @@ contenuto post-squash) · W102 (two-dot diff accusa PR dei file di main) · W106
 credenziale morta) · W106b (il checkout stesso è il proxy) · W109b (2 PR che si bloccano a vicenda) ·
 W111 (`gh run rerun` rigioca merge-ref stantio) · W114 (fake e codice condividono l'immaginazione) ·
 W118 (3 proxy merge-queue che mentono).
-**→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
-**PR-1 landing (no W-number, corpo in `PENDING-ARMS.md`):** mergeability GitHub non onora
-`merge=union`; `autoMergeRequest` non sopravvive a un transito CONFLICTING, va riarmato via GraphQL.
+**→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61)
+**PR-1 landing** (corpo in `PENDING-ARMS.md`): la mergeability GitHub non onora `merge=union`;
+`autoMergeRequest` non sopravvive a un transito CONFLICTING — va riarmato via GraphQL.
 
 ---
 
@@ -222,7 +223,7 @@ macchina "che non dovrebbe".
 
 **MEMBRI:** W67c (wa-mirror Telegram spam dal Mini) · 2026-05-07 (12+1 mata_garuda active-active) · NLM
 feeder split-brain.
-**→ dettaglio:** archive (mata_garuda/NLM-feeder/W67c) · `scar query "active-active split-brain"`
+**→ dettaglio:** archive (mata_garuda/NLM-feeder/W67c)
 
 ---
 
@@ -242,8 +243,6 @@ feeder split-brain.
 
 ---
 
-> **Manutenzione:** scar nuova → 1 riga in MEMBRI qui, corpo pieno SOLO in `cicatrix-scars.md`. Se stai
-> per incollare più di 1-2 frasi in MEMBRI, quello è un corpo: scrivilo in `cicatrix-scars.md` e lascia
-> qui 3-8 parole + numero (regola nata dall'audit 2026-08-21 che ha corretto 13 violazioni proprie).
-> Non rientra in nessuna delle 10 → candidata-orfana o serve un'11ª superscar. Metodo: skill `modus`
-> Gear 3 (`.claude/skills/modus/SKILL.md`).
+> **Manutenzione:** scar nuova → 1 riga in MEMBRI (3-8 parole + numero), corpo in `cicatrix-scars.md`.
+> Più di 1-2 frasi qui È un corpo: sta nel file sbagliato. Non rientra in nessuna delle 10 →
+> orfana, o serve un'11ª famiglia. Metodo: skill `modus` Gear 3.
