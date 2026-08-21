@@ -38,9 +38,15 @@ acceptance:
     their own suite; then compare check_suite.id."
   - "actionlint exit 0; the workflow's non-comment body byte-identical to origin/main."
 consumer_map:
-  - "`.github/workflows/harness-floor.yml` header — read by every session that has to unblock a
-    Gear-3 PR after publishing a verdict. This note IS the recovery procedure; no other artifact
-    carries it."
+  - "`.github/workflows/harness-floor.yml` header — read by every session that opens the workflow
+    to find out why the check is red."
+  - "`scripts/ci/harness_gate_read.py` — CORRECTED: this is the artifact that actually reaches a
+    blocked session, because it PRINTS the recovery instruction as the CI failure annotation at the
+    moment of need. It still carried the repealed `gh workflow run --ref` text when this pack was
+    first written; fixed in #4558."
+  - "`docs/runbooks/merge-queue-discipline.md` §6quater and `CLAUDE.md` Agent PR Contract rule 3 —
+    landed in #4557 (merged 2026-08-21T20:18Z). An earlier revision of this consumer map said
+    'no other artifact carries it', which was false at the moment it was written."
   - "No runtime surface: the job's behaviour is unchanged, so merged == live here."
 risks:
   - "The suite ids quoted are from one measured incident. They are evidence of the mechanism, not a

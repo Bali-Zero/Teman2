@@ -4,7 +4,7 @@ plan_ref:
   on #4543)"
 diff:
   behaviour_change: none
-  net_lines: "CODE +80/-3 (comments only, proven structurally); WHOLE DIFF +303/-253 (net +50); measured at merge-base 9def77f51..HEAD with `git diff --numstat 9def77f51..HEAD`, LAST, iterated to a fixed point -- replacing one added line with another leaves the numstat unchanged."
+  net_lines: "CODE +81/-3 (comments only, proven structurally); WHOLE DIFF +331/-253 (net +78); measured at merge-base 9def77f51..HEAD with `git diff --numstat 9def77f51..HEAD`, LAST, iterated to a fixed point."
 receipts:
   - claim:
       "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the
@@ -163,11 +163,32 @@ dissent:
       file was extracted from the YAML and executed verbatim this session: exit 0, output identical to the
       one recorded."
     status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5, fresh context, round 4 on e48c1b0f5, did not run earlier rounds)"
+    objection:
+      "The head commit's own subject was 'a condition is satisfied when the claim is gone from every
+      artifact, not from the one the reviewer quoted' -- and the repealed instruction was still standing
+      in the two artifacts a session actually meets. Worst: scripts/ci/harness_gate_read.py PRINTS it as
+      the CI failure annotation, i.e. it is pushed at a session at the instant it is stuck, which is a
+      strictly worse home than a header a session may or may not open. The gate read it live in this PR's
+      own red X. Also: the consumer_map asserted 'no other artifact carries it', false since #4557; and
+      residual_risks[0] named a follow-up that had merged five minutes before the commit was authored."
+    status: CONFIRMED
+  - seat: "session (m5), verifying and then acting on the round-4 findings"
+    objection:
+      "Re-measured before acting (W65). harness_gate_read.py:193-194 and its docstring at :42-45 did carry
+      the repealed text; #4549 does have 9 pull_request runs and ZERO workflow_dispatch, so the runbook
+      sentence 'cost two sessions the same detour' -- which this same session wrote in #4557 -- is false;
+      and the runbook quoted the ref: expression with '|| main' truncated. Fixed in #4558, not here: those
+      are code and sibling-doc surfaces, and folding them in would cost this PR its comment-only proof."
+    status: CONFIRMED
 residual_risks:
-  - "CLAUDE.md's Agent PR Contract rule 3 still reads unqualified at origin/main -- 'never use a bare
-    gh run rerun'. A workflow header cannot scope CLAUDE.md, so once this lands the two artifacts disagree.
-    Named follow-up: a CLAUDE.md PR carrying the same scoping. Recorded rather than relying on the header
-    to win by itself."
+  - "CLOSED, and the previous revision shipped this line already stale. It read: CLAUDE.md's Agent PR
+    Contract rule 3 still reads unqualified at origin/main, named follow-up a CLAUDE.md PR carrying the
+    same scoping. That follow-up had ALREADY landed -- 61f87383c / PR #4557, merged 2026-08-21T20:18:14Z,
+    five minutes before this branch's next commit was authored. Same disease as dissent[3] and dissent[4],
+    a value written once and never re-read, relocated from net_lines into residual_risks. The residual that
+    ACTUALLY remained was scripts/ci/harness_gate_read.py, which PRINTS the repealed instruction as the CI
+    failure annotation at the moment of need -- found by the round-4 gate, fixed in #4558."
   - "#4549 is NOT a second reproduction of the deadlock and must not be cited as one: it has no workflow_dispatch
     run at all. It independently confirms CASE A's REMEDY a second time -- a weaker, different claim."
   - "The quoted suite ids are one incident's measurement, not constants. The note frames them as the #4543

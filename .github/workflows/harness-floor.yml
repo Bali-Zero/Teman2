@@ -138,7 +138,8 @@ name: Harness floor recompute
 # the base checkout — and with it the versions of `evidence_pack_lint.py`, `harness_gate_read.py`
 # and the helper scripts this job actually executes — stays frozen at PR-event time. A CASE A rerun
 # will not pick up a base-side fix that landed on main since; only a new `pull_request` event will.
-# Pinning removes W111's stale-BASE hazard; it does not make the rerun current. A job that DOES check out a merge ref keeps W111
+# Pinning makes the staleness DETERMINISTIC — it does not remove it, and it does not make the
+# rerun current. A job that DOES check out a merge ref keeps W111
 # in full force, and `gh run rerun` on it is still forbidden — as it is on a merge_group run,
 # where the queue's own `mq requeue` is the instrument.
 #
