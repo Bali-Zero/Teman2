@@ -43,17 +43,21 @@ def plan_dispatch(
     task: TaskIntent,
     candidates: tuple[EndpointCandidate, ...],
     policy: RoutingPolicy,
+    generator_family: str | None = None,
 ) -> DispatchPlan:
     """Return an explainable plan without taking any execution action.
 
     The opener remains the conductor. For every mutation with an eligible
     builder, the selected builder is a separate child-session role; this
-    function never assigns the conductor role to implementation.
+    function never assigns the conductor role to implementation. Review tasks
+    must name the family that generated the work so an independent grader can
+    be selected.
     """
     conductor_assignment = _conductor_assignment(session)
     task_profile_hash = policy.task_profile_hashes.get(
         task.task_profile_id, "unavailable"
     )
+    generator_family = _normalized_family(generator_family)
 
     if session.role is not Role.CONDUCTOR:
         return _abstain(
@@ -89,6 +93,17 @@ def plan_dispatch(
             reason="task_profile_unknown",
         )
 
+    if task.task_class is TaskClass.REVIEW and generator_family is None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason="generator_family_context_required",
+        )
+
     disallowed_modalities = sorted(
         task.required_modalities - profile.allowed_modalities
     )
@@ -121,8 +136,30 @@ def plan_dispatch(
             separate_builder_session_required=False,
         )
 
-    as_of = _policy_clock(policy)
-    host_observations = _host_observations(policy, as_of)
+    as_of, policy_rejection = _policy_clock(policy)
+    if policy_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason=policy_rejection,
+        )
+    assert as_of is not None
+    host_observations, host_policy_rejection = _host_observations(policy, as_of)
+    if host_policy_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason=host_policy_rejection,
+        )
+    assert host_observations is not None
     eligible: list[tuple[EndpointCandidate, TaskScore, str]] = []
     rejections: list[CandidateRejection] = []
     for candidate in sorted(candidates, key=lambda item: item.endpoint_id):
@@ -136,6 +173,7 @@ def plan_dispatch(
             policy=policy,
             as_of=as_of,
             host_rejection=host_rejection,
+            generator_family=generator_family,
         )
         if rejection is not None:
             rejections.append(rejection)
@@ -241,6 +279,7 @@ def _rejection_for(
     policy: RoutingPolicy,
     as_of: datetime,
     host_rejection: str | None,
+    generator_family: str | None,
 ) -> CandidateRejection | None:
     reasons: list[str] = []
     mutation = task.mutation or profile.mutation
@@ -251,11 +290,17 @@ def _rejection_for(
         reasons.append("endpoint_not_automated")
     if candidate.auth_surface is AuthSurface.UNKNOWN:
         reasons.append("auth_surface_unknown")
-    elif (
-        policy.forbid_paid_anthropic_api
-        and candidate.auth_surface is AuthSurface.ANTHROPIC_PAID_API
+    if (
+        candidate.auth_surface is AuthSurface.ANTHROPIC_PAID_API
+        or candidate.uses_paid_anthropic_api
     ):
         reasons.append("paid_anthropic_api_forbidden")
+    if (
+        task.task_class is TaskClass.REVIEW
+        and generator_family is not None
+        and candidate.family.strip() == generator_family
+    ):
+        reasons.append("generator_family_conflict")
     if not candidate.healthy:
         reasons.append("health_unavailable")
     else:
@@ -313,43 +358,44 @@ def _rejection_for(
     )
 
 
-def _policy_clock(policy: RoutingPolicy) -> datetime:
+def _normalized_family(family: str | None) -> str | None:
+    if not isinstance(family, str):
+        return None
+    normalized = family.strip()
+    return normalized or None
+
+
+def _policy_clock(policy: RoutingPolicy) -> tuple[datetime | None, str | None]:
     if (
         not isinstance(policy.max_health_age_days, int)
         or isinstance(policy.max_health_age_days, bool)
         or policy.max_health_age_days < 0
     ):
-        raise RoutingPolicyError("max_health_age_days must be a non-negative integer")
+        return None, "policy_max_health_age_invalid"
     as_of = _parse_iso_timestamp(policy.as_of)
     if as_of is None:
-        raise RoutingPolicyError(
-            "policy as_of must be an ISO-8601 date or timezone-aware timestamp"
-        )
-    return as_of
+        return None, "policy_timestamp_invalid"
+    return as_of, None
 
 
 def _host_observations(
     policy: RoutingPolicy, as_of: datetime
-) -> Mapping[str, HostObservation]:
+) -> tuple[Mapping[str, HostObservation] | None, str | None]:
     observations: dict[str, HostObservation] = {}
     for observation in policy.host_observations:
         if not isinstance(observation.host, str) or not observation.host:
-            raise RoutingPolicyError("host observation host must be a non-empty string")
+            return None, "host_observation_host_invalid"
         if not isinstance(observation.available, bool):
-            raise RoutingPolicyError("host observation availability must be boolean")
+            return None, "host_observation_availability_invalid"
         if observation.host in observations:
-            raise RoutingPolicyError(f"duplicate host observation: {observation.host}")
+            return None, "host_observation_duplicate"
         observed_at = _parse_iso_timestamp(observation.observed_at)
         if observed_at is None:
-            raise RoutingPolicyError(
-                "host observation timestamp must be ISO-8601 and timezone-aware when timed"
-            )
+            return None, "host_observation_timestamp_invalid"
         if observed_at > as_of:
-            raise RoutingPolicyError(
-                "host observation timestamp is in the future relative to policy as_of"
-            )
+            return None, "host_observation_timestamp_future"
         observations[observation.host] = observation
-    return observations
+    return observations, None
 
 
 def _placement_for(
@@ -363,14 +409,15 @@ def _placement_for(
     if not observed:
         return None, "host_observation_missing"
 
-    fresh = [
-        (host, observation)
-        for host, observation in observed
-        if (
-            as_of - _required_timestamp(observation.observed_at, "host observation")
-        ).total_seconds()
-        <= timedelta(days=policy.max_health_age_days).total_seconds()
-    ]
+    fresh = []
+    for host, observation in observed:
+        observed_at = _parse_iso_timestamp(observation.observed_at)
+        if observed_at is None:
+            return None, "host_observation_timestamp_invalid"
+        if (as_of - observed_at).total_seconds() <= timedelta(
+            days=policy.max_health_age_days
+        ).total_seconds():
+            fresh.append((host, observation))
     if not fresh:
         return None, "host_observation_stale"
     available = [host for host, observation in fresh if observation.available]
@@ -407,15 +454,6 @@ def _parse_iso_timestamp(value: str) -> datetime | None:
     if parsed.tzinfo is None:
         return None
     return parsed.astimezone(timezone.utc)
-
-
-def _required_timestamp(value: str, location: str) -> datetime:
-    parsed = _parse_iso_timestamp(value)
-    if parsed is None:
-        raise RoutingPolicyError(
-            f"{location} timestamp must be ISO-8601 and timezone-aware when timed"
-        )
-    return parsed
 
 
 def _required_capabilities(task: TaskIntent, profile: TaskProfile) -> tuple[str, ...]:

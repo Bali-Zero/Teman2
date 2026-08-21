@@ -62,6 +62,7 @@ def candidate(
     automated_routing: bool = True,
     context_limit: int | None = 32_000,
     auth_surface: AuthSurface = AuthSurface.OPENAI_CHATGPT_SUBSCRIPTION,
+    uses_paid_anthropic_api: bool | None = None,
 ) -> EndpointCandidate:
     """Build an independently evidenced concrete endpoint fixture."""
     task_scores = ()
@@ -114,7 +115,11 @@ def candidate(
         capability_snapshot_hash=f"snapshot-{endpoint_id}",
         automated_routing=automated_routing,
         routing_status="eligible",
-        uses_paid_anthropic_api=auth_surface is AuthSurface.ANTHROPIC_PAID_API,
+        uses_paid_anthropic_api=(
+            auth_surface is AuthSurface.ANTHROPIC_PAID_API
+            if uses_paid_anthropic_api is None
+            else uses_paid_anthropic_api
+        ),
         auth_surface=auth_surface,
     )
 
@@ -409,6 +414,7 @@ class ConductorRouterTest(unittest.TestCase):
             family="claude",
             score=0.99,
             auth_surface=AuthSurface.ANTHROPIC_PAID_API,
+            uses_paid_anthropic_api=False,
         )
         plan = plan_dispatch(
             session=session(),
@@ -421,6 +427,203 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(
             plan.rejections[0].reason_codes, ("paid_anthropic_api_forbidden",)
         )
+
+    def test_paid_anthropic_usage_signal_rejects_inconsistent_auth_surface(
+        self,
+    ) -> None:
+        inconsistent = candidate(
+            "inconsistent-paid-anthropic",
+            model="candidate",
+            family="test",
+            score=0.99,
+            auth_surface=AuthSurface.OPENAI_CHATGPT_SUBSCRIPTION,
+            uses_paid_anthropic_api=True,
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(inconsistent,),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            plan.rejections[0].reason_codes, ("paid_anthropic_api_forbidden",)
+        )
+
+    def test_review_routes_to_a_different_generator_family(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.REVIEW, "mechanical"),
+            candidates=(
+                candidate(
+                    "independent-grader",
+                    model="independent",
+                    family="independent-family",
+                    score=0.95,
+                ),
+            ),
+            policy=policy(),
+            generator_family="gpt-5.6",
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.role, Role.GRADER)
+        self.assertEqual(plan.primary.endpoint_id, "independent-grader")
+
+    def test_review_rejects_grader_from_generator_family(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.REVIEW, "mechanical"),
+            candidates=(
+                candidate(
+                    "same-family-grader",
+                    model="same-family",
+                    family="gpt-5.6",
+                    score=0.95,
+                ),
+            ),
+            policy=policy(),
+            generator_family="gpt-5.6",
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            plan.rejections[0].reason_codes, ("generator_family_conflict",)
+        )
+
+    def test_review_without_generator_family_abstains_closed(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.REVIEW, "mechanical"),
+            candidates=(
+                candidate(
+                    "independent-grader",
+                    model="independent",
+                    family="independent-family",
+                    score=0.95,
+                ),
+            ),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "generator_family_context_required")
+
+    def test_invalid_policy_and_host_timestamps_abstain_with_typed_receipts(
+        self,
+    ) -> None:
+        invalid_policy_timestamp = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(),
+            policy=replace(policy(), as_of="not-an-iso-timestamp"),
+        )
+        invalid_host_timestamp = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(),
+            policy=replace(
+                policy(),
+                host_observations=(
+                    HostObservation(
+                        host="pro",
+                        available=True,
+                        observed_at="not-an-iso-timestamp",
+                    ),
+                ),
+            ),
+        )
+
+        self.assertEqual(invalid_policy_timestamp.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            invalid_policy_timestamp.abstention_reason, "policy_timestamp_invalid"
+        )
+        self.assertEqual(invalid_host_timestamp.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            invalid_host_timestamp.abstention_reason,
+            "host_observation_timestamp_invalid",
+        )
+
+    def test_versioned_benchmark_evidence_requires_verifier_provenance(self) -> None:
+        versioned_profile = replace(
+            policy().task_profiles[0],
+            benchmark_id="synthetic-routing-suite",
+            benchmark_version="v2",
+        )
+        versioned_policy = replace(
+            policy(), task_profiles=(versioned_profile, *policy().task_profiles[1:])
+        )
+        incomplete = replace(
+            candidate(
+                "incomplete-benchmark", model="candidate", family="test", score=0.95
+            ),
+            task_scores=(
+                TaskScore(
+                    task_profile_id="mechanical",
+                    score=0.95,
+                    benchmark_id="synthetic-routing-suite",
+                    benchmark_version="v2",
+                    sample_count=1,
+                    observed_at=AS_OF,
+                    evidence_kind=EvidenceKind.BENCHMARKED,
+                    expires_at="2026-08-22",
+                ),
+            ),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(incomplete,),
+            policy=versioned_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            plan.rejections[0].reason_codes, ("benchmark_evidence_incomplete",)
+        )
+
+    def test_complete_versioned_benchmark_evidence_opens_the_lane(self) -> None:
+        versioned_profile = replace(
+            policy().task_profiles[0],
+            benchmark_id="synthetic-routing-suite",
+            benchmark_version="v2",
+        )
+        versioned_policy = replace(
+            policy(), task_profiles=(versioned_profile, *policy().task_profiles[1:])
+        )
+        evidenced = replace(
+            candidate(
+                "evidenced-benchmark", model="candidate", family="test", score=0.95
+            ),
+            task_scores=(
+                TaskScore(
+                    task_profile_id="mechanical",
+                    score=0.95,
+                    benchmark_id="synthetic-routing-suite",
+                    benchmark_version="v2",
+                    sample_count=1,
+                    observed_at=AS_OF,
+                    evidence_kind=EvidenceKind.BENCHMARKED,
+                    sample_hashes=("sample-sha256",),
+                    scorer_id="synthetic-scorer",
+                    scorer_version="v2",
+                    expires_at="2026-08-22",
+                ),
+            ),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(evidenced,),
+            policy=versioned_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.endpoint_id, "evidenced-benchmark")
 
     def test_unknown_auth_surface_is_never_selected(self) -> None:
         unknown = candidate(
