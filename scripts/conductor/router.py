@@ -298,7 +298,7 @@ def _rejection_for(
     if (
         task.task_class is TaskClass.REVIEW
         and generator_family is not None
-        and candidate.family.strip() == generator_family
+        and _normalized_family(candidate.family) == generator_family
     ):
         reasons.append("generator_family_conflict")
     if not candidate.healthy:
@@ -361,7 +361,7 @@ def _rejection_for(
 def _normalized_family(family: str | None) -> str | None:
     if not isinstance(family, str):
         return None
-    normalized = family.strip()
+    normalized = re.sub(r"[^0-9a-z]+", "-", family.casefold()).strip("-")
     return normalized or None
 
 

@@ -493,6 +493,48 @@ class ConductorRouterTest(unittest.TestCase):
             plan.rejections[0].reason_codes, ("generator_family_conflict",)
         )
 
+    def test_review_rejects_family_case_and_format_variants(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.REVIEW, "mechanical"),
+            candidates=(
+                candidate(
+                    "malformed-same-family-grader",
+                    model="same-family",
+                    family=" \tGPT_5.6\n",
+                    score=0.95,
+                ),
+            ),
+            policy=policy(),
+            generator_family="gpt-5.6",
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            plan.rejections[0].reason_codes, ("generator_family_conflict",)
+        )
+
+    def test_review_keeps_cross_family_grader_eligible_after_normalization(
+        self,
+    ) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.REVIEW, "mechanical"),
+            candidates=(
+                candidate(
+                    "independent-grader",
+                    model="independent",
+                    family=" \tClaude_4.6\n",
+                    score=0.95,
+                ),
+            ),
+            policy=policy(),
+            generator_family=" GPT-5.6 ",
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.endpoint_id, "independent-grader")
+
     def test_review_without_generator_family_abstains_closed(self) -> None:
         plan = plan_dispatch(
             session=session(),
