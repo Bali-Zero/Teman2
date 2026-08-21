@@ -52,6 +52,7 @@ from backend.services.visa_engine.enums import UnknownReason, VisaPurpose
 from backend.services.visa_engine.models import RulePack
 from backend.services.visa_engine.repository import VisaEngineRepository
 from backend.tests.services.visa_engine import _builders as builders
+from backend.tests.services.visa_engine.conftest import tables_exist
 from backend.tests.services.visa_engine.gold_harness import loader as gold_loader
 from backend.tests.services.visa_engine.test_repository import (
     _ENV,
@@ -516,6 +517,9 @@ class TestMaybeSpawnShadowMatch:
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
 _MIGRATION_252_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "252_visa_engine_write_substrate.sql"
 _MIGRATION_255_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "255_visa_shadow_evidence.sql"
+_MIGRATION_264_PATH = (
+    _BACKEND_DIR / "db" / "migrations_v2" / "264_visa_decision_retention_policy.sql"
+)
 
 
 def _read_migration_252() -> tuple[str, str]:
@@ -532,19 +536,105 @@ def _read_migration_255() -> tuple[str, str]:
     return forward, rollback
 
 
+def _read_migration_264() -> tuple[str, str]:
+    sql = _MIGRATION_264_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 264 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
 @pytest_asyncio.fixture
 async def shadow_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterator[None]:
+    """Layers migrations 252+255 on conftest.py's visa_schema.
+
+    264's rollback runs FIRST **in setup only** — the real forward-migration order in
+    reverse, which this fixture already followed for 255-before-252 and simply never
+    extended. Migration 264 landed long after 252/255 and puts TWO blockers in front of
+    252's rollback:
+
+      * ``visa_decision_legal_hold_events.decision_row_id`` is a foreign key back to
+        ``visa_decisions``, so 252's bare ``DROP TABLE public.visa_decisions`` fails
+        with ``DependentObjectsStillExistError``; and
+      * four MORE tables 264 adds (``visa_decision_retention_policies``,
+        ``visa_decision_retention_batches``, ``visa_idempotency_retention_batches``,
+        ``visa_decision_dsr_erasure_batches``) hang ``no_wipe``/``immutable`` triggers
+        off ``reject_visa_write_substrate_mutation()`` — the function 252's rollback
+        drops unconditionally at its end. Solving only the FK moves the failure to the
+        function drop rather than removing it; both were measured, in that order, on a
+        disposable full-head database before this fixture was touched.
+
+    252's rollback below stays a bare DROP with no CASCADE, deliberately: a CASCADE
+    would silently swallow the NEXT migration that FKs onto ``visa_decisions``, which is
+    the same silent tolerance that hid this one.
+
+    **Setup only, and this is load-bearing.** 264's rollback carries unconditional
+    ``CREATE TRIGGER visa_decisions_immutable`` / ``visa_decision_payloads_guard``
+    statements: it restores the 252-era triggers that 264's forward had replaced, so it
+    is only valid against a schema that is CURRENTLY 264-shaped. Going into teardown the
+    schema is 252+255-shaped — setup deliberately does not re-apply ``forward_264``
+    before ``yield`` (it would re-arm ``visa_decisions_retention_binding``, a BEFORE
+    INSERT trigger demanding an active row in ``visa_decision_retention_policies`` this
+    fixture never seeds, breaking every raw INSERT in this file) — and ``forward_252``
+    has just recreated ``visa_decisions_immutable``. Calling ``rollback_264`` there
+    raises ``DuplicateObjectError`` on EVERY run, aborting teardown before any of
+    ``rollback_255``/``rollback_252``/the forwards can run and leaving the shared clone
+    missing all five of 264's tables — the exact clone-poisoning this fixture exists to
+    stop. Measured on a bone-fresh full-head database; do not "symmetrise" the two
+    branches.
+
+    264's forward IS re-applied at the end of teardown, after this fixture's own forward
+    SQL has put ``visa_decisions`` back, so the worker's clone returns to true head shape
+    (252→255→264) for whichever file shares it next rather than inheriting a silent gap.
+
+    The 264 calls are existence-guarded on two DIFFERENT questions, because one predicate
+    cannot answer both. ``retention_present`` asks whether 264 is the active shape at all
+    (skip cleanly when it was never applied). ``rollback_264_runnable`` asks whether the
+    tables 264's own rollback touches unconditionally are present — 264's SQL is not
+    written to the "safe regardless of current state" standard 250-257 are, and Postgres
+    has no ``ALTER TABLE IF EXISTS ... DROP COLUMN IF EXISTS``, so an unconditional call
+    against a clone another file has disturbed raises ``UndefinedTableError``. When 264
+    IS active but its rollback cannot run, this fixture FAILS LOUDLY naming that state:
+    the tempting alternative — skipping the rollback — leaves the legal-hold FK in place
+    and hands the very next statement the original ``DependentObjectsStillExistError``,
+    i.e. silently reintroduces the bug this fixture exists to fix, under a different
+    cause. Measured: dropping the unrelated 262 table ``visa_evaluate_idempotency`` is
+    enough to trigger it.
+    """
     forward_252, rollback_252 = _read_migration_252()
     forward_255, rollback_255 = _read_migration_255()
+    forward_264, rollback_264 = _read_migration_264()
     async with db_pool.acquire() as conn:
+        retention_present = await tables_exist(conn, "visa_decision_legal_hold_events")
+        rollback_264_runnable = await tables_exist(
+            conn, "visa_decisions", "visa_decision_payloads", "visa_evaluate_idempotency"
+        )
+        if retention_present:
+            if not rollback_264_runnable:
+                raise RuntimeError(
+                    "migration 264 is applied on this database (visa_decision_legal_hold_events "
+                    "exists) but the tables its rollback edits unconditionally are not all "
+                    "present, so 264 cannot be rolled back and migration 252's DROP TABLE "
+                    "visa_decisions would fail on 264's foreign key. Some other test file tore "
+                    "part of 264 down without restoring it. Recreate this worker's clone from a "
+                    "full-head template."
+                )
+            await conn.execute(rollback_264)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
         await conn.execute(forward_252)
         await conn.execute(forward_255)
     yield
     async with db_pool.acquire() as conn:
+        # NO rollback_264 here — see the docstring. The schema is 252+255-shaped at this
+        # point and 264's rollback would collide with the triggers forward_252 recreated.
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
+        await conn.execute(forward_252)
+        await conn.execute(forward_255)
+        # Only visa_evaluate_idempotency's state is outside this fixture's control here —
+        # forward_252 just recreated the other two tables 264's forward needs.
+        if await tables_exist(conn, "visa_evaluate_idempotency"):
+            await conn.execute(forward_264)
 
 
 def _seed_gold_rule_pack_row(*, raw: dict, signature_seed: bytes) -> dict:

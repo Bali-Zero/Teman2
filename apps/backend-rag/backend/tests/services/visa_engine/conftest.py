@@ -424,6 +424,34 @@ ALTER TABLE IF EXISTS public.visa_decisions
 """
 
 
+async def tables_exist(conn: asyncpg.Connection, *table_names: str) -> bool:
+    """True iff every named table in the ``public`` schema currently exists.
+
+    Shared home for a guard three fixtures in this directory need, so the fourth
+    does not have to rediscover it. Migrations after 252 are NOT written to the
+    "safe regardless of current state" standard 250-257 are: several statements in
+    264 are bare ``ALTER TABLE`` / ``DROP TRIGGER ... ON <table>`` / ``CREATE
+    TRIGGER`` forms that require their target table to already exist (Postgres has
+    no ``ALTER TABLE IF EXISTS ... DROP COLUMN IF EXISTS``). On a shared xdist-worker
+    clone another file may have torn one of those tables down without restoring it,
+    so running such a rollback unconditionally raises ``UndefinedTableError`` instead
+    of being a no-op. Guard with this, and check only the tables that migration's own
+    SQL touches unconditionally.
+
+    ``test_shadow_evidence.py`` carries its own private copy of this predicate,
+    written first; it is deliberately left alone here (it is green and its xdist
+    interactions cannot be exercised outside a full ``visa_engine/`` run) rather than
+    refactored from under a working fixture.
+    """
+    return bool(
+        await conn.fetchval(
+            "SELECT bool_and(to_regclass('public.' || name) IS NOT NULL) "
+            "FROM unnest($1::text[]) AS name",
+            list(table_names),
+        )
+    )
+
+
 def _read_migration_250() -> tuple[str, str]:
     """Return (forward_sql, rollback_sql) for migration 250.
 
