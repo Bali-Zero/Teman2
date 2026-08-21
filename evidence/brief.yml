@@ -8,11 +8,15 @@ objective: |
   for the ordinary case, and it deadlocked the first real Gear-3 PR to follow it.
 
   Measured on #4543 (2026-08-21): a `workflow_dispatch` run creates its check-run in a DIFFERENT
-  CHECK SUITE from the `pull_request` event's. A PR's statusCheckRollup does not supersede across
-  suites, so the dispatch run went green (suite 88072653107, 14:01:20Z) while the PR kept the old
-  failure (suite 88070314010, 13:51:47Z) and stayed BLOCKED. There is no way out from there: a new
-  commit means a new head SHA, and the verdict is bound to the old one. `gh run rerun` on the
-  original pull_request run — same SHA, same suite, verdict now posted — took it to CLEAN.
+  CHECK SUITE from the `pull_request` event's, and that check-run does not enter the PR's
+  statusCheckRollup AT ALL — it is an ABSENT entry, not a superseded one. #4543's rollup holds
+  exactly ONE `Harness floor recompute` entry and it points at the pull_request run; the dispatch
+  run appears nowhere in it. So the dispatch went green (suite 88072653107, 14:01:20Z) while the PR
+  kept the old failure (suite 88070314010, 13:51:47Z) and stayed BLOCKED. The escapes from there
+  are all expensive — a new commit means a new head SHA and the verdict is bound to the old one;
+  close+reopen fires a fresh `pull_request` run on the unchanged SHA but costs the PR's state.
+  `gh run rerun` on the original pull_request run — same SHA, same suite, verdict now posted —
+  took it to CLEAN, and is the cheap one.
 
   This diff rewrites the corollary to name both cases and their conditions, and scopes the W111
   prohibition to what it actually protects (a stale merge-queue ref) instead of banning the
@@ -41,8 +45,8 @@ consumer_map:
 risks:
   - "The suite ids quoted are from one measured incident. They are evidence of the mechanism, not a
     constant; the note presents them as the #4543 measurement, not as values to expect again."
-  - "If GitHub ever makes the rollup supersede across suites, CASE A stops being necessary and this
-    note becomes conservative rather than wrong. Acceptable failure direction."
+  - "If GitHub ever makes a dispatch check-run enter the PR's rollup, CASE A stops being necessary
+    and this note becomes conservative rather than wrong. Acceptable failure direction."
 grader: independent-review-session (fresh context, not the author)
 budget: ~1 subagent, no council
 pii: none

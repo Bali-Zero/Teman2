@@ -99,9 +99,16 @@ name: Harness floor recompute
 #           88070314010 at 13:51:47Z, rollup FAILURE. `gh run rerun` on the pull_request run —
 #           same SHA, same suite, verdict now posted — took it to CLEAN.
 #     ESCAPE, if CASE A is unavailable: `gh run rerun` is refused on a run older than 30 days
-#           (expired). There, and only there, fall back to CASE B — or push a new commit and
-#           re-post the verdict on the new head SHA. That escape always exists; it is simply the
-#           expensive one, because the verdict is bound to the SHA it was posted on.
+#           (expired). Do NOT fall back to CASE B here — on an OPEN, BLOCKED PR a dispatch run is
+#           inert for exactly the reason above, so it cannot unblock anything. Two escapes do work,
+#           both costlier than CASE A: (a) close and reopen the PR — `pull_request:` below lists
+#           `reopened`, so this fires a fresh run in the PR's own suite on the UNCHANGED head SHA,
+#           leaving the SHA-bound verdict valid, at the cost of the PR's open state; (b) push a new
+#           commit and re-post the verdict on the new head SHA.
+#
+#     NOT COVERED by either case: a Gear-3 PR EJECTED FROM THE MERGE QUEUE with the verdict still
+#           pending. That is a `merge_group` run, where W111 holds in full and `mq requeue` is the
+#           instrument — see the W111 paragraph below.
 #
 #   CASE B — no `pull_request` run exists on this ref yet (a branch pushed with no PR open, or a
 #     manual re-check outside a PR). Use: gh workflow run harness-floor.yml --ref <branch>
@@ -119,9 +126,19 @@ name: Harness floor recompute
 # CASE A is safe FOR THIS JOB for a specific, checkable reason — not because pull_request reruns
 # are inherently safe. This workflow checks out
 #   ref: github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main'
-# i.e. a PINNED base SHA. It never checks out `refs/pull/N/merge`, so there is no moving ref for a
-# rerun to resolve differently. The only input that changed between attempts is the external
-# commit status, which is what we want re-read. A job that DOES check out a merge ref keeps W111
+# Read that per BRANCH, not as a whole: the branch a `pull_request` rerun takes is
+# `pull_request.base.sha`, a PINNED SHA. (The third branch, `'main'`, IS a moving ref — it is what
+# `workflow_dispatch` falls through to. That is CASE B's business, not CASE A's, but it means the
+# expression as a whole is not "pinned" and the transfer test below has to be applied to the branch
+# YOUR event takes.) On the CASE A path there is no moving ref for the rerun to resolve
+# differently, and the only input that changed between attempts is the external commit status,
+# which is what we want re-read.
+#
+# What a rerun does NOT do, and this is the honest limit: it replays the ORIGINAL EVENT PAYLOAD, so
+# the base checkout — and with it the versions of `evidence_pack_lint.py`, `harness_gate_read.py`
+# and the helper scripts this job actually executes — stays frozen at PR-event time. A CASE A rerun
+# will not pick up a base-side fix that landed on main since; only a new `pull_request` event will.
+# Pinning removes W111's stale-BASE hazard; it does not make the rerun current. A job that DOES check out a merge ref keeps W111
 # in full force, and `gh run rerun` on it is still forbidden — as it is on a merge_group run,
 # where the queue's own `mq requeue` is the instrument.
 #

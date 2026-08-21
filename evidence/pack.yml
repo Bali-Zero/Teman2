@@ -4,7 +4,7 @@ plan_ref:
   on #4543)"
 diff:
   behaviour_change: none
-  net_lines: "CODE +63/-3 (comments only, proven structurally); WHOLE DIFF +244/-253 (net -9); measured at merge-base 9def77f51..HEAD with `git diff --numstat 9def77f51..HEAD`, LAST, and iterated to a fixed point -- replacing one added line with another leaves the numstat unchanged."
+  net_lines: "CODE +80/-3 (comments only, proven structurally); WHOLE DIFF +303/-253 (net +50); measured at merge-base 9def77f51..HEAD with `git diff --numstat 9def77f51..HEAD`, LAST, iterated to a fixed point -- replacing one added line with another leaves the numstat unchanged."
 receipts:
   - claim:
       "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the
@@ -26,10 +26,13 @@ receipts:
       need, not filter=latest. filter=latest drops only attempts superseded WITHIN their own suite, so during
       the #4543 deadlock the default would have returned BOTH rows and there was no contradiction to hide"
     cmd:
-      "gh api repos/Bali-Zero/Teman2/commits/76edf60e29846e4e45b41842da7110aa64b55036/check-runs?filter=all
-      --jq [.check_runs[]|select(.conclusion==failure)]|length -> returned 30 of 55 rows, failures=0; the
-      identical URL with &per_page=100 -> returned 55, failures=1. Measured on this PR own head SHA,
-      2026-08-21. So filter=all WITHOUT per_page reports zero failures on a head that has one."
+      'gh api "repos/Bali-Zero/Teman2/commits/76edf60e29846e4e45b41842da7110aa64b55036/check-runs?filter=all"
+      --jq ''"total=\(.total_count) returned=\(.check_runs|length) failures=\([.check_runs[]|select(.conclusion=="failure")]|length)"''
+      -> total=55 returned=30 failures=0; the identical URL with &per_page=100 appended -> total=55
+      returned=55 failures=1. Run verbatim this session, both exit 0. The URL MUST be quoted (& is a
+      shell metacharacter) and "failure" MUST be quoted inside the jq filter, or jq answers
+      "function not defined: failure/0" — an earlier revision of this receipt recorded a command that
+      exited 127, which is the same defect dissent[2] raised against receipt 1.'
     exit: 0
     ts: "2026-08-21T16:26:04Z"
     seat: "session (m5)"
@@ -124,6 +127,41 @@ dissent:
       an output its own recorded command cannot produce (2 rows, not 3), and dissent[5] described a draft
       that dissent[0] had already caused to be reversed - both CONFIRMED, with no marker telling a reader
       which one describes the artifact that ships."
+    status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5, fresh context, round 3 on ea0801247, did not run round 2)"
+    objection:
+      "Round-2 condition 2 and 4 were applied to the WORKFLOW only and left standing in brief.yml, which
+      then contradicted its own acceptance criterion two blocks down. A condition is not satisfied by
+      editing the file the reviewer quoted - it is satisfied when the claim is gone from every artifact
+      that repeats it. Also: the ESCAPE paragraph added for condition 4 pointed the reader at CASE B,
+      which the same header proves is inert on an open BLOCKED PR - the fix introduced a contradiction
+      with the block above it."
+    status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5) - round 3, on the precision paragraph"
+    objection:
+      "The note quotes its own ref: expression and concludes i.e. a PINNED base SHA. The third branch is
+      'main', a MOVING ref, and it is the branch workflow_dispatch falls through to. A reader applying the
+      note's own transfer test to this very workflow gets the opposite answer. Separately, the paragraph
+      argues pinning away W111's hazard without stating the flip side: a rerun replays the ORIGINAL event
+      payload, so the base checkout - and the helper scripts the job executes - stay frozen at PR-event
+      time. Pinning removes the stale-BASE hazard; it does not make the rerun current."
+    status: CONFIRMED
+  - seat: "session (m5), verifying the two conditions the gate REASONED rather than executed"
+    objection:
+      "Two findings were derived from the file, not observed, so they were checked before being acted on
+      (W65). Both hold. The trigger list really is types: [opened, synchronize, reopened], so close+reopen
+      does fire a fresh pull_request run on the unchanged head SHA - a cheap escape the previous text
+      denied outright. And the ref: expression really does carry 'main' as its third branch. Neither was
+      taken on the refuter's word."
+    status: CONFIRMED
+  - seat: "session (m5), against its own round-2 repair"
+    objection:
+      "Receipt 2 was rewritten in round 2 to cure a non-reproducing command, and the replacement did not
+      run either: exit 127 unquoted (& is a shell metacharacter), and jq answers 'function not defined:
+      failure/0' when the literal is unquoted inside the filter. The same defect dissent[2] raised against
+      receipt 1, reproduced one receipt over, in the commit that claimed to fix it. The command now in the
+      file was extracted from the YAML and executed verbatim this session: exit 0, output identical to the
+      one recorded."
     status: CONFIRMED
 residual_risks:
   - "CLAUDE.md's Agent PR Contract rule 3 still reads unqualified at origin/main -- 'never use a bare
