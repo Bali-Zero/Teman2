@@ -52,7 +52,12 @@ jobs:
   declared-intent:
     name: zantara-core-edit-declared
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 10m floor (scripts/lint_workflow_timeout_floor.py, actionlint CI gate):
+    # `actions/checkout` on this repo intermittently takes ~2 minutes, and a
+    # job that runs out reports as `cancelled` not `failure` — a cancelled
+    # required check never turns green by itself and shows nothing red to
+    # fix. Size the budget by the checkout, not by this job's own script.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
