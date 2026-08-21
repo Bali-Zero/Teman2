@@ -144,7 +144,8 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **MCP servers**: see `.mcp.json` for inventory. Default browser MCP: `mcp__claude-in-chrome__*` (NEVER `mcp__playwright__*` unless ordered). Text-first: `get_page_text`/`find`/`javascript_tool` before screenshot.
 
-**Off-limits files** (top-level hard boundary): `zantara_core.py`, `fly.toml`, `.env*`, `alembic/env.py`.
+**Off-limits files** (top-level hard boundary): `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`.
+> Corrected 2026-08-21: this list said `alembic/env.py` — a **root-relative path that does not exist** in this repo, so for as long as the line has been read it has protected nothing. The only Alembic `env.py` in the tree belongs to **bali-intel-scraper**, not backend-rag. Do not read this as "migrations are unguarded": backend-rag's live migration surface is `apps/backend-rag/backend/db/migrations_v2/`, and it is gated server-side by `hot-zone-pr-gate.yml` and `auto-merge-whitelist.yml` — it never needed this list.
 
 **Codex sandbox**: `--sandbox read-only|workspace-write` only. NEVER `--dangerously-bypass`.
 
