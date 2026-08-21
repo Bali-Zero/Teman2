@@ -368,6 +368,59 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the public signed seq-11 RulePack payload, triple-derived at run "
         "time; exact value pinned, never a credential",
     ),
+    # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
+    # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
+    # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
+    # same value quoted verbatim in the run's own research report
+    # (research/operations/2026-08-20-kbli-navigator-p2b-benchmark.md
+    # frontmatter `sources:`) — a recomputable integrity anchor over a
+    # tracked, public test-corpus file, never a credential.
+    #
+    # Content-keyed to this one reviewed results file, not path-only:
+    # results/*.json can carry other future benchmark output with different
+    # fields, so a real credential landing on any other key or in any other
+    # results file stays unaudited. Line must be exactly
+    # `"corpus_sha256": "<64-hex>"`, end-anchored (optional trailing comma).
+    (
+        re.compile(r"^scripts/kbli_bench/results/p2b_score\.json$"),
+        re.compile(r'^\s*"corpus_sha256"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'),
+        "KBLI Navigator P2b benchmark score report: corpus_sha256 is the "
+        "content-derived sha256 of the frozen public benchmark corpus, "
+        "quoted verbatim in the run's own research report — an integrity "
+        "anchor, never a credential",
+    ),
+    # APPEND-ONLY from here: scripts/tests/test_detect_secrets_auto_triage.py
+    # indexes this list POSITIONALLY — inserting a rule mid-list shifts every
+    # later index and breaks the per-rule registration tests (measured the
+    # hard way 2026-08-21: 8 red from one mid-list insert).
+    #
+    # lint_google_oauth_credentials.py: KNOWN_COMPROMISED maps 16-hex
+    # truncated sha256 fingerprints of the published 2026-08-21 Google OAuth
+    # triple to human-readable notes, so a re-introduction is NAMED rather
+    # than merely flagged — same shape as the Telegram gate above. One-way
+    # hashes; the credential values are deliberately absent from the file.
+    # Content-keyed (superscar #3 — never blanket the file): the whole line
+    # must be `"<16 lowercase hex>": "<note ending in the exact publication
+    # marker>"`.
+    (
+        re.compile(r"^scripts/lint_google_oauth_credentials\.py$"),
+        re.compile(r'^\s*"[0-9a-f]{16}"\s*:\s*"[^"]*published in 9 scripts until 2026-08-21"\s*,?\s*$'),
+        "Google OAuth gate: KNOWN_COMPROMISED keys are one-way 16-hex sha256 "
+        "truncations of the published 2026-08-21 credential triple, held so a "
+        "re-introduction can be named rather than merely flagged — never key "
+        "material, and the values themselves are absent from the file by design",
+    ),
+    # Same file: the selftest's ref_body fixture is assembled from fragments
+    # precisely so no literal credential-shaped string sits in the guard's
+    # own source; the 64-char middle fragment trips the base64 entropy
+    # detector on its own. Synthetic by construction (prefix "0c" + a fixed
+    # alphabet run), exists only to prove the guard fires.
+    (
+        re.compile(r"^scripts/lint_google_oauth_credentials\.py$"),
+        re.compile(r'^\s*ref_body = "0c" \+ "[A-Za-z0-9_-]+"\s*$'),
+        "OAuth guard selftest fixture fragment — assembled at runtime to "
+        "prove the guard fires; synthetic by construction, never a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

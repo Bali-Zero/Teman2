@@ -1,11 +1,17 @@
 import asyncio
+import os
 import time
 
 import httpx
 
-OAUTH_CLIENT_ID = "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"
-OAUTH_CLIENT_SECRET = "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"
-OAUTH_REFRESH_TOKEN = "1//0gbiun0bBkNVCCgYIARAAGBASNwF-L9IrGvLMkg0QQ7fz0x98C1zyFqsCvzyijl7NjxUXoJ8K_-BAN8t-ZuQyT5uIv2iVJUPSiMA"
+# OAuth credentials from rclone gdrive remote (antonellosiano@gmail.com)
+# These can access folders owned by all team members.
+# IMPORTANT: set GOOGLE_OAUTH_CLIENT_ID_RCLONE, GOOGLE_OAUTH_CLIENT_SECRET_RCLONE,
+# and GOOGLE_OAUTH_REFRESH_TOKEN as env vars.
+# Rotate GOCSPX-*** on Google Cloud Console if previously committed in plaintext.
+OAUTH_CLIENT_ID = os.environ["GOOGLE_OAUTH_CLIENT_ID_RCLONE"]
+OAUTH_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET_RCLONE"]
+OAUTH_REFRESH_TOKEN = os.environ["GOOGLE_OAUTH_REFRESH_TOKEN"]
 
 _token = ""
 _token_expiry = 0

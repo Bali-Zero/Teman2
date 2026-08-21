@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: b69040a5ea206c3901e9a6b721d4fd173c57e98dcbed7fede7484e959c3a2ff6
+checksum: d9787a121668dd24691741efe3e4dc76ffddc7187e1d01a0dd18bc01641df529
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2543,5 +2543,24 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.visa_freshness_sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.llm_burn_alarm
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3600
+  owner_module: infra/launchagents/wrappers/pro-llm-burn-alarm.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.llm-burn-alarm
+  severity_on_silence: warning
+  notes: burn-rate alarm on llm_cost_events — trailing 24h vs 7-day median, names
+    endpoint+model (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.llm_burn_alarm.json
     timestamp_field: ts
     status_field: status

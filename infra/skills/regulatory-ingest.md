@@ -254,7 +254,7 @@ the chunker / embedder / BM25 vectorizer — they are tested and tuned).
 ```bash
 cd ~/nuzantara/apps/backend-rag
 source .venv/bin/activate
-DATABASE_URL="postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable" \
+DATABASE_URL="postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable" \
 PYTHONPATH=. python3 << 'EOF'
 import asyncio
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
@@ -310,7 +310,7 @@ runs KG extraction LOCALLY on Pro (which has 48GB RAM, no OOM concern).
 ```bash
 cd ~/nuzantara/apps/backend-rag
 source .venv/bin/activate
-DATABASE_URL="postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable" \
+DATABASE_URL="postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable" \
 OPENAI_API_KEY="<from .env>" \
 PYTHONPATH=. python3 scripts/kg_incremental_extraction.py --collection legal_unified_2026 --limit 200
 ```

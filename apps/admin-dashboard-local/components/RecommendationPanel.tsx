@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useCockpitSession } from "@/lib/cockpit-session-context";
 
 type Rec = {
   id: number;
@@ -15,41 +16,64 @@ type Rec = {
 };
 
 export default function RecommendationPanel() {
+  const { authorization, relock } = useCockpitSession();
   const [recs, setRecs] = useState<Rec[]>([]);
   const [busy, setBusy] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setErr(null);
     try {
-      const r = await fetch("/api/llm-costs/recommendations");
-      if (!r.ok) throw new Error(r.statusText);
+      const r = await fetch("/api/llm-costs/recommendations", {
+        headers: { authorization },
+        cache: "no-store",
+      });
+      if (r.status === 401) {
+        relock();
+        return;
+      }
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       setRecs(data.rows ?? []);
     } catch (e) {
       setErr(String(e));
     }
-  }
+  }, [authorization, relock]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
-  async function markReviewed(id: number) {
-    setBusy(id);
-    try {
-      await fetch("/api/llm-costs/recommendations", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, status: "reviewed" }),
-      });
-      await load();
-    } finally {
-      setBusy(null);
-    }
-  }
+  const markReviewed = useCallback(
+    async (id: number) => {
+      setBusy(id);
+      setErr(null);
+      try {
+        const response = await fetch("/api/llm-costs/recommendations", {
+          method: "PATCH",
+          headers: {
+            authorization,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ id, status: "reviewed" }),
+        });
+        if (response.status === 401) {
+          relock();
+          return;
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await load();
+      } catch (e) {
+        setErr(String(e));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [authorization, load, relock],
+  );
 
-  if (err) return <div className="text-red-400">Recommendations error: {err}</div>;
+  if (err)
+    return <div className="text-red-400">Recommendations error: {err}</div>;
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
@@ -71,7 +95,9 @@ export default function RecommendationPanel() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-mono text-slate-300">{r.endpoint}</span>
+                    <span className="font-mono text-slate-300">
+                      {r.endpoint}
+                    </span>
                     {r.spike_flag && (
                       <span className="rounded bg-red-900/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-red-300">
                         spike

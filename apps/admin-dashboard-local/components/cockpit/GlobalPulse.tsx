@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { WidgetFrame } from "./WidgetFrame";
 import { StatusDot } from "./StatusDot";
+import { useCockpitSession } from "@/lib/cockpit-session-context";
 
 interface Resp {
   statuses: any[];
@@ -14,6 +15,7 @@ interface Resp {
 }
 
 export function GlobalPulse() {
+  const { authorization, relock } = useCockpitSession();
   const [data, setData] = useState<Resp | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -21,7 +23,14 @@ export function GlobalPulse() {
     let cancel = false;
     async function fetchD() {
       try {
-        const r = await fetch("/api/cockpit/cron/list");
+        const r = await fetch("/api/cockpit/cron/list", {
+          headers: { authorization },
+          cache: "no-store",
+        });
+        if (r.status === 401) {
+          relock();
+          return;
+        }
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = await r.json();
         if (!cancel) {
@@ -38,7 +47,7 @@ export function GlobalPulse() {
       cancel = true;
       clearInterval(i);
     };
-  }, []);
+  }, [authorization, relock]);
 
   if (err) {
     return (

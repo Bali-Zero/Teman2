@@ -126,7 +126,6 @@ def _decline_response(codes: list[str], *, submit_by_date: date | None = None) -
         submit_by_date=submit_by_date,
         price_idr=850_000,
         price_source="B1 Visa on Arrival Extension",
-        result_url="/visa/voa/voa1234567890ab",
     )
 
 

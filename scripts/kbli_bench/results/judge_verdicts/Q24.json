@@ -1,0 +1,20 @@
+{
+  "qid": "Q24",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Abstains correctly, but invents an unsupported Rp100 billion requirement and KBLI 64993 scope absent from all supplied records."
+    },
+    {
+      "run": 2,
+      "verdict": "fabricated",
+      "reason": "Abstains on the general floor, but asserts an unsupported Rp100 billion clearing-house requirement and KBLI 64993 citation."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly declines to choose either figure and makes no specific unsupported regulatory assertion."
+    }
+  ]
+}

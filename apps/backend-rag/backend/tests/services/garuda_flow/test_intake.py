@@ -290,6 +290,26 @@ class TestReasonCompleteness:
         assert verdict.decision is Decision.DECLINE
         assert len(verdict.decline_reasons) >= 2
 
+    def test_business_group_keeps_parallel_duplicate_audit_entries(self) -> None:
+        verdict = build_verdict(
+            _issuance(purpose=Purpose.BUSINESS_MEETING, travellers=2),
+            today=_TODAY,
+        )
+
+        assert verdict.decline_codes == [
+            "PURPOSE_NOT_ELIGIBLE",
+            "GROUP_CASE",
+            "GROUP_CASE",
+            "PURPOSE_NOT_ELIGIBLE",
+        ]
+        assert verdict.decline_reasons == [
+            "not a simple-tourism case",
+            "not a single adult traveler",
+            "family/group case (excluded from pilot)",
+            "work/business purpose (B1 does not permit work)",
+        ]
+        assert len(verdict.decline_codes) == len(verdict.decline_reasons)
+
 
 class TestClientFacingBoundary:
     """Spec §6 charter: only D-7 may ever reach a visitor."""

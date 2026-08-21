@@ -397,27 +397,50 @@ def load_env_master_key(var_name: str, path: str = "~/.openclaw/workspace/.env.m
 
 def http_post_json(
     url: str, headers: dict, body: dict, timeout: float, secret_values: list[str]
-) -> tuple[Optional[int], str]:
-    """POST JSON, return (status_code_or_None, evidence_text). Never raises past this
-    boundary, and the Authorization/x-api-key header value never appears in the
-    returned evidence even on error (scar #4 — errors are the #1 leak vector)."""
+) -> tuple[Optional[int], str, str]:
+    """POST JSON, return (status_code_or_None, full_body, evidence_tail). Never raises
+    past this boundary, and the Authorization/x-api-key header value never appears in
+    either returned string even on error (scar #4 — errors are the #1 leak vector).
+
+    full_body: the ENTIRE response/error text, scrubbed but NOT truncated. A
+    positive-proof marker (e.g. glm's `"model"` field) can sit near the START of a
+    long JSON body and fall outside a tail window — a live-check that inspects only
+    evidence_tail can misclassify a genuinely LIVE seat as dead (worst direction for
+    a dispatch panel: it silently diverts work away from an available seat instead of
+    failing loud). Callers whose positive-proof check needs to find a marker
+    ANYWHERE in the body must inspect full_body, never the tail alone (see
+    probe_glm — found live on M5 2026-08-21, a real HTTP 200 with `"model"` early in
+    the body was misread UNKNOWN_ERR by a tail-only check).
+
+    evidence_tail: the same text truncated to the tail (errors live at the tail — see
+    evidence_tail()'s own docstring) — kept for compact logging/display; existing
+    callers that only need a short diagnostic string are unaffected."""
+
+    def _scrub_and_split(raw: str) -> tuple[str, str]:
+        full = scrub((raw or "").strip().replace("\n", " "), secret_values)
+        return full, full[-160:]
+
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
-            return resp.status, evidence_tail(raw, secret_values)
+            full, tail = _scrub_and_split(raw)
+            return resp.status, full, tail
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
-        return e.code, evidence_tail(raw, secret_values)
+        full, tail = _scrub_and_split(raw)
+        return e.code, full, tail
     except urllib.error.URLError as e:
         # str(e.reason) could theoretically echo a header on some transports; scrub
         # unconditionally rather than trust the transport not to leak (defense-in-depth).
-        return None, evidence_tail(f"{type(e).__name__}: {e.reason}", secret_values)
+        full, tail = _scrub_and_split(f"{type(e).__name__}: {e.reason}")
+        return None, full, tail
     except TimeoutError:
-        return None, "timed out"
+        return None, "timed out", "timed out"
     except Exception as e:  # a probe must never crash the whole run
-        return None, evidence_tail(f"{type(e).__name__}: {e}", secret_values)
+        full, tail = _scrub_and_split(f"{type(e).__name__}: {e}")
+        return None, full, tail
 
 
 # ---------------------------------------------------------------- per-seat probes
@@ -500,13 +523,17 @@ def probe_glm(timeout: float) -> tuple[str, str, int]:
         "Content-Type": "application/json",
     }
     body = {"model": "glm-5.2", "max_tokens": 8, "messages": [{"role": "user", "content": PONG_PROMPT}]}
-    status_code, ev = http_post_json(
+    status_code, full_body, ev = http_post_json(
         "https://api.z.ai/api/anthropic/v1/messages", headers, body, timeout, [token]
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
     if status_code is None:
         return TIMEOUT if "timed out" in ev else UNKNOWN_ERR, ev, latency_ms
-    live = status_code == 200 and '"model"' in ev
+    # live-check runs on full_body (untruncated), never on the tail alone — see
+    # http_post_json's docstring: the "model" field can sit before the last 160
+    # chars of a long body, and a tail-only check misreads a genuinely LIVE seat
+    # as dead (worst direction for a dispatch panel).
+    live = status_code == 200 and '"model"' in full_body
     status = classify_generic(f"HTTP {status_code} {ev}", live, "glm", is_ssh_context())
     return status, f"HTTP {status_code} {ev}", latency_ms
 

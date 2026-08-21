@@ -40,8 +40,15 @@ not N workflows), single-file fixes, anything already owned by a live sibling la
 ## 1. The contract (non-negotiable)
 
 1. **Opus 5 orchestrates, Sonnet builds, externals grade.** (Fable is out of the workflow, RULED
-   2026-08-20.) `agent()` lanes default to the session model; pass `model:"sonnet"` for
-   implementer lanes, `model:"haiku"` for grunt.
+   2026-08-20.) **PIN `model:` ON EVERY `agent()` CALL — never let a lane inherit the session
+   model.** An `agent()` without `model:` runs on whatever the session happens to be, which is
+   how a fan-out silently violates the ruling above: measured 2026-08-21, eight research lanes
+   with no `model:` all inherited Fable from an interactive session and died together on its
+   limit 25 s in, having produced nothing. The doctrine existed; the DEFAULT did the opposite,
+   and a default that contradicts the rule is the rule that wins. `model:"sonnet"` for
+   implementer AND research lanes, `model:"haiku"` for grunt, `model:"opus"` only where the lane
+   genuinely needs the orchestrator tier. The Gear-3 final on-disk gate is untouched by this
+   rule — it is never an `agent()` lane.
 2. **generator≠grader, always.** No lane grades its own output; a grader gets FRESH
    context and never sees the generator's answer before deriving its own (D5 pattern).
 3. **Cross-family beats same-family** (W100: same-lane agreement certified 7 false-clean
@@ -103,6 +110,13 @@ New patterns (compose with §3):
 - **Agent-Teams adversarial pair**: flag already armed fleet-wide — two peer sessions with
   SendMessage for iterative propose/critique rounds; cheaper than council when the shape is a
   dialogue, not a panel.
+- **`notify_when_idle` on SendMessage** (CLI ≥2.1.236): ask to be notified when the addressed
+  lane goes idle — REPLACES `ListAgents` polling between parallel lanes on the same machine.
+  Polling a lane's status burns turns and misses the transition; the idle notification is
+  push, not pull. Caveat measured 2026-08-20: an idle notification is NOT a deliverable — a
+  lane can go idle without having sent its report (happened twice in one session), so on idle
+  with no content in hand, the next move is one SendMessage demanding the report, never
+  assuming the work is done.
 - **Triage-first research**: the bundled native `/deep-research` workflow answers easy
   questions free; reserve the multi-LLM sweep for regulatory/client-facing/hard ones.
 

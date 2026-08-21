@@ -76,7 +76,7 @@ def _is_autonomous_lab_enabled() -> bool:
 
 
 def _is_garuda_flow_enabled() -> bool:
-    """Condition for the public GARUDA VOA request funnel."""
+    """Condition for the owner-only GARUDA archive support router."""
     from backend.app.core.config import settings
 
     return settings.garuda_flow_enabled
@@ -211,12 +211,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
-    # ── GARUDA VOA (public request funnel, Slice A) ──
+    # ── GARUDA VOA (owner-only historical archive; preview is stateless) ──
     RouterEntry(
         name="garuda_voa",
         process_groups=_API,
         condition=_is_garuda_flow_enabled,
-        tags=("visa", "funnel", "garuda"),
+        tags=("visa", "internal", "garuda"),
     ),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
