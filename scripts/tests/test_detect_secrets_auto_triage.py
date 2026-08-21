@@ -225,8 +225,15 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # it, and explain why it's not a credential, right here. Do NOT delete
     # this assert to "fix" a failure; see the structural property check
     # below for what a fix should actually add.
-    assert len(CONTENT_KEYED_RULES) == 13, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 13. "
+    #
+    # 2026-08-21: this branch (#4498) independently added the p2b_score.json
+    # rule, but #4422 landed it on main first via a different path — same
+    # rule, registered once, not twice. The count below (15) and the comment
+    # trail are derived from the live registry post-merge, not summed by
+    # hand (team-lead's call: a rule appears once in the trail regardless of
+    # how many PRs tried to add it).
+    assert len(CONTENT_KEYED_RULES) == 15, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 15. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -236,12 +243,13 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
+    # +1: scripts/kbli_bench/results/p2b_score.json corpus_sha256 (2026-08-21, #4422 via main merge)
+    # +2: scripts/lint_google_oauth_credentials.py KNOWN_COMPROMISED fingerprints + selftest fragment (2026-08-21, appended last — this list is positionally indexed)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
     # +1: traffic-source fail-closed proof identity/integrity anchors (2026-08-15)
     # +1: fold_pack_seq10.py seq-9 chain anchor exact-value pin (2026-08-19)
     # +1: fold_pack_seq11.py seq-10 chain anchor exact-value pin (2026-08-20)
     # +1: fold_pack_seq12.py seq-11 chain anchor exact-value pin (2026-08-20)
-    # +1: scripts/kbli_bench/results/p2b_score.json corpus_sha256 integrity anchor (2026-08-21, PR #4422)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -1236,3 +1244,31 @@ def test_innocence_fold_seq12_keyed_assignment_not_approved() -> None:
     _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[11]
     keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ12_ANCHOR}",'
     assert content_pat.match(keyed_line) is None
+
+
+GOOGLE_OAUTH_LINT = "scripts/lint_google_oauth_credentials.py"
+
+
+def test_google_oauth_known_compromised_rule_registered() -> None:
+    """Appended-last rule (this list is positionally indexed): approves only
+    the 16-hex dict-key lines carrying the exact 2026-08-21 publication
+    marker, only in the OAuth guard's own file."""
+    path_pat, content_pat, reason = CONTENT_KEYED_RULES[13]
+    assert path_pat.search(GOOGLE_OAUTH_LINT)
+    assert not path_pat.search("scripts/lint_telegram_tokens.py")
+    assert "never key material" in reason
+    good = '    "83f24d5051c7f127": "GOCSPX client secret published in 9 scripts until 2026-08-21",'
+    assert content_pat.match(good)
+    # Same hex-key shape without the publication marker stays flagged.
+    other = '    "83f24d5051c7f127": "some unrelated note",'
+    assert content_pat.match(other) is None
+
+
+def test_google_oauth_selftest_fragment_rule_registered() -> None:
+    path_pat, content_pat, _reason = CONTENT_KEYED_RULES[14]
+    assert path_pat.search(GOOGLE_OAUTH_LINT)
+    frag = '    ref_body = "0c" + "defghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcd"'
+    assert content_pat.match(frag)
+    # A bare 64-char assignment without the ref_body assembly shape stays flagged.
+    bare = '    token = "defghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcd"'
+    assert content_pat.match(bare) is None
