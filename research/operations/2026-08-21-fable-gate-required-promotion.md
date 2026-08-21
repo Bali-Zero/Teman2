@@ -31,8 +31,12 @@ required status check:
 - **(b) Fork-PR write permission** — a fork PR's read-only `GITHUB_TOKEN` breaks the workflow's own
   `gh api` WRITE calls, harmlessly today, as a hard block once required.
 
-The deliverable is the design and the workflow/script changes that make the promotion safe — **not**
-the branch-protection flip itself, which is explicitly reserved for the operator (§Solo-operatore).
+The deliverable is the design and the workflow/script changes that make the promotion safe. It is
+**not** a branch-protection flip — and, as §Solo-operatore works out, no flip is needed: the context
+this design makes load-bearing (`Harness floor recompute`) was already required before this task
+started. An earlier draft of this paragraph said the flip was "reserved for the operator"; that is
+corrected here, because a reader who acts on it goes looking for an operator action that does not
+exist — or, worse, adds `harness/fable-gate` literally and resurrects blocker (a).
 
 ## Premise check — both blockers verified live, neither had decayed
 
@@ -372,13 +376,24 @@ repository.
 
 ## §Solo-operatore
 
-Exactly one GUI action is left, and it is a branch-protection change, which is why this design does
-not perform it:
+**No action is left — not a GUI one, not a session one.** Re-measured live on 2026-08-21
+(`gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks'`): 27
+required contexts, `Harness floor recompute` among them (`app_id 15368`, GitHub Actions),
+`harness/fable-gate` NOT among them, `strict: false`. Both halves of that measurement carry weight:
 
-> Add **`Harness floor recompute`** to `main`'s required status checks
-> (`gh api repos/Bali-Zero/Teman2/branches/main/protection` → `required_status_checks.checks[]`, or
-> `scripts/ci/setup_merge_queue_ruleset.sh`/the Settings UI). It is **already** required today
-> (present in `infra/required.d/contexts.json`'s live snapshot) — nothing changes here.
+> **The context this design makes load-bearing — `Harness floor recompute` — is already required**,
+> and was before this task began: it is in `main`'s `required_status_checks.checks[]` and in the
+> repo's tracked snapshot `infra/required.d/contexts.json`. There is nothing to add.
+>
+> Were it ever to go missing, there are exactly **two** ways back: `gh api -X PATCH
+> repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks` supplying the FULL
+> contexts array (PATCH on that sub-resource replaces the list, it does not append), or the
+> Settings UI. **Not** `scripts/ci/setup_merge_queue_ruleset.sh`, which an earlier version of this
+> line named as a third path: that script's `canonical_body()` PUTs a single rule, `type:
+> "merge_queue"` (grouping/batching parameters), to the *rulesets* API — a different surface, with
+> no required-status-check field anywhere in its payload. **Nor** `scripts/ci/snapshot_required_contexts.py`,
+> which is read-only by its own docstring: it regenerates the advisory local snapshot and has no
+> write path back to GitHub, so it tells you WHAT the list should contain and cannot restore it.
 >
 > The actual net-new operator action, if the intent is specifically to require the
 > `harness/fable-gate` *name* rather than rely on it flowing through the job: **there is none** — this
@@ -396,9 +411,9 @@ not perform it:
 > real gate session decided this." This task's mandate scoped to two named blockers (the synthetic-SHA
 > relay and the fork-PR write permission); provenance/attestation was never in scope and this diff
 > does not attempt it. **The severity of leaving it open has gone UP, not stayed flat**: before this
-> PR, `harness/fable-gate` was not required at all, so a forged status was inert; after this PR (once
-> the operator flips the required-check flag), a forged status becomes load-bearing for merge-blocking
-> on every Gear-3 PR. A future session designing a fix should look at restricting the accepted source
+> PR, `harness/fable-gate` was not required at all, so a forged status was inert; after this PR it
+> becomes load-bearing for merge-blocking on every Gear-3 PR — **immediately, with no further flip**,
+> because the job that now reads it was already required. A future session designing a fix should look at restricting the accepted source
 > of that status (a dedicated GitHub App/bot identity) or a signing scheme — this doc does not
 > prescribe which, that is exactly the kind of design decision this task was scoped to make for the
 > other two gaps, not this one.
@@ -412,7 +427,7 @@ not perform it:
   stay unchanged"), and renaming it would be pure required-check churn for zero benefit.
 - Did not add `pull_request_target` anywhere — evaluated and rejected above; unneeded once nothing
   writes.
-- Did not flip branch protection — reserved for the operator per §Solo-operatore.
+- Did not change branch protection — no change was needed; see §Solo-operatore for the live measurement.
 - Did not consolidate the duplicated hot-zone pattern list between `evidence_pack_lint.py` and
   `hot-zone-pr-gate.yml`'s bash case-block — pre-existing, declared, out of scope for this task.
 - Did not poll-and-wait inside the workflow for a verdict to appear (an alternative to the
@@ -436,7 +451,7 @@ not perform it:
    A THIRD, more severe premise was found mid-task and is not one of the two named in the mandate:
    the workflow's own Step 4/7b tree-presence check (F1) would have made the new enforcement apply
    to every PR in the repo, not just Gear-3 ones — fixed, see the disposition table above.
-3. **Branch protection**: not touched — see §Solo-operatore.
+3. **Branch protection**: not touched, and no change needed — see §Solo-operatore.
 4. **Guilt + innocence tests**: `scripts/tests/test_harness_gate_read.py` (37/37 passing, including
    `main()` integration coverage and an AST-based write-verb proof hardened against a live
    counterexample) + `scripts/tests/test_harness_floor_brief_diff_membership.sh` (4/4, pinning the
