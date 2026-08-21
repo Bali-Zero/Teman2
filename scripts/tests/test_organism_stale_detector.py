@@ -38,7 +38,10 @@ def _write(d, name, payload):
 def test_fresh_organ_not_flagged(tmp_path):
     d = str(tmp_path)
     _write(d, "pro.fresh_organ", {"ts": time.time(), "status": "ok"})
-    findings = scan_sidecars(d, stale_days=7)
+    # host pinned to Pro: without it this reads as innocent on any non-Pro host
+    # because the organ is dropped as foreign BEFORE the freshness logic runs —
+    # the assertion would then be satisfied by jurisdiction, not by freshness.
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
     assert findings == [], f"fresh organ wrongly flagged: {findings}"
 
 
@@ -171,7 +174,9 @@ def test_innocence_m5_arsenal_probe_stamp_not_flagged_stale(tmp_path):
     d = str(tmp_path)
     old = time.time() - 9 * 86400
     _write(d, "m5.arsenal_probe", {"ts": old, "status": "ok"})
-    findings = scan_sidecars(d, stale_days=7)
+    # host pinned to M5, or jurisdiction drops the organ first and this passes
+    # even with the arsenal_probe exemption block deleted outright.
+    findings = scan_sidecars(d, stale_days=7, host="air-m5")
     assert findings == [], f"m5 arsenal_probe stamp wrongly flagged stale: {findings}"
 
 
@@ -253,7 +258,9 @@ def test_fresh_ok_organ_not_flagged_unhealthy(tmp_path):
     """INNOCENCE: a fresh organ reporting ok is not an unhealthy finding."""
     d = str(tmp_path)
     _write(d, "pro.something", {"ts": time.time(), "status": "ok"})
-    findings = scan_sidecars_status(d, now=time.time())
+    # host pinned: otherwise the organ is foreign and never reaches the
+    # status check this test exists to exercise.
+    findings = scan_sidecars_status(d, now=time.time(), host="nuzantara")
     assert [f for f in findings if f.kind == "unhealthy"] == []
 
 
@@ -267,7 +274,10 @@ def test_known_benign_failed_suppressed(tmp_path):
     d = str(tmp_path)
     for organ in ("codex.spark_loop", "wr2.telegram_gate", "pro.audit_launchd_daily"):
         _write(d, organ, {"ts": time.time(), "status": "failed"})
-    findings = scan_sidecars_status(d, now=time.time())
+    # host pinned to Pro for the third fixture: unpinned, pro.audit_launchd_daily
+    # is dropped as foreign before the allow-list is consulted, so removing it
+    # from KNOWN_BENIGN_FAILED would not be caught here.
+    findings = scan_sidecars_status(d, now=time.time(), host="nuzantara")
     flagged = {f.organ_id for f in findings if f.kind == "unhealthy"}
     assert flagged == set(), f"benign organs wrongly flagged: {flagged}"
 
@@ -315,7 +325,9 @@ def test_ollama_pro_program_path_collision_suppressed(tmp_path):
         "infra.ollama_pro",
         {"ts": time.time(), "status": "failed", "last_error": "daemon not running"},
     )
-    findings = scan_sidecars_status(d, now=time.time())
+    # host pinned: `infra.` maps to Pro, so unpinned this suppression test is
+    # satisfied by jurisdiction on every other host.
+    findings = scan_sidecars_status(d, now=time.time(), host="nuzantara")
     flagged = {f.organ_id for f in findings if f.kind == "unhealthy"}
     assert "infra.ollama_pro" not in flagged, f"ollama false-positive not suppressed: {flagged}"
 
@@ -804,4 +816,132 @@ def test_this_corpus_has_a_named_executor_in_ci():
     assert f"'{subject}'" in src and f'- "{subject}"' in src, (
         "the code under test is missing from one of the two filters — a PR "
         "touching only the detector would skip its own corpus"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-22, round 2 — an independent refuter chose the mutations this time.
+# The author choosing his own mutants is the wrong person choosing them: the
+# first round killed 12 of 12, and a refuter with fresh context then found three
+# survivors in ten minutes. All three are pinned below.
+# ---------------------------------------------------------------------------
+
+
+def test_refused_is_not_silent(tmp_path):
+    """GUILT: `status="refused"` must produce a finding.
+
+    Found by grepping the fleet for the vocabulary organs actually write — the
+    same method that found `warning`, applied once more instead of assumed done.
+    Two REGISTERED organs emit it from 8 call sites (wa-codex-broker /
+    wa-codex-seat-probe wrappers) and in every one it means the organ refused to
+    START and then exited 78. Neither vocabulary held it, so the loudest thing an
+    organ can say produced silence.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "pro.wa_codex_broker", {"ts": time.time(), "status": "refused",
+                                      "note": "env file missing"})
+    (finding,) = scan_sidecars_status(d, now=time.time(), host="nuzantara")
+    assert finding.kind == "unhealthy", (
+        "a refusal to start is not 'not working this tick' — it is not working "
+        f"until a human changes something; got kind={finding.kind!r}"
+    )
+    assert "env file missing" in finding.detail
+
+
+def test_warn_short_form_is_recognised(tmp_path):
+    """GUILT: the short form must be in the vocabulary too.
+
+    No fixture anywhere used `warn`, so dropping it from WARNING_STATUSES
+    survived every test. Live blast radius is zero today only because
+    scripts/lib/heartbeat.sh normalises warn -> warning before the JSON reaches
+    disk — a normaliser upstream is not a reason for the reader to be deaf, it is
+    one more thing that can change without this reader noticing.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "some_organ", {"ts": time.time(), "status": "warn", "note": "short form"})
+    (finding,) = scan_sidecars_status(d, now=time.time(), host="air-m5")
+    assert finding.kind == "warning"
+    assert "short form" in finding.detail
+
+
+def test_note_falls_back_to_last_error(tmp_path):
+    """GUILT: `last_error` is half of `_sidecar_note`'s contract and was untested.
+
+    Deleting the `or src.get("last_error")` clause passed every test in round 1.
+    Both keys are honoured, at both nesting levels, and `note` wins within a
+    level — assert all four corners, not just the one the happy path uses.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "flat_err", {"ts": time.time(), "status": "failed", "last_error": "flat-err"})
+    _write(d, "nested_err", {"ts": time.time(), "status": "failed",
+                             "metadata": {"last_error": "nested-err"}})
+    _write(d, "note_beats_err", {"ts": time.time(), "status": "failed",
+                                 "note": "the-note", "last_error": "the-error"})
+    got = {f.organ_id: f.detail for f in scan_sidecars_status(d, now=time.time(), host="air-m5")}
+    assert "flat-err" in got["flat_err"], got
+    assert "nested-err" in got["nested_err"], got
+    assert "the-note" in got["note_beats_err"] and "the-error" not in got["note_beats_err"], got
+
+
+def test_proprioception_findings_list_actually_splits_severity(tmp_path):
+    """BEHAVIOURAL pin on the mechanism this PR's severity split depends on.
+
+    The sibling test above only regexes proprioception.py's SOURCE TEXT for
+    `verdict_key`/`ok_values`. That proves the declaration is present, not that
+    it does anything — and the refuter found the mutation that exploits the
+    difference: flipping `not in` to `in` in run_wrap's findings_list branch
+    inverts the whole mechanism (warnings become the DIVERGED ones; stale,
+    dead_channel, corrupt and unhealthy silently RECONCILE — real P1s suppressed
+    on the organism's own heartbeat guardian). Every test in the repo stayed
+    green, because nothing anywhere called that branch.
+
+    This calls it, through the REAL DEFAULT_REGISTRY entry — only its `target` is
+    swapped for a stub that prints the findings — so the assertion is against the
+    verdict_key/ok_values that actually ship, not a copy.
+    """
+    import importlib.util
+    import json as _json
+
+    spec = importlib.util.spec_from_file_location(
+        "proprioception_under_test",
+        os.path.join(os.path.dirname(__file__), "..", "proprioception.py"),
+    )
+    prop = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(prop)
+
+    entry = next(e for e in prop.DEFAULT_REGISTRY if e["id"] == "organs_heartbeat")
+
+    def verdict_for(findings):
+        stub = tmp_path / "stub_findings.py"
+        stub.write_text(f"print({_json.dumps(_json.dumps(findings))})\n")
+        probe = dict(entry, target=["python3", str(stub)])
+        return prop.run_wrap(tmp_path, probe, 30)
+
+    warn_only = [{"organ_id": "o", "kind": "warning", "age_days": 0.0,
+                  "status": "warning", "detail": "d"}]
+    status, count, _ = verdict_for(warn_only)
+    assert status == prop.RECONCILED and count == 0, (
+        f"a warning-only report must not be a P1 divergence, got {status}/{count}"
+    )
+
+    for bad_kind in ("stale", "dead_channel", "corrupt", "unhealthy"):
+        payload = [{"organ_id": "o", "kind": bad_kind, "age_days": 9.0,
+                    "status": "?", "detail": "d"}]
+        status, count, _ = verdict_for(payload)
+        assert status == prop.DIVERGED and count == 1, (
+            f"kind={bad_kind} must still DIVERGE — suppressing it is a real P1 "
+            f"going silent; got {status}/{count}"
+        )
+
+    mixed = warn_only + [{"organ_id": "p", "kind": "stale", "age_days": 9.0,
+                          "status": "ok", "detail": "d"}]
+    status, count, _ = verdict_for(mixed)
+    assert status == prop.DIVERGED and count == 1, (
+        f"a warning must not inflate the divergence count beside a real one, got {count}"
     )

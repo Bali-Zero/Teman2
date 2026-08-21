@@ -80,11 +80,36 @@ receipts:
     exit: 0
     ts: "2026-08-21T16:37:00Z"
     seat: session (m5) -> pro, mini
+  - claim: 'the refuter''s three claimed survivors are real: R1 (proprioception not in -> in), R2 (_sidecar_note drops last_error), R3 (WARNING loses "warn") all passed 45/45 before the fix; two OTHER mutations I tried (UNHEALTHY loses "error", note[:120] -> note[:0]) were already killed'
+    cmd: "scratchpad copy + per-mutation count==1 anchor assertion + pytest, PYTHONDONTWRITEBYTECODE=1"
+    exit: 0
+    ts: "2026-08-21T16:52:00Z"
+    seat: session (m5)
+  - claim: "status=refused is written from 8 call sites by two organs registered in organs_registry.yaml, and is in NEITHER vocabulary"
+    cmd: 'git grep -n ''heartbeat "refused"'' origin/main -- infra/launchagents/ ; grep -n ''UNHEALTHY_STATUSES: frozenset|WARNING_STATUSES: frozenset'' scripts/organism_stale_detector.py ; git show origin/main:apps/organism/organism/organs_registry.yaml | grep -n wa_codex'
+    exit: 0
+    ts: "2026-08-21T16:50:00Z"
+    seat: session (m5)
+  - claim: "blast radius of the refused blind spot is ZERO today — neither organ is loaded on Pro: no plist, no launchctl label, no sidecar. It would bite on the day either is armed"
+    cmd: "ssh pro 'launchctl list | grep -i wa.codex ; ls ~/Library/LaunchAgents/ | grep -i wa.codex ; cat ~/.organism/last_seen/pro.wa_codex_*.json'"
+    exit: 0
+    ts: "2026-08-21T16:50:00Z"
+    seat: session (m5) -> pro
+  - claim: "after the cure, 8/8 mutants killed — the refuter's three, the refused removal, and three that could only be killed AFTER the jurisdiction pins (deleting the arsenal_probe exemption; removing either benign-allow-list entry), which is the proof the tautologies are gone"
+    cmd: "scratchpad copy mut4 + 8 anchored mutations + pytest each, PYTHONDONTWRITEBYTECODE=1"
+    exit: 0
+    ts: "2026-08-21T16:58:00Z"
+    seat: session (m5)
+  - claim: "49 tests green under all four hostnames (air-m5, nuzantara, mini-pro2, fv-az1234-567) and ruff clean"
+    cmd: "socket.gethostname monkeypatch per hostname + pytest ; ruff check"
+    exit: 0
+    ts: "2026-08-21T16:59:00Z"
+    seat: session (m5)
 dissent:
   - seat: "github-actions (organ-conformance, first armed run)"
     objection: "The corpus this PR calls a strength is machine-dependent: test_innocence_unrelated_organ_named_like_arsenal_probe_prefix_still_flags omitted host=, inherited socket.gethostname(), and asserted the anchored-regex behaviour ONLY on M5 — on Pro, Mini and every runner its m5.-prefixed fixture is skipped as foreign-jurisdiction before the regex is consulted, so `len(findings) == 1` failed against an empty list. Green on exactly one machine in the fleet since 2026-08-07."
     status: CONFIRMED
-    resolution: "Reproduced locally under four hostnames (green on air-m5, red on nuzantara, mini-pro2, fv-az1234-567). Pinned host='air-m5', matching what its own sibling test already does. Re-verified green under all four; removing the pin goes red again. The other 10 host-less calls are named in the brief's risks and deliberately left — pinning them is not mechanical."
+    resolution: "Reproduced locally under four hostnames (green on air-m5, red on nuzantara, mini-pro2, fv-az1234-567). Pinned host='air-m5', matching what its own sibling test already does. Re-verified green under all four; removing the pin goes red again. The remaining host-less calls were then swept too — see the refuter dissent below, which supplied the per-site verdict that made the sweep well-specified rather than blanket."
   - seat: "self-mutation round 1 (M7)"
     objection: 'Reverting the report''s grouping predicate to `kind != "unhealthy"` left all tests passing, so the corpus did not actually pin the grouping. That mutation makes a `warning` organ render ALSO under ''not breathing'' as `stale -1.0d` — a breathing organ described as mute, carrying an invented negative age.'
     status: CONFIRMED
@@ -93,6 +118,10 @@ dissent:
     objection: "Framing the lane around DEFAULT_STALE_DAYS is wrong twice over: --stale-days is declared but passed by no live caller, and the per-organ cadence this PR calls missing is already declared for 169 organs in organs_registry.yaml — a registry the detector never opens. The audit of 2026-07-19 recorded it as a known unimplemented gap, not a discovery."
     status: CONFIRMED
     resolution: "Re-measured independently rather than taken on trust (169 organs; zero registry references in the detector; the 900s vs 604800s factor of 672). The threshold is deliberately NOT touched here — wiring a cadence source is a behaviour change for 169 organs and gets its own lane. Both facts are recorded in the PR body so the 'seen and left alone' ledger is complete."
+  - seat: "independent refuter subagent (fresh context, immutable snapshot at b91e16e34)"
+    objection: 'Three mutations survive ALL of this PR''s tests, and four of the corpus''s older tests are tautological on a CI runner. (1) proprioception.py''s findings_list branch has ZERO behavioural coverage anywhere in the repo: flipping `not in` to `in` inverts the severity split — warnings become the DIVERGED ones while stale/dead_channel/corrupt/unhealthy silently RECONCILE, real P1s suppressed on the organism''s own heartbeat guardian — and every test stays green, because the new pin only regexes proprioception''s SOURCE TEXT. (2) `_sidecar_note`''s `last_error` fallback is untested; deleting it survives. (3) `warn` is in WARNING_STATUSES but no fixture uses it; removing it survives. Separately: `status="refused"`, written from 8 call sites by two REGISTERED organs (wa-codex-broker, wa-codex-seat-probe) and meaning the organ refused to START before exiting 78, is in NEITHER vocabulary — the same blind spot as `warning`, on a louder word, and squarely in scope since this PR''s own method is to grep the fleet for the vocabulary organs actually write.'
+    status: CONFIRMED
+    resolution: "All four re-measured here rather than taken on trust, and all four cured. `refused` added to UNHEALTHY (not WARNING: a refusal to start is not 'not working this tick'). Three new tests kill the three survivors, the proprioception one BEHAVIOURALLY — it calls run_wrap through the real DEFAULT_REGISTRY entry with only its target swapped for a stub, so it pins the shipping verdict_key/ok_values and not a copy. The 5 tautological sites were pinned to the jurisdiction each scenario means (Pro for pro./infra. fixtures, M5 for the arsenal_probe exemption), never a blanket host=. Re-mutation: 8/8 killed, including three that could only be killed after the pins (deleting the arsenal_probe exemption outright, and removing either benign-allow-list entry) because jurisdiction used to drop the fixture before the logic under test ran. Suite green under all four hostnames at 49 tests."
   - seat: "session (m5), self-refutation of its own first report to the operator"
     objection: "I told the operator the detector might not act on the status field at all, and that the 7-day threshold was the hole. Both were wrong: scan_sidecars_status produces real unhealthy findings, and the freshness axis fires on 1 sidecar out of 183 fleet-wide — it is nearly dead, not the live gap."
     status: RETRACTED

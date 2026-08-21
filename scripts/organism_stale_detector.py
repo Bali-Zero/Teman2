@@ -167,7 +167,23 @@ def sync_cross_host_sidecars(
             continue
 
 # Statuses that mean "the organ is breathing but reporting trouble".
-UNHEALTHY_STATUSES: frozenset[str] = frozenset({"failed", "fail", "degraded", "error"})
+#
+# `refused` added 2026-08-22 by the same method that found `warning` below —
+# grep the fleet for the vocabulary organs actually WRITE, rather than trusting
+# the set. Two registered organs emit it from 8 call sites:
+# `wa-codex-broker-wrapper.sh` (:51,:56,:76,:80) and
+# `wa-codex-seat-probe-wrapper.sh` (:58,:92,:97,:101). In both it means the organ
+# REFUSED TO START — env file missing, env placeholders unfilled, venv python
+# missing, cd failed — and each is followed by `exit 78`, launchd's "do not
+# restart me". That is the loudest thing an organ can say, and this reader was
+# deaf to it. UNHEALTHY and not WARNING deliberately: a refusal to start is not
+# "not working this tick", it is not working until a human changes something.
+# Blast radius today is zero (neither organ is currently loaded on Pro — no
+# plist, no launchctl label, no sidecar), which is exactly why it is cheap to fix
+# now instead of the day one of them is armed and says nothing.
+UNHEALTHY_STATUSES: frozenset[str] = frozenset(
+    {"failed", "fail", "degraded", "error", "refused"}
+)
 
 # Statuses that mean "breathing, doing its job's paperwork, but NOT doing its job
 # this tick". Added 2026-08-22: three organs write `warning` on every fleet node
