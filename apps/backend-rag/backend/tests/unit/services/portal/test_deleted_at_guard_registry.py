@@ -147,6 +147,20 @@ def _has_deleted_at_guard(method_node: ast.AST) -> bool:
     current call site uses it — all four mixin files import it directly
     (`from backend.services.portal._document_visibility import
     document_visibility_clause`), never via a module-qualified attribute.
+
+    DECLARED LIMIT (2026-08-21): this is still a SYNTACTIC criterion, not a
+    dataflow one — it checks that the call is PRESENT in the method's own
+    body, not that its return value actually reaches the executed SQL. A
+    method that calls `document_visibility_clause()` and then discards or
+    ignores the result (assigns it to an unused local, passes it to
+    something that never runs, etc.) would still be counted as guarded here.
+    No call site does that today (confirmed by hand for every reader of
+    this file at pin time), but this function cannot prove it and does not
+    try to — the SAME class of gap the helper-call fix above closed for the
+    inline-literal detector (a signal that CORRELATES with the guard,
+    mistaken for the guard itself). Closing this one would mean tracing the
+    call's return value through the f-string construction — worth doing if
+    a future refactor makes the call-but-ignore shape plausible, not before.
     """
     for sub in _iter_own_body(method_node):
         if isinstance(sub, ast.Constant) and isinstance(sub.value, str):

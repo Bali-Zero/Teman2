@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d9787a121668dd24691741efe3e4dc76ffddc7187e1d01a0dd18bc01641df529
+checksum: 777b7925ba3ee804cf9814836a6ebcc0cc48bfe804868a9f08e69c48de237dc0
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2562,5 +2562,23 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.llm_burn_alarm.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.vercel_autopromote
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/mini-vercel-autopromote.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.vercel-autopromote
+  severity_on_silence: warning
+  notes: 'promote the READY-but-STAGED Vercel production build so a merge reaches balizero.com without a human (born via organ_birth.py, genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.vercel_autopromote.json
     timestamp_field: ts
     status_field: status

@@ -870,6 +870,16 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.llm-burn-alarm.plist",
       "repo": "infra/launchagents/com.nuzantara.llm-burn-alarm.plist",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/mini-vercel-autopromote.sh",
+      "repo": "infra/launchagents/wrappers/mini-vercel-autopromote.sh",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.vercel-autopromote.plist",
+      "repo": "infra/launchagents/com.nuzantara.vercel-autopromote.plist",
+      "machines": ["mini"]
     }
   ],
   "allow": [

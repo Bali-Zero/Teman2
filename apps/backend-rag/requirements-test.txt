@@ -18,6 +18,12 @@ pytest
 pytest-cov
 pytest-asyncio
 fakeredis
+# pytest-xdist re-added 2026-08-21 (world-practice import map §1.3): the
+# `backend-tests` job runs unit tests with `-n auto --dist loadfile`, made
+# safe by per-worker Postgres isolation in backend/tests/conftest.py's
+# `pytest_configure` — see that function's docstring and
+# backend/tests/db/test_xdist_worker_isolation.py.
+pytest-xdist
 # DO NOT add `fastmcp` here. An earlier draft of this file did, because the
 # sync-checker below originally scanned ALL of tests.yml and picked it up from
 # the separate `mcp-tests` job. It does not belong to backend-rag: it lives in

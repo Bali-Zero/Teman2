@@ -34,6 +34,9 @@ _MIGRATION_256_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "256_visa_traffic_
 _MIGRATION_257_PATH = (
     _BACKEND_DIR / "db" / "migrations_v2" / "257_visa_request_category_extension.sql"
 )
+_MIGRATION_264_PATH = (
+    _BACKEND_DIR / "db" / "migrations_v2" / "264_visa_decision_retention_policy.sql"
+)
 
 
 def _green_fixture() -> tuple[list[dict[str, object]], RulePack, uuid.UUID]:
@@ -130,6 +133,24 @@ def _read_migration(path: Path, number: int) -> tuple[str, str]:
     return forward, rollback
 
 
+async def _tables_exist(conn: asyncpg.Connection, *table_names: str) -> bool:
+    """True iff every named table in the ``public`` schema currently exists.
+
+    Used to guard migration 264's rollback/forward against a shared
+    xdist-worker clone where another test file may have already torn one
+    of these tables down without restoring it — see the docstring on
+    ``shadow_evidence_schema`` for why 264's own SQL cannot tolerate that
+    the way 252/255/256/257's SQL can.
+    """
+    return bool(
+        await conn.fetchval(
+            "SELECT bool_and(to_regclass('public.' || name) IS NOT NULL) "
+            "FROM unnest($1::text[]) AS name",
+            list(table_names),
+        )
+    )
+
+
 @pytest_asyncio.fixture
 async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterator[None]:
     """Layers migrations 252+255+256+257 on conftest.py's visa_schema.
@@ -142,12 +163,97 @@ async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> As
     last also makes setup crash-robust: a previous run that died mid-test
     can leave new-category rows behind, and the 256/255 column drops +
     252's table drop clear them before 257's rollback is ever attempted.
+
+    264's rollback runs FIRST, before all of the above, for a different
+    reason: migration 264 (applied long after 252/255/256/257 — landed
+    2026-08-09) adds ``visa_decision_legal_hold_events`` with a foreign key
+    back to ``visa_decisions``, plus a second, easy-to-miss blocker —
+    THREE more standalone tables it adds (``visa_decision_retention_policies``,
+    ``visa_decision_retention_batches``, ``visa_idempotency_retention_batches``,
+    ``visa_decision_dsr_erasure_batches``) share the SAME ``no_wipe`` trigger
+    function, ``reject_visa_write_substrate_mutation()``, that migration
+    252's own rollback drops unconditionally at its end — so as long as ANY
+    of those four tables (not just ``visa_decision_legal_hold_events``)
+    still exists, 252's rollback fails on the function drop even after the
+    FK problem is solved. 252's rollback below is a bare ``DROP TABLE
+    visa_decisions`` with no CASCADE — deliberately, so this fixture stays
+    intolerant of any *future* migration that adds another FK onto
+    ``visa_decisions`` (a broader CASCADE would silently tolerate that too,
+    which is the same silent-tolerance that hid this exact bug — see the
+    historical note below). Running 264's rollback first removes both
+    blockers before 252 ever touches the table, exactly mirroring the real
+    forward-migration order in reverse.
+
+    264's forward is deliberately NOT re-applied before ``yield``: doing so
+    would re-arm ``visa_decisions_retention_binding``, a BEFORE INSERT
+    trigger that requires an active, matching row in
+    ``visa_decision_retention_policies`` — which this fixture never seeds —
+    so every raw ``INSERT INTO visa_decisions`` in this file (see
+    ``_insert_unavailable_audit_row``, which does not set any 264 column)
+    would start failing with "decision has no active Zero-approved
+    retention policy". It IS re-applied in teardown, after this fixture's
+    own rollback, alongside forward_252/255/256/257 — restoring the
+    worker's clone to the real full-head shape (252→255→256→257→264, the
+    true application order) for whichever test file shares this xdist
+    worker's clone next, rather than leaving migration 264 permanently
+    forgotten for that file to rediscover.
+
+    Both the setup call and the teardown call are existence-guarded, NOT
+    run unconditionally like rollback_256/255/252/257 above — because 264's
+    own rollback/forward SQL is not written to the same "safe regardless of
+    current state" standard 252-257 are: several of its statements are bare
+    ``ALTER TABLE``/``DROP TRIGGER ... ON <table>``/``CREATE TRIGGER`` forms
+    that require ``visa_decisions``, ``visa_decision_payloads``, and
+    ``visa_evaluate_idempotency`` to already exist (Postgres has no
+    "ALTER TABLE IF EXISTS ... DROP COLUMN IF EXISTS" form that tolerates a
+    missing table). Running it unconditionally was tried first and found
+    unsafe on a shared xdist-worker clone: three OTHER files under this
+    directory (see below) manipulate migration 264's objects via raw SQL
+    without always restoring them, and when one of them ran first in the
+    same worker and left one of those three tables torn down, the
+    unconditional call failed with ``UndefinedTableError`` on whichever
+    table was missing — caught only by forcing the whole ``visa_engine/``
+    directory onto one xdist worker locally (``-n 1 --dist loadfile``),
+    never by running this file alone. The guard is deliberately narrow: it
+    checks ONLY the tables 264's own SQL touches unconditionally, not every
+    table any of the three other files might have disturbed — a fully
+    bulletproof fix would mean auditing those three files' own migration-264
+    handling, which is out of scope here (see below).
+
+    Historical note for whoever finds this fixture green before 2026-08-21
+    and red after: it was never really green. Before the per-xdist-worker
+    Postgres clone (see conftest.py), every test file shared ONE database
+    for the whole serial run, and some other file's fixture tore down
+    migration 264's tables via raw SQL earlier in the run and never
+    restored them — so by the time this fixture's rollback_252 ran, the FK
+    was already gone by accident. Cloning a fresh, fully-migrated database
+    per worker (`python -m backend.db.migrate apply-all` runs before any
+    worker clones, so every clone starts at full head) removed that
+    accidental masking and exposed the real gap: this fixture never learned
+    about migration 264. **The isolation change did not break this test —
+    it stopped this test from being rescued by another test's leftover
+    damage.** Corroborating evidence for "the pollution is real, not
+    CI-specific": a local `nuzantara_test` database on this machine carries
+    migration 264 in `_schema_versions` (executed_at recorded) while the
+    physical `visa_decision_legal_hold_events` table is absent — the same
+    out-of-band, ledger-diverging teardown happened here too, at some
+    point, from ordinary local test runs. Files that touch
+    `visa_decision_legal_hold_events` via raw SQL without restoring it (not
+    fixed here — a separate question, left for whoever picks this up
+    next): ``test_write_substrate.py``, ``test_evaluate_endpoint.py``,
+    ``test_privacy_operations.py`` (all under
+    ``backend/tests/services/visa_engine/``).
     """
     forward_252, rollback_252 = _read_migration(_MIGRATION_252_PATH, 252)
     forward_255, rollback_255 = _read_migration(_MIGRATION_255_PATH, 255)
     forward_256, rollback_256 = _read_migration(_MIGRATION_256_PATH, 256)
     forward_257, rollback_257 = _read_migration(_MIGRATION_257_PATH, 257)
+    forward_264, rollback_264 = _read_migration(_MIGRATION_264_PATH, 264)
     async with db_pool.acquire() as conn:
+        if await _tables_exist(
+            conn, "visa_decisions", "visa_decision_payloads", "visa_evaluate_idempotency"
+        ):
+            await conn.execute(rollback_264)
         await conn.execute(rollback_256)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
@@ -162,6 +268,17 @@ async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> As
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
         await conn.execute(rollback_257)
+        await conn.execute(forward_252)
+        await conn.execute(forward_255)
+        await conn.execute(forward_256)
+        await conn.execute(forward_257)
+        # visa_decisions/visa_decision_payloads are guaranteed to exist here
+        # (forward_252 above just (re)created them) — only
+        # visa_evaluate_idempotency's prior state is outside this fixture's
+        # control, so it is the only one worth re-checking before 264's
+        # forward touches it.
+        if await _tables_exist(conn, "visa_evaluate_idempotency"):
+            await conn.execute(forward_264)
 
 
 async def _insert_unavailable_audit_row(
@@ -808,6 +925,19 @@ def test_migration_256_keeps_migrations_v2_prefixes_unique() -> None:
     _assert_unique_migration_numbers(sql_files)
     prefixes = [path.name.split("_", 1)[0] for path in sql_files]
     assert prefixes.count("256") == 1
+
+
+def test_migration_264_carries_rollback_marker() -> None:
+    forward, rollback = _read_migration(_MIGRATION_264_PATH, 264)
+    assert "visa_decision_legal_hold_events" in forward
+    assert "visa_decision_legal_hold_events" in rollback
+
+
+def test_migration_264_keeps_migrations_v2_prefixes_unique() -> None:
+    sql_files = sorted(_MIGRATION_264_PATH.parent.glob("*.sql"))
+    _assert_unique_migration_numbers(sql_files)
+    prefixes = [path.name.split("_", 1)[0] for path in sql_files]
+    assert prefixes.count("264") == 1
 
 
 # ---------------------------------------------------------------------------
