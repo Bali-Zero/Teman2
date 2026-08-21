@@ -40,10 +40,14 @@ see because it only asks "does a decision exist", never "how was the decision ea
      baseline bloat that makes the live entries harder to see.
 
 A first version of --strict gated on the finding's own `type` (Private Key / Telegram
-Bot Token / JSON Web Token / Basic Auth Credentials). Measured against this repo's real
-baseline that produced 110 "high-signal" hits, almost all placeholder DSNs in test
-fixtures and `.env.example` files (`postgres://test:test@...`, `postgres://user:***@
-host/db` documentation strings) — the OAuth-9 finding itself was NOT among them, because
+Bot Token / JSON Web Token / Basic Auth Credentials — that last type-name is itself an
+earlier self-catch: an example DSN written out in full here once tripped this file's own
+scan, the same class of finding this paragraph is discussing). Measured against this
+repo's real baseline that produced 110 "high-signal" hits, almost all placeholder
+database connection strings in test fixtures and `.env.example` files — a literal
+`user:pass` pair behind a `postgres` scheme and colon-slash-slash prefix, `test`/`test`
+or `user`/masked, pointing at a documentation-only `host/db` — the OAuth-9 finding
+itself was NOT among them, because
 detect-secrets classified it as generic entropy noise, not as any of those types. A gate
 built on `type` alone would have been both too noisy to trust (family #3 lesson: a guard
 nobody trusts gets disabled) AND blind to the one incident that motivated this script.
