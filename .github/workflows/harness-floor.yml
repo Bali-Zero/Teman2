@@ -255,6 +255,29 @@ jobs:
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
         run: |
           set -u
+          # Bootstrap-window exemption (same pattern as evidence_pack_lint.py
+          # and harness_gate_read.py elsewhere in this file — CAUGHT LIVE on
+          # this PR's own first CI run after round 2 landed: Step 1 checks
+          # out the BASE ref, which lacks this script until this very PR
+          # merges, so an unguarded call here dies on a raw "command not
+          # found" (bash exit 127), failing THIS PR's own required check on
+          # a script THIS PR itself introduces). The fallback does NOT
+          # degrade to tree-presence-only (that would silently reopen F1 for
+          # any OTHER PR whose base checkout also predates this merge) — it
+          # inlines the exact same two-condition check the external script
+          # performs, so the diff-membership guarantee holds through the
+          # bootstrap window too, not just after it.
+          if [[ ! -f scripts/ci/tracked_file_present_in_diff.sh ]]; then
+            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run) — inlining its check for THIS run only"
+            if git cat-file -e "${HEAD_SHA}:evidence/brief.yml" 2>/dev/null && grep -qxF "evidence/brief.yml" /tmp/changed-files.txt; then
+              echo "present=true" >> "$GITHUB_OUTPUT"
+              git show "${HEAD_SHA}:evidence/brief.yml" > /tmp/brief.yml
+            else
+              echo "present=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::evidence/brief.yml is not present-and-diff-touched at HEAD (bootstrap-window inline check) — not a harness-gated task (pending the floor check below)"
+            fi
+            exit 0
+          fi
           git fetch --no-tags --depth=200 origin "$HEAD_SHA" >/dev/null 2>&1 || true
           if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
             echo "::error::HEAD commit ${HEAD_SHA} could not be resolved after fetch — failing closed (cannot verify whether evidence/brief.yml exists, this is NOT the same as 'no brief')"
@@ -451,22 +474,38 @@ jobs:
             exit 0
           fi
           mkdir -p /tmp/evidence-check/evidence
-          RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/pack.yml /tmp/changed-files.txt)"
-          case "$RESULT" in
-            present) : ;; # falls through to validation below
-            absent)
+          # Same bootstrap-window exemption as Step 4, and same reason it
+          # inlines rather than degrades to tree-presence-only (CAUGHT LIVE
+          # alongside Step 4's identical defect on this PR's own first CI
+          # run — this call site needed the exact same fix).
+          if [[ ! -f scripts/ci/tracked_file_present_in_diff.sh ]]; then
+            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run) — inlining its check for THIS run only"
+            if ! git cat-file -e "${HEAD_SHA}:evidence/pack.yml" 2>/dev/null; then
               echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
               exit 1
-              ;;
-            inherited)
+            fi
+            if ! grep -qxF "evidence/pack.yml" /tmp/changed-files.txt; then
               echo "::error::gear 3 declared in evidence/brief.yml (authored by this diff) but evidence/pack.yml was NOT touched by this diff — a Gear-3 PR must author BOTH files together in the same diff, never validate a pack.yml inherited from a prior PR"
               exit 1
-              ;;
-            *)
-              echo "::error::tracked_file_present_in_diff.sh returned an unrecognized value: '$RESULT' — failing closed"
-              exit 1
-              ;;
-          esac
+            fi
+          else
+            RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/pack.yml /tmp/changed-files.txt)"
+            case "$RESULT" in
+              present) : ;; # falls through to validation below
+              absent)
+                echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
+                exit 1
+                ;;
+              inherited)
+                echo "::error::gear 3 declared in evidence/brief.yml (authored by this diff) but evidence/pack.yml was NOT touched by this diff — a Gear-3 PR must author BOTH files together in the same diff, never validate a pack.yml inherited from a prior PR"
+                exit 1
+                ;;
+              *)
+                echo "::error::tracked_file_present_in_diff.sh returned an unrecognized value: '$RESULT' — failing closed"
+                exit 1
+                ;;
+            esac
+          fi
           git show "$HEAD_SHA:evidence/pack.yml" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
           EXTRA_ARGS=()

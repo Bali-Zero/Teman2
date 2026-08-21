@@ -252,6 +252,20 @@ exists in `harness_gate_read.py`'s `resolve_real_head_sha` / `read_fable_gate_st
 chain. It also reproduced F1 independently against a real merged PR (`#4535` inheriting `gear: 3`
 from `origin/main`'s `evidence/brief.yml`).
 
+**Self-caught on this PR's own live CI run after the G1-G3 fixes landed** (PROVE-LIVE, not a third
+review round): `Harness floor recompute` — passing before round 2 — turned red on the very push that
+fixed G1-G3. Step 1 checks out the BASE ref by design (anti `pull_request_target` trap), so it lacks
+`scripts/ci/tracked_file_present_in_diff.sh` until this PR itself merges — the exact bootstrap-window
+class F6/the sibling guards already exist to catch, reproduced on the ONE call site (two, actually:
+Steps 4 and 7b) that round 2 introduced without the matching guard. Confirmed via the real CI log
+(`bash: ... No such file or directory`, exit 127) before touching anything — never assumed from the
+symptom. Fixed with the same `[[ ! -f ... ]]` NOTICE+skip pattern used by the three sibling steps, but
+the fallback does **not** degrade to tree-presence-only (that would silently reopen F1 for the
+bootstrap window itself) — it inlines the exact same two-condition check the external script performs,
+verified against both the guilt and innocence cases directly (a standalone extraction of the inlined
+bash, run against fixture repos, confirmed: inherited-untouched → `present=false`, self-authored →
+`present=true`).
+
 ## Adversarial review
 
 Two review rounds ran against this diff before this section existed (detailed above, with full
