@@ -216,6 +216,29 @@ class ChangeMapTests(unittest.TestCase):
         self.assertEqual(result["suggested_jobs"], [])
         self.assertEqual(result["would_skip"], list(cm.TEST_JOBS))
 
+    def test_guilt_one_code_file_among_fifty_docs_still_forces_its_suite(
+        self,
+    ) -> None:
+        # Pins the L5 docs-lane mandate's own literal guilt case
+        # (research/operations/2026-08-21-token-ceremony-ci-system-audit.md
+        # §7 row L5, §13.5): "a PR whose diff is 100% documentation" must
+        # get the fast path (test_innocence_docs_only_skips_product_test_jobs
+        # above), but the instant even ONE file in a large docs-heavy diff
+        # is code, the fast path must not fire — test_guilt_mixed_domains_
+        # union_their_jobs below already proves the 2-file union case; this
+        # is the mandate's own 50:1 ratio, kept as its own case so a future
+        # change to that test's file count can't silently stop covering the
+        # docs-lane's actual acceptance bar.
+        docs_paths = [f"docs/runbooks/note-{i}.md" for i in range(50)]
+        result = cm.classify(
+            [*docs_paths, "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["docs_content_data"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+        self.assertNotEqual(result["suggested_jobs"], [])
+
     def test_guilt_each_live_suite_has_a_domain_route(self) -> None:
         cases = {
             "apps/nuzantara-mcp/server.py": "mcp-tests",
