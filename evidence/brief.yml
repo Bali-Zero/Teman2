@@ -18,9 +18,12 @@ objective: |
   `gh run rerun` on the original pull_request run — same SHA, same suite, verdict now posted —
   took it to CLEAN, and is the cheap one.
 
-  This diff rewrites the corollary to name both cases and their conditions, and scopes the W111
-  prohibition to what it actually protects (a stale merge-queue ref) instead of banning the
-  instrument that works.
+  This diff rewrites the corollary to name both cases and their conditions, and states the W111
+  prohibition precisely instead of banning the instrument that works. CORRECTED after round 2: an
+  earlier draft of this sentence said W111 protects "a stale merge-queue ref". It does not. W111's
+  own incident was #3463 replayed against refs/pull/3463/merge -- a PULL-REQUEST merge ref -- so
+  "reruns are only dangerous on merge_group" is FALSE, and the shipped header says so in terms.
+  What scopes CASE A is not the event type but THIS workflow's pinned pull_request.base.sha.
 constraints:
   - "Comment text only. No behaviour change: the job, its steps, triggers and permissions must
     remain byte-identical to origin/main."

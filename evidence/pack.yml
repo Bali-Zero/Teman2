@@ -4,7 +4,7 @@ plan_ref:
   on #4543)"
 diff:
   behaviour_change: none
-  net_lines: "CODE +81/-3 (comments only, proven structurally); WHOLE DIFF +331/-253 (net +78); measured at merge-base 9def77f51..HEAD with `git diff --numstat 9def77f51..HEAD`, LAST, iterated to a fixed point."
+  net_lines: "CODE +81/-3 (comments only, proven structurally); WHOLE DIFF +364/-261 (net +103); measured at merge-base 9def77f51..head d3e3dea43+1 with `git diff --numstat`, LAST, iterated to a fixed point."
 receipts:
   - claim:
       "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the
@@ -19,7 +19,7 @@ receipts:
       returns only the first TWO rows -- re-measured 2026-08-21, which is how an earlier version of this
       receipt came to record an output its own command could not produce.'
     exit: 0
-    ts: "2026-08-21T16:26:04Z"
+    ts: "2026-08-21T21:02:06Z"
     seat: "session (m5)"
   - claim:
       "CORRECTED, and the correction REVERSES this receipt's original claim: PAGINATION hides the row you
@@ -34,31 +34,31 @@ receipts:
       "function not defined: failure/0" — an earlier revision of this receipt recorded a command that
       exited 127, which is the same defect dissent[2] raised against receipt 1.'
     exit: 0
-    ts: "2026-08-21T16:26:04Z"
+    ts: "2026-08-21T21:02:07Z"
     seat: "session (m5)"
   - claim:
       gh run rerun on the ORIGINAL pull_request run cleared the rollup; mergeStateStatus BLOCKED ->
       CLEAN
     cmd: gh run rerun 32489011695; gh pr view 4543 --json mergeStateStatus -> CLEAN
     exit: 0
-    ts: "2026-08-21T16:26:04Z"
+    ts: "2026-08-21T14:06:41Z"
     seat: "session (m5)"
   - claim: The documented flow was actually followed first, and did not work — this is not a hypothetical
     cmd:
       gh workflow run harness-floor.yml --ref agent/air-m5/ops/gate-header-truth -> run 32489857553 workflow_dispatch
       success on 33f12fb4a, PR still BLOCKED
     exit: 0
-    ts: "2026-08-21T16:26:04Z"
+    ts: "2026-08-21T14:00:37Z"
     seat: "session (m5)"
   - claim: "No behaviour change: the workflow's non-comment body is byte-identical to origin/main"
     cmd: git show origin/main:<wf> | grep -v '^\s*#' > a; grep -v '^\s*#' <wf> > b; diff -q a b
     exit: 0
-    ts: "2026-08-21T16:26:04Z"
+    ts: "2026-08-21T21:02:08Z"
     seat: "session (m5)"
   - claim: actionlint passes on the rewritten workflow
     cmd: actionlint .github/workflows/harness-floor.yml
     exit: 0
-    ts: "2026-08-21T16:26:04Z"
+    ts: "2026-08-21T21:02:08Z"
     seat: "session (m5)"
 dissent:
   - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author)"
@@ -181,6 +181,28 @@ dissent:
       and the runbook quoted the ref: expression with '|| main' truncated. Fixed in #4558, not here: those
       are code and sibling-doc surfaces, and folding them in would cost this PR its comment-only proof."
     status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5, fresh context, round 5 on d3e3dea43, did not run earlier rounds)"
+    objection:
+      "Three more instances of the one disease this pack names four times -- a value written once and never
+      re-read. (a) brief.yml's objective still said the diff 'scopes the W111 prohibition to what it
+      actually protects (a stale merge-queue ref)', which is the draft dissent[0] reversed in round 2 and
+      the opposite of what the shipped header says; unchanged since the first commit, it survived four
+      rounds. (b) All six receipt ts fields were frozen at one instant 33s before the branch's first
+      commit, while receipt[1] had been rewritten twice since and its own text claimed 'run verbatim this
+      session'. (c) size_tokens said 1300, correct at the first commit and never re-read while the pack
+      grew to 15079 bytes -- 3769 by the linter's own bytes/4 metric, 2.9x off. The linter checks ts for
+      non-emptiness only and never reads size_tokens at all, so green lint was not evidence for any of
+      the three."
+    status: CONFIRMED
+  - seat: "session (m5), on the shape of its own repair"
+    objection:
+      "Fixing the timestamps, this session first wrote four stamps with invented second-level precision --
+      fabricating exactly the kind of measured-looking value the finding is about. Caught before commit:
+      the four receipts were RE-EXECUTED and stamped with the instants actually captured at run time
+      (21:02:06-08Z), and the two incident receipts carry the real event times read from the run API
+      (14:06:41Z attempt-2 start, 14:00:37Z dispatch creation) rather than a session time they never
+      happened at. size_tokens is now iterated to a fixed point like net_lines."
+    status: CONFIRMED
 residual_risks:
   - "CLOSED, and the previous revision shipped this line already stale. It read: CLAUDE.md's Agent PR
     Contract rule 3 still reads unqualified at origin/main, named follow-up a CLAUDE.md PR carrying the
@@ -212,4 +234,4 @@ runtime_proof:
   - None claimed. Nothing in this diff executes; the consumer-map records that both consumers are unchanged,
     so merged == live.
 pii_scan: clean
-size_tokens: 1300
+size_tokens: 4215
