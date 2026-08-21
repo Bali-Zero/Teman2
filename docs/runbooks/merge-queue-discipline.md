@@ -343,7 +343,7 @@ DIFFERENT CHECK SUITE from the `pull_request` event's, and it does not enter the
 `statusCheckRollup` **at all** — it is an absent entry, not a superseded one. Measured on #4543:
 the rollup holds exactly ONE `Harness floor recompute` entry and it points at the `pull_request`
 run; the dispatch run appears nowhere in it. So the dispatch goes green while the PR stays BLOCKED.
-This cost two sessions the same detour (#4543, #4549).
+This deadlocked #4543. (#4549 hit the same PENDING red but was cured by a rerun without ever taking the dispatch path — measured: 9 `pull_request` runs on its branch, **zero** `workflow_dispatch`. It is a second confirmation of the REMEDY, not of the deadlock.)
 
 **Use `gh run rerun <the original pull_request run id>`.** Find it with:
 
@@ -357,10 +357,20 @@ SHA, same suite, verdict now posted — the rollup clears.
 **Why this does not repeal W111.** W111's hazard is a run whose ref RESOLVES THROUGH A MOVING BASE;
 its own incident was #3463 replayed against `refs/pull/3463/merge` — a pull-request merge ref, so
 "reruns are only dangerous on merge_group" is false. The exception here is not "pull_request reruns
-are safe"; it is that _this_ workflow checks out a PINNED base SHA
-(`github.event.merge_group.base_sha || github.event.pull_request.base.sha`) and never
-`refs/pull/N/merge`, so there is no moving ref for the rerun to resolve differently. **Before
-copying this to another workflow, read that workflow's `ref:`.**
+are safe"; it is that on the `pull_request` path _this_ workflow checks out
+`github.event.pull_request.base.sha` — a PINNED SHA — and never `refs/pull/N/merge`, so there is no
+moving ref for the rerun to resolve differently.
+
+Read the expression **per branch**, not as a whole. In full it is
+`github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main'`, and that third
+branch IS a moving ref — it is the one `workflow_dispatch` falls through to. So the expression as a
+whole is not "pinned"; only the branch a `pull_request` rerun takes is. **Before copying this to
+another workflow, read that workflow's `ref:` — and read the branch YOUR event takes.**
+
+And the honest limit: a rerun replays the ORIGINAL event payload, so the base checkout — and with
+it the versions of the helper scripts the job executes — stays frozen at PR-event time. A rerun
+will not pick up a base-side fix that landed on main since; only a new `pull_request` event will.
+Pinning makes the staleness deterministic; it does not make the rerun current.
 
 **Diagnostic trap.** While diagnosing, `gh pr checks` and `gh api …/check-runs` will appear to
 contradict each other. The cause is **pagination**, not the filter: the endpoint returns 30 rows by
