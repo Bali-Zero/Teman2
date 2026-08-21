@@ -85,6 +85,9 @@ Usage:
     python3 scripts/vercel_prod_deploy.py --force    # act even if production is already current
     python3 scripts/vercel_prod_deploy.py --dry-run  # report the gap and the plan, change nothing
     python3 scripts/vercel_prod_deploy.py --ref SHA  # override the target commit
+
+Exit codes: 0 nothing to do or done · 1 the action failed · 3 (--promote-only) there was no
+READY build to promote, and none was created. 3 rather than 2 because argparse owns 2.
 """
 from __future__ import annotations
 
@@ -258,8 +261,14 @@ def _git(*args: str) -> str | None:
     """stdout on success, None on ANY failure. Never conflate the two: `git fetch` succeeds
     with empty stdout, so an empty string is a result and None is 'could not look'."""
     try:
-        out = subprocess.run(["git", *args], capture_output=True, text=True, check=True)
-    except Exception:  # noqa: BLE001 — missing git, not a repo, network: all mean "unknown"
+        # A TIMEOUT, because this is now called unattended every 900s. Without one, a fetch
+        # that half-opens against the network hangs forever; the wrapper's pidfile then sees a
+        # live pid on every later tick and skips, and the organ is wedged with no upper bound.
+        # 120s is far above a normal fetch here and far below the 900s cadence.
+        out = subprocess.run(
+            ["git", *args], capture_output=True, text=True, check=True, timeout=120
+        )
+    except Exception:  # noqa: BLE001 — missing git, not a repo, network, timeout: all "unknown"
         return None
     return out.stdout.strip()
 
@@ -398,6 +407,11 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="deploy even when production is already current")
     parser.add_argument("--dry-run", action="store_true", help="report the gap and exit without deploying")
     parser.add_argument("--ref", default=None, help="commit sha to deploy (default: main HEAD)")
+    parser.add_argument(
+        "--promote-only",
+        action="store_true",
+        help="promote an existing READY build and NEVER create one (the mode a cron may run)",
+    )
     args = parser.parse_args()
 
     if args.ref:
@@ -423,6 +437,27 @@ def main() -> int:
         else:
             print("dry-run: no READY build for this commit — would deploy, changing nothing")
         return 0
+
+    # --promote-only is the CRON contract, and it is a restriction, not an optimisation.
+    # Unattended, "no READY build exists" must never buy a rebuild: at a 15-minute cadence
+    # that is a build loop nobody asked for, and the condition itself is an anomaly worth a
+    # human's eyes (Vercel skipped the commit, or the build failed). Exit 2 says exactly that
+    # and is deliberately NOT 1 — a wrapper reading one failure bit cannot tell "the promote
+    # broke" from "there was nothing to promote", and those need different responses.
+    if args.promote_only:
+        if not existing:
+            print(f"no READY production build for {sha[:9]} — --promote-only will not create one")
+            # 3, NOT 2. argparse exits 2 on an unrecognised flag, and an unattended wrapper
+            # cannot tell those two apart from the code alone — it would read "the script does
+            # not know --promote-only" (nothing ran, nothing was cured) as the benign "there
+            # was nothing to promote" and report a healthy-ish heartbeat forever. Measured,
+            # not imagined: running --promote-only against the pre-merge copy on Mini exits 2.
+            return 3
+        if _promote(existing[0], sha):
+            print(f"OK — balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+            return 0
+        print(f"::error::promote of {existing[0]} did not move the domains to {sha[:9]}")
+        return 1
 
     if existing:
         if _promote(existing[0], sha):
