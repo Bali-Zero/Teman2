@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # Universal Conductor Control Plane
 
 **Status:** implementation-ready design + compiled MIR baseline; router/hooks not yet armed
@@ -1017,3 +1021,11 @@ the intended behavior measurable: a Sol session can own the work without spendin
 tokens on code that Terra, Luna, Sonnet, Haiku, Kimi, Qwen, DeepSeek Flash, or another
 eligible builder can implement, and the same law holds when the session starts from any
 other supported LLM.
+
+## Adversarial review
+
+The A4 aggregate review passed at exact head
+`0260d47eb000d8139b555adccd2726e2e09eb831` after the focused resolution. It recorded zero
+unresolved P0, P1, or P2 findings. The only remaining P3 item is documentation for
+`unknown_rank`; it does not alter the control-plane design verdict. The successful Claude
+review cost was `$0.2529752`.
