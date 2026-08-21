@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+530/-243 (net +287) at merge-base 002ba8e2a..HEAD; code +129/-2, tests +257/-0, evidence +138/-240"
+  net_lines: "+539/-251 (net +288) for the whole PR diff at merge-base 002ba8e2a..HEAD, measured with `git diff --numstat 002ba8e2a..HEAD | awk '{a+=$1;d+=$2} END{print a, d}'`; code +128/-2, tests +257/-0, evidence +147/-248, registry +7/-1"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 14 matching lines, histogram 8x10/5x13/1x46/1x87/1x108 -> 3 runs with secret material: 1 whole token + 2 truncation-clipped partials"
