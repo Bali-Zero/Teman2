@@ -201,6 +201,13 @@ on:
       # exact shape of superscar #2 — the queue's own ejection detector going
       # silently dead would be invisible.
       - merge-queue-watch
+      # Added with merge-gate-integrity-watch.yml (PR #4483): same sibling
+      # shape as merge-queue-watch just above — `push: branches: [main]`
+      # trigger, so it fires this list's expected workflow_run event on
+      # every push to main. A detector for missing pre-merge compute on
+      # required checks that is not itself watched is the same superscar
+      # #2 gap the comment above already names.
+      - merge-gate-integrity-watch
       # Added 2026-08-09: prettier-changed-files.yml (built #3848) triggers
       # only on pull_request/merge_group — same shape as `actionlint` and
       # `hot-zone-enforcement` above, which are already in this list despite
