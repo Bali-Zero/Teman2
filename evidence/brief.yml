@@ -1,37 +1,88 @@
-task_id: ops-orphan-clients-pr4542
+task_id: ops-organ-staleness-cadence
 gear: 3
-l_level: L3
-gate_class: fable
+l_level: L2
+gate_class: opus
 objective: |
-  Repair one misclassified CRM client (typo'd assigned_to) and water-fill the
-  remaining 323 genuinely-orphaned live clients (no valid owner in
-  clients.assigned_to) across the six live setup-team caseworkers, leveling
-  the lowest-loaded first, via two dependency-ordered Postgres migrations
-  (277_correct_ari_email_typo.sql, 278_reassign_orphaned_clients_setup_team.sql).
+  The organism's heartbeat RECEPTOR could not read one of the words its organs write, and
+  dropped the reason on nearly every finding it did produce.
+
+  1. `UNHEALTHY_STATUSES` held {failed, fail, degraded, error}. An organ writing
+     status="warning" produced silence. Three organs write it right now, one per fleet node.
+     The one that proves the cost is `mini.vercel_autopromote`, born 2026-08-21: all THREE of
+     its not-working paths write `warning` — "skipped: previous run still alive", "degraded
+     target - git could not be asked", "no READY build to promote". Its own source comment
+     reasons the case out loud ("A skip is not health ... the sidecar must not spell them the
+     same way") and then picks a word this reader does not know. Intent documented in the
+     writer, defeated in the reader.
+
+  2. The finding's `detail` was built from `metadata.note` only. Measured across the live
+     fleet: 57 sidecars carry a note at the TOP level, exactly 1 nests it under `metadata`.
+     So on 57 of 58 the organ's stated cause was discarded and the finding degraded to a bare
+     "breathing but status=failed" — the state, never the reason.
+
+  3. Found while arming the fix: the 44-case corpus for this detector had NO named executor.
+     It ran only inside the generic `scripts/tests/` sweep, which is continue-on-error and
+     therefore green by construction (W108). Armed in organ-conformance.yml — and on its
+     first real CI run it immediately failed, exposing a test that was green on exactly one
+     machine in the fleet since the day it was written (2026-08-20, #4467 — not 2026-08-07,
+     which is when the jurisdiction MECHANISM landed; a fact-check caught the conflation).
 constraints:
-  - "no client PII (names, emails, document numbers) in any commit/PR/pack/log — only counts, client_id, and staff @balizero.com addresses"
-  - "both migrations' orphan/current_loads predicates must keep filtering deleted_at IS NULL — verified load-bearing: removing it takes the pool from 324 to 10,216"
-  - "278 must never execute before 277 in a combined apply-all run — enforced by an inline DO $$ ... RAISE EXCEPTION $$ guard against schema_migrations, because migration_manager.py's apply-all loop sorts by number but does not abort the batch on a prior migration's failure"
-  - "no mutation via the read-only postgres-nuzantara MCP or scripts/pg.sh — all writes go through the migration runner only"
-  - "no work in the main checkout — dedicated worktree .worktrees/ops-orphan-clients per Agent PR Contract §6"
-  - "no bypass/workaround of ~/.claude/hooks/guardrails-client.sh — the two real .sql files were written by the operator (owner-authorized cp, second key is his own deliberation), never by a session-side GUARDRAILS_BYPASS"
+  - "The two status vocabularies stay SEPARATE. `warning` carries two populations — an organ
+    that is blind, and routine advisory traffic (all three *.agent_worktree_cleanup organs say
+    'WIP worktree skipped (Nx)', which is true and ordinary). Merging warning into
+    UNHEALTHY_STATUSES would spell those two the same way, which is the exact mistake the
+    change exists to fix, one floor down."
+  - "A warning must NOT become a P1 boundary divergence. Three permanent advisories at P1 on
+    every node forever is how a channel earns being ignored — the failure this detector was
+    born to end, re-created one severity up. Exempted via proprioception's existing
+    findings_list verdict_key/ok_values; stale/dead_channel/corrupt/unhealthy still DIVERGE."
+  - "`metadata.note` keeps precedence when both are present, so the pre-existing population's
+    findings are byte-identical to before."
+  - "DEFAULT_STALE_DAYS is NOT touched. A per-organ cadence source already exists
+    (organs_registry.yaml declares expected_hb_seconds for 169 organs) and wiring the detector
+    to it is a behaviour change for 169 organs — its own lane, not a rider on a vocabulary fix."
+  - "`~/.claude/hooks/` and `~/.claude/settings.json` are operator-only control plane and are
+    not touched, even though the SessionStart wiring gap is named in the findings."
 acceptance:
-  - 'schema_migrations gains rows for 277_correct_ari_email_typo and 278_reassign_orphaned_clients_setup_team after apply — verified via scripts/pg.sh -c "SELECT migration_name FROM schema_migrations WHERE migration_name IN (...)"'
-  - "post-apply: client_id 11500's assigned_to reads ari.firda@balizero.com, not the typo'd ari@balizero.com"
-  - "post-apply: orphan pool (deleted_at IS NULL, no active team_members match) reads 0 for the six-caseworker predicate scope"
-  - "post-apply: the six caseworkers' loads reflect the water-filling level computed live at apply time, not the plan-time comment numbers"
-  - "cache invalidated post-apply: zantara:crm_clients_stats:* and zantara:crm_practices:* via RedisManager, confirmed backend: redis"
+  - "A sidecar with status=warning produces a finding, and that finding is NOT spelled the same
+    as a failed one."
+  - "The finding repeats the organ's own reason whether the note is flat or nested, with
+    metadata winning when both exist."
+  - "Widening the vocabulary accuses nobody new: ok / disabled / no-status stay silent, and a
+    stale organ is still reported once as stale and never also as a warning."
+  - "Every finding kind lands in exactly one group of the human report — no kind double-printed,
+    none vanishing."
+  - "The corpus has a NAMED executor in CI that can go red, in both of organ-conformance.yml's
+    filters, pinned by a test so the arming cannot silently regress."
+  - "The whole suite is green under every fleet hostname AND a synthetic CI hostname — not just
+    on the machine that wrote it."
+  - "An independent grader with fresh context, not this diff's author, chooses the mutations —
+    the author choosing his own mutants is the wrong person choosing them."
 consumer_map:
-  - "CRM client-list/detail views (kita.balizero.com) reading clients.assigned_to for the 323 reassigned + 1 repaired client"
-  - "CRM caseload dashboards (crm_clients_stats cache) for the six setup-team caseworkers"
-  - "crm_practices cache — any practice view keyed off client ownership"
-  - "schema_migrations / migration runner state, consumed by future migrations_v2/*.sql authors via discover_migrations()"
+  - "`scripts/organism_stale_detector.py` — run by `scripts/hooks/organism_alert_sessionstart.sh`
+    (live on Pro and Mini via untracked local settings; NOT in the tracked .claude/settings.json,
+    and absent on M5) and wrapped by `scripts/proprioception.py` as probe `organs_heartbeat`."
+  - "`scripts/proprioception.py` — its last.json is read by proprioception_sessionstart.sh, which
+    IS wired in the tracked settings on all three nodes. On M5 this is the ONLY path by which a
+    heartbeat finding reaches a session."
+  - "`~/.organism/alerts/open.jsonl` — written by this detector under --emit, read by nothing in
+    the tracked tree. Not a second delivery channel; named so it is not mistaken for one."
+  - "No runtime/daemon consumes the changed code — nothing to deploy, CI is the prove-live surface."
 risks:
-  - "the migration's plan-time comment numbers (e.g. Ari 318) will not match a fresh measurement (317) hours later — expected, not a defect: verified none of the 8 occurrences of 200|77|27|19|323|324 sit in an executable line, the CTEs recompute from live data at apply time"
-  - "seven other active staff members hold clients outside the six-person water-filling pool (146 clients total, individually ranging 1-74) — a business decision (Legge 5) for Zero, not resolved by this task"
-  - "the 515 team_members rows with role='client' (portal-login accounts) could in principle collide with the orphan predicate's email match — measured zero collisions on live data today; deferred to a separate, non-concurrent lane (PENDING-ARMS.md)"
-grader: "kimi-k3 — cross-family refuter convened by team-lead (2026-08-21), never the author's own model. Four rounds against the same two files. Round 1: DO-NOT-APPLY (rollback didn't clear schema_migrations; dependency guard checked the log not the effect) — both fixed. Round 2: DO-NOT-APPLY (round 1's own effect-guard fix asserted an arbitrary literal instead of the true invariant — a false-block regression — plus a false idempotency claim in 277, a false justifying comment in 278, a missing BTRIM, and unchecked water-filling recipients) — all fixed in one pass, not staggered. Round 3: DO-NOT-APPLY (round 1's rollback fix was dead code — a self-INSERT into _schema_versions in both migrations' forward SQL, copied from three historical migrations, silently discarded _log_migration()'s own insert via ON CONFLICT DO NOTHING, so rollback_sql never landed and the runner's rollback path never ran; plus 278 needed a NULL-safe re-run guard) — both fixed. Round 4: SAFE-TO-APPLY — first clean pass after three dirty ones, run with an explicit read perimeter (migration_base.py, migration_manager.py, migrations_v2/*.sql allowed; .env*, backend/data/, client-record fixtures denied). Traced both round-3 fixes end-to-end against the runner rather than trusting headers: confirmed rollback_sql now lands and rollback_migration() executes it; confirmed nothing else in the runner reads the removed self-INSERT line; independently re-verified (not merely trusting the builder's claim) that only migrations 165/166/184 share the self-INSERT pattern; walked all four execution orders for the NULL-safe guard (first run, unchanged re-run, re-run after human reassignment, re-apply after rollback) and confirmed each behaves correctly. Two non-blocking observations recorded, not defects — see pack.yml dissent/residual_risks."
-budget:
-  seats: [sonnet-5]
-  fable_gate_est_tokens: 1400
+  - "Behaviour change to expect: on a node whose only finding is a warning, the SessionStart hook
+    now prints an ORGANISM block where it used to stay silent. That is the point, and it is one
+    line per warning — 3 fleet-wide at time of writing."
+  - "The severity split lives in TWO files and is only true if both agree. Mitigated by a
+    cross-artifact pin test that fails if proprioception loses verdict_key/ok_values."
+  - "CORRECTED at HEAD by a fact-check, and the correction is the point: this line used to read
+    '10 other calls still omit host=, some passing for the wrong reason'. That was true when
+    written mid-PR and went stale inside the same PR — a later commit swept them. Measured at HEAD
+    by AST: 40 call sites, 5 still omit host=, and NONE of the 5 can exhibit the failure mode.
+    Four write no jurisdiction-scoped fixture at all (no fixture; wr2.html_apply.runtime x2;
+    mata_garuda.consumer_lag_check — `wr2`/`mata_garuda` are absent from ORGAN_PREFIX_HOST, which
+    holds only pro/mini/m5/cell/infra), and the fifth writes infra.eventbus_redis_mini, which is
+    in CROSS_HOST_SIDECAR_SOURCES so _is_foreign_jurisdiction returns False on every host by
+    design. host= is a no-op at all five; there is nothing left to pin."
+grader: independent refuter subagent on an immutable snapshot (never the live worktree — a reviewer reading a tree under mutation reports the mutation as a defect) + CI itself, which refuted the corpus on the first armed run
+budget: ~2 subagents, no council (single-concern reader fix; the divergent-priors gate does not fire)
 pii: none

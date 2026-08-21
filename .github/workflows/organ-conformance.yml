@@ -46,6 +46,17 @@ on:
       # writer still emits — triggered the workflow (no top-level PR paths) and
       # then skipped pytest, and after merge did not trigger it at all. Round 7.
       - "scripts/sentinel-aggregate.py"
+      # The RECEPTOR side of the same contract the G2 gene writes. Its corpus
+      # (scripts/tests/test_organism_stale_detector.py, 44 cases) was named by NO
+      # workflow — it executed only inside the `scripts/tests/` sweep, which is
+      # continue-on-error and therefore green by construction (the shape this
+      # very gate exists to catch, W108). Armed here on 2026-08-22 with the fix
+      # that found it: the reader could not see status="warning", which is what
+      # three organs write. proprioception.py is listed because the severity
+      # split lives in TWO files and is only true if both agree.
+      - "scripts/organism_stale_detector.py"
+      - "scripts/proprioception.py"
+      - "scripts/tests/test_organism_stale_detector.py"
       - ".github/workflows/organ-conformance.yml"
 
 concurrency:
@@ -110,6 +121,8 @@ jobs:
             'scripts/organ_birth.py' 'scripts/lint_plist_keepalive.py' \
             'scripts/healer_receptor_registry.py' 'scripts/nb-curator-daily.sh' \
             'scripts/lib/heartbeat.sh' 'scripts/sentinel-aggregate.py' \
+            'scripts/organism_stale_detector.py' 'scripts/proprioception.py' \
+            'scripts/tests/test_organism_stale_detector.py' \
             '.github/workflows/organ-conformance.yml' \
             '*.plist' '**/*.plist' \
             'infra/launchagents/' 'infra/healer/')
@@ -136,6 +149,21 @@ jobs:
         run: |
           set -euo pipefail
           python3 infra/organ-conformance/check_organ_conformance.py
+
+      - name: The receptor still reads what the organs write
+        if: steps.relevant.outputs.hit == 'true'
+        run: |
+          set -euo pipefail
+          # Named explicitly, NOT left to the `scripts/tests/` sweep — that sweep
+          # is continue-on-error, so a corpus parked there is green by
+          # construction and proves nothing (W108). Until 2026-08-22 these 44
+          # cases had NO named executor, and the defect they now pin sat live:
+          # the reader's vocabulary held {failed,fail,degraded,error} while three
+          # organs wrote status="warning", so their sidecars said nothing at all.
+          # The G2 gene above proves an organ WRITES its heartbeat; this proves
+          # somebody can still READ it. Both halves, or the channel is decorative.
+          PYTHONDONTWRITEBYTECODE=1 python3 -m pytest \
+            scripts/tests/test_organism_stale_detector.py -q
 
       - name: Baseline is a one-way ratchet (panel round-2)
         if: steps.relevant.outputs.hit == 'true'

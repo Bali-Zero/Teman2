@@ -167,7 +167,46 @@ def sync_cross_host_sidecars(
             continue
 
 # Statuses that mean "the organ is breathing but reporting trouble".
-UNHEALTHY_STATUSES: frozenset[str] = frozenset({"failed", "fail", "degraded", "error"})
+#
+# `refused` added 2026-08-22 by the same method that found `warning` below —
+# grep the fleet for the vocabulary organs actually WRITE, rather than trusting
+# the set. Two registered organs emit it from 8 call sites:
+# `wa-codex-broker-wrapper.sh` (:51,:56,:76,:80) and
+# `wa-codex-seat-probe-wrapper.sh` (:58,:92,:97,:101). In both it means the organ
+# REFUSED TO START — env file missing, env placeholders unfilled, venv python
+# missing, cd failed — and each is followed by `exit 78`, launchd's "do not
+# restart me". That is the loudest thing an organ can say, and this reader was
+# deaf to it. UNHEALTHY and not WARNING deliberately: a refusal to start is not
+# "not working this tick", it is not working until a human changes something.
+# Blast radius today is zero (neither organ is currently loaded on Pro — no
+# plist, no launchctl label, no sidecar), which is exactly why it is cheap to fix
+# now instead of the day one of them is armed and says nothing.
+UNHEALTHY_STATUSES: frozenset[str] = frozenset(
+    {"failed", "fail", "degraded", "error", "refused"}
+)
+
+# Statuses that mean "breathing, doing its job's paperwork, but NOT doing its job
+# this tick". Added 2026-08-22: three organs write `warning` on every fleet node
+# and this reader knew none of them, so the word was a note to nobody.
+#
+# The one that proves it: mini.vercel_autopromote (born 2026-08-21) writes
+# `warning` on all three of its not-working paths — "skipped: previous run still
+# alive", "degraded target - git could not be asked", "no READY build to
+# promote". Its own source comment reasons the case explicitly: "A skip is not
+# health ... the sidecar must not spell them the same way" — and then picks a
+# word this receptor does not read. Intent documented in the writer, defeated in
+# the reader: superscar #2 one floor up, at the READING (the same floor that let
+# frontend-live-sentinel go red 13 times unheard).
+#
+# Kept SEPARATE from UNHEALTHY_STATUSES rather than merged into it, because
+# `warning` carries two populations: an organ that is blind (above) and routine
+# advisory traffic (all three *.agent_worktree_cleanup organs say "WIP worktree
+# skipped (Nx) - commit/stash to let the reaper through", which is a true and
+# entirely ordinary thing to say). Merging would spell those two the same way —
+# the exact mistake this constant exists to fix. So: visible in the human report
+# a session actually reads, and NOT a P1 boundary divergence in proprioception
+# (see its organs_heartbeat entry's verdict_key/ok_values).
+WARNING_STATUSES: frozenset[str] = frozenset({"warning", "warn"})
 
 # Organs whose status=failed/degraded is a KNOWN false-positive — do NOT surface
 # them (would cause alert-fatigue = the next blindness). Established by the
@@ -423,6 +462,27 @@ def scan_sidecars(
     return findings
 
 
+def _sidecar_note(payload: dict[str, Any]) -> str:
+    """The organ's own words about why it is not ok — wherever it put them.
+
+    This reader used to look ONLY inside `metadata.note` / `metadata.last_error`.
+    Measured across the live fleet on 2026-08-22: 57 sidecars carry a note at the
+    TOP level and exactly 1 nests it under `metadata` — so on 57 of 58 the cause
+    the organ carefully wrote was dropped, and the finding degraded to the bare
+    "breathing but status=failed", which names the state and not the reason. The
+    canonical writer (organ_birth.py's G2_heartbeat gene) emits
+    {"ts","status","note"} flat, so flat is the convention and the nested lookup
+    was the outlier; both are honoured here rather than picking a winner and
+    silently losing the other population.
+    """
+    for src in (payload.get("metadata"), payload):
+        if isinstance(src, dict):
+            note = src.get("note") or src.get("last_error")
+            if note:
+                return str(note)
+    return ""
+
+
 def scan_sidecars_status(
     sidecar_dir: str = DEFAULT_SIDECAR_DIR,
     stale_days: float = DEFAULT_STALE_DAYS,
@@ -474,15 +534,12 @@ def scan_sidecars_status(
         except (json.JSONDecodeError, OSError):
             continue  # corrupt already handled by scan_sidecars
         status = str(payload.get("status", "")).lower()
-        if status in UNHEALTHY_STATUSES:
-            note = ""
-            md = payload.get("metadata") or {}
-            if isinstance(md, dict):
-                note = str(md.get("note") or md.get("last_error") or "")
+        if status in UNHEALTHY_STATUSES or status in WARNING_STATUSES:
+            note = _sidecar_note(payload)
             findings.append(
                 StaleFinding(
                     organ_id=organ_id,
-                    kind="unhealthy",
+                    kind="warning" if status in WARNING_STATUSES else "unhealthy",
                     age_days=0.0,
                     status=status,
                     detail=f"breathing but status={status}"
@@ -515,8 +572,9 @@ def emit_alerts(findings: list[StaleFinding], alerts_file: str = DEFAULT_ALERTS_
 def _human_report(findings: list[StaleFinding]) -> str:
     if not findings:
         return "✅ organism heartbeat: all organs breathing + healthy (no findings)"
-    not_breathing = [f for f in findings if f.kind != "unhealthy"]
+    not_breathing = [f for f in findings if f.kind not in ("unhealthy", "warning")]
     unhealthy = [f for f in findings if f.kind == "unhealthy"]
+    warning = [f for f in findings if f.kind == "warning"]
     lines = [f"⚠️ ORGANISM: {len(findings)} organ finding(s):"]
     if not_breathing:
         lines.append(f"  — not breathing ({len(not_breathing)}):")
@@ -533,6 +591,14 @@ def _human_report(findings: list[StaleFinding]) -> str:
         lines.append(f"  — breathing but unhealthy ({len(unhealthy)}):")
         for f in sorted(unhealthy, key=lambda x: x.organ_id):
             lines.append(f"    🤒 {f.organ_id}: {f.detail}")
+    if warning:
+        # Deliberately worded as "not working THIS tick", not as a fault: the
+        # population is mixed (a blind organ and a routine advisory both land
+        # here) and only the organ's own note tells them apart — which is why
+        # the note is now carried through, and why this group is not a P1.
+        lines.append(f"  — breathing, not working this tick ({len(warning)}):")
+        for f in sorted(warning, key=lambda x: x.organ_id):
+            lines.append(f"    ⚠️  {f.organ_id}: {f.detail}")
     return "\n".join(lines)
 
 
