@@ -1,9 +1,9 @@
 brief_ref: evidence/brief.yml
 plan_ref: "PR #4542 — research/operations/2026-08-21-orphan-client-reassignment-plan.md"
 diff:
-  files: 5
-  insertions: 765
-  deletions: 118
+  files: 6
+  insertions: 867
+  deletions: 390
   hotzone_hits:
     - "apps/backend-rag/backend/db/migrations_v2/277_correct_ari_email_typo.sql"
     - "apps/backend-rag/backend/db/migrations_v2/278_reassign_orphaned_clients_setup_team.sql"
@@ -83,6 +83,11 @@ receipts:
     exit: 1
     ts: "2026-08-21T22:50:00Z"
     seat: "sonnet-5"
+  - claim: "the round-5 guard's orphan_work_count predicate is byte-identical to the orphans CTE predicate it protects — not a re-derivation that could drift: after stripping comment lines and collapsing whitespace, the predicate string occurs exactly twice in 278 and both occurrences are equal"
+    cmd: "python3 - <<'PY' — strip lines starting with --, collapse whitespace, re.findall the predicate 'WHERE c.deleted_at IS NULL AND NOT EXISTS ( SELECT 1 FROM team_members tm WHERE lower(BTRIM(tm.email)) = lower(BTRIM(c.assigned_to)) AND tm.active = true )' against 278_reassign_orphaned_clients_setup_team.sql, assert len(set(matches)) <= 1"
+    exit: 0
+    ts: "2026-08-21T23:30:00Z"
+    seat: "team-lead"
 tests:
   cmd: "pre-commit hook chain (migration-numbers lint, migration-rollback lint, secrets scan, import-chain smoke) + pre-push path-aware gate — no dedicated pytest module for this data-migration pair (SQL correctness proven by the water-filling robustness test suite already merged in PR #4473, referenced in plan_ref, not re-run here since it is pre-existing/unchanged)"
   passed: 6
@@ -184,7 +189,19 @@ dissent:
     status: CONFIRMED
     repro: "PR body edit history queried via the GitHub API; both the pre-fix and post-fix revisions return deletedAt: null."
     resolution: "Not curable from this side — neither gh pr edit nor any other repo-side action can reach a retained PR-body revision. Escalated to Zero (2026-08-21): a GitHub support removal request for the retained revision, and notifying the affected person, both Legge-5 business decisions outside this task's authority. True cause, recorded honestly rather than as 'PII removed': the information read as an internal operational detail (staff caseload counts), and nobody asked where publishing it on a PUBLIC repo would end up before it went out — a gap the aggregate-form fix closes going forward, not one this fix undoes for the 78 minutes it was already live."
+  - seat: github-actions
+    objection: "Round 5, and the only finding across five rounds that no refuter produced: the six-recipient guard added at round 2 raised 'Migration 278 requires all six water-filling recipients to be active team_members rows -- 6 of 6 are missing or inactive' when CI smoke-applied 278 against a fresh test database with an empty team_members table. The guard was not misfiring — it was enforcing exactly what it said, and what it said was 'these six rows must exist', a condition on the WORLD rather than on the operation. As written, 278 was inapplicable to every environment except production."
+    status: CONFIRMED
+    repro: "Backend Tests (Python) on PR #4542, migration smoke-apply against an empty schema: the RAISE EXCEPTION fires with missing_count = 6 before any CTE runs."
+    resolution: "Subordinated the six-recipient check to IF orphan_work_count > 0, where orphan_work_count counts rows matching the orphans CTE predicate COPIED VERBATIM (not re-derived — a second, diverging copy of that predicate is precisely the defect class round 1 introduced). The true invariant was never 'the six must exist'; it is 'we must not assign a client to a nonexistent or inactive recipient', satisfied vacuously when there is no client to assign. With any pool (production has 323) the check runs unchanged. This is round 2's own literal-vs-invariant lesson one level up, and the contrast sits inside the same file: the OTHER guard, immediately above, asserts 'client 11500 does not satisfy the orphan predicate' and passes vacuously on an empty database."
+    note: "Recorded against seat github-actions rather than folded into a team-lead entry deliberately. Four adversarial rounds read this guard and approved it, round 4 explicitly SAFE-TO-APPLY; none EXECUTED it against an empty table, they only reasoned about its semantics, and the semantics read fine. A refuter that reads and a runner that executes are not redundant reviewers of the same claim."
+  - seat: kimi-k3
+    objection: "Round 5 (targeted single question — 'does this cure reopen the hole the guard closed?' — run from an isolated directory containing only the redacted migration, closing the read-beyond-the-prompt channel round 4 left open by luck of subject matter). Verdict FIX-SOUND, with one residual seam named: the guard's DO block and the later WITH orphans statement are separate statements, so under READ COMMITTED a concurrent committed INSERT INTO clients carrying a NULL or invalid assigned_to, landing between them, would be counted as zero by the guard yet picked up by the CTE and assigned to a possibly-missing literal."
+    status: CONFIRMED
+    repro: "Predicate equivalence checked textually (byte-equivalent to the orphans CTE); the seam is snapshot, not text. BaseMigration.apply() wraps the migration in one transaction, but READ COMMITTED gives each STATEMENT a fresh snapshot."
+    resolution: "Not cured — accepted and declared (see residual_risks). Reaching it requires three conditions at once: zero orphans at guard time, a missing or inactive recipient, AND a live writer creating an orphan inside the window. Any environment where the six recipients are genuinely absent is an empty non-production one with no such writer; anywhere with production traffic orphan_work_count is 323 and the guard runs at full strength. The refuter also established the fix adds no new failure CLASS: the same check-then-act seam already existed at round 4 on the other side (a recipient could be deactivated between the guard and the final UPDATE). Recorded as its own residual-risk line rather than leaning on the pre-existing generic TOCTOU line, because this is a NEW instance the fix introduced, and 'already covered as a class' is not the same as declared."
 residual_risks:
+  - "NEW at round 5, introduced by the round-5 fix itself (kimi-k3, CONFIRMED, accepted): between the recipient guard's DO block and the orphans CTE, READ COMMITTED gives each statement its own snapshot, so a client that becomes orphaned in that window is invisible to the guard but visible to the CTE — the guard can be skipped for a pool it would have protected. Unreachable where it could matter (needs zero orphans at guard time AND a missing/inactive recipient AND a concurrent writer, and the first two only co-occur on empty non-production databases), and it is the same check-then-act class already present before this fix, not a new one."
   - "Live orphan-pool and caseworker-load counts continue to drift by small amounts (±1-2) during this investigation window due to ordinary CRM activity — expected and immaterial (see dissent above), but means any number quoted in this pack is a snapshot, not a guarantee of what apply-time will show; acceptance criteria are phrased as post-apply re-measurements for this reason, not fixed targets."
   - "Seven active staff members hold clients outside the six-person water-filling pool (146 clients in total, individually ranging from 1 to 74 — all verified active, non-client-role). Whether any should join future rebalancing rounds is a business decision for Zero (Legge 5), not resolved by this task."
   - "The 515 team_members rows with role='client' and the dead BaseMigration.dependencies mechanism are both logged in .claude/skills/modus/PENDING-ARMS.md as separate, deliberately-deferred findings — neither touched by this diff."
