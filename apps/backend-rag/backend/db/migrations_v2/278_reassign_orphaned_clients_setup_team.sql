@@ -204,22 +204,57 @@ END $$;
 -- would see an error. Cheap to close with the same "assert the true invariant"
 -- pattern as the guard above (2.1's lesson: check existence+active, never an
 -- arbitrary literal that can go stale on its own).
+--
+-- CI finding (2026-08-21, round 5, CONFIRMED -- found by the CI smoke-apply
+-- against an EMPTY test database, not by any of the four refuter rounds; none
+-- of them executed this guard against an empty table, only reasoned about its
+-- semantics): the guard above, exactly as first written, asserted "these six
+-- rows must exist" -- a condition on the WORLD, not on the operation. On an
+-- empty database no team_members rows exist at all, so "6 of 6 missing" is
+-- literally true, the guard correctly fires on its own literal wording, and
+-- 278 becomes permanently inapplicable to every environment that is not
+-- production. Contrast the OTHER guard on this migration, immediately above
+-- this one: it asserts "client 11500 does not satisfy the orphan predicate" --
+-- on an empty database client 11500 doesn't exist, the predicate is
+-- vacuously true, and that guard passes on its own. Same lesson as 2.1
+-- (round 2), one level up: a guard written on the TRUE invariant survives an
+-- empty database; a guard written on an EXPECTED STATE does not. The true
+-- invariant here was never "the six must exist" -- it is "we must not assign
+-- a client to a nonexistent or inactive recipient", which is satisfied
+-- vacuously when there is no client to assign. So the six-recipient check is
+-- now subordinated to the SAME predicate the `orphans` CTE below uses (copied
+-- verbatim, not re-derived -- a second, diverging copy of this predicate is
+-- exactly the class of defect round 1 introduced): with zero orphans there is
+-- nothing to protect and the check is skipped; with any orphan pool
+-- (production has 323) it runs exactly as before.
 DO $$
 DECLARE
     missing_count INTEGER;
+    orphan_work_count INTEGER;
 BEGIN
-    SELECT COUNT(*) INTO missing_count
-    FROM (VALUES
-        ('damar@balizero.com'), ('surya@balizero.com'), ('vino@balizero.com'),
-        ('adit@balizero.com'), ('ari.firda@balizero.com'), ('krisna@balizero.com')
-    ) AS t(email)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM team_members tm
-        WHERE lower(BTRIM(tm.email)) = lower(BTRIM(t.email))
-          AND tm.active = true
-    );
-    IF missing_count > 0 THEN
-        RAISE EXCEPTION 'Migration 278 requires all six water-filling recipients to be active team_members rows -- % of 6 are missing or inactive. Refusing to run: a stale/misspelled recipient would silently receive zero clients while the level computation still counts them as active.', missing_count;
+    SELECT COUNT(*) INTO orphan_work_count
+    FROM clients c
+    WHERE c.deleted_at IS NULL
+      AND NOT EXISTS (
+          SELECT 1 FROM team_members tm
+          WHERE lower(BTRIM(tm.email)) = lower(BTRIM(c.assigned_to))
+            AND tm.active = true
+      );
+
+    IF orphan_work_count > 0 THEN
+        SELECT COUNT(*) INTO missing_count
+        FROM (VALUES
+            ('damar@balizero.com'), ('surya@balizero.com'), ('vino@balizero.com'),
+            ('adit@balizero.com'), ('ari.firda@balizero.com'), ('krisna@balizero.com')
+        ) AS t(email)
+        WHERE NOT EXISTS (
+            SELECT 1 FROM team_members tm
+            WHERE lower(BTRIM(tm.email)) = lower(BTRIM(t.email))
+              AND tm.active = true
+        );
+        IF missing_count > 0 THEN
+            RAISE EXCEPTION 'Migration 278 requires all six water-filling recipients to be active team_members rows -- % of 6 are missing or inactive. Refusing to run: a stale/misspelled recipient would silently receive zero clients while the level computation still counts them as active.', missing_count;
+        END IF;
     END IF;
 END $$;
 
