@@ -4,7 +4,8 @@ domain: operations
 client_case: Postgres prod password leak — incident response
 sources: 5
 severity: P0
-status: OPEN
+status: RESOLVED
+resolved_date: 2026-05-25
 ---
 
 # P0 INCIDENT — Postgres production password leak
@@ -104,6 +105,69 @@ Quando Antonello deciderà di procedere:
 - Admin override è strumento operatore, non agente — escalation obbligatoria
 - "Pre-existing" è descrittivo, non normativo — un buco di 5 mesi resta un buco
 
+## Ri-misurato 2026-08-21
+
+**Perché lo status era sbagliato**: questo file diceva `status: OPEN` da 3 mesi mentre la cicatrice
+sottostante era già stata marcata RESOLVED dal commit `b0ffa5107` (2026-05-25) — la password era
+già stata ruotata 3 giorni prima, il 2026-05-22 00:54 WITA, con `ALTER USER` + `fly secrets set
+DATABASE_URL` (commit `286f3b00d` / `d89693d35`, PR #817; `/health` 200 dopo ~3 min di outage). Il
+report standalone non è mai stato aggiornato per riflettere il rotation avvenuto — nessuna riga a
+ledger lo tracciava, per questo è rimasto aperto senza che nessun contatore se ne accorgesse.
+Corretto oggi il frontmatter (`status: RESOLVED`, `resolved_date: 2026-05-25`).
+
+**Censimento per VALORE (mai per nome), intero albero + tutta la storia git (`--all`), 2026-08-21**:
+173 occorrenze totali su 83 file distinti nella storia. Ripartizione su HEAD corrente: **19 file**
+portano ancora il letterale morto (di cui 1 è codice eseguito, `apps/backend-rag/scripts/sync_targeted.py`
+— owned dalla lane `pg-rotate` in corso separatamente, non toccato qui), **40** già bonificati
+(placeholder/env-lookup), **24** cancellati (file rimossi dal repo dopo il leak).
+
+**Triage delle impronte** — 14 impronte sha256 distinte trovate tra i DSN `backend_rag_v2:` su
+HEAD, classificate per FORMA dei caratteri (mai per contenuto): **13 non sono mai state
+credenziali reali** — segnaposto, template `.env.example`, riferimenti a variabile shell, fixture
+di test, marcatori di redazione già applicati (la più diffusa, 29 file/43 caratteri, è il testo
+letterale `<<ROTATED_2026_05_22_see_DATABASE_URL_env>>` lasciato dalla bonifica del 22/5). **1
+impronta corrisponde alla password realmente leakata il 2026-05-21.**
+
+**Verifica di vivacità, senza mai leggere né connettersi con nessun valore sospetto** — estratta la
+password LIVE direttamente da `DATABASE_URL` del servizio in produzione (`nuzantara-rag`), hash
+sha256 calcolato nella stessa pipe non-stampante, confrontata solo per i primi 12 esadecimali:
+
+| Valore | Lunghezza | Impronta (12 hex) | Esito |
+|---|---|---|---|
+| Password viva oggi (`nuzantara-rag` `DATABASE_URL`) | 32 car. | `447c6e515ca5` | — |
+| Password leakata 2026-05-21 (32 file, 2025-12-19→2026-05-20) | 15 car. | (nota 1) | **MORTA** — non combacia con la viva |
+| Segnaposto bonifica 22/5 (`<<ROTATED_…>>`) | 43 car. | `a1248d100e8c` | non è mai stata una credenziale |
+| Valore pubblicato 2026-08-06 in `apps/wa-mirror/scripts/api_server.py` (PENDING-ARMS riga 806) | 40 car. | `aeaf8d68d94c` | **MORTO** — non combacia con la viva |
+
+*(nota 1: impronta del valore 2026-05-21 non ristampata qui per disciplina — il confronto diretto
+lunghezza+hash contro la viva ha già dato non-match, verificato 2026-08-21.)*
+
+**Domanda aperta, bassa priorità, non seguita oltre**: durante questa ri-misura è emerso un possibile
+riferimento a "31 caratteri" nel testo del commit #817 (`286f3b00d`), contro i **32** misurati due
+volte per la password viva (prima con una pipe diretta, poi con una pipeline immune a newline via
+command substitution — stesso risultato entrambe le volte, quindi non è un artefatto di misura). **Non
+ho riletto il testo esatto del commit per verificare la cifra** — l'ipotesi newline è stata esclusa
+empiricamente, ma la password viva non compare in nessuna delle 173 occorrenze del censimento (è per
+costruzione successiva a entrambe: rotazione 22/5 + rotazione implicita 6/8), quindi o il testo del
+commit diceva qualcosa di diverso da come lo ricordavamo, o è avvenuta una rotazione ulteriore mai
+registrata a ledger. Nessuna delle due ipotesi cambia il verdetto sopra — resta una curiosità, non un
+gap operativo.
+
+**Il valore 2026-08-06 è un TERZO valore distinto**, non una copia del leak 2026-05-21 né del
+segnaposto: recuperato dal commit `ea5498fb50d7` (riga 37, ruolo `backend_rag_v2`) — il commit che
+introdusse il file in un branch di feature poi squash-merged in PR #3671; irraggiungibile da
+qualunque ref locale ma ancora presente sull'object store di GitHub, recuperato con `git fetch
+origin <sha>` mirato e mai stampato in chiaro. I 3 commit successivi dello stesso branch/stesso
+giorno che toccano il file non contengono più il pattern DSN-con-password — la correzione arrivò
+prima dello squash-merge, il valore non è mai entrato su `main` in chiaro.
+
+**Verdetto complessivo**: entrambe le credenziali storiche note (2026-05-21 e 2026-08-06) sono
+morte — nessuna combacia con la password oggi in uso da `nuzantara-rag`. Nessuna rotazione
+d'emergenza è dovuta su queste basi. Resta vivo solo l'igiene: 18 file (escluso `sync_targeted.py`)
+portano ancora il letterale 2026-05-21 su HEAD — pulizia pianificata in una PR dedicata, tenuta
+separata dalla PR #4484 già aperta dalla lane `pg-rotate` sullo stesso set di file per evitare che
+le due si blocchino a vicenda (misurato il delta dopo l'atterraggio di #4484, non prima).
+
 ## Sources
 
 - Detect Secrets job log: GitHub Actions run 26160690829 job 76951503180
@@ -111,3 +175,6 @@ Quando Antonello deciderà di procedere:
 - grep across repo: 32 file affected
 - fly-pg-proxy-wrapper.sh — conferma localhost:15432 → nuzantara-postgres.flycast
 - PR #802 admin-merge audit: commit `4d580db6f` 2026-05-20 12:51 UTC
+- Ri-misura 2026-08-21: rotation PR #817 (`286f3b00d` / `d89693d35`), scar-resolved commit
+  `b0ffa5107` (2026-05-25), PR #3671 (`ea5498fb50d7` + 3 follow-up commits sullo stesso branch),
+  PENDING-ARMS.md riga ~806, `nuzantara-rag` `DATABASE_URL` live (fly ssh console, 2026-08-21)
