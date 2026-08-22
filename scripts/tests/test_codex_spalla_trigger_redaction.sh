@@ -624,6 +624,10 @@ assert_redacted "guilt-url-userinfo-password-with-slash [cascade-conjured form]"
     "run a://u:${URLSLASH_V}ghp_12345678=\"/\"@h" "$URLSLASH_V"
 assert_redacted "guilt-url-userinfo-all-digit-password-still-anchors" \
     "psql postgres://u:9876543210@h" "9876543210"
+assert_redacted "guilt-url-userinfo-password-starting-with-digits-and-a-query-char" \
+    "curl 'https://alice:123?x$URLSLASH_V@db.test/query'" "$URLSLASH_V"
+assert_redacted "guilt-slack-token-in-a-bare-authorization-header" \
+    "curl -H 'Authorization: xoxb-123456789012-$URLSLASH_V' https://api.example.test" "$URLSLASH_V"
 assert_redacted "guilt-pem-private-key [PGP block delimiter]" \
     "printf -- '-----BEGIN PGP PRIVATE KEY BLOCK-----\\n$URLSLASH_V'" "$URLSLASH_V"
 assert_redacted "guilt-pem-private-key [OPENSSH]" \
@@ -726,6 +730,10 @@ assert_intact "innocence-basic-the-ordinary-english-word" \
     'git commit -m "Basic auth support for the gateway"' "Basic auth support"
 assert_intact "innocence-basic-below-the-base64-length-floor" \
     'echo "Basic ZGVtbw=="' "Basic ZGVtbw"
+assert_intact "innocence-basic-long-word-in-a-real-header-no-digit" \
+    "printf '%s' 'Authorization: Basic documentationonly'" "documentationonly"
+assert_intact "innocence-basic-long-word-in-a-real-header-multiple-of-four" \
+    "printf '%s' 'Authorization: Basic internationalization'" "internationalization"
 assert_intact "innocence-url-host-port-path-with-at-sign [registry digest]" \
     "curl 'https://reg.test:5000/v2/img@sha256'" "reg.test:5000"
 assert_intact "innocence-url-host-port-path-with-at-sign [release path]" \

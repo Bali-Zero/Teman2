@@ -459,6 +459,9 @@ ANCHORS = (
     r"sk-ant-[A-Za-z0-9_-]{8,}",
     r"gh[pousr]_[A-Za-z0-9]{8,}",
     r"github_pat_[A-Za-z0-9_]{8,}",
+    #     Slack, whose tokens travel in an Authorization header with NO Bearer and no
+    #     credential-ish name, so nothing else here would ever see one.
+    r"xox[baprs]-[A-Za-z0-9-]{10,}",
     # 1b. A PEM private-key block anchors on NOTHING above: PRE?KEY needs KEY glued
     #     to its prefix, and PRIVATE KEY has a SPACE, so the single most
     #     unambiguous credential shape there is was invisible. Found by a refuter,
@@ -509,7 +512,15 @@ ANCHORS = (
     #     against both alternatives: this form is 6/6 guilt and 0 false positives,
     #     the slash-permitting one without the lookahead was 6/6 and 3, and the
     #     original slash-forbidding one was 4/6 and 0.
-    r"://[^\s:/@]+:(?!\d+[/?#])[^\s@]+@",
+    #     PATH-AWARE, and the refinement is the whole point: the earlier form rejected
+    #     ANY digits-then-delimiter, which threw away a real password beginning with
+    #     digits (https://alice:123?x@db.test/query redacted before, leaked after).
+    #     What actually separates the two shapes is WHERE the at-sign sits: in
+    #     host:port/path@segment there is a SLASH between the colon and the at-sign;
+    #     in user:password@host there is not. Requiring that slash in the rejection
+    #     scores 6/6 guilt and 0 false positives, where the digits-only form scored
+    #     5/6 and 0.
+    r"://[^\s:/@]+:(?!\d+[/?#][^\s@]*/)[^\s@]+@",
     # 4b. Authorization: Basic <base64>. Rule 4 covers Bearer only, and this was a
     #     NAMED residual risk rather than an oversight -- promoted to an anchor when
     #     the same cross-family seat pointed out that a wholly ordinary curl -H
@@ -529,7 +540,16 @@ ANCHORS = (
     #     contains the word bearer is a pre-existing, measured and DECLARED residual
     #     (8 lines in the live log). Inheriting a known defect into a rule added today
     #     would be a choice, not an accident, so this one is tighter than its sibling.
-    r"(?i)[A-Za-z-]*Authorization:\s*Basic\s+[A-Za-z0-9+/=]{16,}",
+    #     The payload must contain at least ONE digit or + / = -- a length floor alone
+    #     is not enough, because a long English word IS valid base64 alphabet:
+    #     Authorization: Basic documentationonly and ... internationalization both
+    #     cleared a 16-character floor and were truncated in full. A base64 encoding
+    #     of any real credential essentially always carries a digit; prose does not.
+    #     Declared residual: an all-letter base64 payload (roughly 0.4% of 24-char
+    #     encodings) is missed. A multiple-of-four rule was tried FIRST and rejected
+    #     on measurement -- it scored 1/3 on guilt, because padding is not counted by
+    #     the group, and it still let internationalization through at 20 characters.
+    r"(?i)[A-Za-z-]*Authorization:\s*Basic\s+(?=[A-Za-z0-9+/=]{16,})[A-Za-z0-9+/=]*[0-9+/=][A-Za-z0-9+/=]*",
     # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the
     #    8-char floor are what keep flagbearer and Bearer abc innocent.
     #     The class carries the FULL base64 alphabet (+ / = ~), not just base64url:

@@ -370,9 +370,9 @@ receipts:
     seat: author-session (M5, claude-opus-5)
   - claim:
       "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
-      nothing else does (23/144); restored byte-identically, 144/144 pass (105 guilt / 15 innocence /
+      nothing else does (24/148); restored byte-identically, 148/148 pass (105 guilt / 15 innocence /
       2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
-    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 144/144; shellcheck clean on both files"
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 148/148; shellcheck clean on both files"
     exit: 0
     ts: "2026-08-22T05:25:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -402,7 +402,7 @@ receipts:
       anchored those URLs as well. They are PINS on the new sixteen-character bound, not witnesses to a
       defect, and counting them as bite cases would have been the easy way to make the proof look
       stronger than it is."
-    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 144/144"
+    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 148/148"
     exit: 0
     ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -443,7 +443,7 @@ receipts:
       added to pin them (the ordinary English word Basic in a commit message, a Basic payload below the
       base64 length floor, and a URL whose path merely contains a colon and an at-sign). A guard added
       without an innocence case is exactly the shape this corpus exists to refuse."
-    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 144 cases (118 guilt / 24 innocence / 2 mode); bite proof 23/144 on the pre-change hook"
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 148 cases (120 guilt / 26 innocence / 2 mode); bite proof 24/148 on the pre-change hook"
     exit: 0
     ts: "2026-08-22T07:50:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -479,7 +479,7 @@ receipts:
     ts: "2026-08-22T08:27:00Z"
     seat: cross-family grader (GPT-5.6 sol) -> author-session
   - claim:
-      "Corpus 133 -> 137 (115 guilt / 20 innocence / 2 mode); bite proof 23/144 against the pre-PR hook.
+      "Corpus 133 -> 137 (115 guilt / 20 innocence / 2 mode); bite proof 24/148 against the pre-PR hook.
       Of the four cases added here, THREE are witnesses and one is a pin: two fail against the immediately
       preceding commit (the Bearer plus-sign token and the Basic prose false positive, i.e. the two
       defects just cured), and innocence-basic-long-english-phrase passes on both because its first word
@@ -518,9 +518,43 @@ receipts:
       on host:port paths. None was caught by my own corpus or my own fuzzers -- all three were caught by
       a seat from a different training family. The corpus is now 144 cases and grows only through
       defects found from OUTSIDE it, which is the honest description of how it has been built."
-    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 144 (118 guilt / 24 innocence / 2 mode); 3 of the 7 cases added here fail against the immediately preceding commit; 23/144 fail against the pre-PR hook"
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 144 (118 guilt / 24 innocence / 2 mode); 3 of the 7 cases added here fail against the immediately preceding commit; 24/148 fail against the pre-PR hook"
     exit: 0
     ts: "2026-08-22T09:00:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "FIFTH CROSS-FAMILY PASS, three findings, and TWO of them were my own previous two fixes biting
+      back. (a) The port discriminator added in the fourth pass rejected ANY digits-then-delimiter,
+      which threw away a real password beginning with digits -- https://alice:123?x@db.test/query was
+      redacted before it and leaked after. Refined to be PATH-AWARE: what actually separates the two
+      shapes is where the at-sign sits, since host:port/path@segment has a SLASH between the colon and
+      the at-sign and user:password@host does not. 6/6 guilt and 0 false positives, against 5/6 and 0
+      for the digits-only form. (b) The header-anchored Basic rule still fired on prose INSIDE a real
+      header: Authorization: Basic documentationonly and ... internationalization both clear a
+      16-character floor because a long English word is valid base64 alphabet. Now the payload must
+      carry at least one digit or + / =. (c) A Slack token (xoxb-) rides in an Authorization header
+      with no Bearer and no credential-ish name, so nothing here would ever have seen one; added as its
+      own prefix."
+    cmd: "codex exec -m gpt-5.6-sol, fifth pass; each candidate regex then scored side by side before being applied"
+    exit: 0
+    ts: "2026-08-22T09:30:00Z"
+    seat: cross-family grader (GPT-5.6 sol) -> author-session
+  - claim:
+      "A MULTIPLE-OF-FOUR RULE FOR THE BASIC PAYLOAD WAS TRIED FIRST AND REJECTED ON MEASUREMENT, not
+      on taste: it scored 1/3 on guilt, because base64 padding is not counted by the repeating group,
+      and it still let internationalization through at 20 characters. Recorded because it is the
+      obvious fix and the next reader will think of it too."
+    cmd: "scored (?:[A-Za-z0-9+/]{4}){4,}={0,2} against 3 guilt and 6 innocent inputs before discarding it"
+    exit: 0
+    ts: "2026-08-22T09:32:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "Corpus 144 -> 148 (120 guilt / 26 innocence / 2 mode). ALL FOUR cases added here fail against the
+      immediately preceding commit -- two guilt and two innocence -- so every one of them is a witness
+      rather than a pin. 24/148 fail against the pre-PR hook."
+    cmd: "swap in 04806f564 -> 4 FAIL; swap in the pre-PR hook -> 24 FAIL; restore byte-identical -> PASS 148/148"
+    exit: 0
+    ts: "2026-08-22T09:35:00Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -908,6 +942,12 @@ dissent:
   - seat: author-session (M5), on the shape of its own last three cures
     objection: "Three consecutive cures each created the next defect, and a seat from a different training family caught all three while my corpus and both my fuzzers passed. That is not bad luck; it is what it means for a generator, a corpus and a design to share an author."
     status: CONFIRMED
+  - seat: cross-family grader (GPT-5.6 sol, fifth pass)
+    objection: "NOT CONVERGED. The Basic anchor fires on prose inside a genuine header (Authorization: Basic documentationonly). The port discriminator discards a real password that begins with digits (https://alice:123?x@db.test/query). And a Slack xoxb- token in an Authorization header anchors on nothing."
+    status: CONFIRMED
+  - seat: author-session (M5), on the shape of the last five rounds
+    objection: "FOUR consecutive cures have now each created the next defect, and in this round TWO of the three findings were my own previous two fixes. The corpus grows only from defects found OUTSIDE it. I am recording this as the honest description of the process rather than presenting the result as convergence I reached on my own."
+    status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
     finds the field only in evidence packs and research/operations/2026-08-09-harness-v2-teman2.md:155
@@ -997,6 +1037,11 @@ residual_risks:
     vocabulary on one seed. A shape absent from the fragment list is absent from the result. This is the
     same caveat the fourth direction earned the hard way: a fuzz score describes the generator exactly as
     a mutation score describes the corpus."
+  - "DECLARED, not fixed: an all-letter base64 payload in an Authorization: Basic header is missed,
+    because the anchor now requires a digit or + / = to keep long English words innocent. Roughly 0.4%
+    of 24-character base64 encodings contain no digit. The trade is deliberate — a false positive here
+    destroys the rest of the command line, and 'Authorization: Basic <long word>' appears in
+    documentation far more often than an all-letter credential does in a shell history."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
