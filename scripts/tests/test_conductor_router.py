@@ -25,7 +25,6 @@ from scripts.conductor.contracts import (
 from scripts.conductor.model_registry import AbstractModelCardError, load_registry
 from scripts.conductor.router import plan_dispatch
 
-
 AS_OF = "2026-08-21"
 
 
@@ -33,7 +32,7 @@ def capability(
     name: str,
     *,
     kind: EvidenceKind = EvidenceKind.PROBED,
-    value: bool | int | float | str | None = True,
+    value: bool | float | str | None = True,
 ) -> CapabilityEvidence:
     """Build a positive or negative capability observation for a test endpoint."""
     return CapabilityEvidence(

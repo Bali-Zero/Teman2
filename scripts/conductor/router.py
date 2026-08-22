@@ -6,16 +6,16 @@ probes an endpoint, launches a worker, starts a daemon, or retains state.
 
 from __future__ import annotations
 
-from dataclasses import replace
-from datetime import date, datetime, time, timedelta, timezone
 import logging
 import re
-from typing import Mapping
+from collections.abc import Mapping
+from dataclasses import replace
+from datetime import date, datetime, time, timedelta, timezone
 
 from scripts.conductor.contracts import (
     AuthSurface,
-    CapabilityEvidence,
     CandidateRejection,
+    CapabilityEvidence,
     Decision,
     DispatchPlan,
     EndpointCandidate,
@@ -30,7 +30,6 @@ from scripts.conductor.contracts import (
     TaskProfile,
     TaskScore,
 )
-
 
 logger = logging.getLogger(__name__)
 
