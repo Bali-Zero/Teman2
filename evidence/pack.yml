@@ -2,10 +2,12 @@ brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
   net_lines: >-
-    +2266/-320 (net +1946), measured at SHA 3fe83d1ce by
-    `git diff --shortstat 062269dc9 3fe83d1ce`. The SHA is the load-bearing part: this line lives
-    INSIDE its own diff, so re-running the command at whatever the head is NOW returns a slightly
-    larger number, and a bare figure with no SHA would be false the moment the next commit lands.
+    +2834/-319 (net +2515), measured at SHA c36e83877 by
+    `git diff --shortstat 062269dc9 c36e83877`. The SHA is the load-bearing part: this line lives
+    INSIDE its own diff, so re-running the command at whatever the head is NOW returns a larger
+    number, and a bare figure with no SHA would be false the moment the next commit lands. It is
+    anchored one commit BEHIND the head on purpose: a figure that measured its own commit could never
+    be written truthfully, so the honest form names a SHA that already exists.
     Base is the MERGE-BASE, not a fixed base, so main's own landings are not counted as this PR's.
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
@@ -584,8 +586,56 @@ receipts:
     exit: 0
     ts: "2026-08-22T10:10:00Z"
     seat: author-session (M5, claude-opus-5)
+  - claim:
+      "THE FOURTH APPEARANCE OF ONE FAMILY, found by auditing the family instead of the instance. After
+      curing the Basic-header ReDoS I swept EVERY anchor for worse-than-linear backtracking rather than
+      declaring the class closed, and the URL userinfo rule -- untouched by that cure and green on all
+      151 cases -- turned out to be QUADRATIC. The engine restarts at every :// and each attempt scans
+      the password class to the end of the whitespace-free run before failing for want of an @. On a
+      minified-JSON shape (no @ anywhere, an ordinary lockfile line, not a crafted attack): 5545 ms at
+      200KB and 23015 ms at 400KB. Three further shapes aimed at the port lookahead rather than the
+      password cost 3716 / 4250 / 5023 ms. Bounding all three runs to 2048 gives 92-123 ms at 200KB and
+      245 ms at 400KB -- 2x input, 2x time, linear. Every run is bounded, not only the one measured
+      slowest, because patching the measured instance is what let this family come back three times."
+    cmd:
+      "per-anchor growth sweep, 4KB->32KB across 23 poison payloads x 9 anchors; then a 200KB/400KB
+      confirmation of anchor 5 and three lookahead-targeted shapes"
+    exit: 0
+    ts: "2026-08-22T11:20:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "THE EXISTING WALL-CLOCK GUARD DID NOT COVER THIS, and that is the transferable lesson. Its payload
+      is 200KB of the letter a -- it anchors on no rule and every class rejects it on the first
+      character, so it cost 0.33s on a hook that was quadratic underneath it. A perf guard only guards
+      the code path its payload walks. The new case uses a payload shaped to REACH the rule that failed,
+      and it is 400KB rather than 200KB for a measured reason: unbounded, 200KB costs 5545 ms, which is
+      UNDER the 10s budget -- a 200KB version of this case would have PASSED on the very hook it exists
+      to catch. The size was chosen by running the case against the pre-fix hook until it failed."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh, with the unbounded anchor restored"
+    exit: 1
+    ts: "2026-08-22T11:35:00Z"
+    seat: author-session (M5, claude-opus-5)
+    note:
+      "bite proof: FAIL[wallclock-400kb-url-run-no-at-under-10s (took 18.32s)], FAILED 1/151; hook
+      then restored byte-identical (sha256 compared before and after) and the suite returns 151/151."
+  - claim:
+      "THE BOUND IS A DECLARED COVERAGE TRADE, priced against this rule's OWN scar. A URL password longer
+      than 2048 characters no longer anchors: verified at the boundary, 2047 and 2048 redact, 2049 and
+      5000 do not, and the 2048 case is now asserted in the corpus so a future narrowing fails loudly.
+      This rule already carries a bound that regressed coverage -- a 16-character scheme limit that let a
+      17-character scheme leak -- so the question is not whether bounds are safe but whether THIS bound
+      sits at a plausible value. It does not: the longest credential that realistically travels in
+      userinfo is a JWT, a few hundred characters. A differential run of 60000 inputs against the
+      unbounded form found ZERO divergences below the bound, and by construction a bound can only make
+      the leftmost match start later or vanish -- it can never invent a false positive, so innocence is
+      preserved without needing to be re-measured. A cheap `@ in s` pre-check was considered as a
+      loss-free alternative and REJECTED: a single leading @ defeats it."
+    cmd: "differential fuzz 60000 inputs bounded-vs-unbounded; boundary probe at 2047/2048/2049/5000"
+    exit: 0
+    ts: "2026-08-22T11:40:00Z"
+    seat: author-session (M5, claude-opus-5)
 tests:
-  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 151 named cases, 121 guilt / 26 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
 static:
   - "actionlint exit 0 on guard-conformance.yml"
   - "shellcheck clean on both the hook and the test"
@@ -1073,6 +1123,15 @@ residual_risks:
     of 24-character base64 encodings contain no digit. The trade is deliberate — a false positive here
     destroys the rest of the command line, and 'Authorization: Basic <long word>' appears in
     documentation far more often than an all-letter credential does in a shell history."
+  - "BOUNDED RUNS IN THE URL USERINFO RULE, added 2026-08-22 to make it linear: a userinfo password
+    longer than 2048 characters no longer anchors and would leak in full. Verified at the boundary --
+    2047 and 2048 redact, 2049 and 5000 do not -- and the 2048 case is asserted in the corpus so a
+    future narrowing fails loudly, while 2049 is deliberately NOT asserted so a future rule that covers
+    more does not fail. Accepted because the longest credential that realistically travels in userinfo
+    is a JWT at a few hundred characters, and because the alternative measured 23015 ms on a 400KB
+    credential-free command in a hook that fires on every tool call. The user and the port lookahead
+    carry the same 2048 bound for the same reason. The loss-free alternative (skip the rule unless the
+    input contains an @) was rejected: one leading @ defeats it."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
@@ -1081,4 +1140,4 @@ pii_scan: clean
 # No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
 # this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
 # documentation. The previous value, 16067, was left behind by later edits to this pack.
-size_tokens: 20305
+size_tokens: 27417

@@ -622,8 +622,16 @@ assert_redacted "guilt-url-userinfo-password-with-slash" \
     "psql postgres://u:pa/$URLSLASH_V@h" "$URLSLASH_V"
 assert_redacted "guilt-url-userinfo-password-with-slash [cascade-conjured form]" \
     "run a://u:${URLSLASH_V}ghp_12345678=\"/\"@h" "$URLSLASH_V"
+# The value is GENERATED, not written, and that is a lint requirement rather
+# than a style choice: a literal all-digit password inside a literal
+# postgres:// DSN is indistinguishable from a real credential to
+# scripts/lint_pg_dsn_credentials.py, which failed this file on exactly this
+# line. The same fragment discipline that linter applies to its own fixtures
+# applies here. Only the SHAPE is load-bearing (all digits, immediately before
+# the @), never the digits themselves.
+ALLDIGIT_V="$(python3 -c 'import secrets; print("".join(secrets.choice("0123456789") for _ in range(10)))')"
 assert_redacted "guilt-url-userinfo-all-digit-password-still-anchors" \
-    "psql postgres://u:9876543210@h" "9876543210"
+    "psql postgres://u:$ALLDIGIT_V@h" "$ALLDIGIT_V"
 assert_redacted "guilt-url-userinfo-password-starting-with-digits-and-a-query-char" \
     "curl 'https://alice:123?x$URLSLASH_V@db.test/query'" "$URLSLASH_V"
 assert_redacted "guilt-slack-token-in-a-bare-authorization-header" \
@@ -804,6 +812,42 @@ elapsed=$(python3 -c "import sys; print(round(float(sys.argv[2])-float(sys.argv[
 ok=1
 python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) < 10.0 else 1)" "$elapsed" && ok=0
 case_result "wallclock-200kb-no-credential-under-10s (took ${elapsed}s)" "$ok" mode
+
+# The 200KB payload above is a single run of one letter, and it exercises almost
+# nothing: it anchors on no rule and every class rejects it on the first
+# character. The URL userinfo rule was QUADRATIC underneath it and this suite was
+# blind to that for exactly that reason -- a credential-free 200KB run of "a"
+# costs milliseconds while ("://u" + 30 chars) repeated, no @ anywhere, cost
+# 5545 ms at 200KB and 23015 ms at 400KB, i.e. past the budget on the line above.
+# That shape is not exotic: it is a minified JSON config or a lockfile line. So
+# the catastrophe detector gets a second payload whose shape actually reaches the
+# rule that failed, and the lesson is general -- a perf guard only guards the code
+# path its payload happens to walk.
+#
+# IT IS 400KB, NOT 200KB, AND THAT IS NOT ARBITRARY. The unbounded rule cost
+# 5545 ms at 200KB -- UNDER this budget. A 200KB version of this case passes on
+# the very hook it was written to catch, which would have made it a guard that
+# tests nothing while reading as coverage. The size was chosen by RUNNING the
+# case against the pre-fix hook until it failed, not by picking a round number:
+# 400KB costs 23015 ms unbounded and ~0.8s bounded, so it bites on the defect
+# and keeps an order of magnitude of headroom against a loaded CI runner.
+tmp8="$(mktemp -d)"; cleanup_dirs+=("$tmp8")
+url_cmd="curl $(python3 -c 'print(("://u"+"A"*30)*11764, end="")')"
+t_start=$(python3 -c 'import time; print(time.time())')
+run_hook "$tmp8" "Bash" "$url_cmd"
+t_end=$(python3 -c 'import time; print(time.time())')
+elapsed=$(python3 -c "import sys; print(round(float(sys.argv[2])-float(sys.argv[1]),2))" "$t_start" "$t_end")
+ok=1
+python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) < 10.0 else 1)" "$elapsed" && ok=0
+case_result "wallclock-400kb-url-run-no-at-under-10s (took ${elapsed}s)" "$ok" mode
+
+# The bound that buys that linearity is 2048 characters per run, and a bound is
+# only honest if something asserts where it sits. A 2048-character password must
+# still redact; the documented residual above 2048 is deliberately NOT asserted
+# here, so that a future rule which covers MORE does not fail this suite.
+long_pw="$(python3 -c 'print("P"*2048, end="")')"
+assert_redacted "userinfo-password-at-the-2048-bound" \
+    "psql postgres://svc:${long_pw}@db.internal:5432/app" "$long_pw"
 
 echo "---"
 if [ "$fails" -eq 0 ]; then

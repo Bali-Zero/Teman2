@@ -520,7 +520,36 @@ ANCHORS = (
     #     in user:password@host there is not. Requiring that slash in the rejection
     #     scores 6/6 guilt and 0 false positives, where the digits-only form scored
     #     5/6 and 0.
-    r"://[^\s:/@]+:(?!\d+[/?#][^\s@]*/)[^\s@]+@",
+    #     EVERY RUN HERE IS LENGTH-BOUNDED, and the bound is the whole point.
+    #     Unbounded, this rule is QUADRATIC in the input: the engine restarts at
+    #     every :// in the string, and each attempt scans [^\s@]+ to the end of the
+    #     whitespace-free run before failing for want of an @. Measured on a
+    #     minified-JSON shape -- ("://u" + 30 chars) repeated, no @ anywhere, which
+    #     is an ordinary lockfile or config one-liner, not a crafted attack:
+    #     5545 ms at 200KB and 23015 ms at 400KB, i.e. PAST the 10s wall-clock
+    #     guard below. Three further shapes aimed at the port lookahead rather than
+    #     the password cost 3716 / 4250 / 5023 ms. Bounding all three runs to 2048
+    #     makes the per-position cost constant and the whole rule linear: the same
+    #     four shapes cost 92-123 ms at 200KB and 245 ms at 400KB (2x input, 2x
+    #     time -- linear, as intended). This is the FOURTH appearance of one family
+    #     in this file (unbounded scheme, unbounded Basic prefix, and now both the
+    #     userinfo password and its lookahead): an unbounded run that has to be
+    #     re-scanned from many start positions. It is bounded here in EVERY run at
+    #     once rather than in the one that was measured slowest, because patching
+    #     the measured instance is what let it come back three times.
+    #     WHY NOT A CHEAP `"@" in s` PRE-CHECK, which would cost nothing and lose no
+    #     coverage: it is defeated by a single leading @. With "@" + the payload
+    #     above, the pre-check passes and every later attempt still scans to the end.
+    #     DECLARED RESIDUAL, deliberately accepted: a URL password longer than 2048
+    #     characters no longer anchors. Verified at the boundary -- 2047 and 2048
+    #     redact, 2049 and 5000 do not. The scar this rule already carries (a
+    #     16-character scheme bound that regressed coverage at 17) says bounds bite
+    #     at PLAUSIBLE values; 2048 is not one. A long JWT, the longest credential
+    #     that realistically travels in userinfo, runs a few hundred characters.
+    #     A differential run of 60000 inputs against the unbounded form found ZERO
+    #     divergences below the bound, and by construction a bound can only make the
+    #     match START LATER or vanish -- it can never invent a false positive.
+    r"://[^\s:/@]{1,2048}:(?!\d+[/?#][^\s@]{0,2048}/)[^\s@]{1,2048}@",
     # 4b. Authorization: Basic <base64>. Rule 4 covers Bearer only, and this was a
     #     NAMED residual risk rather than an oversight -- promoted to an anchor when
     #     the same cross-family seat pointed out that a wholly ordinary curl -H
