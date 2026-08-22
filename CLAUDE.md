@@ -58,7 +58,7 @@ still does not arm, merge, or deploy). The operational commands are documented i
    mandate. A fix-of-a-fix chain stops at depth 1: if the correction is itself wrong, the
    surface is under-specified — write the spec, do not open the third PR. Measured 2026-08-22:
    PR #4547 (a 1-file hook fix) took 14 commits, 11 adversarial rounds and ~6h; the 44h session
-   driving it spent 3.9M output tokens, and 25 of the 150 PRs merged in those two days existed
+   driving it spent 3.9M output tokens, and 27 of the 200 commits that landed on main 2026-08-20..22 (195 merged PRs) existed
    only to correct a claim made by a previous one.
 
 ## 2. Behavior & Autonomous Ops

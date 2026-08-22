@@ -182,9 +182,9 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
         return lines, errs
     # OFF by default since 2026-08-22 (Zero GO on the regression diagnosis).
     # Measured 20-22/8: "190 armamenti sospesi OVERDUE" greeted every session
-    # and the sessions chose the ledger over the business — 115 of ~150 merged
-    # PRs on the ops lane, ~10 business commits, 25 PRs correcting a previous
-    # PR's claim. The ledger is still read at modus TRIAGE and by
+    # and the sessions chose the ledger over the business — 118 of 195 merged
+    # PRs from the M5 ops lane alone, ~10 business commits, 27 of 200 commits
+    # correcting a previous commit's claim. The ledger is still read at modus TRIAGE and by
     # `pending_arms_report.py`; this only stops it from being the FIRST thing a
     # session sees at boot. Opt back in: ORGANISM_DIGEST_PENDING_ARMS=1.
     if os.environ.get("ORGANISM_DIGEST_PENDING_ARMS", "0") != "1":
