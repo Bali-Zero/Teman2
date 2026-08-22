@@ -51,7 +51,16 @@
 #   plus OPTIONAL QUOTE between name and separator, so a JSON body
 #      (`-d {"api_key": "<v>"}`) is covered, not just shell/header shapes.
 #   e. URL USERINFO — `scheme://user:<secret>@host`.
-#   f. `Authorization: Bearer <v>` / bare `Bearer <v>` — no keyword in a NAME.
+#   f. bare `Bearer <v>` — no keyword in a NAME. (The `Authorization: Bearer`
+#      alternation that used to sit beside it was measured byte-for-byte dead
+#      over the whole live log and deleted; only the bare one remains.)
+#   g. RULE ORDER, which is itself a rule and had no case at all until the
+#      Gear-3 gate found a LEAK caused purely by it. Rule 2 rewrites NAME +
+#      separator + the whole value, so it destroys markers the other rules
+#      anchor on and must run LAST. Two adjacencies are pinned below:
+#      rule-2-before-rule-4 leaked a token in full (`X-Auth: Bearer <v>` became
+#      `X-Auth=<REDACTED> <v>`), and rule-4-before-rule-3 leaks a URL password
+#      (`Bearer postgresql://u:<v>@h` — rule 4 eats the scheme name).
 # Plus three properties whose mutants used to SURVIVE (the gate deleted each and
 # the suite still passed; two of them leaked a secret in full): the QUOTED-value
 # alternations, the explicit `chmod` on a PRE-EXISTING log, and the
@@ -66,7 +75,12 @@
 # spans more than KEY-substrings: PASSWORD (`PasswordAuthentication=no`), TOKEN
 # (`TOKENIZER=fast`) and SECRET (`-k 'secret_scanning'`) forms are here because
 # an earlier version of this header claimed "TOKEN/KEY/SECRET/etc substrings"
-# while all 30 keyword occurrences in it were `key`/`Key`/`KEY`.
+# while all 30 keyword occurrences in it were `key`/`Key`/`KEY`. Added
+# 2026-08-22 for the same reason one step further out: rules 3 and 4 had ZERO
+# innocence cases, so no over-match or boundary mutant in EITHER of them was
+# killable — the URL rule's userinfo class, the Bearer rule's `\b` and its
+# length floor could each be widened with the suite still green. One case each,
+# below.
 #
 # Method: run the REAL hook (not a reimplementation) with a temporary HOME per
 # case, feed it a PostToolUse-shaped JSON payload on stdin via python3 (so a
@@ -170,6 +184,16 @@ assert_redacted "guilt-suffixed-oauth-token-var-value-not-in-log" \
 GHTOKEN="ghp_$(python3 -c 'import secrets; print(secrets.token_hex(18))')"
 assert_redacted "guilt-github-pat-ghp-not-in-log" \
     "echo $GHTOKEN | gh auth login --with-token" "$GHTOKEN"
+
+# 3-bis. The OTHER FOUR members of the `gh[pousr]_` class. A mutant narrowing
+#     that class to a bare `ghp_` SURVIVED the mutation run of 2026-08-22: only
+#     `ghp_` had a case, so `gho_`/`ghu_`/`ghs_`/`ghr_` were carried by an
+#     alternation nothing could fail on. One case for the class, not five: the
+#     mutant that survived collapses the whole class, and any single non-`p`
+#     member kills it.
+GHOTOKEN="gho_$(python3 -c 'import secrets; print(secrets.token_hex(18))')"
+assert_redacted "guilt-github-oauth-app-token-gho-not-in-log" \
+    "echo $GHOTOKEN | gh auth login --with-token" "$GHOTOKEN"
 
 # 3a. The fine-grained PAT prefix (github_pat_) — a SEPARATE rule, because
 #     `gh[pousr]_` cannot match it (`gh` followed by `i`). It had no guilt case
@@ -298,6 +322,15 @@ assert_redacted "guilt-url-userinfo-password" \
     "psql postgres://appuser:urlUserinfoSecret001@db.example.test/mydb" \
     "urlUserinfoSecret001"
 
+# 3j-bis. A URL PASSWORD CONTAINING A COLON. The password class is `[^\s/@]+`,
+#     which allows `:` on purpose — the split between user and password is the
+#     FIRST colon, not the last. Narrowing it to `[^\s/@:]+` SURVIVED the
+#     mutation run of 2026-08-22 and leaks the first half of such a password in
+#     full, because no case had one.
+assert_redacted "guilt-url-userinfo-password-containing-a-colon" \
+    "psql 'redis://appuser:urlColonSecret001:more@db.example.test/x'" \
+    "urlColonSecret001"
+
 # 3k. REDACT-BEFORE-TRUNCATE ordering. Reordering the hook to
 #     `sys.stdin.read()[:200]` used to be a SURVIVING mutant that leaked ~10
 #     characters of cleartext, because no guilt case had a command longer than
@@ -315,6 +348,32 @@ assert_redacted "guilt-secret-straddling-the-200-char-truncation-boundary" \
 assert_redacted "guilt-bearer-token-not-in-log" \
     'curl -H "Authorization: Bearer abcdefgh12345678" https://x' \
     "abcdefgh12345678"
+
+# 4a. THE ORDERING LEAK (Gear-3 gate, round 4). Rule 2 running BEFORE rule 4
+#     did not merely fail to help — it made the output LESS SAFE than no match
+#     at all. A credential-ish NAME whose UNQUOTED value begins with the word
+#     `Bearer` made rule 2 replace exactly that word, destroying the only
+#     marker rule 4 had, so rule 4 could no longer fire and the token was
+#     logged in full. All three shapes were driven through the real hook and
+#     all three leaked. The control above (`Authorization: Bearer`) stayed safe
+#     throughout, because `Authorization` is not a NAME rule 2 matches — which
+#     is exactly why this hid behind a green suite. Moving rule 4 above rule 2
+#     is the fix; putting it back below fails these three.
+assert_redacted "guilt-order-rule2-must-not-disarm-rule4 [header X-Auth]" \
+    "curl -H 'X-Auth: Bearer ordSecretAAA1111' https://x" "ordSecretAAA1111"
+assert_redacted "guilt-order-rule2-must-not-disarm-rule4 [--auth=Bearer]" \
+    "mytool --auth=Bearer ordSecretBBB2222" "ordSecretBBB2222"
+assert_redacted "guilt-order-rule2-must-not-disarm-rule4 [lowercase auth: bearer]" \
+    "svc auth: bearer ordSecretCCC3333" "ordSecretCCC3333"
+
+# 4b. The OTHER ordering adjacency, in the opposite direction: rule 3 must run
+#     BEFORE rule 4. Rule 4 consumes an 8+ char run, and a URL scheme name is
+#     one — so with rule 4 first, `Bearer postgresql://u:<v>@h` becomes
+#     `Bearer <REDACTED>://u:<v>@h`, which no longer matches rule 3's
+#     `[a-zA-Z][a-zA-Z0-9+.-]*://` anchor, and the URL password leaks.
+assert_redacted "guilt-order-rule3-must-run-before-rule4 [scheme eaten by Bearer]" \
+    "Bearer postgresql://appuser:ordSecretDDD4444@db.example.test/x" \
+    "ordSecretDDD4444"
 
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
@@ -363,6 +422,33 @@ assert_intact "innocence-tokenizer-token-not-delimited-on-right" \
     'make TOKENIZER=fast build' 'make TOKENIZER=fast build'
 assert_intact "innocence-secret-scanning-test-selector" \
     "pytest -k 'secret_scanning' --maxfail=1" "pytest -k 'secret_scanning' --maxfail=1"
+
+# RULE 3 and RULE 4 innocence. Added 2026-08-22: until then neither rule had a
+# single innocence case — no case in the corpus contained `Bearer` or `://` at
+# all — so every over-match and boundary mutant in them survived a green suite.
+# One case per boundary, each verified to be a real over-match when the boundary
+# is removed.
+
+# Rule 3, USERINFO BOUNDARY. The user segment is `[^\s:/@]+` — it may not span
+# a `/` or a `:`. Widen it to `[^\s@]+` and this ordinary query string, whose
+# `role:email@host` value has nothing to do with a URL password, gets its
+# `admin` redacted.
+assert_intact "innocence-url-query-string-role-and-email-not-userinfo" \
+    "curl 'https://api.test/send?to=ops:admin@example.test'" \
+    "to=ops:admin@example.test"
+
+# Rule 4, WORD BOUNDARY. `\bBearer` must not match inside a longer word.
+# `flagbearer`, `pallbearer`, `torchbearer` are ordinary English; drop the `\b`
+# and the next 8+ char run after one of them is eaten.
+assert_intact "innocence-flagbearer-word-boundary-not-a-bearer-header" \
+    'git commit -m "flagbearer handoff20260822 done"' \
+    "flagbearer handoff20260822 done"
+
+# Rule 4, LENGTH FLOOR. `{8,}` is what keeps short prose after the word
+# `Bearer` intact; relax it to `{1,}` and this PR title loses its `v2`.
+assert_intact "innocence-bearer-followed-by-short-token-length-floor" \
+    'gh pr create --title "Bearer v2 rollout"' \
+    "Bearer v2 rollout"
 
 assert_intact "innocence-ordinary-command-intact-no-redacted-marker" \
     "gh pr create --title fix --body ok" "gh pr create --title fix --body ok"

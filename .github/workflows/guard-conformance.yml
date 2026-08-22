@@ -302,9 +302,14 @@ jobs:
       # for over-matching (a bare substring that ate 7 of 9 ordinary commands)
       # and once for under-matching (a delimited-segment version that leaked
       # twelve undelimited forms, and a vocabulary-bounded one that still
-      # leaked PGPASSWORD= 99 times in the live log). 77 cases, and a
-      # 54-mutant run in which every rule and every alternation is killed by
-      # at least one of them.
+      # leaked PGPASSWORD= 99 times in the live log), and once more for RULE
+      # ORDER — rule 2 ran before rule 4, so a credential-ish NAME whose
+      # unquoted value began with the word Bearer had exactly that word
+      # replaced, destroying the marker rule 4 needed and logging the token in
+      # full. 86 cases, and a 63-mutant run (62 killed,
+      # 1 EQUIVALENT and excluded, proven unkillable) over an ENUMERATED set — deliberately not the
+      # universal "every alternation" claim this comment used to carry, which
+      # the Gear-3 gate answered with five counterexamples.
       # Same arming discipline as the steps above: this is a `.sh` corpus,
       # invisible to scripts-tests-sweep.yml's pytest collection (it only
       # globs `test_*.py`) even before accounting for that workflow being

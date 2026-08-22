@@ -158,8 +158,9 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #   a JSON body (`-d {"api_key": "<v>"}`) is covered, not just shell/header;
 #   d. URL USERINFO (`scheme://user:<secret>@host`) -- redacts the password
 #      segment only, leaves scheme/user/host readable;
-#   e. `Authorization: Bearer <v>` / bare `Bearer <v>`, which carry no keyword
-#      in a NAME at all.
+#   e. bare `Bearer <v>`, which carries no keyword in a NAME at all. The
+#      dedicated `Authorization\s*:\s*Bearer` alternation that used to sit
+#      beside it was MEASURED DEAD and deleted -- see ON RULE INTERACTION.
 #
 # SURVIVING UNDER-MATCH, measured against this exact matcher, not guessed. A
 # redactor that claims a closed class is worse than one that names its holes:
@@ -179,21 +180,46 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #     `--salt=`, `--cookie=` all leak.
 #   - `Authorization:` with anything other than `Bearer` (`Basic <b64>`, or an
 #     opaque token with no scheme word) leaks; only the Bearer shape is caught.
-#   - A secret passed POSITIONALLY with no name at all (`mytool deploy s3cr3t`,
-#     `mysql -pS3cr3t`, netrc-style `... password S3cr3t`) is caught only if it
-#     carries a known prefix (rule 1).
+#   - A secret NOT JOINED TO A CREDENTIAL-ISH NAME BY `=` OR `:`. This entry
+#     used to be titled "a POSITIONAL secret with no name", which its own
+#     example contradicted -- the class is far wider and INCLUDES every
+#     `--flag <value>` form, because rule 2 requires the separator to sit
+#     between the name and the value and a SPACE there defeats it outright.
+#     Measured leaking through this hook: `gh auth login --token <v>`,
+#     `mytool --api-key <v>`, `mysql --password <v>`,
+#     `echo <v> | gh secret set FOO`, and the genuinely nameless
+#     `mytool deploy <v>` / `mysql -p<v>`. Also here, for a different reason:
+#     `curl -u admin:<v>` and `curl --user admin:<v>` DO carry a `:`, but they
+#     hang it off a USERNAME, which is not a credential-ish name.
+#   - SINGLE-SEGMENT ATTRIBUTE ASSIGNMENT. The lookbehind's `.` exclusion is
+#     documented below as over-match PROTECTION (`jq .key = 1` stays innocent);
+#     its OTHER half is an under-match and was never stated anywhere:
+#     `python3 -c "c.token = \"<v>\""`, `c.secret = "<v>"` and
+#     `jq ".password = \"<v>\"" cfg.json` all leak IN FULL. Same shape of
+#     trade as the KEY vocabulary -- a named price, not a closed class.
+#     Multi-segment names are still caught (`cfg.api_key = "<v>"` matches at
+#     `key`, after the `_`).
+#   - AN INDEX BETWEEN THE NAME AND THE SEPARATOR: `SECRETS[0]=<v>` and
+#     `TOKEN[0]=<v>` leak, because `[0]` is neither the optional quote nor the
+#     separator rule 2 permits between name and value.
 #   - An UNQUOTED value containing a space: only the first word is redacted.
 #
 # OVER-MATCH residual risk (cicatrix superscar #3, the guard-over-match twin of
 # the under-match list above). The keyword must end the NAME (as a delimited
 # segment, a vocabulary compound, or a wide-word suffix) to fire, but it is
 # still a NAME match with no notion of "is this actually a secret", and the
-# damage is not limited to the value. MEASURED on the live 333k-line log at
-# 2026-08-21T20:49Z: this matcher rewrites 2289 lines (0.686%), against 1253
-# (0.376%) for the segment-only version it replaces and 1874 (0.562%) for the
-# bare-substring version before that -- so it redacts MORE of the real corpus
-# than the version that was rejected for over-matching, along different axes
-# (297 URL-userinfo, ~210 bare-generic `auth`/`pwd`/`pass`, ~120 wide-suffix).
+# damage is not limited to the value. MEASURED on the live log -- each figure
+# carries its OWN instant, because this file grows while it is being measured
+# and an earlier draft welded three different instants under one timestamp:
+#   - THIS matcher (round 4, shipped): 2291 lines of 333,832 = 0.686%, at
+#     2026-08-21T22:49:57Z. Replayed side by side with the round-3 matcher,
+#     the two produce BYTE-IDENTICAL output on every line of that log -- the
+#     ordering leak this round fixed has zero occurrences in this corpus.
+#   - the segment-only version it replaces: 1253 = 0.376%, at 20:49Z;
+#     the bare-substring version before that: 1874 = 0.562%, same instant.
+# So it redacts MORE of the real corpus than the version that was rejected for
+# over-matching, along different axes (297 URL-userinfo, ~210 bare-generic
+# `auth`/`pwd`/`pass`, ~120 wide-suffix).
 # That is the accepted trade, stated as a number rather than a hope:
 #   - a legitimately-named non-secret (`FEATURE_FLAG_KEY=`, a cache-partition
 #     name, `PWD=/tmp`, `redis-cli --pattern 'keys:*'`) redacts just as hard;
@@ -203,6 +229,36 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #     `name: value` is rewritten as `name=<REDACTED>`. The log stops being a
 #     replayable command for those lines. Accepted: this is a telemetry log,
 #     not a transcript.
+# Two over-match shapes belong to the OTHER rules, not to the NAME rule, and
+# went undisclosed until the Gear-3 gate drove them:
+#   - rule 4's `Bearer` is a BARE WORD in prose, not a header. It eats the next
+#     >=8-char `[A-Za-z0-9._-]` run in ANY text, with no name, no assignment and
+#     no separator required: `gh pr create --title "Bearer authentication
+#     rollout"` is logged as `Bearer <REDACTED> rollout`, and
+#     `git commit -m "fix: bearer credentials refresh loop"` is mangled the same
+#     way. `gh pr create` is TRIGGER RULE 1 of this very hook, so those are
+#     precisely the lines it exists to record. Measured on the live log at
+#     2026-08-21T22:50:35Z / 333,833 lines: 8 lines match, 10 matches total,
+#     and 3 of the 10 carry no digit at all -- an 8-letter lowercase word, a
+#     19-char lowercase hyphenated slug, and a 12-letter word that is the
+#     MEASURING SESSION'S OWN PROBE STRING, which is this log's documented
+#     self-inflation showing up inside the very measurement of it. Deliberately
+#     NOT narrowed to require a digit or an uppercase letter: that would trade a
+#     3-occurrence over-match for an under-match on an all-lowercase bearer
+#     token, which inverts the preference this hook states two paragraphs above.
+#   - rule 3 redacts a PORT when the port sits in the userinfo PASSWORD
+#     position: `curl "https://example.com:8443@evil.test/"` is logged as
+#     `example.com:<REDACTED>@`. Note what this is NOT: a genuine `host:port`
+#     has no `@` after it, so this rule cannot fire on one -- verified,
+#     `postgres://appuser@db.host.test:5432/x` and
+#     `https://api.example.test:8443/health` are both left intact. An
+#     all-digits carve-out was considered and REJECTED on measurement: 0 of 367
+#     URL-userinfo matches in the live log have an all-digit password segment,
+#     so it would fix nothing real while opening an under-match on any numeric
+#     credential (a PIN, a numeric DB password). For scale on the same rule:
+#     354 of those 367 matches are one test-fixture DSN
+#     (`postgresql://test:<4 lowercase letters>@`), i.e. this rule too fires
+#     overwhelmingly on non-secrets, which is the accepted direction.
 # Given the choice between over-redacting a non-secret and under-redacting a
 # real one, this hook accepts the former. The guilt/innocence corpus in
 # scripts/tests/test_codex_spalla_trigger_redaction.sh proves the specific
@@ -233,6 +289,48 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # looks: it makes a SINGLE-SEGMENT attribute access innocent (`foo.key = x`,
 # `jq '.key = 1'`), but `jq '.api_key = 1'` and `cfg.api_key = "x"` ARE
 # redacted, because the match starts at `key` after the `_`, not at the `.`.
+# That exclusion is TWO-SIDED and only one side was ever written down: it is
+# over-match protection AND an under-match, because a single-segment attribute
+# assignment to a real credential (`c.token = "<v>"`, `c.secret = "<v>"`,
+# `jq '.password = "<v>"'`) leaks in full. Listed in the under-match block
+# above; repeated here because this is the paragraph that sells the exclusion.
+#
+# ON RULE INTERACTION -- the ORDER of the four re.sub calls is itself a rule,
+# and none of the four artifacts discussed ordering until the Gear-3 gate found
+# a LEAK caused purely by it. Every rule REWRITES the span it matches, which
+# can destroy the marker a LATER rule needs. Rule 2 is the destructive one: it
+# consumes NAME + separator + the WHOLE value and re-emits `NAME=<REDACTED>`.
+# So the order is 1 -> 3 -> 4 -> 2: marker-anchored rules first, the generic
+# NAME rule LAST. Two of those adjacencies are load-bearing and measured:
+#   - RULE 2 BEFORE RULE 4 LEAKED A TOKEN IN FULL. When a credential-ish NAME
+#     carries an UNQUOTED value whose first word is `Bearer`, rule 2 replaced
+#     exactly that word -- `-H 'X-Auth: Bearer <v>'` became
+#     `X-Auth=<REDACTED> <v>`; likewise `--auth=Bearer <v>` and
+#     `auth: bearer <v>` -- destroying the only marker rule 4 had, so rule 4
+#     could no longer fire. The redactor's own rewrite made the output LESS
+#     safe than not matching at all. `Authorization: Bearer <v>` was never
+#     affected, because `Authorization` is not a NAME rule 2 matches, which is
+#     exactly why the bug hid behind a passing control case.
+#   - RULE 4 BEFORE RULE 3 LEAKS A URL PASSWORD. `Bearer postgresql://u:<v>@h`:
+#     rule 4 eats the 10-char scheme name and leaves `<REDACTED>://u:<v>@h`,
+#     which no longer matches rule 3's `[a-zA-Z][a-zA-Z0-9+.-]*://` anchor.
+# Both have guilt cases, and the ORDER as a whole is pinned rather than just
+# those two adjacencies: ALL FIVE non-current permutations of rules 2/3/4 were
+# mutated and all five fail the suite. That last part is a correction of this
+# very comment: an earlier draft of it asserted that rule 3 vs rule 2 was a
+# free choice, "order-INDEPENDENT for safety", and predicted the mutant would
+# SURVIVE. It did not -- moving rule 3 last also moves it past rule 4, and the
+# URL password then leaks. The prediction was written down before the mutant
+# was run, which is why it is recorded here instead of quietly deleted.
+# Rule 1 is the one position held by ARGUMENT rather than by measurement: it
+# re-emits its own prefix and its character classes exclude `:` and `/`, so it
+# cannot destroy another rule's marker whatever it matches.
+# The `Authorization\s*:\s*Bearer|` alternation rule 4 used to carry was
+# MEASURED DEAD and deleted, by the same test this PR applied twice before to
+# `(?:--?)?` and the left wildcard: replayed over all 333,794 live-log target
+# fields, keeping ONLY the bare alternation produced byte-identical output on
+# every line (0 differences), while keeping only the `Authorization`-anchored
+# one changed 2. An alternation nothing can fail on is dead weight.
 TARGET_JSON="$(printf '%s' "$TARGET" | python3 -c '
 import sys, re, json
 s = sys.stdin.read()
@@ -240,8 +338,25 @@ s = sys.stdin.read()
 s = re.sub(r"sk-ant-[A-Za-z0-9_-]{8,}", "sk-ant-<REDACTED>", s)
 s = re.sub(r"gh[pousr]_[A-Za-z0-9]{8,}", "gh_<REDACTED>", s)
 s = re.sub(r"github_pat_[A-Za-z0-9_]{8,}", "github_pat_<REDACTED>", s)
+# 3. URL userinfo: scheme://user:<secret>@host -- password segment only.
+#    Runs BEFORE rule 4: rule 4 would otherwise eat an 8+ char scheme name and
+#    leave a bare ://user:<secret>@ with no scheme for this rule to anchor on.
+s = re.sub(r"([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)[^\s/@]+@", r"\1<REDACTED>@", s)
+# 4. Bearer, which carries no keyword in a NAME at all. Runs BEFORE rule 2:
+#    rule 2 would otherwise rewrite a header X-Auth: Bearer <v> into
+#    X-Auth=<REDACTED> <v> and leave the token in the clear (see ON RULE
+#    INTERACTION above). The dedicated Authorization-anchored alternation
+#    that used to sit here was MEASURED DEAD and deleted -- see the same block.
+s = re.sub(
+    r"(?i)\b(Bearer)\s+[A-Za-z0-9._-]{8,}",
+    r"\1 <REDACTED>",
+    s,
+)
 # 2. Anything ASSIGNED to a credential-ish NAME (see the comment above for the
-#    three name shapes, the KEY asymmetry, and what this does NOT catch).
+#    three name shapes, the KEY asymmetry, and what this does NOT catch). LAST
+#    of the four, because it is the only DESTRUCTIVE rewrite: it consumes the
+#    whole value and normalises the separator, so it destroys the markers the
+#    other rules anchor on.
 WIDE = r"(?:TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)"
 PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
        r"|REFRESH|OAUTH|BEARER|MY|ID|TOKEN|SECRET|PASSWORD|PASSWD"
@@ -256,14 +371,6 @@ VALUE = r"(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)"
 s = re.sub(
     r"(?i)(" + NAME + r")[\"\x27]?\s*[=:]\s*" + VALUE,
     lambda m: m.group(1) + "=<REDACTED>",
-    s,
-)
-# 3. URL userinfo: scheme://user:<secret>@host -- password segment only.
-s = re.sub(r"([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)[^\s/@]+@", r"\1<REDACTED>@", s)
-# 4. Bearer/Authorization, which carry no keyword in a NAME at all.
-s = re.sub(
-    r"(?i)\b(Authorization\s*:\s*Bearer|Bearer)\s+[A-Za-z0-9._-]{8,}",
-    r"\1 <REDACTED>",
     s,
 )
 print(json.dumps(s[:200]))
