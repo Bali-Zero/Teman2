@@ -722,8 +722,12 @@ residual_risks:
     loses the diagnostic tail that follows it -- `TOKEN=x && git push origin main` now logs as
     `<REDACTED>`, where the old cascade kept the `&& git push origin main`. Affordable HERE and nowhere
     else in the repo, because the target field has no programmatic consumer: the hook's own routing
-    reads TARGET in memory (lines 91-112) and never reads the log back. If anything ever starts parsing
-    this log, this trade must be re-opened before that consumer is written, not after."
+    reads TARGET in memory (lines 91-112) and never reads the log back. Stated precisely, because a
+    strict reading of 'no consumer' would be wrong: a repo-wide grep for the log filename returns the
+    hook itself (the WRITER), its own test (which reads the last line back to assert redaction, i.e.
+    the guard verifying itself), and one design doc that documents the field list without reading it.
+    No product code, no cron, no report. If anything ever starts parsing this log, this trade must be
+    re-opened before that consumer is written, not after."
   - "ANCHOR RECALL is bounded by the NAME vocabulary and the four prefix shapes, and the earliest-anchor
     cut does NOT improve it -- it only guarantees that once something anchors, nothing behind it
     survives. Every under-match listed above therefore survives the redesign UNCHANGED. This is stated
