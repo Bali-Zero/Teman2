@@ -464,7 +464,12 @@ ANCHORS = (
     #     unambiguous credential shape there is was invisible. Found by a refuter,
     #     not by the corpus. No over-match risk worth weighing: the delimiter line
     #     is not something an innocent command says by accident.
-    r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----",
+    #     The trailing [A-Z ]* matters: PGP writes
+    #     -----BEGIN PGP PRIVATE KEY BLOCK-----, so a form requiring PRIVATE KEY to be
+    #     followed immediately by the dashes missed one of the commonest private-key
+    #     formats there is. A CERTIFICATE, a PUBLIC KEY and a CERTIFICATE REQUEST are
+    #     all still innocent -- none of them contains the words PRIVATE KEY.
+    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY[A-Z ]*-----",
     # 3. URL userinfo: scheme://user:<secret>@host. The whole userinfo form is
     #    the anchor, so a bare scheme:// in an innocent URL does not fire.
     #     ANCHORED ON :// ITSELF, with no scheme pattern at all -- and the two
@@ -492,7 +497,19 @@ ANCHORS = (
     #     form (the old cascade consumed a token containing the slash, which made a
     #     userinfo URL appear that had not been there); the plain form above is the
     #     same gap without the theatre, and it leaked on the old design too.
-    r"://[^\s:/@]+:[^\s@]+@",
+    #     The (?!\\d+[/?#]) is a PORT DISCRIMINATOR and it is the price of letting a
+    #     password contain a slash. Without it, host:port/path@segment reads exactly
+    #     like user:password@host, and three entirely ordinary commands were
+    #     truncated in full: a registry URL with a digest
+    #     (https://reg.test:5000/v2/img@sha256), a release path
+    #     (https://example.test:8443/releases/app@2), and any :8080 URL with an at-sign
+    #     later in the path. A port is digits followed by / ? or #; a password is not,
+    #     and an ALL-DIGIT password immediately before the @ still anchors because the
+    #     lookahead needs one of those three characters after the digits. Scored
+    #     against both alternatives: this form is 6/6 guilt and 0 false positives,
+    #     the slash-permitting one without the lookahead was 6/6 and 3, and the
+    #     original slash-forbidding one was 4/6 and 0.
+    r"://[^\s:/@]+:(?!\d+[/?#])[^\s@]+@",
     # 4b. Authorization: Basic <base64>. Rule 4 covers Bearer only, and this was a
     #     NAMED residual risk rather than an oversight -- promoted to an anchor when
     #     the same cross-family seat pointed out that a wholly ordinary curl -H

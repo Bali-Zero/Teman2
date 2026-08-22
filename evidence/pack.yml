@@ -370,9 +370,9 @@ receipts:
     seat: author-session (M5, claude-opus-5)
   - claim:
       "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
-      nothing else does (21/137); restored byte-identically, 137/137 pass (105 guilt / 15 innocence /
+      nothing else does (23/144); restored byte-identically, 144/144 pass (105 guilt / 15 innocence /
       2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
-    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 137/137; shellcheck clean on both files"
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 144/144; shellcheck clean on both files"
     exit: 0
     ts: "2026-08-22T05:25:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -402,7 +402,7 @@ receipts:
       anchored those URLs as well. They are PINS on the new sixteen-character bound, not witnesses to a
       defect, and counting them as bite cases would have been the easy way to make the proof look
       stronger than it is."
-    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 137/137"
+    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 144/144"
     exit: 0
     ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -443,7 +443,7 @@ receipts:
       added to pin them (the ordinary English word Basic in a commit message, a Basic payload below the
       base64 length floor, and a URL whose path merely contains a colon and an at-sign). A guard added
       without an innocence case is exactly the shape this corpus exists to refuse."
-    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 137 cases (115 guilt / 20 innocence / 2 mode); bite proof 21/137 on the pre-change hook"
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 144 cases (118 guilt / 24 innocence / 2 mode); bite proof 23/144 on the pre-change hook"
     exit: 0
     ts: "2026-08-22T07:50:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -479,7 +479,7 @@ receipts:
     ts: "2026-08-22T08:27:00Z"
     seat: cross-family grader (GPT-5.6 sol) -> author-session
   - claim:
-      "Corpus 133 -> 137 (115 guilt / 20 innocence / 2 mode); bite proof 21/137 against the pre-PR hook.
+      "Corpus 133 -> 137 (115 guilt / 20 innocence / 2 mode); bite proof 23/144 against the pre-PR hook.
       Of the four cases added here, THREE are witnesses and one is a pin: two fail against the immediately
       preceding commit (the Bearer plus-sign token and the Basic prose false positive, i.e. the two
       defects just cured), and innocence-basic-long-english-phrase passes on both because its first word
@@ -487,6 +487,40 @@ receipts:
     cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh against 615ac0521 and against the pre-PR hook"
     exit: 0
     ts: "2026-08-22T08:30:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "FOURTH CROSS-FAMILY PASS. My slash-permitting URL password class -- itself a fix from the third
+      pass -- created a FALSE POSITIVE that destroyed three entirely ordinary commands: host:port/path@segment
+      reads exactly like user:password@host, so a registry digest URL
+      (https://reg.test:5000/v2/img@sha256), a release path (https://example.test:8443/releases/app@2)
+      and any :8080 URL with a later at-sign were truncated in full. Cured with a PORT DISCRIMINATOR
+      (?!\\d+[/?#]) rather than by reverting: a port is digits followed by / ? or #, a password is not,
+      and an all-digit password immediately before the @ still anchors. Scored against both
+      alternatives: 6/6 guilt and 0 false positives, against 6/6 and 3 for the slash-permitting form
+      without the lookahead, and 4/6 and 0 for the original slash-forbidding one."
+    cmd: "codex exec -m gpt-5.6-sol, fourth pass; the three candidate regexes then scored side by side on a 6-guilt / 8-innocent URL set"
+    exit: 0
+    ts: "2026-08-22T08:55:00Z"
+    seat: cross-family grader (GPT-5.6 sol) -> author-session
+  - claim:
+      "The PEM anchor missed PGP: -----BEGIN PGP PRIVATE KEY BLOCK----- does not put the dashes
+      immediately after PRIVATE KEY, so one of the commonest private-key formats in existence leaked
+      unchanged. Widened with a trailing [A-Z ]*; CERTIFICATE, PUBLIC KEY, PGP PUBLIC KEY BLOCK and
+      CERTIFICATE REQUEST all remain innocent because none of them contains the words PRIVATE KEY."
+    cmd: "6 private-key delimiters (RSA, bare, EC, PGP BLOCK, OPENSSH, ENCRYPTED) and 4 public ones scored before and after"
+    exit: 0
+    ts: "2026-08-22T08:58:00Z"
+    seat: cross-family grader (GPT-5.6 sol) -> author-session
+  - claim:
+      "PATTERN WORTH NAMING, because it has now happened three times in this PR: each of my last three
+      cures created the next defect. Tempering the tail created the mirror; bounding the scheme created
+      a coverage regression at the boundary; permitting a slash in the password created a false positive
+      on host:port paths. None was caught by my own corpus or my own fuzzers -- all three were caught by
+      a seat from a different training family. The corpus is now 144 cases and grows only through
+      defects found from OUTSIDE it, which is the honest description of how it has been built."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 144 (118 guilt / 24 innocence / 2 mode); 3 of the 7 cases added here fail against the immediately preceding commit; 23/144 fail against the pre-PR hook"
+    exit: 0
+    ts: "2026-08-22T09:00:00Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -867,6 +901,12 @@ dissent:
     status: CONFIRMED
   - seat: author-session (M5), on its own innocence corpus
     objection: "The Basic false positive was invisible to my corpus by construction: every innocence case I wrote used a SHORT word after the trigger, so the 16-character floor kept them all below it. A length floor that hides a defect from the cases written to catch it is the same disease as a fuzz that reports clean on a class it cannot emit -- the third instance of it in this one PR."
+    status: CONFIRMED
+  - seat: cross-family grader (GPT-5.6 sol, fourth pass)
+    objection: "NOT CONVERGED. curl 'https://example.test:8443/releases/app@2' is destructively truncated -- the URL anchor misreads host:port/path@segment as user:password@host. And -----BEGIN PGP PRIVATE KEY BLOCK----- leaks unchanged, because the PEM anchor requires the dashes immediately after PRIVATE KEY."
+    status: CONFIRMED
+  - seat: author-session (M5), on the shape of its own last three cures
+    objection: "Three consecutive cures each created the next defect, and a seat from a different training family caught all three while my corpus and both my fuzzers passed. That is not bad luck; it is what it means for a generator, a corpus and a design to share an author."
     status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep

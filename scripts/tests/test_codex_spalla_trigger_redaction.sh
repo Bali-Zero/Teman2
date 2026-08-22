@@ -622,6 +622,12 @@ assert_redacted "guilt-url-userinfo-password-with-slash" \
     "psql postgres://u:pa/$URLSLASH_V@h" "$URLSLASH_V"
 assert_redacted "guilt-url-userinfo-password-with-slash [cascade-conjured form]" \
     "run a://u:${URLSLASH_V}ghp_12345678=\"/\"@h" "$URLSLASH_V"
+assert_redacted "guilt-url-userinfo-all-digit-password-still-anchors" \
+    "psql postgres://u:9876543210@h" "9876543210"
+assert_redacted "guilt-pem-private-key [PGP block delimiter]" \
+    "printf -- '-----BEGIN PGP PRIVATE KEY BLOCK-----\\n$URLSLASH_V'" "$URLSLASH_V"
+assert_redacted "guilt-pem-private-key [OPENSSH]" \
+    "printf -- '-----BEGIN OPENSSH PRIVATE KEY-----\\n$URLSLASH_V'" "$URLSLASH_V"
 
 # 4n. Authorization: Basic <base64>. Rule 4 only ever covered Bearer, and this was
 #     a NAMED residual risk rather than an oversight -- which is precisely why it
@@ -720,6 +726,14 @@ assert_intact "innocence-basic-the-ordinary-english-word" \
     'git commit -m "Basic auth support for the gateway"' "Basic auth support"
 assert_intact "innocence-basic-below-the-base64-length-floor" \
     'echo "Basic ZGVtbw=="' "Basic ZGVtbw"
+assert_intact "innocence-url-host-port-path-with-at-sign [registry digest]" \
+    "curl 'https://reg.test:5000/v2/img@sha256'" "reg.test:5000"
+assert_intact "innocence-url-host-port-path-with-at-sign [release path]" \
+    "curl 'https://example.test:8443/releases/app@2'" "releases/app@2"
+assert_intact "innocence-pem-certificate-is-public-not-a-key" \
+    "printf -- '-----BEGIN CERTIFICATE-----'" "BEGIN CERTIFICATE"
+assert_intact "innocence-pem-public-key-block" \
+    "printf -- '-----BEGIN PGP PUBLIC KEY BLOCK-----'" "PUBLIC KEY BLOCK"
 assert_intact "innocence-url-path-colon-at-not-userinfo" \
     'curl "https://cdn.test/a/b:c@d/e"' "cdn.test"
 assert_intact "innocence-bearer-followed-by-short-token-length-floor" \
