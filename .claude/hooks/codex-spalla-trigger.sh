@@ -124,27 +124,26 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # Redact BEFORE truncating: a 200-char window can slice a token in half and
 # leave a usable prefix, and it can also carry a whole short one.
 #
-# ORDERING CAVEAT, measured, because the obvious reading is wrong: redacting
-# BEFORE truncating is not strictly protective. Redaction SHORTENS the string,
-# which pulls bytes that the 200-char window used to cut off INTO the window.
-# Proven on a 277-char command with a secret at char 253: truncate-only left it
-# out; redact-then-truncate brought a following fragment in. The ordering is
-# still right -- it is the only order that can redact a secret sitting inside
-# the window at all -- but it does NOT eliminate exposure, and the direction of
-# the trade is NOT always favourable. An earlier version of this paragraph said
-# it "trades one exposure for a smaller one"; that was contradicted by
-# measurement (Gear-3 gate, 2026-08-22) and is corrected here rather than
-# quietly dropped. Counter-example, re-measured by the author on the shipped
-# file: a 205-char command whose first 140 chars are a redactable
-# CLIENT_SECRET= value and whose LAST 20 chars are a nameless secret starting
-# at char 185. Truncate-only clips it to a 15-char partial; redact-first
-# shortens the string and pulls the WHOLE 20-char value inside the window. So
-# redaction can ENLARGE the exposure of an UNMATCHED secret while removing a
-# MATCHED one. It is still the right order, on the grounds that a matched
-# secret is the one this hook can do anything about -- not on the grounds that
-# it is monotonically safer. Pinned in the other direction by the `straddle`
-# guilt case: a 251-char command whose quoted secret starts at char 190, where
-# truncate-first leaves 10 characters in cleartext and redact-first leaves none.
+# ORDERING: redaction runs BEFORE the 200-char truncation, and under THIS
+# architecture that is monotonically safer -- which is not what this paragraph
+# used to say. It carried a long "ordering caveat" arguing that redaction
+# SHORTENS the string and can therefore pull an unmatched secret INTO the
+# window, with a 205-char counter-example measured "by the author on the
+# shipped file". A final gate showed it is impossible by construction here,
+# and re-running the counter-example confirms it: the cut runs from the
+# earliest anchor TO END OF STRING, so the output is at most match-start plus
+# eleven characters. Nothing after the anchor can be pulled in -- it is
+# deleted. Anything before the anchor keeps its position. Reconstructed
+# exactly, that 205-char command logs 24 characters and the trailing nameless
+# secret is GONE, where truncate-only would have left a 15-char partial of it
+# in cleartext. The caveat was true of the RETIRED cascade, which rewrote
+# values in place and did shift later bytes; it did not survive the redesign,
+# and it sat here afterwards arguing against the very property the redesign
+# bought. Pinned by the `straddle` guilt case (a quoted secret starting at
+# char 190, where truncate-first leaves 10 characters in cleartext and
+# redact-first leaves none) and by the mode case asserting the 200-char
+# truncation still happens at all -- nothing asserted that until 2026-08-22,
+# so deleting the slice passed the whole corpus while logging full lines.
 #
 # WHAT THE VALUE BRANCH FIRES ON (three NAME shapes plus two non-name shapes --
 # an earlier version of this comment said "only `NAME=value` or `NAME: value`",
@@ -167,8 +166,12 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #   c. a BARE GENERIC name: `pass=`, `pwd=`, `auth=`.
 #   plus, on any of the above, an optional quote between name and separator, so
 #   a JSON body (`-d {"api_key": "<v>"}`) is covered, not just shell/header;
-#   d. URL USERINFO (`scheme://user:<secret>@host`) -- redacts the password
-#      segment only, leaves scheme/user/host readable;
+#   d. URL USERINFO (`scheme://user:<secret>@host`), including an EMPTY user
+#      (`redis://:<secret>@host`, which is Redis's canonical form). The cut
+#      starts at the `://`, so user and host go with the password and only the
+#      scheme survives -- an earlier version of this line said it 'redacts the
+#      password segment only, leaves scheme/user/host readable', which described
+#      the retired cascade and was measured false here;
 #   e. bare `Bearer <v>`, which carries no keyword in a NAME at all. The
 #      dedicated `Authorization\s*:\s*Bearer` alternation that used to sit
 #      beside it was MEASURED DEAD and deleted -- see ON RULE INTERACTION.
@@ -178,28 +181,29 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #   - `<any-prefix>KEY=` where the prefix is outside the vocabulary in (b):
 #     `PUBKEY=`, `M5KEY=`, `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak
 #     in full. Their DELIMITED twins (`PUB_KEY=`, `ORIGINAL_API_KEY=`) are
-#     caught. This is the deliberate price of keeping `monkey=patch` innocent,
-#     and it is the ONE class where this matcher is knowingly weaker than the
-#     bare-substring version. Measured on the live log at 2026-08-21T21:08Z:
+#     caught. This is the deliberate price of keeping `monkey=patch` innocent.
+#     It used to call itself the ONE class where this matcher is knowingly
+#     weaker than the bare-substring version; RETRACTED 2026-08-22, a gate
+#     found a second and larger one -- the bare SUFFIX, where TOKEN_2 was
+#     caught and TOKEN2 was not. The numeric half of that is now closed and
+#     its letter half declared. Measured on the live log at 2026-08-21T21:08Z:
 #     40 distinct names / 136 occurrences that the substring version redacted
 #     and this one does not -- most (`KEYWORDS` 15, `KEYCHAIN` 12,
 #     `StrictHostKeyChecking` 21, `MONKEYPATCH` 3, `ONKEYDOWN` 2) were that
 #     version OVER-matching, but `QKEY` (19), `UKEY` (4), `M5KEY`, `PUBKEY`,
 #     `ORIGINAL*KEY` (3) and `MACHINEHMACKEY` are real credential-shaped names
 #     this hook does not cover.
-#   - A BACKSLASH-ESCAPED QUOTE around the value defeats VALUE in EVERY rule.
-#     Named 2026-08-22 by the Gear-3 gate; PRE-EXISTING, not introduced by any
-#     commit on this branch, and NOT fixed here -- naming it is the fix this
-#     round owes, and a change to VALUE's quoting is its own diff. VALUE's two
-#     quoted branches need a literal quote next, a `\` fails them, and the bare
-#     branch stops dead at the `"`. Re-measured on THIS matcher:
-#       export API_KEY=\"<v>\"          -> API_KEY=<REDACTED>"<v>\"   value survives
-#       curl -d "TOKEN=\"<v>\""         -> TOKEN=<REDACTED>"<v>\""    value survives
-#       curl -d "{\"api_key\": \"<v>\"}" -> UNCHANGED, byte for byte
-#     The third is the ordinary way to write a JSON body inside a double-quoted
-#     shell string, and the corpus's JSON guilt case uses the single-quoted-outer
-#     form, which works -- so the corpus proves the shape it enumerates and this
-#     one hides behind it. That is a lesson about corpora, not just about quotes.
+#   - A BACKSLASH-ESCAPED QUOTE around the value was listed here as an OPEN
+#     hole with three measured outputs and a standing instruction that fixing
+#     it was a later diff's job. DELETED 2026-08-22: all three outputs are
+#     false on this file. Re-driven through the real hook, the escaped-quote
+#     forms redact -- an assignment inside a double-quoted argument and a JSON
+#     body written with escaped inner quotes both cut at the credential name.
+#     The class died with the cascade: VALUE no longer has to find where a
+#     value ENDS, only that an assignment BEGINS, so the escaping that used to
+#     defeat it is now irrelevant. A residual that outlives its own cure is
+#     worse than none -- it reads as a known hole AND, here, it was a TODO
+#     telling the next session to widen VALUE for a gap that no longer exists.
 #   - Credential words outside the six in (a)+(b): `--pin=`, `--otp=`,
 #     `--salt=`, `--cookie=` all leak.
 #   - `Authorization:` with anything other than `Bearer` (`Basic <b64>`, or an
@@ -247,12 +251,15 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # That is the accepted trade, stated as a number rather than a hope:
 #   - a legitimately-named non-secret (`FEATURE_FLAG_KEY=`, a cache-partition
 #     name, `PWD=/tmp`, `redis-cli --pattern 'keys:*'`) redacts just as hard;
-#   - the replacement SWALLOWS the rest of the unquoted value, so
-#     `sed -i 's/key=old/key=new/'` loses its second half entirely;
-#   - the replacement NORMALISES the separator to `=`, so a header or JSON
-#     `name: value` is rewritten as `name=<REDACTED>`. The log stops being a
-#     replayable command for those lines. Accepted: this is a telemetry log,
-#     not a transcript.
+#   - the cut SWALLOWS THE REST OF THE LINE, not just the value. Two earlier
+#     bullets here understated this and are replaced by one accurate one: they
+#     said `sed -i 's/key=old/key=new/'` 'loses its second half' (it loses
+#     everything from the match on -- measured `sed -i 's/<REDACTED>`) and that
+#     the replacement 'NORMALISES the separator to =' so `name: value` becomes
+#     `name=<REDACTED>` (nothing is normalised because nothing is re-emitted:
+#     `curl -H "X-Api-Key: <v>"` is logged as `curl -H "X-Api-` plus the marker,
+#     with the NAME inside the cut). The log stops being a replayable command
+#     for those lines. Accepted: this is a telemetry log, not a transcript.
 # Two over-match shapes belong to the OTHER rules, not to the NAME rule, and
 # went undisclosed until the Gear-3 gate drove them:
 #   - rule 4's `Bearer` is a BARE WORD in prose, not a header. It eats the next
@@ -271,11 +278,17 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #     3-occurrence over-match for an under-match on an all-lowercase bearer
 #     token, which inverts the preference this hook states two paragraphs above.
 #   - rule 3 redacts a PORT when the port sits in the userinfo PASSWORD
-#     position: `curl "https://example.com:8443@evil.test/"` is logged as
-#     `example.com:<REDACTED>@`. Note what this is NOT: a genuine `host:port`
-#     has no `@` after it, so this rule cannot fire on one -- verified,
-#     `postgres://appuser@db.host.test:5432/x` and
-#     `https://api.example.test:8443/health` are both left intact. An
+#     position. THE SENTENCE THAT USED TO FOLLOW WAS FALSE AND ITS PROOF WAS
+#     VACUOUS: it said a genuine `host:port` has no `@` after it so this rule
+#     cannot fire on one, 'verified' with two URLs that have NO at-sign after
+#     the port at all -- neither could test the claim it was offered as proof
+#     of. A genuine host:port followed by an at-sign later in the line DOES
+#     fire it. One shape is cured (a path starting with `@`, the Mastodon form,
+#     see the `/@` alternative on the anchor) and one is OPEN and declared:
+#     `curl -sS 'https://api.example.test:8443?email=alice@corp.test'` is cut in
+#     full. The pack and the registry were corrected on 2026-08-22 and THIS FILE
+#     WAS NOT, which is how a cured claim goes on lying in the one place a
+#     maintainer reads before touching the matcher. An
 #     all-digits carve-out was considered and REJECTED on measurement: 0 of 367
 #     URL-userinfo matches in the live log have an all-digit password segment,
 #     so it would fix nothing real while opening an under-match on any numeric
@@ -454,7 +467,20 @@ PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
 # Digits do not appear in that role. DECLARED RESIDUAL: a bare LETTER suffix
 # (TOKENA=, TOKENV2=) still leaks -- it is not separable from TOKENIZER by any
 # rule this shape can express, so it is priced, not closed.
-TAIL = r"S?[0-9]*(?:[_-][A-Za-z0-9]+)*"
+# EVERY RUN IN BOTH TAILS IS BOUNDED, and this is the FIFTH appearance of the
+# same family in this file -- the fourth was cured six commits ago with a
+# comment claiming it had been bounded "in EVERY run at once rather than in
+# the one that was measured slowest". That was true of the URL anchor and
+# FALSE of this one, which was never looked at. Unbounded, the segment chain
+# is re-partitioned from every [_-] start position: driven END TO END through
+# the real hook on `echo ` + `_TOKEN` repeated, 4KB cost 0.98s, 8KB 2.11s,
+# 16KB 5.07s and 32KB 17.44s, in a hook that fires on every PostToolUse event
+# and has NO runtime timeout -- the 10s figure this file used to point at is a
+# CI budget in the corpus, not a guard here. Bounded: 3.8ms at 4KB and 45.8ms
+# at 32KB. DECLARED RESIDUAL: a credential name with more than 16 delimited
+# segments, or a segment longer than 64 characters, no longer anchors. A real
+# one (MY_APP_PROD_API_KEY_V2) has six.
+TAIL = r"S?[0-9]{0,8}(?:[_-][A-Za-z0-9]{1,64}){0,16}"
 # TAIL_ND is TAIL WITHOUT the bare-digit suffix, and it exists because a second
 # gate falsified the sentence above. "Digits do not appear in that role" is FALSE
 # for a BARE credential word: key1, key2, key3 are the canonical placeholder
@@ -469,7 +495,7 @@ TAIL = r"S?[0-9]*(?:[_-][A-Za-z0-9]+)*"
 # BARE, it is a placeholder and they are not. Branch (a) keeps the digits because
 # TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL are not words anything uses as a
 # placeholder key.
-TAIL_ND = r"S?(?:[_-][A-Za-z0-9]+)*"
+TAIL_ND = r"S?(?:[_-][A-Za-z0-9]{1,64}){0,16}"
 NAME = (r"(?<![A-Za-z0-9.])(?:"
         + r"[A-Za-z0-9]*" + WIDE + TAIL   # a. ANY prefix + a wide credential word
         # b. KEY, split by whether a vocabulary PREFIX is present: with one, the
@@ -614,7 +640,20 @@ ANCHORS = (
     #     port at all, so they could not test the claim they were offered as proof
     #     of. A genuine host:port followed by an at-sign later in the path is
     #     exactly what broke it.
-    r"://[^\s:/@]{1,2048}:(?!\d+(?:/@|[/?#][^\s@]{0,2048}/))[^\s@]{1,2048}@",
+    #     THE USER RUN IS {0,2048}, NOT {1,2048}, and the missing zero was a leak.
+    #     redis://:<password>@host is the CANONICAL Redis URL -- Redis has no
+    #     username -- and every artifact here described this rule as covering URL
+    #     userinfo while enumerating exactly three holes, none of them this one.
+    #     Measured leaking IN FULL on the shipped file: redis://, amqp://,
+    #     postgres://, mongodb://, http:// proxy and ftp/sftp/smb, all with an
+    #     empty username; one character away from redis://x:<password>@host,
+    #     which redacts. Found by a gate driving 637 credential-bearing inputs,
+    #     after the corpus had been built for eleven rounds against the shape
+    #     that HAS a username. The widening is corpus-neutral: all 173 cases pass
+    #     unchanged, and it cannot invent a false positive that {1,2048} avoided,
+    #     because a URL with a colon immediately after :// still needs the rest of
+    #     the userinfo form -- a password run and a terminating at-sign.
+    r"://[^\s:/@]{0,2048}:(?!\d+(?:/@|[/?#][^\s@]{0,2048}/))[^\s@]{1,2048}@",
     # 4b. Authorization: Basic <base64>. Rule 4 covers Bearer only, and this was a
     #     NAMED residual risk rather than an oversight -- promoted to an anchor when
     #     the same cross-family seat pointed out that a wholly ordinary curl -H

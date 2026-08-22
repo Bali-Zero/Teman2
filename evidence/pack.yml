@@ -748,8 +748,58 @@ receipts:
       6/173 against the over-matching predecessor bb2cd3876 -- exactly the six new innocence pins -- and
       9/173 against fef2562cc, the version before any of this round landed (7 suffix guilt witnesses plus
       the 2 at-path innocence pins). Hook restored byte-identical after each (sha256 compared)."
+  - claim:
+      "FINAL GATE: REWORK-BUILD, and it was right on all three code defects. (1) AN UNDECLARED LEAK in an
+      ordinary shape -- redis://:<password>@host, the CANONICAL Redis URL because Redis has no username,
+      logged byte-for-byte. Same for amqp, postgres, mongodb and an http proxy. One quantifier: the user
+      run was {1,2048} and refused an empty user, one character away from redis://x:<password>@host which
+      redacts. Eleven rounds of corpus built around the shape that HAS a username could not see it; the
+      gate found it by driving 637 credential-bearing inputs of its own design. (2) THE FIFTH APPEARANCE
+      of the unbounded-run family, in the NAME anchor: 6.82s at 32KB and 46.66s at 64KB end-to-end,
+      re-measured here, in a hook that fires on every tool call and has NO runtime timeout -- the 10s
+      figure this file pointed at is a budget in the CORPUS, not a guard in the hook. My own comment six
+      commits earlier claimed the family had been bounded in EVERY run at once; that was true of the URL
+      anchor and false of this one, which was never looked at. (3) SIX BEHAVIOURS NOTHING PINNED, out of
+      42 mutants it built -- the worst being the 200-char truncation ITSELF, whose deletion passed the
+      whole corpus while logging full command lines to disk."
+    cmd: "final gate on 3125289c9; author re-verification of every finding against the real hook with a temp HOME"
+    exit: 0
+    ts: "2026-08-22T16:10:00Z"
+    seat: final-gate (claude-opus-5, fresh context, read-only) + author re-verification
+  - claim:
+      "ALL THREE CURED, and each cure pinned in the direction that failed. The user run is {0,2048} with
+      redis and amqp guilt witnesses; both TAILs are bounded ({0,8} digits, {1,64} per segment, {0,16}
+      segments) taking 32KB from 6.82s to well under a second; and eight new cases pin the six surviving
+      mutants -- the truncation, the Authorization: anchor, the user-run bound in BOTH directions, the
+      Basic 16-char floor and the Bearer 8-char floor. Every pin was verified by re-applying its mutant
+      and requiring the suite to go red: 7 of 7 now die. Corpus 173 -> 181."
+    cmd: "seven targeted mutants re-applied one at a time against bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T16:40:00Z"
+    seat: author-session (M5, claude-opus-5)
+    note:
+      "The NAME wall-clock case had to be RESIZED before it bit: 32KB cost 6.82s on the mutant, UNDER
+      the 10s budget, so it would have passed on the very hook it exists to catch -- the second time in
+      this file that the first size chosen for a perf case was too small. 64KB bites at 31.63s. The rule
+      is now written into the corpus: mutate the fix away, raise the payload until the case goes red,
+      keep that size."
+  - claim:
+      "FIVE FALSE CLAIMS IN THE HOOK ITSELF, which is the file a maintainer reads before touching the
+      matcher -- and three of them had ALREADY been corrected in the pack and the registry while the hook
+      kept saying the opposite. The vacuous host:port verification. A backslash-escaped-quote residual
+      that was not just stale but a standing TODO telling the next session to widen VALUE for a hole the
+      redesign had closed. An ordering caveat arguing that redact-before-truncate can ENLARGE exposure,
+      impossible under an earliest-anchor cut and disproved by re-running its own 205-char
+      counter-example (24 characters logged, the trailing nameless secret gone, where truncate-only would
+      have leaked a 15-char partial). A URL rule described as redacting the password segment only. A
+      separator-normalisation claim. LESSON: correcting the artefacts and not the CODE COMMENT leaves the
+      lie exactly where it does the most damage."
+    cmd: "each claim re-driven through the real hook before rewriting the comment"
+    exit: 0
+    ts: "2026-08-22T16:55:00Z"
+    seat: author-session (M5, claude-opus-5)
 tests:
-  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 173 named cases, 129 guilt / 40 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 181 named cases, 132 guilt / 43 innocence / 6 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
 static:
   - "actionlint exit 0 on guard-conformance.yml"
   - "shellcheck clean on both the hook and the test"
@@ -1239,12 +1289,18 @@ residual_risks:
     documentation far more often than an all-letter credential does in a shell history."
   - "BOUNDED RUNS IN THE URL USERINFO RULE, added 2026-08-22 to make it linear: a userinfo password
     longer than 2048 characters no longer anchors and would leak in full. Verified at the boundary --
-    2047 and 2048 redact, 2049 and 5000 do not -- and the 2048 case is asserted in the corpus so a
-    future narrowing fails loudly, while 2049 is deliberately NOT asserted so a future rule that covers
+    2047 and 2048 redact, 2049 and 5000 do not -- and the 2048 case on the PASSWORD run is asserted in the corpus, and
+    since 2026-08-22 the USER run has its own witness too, so a future narrowing of either fails loudly, while 2049 is deliberately NOT asserted so a future rule that covers
     more does not fail. Accepted because the longest credential that realistically travels in userinfo
     is a JWT at a few hundred characters, and because the alternative measured 23015 ms on a 400KB
-    credential-free command in a hook that fires on every tool call. The user and the port lookahead
-    carry the same 2048 bound for the same reason. The loss-free alternative (skip the rule unless the
+    credential-free command in a hook that fires on every tool call. CORRECTED 2026-08-22: this sentence used to add that the user run and the port
+    lookahead carry the same 2048 bound and that the bound was asserted, when only the PASSWORD run
+    had a witness. A final gate proved the gap by mutation -- narrowing the USER run to 16 passed all
+    173 cases and leaked a real DSN whose service-account username is 26 characters. A claim that a
+    bound is pinned, in a file whose own scar is a 16-character bound that regressed coverage at 17,
+    would have licensed exactly that narrowing. The user run now has its own guilt witness (a 26-char
+    username) AND its minimum is 0, not 1 -- see the empty-username entry. The port lookahead carries
+    the same 2048 bound for the same performance reason. The loss-free alternative (skip the rule unless the
     input contains an @) was rejected: one leading @ defeats it."
   - "NEW OVER-MATCH, declared 2026-08-22 by the independent Gear-3 gate: a URL with a PORT and a query or
     fragment but NO PATH, carrying an at-sign in that query or fragment, is truncated in full --
@@ -1280,13 +1336,26 @@ residual_risks:
     matcher already makes for `monkey=patch`, one level deeper: a credential WORD earns the digits, a
     bare placeholder name does not. A real delimited credential on the generic branch is `AUTH_TOKEN`,
     which branch (a) catches."
+  - "UNDECLARED UNTIL 2026-08-22, and NOT fixed: a SINGLE-FIELD URL userinfo leaks in full --
+    `git clone https://<token>@gitlab.test/a/b.git`, `git remote set-url origin https://<token>@…`,
+    `curl https://<token>@api.example.test/v1/me`. Anchor 6 requires TWO userinfo fields (a colon
+    between them), and this form has one. GitHub is incidentally covered because `ghp_`/`github_pat_`
+    have their own prefix anchors; GitLab, Bitbucket and any generic host are not. It is NOT covered by
+    the declared class (d) `a secret not joined to a credential-ish name`, which also swallows
+    `postgres://u:pw@h` -- a shape rule 3 DOES catch -- so (d) was never the operative declaration for
+    URL forms. Left open rather than patched because the fix is a real design question (a bare
+    `://<run>@` anchor would fire on every `user@host` in an scp path or a git SSH remote) and this PR
+    has already replaced its architecture once; it is declared here so the next round starts from a
+    named hole instead of rediscovering it. Same round, same family, also undeclared: the RFC-4716
+    four-dash PEM header `---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----` anchors on nothing, because the
+    PEM rule requires five dashes."
 
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-# ESTIMATE, not a measurement, and labelled so on purpose: 81,222 bytes / 4.0 chars-per-token.
+# ESTIMATE, not a measurement, and labelled so on purpose: 131,697 bytes / 4.0 chars-per-token.
 # No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
 # this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
 # documentation. The previous value, 16067, was left behind by later edits to this pack.
-size_tokens: 31430
+size_tokens: 32924

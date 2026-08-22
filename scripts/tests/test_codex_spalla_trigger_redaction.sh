@@ -875,6 +875,61 @@ assert_intact "innocence-generic-branch-rejects-the-delimited-tail [PWD_FILE]" \
 assert_intact "innocence-generic-word-with-a-bare-letter-suffix [AUTHOR]" \
     "AUTHOR=alice git commit --amend --no-edit" "AUTHOR=alice"
 
+# ── BEHAVIOURS NOTHING PINNED ───────────────────────────────────────────────
+#
+# A final gate built 42 mutants of this hook and ran this corpus against each:
+# 36 died, 6 SURVIVED. Every one below is a behaviour a routine edit could have
+# removed in silence while the suite stayed green — which is the same defect as
+# a corpus that pins only the axes a change did not move, one level up: here it
+# pinned the axes SOME change had moved, and never the ones nothing had touched
+# yet. The mutant that motivates each case is named in its label.
+
+# MUTANT: delete the [:200] slice. Nothing asserted the truncation EXISTS --
+# the straddle case pins the ORDER (redact before truncate) and passes happily
+# when truncation is removed, at which point a 337-char command logs 343 chars.
+tmp_trunc="$(mktemp -d)"; cleanup_dirs+=("$tmp_trunc")
+long_innocent="git log --oneline --graph --decorate $(python3 -c 'print("--grep=refactor "*40, end="")')"
+run_hook "$tmp_trunc" "Bash" "$long_innocent"
+trunc_len=$(log_line "$tmp_trunc" | python3 -c 'import sys,json; print(len(json.loads(sys.stdin.read())["target"]))')
+ok=1; [ "$trunc_len" -le 200 ] && ok=0
+case_result "mode-target-is-truncated-to-200-chars (got: ${trunc_len})" "$ok" mode
+
+# MUTANT: replace the Authorization: requirement with a bare \bBasic. Passes the
+# whole corpus, because every Basic-prose innocence case here is digit-free and
+# the payload's digit requirement masks the missing anchor. This one is not.
+assert_intact "innocence-basic-prose-with-a-digit-outside-any-header" \
+    'gh pr create --title "Basic configuration2024 rollout"' \
+    "Basic configuration2024 rollout"
+
+# MUTANT: narrow the URL user run from {0,2048} to {0,16}. Passes everything and
+# leaks, because no case in the corpus has a userinfo USER longer than 16 -- the
+# pack claimed the user run was asserted "so a future narrowing fails loudly",
+# and it was not. This is the same shape as this file's own 17-character-scheme
+# scar, which is exactly why it needs a witness and not a promise.
+LONGUSER_V="longUser$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-url-userinfo-user-longer-than-16-chars" \
+    "psql postgres://service_account_ci_runner:$LONGUSER_V@pg.test/db" "$LONGUSER_V"
+
+# MUTANT: restore the user run's minimum to 1. That was the shipped state and it
+# LEAKED: Redis has no username, so redis://:<password>@host is its canonical URL.
+EMPTYUSER_V="emptyUser$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-url-userinfo-with-an-EMPTY-username [redis]" \
+    "export REDIS_URL=redis://:$EMPTYUSER_V@10.0.0.5:6379/0" "$EMPTYUSER_V"
+assert_redacted "guilt-url-userinfo-with-an-EMPTY-username [amqp]" \
+    "amqp://:$EMPTYUSER_V@rabbit.test:5672/" "$EMPTYUSER_V"
+
+# MUTANT: drop the Basic payload's 16-char floor to {4,}. Passes everything.
+assert_intact "innocence-basic-payload-below-the-16-char-floor" \
+    "curl -H 'Authorization: Basic ab1cd2' https://api.example.test" \
+    "Basic ab1cd2"
+
+# MUTANT: drop the Bearer floor from {8,} to {4,}. Passes everything, and
+# damages ordinary text. The pack named "a Bearer v2 PR title" as this floor's
+# pin; that case only constrains it to greater than two.
+assert_intact "innocence-bearer-followed-by-a-4-char-run-below-the-floor" \
+    'git commit -m "docs: Bearer 6750 spec reference"' \
+    "Bearer 6750 spec reference"
+
 # ── WALL CLOCK ──────────────────────────────────────────────────────────────
 #
 # This exists because the SAME defect shipped TWICE, four commits apart, in two
@@ -934,6 +989,30 @@ case_result "wallclock-400kb-url-run-no-at-under-10s (took ${elapsed}s)" "$ok" m
 # only honest if something asserts where it sits. A 2048-character password must
 # still redact; the documented residual above 2048 is deliberately NOT asserted
 # here, so that a future rule which covers MORE does not fail this suite.
+# A THIRD payload, because the first two still did not walk the rule that was
+# slowest. This is the whole lesson of this section repeating: the 200KB run of
+# "a" reached no rule at all, the 400KB URL run reached anchor 6, and anchor 9 --
+# the NAME rule, the biggest in the file -- was QUADRATIC underneath both of
+# them. `echo ` + `_TOKEN` repeated, driven END TO END through this hook with the
+# bound mutated away: 6.82s at 32KB and 46.66s at 64KB. The hook fires on every
+# PostToolUse event and has no runtime timeout of its own -- the 10s figure is a
+# budget in THIS corpus, not a guard in the hook.
+# 64KB, and the size was MEASURED against the unbounded rule until it failed:
+# a 32KB version cost 6.82s on the mutant -- UNDER this budget -- so it would
+# have passed on the very hook it exists to catch. That is the SECOND time in
+# this file that the first size chosen for a perf case was too small to bite, so
+# the rule is now explicit: mutate the fix away, raise the payload until the case
+# goes red, keep that size. Bounded, 64KB costs 0.74s.
+tmp9="$(mktemp -d)"; cleanup_dirs+=("$tmp9")
+name_cmd="echo $(python3 -c 'print("_TOKEN"*10922, end="")')"
+t_start=$(python3 -c 'import time; print(time.time())')
+run_hook "$tmp9" "Bash" "$name_cmd"
+t_end=$(python3 -c 'import time; print(time.time())')
+elapsed=$(python3 -c "import sys; print(round(float(sys.argv[2])-float(sys.argv[1]),2))" "$t_start" "$t_end")
+ok=1
+python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) < 10.0 else 1)" "$elapsed" && ok=0
+case_result "wallclock-64kb-credential-name-chain-under-10s (took ${elapsed}s)" "$ok" mode
+
 long_pw="$(python3 -c 'print("P"*2048, end="")')"
 assert_redacted "userinfo-password-at-the-2048-bound" \
     "psql postgres://svc:${long_pw}@db.internal:5432/app" "$long_pw"
