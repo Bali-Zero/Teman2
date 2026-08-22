@@ -56,13 +56,20 @@ constraints:
     hook ever over-matched, because no released version redacted at all."
   - "`Authorization: Bearer <value>` and `scheme://user:<secret>@host` carry no credential-ish NAME
     at all and each need their own rule."
-  - "RULE ORDER is itself a constraint, added 2026-08-22 after the Gear-3 gate found a leak caused
-    purely by it. Every rule REWRITES the span it matches; rule 2 is the destructive one (it eats
-    NAME + separator + the whole value and normalises the separator), so it must run LAST or it
-    destroys the markers the other rules anchor on. Rule 2 before rule 4 made
-    `-H 'X-Auth: Bearer <v>'` log as `X-Auth=<REDACTED> <v>` — the redactor's own rewrite leaving
-    the token in the clear, LESS safe than not matching at all. Order is 1 -> 3 -> 4 -> 2 and all
-    five other permutations of 2/3/4 fail the suite."
+  - "NO RULE MAY CONSUME ANOTHER RULE'S MARKER — and ORDER ALONE DOES NOT ACHIEVE THAT. This
+    constraint replaces an earlier one that said 'rule 2 is the destructive one, so it runs LAST'.
+    That was false and a second Gear-3 gate falsified it ON the ordering fix: rule 4 eats an 8+ char
+    [A-Za-z0-9._-] run after `Bearer`, and a credential NAME is exactly such a run, so
+    `Bearer refresh_token=<v>` logged as `Bearer <REDACTED>=<v>` — marker on the NAME, value in the
+    clear, output READING as if redaction fired. The mirror of the very defect the reorder removed.
+    Rule 1 does it too when a token prefix starts a NAME (`echo ghp_MYTOKENS=<v>`). The binding
+    constraint is therefore structural, not positional: EVERY marker-anchored rule carries
+    ASSIGN_TAIL (an optional `[=:]` plus a full quoted-or-bare VALUE) so that consuming a marker
+    also consumes the assignment hanging off it. Order 1 -> 3 -> 4 -> 2 is KEPT — rule 4 before
+    rule 3 still leaks a URL password, which the tail does not address — but it is no longer
+    load-bearing for the Bearer adjacencies. The five permutation mutants still fail the suite; that
+    proves the suite constrains the order, not that the order is safe: the mirror leak survived all
+    five and shipped anyway, because no case in the corpus had its shape."
   - "An alternation nothing can fail on is deleted, not kept for readability. The
     `Authorization\\s*:\\s*Bearer|` alternation was mutually redundant with the bare `Bearer` one;
     replayed over the whole live log, keeping only the bare one is byte-identical (0 differing

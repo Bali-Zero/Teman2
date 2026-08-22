@@ -389,6 +389,39 @@ _dsn_order="Bearer postgresql://appuser:ordSecretDDD4444@db.example.test/x"
 assert_redacted "guilt-order-rule3-must-run-before-rule4 [scheme eaten by Bearer]" \
     "$_dsn_order" "ordSecretDDD4444"
 
+# 4c. THE MIRROR of 4a/4b, and the reason rule order alone was NOT the fix.
+#     Found by the Gear-3 gate ON the ordering fix itself: putting the
+#     marker-anchored rules FIRST does not make them safe, it just moves the
+#     destruction. Rule 4 eats an 8+ char [A-Za-z0-9._-] run after Bearer --
+#     and a credential NAME is exactly such a run. So `Bearer refresh_token=<v>`
+#     logged as `Bearer <REDACTED>=<v>`: the marker replaced the NAME, the value
+#     survived in full, and the output READS as if redaction fired. Strictly
+#     less safe than not matching at all -- the same property the reorder was
+#     introduced to remove, mirrored. Rule 1 does it too, because a real token
+#     prefix can itself be the start of a NAME.
+#     The cure is not an order: EVERY marker-anchored rule now carries
+#     ASSIGN_TAIL and swallows the assignment that follows its own marker.
+#     One case per shape the gate demonstrated, including BOTH quote styles --
+#     the gate's proposed regex used a bare `[^\s"']*` tail and would have left
+#     the quoted forms leaking.
+MIRROR_V="mirrorLeak$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+MIRROR_DQ='Bearer ACCESS_TOKEN="'"$MIRROR_V"'"'
+MIRROR_SQ="Bearer client_secret='$MIRROR_V'"
+assert_redacted "guilt-mirror-rule4-eats-name [bare]" \
+    "curl -d 'Bearer refresh_token=$MIRROR_V' https://auth.test/token" "$MIRROR_V"
+assert_redacted "guilt-mirror-rule4-eats-name [double-quoted value]" \
+    "curl -H $MIRROR_DQ https://auth.test" "$MIRROR_V"
+assert_redacted "guilt-mirror-rule4-eats-name [single-quoted value]" \
+    "export H=$MIRROR_SQ" "$MIRROR_V"
+assert_redacted "guilt-mirror-rule4-eats-name [dotted attribute name]" \
+    "log 'Bearer cfg.api_key=$MIRROR_V'" "$MIRROR_V"
+assert_redacted "guilt-mirror-rule4-eats-name [hyphenated header name]" \
+    "log 'Bearer x-api-key=$MIRROR_V'" "$MIRROR_V"
+assert_redacted "guilt-mirror-rule4-eats-name [colon separator, rule 2 cannot match this name]" \
+    "log 'Bearer PASSWORDX: $MIRROR_V'" "$MIRROR_V"
+assert_redacted "guilt-mirror-rule1-prefix-eats-name" \
+    "echo ghp_MYTOKENS=$MIRROR_V" "$MIRROR_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near

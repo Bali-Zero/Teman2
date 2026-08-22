@@ -130,10 +130,21 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # Proven on a 277-char command with a secret at char 253: truncate-only left it
 # out; redact-then-truncate brought a following fragment in. The ordering is
 # still right -- it is the only order that can redact a secret sitting inside
-# the window at all -- but it trades one exposure for a smaller one rather than
-# eliminating exposure. Pinned by the `straddle` guilt case in the suite: a
-# 251-char command whose quoted secret starts at char 190, so truncate-first
-# leaves 10 characters of it in cleartext and redact-first leaves none.
+# the window at all -- but it does NOT eliminate exposure, and the direction of
+# the trade is NOT always favourable. An earlier version of this paragraph said
+# it "trades one exposure for a smaller one"; that was contradicted by
+# measurement (Gear-3 gate, 2026-08-22) and is corrected here rather than
+# quietly dropped. Counter-example, re-measured by the author on the shipped
+# file: a 205-char command whose first 140 chars are a redactable
+# CLIENT_SECRET= value and whose LAST 20 chars are a nameless secret starting
+# at char 185. Truncate-only clips it to a 15-char partial; redact-first
+# shortens the string and pulls the WHOLE 20-char value inside the window. So
+# redaction can ENLARGE the exposure of an UNMATCHED secret while removing a
+# MATCHED one. It is still the right order, on the grounds that a matched
+# secret is the one this hook can do anything about -- not on the grounds that
+# it is monotonically safer. Pinned in the other direction by the `straddle`
+# guilt case: a 251-char command whose quoted secret starts at char 190, where
+# truncate-first leaves 10 characters in cleartext and redact-first leaves none.
 #
 # WHAT THE VALUE BRANCH FIRES ON (three NAME shapes plus two non-name shapes --
 # an earlier version of this comment said "only `NAME=value` or `NAME: value`",
@@ -295,36 +306,48 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # `jq '.password = "<v>"'`) leaks in full. Listed in the under-match block
 # above; repeated here because this is the paragraph that sells the exclusion.
 #
-# ON RULE INTERACTION -- the ORDER of the four re.sub calls is itself a rule,
-# and none of the four artifacts discussed ordering until the Gear-3 gate found
-# a LEAK caused purely by it. Every rule REWRITES the span it matches, which
-# can destroy the marker a LATER rule needs. Rule 2 is the destructive one: it
-# consumes NAME + separator + the WHOLE value and re-emits `NAME=<REDACTED>`.
-# So the order is 1 -> 3 -> 4 -> 2: marker-anchored rules first, the generic
-# NAME rule LAST. Two of those adjacencies are load-bearing and measured:
+# ON RULE INTERACTION -- ORDER IS NECESSARY AND WAS NOT SUFFICIENT. Every rule
+# REWRITES the span it matches, and a rewrite can destroy the marker another
+# rule needs. The first fix for this was purely an ordering one: run the
+# marker-anchored rules (1, 3, 4) before the generic NAME rule (2), on the
+# stated principle that "rule 2 is the destructive one". THE PRINCIPLE WAS
+# FALSE, and the Gear-3 gate falsified it ON the ordering fix itself:
 #   - RULE 2 BEFORE RULE 4 LEAKED A TOKEN IN FULL. When a credential-ish NAME
 #     carries an UNQUOTED value whose first word is `Bearer`, rule 2 replaced
 #     exactly that word -- `-H 'X-Auth: Bearer <v>'` became
-#     `X-Auth=<REDACTED> <v>`; likewise `--auth=Bearer <v>` and
-#     `auth: bearer <v>` -- destroying the only marker rule 4 had, so rule 4
-#     could no longer fire. The redactor's own rewrite made the output LESS
-#     safe than not matching at all. `Authorization: Bearer <v>` was never
-#     affected, because `Authorization` is not a NAME rule 2 matches, which is
-#     exactly why the bug hid behind a passing control case.
+#     `X-Auth=<REDACTED> <v>` -- destroying the only marker rule 4 had.
+#     `Authorization: Bearer <v>` was never affected, because `Authorization`
+#     is not a NAME rule 2 matches, which is exactly why the bug hid behind a
+#     passing control case.
+#   - THE MIRROR, which the reorder alone CREATED: rule 4 eats an 8+ char
+#     [A-Za-z0-9._-] run after `Bearer`, and a credential NAME is exactly such
+#     a run. `Bearer refresh_token=<v>` became `Bearer <REDACTED>=<v>` -- the
+#     marker replaced the NAME, the value survived in full, and the output
+#     READS as if redaction fired. Rule 1 does the same thing whenever a real
+#     token prefix starts a NAME: `echo ghp_MYTOKENS=<v>`.
 #   - RULE 4 BEFORE RULE 3 LEAKS A URL PASSWORD. `Bearer postgresql://u:<v>@h`:
 #     rule 4 eats the 10-char scheme name and leaves `<REDACTED>://u:<v>@h`,
 #     which no longer matches rule 3's `[a-zA-Z][a-zA-Z0-9+.-]*://` anchor.
-# Both have guilt cases, and the ORDER as a whole is pinned rather than just
-# those two adjacencies: ALL FIVE non-current permutations of rules 2/3/4 were
-# mutated and all five fail the suite. That last part is a correction of this
-# very comment: an earlier draft of it asserted that rule 3 vs rule 2 was a
-# free choice, "order-INDEPENDENT for safety", and predicted the mutant would
-# SURVIVE. It did not -- moving rule 3 last also moves it past rule 4, and the
-# URL password then leaks. The prediction was written down before the mutant
-# was run, which is why it is recorded here instead of quietly deleted.
-# Rule 1 is the one position held by ARGUMENT rather than by measurement: it
-# re-emits its own prefix and its character classes exclude `:` and `/`, so it
-# cannot destroy another rule's marker whatever it matches.
+# So the cure is NOT an order. EVERY marker-anchored rule now carries
+# ASSIGN_TAIL -- an optional `[=:]` plus a full VALUE (quoted or bare) -- so a
+# rule that consumes a marker also consumes the assignment hanging off it, and
+# cannot hand rule 2 a corpse. The order 1 -> 3 -> 4 -> 2 is KEPT because the
+# third adjacency above is independent of the tail, and because a
+# marker-anchored rule is more specific than the generic NAME rule; it is no
+# longer load-bearing for the first two.
+# WHAT THE ORDER MUTANTS ACTUALLY PROVE: all five non-current permutations of
+# rules 2/3/4 fail the suite. That proves the suite CONSTRAINS the order. It
+# does NOT prove the order is safe -- the mirror leak passed every one of those
+# mutants and shipped anyway, because no case in the corpus had its shape. A
+# mutation score is a statement about the corpus, never about the world.
+# The mirror class has 7 guilt cases now (both quote styles included: a bare
+# `[^\s"']*` tail, which is what was first proposed, would have left the
+# quoted forms leaking).
+# Rule 1's position is held by ARGUMENT, not measurement: it re-emits its own
+# prefix and its character classes exclude `:` and `/`, so it cannot destroy
+# rule 3's or rule 4's marker. That argument was ALWAYS about the marker of a
+# LATER rule and never covered rule 2's NAME, which is the hole ASSIGN_TAIL now
+# closes on it too.
 # The `Authorization\s*:\s*Bearer|` alternation rule 4 used to carry was
 # MEASURED DEAD and deleted, by the same test this PR applied twice before to
 # `(?:--?)?` and the left wildcard: replayed over all 333,794 live-log target
@@ -334,10 +357,23 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 TARGET_JSON="$(printf '%s' "$TARGET" | python3 -c '
 import sys, re, json
 s = sys.stdin.read()
-# 1. Known credential shapes, by their own prefixes.
-s = re.sub(r"sk-ant-[A-Za-z0-9_-]{8,}", "sk-ant-<REDACTED>", s)
-s = re.sub(r"gh[pousr]_[A-Za-z0-9]{8,}", "gh_<REDACTED>", s)
-s = re.sub(r"github_pat_[A-Za-z0-9_]{8,}", "github_pat_<REDACTED>", s)
+# A VALUE is what sits on the right of a credential assignment: a
+# double-quoted run, a single-quoted run, or a bare run up to whitespace.
+# Defined FIRST because three different rules need it -- see ASSIGN_TAIL.
+VALUE = r"(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)"
+# EVERY marker-anchored rule must be able to swallow an assignment that
+# FOLLOWS its marker, or it destroys the NAME rule 2 needs and leaves the
+# value in the clear (see ON RULE INTERACTION above -- this is the MIRROR of
+# the bug the rule order fixes, found by the Gear-3 gate on the fix itself).
+ASSIGN_TAIL = r"(?:[\"\x27]?\s*[=:]\s*" + VALUE + r")?"
+# 1. Known credential shapes, by their own prefixes. Each carries ASSIGN_TAIL
+#    because the prefix can itself be the NAME: echo ghp_MYTOKENS=<v> used
+#    to log as gh_<REDACTED>=<v> -- marker consumed, value intact.
+#    (No backticks anywhere inside this single-quoted python block: shellcheck
+#    reads them as command substitution and raises SC2016.)
+s = re.sub(r"sk-ant-[A-Za-z0-9_-]{8,}" + ASSIGN_TAIL, "sk-ant-<REDACTED>", s)
+s = re.sub(r"gh[pousr]_[A-Za-z0-9]{8,}" + ASSIGN_TAIL, "gh_<REDACTED>", s)
+s = re.sub(r"github_pat_[A-Za-z0-9_]{8,}" + ASSIGN_TAIL, "github_pat_<REDACTED>", s)
 # 3. URL userinfo: scheme://user:<secret>@host -- password segment only.
 #    Runs BEFORE rule 4: rule 4 would otherwise eat an 8+ char scheme name and
 #    leave a bare ://user:<secret>@ with no scheme for this rule to anchor on.
@@ -348,7 +384,7 @@ s = re.sub(r"([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)[^\s/@]+@", r"\1<REDACTED>@",
 #    INTERACTION above). The dedicated Authorization-anchored alternation
 #    that used to sit here was MEASURED DEAD and deleted -- see the same block.
 s = re.sub(
-    r"(?i)\b(Bearer)\s+[A-Za-z0-9._-]{8,}",
+    r"(?i)\b(Bearer)\s+[A-Za-z0-9._-]{8,}" + ASSIGN_TAIL,
     r"\1 <REDACTED>",
     s,
 )
@@ -367,7 +403,6 @@ NAME = (r"(?<![A-Za-z0-9.])(?:"
         + r"|" + PRE + r"?KEY" + TAIL     # b. KEY: bounded prefix, or none at all
         + r"|(?:PASS|PWD|AUTH)"           # c. bare generic name
         + r")")
-VALUE = r"(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)"
 s = re.sub(
     r"(?i)(" + NAME + r")[\"\x27]?\s*[=:]\s*" + VALUE,
     lambda m: m.group(1) + "=<REDACTED>",

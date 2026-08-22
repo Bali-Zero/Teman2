@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+1390/-271 (net +1119) at base 64011571b..HEAD, `git diff --numstat`, fixed point"
+  net_lines: "+1607/-287 (net +1320) at base 64011571b..HEAD, `git diff --numstat`, fixed point"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
@@ -133,6 +133,41 @@ receipts:
     cmd: "shellcheck scripts/tests/test_codex_spalla_trigger_redaction.sh .claude/hooks/codex-spalla-trigger.sh"
     exit: 0
     ts: "2026-08-22T00:45:48Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The MIRROR leak the second Gear-3 gate found is CLOSED, and the fix is structural rather
+      than positional: every marker-anchored rule carries ASSIGN_TAIL. 7 new guilt cases, one per
+      shape the gate demonstrated, BOTH quote styles included. Suite widened 86 -> 93."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T01:10:28Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The 7 new cases genuinely BITE, proven by mutation rather than by reading: dropping
+      ASSIGN_TAIL from rule 4 fails exactly the 6 rule-4 mirror cases and nothing else; dropping it
+      from rule 1's gh[pousr]_ pattern fails exactly the 1 rule-1 mirror case and nothing else. Hook
+      restored byte-identical after each mutant (sha256 compared), suite green again."
+    cmd: "mutation driver: remove ASSIGN_TAIL from rule 4 -> 6/93 FAIL; from rule 1 -> 1/93 FAIL; restore + re-run -> 0 FAIL"
+    exit: 1
+    ts: "2026-08-22T01:10:28Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The redact-before-truncate comment stated the trade DIRECTION wrongly and is corrected in
+      place. Re-measured on the shipped file with a 205-char command whose last 20 chars are a
+      NAMELESS secret starting at char 185: truncate-only clips it to a 15-char partial, redact-first
+      shortens the string and pulls the WHOLE 20-char value inside the window. Redaction can ENLARGE
+      the exposure of an UNMATCHED secret while removing a MATCHED one."
+    cmd: "drive the shipped hook's python block on 'deploy --config CLIENT_SECRET=<140 chars> ; mytool push <20-char nameless>' and compare against s[:200] of the raw string"
+    exit: 0
+    ts: "2026-08-22T01:10:28Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "shellcheck still clean on hook and suite. NOTE: adding backticks inside the hook's
+      single-quoted python block raises SC2016 (shellcheck reads them as command substitution) --
+      hit once while writing the new comment, fixed, and recorded in the comment itself."
+    cmd: "shellcheck .claude/hooks/codex-spalla-trigger.sh scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T01:10:37Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -315,16 +350,71 @@ dissent:
     status: CONFIRMED
   - seat: "Detect Secrets / scripts/detect_secrets_check_unaudited.py (CI, non-author)"
     objection:
-      "Six new unaudited findings, all in THIS pack's prose and the guard-conformance registry note:
-      five `Secret Keyword` hits on the credential-NAME shapes the fix is about (`pass=`, `auth=`,
-      `api_key`, `apikey=`) and one `Basic Auth Credentials` hit on the `postgres://user:pw@db` URL
-      quoted in the registry note. Real false positives -- there is no secret VALUE on any of those
+      "EIGHT new unaudited findings (an earlier revision of this entry said six, undercounting by
+      one Secret Keyword and one Basic Auth; corrected after the Gear-3 gate diffed the two baselines
+      entry by entry -- the same class of miscount this PR has already corrected in itself three
+      times), all in THIS pack's prose and the guard-conformance registry note:
+      six `Secret Keyword` hits on the credential-NAME shapes the fix is about (`pass=`, `auth=`,
+      `api_key`, `apikey=`) and two `Basic Auth Credentials` hits on the placeholder DSN URL quoted
+      in the pack and in the registry note. Real false positives -- there is no secret VALUE on any of those
       lines -- but the gate is right that a security-fix document is exactly where a pasted receipt
       could smuggle one. Resolved the sanctioned way, per security.yml's own header: marked
       `is_secret: false` in `.secrets.baseline` ONE FINDING AT A TIME with a note, NOT by adding an
       `evidence/**` path rule to the auto-triage script -- a blanket path rule would permanently blind
       the scanner to every future evidence pack, including one that really does paste a token."
     status: CONFIRMED
+  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 1, BLOCKER"
+    objection:
+      "The reorder opened the MIRROR of the leak it closed. Rule 4 consumes an 8+ char
+      [A-Za-z0-9._-] run after `Bearer`, and a credential NAME is exactly such a run, so
+      `Bearer refresh_token=<v>` logged as `Bearer <REDACTED>=<v>` — the marker landed on the NAME,
+      the value survived in full, and the output READS as if redaction fired. That is precisely the
+      'less safe than not matching at all' property this round claimed to eliminate. Twelve shapes
+      demonstrated, plus one on rule 1 (`echo ghp_MYTOKENS=<v>`). The gate measured it as a
+      REGRESSION against the branch's own history: three shapes ok at 9ac5e3956 and fbcaff303, LEAK
+      at the round-5 head — so this round traded one leak direction for the other and was NOT
+      net-strictly-safer. Reproduced by the author before fixing: 12/12 leak. Cured STRUCTURALLY,
+      not by another reorder — every marker-anchored rule now carries ASSIGN_TAIL. The gate's own
+      proposed regex used a bare `[^\\s\"']*` tail; measured, that leaves the QUOTED forms leaking,
+      so the shipped tail reuses the full VALUE alternation instead."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 2, MAJOR"
+    objection:
+      "'Rule 2 is the destructive one' and 'the order is pinned, all five permutations fail the
+      suite' were both load-bearing and both overreached. Rules 1, 3 and 4 destroy rule 2's marker
+      in exactly the same way — finding 1 is the demonstration — and a mutation set can only prove
+      the SUITE constrains the order, never that the order is safe, because the corpus contained no
+      instance of the mirror shape. The stated principle ('marker-anchored rules first, the generic
+      NAME rule LAST') is what PRODUCED the leak. Rewritten in the hook, the brief and the registry
+      note as a measured trade with the mirror named: a mutation score is a statement about the
+      corpus, not about the world."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 3, MINOR"
+    objection:
+      "'Redacting before truncating trades one exposure for a smaller one' is contradicted by
+      measurement. Re-measured by the author on the shipped file: a 205-char command with a
+      redactable 140-char value first and a NAMELESS 20-char secret starting at char 185 — the base
+      clips it to a 15-char partial, the shipped head redacts first, the string shortens, and the
+      WHOLE value is pulled inside the window. Larger, not smaller. The comment disclosed that
+      redaction pulls bytes in but stated the direction wrongly; corrected in place. The gate
+      separately CONFIRMED the good half: a MATCHED token planted at char 190 cannot survive as a
+      clipped partial."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 4, MINOR"
+    objection:
+      "The Detect Secrets dissent entry said 'six new unaudited findings'; the baselines diffed entry
+      by entry give EIGHT added (6 Secret Keyword + 2 Basic Auth), 0 removed. Same miscount class
+      this PR has already corrected in itself three times. Corrected."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — what it could NOT check"
+    objection:
+      "The gate declined to read ~/logs/codex-spalla-trigger.jsonl at all: reading it is itself a
+      credential action, and by this pack's own admission the act of measuring inflates the next
+      measurement. So EVERY live-log figure in this pack — the 3 secret-bearing runs, the 2291 lines
+      / 0.686% of 333,832, the byte-identical replay — is UNVERIFIED by any non-author seat. It is
+      neither confirmed nor disputed. Recorded here rather than left implicit, because the rest of
+      this pack was independently checked and those numbers were not."
+    status: PLAUSIBLE
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
     finds the field only in evidence packs and research/operations/2026-08-09-harness-v2-teman2.md:155
@@ -339,8 +429,18 @@ residual_risks:
   - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ -- the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
   - "check_guard_conformance's is_armed() is substring-based, so it cannot detect deletion of the workflow step that executes this suite. The step is genuine today; its removal would not be caught by the registration."
   - "An identical UNTRACKED .codex/hooks/ copy exists in the main checkout; git does not track it, so this diff cannot fix it."
+  - "No independent seat has verified any live-log figure in this pack (the 3 secret-bearing runs,
+    2291 lines / 0.686% of 333,832, the byte-identical replay). The round-5 gate deliberately
+    refused to read the file — reading it is a credential action and inflates the next measurement —
+    so those numbers rest on the author alone. They are load-bearing for the 'the fix has zero
+    RETROACTIVE effect' claim and for the over-match rate."
+  - "The mirror class was closed by widening what rules 1 and 4 consume, which necessarily widens
+    OVER-match too: `Bearer <8+ run>: <word>` now loses the following word, and a Bearer-prefixed URL
+    is swallowed whole rather than partially. Deliberate, in the direction this hook has always
+    chosen (over-redacting a non-secret beats under-redacting a real one), but it is a real
+    regression in log usefulness and is not free."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 10590
+size_tokens: 12466
