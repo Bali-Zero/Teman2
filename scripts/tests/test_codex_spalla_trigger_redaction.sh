@@ -422,6 +422,34 @@ assert_redacted "guilt-mirror-rule4-eats-name [colon separator, rule 2 cannot ma
 assert_redacted "guilt-mirror-rule1-prefix-eats-name" \
     "echo ghp_MYTOKENS=$MIRROR_V" "$MIRROR_V"
 
+# 4d. THE THIRD DIRECTION, found by the Gear-3 gate on the cure for 4c. The tail
+#     that closed the mirror could itself CROSS a later rule's marker: its bare
+#     branch runs to the next whitespace, so `github_pat_<8+>=bearer <v>` had
+#     rule 1 -- which runs FIRST -- eat the word `bearer` as its own value,
+#     leaving rule 4 nothing to anchor on and the token in the clear beside a
+#     `<REDACTED>` that fired for something else. Same misleading shape, third
+#     round, third layer down. A differential fuzz against the pre-tail version
+#     found 258 such inputs.
+#     The cure is TEMPERED_VALUE: the bare branch may not cross a position where
+#     any later marker STARTS. These cases pin it -- each has a value that
+#     CONTAINS a later rule's marker rather than merely following one, which is
+#     the shape none of 4c's cases had.
+THIRD_V="thirdDir$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-third-rule1-tail-eats-rule4-marker [github_pat]" \
+    "github_pat_CCCCCCCC=bearer $THIRD_V" "$THIRD_V"
+assert_redacted "guilt-third-rule1-tail-eats-rule4-marker [ghp colon]" \
+    "ghp_BBBBBBBB: Bearer $THIRD_V" "$THIRD_V"
+assert_redacted "guilt-third-rule1-tail-eats-rule4-marker [sk-ant]" \
+    "sk-ant-AAAAAAAA=bearer $THIRD_V" "$THIRD_V"
+assert_redacted "guilt-third-rule4-tail-eats-its-own-next-marker" \
+    "Bearer AAAAAAAAAA: Bearer $THIRD_V" "$THIRD_V"
+assert_redacted "guilt-third-marker-inside-the-value-not-at-its-start" \
+    "ghp_BBBBBBBB:x/Bearer $THIRD_V" "$THIRD_V"
+assert_redacted "guilt-third-shaped-command-not-fuzz-noise" \
+    "curl -H 'X-Pat: github_pat_CCCCCCCC:bearer $THIRD_V'" "$THIRD_V"
+assert_redacted "guilt-third-greedy-prefix-kills-two-markers-in-one-bite" \
+    "ghp_BBBBBBBBhttps://u:xx:Bearer $THIRD_V" "$THIRD_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near

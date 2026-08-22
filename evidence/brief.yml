@@ -67,9 +67,14 @@ constraints:
     ASSIGN_TAIL (an optional `[=:]` plus a full quoted-or-bare VALUE) so that consuming a marker
     also consumes the assignment hanging off it. Order 1 -> 3 -> 4 -> 2 is KEPT — rule 4 before
     rule 3 still leaks a URL password, which the tail does not address — but it is no longer
-    load-bearing for the Bearer adjacencies. The five permutation mutants still fail the suite; that
-    proves the suite constrains the order, not that the order is safe: the mirror leak survived all
-    five and shipped anyway, because no case in the corpus had its shape."
+    load-bearing for the Bearer adjacencies. AND THE TAIL ALONE WAS NOT ENOUGH EITHER: a third gate
+    found that a tail whose bare branch runs to the next whitespace can CROSS a later rule's marker
+    (`github_pat_<8+>=bearer <v>` — rule 1, which runs first, eats the word `bearer`), so the bare
+    branch is TEMPERED: it may not cross a position where any later marker starts, and the
+    URL-scheme marker is length-bounded so a value glued to a URL is not mistaken for one. The five
+    permutation mutants still fail the suite; that proves the suite constrains the order, not that
+    the order is safe — the mirror leak survived all five and shipped anyway, because no case in the
+    corpus had its shape, and the third direction then survived the mirror's own cases."
   - "An alternation nothing can fail on is deleted, not kept for readability. The
     `Authorization\\s*:\\s*Bearer|` alternation was mutually redundant with the bare `Bearer` one;
     replayed over the whole live log, keeping only the bare one is byte-identical (0 differing

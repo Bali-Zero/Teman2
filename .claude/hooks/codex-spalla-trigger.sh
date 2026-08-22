@@ -187,6 +187,19 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #     version OVER-matching, but `QKEY` (19), `UKEY` (4), `M5KEY`, `PUBKEY`,
 #     `ORIGINAL*KEY` (3) and `MACHINEHMACKEY` are real credential-shaped names
 #     this hook does not cover.
+#   - A BACKSLASH-ESCAPED QUOTE around the value defeats VALUE in EVERY rule.
+#     Named 2026-08-22 by the Gear-3 gate; PRE-EXISTING, not introduced by any
+#     commit on this branch, and NOT fixed here -- naming it is the fix this
+#     round owes, and a change to VALUE's quoting is its own diff. VALUE's two
+#     quoted branches need a literal quote next, a `\` fails them, and the bare
+#     branch stops dead at the `"`. Re-measured on THIS matcher:
+#       export API_KEY=\"<v>\"          -> API_KEY=<REDACTED>"<v>\"   value survives
+#       curl -d "TOKEN=\"<v>\""         -> TOKEN=<REDACTED>"<v>\""    value survives
+#       curl -d "{\"api_key\": \"<v>\"}" -> UNCHANGED, byte for byte
+#     The third is the ordinary way to write a JSON body inside a double-quoted
+#     shell string, and the corpus's JSON guilt case uses the single-quoted-outer
+#     form, which works -- so the corpus proves the shape it enumerates and this
+#     one hides behind it. That is a lesson about corpora, not just about quotes.
 #   - Credential words outside the six in (a)+(b): `--pin=`, `--otp=`,
 #     `--salt=`, `--cookie=` all leak.
 #   - `Authorization:` with anything other than `Bearer` (`Basic <b64>`, or an
@@ -328,10 +341,22 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 #   - RULE 4 BEFORE RULE 3 LEAKS A URL PASSWORD. `Bearer postgresql://u:<v>@h`:
 #     rule 4 eats the 10-char scheme name and leaves `<REDACTED>://u:<v>@h`,
 #     which no longer matches rule 3's `[a-zA-Z][a-zA-Z0-9+.-]*://` anchor.
-# So the cure is NOT an order. EVERY marker-anchored rule now carries
-# ASSIGN_TAIL -- an optional `[=:]` plus a full VALUE (quoted or bare) -- so a
-# rule that consumes a marker also consumes the assignment hanging off it, and
-# cannot hand rule 2 a corpse. The order 1 -> 3 -> 4 -> 2 is KEPT because the
+#   - THE THIRD DIRECTION, which the CURE for the mirror created: a tail whose
+#     bare branch runs to the next whitespace can CROSS a later rule's marker.
+#     `github_pat_<8+>=bearer <v>` had rule 1 -- which runs FIRST -- eat the
+#     word `bearer` as its own value, so rule 4 had nothing to anchor on and the
+#     token stood in the clear beside a `<REDACTED>` that had fired for
+#     something else. 258 inputs in a differential fuzz against the pre-tail
+#     version. Rule 1's greedy alnum class makes it worse:
+#     `ghp_<8+>https://u:xx:Bearer <v>` kills rule 3's AND rule 4's marker in
+#     one bite.
+# So the cure is NOT an order, and it is not a tail either. EVERY
+# marker-anchored rule carries ASSIGN_TAIL -- an optional `[=:]` plus a value --
+# so a rule that consumes a marker also consumes the assignment hanging off it
+# and cannot hand rule 2 a corpse; and that tail's bare branch is TEMPERED, so
+# it may not cross a position where any later marker starts. The two properties
+# are both needed: the tail alone opened the third direction, and tempering
+# alone would not have closed the mirror. The order 1 -> 3 -> 4 -> 2 is KEPT because the
 # third adjacency above is independent of the tail, and because a
 # marker-anchored rule is more specific than the generic NAME rule; it is no
 # longer load-bearing for the first two.
@@ -343,11 +368,18 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # The mirror class has 7 guilt cases now (both quote styles included: a bare
 # `[^\s"']*` tail, which is what was first proposed, would have left the
 # quoted forms leaking).
-# Rule 1's position is held by ARGUMENT, not measurement: it re-emits its own
-# prefix and its character classes exclude `:` and `/`, so it cannot destroy
-# rule 3's or rule 4's marker. That argument was ALWAYS about the marker of a
-# LATER rule and never covered rule 2's NAME, which is the hole ASSIGN_TAIL now
-# closes on it too.
+# RULE 1'S POSITION USED TO BE HELD BY AN ARGUMENT THAT ASSIGN_TAIL ITSELF
+# INVALIDATED, and the sentence survived one commit past its truth: "it
+# re-emits its own prefix and its character classes exclude `:` and `/`, so it
+# cannot destroy rule 3's or rule 4's marker". True of the OLD rule 1. False the
+# moment a tail was bolted on, because the tail consumes `[=:]` and its value
+# class contains both `:` and `/` -- so rule 1, which runs FIRST, could reach
+# forward past its own credential into rule 3's and rule 4's territory.
+# Measured, not argued: `github_pat_<8+>=bearer <v>` logged as
+# `github_pat_<REDACTED> <v>`, value intact. Six reproducers, and a differential
+# fuzz against the pre-tail version found 258 inputs that leaked only with the
+# untempered tail. That is what TEMPERED_VALUE exists for. Rule 1's position is
+# now held by CONSTRUCTION: no rule's tail can cross a later rule's marker.
 # The `Authorization\s*:\s*Bearer|` alternation rule 4 used to carry was
 # MEASURED DEAD and deleted, by the same test this PR applied twice before to
 # `(?:--?)?` and the left wildcard: replayed over all 333,794 live-log target
@@ -361,11 +393,31 @@ s = sys.stdin.read()
 # double-quoted run, a single-quoted run, or a bare run up to whitespace.
 # Defined FIRST because three different rules need it -- see ASSIGN_TAIL.
 VALUE = r"(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)"
+# MARKER is every anchor a LATER rule needs to be able to see. A rule that
+# consumed one of these would blind the rule that owns it -- which is the
+# third and last direction of the same defect (see ON RULE INTERACTION).
+# The URL scheme is LENGTH-BOUNDED on purpose: an unbounded
+# [a-zA-Z][a-zA-Z0-9+.-]*:// matches from ANY letter that eventually reaches
+# a ://, so a plain value glued to a URL looks like a marker at its FIRST
+# character and the guard refuses the whole value. Real schemes are short;
+# 15 is well above postgresql (10) and far below a secret.
+MARKER = (r"(?:(?i:bearer)\b|sk-ant-|gh[pousr]_|github_pat_"
+          r"|[a-zA-Z][a-zA-Z0-9+.-]{0,15}://)")
+# TEMPERED_VALUE is VALUE whose BARE branch may not cross a position where a
+# MARKER starts. The two QUOTED branches are left alone deliberately: they
+# consume a COMPLETE delimited value, so whatever marker they swallow they
+# also redact -- nothing can leak out from behind them. Only the bare branch
+# runs to the next whitespace and can therefore stop mid-structure.
+TEMPERED_VALUE = (r"(?:\"[^\"]*\"|\x27[^\x27]*\x27"
+                  r"|(?:(?!" + MARKER + r")[^\s\"\x27])+)")
 # EVERY marker-anchored rule must be able to swallow an assignment that
 # FOLLOWS its marker, or it destroys the NAME rule 2 needs and leaves the
 # value in the clear (see ON RULE INTERACTION above -- this is the MIRROR of
 # the bug the rule order fixes, found by the Gear-3 gate on the fix itself).
-ASSIGN_TAIL = r"(?:[\"\x27]?\s*[=:]\s*" + VALUE + r")?"
+# It uses TEMPERED_VALUE, not VALUE: a tail that could cross a later marker
+# just moves the defect one layer down, which is exactly what the FIRST
+# version of this tail did.
+ASSIGN_TAIL = r"(?:[\"\x27]?\s*[=:]\s*" + TEMPERED_VALUE + r")?"
 # 1. Known credential shapes, by their own prefixes. Each carries ASSIGN_TAIL
 #    because the prefix can itself be the NAME: echo ghp_MYTOKENS=<v> used
 #    to log as gh_<REDACTED>=<v> -- marker consumed, value intact.

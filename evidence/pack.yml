@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+1607/-287 (net +1320) at base 64011571b..HEAD, `git diff --numstat`, fixed point"
+  net_lines: "+1791/-287 (net +1504) at base 64011571b..HEAD, `git diff --numstat`, fixed point"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
@@ -168,6 +168,57 @@ receipts:
     cmd: "shellcheck .claude/hooks/codex-spalla-trigger.sh scripts/tests/test_codex_spalla_trigger_redaction.sh"
     exit: 0
     ts: "2026-08-22T01:10:37Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The THIRD direction the round-6 gate found is closed STRUCTURALLY, not by another
+      one-liner: ASSIGN_TAIL's bare branch is TEMPERED so it may not cross a position where any
+      later rule's marker starts. All 7 of the gate's reproducers go LEAK -> ok; the 7 mirror cases
+      stay closed. Suite 93 -> 100 (83 guilt / 15 innocence / 2 mode)."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T01:32:18Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "Differential fuzz on the REAL hook (its python block extracted and executed, not a
+      replica): 271,874 probes -- 71,874 structured triples over 33 fragments plus 200,000 random
+      assemblies -- comparing the shipped head against fa06a285a, the last version WITHOUT any tail.
+      ZERO inputs leak on the head that did not already leak on fa06a285a. The gate measured 258 for
+      the untempered tail; the tempered one measures 0."
+    cmd: "extract the python block from the working file and from `git show fa06a285a:...`, drive both over 271,874 generated probes with a planted placeholder, count inputs where the head leaks and the baseline does not"
+    exit: 0
+    ts: "2026-08-22T01:32:18Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The tempering is LOAD-BEARING, proven by mutation with the sha compared before and after:
+      swapping TEMPERED_VALUE back to VALUE in ASSIGN_TAIL fails exactly the 7 new third-direction
+      cases and nothing else; hook restored byte-identical, suite green again."
+    cmd: "mutation driver: ASSIGN_TAIL uses VALUE instead of TEMPERED_VALUE -> 7/100 FAIL"
+    exit: 1
+    ts: "2026-08-22T01:32:18Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The URL-scheme marker is LENGTH-BOUNDED at 15 for a measured reason, not a stylistic one:
+      an unbounded [a-zA-Z][a-zA-Z0-9+.-]*:// matches from ANY letter that eventually reaches a ://,
+      so a plain value glued to a URL looks like a marker at its FIRST character and the guard
+      refuses the entire value. With the unbounded form the fuzz showed 187 inputs worse than the
+      untempered tail; bounded at 15 (postgresql is 10) that falls to 94, all of them nameless
+      secrets glued to a marker with no whitespace -- a class fa06a285a leaks too, so still 0
+      regressions against the baseline."
+    cmd: "same differential fuzz, run with the marker's scheme alternative unbounded and then bounded at 15"
+    exit: 0
+    ts: "2026-08-22T01:32:18Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The backslash-escaped-quote class the gate reported as MAJOR is REAL and PRE-EXISTING --
+      re-measured on this head, all three of its shapes leak, and the JSON-in-double-quotes one is
+      not touched at all. Disclosed in the under-match block; deliberately NOT fixed in this diff."
+    cmd: >-
+      drive the shipped hook on the three escaped-quote shapes the gate reported (an API_KEY
+      assignment whose value is wrapped in backslash-escaped double quotes; the same inside a
+      double-quoted curl -d; and a JSON body written with escaped quotes inside a double-quoted
+      shell string) and check whether the planted placeholder survives
+    exit: 0
+    ts: "2026-08-22T01:32:18Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -415,6 +466,43 @@ dissent:
       neither confirmed nor disputed. Recorded here rather than left implicit, because the rest of
       this pack was independently checked and those numbers were not."
     status: PLAUSIBLE
+  - seat: "Gear-3 gate round 6 (opus 5, fresh context, non-author) — BLOCKER"
+    objection:
+      "ASSIGN_TAIL's bare branch runs to the next whitespace, so it could CROSS a later rule's
+      marker and blind the rule that owns it. `github_pat_<8+>=bearer <v>` had rule 1 — which runs
+      FIRST — eat the word `bearer` as its own value; rule 4 then had nothing to anchor on and the
+      token stood in the clear beside a `<REDACTED>` that had fired for something else. Six
+      reproducers plus a greedy sub-case killing two markers in one bite, and 258 inputs in a
+      differential fuzz against the pre-tail version. Third round, third direction, SAME misleading
+      shape — and the gate named the framing error precisely: the widening WAS disclosed, but as a
+      cost in 'log usefulness'; when the swallowed word IS a marker it is a security hole. The gate
+      also refused to hand over a patch, having measured that its own one-line guard only halved the
+      class (142 -> 74) because a marker can sit at the END of a run. Cured structurally instead:
+      the bare branch is TEMPERED — it may not cross a position where any later marker starts — and
+      the URL-scheme marker is length-bounded so a value glued to a URL is not mistaken for one.
+      Re-measured on the REAL hook over the same 271,874 probes: 0 inputs leak that fa06a285a did
+      not."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 6 (opus 5, fresh context, non-author) — MAJOR, pre-existing"
+    objection:
+      "A backslash-escaped quote defeats VALUE in EVERY rule: `API_KEY=\\\"<v>\\\"` logs the value
+      beside a `<REDACTED>`, and a JSON body written with escaped quotes inside a double-quoted shell
+      string is not touched at all. NOT caused by any commit on this branch — fa06a285a leaks
+      identically — and undisclosed until now. Re-measured on this head: all three shapes confirmed.
+      DISCLOSED in the under-match block, NOT fixed here: a change to VALUE's quoting is its own
+      diff, and this round has already replaced one leak with another twice. The gate's own lesson
+      is recorded with it: the corpus's JSON guilt case uses the single-quoted-outer form, which
+      works, so the corpus proved the shape it enumerated and this one hid behind it."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 6 (opus 5, fresh context, non-author) — what it could NOT break"
+    objection:
+      "Rule 3 having no tail: the gate ran url-then-NAME, url-then-Bearer-header, NAME inside the
+      userinfo, userinfo abutting a NAME, no-space url+NAME, and rule 3 firing on a password that IS
+      the word Bearer — none showed rule 3 destroying a following NAME. It also re-verified the 7
+      mirror cases non-vacuous by mutation, that innocence did not shrink (15 -> 15, diffed by case
+      name), and that the two rewritten claims did not replace one overreach with another. Recorded
+      so the emptiness is auditable rather than assumed."
+    status: RETRACTED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
     finds the field only in evidence packs and research/operations/2026-08-09-harness-v2-teman2.md:155
@@ -439,8 +527,19 @@ residual_risks:
     is swallowed whole rather than partially. Deliberate, in the direction this hook has always
     chosen (over-redacting a non-secret beats under-redacting a real one), but it is a real
     regression in log usefulness and is not free."
+  - "The tempering costs some ACCIDENTAL coverage the untempered tail had: 94 of 200,000 random
+    fuzz assemblies leak on this head that did not on the untempered version. Every one is a
+    nameless secret glued to a marker with no whitespace, a class fa06a285a leaks too — so it is
+    coverage the greedy tail bought by accident, not protection this diff removes. Stated because
+    'never worse than the baseline' and 'never worse than the previous commit' are different claims
+    and only the first is true."
+  - "This is the THIRD leak found in this PR by an adversarial gate, each one created by the cure
+    for the previous. The pattern is not that the fixes were careless — each was measured — but that
+    a matcher made of rules that REWRITE overlapping spans has a defect class no corpus enumerates.
+    A fourth direction is more likely than not; the honest posture is that this hook reduces
+    exposure rather than closing it, which is what the under-match block is for."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 12466
+size_tokens: 14304
