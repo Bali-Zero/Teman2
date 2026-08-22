@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+1997/-290 (net +1707) at base 64011571b..HEAD, `git diff --numstat`, fixed point"
+  net_lines: "+1970/-320 (net +1650) vs MERGE-BASE 062269dc9; base was 64011571b until origin/main was merged in on 2026-08-22, after which a fixed base would have counted main"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
@@ -638,4 +638,4 @@ sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 16047
+size_tokens: 16067
