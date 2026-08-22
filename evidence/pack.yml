@@ -634,8 +634,44 @@ receipts:
     exit: 0
     ts: "2026-08-22T11:40:00Z"
     seat: author-session (M5, claude-opus-5)
+  - claim:
+      "INDEPENDENT GEAR-3 GATE, fresh context, read-only on the worktree, generator!=grader: it drove the
+      REAL hook itself rather than reading about it, and returned PASS-WITH-CONDITIONS with four
+      conditions plus an undeclared leak class. Its findings were treated as LEADS and every one was
+      re-driven through the hook by the author before acting (W65): all confirmed. The leak class --
+      TOKEN_2= caught, TOKEN2= not -- was the largest single recall gap left in the matcher, and it was
+      found by a sweep of 383 inputs the corpus had no reason to contain. The NUMERIC half is now closed
+      in code and the LETTER half declared; the four conditions on the pack are applied above. Its item 7
+      also refuted one of my own claims and reported the refutation: it attacked the assertion that a
+      bound can only make a match start later or vanish, built the shape where a bound inside a NEGATIVE
+      lookahead should invent a false positive, and found the claim holds -- head and parent agree on all
+      six lengths tested."
+    cmd: "independent gate on fef2562cc; author re-verification of every finding via a direct driver against .claude/hooks/codex-spalla-trigger.sh with a temp HOME"
+    exit: 0
+    ts: "2026-08-22T13:10:00Z"
+    seat: independent-gate (claude-opus-5, fresh context) + author re-verification
+  - claim:
+      "THE SUFFIX CURE IS NARROW BY MEASUREMENT, not by preference. TAIL gained [0-9]* and NOT
+      [A-Za-z0-9]*: a bare alphanumeric suffix swallows TOKENIZER=fast, an innocence case, for the same
+      reason KEY carries a bounded prefix vocabulary -- credential words routinely END innocent
+      identifiers, and digits do not appear in that role. Branch (c) got only the NUMERIC half of TAIL
+      after the full TAIL was tried and REJECTED ON MEASUREMENT: it also admitted AUTH_MODE=oidc,
+      AUTH_URL=, PWD_FILE= and PASS_THROUGH=true, four ordinary config idioms that a generic branch with
+      no credential WORD cannot tell from a real name. It would have closed AUTH_2= too, which nothing
+      actually uses -- the real delimited form is AUTH_TOKEN, and branch (a) already has it. Corpus
+      165 cases (129 guilt / 32 innocence / 4 mode), and the pins run in BOTH directions because a
+      widening is only safe if its narrowness is asserted: 8 guilt witnesses and 6 innocence pins."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh, before and after restoring the pre-change hook"
+    exit: 0
+    ts: "2026-08-22T13:20:00Z"
+    seat: author-session (M5, claude-opus-5)
+    note:
+      "bite proof: FAILED 8/165 on the pre-change hook -- exactly the 8 guilt witnesses; the 6
+      innocence cases pass on BOTH sides, because they are pins on the narrowness and not witnesses to a
+      defect, and counting them would have made the proof look stronger than it is. Hook restored
+      byte-identical (sha256 compared)."
 tests:
-  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 151 named cases, 121 guilt / 26 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 165 named cases, 129 guilt / 32 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
 static:
   - "actionlint exit 0 on guard-conformance.yml"
   - "shellcheck clean on both the hook and the test"
@@ -1035,10 +1071,10 @@ residual_risks:
     -- no code reads it, so a pack could breach the gate's input allowance and every check would stay
     green. Found by the third-party verifier on 2026-08-22. Not this PR's regression and not fixed
     here; it needs its own ledger line and its own executor."
-  - 'SURVIVING UNDER-MATCH, each driven through the real hook rather than reasoned about: (a) `<any-prefix>KEY=` outside the bounded vocabulary -- `PUBKEY=`, `M5KEY=`, `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak in full; their delimited twins are caught. This is the deliberate price of keeping `monkey=patch` innocent and is the ONE class where this matcher is knowingly weaker than a bare-substring one: on the live log, 40 distinct names / 136 occurrences the substring version caught and this one does not, though most (KEYWORDS 15, KEYCHAIN 12, StrictHostKeyChecking 21, MONKEYPATCH 3, ONKEYDOWN 2) were that version''s own over-match. (b) Credential words outside the six: `--pin=`, `--otp=`, `--salt=`, `--cookie=`. (c) `Authorization:` with anything but `Bearer` -- `Basic <b64>` or an opaque token. (d) RE-LABELLED 2026-08-22, because the old title `a POSITIONAL secret with no name` was contradicted by its own example: a secret NOT JOINED TO A CREDENTIAL-ISH NAME BY `=` OR `:`. That class INCLUDES every `--flag <value>` form, because rule 2 needs the separator between name and value and a SPACE there defeats it outright. Measured leaking: `gh auth login --token <v>`, `mytool --api-key <v>`, `mysql --password <v>`, `echo <v> | gh secret set FOO`, plus the genuinely nameless `mytool deploy <v>` / `mysql -p<v>`, plus `curl -u admin:<v>` and `curl --user admin:<v>` -- those two DO carry a `:` but hang it off a USERNAME, which is not a credential-ish name. (e) An UNQUOTED value containing a space -- only the first word is redacted. (f) NEW 2026-08-22, the UNDER-MATCH HALF of the dot-lookbehind, which all four artifacts described only as over-match protection: a SINGLE-SEGMENT attribute assignment leaks in full -- `c.token = "<v>"`, `c.secret = "<v>"`, `jq ''.password = "<v>"'' cfg.json`. Multi-segment names are still caught (`cfg.api_key = "<v>"` matches at `key`, after the `_`), which is exactly what scopes the hole. Same named-price shape as the KEY vocabulary. (g) NEW 2026-08-22: an INDEX between the name and the separator -- `SECRETS[0]=<v>`, `TOKEN[0]=<v>` leak, because `[0]` is neither the optional quote nor the separator rule 2 permits between them.'
+  - 'SURVIVING UNDER-MATCH, each driven through the real hook rather than reasoned about: (a) `<any-prefix>KEY=` outside the bounded vocabulary -- `PUBKEY=`, `M5KEY=`, `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak in full; their delimited twins are caught. This is the deliberate price of keeping `monkey=patch` innocent. RETRACTED 2026-08-22: this used to call itself THE ONE class where the matcher is knowingly weaker than a bare-substring one. An independent gate falsified that by driving 383 inputs through the real hook and finding a second, larger one -- the bare SUFFIX, where TOKEN_2= was caught and TOKEN2= was not. The NUMERIC half of that class is now CLOSED in code (TOKEN1, SECRET3, PGPASSWORD1, APIKEY2, AUTH1, PWD9, TOKENS1, X-Auth-Token2, 8 witnesses, bite-proved 8/165); the LETTER half (TOKENA=, TOKENV2=) stays open and is priced below. The remaining KEY-prefix gap: on the live log, 40 distinct names / 136 occurrences the substring version caught and this one does not, though most (KEYWORDS 15, KEYCHAIN 12, StrictHostKeyChecking 21, MONKEYPATCH 3, ONKEYDOWN 2) were that version''s own over-match. (b) Credential words outside the six: `--pin=`, `--otp=`, `--salt=`, `--cookie=`. (c) HALF-RETRACTED 2026-08-22: `Authorization:` with an OPAQUE token still leaks (measured), but the `Basic <b64>` half is false -- anchor 4b has caught it since the tenth round, verified on this head (a `curl -H` carrying an `Authorization: Basic <b64>` header logs `curl -H` then the marker). A residual that outlives its own cure is worse than none: it reads as a known hole and hides that the hole was closed. (d) RE-LABELLED 2026-08-22, because the old title `a POSITIONAL secret with no name` was contradicted by its own example: a secret NOT JOINED TO A CREDENTIAL-ISH NAME BY `=` OR `:`. That class INCLUDES every `--flag <value>` form, because rule 2 needs the separator between name and value and a SPACE there defeats it outright. Measured leaking: `gh auth login --token <v>`, `mytool --api-key <v>`, `mysql --password <v>`, `echo <v> | gh secret set FOO`, plus the genuinely nameless `mytool deploy <v>` / `mysql -p<v>`, plus `curl -u admin:<v>` and `curl --user admin:<v>` -- those two DO carry a `:` but hang it off a USERNAME, which is not a credential-ish name. (e) REWRITTEN 2026-08-22 -- the old text read `an UNQUOTED value containing a space: only the first word is redacted`, which described the RETIRED cascade, not this head. Measured on this head: `export TOKEN=<v> extra words here` logs `export <REDACTED>`. The cut runs to end-of-string, so the whole tail goes. That is not an under-match at all -- it is the over-match damage already priced below, and it was sitting in the under-match list saying the opposite. (f) NEW 2026-08-22, the UNDER-MATCH HALF of the dot-lookbehind, which all four artifacts described only as over-match protection: a SINGLE-SEGMENT attribute assignment leaks in full -- `c.token = "<v>"`, `c.secret = "<v>"`, `jq ''.password = "<v>"'' cfg.json`. CORRECTED 2026-08-22 by an independent gate that measured it: the claim used to read `multi-segment names are still caught`, which is true only when the LAST segment is itself a credential word. `cfg.api_key = <v>` is caught (it matches at `key`, after the `_`); `cfg.TOKEN_ref = <v>` and `cfg.token_value = <v>` LEAK IN FULL, 10 of 13 names in the gate''s sweep. What scopes the hole is not segment COUNT but whether a credential word survives the lookbehind at the position it occupies. Same named-price shape as the KEY vocabulary. (g) NEW 2026-08-22: an INDEX between the name and the separator -- `SECRETS[0]=<v>`, `TOKEN[0]=<v>` leak, because `[0]` is neither the optional quote nor the separator rule 2 permits between them.'
   - "Redact-before-truncate widens the truncation window by shortening the string, so a secret that used to fall outside the 200 chars can be pulled in. Smaller exposure, not zero. Pinned in the other direction by the straddle case, which proves truncate-first is strictly worse."
   - "The already-leaked material remains valid: 1 whole-token-length run plus 2 truncation-clipped partials. Two earlier drafts of this pack inflated that (11 tokens -- a LINE count read as a VALUE count; then 2 whole tokens -- an end-of-window artifact read as two more secrets). Both caught by the Gear-3 gate; the rotation decision hangs on this number."
-  - "OVER-MATCH (cicatrix #3), stated with its full damage rather than as value-only: the name match has no notion of whether a value is actually secret, AND (i) it swallows the rest of an unquoted value, so `sed -i 's/key=old/key=new/'` loses its second half entirely, and (ii) it NORMALISES the separator to `=`, so a header or JSON `name: value` is logged as `name=<REDACTED>`. Those lines stop being replayable commands. Concretely over-redacted today: `redis-cli --scan --pattern 'keys:*'` (1 of 35 ordinary-command probes), `PWD=/tmp`, any `FEATURE_FLAG_KEY=`. Measured rate on the real log: 2291 lines / 0.686% of 333,832 at 2026-08-21T22:49:57Z, higher than the 1875 / 0.562% of the version rejected for over-matching. Accepted: over-redacting a non-secret beats under-redacting a real one."
+  - "OVER-MATCH (cicatrix #3), stated with its full damage rather than as value-only: the name match has no notion of whether a value is actually secret, AND (i) it swallows the rest of an unquoted value, so `sed -i 's/key=old/key=new/''` loses its second half entirely, and (ii) DELETED 2026-08-22: this used to claim the replacement NORMALISES the separator to `=`, so a header or JSON `name: value` is logged as `name=<REDACTED>`. Measured false on this head: a `curl -H` carrying an `X-Api-Key` header logs the marker starting INSIDE the name, at `X-Api-`. Nothing is normalised because nothing is re-emitted: the earliest-anchor cut discards from the match START, so the NAME is inside the cut too. The real damage is larger than the sentence it replaces, and is stated correctly in (i): the rest of the line goes. Concretely over-redacted today: `redis-cli --scan --pattern 'keys:*'` (1 of 35 ordinary-command probes), `PWD=/tmp`, any `FEATURE_FLAG_KEY=`. Measured rate on the real log: 2291 lines / 0.686% of 333,832 at 2026-08-21T22:49:57Z, higher than the 1875 / 0.562% of the version rejected for over-matching. Accepted: over-redacting a non-secret beats under-redacting a real one."
   - 'OVER-MATCH in rules 3 and 4, undisclosed until the Gear-3 gate drove it. (i) Rule 4''s `Bearer` is a BARE WORD in prose, not a header: it eats the next >=8-char `[A-Za-z0-9._-]` run in ANY text, with no name, assignment or separator. `gh pr create --title "Bearer authentication rollout"` is logged as `Bearer <REDACTED> rollout` and `git commit -m "fix: bearer credentials refresh loop"` is mangled the same way -- and `gh pr create` is TRIGGER RULE 1 of this very hook, so those are the lines it exists to record. Corpus at 2026-08-21T22:50:35Z / 333,833 lines: 8 lines carry a match, 10 matches, 3 of the 10 carry no digit at all (one of which is this session''s own probe string -- this log inflates its own denominator, as documented). DELIBERATELY NOT narrowed to require a digit: that trades a 3-occurrence over-match for an under-match on an all-lowercase bearer token, inverting the preference stated one bullet above. (ii) Rule 3 redacts a PORT when the port sits in the userinfo PASSWORD position -- `curl ''https://example.com:8443@evil.test/''` logs `example.com:<REDACTED>@`. It cannot fire on a genuine `host:port`, which has no `@` after it (verified: `postgres://appuser@db.host.test:5432/x` and `https://api.example.test:8443/health` are untouched). An all-digits carve-out was considered and REJECTED on measurement: 0 of 367 URL-userinfo matches in the live log have an all-digit password, so it fixes nothing real while opening an under-match on any numeric credential. Scale on the same rule: 354 of those 367 matches are a single test-fixture DSN, i.e. this rule too fires overwhelmingly on non-secrets.'
   - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ -- the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
   - "check_guard_conformance's is_armed() is substring-based, so it cannot detect deletion of the workflow step that executes this suite. The step is genuine today; its removal would not be caught by the registration."
@@ -1132,6 +1168,27 @@ residual_risks:
     credential-free command in a hook that fires on every tool call. The user and the port lookahead
     carry the same 2048 bound for the same reason. The loss-free alternative (skip the rule unless the
     input contains an @) was rejected: one leading @ defeats it."
+  - "NEW OVER-MATCH, declared 2026-08-22 by the independent Gear-3 gate: a URL with a PORT and a query or
+    fragment but NO PATH, carrying an at-sign in that query or fragment, is truncated in full --
+    `curl -sS 'https://api.example.test:8443?email=alice@corp.test'` logs `curl -sS 'https<REDACTED>`.
+    The port discriminator only rejects when a SLASH follows the port delimiter, and these URLs have
+    none. All three declared URL false-positive fixtures and the existing innocence case carry a path,
+    which is exactly why the corpus could not see it. NOT FIXED, and no innocence case is added for it,
+    because an innocence case asserting this input survives would FAIL -- a green test claiming coverage
+    this rule does not have is worse than a declared hole. Narrowing it further would re-open the
+    digit-leading-password guilt case (`https://alice:123?x<v>@db.test/query`), which is a real
+    credential shape and has a witness in the corpus; over-redacting one URL shape beats leaking one."
+  - "LETTER SUFFIX ON THE CREDENTIAL NAME, still open after the numeric half was closed: `TOKENA=<v>`,
+    `TOKENV2=<v>` leak in full. Priced rather than closed -- a bare ALPHANUMERIC suffix is not separable
+    from `TOKENIZER=fast` (an innocence case) by any rule of this shape, which is the same reason KEY
+    carries a bounded prefix vocabulary. Digits have no such innocent role, which is why the numeric
+    half could be closed and this half cannot."
+  - "IMPRECISION IN A PUSHED COMMIT MESSAGE, corrected here because a pushed message cannot be amended:
+    the commit for the ReDoS cure says `shellcheck clean`. Bare `shellcheck` on the hook exits 1 (SC2016,
+    severity INFO, on the single-quoted python block). What is true, and what every check in this PR
+    actually ran, is `shellcheck -S warning` -> exit 0. No CI check is contradicted: actionlint runs with
+    `-shellcheck=`, which disables the pass entirely. Recorded rather than quietly dropped."
+
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
@@ -1140,4 +1197,4 @@ pii_scan: clean
 # No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
 # this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
 # documentation. The previous value, 16067, was left behind by later edits to this pack.
-size_tokens: 27417
+size_tokens: 29132

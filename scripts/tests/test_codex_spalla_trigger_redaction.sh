@@ -786,6 +786,51 @@ ok=1
 [ "$premode" = "644" ] && [ "$mode6" = "600" ] && ok=0
 case_result "mode-preexisting-0644-log-repaired-to-0600 (before: ${premode:-?}, after: ${mode6:-<unreadable>})" "$ok" mode
 
+# ── NUMERIC SUFFIX ON THE CREDENTIAL NAME ───────────────────────────────────
+#
+# Found by an independent gate that drove 383 inputs through the real hook, not
+# by this corpus: TOKEN_2= was caught and TOKEN2= was not, because a suffix could
+# only arrive as a _- or --delimited segment. That split the commonest real names
+# in half. PGPASSWORD is not hypothetical -- this repo already measured the
+# undelimited form leaking 99 times in its own live log.
+#
+# The pins below run in BOTH directions on purpose, because the fix is a
+# widening and a widening is only safe if its narrowness is asserted too. TAIL
+# admits digits and NOT bare letters: a bare alphanumeric suffix would swallow
+# TOKENIZER=fast. Branch (c) gets only the numeric half, never the delimited one:
+# the full TAIL was measured admitting AUTH_MODE=, AUTH_URL=, PWD_FILE= and
+# PASS_THROUGH=, four ordinary config idioms that the generic branch -- unlike
+# (a) and (b) -- has no credential WORD to tell apart from a real name.
+SUF_V="sufTest$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-numeric-suffix-wide-word [TOKEN1]" \
+    "export TOKEN1=$SUF_V" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-wide-word [SECRET3]" \
+    "export SECRET3=$SUF_V" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-wide-word [PGPASSWORD1, the live-log shape]" \
+    "PGPASSWORD1=$SUF_V psql -h db.internal" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-after-the-plural-S [TOKENS1]" \
+    "export TOKENS1=$SUF_V" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-key-branch [APIKEY2]" \
+    "export APIKEY2=$SUF_V" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-in-a-header [X-Auth-Token2]" \
+    "curl -H \"X-Auth-Token2: $SUF_V\" https://api.example.test" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-generic-branch [AUTH1]" \
+    "export AUTH1=$SUF_V" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-generic-branch [PWD9]" \
+    "export PWD9=$SUF_V" "$SUF_V"
+assert_intact "innocence-letter-suffix-is-not-a-numeric-one [TOKENIZER]" \
+    "export TOKENIZER=fast" "TOKENIZER=fast"
+assert_intact "innocence-generic-branch-rejects-the-delimited-tail [AUTH_MODE]" \
+    "export AUTH_MODE=oidc" "AUTH_MODE=oidc"
+assert_intact "innocence-generic-branch-rejects-the-delimited-tail [AUTH_URL]" \
+    "export AUTH_URL=https://idp.example.test" "AUTH_URL=https://idp.example.test"
+assert_intact "innocence-generic-branch-rejects-the-delimited-tail [PASS_THROUGH]" \
+    "export PASS_THROUGH=true" "PASS_THROUGH=true"
+assert_intact "innocence-generic-branch-rejects-the-delimited-tail [PWD_FILE]" \
+    "export PWD_FILE=/etc/app/pwd" "PWD_FILE=/etc/app/pwd"
+assert_intact "innocence-generic-word-with-a-bare-letter-suffix [AUTHOR]" \
+    "AUTHOR=alice git commit --amend --no-edit" "AUTHOR=alice"
+
 # ── WALL CLOCK ──────────────────────────────────────────────────────────────
 #
 # This exists because the SAME defect shipped TWICE, four commits apart, in two

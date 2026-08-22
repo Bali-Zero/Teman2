@@ -442,11 +442,33 @@ WIDE = r"(?:TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)"
 PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
        r"|REFRESH|OAUTH|BEARER|MY|ID|TOKEN|SECRET|PASSWORD|PASSWD"
        r"|CREDENTIAL)")
-TAIL = r"S?(?:[_-][A-Za-z0-9]+)*"
+# The [0-9]* is a RECALL fix with a deliberately narrow shape, added 2026-08-22
+# after an independent gate drove 383 inputs through the real hook: TOKEN_2= was
+# caught and TOKEN2= was not, because the suffix could only arrive as a _- or
+# --delimited segment. That split the commonest real names in half -- TOKEN1,
+# SECRET3, PGPASSWORD1, AUTH1 all leaked in FULL, and PGPASSWORD is the exact
+# name this repo already measured leaking 99 times in the live log. DIGITS ONLY,
+# never [A-Za-z0-9]*: a bare alphanumeric suffix would swallow TOKENIZER=fast,
+# which is an innocence case here, and the whole reason KEY carries a bounded
+# prefix vocabulary is that credential words routinely END innocent identifiers.
+# Digits do not appear in that role. DECLARED RESIDUAL: a bare LETTER suffix
+# (TOKENA=, TOKENV2=) still leaks -- it is not separable from TOKENIZER by any
+# rule this shape can express, so it is priced, not closed.
+TAIL = r"S?[0-9]*(?:[_-][A-Za-z0-9]+)*"
 NAME = (r"(?<![A-Za-z0-9.])(?:"
         + r"[A-Za-z0-9]*" + WIDE + TAIL   # a. ANY prefix + a wide credential word
         + r"|" + PRE + r"?KEY" + TAIL     # b. KEY: bounded prefix, or none at all
-        + r"|(?:PASS|PWD|AUTH)"           # c. bare generic name
+        # c. generic name, with the NUMERIC half of TAIL and deliberately NOT
+        #    the delimited half. AUTH1= and PASS2= leaked while AUTH= was caught,
+        #    so the digits close a hole that has no innocent counterpart. The
+        #    full TAIL was tried first and REJECTED ON MEASUREMENT: it also
+        #    admits AUTH_MODE=oidc, AUTH_URL=, PWD_FILE= and PASS_THROUGH=true,
+        #    four ordinary config idioms that this generic branch -- unlike (a)
+        #    and (b) -- has no credential WORD to distinguish from. It would have
+        #    closed AUTH_2= as well, which is not a name anything actually uses:
+        #    a real delimited credential is AUTH_TOKEN, and branch (a) has it.
+        #    Bare letters (AUTHOR=, AUTHORIZATION=) stay innocent either way.
+        + r"|(?:PASS|PWD|AUTH)S?[0-9]*"
         + r")")
 # A VALUE is what sits on the right of a credential assignment: a double-quoted
 # run, a single-quoted run, or a bare run up to whitespace. It no longer has to
