@@ -406,6 +406,18 @@ receipts:
     exit: 0
     ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
+  - claim:
+      "SECOND, DIFFERENTLY-SHAPED GENERATOR on the no-regression property, run because the first result
+      was explicitly only a statement about ITS generator: a CHARACTER-LEVEL fuzz with no fragment
+      vocabulary at all -- random strings over a 60-character alphabet, length 5-120, with the marker
+      token spliced at a random offset -- comparing harnesses rebuilt from the two FROZEN refs
+      (2df0fcec6, the last cascade, and 19a74bf29). 300,000 inputs, 0 cases where the old cascade
+      removed the token and the new cut did not. Two generators of genuinely different shape now agree,
+      which is a stronger claim than one generator run longer; it is still not a proof."
+    cmd: "character-level differential superset fuzz, seed 777, harnesses extracted via git show from both frozen refs (never the live worktree)"
+    exit: 0
+    ts: "2026-08-22T06:40:00Z"
+    seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
 static:
