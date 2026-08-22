@@ -670,8 +670,45 @@ receipts:
       innocence cases pass on BOTH sides, because they are pins on the narrowness and not witnesses to a
       defect, and counting them would have made the proof look stronger than it is. Hook restored
       byte-identical (sha256 compared)."
+  - claim:
+      "A PEER SESSION, 197 invented inputs through the real hook, 87 false positives. Two of its three
+      headline findings re-drove to shapes residual_risks already declares (bare-Bearer prose; placeholder
+      assignments like `--token=TOKEN` and `API_KEY=your_api_key_here`) -- but it re-priced them, and the
+      re-pricing is the useful part: the Bearer over-match is not incidental prose, it is STRUCTURAL on the
+      exact vocabulary a Bearer-auth bugfix commit would use, and the placeholder class fires on printing a
+      tool's own --help or echoing a .env.example, which are everyday non-security actions. Both remain
+      accepted, for the reasons already recorded. THE THIRD finding was different in kind: it falsified a
+      CLAIM. All three re-driven through the hook at head 8ef946ce8 by the author before acting; all three
+      reproduced."
+    cmd: "peer-session sweep of 197 invented inputs; author re-verification of all three headline findings against .claude/hooks/codex-spalla-trigger.sh with a temp HOME"
+    exit: 0
+    ts: "2026-08-22T14:05:00Z"
+    seat: peer-session (independent) + author re-verification
+  - claim:
+      "AN EXAMPLE THAT DOES NOT CONTAIN THE SHAPE A CLAIM EXCLUDES IS NOT EVIDENCE FOR THAT CLAIM. The pack
+      said rule 3 cannot fire on a genuine host:port because such a URL has no at-sign after it, and cited
+      two URLs as verification. Neither cited URL has an at-sign after the port, so neither could test the
+      claim -- the excluded shape was absent from the evidence excluding it, and the word `verified` was
+      doing all the work. The counterexample is ordinary: a self-hosted Mastodon-style API on a
+      non-default port, https://staging.example.test:8443/@mentions/feed, truncated in full, scheme
+      included. Cured by also rejecting digits-slash-at (the at-sign immediately after the slash); the obvious cure of rejecting any digits-then-slash was tried
+      FIRST and measured WORSE (6/7 guilt and 1/7 false positives, against 7/7 and 1/7 for the shipped form
+      and 7/7 and 3/7 for the form it replaces), because it discards a real password that begins with
+      digits and contains a slash. Both directions are pinned so the next session cannot adopt the worse
+      cure."
+    cmd: "differential scoring of two candidate discriminators over 7 guilt and 7 innocence shapes; then bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T14:15:00Z"
+    seat: author-session (M5, claude-opus-5)
+    note:
+      "bite proof 2/168, and for the first time in this PR the witnesses are INNOCENCE cases, because
+      the defect was an over-match rather than a leak. The guilt case added alongside them passes on BOTH
+      sides -- it is a pin against the cure that measured worse, not a witness -- and is deliberately not
+      counted. Hook restored byte-identical (sha256 compared). Performance unchanged and still linear:
+      169.7 ms at 200KB and 304.3 ms at 400KB on the url-run payload; 1.2/1.4 ms on a payload built from
+      the new alternative itself."
 tests:
-  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 165 named cases, 129 guilt / 32 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 168 named cases, 130 guilt / 34 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
 static:
   - "actionlint exit 0 on guard-conformance.yml"
   - "shellcheck clean on both the hook and the test"
@@ -1075,7 +1112,7 @@ residual_risks:
   - "Redact-before-truncate widens the truncation window by shortening the string, so a secret that used to fall outside the 200 chars can be pulled in. Smaller exposure, not zero. Pinned in the other direction by the straddle case, which proves truncate-first is strictly worse."
   - "The already-leaked material remains valid: 1 whole-token-length run plus 2 truncation-clipped partials. Two earlier drafts of this pack inflated that (11 tokens -- a LINE count read as a VALUE count; then 2 whole tokens -- an end-of-window artifact read as two more secrets). Both caught by the Gear-3 gate; the rotation decision hangs on this number."
   - "OVER-MATCH (cicatrix #3), stated with its full damage rather than as value-only: the name match has no notion of whether a value is actually secret, AND (i) it swallows the rest of an unquoted value, so `sed -i 's/key=old/key=new/''` loses its second half entirely, and (ii) DELETED 2026-08-22: this used to claim the replacement NORMALISES the separator to `=`, so a header or JSON `name: value` is logged as `name=<REDACTED>`. Measured false on this head: a `curl -H` carrying an `X-Api-Key` header logs the marker starting INSIDE the name, at `X-Api-`. Nothing is normalised because nothing is re-emitted: the earliest-anchor cut discards from the match START, so the NAME is inside the cut too. The real damage is larger than the sentence it replaces, and is stated correctly in (i): the rest of the line goes. Concretely over-redacted today: `redis-cli --scan --pattern 'keys:*'` (1 of 35 ordinary-command probes), `PWD=/tmp`, any `FEATURE_FLAG_KEY=`. Measured rate on the real log: 2291 lines / 0.686% of 333,832 at 2026-08-21T22:49:57Z, higher than the 1875 / 0.562% of the version rejected for over-matching. Accepted: over-redacting a non-secret beats under-redacting a real one."
-  - 'OVER-MATCH in rules 3 and 4, undisclosed until the Gear-3 gate drove it. (i) Rule 4''s `Bearer` is a BARE WORD in prose, not a header: it eats the next >=8-char `[A-Za-z0-9._-]` run in ANY text, with no name, assignment or separator. `gh pr create --title "Bearer authentication rollout"` is logged as `Bearer <REDACTED> rollout` and `git commit -m "fix: bearer credentials refresh loop"` is mangled the same way -- and `gh pr create` is TRIGGER RULE 1 of this very hook, so those are the lines it exists to record. Corpus at 2026-08-21T22:50:35Z / 333,833 lines: 8 lines carry a match, 10 matches, 3 of the 10 carry no digit at all (one of which is this session''s own probe string -- this log inflates its own denominator, as documented). DELIBERATELY NOT narrowed to require a digit: that trades a 3-occurrence over-match for an under-match on an all-lowercase bearer token, inverting the preference stated one bullet above. (ii) Rule 3 redacts a PORT when the port sits in the userinfo PASSWORD position -- `curl ''https://example.com:8443@evil.test/''` logs `example.com:<REDACTED>@`. It cannot fire on a genuine `host:port`, which has no `@` after it (verified: `postgres://appuser@db.host.test:5432/x` and `https://api.example.test:8443/health` are untouched). An all-digits carve-out was considered and REJECTED on measurement: 0 of 367 URL-userinfo matches in the live log have an all-digit password, so it fixes nothing real while opening an under-match on any numeric credential. Scale on the same rule: 354 of those 367 matches are a single test-fixture DSN, i.e. this rule too fires overwhelmingly on non-secrets.'
+  - 'OVER-MATCH in rules 3 and 4, undisclosed until the Gear-3 gate drove it. (i) Rule 4''s `Bearer` is a BARE WORD in prose, not a header: it eats the next >=8-char `[A-Za-z0-9._-]` run in ANY text, with no name, assignment or separator. `gh pr create --title "Bearer authentication rollout"` is logged as `Bearer <REDACTED> rollout` and `git commit -m "fix: bearer credentials refresh loop"` is mangled the same way -- and `gh pr create` is TRIGGER RULE 1 of this very hook, so those are the lines it exists to record. Corpus at 2026-08-21T22:50:35Z / 333,833 lines: 8 lines carry a match, 10 matches, 3 of the 10 carry no digit at all (one of which is this session''s own probe string -- this log inflates its own denominator, as documented). DELIBERATELY NOT narrowed to require a digit: that trades a 3-occurrence over-match for an under-match on an all-lowercase bearer token, inverting the preference stated one bullet above. (ii) Rule 3 redacts a PORT when the port sits in the userinfo PASSWORD position -- `curl ''https://example.com:8443@evil.test/''` logs `example.com:<REDACTED>@`. FALSIFIED 2026-08-22 and CURED. This used to claim the rule cannot fire on a genuine `host:port`, which has no `@` after it, and offered two examples as verification. THE VERIFICATION WAS VACUOUS: neither cited example has an at-sign after the port at all, so neither could test the claim it was offered as proof of -- the shape being ruled out was never in the evidence. A peer session drove 197 invented inputs and found it: `https://staging.example.test:8443/@mentions/feed`, an ordinary self-hosted Mastodon-style API on a non-default port, was truncated in full and took the SCHEME with it. The path-aware discriminator demands a slash AFTER the port delimiter, and here the at-sign arrives before any second slash. Cured by also rejecting `\d+/@` -- the at-sign must follow the slash IMMEDIATELY. Rejecting a bare `\d+/` was tried FIRST and is worse: it discards `postgres://u:123/<v>@h`, a real password beginning with digits and containing a slash (6/7 guilt, 1/7 false positives, against 7/7 and 1/7 for the shipped form and 7/7 and 3/7 for the form it replaces). Both directions are now pinned, or the next session tightens this back into the leak. THE STILL-OPEN half is the query/fragment variant with NO path, declared separately below. An all-digits carve-out was considered and REJECTED on measurement: 0 of 367 URL-userinfo matches in the live log have an all-digit password, so it fixes nothing real while opening an under-match on any numeric credential. Scale on the same rule: 354 of those 367 matches are a single test-fixture DSN, i.e. this rule too fires overwhelmingly on non-secrets.'
   - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ -- the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
   - "check_guard_conformance's is_armed() is substring-based, so it cannot detect deletion of the workflow step that executes this suite. The step is genuine today; its removal would not be caught by the registration."
   - "An identical UNTRACKED .codex/hooks/ copy exists in the main checkout; git does not track it, so this diff cannot fix it."
@@ -1197,4 +1234,4 @@ pii_scan: clean
 # No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
 # this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
 # documentation. The previous value, 16067, was left behind by later edits to this pack.
-size_tokens: 29132
+size_tokens: 30175

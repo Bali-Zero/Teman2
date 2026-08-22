@@ -786,6 +786,31 @@ ok=1
 [ "$premode" = "644" ] && [ "$mode6" = "600" ] && ok=0
 case_result "mode-preexisting-0644-log-repaired-to-0600 (before: ${premode:-?}, after: ${mode6:-<unreadable>})" "$ok" mode
 
+# ── PATH THAT STARTS WITH AN AT-SIGN ────────────────────────────────────────
+#
+# Found by a PEER SESSION, not by this corpus: it drove 197 invented inputs and
+# reported 87 false positives, of which this was the one that falsified a claim
+# rather than merely widening a declared class. The pack used to assert rule 3
+# "cannot fire on a genuine host:port, which has no @ after it (verified)". The
+# verification was VACUOUS -- both examples it cited had no at-sign after the
+# port at all, so neither could test the claim they were offered as proof of.
+# A self-hosted Mastodon-style API on a non-default port has exactly the shape
+# the claim ruled out, and it was truncated in full, taking the SCHEME with it.
+#
+# The guilt case below rides along on purpose: it is the shape that made the
+# obvious cure (reject any digits-then-slash) the WRONG one -- a real password
+# that begins with digits and contains a slash. Both pins are needed, or the
+# next session tightens this rule back into the leak.
+ATPATH_V="atPath$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_intact "innocence-url-port-then-path-starting-with-at [mastodon-style]" \
+    'curl "https://staging.example.test:8443/@mentions/feed"' \
+    "staging.example.test:8443/@mentions/feed"
+assert_intact "innocence-url-port-then-path-starting-with-at [user handle]" \
+    'curl "https://social.example.test:9443/@alice/posts/123"' \
+    "social.example.test:9443/@alice/posts/123"
+assert_redacted "guilt-url-password-starting-with-digits-and-containing-a-slash" \
+    "psql postgres://u:123/$ATPATH_V@h" "$ATPATH_V"
+
 # ── NUMERIC SUFFIX ON THE CREDENTIAL NAME ───────────────────────────────────
 #
 # Found by an independent gate that drove 383 inputs through the real hook, not

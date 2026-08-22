@@ -571,7 +571,28 @@ ANCHORS = (
     #     A differential run of 60000 inputs against the unbounded form found ZERO
     #     divergences below the bound, and by construction a bound can only make the
     #     match START LATER or vanish -- it can never invent a false positive.
-    r"://[^\s:/@]{1,2048}:(?!\d+[/?#][^\s@]{0,2048}/)[^\s@]{1,2048}@",
+    #     THE `/@` ALTERNATIVE, added 2026-08-22 after a peer session drove 197
+    #     invented inputs through the hook: a path that STARTS with an at-sign --
+    #     https://staging.example.test:8443/@mentions/feed, the ordinary shape of a
+    #     self-hosted Mastodon-style API on a non-default port -- was truncated in
+    #     full, and it ate the SCHEME with it (logged as `https` + the marker). The
+    #     path-aware discriminator could not see it: it demands a SLASH after the
+    #     port delimiter, and here the at-sign arrives before any second slash.
+    #     Rejecting a bare `\d+/` was tried first and is WORSE: it also discards
+    #     a real userinfo password that BEGINS WITH DIGITS and then contains a
+    #     slash (spelled out here as a full DSN in an earlier draft, which made
+    #     scripts/lint_pg_dsn_credentials.py fail this file -- a literal DSN in a
+    #     COMMENT is still a literal DSN in the tree), scoring 6/7 guilt and
+    #     1/7 false positives. Requiring the at-sign
+    #     to follow the slash IMMEDIATELY scores 7/7 and 1/7, against 7/7 and 3/7
+    #     for the form it replaces -- strictly better in both directions.
+    #     AND IT FALSIFIES A CLAIM THIS FILE USED TO MAKE. The pack asserted rule 3
+    #     "cannot fire on a genuine host:port, which has no @ after it (verified)".
+    #     The verification was vacuous: both examples cited had NO at-sign after the
+    #     port at all, so they could not test the claim they were offered as proof
+    #     of. A genuine host:port followed by an at-sign later in the path is
+    #     exactly what broke it.
+    r"://[^\s:/@]{1,2048}:(?!\d+(?:/@|[/?#][^\s@]{0,2048}/))[^\s@]{1,2048}@",
     # 4b. Authorization: Basic <base64>. Rule 4 covers Bearer only, and this was a
     #     NAMED residual risk rather than an oversight -- promoted to an anchor when
     #     the same cross-family seat pointed out that a wholly ordinary curl -H
