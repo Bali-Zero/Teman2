@@ -111,6 +111,49 @@ CLAUDE_EXECUTABLE = "/Users/nuzantara/.local/share/claude/versions/2.1.214"
 GEMINI_EXECUTABLE = "/Users/nuzantara/.local/bin/agy"
 MCP_CONFIG = '{"mcpServers":{}}'
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+SAFE_GATE_META = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+SAFE_GATE_STATUS_VALUES = frozenset(
+    {
+        "ok",
+        "success",
+        "error",
+        "api_error",
+        "api_error_status",
+        "quota_exceeded",
+        "rate_limit",
+        "rate_limited",
+        "authentication_error",
+        "auth_error",
+        "unauthorized",
+        "forbidden",
+        "execution_error",
+        "timeout",
+    }
+)
+SAFE_GATE_TERMINAL_REASONS = frozenset(
+    {
+        "success",
+        "error",
+        "api_error",
+        "quota_exceeded",
+        "rate_limit",
+        "rate_limited",
+        "authentication_error",
+        "execution_error",
+        "timeout",
+    }
+)
+PROCESS_FAILURE_CATEGORIES = frozenset(
+    {
+        "timeout",
+        "nonzero_rc",
+        "api_error_429",
+        "api_error_quota",
+        "auth",
+        "execution_error",
+        "stdout_empty",
+    }
+)
 FINDING_ID = re.compile(r"\[([A-Z0-9][A-Z0-9._-]{2,63})\]")
 COMMIT_ID = re.compile(r"^[0-9a-f]{7,64}$")
 EVIDENCE_REFERENCE = re.compile(
@@ -247,6 +290,56 @@ PLACEHOLDER_VALUES = frozenset(
 
 class ReviewValidationError(RuntimeError):
     """Raised when immutable review evidence fails closed."""
+
+
+@dataclass(frozen=True)
+class ClaudeGateDiagnostic:
+    """Safe, bounded metadata for one Claude CLI normalization attempt.
+
+    This deliberately contains no prompt, response body, stderr text, token,
+    or credential.  It is suitable for a receipt or a structured log when a
+    caller needs to explain why a gate did not produce a verdict.
+    """
+
+    stdout_bytes: int
+    stdout_sha256: str
+    stderr_bytes: int
+    stderr_sha256: str
+    timeout: bool
+    category: str
+    rc: int | None
+    status: int | str | None
+    terminal_reason: str | None
+
+    def as_dict(self) -> dict[str, object]:
+        """Return only non-sensitive diagnostic metadata."""
+        return {
+            "stdout_bytes": self.stdout_bytes,
+            "stdout_sha256": self.stdout_sha256,
+            "stderr_bytes": self.stderr_bytes,
+            "stderr_sha256": self.stderr_sha256,
+            "timeout": self.timeout,
+            "category": self.category,
+            "rc": self.rc,
+            "status": self.status,
+            "terminal_reason": self.terminal_reason,
+        }
+
+
+@dataclass(frozen=True)
+class ClaudeGateResponse:
+    """Normalized Claude CLI result; invalid results retain safe diagnostics."""
+
+    category: str
+    result: str | None
+    provider_session_id: str | None
+    reported_model: str | None
+    diagnostic: ClaudeGateDiagnostic
+
+    @property
+    def valid(self) -> bool:
+        """Whether the response is safe to pass to the internal verdict gate."""
+        return self.category == "valid"
 
 
 @dataclass(frozen=True)
@@ -767,28 +860,386 @@ def _emitted_string(
     return value
 
 
+def _safe_gate_meta_value(
+    value: object,
+    allowed_values: frozenset[str],
+    *,
+    allow_http_status: bool = False,
+) -> int | str | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if allow_http_status and 100 <= value <= 599 else None
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().lower()
+    if not SAFE_GATE_META.fullmatch(normalized):
+        return None
+    if normalized in allowed_values or (
+        allow_http_status and re.fullmatch(r"[1-5][0-9]{2}", normalized)
+    ):
+        return normalized
+    return None
+
+
+def _safe_status(envelope: Mapping[str, Any]) -> int | str | None:
+    """Extract a bounded status value without retaining provider payloads."""
+    status: object = envelope.get("api_error_status")
+    if status is None:
+        status = envelope.get("status")
+    error = envelope.get("error")
+    if status is None and isinstance(error, Mapping):
+        status = (
+            error.get("api_error_status")
+            or error.get("status")
+            or error.get("status_code")
+        )
+    return _safe_gate_meta_value(
+        status,
+        SAFE_GATE_STATUS_VALUES,
+        allow_http_status=True,
+    )
+
+
+def _safe_terminal_reason(envelope: Mapping[str, Any]) -> str | None:
+    """Extract only the short terminal reason used for classification."""
+    value = envelope.get("terminal_reason")
+    safe_value = _safe_gate_meta_value(value, SAFE_GATE_TERMINAL_REASONS)
+    return safe_value if isinstance(safe_value, str) else None
+
+
+def _diagnostic_text(envelope: Mapping[str, Any], stderr: bytes) -> str:
+    """Build a short classification haystack, never emitted or persisted."""
+    fields: list[str] = []
+
+    def bounded(value: object) -> str | None:
+        if isinstance(value, str):
+            return value[:256]
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return str(value)
+        return None
+
+    for key in (
+        "type",
+        "subtype",
+        "error",
+        "message",
+        "status",
+        "api_error_status",
+        "terminal_reason",
+    ):
+        value = envelope.get(key)
+        text = bounded(value)
+        if text is not None:
+            fields.append(text)
+        elif isinstance(value, Mapping):
+            for nested_key in ("type", "code", "name", "message", "status"):
+                nested_text = bounded(value.get(nested_key))
+                if nested_text is not None:
+                    fields.append(nested_text)
+    fields.append(stderr[:1024].decode("utf-8", errors="replace"))
+    return " ".join(fields)[:4096].lower()
+
+
+def _classify_error_metadata(
+    metadata: Mapping[str, Any], stderr: bytes
+) -> tuple[str | None, int | str | None, str | None]:
+    """Classify bounded process/provider metadata without parsing stdout."""
+    status = _safe_status(metadata)
+    terminal_reason = _safe_terminal_reason(metadata)
+    diagnostic_text = _diagnostic_text(metadata, stderr)
+    if status == 429 or re.search(r"(?:429|too many requests)", diagnostic_text):
+        return "api_error_429", status, terminal_reason
+    if re.search(r"quota|rate[ _-]?limit|exhausted|capacity", diagnostic_text):
+        return "api_error_quota", status, terminal_reason
+    if re.search(
+        r"auth|unauthor|forbidden|not logged in|credential|oauth|token expired",
+        diagnostic_text,
+    ):
+        return "auth", status, terminal_reason
+    if re.search(
+        r"execution[_ -]?error|execution failed|internal error|process failed|cli error",
+        diagnostic_text,
+    ):
+        return "execution_error", status, terminal_reason
+    return None, status, terminal_reason
+
+
+def _gate_diagnostic(
+    *,
+    stdout: bytes,
+    stderr: bytes,
+    timeout: bool,
+    category: str,
+    rc: int | None,
+    status: int | str | None = None,
+    terminal_reason: str | None = None,
+) -> ClaudeGateDiagnostic:
+    return ClaudeGateDiagnostic(
+        stdout_bytes=len(stdout),
+        stdout_sha256=sha256_bytes(stdout),
+        stderr_bytes=len(stderr),
+        stderr_sha256=sha256_bytes(stderr),
+        timeout=timeout,
+        category=category,
+        rc=rc,
+        status=status,
+        terminal_reason=terminal_reason,
+    )
+
+
+def normalize_claude_gate_response(
+    stdout: bytes | str,
+    *,
+    stderr: bytes | str = b"",
+    rc: int | None = 0,
+    timeout: bool = False,
+    metadata: Mapping[str, Any] | None = None,
+    expected_manifest_sha256: str | None = None,
+    expected_packet_sha256: str | None = None,
+) -> ClaudeGateResponse:
+    """Normalize a Claude ``--output-format json`` response fail-closed.
+
+    Classification happens before any caller can inspect or validate the
+    inner verdict.  The function is provider-free and accepts fake/local
+    payloads, making it suitable for subprocess wrappers and tests alike.
+    Only hashes, byte counts, process status and bounded envelope metadata are
+    exposed through ``diagnostic``.
+    """
+    if isinstance(stdout, str):
+        stdout_bytes = stdout.encode("utf-8")
+    else:
+        stdout_bytes = stdout
+    if isinstance(stderr, str):
+        stderr_bytes = stderr.encode("utf-8")
+    else:
+        stderr_bytes = stderr
+    if not isinstance(stdout_bytes, bytes) or not isinstance(stderr_bytes, bytes):
+        raise TypeError("stdout and stderr must be bytes or str")
+    timeout_flag = timeout is True
+    safe_rc = rc if isinstance(rc, int) and not isinstance(rc, bool) else None
+    if metadata is None:
+        metadata = {}
+    elif not isinstance(metadata, Mapping):
+        raise TypeError("metadata must be a mapping or None")
+
+    def response(
+        category: str,
+        *,
+        result: str | None = None,
+        provider_session_id: str | None = None,
+        reported_model: str | None = None,
+        status: int | str | None = None,
+        terminal_reason: str | None = None,
+    ) -> ClaudeGateResponse:
+        return ClaudeGateResponse(
+            category=category,
+            result=result,
+            provider_session_id=provider_session_id,
+            reported_model=reported_model,
+            diagnostic=_gate_diagnostic(
+                stdout=stdout_bytes,
+                stderr=stderr_bytes,
+                timeout=timeout_flag,
+                category=category,
+                rc=safe_rc,
+                status=status,
+                terminal_reason=terminal_reason,
+            ),
+        )
+
+    metadata_category, metadata_status, metadata_terminal_reason = (
+        _classify_error_metadata(metadata, stderr_bytes)
+    )
+
+    # Ordering is intentional: process state and bounded provider diagnostics
+    # are never reinterpreted as a parse failure merely because stdout is
+    # partial or empty.
+    if timeout_flag:
+        return response(
+            "timeout", status=metadata_status, terminal_reason=metadata_terminal_reason
+        )
+    if rc is not None and (not isinstance(rc, int) or isinstance(rc, bool) or rc != 0):
+        return response(
+            "nonzero_rc",
+            status=metadata_status,
+            terminal_reason=metadata_terminal_reason,
+        )
+    if metadata_category is not None:
+        return response(
+            metadata_category,
+            status=metadata_status,
+            terminal_reason=metadata_terminal_reason,
+        )
+    if not stdout_bytes.strip():
+        return response("stdout_empty")
+
+    try:
+        outer = json.loads(stdout_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return response("outer_json_invalid")
+    if not isinstance(outer, dict):
+        return response("envelope_unexpected")
+
+    outer_status = _safe_status(outer)
+    outer_terminal_reason = _safe_terminal_reason(outer)
+    status = outer_status if outer_status is not None else metadata_status
+    terminal_reason = (
+        outer_terminal_reason
+        if outer_terminal_reason is not None
+        else metadata_terminal_reason
+    )
+    outer_category, _, _ = _classify_error_metadata(outer, stderr_bytes)
+    if outer_category is not None:
+        return response(outer_category, status=status, terminal_reason=terminal_reason)
+
+    is_error = outer.get("is_error")
+    if is_error is True or (
+        outer.get("type") == "result" and outer.get("subtype") not in (None, "success")
+    ):
+        return response(
+            "envelope_is_error", status=status, terminal_reason=terminal_reason
+        )
+    if "is_error" in outer and not isinstance(is_error, bool):
+        return response(
+            "envelope_unexpected", status=status, terminal_reason=terminal_reason
+        )
+    if "result" not in outer:
+        return response(
+            "envelope_unexpected", status=status, terminal_reason=terminal_reason
+        )
+    result = outer.get("result")
+    if not isinstance(result, str) or not result.strip():
+        return response(
+            "result_invalid", status=status, terminal_reason=terminal_reason
+        )
+
+    try:
+        provider_session_id = _emitted_string(
+            outer, "session_id", Path("<claude-gate>")
+        )
+        reported_model = _emitted_string(outer, "model", Path("<claude-gate>"))
+    except ReviewValidationError:
+        return response(
+            "envelope_unexpected", status=status, terminal_reason=terminal_reason
+        )
+    if expected_manifest_sha256 is not None and expected_packet_sha256 is not None:
+        try:
+            _validate_verdict(
+                result,
+                manifest_sha256=expected_manifest_sha256,
+                packet_sha256=expected_packet_sha256,
+                path=Path("<claude-gate>"),
+            )
+        except ReviewValidationError:
+            return response(
+                "verdict_invalid",
+                result=result,
+                provider_session_id=provider_session_id,
+                reported_model=reported_model,
+                status=status,
+                terminal_reason=terminal_reason,
+            )
+    return response(
+        "valid",
+        result=result,
+        provider_session_id=provider_session_id,
+        reported_model=reported_model,
+        status=status,
+        terminal_reason=terminal_reason,
+    )
+
+
+def _pre_verdict_process_metadata(
+    review_path: Path,
+) -> tuple[int | None, bytes, bool, dict[str, object]]:
+    """Read only safe invocation metadata needed before verdict validation.
+
+    The full invocation receipt remains validated later.  This narrow pass
+    exists so a recorded nonzero exit or bounded stderr diagnostic cannot be
+    mistaken for a malformed/invalid model verdict.  Timeout is propagated
+    only when an artifact explicitly records a boolean timeout flag; the
+    configured wall timeout alone is not evidence that a timeout occurred.
+    """
+    invocation_path = review_path.with_suffix(".invocation.json")
+    try:
+        invocation, _ = _load_canonical_json(
+            invocation_path,
+            "invocation companion",
+            newline=True,
+        )
+    except ReviewValidationError:
+        return None, b"", False, {}
+
+    raw_rc = invocation.get("exit_status")
+    rc = raw_rc if isinstance(raw_rc, int) and not isinstance(raw_rc, bool) else None
+    timeout = any(
+        invocation.get(field) is True
+        for field in ("timeout", "timed_out", "timeout_flag")
+    )
+    stderr_path = review_path.with_suffix(".stderr.bin")
+    try:
+        stderr = _read_bytes(stderr_path, "raw stderr companion")
+    except ReviewValidationError:
+        stderr = b""
+    metadata = {
+        key: invocation[key]
+        for key in ("api_error_status", "status", "terminal_reason")
+        if key in invocation
+    }
+    return rc, stderr, timeout, metadata
+
+
 def _extract_raw_proof(
-    raw_path: Path, raw_bytes: bytes, requested_route: str
+    raw_path: Path,
+    raw_bytes: bytes,
+    requested_route: str,
+    *,
+    stderr: bytes | str = b"",
+    rc: int | None = 0,
+    timeout: bool = False,
+    metadata: Mapping[str, Any] | None = None,
+    expected_manifest_sha256: str | None = None,
+    expected_packet_sha256: str | None = None,
 ) -> tuple[str, str | None, str | None]:
     if raw_path.suffix == ".txt":
+        # Gemini's text body has no Claude envelope, but process failures still
+        # must be classified before the body can reach verdict validation.
+        process_state = normalize_claude_gate_response(
+            raw_bytes,
+            stderr=stderr,
+            rc=rc,
+            timeout=timeout,
+            metadata=metadata,
+        )
+        if process_state.category in PROCESS_FAILURE_CATEGORIES:
+            raise ReviewValidationError(
+                f"Claude gate response category={process_state.category}: {raw_path}"
+            )
         try:
             return raw_bytes.decode("utf-8"), None, None
         except UnicodeDecodeError as exc:
             raise ReviewValidationError(
                 f"raw response is not UTF-8: {raw_path}"
             ) from exc
-    try:
-        envelope = json.loads(raw_bytes.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    normalized = normalize_claude_gate_response(
+        raw_bytes,
+        stderr=stderr,
+        rc=rc,
+        timeout=timeout,
+        metadata=metadata,
+        expected_manifest_sha256=expected_manifest_sha256,
+        expected_packet_sha256=expected_packet_sha256,
+    )
+    if not normalized.valid:
         raise ReviewValidationError(
-            f"raw JSON response is invalid: {raw_path}"
-        ) from exc
-    if not isinstance(envelope, dict) or not isinstance(envelope.get("result"), str):
-        raise ReviewValidationError(
-            f"raw JSON response lacks string result: {raw_path}"
+            f"Claude gate response category={normalized.category}: {raw_path}"
         )
-    provider_session_id = _emitted_string(envelope, "session_id", raw_path)
-    reported_model = _emitted_string(envelope, "model", raw_path)
+    assert normalized.result is not None
+    envelope = json.loads(raw_bytes.decode("utf-8"))
+    assert isinstance(envelope, dict)
+    provider_session_id = normalized.provider_session_id
+    reported_model = normalized.reported_model
     if "modelUsage" in envelope:
         model_usage = envelope["modelUsage"]
         if not isinstance(model_usage, dict) or not all(
@@ -818,7 +1269,7 @@ def _extract_raw_proof(
                 f"raw provider model fields disagree: {raw_path}"
             )
         reported_model = reported_model or emitted_model
-    return envelope["result"], provider_session_id, reported_model
+    return normalized.result, provider_session_id, reported_model
 
 
 def _expected_argv(route: str) -> list[str]:
@@ -969,8 +1420,7 @@ def _validate_invocation(
     if (
         invocation.get("review_input_schema") != REVIEW_INPUT_SCHEMA
         or invocation.get("review_input_bytes") != len(expected_review_input)
-        or invocation.get("review_input_sha256")
-        != sha256_bytes(expected_review_input)
+        or invocation.get("review_input_sha256") != sha256_bytes(expected_review_input)
     ):
         raise ReviewValidationError(
             f"invocation review-input attestation mismatch: {invocation_path}"
@@ -1248,6 +1698,30 @@ def _validate_review(
 ) -> ReviewProof:
     text = _read_utf8(review_path, "normalized review")
     frontmatter, body = _parse_frontmatter(text, review_path)
+    raw_path = _raw_companion(review_path)
+    raw_bytes = _read_bytes(raw_path, "raw response companion")
+    frontmatter_route = frontmatter.get("requested_route")
+    if (
+        not isinstance(frontmatter_route, str)
+        or frontmatter_route not in EXPECTED_ROUTES
+    ):
+        raise ReviewValidationError(
+            f"normalized review has invalid requested_route: {review_path}"
+        )
+    process_rc, stderr_bytes, timeout, process_metadata = _pre_verdict_process_metadata(
+        review_path
+    )
+    # Normalize the provider envelope before parsing the internal verdict.  A
+    # provider error is an execution outcome, never a malformed verdict.
+    raw_body, emitted_provider_session_id, emitted_reported_model = _extract_raw_proof(
+        raw_path,
+        raw_bytes,
+        frontmatter_route,
+        stderr=stderr_bytes,
+        rc=process_rc,
+        timeout=timeout,
+        metadata=process_metadata,
+    )
     sections = _section_map(body, review_path)
     for heading, section in sections.items():
         if heading not in {
@@ -1271,20 +1745,6 @@ def _validate_review(
         sections["# Important findings"],
         severity="Important",
         path=review_path,
-    )
-
-    raw_path = _raw_companion(review_path)
-    raw_bytes = _read_bytes(raw_path, "raw response companion")
-    frontmatter_route = frontmatter.get("requested_route")
-    if (
-        not isinstance(frontmatter_route, str)
-        or frontmatter_route not in EXPECTED_ROUTES
-    ):
-        raise ReviewValidationError(
-            f"normalized review has invalid requested_route: {review_path}"
-        )
-    raw_body, emitted_provider_session_id, emitted_reported_model = _extract_raw_proof(
-        raw_path, raw_bytes, frontmatter_route
     )
     route, launcher_uuid = _validate_invocation(
         repo_root=repo_root,
