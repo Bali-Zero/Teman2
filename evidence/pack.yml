@@ -61,21 +61,16 @@ receipts:
     exit: 0
     ts: "2026-08-21T23:22Z (round 4; the 77-case figure was 2026-08-21T21:09Z)"
     seat: "session (m5)"
-  - claim: "MUTATION SET, SCOPED to what was actually mutated -- the round-3 wording said EVERY alternation and the Gear-3 gate answered it with five counterexamples. The enumerated set is: the 6 rules, 5 wide words, 21 vocabulary prefixes, 3 bare generics, 3 value alternations, 5 optional quantifiers, the lookbehind, both case-insensitive flags, the colon separator, the Bearer word-boundary and length floor, the URL userinfo user class and password class, the gh[pousr]_ class, the re-addition of the deleted Authorization alternation, 2 over-match wideners, all 5 non-current permutations of rules 2/3/4, redact-before-truncate, and both mode defenses. Result at round 4: 63 mutants, 62 killed, 1 EQUIVALENT (excluded from the score, not an unkilled hole): the re-added Authorization-anchored Bearer alternation is provably unkillable -- its replacement re-emits group(1) verbatim, so it can only prepend text that is re-emitted unchanged, and every position it matches is one the bare alternation also matches with the identical trailing span. 0 distinguishing inputs across 883 adversarial strings, 200k fuzz cases and the whole live log. Labelling it 'survived' was wrong: that is the same word a genuine coverage hole would use. It is NOT a claim about constructs outside this list"
-    cmd: "python3 driver, PYTHONDONTWRITEBYTECODE=1 (W121): rewrite the hook in place per mutant, run the suite, restore, verify sha256 of the restored file matches the pre-run hash"
+  - claim: "CONDENSED for the size cap: five receipts recorded against the CASCADE architecture (four ordered re.sub rules with per-rule value tails), which this same PR later DELETED in favour of the earliest-anchor cut. They are kept as one entry because they measure a matcher that no longer exists; each opening claim is reproduced verbatim so the record is not silently thinned, and all five stand complete at `git show 4b0209c2c:evidence/pack.yml` (PR #4547 head -- after the squash merge that object lives on refs/pull/4547/head, not on main). (1) MUTATION SET, SCOPED to what was actually mutated -- the round-3 wording said EVERY alternation and the Gear-3 gate answered it with five counterexamples. (2) ROUND-4 SECURITY BUG, and the first defect in this PR caused by RULE ORDER rather than by a rule: rule 2 running before rule 4 DISARMED rule 4 and logged a token IN FULL. (3) OVER-MATCH, two shapes belonging to rules 3 and 4 that no artifact had disclosed. (4) MUTATION SET RE-MEASURED: 63 mutants, 62 killed, 1 EQUIVALENT (excluded from the score, not an unkilled hole): the re-added Authorization-anchored Bearer alternation is provably unkillable -- its replacement re-emits group(1) verbatim, so it can only prepend text that is re-emitted unchanged, and every position it matches is one the bare alternation also matches with the identical trailing span. (5) Differential fuzz on the REAL hook (its python block extracted and executed, not a replica): 271,874 probes -- 71,874 structured triples over 33 fragments plus 200,000 random assemblies -- comparing the shipped head against fa06a285a, the last version WITHOUT any tail."
+    cmd: "git show 4b0209c2c:evidence/pack.yml -- the five entries in full, each with its own cmd/exit/ts/seat and measured output"
     exit: 0
-    ts: "2026-08-21T21:07Z"
-    seat: "session (m5). An earlier 60-mutant run on an intermediate design left 21 SURVIVORS -- the wide-word branch had silently subsumed most of the vocabulary. That is what motivated collapsing four NAME branches into three; the survivors were the evidence, not a nuisance"
+    ts: "2026-08-22T09:05:00Z"
+    seat: "session (m5) -- condensation only; no measurement was re-run and none is re-claimed here"
   - claim: "The three properties the gate found unpinned now each fail their mutant: deleting the double-quoted value alternation fails 4 cases, the single-quoted one 1 case, the explicit `chmod 0600` fails the new pre-existing-0644 mode case (measured after: 644), and reordering to `sys.stdin.read()[:200]` fails the new straddle case"
     cmd: "included in the 63-mutant run above; the straddle case is a 251-char command whose quoted secret starts at char 190, so truncate-first leaves chars 190..199 in cleartext"
     exit: 0
     ts: "2026-08-21T21:07Z"
     seat: "session (m5)"
-  - claim: "ROUND-4 SECURITY BUG, and the first defect in this PR caused by RULE ORDER rather than by a rule: rule 2 running before rule 4 DISARMED rule 4 and logged a token IN FULL. A credential-ish NAME whose UNQUOTED value begins with the word Bearer made rule 2 replace exactly that word -- the redactor own rewrite destroying the only marker rule 4 had. Fixed by moving rule 4 (and rule 3) above rule 2; the whole ordering is now pinned"
-    cmd: "drive the REAL hook, temp HOME, synthetic values. BEFORE (= the order[rule 2 before rule 4] mutant, still runnable): X-Auth: Bearer <v>, --auth=Bearer <v>, auth: bearer <v> all LEAK, control Authorization: Bearer <v> safe -- which is why a green suite hid it. AFTER: 0/4 leak, control still safe"
-    exit: 0
-    ts: "2026-08-21T23:24:25Z (after, final probe) / BEFORE is reproducible at any time as the order[rule 2 before rule 4] mutant"
-    seat: "session (m5), on the Gear-3 gate finding"
   - claim: "The ORDER is pinned as a whole, not just the one adjacency that leaked: ALL FIVE non-current permutations of rules 2/3/4 fail the suite. This CORRECTS a prediction the session had already written into the hook comment -- that rule 3 vs rule 2 was a free choice, order-INDEPENDENT, and its mutant would SURVIVE. It did not: moving rule 3 last also moves it past rule 4, whose 8+ char run eats a URL scheme name, and the URL password then leaks"
     cmd: "mutation driver, permutations of the three movable units (rule 2 moves with the WIDE/PRE/TAIL/NAME/VALUE definitions it consumes); 5/5 killed"
     exit: 0
@@ -101,11 +96,6 @@ receipts:
     exit: 0
     ts: "2026-08-21T22:49:57Z"
     seat: "session (m5)"
-  - claim: "OVER-MATCH, two shapes belonging to rules 3 and 4 that no artifact had disclosed. (i) The bare Bearer alternation eats the next >=8-char run in ANY text -- gh pr create --title with the word Bearer in it, and a commit message containing bearer, are both mangled, and gh pr create is TRIGGER RULE 1 of this very hook. (ii) Rule 3 redacts a PORT when the port sits in the userinfo PASSWORD position. Both DISCLOSED rather than fixed, and the port one on an explicit measurement"
-    cmd: "live hook, synthetic text. Corpus at 2026-08-21T22:50:35Z / 333,833 lines: 8 lines carry a bare-Bearer match, 10 matches, 3 with no digit at all (an 8-letter word, a 12-letter word which is THIS SESSION own probe string, and a 19-char lowercase hyphenated slug) -- the self-inflation this log is already documented for. URL rule: 367 userinfo matches, 0 with an all-digit password, and 354 of the 367 are one test-fixture DSN"
-    exit: 0
-    ts: "2026-08-21T22:50:35Z"
-    seat: "session (m5)"
   - claim: "RESIDUAL (d) was RE-LABELLED because its title contradicted its own example, and the wider class re-measured: it is not a POSITIONAL secret with no name, it is a secret NOT JOINED TO A CREDENTIAL-ISH NAME BY = OR :, which includes every --flag <value> form"
     cmd: "live hook, synthetic values: gh auth login --token <v>, mytool --api-key <v>, mysql --password <v>, curl -u admin:<v>, curl --user admin:<v>, echo <v> | gh secret set FOO -- 6/6 leak, plus the nameless mytool deploy <v> and mysql -p<v>"
     exit: 0
@@ -115,11 +105,6 @@ receipts:
     cmd: "live hook, synthetic values: c.token = <v>, c.secret = <v>, jq .password = <v>, SECRETS[0]=<v>, TOKEN[0]=<v> -- 5/5 leak; the multi-segment control cfg.api_key = <v> is redacted, which is what scopes the hole"
     exit: 0
     ts: "2026-08-21T23:24:25Z"
-    seat: "session (m5)"
-  - claim: "MUTATION SET RE-MEASURED: 63 mutants, 62 killed, 1 EQUIVALENT (excluded from the score, not an unkilled hole): the re-added Authorization-anchored Bearer alternation is provably unkillable -- its replacement re-emits group(1) verbatim, so it can only prepend text that is re-emitted unchanged, and every position it matches is one the bare alternation also matches with the identical trailing span. 0 distinguishing inputs across 883 adversarial strings, 200k fuzz cases and the whole live log. Labelling it 'survived' was wrong: that is the same word a genuine coverage hole would use. The claim is SCOPED to this enumerated set, not to every alternation everywhere -- the round-3 pack said every alternation, 54 killed, 0 survivors in five places, and the gate produced five counterexamples"
-    cmd: "python3 driver, PYTHONDONTWRITEBYTECODE=1 (W121); per mutant: assert sha256 CHANGED before running the suite, run, restore, assert sha256 byte-identical to the pre-run hash. Run against hook sha256 db0f8e42337050ea63793a40341f4e4de55b3b5209a14f11492a1e4fa1de06ca -- the SHIPPED bytes, RE-RUN FROM SCRATCH after the last comment-only edit rather than transferred from the earlier identical-result run, because a proof measured against a file that then changed is this PR own recurring defect. Final sha256 identical to the pre-run one. An earlier attempt was killed by a 2-minute tool timeout MID-MUTANT and left the hook mutated on disk (the suite then reported 12/84 failures against a file nobody had deliberately changed) -- the driver now carries an atexit + SIGTERM/SIGINT restore guard, and a pristine copy is kept out-of-tree"
-    exit: 0
-    ts: "2026-08-21T23:26:37Z-23:46:54Z (the definitive run, on the shipped bytes; an identical-result run on the same redactor code, before a comment-only edit, ran 22:48:59Z-23:17:04Z)"
     seat: "session (m5)"
   - claim:
       "After curing the three DSN fixtures with the guard's own synthetic-pg-password marker,
@@ -182,24 +167,6 @@ receipts:
       later rule's marker starts. All 7 of the gate's reproducers go LEAK -> ok; the 7 mirror cases
       stay closed. Suite 93 -> 100 (83 guilt / 15 innocence / 2 mode)."
     cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
-    exit: 0
-    ts: "2026-08-22T01:32:18Z"
-    seat: author-session (M5, claude-opus-5)
-  - claim:
-      "Differential fuzz on the REAL hook (its python block extracted and executed, not a
-      replica): 271,874 probes -- 71,874 structured triples over 33 fragments plus 200,000 random
-      assemblies -- comparing the shipped head against fa06a285a, the last version WITHOUT any tail.
-      CORRECTED 2026-08-22 after the gate falsified this line: it read ZERO, and re-running the
-      gate own generator (same 33 fragments, a DIFFERENT seed) found 48 of the 258 still leaking,
-      52 in total. 258 -> 48, not 258 -> 0. The reason is not carelessness and is worth more than
-      the number: ZERO of those 52 come from the 71,874 DETERMINISTIC triples -- the fourth-direction
-      class needs at least four fragments (prefix, separator, NAME, separator-with-space, secret),
-      so a three-fragment deterministic core STRUCTURALLY cannot emit it and the whole result rode on
-      one random seed. A fuzz score is a statement about the GENERATOR, exactly as a mutation score
-      is a statement about the corpus. The residual class was then cured (MARKER now includes rule
-      2 NAME) and re-measured with FIVE seeds and 3-7 fragments: 393,312 probes, 0 leaking that
-      fa06a285a does not."
-    cmd: "extract the python block from the working file and from `git show fa06a285a:...`, drive both over 271,874 generated probes with a planted placeholder, count inputs where the head leaks and the baseline does not"
     exit: 0
     ts: "2026-08-22T01:32:18Z"
     seat: author-session (M5, claude-opus-5)
@@ -992,144 +959,52 @@ dissent:
       `evidence/**` path rule to the auto-triage script -- a blanket path rule would permanently blind
       the scanner to every future evidence pack, including one that really does paste a token."
     status: CONFIRMED
-  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 1, BLOCKER"
+  - seat: "Gear-3 gate rounds 5-7 (opus 5, fresh context, non-author) - 3 BLOCKERs + 3 overclaims, CONDENSED"
     objection:
-      "The reorder opened the MIRROR of the leak it closed. Rule 4 consumes an 8+ char
-      [A-Za-z0-9._-] run after `Bearer`, and a credential NAME is exactly such a run, so
-      `Bearer refresh_token=<v>` logged as `Bearer <REDACTED>=<v>` — the marker landed on the NAME,
-      the value survived in full, and the output READS as if redaction fired. That is precisely the
-      'less safe than not matching at all' property this round claimed to eliminate. Twelve shapes
-      demonstrated, plus one on rule 1 (`echo ghp_MYTOKENS=<v>`). The gate measured it as a
-      REGRESSION against the branch's own history: three shapes ok at 9ac5e3956 and fbcaff303, LEAK
-      at the round-5 head — so this round traded one leak direction for the other and was NOT
-      net-strictly-safer. Reproduced by the author before fixing: 12/12 leak. Cured STRUCTURALLY,
-      not by another reorder — every marker-anchored rule now carries ASSIGN_TAIL. The gate's own
-      proposed regex used a bare `[^\\s\"']*` tail; measured, that leaves the QUOTED forms leaking,
-      so the shipped tail reuses the full VALUE alternation instead."
+      "Three consecutive rounds against the CASCADE architecture (four ordered re.sub rules, each
+      with its own value tail) each found that the PREVIOUS round's cure had opened a NEW leak
+      direction. (1) Round 5: the reorder opened the MIRROR of the leak it closed - a rule tail ate
+      the credential NAME and left the value in the clear beside a `<REDACTED>` that had fired for
+      something else, which reads as if redaction worked; 12/12 shapes reproduced by the author
+      before fixing, and a measured REGRESSION against two earlier heads of this same branch.
+      (2) Round 6: the tail added to cure (1) could CROSS a later rule's marker and blind the rule
+      that owned it; 6 reproducers plus a greedy sub-case killing two markers in one bite. (3) Round
+      7: the MARKER guard added to cure (2) listed rules 1, 3 and 4 and omitted rule 2 - the rule
+      doing the most work - so the tempered tail could still swallow the anchor whose value it then
+      left beside it; 5 deterministic reproducers, all regressions against fa06a285a. A fifth
+      direction followed and is recorded separately below. Each cure was verified, and each was
+      new-leak-free only against the corpus that existed when it was written. THIS PATTERN, not any
+      single one of them, is what condemned the design: the cascade was DELETED and replaced by the
+      earliest-anchor cut, which has no rule order, no per-rule tail and no marker registry that has
+      to be kept complete. Three MAJOR findings accompanied them, all the same shape - a real
+      property stated as the safety it does not deliver ('rule 2 is the destructive one'; 'the order
+      is pinned'; 'no rule tail can cross a later rule marker') - plus one MINOR miscount (six vs
+      EIGHT added Detect Secrets findings) and one MINOR direction error (redact-before-truncate
+      makes the nameless-secret exposure LARGER, not smaller, re-measured on the shipped file). All
+      corrected in place at the time. Two further entries, both RETRACTED, recorded what the gate
+      attacked and could NOT break - rule 3 having no tail, and the length bound plus the untempered
+      quoted branches - so the emptiness stayed auditable rather than assumed. CONDENSED for the
+      §5 size cap; all 13 entries verbatim: `git show 4b0209c2c:evidence/pack.yml` (PR #4547 head -- after the squash merge that object lives on refs/pull/4547/head, not on main)."
     status: CONFIRMED
-  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 2, MAJOR"
+  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) - MAJOR, receipt falsified"
     objection:
-      "'Rule 2 is the destructive one' and 'the order is pinned, all five permutations fail the
-      suite' were both load-bearing and both overreached. Rules 1, 3 and 4 destroy rule 2's marker
-      in exactly the same way — finding 1 is the demonstration — and a mutation set can only prove
-      the SUITE constrains the order, never that the order is safe, because the corpus contained no
-      instance of the mirror shape. The stated principle ('marker-anchored rules first, the generic
-      NAME rule LAST') is what PRODUCED the leak. Rewritten in the hook, the brief and the registry
-      note as a measured trade with the mirror named: a mutation score is a statement about the
-      corpus, not about the world."
-    status: CONFIRMED
-  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 3, MINOR"
-    objection:
-      "'Redacting before truncating trades one exposure for a smaller one' is contradicted by
-      measurement. Re-measured by the author on the shipped file: a 205-char command with a
-      redactable 140-char value first and a NAMELESS 20-char secret starting at char 185 — the base
-      clips it to a 15-char partial, the shipped head redacts first, the string shortens, and the
-      WHOLE value is pulled inside the window. Larger, not smaller. The comment disclosed that
-      redaction pulls bytes in but stated the direction wrongly; corrected in place. The gate
-      separately CONFIRMED the good half: a MATCHED token planted at char 190 cannot survive as a
-      clipped partial."
-    status: CONFIRMED
-  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — finding 4, MINOR"
-    objection:
-      "The Detect Secrets dissent entry said 'six new unaudited findings'; the baselines diffed entry
-      by entry give EIGHT added (6 Secret Keyword + 2 Basic Auth), 0 removed. Same miscount class
-      this PR has already corrected in itself three times. Corrected."
-    status: CONFIRMED
-  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) — what it could NOT check"
-    objection:
-      "The gate declined to read ~/logs/codex-spalla-trigger.jsonl at all: reading it is itself a
-      credential action, and by this pack's own admission the act of measuring inflates the next
-      measurement. So EVERY live-log figure in this pack — the 3 secret-bearing runs, the 2291 lines
-      / 0.686% of 333,832, the byte-identical replay — is UNVERIFIED by any non-author seat. It is
-      neither confirmed nor disputed. Recorded here rather than left implicit, because the rest of
-      this pack was independently checked and those numbers were not."
-    status: PLAUSIBLE
-  - seat: "Gear-3 gate round 6 (opus 5, fresh context, non-author) — BLOCKER"
-    objection:
-      "ASSIGN_TAIL's bare branch runs to the next whitespace, so it could CROSS a later rule's
-      marker and blind the rule that owns it. `github_pat_<8+>=bearer <v>` had rule 1 — which runs
-      FIRST — eat the word `bearer` as its own value; rule 4 then had nothing to anchor on and the
-      token stood in the clear beside a `<REDACTED>` that had fired for something else. Six
-      reproducers plus a greedy sub-case killing two markers in one bite, and 258 inputs in a
-      differential fuzz against the pre-tail version. Third round, third direction, SAME misleading
-      shape — and the gate named the framing error precisely: the widening WAS disclosed, but as a
-      cost in 'log usefulness'; when the swallowed word IS a marker it is a security hole. The gate
-      also refused to hand over a patch, having measured that its own one-line guard only halved the
-      class (142 -> 74) because a marker can sit at the END of a run. Cured structurally instead:
-      the bare branch is TEMPERED — it may not cross a position where any later marker starts — and
-      the URL-scheme marker is length-bounded so a value glued to a URL is not mistaken for one.
-      Re-measured on the REAL hook over the same 271,874 probes: 0 inputs leak that fa06a285a did
-      not."
-    status: CONFIRMED
-  - seat: "Gear-3 gate round 6 (opus 5, fresh context, non-author) — MAJOR, pre-existing"
-    objection:
-      "A backslash-escaped quote defeats VALUE in EVERY rule: `API_KEY=\\\"<v>\\\"` logs the value
-      beside a `<REDACTED>`, and a JSON body written with escaped quotes inside a double-quoted shell
-      string is not touched at all. NOT caused by any commit on this branch — fa06a285a leaks
-      identically — and undisclosed until now. Re-measured on this head: all three shapes confirmed.
-      DISCLOSED in the under-match block, NOT fixed here: a change to VALUE's quoting is its own
-      diff, and this round has already replaced one leak with another twice. The gate's own lesson
-      is recorded with it: the corpus's JSON guilt case uses the single-quoted-outer form, which
-      works, so the corpus proved the shape it enumerated and this one hid behind it."
-    status: CONFIRMED
-  - seat: "Gear-3 gate round 6 (opus 5, fresh context, non-author) — what it could NOT break"
-    objection:
-      "Rule 3 having no tail: the gate ran url-then-NAME, url-then-Bearer-header, NAME inside the
-      userinfo, userinfo abutting a NAME, no-space url+NAME, and rule 3 firing on a password that IS
-      the word Bearer — none showed rule 3 destroying a following NAME. It also re-verified the 7
-      mirror cases non-vacuous by mutation, that innocence did not shrink (15 -> 15, diffed by case
-      name), and that the two rewritten claims did not replace one overreach with another. Recorded
-      so the emptiness is auditable rather than assumed."
-    status: RETRACTED
-  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — BLOCKER"
-    objection:
-      "FOURTH direction. MARKER guarded the anchors of rules 1, 3 and 4 and omitted rule 2 NAME --
-      the rule that does the most work -- so the tempered tail could still cross TOKEN: / PASSWORD= /
-      API_KEY = and swallow the anchor whose value it then left behind. Five deterministic
-      reproducers, all of them a regression against fa06a285a, which redacts every one correctly.
-      Reproduced by the author before fixing: 5/5. Cured by the gate own proposed cure, which it had
-      verified end to end rather than merely proposed: hoist rule 2 NAME shapes above MARKER and add
-      one alternative."
-    status: CONFIRMED
-  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — MAJOR, receipt falsified"
-    objection:
-      "The pack claimed the differential fuzz found ZERO regressions. Re-running the gate own
+      "The pack claimed the differential fuzz found ZERO regressions. Re-running the gate's own
       generator with a different seed found 48 of its 258 still leaking, 52 total. The pack was
-      simultaneously carrying the honest half -- residual_risks said a fourth direction was more
-      likely than not -- and a receipt claiming the measurement found none; those cannot both stand.
+      simultaneously carrying the honest half - residual_risks said a fourth direction was more
+      likely than not - and a receipt claiming the measurement found none; those cannot both stand.
       Corrected in place with the mechanism: ZERO of the 52 came from the deterministic triples,
       because the class needs four fragments and a three-fragment core cannot emit it. A fuzz score
       is a statement about the GENERATOR."
     status: CONFIRMED
-  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — MAJOR, overclaim"
+  - seat: "Gear-3 gate round 5 (opus 5, fresh context, non-author) - what NO seat could check"
     objection:
-      "The replacement for the deleted rule-1 sentence read: rule 1 position is now held by
-      CONSTRUCTION, no rule tail can cross a later rule marker. True only under a definition of
-      marker that silently excluded rule 2 NAME -- the hole in the BLOCKER. Same overclaim shape as
-      the two previous rounds: a real property stated as the safety it does not deliver. Now
-      qualified in place: no tail can cross an anchor THAT MARKER LISTS, and MARKER is the thing
-      that has to be kept complete."
-    status: CONFIRMED
-  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — what it could NOT break"
-    objection:
-      "Two arguments survived a real attack. The LENGTH BOUND: six scheme lengths up to 20
-      characters, each as a URL inside a tail, none leaked on either head -- because the bare run has
-      no whitespace to stop at inside a URL, so it consumes the whole URL, which IS redaction; the
-      bound only has to stop the tail halting mid-URL. The UNTEMPERED QUOTED BRANCHES: seven probes,
-      four leak and all four leak on fa06a285a too (documented nameless-secret class), and the three
-      that could have regressed did not. The gate also confirmed the 7 third-direction cases
-      non-vacuous by mutation and that innocence did not shrink (15 -> 15, diffed by name). Recorded
-      so the emptiness is auditable."
-    status: RETRACTED
-  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — on the deferral"
-    objection:
-      "Explicitly agreed the backslash-escape fix should NOT land in this PR: pre-existing so
-      deferring ships no new leak, now NAMED with all three reproducers, and a change to VALUE
-      quoting touches rule 2 core AND every rule tail in one diff -- precisely the blast radius that
-      produced the mirror, the third and the fourth direction. Its one condition: give it a
-      PENDING-ARMS line with an owner, not only a comment, because a named hole with no ledger entry
-      is how a residual becomes permanent. Done in this diff."
-    status: CONFIRMED
+      "The gate declined to read the live hook log at all: reading it is itself a credential action,
+      and by this pack's own admission the act of measuring inflates the next measurement. So EVERY
+      live-log figure in this pack - the 3 secret-bearing runs, the 2291 lines / 0.686% of 333,832,
+      the byte-identical replay - is UNVERIFIED by any non-author seat. It is neither confirmed nor
+      disputed. Recorded here rather than left implicit, because the rest of this pack was
+      independently checked and those numbers were not."
+    status: PLAUSIBLE
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
     objection: "THE FIFTH DIRECTION: TEMPERED_VALUE tempers only its bare branch. Its two QUOTED branches are untempered, and the comment asserting they are safe by construction -- because they consume a COMPLETE delimited value -- is false: the marker is swallowed INSIDE the quotes and the value it introduces sits BEHIND the closing quote. Do not write a sixth patch; the architecture is the defect."
     status: CONFIRMED
@@ -1194,16 +1069,23 @@ dissent:
     objection: "The Basic anchor I had just shipped stalls for 18 seconds on a 50KB credential-free command and 346 seconds at 200KB. It is the same unbounded-class-before-a-literal trap I had already cured on the URL scheme four commits earlier, and the comment I wrote there forbidding it was in the file when I wrote the violation. Documentation did not hold it; only a wall-clock test will."
     status: CONFIRMED
 residual_risks:
-  - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
-    finds the field only in evidence packs and research/operations/2026-08-09-harness-v2-teman2.md:155
-    -- no code reads it, so a pack could breach the gate's input allowance and every check would stay
-    green. Found by the third-party verifier on 2026-08-22. Not this PR's regression and not fixed
-    here; it needs its own ledger line and its own executor."
+  - "FALSIFIED 2026-08-22 BY THE CHECK ITSELF, and left here because how it was wrong is the useful
+    part. This entry read: the 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar
+    #2), a repo-wide grep finds the field only in evidence packs, no code reads it. The cap is
+    ARMED: scripts/evidence_pack_lint.py re-derives an approximate token count from the pack's own
+    bytes and fails the build, and it blocked THIS PR -- 'size: approx 32947 tokens exceeds the
+    30000 hard cap', job 97007151455 -- which is why the pack was condensed before it could land.
+    The verifier grepped for the FIELD NAME and concluded nothing enforced it; the lint never reads
+    that field, it re-measures the file, which is exactly why the self-reported number cannot be
+    gamed. Grepping for the name of a self-report is not how you learn whether a budget is armed:
+    what arms a budget is a check that re-derives it. What DOES survive of the original claim is
+    much smaller: nothing compares the self-reported size_tokens field to the real count, so that
+    field can drift and mislead a reader. Cosmetic drift, not an unarmed cap."
   - 'SURVIVING UNDER-MATCH, each driven through the real hook rather than reasoned about: (a) `<any-prefix>KEY=` outside the bounded vocabulary -- `PUBKEY=`, `M5KEY=`, `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak in full; their delimited twins are caught. This is the deliberate price of keeping `monkey=patch` innocent. RETRACTED 2026-08-22: this used to call itself THE ONE class where the matcher is knowingly weaker than a bare-substring one. An independent gate falsified that by driving 383 inputs through the real hook and finding a second, larger one -- the bare SUFFIX, where TOKEN_2= was caught and TOKEN2= was not. The NUMERIC half of that class is now CLOSED in code (TOKEN1, SECRET3, PGPASSWORD1, APIKEY2, AUTH1, PWD9, TOKENS1, X-Auth-Token2, 8 witnesses, bite-proved 8/165); the LETTER half (TOKENA=, TOKENV2=) stays open and is priced below. The remaining KEY-prefix gap: on the live log, 40 distinct names / 136 occurrences the substring version caught and this one does not, though most (KEYWORDS 15, KEYCHAIN 12, StrictHostKeyChecking 21, MONKEYPATCH 3, ONKEYDOWN 2) were that version''s own over-match. (b) Credential words outside the six: `--pin=`, `--otp=`, `--salt=`, `--cookie=`. (c) HALF-RETRACTED 2026-08-22: `Authorization:` with an OPAQUE token still leaks (measured), but the `Basic <b64>` half is false -- anchor 4b has caught it since the tenth round, verified on this head (a `curl -H` carrying an `Authorization: Basic <b64>` header logs `curl -H` then the marker). A residual that outlives its own cure is worse than none: it reads as a known hole and hides that the hole was closed. (d) RE-LABELLED 2026-08-22, because the old title `a POSITIONAL secret with no name` was contradicted by its own example: a secret NOT JOINED TO A CREDENTIAL-ISH NAME BY `=` OR `:`. That class INCLUDES every `--flag <value>` form, because rule 2 needs the separator between name and value and a SPACE there defeats it outright. Measured leaking: `gh auth login --token <v>`, `mytool --api-key <v>`, `mysql --password <v>`, `echo <v> | gh secret set FOO`, plus the genuinely nameless `mytool deploy <v>` / `mysql -p<v>`, plus `curl -u admin:<v>` and `curl --user admin:<v>` -- those two DO carry a `:` but hang it off a USERNAME, which is not a credential-ish name. (e) REWRITTEN 2026-08-22 -- the old text read `an UNQUOTED value containing a space: only the first word is redacted`, which described the RETIRED cascade, not this head. Measured on this head: `export TOKEN=<v> extra words here` logs `export <REDACTED>`. The cut runs to end-of-string, so the whole tail goes. That is not an under-match at all -- it is the over-match damage already priced below, and it was sitting in the under-match list saying the opposite. (f) NEW 2026-08-22, the UNDER-MATCH HALF of the dot-lookbehind, which all four artifacts described only as over-match protection: a SINGLE-SEGMENT attribute assignment leaks in full -- `c.token = "<v>"`, `c.secret = "<v>"`, `jq ''.password = "<v>"'' cfg.json`. CORRECTED 2026-08-22 by an independent gate that measured it: the claim used to read `multi-segment names are still caught`, which is true only when the LAST segment is itself a credential word. `cfg.api_key = <v>` is caught (it matches at `key`, after the `_`); `cfg.TOKEN_ref = <v>` and `cfg.token_value = <v>` LEAK IN FULL, 10 of 13 names in the gate''s sweep. What scopes the hole is not segment COUNT but whether a credential word survives the lookbehind at the position it occupies. Same named-price shape as the KEY vocabulary. (g) NEW 2026-08-22: an INDEX between the name and the separator -- `SECRETS[0]=<v>`, `TOKEN[0]=<v>` leak, because `[0]` is neither the optional quote nor the separator rule 2 permits between them.'
   - "Redact-before-truncate widens the truncation window by shortening the string, so a secret that used to fall outside the 200 chars can be pulled in. Smaller exposure, not zero. Pinned in the other direction by the straddle case, which proves truncate-first is strictly worse."
   - "The already-leaked material remains valid: 1 whole-token-length run plus 2 truncation-clipped partials. Two earlier drafts of this pack inflated that (11 tokens -- a LINE count read as a VALUE count; then 2 whole tokens -- an end-of-window artifact read as two more secrets). Both caught by the Gear-3 gate; the rotation decision hangs on this number."
   - "OVER-MATCH (cicatrix #3), stated with its full damage rather than as value-only: the name match has no notion of whether a value is actually secret, AND (i) it swallows the rest of an unquoted value, so `sed -i 's/key=old/key=new/''` loses its second half entirely, and (ii) DELETED 2026-08-22: this used to claim the replacement NORMALISES the separator to `=`, so a header or JSON `name: value` is logged as `name=<REDACTED>`. Measured false on this head: a `curl -H` carrying an `X-Api-Key` header logs the marker starting INSIDE the name, at `X-Api-`. Nothing is normalised because nothing is re-emitted: the earliest-anchor cut discards from the match START, so the NAME is inside the cut too. The real damage is larger than the sentence it replaces, and is stated correctly in (i): the rest of the line goes. Concretely over-redacted today: `redis-cli --scan --pattern 'keys:*'` (1 of 35 ordinary-command probes), `PWD=/tmp`, any `FEATURE_FLAG_KEY=`. Measured rate on the real log: 2291 lines / 0.686% of 333,832 at 2026-08-21T22:49:57Z, higher than the 1875 / 0.562% of the version rejected for over-matching. Accepted: over-redacting a non-secret beats under-redacting a real one."
-  - 'OVER-MATCH in rules 3 and 4, undisclosed until the Gear-3 gate drove it. (i) Rule 4''s `Bearer` is a BARE WORD in prose, not a header: it eats the next >=8-char `[A-Za-z0-9._-]` run in ANY text, with no name, assignment or separator. `gh pr create --title "Bearer authentication rollout"` is logged as `Bearer <REDACTED> rollout` and `git commit -m "fix: bearer credentials refresh loop"` is mangled the same way -- and `gh pr create` is TRIGGER RULE 1 of this very hook, so those are the lines it exists to record. Corpus at 2026-08-21T22:50:35Z / 333,833 lines: 8 lines carry a match, 10 matches, 3 of the 10 carry no digit at all (one of which is this session''s own probe string -- this log inflates its own denominator, as documented). DELIBERATELY NOT narrowed to require a digit: that trades a 3-occurrence over-match for an under-match on an all-lowercase bearer token, inverting the preference stated one bullet above. (ii) Rule 3 redacts a PORT when the port sits in the userinfo PASSWORD position -- `curl ''https://example.com:8443@evil.test/''` logs `example.com:<REDACTED>@`. FALSIFIED 2026-08-22 and CURED. This used to claim the rule cannot fire on a genuine `host:port`, which has no `@` after it, and offered two examples as verification. THE VERIFICATION WAS VACUOUS: neither cited example has an at-sign after the port at all, so neither could test the claim it was offered as proof of -- the shape being ruled out was never in the evidence. A peer session drove 197 invented inputs and found it: `https://staging.example.test:8443/@mentions/feed`, an ordinary self-hosted Mastodon-style API on a non-default port, was truncated in full and took the SCHEME with it. The path-aware discriminator demands a slash AFTER the port delimiter, and here the at-sign arrives before any second slash. Cured by also rejecting `\d+/@` -- the at-sign must follow the slash IMMEDIATELY. Rejecting a bare `\d+/` was tried FIRST and is worse: it discards `postgres://u:123/<v>@h`, a real password beginning with digits and containing a slash (6/7 guilt, 1/7 false positives, against 7/7 and 1/7 for the shipped form and 7/7 and 3/7 for the form it replaces). Both directions are now pinned, or the next session tightens this back into the leak. THE STILL-OPEN half is the query/fragment variant with NO path, declared separately below. An all-digits carve-out was considered and REJECTED on measurement: 0 of 367 URL-userinfo matches in the live log have an all-digit password, so it fixes nothing real while opening an under-match on any numeric credential. Scale on the same rule: 354 of those 367 matches are a single test-fixture DSN, i.e. this rule too fires overwhelmingly on non-secrets.'
+  - "CONDENSED for the size cap, four risks that described the CASCADE architecture this PR then DELETED, and that no longer name anything in the shipped matcher: the over-match belonging to cascade rules 3 and 4; the widening that closing the mirror class forced on those same two rules; the accidental coverage lost when their tail was tempered (94 of 200,000 random fuzz assemblies, every one a nameless secret); and the third-direction pattern note, now stated once and in full by the FOUR-directions entry that follows. The earliest-anchor cut has no rule order, no per-rule tail and no marker registry, so none of the four transfers - what over-match the SHIPPED design carries is stated separately and was measured on it, not inherited from these. Verbatim: `git show 4b0209c2c:evidence/pack.yml` (PR #4547 head -- after the squash merge that object lives on refs/pull/4547/head, not on main)."
   - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ -- the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
   - "check_guard_conformance's is_armed() is substring-based, so it cannot detect deletion of the workflow step that executes this suite. The step is genuine today; its removal would not be caught by the registration."
   - "An identical UNTRACKED .codex/hooks/ copy exists in the main checkout; git does not track it, so this diff cannot fix it."
@@ -1212,22 +1094,6 @@ residual_risks:
     refused to read the file — reading it is a credential action and inflates the next measurement —
     so those numbers rest on the author alone. They are load-bearing for the 'the fix has zero
     RETROACTIVE effect' claim and for the over-match rate."
-  - "The mirror class was closed by widening what rules 1 and 4 consume, which necessarily widens
-    OVER-match too: `Bearer <8+ run>: <word>` now loses the following word, and a Bearer-prefixed URL
-    is swallowed whole rather than partially. Deliberate, in the direction this hook has always
-    chosen (over-redacting a non-secret beats under-redacting a real one), but it is a real
-    regression in log usefulness and is not free."
-  - "The tempering costs some ACCIDENTAL coverage the untempered tail had: 94 of 200,000 random
-    fuzz assemblies leak on this head that did not on the untempered version. Every one is a
-    nameless secret glued to a marker with no whitespace, a class fa06a285a leaks too — so it is
-    coverage the greedy tail bought by accident, not protection this diff removes. Stated because
-    'never worse than the baseline' and 'never worse than the previous commit' are different claims
-    and only the first is true."
-  - "This is the THIRD leak found in this PR by an adversarial gate, each one created by the cure
-    for the previous. The pattern is not that the fixes were careless — each was measured — but that
-    a matcher made of rules that REWRITE overlapping spans has a defect class no corpus enumerates.
-    A fourth direction is more likely than not; the honest posture is that this hook reduces
-    exposure rather than closing it, which is what the under-match block is for."
   - "FOUR directions of the same defect have now been found in this PR, each by an adversarial gate
     and each created by the cure for the previous. Three of the four were invisible to a
     hand-written corpus AND to a differential fuzz until the generator was widened to reach them.
@@ -1358,4 +1224,4 @@ pii_scan: clean
 # No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
 # this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
 # documentation. The previous value, 16067, was left behind by later edits to this pack.
-size_tokens: 32924
+size_tokens: 29328
