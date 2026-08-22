@@ -746,6 +746,79 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(plan.decision, Decision.ABSTAIN)
         self.assertEqual(plan.rejections[0].reason_codes, ("benchmark_unmeasured",))
 
+    def test_duplicate_valid_benchmark_selection_identity_cannot_win_routing(
+        self,
+    ) -> None:
+        duplicated = candidate(
+            "duplicated-evidence", model="candidate", family="test", score=0.80
+        )
+        duplicated_score = next(
+            score
+            for score in duplicated.task_scores
+            if score.task_profile_id == "mechanical"
+        )
+        honest = candidate(
+            "honest-evidence", model="candidate", family="test", score=0.90
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(
+                replace(
+                    duplicated,
+                    task_scores=(
+                        duplicated_score,
+                        replace(duplicated_score, score=0.99),
+                    ),
+                ),
+                honest,
+            ),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.endpoint_id, "honest-evidence")
+        self.assertEqual(
+            plan.rejections[0].reason_codes,
+            ("benchmark_selection_identity_duplicate",),
+        )
+
+    def test_distinct_valid_benchmark_selection_identities_remain_routable(
+        self,
+    ) -> None:
+        evidenced = candidate(
+            "versioned-evidence", model="candidate", family="test", score=0.80
+        )
+        original_score = next(
+            score
+            for score in evidenced.task_scores
+            if score.task_profile_id == "mechanical"
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(
+                replace(
+                    evidenced,
+                    task_scores=(
+                        original_score,
+                        replace(
+                            original_score,
+                            benchmark_version="v2",
+                            score=0.99,
+                        ),
+                    ),
+                ),
+            ),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.primary.endpoint_id, "versioned-evidence")
+        self.assertEqual(plan.primary.benchmark_version, "v2")
+
     def test_unhealthy_endpoint_is_not_an_available_builder(self) -> None:
         plan = plan_dispatch(
             session=session(),
@@ -903,6 +976,113 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(
             plan.rejections[0].reason_codes, ("paid_anthropic_api_forbidden",)
         )
+
+    def test_semantic_endpoint_ineligibility_is_not_reopened_by_false_values(
+        self,
+    ) -> None:
+        base = candidate(
+            "semantic-ineligible", model="candidate", family="test", score=0.95
+        )
+        cases = (
+            (
+                "automated_routing_false",
+                replace(base, automated_routing=False),
+            ),
+            (
+                "routing_status_not_eligible",
+                replace(base, routing_status="suspended"),
+            ),
+        )
+
+        for name, ineligible in cases:
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(ineligible,),
+                    policy=policy(),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(
+                    plan.rejections[0].reason_codes, ("endpoint_not_automated",)
+                )
+
+    def test_mutation_enforcement_policy_controls_shadow_and_advisory_endpoints(
+        self,
+    ) -> None:
+        base = candidate(
+            "mutation-enforcement", model="candidate", family="test", score=0.95
+        )
+        cases = (
+            ("shadow_required", "shadow", True, Decision.ABSTAIN),
+            ("advisory_required", "advisory", True, Decision.ABSTAIN),
+            ("shadow_optional", "shadow", False, Decision.DELEGATE_REQUIRED),
+            ("advisory_optional", "advisory", False, Decision.DELEGATE_REQUIRED),
+        )
+
+        for name, enforcement_mode, requires_enforcement, expected_decision in cases:
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(replace(base, enforcement_mode=enforcement_mode),),
+                    policy=replace(
+                        policy(),
+                        require_enforced_mutation=requires_enforcement,
+                    ),
+                )
+
+                self.assertEqual(plan.decision, expected_decision)
+                if requires_enforcement:
+                    self.assertEqual(
+                        plan.rejections[0].reason_codes,
+                        ("enforcement_not_mutation_capable",),
+                    )
+                else:
+                    self.assertEqual(plan.primary.endpoint_id, "mutation-enforcement")
+
+    def test_paid_anthropic_hard_ban_ignores_compatibility_policy_switch(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "paid_auth_surface",
+                candidate(
+                    "paid-auth-surface",
+                    model="claude-opus",
+                    family="claude",
+                    score=0.99,
+                    auth_surface=AuthSurface.ANTHROPIC_PAID_API,
+                    uses_paid_anthropic_api=False,
+                ),
+            ),
+            (
+                "paid_usage_signal",
+                candidate(
+                    "paid-usage-signal",
+                    model="candidate",
+                    family="test",
+                    score=0.99,
+                    uses_paid_anthropic_api=True,
+                ),
+            ),
+        )
+
+        for name, paid in cases:
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(paid,),
+                    policy=replace(policy(), forbid_paid_anthropic_api=False),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(
+                    plan.rejections[0].reason_codes,
+                    ("paid_anthropic_api_forbidden",),
+                )
 
     def test_local_only_profile_requires_local_candidates_without_task_pii(
         self,

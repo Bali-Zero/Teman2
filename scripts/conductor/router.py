@@ -870,6 +870,9 @@ def _rejection_for(
         reasons.append("auth_surface_unknown")
     if type(candidate.uses_paid_anthropic_api) is not bool:
         reasons.append("paid_anthropic_usage_invalid")
+    # Paid Anthropic use is an unconditional hard ban.  The compatibility
+    # policy field remains accepted at the public boundary but must never
+    # reopen this routing lane.
     elif (
         auth_surface is AuthSurface.ANTHROPIC_PAID_API
         or candidate.uses_paid_anthropic_api
@@ -1243,16 +1246,19 @@ def _benchmark_rejection(
     relevant = _profile_scores(candidate, profile)
     if not relevant:
         return "benchmark_unmeasured"
-    failures = tuple(
-        rejection
-        for score in relevant
-        if (
-            rejection := _score_rejection(
+    evaluations = tuple(
+        (
+            score,
+            _score_rejection(
                 candidate, score, profile, task_profile_hash, as_of, policy
-            )
+            ),
         )
-        is not None
+        for score in relevant
     )
+    valid_scores = tuple(score for score, rejection in evaluations if rejection is None)
+    if _has_duplicate_benchmark_selection_identity(valid_scores):
+        return "benchmark_selection_identity_duplicate"
+    failures = tuple(rejection for _, rejection in evaluations if rejection is not None)
     if len(failures) == len(relevant):
         return min(failures, key=_benchmark_failure_rank)
     return None
@@ -1293,6 +1299,25 @@ def _profile_scores(
         and type(score.task_profile_id) is str
         and score.task_profile_id == profile.id
     )
+
+
+def _has_duplicate_benchmark_selection_identity(
+    scores: tuple[TaskScore, ...],
+) -> bool:
+    """Reject ambiguous benchmark evidence before score ordering."""
+    identities: set[tuple[str, str | None, str | None, str | None, str | None]] = set()
+    for score in scores:
+        identity = (
+            score.task_profile_id,
+            score.benchmark_id,
+            score.benchmark_version,
+            score.endpoint_profile_hash,
+            score.task_profile_hash,
+        )
+        if identity in identities:
+            return True
+        identities.add(identity)
+    return False
 
 
 def _score_rejection(
