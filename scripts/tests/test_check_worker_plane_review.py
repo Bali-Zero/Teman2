@@ -19,6 +19,7 @@ from scripts.check_worker_plane_review import (
     VALIDATOR_REPO_PATH,
     ReviewValidationError,
     main,
+    normalize_claude_gate_response,
     validate_review_panel,
 )
 from scripts.freeze_worker_plane_review import (
@@ -79,6 +80,178 @@ GEMINI_REQUIREMENT = (
     "leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and "
     "certificate leaf[subject.OU] = EQHXZ8M8AV"
 )
+
+
+@pytest.mark.parametrize(
+    ("name", "stdout", "stderr", "rc", "timeout", "expected"),
+    [
+        ("timeout", b"partial secret prompt", b"", 0, True, "timeout"),
+        ("nonzero rc", b"{}", b"secret stderr", 7, False, "nonzero_rc"),
+        (
+            "is_error",
+            b'{"is_error": true, "terminal_reason": "api_error"}',
+            b"",
+            0,
+            False,
+            "envelope_is_error",
+        ),
+        (
+            "429",
+            b'{"is_error": true, "api_error_status": 429}',
+            b"",
+            0,
+            False,
+            "api_error_429",
+        ),
+        (
+            "quota",
+            b'{"is_error": true, "api_error_status": "quota_exceeded"}',
+            b"",
+            0,
+            False,
+            "api_error_quota",
+        ),
+        (
+            "auth",
+            b'{"is_error": true, "error": {"type": "authentication_error"}}',
+            b"",
+            0,
+            False,
+            "auth",
+        ),
+        (
+            "execution",
+            b'{"is_error": true, "error": {"type": "execution_error"}}',
+            b"",
+            0,
+            False,
+            "execution_error",
+        ),
+        (
+            "execution terminal reason",
+            b'{"terminal_reason": "execution_error", "is_error": true}',
+            b"",
+            0,
+            False,
+            "execution_error",
+        ),
+        (
+            "auth stderr",
+            b"",
+            b"authentication required",
+            0,
+            False,
+            "auth",
+        ),
+        (
+            "execution stderr",
+            b"",
+            b"execution failed",
+            0,
+            False,
+            "execution_error",
+        ),
+        ("stdout empty", b" \n", b"", 0, False, "stdout_empty"),
+        ("outer JSON invalid", b"not json", b"", 0, False, "outer_json_invalid"),
+        (
+            "invalid JSON with 429 stderr",
+            b"not json",
+            b"429 Too Many Requests token-sentinel",
+            0,
+            False,
+            "api_error_429",
+        ),
+        (
+            "empty stdout with quota stderr",
+            b"",
+            b"quota exceeded token-sentinel",
+            0,
+            False,
+            "api_error_quota",
+        ),
+        (
+            "invalid JSON with auth stderr",
+            b"not json",
+            b"authentication required token-sentinel",
+            0,
+            False,
+            "auth",
+        ),
+        ("envelope unexpected", b"[]", b"", 0, False, "envelope_unexpected"),
+        ("result invalid", b'{"result": 7}', b"", 0, False, "result_invalid"),
+        (
+            "invalid emitted session",
+            b'{"result": "ok", "session_id": 7}',
+            b"",
+            0,
+            False,
+            "envelope_unexpected",
+        ),
+    ],
+    ids=lambda value: value if isinstance(value, str) else None,
+)
+def test_normalize_claude_gate_response_fail_closed(
+    name: str,
+    stdout: bytes,
+    stderr: bytes,
+    rc: int,
+    timeout: bool,
+    expected: str,
+) -> None:
+    del name
+    normalized = normalize_claude_gate_response(
+        stdout,
+        stderr=stderr,
+        rc=rc,
+        timeout=timeout,
+    )
+
+    assert normalized.category == expected
+    assert not normalized.valid
+    safe = normalized.diagnostic.as_dict()
+    assert safe["stdout_bytes"] == len(stdout)
+    assert safe["stderr_bytes"] == len(stderr)
+    assert safe["stdout_sha256"] == sha256_bytes(stdout)
+    assert safe["stderr_sha256"] == sha256_bytes(stderr)
+    assert "secret" not in json.dumps(safe)
+    assert "token-sentinel" not in json.dumps(safe)
+
+
+def test_normalize_claude_gate_response_bounds_provider_metadata() -> None:
+    normalized = normalize_claude_gate_response(
+        b'{"result": "ok", "status": "secret token", "terminal_reason": "secret token"}'
+    )
+
+    assert normalized.valid
+    assert normalized.diagnostic.status is None
+    assert normalized.diagnostic.terminal_reason is None
+
+    metadata_error = normalize_claude_gate_response(
+        b"not json",
+        metadata={"api_error_status": 429, "terminal_reason": "api_error"},
+    )
+    assert metadata_error.category == "api_error_429"
+
+
+def test_normalize_claude_gate_response_distinguishes_verdict_and_valid() -> None:
+    manifest_sha = "a" * 64
+    packet_sha = "b" * 64
+    invalid = normalize_claude_gate_response(
+        b'{"result": "not a verdict"}',
+        expected_manifest_sha256=manifest_sha,
+        expected_packet_sha256=packet_sha,
+    )
+    assert invalid.category == "verdict_invalid"
+    assert invalid.result == "not a verdict"
+
+    body = f"GO-WITH-CHANGES — confidence 91\ninput_manifest_sha256: {manifest_sha}\n"
+    valid = normalize_claude_gate_response(
+        json.dumps({"result": body}).encode("utf-8"),
+        expected_manifest_sha256=manifest_sha,
+        expected_packet_sha256=packet_sha,
+    )
+    assert valid.category == "valid"
+    assert valid.valid
 
 
 @dataclass
@@ -573,6 +746,86 @@ def _rewrite_invocation(
     review_path.write_text("".join(lines), encoding="utf-8")
 
 
+def _rewrite_claude_process(
+    bundle: Bundle,
+    *,
+    raw_bytes: bytes,
+    stderr: bytes = b"",
+    exit_status: int = 0,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Rewrite one local Claude receipt and its bounded process companions."""
+    review_path = bundle.reviews[0]
+    raw_path = _raw_path(review_path)
+    assert raw_path.suffix == ".json"
+    raw_path.write_bytes(raw_bytes)
+
+    stderr_path = review_path.with_suffix(".stderr.bin")
+    stderr_path.write_bytes(stderr)
+
+    invocation_path = _invocation_path(review_path)
+    invocation = json.loads(invocation_path.read_text(encoding="utf-8"))
+    invocation["exit_status"] = exit_status
+    invocation["stdout_bytes"] = len(raw_bytes)
+    invocation["stdout_sha256"] = sha256_bytes(raw_bytes)
+    invocation["stderr_bytes"] = len(stderr)
+    invocation["stderr_sha256"] = sha256_bytes(stderr)
+    for key, value in (metadata or {}).items():
+        invocation[key] = value
+    _canonical_file(invocation_path, invocation)
+
+    review_text = review_path.read_text(encoding="utf-8")
+    marker = review_text.find("---\n", 4)
+    assert marker >= 0
+    frontmatter = review_text[: marker + 4]
+    body = review_text[marker + 4 :]
+    lines = frontmatter.splitlines(keepends=True)
+    replacements = {
+        "launcher_proof_sha256:": sha256_bytes(invocation_path.read_bytes()),
+        "raw_response_sha256:": sha256_bytes(raw_bytes),
+    }
+    for line_index, line in enumerate(lines):
+        for key, value in replacements.items():
+            if line.startswith(key):
+                lines[line_index] = f"{key} {value}\n"
+    review_path.write_text("".join(lines) + body, encoding="utf-8")
+
+
+def _rewrite_text_process(
+    bundle: Bundle,
+    *,
+    stderr: bytes = b"",
+    exit_status: int = 0,
+) -> None:
+    """Rewrite the local Gemini text receipt's process companions."""
+    review_path = bundle.reviews[1]
+    raw_path = _raw_path(review_path)
+    assert raw_path.suffix == ".txt"
+    stderr_path = review_path.with_suffix(".stderr.bin")
+    stderr_path.write_bytes(stderr)
+
+    invocation_path = _invocation_path(review_path)
+    invocation = json.loads(invocation_path.read_text(encoding="utf-8"))
+    invocation["exit_status"] = exit_status
+    invocation["stderr_bytes"] = len(stderr)
+    invocation["stderr_sha256"] = sha256_bytes(stderr)
+    _canonical_file(invocation_path, invocation)
+
+    review_text = review_path.read_text(encoding="utf-8")
+    marker = review_text.find("---\n", 4)
+    assert marker >= 0
+    frontmatter = review_text[: marker + 4]
+    body = review_text[marker + 4 :]
+    lines = frontmatter.splitlines(keepends=True)
+    for line_index, line in enumerate(lines):
+        if line.startswith("launcher_proof_sha256:"):
+            lines[line_index] = (
+                f"launcher_proof_sha256: {sha256_bytes(invocation_path.read_bytes())}\n"
+            )
+            break
+    review_path.write_text("".join(lines) + body, encoding="utf-8")
+
+
 def test_valid_review_panel_passes_and_cli_emits_canonical_summary(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -615,14 +868,134 @@ def test_valid_review_panel_passes_and_cli_emits_canonical_summary(
     assert json.loads(capsys.readouterr().out) == result
 
 
+def test_checker_classifies_malformed_stdout_with_429_before_verdict(
+    tmp_path: Path,
+) -> None:
+    bundle = make_bundle(tmp_path)
+    _rewrite_claude_process(
+        bundle,
+        raw_bytes=b"not json",
+        stderr=b"429 Too Many Requests token-sentinel",
+    )
+    _commit_artifact_mutation(bundle)
+
+    with pytest.raises(ReviewValidationError, match="category=api_error_429") as error:
+        _validate(bundle)
+    assert "token-sentinel" not in str(error.value)
+
+
+def test_checker_classifies_nonzero_exit_before_verdict(tmp_path: Path) -> None:
+    bundle = make_bundle(tmp_path)
+    _rewrite_claude_process(
+        bundle,
+        raw_bytes=_raw_path(bundle.reviews[0]).read_bytes(),
+        stderr=b"execution failed token-sentinel",
+        exit_status=7,
+    )
+    _commit_artifact_mutation(bundle)
+
+    with pytest.raises(ReviewValidationError, match="category=nonzero_rc") as error:
+        _validate(bundle)
+    assert "token-sentinel" not in str(error.value)
+
+
+def test_checker_classifies_nonzero_exit_for_raw_text_before_verdict(
+    tmp_path: Path,
+) -> None:
+    bundle = make_bundle(tmp_path)
+    _rewrite_text_process(
+        bundle,
+        stderr=b"execution failed token-sentinel",
+        exit_status=7,
+    )
+    _commit_artifact_mutation(bundle)
+
+    with pytest.raises(ReviewValidationError, match="category=nonzero_rc") as error:
+        _validate(bundle)
+    assert "token-sentinel" not in str(error.value)
+
+
+def test_checker_classifies_is_error_envelope_before_verdict(tmp_path: Path) -> None:
+    bundle = make_bundle(tmp_path)
+    envelope = json.loads(_raw_path(bundle.reviews[0]).read_text(encoding="utf-8"))
+    envelope["is_error"] = True
+    _rewrite_claude_process(
+        bundle,
+        raw_bytes=canonical_json_bytes(envelope) + b"\n",
+        stderr=b"token-sentinel",
+    )
+    _commit_artifact_mutation(bundle)
+
+    with pytest.raises(
+        ReviewValidationError, match="category=envelope_is_error"
+    ) as error:
+        _validate(bundle)
+    assert "token-sentinel" not in str(error.value)
+
+
+def test_checker_accepts_valid_verdict_without_leaking_stderr(
+    tmp_path: Path,
+) -> None:
+    bundle = make_bundle(tmp_path)
+    _rewrite_claude_process(
+        bundle,
+        raw_bytes=_raw_path(bundle.reviews[0]).read_bytes(),
+        stderr=b"token-sentinel",
+    )
+    _commit_artifact_mutation(bundle)
+
+    result = _validate(bundle)
+
+    assert result["valid"] is True
+    assert "token-sentinel" not in json.dumps(result)
+
+
+def test_normalize_drops_unknown_metadata_values_from_diagnostics() -> None:
+    normalized = normalize_claude_gate_response(
+        b"not json",
+        metadata={
+            "status": "token-sentinel",
+            "terminal_reason": "token-sentinel",
+        },
+    )
+
+    assert normalized.category == "outer_json_invalid"
+    safe = normalized.diagnostic.as_dict()
+    assert safe["status"] is None
+    assert safe["terminal_reason"] is None
+    assert "token-sentinel" not in json.dumps(safe)
+
+
+@pytest.mark.parametrize("status", (99, 600, 700, True))
+def test_normalize_drops_invalid_http_status_metadata(status: object) -> None:
+    normalized = normalize_claude_gate_response(
+        b"not json",
+        metadata={"api_error_status": status},
+    )
+
+    assert normalized.category == "outer_json_invalid"
+    assert normalized.diagnostic.status is None
+
+
+def test_normalize_keeps_valid_http_status_and_rejects_integer_terminal_reason() -> (
+    None
+):
+    normalized = normalize_claude_gate_response(
+        b"not json",
+        metadata={"api_error_status": 429, "terminal_reason": 429},
+    )
+
+    assert normalized.category == "api_error_429"
+    assert normalized.diagnostic.status == 429
+    assert normalized.diagnostic.terminal_reason is None
+
+
 def test_v3_reviewer_evidence_cannot_authorize_without_fable_final_gate(
     tmp_path: Path,
 ) -> None:
     bundle = make_bundle(tmp_path)
     receipt = json.loads(bundle.receipt.read_text(encoding="utf-8"))
-    receipt["route_config_path"] = (
-        "scripts/review_routes/worker-plane-council-v3.json"
-    )
+    receipt["route_config_path"] = "scripts/review_routes/worker-plane-council-v3.json"
     _canonical_file(bundle.receipt, receipt)
     h1 = _commit(bundle.repo, "mark evidence as council v3")
     v3_bundle = replace(bundle, h1=h1)
@@ -641,9 +1014,7 @@ def test_v3_final_gate_blocker_does_not_trust_declared_generator_version(
 ) -> None:
     bundle = make_bundle(tmp_path)
     receipt = json.loads(bundle.receipt.read_text(encoding="utf-8"))
-    receipt["route_config_path"] = (
-        "scripts/review_routes/worker-plane-council-v3.json"
-    )
+    receipt["route_config_path"] = "scripts/review_routes/worker-plane-council-v3.json"
     receipt["generator_version"] = generator_version
     _canonical_file(bundle.receipt, receipt)
     h1 = _commit(bundle.repo, "forge the declared generator version")
@@ -776,9 +1147,7 @@ def test_rejects_non_empty_text_before_verdict_heading(tmp_path: Path) -> None:
     )
     _commit_artifact_mutation(bundle)
 
-    with pytest.raises(
-        ReviewValidationError, match="non-empty text before # Verdict"
-    ):
+    with pytest.raises(ReviewValidationError, match="non-empty text before # Verdict"):
         _validate(bundle)
 
 
@@ -787,7 +1156,9 @@ def test_allows_whitespace_before_verdict_heading(tmp_path: Path) -> None:
     _rewrite_body_and_raw(bundle, 0, lambda text: f" \n\t\n{text}")
     _commit_artifact_mutation(bundle)
 
-    _validate(bundle)
+    result = _validate(bundle)
+
+    assert result["valid"] is True
 
 
 def test_rejects_manifest_hash_after_second_non_empty_verdict_line(
@@ -798,8 +1169,7 @@ def test_rejects_manifest_hash_after_second_non_empty_verdict_line(
         bundle,
         0,
         lambda text: text.replace(
-            "GO-WITH-CHANGES — confidence 91\n\n"
-            "input_manifest_sha256:",
+            "GO-WITH-CHANGES — confidence 91\n\ninput_manifest_sha256:",
             "GO-WITH-CHANGES — confidence 91\n\n"
             "Provider preamble inside the verdict section.\n\n"
             "input_manifest_sha256:",
@@ -1094,7 +1464,7 @@ def test_rejects_duplicate_launcher_uuid(tmp_path: Path) -> None:
         ("wall_timeout_seconds", 0, "wall_timeout_seconds"),
         ("xdg_config_home", "/tmp/wrong-xdg", "xdg_config_home"),
         ("shell", True, "shell=false"),
-        ("exit_status", 1, "exit status"),
+        ("exit_status", 1, "category=nonzero_rc"),
     ],
 )
 def test_rejects_invalid_invocation_proof(
