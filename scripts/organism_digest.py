@@ -55,6 +55,13 @@ MAX_STALE_LINES = 4
 HEARTBEAT_STALE_H = 26.0  # matches proprioception guardian_freshness for the arsenal report
 BUDGET_S = 6
 
+# Arsenal positive card (D4, docs/mandates/2026-08-22-arsenal-routing-mandate.md):
+# distinct threshold from HEARTBEAT_STALE_H above — this one governs whether a
+# session should trust last.json as "current" (also the freshness threshold the
+# sessionstart hook uses to decide whether to kick off a background re-probe).
+ARSENAL_CARD_STALE_H = 24.0
+ARSENAL_CARD_MAX_LINES = 12  # this block is injected fleet-wide, every session — stay ruthless
+
 # arsenal_probe's AUTOMATED recurring heartbeat is a promise only on its primary
 # node (docs/runbooks/arsenal-probe.md §How it is armed: "Mini (primary)"). Any
 # other node's `<machine>.arsenal_probe.json` is a one-time on-demand stamp from
@@ -133,6 +140,139 @@ def arsenal_seats() -> tuple[list[str], list[str]]:
         if s.get("status") != "LIVE":
             lines.append(f"seat {s.get('seat')}: {s.get('status')}{stale}")
     return lines, errs
+
+
+# ------------------------------------------------------------ arsenal boot card
+# D4 (docs/mandates/2026-08-22-arsenal-routing-mandate.md): the digest must be a
+# POSITIVE boot card — every probed seat + status, not just the not-LIVE ones
+# (that was arsenal_seats() above, kept for the attention-only bucket).
+#
+# "role" in the seat->role->invocation map is NOT a machine-extractable field in
+# MODEL_ROSTER.md today: the file's "Routing rule" table (Grunt/Standard/Hard)
+# keys off MODEL names (opus-5, codex-luna, kimi-for-coding...), never off the
+# arsenal_probe.py seat ids (codex-spark, qwen-cloud-code, nlm, jules...) — there
+# is no row in the roster keyed by probe-seat-id at all. What IS machine-
+# extractable, verified 2026-08-22 against the live file, is each PROVIDER
+# section's own "## <Provider> — ... door(s): <text>" header (6 of 7 provider
+# sections carry it; "## Local Ollama" does not — no "door:"/"doors:" substring
+# anywhere in that header, so it is a genuine, reportable gap, not a regex miss).
+# So this renders seat -> provider -> door, sourced live from the file, in place
+# of the seat -> role -> invocation the mandate asked for. Doors are grouped by
+# provider (not simplified). Do not invent a role or a fuller invocation string
+# to plug this gap — see the D4 report for the proposed smallest roster change.
+_ROSTER_DOOR_RE = re.compile(r"^## (?P<provider>[^—\n]+?)\s+—.*?doors?:\s*(?P<door>.+?)\s*$", re.MULTILINE)
+_DOOR_CODE_RE = re.compile(r"`([^`]+)`")
+_DOOR_MAX_CHARS = 56
+
+# Which MODEL_ROSTER.md provider section documents each arsenal_probe.py seat id
+# (grep-verified 2026-08-22: jules/nlm are both rows inside "## Google", agy is
+# that section's own CLI door; codex-spark shares "## OpenAI" with codex). This
+# is a structural fact about where the roster's prose already places each seat,
+# not an invented invocation — the fallback list below mirrors arsenal_probe.py's
+# own ALL_SEATS so a missing/broken import still renders something honest.
+_SEAT_PROVIDER = {
+    "claude": "Anthropic",
+    "glm": "z.ai",
+    "kimi": "Moonshot",
+    "agy": "Google",
+    "codex": "OpenAI",
+    "codex-spark": "OpenAI",
+    "ollama": "Local Ollama",
+    "nlm": "Google",
+    "qwen-cloud-code": "Alibaba Token Plan (TP1)",
+    "jules": "Google",
+}
+_FALLBACK_ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "codex-spark",
+                        "ollama", "nlm", "qwen-cloud-code", "jules"]
+
+
+def _known_seats() -> list[str]:
+    """The canonical seat list, imported live from arsenal_probe.py so the two
+    files cannot silently drift apart (test_roster_seat_drift asserts this stays
+    a strict import, not a permanently-tolerated except-pass fallback)."""
+    try:
+        sys.path.insert(0, str(_repo_root() / "scripts"))
+        import arsenal_probe  # noqa: PLC0415 (deliberately lazy — a boot receptor
+        return list(arsenal_probe.ALL_SEATS)
+    except Exception:
+        return list(_FALLBACK_ALL_SEATS)
+
+
+def _roster_doors(repo_root: Path) -> tuple[dict[str, str], list[str]]:
+    """Provider -> short door text, parsed live from MODEL_ROSTER.md's own
+    '## Provider — ... door(s): text' headers. A provider absent from the return
+    dict (e.g. 'Local Ollama' as of 2026-08-22) genuinely has no such header —
+    callers must render that as a stated gap, never silently omit the seat."""
+    path = repo_root / "MODEL_ROSTER.md"
+    if not path.is_file():
+        return {}, ["roster: MODEL_ROSTER.md not found"]
+    try:
+        text = path.read_text()
+    except Exception as e:
+        return {}, [f"roster: unreadable ({type(e).__name__})"]
+    doors: dict[str, str] = {}
+    for m in _ROSTER_DOOR_RE.finditer(text):
+        provider = m.group("provider").strip()
+        door_text = m.group("door").strip()
+        code = _DOOR_CODE_RE.search(door_text)
+        door = code.group(1) if code else door_text
+        if len(door) > _DOOR_MAX_CHARS:
+            door = door[: _DOOR_MAX_CHARS - 3] + "..."
+        doors[provider] = door
+    return doors, []
+
+
+def arsenal_card() -> tuple[list[str], list[str]]:
+    """The positive boot card: every probed seat + status + age + a roster-
+    derived door map — never just the not-LIVE seats (that's arsenal_seats()
+    above). Anti-calm-liar: missing/corrupt last.json still renders a line,
+    never a crash, never a false all-clear."""
+    errs: list[str] = []
+    report = _home() / ".organism" / "arsenal" / "last.json"
+    if not report.is_file():
+        return ["\U0001f50c arsenal: no probe report yet on this machine"], errs
+    try:
+        raw = report.read_text()
+        age_h = (_now() - report.stat().st_mtime) / 3600
+        data = json.loads(raw)
+    except Exception as e:
+        return [f"\U0001f50c arsenal: last.json unreadable ({type(e).__name__})"], errs
+
+    seats = data.get("seats", [])
+    if not isinstance(seats, list):
+        seats = []
+    known = _known_seats()
+    probed_ids = [s.get("seat") for s in seats if isinstance(s, dict) and s.get("seat")]
+    missing = [s for s in known if s not in probed_ids]
+
+    age_tag = f"{age_h:.0f}h" if age_h >= 1 else "<1h"
+    if age_h > ARSENAL_CARD_STALE_H:
+        age_tag += ", STALE"
+    header = f"\U0001f50c arsenal (probe {age_tag} ago"
+    if missing:
+        header += f" — PARTIAL {len(probed_ids)}/{len(known)}, missing: {', '.join(missing)}"
+    header += "):"
+
+    def mark(s: dict) -> str:
+        st = s.get("status", "?")
+        seat = s.get("seat", "?")
+        return f"{seat}✓" if st == "LIVE" else f"{seat}✗{st.lower()}"
+
+    rollup = "  " + " ".join(mark(s) for s in seats if isinstance(s, dict)) if seats else "  (report has no seats)"
+
+    doors, derr = _roster_doors(_repo_root())
+    errs.extend(derr)
+    by_provider: dict[str, list[str]] = {}
+    for seat in known:
+        provider = _SEAT_PROVIDER.get(seat, "?")
+        by_provider.setdefault(provider, []).append(seat)
+    parts = []
+    for provider, seat_ids in by_provider.items():
+        door = doors.get(provider, "no door: line in roster")
+        parts.append(f"{'+'.join(seat_ids)}={door}")
+    role_line = "  doors: " + " · ".join(parts)
+
+    return [header, rollup, role_line], errs
 
 
 def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[str], list[str]]:
@@ -264,6 +404,7 @@ def build_digest(window_h: float) -> dict:
     hbs, e3 = stale_heartbeats()
     arms, e4 = pending_arms_overdue()
     prs, e5 = merged_on_main(window_h)
+    card, e6 = arsenal_card()
     return {
         "window_h": window_h,
         "regulatory": reg,
@@ -271,7 +412,8 @@ def build_digest(window_h: float) -> dict:
         "organs": hbs,
         "pending_arms": arms,
         "main": prs,
-        "source_errors": e1 + e2 + e3 + e4 + e5,
+        "arsenal_card": card,
+        "source_errors": e1 + e2 + e3 + e4 + e5 + e6,
     }
 
 
@@ -296,6 +438,9 @@ def render(d: dict) -> str:
             out.append(f"  🕰️  {ln}")
         if d["main"]:
             out.append(f"  ⬆️  main: {n_main if n_main <= MAX_PR_LINES else f'{MAX_PR_LINES}+'} landing — " + d["main"][0])
+    # Positive arsenal card (D4): always shown, attention or not — a session
+    # needs to know what it CAN use every boot, not only when something died.
+    out.extend(d["arsenal_card"])
     for ln in d["source_errors"]:
         out.append(f"  ⚠️ receptor: {ln}")
     return "\n".join(out)
@@ -325,6 +470,18 @@ def _selftest() -> int:
         (fake_home / ".organism" / "last_seen").mkdir(parents=True)
         (fake_repo / "research" / "regulatory").mkdir(parents=True)
         (fake_repo / "scripts").mkdir(parents=True)
+        # A minimal MODEL_ROSTER.md so the door-extraction path is exercised
+        # cleanly in this fixture too — every provider _SEAT_PROVIDER names
+        # gets a door line, so a healthy world has zero "no door: line" gaps.
+        (fake_repo / "MODEL_ROSTER.md").write_text(
+            "## Anthropic — door: `claude` CLI\n"
+            "## z.ai — door: `claude-glm` shim\n"
+            "## Moonshot — door: `kimi` CLI\n"
+            "## Google — door: `agy` CLI\n"
+            "## OpenAI — door: `codex exec` CLI\n"
+            "## Local Ollama — door: `ollama run` CLI\n"
+            "## Alibaba Token Plan (TP1) — doors: DashScope\n"
+        )
         # A truly-healthy fixture world needs a real git repo with an origin/main ref,
         # otherwise merged_on_main() correctly emits a fail-visible error line and the
         # one-line-calm innocence check would be testing a SICK world.
@@ -337,9 +494,13 @@ def _selftest() -> int:
         os.environ["ORGANISM_DIGEST_HOME"] = str(fake_home)
         os.environ["ORGANISM_DIGEST_REPO"] = str(fake_repo)
         try:
-            # ---- innocence: healthy world → calm one-liner, never silence
-            (fake_home / ".organism" / "arsenal" / "last.json").write_text(json.dumps(
-                {"seats": [{"seat": "claude", "status": "LIVE"}]}))
+            arsenal_json = fake_home / ".organism" / "arsenal" / "last.json"
+            known = _known_seats()
+
+            # ---- innocence: healthy world → calm summary + full positive arsenal
+            # card, never silence, never a spurious PARTIAL/STALE marker.
+            arsenal_json.write_text(json.dumps(
+                {"seats": [{"seat": s, "status": "LIVE"} for s in known]}))
             hb = fake_home / ".organism" / "last_seen" / "mini.probe.json"
             hb.write_text(json.dumps({"status": "ok"}))
             d = build_digest(24)
@@ -347,7 +508,55 @@ def _selftest() -> int:
             expect("innocence: healthy world not flagged",
                    not d["regulatory"] and not d["seats_not_live"] and not d["organs"])
             expect("innocence: calm output is non-empty (anti-calm-liar)", bool(out.strip()))
-            expect("innocence: calm output is one line", len(out.splitlines()) == 1)
+            expect("innocence: calm summary + arsenal card, no more no less",
+                   out.splitlines()[0].startswith("📰 organismo")
+                   and len(out.splitlines()) == 1 + len(d["arsenal_card"]))
+            expect("innocence: full probe shows no PARTIAL marker",
+                   not any("PARTIAL" in ln for ln in d["arsenal_card"]))
+            expect("innocence: fresh probe shows no STALE marker",
+                   not any("STALE" in ln for ln in d["arsenal_card"]))
+            expect("innocence: arsenal card within the 12-line budget",
+                   len(d["arsenal_card"]) <= ARSENAL_CARD_MAX_LINES)
+
+            # ---- guilt: partial probe (fewer seats than the roster knows about)
+            # must NOT read as a complete all-clear.
+            arsenal_json.write_text(json.dumps(
+                {"seats": [{"seat": known[0], "status": "LIVE"}]}))
+            d = build_digest(24)
+            expect("guilt: partial probe renders the PARTIAL marker",
+                   any("PARTIAL" in ln for ln in d["arsenal_card"]))
+            expect("guilt: partial marker names a missing seat",
+                   len(known) < 2 or any(known[1] in ln for ln in d["arsenal_card"]))
+
+            # ---- guilt: a last.json older than 24h must not read as current
+            arsenal_json.write_text(json.dumps(
+                {"seats": [{"seat": s, "status": "LIVE"} for s in known]}))
+            old_report = _now() - 30 * 3600
+            os.utime(arsenal_json, (old_report, old_report))
+            d = build_digest(24)
+            expect("guilt: stale (>24h) arsenal report flagged STALE, not current",
+                   any("STALE" in ln for ln in d["arsenal_card"])
+                   and any("30h" in ln for ln in d["arsenal_card"]))
+
+            # ---- innocence: missing report never crashes, never a false all-clear
+            arsenal_json.unlink()
+            d = build_digest(24)
+            expect("innocence: missing arsenal report doesn't crash the digest",
+                   bool(d["arsenal_card"]))
+            expect("innocence: missing report is stated, not a silent all-clear",
+                   not any("PARTIAL" in ln or "✓" in ln for ln in d["arsenal_card"]))
+
+            # ---- innocence: corrupt report never crashes, never a false all-clear
+            arsenal_json.write_text("{not json")
+            d = build_digest(24)
+            expect("innocence: corrupt arsenal report doesn't crash the digest",
+                   bool(d["arsenal_card"]))
+            expect("innocence: corrupt report becomes a stated error, not silence",
+                   any("unreadable" in ln for ln in d["arsenal_card"]))
+
+            # restore a full, fresh report for the rest of this fixture run
+            arsenal_json.write_text(json.dumps(
+                {"seats": [{"seat": s, "status": "LIVE"} for s in known]}))
 
             # ---- guilt: dead seat
             (fake_home / ".organism" / "arsenal" / "last.json").write_text(json.dumps(
@@ -447,6 +656,24 @@ def _selftest() -> int:
         finally:
             os.environ.pop("ORGANISM_DIGEST_HOME", None)
             os.environ.pop("ORGANISM_DIGEST_REPO", None)
+
+    # ---- roster-drift guard: run against the REAL repo (env overrides are
+    # unset again at this point) so it fails the moment MODEL_ROSTER.md's
+    # provider headers or arsenal_probe.py's seat list actually move, not a
+    # fixture's frozen copy of either.
+    real_known = _known_seats()
+    expect("roster-drift: _SEAT_PROVIDER covers every known arsenal_probe.py seat",
+           set(_SEAT_PROVIDER.keys()) == set(real_known))
+    real_doors, real_door_errs = _roster_doors(_repo_root())
+    expect("roster-drift: MODEL_ROSTER.md was readable for the door extraction",
+           not real_door_errs)
+    expected_providers_with_doors = {p for p in _SEAT_PROVIDER.values() if p != "Local Ollama"}
+    expect("roster-drift: every provider _SEAT_PROVIDER names (except the "
+           "known Local-Ollama gap) still has a 'door(s):' header in MODEL_ROSTER.md",
+           expected_providers_with_doors <= set(real_doors.keys()))
+    expect("roster-drift: Local Ollama still has no door: line (update this "
+           "test, and the D4 report's proposed fix, the day it gains one)",
+           "Local Ollama" not in real_doors)
 
     print(f"SELFTEST {'OK' if not failures else 'FAILED'} — "
           f"{total - len(failures)}/{total} checks")
