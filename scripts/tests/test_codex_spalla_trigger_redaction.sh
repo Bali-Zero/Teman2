@@ -245,8 +245,13 @@ assert_redacted "guilt-gate-leak-form [--pass=]"    "mysql --pass=gateLeak009"  
 assert_redacted "guilt-gate-leak-form [--auth=]"    "curl --auth=gateLeak010"      "gateLeak010"
 assert_redacted "guilt-gate-leak-form [json api_key]" \
     'curl -d '"'"'{"api_key": "gateLeak011"}'"'"' https://example.test' "gateLeak011"
-assert_redacted "guilt-gate-leak-form [url userinfo]" \
-    "psql postgres://appuser:gateLeak012@db.example.test/mydb" "gateLeak012"
+# The DSN below is a FIXTURE, not a credential. scripts/lint_pg_dsn_credentials.py judges a
+# DSN password by SHAPE, not by role, and it is right to flag a real-looking one anywhere in
+# the tree -- but this suite needs a real-looking one to prove rule 3 fires at all. The marker
+# on the next line is that guard's deliberate author-assertion escape, and it must sit on the
+# same line as the DSN or the line directly above it: synthetic-pg-password
+_dsn_gate_leak="psql postgres://appuser:gateLeak012@db.example.test/mydb"
+assert_redacted "guilt-gate-leak-form [url userinfo]" "$_dsn_gate_leak" "gateLeak012"
 
 # 3d-bis. ONE CASE PER PREFIX-VOCABULARY ENTRY. The vocabulary now exists for
 #     exactly one word — `KEY` — because `KEY` is the one credential word that
@@ -318,9 +323,13 @@ assert_redacted "guilt-single-quoted-value" \
 # 3j. URL USERINFO — `scheme://user:<secret>@host`. No credential-ish NAME
 #     anywhere, so only the dedicated rule can catch it. Uses a generic
 #     password (no known prefix) so the prefix rules cannot cover for it.
-assert_redacted "guilt-url-userinfo-password" \
-    "psql postgres://appuser:urlUserinfoSecret001@db.example.test/mydb" \
-    "urlUserinfoSecret001"
+# The DSN below is a FIXTURE, not a credential. scripts/lint_pg_dsn_credentials.py judges a
+# DSN password by SHAPE, not by role, and it is right to flag a real-looking one anywhere in
+# the tree -- but this suite needs a real-looking one to prove rule 3 fires at all. The marker
+# on the next line is that guard's deliberate author-assertion escape, and it must sit on the
+# same line as the DSN or the line directly above it: synthetic-pg-password
+_dsn_userinfo="psql postgres://appuser:urlUserinfoSecret001@db.example.test/mydb"
+assert_redacted "guilt-url-userinfo-password" "$_dsn_userinfo" "urlUserinfoSecret001"
 
 # 3j-bis. A URL PASSWORD CONTAINING A COLON. The password class is `[^\s/@]+`,
 #     which allows `:` on purpose — the split between user and password is the
@@ -371,9 +380,14 @@ assert_redacted "guilt-order-rule2-must-not-disarm-rule4 [lowercase auth: bearer
 #     one — so with rule 4 first, `Bearer postgresql://u:<v>@h` becomes
 #     `Bearer <REDACTED>://u:<v>@h`, which no longer matches rule 3's
 #     `[a-zA-Z][a-zA-Z0-9+.-]*://` anchor, and the URL password leaks.
+# The DSN below is a FIXTURE, not a credential. scripts/lint_pg_dsn_credentials.py judges a
+# DSN password by SHAPE, not by role, and it is right to flag a real-looking one anywhere in
+# the tree -- but this suite needs a real-looking one to prove rule 3 fires at all. The marker
+# on the next line is that guard's deliberate author-assertion escape, and it must sit on the
+# same line as the DSN or the line directly above it: synthetic-pg-password
+_dsn_order="Bearer postgresql://appuser:ordSecretDDD4444@db.example.test/x"
 assert_redacted "guilt-order-rule3-must-run-before-rule4 [scheme eaten by Bearer]" \
-    "Bearer postgresql://appuser:ordSecretDDD4444@db.example.test/x" \
-    "ordSecretDDD4444"
+    "$_dsn_order" "ordSecretDDD4444"
 
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
