@@ -42,6 +42,8 @@ on:
       - "scripts/tests/test_harness_fable_gate.py"
       - "apps/backend-rag/backend/services/rag/agentic/prompt_builder.py"
       - "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_casual_gate_overmatch.py"
+      - ".claude/hooks/codex-spalla-trigger.sh"
+      - "scripts/tests/test_codex_spalla_trigger_redaction.sh"
       - ".github/workflows/guard-conformance.yml"
 
 concurrency:
@@ -80,7 +82,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|scripts/wr2_editorial_pregate\.py|scripts/tests/test_wr2_editorial_pregate\.py|scripts/ci/vercel_(should_build|ignore_build_step)\.sh|scripts/tests/test_vercel_should_build\.sh|apps/wa-mirror/scripts/(api_server|test_api_server_path_confinement)\.py|scripts/evidence_pack_lint\.py|scripts/tests/test_evidence_pack_lint\.py|scripts/harness_fable_gate\.py|scripts/tests/test_harness_fable_gate\.py|apps/backend-rag/backend/services/rag/agentic/prompt_builder\.py|apps/backend-rag/backend/tests/unit/services/rag/agentic/test_casual_gate_overmatch\.py|\.github/workflows/guard-conformance\.yml)'; then
+            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|scripts/wr2_editorial_pregate\.py|scripts/tests/test_wr2_editorial_pregate\.py|scripts/ci/vercel_(should_build|ignore_build_step)\.sh|scripts/tests/test_vercel_should_build\.sh|apps/wa-mirror/scripts/(api_server|test_api_server_path_confinement)\.py|scripts/evidence_pack_lint\.py|scripts/tests/test_evidence_pack_lint\.py|scripts/harness_fable_gate\.py|scripts/tests/test_harness_fable_gate\.py|apps/backend-rag/backend/services/rag/agentic/prompt_builder\.py|apps/backend-rag/backend/tests/unit/services/rag/agentic/test_casual_gate_overmatch\.py|\.claude/hooks/codex-spalla-trigger\.sh|scripts/tests/test_codex_spalla_trigger_redaction\.sh|\.github/workflows/guard-conformance\.yml)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -282,6 +284,46 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pytest scripts/tests/test_harness_fable_gate.py -q
+
+      # codex-spalla-trigger.sh (PostToolUse hook, secret hygiene — cicatrix
+      # superscar #4). Found world-readable (0644) and never redacting a
+      # logged command that can carry a credential in argv. Magnitude is
+      # stated as the conclusion that survives re-measurement, not as a count:
+      # 3 runs carrying secret material — 1 whole token plus 2
+      # truncation-clipped partials (measured by END POSITION: the two shorter
+      # runs both end EXACTLY at the 200-char truncation boundary, which is a
+      # partial cut off mid-value, not a second and third full-length secret).
+      # The raw line counts are deliberately NOT quoted here: this hook logs
+      # the greps that measure it, so they inflate on every measurement (14 at
+      # 2026-08-21T15:56Z, 24 at 20:28Z) while the 3 secret-bearing runs do
+      # not move.
+      # The suite this step runs is also the ONLY thing standing between the
+      # matcher and a repeat of its own history: it was rewritten twice, once
+      # for over-matching (a bare substring that ate 7 of 9 ordinary commands)
+      # and once for under-matching (a delimited-segment version that leaked
+      # twelve undelimited forms, and a vocabulary-bounded one that still
+      # leaked PGPASSWORD= 99 times in the live log), and once more for RULE
+      # ORDER — rule 2 ran before rule 4, so a credential-ish NAME whose
+      # unquoted value began with the word Bearer had exactly that word
+      # replaced, destroying the marker rule 4 needed and logging the token in
+      # full. 86 cases, and a 63-mutant run (62 killed,
+      # 1 EQUIVALENT and excluded, proven unkillable) over an ENUMERATED set — deliberately not the
+      # universal "every alternation" claim this comment used to carry, which
+      # the Gear-3 gate answered with five counterexamples.
+      # Same arming discipline as the steps above: this is a `.sh` corpus,
+      # invisible to scripts-tests-sweep.yml's pytest collection (it only
+      # globs `test_*.py`) even before accounting for that workflow being
+      # continue-on-error/report-only — so the registry's is_armed() would
+      # otherwise "arm" this corpus for free via the `scripts/tests/`
+      # ancestor-directory substring already present in dozens of other
+      # workflows (W81 theater), without anything ever running it. This step
+      # is the ACTUAL executor. Not python — the .sh runner needs no extra
+      # dependency, and the hook itself is bash.
+      - name: codex-spalla-trigger.sh secret-redaction guilt+innocence
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          bash scripts/tests/test_codex_spalla_trigger_redaction.sh
 
       - name: Sentinel success (no guard surfaces changed)
         if: steps.relevant.outputs.run != 'true'
