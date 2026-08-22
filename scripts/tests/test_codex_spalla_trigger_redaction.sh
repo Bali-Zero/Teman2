@@ -590,6 +590,24 @@ assert_redacted "guilt-url-userinfo-scheme-length [mongodb+srv, 11]" \
 assert_redacted "guilt-url-userinfo-scheme-length [redis, 5]" \
     "redis-cli -u redis://u:$SCHEME_V@h" "$SCHEME_V"
 
+# 4l. THE SCHEME BOUND WAS ITSELF A COVERAGE REGRESSION, and this is the case
+#     that proves the rule no longer has a boundary to fall off. Bounding the
+#     scheme to sixteen characters (4k) fixed a 2462 ms scan and silently stopped
+#     anchoring a SEVENTEEN-character scheme: a17chars://u:<secret>@h leaked where
+#     the unbounded rule had redacted it. Found by a CROSS-FAMILY seat on a
+#     differential old-vs-new hunt, after two fuzzers written by this design's
+#     author -- a fragment product and a 300,000-input character-level run -- had
+#     both reported zero regressions. Neither could reach a well-formed userinfo
+#     URL carrying an over-long scheme; that is what "a fuzz score is a statement
+#     about the GENERATOR" costs when the generator and the design share an
+#     author. Cured by anchoring on the literal :// with no scheme pattern at all,
+#     which no length can escape and which is FASTER than the bound (0.52 ms).
+LONGSCHEME_V="longScheme$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-url-userinfo-any-scheme-length [17, the old boundary+1]" \
+    "run a0123456789012345://u:$LONGSCHEME_V@h" "$LONGSCHEME_V"
+assert_redacted "guilt-url-userinfo-any-scheme-length [40]" \
+    "run aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa://u:$LONGSCHEME_V@h" "$LONGSCHEME_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near

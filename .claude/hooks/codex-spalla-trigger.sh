@@ -467,19 +467,23 @@ ANCHORS = (
     r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----",
     # 3. URL userinfo: scheme://user:<secret>@host. The whole userinfo form is
     #    the anchor, so a bare scheme:// in an innocent URL does not fire.
-    #     LENGTH-BOUNDED at sixteen characters, and that bound is a MEASURED
-    #     performance fix, not tidiness. Unbounded, [a-zA-Z][a-zA-Z0-9+.-]* retries
-    #     from every position of a long alphanumeric run and scans to the end each
-    #     time: on a 50KB command with no credential in it at all (a big
-    #     git commit -m, a heredoc) this one anchor took 2278 ms against 2.53 ms
-    #     bounded -- roughly 900x, in a hook that runs on EVERY tool call. The bound
-    #     was carried by the old MARKER and its comment; the rule itself never had
-    #     it. Precisely: the cost is not a regression against MAIN -- the hook at the
-    #     merge-base has no redactor at all -- but it is not older than this PR either,
-    #     because the whole matcher is introduced here. It was unbounded from the URL
-    #     rule first commit onward. Sixteen is far above postgresql (10) and
-    #     mongodb+srv (11) and far below anything a secret looks like.
-    r"[a-zA-Z][a-zA-Z0-9+.-]{0,15}://[^\s:/@]+:[^\s/@]+@",
+    #     ANCHORED ON :// ITSELF, with no scheme pattern at all -- and the two
+    #     rejected alternatives are why. UNBOUNDED [a-zA-Z][a-zA-Z0-9+.-]* retries
+    #     from every position of a long alphanumeric run and rescans to the end:
+    #     2462 ms on a 50KB command containing no credential, in a hook that fires
+    #     on EVERY tool call. Bounding it to sixteen fixed the time and introduced a
+    #     COVERAGE REGRESSION at the boundary -- a 17-character scheme stopped
+    #     anchoring, so a17chars://u:<secret>@h leaked where the unbounded rule had
+    #     redacted it. Found by a cross-family seat on a differential old-vs-new
+    #     hunt, AFTER two fuzzers written by this design author (a fragment product
+    #     and a 300k character-level run) had both reported zero: neither could
+    #     reach a valid userinfo URL carrying an over-long scheme, which is exactly
+    #     what "a fuzz score describes the GENERATOR" means in practice.
+    #     Anchoring on the literal :// is strictly better than both: no scheme
+    #     length can escape it, and the literal prefix keeps it linear (0.52 ms on
+    #     the same 50KB input). The scheme is not lost from the log either -- the
+    #     cut starts AT the ://, so what precedes it survives.
+    r"://[^\s:/@]+:[^\s/@]+@",
     # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the
     #    8-char floor are what keep flagbearer and Bearer abc innocent.
     r"(?i)\b(?:Bearer)\s+[A-Za-z0-9._-]{8,}",

@@ -370,9 +370,9 @@ receipts:
     seat: author-session (M5, claude-opus-5)
   - claim:
       "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
-      nothing else does (17/125); restored byte-identically, 125/125 pass (105 guilt / 15 innocence /
+      nothing else does (17/127); restored byte-identically, 127/127 pass (105 guilt / 15 innocence /
       2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
-    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 125/125; shellcheck clean on both files"
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 127/127; shellcheck clean on both files"
     exit: 0
     ts: "2026-08-22T05:25:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -402,7 +402,7 @@ receipts:
       anchored those URLs as well. They are PINS on the new sixteen-character bound, not witnesses to a
       defect, and counting them as bite cases would have been the easy way to make the proof look
       stronger than it is."
-    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 125/125"
+    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 127/127"
     exit: 0
     ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -418,6 +418,11 @@ receipts:
     exit: 0
     ts: "2026-08-22T06:40:00Z"
     seat: author-session (M5, claude-opus-5)
+  - claim: "CORRECTED 2026-08-22, and the correction is the point: this claim of 0 regressions was FALSE when first written. A CROSS-FAMILY seat (GPT-5.6, given only the two harnesses and asked to find one counterexample) found one in 18,342 targeted inputs -- a SEVENTEEN-character URL scheme, a0123456789012345://u:<secret>@h, which the unbounded old rule redacted and the newly-bounded new one did not. The bound introduced in the performance fix WAS a coverage regression, at exactly the boundary it created. Two fuzzers written by this design's author had both reported zero: a fragment product whose vocabulary held only real schemes, and a 300,000-input character-level run in which a well-formed userinfo URL with an over-long scheme is astronomically improbable. Neither could reach the shape STRUCTURALLY. That is the concrete cost of a generator and a design sharing an author, and it is the second time in this same PR that a fuzz reported clean on a class it could not emit. Cured by removing the scheme pattern entirely and anchoring on the literal :// -- no length can escape it, and it is FASTER than the bound (0.52 ms vs 1.75 ms vs 2462 ms unbounded, on the same 50KB input). Re-measured after the cure: 0 regressions over the structured product, 150,000 character-level inputs, and 236 inputs of the scheme-length family the seat used."
+    cmd: "codex exec -m gpt-5.6-sol (cross-family, harness-only prompt, invented values) -> counterexample; then re-measured on the cured hook across three generators"
+    exit: 0
+    ts: "2026-08-22T07:10:00Z"
+    seat: cross-family grader (GPT-5.6 sol) -> author-session
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
 static:
@@ -779,6 +784,12 @@ dissent:
     status: CONFIRMED
   - seat: author-session (M5), attacking its own diff after the refuter had finished
     objection: "The unbounded \\* I had just introduced was fine, but the unbounded URL SCHEME next to it was not: 2278 ms on a 50KB no-credential command, in a hook that runs on every tool call. I had copied the rule forward verbatim during the redesign and deleted, with the old MARKER, the only comment in the file that argued for bounding it. Deleting a cascade also deletes the reasoning attached to it, and that is a cost of wholesale replacement worth naming."
+    status: CONFIRMED
+  - seat: cross-family grader (GPT-5.6 sol, harnesses only, not the author, different training family)
+    objection: "The claimed no-regression property is false. a0123456789012345://u:<secret>@h -- a 17-character scheme -- is redacted by the old cascade and leaked in full by the new cut, because the performance fix bounded the scheme to sixteen. Replacing the old design is not safe on this axis."
+    status: CONFIRMED
+  - seat: author-session (M5), on its own two fuzzers
+    objection: "Both of my fuzzers reported 0 regressions on a class neither could emit. The fragment product only ever held REAL schemes; the character-level run cannot randomly assemble a well-formed userinfo URL with an over-long scheme. W100 in one line: cross-family beat same-author, and it beat it on the exact axis I had declared verified twice."
     status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
