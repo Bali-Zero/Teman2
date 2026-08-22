@@ -6,6 +6,15 @@
 # ~/.claude/hooks/, backs up any file it overwrites, and registers host_boundary
 # as a PreToolUse matcher in ~/.claude/settings.json (if not already present).
 #
+# model_routing_gate.py (added 2026-08-22) is also installed here — it is NOT
+# phase-relaxed (no _phase.py dependency; it gates the Agent tool, not
+# Bash|Edit|Write), but it had NO installer at all before this (the pair was
+# undeclared from 2026-07-14 to 2026-08-22 — see its infra/home-fork/declared-
+# pairs.json note). This script was the closest existing deploy path for a
+# repo-canon PreToolUse hook that needs no self-verifying vaccine of its own
+# (unlike worktree_isolation.py below); if a dedicated installer is ever
+# warranted, split it out then.
+#
 # worktree_isolation.py is NOT installed here — it is managed by W79 and is NOT
 # phase-relaxed (its scratch git-ops are already permitted without plan-mode;
 # relaxing its main-checkout block would be a hole — see spec §10 correction).
@@ -46,6 +55,7 @@ install_file _phase.py
 install_file orchestrate_gate.py
 install_file dispatch_nudge.py
 install_file stadio_zero_nudge.py
+install_file model_routing_gate.py
 
 echo "== registering host_boundary in settings.json =="
 python3 - <<'PY'

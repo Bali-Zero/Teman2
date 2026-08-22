@@ -417,6 +417,12 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/model_routing_gate.py",
+      "repo": "infra/claude-hooks/model_routing_gate.py",
+      "_note": "Undeclared from 2026-07-14 until 2026-08-22, so lint_home_fork.py reported clean over a live Agent-gating hook it was never looking at — W107, census the producers not the one that bit you. Installed by infra/claude-hooks/install_phase_aware.sh. Doctrine correction 2026-08-20 (Fable 5 out of the workflow, Opus 5 xhigh is the final on-disk gate) and the arsenal-routing floor (docs/mandates/2026-08-22-arsenal-routing-mandate.md D2) both ship in this same PR — the live copy under ~/.claude/hooks/ is operator[control-plane] on each machine until refreshed, so lint_home_fork.py --check will report DRIFT here on every machine until then; that is expected, not a regression.",
+      "machines": ["all"]
+    },
+    {
       "live": "~/.claude/hooks/host_boundary.py",
       "repo": "infra/claude-hooks/host_boundary.py",
       "_note": "Undeclared until 2026-08-12, and the live copy had carried 25 lines of ~/.claude carve-outs since 2026-06-16 that the repo never saw — live work never promoted, the dangerous direction of superscar #1. install_phase_aware.sh, the sanctioned deploy path, would have overwritten them and silently re-blocked the agent's own memory directory. Promoted and pinned by test_host_boundary_carveout.py.",
