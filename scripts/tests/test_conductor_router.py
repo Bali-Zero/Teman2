@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 
 from scripts.conductor.contracts import (
     AuthSurface,
@@ -1090,6 +1091,150 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
         self.assertEqual(plan.primary.role, Role.GRADER)
         self.assertEqual(plan.primary.endpoint_id, "independent-grader")
+
+    def test_deserialized_review_task_class_keeps_grader_and_family_gates(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
+        deserialized = replace(
+            task(TaskClass.REVIEW, profile.id),
+            task_class=cast(TaskClass, "review"),
+        )
+
+        eligible = plan_dispatch(
+            session=session(),
+            task=deserialized,
+            candidates=(
+                replace(
+                    live_profile_candidate(profile),
+                    endpoint_id="independent-grader",
+                    family="independent-family",
+                ),
+            ),
+            policy=live_policy,
+            generator_family="gpt-5.6",
+        )
+        same_family = plan_dispatch(
+            session=session(),
+            task=deserialized,
+            candidates=(
+                replace(
+                    live_profile_candidate(profile),
+                    endpoint_id="same-family-grader",
+                    family="gpt-5.6",
+                ),
+            ),
+            policy=live_policy,
+            generator_family="gpt-5.6",
+        )
+
+        self.assertEqual(eligible.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(eligible.task.task_class, TaskClass.REVIEW)
+        self.assertEqual(eligible.primary.role, Role.GRADER)
+        self.assertTrue(eligible.separate_builder_session_required)
+        self.assertEqual(same_family.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            same_family.rejections[0].reason_codes, ("generator_family_conflict",)
+        )
+
+    def test_deserialized_architecture_task_class_keeps_architect_gate(self) -> None:
+        profile, live_policy = live_non_mutating_policy("architecture")
+        deserialized = replace(
+            task(TaskClass.ARCHITECTURE, profile.id),
+            task_class=cast(TaskClass, "architecture"),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=deserialized,
+            candidates=(live_profile_candidate(profile),),
+            policy=live_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.task.task_class, TaskClass.ARCHITECTURE)
+        self.assertEqual(plan.primary.role, Role.ARCHITECT)
+        self.assertTrue(plan.separate_builder_session_required)
+
+    def test_deserialized_pii_local_task_class_keeps_local_pii_gate(self) -> None:
+        profile, live_policy = live_non_mutating_policy("pii_local")
+        deserialized = replace(
+            task(TaskClass.PII_LOCAL, profile.id),
+            task_class=cast(TaskClass, "pii_local"),
+        )
+        non_local = candidate(
+            "non-local",
+            model="cloud-model",
+            family="cloud-family",
+            score=None,
+            capabilities=("language", "reasoning_control"),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=deserialized,
+            candidates=(non_local, live_profile_candidate(profile)),
+            policy=live_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertEqual(plan.task.task_class, TaskClass.PII_LOCAL)
+        self.assertEqual(plan.primary.endpoint_id, f"eligible-{profile.id}")
+        self.assertTrue(plan.separate_builder_session_required)
+        self.assertIn("privacy_ineligible", plan.rejections[0].reason_codes)
+        self.assertIn("missing_capability:local_only", plan.rejections[0].reason_codes)
+        self.assertIn(
+            "missing_capability:pii_safe_local", plan.rejections[0].reason_codes
+        )
+
+    def test_invalid_deserialized_task_class_abstains_before_policy_branches(
+        self,
+    ) -> None:
+        invalid = replace(
+            task(TaskClass.REVIEW, "review"),
+            task_class=cast(TaskClass, "unrecognized"),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=invalid,
+            candidates=(),
+            policy=policy(),
+            generator_family="gpt-5.6",
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "task_class_invalid")
+
+    def test_every_deserialized_task_class_is_canonicalized_before_routing(
+        self,
+    ) -> None:
+        for task_class in TaskClass:
+            with self.subTest(task_class=task_class):
+                profile, live_policy = live_profile_policy(task_class.value)
+                deserialized = replace(
+                    task(task_class, profile.id),
+                    task_class=cast(TaskClass, task_class.value),
+                )
+                plan = plan_dispatch(
+                    session=session(),
+                    task=deserialized,
+                    candidates=()
+                    if task_class is TaskClass.READ_ONLY
+                    else (live_profile_candidate(profile),),
+                    policy=live_policy,
+                    generator_family=(
+                        "gpt-5.6" if task_class is TaskClass.REVIEW else None
+                    ),
+                )
+
+                self.assertIs(plan.task.task_class, task_class)
+                self.assertEqual(
+                    plan.decision,
+                    (
+                        Decision.ALLOW
+                        if task_class is TaskClass.READ_ONLY
+                        else Decision.DELEGATE_REQUIRED
+                    ),
+                )
 
     def test_review_rejects_grader_from_generator_family(self) -> None:
         profile, live_policy = live_non_mutating_policy("review")

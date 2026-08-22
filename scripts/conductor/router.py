@@ -6,6 +6,7 @@ probes an endpoint, launches a worker, starts a daemon, or retains state.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime, time, timedelta, timezone
 import logging
 import re
@@ -69,6 +70,24 @@ def plan_dispatch(
     task_profile_hash = policy.task_profile_hashes.get(
         task.task_profile_id, "unavailable"
     )
+
+    # TaskIntent is deliberately a small frozen dataclass rather than a parsing
+    # framework object.  Its annotation therefore cannot prevent a deserialized
+    # JSON string from arriving here at runtime.  Every branch below relies on
+    # identity comparisons against TaskClass, so canonicalize once at the
+    # boundary or abstain before any class-specific control can be skipped.
+    normalized_task = _normalize_task_class(task)
+    if normalized_task is None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason="task_class_invalid",
+        )
+    task = normalized_task
     generator_family = _normalized_family(generator_family)
 
     if session.role is not Role.CONDUCTOR:
@@ -296,6 +315,25 @@ def _profile_for(task: TaskIntent, policy: RoutingPolicy) -> TaskProfile | None:
         if profile.id == task.task_profile_id:
             return profile
     return None
+
+
+def _normalize_task_class(task: TaskIntent) -> TaskIntent | None:
+    """Return a TaskIntent with a canonical TaskClass, or fail closed.
+
+    Registry and CLI deserializers may supply one of the exact string values
+    declared by TaskClass.  Accept those values, but reject every other runtime
+    shape rather than silently falling through the identity-based policy gates.
+    """
+    raw_task_class = task.task_class
+    if isinstance(raw_task_class, TaskClass):
+        return task
+    if not isinstance(raw_task_class, str):
+        return None
+    try:
+        canonical_task_class = TaskClass(raw_task_class)
+    except ValueError:
+        return None
+    return replace(task, task_class=canonical_task_class)
 
 
 def _task_profile_binding_rejection(
