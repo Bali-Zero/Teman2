@@ -478,6 +478,71 @@ assert_redacted "guilt-fourth-tail-eats-rule2-NAME [rule 4 tail]" \
 assert_redacted "guilt-fourth-tail-eats-rule2-NAME [shaped command]" \
     "deploy --pat=ghp_BBBBBBBB:PASSWORD: $FOURTH_V" "$FOURTH_V"
 
+# 4f. THE FIFTH DIRECTION, found by the gate on the cure for 4e -- and the one
+#     that ended the cascade architecture instead of extending it. TEMPERED_VALUE
+#     tempered only its BARE branch; a comment asserted the two QUOTED branches
+#     needed no tempering because they consume a COMPLETE delimited value, so
+#     "whatever marker they swallow they also redact". That reasoning was wrong
+#     in one specific way: the marker is swallowed INSIDE the quotes, and the
+#     value it introduces sits BEHIND the closing quote, untouched. It reproduced
+#     on all four marker rules at once, single- and double-quoted alike:
+#         ghp_<8+>="junk TOKEN=" <secret>  ->  gh_<REDACTED> <secret>
+#     Five directions of one defect was the signal that the defect was the
+#     ARCHITECTURE: a consume-and-rewrite cascade in which any rule can blind a
+#     later one, patched by a tempering list that must enumerate every anchor.
+#     The cure is structural (see the hook comment): every anchor is searched
+#     against the ORIGINAL string, nothing is consumed, and the cut runs from the
+#     EARLIEST anchor to end-of-string. These five cases are kept as the
+#     regression witness for the direction that forced it.
+FIFTH_V="fifthDir$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-fifth-quoted-tail-strands-value [ghp + double quotes]" \
+    "ghp_BBBBBBBB=\"junk TOKEN=\" $FIFTH_V" "$FIFTH_V"
+assert_redacted "guilt-fifth-quoted-tail-strands-value [ghp + single quotes]" \
+    "ghp_BBBBBBBB='junk TOKEN=' $FIFTH_V" "$FIFTH_V"
+assert_redacted "guilt-fifth-quoted-tail-strands-value [sk-ant + PASSWORD]" \
+    "sk-ant-AAAAAAAA=\"x PASSWORD=\" $FIFTH_V" "$FIFTH_V"
+assert_redacted "guilt-fifth-quoted-tail-strands-value [github_pat + API_KEY]" \
+    "github_pat_CCCCCCCC=\"x API_KEY=\" $FIFTH_V" "$FIFTH_V"
+assert_redacted "guilt-fifth-quoted-tail-strands-value [rule 4 tail]" \
+    "Bearer AAAAAAAAAA=\"x AUTH_TOKEN=\" $FIFTH_V" "$FIFTH_V"
+
+# 4g. THE BACKSLASH-ESCAPED QUOTE, found by the same gate as 4f and DEFERRED at
+#     the time as its own class: VALUE quoted branches are [^"]* / [^\x27]*,
+#     which stop at an escaped quote instead of stepping over it, so
+#     TOKEN="abc\" <secret>" logged the secret beside a <REDACTED> that had
+#     fired for its NAME. It needed no separate cure in the end. Under the
+#     earliest-anchor cut, VALUE no longer has to find where a value ENDS -- it
+#     only has to prove an assignment BEGINS -- so where its quoted branch stops
+#     stopped mattering. Kept as cases because "cured as a side effect" is a
+#     claim about behaviour and behaviour is what regresses.
+ESCQ_V="escQuote$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-backslash-escaped-quote [double, TOKEN]" \
+    "TOKEN=\"abc\\\" $ESCQ_V\"" "$ESCQ_V"
+assert_redacted "guilt-backslash-escaped-quote [single, PASSWORD]" \
+    "PASSWORD='abc\\' $ESCQ_V'" "$ESCQ_V"
+assert_redacted "guilt-backslash-escaped-quote [double, API_KEY, trailing text]" \
+    "API_KEY=\"x\\\" $ESCQ_V y\"" "$ESCQ_V"
+assert_redacted "guilt-backslash-escaped-quote [prefix rule tail]" \
+    "ghp_BBBBBBBB=\"a\\\" TOKEN=\" $ESCQ_V" "$ESCQ_V"
+
+# 4h. ANCHOR RECALL, not tail containment — a DIFFERENT disease from 4a-4f and the
+#     one case the earliest-anchor cut could not fix on its own. A JSON body written
+#     inside a double-quoted shell arg reaches the hook as {\"api_key\": <v>}: the
+#     separator is preceded by a BACKSLASH-escaped quote, the NAME+separator anchor
+#     therefore never matches, and NOTHING fires — the line was logged unchanged,
+#     byte for byte. 4a-4f all leaked a value BEHIND a recognised anchor; a cut that
+#     runs to end-of-string is no defence where nothing anchors at all. Cured by
+#     allowing an optional backslash before the separator quote. The lesson is worth
+#     more than the regex: soundness of the CUT and recall of the ANCHOR are separate
+#     obligations, and proving the first says nothing about the second.
+JSONQ_V="jsonQuote$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-anchor-recall-json-in-double-quoted-arg [api_key]" \
+    "curl -d \"{\\\"api_key\\\": \\\"$JSONQ_V\\\"}\"" "$JSONQ_V"
+assert_redacted "guilt-anchor-recall-json-in-double-quoted-arg [access_token]" \
+    "curl -d \"{\\\"access_token\\\": \\\"$JSONQ_V\\\"}\"" "$JSONQ_V"
+assert_redacted "guilt-anchor-recall-escaped-separator-no-quote" \
+    "run api_key\\:$JSONQ_V" "$JSONQ_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near

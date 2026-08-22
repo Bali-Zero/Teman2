@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+1970/-320 (net +1650) vs MERGE-BASE 062269dc9; base was 64011571b until origin/main was merged in on 2026-08-22, after which a fixed base would have counted main"
+  net_lines: "+2037/-321 (net +1716) vs MERGE-BASE 062269dc9, measured at the tree that carries this pack"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
@@ -253,12 +253,84 @@ receipts:
     ts: "2026-08-22T01:51:04Z"
     seat: author-session (M5, claude-opus-5)
   - claim:
-      "The deferred backslash-escape class now has a PENDING-ARMS row with an owner, not only a
-      code comment -- the gate own condition for accepting the deferral. Parsed by the ledger
-      reporter as TECH-DEBT / owner session, and --strict-phantom exits 0."
+      "SUPERSEDED WITHIN THIS PR, recorded rather than deleted because the reasoning it rests on
+      is the useful part: this receipt claimed the backslash-escape class was DEFERRED behind a
+      PENDING-ARMS row. It is no longer deferred -- it is cured here, and its ledger row is now a
+      closed one. The deferral was argued on blast radius (touching rule 2 core plus every rule
+      ASSIGN_TAIL), and that argument expired when the cascade architecture was deleted: there is
+      no ASSIGN_TAIL and no rule ORDER left to disturb. See the receipts below for the measured
+      cure and for the half of the class that did NOT come free."
     cmd: "python scripts/pending_arms_report.py --json | check the row parses; python scripts/pending_arms_report.py --strict-phantom"
     exit: 0
     ts: "2026-08-22T01:51:04Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The consume-and-rewrite cascade is DELETED, not patched a sixth time. Four sequential re.sub
+      calls, the load-bearing rule ORDER, and the whole tempering apparatus (MARKER, TEMPERED_VALUE,
+      ASSIGN_TAIL) are gone; each anchor is searched independently against the ORIGINAL string and the
+      cut runs from the EARLIEST anchor to end-of-string. No rule can blind a later one because no rule
+      consumes anything, and no text after a credential anchor reaches disk."
+    cmd: >-
+      Replaced the python redaction block in .claude/hooks/codex-spalla-trigger.sh; the block shrank
+      and the four rules became a six-entry ANCHORS tuple plus a two-line cut.
+    exit: 0
+    ts: "2026-08-22T04:10:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The FIFTH direction reproduced on all four marker rules before the change and on none after.
+      Mechanism: TEMPERED_VALUE tempered only its bare branch, and the two QUOTED branches swallow a
+      marker INSIDE the quotes while its value sits BEHIND the closing quote -- so the comment asserting
+      they were safe by construction was false."
+    cmd: >-
+      Replayed ghp_<8+>=\"junk TOKEN=\" <invented-secret> and its single-quoted, sk-ant, github_pat and
+      Bearer variants through harnesses extracted from the pre- and post-change hook. All 7 leaked
+      before, none after. Values invented; nothing read from ~/logs.
+    exit: 0
+    ts: "2026-08-22T04:12:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "ANCHOR RECALL is a separate obligation from tail containment, and the architecture change did NOT
+      cover it. A JSON body inside a double-quoted shell arg reaches the hook as {\\\"api_key\\\": <v>}:
+      the separator is preceded by a backslash-escaped quote, so NO anchor matched and the line was
+      logged unchanged BYTE FOR BYTE -- the earliest-anchor cut is no defence where nothing anchors.
+      Fixed explicitly by allowing an optional backslash before the separator quote."
+    cmd: >-
+      Measured the three shapes the deferred ledger row named, on both harnesses: two were cured by the
+      architecture change alone, the JSON one still leaked and needed the anchor fix.
+    exit: 0
+    ts: "2026-08-22T04:20:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "BITE PROOF, guilt not just innocence: the 12 new cases fail on the PRE-CHANGE hook and nothing
+      else does, so they witness the specific defects and the redesign loses no prior coverage."
+    cmd: "swap in the pre-change hook -> 12/117 FAIL (5 tail-containment, 4 backslash, 3 anchor-recall); restore (cmp -s byte-identical) -> PASS 117/117"
+    exit: 0
+    ts: "2026-08-22T04:35:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "Corpus widened 105 -> 117 (100 guilt / 15 innocence / 2 mode). Innocence was NOT relaxed to make
+      the redesign pass: all 15 cases are unchanged and still pass, which matters because a cut running
+      to end-of-string is the kind of change that buys soundness with over-match."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T04:36:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "Static gates clean after the redesign: shellcheck on both files, guard-conformance 0 violations,
+      prettier clean on registry.json (W112 -- prettier rewrites its own scar records if not checked)."
+    cmd: "shellcheck .claude/hooks/codex-spalla-trigger.sh scripts/tests/test_codex_spalla_trigger_redaction.sh; python infra/guard-conformance/check_guard_conformance.py; npx prettier --check infra/guard-conformance/registry.json"
+    exit: 0
+    ts: "2026-08-22T04:40:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "A SECOND live invocation path exists and this PR does not reach it: .codex/hooks.json registers a
+      hardcoded absolute path to an UNTRACKED copy, byte-identical to the stale unredacted hook.
+      lint_home_fork.py --discover reports 0 undeclared payloads against it -- the fork lives inside the
+      working tree and is merely untracked, a shape that lint does not look for. Ledgered as an OPEN row,
+      deliberately not fixed here."
+    cmd: "grep codex-spalla .claude/settings.json .codex/hooks.json; git ls-files --error-unmatch .codex/hooks/codex-spalla-trigger.sh (-> not known to git); shasum -a 256 on both (-> identical); python scripts/lint_home_fork.py --discover"
+    exit: 0
+    ts: "2026-08-22T04:45:00Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -592,6 +664,18 @@ dissent:
       PENDING-ARMS line with an owner, not only a comment, because a named hole with no ledger entry
       is how a residual becomes permanent. Done in this diff."
     status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "THE FIFTH DIRECTION: TEMPERED_VALUE tempers only its bare branch. Its two QUOTED branches are untempered, and the comment asserting they are safe by construction -- because they consume a COMPLETE delimited value -- is false: the marker is swallowed INSIDE the quotes and the value it introduces sits BEHIND the closing quote. Do not write a sixth patch; the architecture is the defect."
+    status: CONFIRMED
+  - seat: session (m5), on its own five cures
+    objection: "Five directions of one defect is evidence about the DESIGN, not about the five patches. Each cure was verified and each was followed by the next direction of the same disease, which is the signature of a blacklist that must enumerate every structure a secret can hide in. Acting on the gate's advice, the cascade was deleted rather than extended."
+    status: CONFIRMED
+  - seat: session (m5), against its own redesign
+    objection: "COUNTER-ARGUMENT recorded because it is real and was overridden knowingly: a cut to end-of-string is a BIGGER blast radius than a sixth patch, and it costs the diagnostic tail after any early credential. Overridden on two measured grounds -- the 15 innocence cases are unchanged and still pass, so the over-match risk did not materialise on the corpus that exists; and the target field has NO programmatic consumer, so the tail is diagnostic-only. Both are stated as risks below rather than dismissed."
+    status: CONFIRMED
+  - seat: session (m5), attacking its own redesign before shipping
+    objection: "The redesign does NOT close the class the deferred ledger row named. Measured on the three shapes that row cites: two die with the cascade, but a JSON body inside a double-quoted shell arg still leaked with NOTHING firing at all -- the line unchanged byte for byte. Soundness of the CUT and recall of the ANCHOR are separate obligations; the first proves nothing about the second. Fixed explicitly, not by side effect."
+    status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
     finds the field only in evidence packs and research/operations/2026-08-09-harness-v2-teman2.md:155
@@ -634,8 +718,30 @@ residual_risks:
     not a property this shape of matcher can be argued into, only measured toward. MARKER is the
     single place where that completeness lives: any future rule MUST add its anchor there in the
     same diff."
+  - "DECLARED AND DELIBERATE COST of the earliest-anchor cut: a command whose credential appears early
+    loses the diagnostic tail that follows it -- `TOKEN=x && git push origin main` now logs as
+    `<REDACTED>`, where the old cascade kept the `&& git push origin main`. Affordable HERE and nowhere
+    else in the repo, because the target field has no programmatic consumer: the hook's own routing
+    reads TARGET in memory (lines 91-112) and never reads the log back. If anything ever starts parsing
+    this log, this trade must be re-opened before that consumer is written, not after."
+  - "ANCHOR RECALL is bounded by the NAME vocabulary and the four prefix shapes, and the earliest-anchor
+    cut does NOT improve it -- it only guarantees that once something anchors, nothing behind it
+    survives. Every under-match listed above therefore survives the redesign UNCHANGED. This is stated
+    explicitly because the architecture change is easy to over-read as a general strengthening: it
+    retired ONE class (a value stranded behind a swallowed anchor) and left recall exactly where it was,
+    except for the backslash-separator case fixed here on purpose."
+  - "A SECOND live invocation path is NOT fixed by merging this PR: .codex/hooks.json hardcodes an
+    absolute path to an UNTRACKED copy of the hook, byte-identical to the stale unredacted version, and
+    lint_home_fork.py --discover reports 0 undeclared payloads against it. Superscar #1 with the twist
+    that the fork is inside the working tree and merely untracked. Ledgered as an OPEN PENDING-ARMS row
+    with an owner; kept out of this diff because widening that lint gates other people's PRs and belongs
+    in its own blast radius. Until it is done, PROVE-LIVE for this PR must cover BOTH paths by hand."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 16067
+# ESTIMATE, not a measurement, and labelled so on purpose: 72,970 bytes / 4.0 chars-per-token.
+# No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
+# this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
+# documentation. The previous value, 16067, was left behind by later edits to this pack.
+size_tokens: 18200

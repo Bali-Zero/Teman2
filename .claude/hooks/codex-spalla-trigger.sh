@@ -395,14 +395,49 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 TARGET_JSON="$(printf '%s' "$TARGET" | python3 -c '
 import sys, re, json
 s = sys.stdin.read()
-# A VALUE is what sits on the right of a credential assignment: a
-# double-quoted run, a single-quoted run, or a bare run up to whitespace.
-# Defined FIRST because three different rules need it -- see ASSIGN_TAIL.
-# Rule 2 NAME shapes are defined HERE, far above the rule that uses them,
-# because MARKER needs them: a tail that may not cross rules 1/3/4 anchors
-# but MAY cross rule 2 NAME just moves the same defect one rule over --
-# which is the FOURTH direction a gate found after the third was cured.
-# See the comment on rule 2 itself for what each shape catches and misses.
+# WHY THIS IS A SINGLE EARLIEST-ANCHOR CUT AND NOT A CASCADE OF REWRITES.
+# The four credential shapes below used to be four sequential re.sub calls, each
+# consuming its match. That architecture leaked FIVE times, and every leak was
+# the same defect wearing a different hat: one rule consumed text containing a
+# LATER rule anchor, so the later rule never saw its own trigger and the value
+# behind it stayed in the clear. Five cures were attempted -- reordering the
+# rules, adding an assignment tail, tempering that tail against a marker list,
+# widening the marker list to include rule 2 NAME -- and each cure was followed
+# by a gate finding the next direction of the same defect. The fifth direction
+# killed the approach: the tail two QUOTED branches consume a COMPLETE delimited
+# value, and a comment here asserted that this made them safe because whatever
+# marker they swallow they also redact. That was false. The marker is inside the
+# quotes; its VALUE is behind the closing quote. Measured, all four rules:
+#     ghp_<8+>="junk TOKEN=" <secret>   ->   gh_<REDACTED> <secret>
+# The lesson is not that the sixth patch was missing. It is that a blacklist
+# which must enumerate every structure a secret can hide in cannot be argued
+# sound, and every added rule adds a surface for the next one to swallow.
+#
+# So: nothing is rewritten in place and nothing is consumed. Each anchor is
+# searched independently against the ORIGINAL string, and everything from the
+# EARLIEST anchor to the end of the string is replaced by one <REDACTED>. No
+# text after a credential anchor ever reaches disk, so the class dies by
+# construction rather than by enumeration -- there is no "behind" left for a
+# value to survive in. The tempering apparatus this replaced (MARKER,
+# TEMPERED_VALUE, ASSIGN_TAIL and the load-bearing rule ORDER) is gone with it.
+#
+# The COST is real and deliberate: a command whose credential sits early loses
+# the diagnostic tail that follows it. This is affordable here and nowhere else
+# in the repo -- the target field has NO programmatic consumer (the hook own
+# routing at the top of this file reads TARGET in memory and never the log),
+# so the field is diagnostic-only, and the prefix that survives is the part
+# that says WHICH command ran.
+#
+# The anchors are the rules OWN patterns, at their own boundaries and length
+# floors -- deliberately NOT the old wide MARKER list, which existed to be
+# conservative as a lookahead and is too wide as a trigger: its bearer
+# alternative carried no left word-boundary, so it would fire on flagbearer and
+# on a Bearer below the 8-char floor, both of which are innocence cases in
+# scripts/tests/test_codex_spalla_trigger_redaction.sh. A rule that does not
+# fire today contributes no anchor and therefore changes no innocent line.
+# (No apostrophes and no backticks anywhere in this single-quoted python block:
+# an apostrophe would terminate the shell string, and shellcheck reads a
+# backtick as command substitution and raises SC2016. Use \x27.)
 WIDE = r"(?:TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)"
 PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
        r"|REFRESH|OAUTH|BEARER|MY|ID|TOKEN|SECRET|PASSWORD|PASSWD"
@@ -413,73 +448,37 @@ NAME = (r"(?<![A-Za-z0-9.])(?:"
         + r"|" + PRE + r"?KEY" + TAIL     # b. KEY: bounded prefix, or none at all
         + r"|(?:PASS|PWD|AUTH)"           # c. bare generic name
         + r")")
+# A VALUE is what sits on the right of a credential assignment: a double-quoted
+# run, a single-quoted run, or a bare run up to whitespace. It no longer has to
+# be tempered against anything -- it only has to prove an assignment EXISTS, so
+# that rule 2 fires on a real assignment and stays silent on jq .key or
+# --keyfile. Where the value ENDS is now irrelevant: the cut runs to end-of-string.
 VALUE = r"(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)"
-# MARKER is EVERY anchor a later rule needs to be able to see -- and the word
-# EVERY is load-bearing, not decorative. The first version of this list held
-# only the anchors of rules 1, 3 and 4 and omitted the NAME of rule 2, the rule
-# that does the most work; a tail could then still eat TOKEN: or PASSWORD=
-# and leave the value behind it in the clear. That was the FOURTH direction of
-# the same defect, found by a gate after the third was cured, and it is why the
-# NAME alternative below is here. The shape needs a separator with whitespace
-# (github_pat_<8+>:TOKEN: <v>): the bare run stops at the space, so it
-# consumes prefix + sep + NAME + sep and drops the value outside its own match.
-# The URL scheme is LENGTH-BOUNDED on purpose: an unbounded
-# [a-zA-Z][a-zA-Z0-9+.-]*:// matches from ANY letter that eventually reaches
-# a ://, so a plain value glued to a URL looks like a marker at its FIRST
-# character and the guard refuses the whole value. {0,15} after the first
-# character means a scheme of up to SIXTEEN, well above postgresql (10) and
-# far below a secret. (An earlier revision of this comment said "15", off by
-# the anchor character -- a number in a comment that did not match its regex.)
-MARKER = (r"(?:(?i:bearer)\b|sk-ant-|gh[pousr]_|github_pat_"
-          r"|[a-zA-Z][a-zA-Z0-9+.-]{0,15}://"
-          r"|(?i:" + NAME + r")[\"\x27]?\s*[=:])")
-# TEMPERED_VALUE is VALUE whose BARE branch may not cross a position where a
-# MARKER starts. The two QUOTED branches are left alone deliberately: they
-# consume a COMPLETE delimited value, so whatever marker they swallow they
-# also redact -- nothing can leak out from behind them. Only the bare branch
-# runs to the next whitespace and can therefore stop mid-structure.
-TEMPERED_VALUE = (r"(?:\"[^\"]*\"|\x27[^\x27]*\x27"
-                  r"|(?:(?!" + MARKER + r")[^\s\"\x27])+)")
-# EVERY marker-anchored rule must be able to swallow an assignment that
-# FOLLOWS its marker, or it destroys the NAME rule 2 needs and leaves the
-# value in the clear (see ON RULE INTERACTION above -- this is the MIRROR of
-# the bug the rule order fixes, found by the Gear-3 gate on the fix itself).
-# It uses TEMPERED_VALUE, not VALUE: a tail that could cross a later marker
-# just moves the defect one layer down, which is exactly what the FIRST
-# version of this tail did.
-ASSIGN_TAIL = r"(?:[\"\x27]?\s*[=:]\s*" + TEMPERED_VALUE + r")?"
-# 1. Known credential shapes, by their own prefixes. Each carries ASSIGN_TAIL
-#    because the prefix can itself be the NAME: echo ghp_MYTOKENS=<v> used
-#    to log as gh_<REDACTED>=<v> -- marker consumed, value intact.
-#    (No backticks anywhere inside this single-quoted python block: shellcheck
-#    reads them as command substitution and raises SC2016.)
-s = re.sub(r"sk-ant-[A-Za-z0-9_-]{8,}" + ASSIGN_TAIL, "sk-ant-<REDACTED>", s)
-s = re.sub(r"gh[pousr]_[A-Za-z0-9]{8,}" + ASSIGN_TAIL, "gh_<REDACTED>", s)
-s = re.sub(r"github_pat_[A-Za-z0-9_]{8,}" + ASSIGN_TAIL, "github_pat_<REDACTED>", s)
-# 3. URL userinfo: scheme://user:<secret>@host -- password segment only.
-#    Runs BEFORE rule 4: rule 4 would otherwise eat an 8+ char scheme name and
-#    leave a bare ://user:<secret>@ with no scheme for this rule to anchor on.
-s = re.sub(r"([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)[^\s/@]+@", r"\1<REDACTED>@", s)
-# 4. Bearer, which carries no keyword in a NAME at all. Runs BEFORE rule 2:
-#    rule 2 would otherwise rewrite a header X-Auth: Bearer <v> into
-#    X-Auth=<REDACTED> <v> and leave the token in the clear (see ON RULE
-#    INTERACTION above). The dedicated Authorization-anchored alternation
-#    that used to sit here was MEASURED DEAD and deleted -- see the same block.
-s = re.sub(
-    r"(?i)\b(Bearer)\s+[A-Za-z0-9._-]{8,}" + ASSIGN_TAIL,
-    r"\1 <REDACTED>",
-    s,
+ANCHORS = (
+    # 1. Known credential shapes, by their own prefixes.
+    r"sk-ant-[A-Za-z0-9_-]{8,}",
+    r"gh[pousr]_[A-Za-z0-9]{8,}",
+    r"github_pat_[A-Za-z0-9_]{8,}",
+    # 3. URL userinfo: scheme://user:<secret>@host. The whole userinfo form is
+    #    the anchor, so a bare scheme:// in an innocent URL does not fire.
+    r"[a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:[^\s/@]+@",
+    # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the
+    #    8-char floor are what keep flagbearer and Bearer abc innocent.
+    r"(?i)\b(?:Bearer)\s+[A-Za-z0-9._-]{8,}",
+    # 2. Anything ASSIGNED to a credential-ish NAME.
+    # The \\? before the optional quote is NOT decoration: a JSON body written
+    # inside a double-quoted shell arg reaches this hook as api_key\": <v>, so the
+    # separator is preceded by a BACKSLASH-escaped quote. Without it NO anchor fires
+    # at all and the line is logged unchanged, byte for byte -- measured. That is a
+    # DIFFERENT disease from the five tail directions above: those leaked a value
+    # BEHIND a recognised anchor, this one fails to RECOGNISE the anchor. The
+    # earliest-anchor cut cannot help where nothing anchors, so anchor RECALL is its
+    # own obligation and does not follow from the cut being sound.
+    r"(?i)" + NAME + r"\\?[\"\x27]?\s*[=:]\s*" + VALUE,
 )
-# 2. Anything ASSIGNED to a credential-ish NAME (see the comment above for the
-#    three name shapes, the KEY asymmetry, and what this does NOT catch). LAST
-#    of the four, because it is the only DESTRUCTIVE rewrite: it consumes the
-#    whole value and normalises the separator, so it destroys the markers the
-#    other rules anchor on.
-s = re.sub(
-    r"(?i)(" + NAME + r")[\"\x27]?\s*[=:]\s*" + VALUE,
-    lambda m: m.group(1) + "=<REDACTED>",
-    s,
-)
+_starts = [m.start() for m in (re.search(p, s) for p in ANCHORS) if m]
+if _starts:
+    s = s[:min(_starts)] + "<REDACTED>"
 print(json.dumps(s[:200]))
 ' 2>/dev/null || echo '""')"
 {
