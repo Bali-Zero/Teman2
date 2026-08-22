@@ -370,9 +370,9 @@ receipts:
     seat: author-session (M5, claude-opus-5)
   - claim:
       "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
-      nothing else does (24/148); restored byte-identically, 148/148 pass (105 guilt / 15 innocence /
+      nothing else does (24/148); restored byte-identically, 149/149 pass (105 guilt / 15 innocence /
       2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
-    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 148/148; shellcheck clean on both files"
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 149/149; shellcheck clean on both files"
     exit: 0
     ts: "2026-08-22T05:25:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -402,7 +402,7 @@ receipts:
       anchored those URLs as well. They are PINS on the new sixteen-character bound, not witnesses to a
       defect, and counting them as bite cases would have been the easy way to make the proof look
       stronger than it is."
-    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 148/148"
+    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 149/149"
     exit: 0
     ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -443,7 +443,7 @@ receipts:
       added to pin them (the ordinary English word Basic in a commit message, a Basic payload below the
       base64 length floor, and a URL whose path merely contains a colon and an at-sign). A guard added
       without an innocence case is exactly the shape this corpus exists to refuse."
-    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 148 cases (120 guilt / 26 innocence / 2 mode); bite proof 24/148 on the pre-change hook"
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 149 cases (120 guilt / 26 innocence / 3 mode); bite proof 24/148 on the pre-change hook"
     exit: 0
     ts: "2026-08-22T07:50:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -552,9 +552,37 @@ receipts:
       "Corpus 144 -> 148 (120 guilt / 26 innocence / 2 mode). ALL FOUR cases added here fail against the
       immediately preceding commit -- two guilt and two innocence -- so every one of them is a witness
       rather than a pin. 24/148 fail against the pre-PR hook."
-    cmd: "swap in 04806f564 -> 4 FAIL; swap in the pre-PR hook -> 24 FAIL; restore byte-identical -> PASS 148/148"
+    cmd: "swap in 04806f564 -> 4 FAIL; swap in the pre-PR hook -> 24 FAIL; restore byte-identical -> PASS 149/149"
     exit: 0
     ts: "2026-08-22T09:35:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "THE WORST DEFECT IN THIS PR, and I shipped it: the Basic anchor carried [A-Za-z-]* in front of
+      the literal Authorization: (to admit Proxy-Authorization), and an unbounded character class in
+      front of a literal makes the engine retry from every position of a long run. Cost on a command
+      containing NO credential at all: 18,027 ms at 50KB and 346,045 ms -- FIVE AND A HALF MINUTES --
+      at 200KB, in a hook that fires on every PostToolUse event. It would have stalled every tool call
+      carrying a large heredoc or commit message. Cured by deleting the prefix: it was never needed,
+      because Proxy-Authorization: CONTAINS Authorization:, so the bare literal matches it anyway and
+      the cut starts at the match so Proxy- survives in the log. 18,027 ms -> 1.36 ms, same 3/3 guilt,
+      same 0 false positives."
+    cmd: "profiled each anchor separately against 'git commit -m ' + 'a'*20000; then scored three candidate forms for time, guilt and false positives"
+    exit: 0
+    ts: "2026-08-22T10:05:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "THE SAME TRAP SHIPPED TWICE, four commits apart, in two different rules -- and the second time,
+      a comment in this very file already forbade it, written by the same session that then wrote the
+      violation. That is the argument for executable guards over documentation, made against myself
+      rather than quoted from doctrine. The corpus now carries a WALL-CLOCK case: 200KB of
+      credential-free command must redact in under 10 seconds. Measured at 0.27s after the cure; the
+      previous commit takes 346s. The budget is deliberately loose because this is a CATASTROPHE
+      detector, not a benchmark -- a pattern that regresses this way does not get 3x slower, it gets
+      four orders of magnitude slower, and a tight budget on a noisy CI runner would be a flaky test,
+      which is how guards get disabled."
+    cmd: "new case wallclock-200kb-no-credential-under-10s in scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T10:10:00Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -947,6 +975,9 @@ dissent:
     status: CONFIRMED
   - seat: author-session (M5), on the shape of the last five rounds
     objection: "FOUR consecutive cures have now each created the next defect, and in this round TWO of the three findings were my own previous two fixes. The corpus grows only from defects found OUTSIDE it. I am recording this as the honest description of the process rather than presenting the result as convergence I reached on my own."
+    status: CONFIRMED
+  - seat: author-session (M5), profiling its own committed head
+    objection: "The Basic anchor I had just shipped stalls for 18 seconds on a 50KB credential-free command and 346 seconds at 200KB. It is the same unbounded-class-before-a-literal trap I had already cured on the URL scheme four commits earlier, and the comment I wrote there forbidding it was in the file when I wrote the violation. Documentation did not hold it; only a wall-clock test will."
     status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep

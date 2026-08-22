@@ -778,6 +778,33 @@ ok=1
 [ "$premode" = "644" ] && [ "$mode6" = "600" ] && ok=0
 case_result "mode-preexisting-0644-log-repaired-to-0600 (before: ${premode:-?}, after: ${mode6:-<unreadable>})" "$ok" mode
 
+# ── WALL CLOCK ──────────────────────────────────────────────────────────────
+#
+# This exists because the SAME defect shipped TWICE, four commits apart, in two
+# different rules: an unbounded character class in front of a literal makes the
+# regex engine retry from every position of a long run. The URL scheme cost
+# 2462 ms; the [A-Za-z-]* admitting Proxy-Authorization cost EIGHTEEN SECONDS on
+# a 50KB command containing no credential at all -- and 346 SECONDS at 200KB --
+# in a hook that fires on every PostToolUse event. A comment saying "do not do
+# this" was already in the file when the second one landed, written by the same
+# session that then wrote the second one. So the rule is executable now.
+#
+# The budget is deliberately loose (10s for a 200KB input, against ~0.1s
+# measured): it is a CATASTROPHE detector, not a benchmark. A pattern that
+# regresses this way does not get 3x slower, it gets four orders of magnitude
+# slower, so a loose budget catches the real thing without going red on a
+# loaded CI runner. Wall clock in CI is noisy; a tight budget here would be a
+# flaky test, and a flaky guard gets disabled, which is how guards die.
+tmp7="$(mktemp -d)"; cleanup_dirs+=("$tmp7")
+big_cmd="git commit -m $(python3 -c 'print("a"*200000)')"
+t_start=$(python3 -c 'import time; print(time.time())')
+run_hook "$tmp7" "Bash" "$big_cmd"
+t_end=$(python3 -c 'import time; print(time.time())')
+elapsed=$(python3 -c "import sys; print(round(float(sys.argv[2])-float(sys.argv[1]),2))" "$t_start" "$t_end")
+ok=1
+python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) < 10.0 else 1)" "$elapsed" && ok=0
+case_result "wallclock-200kb-no-credential-under-10s (took ${elapsed}s)" "$ok" mode
+
 echo "---"
 if [ "$fails" -eq 0 ]; then
     echo "PASS ($total cases: $guilt_n guilt, $innocence_n innocence, $mode_n mode)"

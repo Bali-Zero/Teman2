@@ -549,7 +549,18 @@ ANCHORS = (
     #     encodings) is missed. A multiple-of-four rule was tried FIRST and rejected
     #     on measurement -- it scored 1/3 on guilt, because padding is not counted by
     #     the group, and it still let internationalization through at 20 characters.
-    r"(?i)[A-Za-z-]*Authorization:\s*Basic\s+(?=[A-Za-z0-9+/=]{16,})[A-Za-z0-9+/=]*[0-9+/=][A-Za-z0-9+/=]*",
+    #     NO [A-Za-z-]* PREFIX. It was there to admit Proxy-Authorization, and it
+    #     cost EIGHTEEN SECONDS on a 50KB command with no credential in it -- an
+    #     unbounded character class in front of a literal makes the engine retry
+    #     from every position of a long run, which is the SAME trap already cured
+    #     once in this file on the URL scheme, reintroduced four commits later in a
+    #     different rule. The prefix is unnecessary: Proxy-Authorization: CONTAINS
+    #     Authorization:, so the bare literal matches it anyway, and the cut starts
+    #     at the match so Proxy- survives in the log. 18027 ms -> 1.36 ms, same 3/3
+    #     guilt and same 0 false positives. Measured, not reasoned: the corpus now
+    #     carries a WALL-CLOCK case, because two occurrences of one trap means
+    #     comments do not hold it.
+    r"(?i)Authorization:\s*Basic\s+(?=[A-Za-z0-9+/=]{16,})[A-Za-z0-9+/=]*[0-9+/=][A-Za-z0-9+/=]*",
     # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the
     #    8-char floor are what keep flagbearer and Bearer abc innocent.
     #     The class carries the FULL base64 alphabet (+ / = ~), not just base64url:
