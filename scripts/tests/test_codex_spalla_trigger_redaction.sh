@@ -450,6 +450,34 @@ assert_redacted "guilt-third-shaped-command-not-fuzz-noise" \
 assert_redacted "guilt-third-greedy-prefix-kills-two-markers-in-one-bite" \
     "ghp_BBBBBBBBhttps://u:xx:Bearer $THIRD_V" "$THIRD_V"
 
+# 4e. THE FOURTH DIRECTION, found by the gate on the cure for 4d. MARKER guarded
+#     the anchors of rules 1, 3 and 4 -- and omitted rule 2's NAME, the anchor of
+#     the rule that does the most work. So the tempered tail could still cross
+#     `TOKEN:` / `PASSWORD=` / `API_KEY =` and swallow the anchor whose value it
+#     then left behind: `github_pat_<8+>:TOKEN: <v>` logged as
+#     `github_pat_<REDACTED> <v>`. The shape needs a separator followed by
+#     WHITESPACE -- the bare run stops at the space, so it consumes
+#     prefix + sep + NAME + sep and drops the value outside its own match.
+#     Cured by making MARKER mean what its own comment always said: EVERY anchor
+#     a later rule needs, rule 2's NAME included.
+#     WHY THE FUZZ MISSED IT, which is the more useful lesson: the class needs at
+#     least four fragments (prefix, separator, NAME, separator-with-space,
+#     secret), so a generator whose deterministic core emits three-fragment
+#     triples STRUCTURALLY cannot produce it, and the rest rode on a single
+#     random seed. A fuzz score is a statement about the GENERATOR, exactly as a
+#     mutation score is a statement about the corpus.
+FOURTH_V="fourthDir$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-fourth-tail-eats-rule2-NAME [github_pat + TOKEN:]" \
+    "github_pat_CCCCCCCC:TOKEN: $FOURTH_V" "$FOURTH_V"
+assert_redacted "guilt-fourth-tail-eats-rule2-NAME [ghp + PASSWORD:]" \
+    "ghp_BBBBBBBB=PASSWORD: $FOURTH_V" "$FOURTH_V"
+assert_redacted "guilt-fourth-tail-eats-rule2-NAME [sk-ant + spaced separator]" \
+    "sk-ant-AAAAAAAA:API_KEY = $FOURTH_V" "$FOURTH_V"
+assert_redacted "guilt-fourth-tail-eats-rule2-NAME [rule 4 tail]" \
+    "Bearer AAAAAAAAAA:TOKEN: $FOURTH_V" "$FOURTH_V"
+assert_redacted "guilt-fourth-tail-eats-rule2-NAME [shaped command]" \
+    "deploy --pat=ghp_BBBBBBBB:PASSWORD: $FOURTH_V" "$FOURTH_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near

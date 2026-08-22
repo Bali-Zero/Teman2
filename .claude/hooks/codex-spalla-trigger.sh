@@ -379,7 +379,13 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # `github_pat_<REDACTED> <v>`, value intact. Six reproducers, and a differential
 # fuzz against the pre-tail version found 258 inputs that leaked only with the
 # untempered tail. That is what TEMPERED_VALUE exists for. Rule 1's position is
-# now held by CONSTRUCTION: no rule's tail can cross a later rule's marker.
+# now held by CONSTRUCTION -- but the construction is only as wide as MARKER, and
+# saying it any other way is how the FOURTH direction shipped: the first MARKER
+# listed rules 1, 3 and 4 and omitted rule 2's NAME, so "no tail can cross a
+# later rule's marker" was true and still left `<prefix>:TOKEN: <v>` leaking.
+# MARKER now covers all four rules. The honest form of the claim is therefore:
+# no tail can cross an anchor THAT MARKER LISTS, and MARKER is the thing that
+# has to be kept complete.
 # The `Authorization\s*:\s*Bearer|` alternation rule 4 used to carry was
 # MEASURED DEAD and deleted, by the same test this PR applied twice before to
 # `(?:--?)?` and the left wildcard: replayed over all 333,794 live-log target
@@ -392,17 +398,41 @@ s = sys.stdin.read()
 # A VALUE is what sits on the right of a credential assignment: a
 # double-quoted run, a single-quoted run, or a bare run up to whitespace.
 # Defined FIRST because three different rules need it -- see ASSIGN_TAIL.
+# Rule 2 NAME shapes are defined HERE, far above the rule that uses them,
+# because MARKER needs them: a tail that may not cross rules 1/3/4 anchors
+# but MAY cross rule 2 NAME just moves the same defect one rule over --
+# which is the FOURTH direction a gate found after the third was cured.
+# See the comment on rule 2 itself for what each shape catches and misses.
+WIDE = r"(?:TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)"
+PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
+       r"|REFRESH|OAUTH|BEARER|MY|ID|TOKEN|SECRET|PASSWORD|PASSWD"
+       r"|CREDENTIAL)")
+TAIL = r"S?(?:[_-][A-Za-z0-9]+)*"
+NAME = (r"(?<![A-Za-z0-9.])(?:"
+        + r"[A-Za-z0-9]*" + WIDE + TAIL   # a. ANY prefix + a wide credential word
+        + r"|" + PRE + r"?KEY" + TAIL     # b. KEY: bounded prefix, or none at all
+        + r"|(?:PASS|PWD|AUTH)"           # c. bare generic name
+        + r")")
 VALUE = r"(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)"
-# MARKER is every anchor a LATER rule needs to be able to see. A rule that
-# consumed one of these would blind the rule that owns it -- which is the
-# third and last direction of the same defect (see ON RULE INTERACTION).
+# MARKER is EVERY anchor a later rule needs to be able to see -- and the word
+# EVERY is load-bearing, not decorative. The first version of this list held
+# only the anchors of rules 1, 3 and 4 and omitted the NAME of rule 2, the rule
+# that does the most work; a tail could then still eat TOKEN: or PASSWORD=
+# and leave the value behind it in the clear. That was the FOURTH direction of
+# the same defect, found by a gate after the third was cured, and it is why the
+# NAME alternative below is here. The shape needs a separator with whitespace
+# (github_pat_<8+>:TOKEN: <v>): the bare run stops at the space, so it
+# consumes prefix + sep + NAME + sep and drops the value outside its own match.
 # The URL scheme is LENGTH-BOUNDED on purpose: an unbounded
 # [a-zA-Z][a-zA-Z0-9+.-]*:// matches from ANY letter that eventually reaches
 # a ://, so a plain value glued to a URL looks like a marker at its FIRST
-# character and the guard refuses the whole value. Real schemes are short;
-# 15 is well above postgresql (10) and far below a secret.
+# character and the guard refuses the whole value. {0,15} after the first
+# character means a scheme of up to SIXTEEN, well above postgresql (10) and
+# far below a secret. (An earlier revision of this comment said "15", off by
+# the anchor character -- a number in a comment that did not match its regex.)
 MARKER = (r"(?:(?i:bearer)\b|sk-ant-|gh[pousr]_|github_pat_"
-          r"|[a-zA-Z][a-zA-Z0-9+.-]{0,15}://)")
+          r"|[a-zA-Z][a-zA-Z0-9+.-]{0,15}://"
+          r"|(?i:" + NAME + r")[\"\x27]?\s*[=:])")
 # TEMPERED_VALUE is VALUE whose BARE branch may not cross a position where a
 # MARKER starts. The two QUOTED branches are left alone deliberately: they
 # consume a COMPLETE delimited value, so whatever marker they swallow they
@@ -445,16 +475,6 @@ s = re.sub(
 #    of the four, because it is the only DESTRUCTIVE rewrite: it consumes the
 #    whole value and normalises the separator, so it destroys the markers the
 #    other rules anchor on.
-WIDE = r"(?:TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)"
-PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
-       r"|REFRESH|OAUTH|BEARER|MY|ID|TOKEN|SECRET|PASSWORD|PASSWD"
-       r"|CREDENTIAL)")
-TAIL = r"S?(?:[_-][A-Za-z0-9]+)*"
-NAME = (r"(?<![A-Za-z0-9.])(?:"
-        + r"[A-Za-z0-9]*" + WIDE + TAIL   # a. ANY prefix + a wide credential word
-        + r"|" + PRE + r"?KEY" + TAIL     # b. KEY: bounded prefix, or none at all
-        + r"|(?:PASS|PWD|AUTH)"           # c. bare generic name
-        + r")")
 s = re.sub(
     r"(?i)(" + NAME + r")[\"\x27]?\s*[=:]\s*" + VALUE,
     lambda m: m.group(1) + "=<REDACTED>",

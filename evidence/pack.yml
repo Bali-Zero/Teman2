@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+1791/-287 (net +1504) at base 64011571b..HEAD, `git diff --numstat`, fixed point"
+  net_lines: "+1997/-290 (net +1707) at base 64011571b..HEAD, `git diff --numstat`, fixed point"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
@@ -182,8 +182,16 @@ receipts:
       "Differential fuzz on the REAL hook (its python block extracted and executed, not a
       replica): 271,874 probes -- 71,874 structured triples over 33 fragments plus 200,000 random
       assemblies -- comparing the shipped head against fa06a285a, the last version WITHOUT any tail.
-      ZERO inputs leak on the head that did not already leak on fa06a285a. The gate measured 258 for
-      the untempered tail; the tempered one measures 0."
+      CORRECTED 2026-08-22 after the gate falsified this line: it read ZERO, and re-running the
+      gate own generator (same 33 fragments, a DIFFERENT seed) found 48 of the 258 still leaking,
+      52 in total. 258 -> 48, not 258 -> 0. The reason is not carelessness and is worth more than
+      the number: ZERO of those 52 come from the 71,874 DETERMINISTIC triples -- the fourth-direction
+      class needs at least four fragments (prefix, separator, NAME, separator-with-space, secret),
+      so a three-fragment deterministic core STRUCTURALLY cannot emit it and the whole result rode on
+      one random seed. A fuzz score is a statement about the GENERATOR, exactly as a mutation score
+      is a statement about the corpus. The residual class was then cured (MARKER now includes rule
+      2 NAME) and re-measured with FIVE seeds and 3-7 fragments: 393,312 probes, 0 leaking that
+      fa06a285a does not."
     cmd: "extract the python block from the working file and from `git show fa06a285a:...`, drive both over 271,874 generated probes with a planted placeholder, count inputs where the head leaks and the baseline does not"
     exit: 0
     ts: "2026-08-22T01:32:18Z"
@@ -219,6 +227,38 @@ receipts:
       shell string) and check whether the planted placeholder survives
     exit: 0
     ts: "2026-08-22T01:32:18Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The FOURTH direction is closed: MARKER now means what its own comment always said --
+      EVERY anchor a later rule needs, rule 2 NAME included. All 5 of the gate reproducers go
+      LEAK -> ok, and all 7 shapes from the three EARLIER directions stay closed. Suite 100 -> 105."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
+    exit: 0
+    ts: "2026-08-22T01:51:04Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "Re-fuzzed with a generator built to REACH the class the previous one could not: FIVE
+      seeds and 3-7 fragments instead of one seed and 3, 393,312 probes, both python blocks extracted
+      from the real hooks and executed. ZERO inputs leak on this head that fa06a285a does not."
+    cmd: "differential fuzz, 5 seeds x 60,000 random assemblies of 3-7 fragments + 76,032 deterministic triples, head vs git show fa06a285a"
+    exit: 0
+    ts: "2026-08-22T01:51:04Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The NAME alternative in MARKER is LOAD-BEARING, proven by mutation with the sha compared:
+      reverting MARKER to the four-anchor version fails exactly the 5 new fourth-direction cases and
+      nothing else; hook restored byte-identical, suite green again."
+    cmd: "mutation driver: drop the (?i:NAME)[quote]?[=:] alternative from MARKER -> 5/105 FAIL"
+    exit: 1
+    ts: "2026-08-22T01:51:04Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The deferred backslash-escape class now has a PENDING-ARMS row with an owner, not only a
+      code comment -- the gate own condition for accepting the deferral. Parsed by the ledger
+      reporter as TECH-DEBT / owner session, and --strict-phantom exits 0."
+    cmd: "python scripts/pending_arms_report.py --json | check the row parses; python scripts/pending_arms_report.py --strict-phantom"
+    exit: 0
+    ts: "2026-08-22T01:51:04Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -503,6 +543,55 @@ dissent:
       name), and that the two rewritten claims did not replace one overreach with another. Recorded
       so the emptiness is auditable rather than assumed."
     status: RETRACTED
+  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — BLOCKER"
+    objection:
+      "FOURTH direction. MARKER guarded the anchors of rules 1, 3 and 4 and omitted rule 2 NAME --
+      the rule that does the most work -- so the tempered tail could still cross TOKEN: / PASSWORD= /
+      API_KEY = and swallow the anchor whose value it then left behind. Five deterministic
+      reproducers, all of them a regression against fa06a285a, which redacts every one correctly.
+      Reproduced by the author before fixing: 5/5. Cured by the gate own proposed cure, which it had
+      verified end to end rather than merely proposed: hoist rule 2 NAME shapes above MARKER and add
+      one alternative."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — MAJOR, receipt falsified"
+    objection:
+      "The pack claimed the differential fuzz found ZERO regressions. Re-running the gate own
+      generator with a different seed found 48 of its 258 still leaking, 52 total. The pack was
+      simultaneously carrying the honest half -- residual_risks said a fourth direction was more
+      likely than not -- and a receipt claiming the measurement found none; those cannot both stand.
+      Corrected in place with the mechanism: ZERO of the 52 came from the deterministic triples,
+      because the class needs four fragments and a three-fragment core cannot emit it. A fuzz score
+      is a statement about the GENERATOR."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — MAJOR, overclaim"
+    objection:
+      "The replacement for the deleted rule-1 sentence read: rule 1 position is now held by
+      CONSTRUCTION, no rule tail can cross a later rule marker. True only under a definition of
+      marker that silently excluded rule 2 NAME -- the hole in the BLOCKER. Same overclaim shape as
+      the two previous rounds: a real property stated as the safety it does not deliver. Now
+      qualified in place: no tail can cross an anchor THAT MARKER LISTS, and MARKER is the thing
+      that has to be kept complete."
+    status: CONFIRMED
+  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — what it could NOT break"
+    objection:
+      "Two arguments survived a real attack. The LENGTH BOUND: six scheme lengths up to 20
+      characters, each as a URL inside a tail, none leaked on either head -- because the bare run has
+      no whitespace to stop at inside a URL, so it consumes the whole URL, which IS redaction; the
+      bound only has to stop the tail halting mid-URL. The UNTEMPERED QUOTED BRANCHES: seven probes,
+      four leak and all four leak on fa06a285a too (documented nameless-secret class), and the three
+      that could have regressed did not. The gate also confirmed the 7 third-direction cases
+      non-vacuous by mutation and that innocence did not shrink (15 -> 15, diffed by name). Recorded
+      so the emptiness is auditable."
+    status: RETRACTED
+  - seat: "Gear-3 gate round 7 (opus 5, fresh context, non-author) — on the deferral"
+    objection:
+      "Explicitly agreed the backslash-escape fix should NOT land in this PR: pre-existing so
+      deferring ships no new leak, now NAMED with all three reproducers, and a change to VALUE
+      quoting touches rule 2 core AND every rule tail in one diff -- precisely the blast radius that
+      produced the mirror, the third and the fourth direction. Its one condition: give it a
+      PENDING-ARMS line with an owner, not only a comment, because a named hole with no ledger entry
+      is how a residual becomes permanent. Done in this diff."
+    status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
     finds the field only in evidence packs and research/operations/2026-08-09-harness-v2-teman2.md:155
@@ -538,8 +627,15 @@ residual_risks:
     a matcher made of rules that REWRITE overlapping spans has a defect class no corpus enumerates.
     A fourth direction is more likely than not; the honest posture is that this hook reduces
     exposure rather than closing it, which is what the under-match block is for."
+  - "FOUR directions of the same defect have now been found in this PR, each by an adversarial gate
+    and each created by the cure for the previous. Three of the four were invisible to a
+    hand-written corpus AND to a differential fuzz until the generator was widened to reach them.
+    The standing conclusion is not that the matcher is now complete -- it is that completeness is
+    not a property this shape of matcher can be argued into, only measured toward. MARKER is the
+    single place where that completeness lives: any future rule MUST add its anchor there in the
+    same diff."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 14304
+size_tokens: 16047
