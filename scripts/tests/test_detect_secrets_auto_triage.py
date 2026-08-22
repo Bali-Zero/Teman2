@@ -51,9 +51,9 @@ from scripts.detect_secrets_auto_triage import CONTENT_KEYED_RULES, classify, tr
 CHECK_WORKER_PLANE_REVIEW = "scripts/check_worker_plane_review.py"
 LAUNCH_WORKER_PLANE_REVIEW_PANEL = "scripts/launch_worker_plane_review_panel.py"
 
-# Line numbers verified against the actual files on disk 2026-07-26 (the
+# Line numbers re-verified against the actual files on disk 2026-08-22 (the
 # exact 18 findings `Detect Secrets` flagged on PR #3127).
-CHECK_WORKER_PLANE_REVIEW_PIN_LINES = [142, 143, 153, 154]
+CHECK_WORKER_PLANE_REVIEW_PIN_LINES = [185, 186, 196, 197]
 LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES = [
     210,
     211,
