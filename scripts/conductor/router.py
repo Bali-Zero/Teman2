@@ -7,6 +7,7 @@ probes an endpoint, launches a worker, starts a daemon, or retains state.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from collections.abc import Mapping
 from dataclasses import replace
@@ -66,9 +67,8 @@ def plan_dispatch(
     be selected.
     """
     conductor_assignment = _conductor_assignment(session)
-    task_profile_hash = policy.task_profile_hashes.get(
-        task.task_profile_id, "unavailable"
-    )
+    resolved_task_profile_hash: str | None = None
+    task_profile_hash = "unavailable"
 
     # TaskIntent is deliberately a small frozen dataclass rather than a parsing
     # framework object.  Its annotation therefore cannot prevent a deserialized
@@ -87,7 +87,34 @@ def plan_dispatch(
             reason="task_class_invalid",
         )
     task = normalized_task
+    raw_generator_family = generator_family
     generator_family = _normalized_family(generator_family)
+
+    task_rejection = _task_runtime_rejection(task)
+    if task_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason=task_rejection,
+        )
+
+    policy_rejection = _policy_runtime_rejection(policy)
+    if policy_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason=policy_rejection,
+        )
+    resolved_task_profile_hash = _task_profile_hash(policy, task.task_profile_id)
+    task_profile_hash = resolved_task_profile_hash or "unavailable"
 
     if session.role is not Role.CONDUCTOR:
         return _abstain(
@@ -112,6 +139,18 @@ def plan_dispatch(
             reason="task_profile_unknown",
         )
 
+    profile_rejection = _task_profile_runtime_rejection(profile)
+    if profile_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason=profile_rejection,
+        )
+
     binding_rejection = _task_profile_binding_rejection(task, profile)
     if binding_rejection is not None:
         return _abstain(
@@ -124,7 +163,18 @@ def plan_dispatch(
             reason=binding_rejection,
         )
 
-    if task.task_class is TaskClass.REVIEW and generator_family is None:
+    if resolved_task_profile_hash is None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash="unavailable",
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason="task_profile_hash_missing",
+        )
+
+    if task.task_class is TaskClass.REVIEW and raw_generator_family is None:
         return _abstain(
             session=session,
             task=task,
@@ -133,6 +183,16 @@ def plan_dispatch(
             assignments=(conductor_assignment,),
             rejections=(),
             reason="generator_family_context_required",
+        )
+    if task.task_class is TaskClass.REVIEW and generator_family is None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason="grader_family_unknown",
         )
 
     disallowed_modalities = sorted(
@@ -228,9 +288,29 @@ def plan_dispatch(
             reason=host_policy_rejection,
         )
     assert host_observations is not None
+    candidate_container_rejection = _candidate_container_rejection(candidates)
+    if candidate_container_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason=candidate_container_rejection,
+        )
+
     eligible: list[tuple[EndpointCandidate, TaskScore, str]] = []
     rejections: list[CandidateRejection] = []
     for candidate in sorted(candidates, key=lambda item: item.endpoint_id):
+        candidate_runtime_rejection = _candidate_runtime_rejection(candidate)
+        if candidate_runtime_rejection is not None:
+            rejections.append(
+                CandidateRejection(
+                    candidate.endpoint_id, (candidate_runtime_rejection,)
+                )
+            )
+            continue
         machine, host_rejection = _placement_for(
             candidate, host_observations, as_of, policy
         )
@@ -246,7 +326,7 @@ def plan_dispatch(
         if rejection is not None:
             rejections.append(rejection)
             continue
-        score = _benchmark_score(candidate, profile, as_of)
+        score = _benchmark_score(candidate, profile, as_of, policy)
         if score is None:
             raise RoutingPolicyError(
                 "candidate passed benchmark filter without a benchmark score"
@@ -313,6 +393,245 @@ def _profile_for(task: TaskIntent, policy: RoutingPolicy) -> TaskProfile | None:
     for profile in policy.task_profiles:
         if profile.id == task.task_profile_id:
             return profile
+    return None
+
+
+def _task_profile_hash(policy: RoutingPolicy, profile_id: object) -> str | None:
+    """Return a present profile hash only when its runtime shape is trustworthy."""
+    hashes = policy.task_profile_hashes
+    if not isinstance(hashes, Mapping) or type(profile_id) is not str:
+        return None
+    try:
+        value = hashes.get(profile_id)
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return None
+    if type(value) is not str or not value.strip():
+        return None
+    return value
+
+
+def _is_nonempty_string(value: object) -> bool:
+    """Return whether ``value`` is a non-blank runtime string."""
+    return type(value) is str and bool(value.strip())
+
+
+def _is_finite_number(value: object) -> bool:
+    """Return whether ``value`` is a finite numeric scalar, never a boolean."""
+    return (
+        isinstance(value, (int, float))
+        and type(value) is not bool
+        and math.isfinite(value)
+    )
+
+
+def _is_nonnegative_integer(value: object) -> bool:
+    return type(value) is int and value >= 0
+
+
+def _is_positive_integer(value: object) -> bool:
+    return type(value) is int and value > 0
+
+
+def _is_string_frozenset(value: object) -> bool:
+    return isinstance(value, frozenset) and all(
+        _is_nonempty_string(item) for item in value
+    )
+
+
+def _task_runtime_rejection(task: TaskIntent) -> str | None:
+    """Validate untrusted deserialized task fields before policy branching."""
+    if not _is_nonempty_string(task.task_id):
+        return "task_id_invalid"
+    if task.task_class is not None and not isinstance(task.task_class, TaskClass):
+        return "task_class_invalid"
+    if type(task.gear) is not int or task.gear not in {1, 2, 3}:
+        return "task_gear_invalid"
+    if type(task.mutation) is not bool:
+        return "task_mutation_invalid"
+    if type(task.contains_pii) is not bool:
+        return "task_contains_pii_invalid"
+    if not isinstance(task.files, tuple) or not all(
+        _is_nonempty_string(path) for path in task.files
+    ):
+        return "task_files_invalid"
+    if not _is_string_frozenset(task.requires):
+        return "task_requires_invalid"
+    if not _is_nonempty_string(task.task_profile_id):
+        return "task_profile_id_invalid"
+    if task.estimated_context_tokens is not None and not _is_positive_integer(
+        task.estimated_context_tokens
+    ):
+        return "task_context_tokens_invalid"
+    if not _is_string_frozenset(task.required_modalities):
+        return "task_modalities_invalid"
+    if not _is_string_frozenset(task.required_tools):
+        return "task_tools_invalid"
+    return None
+
+
+def _policy_runtime_rejection(policy: RoutingPolicy) -> str | None:
+    """Validate policy control values before any fast path can consume them."""
+    if not _is_nonempty_string(policy.policy_hash):
+        return "policy_hash_invalid"
+    if not _is_nonempty_string(policy.capability_index_hash):
+        return "policy_capability_index_hash_invalid"
+    if not isinstance(policy.task_profile_hashes, Mapping):
+        return "policy_task_profile_hashes_invalid"
+    try:
+        task_profile_hash_items = tuple(policy.task_profile_hashes.items())
+    except (AttributeError, TypeError, ValueError):
+        return "policy_task_profile_hashes_invalid"
+    if any(
+        not _is_nonempty_string(profile_id) or not _is_nonempty_string(profile_hash)
+        for profile_id, profile_hash in task_profile_hash_items
+    ):
+        return "policy_task_profile_hashes_invalid"
+    if not isinstance(policy.task_profiles, tuple) or not all(
+        isinstance(profile, TaskProfile) for profile in policy.task_profiles
+    ):
+        return "policy_task_profiles_invalid"
+    if not _is_nonempty_string(policy.as_of):
+        return "policy_timestamp_invalid"
+    if not _is_nonnegative_integer(policy.max_health_age_days) or (
+        policy.max_health_age_days > _MAX_HEALTH_AGE_DAYS
+    ):
+        return "policy_max_health_age_invalid"
+    if type(policy.require_enforced_mutation) is not bool:
+        return "policy_require_enforced_mutation_invalid"
+    if type(policy.forbid_paid_anthropic_api) is not bool:
+        return "policy_forbid_paid_anthropic_api_invalid"
+    if not _is_finite_number(policy.minimum_identity_confidence) or not (
+        0 <= policy.minimum_identity_confidence <= 1
+    ):
+        return "policy_minimum_identity_confidence_invalid"
+    return None
+
+
+def _task_profile_runtime_rejection(profile: TaskProfile) -> str | None:
+    """Validate a selected task profile before it influences routing semantics."""
+    if not _is_nonempty_string(profile.id):
+        return "task_profile_id_invalid"
+    if type(profile.mutation) is not bool:
+        return "task_profile_mutation_invalid"
+    if not _is_nonnegative_integer(profile.minimum_quality_tier):
+        return "task_profile_minimum_quality_invalid"
+    if profile.minimum_task_score is not None and (
+        not _is_finite_number(profile.minimum_task_score)
+        or not 0 <= profile.minimum_task_score <= 1
+    ):
+        return "task_profile_minimum_task_score_invalid"
+    if not _is_string_frozenset(profile.required_capabilities):
+        return "task_profile_capabilities_invalid"
+    if not _is_string_frozenset(profile.allowed_modalities):
+        return "task_profile_modalities_invalid"
+    if type(profile.pii_policy) is not str or profile.pii_policy not in {
+        "context_dependent",
+        "forbidden_cloud",
+        "local_only",
+    }:
+        return "task_profile_pii_policy_invalid"
+    if (
+        (profile.benchmark_id is None) != (profile.benchmark_version is None)
+        or (
+            profile.benchmark_id is not None
+            and not _is_nonempty_string(profile.benchmark_id)
+        )
+        or (
+            profile.benchmark_version is not None
+            and not _is_nonempty_string(profile.benchmark_version)
+        )
+    ):
+        return "task_profile_benchmark_contract_invalid"
+    if not _is_positive_integer(profile.minimum_sample_count):
+        return "task_profile_minimum_sample_count_invalid"
+    if profile.maximum_dispersion is not None and (
+        not _is_finite_number(profile.maximum_dispersion)
+        or not 0 <= profile.maximum_dispersion <= 1
+    ):
+        return "task_profile_maximum_dispersion_invalid"
+    if profile.minimum_context_tokens is not None and not _is_positive_integer(
+        profile.minimum_context_tokens
+    ):
+        return "task_profile_minimum_context_invalid"
+    if profile.minimum_output_tokens is not None and not _is_positive_integer(
+        profile.minimum_output_tokens
+    ):
+        return "task_profile_minimum_output_invalid"
+    return None
+
+
+def _candidate_container_rejection(
+    candidates: tuple[EndpointCandidate, ...],
+) -> str | None:
+    """Reject malformed collections before sorting invokes arbitrary values."""
+    if not isinstance(candidates, tuple):
+        return "candidate_container_invalid"
+    if any(not isinstance(candidate, EndpointCandidate) for candidate in candidates):
+        return "candidate_container_invalid"
+    return None
+
+
+def _candidate_runtime_rejection(candidate: EndpointCandidate) -> str | None:
+    """Validate fields used by ordering and security gates before candidate selection."""
+    for value, code in (
+        (candidate.endpoint_id, "candidate_endpoint_id_invalid"),
+        (candidate.engine, "candidate_engine_invalid"),
+        (candidate.model_card_id, "candidate_model_card_id_invalid"),
+        (candidate.model, "candidate_model_invalid"),
+        (candidate.model_card_hash, "candidate_model_card_hash_invalid"),
+        (candidate.endpoint_profile_hash, "candidate_endpoint_profile_hash_invalid"),
+        (
+            candidate.capability_snapshot_hash,
+            "candidate_capability_snapshot_hash_invalid",
+        ),
+    ):
+        if not _is_nonempty_string(value):
+            return code
+    if not isinstance(candidate.role, Role):
+        return "candidate_role_invalid"
+    if not isinstance(candidate.features, tuple):
+        return "candidate_features_invalid"
+    if not isinstance(candidate.task_scores, tuple):
+        return "candidate_task_scores_invalid"
+    if type(candidate.healthy) is not bool:
+        return "candidate_healthy_invalid"
+    if not _is_nonempty_string(candidate.health_observed_at):
+        return "candidate_health_timestamp_invalid"
+    if (
+        not isinstance(candidate.machine_allowlist, tuple)
+        or not candidate.machine_allowlist
+        or any(not _is_nonempty_string(host) for host in candidate.machine_allowlist)
+    ):
+        return "candidate_machine_allowlist_invalid"
+    for value, code in (
+        (candidate.cost_rank, "candidate_cost_rank_invalid"),
+        (candidate.latency_rank, "candidate_latency_rank_invalid"),
+        (candidate.quota_pressure_rank, "candidate_quota_pressure_rank_invalid"),
+        (candidate.quality_tier, "candidate_quality_tier_invalid"),
+    ):
+        if not _is_nonnegative_integer(value):
+            return code
+    if type(
+        candidate.enforcement_mode
+    ) is not str or candidate.enforcement_mode not in {
+        "enforced",
+        "shadow",
+        "advisory",
+        "advisory_only",
+        "manual_only",
+        "unmeasured",
+    }:
+        return "candidate_enforcement_mode_invalid"
+    if not _is_finite_number(candidate.identity_confidence) or not (
+        0 <= candidate.identity_confidence <= 1
+    ):
+        return "candidate_identity_confidence_invalid"
+    if type(candidate.automated_routing) is not bool:
+        return "candidate_automated_routing_invalid"
+    if type(candidate.routing_status) is not str:
+        return "candidate_routing_status_invalid"
+    if type(candidate.uses_paid_anthropic_api) is not bool:
+        return "paid_anthropic_usage_invalid"
     return None
 
 
@@ -415,19 +734,24 @@ def _rejection_for(
         reasons.append("abstract_model_card_not_invocable")
     if not candidate.automated_routing or candidate.routing_status != "eligible":
         reasons.append("endpoint_not_automated")
-    if candidate.auth_surface is AuthSurface.UNKNOWN:
+    auth_surface = _auth_surface(candidate.auth_surface)
+    if auth_surface is None:
+        reasons.append("auth_surface_invalid")
+    elif auth_surface is AuthSurface.UNKNOWN:
         reasons.append("auth_surface_unknown")
-    if (
-        candidate.auth_surface is AuthSurface.ANTHROPIC_PAID_API
+    if type(candidate.uses_paid_anthropic_api) is not bool:
+        reasons.append("paid_anthropic_usage_invalid")
+    elif (
+        auth_surface is AuthSurface.ANTHROPIC_PAID_API
         or candidate.uses_paid_anthropic_api
     ):
         reasons.append("paid_anthropic_api_forbidden")
-    if (
-        task.task_class is TaskClass.REVIEW
-        and generator_family is not None
-        and _normalized_family(candidate.family) == generator_family
-    ):
-        reasons.append("generator_family_conflict")
+    if task.task_class is TaskClass.REVIEW:
+        candidate_family = _normalized_family(candidate.family)
+        if candidate_family is None:
+            reasons.append("grader_family_unknown")
+        elif candidate_family == generator_family:
+            reasons.append("generator_family_conflict")
     if not candidate.healthy:
         reasons.append("health_unavailable")
     else:
@@ -479,7 +803,7 @@ def _rejection_for(
     # resulting abstention explains that static inventory data is insufficient on
     # both dimensions, while capability failures remain concise and actionable.
     if not reasons or any(reason.startswith("health_") for reason in reasons):
-        benchmark_reason = _benchmark_rejection(candidate, profile, as_of)
+        benchmark_reason = _benchmark_rejection(candidate, profile, as_of, policy)
         if benchmark_reason is not None:
             reasons.append(benchmark_reason)
     return (
@@ -488,16 +812,25 @@ def _rejection_for(
 
 
 def _normalized_family(family: str | None) -> str | None:
-    if not isinstance(family, str):
+    if type(family) is not str:
         return None
     normalized = re.sub(r"[^0-9a-z]+", "-", family.casefold()).strip("-")
     return normalized or None
 
 
+def _auth_surface(value: object) -> AuthSurface | None:
+    """Accept only the typed enum at this security-critical boundary.
+
+    Contract dataclasses are intentionally permissive at runtime, so a JSON string
+    can otherwise bypass identity comparisons (notably the paid Anthropic ban).
+    The registry loader owns canonicalization; the pure router fails closed.
+    """
+    return value if isinstance(value, AuthSurface) else None
+
+
 def _policy_clock(policy: RoutingPolicy) -> tuple[datetime | None, str | None]:
     if (
-        not isinstance(policy.max_health_age_days, int)
-        or isinstance(policy.max_health_age_days, bool)
+        type(policy.max_health_age_days) is not int
         or policy.max_health_age_days < 0
         or policy.max_health_age_days > _MAX_HEALTH_AGE_DAYS
     ):
@@ -520,9 +853,9 @@ def _host_observations(
     for observation in raw_observations:
         if not isinstance(observation, HostObservation):
             return None, "host_observation_invalid"
-        if not isinstance(observation.host, str) or not observation.host:
+        if not _is_nonempty_string(observation.host):
             return None, "host_observation_host_invalid"
-        if not isinstance(observation.available, bool):
+        if type(observation.available) is not bool:
             return None, "host_observation_availability_invalid"
         if observation.host in observations:
             return None, "host_observation_duplicate"
@@ -618,6 +951,19 @@ def _capability_evidence_rejections(
         if not isinstance(evidence, CapabilityEvidence):
             reasons.add("capability_evidence_invalid")
             continue
+        if not _is_nonempty_string(evidence.capability) or not _is_nonempty_string(
+            evidence.evidence_ref
+        ):
+            reasons.add("capability_evidence_invalid")
+            continue
+        if not isinstance(evidence.kind, EvidenceKind):
+            reasons.add("capability_evidence_kind_invalid")
+            continue
+        if not _is_finite_number(evidence.confidence) or not (
+            0 <= evidence.confidence <= 1
+        ):
+            reasons.add("capability_confidence_invalid")
+            continue
         observed_at = _parse_iso_timestamp(evidence.observed_at)
         if observed_at is None:
             reasons.add("capability_timestamp_invalid")
@@ -645,15 +991,17 @@ def _capability_evidence_rejections(
 def _capability_failure_rank(reason: str) -> tuple[int, str]:
     priority = {
         "capability_evidence_invalid": 0,
-        "capability_timestamp_invalid": 1,
-        "capability_timestamp_future": 2,
-        "capability_stale": 3,
+        "capability_evidence_kind_invalid": 1,
+        "capability_confidence_invalid": 2,
+        "capability_timestamp_invalid": 3,
+        "capability_timestamp_future": 4,
+        "capability_stale": 5,
     }
     return priority.get(reason, 99), reason
 
 
 def _parse_iso_timestamp(value: str) -> datetime | None:
-    if not isinstance(value, str) or not value:
+    if type(value) is not str or not value:
         return None
     try:
         if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
@@ -689,8 +1037,10 @@ def _has_capability(candidate: EndpointCandidate, capability_id: str) -> bool:
         isinstance(evidence, CapabilityEvidence)
         and evidence.capability == capability_id
         and evidence.value is True
+        and isinstance(evidence.kind, EvidenceKind)
         and evidence.kind is not EvidenceKind.UNMEASURED
-        and evidence.confidence > 0
+        and _is_finite_number(evidence.confidence)
+        and 0 < evidence.confidence <= 1
         for evidence in candidate.features
     )
 
@@ -701,10 +1051,11 @@ def _numeric_capability(candidate: EndpointCandidate, capability_id: str) -> int
         if (
             not isinstance(evidence, CapabilityEvidence)
             or evidence.capability != capability_id
+            or not isinstance(evidence.kind, EvidenceKind)
             or evidence.kind is EvidenceKind.UNMEASURED
         ):
             continue
-        if isinstance(evidence.value, int) and not isinstance(evidence.value, bool):
+        if type(evidence.value) is int and evidence.value >= 0:
             values.append(evidence.value)
     return max(values) if values else None
 
@@ -715,7 +1066,10 @@ def _maximum_optional_integer(*values: int | None) -> int | None:
 
 
 def _benchmark_rejection(
-    candidate: EndpointCandidate, profile: TaskProfile, as_of: datetime
+    candidate: EndpointCandidate,
+    profile: TaskProfile,
+    as_of: datetime,
+    policy: RoutingPolicy,
 ) -> str | None:
     relevant = _profile_scores(candidate, profile)
     if not relevant:
@@ -723,7 +1077,7 @@ def _benchmark_rejection(
     failures = tuple(
         rejection
         for score in relevant
-        if (rejection := _score_rejection(score, profile, as_of)) is not None
+        if (rejection := _score_rejection(score, profile, as_of, policy)) is not None
     )
     if len(failures) == len(relevant):
         return min(failures, key=_benchmark_failure_rank)
@@ -731,12 +1085,15 @@ def _benchmark_rejection(
 
 
 def _benchmark_score(
-    candidate: EndpointCandidate, profile: TaskProfile, as_of: datetime
+    candidate: EndpointCandidate,
+    profile: TaskProfile,
+    as_of: datetime,
+    policy: RoutingPolicy,
 ) -> TaskScore | None:
     relevant = [
         score
         for score in _profile_scores(candidate, profile)
-        if _score_rejection(score, profile, as_of) is None
+        if _score_rejection(score, profile, as_of, policy) is None
     ]
     if not relevant:
         return None
@@ -756,18 +1113,45 @@ def _profile_scores(
     return tuple(
         score
         for score in candidate.task_scores
-        if score.task_profile_id == profile.id
-        and score.score is not None
-        and score.evidence_kind is EvidenceKind.BENCHMARKED
-        and score.benchmark_id
-        and score.benchmark_version
-        and score.sample_count > 0
+        if isinstance(score, TaskScore)
+        and type(score.task_profile_id) is str
+        and score.task_profile_id == profile.id
     )
 
 
 def _score_rejection(
-    score: TaskScore, profile: TaskProfile, as_of: datetime
+    score: TaskScore,
+    profile: TaskProfile,
+    as_of: datetime,
+    policy: RoutingPolicy,
 ) -> str | None:
+    if not isinstance(score.evidence_kind, EvidenceKind):
+        return "benchmark_evidence_kind_invalid"
+    if score.evidence_kind is not EvidenceKind.BENCHMARKED:
+        return "benchmark_unmeasured"
+    if not _is_nonempty_string(score.task_profile_id):
+        return "benchmark_evidence_incomplete"
+    if not _is_finite_number(score.score) or not 0 <= score.score <= 1:
+        return "benchmark_evidence_incomplete"
+    if score.conservative_score is not None and (
+        not _is_finite_number(score.conservative_score)
+        or not 0 <= score.conservative_score <= 1
+        or score.conservative_score > score.score
+    ):
+        return "benchmark_evidence_incomplete"
+    if not isinstance(score.benchmark_id, str) or not score.benchmark_id.strip():
+        return "benchmark_evidence_incomplete"
+    if (
+        not isinstance(score.benchmark_version, str)
+        or not score.benchmark_version.strip()
+    ):
+        return "benchmark_evidence_incomplete"
+    if (
+        not isinstance(score.sample_count, int)
+        or isinstance(score.sample_count, bool)
+        or score.sample_count <= 0
+    ):
+        return "benchmark_evidence_incomplete"
     if profile.benchmark_id is not None and score.benchmark_id != profile.benchmark_id:
         return "benchmark_id_mismatch"
     if (
@@ -778,27 +1162,32 @@ def _score_rejection(
     if score.sample_count < profile.minimum_sample_count:
         return "benchmark_low_sample"
     if profile.maximum_dispersion is not None:
-        if score.dispersion is None:
+        if not _is_finite_number(score.dispersion) or not 0 <= score.dispersion <= 1:
             return "benchmark_dispersion_unmeasured"
         if score.dispersion > profile.maximum_dispersion:
             return "benchmark_high_variance"
-    versioned_contract = (
-        profile.benchmark_id is not None or profile.benchmark_version is not None
-    )
-    if versioned_contract:
-        if (
-            len(score.sample_hashes) != score.sample_count
-            or len(set(score.sample_hashes)) != score.sample_count
-            or not score.scorer_id
-            or not score.scorer_version
-        ):
-            return "benchmark_evidence_incomplete"
-        measured_at = _parse_iso_timestamp(score.observed_at or "")
-        expires_at = _parse_iso_timestamp(score.expires_at or "")
-        if measured_at is None or expires_at is None:
+    if (
+        not isinstance(score.sample_hashes, tuple)
+        or len(score.sample_hashes) != score.sample_count
+        or any(
+            not _is_nonempty_string(sample_hash) for sample_hash in score.sample_hashes
+        )
+        or len(set(score.sample_hashes)) != score.sample_count
+        or not _is_nonempty_string(score.scorer_id)
+        or not _is_nonempty_string(score.scorer_version)
+    ):
+        return "benchmark_evidence_incomplete"
+    measured_at = _parse_iso_timestamp(score.observed_at or "")
+    if measured_at is None:
+        return "benchmark_timestamp_invalid"
+    if measured_at > as_of:
+        return "benchmark_timestamp_future"
+    if as_of - measured_at > timedelta(days=policy.max_health_age_days):
+        return "benchmark_stale"
+    if score.expires_at is not None:
+        expires_at = _parse_iso_timestamp(score.expires_at)
+        if expires_at is None or expires_at < measured_at:
             return "benchmark_timestamp_invalid"
-        if measured_at > as_of:
-            return "benchmark_timestamp_future"
         if expires_at < as_of:
             return "benchmark_stale"
     if (
@@ -817,16 +1206,17 @@ def _effective_score(score: TaskScore) -> float:
 
 def _benchmark_failure_rank(reason: str) -> tuple[int, str]:
     priority = {
-        "benchmark_id_mismatch": 0,
-        "benchmark_version_mismatch": 1,
-        "benchmark_low_sample": 2,
-        "benchmark_high_variance": 3,
-        "benchmark_dispersion_unmeasured": 4,
-        "benchmark_evidence_incomplete": 5,
-        "benchmark_timestamp_invalid": 6,
-        "benchmark_timestamp_future": 7,
-        "benchmark_stale": 8,
-        "benchmark_below_floor": 9,
+        "benchmark_evidence_kind_invalid": 0,
+        "benchmark_id_mismatch": 1,
+        "benchmark_version_mismatch": 2,
+        "benchmark_low_sample": 3,
+        "benchmark_high_variance": 4,
+        "benchmark_dispersion_unmeasured": 5,
+        "benchmark_evidence_incomplete": 6,
+        "benchmark_timestamp_invalid": 7,
+        "benchmark_timestamp_future": 8,
+        "benchmark_stale": 9,
+        "benchmark_below_floor": 10,
     }
     return priority.get(reason, 99), reason
 

@@ -26,6 +26,7 @@ from scripts.conductor.model_registry import AbstractModelCardError, load_regist
 from scripts.conductor.router import plan_dispatch
 
 AS_OF = "2026-08-21"
+BENCHMARK_SAMPLES = tuple(f"sample-{index}" for index in range(1, 11))
 
 
 def capability(
@@ -76,6 +77,9 @@ def candidate(
                 sample_count=10,
                 observed_at=AS_OF,
                 evidence_kind=EvidenceKind.BENCHMARKED,
+                sample_hashes=BENCHMARK_SAMPLES,
+                scorer_id="synthetic-scorer",
+                scorer_version="v1",
             ),
             TaskScore(
                 task_profile_id="standard_build",
@@ -85,6 +89,9 @@ def candidate(
                 sample_count=10,
                 observed_at=AS_OF,
                 evidence_kind=EvidenceKind.BENCHMARKED,
+                sample_hashes=BENCHMARK_SAMPLES,
+                scorer_id="synthetic-scorer",
+                scorer_version="v1",
             ),
         )
     return EndpointCandidate(
@@ -1448,6 +1455,391 @@ class ConductorRouterTest(unittest.TestCase):
 
         self.assertEqual(plan.decision, Decision.ABSTAIN)
         self.assertEqual(plan.rejections[0].reason_codes, ("auth_surface_unknown",))
+
+    def test_raw_paid_auth_surface_cannot_bypass_the_paid_api_ban(self) -> None:
+        raw_paid = candidate(
+            "raw-paid-anthropic",
+            model="claude-opus",
+            family="claude",
+            score=0.99,
+            auth_surface=cast(AuthSurface, "anthropic_paid_api"),
+            uses_paid_anthropic_api=False,
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(raw_paid,),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.rejections[0].reason_codes, ("auth_surface_invalid",))
+
+    def test_missing_task_profile_hash_abstains_before_allow_or_delegate(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(
+                candidate("eligible", model="model", family="test", score=0.95),
+            ),
+            policy=replace(policy(), task_profile_hashes={}),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "task_profile_hash_missing")
+        self.assertEqual(plan.task_profile_hash, "unavailable")
+
+    def test_review_rejects_unknown_candidate_grader_family(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
+        for raw_family in ("", "---", cast(str, None)):
+            with self.subTest(raw_family=raw_family):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.REVIEW, profile.id),
+                    candidates=(
+                        replace(
+                            live_profile_candidate(profile),
+                            endpoint_id=f"unknown-family-{raw_family!r}",
+                            family=raw_family,
+                        ),
+                    ),
+                    policy=live_policy,
+                    generator_family="gpt-5.6",
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(
+                    plan.rejections[0].reason_codes, ("grader_family_unknown",)
+                )
+
+    def test_review_rejects_unknown_generator_family(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.REVIEW, profile.id),
+            candidates=(live_profile_candidate(profile),),
+            policy=live_policy,
+            generator_family="---",
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "grader_family_unknown")
+
+    def test_raw_capability_evidence_kind_never_satisfies_required_capability(
+        self,
+    ) -> None:
+        base = candidate("raw-capability", model="model", family="test", score=0.95)
+        raw_coding = replace(
+            next(item for item in base.features if item.capability == "coding"),
+            kind=cast(EvidenceKind, "unmeasured"),
+        )
+        candidate_with_raw_kind = replace(
+            base,
+            features=tuple(
+                raw_coding if item.capability == "coding" else item
+                for item in base.features
+            ),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(candidate_with_raw_kind,),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            plan.rejections[0].reason_codes,
+            ("capability_evidence_kind_invalid", "missing_capability:coding"),
+        )
+
+    def test_raw_capability_kind_cannot_open_local_pii_lane(self) -> None:
+        profile, live_policy = live_profile_policy("pii_local")
+        base = live_profile_candidate(profile)
+        raw_local_only = replace(
+            next(item for item in base.features if item.capability == "local_only"),
+            kind=cast(EvidenceKind, "unmeasured"),
+        )
+        unsafe = replace(
+            base,
+            endpoint_id="raw-local-only",
+            features=tuple(
+                raw_local_only if item.capability == "local_only" else item
+                for item in base.features
+            ),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.PII_LOCAL, profile.id),
+            candidates=(unsafe,),
+            policy=live_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertIn(
+            "capability_evidence_kind_invalid", plan.rejections[0].reason_codes
+        )
+        self.assertIn("privacy_ineligible", plan.rejections[0].reason_codes)
+        self.assertIn("missing_capability:local_only", plan.rejections[0].reason_codes)
+
+    def test_unpinned_benchmark_requires_provenance_and_freshness(self) -> None:
+        base = candidate("untrusted-score", model="model", family="test", score=0.95)
+        score = next(
+            item for item in base.task_scores if item.task_profile_id == "mechanical"
+        )
+        cases = {
+            "missing-provenance": (
+                replace(score, sample_hashes=()),
+                "benchmark_evidence_incomplete",
+            ),
+            "missing-observed-at": (
+                replace(score, observed_at=None),
+                "benchmark_timestamp_invalid",
+            ),
+            "future-observed-at": (
+                replace(score, observed_at="2026-08-22"),
+                "benchmark_timestamp_future",
+            ),
+            "stale-observed-at": (
+                replace(score, observed_at="2026-08-19"),
+                "benchmark_stale",
+            ),
+            "invalid-expiry": (
+                replace(score, expires_at="2026-08-20"),
+                "benchmark_timestamp_invalid",
+            ),
+        }
+        for name, (invalid_score, reason) in cases.items():
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(replace(base, task_scores=(invalid_score,)),),
+                    policy=policy(),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(plan.rejections[0].reason_codes, (reason,))
+
+    def test_runtime_boolean_and_numeric_tampering_fails_closed(self) -> None:
+        """Deserializer truthiness must not turn malformed values into eligibility."""
+        base_task = task(TaskClass.MECHANICAL, "mechanical")
+        base_policy = policy()
+        base_candidate = candidate(
+            "runtime-shape", model="model", family="independent", score=0.95
+        )
+        score = next(
+            item
+            for item in base_candidate.task_scores
+            if item.task_profile_id == "mechanical"
+        )
+        mechanical_profile = base_policy.task_profiles[0]
+        cases = (
+            (
+                "candidate_healthy_string",
+                base_task,
+                (replace(base_candidate, healthy=cast(bool, "false")),),
+                base_policy,
+                "candidate_healthy_invalid",
+            ),
+            (
+                "candidate_automated_string",
+                base_task,
+                (
+                    replace(
+                        base_candidate,
+                        automated_routing=cast(bool, "false"),
+                    ),
+                ),
+                base_policy,
+                "candidate_automated_routing_invalid",
+            ),
+            (
+                "candidate_identity_boolean",
+                base_task,
+                (replace(base_candidate, identity_confidence=cast(float, True)),),
+                base_policy,
+                "candidate_identity_confidence_invalid",
+            ),
+            (
+                "candidate_paid_usage_string",
+                base_task,
+                (
+                    replace(
+                        base_candidate,
+                        uses_paid_anthropic_api=cast(bool, "false"),
+                    ),
+                ),
+                base_policy,
+                "paid_anthropic_usage_invalid",
+            ),
+            (
+                "score_conservative_boolean",
+                base_task,
+                (
+                    replace(
+                        base_candidate,
+                        task_scores=(
+                            replace(score, conservative_score=cast(float, True)),
+                        ),
+                    ),
+                ),
+                base_policy,
+                "benchmark_evidence_incomplete",
+            ),
+            (
+                "policy_enforcement_integer",
+                base_task,
+                (base_candidate,),
+                replace(base_policy, require_enforced_mutation=cast(bool, 0)),
+                "policy_require_enforced_mutation_invalid",
+            ),
+            (
+                "policy_paid_api_switch_integer",
+                base_task,
+                (base_candidate,),
+                replace(base_policy, forbid_paid_anthropic_api=cast(bool, 0)),
+                "policy_forbid_paid_anthropic_api_invalid",
+            ),
+            (
+                "policy_identity_boolean",
+                base_task,
+                (base_candidate,),
+                replace(
+                    base_policy,
+                    minimum_identity_confidence=cast(float, False),
+                ),
+                "policy_minimum_identity_confidence_invalid",
+            ),
+            (
+                "profile_score_boolean",
+                base_task,
+                (base_candidate,),
+                replace(
+                    base_policy,
+                    task_profiles=(
+                        replace(
+                            mechanical_profile,
+                            minimum_task_score=cast(float, False),
+                        ),
+                        *base_policy.task_profiles[1:],
+                    ),
+                ),
+                "task_profile_minimum_task_score_invalid",
+            ),
+            (
+                "task_contains_pii_integer",
+                replace(base_task, contains_pii=cast(bool, 0)),
+                (base_candidate,),
+                base_policy,
+                "task_contains_pii_invalid",
+            ),
+            (
+                "profile_pii_policy_integer",
+                base_task,
+                (base_candidate,),
+                replace(
+                    base_policy,
+                    task_profiles=(
+                        replace(mechanical_profile, pii_policy=cast(str, 0)),
+                        *base_policy.task_profiles[1:],
+                    ),
+                ),
+                "task_profile_pii_policy_invalid",
+            ),
+        )
+
+        for (
+            name,
+            malformed_task,
+            malformed_candidates,
+            malformed_policy,
+            reason,
+        ) in cases:
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=malformed_task,
+                    candidates=malformed_candidates,
+                    policy=malformed_policy,
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                if plan.rejections:
+                    self.assertEqual(plan.rejections[0].reason_codes, (reason,))
+                else:
+                    self.assertEqual(plan.abstention_reason, reason)
+
+    def test_ordering_and_age_inputs_reject_invalid_runtime_shapes(self) -> None:
+        """Values used for ranking, freshness, or scoring cannot coerce silently."""
+        base_task = task(TaskClass.MECHANICAL, "mechanical")
+        base_policy = policy()
+        base_candidate = candidate(
+            "invalid-ranking", model="model", family="independent", score=0.95
+        )
+        score = next(
+            item
+            for item in base_candidate.task_scores
+            if item.task_profile_id == "mechanical"
+        )
+        cases = (
+            (
+                "cost_boolean",
+                replace(base_candidate, cost_rank=cast(int, True)),
+                base_policy,
+                "candidate_cost_rank_invalid",
+            ),
+            (
+                "quota_string",
+                replace(base_candidate, quota_pressure_rank=cast(int, "1")),
+                base_policy,
+                "candidate_quota_pressure_rank_invalid",
+            ),
+            (
+                "latency_negative",
+                replace(base_candidate, latency_rank=-1),
+                base_policy,
+                "candidate_latency_rank_invalid",
+            ),
+            (
+                "quality_float",
+                replace(base_candidate, quality_tier=cast(int, 1.5)),
+                base_policy,
+                "candidate_quality_tier_invalid",
+            ),
+            (
+                "sample_count_boolean",
+                replace(
+                    base_candidate, task_scores=(replace(score, sample_count=True),)
+                ),
+                base_policy,
+                "benchmark_evidence_incomplete",
+            ),
+            (
+                "max_age_boolean",
+                base_candidate,
+                replace(base_policy, max_health_age_days=cast(int, True)),
+                "policy_max_health_age_invalid",
+            ),
+        )
+
+        for name, malformed_candidate, malformed_policy, reason in cases:
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=base_task,
+                    candidates=(malformed_candidate,),
+                    policy=malformed_policy,
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                if plan.rejections:
+                    self.assertEqual(plan.rejections[0].reason_codes, (reason,))
+                else:
+                    self.assertEqual(plan.abstention_reason, reason)
 
     def test_places_on_observed_allowed_host_not_session_host(self) -> None:
         fleet_policy = replace(
