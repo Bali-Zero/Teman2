@@ -1521,7 +1521,12 @@ class ConductorRouterTest(unittest.TestCase):
 
                 self.assertEqual(plan.decision, Decision.ABSTAIN)
                 self.assertEqual(
-                    plan.rejections[0].reason_codes, ("grader_family_unknown",)
+                    plan.rejections[0].reason_codes,
+                    (
+                        ("grader_family_unknown",)
+                        if raw_family == "---"
+                        else ("candidate_family_invalid",)
+                    ),
                 )
 
     def test_review_rejects_unknown_generator_family(self) -> None:
@@ -2260,6 +2265,120 @@ class ConductorRouterTest(unittest.TestCase):
             self.assertIsNone(router._parse_iso_timestamp("2026-08-21T00:00:00Z"))
         finally:
             router.datetime = original_datetime
+
+    def test_malformed_public_task_or_policy_abstains_without_attribute_error(
+        self,
+    ) -> None:
+        malformed_task = plan_dispatch(
+            session=session(),
+            task=cast(TaskIntent, object()),
+            candidates=(),
+            policy=policy(),
+        )
+        malformed_policy = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(),
+            policy=cast(RoutingPolicy, object()),
+        )
+        all_malformed = plan_dispatch(
+            session=cast(SessionIdentity, object()),
+            task=cast(TaskIntent, object()),
+            candidates=(),
+            policy=cast(RoutingPolicy, object()),
+        )
+
+        self.assertEqual(malformed_task.decision, Decision.ABSTAIN)
+        self.assertEqual(malformed_task.abstention_reason, "task_intent_invalid")
+        self.assertEqual(malformed_policy.decision, Decision.ABSTAIN)
+        self.assertEqual(malformed_policy.abstention_reason, "routing_policy_invalid")
+        self.assertEqual(all_malformed.decision, Decision.ABSTAIN)
+        self.assertEqual(all_malformed.abstention_reason, "session_identity_invalid")
+        self.assertEqual(all_malformed.policy_hash, "unavailable")
+
+    def test_expiry_at_policy_clock_is_stale_for_capability_and_benchmark(
+        self,
+    ) -> None:
+        base = candidate("expiry-boundary", model="builder", family="test", score=0.95)
+        expired_capability = replace(base.features[0], expires_at=AS_OF)
+        capability_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(
+                replace(base, features=(expired_capability, *base.features[1:])),
+            ),
+            policy=policy(),
+        )
+        score = next(
+            item for item in base.task_scores if item.task_profile_id == "mechanical"
+        )
+        expired_score = replace(score, expires_at=AS_OF)
+        benchmark_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(replace(base, task_scores=(expired_score,)),),
+            policy=policy(),
+        )
+
+        self.assertEqual(
+            capability_plan.rejections[0].reason_codes, ("capability_stale",)
+        )
+        self.assertEqual(
+            benchmark_plan.rejections[0].reason_codes, ("benchmark_stale",)
+        )
+
+    def test_candidate_family_is_required_before_assignment_for_every_task(
+        self,
+    ) -> None:
+        for raw_family in (cast(str, ""), cast(str, 7)):
+            with self.subTest(raw_family=raw_family):
+                malformed = candidate(
+                    "invalid-family",
+                    model="builder",
+                    family=raw_family,
+                    score=0.95,
+                )
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(malformed,),
+                    policy=policy(),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(
+                    plan.rejections[0].reason_codes, ("candidate_family_invalid",)
+                )
+
+    def test_mixed_or_invalid_endpoint_identifiers_abstain_before_sorting(self) -> None:
+        valid = candidate("valid", model="builder", family="test", score=0.95)
+        malformed = replace(valid, endpoint_id=cast(str, 7))
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(valid, malformed),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "candidate_endpoint_id_invalid")
+
+    def test_any_nonblank_root_engine_can_remain_conductor(self) -> None:
+        builder = candidate(
+            "engine-builder", model="builder", family="test", score=0.95
+        )
+        for engine in ("Jules", "NotebookLM", "Qwen", "Kimi", "Claude", "Codex"):
+            with self.subTest(engine=engine):
+                plan = plan_dispatch(
+                    session=replace(session(), engine=engine),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(builder,),
+                    policy=policy(),
+                )
+
+                self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+                self.assertEqual(plan.conductor.engine, engine)
 
 
 if __name__ == "__main__":

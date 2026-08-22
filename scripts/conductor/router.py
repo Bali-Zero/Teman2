@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
+from typing import TypeGuard
 
 from scripts.conductor.contracts import (
     AuthSurface,
@@ -82,7 +83,7 @@ def plan_dispatch(
     # annotations do not defend this boundary after JSON deserialization, and
     # constructing a conductor assignment from an untrusted child would itself
     # grant it a misleading authority receipt.  Validate before any assignment.
-    if not isinstance(session, SessionIdentity):
+    if not _is_session_identity(session):
         return _abstain(
             session=session,
             task=task,
@@ -94,9 +95,7 @@ def plan_dispatch(
         )
     session_rejection = _session_runtime_rejection(
         session,
-        _parse_iso_timestamp(policy.as_of)
-        if isinstance(policy, RoutingPolicy)
-        else None,
+        _parse_iso_timestamp(policy.as_of) if _is_routing_policy(policy) else None,
     )
     if session_rejection is not None:
         return _abstain(
@@ -109,6 +108,27 @@ def plan_dispatch(
             reason=session_rejection,
         )
     conductor_assignment = _conductor_assignment(session)
+
+    if not _is_task_intent(task):
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason="task_intent_invalid",
+        )
+    if not _is_routing_policy(policy):
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason="routing_policy_invalid",
+        )
 
     # TaskIntent is deliberately a small frozen dataclass rather than a parsing
     # framework object.  Its annotation therefore cannot prevent a deserialized
@@ -456,13 +476,28 @@ def _is_nonempty_string(value: object) -> bool:
     return type(value) is str and bool(value.strip())
 
 
-def _is_finite_number(value: object) -> bool:
+def _is_finite_number(value: object) -> TypeGuard[int | float]:
     """Return whether ``value`` is a finite numeric scalar, never a boolean."""
     return (
         isinstance(value, (int, float))
         and type(value) is not bool
         and math.isfinite(value)
     )
+
+
+def _is_session_identity(value: object) -> TypeGuard[SessionIdentity]:
+    """Return whether a deserialized public input is a SessionIdentity."""
+    return isinstance(value, SessionIdentity)
+
+
+def _is_task_intent(value: object) -> TypeGuard[TaskIntent]:
+    """Return whether a deserialized public input is a TaskIntent."""
+    return isinstance(value, TaskIntent)
+
+
+def _is_routing_policy(value: object) -> TypeGuard[RoutingPolicy]:
+    """Return whether a deserialized public input is a RoutingPolicy."""
+    return isinstance(value, RoutingPolicy)
 
 
 def _is_nonnegative_integer(value: object) -> bool:
@@ -500,8 +535,6 @@ def _session_runtime_rejection(
         return "session_parent_session_id_invalid"
     if not isinstance(session.role, Role):
         return "session_role_invalid"
-    if session.engine not in {"claude", "codex", "agy", "kimi", "unknown"}:
-        return "session_engine_invalid"
     if not isinstance(session.repo_root, Path) or not session.repo_root.is_absolute():
         return "session_repo_root_invalid"
     started_at = _parse_iso_timestamp(session.started_at)
@@ -658,10 +691,9 @@ def _candidate_container_rejection(
     if any(not isinstance(candidate, EndpointCandidate) for candidate in candidates):
         return "candidate_container_invalid"
     endpoint_ids = tuple(candidate.endpoint_id for candidate in candidates)
-    valid_endpoint_ids = tuple(
-        endpoint_id for endpoint_id in endpoint_ids if _is_nonempty_string(endpoint_id)
-    )
-    if len(set(valid_endpoint_ids)) != len(valid_endpoint_ids):
+    if any(not _is_nonempty_string(endpoint_id) for endpoint_id in endpoint_ids):
+        return "candidate_endpoint_id_invalid"
+    if len(set(endpoint_ids)) != len(endpoint_ids):
         return "candidate_endpoint_duplicate"
     return None
 
@@ -673,6 +705,7 @@ def _candidate_runtime_rejection(candidate: EndpointCandidate) -> str | None:
         (candidate.engine, "candidate_engine_invalid"),
         (candidate.model_card_id, "candidate_model_card_id_invalid"),
         (candidate.model, "candidate_model_invalid"),
+        (candidate.family, "candidate_family_invalid"),
         (candidate.model_card_hash, "candidate_model_card_hash_invalid"),
         (candidate.endpoint_profile_hash, "candidate_endpoint_profile_hash_invalid"),
         (
@@ -698,13 +731,13 @@ def _candidate_runtime_rejection(candidate: EndpointCandidate) -> str | None:
         or any(not _is_nonempty_string(host) for host in candidate.machine_allowlist)
     ):
         return "candidate_machine_allowlist_invalid"
-    for value, code in (
+    for rank, code in (
         (candidate.cost_rank, "candidate_cost_rank_invalid"),
         (candidate.latency_rank, "candidate_latency_rank_invalid"),
         (candidate.quota_pressure_rank, "candidate_quota_pressure_rank_invalid"),
         (candidate.quality_tier, "candidate_quality_tier_invalid"),
     ):
-        if not _is_nonnegative_integer(value):
+        if not _is_nonnegative_integer(rank):
             return code
     if type(
         candidate.enforcement_mode
@@ -1077,7 +1110,7 @@ def _capability_evidence_rejections(
             if expires_at is None or expires_at < observed_at:
                 reasons.add("capability_timestamp_invalid")
                 continue
-            if expires_at < as_of:
+            if expires_at <= as_of:
                 reasons.add("capability_stale")
                 continue
 
@@ -1280,12 +1313,14 @@ def _score_rejection(
         return "benchmark_endpoint_profile_mismatch"
     if score.task_profile_hash != task_profile_hash:
         return "benchmark_task_profile_mismatch"
-    if not _is_finite_number(score.score) or not 0 <= score.score <= 1:
+    score_value = score.score
+    if not _is_finite_number(score_value) or not 0 <= score_value <= 1:
         return "benchmark_evidence_incomplete"
-    if score.conservative_score is not None and (
-        not _is_finite_number(score.conservative_score)
-        or not 0 <= score.conservative_score <= 1
-        or score.conservative_score > score.score
+    conservative_score = score.conservative_score
+    if conservative_score is not None and (
+        not _is_finite_number(conservative_score)
+        or not 0 <= conservative_score <= 1
+        or conservative_score > score_value
     ):
         return "benchmark_evidence_incomplete"
     if not isinstance(score.benchmark_id, str) or not score.benchmark_id.strip():
@@ -1311,9 +1346,10 @@ def _score_rejection(
     if score.sample_count < profile.minimum_sample_count:
         return "benchmark_low_sample"
     if profile.maximum_dispersion is not None:
-        if not _is_finite_number(score.dispersion) or not 0 <= score.dispersion <= 1:
+        dispersion = score.dispersion
+        if not _is_finite_number(dispersion) or not 0 <= dispersion <= 1:
             return "benchmark_dispersion_unmeasured"
-        if score.dispersion > profile.maximum_dispersion:
+        if dispersion > profile.maximum_dispersion:
             return "benchmark_high_variance"
     if (
         not isinstance(score.sample_hashes, tuple)
@@ -1339,7 +1375,7 @@ def _score_rejection(
         expires_at = _parse_iso_timestamp(score.expires_at)
         if expires_at is None or expires_at < measured_at:
             return "benchmark_timestamp_invalid"
-        if expires_at < as_of:
+        if expires_at <= as_of:
             return "benchmark_stale"
     if (
         profile.minimum_task_score is not None
@@ -1350,9 +1386,11 @@ def _score_rejection(
 
 
 def _effective_score(score: TaskScore) -> float:
-    if score.conservative_score is not None:
-        return score.conservative_score
-    return score.score if score.score is not None else -1.0
+    conservative_score = score.conservative_score
+    if _is_finite_number(conservative_score):
+        return float(conservative_score)
+    score_value = score.score
+    return float(score_value) if _is_finite_number(score_value) else -1.0
 
 
 def _benchmark_failure_rank(reason: str) -> tuple[int, str]:
@@ -1432,7 +1470,12 @@ def _abstain(
     rejections: tuple[CandidateRejection, ...],
     reason: str,
 ) -> DispatchPlan:
-    logger.info("Conductor abstained from routing task %s: %s", task.task_id, reason)
+    task_id = _safe_contract_string(task, "task_id", "unavailable")
+    policy_hash = _safe_contract_string(policy, "policy_hash", "unavailable")
+    capability_index_hash = _safe_contract_string(
+        policy, "capability_index_hash", "unavailable"
+    )
+    logger.info("Conductor abstained from routing task %s: %s", task_id, reason)
     return DispatchPlan(
         decision=Decision.ABSTAIN,
         conductor=session,
@@ -1440,12 +1483,21 @@ def _abstain(
         assignments=assignments,
         primary=None,
         fallbacks=(),
-        policy_hash=policy.policy_hash,
+        policy_hash=policy_hash,
         task_profile_hash=task_profile_hash,
-        capability_index_hash=policy.capability_index_hash,
+        capability_index_hash=capability_index_hash,
         selection_reason_codes=(reason,),
         rejections=rejections,
         degraded_reasons=(reason,),
         abstention_reason=reason,
         separate_builder_session_required=False,
     )
+
+
+def _safe_contract_string(value: object, attribute: str, fallback: str) -> str:
+    """Read a public receipt field without dereferencing malformed input."""
+    try:
+        field = getattr(value, attribute)
+    except (AttributeError, TypeError):
+        return fallback
+    return field if _is_nonempty_string(field) else fallback
