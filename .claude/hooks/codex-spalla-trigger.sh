@@ -474,7 +474,10 @@ ANCHORS = (
     #     git commit -m, a heredoc) this one anchor took 2278 ms against 2.53 ms
     #     bounded -- roughly 900x, in a hook that runs on EVERY tool call. The bound
     #     was carried by the old MARKER and its comment; the rule itself never had
-    #     it, so the cost predates this PR. Sixteen is far above postgresql (10) and
+    #     it. Precisely: the cost is not a regression against MAIN -- the hook at the
+    #     merge-base has no redactor at all -- but it is not older than this PR either,
+    #     because the whole matcher is introduced here. It was unbounded from the URL
+    #     rule first commit onward. Sixteen is far above postgresql (10) and
     #     mongodb+srv (11) and far below anything a secret looks like.
     r"[a-zA-Z][a-zA-Z0-9+.-]{0,15}://[^\s:/@]+:[^\s/@]+@",
     # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the

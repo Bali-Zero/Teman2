@@ -381,9 +381,7 @@ receipts:
       anchor was unbounded, so [a-zA-Z][a-zA-Z0-9+.-]* retried from every position of a long
       alphanumeric run and rescanned to the end. On a 50KB command carrying NO credential at all -- a
       large git commit -m, a heredoc -- that one anchor cost 2278 ms against 2.53 ms bounded, in a hook
-      that runs on EVERY PostToolUse event. NOT a regression: the rule was unbounded before this PR too
-      (the bound lived only in the old MARKER and its comment, which argued for it explicitly and was
-      deleted with the cascade). Bounded to sixteen characters."
+      that runs on EVERY PostToolUse event. Not a regression AGAINST MAIN, and the earlier wording of this claim was wrong: it said the rule was unbounded 'before this PR too', which is false. At the merge-base 062269dc9 the hook has NO redactor at all -- 95 lines, zero re.sub, zero <REDACTED> -- so the entire matcher, URL rule included, is introduced by this PR. The accurate statement is narrower: WITHIN the PR the URL rule was unbounded from its first commit (e89aca12b), and the sixteen-character bound existed only inside MARKER, which arrived later and was deleted with the cascade. Caught by the author re-deriving the claim against the merge-base rather than trusting it. Bounded to sixteen characters."
     cmd: "timed each anchor separately against 'git commit -m ' + 'a'*50000; after the bound the whole redactor runs 6.16 ms at 50KB and 20.10 ms at 200KB, i.e. linear"
     exit: 0
     ts: "2026-08-22T05:55:00Z"
