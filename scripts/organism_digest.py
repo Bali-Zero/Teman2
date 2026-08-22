@@ -13,7 +13,7 @@ Sources (all read-only, all pre-existing):
   1. research/regulatory/*-delta.json   — new regulatory deltas (severity, citation, line)
   2. ~/.organism/arsenal/last.json      — AI seats not LIVE (from arsenal_probe.py)
   3. ~/.organism/last_seen/*.json       — organ heartbeats: stale or self-declared degraded
-  4. .claude/skills/modus/PENDING-ARMS.md — overdue suspended armings (via pending_arms_report)
+  4. .claude/skills/modus/PENDING-ARMS.md — overdue suspended armings (via pending_arms_report; OFF by default since 2026-08-22, ORGANISM_DIGEST_PENDING_ARMS=1 to show)
   5. git log origin/main (first-parent)  — what landed on main in the window
 
 Contract (same anti-calm-liar family as proprioception_sessionstart.sh):
@@ -179,6 +179,15 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
     errs: list[str] = []
     reporter = _repo_root() / "scripts" / "pending_arms_report.py"
     if not reporter.is_file():
+        return lines, errs
+    # OFF by default since 2026-08-22 (Zero GO on the regression diagnosis).
+    # Measured 20-22/8: "190 armamenti sospesi OVERDUE" greeted every session
+    # and the sessions chose the ledger over the business — 118 of 195 merged
+    # PRs from the M5 ops lane alone, ~10 business commits, 27 of 200 commits
+    # correcting a previous commit's claim. The ledger is still read at modus TRIAGE and by
+    # `pending_arms_report.py`; this only stops it from being the FIRST thing a
+    # session sees at boot. Opt back in: ORGANISM_DIGEST_PENDING_ARMS=1.
+    if os.environ.get("ORGANISM_DIGEST_PENDING_ARMS", "0") != "1":
         return lines, errs
     try:
         proc = subprocess.run(

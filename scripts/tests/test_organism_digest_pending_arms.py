@@ -55,9 +55,15 @@ def _fake_reporter(tmp_path, payload):
     return tmp_path
 
 
-def _run(monkeypatch, tmp_path, payload):
+def _run(monkeypatch, tmp_path, payload, *, opt_in=True):
     root = _fake_reporter(tmp_path, payload)
     monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+    # The overdue line is opt-in since 2026-08-22 (see pending_arms_overdue);
+    # these tests exercise the reporter contract, so they opt in explicitly.
+    if opt_in:
+        monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "1")
+    else:
+        monkeypatch.delenv("ORGANISM_DIGEST_PENDING_ARMS", raising=False)
     return organism_digest.pending_arms_overdue()
 
 
@@ -173,5 +179,18 @@ def test_reporter_absent_is_not_an_error(monkeypatch, tmp_path):
     existing guard at the top of the function."""
     monkeypatch.setattr(organism_digest, "_repo_root", lambda: tmp_path)
     lines, errs = organism_digest.pending_arms_overdue()
+    assert lines == []
+    assert errs == []
+
+
+def test_default_boot_does_not_inject_the_overdue_count(monkeypatch, tmp_path):
+    """2026-08-22: without the opt-in env the digest says NOTHING about the
+    ledger even when it is deeply overdue — the boot line was a meta-work
+    magnet (190 OVERDUE greeted every session for two days)."""
+    payload = {
+        "counts": {"tech_debt_overdue": 190},
+        "entries": [_entry("TECH-DEBT") for _ in range(3)],
+    }
+    lines, errs = _run(monkeypatch, tmp_path, payload, opt_in=False)
     assert lines == []
     assert errs == []
