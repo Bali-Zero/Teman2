@@ -258,9 +258,11 @@ def plan_dispatch(
         )
         for candidate, score, machine in eligible[1:]
     )
-    mutation = task.mutation or profile.mutation
+    separate_session_required = _requires_independent_session(task, profile)
     return DispatchPlan(
-        decision=Decision.DELEGATE_REQUIRED if mutation else Decision.ALLOW,
+        decision=(
+            Decision.DELEGATE_REQUIRED if separate_session_required else Decision.ALLOW
+        ),
         conductor=session,
         task=task,
         assignments=(conductor_assignment, primary, *fallbacks),
@@ -275,7 +277,7 @@ def plan_dispatch(
         rejections=tuple(rejections),
         degraded_reasons=(),
         abstention_reason=None,
-        separate_builder_session_required=mutation,
+        separate_builder_session_required=separate_session_required,
     )
 
 
@@ -292,6 +294,15 @@ def _worker_role(task: TaskIntent) -> Role:
     if task.task_class is TaskClass.REVIEW:
         return Role.GRADER
     return Role.BUILDER
+
+
+def _requires_independent_session(task: TaskIntent, profile: TaskProfile) -> bool:
+    """Return whether this plan must execute in an independent child session."""
+    return (
+        task.mutation
+        or profile.mutation
+        or task.task_class in {TaskClass.ARCHITECTURE, TaskClass.REVIEW}
+    )
 
 
 def _conductor_assignment(session: SessionIdentity) -> RoleAssignment:

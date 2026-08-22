@@ -198,6 +198,64 @@ def policy() -> RoutingPolicy:
     )
 
 
+def live_non_mutating_policy(profile_id: str) -> tuple[TaskProfile, RoutingPolicy]:
+    """Load one checked-in non-mutating profile with a deterministic test clock."""
+    registry = load_registry(Path(__file__).resolve().parents[2])
+    profile = registry.profile(profile_id)
+    assert not profile.mutation
+    return profile, replace(
+        policy(),
+        task_profile_hashes={profile.id: f"live-profile-{profile.id}"},
+        task_profiles=(profile,),
+    )
+
+
+def live_profile_candidate(profile: TaskProfile) -> EndpointCandidate:
+    """Build an eligible concrete endpoint for a checked-in live task profile."""
+    base = candidate(
+        f"eligible-{profile.id}",
+        model="eligible-model",
+        family="independent-family",
+        score=None,
+        capabilities=(
+            "coding",
+            "language",
+            "reasoning_control",
+            "vision",
+            "local_only",
+            "pii_safe_local",
+        ),
+        context_limit=32_768,
+    )
+    return replace(
+        base,
+        features=base.features + (capability("output_tokens", value=8_192),),
+        task_scores=(
+            TaskScore(
+                task_profile_id=profile.id,
+                score=0.95,
+                benchmark_id=profile.benchmark_id,
+                benchmark_version=profile.benchmark_version,
+                sample_count=5,
+                observed_at=AS_OF,
+                evidence_kind=EvidenceKind.BENCHMARKED,
+                sample_hashes=(
+                    "sample-1",
+                    "sample-2",
+                    "sample-3",
+                    "sample-4",
+                    "sample-5",
+                ),
+                scorer_id="test-scorer",
+                scorer_version="v1",
+                expires_at="2026-08-22",
+                dispersion=0.01,
+            ),
+        ),
+        quality_tier=3,
+    )
+
+
 class ConductorRouterTest(unittest.TestCase):
     def test_read_only_class_cannot_smuggle_a_mutation_into_root_allowance(
         self,
@@ -367,6 +425,54 @@ class ConductorRouterTest(unittest.TestCase):
 
         self.assertEqual(plan.decision, Decision.ABSTAIN)
         self.assertEqual(plan.abstention_reason, "host_observation_stale")
+
+    def test_live_architecture_profile_requires_independent_architect(self) -> None:
+        profile, live_policy = live_non_mutating_policy("architecture")
+        architecture_task = replace(
+            task(TaskClass.ARCHITECTURE, profile.id), mutation=False
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=architecture_task,
+            candidates=(live_profile_candidate(profile),),
+            policy=live_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertTrue(plan.separate_builder_session_required)
+        self.assertEqual(plan.primary.role, Role.ARCHITECT)
+
+    def test_live_review_profile_requires_independent_grader(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
+        review_task = replace(task(TaskClass.REVIEW, profile.id), mutation=False)
+
+        plan = plan_dispatch(
+            session=session(),
+            task=review_task,
+            candidates=(live_profile_candidate(profile),),
+            policy=live_policy,
+            generator_family="generator-family",
+        )
+
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertTrue(plan.separate_builder_session_required)
+        self.assertEqual(plan.primary.role, Role.GRADER)
+
+    def test_other_non_mutating_live_profile_keeps_normal_routing(self) -> None:
+        profile, live_policy = live_non_mutating_policy("pii_local")
+        pii_task = replace(task(TaskClass.PII_LOCAL, profile.id), mutation=False)
+
+        plan = plan_dispatch(
+            session=session(),
+            task=pii_task,
+            candidates=(live_profile_candidate(profile),),
+            policy=live_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.ALLOW)
+        self.assertFalse(plan.separate_builder_session_required)
+        self.assertEqual(plan.primary.role, Role.BUILDER)
 
     def test_sol_delegates_mechanical_work_to_luna_and_keeps_conductor_role(
         self,
