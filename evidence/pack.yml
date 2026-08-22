@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+2037/-321 (net +1716) vs MERGE-BASE 062269dc9, measured at the tree that carries this pack"
+  net_lines: "+2266/-320 (net +1946) vs MERGE-BASE 062269dc9, measured at the tree that carries this pack"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
@@ -331,6 +331,45 @@ receipts:
     cmd: "grep codex-spalla .claude/settings.json .codex/hooks.json; git ls-files --error-unmatch .codex/hooks/codex-spalla-trigger.sh (-> not known to git); shasum -a 256 on both (-> identical); python scripts/lint_home_fork.py --discover"
     exit: 0
     ts: "2026-08-22T04:45:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "A REFUTER ON A FRESH CONTEXT broke the anchor-recall fix within the hour, and it was right: the
+      backslash tolerance was written as \\? -- exactly ONE backslash -- so a remote dispatch, which
+      nests its quoting and arrives with TWO or THREE, anchored nothing again. The point-patch had
+      reproduced the enumeration trap this very PR renounces. Requantified to \\*, which answers the
+      DEPTH instead of enumerating one more of them."
+    cmd: "replayed the JSON-in-double-quoted-arg shape at backslash depth 1, 2 and 3 through harnesses from the pre- and post-change hook; all three leak before, none after"
+    exit: 0
+    ts: "2026-08-22T05:05:00Z"
+    seat: refuter subagent (sonnet, fresh context) -> author-session
+  - claim:
+      "A PEM PRIVATE KEY BLOCK anchored on NOTHING, before OR after the redesign: PRE?KEY needs KEY glued
+      to its prefix and PRIVATE KEY has a SPACE, so the least ambiguous credential shape there is was
+      invisible to every rule. Added as its own anchor. This says something about the CORPUS, not only
+      the regex: 105 cases had been built by attacking the matcher that existed, so they could only find
+      shapes that matcher NEARLY caught."
+    cmd: "printf -- '-----BEGIN {RSA,EC,} PRIVATE KEY-----...<invented-body>' through both harnesses: leaks before, redacted after; 13 innocent spot-checks incl. openssl genrsa -out key.pem unchanged"
+    exit: 0
+    ts: "2026-08-22T05:08:00Z"
+    seat: refuter subagent (sonnet, fresh context) -> author-session
+  - claim:
+      "NO COVERAGE REGRESSION: everything the OLD cascade redacted, the NEW cut also redacts. This is the
+      property that matters when replacing a matcher wholesale, and it is the one the 122-case corpus
+      cannot establish on its own. Differential fuzz, old-vs-new on the same input, failing only when the
+      OLD output had removed the token and the NEW output had not: 18,480 structured inputs (product of
+      8 prefixes x 11 names x 10 separators x 3 quotings x 7 suffixes, including PEM delimiters and
+      backslash depths 1-3) and 7,331 random token-bearing inputs -> 0 regressions in both."
+    cmd: "differential superset fuzz, seed 20260822, harnesses extracted from the pre- and post-change hook"
+    exit: 0
+    ts: "2026-08-22T05:20:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
+      nothing else does (17/122); restored byte-identically, 122/122 pass (105 guilt / 15 innocence /
+      2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 122/122; shellcheck clean on both files"
+    exit: 0
+    ts: "2026-08-22T05:25:00Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -676,6 +715,21 @@ dissent:
   - seat: session (m5), attacking its own redesign before shipping
     objection: "The redesign does NOT close the class the deferred ledger row named. Measured on the three shapes that row cites: two die with the cascade, but a JSON body inside a double-quoted shell arg still leaked with NOTHING firing at all -- the line unchanged byte for byte. Soundness of the CUT and recall of the ANCHOR are separate obligations; the first proves nothing about the second. Fixed explicitly, not by side effect."
     status: CONFIRMED
+  - seat: refuter subagent (sonnet, fresh context, snapshot only, not the author)
+    objection: "The \\? backslash tolerance is a point-patch for exactly one backslash, not an answer to arbitrary escaping depth. A nested remote dispatch arrives with two or three and defeats it again -- the same disease one layer deeper, within an hour of the cure, and an instance of the enumeration trap the redesign claims to have replaced."
+    status: CONFIRMED
+  - seat: refuter subagent (sonnet, fresh context, snapshot only, not the author)
+    objection: "A PEM private-key block anchors on nothing at all: PRE?KEY requires KEY glued to its prefix and PRIVATE KEY contains a space. The most unambiguous credential shape in existence was invisible to every rule."
+    status: CONFIRMED
+  - seat: refuter subagent (sonnet, fresh context, snapshot only, not the author)
+    objection: "The cut is sound about text AFTER the earliest anchor and says nothing about text BEFORE it, so every vocabulary gap is a FULL silent leak of everything preceding it. Demonstrated with COOKIE=, SESSION_ID=, PAT=, SIGNING_CERT=, redis-cli AUTH <v>, mysql -p<v>, API_KEY -> <v>, and a secret sitting before a later Bearer anchor."
+    status: CONFIRMED
+  - seat: author-session (M5), re-measuring the refuter's own findings before acting on them
+    objection: "The refuter's list reads as findings against the NEW design; measured, EVERY ONE of them leaks identically on the OLD one. They are pre-existing anchor-recall gaps, not regressions, and most are already named in this pack's residual risks. Recorded because the distinction changes what the reader should do: none of them is a reason to revert the redesign, and two of them (escaping depth, PEM) were worth fixing on their own merits."
+    status: CONFIRMED
+  - seat: refuter subagent (sonnet, fresh context, snapshot only, not the author)
+    objection: 'The cut makes over-match WORSE IN SCOPE even where the trigger is unchanged: echo "PASSWORD: must be at least 12 chars" lost only one word under the cascade and now loses the whole line. Same for a policy/help string, a status message, and an env-var REFERENCE like echo "TOKEN: ${SECRET_TOKEN}" that contains no secret at all.'
+    status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
     finds the field only in evidence packs and research/operations/2026-08-09-harness-v2-teman2.md:155
@@ -740,12 +794,37 @@ residual_risks:
     that the fork is inside the working tree and merely untracked. Ledgered as an OPEN PENDING-ARMS row
     with an owner; kept out of this diff because widening that lint gates other people's PRs and belongs
     in its own blast radius. Until it is done, PROVE-LIVE for this PR must cover BOTH paths by hand."
+  - 'OVER-MATCH DAMAGE IS A REAL REGRESSION, and the only one this redesign carries. The TRIGGER is
+    unchanged -- the same inputs fire, and the 15 innocence cases still pass untouched -- but what a
+    firing COSTS grew from one value to the rest of the line. Measured on lines a diagnostic log
+    actually contains: `echo "PASSWORD: must be at least 12 chars"` (policy help text) kept
+    `be at least 12 chars` under the cascade and now yields `echo "<REDACTED>`; likewise a status
+    message `echo "rotate STRIPE_SECRET_KEY: done"`, an env-var REFERENCE `echo "TOKEN:
+    ${SECRET_TOKEN}"` that contains no secret at all, and `sed -i "/^AUTH:/d" config.ini`. Accepted
+    knowingly: over-redacting a diagnostic line costs legibility, under-redacting one costs a
+    credential, and this field has no programmatic consumer. It is NOT accepted silently -- if the log
+    stops being useful in practice, this is the line to revisit, and the answer then is a narrower cut
+    (to end-of-token-run) plus a soundness proof for it, not a return to the cascade.'
+  - "The NAME vocabulary was deliberately NOT widened in this PR even though the refuter leaked COOKIE=,
+    SESSION_ID=, PAT= and SIGNING_CERT= in full. Reason, stated so the omission is not read as an
+    oversight: the cut made every anchor MORE expensive to fire, so adding a word now buys a bigger
+    over-match than the same word would have bought last week -- `cookie` and `session` in particular
+    appear in innocent commands. Widening the vocabulary is its own diff with its own innocence corpus.
+    The same holds for separators outside {=,:} (`redis-cli AUTH <v>`, `mysql -p<v>`, `API_KEY -> <v>`),
+    all of which leak identically on the pre-change hook."
+  - "THE NO-REGRESSION RESULT IS A STATEMENT ABOUT THE GENERATOR, not about the world. 18,480 structured
+    plus 7,331 random token-bearing inputs found 0 cases where the old cascade redacted a token and the
+    new cut did not -- but the structured product is built from 8 prefixes, 11 names, 10 separators,
+    3 quotings and 7 suffixes that a human chose, and the random arm draws from that same fragment
+    vocabulary on one seed. A shape absent from the fragment list is absent from the result. This is the
+    same caveat the fourth direction earned the hard way: a fuzz score describes the generator exactly as
+    a mutation score describes the corpus."
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-# ESTIMATE, not a measurement, and labelled so on purpose: 72,970 bytes / 4.0 chars-per-token.
+# ESTIMATE, not a measurement, and labelled so on purpose: 81,222 bytes / 4.0 chars-per-token.
 # No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
 # this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
 # documentation. The previous value, 16067, was left behind by later edits to this pack.
-size_tokens: 18200
+size_tokens: 20305

@@ -459,6 +459,12 @@ ANCHORS = (
     r"sk-ant-[A-Za-z0-9_-]{8,}",
     r"gh[pousr]_[A-Za-z0-9]{8,}",
     r"github_pat_[A-Za-z0-9_]{8,}",
+    # 1b. A PEM private-key block anchors on NOTHING above: PRE?KEY needs KEY glued
+    #     to its prefix, and PRIVATE KEY has a SPACE, so the single most
+    #     unambiguous credential shape there is was invisible. Found by a refuter,
+    #     not by the corpus. No over-match risk worth weighing: the delimiter line
+    #     is not something an innocent command says by accident.
+    r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----",
     # 3. URL userinfo: scheme://user:<secret>@host. The whole userinfo form is
     #    the anchor, so a bare scheme:// in an innocent URL does not fire.
     r"[a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:[^\s/@]+@",
@@ -466,7 +472,7 @@ ANCHORS = (
     #    8-char floor are what keep flagbearer and Bearer abc innocent.
     r"(?i)\b(?:Bearer)\s+[A-Za-z0-9._-]{8,}",
     # 2. Anything ASSIGNED to a credential-ish NAME.
-    # The \\? before the optional quote is NOT decoration: a JSON body written
+    # The \\* before the optional quote is NOT decoration: a JSON body written
     # inside a double-quoted shell arg reaches this hook as api_key\": <v>, so the
     # separator is preceded by a BACKSLASH-escaped quote. Without it NO anchor fires
     # at all and the line is logged unchanged, byte for byte -- measured. That is a
@@ -474,7 +480,13 @@ ANCHORS = (
     # BEHIND a recognised anchor, this one fails to RECOGNISE the anchor. The
     # earliest-anchor cut cannot help where nothing anchors, so anchor RECALL is its
     # own obligation and does not follow from the cut being sound.
-    r"(?i)" + NAME + r"\\?[\"\x27]?\s*[=:]\s*" + VALUE,
+    # It is \\* and NOT \\?, and the difference is a finding not a preference: a
+    # remote dispatch nests its quoting, so ssh host "bash -c \\"curl -d ...\\"" reaches
+    # this hook with TWO or THREE literal backslashes before the quote. A refuter on a
+    # fresh context broke the \\? version within the hour by adding one nesting level --
+    # the point-patch reproducing the very enumeration trap the block above renounces.
+    # \\* answers the depth, not one more enumerated depth.
+    r"(?i)" + NAME + r"\\*[\"\x27]?\s*[=:]\s*" + VALUE,
 )
 _starts = [m.start() for m in (re.search(p, s) for p in ANCHORS) if m]
 if _starts:

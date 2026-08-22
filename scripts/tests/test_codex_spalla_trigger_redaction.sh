@@ -543,6 +543,35 @@ assert_redacted "guilt-anchor-recall-json-in-double-quoted-arg [access_token]" \
 assert_redacted "guilt-anchor-recall-escaped-separator-no-quote" \
     "run api_key\\:$JSONQ_V" "$JSONQ_V"
 
+# 4i. ESCAPING DEPTH. The 4h cure allowed exactly ONE backslash before the
+#     separator quote. A refuter on a fresh context broke it within the hour by
+#     adding a nesting level: a remote dispatch nests its quoting, so
+#     ssh host "bash -c \"curl -d ...\"" reaches this hook with TWO or THREE
+#     literal backslashes and nothing anchors again. The point-patch had
+#     reproduced the exact enumeration trap the redesign renounced -- one more
+#     special case bolted onto the anchor. Cured by quantifying the depth (\\*)
+#     instead of enumerating it. These cases exist so the NEXT depth cannot
+#     regress silently.
+DEPTH_V="depthEsc$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-escaping-depth [two backslashes]" \
+    "curl -d \"{\\\\\"api_key\\\\\": \\\\\"$DEPTH_V\\\\\"}\"" "$DEPTH_V"
+assert_redacted "guilt-escaping-depth [three backslashes]" \
+    "curl -d \"{\\\\\\\"api_key\\\\\\\": \\\\\\\"$DEPTH_V\\\\\\\"}\"" "$DEPTH_V"
+
+# 4j. PEM PRIVATE KEY, which anchored on NOTHING: PRE?KEY needs KEY glued to its
+#     prefix and "PRIVATE KEY" has a SPACE, so the single most unambiguous
+#     credential shape in existence was invisible to every rule, before and after
+#     the redesign. Found by a refuter, not by the corpus -- worth recording as a
+#     property of the CORPUS: 105 cases had been built by attacking the regex that
+#     existed, so they could only ever find shapes that regex nearly caught.
+PEM_V="pemBody$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-pem-private-key [RSA]" \
+    "printf -- '-----BEGIN RSA PRIVATE KEY-----\\nMIIEow$PEM_V\\n-----END RSA PRIVATE KEY-----'" "$PEM_V"
+assert_redacted "guilt-pem-private-key [no algorithm]" \
+    "printf -- '-----BEGIN PRIVATE KEY-----\\nMIIEow$PEM_V'" "$PEM_V"
+assert_redacted "guilt-pem-private-key [EC]" \
+    "printf -- '-----BEGIN EC PRIVATE KEY-----\\nMHc$PEM_V'" "$PEM_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near
