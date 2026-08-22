@@ -1,0 +1,92 @@
+{
+  "run_at": "2026-08-22T07:05:25+08:00",
+  "today": "2026-08-22",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Forbidden on fetch"
+    },
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Forbidden on fetch"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 OK but 'Artikel tidak ditemukan' SPA shell, no extractable content"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Only nav/footer template returned, no regulation catalog content"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Category counts visible (450 Permenaker) but no individual dated entries rendered"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "http_403",
+      "note": "Forbidden on fetch"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "PMK 44/2026 (already seen) and PMK 51/2026 (kepabeanan/customs transshipment, promulgated 31 Jul 2026 - outside 48h window and outside Bali Zero service lines) found; nothing new in scope"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "11 articles dated 20-21 Aug 2026 parsed; all reference PMK 44/2026 and PP 20/2026, both already in seen_citations"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entries (Permen LH 11/2026, Permen ATR 8/9/2026) dated 11-14 Aug 2026, outside 48h window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest entry PER-8/PJ/2026 dated 28 Jul 2026 (already seen), exchange-rate decrees are operational not regulatory"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Homepage press releases (20 Aug newest) cover enforcement/deportation actions only, no new immigration regulations"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "schema_version": "conductor-host-seat-map.v1",
+  "manifest_id": "pro-v1",
+  "machine": "Pro",
+  "as_of": "2026-08-22",
+  "classification": "non-secret-static-discovery-only",
+  "scope": {
+    "model_endpoints": "owned-by-model-intelligence-registry",
+    "account_seats": "owned-by-this-host-manifest",
+    "runtime_auth": "owned-by-fresh-runtime-proof"
+  },
+  "providers": {
+    "anthropic": {
+      "binding_surface": "claude-config-profile",
+      "canonical_roster": ["A1", "A2", "A3", "A4", "A5", "AZ"],
+      "headless_oauth_surface": {
+        "relationship_to_profiles": "separate-surface",
+        "logical_seat_mapping": "unverified"
+      },
+      "seats": [
+        {
+          "seat_id": "A1",
+          "local_binding": "bound",
+          "selector_state": "available",
+          "runtime_auth": "unverified",
+          "evidence": "tracked-pro-seat-map"
+        },
+        {
+          "seat_id": "A2",
+          "local_binding": "bound",
+          "selector_state": "available",
+          "runtime_auth": "unverified",
+          "evidence": "tracked-pro-seat-map"
+        },
+        {
+          "seat_id": "A3",
+          "local_binding": "bound",
+          "selector_state": "available",
+          "runtime_auth": "unverified",
+          "evidence": "tracked-pro-seat-map"
+        },
+        {
+          "seat_id": "A4",
+          "local_binding": "unbound",
+          "selector_state": "unavailable",
+          "runtime_auth": "unverified",
+          "evidence": "tracked-pro-seat-map"
+        },
+        {
+          "seat_id": "A5",
+          "local_binding": "unbound",
+          "selector_state": "unavailable",
+          "runtime_auth": "unverified",
+          "evidence": "tracked-pro-seat-map"
+        },
+        {
+          "seat_id": "AZ",
+          "local_binding": "bound",
+          "selector_state": "available",
+          "runtime_auth": "unverified",
+          "evidence": "tracked-pro-seat-map"
+        }
+      ]
+    },
+    "openai": {
+      "binding_surface": "codex-home",
+      "canonical_roster": ["O1", "O2"],
+      "o2_alias_policy": "canonical-plus-compatibility-name-is-one-seat",
+      "seats": [
+        {
+          "seat_id": "O1",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        },
+        {
+          "seat_id": "O2",
+          "local_binding": "unverified",
+          "selector_state": "unverified",
+          "runtime_auth": "unverified",
+          "evidence": "no-host-evidence"
+        }
+      ]
+    }
+  },
+  "operator_actions": [
+    "operator[profile_binding]: bind A4 and A5 locally before making either selector-visible",
+    "operator[interactive_login]: produce a fresh host-local auth proof for every Claude or Codex seat before execution",
+    "operator[profile_binding]: normalize O2 canonical and compatibility names without counting a third seat"
+  ]
+}

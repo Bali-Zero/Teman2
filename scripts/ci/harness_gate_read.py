@@ -56,7 +56,7 @@ is a ref that resolves through a MOVING base): on the pull_request path this wor
 `github.event.pull_request.base.sha`, a pinned SHA, never `refs/pull/N/merge`. The
 `workflow_dispatch:` trigger remains for the case where there is no PR to unblock. Full procedure,
 including the escapes when no rerunnable run exists:
-docs/runbooks/merge-queue-discipline.md section 6quinquies; CLAUDE.md Agent PR Contract rule 3.
+docs/runbooks/merge-queue-discipline.md section 6septies; CLAUDE.md Agent PR Contract rule 3.
 
 EVENT-TO-SHA RESOLUTION:
   - pull_request  : the PR's real head sha is already directly on the event payload.
@@ -207,7 +207,7 @@ def decide(state: str | None) -> tuple[int, str]:
             "`gh workflow run --ref` — a workflow_dispatch run lands its check-run in a different "
             "check suite and never enters the PR's rollup at all, so the PR stays BLOCKED "
             "(measured on #4543). Full procedure: "
-            "docs/runbooks/merge-queue-discipline.md section 6quinquies.",
+            "docs/runbooks/merge-queue-discipline.md section 6septies.",
         )
     if state == "success":
         return 0, f"{CONTEXT} verdict = success"
