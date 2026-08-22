@@ -499,10 +499,27 @@ ANCHORS = (
     #     header carrying base64 credentials passed through untouched. The 16-char
     #     floor and the base64 alphabet keep the ordinary English word innocent:
     #     "Basic usage", "Basic auth support", "Basic Income Study 2026" all stay.
-    r"(?i)\bBasic\s+[A-Za-z0-9+/=]{16,}",
+    #     ANCHORED ON THE HEADER, not on the bare word, and this is a CORRECTION of
+    #     the first version of this rule, which fired on prose: "Basic
+    #     telecommunications" is eighteen characters of the base64 alphabet and
+    #     tripped a bare \\bBasic\\s+[A-Za-z0-9+/=]{16,}. My own innocence cases missed
+    #     it because I had used SHORT words (Basic auth support), so the length floor
+    #     hid the defect from the very corpus written to catch it -- found by a
+    #     cross-family seat one commit later. Requiring the Authorization: header
+    #     scores 3/3 on guilt with 0 false positives on the prose set, where the bare
+    #     form scored 3/3 and 1. The [A-Za-z-]* prefix admits Proxy-Authorization.
+    #     NOTE THE ASYMMETRY WITH BEARER, which IS bare: rule 4 mangling prose that
+    #     contains the word bearer is a pre-existing, measured and DECLARED residual
+    #     (8 lines in the live log). Inheriting a known defect into a rule added today
+    #     would be a choice, not an accident, so this one is tighter than its sibling.
+    r"(?i)[A-Za-z-]*Authorization:\s*Basic\s+[A-Za-z0-9+/=]{16,}",
     # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the
     #    8-char floor are what keep flagbearer and Bearer abc innocent.
-    r"(?i)\b(?:Bearer)\s+[A-Za-z0-9._-]{8,}",
+    #     The class carries the FULL base64 alphabet (+ / = ~), not just base64url:
+    #     a standard-base64 token containing a plus stopped the match dead, so
+    #     Bearer ab+cdefgh went through in the clear. Widening costs no innocence --
+    #     prose does not contain + or / mid-word -- and closes a real recall gap.
+    r"(?i)\b(?:Bearer)\s+[A-Za-z0-9._~+/=-]{8,}",
     # 2. Anything ASSIGNED to a credential-ish NAME.
     # The \\* before the optional quote is NOT decoration: a JSON body written
     # inside a double-quoted shell arg reaches this hook as api_key\": <v>, so the

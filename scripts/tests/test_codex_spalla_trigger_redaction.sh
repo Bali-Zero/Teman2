@@ -632,6 +632,10 @@ assert_redacted "guilt-url-userinfo-password-with-slash [cascade-conjured form]"
 BASIC_V="QmFzaWNBdXRo$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
 assert_redacted "guilt-authorization-basic-base64" \
     "curl -H 'Authorization: Basic $BASIC_V' https://example.invalid/ping" "$BASIC_V"
+assert_redacted "guilt-authorization-basic-base64 [proxy variant]" \
+    "curl -H 'Proxy-Authorization: Basic $BASIC_V' https://example.invalid/ping" "$BASIC_V"
+assert_redacted "guilt-bearer-standard-base64-alphabet" \
+    "curl -H 'Authorization: Bearer ab+cd/ef=$BASIC_V' https://example.invalid/" "$BASIC_V"
 
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
@@ -708,6 +712,10 @@ assert_intact "innocence-flagbearer-word-boundary-not-a-bearer-header" \
 # without an innocence case is exactly the pattern this corpus exists to refuse
 # (cicatrix #3). The English word "Basic" is common in commit messages and help
 # text; a URL with a path is common in every command that touches a repo.
+assert_intact "innocence-basic-long-english-word-past-the-length-floor" \
+    "printf '%s' 'Basic telecommunications'" "Basic telecommunications"
+assert_intact "innocence-basic-long-english-phrase" \
+    "printf '%s' 'Basic understanding of internationalization'" "internationalization"
 assert_intact "innocence-basic-the-ordinary-english-word" \
     'git commit -m "Basic auth support for the gateway"' "Basic auth support"
 assert_intact "innocence-basic-below-the-base64-length-floor" \

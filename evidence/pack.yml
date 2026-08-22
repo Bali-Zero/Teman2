@@ -370,9 +370,9 @@ receipts:
     seat: author-session (M5, claude-opus-5)
   - claim:
       "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
-      nothing else does (19/133); restored byte-identically, 133/133 pass (105 guilt / 15 innocence /
+      nothing else does (21/137); restored byte-identically, 137/137 pass (105 guilt / 15 innocence /
       2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
-    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 133/133; shellcheck clean on both files"
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 137/137; shellcheck clean on both files"
     exit: 0
     ts: "2026-08-22T05:25:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -402,7 +402,7 @@ receipts:
       anchored those URLs as well. They are PINS on the new sixteen-character bound, not witnesses to a
       defect, and counting them as bite cases would have been the easy way to make the proof look
       stronger than it is."
-    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 133/133"
+    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 137/137"
     exit: 0
     ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -443,9 +443,50 @@ receipts:
       added to pin them (the ordinary English word Basic in a commit message, a Basic payload below the
       base64 length floor, and a URL whose path merely contains a colon and an at-sign). A guard added
       without an innocence case is exactly the shape this corpus exists to refuse."
-    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 133 cases (113 guilt / 18 innocence / 2 mode); bite proof 19/133 on the pre-change hook"
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 137 cases (115 guilt / 20 innocence / 2 mode); bite proof 21/137 on the pre-change hook"
     exit: 0
     ts: "2026-08-22T07:50:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "THIRD CROSS-FAMILY PASS. Task 1 -- a coverage regression versus the old cascade -- returned NONE
+      FOUND over 4,064 targeted inputs, of which 3,704 were actually redacted by the old design. That
+      is the convergence signal on the axis that matters, and it is the first independent confirmation
+      of the property; my own two generators had both been wrong about it once before."
+    cmd: "codex exec -m gpt-5.6-sol, third pass, with the already-declared residual classes named in the prompt so they would not be re-reported as findings"
+    exit: 0
+    ts: "2026-08-22T08:20:00Z"
+    seat: cross-family grader (GPT-5.6 sol)
+  - claim:
+      "THE SAME PASS FOUND A FALSE POSITIVE I HAD SHIPPED ONE COMMIT EARLIER: the bare Basic anchor
+      fired on PROSE -- printf 'Basic telecommunications' -- because that word is eighteen characters of
+      the base64 alphabet and the floor was sixteen. My own innocence cases missed it because I had
+      chosen SHORT words (Basic auth support), so the length floor hid the defect from the very corpus
+      written to catch it. Re-anchored on the Authorization: header ([A-Za-z-]* admits
+      Proxy-Authorization): 3/3 on guilt with 0 false positives on the prose set, where the bare form
+      scored 3/3 and 1. Deliberate asymmetry with Bearer, which stays bare because its prose over-match
+      is a pre-existing, measured, DECLARED residual -- inheriting a known defect into a rule added
+      today would be a choice, not an accident."
+    cmd: "swap in the previous commit's hook -> innocence-basic-long-english-word-past-the-length-floor FAILS; restore -> passes"
+    exit: 0
+    ts: "2026-08-22T08:25:00Z"
+    seat: cross-family grader (GPT-5.6 sol) -> author-session
+  - claim:
+      "Bearer carried base64URL only ([A-Za-z0-9._-]), so a standard-base64 token containing a plus
+      stopped the match dead and went through in the clear. Widened to the full alphabet (+ / = ~) at no
+      innocence cost -- prose does not contain + or / mid-word."
+    cmd: "swap in the previous commit's hook -> guilt-bearer-standard-base64-alphabet FAILS; restore -> passes"
+    exit: 0
+    ts: "2026-08-22T08:27:00Z"
+    seat: cross-family grader (GPT-5.6 sol) -> author-session
+  - claim:
+      "Corpus 133 -> 137 (115 guilt / 20 innocence / 2 mode); bite proof 21/137 against the pre-PR hook.
+      Of the four cases added here, THREE are witnesses and one is a pin: two fail against the immediately
+      preceding commit (the Bearer plus-sign token and the Basic prose false positive, i.e. the two
+      defects just cured), and innocence-basic-long-english-phrase passes on both because its first word
+      after Basic sits below the length floor. Said explicitly so the bite count is not read as four."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh against 615ac0521 and against the pre-PR hook"
+    exit: 0
+    ts: "2026-08-22T08:30:00Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -820,6 +861,12 @@ dissent:
     status: CONFIRMED
   - seat: author-session (M5), re-measuring the seat's finding before acting on it
     objection: "The seat's framing is theatrical but its core is real and SIMPLER than presented: the plain form postgres://u:pa/ss@h leaks on the OLD design too, so this is a recall gap the contrived case merely dressed as a regression. Fixed on its own merits by loosening only the password class."
+    status: CONFIRMED
+  - seat: cross-family grader (GPT-5.6 sol, third pass)
+    objection: "The Basic anchor added one commit ago fires on ordinary prose: printf 'Basic telecommunications' is truncated to '<REDACTED>'. And Bearer's character class omits the plus, so a standard-base64 token goes through in the clear."
+    status: CONFIRMED
+  - seat: author-session (M5), on its own innocence corpus
+    objection: "The Basic false positive was invisible to my corpus by construction: every innocence case I wrote used a SHORT word after the trigger, so the 16-character floor kept them all below it. A length floor that hides a defect from the cases written to catch it is the same disease as a fuzz that reports clean on a class it cannot emit -- the third instance of it in this one PR."
     status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
