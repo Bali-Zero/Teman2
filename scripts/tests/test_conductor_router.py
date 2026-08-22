@@ -23,10 +23,11 @@ from scripts.conductor.contracts import (
     TaskScore,
 )
 from scripts.conductor.model_registry import AbstractModelCardError, load_registry
+from scripts.conductor import router
 from scripts.conductor.router import plan_dispatch
 
 AS_OF = "2026-08-21"
-BENCHMARK_SAMPLES = tuple(f"sample-{index}" for index in range(1, 11))
+BENCHMARK_SAMPLES = tuple(f"{index:064x}" for index in range(1, 11))
 
 
 def capability(
@@ -80,6 +81,8 @@ def candidate(
                 sample_hashes=BENCHMARK_SAMPLES,
                 scorer_id="synthetic-scorer",
                 scorer_version="v1",
+                endpoint_profile_hash=f"endpoint-{endpoint_id}",
+                task_profile_hash="profile-mechanical",
             ),
             TaskScore(
                 task_profile_id="standard_build",
@@ -92,6 +95,8 @@ def candidate(
                 sample_hashes=BENCHMARK_SAMPLES,
                 scorer_id="synthetic-scorer",
                 scorer_version="v1",
+                endpoint_profile_hash=f"endpoint-{endpoint_id}",
+                task_profile_hash="profile-standard",
             ),
         )
     return EndpointCandidate(
@@ -252,6 +257,11 @@ def live_profile_candidate(profile: TaskProfile) -> EndpointCandidate:
             "pii_safe_local",
         ),
         context_limit=32_768,
+        auth_surface=(
+            AuthSurface.LOCAL_RUNTIME
+            if profile.pii_policy == "local_only"
+            else AuthSurface.OPENAI_CHATGPT_SUBSCRIPTION
+        ),
     )
     return replace(
         base,
@@ -265,17 +275,13 @@ def live_profile_candidate(profile: TaskProfile) -> EndpointCandidate:
                 sample_count=5,
                 observed_at=AS_OF,
                 evidence_kind=EvidenceKind.BENCHMARKED,
-                sample_hashes=(
-                    "sample-1",
-                    "sample-2",
-                    "sample-3",
-                    "sample-4",
-                    "sample-5",
-                ),
+                sample_hashes=tuple(f"{index:064x}" for index in range(1, 6)),
                 scorer_id="test-scorer",
                 scorer_version="v1",
                 expires_at="2026-08-22",
                 dispersion=0.01,
+                endpoint_profile_hash=base.endpoint_profile_hash,
+                task_profile_hash=f"live-profile-{profile.id}",
             ),
         ),
         quality_tier=3,
@@ -916,6 +922,7 @@ class ConductorRouterTest(unittest.TestCase):
             family="test",
             score=0.90,
             capabilities=("language", "coding", "local_only", "pii_safe_local"),
+            auth_surface=AuthSurface.LOCAL_RUNTIME,
         )
 
         plan = plan_dispatch(
@@ -1381,6 +1388,8 @@ class ConductorRouterTest(unittest.TestCase):
                     observed_at=AS_OF,
                     evidence_kind=EvidenceKind.BENCHMARKED,
                     expires_at="2026-08-22",
+                    endpoint_profile_hash="endpoint-incomplete-benchmark",
+                    task_profile_hash="profile-mechanical",
                 ),
             ),
         )
@@ -1419,10 +1428,12 @@ class ConductorRouterTest(unittest.TestCase):
                     sample_count=1,
                     observed_at=AS_OF,
                     evidence_kind=EvidenceKind.BENCHMARKED,
-                    sample_hashes=("sample-sha256",),
+                    sample_hashes=("a" * 64,),
                     scorer_id="synthetic-scorer",
                     scorer_version="v2",
                     expires_at="2026-08-22",
+                    endpoint_profile_hash="endpoint-evidenced-benchmark",
+                    task_profile_hash="profile-mechanical",
                 ),
             ),
         )
@@ -1971,6 +1982,284 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertTrue(registry.endpoints(automated_only=False))
         with self.assertRaises(AbstractModelCardError):
             registry.endpoint(next(iter(registry.model_cards)))
+
+    def test_invalid_session_never_receives_a_conductor_assignment(self) -> None:
+        child_claiming_conductor = replace(
+            session(), parent_session_id="parent-session"
+        )
+
+        plan = plan_dispatch(
+            session=child_claiming_conductor,
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "session_child_conductor_forbidden")
+        self.assertEqual(plan.assignments, ())
+
+        untyped_plan = plan_dispatch(
+            session=cast(SessionIdentity, object()),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(),
+            policy=policy(),
+        )
+        self.assertEqual(untyped_plan.decision, Decision.ABSTAIN)
+        self.assertEqual(untyped_plan.abstention_reason, "session_identity_invalid")
+        self.assertEqual(untyped_plan.assignments, ())
+
+    def test_session_root_coherence_and_metadata_fail_closed(self) -> None:
+        cases = (
+            (
+                replace(session(), root_session_id="different-root"),
+                "session_root_chain_invalid",
+            ),
+            (
+                replace(session(), repo_root=cast(Path, "relative-repo")),
+                "session_repo_root_invalid",
+            ),
+            (
+                replace(session(), started_at="2026-08-22T00:00:00Z"),
+                "session_timestamp_future",
+            ),
+        )
+
+        for malformed_session, reason in cases:
+            with self.subTest(reason=reason):
+                plan = plan_dispatch(
+                    session=malformed_session,
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(),
+                    policy=policy(),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(plan.abstention_reason, reason)
+                self.assertEqual(plan.assignments, ())
+
+    def test_duplicate_task_profile_and_endpoint_identifiers_abstain(self) -> None:
+        duplicate_profile = replace(
+            policy(),
+            task_profiles=(policy().task_profiles[0], policy().task_profiles[0]),
+        )
+        duplicate_endpoint = candidate(
+            "duplicate-endpoint", model="builder", family="test", score=0.95
+        )
+
+        profile_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(),
+            policy=duplicate_profile,
+        )
+        endpoint_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(duplicate_endpoint, duplicate_endpoint),
+            policy=policy(),
+        )
+
+        self.assertEqual(profile_plan.abstention_reason, "task_profile_duplicate")
+        self.assertEqual(
+            endpoint_plan.abstention_reason, "candidate_endpoint_duplicate"
+        )
+
+    def test_declared_capability_never_opens_local_pii_lane(self) -> None:
+        profile, local_policy = live_profile_policy("pii_local")
+        base = live_profile_candidate(profile)
+        declared_local_only = replace(
+            next(item for item in base.features if item.capability == "local_only"),
+            kind=EvidenceKind.DECLARED,
+        )
+        unsafe = replace(
+            base,
+            features=tuple(
+                declared_local_only if item.capability == "local_only" else item
+                for item in base.features
+            ),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.PII_LOCAL, profile.id),
+            candidates=(unsafe,),
+            policy=local_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertIn("privacy_ineligible", plan.rejections[0].reason_codes)
+        self.assertIn("missing_capability:local_only", plan.rejections[0].reason_codes)
+
+    def test_pii_local_requires_local_runtime_auth_surface(self) -> None:
+        profile, local_policy = live_profile_policy("pii_local")
+        cloud_surface = replace(
+            live_profile_candidate(profile),
+            auth_surface=AuthSurface.OPENAI_CHATGPT_SUBSCRIPTION,
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.PII_LOCAL, profile.id),
+            candidates=(cloud_surface,),
+            policy=local_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            plan.rejections[0].reason_codes,
+            ("privacy_ineligible",),
+        )
+
+    def test_duplicate_or_conflicting_capability_evidence_fails_closed(self) -> None:
+        base = candidate(
+            "evidence-conflict", model="builder", family="test", score=0.95
+        )
+        coding = next(item for item in base.features if item.capability == "coding")
+        duplicate = replace(base, features=base.features + (coding,))
+        contradiction = replace(
+            base,
+            features=base.features
+            + (replace(coding, value=False, evidence_ref="test:coding-negative"),),
+        )
+
+        for malformed in (duplicate, contradiction):
+            with self.subTest(
+                candidate=malformed.endpoint_id, features=malformed.features
+            ):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.MECHANICAL, "mechanical"),
+                    candidates=(malformed,),
+                    policy=policy(),
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertIn(
+                    "capability_evidence_duplicate", plan.rejections[0].reason_codes
+                )
+        contradiction_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(contradiction,),
+            policy=policy(),
+        )
+        self.assertIn(
+            "capability_evidence_conflict",
+            contradiction_plan.rejections[0].reason_codes,
+        )
+        self.assertIn(
+            "missing_capability:coding", contradiction_plan.rejections[0].reason_codes
+        )
+
+    def test_zero_confidence_numeric_capability_does_not_satisfy_context_floor(
+        self,
+    ) -> None:
+        base = candidate("zero-confidence", model="builder", family="test", score=0.95)
+        zero_confidence_context = replace(
+            next(item for item in base.features if item.capability == "context_tokens"),
+            confidence=0.0,
+        )
+        untrusted = replace(
+            base,
+            features=tuple(
+                zero_confidence_context if item.capability == "context_tokens" else item
+                for item in base.features
+            ),
+        )
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(untrusted,),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.rejections[0].reason_codes, ("context_limit_unknown",))
+
+    def test_benchmark_binding_rejects_endpoint_transplant_and_profile_drift(
+        self,
+    ) -> None:
+        base = candidate("bound-endpoint", model="builder", family="test", score=0.95)
+        transplanted = replace(base, endpoint_profile_hash="endpoint-other")
+        drifted_policy = replace(
+            policy(),
+            task_profile_hashes={
+                **policy().task_profile_hashes,
+                "mechanical": "profile-mechanical-revision",
+            },
+        )
+
+        endpoint_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(transplanted,),
+            policy=policy(),
+        )
+        profile_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(base,),
+            policy=drifted_policy,
+        )
+        unbound_score = replace(
+            base.task_scores[0],
+            endpoint_profile_hash=None,
+            task_profile_hash=None,
+        )
+        unbound_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(replace(base, task_scores=(unbound_score,)),),
+            policy=policy(),
+        )
+
+        self.assertEqual(
+            endpoint_plan.rejections[0].reason_codes,
+            ("benchmark_endpoint_profile_mismatch",),
+        )
+        self.assertEqual(
+            profile_plan.rejections[0].reason_codes,
+            ("benchmark_task_profile_mismatch",),
+        )
+        self.assertEqual(
+            unbound_plan.rejections[0].reason_codes,
+            ("benchmark_endpoint_profile_mismatch",),
+        )
+
+    def test_benchmark_requires_lowercase_sha256_sample_hashes(self) -> None:
+        base = candidate("hash-case", model="builder", family="test", score=0.95)
+        score = next(
+            item for item in base.task_scores if item.task_profile_id == "mechanical"
+        )
+        malformed = replace(score, sample_hashes=("A" * 64,) + score.sample_hashes[1:])
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.MECHANICAL, "mechanical"),
+            candidates=(replace(base, task_scores=(malformed,)),),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            plan.rejections[0].reason_codes, ("benchmark_evidence_incomplete",)
+        )
+
+    def test_iso_parser_abstains_on_os_error_boundary(self) -> None:
+        class RaisingDateTime:
+            @staticmethod
+            def fromisoformat(value: str) -> object:
+                del value
+                raise OSError("synthetic parser failure")
+
+        original_datetime = router.datetime
+        try:
+            router.datetime = RaisingDateTime  # type: ignore[assignment]
+            self.assertIsNone(router._parse_iso_timestamp("2026-08-21T00:00:00Z"))
+        finally:
+            router.datetime = original_datetime
 
 
 if __name__ == "__main__":

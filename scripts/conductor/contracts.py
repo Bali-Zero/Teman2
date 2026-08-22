@@ -141,6 +141,8 @@ class TaskScore:
     scorer_version: str | None = None
     expires_at: str | None = None
     dispersion: float | None = None
+    endpoint_profile_hash: str | None = None
+    task_profile_hash: str | None = None
 
 
 @dataclass(frozen=True)

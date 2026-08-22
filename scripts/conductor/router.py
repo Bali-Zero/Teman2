@@ -12,6 +12,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
 
 from scripts.conductor.contracts import (
     AuthSurface,
@@ -35,6 +36,14 @@ from scripts.conductor.contracts import (
 logger = logging.getLogger(__name__)
 
 _MAX_HEALTH_AGE_DAYS = timedelta.max.days
+_SHA256_LOWER_RE = re.compile(r"[0-9a-f]{64}\Z")
+_TRUSTED_CAPABILITY_EVIDENCE_KINDS = frozenset(
+    {
+        EvidenceKind.PROBED,
+        EvidenceKind.BENCHMARKED,
+        EvidenceKind.PRODUCTION,
+    }
+)
 _CANONICAL_TASK_PROFILE_BINDINGS: Mapping[TaskClass, tuple[str, bool]] = {
     TaskClass.READ_ONLY: ("read_only", False),
     TaskClass.MECHANICAL: ("mechanical", True),
@@ -66,9 +75,40 @@ def plan_dispatch(
     must name the family that generated the work so an independent grader can
     be selected.
     """
-    conductor_assignment = _conductor_assignment(session)
     resolved_task_profile_hash: str | None = None
     task_profile_hash = "unavailable"
+
+    # SessionIdentity is supplied by an external session bridge.  Dataclass
+    # annotations do not defend this boundary after JSON deserialization, and
+    # constructing a conductor assignment from an untrusted child would itself
+    # grant it a misleading authority receipt.  Validate before any assignment.
+    if not isinstance(session, SessionIdentity):
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(),
+            rejections=(),
+            reason="session_identity_invalid",
+        )
+    session_rejection = _session_runtime_rejection(
+        session,
+        _parse_iso_timestamp(policy.as_of)
+        if isinstance(policy, RoutingPolicy)
+        else None,
+    )
+    if session_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(),
+            rejections=(),
+            reason=session_rejection,
+        )
+    conductor_assignment = _conductor_assignment(session)
 
     # TaskIntent is deliberately a small frozen dataclass rather than a parsing
     # framework object.  Its annotation therefore cannot prevent a deserialized
@@ -322,11 +362,12 @@ def plan_dispatch(
             as_of=as_of,
             host_rejection=host_rejection,
             generator_family=generator_family,
+            task_profile_hash=task_profile_hash,
         )
         if rejection is not None:
             rejections.append(rejection)
             continue
-        score = _benchmark_score(candidate, profile, as_of, policy)
+        score = _benchmark_score(candidate, profile, task_profile_hash, as_of, policy)
         if score is None:
             raise RoutingPolicyError(
                 "candidate passed benchmark filter without a benchmark score"
@@ -438,6 +479,49 @@ def _is_string_frozenset(value: object) -> bool:
     )
 
 
+def _session_runtime_rejection(
+    session: SessionIdentity, as_of: datetime | None
+) -> str | None:
+    """Validate the session authority chain before producing an assignment."""
+    for value, code in (
+        (session.session_id, "session_id_invalid"),
+        (session.root_session_id, "session_root_session_id_invalid"),
+        (session.engine, "session_engine_invalid"),
+        (session.model, "session_model_invalid"),
+        (session.family, "session_family_invalid"),
+        (session.host, "session_host_invalid"),
+        (session.repo_head, "session_repo_head_invalid"),
+    ):
+        if not _is_nonempty_string(value):
+            return code
+    if session.parent_session_id is not None and not _is_nonempty_string(
+        session.parent_session_id
+    ):
+        return "session_parent_session_id_invalid"
+    if not isinstance(session.role, Role):
+        return "session_role_invalid"
+    if session.engine not in {"claude", "codex", "agy", "kimi", "unknown"}:
+        return "session_engine_invalid"
+    if not isinstance(session.repo_root, Path) or not session.repo_root.is_absolute():
+        return "session_repo_root_invalid"
+    started_at = _parse_iso_timestamp(session.started_at)
+    if started_at is None:
+        return "session_timestamp_invalid"
+    if as_of is not None and started_at > as_of:
+        return "session_timestamp_future"
+    if session.parent_session_id is not None:
+        return (
+            "session_child_conductor_forbidden"
+            if session.role is Role.CONDUCTOR
+            else "session_not_root_conductor"
+        )
+    if session.session_id != session.root_session_id:
+        return "session_root_chain_invalid"
+    if session.role is not Role.CONDUCTOR:
+        return "session_root_role_invalid"
+    return None
+
+
 def _task_runtime_rejection(task: TaskIntent) -> str | None:
     """Validate untrusted deserialized task fields before policy branching."""
     if not _is_nonempty_string(task.task_id):
@@ -490,6 +574,11 @@ def _policy_runtime_rejection(policy: RoutingPolicy) -> str | None:
         isinstance(profile, TaskProfile) for profile in policy.task_profiles
     ):
         return "policy_task_profiles_invalid"
+    profile_ids = tuple(profile.id for profile in policy.task_profiles)
+    if any(not _is_nonempty_string(profile_id) for profile_id in profile_ids):
+        return "policy_task_profiles_invalid"
+    if len(set(profile_ids)) != len(profile_ids):
+        return "task_profile_duplicate"
     if not _is_nonempty_string(policy.as_of):
         return "policy_timestamp_invalid"
     if not _is_nonnegative_integer(policy.max_health_age_days) or (
@@ -568,6 +657,12 @@ def _candidate_container_rejection(
         return "candidate_container_invalid"
     if any(not isinstance(candidate, EndpointCandidate) for candidate in candidates):
         return "candidate_container_invalid"
+    endpoint_ids = tuple(candidate.endpoint_id for candidate in candidates)
+    valid_endpoint_ids = tuple(
+        endpoint_id for endpoint_id in endpoint_ids if _is_nonempty_string(endpoint_id)
+    )
+    if len(set(valid_endpoint_ids)) != len(valid_endpoint_ids):
+        return "candidate_endpoint_duplicate"
     return None
 
 
@@ -726,6 +821,7 @@ def _rejection_for(
     as_of: datetime,
     host_rejection: str | None,
     generator_family: str | None,
+    task_profile_hash: str,
 ) -> CandidateRejection | None:
     reasons: list[str] = []
     mutation = task.mutation or profile.mutation
@@ -770,7 +866,8 @@ def _rejection_for(
     reasons.extend(_capability_evidence_rejections(candidate, as_of, policy))
 
     if _requires_local_pii(task, profile) and not (
-        _has_capability(candidate, "local_only")
+        auth_surface is AuthSurface.LOCAL_RUNTIME
+        and _has_capability(candidate, "local_only")
         and _has_capability(candidate, "pii_safe_local")
     ):
         reasons.append("privacy_ineligible")
@@ -803,7 +900,9 @@ def _rejection_for(
     # resulting abstention explains that static inventory data is insufficient on
     # both dimensions, while capability failures remain concise and actionable.
     if not reasons or any(reason.startswith("health_") for reason in reasons):
-        benchmark_reason = _benchmark_rejection(candidate, profile, as_of, policy)
+        benchmark_reason = _benchmark_rejection(
+            candidate, profile, task_profile_hash, as_of, policy
+        )
         if benchmark_reason is not None:
             reasons.append(benchmark_reason)
     return (
@@ -985,6 +1084,31 @@ def _capability_evidence_rejections(
         if as_of - observed_at > timedelta(days=policy.max_health_age_days):
             reasons.add("capability_stale")
 
+    values_by_capability: dict[str, set[bool]] = {}
+    counts_by_capability: dict[str, int] = {}
+    for evidence in candidate.features:
+        if (
+            isinstance(evidence, CapabilityEvidence)
+            and _is_nonempty_string(evidence.capability)
+            and type(evidence.value) is bool
+        ):
+            counts_by_capability[evidence.capability] = (
+                counts_by_capability.get(evidence.capability, 0) + 1
+            )
+            values_by_capability.setdefault(evidence.capability, set()).add(
+                evidence.value
+            )
+        elif isinstance(evidence, CapabilityEvidence) and _is_nonempty_string(
+            evidence.capability
+        ):
+            counts_by_capability[evidence.capability] = (
+                counts_by_capability.get(evidence.capability, 0) + 1
+            )
+    if any(count > 1 for count in counts_by_capability.values()):
+        reasons.add("capability_evidence_duplicate")
+    if any(len(values) > 1 for values in values_by_capability.values()):
+        reasons.add("capability_evidence_conflict")
+
     return tuple(sorted(reasons, key=_capability_failure_rank))
 
 
@@ -996,6 +1120,8 @@ def _capability_failure_rank(reason: str) -> tuple[int, str]:
         "capability_timestamp_invalid": 3,
         "capability_timestamp_future": 4,
         "capability_stale": 5,
+        "capability_evidence_duplicate": 6,
+        "capability_evidence_conflict": 7,
     }
     return priority.get(reason, 99), reason
 
@@ -1010,11 +1136,14 @@ def _parse_iso_timestamp(value: str) -> datetime | None:
             )
         normalized = f"{value[:-1]}+00:00" if value.endswith("Z") else value
         parsed = datetime.fromisoformat(normalized)
-    except ValueError:
+    except (OSError, OverflowError, TypeError, ValueError):
         return None
-    if parsed.tzinfo is None:
+    try:
+        if parsed.tzinfo is None:
+            return None
+        return parsed.astimezone(timezone.utc)
+    except (OSError, OverflowError, ValueError):
         return None
-    return parsed.astimezone(timezone.utc)
 
 
 def _required_capabilities(task: TaskIntent, profile: TaskProfile) -> tuple[str, ...]:
@@ -1033,15 +1162,20 @@ def _required_modalities(task: TaskIntent, profile: TaskProfile) -> tuple[str, .
 
 
 def _has_capability(candidate: EndpointCandidate, capability_id: str) -> bool:
-    return any(
-        isinstance(evidence, CapabilityEvidence)
+    matching = tuple(
+        evidence
+        for evidence in candidate.features
+        if isinstance(evidence, CapabilityEvidence)
         and evidence.capability == capability_id
-        and evidence.value is True
-        and isinstance(evidence.kind, EvidenceKind)
-        and evidence.kind is not EvidenceKind.UNMEASURED
+    )
+    if any(evidence.value is False for evidence in matching):
+        return False
+    return any(
+        evidence.value is True
+        and evidence.kind in _TRUSTED_CAPABILITY_EVIDENCE_KINDS
         and _is_finite_number(evidence.confidence)
         and 0 < evidence.confidence <= 1
-        for evidence in candidate.features
+        for evidence in matching
     )
 
 
@@ -1051,8 +1185,9 @@ def _numeric_capability(candidate: EndpointCandidate, capability_id: str) -> int
         if (
             not isinstance(evidence, CapabilityEvidence)
             or evidence.capability != capability_id
-            or not isinstance(evidence.kind, EvidenceKind)
-            or evidence.kind is EvidenceKind.UNMEASURED
+            or evidence.kind not in _TRUSTED_CAPABILITY_EVIDENCE_KINDS
+            or not _is_finite_number(evidence.confidence)
+            or not 0 < evidence.confidence <= 1
         ):
             continue
         if type(evidence.value) is int and evidence.value >= 0:
@@ -1068,6 +1203,7 @@ def _maximum_optional_integer(*values: int | None) -> int | None:
 def _benchmark_rejection(
     candidate: EndpointCandidate,
     profile: TaskProfile,
+    task_profile_hash: str,
     as_of: datetime,
     policy: RoutingPolicy,
 ) -> str | None:
@@ -1077,7 +1213,12 @@ def _benchmark_rejection(
     failures = tuple(
         rejection
         for score in relevant
-        if (rejection := _score_rejection(score, profile, as_of, policy)) is not None
+        if (
+            rejection := _score_rejection(
+                candidate, score, profile, task_profile_hash, as_of, policy
+            )
+        )
+        is not None
     )
     if len(failures) == len(relevant):
         return min(failures, key=_benchmark_failure_rank)
@@ -1087,13 +1228,15 @@ def _benchmark_rejection(
 def _benchmark_score(
     candidate: EndpointCandidate,
     profile: TaskProfile,
+    task_profile_hash: str,
     as_of: datetime,
     policy: RoutingPolicy,
 ) -> TaskScore | None:
     relevant = [
         score
         for score in _profile_scores(candidate, profile)
-        if _score_rejection(score, profile, as_of, policy) is None
+        if _score_rejection(candidate, score, profile, task_profile_hash, as_of, policy)
+        is None
     ]
     if not relevant:
         return None
@@ -1120,8 +1263,10 @@ def _profile_scores(
 
 
 def _score_rejection(
+    candidate: EndpointCandidate,
     score: TaskScore,
     profile: TaskProfile,
+    task_profile_hash: str,
     as_of: datetime,
     policy: RoutingPolicy,
 ) -> str | None:
@@ -1131,6 +1276,10 @@ def _score_rejection(
         return "benchmark_unmeasured"
     if not _is_nonempty_string(score.task_profile_id):
         return "benchmark_evidence_incomplete"
+    if score.endpoint_profile_hash != candidate.endpoint_profile_hash:
+        return "benchmark_endpoint_profile_mismatch"
+    if score.task_profile_hash != task_profile_hash:
+        return "benchmark_task_profile_mismatch"
     if not _is_finite_number(score.score) or not 0 <= score.score <= 1:
         return "benchmark_evidence_incomplete"
     if score.conservative_score is not None and (
@@ -1170,7 +1319,9 @@ def _score_rejection(
         not isinstance(score.sample_hashes, tuple)
         or len(score.sample_hashes) != score.sample_count
         or any(
-            not _is_nonempty_string(sample_hash) for sample_hash in score.sample_hashes
+            type(sample_hash) is not str
+            or _SHA256_LOWER_RE.fullmatch(sample_hash) is None
+            for sample_hash in score.sample_hashes
         )
         or len(set(score.sample_hashes)) != score.sample_count
         or not _is_nonempty_string(score.scorer_id)
@@ -1207,16 +1358,18 @@ def _effective_score(score: TaskScore) -> float:
 def _benchmark_failure_rank(reason: str) -> tuple[int, str]:
     priority = {
         "benchmark_evidence_kind_invalid": 0,
-        "benchmark_id_mismatch": 1,
-        "benchmark_version_mismatch": 2,
-        "benchmark_low_sample": 3,
-        "benchmark_high_variance": 4,
-        "benchmark_dispersion_unmeasured": 5,
-        "benchmark_evidence_incomplete": 6,
-        "benchmark_timestamp_invalid": 7,
-        "benchmark_timestamp_future": 8,
-        "benchmark_stale": 9,
-        "benchmark_below_floor": 10,
+        "benchmark_endpoint_profile_mismatch": 1,
+        "benchmark_task_profile_mismatch": 2,
+        "benchmark_id_mismatch": 3,
+        "benchmark_version_mismatch": 4,
+        "benchmark_low_sample": 5,
+        "benchmark_high_variance": 6,
+        "benchmark_dispersion_unmeasured": 7,
+        "benchmark_evidence_incomplete": 8,
+        "benchmark_timestamp_invalid": 9,
+        "benchmark_timestamp_future": 10,
+        "benchmark_stale": 11,
+        "benchmark_below_floor": 12,
     }
     return priority.get(reason, 99), reason
 
