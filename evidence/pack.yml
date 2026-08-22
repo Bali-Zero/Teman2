@@ -4,12 +4,13 @@ plan_ref: |
   passing trivially
 diff:
   behaviour_change: |
-    yes, in CI only: a new blocking job runs on every pull_request / merge_group / push:main.
-    No product code, no runtime surface, no deploy step.
+    yes, in CI only: a new job RUNS on every pull_request / merge_group / push:main. It REPORTS,
+    it does not block — live branch protection carries 27 required contexts on 2026-08-22 and this
+    is not one of them. No product code, no runtime surface, no deploy step.
     The whole-diff net line count is near zero only because this PR REPLACES the inherited
     evidence/brief.yml and evidence/pack.yml (a prior PR's, larger) with its own; the CODE it
     adds is +91/-0 across the two workflow files.
-  net_lines: "+262/-262 (net +0) vs merge-base 2eb20d836; code alone +91/-0"
+  net_lines: "+412/-267 (net +145) vs merge-base 2eb20d836; workflows alone +122/-0"
 receipts:
   - claim: "The guard was UNARMED on origin/main — nothing in .github/workflows/ named it."
     cmd: "git grep -c test_runbook_section_numbers_are_unique origin/main -- .github/workflows/"
@@ -61,6 +62,38 @@ receipts:
     exit: 0
     ts: "2026-08-22T00:34:06Z"
     seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The context is NOT required today — live branch protection carries 27 contexts and none
+      matches runbook/section. This is why the word 'blocking' was removed from the step name and the
+      artifacts: measured, not assumed, and re-measured by the author after the gate raised it."
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts[]' | sort > /tmp/lr.txt; grep -qi 'runbook|section' /tmp/lr.txt"
+    exit: 1
+    ts: "2026-08-22T00:56:26Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The TIGHTENED proof-of-bite works end to end, replicated locally (perl for GNU sed, shasum
+      for sha256sum, PYTHONDONTWRITEBYTECODE=1 per W121): mutation changed the sha, the uniqueness test
+      SPECIFICALLY failed (-k), its output carried the injected collision message, the restore was
+      byte-identical and the full file went green again."
+    cmd: "perl -pi -e 's/^## 6septies\\. .../## 6quater. .../' docs/runbooks/merge-queue-discipline.md && pytest -k test_runbook_section_numbers_are_unique_within_each_file -q && grep -q \"duplicated section numbers ['6quater']\" /tmp/bite.out"
+    exit: 1
+    ts: "2026-08-22T00:56:27Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim: "actionlint still clean on both workflows after the step rename and the tightened bite step."
+    cmd: "actionlint .github/workflows/runbook-section-numbers.yml .github/workflows/main-push-failure-watch.yml"
+    exit: 0
+    ts: "2026-08-22T00:56:28Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The two new PENDING-ARMS rows are RECOGNISED by the ledger parser, not just present as
+      text — the distinction that made the gate's finding 1 a blocker. Verified by an independent
+      subagent, not by the author: 393 entries parsed, both rows found (entries[391] and [392]),
+      class TECH-DEBT, owner session, age_days 0, overdue false, malformed count 0; --strict-phantom
+      exit 0 (neither row is a PHANTOM-OPERATOR), and the ledger's own 105 tests pass."
+    cmd: "python scripts/pending_arms_report.py --json && python scripts/pending_arms_report.py --strict-phantom && python -m pytest scripts/tests/ -k pending_arms -q"
+    exit: 0
+    ts: "2026-08-22T00:57:37Z"
+    seat: independent subagent (sonnet 5, read-only, non-author)
 dissent:
   - seat: "scripts/lint_workflow_timeout_floor.py (CI, non-author)"
     objection:
@@ -91,6 +124,62 @@ dissent:
       parser, silent exception) would look identical to a working one. Remedied by the
       proof-of-bite step, which is itself protected against a drifted anchor by the NO-OP check."
     status: CONFIRMED
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 1, BLOCKER"
+    objection:
+      "The pack and the brief both asserted the un-armed remainder was 'tracked in PENDING-ARMS'. It
+      was not: one grep over the ledger at 20f922ecf returned two unrelated hits, and PENDING-ARMS.md
+      was not among the four files the diff touched. That ledger row is the ONLY carrier of the
+      remainder — scripts/pending_arms_report.py alarms solely on rows that exist and are open >48h —
+      so no row meant no alarm meant the promotion is forgotten. A false claim about the very
+      mechanism meant to carry the remainder forward, inside a Gear-3 pack. Independently
+      re-verified by the author before fixing, not taken on the gate's word. Cured: two real rows
+      appended in this diff (the required-context promotion, and the guard's own ###/code-fence
+      blindness)."
+    status: CONFIRMED
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 2, MAJOR"
+    objection:
+      "The word 'blocking' appeared in four places including the step name a reader sees in the GitHub
+      checks UI, while `gh api repos/Bali-Zero/Teman2/branches/main/protection` returns 27 required
+      contexts and none is this one — a red run does not stop a merge. Re-measured by the author: 27
+      contexts, grep for runbook/section exits 1. In the PR whose entire thesis is that a label
+      promising protection it does not deliver IS the defect, that label could not stand. Cured: the
+      step is now 'Section numbers are unique', and the header, brief and pack all state the
+      reporting-only status with the measurement behind it."
+    status: CONFIRMED
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 3, MINOR"
+    objection:
+      "The brief described main-push-failure-watch.yml as consuming the JOB name. It consumes the
+      WORKFLOW's `name:` field — the same field GitHub matches for `workflow_run.workflows:`, per
+      check_watcher_coverage.py's own empirically-verified header — and a stale entry fails loudly
+      (exit 1), not silently. No functional harm here only because both names are the same string.
+      Cured in the brief's consumer_map."
+    status: CONFIRMED
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 4, MINOR"
+    objection:
+      "The proof-of-bite asserted only that pytest went red, not WHICH test went red. The guard file
+      holds three tests, so a break in test_the_check_can_actually_fail or in the anti-vacuity test
+      would also read as 'the guard bit'. The gate judged the 'pytest itself is broken' hole immaterial
+      (green -> red -> green on one runner with one heading line as the only delta) but the looseness
+      real. Cured: the step now runs `-k test_runbook_section_numbers_are_unique_within_each_file` and
+      additionally requires the assertion message naming the injected collision, failing loudly with
+      the pytest output if the red came from anywhere else."
+    status: CONFIRMED
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 5, MINOR"
+    objection:
+      "The proof-of-bite receipt records `sed -i ''` (BSD/macOS); the workflow ships `sed -i` (GNU). The
+      shipped line has therefore never been executed anywhere. Not cured by making them identical --
+      they CANNOT be identical, the two seds take incompatible -i syntax. Disclosed instead, and the
+      gate proved it from the other side: run under BSD sed the shipped syntax fails LOUDLY (`undefined
+      label`, exit 1) and writes no backup file, so a wrong-platform invocation cannot pass silently.
+      Recorded as a residual risk rather than a receipt claim."
+    status: CONFIRMED
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 8, MINOR"
+    objection:
+      "Of the four original dissent entries, three were genuine non-author machine objections and the
+      fourth was the author's own self-audit — honestly labelled, but padding the count, with no
+      cross-family non-author seat anywhere in the pack. Cured by construction: these six entries ARE
+      that seat."
+    status: CONFIRMED
 residual_risks:
   - "The context is NOT required yet. Merging arms the workflow (it runs and reports) but a red run
     does not block until infra/required.d/contexts.json is regenerated with
@@ -104,6 +193,17 @@ residual_risks:
     step errors loudly in that case, but nothing prevents a future PR from reintroducing the
     collision on a DIFFERENT heading pair, which this one mutation would not exercise. The guard
     itself is general; only the proof is anchored."
+  - "Findings 6 and 7 of the Gear-3 gate, INHERITED from #4562 and not authored here: the guard
+    matches `^##\\s+([0-9]+[a-z]*)\\.\\s` only, so 29 `### N.` headings across the 57 runbooks are
+    invisible to it (dormant — counting h2+h3 together yields zero new duplicates today), and it
+    tracks no code fences, so a `## 6. ...` inside a fenced block would accuse an innocent PR (0
+    occurrences today). NOT matching `#` is correct and must stay: the 20 `# N.` lines in the corpus
+    are shell comments inside fences. Both weights rise the moment this context becomes required,
+    which is why they are opened as a PENDING-ARMS row in this diff rather than left as a note."
+  - "The proof-of-bite's shipped `sed -i` (GNU) has never been executed on this repo — every local
+    replication used BSD `sed -i ''` or perl. It fails loudly rather than silently under the wrong
+    sed (measured: `undefined label`, exit 1, no backup file), so the failure direction is safe, but
+    the first real execution of that exact line will be the CI run of this PR."
 sources:
   - "PR #4562 — shipped the guard (scripts/tests/test_runbook_section_numbers_are_unique.py) with
     guilt/innocence fixture and anti-vacuity test, and no workflow executing it."
@@ -128,4 +228,4 @@ runtime_proof:
     event, no apply step exists. PROVE-LIVE is therefore a post-merge observation that the job
     actually appears and runs on a subsequent PR — recorded as the follow-up, not claimed here."
 pii_scan: clean
-size_tokens: 1917
+size_tokens: 3847

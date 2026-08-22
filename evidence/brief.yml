@@ -14,8 +14,11 @@ objective: |
   green had itself shipped green and unarmed — superscar #2 (esiste != armato), one level up: the
   sentinel of a defect class was itself inside that class.
 
-  This diff arms it: a new blocking workflow that runs the guard on `pull_request`, `merge_group`
-  and `push: main`, plus its registration in `main-push-failure-watch.yml`.
+  This diff arms it: a new workflow that RUNS the guard on `pull_request`, `merge_group` and
+  `push: main`, plus its registration in `main-push-failure-watch.yml`. It does NOT yet BLOCK —
+  measured 2026-08-22, live branch protection carries 27 required contexts and none is this one.
+  Reporting-only is the honest state; the promotion to required is carried by a PENDING-ARMS row,
+  not by an adjective in this brief.
 
   The workflow also carries a PROOF-OF-BITE step, because a uniqueness check passes trivially on a
   file with no duplicates: a green run proves nothing on its own. The step reintroduces the exact
@@ -55,10 +58,17 @@ consumer_map:
   - "`infra/required.d/contexts.json` (27 contexts today, this one absent) — NOT touched by this
     PR. Promotion to a REQUIRED context is a deliberate second step after this lands, done by
     regenerating that file with scripts/ci/snapshot_required_contexts.py, never hand-edited. Until
-    then the workflow runs and reports but does not block, which is the honest state and is
-    recorded in PENDING-ARMS rather than claimed here."
-  - "`main-push-failure-watch.yml` — consumes the job NAME as a string; a rename of the job breaks
-    the registration silently, which is why the name is registered verbatim."
+    then the workflow runs and reports but does not block. That remainder is carried by a REAL
+    row appended to `.claude/skills/modus/PENDING-ARMS.md` in this same diff — an earlier revision
+    of this brief SAID it was recorded there while no such row existed, which the Gear-3 gate
+    falsified with one grep. A missing row means no alarm from scripts/pending_arms_report.py,
+    which is 'green and unarmed' one level up — the exact defect this PR exists to cure."
+  - "`main-push-failure-watch.yml` — CORRECTED after the Gear-3 gate: it matches on the WORKFLOW's
+    `name:` field, not the job name (the same field GitHub uses for `workflow_run.workflows:`,
+    verified empirically against this repo's live workflows API on 2026-07-26 per
+    scripts/check_watcher_coverage.py's own header). So a JOB rename breaks nothing, and a
+    WORKFLOW rename is caught loudly — that script's rule 2 exits 1 on a stale entry. Both names
+    happen to be the same string here, which is why the earlier wrong description did no harm."
 risks:
   - "The proof-of-bite step's sed anchor is a literal heading line in
     docs/runbooks/merge-queue-discipline.md. If that heading is reworded, the mutation becomes a

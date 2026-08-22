@@ -8,11 +8,23 @@ name: runbook section numbers are unique
 # asyncpg-lint.yml's own note on the same trap). So the guard written to stop a
 # defect from shipping green had itself shipped green and unarmed.
 #
-# WHY IT IS BLOCKING, unlike alarm-cure-alignment.yml and tg-gateway.yml: those
-# watch a LIVE external surface that can go red for reasons outside the PR, so a
-# required context there would jam the merge queue. This one reads only tracked
-# files and is deterministic — it can only go red because a PR duplicated a
-# section number, which is precisely what should block.
+# WHY IT IS SHAPED TO BECOME BLOCKING, unlike alarm-cure-alignment.yml and
+# tg-gateway.yml: those watch a LIVE external surface that can go red for reasons
+# outside the PR, so a required context there would jam the merge queue. This one
+# reads only tracked files and is deterministic — it can only go red because a PR
+# duplicated a section number, which is precisely what should block.
+#
+# IT DOES NOT BLOCK ANYTHING YET, and nothing here may say otherwise. Measured on
+# 2026-08-22: `gh api repos/Bali-Zero/Teman2/branches/main/protection --jq
+# '.required_status_checks.contexts[]'` returns 27 contexts and none of them is
+# this one. Until `infra/required.d/contexts.json` is regenerated with
+# scripts/ci/snapshot_required_contexts.py and the protection updated, a red run
+# here REPORTS and does not stop a merge. An earlier revision of this file called
+# the step "(blocking)" in the checks UI while that was false — a label promising
+# protection it does not deliver is the exact defect this workflow exists to cure,
+# so it is not allowed to appear in the workflow that cures it. The promotion is
+# carried by a row in .claude/skills/modus/PENDING-ARMS.md, which is what
+# scripts/pending_arms_report.py alarms on after 48h.
 #
 # WHY NO `paths:` FILTER, even though it only reads docs/runbooks/**: this
 # context is intended to become REQUIRED, and
@@ -57,7 +69,7 @@ jobs:
       - name: Install pytest
         run: python -m pip install --quiet pytest
 
-      - name: Section numbers are unique (blocking)
+      - name: Section numbers are unique
         run: python -m pytest scripts/tests/test_runbook_section_numbers_are_unique.py -q
 
       - name: Prove the guard still bites (guilt, not just innocence)
@@ -78,8 +90,27 @@ jobs:
             echo "::error::mutation was a NO-OP — the anchor moved; this proof is vacuous"
             exit 1
           fi
-          if python -m pytest scripts/tests/test_runbook_section_numbers_are_unique.py -q; then
+          # Assert the OPERATION, not merely "pytest went red": this file holds
+          # three tests, so a break in test_the_check_can_actually_fail or in the
+          # anti-vacuity test would also exit non-zero and read as "the guard bit".
+          # Require the uniqueness test specifically, and require its own message
+          # naming the collision we injected.
+          set +e
+          python -m pytest \
+            scripts/tests/test_runbook_section_numbers_are_unique.py \
+            -k test_runbook_section_numbers_are_unique_within_each_file \
+            -q > /tmp/bite.out 2>&1
+          BITE_RC=$?
+          set -e
+          if [ "$BITE_RC" -eq 0 ]; then
             echo "::error::guard did NOT bite on a duplicated section number"
+            cp /tmp/rb.orig "$RB"
+            exit 1
+          fi
+          if ! grep -q "duplicated section numbers \['6quater'\]" /tmp/bite.out; then
+            echo "::error::the guard went red, but not for the collision we injected — the"
+            echo "::error::proof is vacuous. pytest output follows:"
+            cat /tmp/bite.out
             cp /tmp/rb.orig "$RB"
             exit 1
           fi
