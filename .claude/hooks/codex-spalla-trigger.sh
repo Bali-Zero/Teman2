@@ -483,7 +483,23 @@ ANCHORS = (
     #     length can escape it, and the literal prefix keeps it linear (0.52 ms on
     #     the same 50KB input). The scheme is not lost from the log either -- the
     #     cut starts AT the ://, so what precedes it survives.
-    r"://[^\s:/@]+:[^\s/@]+@",
+    #     The PASSWORD class is [^\s@]+ and NOT [^\s/@]+: a URL password may contain
+    #     a slash, and forbidding one meant postgres://u:pa/ss@h anchored on nothing
+    #     and leaked in full. The USER class still forbids the slash, and that is
+    #     what keeps the shape pinned to real userinfo -- https://host/a:b@c does not
+    #     match, because the user run stops at the slash before it can reach a colon.
+    #     A cross-family seat surfaced this as a coverage REGRESSION in a contrived
+    #     form (the old cascade consumed a token containing the slash, which made a
+    #     userinfo URL appear that had not been there); the plain form above is the
+    #     same gap without the theatre, and it leaked on the old design too.
+    r"://[^\s:/@]+:[^\s@]+@",
+    # 4b. Authorization: Basic <base64>. Rule 4 covers Bearer only, and this was a
+    #     NAMED residual risk rather than an oversight -- promoted to an anchor when
+    #     the same cross-family seat pointed out that a wholly ordinary curl -H
+    #     header carrying base64 credentials passed through untouched. The 16-char
+    #     floor and the base64 alphabet keep the ordinary English word innocent:
+    #     "Basic usage", "Basic auth support", "Basic Income Study 2026" all stay.
+    r"(?i)\bBasic\s+[A-Za-z0-9+/=]{16,}",
     # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the
     #    8-char floor are what keep flagbearer and Bearer abc innocent.
     r"(?i)\b(?:Bearer)\s+[A-Za-z0-9._-]{8,}",

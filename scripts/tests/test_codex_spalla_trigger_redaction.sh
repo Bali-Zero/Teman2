@@ -608,6 +608,31 @@ assert_redacted "guilt-url-userinfo-any-scheme-length [17, the old boundary+1]" 
 assert_redacted "guilt-url-userinfo-any-scheme-length [40]" \
     "run aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa://u:$LONGSCHEME_V@h" "$LONGSCHEME_V"
 
+# 4m. A URL PASSWORD MAY CONTAIN A SLASH, and forbidding one meant the whole
+#     credential anchored on nothing: postgres://u:pa/ss@h leaked in full, on the
+#     old design as well as the new. A cross-family seat surfaced it in a
+#     contrived form -- the old cascade consumed a token containing the slash,
+#     which conjured a userinfo URL that had not been in the input, so the old
+#     redacted where the new did not -- and the plain form is the same gap
+#     without the theatre. Only the PASSWORD class was loosened; the USER class
+#     still forbids the slash, which is what keeps https://host/a:b@c innocent
+#     (the user run stops at the slash before it can reach a colon).
+URLSLASH_V="urlSlash$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-url-userinfo-password-with-slash" \
+    "psql postgres://u:pa/$URLSLASH_V@h" "$URLSLASH_V"
+assert_redacted "guilt-url-userinfo-password-with-slash [cascade-conjured form]" \
+    "run a://u:${URLSLASH_V}ghp_12345678=\"/\"@h" "$URLSLASH_V"
+
+# 4n. Authorization: Basic <base64>. Rule 4 only ever covered Bearer, and this was
+#     a NAMED residual risk rather than an oversight -- which is precisely why it
+#     is worth promoting: a named hole that nothing executes is indistinguishable
+#     from an unknown one. A wholly ordinary `curl -H "Authorization: Basic ..."`
+#     passed through untouched. The 16-character floor and the base64 alphabet are
+#     what keep the ordinary English word innocent.
+BASIC_V="QmFzaWNBdXRo$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-authorization-basic-base64" \
+    "curl -H 'Authorization: Basic $BASIC_V' https://example.invalid/ping" "$BASIC_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near
@@ -679,6 +704,16 @@ assert_intact "innocence-flagbearer-word-boundary-not-a-bearer-header" \
 
 # Rule 4, LENGTH FLOOR. `{8,}` is what keeps short prose after the word
 # `Bearer` intact; relax it to `{1,}` and this PR title loses its `v2`.
+# Innocence for the two anchors added on 2026-08-22, because a guard added
+# without an innocence case is exactly the pattern this corpus exists to refuse
+# (cicatrix #3). The English word "Basic" is common in commit messages and help
+# text; a URL with a path is common in every command that touches a repo.
+assert_intact "innocence-basic-the-ordinary-english-word" \
+    'git commit -m "Basic auth support for the gateway"' "Basic auth support"
+assert_intact "innocence-basic-below-the-base64-length-floor" \
+    'echo "Basic ZGVtbw=="' "Basic ZGVtbw"
+assert_intact "innocence-url-path-colon-at-not-userinfo" \
+    'curl "https://cdn.test/a/b:c@d/e"' "cdn.test"
 assert_intact "innocence-bearer-followed-by-short-token-length-floor" \
     'gh pr create --title "Bearer v2 rollout"' \
     "Bearer v2 rollout"

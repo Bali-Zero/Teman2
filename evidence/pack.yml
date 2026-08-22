@@ -370,9 +370,9 @@ receipts:
     seat: author-session (M5, claude-opus-5)
   - claim:
       "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
-      nothing else does (17/127); restored byte-identically, 127/127 pass (105 guilt / 15 innocence /
+      nothing else does (19/133); restored byte-identically, 133/133 pass (105 guilt / 15 innocence /
       2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
-    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 127/127; shellcheck clean on both files"
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 133/133; shellcheck clean on both files"
     exit: 0
     ts: "2026-08-22T05:25:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -402,7 +402,7 @@ receipts:
       anchored those URLs as well. They are PINS on the new sixteen-character bound, not witnesses to a
       defect, and counting them as bite cases would have been the easy way to make the proof look
       stronger than it is."
-    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 127/127"
+    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 133/133"
     exit: 0
     ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
@@ -423,6 +423,30 @@ receipts:
     exit: 0
     ts: "2026-08-22T07:10:00Z"
     seat: cross-family grader (GPT-5.6 sol) -> author-session
+  - claim:
+      "SECOND ROUND from the same cross-family seat, on the CURED design, and it found two more. (1) A
+      URL PASSWORD MAY CONTAIN A SLASH and the password class forbade one, so postgres://u:pa/ss@h
+      anchored on nothing and leaked in full -- on the OLD design too; the seat surfaced it in a
+      contrived form where the old cascade consumed a token containing the slash and thereby conjured a
+      userinfo URL that had not been in the input, making it look like a regression. Only the PASSWORD
+      class was loosened; the USER class still forbids the slash, which is what keeps
+      https://host/a:b@c innocent. (2) Authorization: BASIC had no anchor -- a NAMED residual risk
+      rather than an oversight, promoted to an anchor precisely because a named hole nothing executes
+      is indistinguishable from an unknown one."
+    cmd: "codex exec -m gpt-5.6-sol (cross-family, harnesses only, invented values), second pass on the cured design; both findings re-measured by the author before acting"
+    exit: 0
+    ts: "2026-08-22T07:45:00Z"
+    seat: cross-family grader (GPT-5.6 sol) -> author-session
+  - claim:
+      "INNOCENCE GREW for the first time in this PR, 15 -> 18, and that is the correct response to
+      adding anchors rather than a relaxation: two new anchors arrived, so three innocence cases were
+      added to pin them (the ordinary English word Basic in a commit message, a Basic payload below the
+      base64 length floor, and a URL whose path merely contains a colon and an at-sign). A guard added
+      without an innocence case is exactly the shape this corpus exists to refuse."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh -> 133 cases (113 guilt / 18 innocence / 2 mode); bite proof 19/133 on the pre-change hook"
+    exit: 0
+    ts: "2026-08-22T07:50:00Z"
+    seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
 static:
@@ -790,6 +814,12 @@ dissent:
     status: CONFIRMED
   - seat: author-session (M5), on its own two fuzzers
     objection: "Both of my fuzzers reported 0 regressions on a class neither could emit. The fragment product only ever held REAL schemes; the character-level run cannot randomly assemble a well-formed userinfo URL with an over-long scheme. W100 in one line: cross-family beat same-author, and it beat it on the exact axis I had declared verified twice."
+    status: CONFIRMED
+  - seat: cross-family grader (GPT-5.6 sol, second pass on the cured design)
+    objection: 'Still not safe on the coverage axis: a://u:<secret>ghp_12345678="/"@h is redacted by the old cascade and leaked by the new cut, because the old rule 1 consumed the token containing the slash and thereby created a userinfo URL the new design never sees on the original. Separately, Authorization: Basic <base64> anchors on nothing at all.'
+    status: CONFIRMED
+  - seat: author-session (M5), re-measuring the seat's finding before acting on it
+    objection: "The seat's framing is theatrical but its core is real and SIMPLER than presented: the plain form postgres://u:pa/ss@h leaks on the OLD design too, so this is a recall gap the contrived case merely dressed as a regression. Fixed on its own merits by loosening only the password class."
     status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
