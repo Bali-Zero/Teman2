@@ -467,7 +467,16 @@ ANCHORS = (
     r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----",
     # 3. URL userinfo: scheme://user:<secret>@host. The whole userinfo form is
     #    the anchor, so a bare scheme:// in an innocent URL does not fire.
-    r"[a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:[^\s/@]+@",
+    #     LENGTH-BOUNDED at sixteen characters, and that bound is a MEASURED
+    #     performance fix, not tidiness. Unbounded, [a-zA-Z][a-zA-Z0-9+.-]* retries
+    #     from every position of a long alphanumeric run and scans to the end each
+    #     time: on a 50KB command with no credential in it at all (a big
+    #     git commit -m, a heredoc) this one anchor took 2278 ms against 2.53 ms
+    #     bounded -- roughly 900x, in a hook that runs on EVERY tool call. The bound
+    #     was carried by the old MARKER and its comment; the rule itself never had
+    #     it, so the cost predates this PR. Sixteen is far above postgresql (10) and
+    #     mongodb+srv (11) and far below anything a secret looks like.
+    r"[a-zA-Z][a-zA-Z0-9+.-]{0,15}://[^\s:/@]+:[^\s/@]+@",
     # 4. Bearer, which carries no keyword in a NAME at all. The left \b and the
     #    8-char floor are what keep flagbearer and Bearer abc innocent.
     r"(?i)\b(?:Bearer)\s+[A-Za-z0-9._-]{8,}",

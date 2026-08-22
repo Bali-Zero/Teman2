@@ -572,6 +572,24 @@ assert_redacted "guilt-pem-private-key [no algorithm]" \
 assert_redacted "guilt-pem-private-key [EC]" \
     "printf -- '-----BEGIN EC PRIVATE KEY-----\\nMHc$PEM_V'" "$PEM_V"
 
+# 4k. THE URL SCHEME BOUND, pinned by the LONGEST real schemes rather than by a
+#     round number. The userinfo anchor was unbounded ([a-zA-Z][a-zA-Z0-9+.-]*),
+#     which retries from every position of a long alphanumeric run and rescans to
+#     the end: on a 50KB command carrying NO credential at all -- a big
+#     git commit -m, a heredoc -- that one anchor cost 2278 ms against 2.53 ms
+#     bounded, in a hook that runs on EVERY tool call. Bounded to sixteen, the
+#     figure the old MARKER comment had already argued for and that the rule
+#     itself never carried. These cases exist so a future tightening cannot
+#     silently drop a scheme that is actually used: mongodb+srv is 11 characters
+#     and is the longest one here.
+SCHEME_V="urlScheme$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-url-userinfo-scheme-length [postgresql, 10]" \
+    "psql postgresql://u:$SCHEME_V@h/db" "$SCHEME_V"
+assert_redacted "guilt-url-userinfo-scheme-length [mongodb+srv, 11]" \
+    "mongo mongodb+srv://u:$SCHEME_V@c.net" "$SCHEME_V"
+assert_redacted "guilt-url-userinfo-scheme-length [redis, 5]" \
+    "redis-cli -u redis://u:$SCHEME_V@h" "$SCHEME_V"
+
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
 # An ordinary command must survive INTACT — no redaction marker anywhere near

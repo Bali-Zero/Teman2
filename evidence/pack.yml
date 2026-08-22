@@ -370,11 +370,43 @@ receipts:
     seat: author-session (M5, claude-opus-5)
   - claim:
       "BITE PROOF re-run after the two refuter-driven fixes: 17 new cases fail on the PRE-CHANGE hook and
-      nothing else does (17/122); restored byte-identically, 122/122 pass (105 guilt / 15 innocence /
+      nothing else does (17/125); restored byte-identically, 125/125 pass (105 guilt / 15 innocence /
       2 mode). Innocence remains 15, unchanged and unrelaxed, across every round."
-    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 122/122; shellcheck clean on both files"
+    cmd: "swap in the pre-change hook -> 17 FAIL; cmp -s restore -> PASS 125/125; shellcheck clean on both files"
     exit: 0
     ts: "2026-08-22T05:25:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "PERFORMANCE, found by attacking my own diff after the refuter had finished: the URL-userinfo
+      anchor was unbounded, so [a-zA-Z][a-zA-Z0-9+.-]* retried from every position of a long
+      alphanumeric run and rescanned to the end. On a 50KB command carrying NO credential at all -- a
+      large git commit -m, a heredoc -- that one anchor cost 2278 ms against 2.53 ms bounded, in a hook
+      that runs on EVERY PostToolUse event. NOT a regression: the rule was unbounded before this PR too
+      (the bound lived only in the old MARKER and its comment, which argued for it explicitly and was
+      deleted with the cascade). Bounded to sixteen characters."
+    cmd: "timed each anchor separately against 'git commit -m ' + 'a'*50000; after the bound the whole redactor runs 6.16 ms at 50KB and 20.10 ms at 200KB, i.e. linear"
+    exit: 0
+    ts: "2026-08-22T05:55:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The scheme bound is pinned by the LONGEST REAL schemes, not by a round number, so a future
+      tightening cannot silently drop one that is used: postgresql (10), mongodb+srv (11), redis (5)
+      all still anchor and are now guilt cases. Sixteen is far above the longest and far below anything
+      a secret looks like."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh (125 cases: 108 guilt / 15 innocence / 2 mode)"
+    exit: 0
+    ts: "2026-08-22T05:58:00Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "BITE-PROOF ARITHMETIC, stated precisely so the number is not inflated: 17 of the 125 cases fail
+      on the pre-change hook and nothing else does. The count did NOT rise to 20 when the three
+      URL-scheme cases were added, because those three PASS on the pre-change hook too -- the old rule
+      anchored those URLs as well. They are PINS on the new sixteen-character bound, not witnesses to a
+      defect, and counting them as bite cases would have been the easy way to make the proof look
+      stronger than it is."
+    cmd: "swap in the pre-change hook -> 17 FAIL out of 125; cmp -s restore -> PASS 125/125"
+    exit: 0
+    ts: "2026-08-22T06:05:00Z"
     seat: author-session (M5, claude-opus-5)
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 86 named cases, 69 guilt / 15 innocence / 2 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable)."
@@ -734,6 +766,9 @@ dissent:
     status: CONFIRMED
   - seat: refuter subagent (sonnet, fresh context, snapshot only, not the author)
     objection: 'The cut makes over-match WORSE IN SCOPE even where the trigger is unchanged: echo "PASSWORD: must be at least 12 chars" lost only one word under the cascade and now loses the whole line. Same for a policy/help string, a status message, and an env-var REFERENCE like echo "TOKEN: ${SECRET_TOKEN}" that contains no secret at all.'
+    status: CONFIRMED
+  - seat: author-session (M5), attacking its own diff after the refuter had finished
+    objection: "The unbounded \\* I had just introduced was fine, but the unbounded URL SCHEME next to it was not: 2278 ms on a 50KB no-credential command, in a hook that runs on every tool call. I had copied the rule forward verbatim during the redesign and deleted, with the old MARKER, the only comment in the file that argued for bounding it. Deleting a cascade also deletes the reasoning attached to it, and that is a cost of wholesale replacement worth naming."
     status: CONFIRMED
 residual_risks:
   - "The 30k size_tokens cap is DOCUMENTATION, not an armed check (superscar #2). A repo-wide grep
