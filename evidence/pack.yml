@@ -1,7 +1,12 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+2266/-320 (net +1946) vs MERGE-BASE 062269dc9, measured at the tree that carries this pack"
+  net_lines: >-
+    +2266/-320 (net +1946), measured at SHA 3fe83d1ce by
+    `git diff --shortstat 062269dc9 3fe83d1ce`. The SHA is the load-bearing part: this line lives
+    INSIDE its own diff, so re-running the command at whatever the head is NOW returns a slightly
+    larger number, and a bare figure with no SHA would be false the moment the next commit lands.
+    Base is the MERGE-BASE, not a fixed base, so main's own landings are not counted as this PR's.
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
