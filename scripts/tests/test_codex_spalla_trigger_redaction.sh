@@ -839,10 +839,29 @@ assert_redacted "guilt-numeric-suffix-key-branch [APIKEY2]" \
     "export APIKEY2=$SUF_V" "$SUF_V"
 assert_redacted "guilt-numeric-suffix-in-a-header [X-Auth-Token2]" \
     "curl -H \"X-Auth-Token2: $SUF_V\" https://api.example.test" "$SUF_V"
-assert_redacted "guilt-numeric-suffix-generic-branch [AUTH1]" \
-    "export AUTH1=$SUF_V" "$SUF_V"
-assert_redacted "guilt-numeric-suffix-generic-branch [PWD9]" \
-    "export PWD9=$SUF_V" "$SUF_V"
+assert_redacted "guilt-numeric-suffix-prefixed-key-branch [SESSIONKEY8]" \
+    "export SESSIONKEY8=$SUF_V" "$SUF_V"
+# The digit suffix is scoped to names that carry a credential WORD. These pin
+# the axis that actually widened, which the first six pins could not: a second
+# gate measured 180 of 276 digit-suffixed identifiers newly damaged when a BARE
+# KEY or a bare generic took digits too. key1/key2/key3 are the canonical
+# placeholder identifiers in form bodies, configmaps, dict literals and SQL;
+# AUTH2 is a protocol version, PASS2 a compiler pass, PWD2 a path. The generic
+# branch reverted to bare on the same measurement -- it has no credential word
+# to lean on, so it cannot afford an ambiguous suffix. DECLARED COST, pinned
+# nowhere because it is a leak and not a survival: AUTH1= and PASS2= leak.
+assert_intact "innocence-bare-key-with-a-digit-is-a-placeholder [form body]" \
+    "curl -d key1=value1 https://api.example.test/form" "key1=value1"
+assert_intact "innocence-bare-key-with-a-digit-is-a-placeholder [configmap]" \
+    "kubectl create configmap cfg --from-literal=key1=hello" "key1=hello"
+assert_intact "innocence-bare-key-with-a-digit-is-a-placeholder [SQL column]" \
+    'sqlite3 db.sqlite "UPDATE t SET key1=1 WHERE id=2"' "key1=1"
+assert_intact "innocence-generic-branch-takes-no-digits [protocol version]" \
+    "kubectl set env deploy/web AUTH2=off" "AUTH2=off"
+assert_intact "innocence-generic-branch-takes-no-digits [compiler pass]" \
+    "make test PASS2=on VERBOSE=1" "PASS2=on"
+assert_intact "innocence-generic-branch-takes-no-plural-S" \
+    "export AUTHS=ldap" "AUTHS=ldap"
 assert_intact "innocence-letter-suffix-is-not-a-numeric-one [TOKENIZER]" \
     "export TOKENIZER=fast" "TOKENIZER=fast"
 assert_intact "innocence-generic-branch-rejects-the-delimited-tail [AUTH_MODE]" \

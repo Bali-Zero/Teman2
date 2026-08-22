@@ -654,7 +654,13 @@ receipts:
       "THE SUFFIX CURE IS NARROW BY MEASUREMENT, not by preference. TAIL gained [0-9]* and NOT
       [A-Za-z0-9]*: a bare alphanumeric suffix swallows TOKENIZER=fast, an innocence case, for the same
       reason KEY carries a bounded prefix vocabulary -- credential words routinely END innocent
-      identifiers, and digits do not appear in that role. Branch (c) got only the NUMERIC half of TAIL
+      identifiers. THE SENTENCE THAT FOLLOWED THIS ONE WAS FALSE and is retracted: it said digits do not
+      appear in that role. A second gate measured 180 of 276 digit-suffixed identifiers newly damaged --
+      key1, key2, key3 are the canonical placeholder names in form bodies, configmaps, dict literals and
+      SQL, and AUTH2 is a protocol version, PASS2 a compiler pass, PWD2 a path. The digit suffix is now
+      SCOPED to names carrying a credential WORD: branch (a) keeps it (nothing uses TOKEN or PASSWORD as
+      a placeholder key), branch (b) keeps it only WITH a vocabulary prefix (APIKEY2, SESSIONKEY8) and a
+      BARE KEY takes none, and branch (c) reverted to bare entirely. Branch (c) originally got the NUMERIC half of TAIL
       after the full TAIL was tried and REJECTED ON MEASUREMENT: it also admitted AUTH_MODE=oidc,
       AUTH_URL=, PWD_FILE= and PASS_THROUGH=true, four ordinary config idioms that a generic branch with
       no credential WORD cannot tell from a real name. It would have closed AUTH_2= too, which nothing
@@ -707,8 +713,43 @@ receipts:
       counted. Hook restored byte-identical (sha256 compared). Performance unchanged and still linear:
       169.7 ms at 200KB and 304.3 ms at 400KB on the url-run payload; 1.2/1.4 ms on a payload built from
       the new alternative itself."
+  - claim:
+      "SECOND INDEPENDENT RE-GATE, on the DELTA rather than the tree, because the code had changed after
+      the first verdict and relaying a verdict onto a tree it never graded is the defect this PR keeps
+      finding in itself. It ran 1872 self-designed differential inputs old-vs-new and reported 0 coverage
+      regressions and 728 new over-matches -- of which 540 are the intended recall gain and 188 are on
+      inputs containing NO credential. It then falsified the RATIONALE I had written for the widening.
+      The hook comment said digits do not appear in the role of ending an innocent identifier. That is
+      true of TOKEN and PASSWORD and FALSE of a bare KEY: 180 of 276 digit-suffixed identifiers were newly
+      damaged, and key1/key2/key3 are the canonical placeholder names in form bodies, configmaps, dict
+      literals and SQL. Its branch-(c) counterexamples were as ordinary: AUTH2 a protocol version, PASS2 a
+      compiler pass, PWD2 a path. All re-driven through the real hook here before acting; all reproduced."
+    cmd: "second re-gate on the delta fef2562cc..8ef946ce8; author re-verification of every counterexample against .claude/hooks/codex-spalla-trigger.sh with a temp HOME"
+    exit: 0
+    ts: "2026-08-22T14:40:00Z"
+    seat: independent-re-gate (claude-opus-5, fresh context) + author re-verification
+  - claim:
+      "THE CURE IS A SCOPE, NOT A REVERT, and it took the gate's own recommendation. The digit suffix now
+      requires a credential WORD: branch (a) keeps it unconditionally (nothing uses TOKEN, SECRET,
+      PASSWORD, PASSWD or CREDENTIAL as a placeholder key), branch (b) keeps it only WITH a vocabulary
+      prefix -- APIKEY2 and SESSIONKEY8 still redact while a bare KEY1 does not -- and branch (c), which
+      has no credential word at all to lean on, reverted to bare. That last revert also removed an `S?`
+      which had ridden in undescribed by any artifact and unpinned by any case (AUTHS=, PASSS=, PWDS=);
+      the gate caught it as a widening the commit's own thesis said it had asserted. Every recall witness
+      from the previous round survives the scoping. THE PINS NOW COVER THE AXIS THAT WIDENED: the first
+      six could only assert axes that already held (letter suffix, delimited tail), which is precisely why
+      they read as proof while the digit axis went unasserted."
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh against the current hook, then against HEAD bb2cd3876 and against fef2562cc"
+    exit: 0
+    ts: "2026-08-22T14:55:00Z"
+    seat: author-session (M5, claude-opus-5)
+    note:
+      "corpus 168 -> 173 (129 guilt / 40 innocence / 4 mode). Two bite proofs, in opposite directions:
+      6/173 against the over-matching predecessor bb2cd3876 -- exactly the six new innocence pins -- and
+      9/173 against fef2562cc, the version before any of this round landed (7 suffix guilt witnesses plus
+      the 2 at-path innocence pins). Hook restored byte-identical after each (sha256 compared)."
 tests:
-  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 168 named cases, 130 guilt / 34 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 173 named cases, 129 guilt / 40 innocence / 4 mode, run against the REAL hook with a temp HOME. Mutation: 63 mutants over the enumerated set below, 62 killed, 1 equivalent (excluded, proven unkillable). THIS LINE IS MEASURED, NOT MAINTAINED: it read 86/69/15/2 until 2026-08-22 while the suite had grown to 151, because a count written by hand describes the instant it was typed and nothing re-reads it. It is now derived from the suite own summary line at the time of writing, and the same applies to every count in the receipts below -- those are TIMESTAMPED records of a moment and are deliberately not back-edited."
 static:
   - "actionlint exit 0 on guard-conformance.yml"
   - "shellcheck clean on both the hook and the test"
@@ -1225,6 +1266,20 @@ residual_risks:
     severity INFO, on the single-quoted python block). What is true, and what every check in this PR
     actually ran, is `shellcheck -S warning` -> exit 0. No CI check is contradicted: actionlint runs with
     `-shellcheck=`, which disables the pass entirely. Recorded rather than quietly dropped."
+  - "MEASURED OVER-MATCH RATE IS SCOPED, NOT RE-MEASURED: the `2291 lines / 0.686% of 333,832` figure
+    carries the timestamp 2026-08-21T22:49:57Z and describes the matcher AS IT WAS THEN. Nothing in the
+    later rounds re-measures it, and the honest reading is that it is a LOWER BOUND for the shipped
+    matcher, not its rate. It is deliberately not refreshed here: the only corpus that could refresh it is
+    the live hook log, and reading that log is reading a credential archive -- the exact thing this PR
+    exists to stop. A number that would cost a secret to update is a number that stays scoped."
+  - "UNDER-MATCH RE-OPENED ON PURPOSE 2026-08-22, after the digit suffix was scoped: a BARE `KEY` with a
+    digit (`KEY1=<v>`) and the generic branch with any suffix (`AUTH1=<v>`, `PASS2=<v>`, `AUTHS=<v>`) leak
+    in full. They were caught for the length of one commit and the catch was withdrawn on measurement,
+    because the same rule truncated `curl -d key1=value1`, `--from-literal=key1=hello`,
+    `UPDATE t SET key1=1`, `AUTH2=off`, `PASS2=on` and `PWD2=/srv/build2`. The trade is the one this
+    matcher already makes for `monkey=patch`, one level deeper: a credential WORD earns the digits, a
+    bare placeholder name does not. A real delimited credential on the generic branch is `AUTH_TOKEN`,
+    which branch (a) catches."
 
 sources:
   - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
@@ -1234,4 +1289,4 @@ pii_scan: clean
 # No offline tokenizer for this model family exists on the fleet, and nothing in the repo reads
 # this field (grep in scripts/ and infra/ finds no consumer -- see residual_risks), so it is
 # documentation. The previous value, 16067, was left behind by later edits to this pack.
-size_tokens: 30175
+size_tokens: 31430

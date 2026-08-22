@@ -455,20 +455,42 @@ PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
 # (TOKENA=, TOKENV2=) still leaks -- it is not separable from TOKENIZER by any
 # rule this shape can express, so it is priced, not closed.
 TAIL = r"S?[0-9]*(?:[_-][A-Za-z0-9]+)*"
+# TAIL_ND is TAIL WITHOUT the bare-digit suffix, and it exists because a second
+# gate falsified the sentence above. "Digits do not appear in that role" is FALSE
+# for a BARE credential word: key1, key2, key3 are the canonical placeholder
+# identifiers in form encodings, dict literals, configmaps and annotations, and
+# a form-encoded curl body of key1=v1 and key2=v2, --from-literal=key1=hello,
+# UPDATE t SET key1=1, and a sed rewriting key1=old to key1=new were all
+# truncated in full -- 180 of 276
+# digit-suffixed identifiers newly damaged, on inputs the previous hook left
+# intact. The distinction is the same one that gave KEY a bounded prefix
+# vocabulary in the first place, applied one level deeper: WITH a prefix from that
+# vocabulary the name is a credential (APIKEY2, SESSIONKEY8) and digits are safe;
+# BARE, it is a placeholder and they are not. Branch (a) keeps the digits because
+# TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL are not words anything uses as a
+# placeholder key.
+TAIL_ND = r"S?(?:[_-][A-Za-z0-9]+)*"
 NAME = (r"(?<![A-Za-z0-9.])(?:"
         + r"[A-Za-z0-9]*" + WIDE + TAIL   # a. ANY prefix + a wide credential word
-        + r"|" + PRE + r"?KEY" + TAIL     # b. KEY: bounded prefix, or none at all
-        # c. generic name, with the NUMERIC half of TAIL and deliberately NOT
-        #    the delimited half. AUTH1= and PASS2= leaked while AUTH= was caught,
-        #    so the digits close a hole that has no innocent counterpart. The
-        #    full TAIL was tried first and REJECTED ON MEASUREMENT: it also
-        #    admits AUTH_MODE=oidc, AUTH_URL=, PWD_FILE= and PASS_THROUGH=true,
-        #    four ordinary config idioms that this generic branch -- unlike (a)
-        #    and (b) -- has no credential WORD to distinguish from. It would have
-        #    closed AUTH_2= as well, which is not a name anything actually uses:
-        #    a real delimited credential is AUTH_TOKEN, and branch (a) has it.
-        #    Bare letters (AUTHOR=, AUTHORIZATION=) stay innocent either way.
-        + r"|(?:PASS|PWD|AUTH)S?[0-9]*"
+        # b. KEY, split by whether a vocabulary PREFIX is present: with one, the
+        #    name is a credential and a bare digit suffix is safe; without one it
+        #    is a placeholder identifier and a bare digit suffix is not (see
+        #    TAIL_ND above). Both forms still take the delimited suffix chain.
+        + r"|" + PRE + r"KEY" + TAIL
+        + r"|KEY" + TAIL_ND
+        # c. generic name, BARE -- no plural, no digits, no delimited chain.
+        #    The numeric half was added here on 2026-08-22 and REMOVED the same
+        #    day, on measurement, when a second gate showed the rationale written
+        #    for it ("the digits close a hole that has no innocent counterpart")
+        #    was simply false: AUTH2=off is a protocol version, PASS1/PASS2 are
+        #    compiler and report passes, PWD2=/srv/build2 is a path -- all newly
+        #    truncated, all intact before. This branch has NO credential word to
+        #    lean on, which is exactly why it cannot afford an ambiguous suffix.
+        #    The S? that rode in with it (AUTHS=, PASSS=, PWDS=, none of them
+        #    described in any artifact and none pinned by any case) goes with it.
+        #    COST, declared: AUTH1= and PASS2= leak again. A real delimited
+        #    credential is AUTH_TOKEN, and branch (a) already has it.
+        + r"|(?:PASS|PWD|AUTH)"
         + r")")
 # A VALUE is what sits on the right of a credential assignment: a double-quoted
 # run, a single-quoted run, or a bare run up to whitespace. It no longer has to
