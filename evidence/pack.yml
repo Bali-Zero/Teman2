@@ -1,237 +1,268 @@
 brief_ref: evidence/brief.yml
-plan_ref:
-  "the harness gate's own recovery procedure deadlocks the PR it is meant to unblock (measured
-  on #4543)"
+plan_ref: |
+  arm the section-number guard that #4562 shipped unarmed, and prove it bites rather than
+  passing trivially
 diff:
-  behaviour_change: none
-  net_lines: "CODE +81/-3 (comments only, proven structurally); WHOLE DIFF +364/-261 (net +103); measured at merge-base 9def77f51..head d3e3dea43+1 with `git diff --numstat`, LAST, iterated to a fixed point."
+  behaviour_change: |
+    yes, in CI only: a new job RUNS on every pull_request / merge_group / push:main. It REPORTS,
+    it does not block — live branch protection carries 27 required contexts on 2026-08-22 and this
+    is not one of them. No product code, no runtime surface, no deploy step.
+    The whole-diff net line count is near zero only because this PR REPLACES the inherited
+    evidence/brief.yml and evidence/pack.yml (a prior PR's, larger) with its own; the CODE it
+    adds is +91/-0 across the two workflow files.
+  net_lines: "+425/-243 (net +182) vs merge-base 2eb20d836; workflows alone +122/-0"
 receipts:
+  - claim: "The guard was UNARMED on origin/main — nothing in .github/workflows/ named it."
+    cmd: "git grep -c test_runbook_section_numbers_are_unique origin/main -- .github/workflows/"
+    exit: 1
+    ts: "2026-08-22T00:34:21Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim: "actionlint accepts both changed workflows."
+    cmd: "actionlint .github/workflows/runbook-section-numbers.yml .github/workflows/main-push-failure-watch.yml"
+    exit: 0
+    ts: "2026-08-22T00:33:52Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim: "The guard itself passes on the current tree (3 tests)."
+    cmd: "python -m pytest scripts/tests/test_runbook_section_numbers_are_unique.py -q"
+    exit: 0
+    ts: "2026-08-22T00:33:52Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim: "timeout-minutes clears the 10m checkout floor (131 jobs scanned)."
+    cmd: "python scripts/lint_workflow_timeout_floor.py"
+    exit: 0
+    ts: "2026-08-22T00:33:53Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim: "The new push:main job is registered in the watcher — 99 live workflows covered."
+    cmd: "python scripts/check_watcher_coverage.py"
+    exit: 0
+    ts: "2026-08-22T00:34:20Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim: "The workflow is shaped so it CAN be promoted to required without the
+      'Expected — waiting' deadlock (merge_group present, no top-level pull_request paths)."
+    cmd: "python scripts/ci/check_required_workflow_conformance.py"
+    exit: 0
+    ts: "2026-08-22T00:33:53Z"
+    seat: author-session (M5, claude-opus-5)
   - claim:
-      "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the
-      failing one"
+      "PROOF OF BITE, run locally against the same anchor the CI step uses: the sed mutation
+      changes the file's sha256 (not a NO-OP), and the guard FAILS on the reintroduced 6quater
+      collision, naming it — `duplicated section numbers ['6quater']`."
     cmd:
-      'gh api "repos/Bali-Zero/Teman2/commits/33f12fb4af43777430d0a0873653079891f639d8/check-runs?filter=all&per_page=100"
-      --jq ''.check_runs[]|select(.name=="Harness floor recompute")|"\(.completed_at) \(.conclusion) suite=\(.check_suite.id)"''
-      -> THREE rows today, newest first: 14:07:22Z success suite 88070314010, 14:01:20Z success
-      suite 88072653107 (the dispatch), 13:51:47Z failure suite 88070314010 (the pull_request attempt the
-      PR was pinned to). Rows TWO AND THREE are the deadlock; row ONE is the post-cure rerun, i.e. the cure,
-      and it did not exist during the incident. `&per_page=100` is load-bearing: without it this same command
-      returns only the first TWO rows -- re-measured 2026-08-21, which is how an earlier version of this
-      receipt came to record an output its own command could not produce.'
-    exit: 0
-    ts: "2026-08-21T21:02:06Z"
-    seat: "session (m5)"
+      "sed -i '' 's/^## 6septies\\. .../## 6quater. .../' docs/runbooks/merge-queue-discipline.md
+      && python -m pytest scripts/tests/test_runbook_section_numbers_are_unique.py -q"
+    exit: 1
+    ts: "2026-08-22T00:34:06Z"
+    seat: author-session (M5, claude-opus-5)
   - claim:
-      "CORRECTED, and the correction REVERSES this receipt's original claim: PAGINATION hides the row you
-      need, not filter=latest. filter=latest drops only attempts superseded WITHIN their own suite, so during
-      the #4543 deadlock the default would have returned BOTH rows and there was no contradiction to hide"
+      "…and the restore is byte-identical by sha256, with the guard green again — so the
+      failure above is the mutation, not an unrelated breakage."
     cmd:
-      'gh api "repos/Bali-Zero/Teman2/commits/76edf60e29846e4e45b41842da7110aa64b55036/check-runs?filter=all"
-      --jq ''"total=\(.total_count) returned=\(.check_runs|length) failures=\([.check_runs[]|select(.conclusion=="failure")]|length)"''
-      -> total=55 returned=30 failures=0; the identical URL with &per_page=100 appended -> total=55
-      returned=55 failures=1. Run verbatim this session, both exit 0. The URL MUST be quoted (& is a
-      shell metacharacter) and "failure" MUST be quoted inside the jq filter, or jq answers
-      "function not defined: failure/0" — an earlier revision of this receipt recorded a command that
-      exited 127, which is the same defect dissent[2] raised against receipt 1.'
+      "cp /tmp/rb.orig docs/runbooks/merge-queue-discipline.md && shasum -a 256 ... (compared)
+      && python -m pytest scripts/tests/test_runbook_section_numbers_are_unique.py -q"
     exit: 0
-    ts: "2026-08-21T21:02:07Z"
-    seat: "session (m5)"
+    ts: "2026-08-22T00:34:06Z"
+    seat: author-session (M5, claude-opus-5)
   - claim:
-      gh run rerun on the ORIGINAL pull_request run cleared the rollup; mergeStateStatus BLOCKED ->
-      CLEAN
-    cmd: gh run rerun 32489011695; gh pr view 4543 --json mergeStateStatus -> CLEAN
+      "The context is NOT required today — live branch protection carries 27 contexts and none
+      matches runbook/section. This is why the word 'blocking' was removed from the step name and the
+      artifacts: measured, not assumed, and re-measured by the author after the gate raised it."
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts[]' | sort > /tmp/lr.txt; wc -l < /tmp/lr.txt; grep -c -x 'runbook section numbers are unique' /tmp/lr.txt  # 27 contexts, count 0. The re-gate caught the FIRST version of this cmd: it used `grep -qi 'runbook|section'`, and in a BRE `|` is a literal, so that probe exits 1 whether or not the context is there -- a probe that cannot distinguish the two states it is quoted for. The claim was independently true, but a receipt whose command proves nothing is not a receipt. Replaced with an exact -x match, and the control (grepping a context that IS required) exits 0, which is what makes the 1 here mean something."
+    exit: 1
+    ts: "2026-08-22T01:14:31Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The TIGHTENED proof-of-bite works end to end, replicated locally (perl for GNU sed, shasum
+      for sha256sum, PYTHONDONTWRITEBYTECODE=1 per W121): mutation changed the sha, the uniqueness test
+      SPECIFICALLY failed (-k), its output carried the injected collision message, the restore was
+      byte-identical and the full file went green again."
+    cmd: "perl -pi -e 's/^## 6septies\\. .../## 6quater. .../' docs/runbooks/merge-queue-discipline.md && pytest -k test_runbook_section_numbers_are_unique_within_each_file -q && grep -q \"duplicated section numbers ['6quater']\" /tmp/bite.out"
+    exit: 1
+    ts: "2026-08-22T00:56:27Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim: "actionlint still clean on both workflows after the step rename and the tightened bite step."
+    cmd: "actionlint .github/workflows/runbook-section-numbers.yml .github/workflows/main-push-failure-watch.yml"
     exit: 0
-    ts: "2026-08-21T14:06:41Z"
-    seat: "session (m5)"
-  - claim: The documented flow was actually followed first, and did not work — this is not a hypothetical
-    cmd:
-      gh workflow run harness-floor.yml --ref agent/air-m5/ops/gate-header-truth -> run 32489857553 workflow_dispatch
-      success on 33f12fb4a, PR still BLOCKED
+    ts: "2026-08-22T00:56:28Z"
+    seat: author-session (M5, claude-opus-5)
+  - claim:
+      "The two new PENDING-ARMS rows are RECOGNISED by the ledger parser, not just present as
+      text — the distinction that made the gate's finding 1 a blocker. Verified by an independent
+      subagent, not by the author: 393 entries parsed, both rows found (entries[391] and [392]),
+      class TECH-DEBT, owner session, age_days 0, overdue false, malformed count 0; --strict-phantom
+      exit 0 (neither row is a PHANTOM-OPERATOR), and the ledger's own 105 tests pass."
+    cmd: "python scripts/pending_arms_report.py --json && python scripts/pending_arms_report.py --strict-phantom && python -m pytest scripts/tests/ -k pending_arms -q"
     exit: 0
-    ts: "2026-08-21T14:00:37Z"
-    seat: "session (m5)"
-  - claim: "No behaviour change: the workflow's non-comment body is byte-identical to origin/main"
-    cmd: git show origin/main:<wf> | grep -v '^\s*#' > a; grep -v '^\s*#' <wf> > b; diff -q a b
-    exit: 0
-    ts: "2026-08-21T21:02:08Z"
-    seat: "session (m5)"
-  - claim: actionlint passes on the rewritten workflow
-    cmd: actionlint .github/workflows/harness-floor.yml
-    exit: 0
-    ts: "2026-08-21T21:02:08Z"
-    seat: "session (m5)"
+    ts: "2026-08-22T00:57:37Z"
+    seat: independent subagent (sonnet 5, read-only, non-author)
 dissent:
-  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author)"
+  - seat: "scripts/lint_workflow_timeout_floor.py (CI, non-author)"
     objection:
-      "The W111 scoping was FACTUALLY BACKWARDS. W111's own incident was #3463 re-run against
-      refs/pull/3463/merge -- a PULL-REQUEST merge ref, not merge_group. The note narrowed the scar onto
-      the one event type it did not happen on, and replaced it with a categorical 'a pull_request re-run
-      ... nothing about it is stale', which is exactly W111's original scenario. Superscar #6 / W78, in
-      a header every session reads."
+      "The first revision shipped `timeout-minutes: 5`, which budgets the CHECKOUT out of
+      existence — actions/checkout on this repo intermittently takes ~2 minutes, and a job that
+      runs out reports `cancelled`, not `failure`, so a required check would hang un-green with
+      nothing red to fix. Raised to 10 and re-verified (131 jobs, floor 10m)."
     status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author)"
+  - seat: "scripts/check_watcher_coverage.py (CI, non-author)"
     objection:
-      "CASE A is safe for THIS job for a reason the note did not give: the workflow checks out
-      a PINNED base sha (github.event.pull_request.base.sha), never refs/pull/N/merge, so no moving ref
-      exists for a rerun to resolve differently. Unstated, a reader copies CASE A to a workflow that DOES
-      check out a merge ref."
+      "The first revision added `push: main` without registering the job in
+      main-push-failure-watch.yml, leaving a main-push failure unwatched — exactly the silent-cron
+      shape (superscar #2) this PR exists to close. Registered mid-list per that file's own
+      comment, re-verified at 99/99 covered."
     status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author)"
+  - seat: "Harness floor recompute (CI, non-author)"
     objection:
-      "Receipt #1's jq was not runnable as written (missing .check_runs[]) and listed 2 of 3 rows;
-      receipt #2's recorded output is false at its own timestamp; sources attributed run 32489102357 to
-      #4543 when it belongs to #4544."
+      "This PR touches only .github/workflows/ — a hot-zone path, deterministic floor 3 —
+      and carried NO evidence/brief.yml of its own; the brief at HEAD was inherited from a prior
+      merge. A Gear-3-floor diff cannot silently pass as 'not a harness task'. This pack and its
+      brief are that objection's remedy, authored after the gate refused."
     status: CONFIRMED
-  - seat: "session (m5), against its own earlier fix in #4543"
+  - seat: "author-session self-audit (M5)"
     objection:
-      "In #4543 I 'fixed' a wrong net_lines by writing a precise value measured at the PREVIOUS
-      SHA — the same disease at higher confidence, in the one field a gate had already conditioned. The
-      gate returned REWORK-BUILD for it. This pack therefore measures net_lines LAST, at the merge base,
-      after every other edit, and writes it as a 1-for-1 line swap so the value describes the tree that
-      contains it."
+      "A uniqueness check is green on any file that happens to have no duplicates, so
+      merging this workflow would prove only that the repo is currently clean — not that the guard
+      can detect anything. Without a guilt proof, an accidentally-broken guard (bad path, wrong
+      parser, silent exception) would look identical to a working one. Remedied by the
+      proof-of-bite step, which is itself protected against a drifted anchor by the NO-OP check."
     status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5, on #4543)"
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 1, BLOCKER"
     objection:
-      "CI cannot catch a wrong net_lines: evidence_pack_lint prefers a MEASURED --net-lines/--numstat-file
-      over the pack field because the field is untrustworthy, but a STRING field yields None and the rule
-      never fires. Green lint is not evidence for this field."
+      "The pack and the brief both asserted the un-armed remainder was 'tracked in PENDING-ARMS'. It
+      was not: one grep over the ledger at 20f922ecf returned two unrelated hits, and PENDING-ARMS.md
+      was not among the four files the diff touched. That ledger row is the ONLY carrier of the
+      remainder — scripts/pending_arms_report.py alarms solely on rows that exist and are open >48h —
+      so no row meant no alarm meant the promotion is forgotten. A false claim about the very
+      mechanism meant to carry the remainder forward, inside a Gear-3 pack. Independently
+      re-verified by the author before fixing, not taken on the gate's word. Cured: two real rows
+      appended in this diff (the required-context promotion, and the guard's own ###/code-fence
+      blindness)."
     status: CONFIRMED
-  - seat: "session (m5), scoping the change rather than widening it"
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 2, MAJOR"
     objection:
-      "Rewriting the corollary could be read as repealing W111. It is not, and a note that merely
-      dropped the prohibition would be a regression: a merge_group rerun replays a ref whose base moved.
-      SUPERSEDED BY dissent[0], which is what actually shipped. The note does NOT scope the ban to merge_group: it says in terms that reruns are only dangerous on merge_group is FALSE, and scopes CASE A by this workflow PINNED base ref instead. This entry describes a draft that dissent[0] caused to be reversed; it is kept for the trail, not as a description of the diff that ships."
+      "The word 'blocking' appeared in four places including the step name a reader sees in the GitHub
+      checks UI, while `gh api repos/Bali-Zero/Teman2/branches/main/protection` returns 27 required
+      contexts and none is this one — a red run does not stop a merge. Re-measured by the author: 27
+      contexts, grep for runbook/section exits 1. In the PR whose entire thesis is that a label
+      promising protection it does not deliver IS the defect, that label could not stand. Cured: the
+      step is now 'Section numbers are unique', and the header, brief and pack all state the
+      reporting-only status with the measurement behind it."
     status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author) - round 2 on 76edf60e2"
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 3, MINOR"
     objection:
-      "The DIAGNOSTIC TRAP paragraph named a mechanism that cannot occur in the state a reader consults it
-      in. It said check-runs defaults to filter=latest and returns only the GREEN run. filter=latest drops a
-      check-run only once a SAME-SUITE rerun supersedes it, which is not the deadlock state - during the
-      #4543 deadlock the default would have returned both rows. What actually hides the red row is
-      PAGINATION, which the paragraph never mentioned: the endpoint returns 30 of ~55-63 rows. So the
-      prescribed remedy (pass filter=all) does not by itself surface the row."
+      "The brief described main-push-failure-watch.yml as consuming the JOB name. It consumes the
+      WORKFLOW's `name:` field — the same field GitHub matches for `workflow_run.workflows:`, per
+      check_watcher_coverage.py's own empirically-verified header — and a stale entry fails loudly
+      (exit 1), not silently. No functional harm here only because both names are the same string.
+      Cured in the brief's consumer_map."
     status: CONFIRMED
-  - seat: "session (m5), re-measuring the gate objection on this PR own head SHA rather than accepting it"
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 4, MINOR"
     objection:
-      "Verified before acting, because a refuter hallucinates too (W65). On 76edf60e2: no per_page ->
-      returned=30 of 54, failures=0; filter=all with no per_page -> returned=30 of 55, failures=0;
-      filter=all&per_page=100 -> returned=55, failures=1. The gate is right and the paragraph shipped in the
-      previous revision was wrong. Corrected in the header, in the brief acceptance criterion, in receipts 1
-      and 2, and in the session memory note that carried the same false mechanism - which would otherwise
-      have propagated it to the next session."
+      "The proof-of-bite asserted only that pytest went red, not WHICH test went red. The guard file
+      holds three tests, so a break in test_the_check_can_actually_fail or in the anti-vacuity test
+      would also read as 'the guard bit'. The gate judged the 'pytest itself is broken' hole immaterial
+      (green -> red -> green on one runner with one heading line as the only delta) but the looseness
+      real. Cured: the step now runs `-k test_runbook_section_numbers_are_unique_within_each_file` and
+      additionally requires the assertion message naming the injected collision, failing loudly with
+      the pytest output if the red came from anywhere else."
     status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5) - round 2, provenance findings"
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 5, MINOR"
     objection:
-      "Two dissent seat scalars were unquoted and ended mid-phrase: YAML ate #4543 and everything after it as
-      a comment. The linter only checks non-emptiness, so CI could not see it. Separately, receipt 1 recorded
-      an output its own recorded command cannot produce (2 rows, not 3), and dissent[5] described a draft
-      that dissent[0] had already caused to be reversed - both CONFIRMED, with no marker telling a reader
-      which one describes the artifact that ships."
+      "The proof-of-bite receipt records `sed -i ''` (BSD/macOS); the workflow ships `sed -i` (GNU). The
+      shipped line has therefore never been executed anywhere. Not cured by making the two invocations
+      identical AS WRITTEN -- though the re-gate correctly refused the word CANNOT: a portable form
+      does exist (`sed -i.bak`, verified working under BSD sed and accepted by GNU; `perl -i -pe`
+      likewise), so the honest statement is that the two invocations AS WRITTEN take incompatible -i
+      syntax, not that no portable form is possible. Disclosed instead, and the
+      gate proved it from the other side: run under BSD sed the shipped syntax fails LOUDLY (`undefined
+      label`, exit 1) and writes no backup file, so a wrong-platform invocation cannot pass silently.
+      Recorded as a residual risk rather than a receipt claim."
     status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5, fresh context, round 3 on ea0801247, did not run round 2)"
+  - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 8, MINOR"
     objection:
-      "Round-2 condition 2 and 4 were applied to the WORKFLOW only and left standing in brief.yml, which
-      then contradicted its own acceptance criterion two blocks down. A condition is not satisfied by
-      editing the file the reviewer quoted - it is satisfied when the claim is gone from every artifact
-      that repeats it. Also: the ESCAPE paragraph added for condition 4 pointed the reader at CASE B,
-      which the same header proves is inert on an open BLOCKED PR - the fix introduced a contradiction
-      with the block above it."
+      "Of the four original dissent entries, three were genuine non-author machine objections and the
+      fourth was the author's own self-audit — honestly labelled, but padding the count, with no
+      cross-family non-author seat anywhere in the pack. Cured by construction: these six entries ARE
+      that seat."
     status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5) - round 3, on the precision paragraph"
+  - seat: "Gear-3 re-gate (opus 5, fresh context, non-author) — NEW-1, MINOR"
     objection:
-      "The note quotes its own ref: expression and concludes i.e. a PINNED base SHA. The third branch is
-      'main', a MOVING ref, and it is the branch workflow_dispatch falls through to. A reader applying the
-      note's own transfer test to this very workflow gets the opposite answer. Separately, the paragraph
-      argues pinning away W111's hazard without stating the flip side: a rerun replays the ORIGINAL event
-      payload, so the base checkout - and the helper scripts the job executes - stay frozen at PR-event
-      time. Pinning removes the stale-BASE hazard; it does not make the rerun current."
+      "One receipt's `cmd` was a probe that cannot distinguish the two states it is quoted for:
+      `grep -qi 'runbook|section'` is a BRE, where `|` is a literal, so it exits 1 against a list
+      that DOES contain the context and against one that does not. Reproduced by the author:
+      BRE-pipe exits 1 on both fixtures, `grep -qiE` exits 0/1 correctly. The CLAIM was independently
+      true (the workflow header quotes the raw --jq output with no grep, and the ledger row's proof
+      line uses a correct literal grep), so nobody was misled about world-state — but a receipt whose
+      command returns the recorded exit regardless of the answer is not evidence. Replaced with an
+      exact `grep -c -x`, plus a control against a genuinely-required context that exits 0."
     status: CONFIRMED
-  - seat: "session (m5), verifying the two conditions the gate REASONED rather than executed"
+  - seat: "Gear-3 re-gate (opus 5, fresh context, non-author) — NEW-2, MINOR"
     objection:
-      "Two findings were derived from the file, not observed, so they were checked before being acted on
-      (W65). Both hold. The trigger list really is types: [opened, synchronize, reopened], so close+reopen
-      does fire a fresh pull_request run on the unchanged head SHA - a cheap escape the previous text
-      denied outright. And the ref: expression really does carry 'main' as its third branch. Neither was
-      taken on the refuter's word."
+      "The finding-5 dissent said the two sed invocations 'CANNOT be identical'. Convenient rather
+      than exact: `sed -i.bak` works under BSD and is accepted by GNU, and `perl -i -pe` is portable
+      — the re-gate verified the first on its own machine. Corrected to say the two invocations AS
+      WRITTEN take incompatible syntax. Nothing about what ships changes: GNU syntax is right for
+      ubuntu-latest and fails loudly elsewhere."
     status: CONFIRMED
-  - seat: "session (m5), against its own round-2 repair"
+  - seat: "Gear-3 re-gate (opus 5, fresh context, non-author) — its own broken probe, disclosed"
     objection:
-      "Receipt 2 was rewritten in round 2 to cure a non-reproducing command, and the replacement did not
-      run either: exit 127 unquoted (& is a shell metacharacter), and jq answers 'function not defined:
-      failure/0' when the literal is unquoted inside the filter. The same defect dissent[2] raised against
-      receipt 1, reproduced one receipt over, in the commit that claimed to fix it. The command now in the
-      file was extracted from the YAML and executed verbatim this session: exit 0, output identical to the
-      one recorded."
-    status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5, fresh context, round 4 on e48c1b0f5, did not run earlier rounds)"
-    objection:
-      "The head commit's own subject was 'a condition is satisfied when the claim is gone from every
-      artifact, not from the one the reviewer quoted' -- and the repealed instruction was still standing
-      in the two artifacts a session actually meets. Worst: scripts/ci/harness_gate_read.py PRINTS it as
-      the CI failure annotation, i.e. it is pushed at a session at the instant it is stuck, which is a
-      strictly worse home than a header a session may or may not open. The gate read it live in this PR's
-      own red X. Also: the consumer_map asserted 'no other artifact carries it', false since #4557; and
-      residual_risks[0] named a follow-up that had merged five minutes before the commit was authored."
-    status: CONFIRMED
-  - seat: "session (m5), verifying and then acting on the round-4 findings"
-    objection:
-      "Re-measured before acting (W65). harness_gate_read.py:193-194 and its docstring at :42-45 did carry
-      the repealed text; #4549 does have 9 pull_request runs and ZERO workflow_dispatch, so the runbook
-      sentence 'cost two sessions the same detour' -- which this same session wrote in #4557 -- is false;
-      and the runbook quoted the ref: expression with '|| main' truncated. Fixed in #4558, not here: those
-      are code and sibling-doc surfaces, and folding them in would cost this PR its comment-only proof."
-    status: CONFIRMED
-  - seat: "gear3-final-gate (opus 5, fresh context, round 5 on d3e3dea43, did not run earlier rounds)"
-    objection:
-      "Three more instances of the one disease this pack names four times -- a value written once and never
-      re-read. (a) brief.yml's objective still said the diff 'scopes the W111 prohibition to what it
-      actually protects (a stale merge-queue ref)', which is the draft dissent[0] reversed in round 2 and
-      the opposite of what the shipped header says; unchanged since the first commit, it survived four
-      rounds. (b) All six receipt ts fields were frozen at one instant 33s before the branch's first
-      commit, while receipt[1] had been rewritten twice since and its own text claimed 'run verbatim this
-      session'. (c) size_tokens said 1300, correct at the first commit and never re-read while the pack
-      grew to 15079 bytes -- 3769 by the linter's own bytes/4 metric, 2.9x off. The linter checks ts for
-      non-emptiness only and never reads size_tokens at all, so green lint was not evidence for any of
-      the three."
-    status: CONFIRMED
-  - seat: "session (m5), on the shape of its own repair"
-    objection:
-      "Fixing the timestamps, this session first wrote four stamps with invented second-level precision --
-      fabricating exactly the kind of measured-looking value the finding is about. Caught before commit:
-      the four receipts were RE-EXECUTED and stamped with the instants actually captured at run time
-      (21:02:06-08Z), and the two incident receipts carry the real event times read from the run API
-      (14:06:41Z attempt-2 start, 14:00:37Z dispatch creation) rather than a session time they never
-      happened at. size_tokens is now iterated to a fixed point like net_lines."
-    status: CONFIRMED
+      "The re-gate's first run of the restore-on-failure scenarios reported 'RB restored: NO' on both
+      — which would have been a serious finding against the fix. It was the gate's own diagnostic
+      `grep | tail` placed INSIDE the `set -euo pipefail` region: when the grep matched nothing the
+      pipeline returned 1, errexit killed the replica before the restore, and the leftover mutation
+      then made the next scenario's sed a genuine NO-OP. Re-run without the diagnostic, both
+      scenarios restored byte-identically. Recorded here because a gate that hides its own broken
+      probe is worth less than one that shows it — and because it is the same class as W121 and as
+      the mutation-on-a-live-worktree scar."
+    status: RETRACTED
 residual_risks:
-  - "CLOSED, and the previous revision shipped this line already stale. It read: CLAUDE.md's Agent PR
-    Contract rule 3 still reads unqualified at origin/main, named follow-up a CLAUDE.md PR carrying the
-    same scoping. That follow-up had ALREADY landed -- 61f87383c / PR #4557, merged 2026-08-21T20:18:14Z,
-    five minutes before this branch's next commit was authored. Same disease as dissent[3] and dissent[4],
-    a value written once and never re-read, relocated from net_lines into residual_risks. The residual that
-    ACTUALLY remained was scripts/ci/harness_gate_read.py, which PRINTS the repealed instruction as the CI
-    failure annotation at the moment of need -- found by the round-4 gate, fixed in #4558."
-  - "#4549 is NOT a second reproduction of the deadlock and must not be cited as one: it has no workflow_dispatch
-    run at all. It independently confirms CASE A's REMEDY a second time -- a weaker, different claim."
-  - "The quoted suite ids are one incident's measurement, not constants. The note frames them as the #4543
-    evidence, not as values to expect."
-  - "This diff does not change the job, so it cannot itself prove the new procedure works; the proof is
-    #4543's own history, already on main."
-  - The modus PENDING-ARMS row opened for this defect is NOT closed by this diff — that file carries a merge=union
-    driver and is deliberately kept out of a hot-zone PR. It gets its own follow-up.
+  - "The context is NOT required yet. Merging arms the workflow (it runs and reports) but a red run
+    does not block until infra/required.d/contexts.json is regenerated with
+    scripts/ci/snapshot_required_contexts.py. That second step is deliberately out of this diff and
+    tracked in PENDING-ARMS; claiming 'blocking' before it is done would be exactly the
+    esiste!=armato lie this PR is curing."
+  - "check_watcher_coverage.py emits a standing `::warning::stale entry in watcher's workflows:
+    list, no matching workflow: AI PR review (advisory)` — pre-existing (that workflow was disabled
+    2026-08-20), unrelated to this diff, and not fixed here."
+  - "The proof-of-bite step's anchor is a literal heading string; a reword makes it a NO-OP. The
+    step errors loudly in that case, but nothing prevents a future PR from reintroducing the
+    collision on a DIFFERENT heading pair, which this one mutation would not exercise. The guard
+    itself is general; only the proof is anchored."
+  - "Findings 6 and 7 of the Gear-3 gate, INHERITED from #4562 and not authored here: the guard
+    matches `^##\\s+([0-9]+[a-z]*)\\.\\s` only, so 29 `### N.` headings across the 57 runbooks are
+    invisible to it (dormant — counting h2+h3 together yields zero new duplicates today), and it
+    tracks no code fences, so a `## 6. ...` inside a fenced block would accuse an innocent PR (0
+    occurrences today). NOT matching `#` is correct and must stay: the 20 `# N.` lines in the corpus
+    are shell comments inside fences. Both weights rise the moment this context becomes required,
+    which is why they are opened as a PENDING-ARMS row in this diff rather than left as a note."
+  - "The proof-of-bite's shipped `sed -i` (GNU) has never been executed on this repo — every local
+    replication used BSD `sed -i ''` or perl. It fails loudly rather than silently under the wrong
+    sed (measured: `undefined label`, exit 1, no backup file), so the failure direction is safe, but
+    the first real execution of that exact line will be the CI run of this PR."
+  - "The two ledger rows this PR adds join a 190-deep TECH-DEBT overdue backlog (measured by the
+    re-gate: `tech_debt_overdue=190`). The alarm can now SEE this remainder, which was the finding;
+    whether a 190-deep backlog still functions as an alarm is a systemic ledger question this diff
+    does not owe and does not answer."
 sources:
-  - "PR #4543 run history: 32489011695 (pull_request, the run the PR was pinned to) and 32489857553 (workflow_dispatch,
-    the documented flow)"
-  - "Run 32489102357 was previously cited here as #4543's — it is NOT, it belongs to #4544 (agent/air-m5/ops/readme-promote-timing,
-    sha 36c755d6). Caught by the Gear-3 gate."
-  - memory discovery_workflow_dispatch_rerun_does_not_clear_a_prs_rollup_2026_08_21
+  - "PR #4562 — shipped the guard (scripts/tests/test_runbook_section_numbers_are_unique.py) with
+    guilt/innocence fixture and anti-vacuity test, and no workflow executing it."
+  - "PR #4557 — the incident: gave a new runbook section the number 6quater, already held by the
+    Dependabot section since #3381."
+  - ".claude/rules/cicatrix-superscar.md #2 (esiste != armato) and #3 (guard needs guilt AND
+    innocence)."
+  - "scripts-tests-sweep.yml — the repo-wide scripts/tests/ sweep, continue-on-error: true, which
+    is why 'a test exists under scripts/tests/' does not mean it gates anything."
 tests:
-  - "None applicable: comment-only. The behavioural proof is the byte-identical non-comment body receipt,
-    which is stronger here than a test would be."
+  - "scripts/tests/test_runbook_section_numbers_are_unique.py — 3 passed (shipped in #4562, not
+    modified here)."
+  - "The proof-of-bite receipt pair is the behavioural test OF THE ARMING: guilt (exit 1 on a
+    mutated file) and innocence (exit 0 after a byte-identical restore)."
 static:
-  - actionlint 1.7.12 exit 0
+  - "actionlint exit 0"
+  - "scripts/lint_workflow_timeout_floor.py exit 0 (131 jobs, floor 10m)"
+  - "scripts/check_watcher_coverage.py exit 0 (99 workflows covered)"
+  - "scripts/ci/check_required_workflow_conformance.py exit 0 (27 required contexts, 0 violations)"
 runtime_proof:
-  - None claimed. Nothing in this diff executes; the consumer-map records that both consumers are unchanged,
-    so merged == live.
+  - "Merging IS the deploy for this artifact: GitHub Actions picks the workflow up on the next
+    event, no apply step exists. PROVE-LIVE is therefore a post-merge observation that the job
+    actually appears and runs on a subsequent PR — recorded as the follow-up, not claimed here."
 pii_scan: clean
-size_tokens: 4215
+size_tokens: 4724

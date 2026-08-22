@@ -178,6 +178,7 @@ on:
       - P8 Brand-API Gate
       - P9 Cost Breaker (GOVERN)
       - Monthly PG Restore Drill
+      - "runbook section numbers are unique"
       - Root Guard
       - SBOM (Software Bill of Materials)
       - scripts/tests/ sweep (report-only)
