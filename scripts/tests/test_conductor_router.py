@@ -291,6 +291,83 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(plan.selection_reason_codes, ("read_only_conductor_retained",))
         self.assertIsNone(plan.abstention_reason)
 
+    def test_read_only_requires_its_own_host_observation(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.READ_ONLY, "mechanical"),
+            candidates=(),
+            policy=replace(
+                policy(),
+                host_observations=(
+                    HostObservation(
+                        host="mini-pro2", available=True, observed_at=AS_OF
+                    ),
+                ),
+            ),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "host_observation_missing")
+
+    def test_read_only_rejects_unavailable_session_host(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.READ_ONLY, "mechanical"),
+            candidates=(),
+            policy=replace(
+                policy(),
+                host_observations=(
+                    HostObservation(
+                        host="mini-pro2", available=True, observed_at=AS_OF
+                    ),
+                    HostObservation(host="pro", available=False, observed_at=AS_OF),
+                ),
+            ),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "host_unavailable")
+
+    def test_read_only_accepts_matching_available_session_host(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.READ_ONLY, "mechanical"),
+            candidates=(),
+            policy=replace(
+                policy(),
+                host_observations=(
+                    HostObservation(
+                        host="mini-pro2", available=False, observed_at=AS_OF
+                    ),
+                    HostObservation(host="pro", available=True, observed_at=AS_OF),
+                ),
+            ),
+        )
+
+        self.assertEqual(plan.decision, Decision.ALLOW)
+        self.assertEqual(plan.selection_reason_codes, ("read_only_conductor_retained",))
+
+    def test_read_only_rejects_stale_session_host_even_with_fresh_peer(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.READ_ONLY, "mechanical"),
+            candidates=(),
+            policy=replace(
+                policy(),
+                host_observations=(
+                    HostObservation(
+                        host="mini-pro2", available=True, observed_at=AS_OF
+                    ),
+                    HostObservation(
+                        host="pro", available=True, observed_at="2026-08-19"
+                    ),
+                ),
+            ),
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "host_observation_stale")
+
     def test_sol_delegates_mechanical_work_to_luna_and_keeps_conductor_role(
         self,
     ) -> None:

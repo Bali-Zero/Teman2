@@ -134,9 +134,7 @@ def plan_dispatch(
                 reason=policy_rejection,
             )
         assert as_of is not None
-        _, host_policy_rejection = _host_observations(
-            policy, as_of, require_current_observation=True
-        )
+        host_observations, host_policy_rejection = _host_observations(policy, as_of)
         if host_policy_rejection is not None:
             return _abstain(
                 session=session,
@@ -146,6 +144,20 @@ def plan_dispatch(
                 assignments=(conductor_assignment,),
                 rejections=(),
                 reason=host_policy_rejection,
+            )
+        assert host_observations is not None
+        retention_host_rejection = _retention_host_rejection(
+            session, host_observations, as_of, policy
+        )
+        if retention_host_rejection is not None:
+            return _abstain(
+                session=session,
+                task=task,
+                policy=policy,
+                task_profile_hash=task_profile_hash,
+                assignments=(conductor_assignment,),
+                rejections=(),
+                reason=retention_host_rejection,
             )
         return DispatchPlan(
             decision=Decision.ALLOW,
@@ -412,14 +424,10 @@ def _policy_clock(policy: RoutingPolicy) -> tuple[datetime | None, str | None]:
 def _host_observations(
     policy: RoutingPolicy,
     as_of: datetime,
-    *,
-    require_current_observation: bool = False,
 ) -> tuple[Mapping[str, HostObservation] | None, str | None]:
     raw_observations = policy.host_observations
     if not isinstance(raw_observations, tuple):
         return None, "host_observation_invalid"
-    if require_current_observation and not raw_observations:
-        return None, "host_observation_missing"
 
     observations: dict[str, HostObservation] = {}
     for observation in raw_observations:
@@ -436,10 +444,6 @@ def _host_observations(
             return None, "host_observation_timestamp_invalid"
         if observed_at > as_of:
             return None, "host_observation_timestamp_future"
-        if require_current_observation and as_of - observed_at > timedelta(
-            days=policy.max_health_age_days
-        ):
-            return None, "host_observation_stale"
         observations[observation.host] = observation
     return observations, None
 
@@ -470,6 +474,29 @@ def _placement_for(
     if not available:
         return None, "host_unavailable"
     return min(available), None
+
+
+def _retention_host_rejection(
+    session: SessionIdentity,
+    observations: Mapping[str, HostObservation],
+    as_of: datetime,
+    policy: RoutingPolicy,
+) -> str | None:
+    """Require a fresh, available observation for the conductor's own host."""
+    observation = observations.get(session.host)
+    if observation is None:
+        return "host_observation_missing"
+
+    observed_at = _parse_iso_timestamp(observation.observed_at)
+    if observed_at is None:
+        return "host_observation_timestamp_invalid"
+    if observed_at > as_of:
+        return "host_observation_timestamp_future"
+    if as_of - observed_at > timedelta(days=policy.max_health_age_days):
+        return "host_observation_stale"
+    if not observation.available:
+        return "host_unavailable"
+    return None
 
 
 def _health_timestamp_rejections(
