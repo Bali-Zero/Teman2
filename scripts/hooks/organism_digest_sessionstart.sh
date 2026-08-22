@@ -10,12 +10,60 @@
 # ANTI-CALM-LIAR CONTRACT: never silent — all-quiet prints a one-line heartbeat.
 # Budget: the python receptor self-limits via SIGALRM (6s). Always exit 0.
 # Kill switch: ORGANISM_DIGEST_ENABLED=false.
+#
+# D4 freshness (docs/mandates/2026-08-22-arsenal-routing-mandate.md): when the
+# arsenal probe report is missing or >24h stale, kick a re-probe in the
+# BACKGROUND and read the PREVIOUS report THIS boot regardless — the probe
+# takes ~60-90s wall clock (measured 2026-08-22), far past this hook's budget.
+# Never uses timeout/gtimeout: neither exists on this fleet (measured
+# 2026-08-22 — `command -v timeout` found nothing, and a `timeout 240 …` call
+# exited 0 having run nothing). Kill switch mirrors ORGANISM_DIGEST_ENABLED's
+# own style: ORGANISM_ARSENAL_REFRESH_ENABLED=false.
 
 set -o pipefail
 [[ "${ORGANISM_DIGEST_ENABLED:-true}" == "false" ]] && exit 0
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)"
 REPO_ROOT="$(cd "$HOOK_DIR/../.." 2>/dev/null && pwd)"
+
+if [[ "${ORGANISM_ARSENAL_REFRESH_ENABLED:-true}" != "false" ]]; then
+  ARSENAL_DIR="$HOME/.organism/arsenal"
+  ARSENAL_REPORT="$ARSENAL_DIR/last.json"
+  ARSENAL_LOCK="$ARSENAL_DIR/.refresh.lock"   # mkdir-lock: atomic, portable, no flock dependency
+  STALE_SECS=$((24 * 3600))
+  LOCK_STALE_SECS=$((15 * 60))                # a wedged/dead holder must not lock this out forever
+
+  need_refresh=0
+  if [[ ! -f "$ARSENAL_REPORT" ]]; then
+    need_refresh=1
+  else
+    report_mtime="$(stat -f %m "$ARSENAL_REPORT" 2>/dev/null || echo 0)"
+    now_ts="$(date +%s)"
+    if (( now_ts - report_mtime > STALE_SECS )); then
+      need_refresh=1
+    fi
+  fi
+
+  if [[ "$need_refresh" == "1" ]]; then
+    mkdir -p "$ARSENAL_DIR" "$HOME/logs" 2>/dev/null
+    if [[ -d "$ARSENAL_LOCK" ]]; then
+      lock_mtime="$(stat -f %m "$ARSENAL_LOCK" 2>/dev/null || echo 0)"
+      now_ts="$(date +%s)"
+      if (( now_ts - lock_mtime > LOCK_STALE_SECS )); then
+        rmdir "$ARSENAL_LOCK" 2>/dev/null
+      fi
+    fi
+    # mkdir is atomic: exactly one concurrent hook invocation wins the lock.
+    if mkdir "$ARSENAL_LOCK" 2>/dev/null; then
+      (
+        nohup python3 "$REPO_ROOT/scripts/arsenal_probe.py" \
+          >> "$HOME/logs/arsenal_probe_bg.log" 2>&1 < /dev/null
+        rmdir "$ARSENAL_LOCK" 2>/dev/null
+      ) &
+      disown 2>/dev/null || true
+    fi
+  fi
+fi
 
 OUT="$(python3 "$REPO_ROOT/scripts/organism_digest.py" 2>/dev/null)"
 RC=$?
