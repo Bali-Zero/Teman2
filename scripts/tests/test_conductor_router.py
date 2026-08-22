@@ -142,21 +142,24 @@ def session() -> SessionIdentity:
 
 
 def task(task_class: TaskClass, profile_id: str) -> TaskIntent:
-    """Return a code-mutation task with a concrete MIR profile binding."""
+    """Return a task with a concrete MIR profile binding."""
+    mutation = task_class in {
+        TaskClass.MECHANICAL,
+        TaskClass.STANDARD_BUILD,
+        TaskClass.HARD_BUILD,
+    }
     return TaskIntent(
         task_id=f"task-{profile_id}",
         task_class=task_class,
         gear=2,
-        mutation=task_class is not TaskClass.READ_ONLY,
+        mutation=mutation,
         files=("scripts/conductor/runtime.py",),
-        requires=frozenset({"coding"})
-        if task_class is not TaskClass.READ_ONLY
-        else frozenset(),
+        requires=frozenset({"coding"}) if mutation else frozenset(),
         task_profile_id=profile_id,
         estimated_context_tokens=8_000,
         required_modalities=frozenset({"language"}),
         required_tools=frozenset(),
-        contains_pii=False,
+        contains_pii=task_class is TaskClass.PII_LOCAL,
     )
 
 
@@ -198,16 +201,32 @@ def policy() -> RoutingPolicy:
     )
 
 
-def live_non_mutating_policy(profile_id: str) -> tuple[TaskProfile, RoutingPolicy]:
-    """Load one checked-in non-mutating profile with a deterministic test clock."""
+def live_profile_policy(profile_id: str) -> tuple[TaskProfile, RoutingPolicy]:
+    """Load one checked-in task profile with a deterministic test clock."""
     registry = load_registry(Path(__file__).resolve().parents[2])
     profile = registry.profile(profile_id)
-    assert not profile.mutation
     return profile, replace(
         policy(),
         task_profile_hashes={profile.id: f"live-profile-{profile.id}"},
         task_profiles=(profile,),
     )
+
+
+def live_non_mutating_policy(profile_id: str) -> tuple[TaskProfile, RoutingPolicy]:
+    """Load one checked-in non-mutating profile with a deterministic test clock."""
+    profile, live_policy = live_profile_policy(profile_id)
+    assert not profile.mutation
+    return profile, live_policy
+
+
+def read_only_task() -> TaskIntent:
+    """Return a read-only task bound to the checked-in canonical profile."""
+    return task(TaskClass.READ_ONLY, TaskClass.READ_ONLY.value)
+
+
+def read_only_policy() -> RoutingPolicy:
+    """Load the checked-in canonical read-only profile into fixture policy."""
+    return live_non_mutating_policy(TaskClass.READ_ONLY.value)[1]
 
 
 def live_profile_candidate(profile: TaskProfile) -> EndpointCandidate:
@@ -261,7 +280,7 @@ class ConductorRouterTest(unittest.TestCase):
         self,
     ) -> None:
         contradictory = replace(
-            task(TaskClass.READ_ONLY, "mechanical"),
+            read_only_task(),
             mutation=True,
             files=("pkg/mutated.py",),
         )
@@ -270,7 +289,7 @@ class ConductorRouterTest(unittest.TestCase):
             session=session(),
             task=contradictory,
             candidates=(),
-            policy=policy(),
+            policy=read_only_policy(),
         )
 
         self.assertEqual(plan.decision, Decision.ABSTAIN)
@@ -278,22 +297,190 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertIsNone(plan.primary)
         self.assertFalse(plan.separate_builder_session_required)
 
+    def test_read_only_rejects_a_live_mutation_profile_before_retention(self) -> None:
+        profile, live_policy = live_profile_policy("mechanical")
+
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.READ_ONLY, profile.id),
+            candidates=(),
+            policy=live_policy,
+        )
+
+        self.assertEqual(plan.decision, Decision.ABSTAIN)
+        self.assertEqual(plan.abstention_reason, "read_only_mutation_contradiction")
+
+    def test_task_profile_class_binding_rejects_live_profile_confusion(self) -> None:
+        registry = load_registry(Path(__file__).resolve().parents[2])
+        profiles = tuple(registry.profile(task_class.value) for task_class in TaskClass)
+        fixture_policy = policy()
+
+        for task_class in TaskClass:
+            for profile in profiles:
+                if profile.id == task_class.value:
+                    continue
+                with self.subTest(task_class=task_class, profile_id=profile.id):
+                    live_policy = replace(
+                        fixture_policy,
+                        task_profile_hashes={profile.id: f"live-profile-{profile.id}"},
+                        task_profiles=(profile,),
+                    )
+                    plan = plan_dispatch(
+                        session=session(),
+                        task=task(task_class, profile.id),
+                        candidates=(),
+                        policy=live_policy,
+                        generator_family="generator-family",
+                    )
+                    expected_reason = "task_profile_class_mismatch"
+                    if task_class is TaskClass.READ_ONLY:
+                        if profile.mutation:
+                            expected_reason = "read_only_mutation_contradiction"
+                        elif profile.pii_policy == "local_only":
+                            expected_reason = "read_only_pii_safety_unproven"
+
+                    self.assertEqual(plan.decision, Decision.ABSTAIN)
+                    self.assertEqual(plan.abstention_reason, expected_reason)
+
+    def test_live_canonical_task_profile_bindings_route_all_task_classes(self) -> None:
+        registry = load_registry(Path(__file__).resolve().parents[2])
+        fixture_policy = policy()
+
+        for task_class in TaskClass:
+            with self.subTest(task_class=task_class):
+                profile = registry.profile(task_class.value)
+                live_policy = replace(
+                    fixture_policy,
+                    task_profile_hashes={profile.id: f"live-profile-{profile.id}"},
+                    task_profiles=(profile,),
+                )
+                is_read_only = task_class is TaskClass.READ_ONLY
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(task_class, profile.id),
+                    candidates=()
+                    if is_read_only
+                    else (live_profile_candidate(profile),),
+                    policy=live_policy,
+                    generator_family=(
+                        "generator-family" if task_class is TaskClass.REVIEW else None
+                    ),
+                )
+
+                self.assertEqual(
+                    plan.decision,
+                    Decision.ALLOW if is_read_only else Decision.DELEGATE_REQUIRED,
+                )
+                self.assertEqual(
+                    plan.separate_builder_session_required, not is_read_only
+                )
+
+    def test_task_profile_mutation_contract_rejects_tampered_live_bindings(
+        self,
+    ) -> None:
+        registry = load_registry(Path(__file__).resolve().parents[2])
+        fixture_policy = policy()
+
+        for task_class in TaskClass:
+            with self.subTest(task_class=task_class):
+                profile = registry.profile(task_class.value)
+                tampered_profile = replace(profile, mutation=not profile.mutation)
+                live_policy = replace(
+                    fixture_policy,
+                    task_profile_hashes={profile.id: f"live-profile-{profile.id}"},
+                    task_profiles=(tampered_profile,),
+                )
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(task_class, profile.id),
+                    candidates=(),
+                    policy=live_policy,
+                    generator_family="generator-family",
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(
+                    plan.abstention_reason,
+                    (
+                        "read_only_mutation_contradiction"
+                        if task_class is TaskClass.READ_ONLY
+                        else "task_profile_mutation_mismatch"
+                    ),
+                )
+
+    def test_task_mutation_contract_rejects_tampered_live_bindings(self) -> None:
+        registry = load_registry(Path(__file__).resolve().parents[2])
+        fixture_policy = policy()
+
+        for task_class in TaskClass:
+            with self.subTest(task_class=task_class):
+                profile = registry.profile(task_class.value)
+                live_policy = replace(
+                    fixture_policy,
+                    task_profile_hashes={profile.id: f"live-profile-{profile.id}"},
+                    task_profiles=(profile,),
+                )
+                plan = plan_dispatch(
+                    session=session(),
+                    task=replace(
+                        task(task_class, profile.id), mutation=not profile.mutation
+                    ),
+                    candidates=(),
+                    policy=live_policy,
+                    generator_family="generator-family",
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(
+                    plan.abstention_reason,
+                    (
+                        "read_only_mutation_contradiction"
+                        if task_class is TaskClass.READ_ONLY
+                        else "task_profile_mutation_mismatch"
+                    ),
+                )
+
+    def test_read_only_abstains_without_provable_local_pii_safety(self) -> None:
+        pii_profile, pii_policy = live_non_mutating_policy("pii_local")
+        pii_profile_plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.READ_ONLY, pii_profile.id),
+            candidates=(),
+            policy=pii_policy,
+        )
+        pii_task_plan = plan_dispatch(
+            session=session(),
+            task=replace(read_only_task(), contains_pii=True),
+            candidates=(),
+            policy=read_only_policy(),
+        )
+
+        self.assertEqual(pii_profile_plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            pii_profile_plan.abstention_reason, "read_only_pii_safety_unproven"
+        )
+        self.assertEqual(pii_task_plan.decision, Decision.ABSTAIN)
+        self.assertEqual(
+            pii_task_plan.abstention_reason, "read_only_pii_safety_unproven"
+        )
+
     def test_read_only_requires_valid_policy_and_host_evidence(self) -> None:
+        base_policy = read_only_policy()
         cases = (
             (
                 "malformed_policy_timestamp",
-                replace(policy(), as_of="not-an-iso-timestamp"),
+                replace(base_policy, as_of="not-an-iso-timestamp"),
                 "policy_timestamp_invalid",
             ),
             (
                 "invalid_max_health_age",
-                replace(policy(), max_health_age_days=-1),
+                replace(base_policy, max_health_age_days=-1),
                 "policy_max_health_age_invalid",
             ),
             (
                 "malformed_host_timestamp",
                 replace(
-                    policy(),
+                    base_policy,
                     host_observations=(
                         HostObservation(
                             host="pro",
@@ -307,7 +494,7 @@ class ConductorRouterTest(unittest.TestCase):
             (
                 "stale_host_evidence",
                 replace(
-                    policy(),
+                    base_policy,
                     host_observations=(
                         HostObservation(
                             host="pro",
@@ -320,7 +507,7 @@ class ConductorRouterTest(unittest.TestCase):
             ),
             (
                 "missing_host_evidence",
-                replace(policy(), host_observations=()),
+                replace(base_policy, host_observations=()),
                 "host_observation_missing",
             ),
         )
@@ -329,7 +516,7 @@ class ConductorRouterTest(unittest.TestCase):
             with self.subTest(name=name):
                 plan = plan_dispatch(
                     session=session(),
-                    task=task(TaskClass.READ_ONLY, "mechanical"),
+                    task=read_only_task(),
                     candidates=(),
                     policy=invalid_policy,
                 )
@@ -340,9 +527,9 @@ class ConductorRouterTest(unittest.TestCase):
     def test_read_only_allows_with_valid_policy_and_host_evidence(self) -> None:
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.READ_ONLY, "mechanical"),
+            task=read_only_task(),
             candidates=(),
-            policy=policy(),
+            policy=read_only_policy(),
         )
 
         self.assertEqual(plan.decision, Decision.ALLOW)
@@ -352,10 +539,10 @@ class ConductorRouterTest(unittest.TestCase):
     def test_read_only_requires_its_own_host_observation(self) -> None:
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.READ_ONLY, "mechanical"),
+            task=read_only_task(),
             candidates=(),
             policy=replace(
-                policy(),
+                read_only_policy(),
                 host_observations=(
                     HostObservation(
                         host="mini-pro2", available=True, observed_at=AS_OF
@@ -370,10 +557,10 @@ class ConductorRouterTest(unittest.TestCase):
     def test_read_only_rejects_unavailable_session_host(self) -> None:
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.READ_ONLY, "mechanical"),
+            task=read_only_task(),
             candidates=(),
             policy=replace(
-                policy(),
+                read_only_policy(),
                 host_observations=(
                     HostObservation(
                         host="mini-pro2", available=True, observed_at=AS_OF
@@ -389,10 +576,10 @@ class ConductorRouterTest(unittest.TestCase):
     def test_read_only_accepts_matching_available_session_host(self) -> None:
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.READ_ONLY, "mechanical"),
+            task=read_only_task(),
             candidates=(),
             policy=replace(
-                policy(),
+                read_only_policy(),
                 host_observations=(
                     HostObservation(
                         host="mini-pro2", available=False, observed_at=AS_OF
@@ -408,10 +595,10 @@ class ConductorRouterTest(unittest.TestCase):
     def test_read_only_rejects_stale_session_host_even_with_fresh_peer(self) -> None:
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.READ_ONLY, "mechanical"),
+            task=read_only_task(),
             candidates=(),
             policy=replace(
-                policy(),
+                read_only_policy(),
                 host_observations=(
                     HostObservation(
                         host="mini-pro2", available=True, observed_at=AS_OF
@@ -428,9 +615,7 @@ class ConductorRouterTest(unittest.TestCase):
 
     def test_live_architecture_profile_requires_independent_architect(self) -> None:
         profile, live_policy = live_non_mutating_policy("architecture")
-        architecture_task = replace(
-            task(TaskClass.ARCHITECTURE, profile.id), mutation=False
-        )
+        architecture_task = task(TaskClass.ARCHITECTURE, profile.id)
 
         plan = plan_dispatch(
             session=session(),
@@ -445,7 +630,7 @@ class ConductorRouterTest(unittest.TestCase):
 
     def test_live_review_profile_requires_independent_grader(self) -> None:
         profile, live_policy = live_non_mutating_policy("review")
-        review_task = replace(task(TaskClass.REVIEW, profile.id), mutation=False)
+        review_task = task(TaskClass.REVIEW, profile.id)
 
         plan = plan_dispatch(
             session=session(),
@@ -459,9 +644,9 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertTrue(plan.separate_builder_session_required)
         self.assertEqual(plan.primary.role, Role.GRADER)
 
-    def test_other_non_mutating_live_profile_keeps_normal_routing(self) -> None:
+    def test_live_pii_local_profile_requires_an_independent_local_session(self) -> None:
         profile, live_policy = live_non_mutating_policy("pii_local")
-        pii_task = replace(task(TaskClass.PII_LOCAL, profile.id), mutation=False)
+        pii_task = task(TaskClass.PII_LOCAL, profile.id)
 
         plan = plan_dispatch(
             session=session(),
@@ -470,8 +655,8 @@ class ConductorRouterTest(unittest.TestCase):
             policy=live_policy,
         )
 
-        self.assertEqual(plan.decision, Decision.ALLOW)
-        self.assertFalse(plan.separate_builder_session_required)
+        self.assertEqual(plan.decision, Decision.DELEGATE_REQUIRED)
+        self.assertTrue(plan.separate_builder_session_required)
         self.assertEqual(plan.primary.role, Role.BUILDER)
 
     def test_sol_delegates_mechanical_work_to_luna_and_keeps_conductor_role(
@@ -887,18 +1072,18 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(valid.primary.endpoint_id, "valid")
 
     def test_review_routes_to_a_different_generator_family(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.REVIEW, "mechanical"),
+            task=task(TaskClass.REVIEW, profile.id),
             candidates=(
-                candidate(
-                    "independent-grader",
-                    model="independent",
+                replace(
+                    live_profile_candidate(profile),
+                    endpoint_id="independent-grader",
                     family="independent-family",
-                    score=0.95,
                 ),
             ),
-            policy=policy(),
+            policy=live_policy,
             generator_family="gpt-5.6",
         )
 
@@ -907,18 +1092,18 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(plan.primary.endpoint_id, "independent-grader")
 
     def test_review_rejects_grader_from_generator_family(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.REVIEW, "mechanical"),
+            task=task(TaskClass.REVIEW, profile.id),
             candidates=(
-                candidate(
-                    "same-family-grader",
-                    model="same-family",
+                replace(
+                    live_profile_candidate(profile),
+                    endpoint_id="same-family-grader",
                     family="gpt-5.6",
-                    score=0.95,
                 ),
             ),
-            policy=policy(),
+            policy=live_policy,
             generator_family="gpt-5.6",
         )
 
@@ -928,18 +1113,18 @@ class ConductorRouterTest(unittest.TestCase):
         )
 
     def test_review_rejects_family_case_and_format_variants(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.REVIEW, "mechanical"),
+            task=task(TaskClass.REVIEW, profile.id),
             candidates=(
-                candidate(
-                    "malformed-same-family-grader",
-                    model="same-family",
+                replace(
+                    live_profile_candidate(profile),
+                    endpoint_id="malformed-same-family-grader",
                     family=" \tGPT_5.6\n",
-                    score=0.95,
                 ),
             ),
-            policy=policy(),
+            policy=live_policy,
             generator_family="gpt-5.6",
         )
 
@@ -951,18 +1136,18 @@ class ConductorRouterTest(unittest.TestCase):
     def test_review_keeps_cross_family_grader_eligible_after_normalization(
         self,
     ) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.REVIEW, "mechanical"),
+            task=task(TaskClass.REVIEW, profile.id),
             candidates=(
-                candidate(
-                    "independent-grader",
-                    model="independent",
+                replace(
+                    live_profile_candidate(profile),
+                    endpoint_id="independent-grader",
                     family=" \tClaude_4.6\n",
-                    score=0.95,
                 ),
             ),
-            policy=policy(),
+            policy=live_policy,
             generator_family=" GPT-5.6 ",
         )
 
@@ -970,18 +1155,18 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertEqual(plan.primary.endpoint_id, "independent-grader")
 
     def test_review_without_generator_family_abstains_closed(self) -> None:
+        profile, live_policy = live_non_mutating_policy("review")
         plan = plan_dispatch(
             session=session(),
-            task=task(TaskClass.REVIEW, "mechanical"),
+            task=task(TaskClass.REVIEW, profile.id),
             candidates=(
-                candidate(
-                    "independent-grader",
-                    model="independent",
+                replace(
+                    live_profile_candidate(profile),
+                    endpoint_id="independent-grader",
                     family="independent-family",
-                    score=0.95,
                 ),
             ),
-            policy=policy(),
+            policy=live_policy,
         )
 
         self.assertEqual(plan.decision, Decision.ABSTAIN)

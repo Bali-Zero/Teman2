@@ -34,6 +34,15 @@ from scripts.conductor.contracts import (
 logger = logging.getLogger(__name__)
 
 _MAX_HEALTH_AGE_DAYS = timedelta.max.days
+_CANONICAL_TASK_PROFILE_BINDINGS: Mapping[TaskClass, tuple[str, bool]] = {
+    TaskClass.READ_ONLY: ("read_only", False),
+    TaskClass.MECHANICAL: ("mechanical", True),
+    TaskClass.STANDARD_BUILD: ("standard_build", True),
+    TaskClass.HARD_BUILD: ("hard_build", True),
+    TaskClass.ARCHITECTURE: ("architecture", False),
+    TaskClass.REVIEW: ("review", False),
+    TaskClass.PII_LOCAL: ("pii_local", False),
+}
 
 
 class RoutingPolicyError(ValueError):
@@ -73,17 +82,6 @@ def plan_dispatch(
             reason="session_not_conductor",
         )
 
-    if task.mutation and task.task_class is TaskClass.READ_ONLY:
-        return _abstain(
-            session=session,
-            task=task,
-            policy=policy,
-            task_profile_hash=task_profile_hash,
-            assignments=(conductor_assignment,),
-            rejections=(),
-            reason="read_only_mutation_contradiction",
-        )
-
     profile = _profile_for(task, policy)
     if profile is None:
         return _abstain(
@@ -94,6 +92,18 @@ def plan_dispatch(
             assignments=(conductor_assignment,),
             rejections=(),
             reason="task_profile_unknown",
+        )
+
+    binding_rejection = _task_profile_binding_rejection(task, profile)
+    if binding_rejection is not None:
+        return _abstain(
+            session=session,
+            task=task,
+            policy=policy,
+            task_profile_hash=task_profile_hash,
+            assignments=(conductor_assignment,),
+            rejections=(),
+            reason=binding_rejection,
         )
 
     if task.task_class is TaskClass.REVIEW and generator_family is None:
@@ -288,6 +298,34 @@ def _profile_for(task: TaskIntent, policy: RoutingPolicy) -> TaskProfile | None:
     return None
 
 
+def _task_profile_binding_rejection(
+    task: TaskIntent, profile: TaskProfile
+) -> str | None:
+    """Reject task/profile bindings that cannot safely retain the conductor.
+
+    The checked-in task profile contract assigns one canonical profile identifier to
+    each ``TaskClass``.  The read-only fast path bypasses candidate evaluation, so it
+    must additionally prove that neither the request nor the bound profile introduces
+    mutation or local-PII requirements that ``SessionIdentity`` cannot attest.
+    """
+    expected = _CANONICAL_TASK_PROFILE_BINDINGS.get(task.task_class)
+    if expected is None:
+        return "task_profile_class_mismatch"
+    expected_profile_id, expected_mutation = expected
+
+    if task.task_class is TaskClass.READ_ONLY:
+        if task.mutation or profile.mutation:
+            return "read_only_mutation_contradiction"
+        if task.contains_pii or profile.pii_policy == "local_only":
+            return "read_only_pii_safety_unproven"
+
+    if task.task_profile_id != expected_profile_id:
+        return "task_profile_class_mismatch"
+    if task.mutation != expected_mutation or profile.mutation != expected_mutation:
+        return "task_profile_mutation_mismatch"
+    return None
+
+
 def _worker_role(task: TaskIntent) -> Role:
     if task.task_class is TaskClass.ARCHITECTURE:
         return Role.ARCHITECT
@@ -302,6 +340,7 @@ def _requires_independent_session(task: TaskIntent, profile: TaskProfile) -> boo
         task.mutation
         or profile.mutation
         or task.task_class in {TaskClass.ARCHITECTURE, TaskClass.REVIEW}
+        or _requires_local_pii(task, profile)
     )
 
 
