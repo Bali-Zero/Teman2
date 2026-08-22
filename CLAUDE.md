@@ -52,6 +52,14 @@ still does not arm, merge, or deploy). The operational commands are documented i
    `agent/<host>/<lane>/...` namespace.
 7. **After merge, run `mq handoff`.** The merged branch is dead; its successor starts from a
    fresh `origin/main`.
+8. **Three rounds, then suspend.** A PR that goes red for the SAME cause three times — gate,
+   lint, or refuter finding on the same surface — gets no fourth round: it SUSPENDS (one
+   PENDING-ARMS line naming the cause, branch left alive) and the session moves to the next
+   mandate. A fix-of-a-fix chain stops at depth 1: if the correction is itself wrong, the
+   surface is under-specified — write the spec, do not open the third PR. Measured 2026-08-22:
+   PR #4547 (a 1-file hook fix) took 14 commits, 11 adversarial rounds and ~6h; the 44h session
+   driving it spent 3.9M output tokens, and 25 of the 150 PRs merged in those two days existed
+   only to correct a claim made by a previous one.
 
 ## 2. Behavior & Autonomous Ops
 
