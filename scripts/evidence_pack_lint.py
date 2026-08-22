@@ -115,12 +115,24 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         contract. Skipped, same as rule 6, whenever
                         --changed-files-file is not supplied.
 
+  8. lanes seat diversity (D3) — a Gear >= 2 pack with >= 2 build lanes must
+                        include at least one non-Anthropic builder seat.
+                        Exemptions: Gear 1, fewer than 2 build lanes,
+                        `lanes:` absent. Shape violations (lanes not a list,
+                        entry not a mapping, missing/empty lane/role/seat,
+                        invalid role) fail immediately. The diversity floor
+                        itself is time-phased: before 2026-09-05 it emits a
+                        NOTICE and does not fail; on/after 2026-09-05 it is
+                        a violation. The flip date lives in code (not a
+                        ledger) so the gate enforces it mechanically.
+
 Floor check is SKIPPED (not silently passed — an explicit NOTICE on stderr)
 when --changed-files-file is not supplied: not every invocation of this linter
 has PR-diff context (e.g. a spot-check of a pack on a laptop). The CI workflow
 (harness-floor.yml) is the required check that always supplies it. The
 ceiling check (rule 7) is skipped under the same condition, for the same
-reason.
+reason. The lanes check (rule 8) does NOT depend on changed-files and always
+runs.
 
 VERDICT / EXIT CODES (fail-visible, superscar #2 "esiste != armato" antidote:
 a lint that scanned nothing must not report clean):
@@ -171,6 +183,7 @@ Registered in infra/guard-conformance/registry.json (surface
 from __future__ import annotations
 
 import argparse
+import datetime
 import fnmatch
 import subprocess
 import sys
@@ -205,6 +218,15 @@ HOTZONE_PATTERNS: tuple[str, ...] = (
 RECEIPT_REQUIRED_FIELDS = ("claim", "cmd", "exit", "ts", "seat")
 SIZE_TOKEN_CAP = 30_000
 VALID_GEARS = (1, 2, 3)
+
+# D3 seat-diversity rule (fleet-order program): a Gear >= 2 pack with >= 2
+# build lanes must include at least one non-Anthropic builder seat. The flip
+# date lives IN THE LINT because a ledger line nobody reads cannot gate a
+# merge — the code itself must enforce the grace window. Before 2026-09-05 the
+# linter NOTICES; on/after 2026-09-05 it FAILS. (14-day grace: rule ratified
+# 2026-08-22.)
+LANES_NON_ANTHROPIC_ENFORCEMENT_DATE = datetime.date(2026, 9, 5)
+VALID_LANE_ROLES = ("build", "review", "read")
 
 
 # --------------------------------------------------------------------- utils
@@ -556,6 +578,100 @@ def check_gear_floor(brief: dict[str, Any] | None, changed_files: list[str] | No
     return []
 
 
+def _is_anthropic_seat(seat: Any) -> bool:
+    """Token-based match for Anthropic seat names.
+
+    The normalised seat is split on ``-`` only (NOT on ``_``). It counts as
+    Anthropic when its FIRST token is exactly one of ``claude``, ``sonnet``,
+    ``opus``, or ``haiku``. This defends against BOTH failure directions of
+    superscar #3:
+
+    * over-match: ``opusculum`` / ``claude_ish`` are NOT Anthropic (the
+      underscore is not a separator, so the first token is not ``claude``);
+    * under-match: roster-style names such as ``opus-5``, ``sonnet-5`` and
+      ``haiku-4-5`` ARE Anthropic because the first token is the family name.
+    """
+    if not isinstance(seat, str):
+        return False
+    norm = seat.strip().lower()
+    if not norm:
+        return False
+    first_token = norm.split("-", 1)[0]
+    return first_token in {"claude", "sonnet", "opus", "haiku"}
+
+
+def check_lanes_build_seat_diversity(
+    pack: dict[str, Any],
+    gear: int | None = None,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """D3 seat-diversity rule. GUILT/NOTICE: a Gear >= 2 pack with >= 2 build
+    lanes must include at least one non-Anthropic builder seat. Exemptions:
+    Gear 1, fewer than 2 build lanes, or `lanes:` absent. Shape violations
+    (lanes not a list, entry not a mapping, missing/empty lane/role/seat,
+    invalid role) are always failures regardless of the date.
+
+    Returns (violations, notice). `notice` is set only during the pre-
+    enforcement grace period (before LANES_NON_ANTHROPIC_ENFORCEMENT_DATE)
+    when the diversity rule would otherwise fail; violations is empty in that
+    window. On/after the enforcement date the same shape becomes a violation.
+
+    The `today` parameter makes the date overridable for tests without
+    monkeypatching date.today() or env vars."""
+    if "lanes" not in pack:
+        return [], None
+
+    lanes = pack["lanes"]
+    if not isinstance(lanes, list):
+        return [f"lanes: must be a list, got {type(lanes).__name__}"], None
+
+    violations: list[str] = []
+    build_lanes: list[tuple[int, dict[str, Any]]] = []
+
+    for idx, entry in enumerate(lanes):
+        if not isinstance(entry, dict):
+            violations.append(f"lanes[{idx}]: must be a mapping, got {type(entry).__name__}")
+            continue
+        for field in ("lane", "role", "seat"):
+            value = entry.get(field)
+            if not isinstance(value, str) or not value.strip():
+                violations.append(f"lanes[{idx}]: {field} missing/empty")
+                break
+        else:
+            role = entry.get("role", "").strip().lower()
+            if role not in VALID_LANE_ROLES:
+                violations.append(
+                    f"lanes[{idx}]: role must be one of {VALID_LANE_ROLES}, "
+                    f"got {entry.get('role')!r}"
+                )
+                continue
+            if role == "build":
+                build_lanes.append((idx, entry))
+
+    if violations:
+        return violations, None
+
+    if gear is None or gear < 2:
+        return [], None
+    if len(build_lanes) < 2:
+        return [], None
+    if not all(_is_anthropic_seat(entry.get("seat")) for _idx, entry in build_lanes):
+        return [], None
+
+    idxs = ",".join(str(i) for i, _e in build_lanes)
+    message = (
+        f"lanes: Gear-{gear} pack has {len(build_lanes)} build lane(s) "
+        f"([{idxs}]) and zero non-Anthropic builder seats "
+        f"(D3 seat-diversity rule)"
+    )
+
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < LANES_NON_ANTHROPIC_ENFORCEMENT_DATE:
+        return [], message
+    return [message], None
+
+
 # ------------------------------------------------------------------- lint()
 
 
@@ -601,6 +717,11 @@ def lint(
     violations += brief_violations
     violations += check_dissent_nonempty_on_gear3(pack, gear)
     violations += check_gear_floor(brief, changed_files)
+
+    lane_violations, lane_notice = check_lanes_build_seat_diversity(pack, gear)
+    violations += lane_violations
+    if lane_notice:
+        print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
 
     if changed_files is None:
         print("evidence_pack_lint: NOTICE — no --changed-files-file supplied, "
@@ -965,6 +1086,97 @@ def selftest() -> int:
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 1.0, "grader": "y"})
         rc, viol = lint(root / "evidence" / "pack.yml", root, None)
         check("guilt: gear=1.0 (float) rejected despite 1.0==1", rc == 1)
+
+        # ---- lanes seat-diversity (D3) -----------------------------------------
+        # shape violations always fail, regardless of date/gear
+        write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 2, "grader": "y"})
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+            "lanes": "not-a-list",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: lanes not a list rejected", rc == 1)
+
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+            "lanes": [{"lane": "D1", "role": "deploy", "seat": "codex"}],
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: invalid lane role rejected", rc == 1)
+
+        # two Anthropic build lanes on Gear 2 -> violation on/after flip date
+        before_flip = datetime.date(2026, 9, 4)
+        after_flip = datetime.date(2026, 9, 5)
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+            "lanes": [
+                {"lane": "D1", "role": "build", "seat": "sonnet"},
+                {"lane": "D2", "role": "build", "seat": "opus"},
+            ],
+        })
+        viol_pre, notice_pre = check_lanes_build_seat_diversity(
+            {"lanes": [
+                {"lane": "D1", "role": "build", "seat": "sonnet"},
+                {"lane": "D2", "role": "build", "seat": "opus"},
+            ]},
+            gear=2, today=before_flip,
+        )
+        check("lanes: pre-flip Gear-2 + 2 Anthropic build lanes -> NOTICE (no violation)",
+              viol_pre == [] and notice_pre is not None and "D3" in notice_pre)
+        viol_post, notice_post = check_lanes_build_seat_diversity(
+            {"lanes": [
+                {"lane": "D1", "role": "build", "seat": "sonnet"},
+                {"lane": "D2", "role": "build", "seat": "opus"},
+            ]},
+            gear=2, today=after_flip,
+        )
+        check("lanes: post-flip Gear-2 + 2 Anthropic build lanes -> violation",
+              bool(viol_post) and notice_post is None and "D3" in viol_post[0])
+
+        # two build lanes with one non-Anthropic -> innocent on both sides
+        viol_mixed, notice_mixed = check_lanes_build_seat_diversity(
+            {"lanes": [
+                {"lane": "D1", "role": "build", "seat": "sonnet"},
+                {"lane": "D2", "role": "build", "seat": "codex"},
+            ]},
+            gear=2, today=after_flip,
+        )
+        check("innocence: Gear-2 + 2 build lanes with one non-Anthropic -> clean",
+              viol_mixed == [] and notice_mixed is None)
+
+        # Gear 1 with two Anthropic build lanes -> exempt
+        viol_g1, notice_g1 = check_lanes_build_seat_diversity(
+            {"lanes": [
+                {"lane": "D1", "role": "build", "seat": "sonnet"},
+                {"lane": "D2", "role": "build", "seat": "opus"},
+            ]},
+            gear=1, today=after_flip,
+        )
+        check("innocence: Gear-1 + 2 Anthropic build lanes -> exempt", viol_g1 == [] and notice_g1 is None)
+
+        # single build lane -> exempt
+        viol_single, notice_single = check_lanes_build_seat_diversity(
+            {"lanes": [
+                {"lane": "D1", "role": "build", "seat": "sonnet"},
+                {"lane": "D2", "role": "review", "seat": "opus"},
+            ]},
+            gear=2, today=after_flip,
+        )
+        check("innocence: Gear-2 + 1 build lane -> exempt", viol_single == [] and notice_single is None)
+
+        # substring trap: opusculum / claude_ish are NOT Anthropic
+        viol_trap, notice_trap = check_lanes_build_seat_diversity(
+            {"lanes": [
+                {"lane": "D1", "role": "build", "seat": "opusculum"},
+                {"lane": "D2", "role": "build", "seat": "claude_ish"},
+            ]},
+            gear=2, today=after_flip,
+        )
+        check("innocence: opusculum/claude_ish are non-Anthropic by word-aware match",
+              viol_trap == [] and notice_trap is None)
 
         # ---- blind-scan guard: pack file missing -------------------------------
         rc, viol = lint(root / "evidence" / "nope.yml", root, None)

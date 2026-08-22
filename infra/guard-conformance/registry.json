@@ -413,6 +413,29 @@
             "test_gear_floor_innocence_declared_at_or_above_floor_passes",
             "test_gear_floor_innocence_skipped_without_changed_files"
           ]
+        },
+        "check_lanes_build_seat_diversity": {
+          "scar": ["D3", "fleet-order-spec-4"],
+          "guilt": [
+            "test_lanes_guilt_gear2_two_anthropic_builders_post_flip",
+            "test_lanes_guilt_gear3_three_anthropic_builders_post_flip",
+            "test_lanes_guilt_not_a_list",
+            "test_lanes_guilt_entry_not_mapping",
+            "test_lanes_guilt_missing_seat",
+            "test_lanes_guilt_invalid_role",
+            "test_is_anthropic_seat_guilt_anthropic_token_matches",
+            "test_lanes_gear3_opus5_sonnet5_flip_behavior"
+          ],
+          "innocence": [
+            "test_lanes_innocence_mixed_builders_clean_both_sides",
+            "test_lanes_innocence_one_build_plus_reviews",
+            "test_lanes_innocence_gear1_exempt",
+            "test_lanes_innocence_absent",
+            "test_lanes_innocence_overmatch_guard_opusculum_claude_ish",
+            "test_lanes_end_to_end_notice_pre_flip_does_not_fail",
+            "test_is_anthropic_seat_innocence_non_anthropic_token_matches",
+            "test_lanes_gear3_opus5_sonnet5_flip_behavior"
+          ]
         }
       }
     },
