@@ -10,7 +10,7 @@ diff:
     The whole-diff net line count is near zero only because this PR REPLACES the inherited
     evidence/brief.yml and evidence/pack.yml (a prior PR's, larger) with its own; the CODE it
     adds is +91/-0 across the two workflow files.
-  net_lines: "+412/-267 (net +145) vs merge-base 2eb20d836; workflows alone +122/-0"
+  net_lines: "+425/-243 (net +182) vs merge-base 2eb20d836; workflows alone +122/-0"
 receipts:
   - claim: "The guard was UNARMED on origin/main — nothing in .github/workflows/ named it."
     cmd: "git grep -c test_runbook_section_numbers_are_unique origin/main -- .github/workflows/"
@@ -66,9 +66,9 @@ receipts:
       "The context is NOT required today — live branch protection carries 27 contexts and none
       matches runbook/section. This is why the word 'blocking' was removed from the step name and the
       artifacts: measured, not assumed, and re-measured by the author after the gate raised it."
-    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts[]' | sort > /tmp/lr.txt; grep -qi 'runbook|section' /tmp/lr.txt"
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts[]' | sort > /tmp/lr.txt; wc -l < /tmp/lr.txt; grep -c -x 'runbook section numbers are unique' /tmp/lr.txt  # 27 contexts, count 0. The re-gate caught the FIRST version of this cmd: it used `grep -qi 'runbook|section'`, and in a BRE `|` is a literal, so that probe exits 1 whether or not the context is there -- a probe that cannot distinguish the two states it is quoted for. The claim was independently true, but a receipt whose command proves nothing is not a receipt. Replaced with an exact -x match, and the control (grepping a context that IS required) exits 0, which is what makes the 1 here mean something."
     exit: 1
-    ts: "2026-08-22T00:56:26Z"
+    ts: "2026-08-22T01:14:31Z"
     seat: author-session (M5, claude-opus-5)
   - claim:
       "The TIGHTENED proof-of-bite works end to end, replicated locally (perl for GNU sed, shasum
@@ -167,8 +167,11 @@ dissent:
   - seat: "Gear-3 gate (opus 5, fresh context, non-author) — finding 5, MINOR"
     objection:
       "The proof-of-bite receipt records `sed -i ''` (BSD/macOS); the workflow ships `sed -i` (GNU). The
-      shipped line has therefore never been executed anywhere. Not cured by making them identical --
-      they CANNOT be identical, the two seds take incompatible -i syntax. Disclosed instead, and the
+      shipped line has therefore never been executed anywhere. Not cured by making the two invocations
+      identical AS WRITTEN -- though the re-gate correctly refused the word CANNOT: a portable form
+      does exist (`sed -i.bak`, verified working under BSD sed and accepted by GNU; `perl -i -pe`
+      likewise), so the honest statement is that the two invocations AS WRITTEN take incompatible -i
+      syntax, not that no portable form is possible. Disclosed instead, and the
       gate proved it from the other side: run under BSD sed the shipped syntax fails LOUDLY (`undefined
       label`, exit 1) and writes no backup file, so a wrong-platform invocation cannot pass silently.
       Recorded as a residual risk rather than a receipt claim."
@@ -180,6 +183,36 @@ dissent:
       cross-family non-author seat anywhere in the pack. Cured by construction: these six entries ARE
       that seat."
     status: CONFIRMED
+  - seat: "Gear-3 re-gate (opus 5, fresh context, non-author) — NEW-1, MINOR"
+    objection:
+      "One receipt's `cmd` was a probe that cannot distinguish the two states it is quoted for:
+      `grep -qi 'runbook|section'` is a BRE, where `|` is a literal, so it exits 1 against a list
+      that DOES contain the context and against one that does not. Reproduced by the author:
+      BRE-pipe exits 1 on both fixtures, `grep -qiE` exits 0/1 correctly. The CLAIM was independently
+      true (the workflow header quotes the raw --jq output with no grep, and the ledger row's proof
+      line uses a correct literal grep), so nobody was misled about world-state — but a receipt whose
+      command returns the recorded exit regardless of the answer is not evidence. Replaced with an
+      exact `grep -c -x`, plus a control against a genuinely-required context that exits 0."
+    status: CONFIRMED
+  - seat: "Gear-3 re-gate (opus 5, fresh context, non-author) — NEW-2, MINOR"
+    objection:
+      "The finding-5 dissent said the two sed invocations 'CANNOT be identical'. Convenient rather
+      than exact: `sed -i.bak` works under BSD and is accepted by GNU, and `perl -i -pe` is portable
+      — the re-gate verified the first on its own machine. Corrected to say the two invocations AS
+      WRITTEN take incompatible syntax. Nothing about what ships changes: GNU syntax is right for
+      ubuntu-latest and fails loudly elsewhere."
+    status: CONFIRMED
+  - seat: "Gear-3 re-gate (opus 5, fresh context, non-author) — its own broken probe, disclosed"
+    objection:
+      "The re-gate's first run of the restore-on-failure scenarios reported 'RB restored: NO' on both
+      — which would have been a serious finding against the fix. It was the gate's own diagnostic
+      `grep | tail` placed INSIDE the `set -euo pipefail` region: when the grep matched nothing the
+      pipeline returned 1, errexit killed the replica before the restore, and the leftover mutation
+      then made the next scenario's sed a genuine NO-OP. Re-run without the diagnostic, both
+      scenarios restored byte-identically. Recorded here because a gate that hides its own broken
+      probe is worth less than one that shows it — and because it is the same class as W121 and as
+      the mutation-on-a-live-worktree scar."
+    status: RETRACTED
 residual_risks:
   - "The context is NOT required yet. Merging arms the workflow (it runs and reports) but a red run
     does not block until infra/required.d/contexts.json is regenerated with
@@ -204,6 +237,10 @@ residual_risks:
     replication used BSD `sed -i ''` or perl. It fails loudly rather than silently under the wrong
     sed (measured: `undefined label`, exit 1, no backup file), so the failure direction is safe, but
     the first real execution of that exact line will be the CI run of this PR."
+  - "The two ledger rows this PR adds join a 190-deep TECH-DEBT overdue backlog (measured by the
+    re-gate: `tech_debt_overdue=190`). The alarm can now SEE this remainder, which was the finding;
+    whether a 190-deep backlog still functions as an alarm is a systemic ledger question this diff
+    does not owe and does not answer."
 sources:
   - "PR #4562 — shipped the guard (scripts/tests/test_runbook_section_numbers_are_unique.py) with
     guilt/innocence fixture and anti-vacuity test, and no workflow executing it."
@@ -228,4 +265,4 @@ runtime_proof:
     event, no apply step exists. PROVE-LIVE is therefore a post-merge observation that the job
     actually appears and runs on a subsequent PR — recorded as the follow-up, not claimed here."
 pii_scan: clean
-size_tokens: 3847
+size_tokens: 4724
