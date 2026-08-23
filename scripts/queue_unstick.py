@@ -33,6 +33,37 @@ Actions on what survives:
     state file so a PR stuck dirty for 6 hours doesn't emit 36 messages.
   - everything else -> no action.
 
+KNOWN SIDE EFFECT — `gh pr update-branch` can silently RE-ARM auto-merge
+(flagged by another lane 2026-08-23, verified here by reading the live
+workflow, not their paraphrase): `.github/workflows/auto-merge-whitelist.yml`
+triggers on `pull_request_target` with
+`types: [opened, reopened, synchronize, ready_for_review, labeled]` (line 25)
+gated by the single condition `if: github.event.pull_request.draft == false`
+(line 35). `synchronize` fires on every push to the PR branch, and
+`gh pr update-branch` IS a push. So: if a PR (a) is non-draft, (b) has a
+branch matching the workflow's own whitelist (`docs/auto-sync-*`,
+`dependabot/(pip|npm_and_yarn)/*`, `chore/fmt-*` — see branch_check step),
+(c) has an allowlisted author (`dependabot[bot]`, `github-actions[bot]`,
+`Balizero1987`), and (d) doesn't touch a protected path — then calling
+update-branch on it re-enables auto-merge, even if a human had just run
+`gh pr merge --disable-auto` on it WITHOUT a `hold`/`suspended` label. That
+would be this script silently overriding a human decision.
+This script does NOT special-case that PR shape. Reason: there is no
+reliable API signal that distinguishes "auto-merge was explicitly disarmed
+on purpose" from "auto-merge was never armed" — `autoMergeRequest == null`
+means both (and, per cicatrix W111, is independently ambiguous with
+`mergeQueueEntry` state: a request is consumed once a PR actually enters
+the queue, so `null` can also mean "already queued, not disarmed"). Adding
+a heuristic here (e.g. "skip if branch matches the whitelist pattern")
+would silently narrow the BEHIND-unsticking coverage for exactly the
+automation-authored PRs (dependabot/docs-sync/chore-fmt) this cron most
+needs to help, on a guess about intent this script cannot verify. Per the
+conductor's explicit call: this note is the fix for this round. The
+reliable way to make a disarm durable against this script (and against
+the whitelist workflow itself) is `gh pr ready --undo` (draft), which is
+the one state both this script's draft-exclusion and the whitelist's own
+`if` gate both honor.
+
 Kill switch: QUEUE_UNSTICK_ENABLED=false makes every invocation a no-op
 that still prints a receipt line (superscar #2: a mute cron is a dead
 cron — silence must never be the only signal that nothing happened).
@@ -287,6 +318,12 @@ def save_dirty_seen(state: dict, path: Path = DIRTY_SEEN_FILE) -> None:
 
 
 def do_update_branch(number: int, *, repo: str = REPO, dry_run: bool) -> tuple[bool, str]:
+    # KNOWN SIDE EFFECT (see module docstring): this push can re-arm
+    # .github/workflows/auto-merge-whitelist.yml's `synchronize` trigger for
+    # whitelisted-branch/allowlisted-author PRs, even ones a human just
+    # disarmed without a hold/suspended label. No reliable API signal
+    # distinguishes "disarmed on purpose" from "never armed" — documented,
+    # not heuristically guessed at.
     if dry_run:
         return True, f"[dry-run] would run: gh pr update-branch {number} --repo {repo}"
     rc, out, err = _run(["gh", "pr", "update-branch", str(number), "--repo", repo], timeout=60)
