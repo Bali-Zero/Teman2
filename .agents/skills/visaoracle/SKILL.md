@@ -184,11 +184,15 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   already used live for the 2026-08-08 Cameroon/Guinea Calling Visa fix above. Proved three ways,
   all today, all local, no production DB touched: (i) the existing reviewed integration suites
   re-run fresh against an ephemeral pytest-xdist-cloned throwaway Postgres database
-  (`test_activation_writer.py` 44 passed/1 skipped, `test_replace_activation_set.py` 11 passed,
-  `test_activate_pack.py` 18 passed — never the shared `nuzantara_test`/`nuzantara_dev` DB their
-  own docstrings warn against); (ii) a custom end-to-end ceremony test using REAL Ed25519-signed
-  packs over the real evaluatable TEST rule pack (not placeholder hashes — see correction note
-  above): activate real pack A seq1 → real decision via the unmocked evaluator =
+  (`test_activation_writer.py` 43 passed/1 skipped, `test_replace_activation_set.py` 10 passed,
+  `test_activate_pack.py` 17 passed — never the shared `nuzantara_test`/`nuzantara_dev` DB their
+  own docstrings warn against; corrected 2026-08-23, count fix — the original entry read
+  44/11/18, each inflated +1 by transcribing pytest's "N collected" as "N passed" without
+  subtracting the 1 skip; re-measured against merge commit `292795a26364d` with `pytest -n 1 -q`
+  on each file, zero failures, see the report's own correction note for detail); (ii) a custom
+  end-to-end ceremony test using REAL Ed25519-signed packs over the real evaluatable TEST rule
+  pack (not placeholder hashes — see correction note above): activate real pack A seq1 → real
+  decision via the unmocked evaluator =
   `SUPPORTED_CANDIDATES [C1]` → activate real "bad deploy" pack B seq2 (tightened HARD_FILTER,
   chained from A's real hash) → SAME facts now genuinely EXCLUDE C1 through the real evaluator →
   naive reactivation of A REJECTED while B is head, B verified untouched → re-sign A's exact
