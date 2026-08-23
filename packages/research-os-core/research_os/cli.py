@@ -13,6 +13,11 @@ from typing import Any, NoReturn
 from pydantic import BaseModel, ValidationError
 
 from research_os.hashing import HASH_OMISSION_FIELDS, object_hash
+from research_os.models.action_intent import ActionIntent
+from research_os.models.action_item import ActionItem
+from research_os.models.approval_receipt import ApprovalReceipt
+from research_os.models.execution_attempt import ExecutionAttempt
+from research_os.models.operational_receipt import OperationalReceipt
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.risk_reclassification_receipt import RiskReclassificationReceipt
 from research_os.models.sanitization_receipt import SanitizationReceipt
@@ -23,7 +28,12 @@ LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES_ROOT = PACKAGE_ROOT / "fixtures"
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
+    "action_intent": ActionIntent,
+    "action_item": ActionItem,
+    "approval_receipt": ApprovalReceipt,
+    "execution_attempt": ExecutionAttempt,
     "object_successor_edge": ObjectSuccessorEdge,
+    "operational_receipt": OperationalReceipt,
     "revocation_receipt": RevocationReceipt,
     "risk_reclassification_receipt": RiskReclassificationReceipt,
     "sanitization_receipt": SanitizationReceipt,
