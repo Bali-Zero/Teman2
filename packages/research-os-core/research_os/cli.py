@@ -13,7 +13,14 @@ from typing import Any, NoReturn
 from pydantic import BaseModel, ValidationError
 
 from research_os.hashing import HASH_OMISSION_FIELDS, object_hash
+from research_os.models.action_intent import ActionIntent
+from research_os.models.action_item import ActionItem
+from research_os.models.approval_receipt import ApprovalReceipt
 from research_os.models.conductor_handoff import ConductorHandoff
+from research_os.models.execution_attempt import ExecutionAttempt
+from research_os.models.metric_profile import MetricProfile
+from research_os.models.metric_result import MetricResult
+from research_os.models.operational_receipt import OperationalReceipt
 from research_os.models.outcome_event import OutcomeEvent
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
@@ -25,8 +32,15 @@ LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES_ROOT = PACKAGE_ROOT / "fixtures"
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
+    "action_intent": ActionIntent,
+    "action_item": ActionItem,
+    "approval_receipt": ApprovalReceipt,
     "conductor_handoff": ConductorHandoff,
+    "execution_attempt": ExecutionAttempt,
+    "metric_profile": MetricProfile,
+    "metric_result": MetricResult,
     "object_successor_edge": ObjectSuccessorEdge,
+    "operational_receipt": OperationalReceipt,
     "outcome_event": OutcomeEvent,
     "revocation_receipt": RevocationReceipt,
     "verification_receipt": VerificationReceipt,

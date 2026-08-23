@@ -9,7 +9,14 @@ from typing import Any
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
+from research_os.models.action_intent import ActionIntent
+from research_os.models.action_item import ActionItem
+from research_os.models.approval_receipt import ApprovalReceipt
 from research_os.models.conductor_handoff import ConductorHandoff
+from research_os.models.execution_attempt import ExecutionAttempt
+from research_os.models.metric_profile import MetricProfile
+from research_os.models.metric_result import MetricResult
+from research_os.models.operational_receipt import OperationalReceipt
 from research_os.models.outcome_event import OutcomeEvent
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
@@ -18,8 +25,15 @@ from research_os.models.workflow_run import WorkflowRun
 
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
+    "action_intent": ActionIntent,
+    "action_item": ActionItem,
+    "approval_receipt": ApprovalReceipt,
     "conductor_handoff": ConductorHandoff,
+    "execution_attempt": ExecutionAttempt,
+    "metric_profile": MetricProfile,
+    "metric_result": MetricResult,
     "object_successor_edge": ObjectSuccessorEdge,
+    "operational_receipt": OperationalReceipt,
     "outcome_event": OutcomeEvent,
     "revocation_receipt": RevocationReceipt,
     "verification_receipt": VerificationReceipt,
@@ -75,8 +89,8 @@ def _prettier_json(
             return compact
         child_indent = indent + 2
         children = [
-            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent)}"
-            for item in value
+            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent, starting_column=child_indent, trailing_comma=index < len(value) - 1)}"
+            for index, item in enumerate(value)
         ]
         return "[\n" + ",\n".join(children) + f"\n{' ' * indent}]"
 

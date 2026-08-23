@@ -24,6 +24,11 @@ export interface QuestionScreenProps {
   noticeI18nKey?: I18nKey;
   /** Optional context note that is never interpreted as an eligibility gate. */
   courtesyNoteI18nKey?: I18nKey;
+  /** Set when the flow reducer refused the last answer to THIS question
+   * because it contradicts an already-known fact (`FlowState.blockedAnswer`
+   * — see flow.ts). Rendered as an assertive, visually distinct banner:
+   * this is a block, not a courtesy note. */
+  conflictI18nKey?: I18nKey;
   /** Finding #5 (adversarial review 2026-07-17): the fact already recorded
    * for THIS question, if any — restores prior selections on re-visit
    * (Back/Edit). Only consumed by the review-gate checklist today (the
@@ -46,6 +51,7 @@ export function QuestionScreen({
   canGoBack,
   noticeI18nKey,
   courtesyNoteI18nKey,
+  conflictI18nKey,
   currentAnswer,
 }: QuestionScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -108,6 +114,15 @@ export function QuestionScreen({
       {noticeI18nKey && (
         <p className="oracle-question__notice">
           {translate(language, noticeI18nKey)}
+        </p>
+      )}
+
+      {conflictI18nKey && (
+        <p
+          className="oracle-question__notice oracle-question__notice--conflict"
+          role="alert"
+        >
+          {translate(language, conflictI18nKey)}
         </p>
       )}
 

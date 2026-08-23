@@ -1,0 +1,78 @@
+{
+  "metric_profile_id": "a0000000-0000-4000-8000-000000000001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "metric_name": "com.example.activation_rate",
+  "question": "Does the redesigned onboarding flow raise activation rate?",
+  "unit": "ratio",
+  "numerator": {
+    "event": "com.example.activation_completed"
+  },
+  "denominator": {
+    "event": "com.example.signup_completed"
+  },
+  "window": {
+    "type": "rolling",
+    "duration": "P28D",
+    "timezone": "Asia/Makassar",
+    "late_arrival_policy": "com.example.exclude_after_cutoff"
+  },
+  "baseline": {
+    "source": "com.example.pre_redesign_cohort",
+    "window": "com.example.trailing_28d",
+    "frozen_at": "2026-03-01T00:00:00Z"
+  },
+  "evaluation_data": {
+    "dataset_ref": {
+      "dataset_id": "com.example.activation_events",
+      "version": "1",
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "split": {
+      "strategy": "com.example.deterministic_hash",
+      "assignment_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "exclusion_rules": []
+  },
+  "minimum_sample": {
+    "overall": 200
+  },
+  "estimator": {
+    "method": "welch_t_test",
+    "version": "1.0.0",
+    "confidence_interval_or_bootstrap": {
+      "ci_level": 0.9
+    }
+  },
+  "subgroups": [],
+  "guardrails": [],
+  "decision_rule": "value >= baseline_value",
+  "missing_data_policy": "com.example.custom_policy",
+  "owner_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "verification",
+    "pseudonym": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "validity": {
+    "valid_from": "2026-03-01T00:00:00Z",
+    "expires_at": "2026-06-01T00:00:00Z"
+  },
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "created_at": "2026-03-01T00:00:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "65e7e24e7e539e9030eed34c5fbbaecf8b5827e443236b9a0d5e0db7f7f4650b"
+}

@@ -59,7 +59,7 @@ def test_verification_receipt_is_immutable(load_json: Any) -> None:
     payload = load_json(FIXTURES_ROOT / CONTRACT_KIND / "valid_minimal.json")
     receipt = VerificationReceipt.model_validate(payload)
     with pytest.raises(ValidationError):
-        receipt.verdict = "fail"  # type: ignore[misc]
+        receipt.verdict = "fail"  # type: ignore[assignment]
 
 
 def test_domain_findings_cannot_redefine_the_canonical_verdict(load_json: Any) -> None:

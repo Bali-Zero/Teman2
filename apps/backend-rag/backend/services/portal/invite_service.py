@@ -16,6 +16,7 @@ import bcrypt
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
+from backend.services.portal.portal_profile_service import PLACEHOLDER_PIN_HASH
 
 logger = get_logger(__name__)
 
@@ -58,9 +59,10 @@ class InviteService:
         expires_at = datetime.now(timezone.utc) + timedelta(hours=INVITE_EXPIRY_HOURS)
 
         async with self.pool.acquire() as conn:
-            # Check if client exists
+            # Check if client exists and is not archived — an archived client
+            # must never be (re-)invited into an active portal account.
             client = await conn.fetchrow(
-                "SELECT id, full_name, email FROM clients WHERE id = $1",
+                "SELECT id, full_name, email FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
             if not client:
@@ -123,7 +125,7 @@ class InviteService:
                 SELECT i.id, i.client_id, i.email, i.expires_at, i.used_at,
                        c.full_name as client_name
                 FROM client_invitations i
-                JOIN clients c ON c.id = i.client_id
+                JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL
                 WHERE i.token = $1
                 """,
                 token,
@@ -182,7 +184,7 @@ class InviteService:
                     SELECT i.id, i.client_id, i.email, i.expires_at, i.used_at,
                            c.full_name as client_name
                     FROM client_invitations i
-                    JOIN clients c ON c.id = i.client_id
+                    JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL
                     WHERE i.token = $1
                     FOR UPDATE
                     """,
@@ -204,14 +206,37 @@ class InviteService:
                 # Check if team_member already exists for this client
                 existing_user = await conn.fetchrow(
                     """
-                    SELECT id FROM team_members
+                    SELECT id, active, pin_hash FROM team_members
                     WHERE linked_client_id = $1
+                    ORDER BY (role = 'client') DESC, created_at
                     """,
                     invitation["client_id"],
                 )
 
                 if existing_user:
-                    # Update existing user
+                    # Consuming an invitation is not proof the consumer controls
+                    # the client's mailbox — it must never function as a
+                    # password reset on a LIVE account.
+                    #
+                    # `active` alone cannot express "live": `create_client` calls
+                    # `ensure_portal_profile`, which provisions EVERY CRM client as
+                    # `active=true` carrying PLACEHOLDER_PIN_HASH. Gating on the
+                    # flag therefore refuses the ordinary first-time registration
+                    # — the very flow this guard exists to protect — while the
+                    # takeover it targets keeps working on any account that
+                    # happens to be inactive.
+                    #
+                    # The credential itself is the honest signal: a row still
+                    # holding the placeholder has never been registered, so
+                    # writing the first real PIN over it is onboarding, not
+                    # takeover. Both other cases stay as before — a real PIN on
+                    # an active row is refused, and a deactivated account may be
+                    # re-onboarded.
+                    already_registered = existing_user["pin_hash"] != PLACEHOLDER_PIN_HASH
+                    if already_registered and existing_user["active"]:
+                        raise ValueError("This client already has an active portal account")
+
+                    # Update existing (never-registered or deactivated) user
                     await conn.execute(
                         """
                         UPDATE team_members
@@ -320,9 +345,10 @@ class InviteService:
     ) -> dict[str, Any]:
         """Resend invitation to a client (creates new token)."""
         async with self.pool.acquire() as conn:
-            # Get client email
+            # Get client email — archived clients are excluded so an archived
+            # client can't be re-invited via the resend path either.
             client = await conn.fetchrow(
-                "SELECT email FROM clients WHERE id = $1",
+                "SELECT email FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
             if not client or not client["email"]:
