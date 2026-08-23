@@ -31,7 +31,7 @@ in tabella §D:
 
 ## Cosa si sblocca alla firma
 
-- La PR di questo pacchetto (TBD-THIS-PR) — che porta il TTL delle attestazioni
+- La PR di questo pacchetto (PR #4593) — che porta il TTL delle attestazioni
   analytics da 90 a 365 giorni in runbook + preflight, con test guilt+innocence —
   può essere mergiata. **Fino alla firma resta armata ma non mergiata.**
 - Ciò chiude SOLO il gate privacy-impact del §8. Non tocca l'`ENFORCE` gate.

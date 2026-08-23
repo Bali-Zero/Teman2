@@ -121,7 +121,7 @@ Referencing V1 §6 rows verbatim:
    way; produce the two V1 §7.7 sub-requirements this V2's first draft dropped and the
    adversarial review restored — a PII-free-logs production smoke record and a
    desktop/mobile accessibility evidence record.
-4. **Session, gated on §8 signature — PREPARED, NOT MERGED (PR #TBD-THIS-PR)**: amends the
+4. **Session, gated on §8 signature — PREPARED, NOT MERGED (PR #4593)**: amends the
    analytics-TTL attestation vehicle to the ruled 12 months —
    `docs/runbooks/visa-oracle-retention-operations.md` §"Evidence contract" (was "exactly
    90 days", now 365) and `scripts/visa_oracle_analytics_retention_preflight.py`
@@ -133,7 +133,7 @@ Referencing V1 §6 rows verbatim:
    drifting ahead of its authority, so the merge itself is the gated step, not the diff.
 5. **Session — DONE (this PR)**: ledgered the 2026-08-20 TTL ruling in the modus
    PENDING-ARMS ledger (the other two same-day rulings were already ledgered; this row
-   references PR #TBD-THIS-PR as the prepared-but-gated amendment and stays OPEN until §8 is
+   references PR #4593 as the prepared-but-gated amendment and stays OPEN until §8 is
    signed and the PR merges).
 6. **Signatures (§8 below, this file)**: Privacy/DPO owner, Security/Infra owner,
    Product owner (Zero). Approval closes the privacy-impact gate ONLY — the ENFORCE flip
