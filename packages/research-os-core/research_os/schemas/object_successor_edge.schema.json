@@ -1,0 +1,290 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ExactObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        }
+      },
+      "required": ["object_kind", "object_id", "object_hash"],
+      "title": "ExactObjectRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Lineage": {
+      "additionalProperties": false,
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowRunRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["input_hashes"],
+      "title": "Lineage",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actor_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ActorRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "family_id": {
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9][a-z0-9_-]*)+$",
+      "title": "Family Id",
+      "type": "string"
+    },
+    "lineage": {
+      "$ref": "#/$defs/Lineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "object_kind": {
+      "pattern": "^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$",
+      "title": "Object Kind",
+      "type": "string"
+    },
+    "object_successor_edge_id": {
+      "format": "uuid",
+      "title": "Object Successor Edge Id",
+      "type": "string"
+    },
+    "predecessor_ref": {
+      "$ref": "#/$defs/ExactObjectRef"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "reason_code": {
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9][a-z0-9_-]*)+$",
+      "title": "Reason Code",
+      "type": "string"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "successor_ref": {
+      "$ref": "#/$defs/ExactObjectRef"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_successor_edge_id",
+    "contract_version",
+    "tenant",
+    "object_kind",
+    "family_id",
+    "predecessor_ref",
+    "successor_ref",
+    "reason_code",
+    "recorded_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "ObjectSuccessorEdge",
+  "type": "object"
+}

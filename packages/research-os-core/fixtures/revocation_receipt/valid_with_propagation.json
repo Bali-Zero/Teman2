@@ -1,0 +1,39 @@
+{
+  "revocation_receipt_id": "20000000-0000-4000-8000-000000000002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "target_ref": {
+    "object_kind": "com.example.synthetic_record",
+    "object_id": "synthetic-target-002",
+    "object_hash": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "reason_code": "com.example.withdrawn_source",
+  "authority": {
+    "role": "research.operator",
+    "scope": "research.canonical_objects",
+    "verified_at": "2026-02-02T00:00:00Z"
+  },
+  "actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "audit",
+    "pseudonym": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "required_propagation_targets": [
+    {
+      "system": "research.search_index",
+      "object_ref": {
+        "object_kind": "com.example.synthetic_projection",
+        "object_id": "synthetic-projection-002",
+        "object_hash": "9999999999999999999999999999999999999999999999999999999999999999"
+      }
+    }
+  ],
+  "classification": { "risk_class": "amber", "sensitivity": "confidential" },
+  "issued_at": "2026-02-02T00:01:00Z",
+  "idempotency_key": "synthetic-revocation-002",
+  "producer": { "name": "com.example.fixture_builder", "version": "1.0.0" },
+  "lineage": { "input_hashes": [] },
+  "retention": { "retention_class": "restricted", "legal_hold": false },
+  "object_hash": "5b3cb0438767296c4b0f120f02ae3d4f57168292892d73206ba5a35226086b13"
+}

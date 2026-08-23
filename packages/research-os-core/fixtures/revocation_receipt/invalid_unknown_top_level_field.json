@@ -1,0 +1,31 @@
+{
+  "revocation_receipt_id": "20000000-0000-4000-8000-000000000013",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "target_ref": {
+    "object_kind": "com.example.synthetic_record",
+    "object_id": "synthetic-target-013",
+    "object_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "reason_code": "com.example.invalid_extra",
+  "authority": {
+    "role": "research.operator",
+    "scope": "research.canonical_objects",
+    "verified_at": "2026-02-13T00:00:00Z"
+  },
+  "actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "audit",
+    "pseudonym": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "required_propagation_targets": [],
+  "classification": { "risk_class": "red", "sensitivity": "internal" },
+  "issued_at": "2026-02-13T00:01:00Z",
+  "idempotency_key": "synthetic-revocation-013",
+  "producer": { "name": "com.example.fixture_builder", "version": "1.0.0" },
+  "lineage": { "input_hashes": [] },
+  "retention": { "retention_class": "audit", "legal_hold": true },
+  "object_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "unrevoke": true
+}
