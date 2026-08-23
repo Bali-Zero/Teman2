@@ -1231,6 +1231,40 @@ Citato come "sibling-race madre" nella famiglia #5 (sibling-race / shared-worktr
 
 ---
 
+### 🐛 W123 (2026-08-23): un HOLD ARMS onorato DISARMANDO si è ri-armato da solo al primo push — il hold durevole è il DRAFT, non il disarmo
+
+_Scoperto 2026-08-23 su Pro, lane wr3/P03, su PR #4658, mentre onoravo un HOLD ARMS chiesto dalla flotta per far passare #4647._
+
+**TRAUMA.** Ho disarmato #4658 alle `09:49:49Z` e l'ho dichiarato alla flotta. Poi ho pushato **una riga** di correzione al ledger. Cronologia dal timeline della PR:
+
+```
+09:49:27Z  auto_merge_enabled     (io, per errore)
+09:49:49Z  auto_merge_disabled    (io, per onorare l'hold)   <- qui la dichiarazione era VERA
+10:12:36Z  committed              (il mio push, una riga)
+10:12:43Z  run auto-merge-whitelist.yml sul mio branch -> success
+10:18:37Z  auto_merge_enabled     actor=Balizero1987          <- non l'ho fatto io
+```
+
+Trenta minuti dopo, `gh pr merge 4658 --auto` ha risposto **«already queued to merge»**: era in coda, posizione 2. La dichiarazione «sto tenendo ferma la PR» era diventata falsa alle 10:18:37 e nessuno — me compreso — se n'era accorto.
+
+**MECCANISMO**, letto dalla dichiarazione e non dedotto dalla coincidenza. `.github/workflows/auto-merge-whitelist.yml` gira su `pull_request_target` con `types: [opened, reopened, synchronize, ready_for_review, labeled]`, e il suo **unico** cancello è:
+
+```yaml
+if: github.event.pull_request.draft == false
+```
+
+`synchronize` = ogni push al branch della PR. Quindi **ogni push a una PR non-draft la ri-arma**, entro ~6 minuti. Nella stessa lista di run, i branch in draft risultano `skipped`, i non-draft `success` — coerente con la condizione dichiarata, non con un'inferenza.
+
+**Perché costa.** «Hold arms» è un protocollo di coordinamento che la flotta usa spesso, e chi lo onora disarmando crede di aver pagato un costo che non ha pagato. Il danno non è la PR accodata — nel mio caso era perfino desiderabile — è che **un impegno preso con altre lane decade in silenzio**, e le lane a valle pianificano sopra un fatto che non è più vero. Peggiora perché il gesto sembra durevole: nessun errore, nessun avviso, e la PR resta apparentemente com'era finché non la si interroga.
+
+**GOTCHA (a) — l'attore non dice chi è stato.** Il timeline riporta `actor=Balizero1987` sia quando armo io sia quando arma l'automazione: usa la stessa identità. «Chi ha armato questa PR» **non è leggibile dal timeline**; si legge da `gh run list --workflow=auto-merge-whitelist.yml` confrontando l'orario.
+
+**GOTCHA (b) — non riparare questo leggendo un campo solo.** La reazione naturale («allora controllo se è armata prima di fidarmi») cade dritta nel GOTCHA di **W111** (riga ~160 di questo file): né `autoMergeRequest` né `isInMergeQueue` da soli rispondono. `queue:true + auto:null` = armata già in coda · `queue:false + auto:enabledAt` = armata, entrerà a verde · `queue:false + auto:null` = disarmata davvero. Misurato di nuovo il 2026-08-23: due lane hanno enunciato la metà giusta per il proprio caso, e la metà è stata promossa a regola generale da una terza.
+
+**CURA.** Se devi davvero tenere ferma una PR: `gh pr ready --undo` (draft) — è l'unica cosa che quel workflow guarda — **oppure non pushare**. Il disarmo va bene solo se sei certo che non toccherai più il branch, il che è precisamente ciò che nessuno può promettere mentre corregge qualcosa.
+
+**Famiglia: superscar #2 (Esiste ≠ Armato), ROVESCIATA.** La forma classica è «lo credo armato ed è morto». Questa è «lo credo fermo ed è armato»: stessa radice — uno stato di attivazione creduto invece che misurato — con il segno invertito.
+
 ### ℹ️ W68b (no independent record)
 
 Citato nella famiglia #3 (guard-over-match) come variante minore di W68 — `_guard_property_zoning` che matcha "lease" — nessun dettaglio ulteriore oltre quello già coperto dall'entry W68 (villa-leasehold zoning, archiviata).
