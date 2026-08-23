@@ -1,3 +1,7 @@
+---
+adversarial_review: kimi-k3
+---
+
 # D12 active-stay-permit exclusion — BALI_ZERO_POLICY source, drafted 2026-08-23
 
 E5 increment 8 (targets seq-14, chaining off seq-13's SIGNED payload). This rule ships LIVE, not
@@ -285,3 +289,45 @@ policy-backed exclusion rules in general** — no owner-sign-off artifact, no po
 freshness semantics, nothing that lets a future `BALI_ZERO_POLICY` rule opt INTO oversight instead
 of being structurally unable to. Recorded here as a design gap for whoever next adds a
 policy-backed rule to this engine; not a blocker for this one, and not fixed in this PR.
+
+## Adversarial review
+
+**Real run** (not simulated): `kimi -p "<D12 rule + source + test-suite artifacts + refutation
+instructions>" -m kimi-code/k3` (kimi version 0.38.0, session
+`session_f35a8e40-2b91-45e7-aa0f-4c3f8bfd7f8f`), run against `origin/main` before this rule's own
+reachability fix existed. Full transcript is session-local (this session's scratchpad,
+`d12_kimi_verdict.txt`), not committed to the repo — see BRIDGING.md's Adversarial review section
+for the same disclosure pattern on a sibling card. Verdict, verbatim:
+
+> VERDICT: DO-NOT-SHIP — on `origin/main` every status question sits behind the
+> `in_indonesia === "yes"` branch, so every offshore applicant — D12's entire market, including
+> the unlapsed-KITAS holder the ruling names — resolves `has_active_stay_permit` to UNKNOWN and
+> lands in a NEEDS_INPUT the finished interview can never answer.
+
+**F1 (P0, blocks ship) — the finding that drove PR #4727.** The rule's required fact was
+unreachable for D12's entire target population: `flow.ts::computeNextNode` sent every offshore
+applicant (`in_indonesia === "no"`) straight to `overstay_days`, never asking
+`permit_expiry`/`holds_stay_permit`/`stay_permit_code`/`current_status_code` at all — the exact
+questions this rule's derived fact depends on. D12 is a pre-investment *visit* product; its
+applicants are offshore by definition. Result: 100% of D12's market resolved
+`has_active_stay_permit` to UNKNOWN, hit `on_unknown: NEEDS_INPUT`, and the interview had already
+ended — a dead end wearing a safety costume, not fail-closed protection. **Cured in #4727 (merged
+2026-08-23T19:20:36Z)**: offshore applicants now gate on `holds_stay_permit` first, expanding into
+the full chain only on "yes" — see that PR and this repo's `flow.ts` for the resulting shape.
+
+**F4 (P1) — the finding that drove this PR's own F4 rescoping.** The derivation's docstring and
+its own test asserted the owner had "explicitly ruled" that a holder of an expired permit "CAN
+apply" — a claim neither supplied ruling text actually made. The concrete applicant this hid: a
+renewal-in-process holder (printed KITAS expired, renewal filed and paid, legally present,
+possibly on `ITK_PERALIHAN`) — admitted to D12 despite holding a live residence basis. Directly
+prompted Zero's clarifying rulings ("chi ha un kitas scaduto e il pagamento del rinnovo..." /
+"esatto il rinno si considera depositato se ce stato pagamento", recorded in
+`decision_no_two_visas_at_once_and_renewal_stays_on_the_extended_visa_2026_08_23.md`) and this
+PR's `immigration.renewal_paid` fact plus the derivation rework above.
+
+Other findings (F2 test/draft decoupling, F3 KITAP-scope attribution, F5 safety-machinery design
+gap, F6 `content_sha256` framing, F7 stale precondition language, F8 `freshness_policy`
+verification depth) were P1/P2, already dispositioned in this doc's own sections above (see "What
+is VERIFIED" and "Pack-level design gap") — not repeated here to avoid duplicating recorded
+doctrine.
+
