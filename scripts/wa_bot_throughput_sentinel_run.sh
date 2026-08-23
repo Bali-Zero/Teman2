@@ -61,19 +61,35 @@ if [[ ! -r "$SECRETS" ]]; then
   exit 78  # EX_CONFIG
 fi
 
-# `source` under `set -e` is ITSELF a silent-exit path, and it sat one block
-# above the interpreter guard below — same defect, cured later. A malformed
-# secrets file aborts the script mid-source with NO heartbeat, and bash echoes
-# the OFFENDING LINE to stderr, which in this file is likely a credential
-# fragment landing in the organ's .err.log (superscar #4). So: errexit off
-# across the source, bash's stderr discarded deliberately, and the failure
-# reported by NAME and return code only. Found by the cross-family gate seat,
-# not by the author.
+# `source` is ITSELF a silent-exit path, and it sat one block above the
+# interpreter guard below — same defect, cured later. A malformed secrets file
+# aborts the script mid-source with NO heartbeat, and bash echoes the OFFENDING
+# LINE to stderr, which in this file is plausibly a credential landing in the
+# organ's .err.log (superscar #4). So: bash's stderr discarded deliberately,
+# and the failure reported by NAME and return code only.
+#
+# BOTH -e AND -u are lifted across the source, and the second one is not
+# decoration. The first version of this guard lifted only errexit; the
+# cross-family seat then showed that `set -u` kills the whole wrapper just as
+# silently on the realistic idiom `DATABASE_URL_LOCAL=postgres://u:$PGPASS@h/db`
+# once someone removes the PGPASS line — and with stderr now suppressed, that
+# path had been made MORE silent by the fix, not less. With nounset lifted, a
+# missing interpolation expands empty and the failure surfaces downstream in the
+# payload's own auth error: degraded, never silent.
+#
+# HONEST LIMIT, because the comment above it used to overstate: $? is the rc of
+# the LAST command in the file, so garbage in the middle of a file that ends on
+# a valid line still returns 0. That is not fully detectable here — the
+# DATABASE_URL_LOCAL, tunnel and interpreter guards below are what actually gate
+# the run in that case. Both findings in this block came from the cross-family
+# gate seat, neither from the author.
 set -a
 set +e
+set +u
 # shellcheck disable=SC1090
 source "$SECRETS" 2>/dev/null
 _src_rc=$?
+set -u
 set -e
 set +a
 if [[ "$_src_rc" -ne 0 ]]; then

@@ -171,6 +171,38 @@ receipts:
     exit: 0
     ts: "2026-08-23T14:32Z"
     seat: "session (pro, build lane)"
+  - claim: "Round 3 — the cure of the cure: lifting errexit alone was not enough, and the fix had made the remaining case MORE silent"
+    cmd: 'a secrets file containing DATABASE_URL_LOCAL="postgresql://u:$PGPASS_REMOVED@127.0.0.1:15432/db" (the realistic idiom after someone deletes the PGPASS line), run against the round-2 wrapper and then the round-3 wrapper'
+    result: >-
+      ROUND 2: rc=1, ZERO heartbeat files, EMPTY output — nounset killed the
+      whole wrapper mid-source, and because round 2 had just started discarding
+      bash's stderr for the leak fix, the "unbound variable" message was gone
+      too. The fix had made that path MORE silent, not less. ROUND 3 (set +u
+      lifted across the source and restored after): rc=2, ONE heartbeat, and a
+      real diagnostic reaches the log — "DB connect failed: password
+      authentication failed for user u". Empty interpolation surfaces
+      downstream in the payload's own error handling: degraded, never silent.
+      Restoration verified separately — after the block, referencing an unbound
+      variable still aborts, so -e and -u are genuinely re-armed.
+    exit: 0
+    ts: "2026-08-23T14:41Z"
+    seat: "session (pro, build lane) verifying kimi-code/k3's residual finding"
+  - claim: "FINAL GATE VERDICT: PASS, from the cross-family seat, on the discharged condition"
+    cmd: "kimi -m kimi-code/k3 -p <the round-3 block plus the before/after measurement>"
+    result: >-
+      "Condition discharged... no unmeasured hazard from set +u; the behavior is
+      empty-substitution only". It also answered the wrong-value question
+      precisely: set +u never substitutes a different non-empty value, and the
+      one case that COULD (the referenced variable being set in the ambient
+      environment and leaking into the interpolation) behaves identically under
+      -u and +u — so that hazard is neither introduced nor worsened here. It
+      named one theoretical edge, an empty HOST segment which libpq reads as
+      "local unix socket" rather than an error, and gated it: this file
+      interpolates credentials only, host and port are literals.
+      VERDICT: PASS.
+    exit: 0
+    ts: "2026-08-23T14:44Z"
+    seat: "kimi-code/k3 (cross-family gate)"
 pii_scan: clean
 tests:
   - "scripts/tests/test_wa_bot_throughput_sentinel.py — 45 tests, merged with the payload in PR #4630; not re-run here because this PR does not touch the payload."
@@ -302,3 +334,36 @@ dissent:
       here: the deterministic guard makes the property hold regardless of what
       that file contains, which is the whole point of preferring a guard to an
       observation.
+  - seat: "kimi-code/k3 (cross-family gate), against the build lane's SECOND correction"
+    objection: >-
+      The guarded `source` lifted errexit but not nounset, while the script runs
+      under `set -euo pipefail`. A secrets file interpolating a variable that no
+      longer exists — the ordinary idiom after someone removes a PGPASS line —
+      therefore still killed the whole wrapper mid-source with no heartbeat, and
+      the round-2 stderr suppression had removed the last remaining clue. The
+      defect class survived into its own fix.
+    status: CONFIRMED
+    note: >-
+      Measured before/after (see receipts) and cured with `set +u` across the
+      source. This is the third round on one surface and the reason it is
+      recorded rather than smoothed over: rounds 1 and 2 each cured ONE trigger
+      of a single class — a failure path that exits without emitting a signal —
+      without sweeping the file for the others. The repo already catalogues that
+      exact shape. A fix-of-a-fix is allowed to depth 1; had this third
+      correction also been wrong, the right move was to stop and write the spec,
+      not to open a fourth round.
+  - seat: "kimi-code/k3 (cross-family gate), naming a hazard this PR does NOT cure"
+    objection: >-
+      If a variable referenced inside the secrets file is already set in the
+      AMBIENT environment, it leaks into the interpolation and produces a
+      genuinely wrong non-empty value. This behaves identically under `set -u`
+      and `set +u`, so it is neither introduced nor worsened by anything here —
+      it argues for the wrapper scrubbing its inherited environment before
+      sourcing, which it does not do.
+    status: PLAUSIBLE
+    note: >-
+      Left uncured deliberately and declared rather than folded in: it is
+      pre-existing, orthogonal to both cures, and out of this PR's one concern.
+      Marked PLAUSIBLE rather than CONFIRMED because it was reasoned from shell
+      semantics and NOT measured here — the honest status for a claim nobody
+      executed.
