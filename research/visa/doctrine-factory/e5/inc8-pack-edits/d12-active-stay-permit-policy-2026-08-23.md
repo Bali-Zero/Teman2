@@ -13,8 +13,15 @@ independently re-verified against `origin/main`). D12's `product_version_id`
 (`63f64a7e-2bff-5a48-8c3b-7ad5349e8c91`) is confirmed unchanged in seq-13's real source file — the
 pin below survives. **Do NOT fold this rule into seq-14 yet regardless of seq-13's availability**:
 a separate, independently-confirmed defect (offshore applicants can never reach the questions this
-rule's fact depends on — see PENDING-ARMS) blocks the fold until fixed, and the KITAP-widening /
-renewal-pending questions above are open with Zero. Seq-13 being ready removes one blocker, not
+rule's fact depends on — PR #4727, in progress) blocks the fold until fixed. **UPDATED 2026-08-24:
+Zero has now ruled on both KITAP-widening (RESOLVED — see "What is VERIFIED" below, the rule's
+breadth is correct as drafted) and renewal-pending (RULED, verbatim quote and implementation
+status tracked in PENDING-ARMS — as of this update, the derivation change per that ruling has NOT
+yet landed in `fact_registry.py`, so `_derive_has_active_stay_permit` still resolves an
+expired-but-renewal-filed applicant to `False`, a now-confirmed wrong answer). Both offshore
+reachability (PR #4727) and the renewal-pending derivation change block the fold — do not fold
+D12 until both land, in addition to the pre-existing seq-13 dependency already satisfied above.**
+Seq-13 being ready removes one blocker, not
 all of them.
 
 ## What is VERIFIED
@@ -37,30 +44,45 @@ regulatory citation — this is recorded as a **business/eligibility policy deci
 `IMPLEMENTING_REGULATION`/`OFFICIAL_PORTAL` fact. No Ditjen Imigrasi page or statute is cited for
 it anywhere in the codebase as of this draft, and this document does not manufacture one.
 
-## What is NOT independently verified here (interpretive only, not cited doctrine)
+**UPDATED 2026-08-24 (F3 CLOSED — Zero ruled, the rule's KITAP breadth is VERIFIED, not
+interpretive).** A prior revision of this document flagged the rule's breadth beyond
+"kitas attivo" (it also fires on KITAP-class E-shaped codes) as an unconfirmed inference and
+surfaced it to Zero as an open question (team-lead, 2026-08-24). Zero ruled on it directly, in
+Italian, verbatim:
 
-**CORRECTED 2026-08-24 (Kimi refuter finding F3): the rule's actual scope is wider than the
-ruling, and an earlier revision of this document mis-filed that widening as VERIFIED.** The
-ruling names only "kitas attivo". The rule's condition (`derived.has_active_stay_permit`, via
-`_STAY_PERMIT_STATUS_CODE_SHAPE`, `^E\d+[A-Z]?$`) fires on every E-shaped permit code in the
-current catalogue, which includes KITAP-class codes too (the E33-family; see
-`fact_registry.py`'s own `_STAY_PERMIT_STATUS_CODE_SHAPE` comment, which names the catalogue "ITAS
-/ ITAP-class"). Concrete applicant this widening reaches beyond the ruling's verbatim text: a
-KITAP permanent resident (e.g. the spouse of an Indonesian citizen) would be excluded from D12
-under a ruling that only named KITAS. Extending the exclusion to KITAP is plausibly correct as
-business intent — a permanent resident is at least as settled as a KITAS holder — but that is
-this author's inference, not a fact Zero has confirmed. **This is now an open question surfaced to
-Zero, not a verified fact; the rule's condition is unchanged pending that answer (do not guess).**
+> "non si possono mai avere due visa contemporaneamente"
+
+This is not a KITAS-specific clarification — it is a general principle (you can never hold two
+visas at the same time), so it grounds the rule's condition exactly as drafted: any applicant
+whose `derived.has_active_stay_permit` resolves `True` — KITAS, KITAP, or any other class the
+`^E\d+[A-Z]?$` shape catches — already holds an active stay permit and is excluded from D12 under
+this SAME general principle, not a separate, narrower extrapolation of the 2026-08-23 wording.
+**This ruling is now the third artifact grounding the rule, alongside the two above** — cite it,
+not the earlier KITAS-only quote, whenever this rule's breadth needs justifying. Same authority
+class as the other two (`BALI_ZERO_POLICY`, business/eligibility decision, no regulatory
+citation implied or manufactured).
+
+## What is NOT independently verified here (interpretive only, not cited doctrine)
 
 The evident rationale — D12 is a *pre-investment exploration* instrument (survey/feasibility
 scouting ahead of incorporation, per `research/visa/doctrine-factory/cards/D12.md` §3.1-3.2), so
 an applicant who already holds an active residence permit is presumably already in the country on
 a different, more substantive legal basis and does not need a pre-investment visit product — is
 this author's own inference from the ruling and the D12 doctrine card. It is written here so a
-future reader can tell it apart from the two VERIFIED sources above; it is not itself a claim with
-a `claim_id`, and D12.md (dated 2026-08-17, six days before this ruling) makes no such statement.
-If Zero's actual rationale differs, that difference does not change the ruling's substance, only
-this document's explanatory paragraph.
+future reader can tell it apart from the three VERIFIED sources above; it is not itself a claim
+with a `claim_id`, and D12.md (dated 2026-08-17, six days before this ruling) makes no such
+statement. If Zero's actual rationale differs, that difference does not change the ruling's
+substance, only this document's explanatory paragraph.
+
+**Separately, NOT settled by the above and still an open question surfaced to Zero (team-lead,
+2026-08-24): whether "you can never hold two visas at the same time" implies an active-permit
+exclusion should exist on OTHER products too, not only D12.** D12 is one of ~38 products; Zero was
+asked specifically about D12's rule and answered about D12's rule. Reading a pack-wide sweep out
+of one general-principle sentence, without a separate ruling naming which other products it
+applies to, would repeat the exact class of error this document was corrected for once already
+(extrapolating a ruling past its literal scope) — just in the opposite direction (widening past
+what was asked, rather than narrowing). This document takes no position on that question and no
+other product's rule is touched by this fold.
 
 ## First use of `BALI_ZERO_POLICY` in this pack
 
