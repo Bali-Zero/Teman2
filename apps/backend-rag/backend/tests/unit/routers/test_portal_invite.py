@@ -36,7 +36,7 @@ class FakeInviteService:
         }
         return {
             "client_id": client_id,
-            "client_name": "Kaiser Test",
+            "client_name": "Test Client",
             "email": email,
             "invite_url": "/portal/invite?token=tok-123",
             "token": "tok-123",
@@ -52,8 +52,8 @@ async def test_send_portal_invite_email_uses_internal_brevo_adapter() -> None:
         new=AsyncMock(),
     ) as mock_sender:
         await send_portal_invite_email(
-            to="kaiser@example.com",
-            client_name='Kaiser & "Demo"',
+            to="client@example.com",
+            client_name='Test Client & "Demo"',
             invite_url="https://my.balizero.com/portal/invite?token=abc&x=1",
             db_pool=db_pool,
             client_id=11898,
@@ -61,22 +61,31 @@ async def test_send_portal_invite_email_uses_internal_brevo_adapter() -> None:
 
     assert mock_sender.await_count == 1
     kwargs = mock_sender.await_args.kwargs
-    assert kwargs["to"] == "kaiser@example.com"
+    assert kwargs["to"] == "client@example.com"
     assert kwargs["subject"] == "Welcome to Bali Zero Client Portal"
     assert kwargs["raise_on_failure"] is True
     assert kwargs["email_type"] == "welcome"
     assert kwargs["pool"] is db_pool
     assert kwargs["client_id"] == 11898
-    assert "Kaiser &amp; &quot;Demo&quot;" in kwargs["body"]
+    assert "Test Client &amp; &quot;Demo&quot;" in kwargs["body"]
     assert "token=abc&amp;x=1" in kwargs["body"]
 
 
 @pytest.mark.asyncio
 async def test_send_invitation_sends_email_through_internal_adapter(
     monkeypatch: pytest.MonkeyPatch,
+    mock_db_pool: MagicMock,
 ) -> None:
     fake_service = FakeInviteService()
-    db_pool = MagicMock()
+    db_pool = mock_db_pool
+    # role="Founder" is admin via is_crm_admin's role check, so the A3
+    # verify_client_access(write=True) gate passes regardless of assigned_to —
+    # a row must still exist or verify_client_access 404s before we get here.
+    db_pool._mock_conn.fetchrow.return_value = {
+        "id": 11898,
+        "assigned_to": None,
+        "created_by": None,
+    }
     monkeypatch.setattr(
         "backend.app.routers.portal_invite.settings.frontend_portal_url",
         "https://my.balizero.com",
@@ -89,7 +98,7 @@ async def test_send_invitation_sends_email_through_internal_adapter(
         response = await send_invitation(
             SendInviteRequest(
                 client_id=11898,
-                email="kaiser198719871987@gmail.com",
+                email="client@example.com",
             ),
             current_user={"email": "zero@balizero.com", "role": "Founder"},
             invite_service=fake_service,  # type: ignore[arg-type]
@@ -102,23 +111,33 @@ async def test_send_invitation_sends_email_through_internal_adapter(
     assert "email sent" in response["message"]
     assert fake_service.created == {
         "client_id": 11898,
-        "email": "kaiser198719871987@gmail.com",
+        "email": "client@example.com",
         "created_by": "zero@balizero.com",
     }
     mock_sender.assert_awaited_once_with(
-        to="kaiser198719871987@gmail.com",
-        client_name="Kaiser Test",
+        to="client@example.com",
+        client_name="Test Client",
         invite_url="https://my.balizero.com/portal/invite?token=tok-123",
         db_pool=db_pool,
         client_id=11898,
     )
+    # A1 regression guard: the raw credential never reaches the response body.
+    assert "token" not in response["data"]
+    assert "invite_url" not in response["data"]
+    assert "full_invite_url" not in response["data"]
 
 
 @pytest.mark.asyncio
 async def test_send_invitation_reports_email_failure(
     monkeypatch: pytest.MonkeyPatch,
+    mock_db_pool: MagicMock,
 ) -> None:
     fake_service = FakeInviteService()
+    mock_db_pool._mock_conn.fetchrow.return_value = {
+        "id": 11898,
+        "assigned_to": None,
+        "created_by": None,
+    }
     monkeypatch.setattr(
         "backend.app.routers.portal_invite.settings.frontend_portal_url",
         "https://my.balizero.com",
@@ -131,11 +150,11 @@ async def test_send_invitation_reports_email_failure(
         response = await send_invitation(
             SendInviteRequest(
                 client_id=11898,
-                email="kaiser198719871987@gmail.com",
+                email="client@example.com",
             ),
             current_user={"email": "zero@balizero.com", "role": "Founder"},
             invite_service=fake_service,  # type: ignore[arg-type]
-            db_pool=MagicMock(),
+            db_pool=mock_db_pool,
         )
 
     assert response["success"] is True
@@ -193,10 +212,22 @@ async def test_get_client_invitations_rejects_monitoring_service_account() -> No
 
 
 @pytest.mark.asyncio
-async def test_get_client_invitations_allows_a_realistic_free_text_role() -> None:
+async def test_get_client_invitations_allows_a_realistic_free_text_role(
+    mock_db_pool: MagicMock,
+) -> None:
     """Innocence: a real, free-text team-role title must still pass through
-    to the service call (this repo's roles are job titles, not an enum)."""
+    to the service call (this repo's roles are job titles, not an enum).
+
+    "Board Member" is admin via is_crm_admin's role check (crm_utils.py), so
+    the A3 verify_client_access(write=True) gate passes regardless of
+    assigned_to — a client row must still exist or it 404s.
+    """
     fake_service = FakeInviteService()
+    mock_db_pool._mock_conn.fetchrow.return_value = {
+        "id": 1,
+        "assigned_to": None,
+        "created_by": None,
+    }
 
     async def _get_client_invitations(client_id: int) -> list[dict[str, object]]:
         return [{"client_id": client_id, "status": "pending"}]
@@ -207,6 +238,7 @@ async def test_get_client_invitations_allows_a_realistic_free_text_role() -> Non
         client_id=1,
         current_user={"email": "board@balizero.com", "role": "Board Member"},
         invite_service=fake_service,  # type: ignore[arg-type]
+        db_pool=mock_db_pool,
     )
 
     assert response["success"] is True
@@ -225,9 +257,20 @@ async def test_resend_invitation_rejects_monitoring_service_account() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resend_invitation_allows_a_realistic_free_text_role() -> None:
-    """Innocence: a real, free-text team-role title must still pass through."""
+async def test_resend_invitation_allows_a_realistic_free_text_role(
+    mock_db_pool: MagicMock,
+) -> None:
+    """Innocence: a real, free-text team-role title must still pass through
+    when the caller is assigned to (or created) the client — "Reception" is
+    not an admin role, so the A3 verify_client_access(write=True) gate needs
+    an ownership match, unlike the Board-Member case above.
+    """
     fake_service = FakeInviteService()
+    mock_db_pool._mock_conn.fetchrow.return_value = {
+        "id": 1,
+        "assigned_to": "reception@balizero.com",
+        "created_by": "reception@balizero.com",
+    }
 
     async def _resend_invitation(*, client_id: int, created_by: str) -> dict[str, object]:
         return {"client_id": client_id, "created_by": created_by}
@@ -238,6 +281,7 @@ async def test_resend_invitation_allows_a_realistic_free_text_role() -> None:
         client_id=1,
         current_user={"email": "reception@balizero.com", "role": "Reception"},
         invite_service=fake_service,  # type: ignore[arg-type]
+        db_pool=mock_db_pool,
     )
 
     assert response["success"] is True
