@@ -462,6 +462,8 @@ async def send_message_to_client(
                     "created_at": message["created_at"].isoformat(),
                 },
             }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Failed to send message to client %s: %s", client_id, e)
         raise HTTPException(
@@ -474,7 +476,7 @@ async def send_message_to_client(
 async def mark_client_message_read(
     client_id: int,
     message_id: int,
-    _current_user: dict = Depends(require_team_auth),
+    current_user: dict = Depends(require_team_auth),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -482,6 +484,10 @@ async def mark_client_message_read(
     """
     try:
         async with db_pool.acquire() as conn:
+            await verify_client_access(
+                client_id, current_user, conn, allow_assigned=True, write=True
+            )
+
             await conn.execute(
                 """
                 UPDATE portal_messages
@@ -499,6 +505,8 @@ async def mark_client_message_read(
                 "success": True,
                 "message": "Message marked as read",
             }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Failed to mark message %s as read: %s", message_id, e)
         raise HTTPException(
