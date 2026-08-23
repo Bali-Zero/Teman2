@@ -74,6 +74,25 @@ def test_pending_ruling_is_machine_checkable_not_only_prose(ops_intent_row):
     assert set(marker.payload["pending_ruling"]) == {"priority", "sla.due_at", "current_intent_ref"}
 
 
+def test_extensions_is_always_explicitly_set_never_omitted(ops_intent_row):
+    """Per `research_os.hashing`'s presence-preserving null semantics (module
+    docstring lines 3-5) and its framing of `object_hash` as "canonical
+    object identity" (line 28): an absent Pydantic field is omitted from the
+    hashed payload, while a field explicitly set is included even if empty.
+    Two adapters producing the SAME logical object from the SAME legacy row
+    would get TWO DIFFERENT canonical identities if one passed
+    `extensions={}` and the other omitted the keyword entirely -- a
+    difference of authoring style, not of the object modeled (see
+    `synthesis.py`'s module docstring for the measured three-way hash
+    divergence this test arms against). This adapter must always pass
+    `extensions=` explicitly; this test turns red the day that stops being
+    true, instead of the drift staying a silent authoring habit.
+    """
+
+    item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
+    assert "extensions" in item.model_fields_set
+
+
 def test_status_value_set_map_covers_every_legacy_status():
     for status in [
         "queued",

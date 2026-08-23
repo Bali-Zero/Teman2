@@ -21,6 +21,32 @@ to any materialized object. This is a deliberate, disclosed judgment call,
 not a silent workaround -- flagged to the conductor as a ruling this
 packet's matrix under-scoped (it recorded these refs as merely "no legacy
 source," not as constructor-blocking).
+
+INVARIANT (found while measuring `object_hash`'s own sensitivity in a
+correction PR, not the thing that PR set out to check): every adapter in
+this package MUST pass `extensions=` explicitly to `build_with_object_hash`
+-- even `extensions={}` when it has nothing to disclose -- and must never
+omit the keyword entirely. `research_os.hashing`'s module docstring (lines
+3-5) declares research-os/v1.0.0's wire rule as a deliberate
+"presence-preserving null semantics": an absent Pydantic field is OMITTED
+from the hashed payload (`model_dump(..., exclude_unset=True)`), while a
+field explicitly set is included even if empty. The same module (line 28)
+calls the resulting digest "canonical object identity". Put together: two
+adapters producing the SAME logical object from the SAME legacy row get TWO
+DIFFERENT canonical identities if one passes `extensions={}` and the other
+omits the keyword -- a difference of authoring style, not of the object
+modeled. Measured on one fixture row, holding every other field constant:
+`extensions` omitted, `extensions={}`, and `extensions=<a real payload>`
+produced three distinct `object_hash` values, all differing only in
+whether/how `extensions` was passed. This is the wire contract working
+exactly as designed (the presence-preserving rule is deliberate, not a
+bug) -- but until this correction, the discipline of always setting
+`extensions` explicitly lived only in this package's own authoring habit,
+nowhere that would turn red if a future adapter dropped it.
+`test_action_item_adapter.py::test_extensions_is_always_explicitly_set_never_omitted`
+arms this for `ActionItem`; any adapter later added to this package should
+carry the same assertion (`"extensions" in <canonical>.model_fields_set`)
+for its own kind.
 """
 
 from __future__ import annotations

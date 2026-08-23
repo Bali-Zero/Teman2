@@ -2,23 +2,28 @@ brief_ref: evidence/brief.yml
 plan_ref: "P04-D3 correction: fix false matrix-approval citations after an independent REFUSE verdict (claims #10/#11/#12), 2026-08-24"
 diff:
   net_lines: >-
-    +245/-43, 4 files: action_item_adapter.py (+203/-39, docstring + 3 field
+    +290/-43, 4 files: action_item_adapter.py (+203/-39, docstring + 3 field
     comments/warnings rewritten, extensions call site extended), synthesis.py
-    (+19/-2, unbacked_refs_extension() gains an optional pending_ruling parameter, merged into
-    the same payload dict), test_action_item_adapter.py (+21/-2, one new test), PENDING-ARMS.md
-    (+2/-0, one new ledger row). Measured this session via `git diff --numstat` against this
-    branch's own base (origin/main @ bf85e81b0acb09459bc9560d9deefc078ed09823, re-fetched fresh,
-    zero drift from merge-base).
+    (+45/-2, unbacked_refs_extension() gains an optional pending_ruling parameter merged into
+    the same payload dict, plus a new module-docstring invariant paragraph on extensions
+    presence citing hashing.py:3-5/:28), test_action_item_adapter.py (+40/-2, two new tests:
+    pending_ruling disclosure and the extensions-presence guilt-arm), PENDING-ARMS.md (+2/-0,
+    one new ledger row). Measured this session via `git diff --numstat` against this branch's
+    own base (origin/main @ bf85e81b0acb09459bc9560d9deefc078ed09823, re-fetched fresh, zero
+    drift from merge-base).
   behaviour_change: >-
     Zero change to any adapted VALUE: priority="p2", sla.due_at from expires_at, and
-    current_intent_ref=None are byte-identical to what PR #4749 shipped. The only behavioural
-    delta is additive: extensions['com.balizero.research-os-adapters'].payload gains a second
-    key, pending_ruling. This DOES change object_hash for every ActionItem this adapter
+    current_intent_ref=None are byte-identical to what PR #4749 shipped. Two additive
+    behavioural deltas: (1) extensions['com.balizero.research-os-adapters'].payload gains a
+    second key, pending_ruling. This DOES change object_hash for every ActionItem this adapter
     produces (measured: pre-correction 305489949ff73447eb4c5825ffd07c5b4708fb90cc609ee204a4714790a324ee
     vs post-correction dd7d5a2dcb869d8121793bf5ad01ee9d4ef5f54c3f6b8da4952646dfff510e22 on the
     identical fixture row) -- confirmed harmless today per brief.yml's risks section (no
     hardcoded hash literal anywhere, no parity probe compares object_hash, zero persistence of
-    this kind yet, still zero non-test consumers of this adapter package).
+    this kind yet, still zero non-test consumers of this adapter package). (2) A new test
+    (`test_extensions_is_always_explicitly_set_never_omitted`) arms the pre-existing
+    always-pass-extensions convention as a gate rather than a habit -- purely additive, changes
+    no runtime behaviour, only adds a failure mode for a future regression.
 receipts:
   - claim: "Base SHA re-measured fresh in this session, not copied from any document/prompt"
     cmd: "git fetch origin main && git rev-parse origin/main"
@@ -98,12 +103,62 @@ receipts:
     exit: 0
     ts: "2026-08-24T07:36:00Z"
     seat: "session (pro)"
+  - claim: >-
+      Fresh three-way hash measurement (extensions omitted / extensions={} / extensions
+      populated), holding every other ActionItem field constant, done via direct construction
+      -- not recalled from an earlier turn -- to ground the second finding this session
+      surfaced while measuring the first
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -c "build the same ActionItem 3 ways varying only
+      extensions, print object_hash and model_fields_set membership for each"
+    exit: 0
+    ts: "2026-08-24T08:05:00Z"
+    seat: "session (pro)"
+    # result: A) omitted -> a42cea7f2d2bb8926e4815913a487ccd4fb634e71557fc0af8ec93205dcb7663
+    # (not in model_fields_set); B) extensions={} -> ed9d45a70ea3ae5d8afda9a5028cf66366e89a19a688f314d9e880ca18abac3f
+    # (in model_fields_set); C) populated -> c198815e24ddc7bf8005081788e61fbadf03bbcf389df0b7532b9f1868588c4b
+    # (in model_fields_set). All three distinct, confirming presence (not just value) drives
+    # object_hash.
+  - claim: "hashing.py:3-5 and :28 quoted verbatim before citing them in the new invariant paragraph, not paraphrased from the conductor's message"
+    cmd: "sed -n '1,35p' packages/research-os-core/research_os/hashing.py"
+    exit: 0
+    ts: "2026-08-24T07:55:00Z"
+    seat: "session (pro)"
+  - claim: >-
+      Guilt-arm proof: removing the extensions= kwarg from action_item_adapter.py's real call
+      site makes BOTH the new invariant test AND the pre-existing pending_ruling test fail red
+      on the real adapter output; file restored afterward and full suite re-verified green
+    cmd: >-
+      sed removes the `extensions=unbacked_refs_extension(...)` block from
+      action_item_adapter.py; pytest -k extensions_is_always_explicitly_set and -k
+      pending_ruling_is_machine_checkable both re-run; file restored from backup; full suite
+      re-run
+    exit: 0
+    ts: "2026-08-24T08:10:00Z"
+    seat: "session (pro)"
+    # both targeted tests FAILED as expected while extensions= was removed (one AssertionError,
+    # one TypeError: 'NoneType' object is not subscriptable) -- exit 0 above refers to the
+    # overall verification procedure completing as designed (guilt confirmed, file restored,
+    # suite green again), not to the intentionally-red pytest runs themselves.
+  - claim: "The cited sibling ledger row (ContentObject null-contract, same presence-preserving-semantics family, opposite direction) genuinely exists on PENDING-ARMS.md before citing it, not trusted from the conductor's paraphrase"
+    cmd: "grep -n 'ContentObject' .claude/skills/modus/PENDING-ARMS.md"
+    exit: 0
+    ts: "2026-08-24T08:15:00Z"
+    seat: "session (pro)"
+  - claim: "Full adapter test suite (now 10 tests, was 9) passes after the invariant addition, and ruff check/format stay clean"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/ -q --no-header && python3 -m ruff check backend/services/research_os/synthesis.py backend/tests/services/research_os/test_action_item_adapter.py && python3 -m ruff format --check <same 2 files>"
+    exit: 0
+    ts: "2026-08-24T08:12:00Z"
+    seat: "session (pro)"
 tests:
   - "backend/tests/services/research_os/test_action_item_adapter.py -- 8 pre-existing tests
-    unaffected + 1 new test (test_pending_ruling_is_machine_checkable_not_only_prose), asserting
+    unaffected + 2 new tests: test_pending_ruling_is_machine_checkable_not_only_prose (asserts
     extensions['com.balizero.research-os-adapters'].payload['pending_ruling'] ==
-    {'priority', 'sla.due_at', 'current_intent_ref'}."
-  - "backend/tests/services/research_os/ (full suite, 9 tests) -- exit 0."
+    {'priority', 'sla.due_at', 'current_intent_ref'}) and
+    test_extensions_is_always_explicitly_set_never_omitted (asserts 'extensions' in
+    item.model_fields_set -- guilt-verified this session to fail red when the extensions= kwarg
+    is removed from the real call site)."
+  - "backend/tests/services/research_os/ (full suite, 10 tests) -- exit 0."
   - "scripts/tests/test_pending_arms_report.py (100 tests) -- exit 0, confirms the ledger append
     does not break the report's own parser."
 static:

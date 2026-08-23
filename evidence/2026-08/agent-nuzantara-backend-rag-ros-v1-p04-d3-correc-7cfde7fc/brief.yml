@@ -53,6 +53,30 @@ objective: |
   persistence of `ActionItem` objects from this adapter anywhere yet (Deliverable 5's
   `research_os_contract_core` migration exists, but this adapter has no live write path into
   it). Stated here so the next reader does not have to re-derive it.
+
+  SECOND FINDING, surfaced while measuring the above, not what this PR set out to check: the
+  three-way hash comparison showed `object_hash` is sensitive not just to `extensions`' VALUE
+  but to whether the field was SET AT ALL. `research_os.hashing`'s own module docstring (lines
+  3-5) declares this as a deliberate wire rule -- "presence-preserving null semantics": an
+  absent field is omitted from the hashed payload (`exclude_unset=True`), a field explicitly
+  set is included even if empty. The same module (line 28) calls the resulting digest
+  "canonical object identity". Put together: two adapters producing the SAME logical object
+  from the SAME legacy row get TWO DIFFERENT canonical identities if one passes
+  `extensions={}` and the other omits the keyword entirely -- a difference of AUTHORING STYLE,
+  not of the object modeled. This adapter is safe today only because it always passes
+  `extensions=` explicitly -- a property of this code, not a rule written anywhere. Per
+  instruction, this is now armed rather than left as a documented habit: a new invariant
+  paragraph in `synthesis.py`'s module docstring (citing `hashing.py:3-5`/`:28`) plus a new
+  test, `test_extensions_is_always_explicitly_set_never_omitted`, asserting
+  `"extensions" in item.model_fields_set` on the adapter's real output. Guilt-armed this
+  session: removing the `extensions=` kwarg from the call site made BOTH this new test and the
+  pre-existing `test_pending_ruling_is_machine_checkable_not_only_prose` fail red (the latter
+  with `TypeError: 'NoneType' object is not subscriptable`), confirmed on the real adapter
+  output, then the file was restored and the full suite re-verified green. Whether a canonical
+  identity SHOULD depend on field-presence at all is a contract question this PR does not
+  decide (that belongs with the `ContentObject` null-contract row already on the ledger, same
+  family, opposite direction) -- this PR only makes ITS OWN adapter surface deterministic and
+  says so out loud.
 constraints:
   - 'Values unchanged: `priority="p2"`, `sla.due_at` from `expires_at`, `current_intent_ref=None`
     are IDENTICAL to what PR #4749 shipped. Only comments/docstrings/warnings and the
@@ -83,6 +107,10 @@ acceptance:
     proof-of-armed test description that fails while any of the 3 field names remains in
     `pending_ruling`, and an owner (Zero via the conductor -- a business ruling, not buildable
     code)."
+  - "`synthesis.py`'s module docstring states the extensions-presence invariant, citing
+    `hashing.py:3-5` and `:28`; `test_extensions_is_always_explicitly_set_never_omitted` arms
+    it against `ActionItem`'s adapter output, and was guilt-verified this session (removing the
+    `extensions=` call-site kwarg made it fail red, restored afterward)."
 consumer_map:
   - "GitHub PR's `Harness floor recompute` required check -- Gear-2 evidence pack, floor=1 (no
     hot-zone-pattern path touched)."
@@ -101,6 +129,12 @@ risks:
     comparison, zero persistence) -- but this stops being free the moment any future PR
     persists these objects or compares hashes across adapter versions; flagged here so that
     future work does not discover it by surprise."
+  - "The extensions-presence invariant is armed only for `ActionItem` in this PR (the only
+    adapter that exists in this worktree). The not-yet-opened slices 2 (ActionIntent), 3a
+    (OperationalReceipt), 3b (shadow+parity) live in a SEPARATE worktree and will need the same
+    invariant note plus their own `model_fields_set` assertion when they are rebased and
+    opened -- flagged here so it is not forgotten, not built here (out of this PR's file
+    scope)."
   - "The `pending_ruling` marker is itself a disclosure mechanism, not a gate -- nothing in this
     PR prevents a downstream consumer from ignoring `pending_ruling` and treating `priority`/
     `current_intent_ref` as authoritative today. That is an accepted, pre-existing property of
