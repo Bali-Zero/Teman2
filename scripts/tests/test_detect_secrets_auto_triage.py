@@ -267,8 +267,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 16, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 16. "
+    assert len(CONTENT_KEYED_RULES) == 17, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 17. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -286,6 +286,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: fold_pack_seq11.py seq-10 chain anchor exact-value pin (2026-08-20)
     # +1: fold_pack_seq12.py seq-11 chain anchor exact-value pin (2026-08-20)
     # +1: fold_pack_seq13_rules.py seq-12 chain anchor exact-value pin (2026-08-23, #4660)
+    # +1: fold_pack_seq13_source.py seq-12 chain anchor exact-value pin (2026-08-23, #4667)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1288,6 +1289,114 @@ def test_innocence_fold_seq12_keyed_assignment_not_approved() -> None:
     _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[11]
     keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ12_ANCHOR}",'
     assert content_pat.match(keyed_line) is None
+
+
+# ---------------------------------------------------------------------------
+# fold_pack_seq13_source.py — seq-12 chain anchor exact-value pin (2026-08-23, #4667)
+# ---------------------------------------------------------------------------
+# The seq-13 JOIN fold. Same value as fold_pack_seq13_rules.py's own rule
+# above (both chain off seq-12), in a DIFFERENT file — pins the anchor to
+# the exact value, in exactly this one path. Looked up by content (a
+# substring unique to its reason once file-qualified), not by list
+# position, per the 2026-08-23 policy note above: a new rule may be
+# inserted anywhere in CONTENT_KEYED_RULES without breaking a registration
+# test — this entry is itself an example, inserted between the seq12 and
+# p2b_score.json rules without touching any positional test in this file.
+
+FOLD_PACK_SEQ13_SOURCE = (
+    "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_source.py"
+)
+FOLD_PACK_SEQ13_SOURCE_ANCHOR = (
+    "ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d"
+)
+
+
+def test_fold_seq13_source_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    assert path_pat.search(FOLD_PACK_SEQ13_SOURCE)
+    assert not path_pat.search(FOLD_PACK_SEQ12)
+    assert not path_pat.search(
+        "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules.py"
+    )
+    assert not path_pat.search(
+        "scripts/detect_secrets_auto_triage.py"
+    )
+    assert "credential" in reason
+
+
+def test_guilt_fold_seq13_source_real_finding_approved() -> None:
+    """The exact real line 218 in the fold script must be approved — read
+    live off disk, so this fails if the file and rule ever drift, not
+    merely if someone edits a string literal in this test."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    lines = Path(FOLD_PACK_SEQ13_SOURCE).read_text(encoding="utf-8").splitlines()
+    real_line = lines[217]  # line 218, 1-indexed
+    assert real_line == f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}"'
+    assert content_pat.match(real_line), f"should be approved: {real_line!r}"
+
+
+def test_innocence_fold_seq13_source_other_hex_value_not_approved() -> None:
+    """A DIFFERENT 64-hex bare string line must not be approved — proves the
+    rule is pinned to the exact anchor value, not merely to the shape."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    other_hex_line = '    "' + "a" * 64 + '"'
+    assert content_pat.match(other_hex_line) is None
+
+
+def test_innocence_fold_seq13_source_uppercase_not_approved() -> None:
+    """The same value uppercased must not be approved — the anchor is
+    lowercase hex, matching hashlib.hexdigest's own output."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    uppercase_line = f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR.upper()}"'
+    assert content_pat.match(uppercase_line) is None
+
+
+def test_innocence_fold_seq13_source_ride_along_statement_not_approved() -> None:
+    """The value followed by a second statement or token on the same line
+    must not launder the ride-along — end-anchored, same discipline as every
+    other rule in this list."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    for compound in (
+        f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}"; import os',
+        f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}" "second_token"',
+    ):
+        assert content_pat.match(compound) is None, f"must NOT be approved: {compound!r}"
+
+
+def test_innocence_fold_seq13_source_keyed_assignment_not_approved() -> None:
+    """A JSON-style keyed line carrying the same value must not be approved —
+    the rule approves only the bare continuation-string shape of the
+    parenthesized assignment, never a `"key": "value"` shape."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}",'
+    assert content_pat.match(keyed_line) is None
+
+
+def test_fold_seq13_source_rule_does_not_launder_via_seq13_rules_path() -> None:
+    """The two seq-13 chain-anchor rules share the identical anchor VALUE
+    (both fold scripts chain off seq-12) but must stay path-scoped: this
+    rule's path pattern must reject fold_pack_seq13_rules.py even though
+    the content pattern alone would match a line copy-pasted from it."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    real_line = f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}"'
+    assert content_pat.match(real_line)  # content alone matches...
+    assert not path_pat.search(  # ...but path must not, for the sibling file
+        "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules.py"
+    )
 
 
 GOOGLE_OAUTH_LINT = "scripts/lint_google_oauth_credentials.py"

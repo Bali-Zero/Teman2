@@ -272,6 +272,49 @@ class TestHardFilterShape:
         assert ("family.relation_to_sponsor", "eq", "PARENT") in conjuncts
 
 
+# =============================================================================
+# CURED (was: KNOWN-OPEN GAP) — E31C's nationality leg. Closed by PR #4660
+# (seq-13 rules-only fold, merged 2026-08-23): `el.e31c-child-mixed-
+# marriage-support` gained a `family.sponsor_nationalities intersects
+# [ID]` conjunct, and a paired `hf.e31c-sponsor-not-indonesian` HARD_FILTER
+# was inserted. Confirmed deliberate against PR #4660's own body (FIX 1)
+# before this section was rewritten — this is the exact migration the
+# banner that used to live here scripted in advance (see git history on
+# this file, or `test_cure_forward_guard.py` in PR #4667, for the four-step
+# instructions this rewrite followed). What used to be a KNOWN-OPEN pin is
+# now `TestNationalityGapCuredShape` (structural, grouped with the other
+# structural classes above) and `TestNationalityGapCuredWitnesses`
+# (behavioural, grouped with `TestE31CForwardWitnesses` below).
+# =============================================================================
+
+_NATIONALITY_GAP_RULE_ID = "el.e31c-child-mixed-marriage-support"
+_NATIONALITY_GAP_CURED_CONJUNCTS = frozenset(
+    {
+        ("intent.purposes", "intersects", ("FAMILY",)),
+        ("family.relation_to_sponsor", "eq", "PARENT"),
+        ("family.sponsor_nationalities", "intersects", ("ID",)),
+    }
+)
+
+
+class TestNationalityGapCuredShape:
+    """Structural half of the cure (mirrors `TestE31CSupportRuleShape` /
+    `TestHardFilterShape` above) — pins `el.e31c-child-mixed-marriage-
+    support`'s new 3-conjunct shape now that PR #4660 closed the
+    nationality leg. If this goes red, the rule's conjuncts drifted from
+    the shape the cure shipped; re-derive from the real pack, do not
+    just widen the assertion."""
+
+    def test_present_with_exact_three_conjuncts(self, highest_source: dict[str, Any]) -> None:
+        rule = _find_rule(highest_source["rules"], _NATIONALITY_GAP_RULE_ID)
+        assert _conjuncts(rule["when"]) == _NATIONALITY_GAP_CURED_CONJUNCTS
+
+    def test_stage_and_effect(self, highest_source: dict[str, Any]) -> None:
+        rule = _find_rule(highest_source["rules"], _NATIONALITY_GAP_RULE_ID)
+        assert rule["stage"] == "ELIGIBILITY"
+        assert rule["effect"]["type"] == "SUPPORT"
+
+
 # ---------------------------------------------------------------------------
 # positive control — prove the semantic checker is not vacuous
 # ---------------------------------------------------------------------------
@@ -413,6 +456,59 @@ class TestE31CForwardWitnesses:
         assert FactPath.FAMILY_MARRIAGE_REGISTERED not in proof.missing_facts
 
 
+class TestNationalityGapCuredWitnesses:
+    """Behavioural half of the cure (mirrors `TestE31CForwardWitnesses`
+    above), driven against the real evaluator on the highest pack. Sponsor
+    nationality is the discriminator: US (no Indonesian nationality
+    anywhere) must no longer reach SUPPORTED via
+    `el.e31c-child-mixed-marriage-support`; ID must still reach it, and
+    must ALSO still fire the properly-scoped sibling
+    `el.e31c-mixed-marriage-parents` (the discrimination control that used
+    to live in the deleted `TestE31CNationalityGapKnownOpen` class — kept
+    here because it still proves the fix targets nationality specifically,
+    not "E31C always excluded now")."""
+
+    def test_us_nationality_no_longer_reaches_supported_via_this_rule(
+        self, highest_compiled: compiler.CompiledRulePack
+    ) -> None:
+        """Cured direction. Marriage IS registered — the registration
+        leg's cure (hf.e31c-marriage-not-registered) does not fire here,
+        because that HARD_FILTER only excludes on
+        `marriage_registered eq False`. This is the nationality leg
+        specifically, not a retest of the registration cure above."""
+        overrides = {
+            "intent.purposes": _known(["FAMILY"]),
+            "family.relation_to_sponsor": _known("PARENT"),
+            "family.sponsor_nationalities": _known(["US"]),
+            "family.marriage_registered": _known(True),
+        }
+        proof = _proof(highest_compiled, "E31C", overrides)
+        assert _NATIONALITY_GAP_RULE_ID not in {r.rule_id for r in proof.support_rules}
+        assert proof.status is not ProductProofStatus.SUPPORTED
+
+    def test_indonesian_nationality_control_fires_both_sibling_rules(
+        self, highest_compiled: compiler.CompiledRulePack
+    ) -> None:
+        """Discrimination control: the SAME fact pattern but with an
+        Indonesian sponsor nationality reaches SUPPORTED via BOTH sibling
+        rules — the properly-scoped `el.e31c-mixed-marriage-parents` fires
+        too. Proves the fix above is not simply "E31C never SUPPORTED
+        regardless of facts": it specifically requires ID nationality on
+        both the previously nationality-blind sibling and the always-
+        scoped one."""
+        overrides = {
+            "intent.purposes": _known(["FAMILY"]),
+            "family.relation_to_sponsor": _known("PARENT"),
+            "family.sponsor_nationalities": _known(["ID"]),
+            "family.marriage_registered": _known(True),
+        }
+        proof = _proof(highest_compiled, "E31C", overrides)
+        assert proof.status is ProductProofStatus.SUPPORTED
+        support_rule_ids = {r.rule_id for r in proof.support_rules}
+        assert _NATIONALITY_GAP_RULE_ID in support_rule_ids
+        assert _EDITED_RULE_ID in support_rule_ids
+
+
 def _write_temp_pack(source: dict[str, Any]) -> Path:
     """Writes ``source`` to a fresh temp file and returns its path — the
     ONLY way ``load_rule_pack_payload``/``_compiled_from_path`` can build a
@@ -425,152 +521,15 @@ def _write_temp_pack(source: dict[str, Any]) -> Path:
     return Path(name)
 
 
-# =============================================================================
-# KNOWN-OPEN GAP — E31C's nationality leg is UNENFORCED (a PIN, NOT an
-# endorsement). Everything above this banner asserts the CURE (the
-# registration leg, closed seq-10, enforced fail-closed by
-# hf.e31c-marriage-not-registered). Everything below pins a DIFFERENT,
-# still-open defect in a THIRD rule scoped to the same E31C
-# product_version_id — kept in its own section, its own class names, and
-# its own docstrings so nobody mistakes a passing pin for a clean bill of
-# health.
-# =============================================================================
-#
-# E31C ("Child of Legal Mixed Marriage") exists because ONE parent is
-# Indonesian. `el.e31c-child-mixed-marriage-support` (ELIGIBILITY/SUPPORT,
-# same product_version_id as the two cured rules above) has only 2
-# conjuncts — `intent.purposes intersects [FAMILY]` and
-# `family.relation_to_sponsor eq PARENT` — no nationality conjunct, no
-# marriage conjunct. Because the evaluator's ELIGIBILITY hit-policy is
-# `COVER_ALL_DECLARED_PURPOSES` (models.py, OR-like: ANY firing SUPPORT
-# rule is sufficient for that purpose), this sibling alone is enough to
-# reach SUPPORTED — the properly-scoped `el.e31c-mixed-marriage-parents`
-# (4 conjuncts, including the nationality check) never gets a chance to
-# shield the applicant, because nothing requires it to also fail.
-# Empirically confirmed against the REAL evaluator on the real seq-12
-# payload: a FAMILY+PARENT applicant with sponsor nationality ["US"]
-# (no Indonesian nationality anywhere) and a REGISTERED marriage reaches
-# SUPPORTED via `el.e31c-child-mixed-marriage-support` alone. Pre-existing
-# since seq-9; seq-10's cure closed the REGISTRATION leg only.
-#
-# IF THE TEST BELOW STARTS FAILING: that is GOOD NEWS, not a regression.
-# It means a future pack finally added a nationality (or equivalent) gate
-# to `el.e31c-child-mixed-marriage-support` (or retired/rescoped it), and
-# the US-nationality fact pattern no longer reaches SUPPORTED via that
-# rule alone. When that happens:
-#   1. Confirm it was DELIBERATE — check the fold's own PR/doctrine note
-#      for an intentional nationality-leg cure, not an accidental rule
-#      deletion or an unrelated evaluator change.
-#   2. DELETE this class — the gap it pins no longer exists.
-#   3. ADD a witness next to `TestE31CForwardWitnesses` above, asserting
-#      the CURED behavior (US-nationality FAMILY+PARENT no longer
-#      SUPPORTED via this rule — EXCLUDED/BLOCKED_UNKNOWN/UNSUPPORTED per
-#      whatever the cure's own design intends).
-#   4. ADD a structural check (mirroring `TestHardFilterShape` /
-#      `TestE31CSupportRuleShape` above) pinning the cured rule's new
-#      conjunct shape, the same way `TestE31CSupportRuleShape` pins
-#      `el.e31c-mixed-marriage-parents` today.
-# Do NOT simply widen or delete the assertion to make it pass again —
-# that would silently re-open exactly the gap this class exists to keep
-# visible. This is the same registration-leg transition the mandate
-# originally wanted for c2/e31c, applied forward to the nationality leg.
-
-_NATIONALITY_GAP_RULE_ID = "el.e31c-child-mixed-marriage-support"
-_NATIONALITY_GAP_CONJUNCTS = frozenset(
-    {
-        ("intent.purposes", "intersects", ("FAMILY",)),
-        ("family.relation_to_sponsor", "eq", "PARENT"),
-    }
-)
-
-
-class TestE31CNationalityGapKnownOpen:
-    """PIN of a known-open defect — see the module-level banner comment
-    directly above for the full mechanism, the evidence, and (most
-    importantly) the exact instructions for what to do when this class
-    starts failing. House pattern: `_KNOWN_PRE_EXISTING_LINT_RESIDUALS` in
-    `test_pack_chain_and_pricing.py` — a test that asserts the CURRENT,
-    DEFECTIVE reality so the gap is executable, not a comment someone can
-    miss."""
-
-    def test_gap_rule_has_exactly_two_conjuncts_no_nationality_no_marriage(
-        self, highest_source: dict[str, Any]
-    ) -> None:
-        """Structural half. If a future fold adds a nationality or
-        marriage conjunct to this rule, this goes red FIRST — before
-        anyone even has to drive the evaluator."""
-        rule = _find_rule(highest_source["rules"], _NATIONALITY_GAP_RULE_ID)
-        assert _conjuncts(rule["when"]) == _NATIONALITY_GAP_CONJUNCTS
-        assert rule["stage"] == "ELIGIBILITY"
-        assert rule["effect"]["type"] == "SUPPORT"
-
-    def test_foreign_foreign_parent_with_registered_marriage_still_reaches_supported(
-        self, highest_compiled: compiler.CompiledRulePack
-    ) -> None:
-        """Behavioural half, driven against the real evaluator. Sponsor
-        nationality is US (no Indonesian nationality anywhere in the fact
-        pattern), marriage IS registered — the registration leg's cure
-        (hf.e31c-marriage-not-registered) does not fire here, because that
-        HARD_FILTER only excludes on `marriage_registered eq False`. This
-        is the nationality leg specifically, not a retest of the
-        registration cure above."""
-        overrides = {
-            "intent.purposes": _known(["FAMILY"]),
-            "family.relation_to_sponsor": _known("PARENT"),
-            "family.sponsor_nationalities": _known(["US"]),
-            "family.marriage_registered": _known(True),
-        }
-        proof = _proof(highest_compiled, "E31C", overrides)
-        assert proof.status is ProductProofStatus.SUPPORTED, (
-            "KNOWN-OPEN GAP PIN: a red here may mean the E31C nationality "
-            "leg was CURED — read the banner above "
-            "TestE31CNationalityGapKnownOpen before touching this assertion."
-        )
-        # Membership, not equality (Kimi K3 refuter finding, 2026-08-23):
-        # the pinned defect is "the gap rule fires on a US-nationality fact
-        # pattern", not "the gap rule is the ONLY support rule that fires".
-        # A future fold that adds a legitimately-scoped support rule (e.g.
-        # one requiring `marriage_registered eq True`) would fire here too
-        # and turn a set-equality assertion red while the nationality gap
-        # is still open — a false red on a pin whose own banner says do
-        # NOT simply widen or delete the assertion.
-        assert _NATIONALITY_GAP_RULE_ID in {r.rule_id for r in proof.support_rules}
-
-    def test_indonesian_nationality_control_fires_both_sibling_rules(
-        self, highest_compiled: compiler.CompiledRulePack
-    ) -> None:
-        """Discrimination control: the SAME fact pattern but with an
-        Indonesian sponsor nationality reaches SUPPORTED via BOTH sibling
-        rules — the properly-scoped `el.e31c-mixed-marriage-parents` fires
-        too. Proves the gap test above is not simply "E31C always
-        SUPPORTED regardless of facts": it is specifically that the
-        nationality-blind sibling fires alone on a fact pattern the
-        properly-scoped rule would reject outright (no ID nationality)."""
-        overrides = {
-            "intent.purposes": _known(["FAMILY"]),
-            "family.relation_to_sponsor": _known("PARENT"),
-            "family.sponsor_nationalities": _known(["ID"]),
-            "family.marriage_registered": _known(True),
-        }
-        proof = _proof(highest_compiled, "E31C", overrides)
-        assert proof.status is ProductProofStatus.SUPPORTED
-        # Membership, not equality — same rationale as the US-nationality
-        # case above: this must not go red merely because a future,
-        # legitimately-scoped support rule also fires on this pattern.
-        support_rule_ids = {r.rule_id for r in proof.support_rules}
-        assert _NATIONALITY_GAP_RULE_ID in support_rule_ids
-        assert _EDITED_RULE_ID in support_rule_ids
-
-
 class TestNationalityGapPinIsNotVacuous:
     """Positive control (same discipline as `TestConjunctCheckerIsNotVacuous`
-    above): proves the pin in `TestE31CNationalityGapKnownOpen` is actually
-    discriminating on `el.e31c-child-mixed-marriage-support`'s presence —
-    not asserting something that would be true of E31C regardless.
-    Operates on a TEMP COPY of the highest pack (`_write_temp_pack`) —
-    never a file on disk. Answers "what would make the pin fail?":
-    removing (or properly scoping) this one rule does, and this test
-    proves it does, right now, against the real evaluator."""
+    above): proves `el.e31c-child-mixed-marriage-support`'s presence is
+    what makes a mismatched-nationality applicant fail to reach SUPPORTED
+    via this rule — not asserting something that would be true of E31C
+    regardless. Operates on a TEMP COPY of the highest pack
+    (`_write_temp_pack`) — never a file on disk. Answers "what would make
+    this rule's contribution to E31C fail?": removing it does, and this
+    test proves it does, right now, against the real evaluator."""
 
     def test_removing_the_gap_rule_flips_the_us_case_to_unsupported(
         self, highest_source: dict[str, Any]
