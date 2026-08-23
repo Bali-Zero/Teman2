@@ -40,6 +40,15 @@ diff:
     measured from `git show --stat` on 06a0974a0. Deterministic gear floor
     recomputed from the changed-files list = 3 (hot-zone:
     .github/workflows/tests.yml). Gear 3 is the floor, not a choice.
+
+    ROUND 3 (2026-08-24, this edit — the smoke job's first real CI run
+    surfaced a SECOND, deeper layer after aaf29ea71 fixed the first):
+    fullstack_smoke.py itself moves from 1/-1 (vs origin/main) to 44/-4 —
+    `git diff --numstat origin/main -- apps/backend-rag/backend/scripts/
+    visa_engine/fullstack_smoke.py` measured directly, not derived. This
+    pack.yml also changes again in the same commit (receipts below +
+    reworded prose, see notes). No other file in this PR moves in this
+    round.
   behaviour_change: >-
     One E2E spec's assertion changes from asserting UI text the product does
     not render to asserting the text it actually renders (no product code
@@ -56,6 +65,26 @@ diff:
     anything the smoke itself exercises — and rewords the job's own comment
     about why it is non-blocking (comment-only, see the corrected-claim
     receipt below).
+
+    ROUND 3: the fix above cured the PARENT process's own Settings()
+    import; the job's first real CI run then failed one layer deeper — the
+    CHILD uvicorn process fullstack_smoke.py spawns via
+    _sanitized_child_env() builds that child's env from a small allowlist
+    plus explicit overrides, and JWT_SECRET_KEY/API_KEYS were in neither,
+    so the child hit the identical ValidationError independently. Two
+    changes, both to fullstack_smoke.py, no product code: (1) `_wait_for_http`
+    now takes a `log_path` and folds the child's own last-50-lines tail
+    directly into the RuntimeError/TimeoutError it raises, instead of only
+    reporting a bare returncode — diagnosability fix, requested and landed
+    first, independent of whether the underlying cause was ever found; (2)
+    `backend_env` now sets JWT_SECRET_KEY/API_KEYS to values generated at
+    run time via `secrets.token_urlsafe()` rather than a fixed literal —
+    nothing else in the smoke or the Playwright spec depends on a specific
+    value, only on the validator's shape being satisfied, so a fresh random
+    value per run is both sufficient and avoids planting a second
+    detect-secrets-shaped literal in a file with no prior audited
+    occurrence to inherit a decision from (see the detect-secrets receipts
+    below for why that mattered in practice, not just in theory).
 receipts:
   - claim: "The disposable-DB fullstack smoke passes for real, after both the assertion fix and the sys.executable fix, from a clean local run"
     cmd: "cd apps/backend-rag && source .venv/bin/activate && VISA_ORACLE_FULLSTACK=1 VISA_ORACLE_SMOKE_ADMIN_DSN=postgresql://test@127.0.0.1:5432/postgres PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.fullstack_smoke"
@@ -128,7 +157,15 @@ receipts:
     ts: "2026-08-23T16:08Z"
     seat: "session (M5, build lane)"
   - claim: 'RED #1 (first real CI run, job 97222544510): reproduced the exact ValidationError locally with the job''s own env, from a CWD with no local .env so pydantic-settings'' env_file=".env" default can''t mask a missing var the way it does when run from inside a checkout that happens to carry one'
-    cmd: 'env -i PATH="$PATH" HOME="$HOME" VISA_ORACLE_FULLSTACK=1 VISA_ORACLE_SMOKE_ADMIN_DSN=postgresql://test:test@127.0.0.1:5432/postgres PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python -c "from backend.app.core import settings"'
+    cmd: >-
+      env -i PATH="$PATH" HOME="$HOME" with the same VISA_ORACLE_FULLSTACK,
+      VISA_ORACLE_SMOKE_ADMIN_DSN (the workflow's standard loopback
+      test/test@127.0.0.1:5432/postgres literal — see the postgres service
+      block in .github/workflows/tests.yml), and PYTHONDONTWRITEBYTECODE
+      values the CI job sets, PYTHONPATH=apps/backend-rag,
+      apps/backend-rag/.venv/bin/python -c "from backend.app.core import
+      settings" — JWT_SECRET_KEY/API_KEYS deliberately UNSET for this run
+      (see claim: this is the before-fix repro)
     result: >-
       pydantic_core.ValidationError: 2 validation errors for Settings —
       jwt_secret_key / api_keys, identical messages to the CI log verbatim.
@@ -136,7 +173,14 @@ receipts:
     ts: "2026-08-24T00:15Z"
     seat: "session (mouth lane, task fullstack-smoke-fix-0824 — RED-fix follow-up to aaf29ea71)"
   - claim: "Adding JWT_SECRET_KEY/API_KEYS (same convention values as every other job in this file) is sufficient — no further missing settings behind these two, checked at both the config-module and the smoke-entrypoint-module import level"
-    cmd: 'same env as above plus JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only_min_32_chars_long API_KEYS=test_api_key_1,test_api_key_2 — first `python -c "from backend.app.core import settings"`, then `python -c "import backend.scripts.visa_engine.fullstack_smoke"`'
+    cmd: >-
+      same env as above plus JWT_SECRET_KEY and API_KEYS set to the
+      workflow's standard test literals (same two values .github/workflows/
+      tests.yml's job env now sets — not reproduced here to keep this file
+      out of detect-secrets' Secret Keyword pattern; see that workflow file
+      for the exact strings) — first `python -c "from backend.app.core
+      import settings"`, then `python -c "import
+      backend.scripts.visa_engine.fullstack_smoke"`
     result: >-
       Both succeed: \"IMPORT OK\" / \"MODULE IMPORT OK\", only a
       non-fatal \"OPENAI_API_KEY not set\" warning on stderr (pre-existing,
@@ -149,15 +193,20 @@ receipts:
     cmd: "python3 -m detect_secrets scan --baseline .secrets.baseline .github/workflows/tests.yml (run against a throwaway copy of the baseline output, then diffed by hand — NOT committed, see note below)"
     result: >-
       4 findings in tests.yml, hashed_secret values
-      a94a8fe5.../45140d58.../340c2061..., all is_secret:false — identical
-      hashes to the 4 entries already present in the committed
-      .secrets.baseline for this file (git show HEAD:.secrets.baseline).
-      CAUTION for future sessions: `detect-secrets scan --baseline
-      <file> <single-target>` rewrites the WHOLE baseline file in place,
-      dropping every other file's entries and the filters_used/generated_at
-      header — this run's baseline mutation was reverted with `git checkout
-      -- .secrets.baseline` immediately after reading the result and was
-      never staged or committed.
+      a94a8fe5.../45140d58.../340c2061..., every one of them already marked
+      not-a-real-secret (the baseline's own audit flag, not restated here as
+      a colon-adjacent "secret" + value pair — that exact shape is what the
+      Secret Keyword detector matches on, and writing it in prose about the
+      baseline's own field format was a self-inflicted false positive found
+      the hard way in this same pack.yml, since fixed) — identical hashes to
+      the 4 entries already present in the committed .secrets.baseline for
+      this file (git show HEAD:.secrets.baseline). CAUTION for future
+      sessions: `detect-secrets scan --baseline <file> <single-target>`
+      rewrites the WHOLE baseline file in place, dropping every other
+      file's entries and the filters_used/generated_at header — this run's
+      baseline mutation was reverted with `git checkout -- .secrets.baseline`
+      immediately after reading the result and was never staged or
+      committed.
     exit: 0
     ts: "2026-08-24T00:20Z"
     seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
@@ -198,6 +247,158 @@ receipts:
     result: "no output — zero findings."
     exit: 0
     ts: "2026-08-24T00:18Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "ROUND 3, layer 2 of the smoke job's first real CI run (job
+      97226433333, head 9598908ff): the CHILD uvicorn process hit the same
+      Settings() ValidationError the parent hit in round 2, independently —
+      confirmed from the FULL step log, not the truncated traceback alone"
+    cmd: "gh run view --job 97226433333 --log-failed (126 lines, read in
+      full) — the step's own except-block already logs `backend log
+      tail:` via the pre-existing _tail_log()/logger.error() path before
+      re-raising"
+    result: >-
+      Lines 40-99 of that log ARE the child's real traceback: uvicorn ->
+      main_api.py -> backend.app.core.config -> Settings() ->
+      pydantic_core.ValidationError, jwt_secret_key/api_keys, byte-identical
+      messages to round 2's parent-side error. This was already reachable in
+      the existing log without any code change — the diagnosability gap the
+      team-lead flagged is real (the RuntimeError ITSELF only carries the
+      returncode) but for this specific failure the separate logger.error
+      tail-dump already surfaced the cause a few lines earlier in the same
+      step output. Recorded honestly rather than claimed as blocking: the
+      diagnosability fix below is still the right thing to build (a future
+      failure without this except-block's context, or a consumer that only
+      captures the exception message, would have none of this), just not
+      what THIS round's diagnosis actually depended on.
+    exit: 1
+    ts: "2026-08-24T01:05Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "Diagnosability fix: _wait_for_http's own raised error now carries
+      the child's last-50-lines log tail inline, verified by reading the
+      new function body, not just by it compiling"
+    cmd: "python3 -m py_compile apps/backend-rag/backend/scripts/visa_engine/fullstack_smoke.py; git diff -- apps/backend-rag/backend/scripts/visa_engine/fullstack_smoke.py (read in full)"
+    result: >-
+      Compiles clean. Both raise sites (returncode-exit and timeout) now
+      f-string in `_tail_log(log_path, lines=50)`; both `_wait_for_http`
+      call sites (backend readiness, frontend readiness) updated to pass
+      their own `log_path`. The existing outer except-block's tail-dump
+      (round-3-layer-2 receipt above) is unchanged and still fires too —
+      belt and suspenders, not a replacement.
+    exit: 0
+    ts: "2026-08-24T01:08Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "Root cause fixed: passing JWT_SECRET_KEY/API_KEYS through to the
+      child's env makes the full local smoke pass end-to-end, backend
+      readiness included — reproduced twice, once with fixed test literals
+      and once with the final runtime-random values"
+    cmd: >-
+      env -i PATH=$PATH HOME=$HOME VISA_ORACLE_FULLSTACK=1
+      VISA_ORACLE_SMOKE_ADMIN_DSN set to the same loopback test/test
+      literal used throughout this PR (see the postgres service block in
+      .github/workflows/tests.yml — not reproduced here, same reason as
+      the round-2 receipts above) PYTHONDONTWRITEBYTECODE=1
+      PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python -m
+      backend.scripts.visa_engine.fullstack_smoke (parent env intentionally
+      still carries the workflow's standard JWT_SECRET_KEY/API_KEYS test
+      literals — irrelevant to the child now, which gets its own generated
+      values regardless of what the parent has)
+    result: >-
+      First run (before the secrets.token_urlsafe() change, backend_env
+      still hardcoded): backend /health/ready 503, 503, then 200; frontend
+      /visa-oracle 200; Playwright "1 passed (29.3s)"; "full-stack smoke
+      passed with signed TEST RulePack ..."; disposable database dropped;
+      exit 0. Second run (after switching to runtime-random values): same
+      shape, "1 passed (8.2s)", exit 0. Both full local runs, not import-only
+      checks — this is the same code path CI's own job runs.
+    exit: 0
+    ts: "2026-08-24T01:00Z, re-run 2026-08-24T01:22Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "The fullstack_smoke.py unit-test suite still has zero
+      regressions after both the log-tail signature change and the
+      backend_env change"
+    cmd: "cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest backend/tests/scripts/visa_engine/test_fullstack_smoke.py -q"
+    result: "10 passed, run twice (once per code change in this round)."
+    exit: 0
+    ts: "2026-08-24T01:02Z, 01:24Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "Detect Secrets (required check) went red on 9598908ff because
+      THIS pack.yml's own round-2 receipts quoted the literal test
+      JWT_SECRET_KEY/DSN values verbatim — 2 Secret Keyword + 1 Basic Auth
+      Credentials, all three in this file, zero from tests.yml. Fixed by
+      rewording the receipts to name the values by reference rather than
+      reproduce them, not by touching .secrets.baseline or adding a
+      CONTENT_KEYED_RULES entry"
+    cmd: "python3 -m detect_secrets scan '<this file>' (no --baseline arg —
+      prints JSON to stdout, touches no file on disk; the safe way to
+      isolate-test ONE file without the whole-baseline-clobber trap this
+      same pack already documents above) — run before AND after the reword"
+    result: >-
+      Before: 2 findings (Secret Keyword at the literal JWT_SECRET_KEY= line,
+      Basic Auth Credentials at the literal postgresql://test:test@... DSN
+      line). After the first reword pass: those two cleared, but a NEW
+      Secret Keyword finding appeared one receipt later — traced with
+      detect_secrets.plugins.keyword.KeywordDetector called directly, line
+      by line, to the literal phrase "is_secret:false" in prose describing
+      the baseline's own JSON field (a colon-adjacent "secret" + value
+      shape is exactly what this detector matches on — self-inflicted,
+      writing ABOUT the audit field name in the same shape as an actual
+      assignment). Reworded a second time to avoid that shape. Final:
+      KeywordDetector.analyze_line() run against every line of this file
+      returns zero matches; a full `detect_secrets scan` (all plugins, no
+      baseline) on this file returns zero findings.
+    exit: 0
+    ts: "2026-08-24T01:15Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "The new JWT_SECRET_KEY/API_KEYS literals originally added to
+      fullstack_smoke.py's backend_env were ALSO a new, genuine (not
+      already-audited) Secret Keyword finding — unlike tests.yml, this file
+      had no prior occurrence of that literal for detect-secrets' same-file
+      hash-carry to inherit an audit decision from. Resolved by not
+      hardcoding a literal at all (see the secrets.token_urlsafe() receipt
+      above), not by adding a CONTENT_KEYED_RULES entry"
+    cmd: "python3 -m detect_secrets scan apps/backend-rag/backend/scripts/visa_engine/fullstack_smoke.py — run against the hardcoded-literal version, then again against the final runtime-random version"
+    result: >-
+      Hardcoded-literal version: 4 findings — 2 pre-existing
+      (DEFAULT_ADMIN_DSN Basic Auth at line 21, TEST_TRUST_STORE_JSON Base64
+      High Entropy at line 81, both already present before this PR and
+      already clean in the real CI history on this file) plus 2 NEW ones at
+      the JWT_SECRET_KEY/API_KEYS override lines. Runtime-random version:
+      back down to exactly the 2 pre-existing findings, zero new ones.
+      Considered a CONTENT_KEYED_RULES entry (the seq10/11/12
+      fold_pack_seqNN.py precedent — path-scoped + exact-value-anchored) as
+      the alternative; rejected it because nothing downstream needs a FIXED
+      value here (unlike a chain-anchor hash that must match a specific
+      artifact) — token_urlsafe() removes the literal-secret-shaped string
+      from source entirely rather than asking the scanner to trust it.
+    exit: 0
+    ts: "2026-08-24T01:20Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "Final, authoritative confirmation using the REAL configured
+      .secrets.baseline (all 26 plugins + all repo filters, not the
+      simplified per-file checks above) and the exact CI sequence: scan,
+      auto-triage --apply, check-unaudited — all green on the fully fixed
+      working tree"
+    cmd: >-
+      python3 -m detect_secrets scan --baseline .secrets.baseline
+      --exclude-files node_modules/.* --exclude-files \.venv/.*
+      --exclude-files venv/.* --exclude-files \.git/.* (whole-repo safe
+      form, no path arguments — the destructive --baseline-plus-single-path
+      form this same pack's round-2 receipts warn about was never used);
+      python3 scripts/detect_secrets_auto_triage.py --apply; python3
+      scripts/detect_secrets_check_unaudited.py
+    result: >-
+      "Total findings: 10174 / Auto-approved: 9987 / No rule matched: 187"
+      then "All findings audited (10174 total)", exit 0. The 187
+      "no rule matched" residue already carried prior manual is_secret
+      decisions from before this session (not this PR's problem). Baseline
+      mutation from this whole-repo scan reverted with `git checkout --
+      .secrets.baseline` immediately after reading the result, exactly as
+      the round-2 receipt above already does — never staged, never
+      committed, and the coordinator's instruction not to touch this file
+      via the scoped `--baseline <file>` destructive form was honored
+      throughout: only the whole-repo form ran, and only transiently.
+    exit: 0
+    ts: "2026-08-24T01:35Z"
     seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
 pii_scan: clean
 tests:

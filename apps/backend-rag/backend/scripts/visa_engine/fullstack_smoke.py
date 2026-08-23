@@ -330,12 +330,28 @@ async def _stop_process(process: asyncio.subprocess.Process | None) -> None:
         await process.wait()
 
 
-async def _wait_for_http(url: str, process: asyncio.subprocess.Process, *, timeout: float) -> None:
+async def _wait_for_http(
+    url: str,
+    process: asyncio.subprocess.Process,
+    *,
+    timeout: float,
+    log_path: Path,
+) -> None:
+    # The caller only learns a returncode/timeout unless we fold the child's
+    # own output in here — the returncode alone (e.g. "1") is not
+    # diagnosable without a second round-trip to re-run and go read the log
+    # by hand. `log_path` is the same file `_start_process` is already
+    # streaming this child's combined stdout+stderr into, so the real cause
+    # (an import-time traceback, a bind failure, ...) is always sitting
+    # right there when this raises.
     deadline = asyncio.get_running_loop().time() + timeout
     async with httpx.AsyncClient(timeout=2.0, follow_redirects=True) as client:
         while asyncio.get_running_loop().time() < deadline:
             if process.returncode is not None:
-                raise RuntimeError(f"server exited before readiness: {process.returncode}")
+                raise RuntimeError(
+                    f"server exited before readiness: {process.returncode}\n"
+                    f"--- last 50 lines of {log_path} ---\n{_tail_log(log_path, lines=50)}"
+                )
             try:
                 response = await client.get(url)
                 if response.status_code == 200:
@@ -343,7 +359,10 @@ async def _wait_for_http(url: str, process: asyncio.subprocess.Process, *, timeo
             except httpx.HTTPError:
                 pass
             await asyncio.sleep(0.25)
-    raise TimeoutError(f"server did not become ready: {url}")
+    raise TimeoutError(
+        f"server did not become ready: {url}\n"
+        f"--- last 50 lines of {log_path} ---\n{_tail_log(log_path, lines=50)}"
+    )
 
 
 def _tail_log(path: Path, *, lines: int = 80) -> str:
@@ -417,11 +436,30 @@ async def run() -> int:
             await _insert_test_policy(database_dsn)
             await _activate_test_pack(database_dsn, backend_root)
 
+            # backend.app.core.config.Settings() is constructed at module
+            # scope the moment the child imports backend.app.main_api (see
+            # backend/app/core/config.py) and jwt_secret_key/api_keys have no
+            # default -- ValidationError, uvicorn exits 1, readiness never
+            # comes up. This child never issues or verifies a real JWT and
+            # never checks a caller-supplied API key (the Playwright spec
+            # never sends one) -- these two values only need to SATISFY the
+            # validators' shape (min 32 chars / non-empty comma-separated
+            # list), not match anything else. Generated fresh per run rather
+            # than a fixed literal: nothing else in this smoke depends on a
+            # specific value, and a random one never reads as a static
+            # secret-shaped string for a scanner to flag (a hardcoded literal
+            # here was exactly that on the first attempt -- self-inflicted
+            # Secret Keyword findings with no line in this file's history to
+            # inherit an audit decision from).
+            disposable_jwt_secret = secrets.token_urlsafe(32)
+            disposable_api_key = secrets.token_urlsafe(24)
             backend_env = _sanitized_child_env(
                 {
+                    "API_KEYS": disposable_api_key,
                     "DATABASE_URL": database_dsn,
                     "DISABLE_BACKGROUND_WORKERS": "1",
                     "ENVIRONMENT": "development",
+                    "JWT_SECRET_KEY": disposable_jwt_secret,
                     "PYTHONDONTWRITEBYTECODE": "1",
                     "PYTHONPATH": ".",
                     "RAG_PROXY_ENABLED": "false",
@@ -453,6 +491,7 @@ async def run() -> int:
                 f"http://127.0.0.1:{backend_port}/health/ready",
                 backend_process,
                 timeout=60,
+                log_path=backend_log,
             )
 
             frontend_env = _sanitized_child_env(
@@ -483,6 +522,7 @@ async def run() -> int:
                 f"http://127.0.0.1:{frontend_port}/visa-oracle",
                 frontend_process,
                 timeout=180,
+                log_path=frontend_log,
             )
 
             exit_code = await _run_playwright(
