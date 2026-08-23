@@ -40,6 +40,18 @@ on:
 permissions:
   contents: read
   actions: read
+  # `commits/{sha}/pulls` (how the probe resolves the authoritative merged_at)
+  # is a pulls endpoint — `contents: read` alone does not reach it.
+  #
+  # NOT listed, because it CANNOT be: the required-context list lives on
+  # `branches/main/protection`, which needs repo-ADMIN scope, and
+  # `administration` is not among the permissions a workflow GITHUB_TOKEN can
+  # be granted at all. That call therefore raised on every single run since
+  # this workflow was armed, and the probe reported CANNOT-VERIFY every time
+  # (26 consecutive failed runs on 2026-08-23 alone). The probe now falls back
+  # to the checked-in snapshot infra/required.d/contexts.json — which is why
+  # the checkout step above is load-bearing, not decorative.
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.sha }}
@@ -61,11 +73,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ github.event.inputs.sha || github.sha }}
         run: |
+          # `set -uo pipefail` does NOT turn off `-e`: the runner's default
+          # shell for `run:` is `bash --noprofile --norc -e -o pipefail {0}`,
+          # so -e is already on and cannot be cancelled from inside the
+          # script body. That is why the naive
+          #     python3 ... > /tmp/verdict.json
+          #     rc=$?
+          # NEVER RAN its second line: -e aborted the step the instant the
+          # probe exited non-zero, `rc` was never written to $GITHUB_OUTPUT,
+          # the next step read rc="" and fell to its `*)` arm — so EVERY
+          # non-zero outcome, real VIOLATION (rc=1, tier p0) included, was
+          # misreported as CANNOT-VERIFY (tier digest). The alarm was not
+          # merely crying: it was crying in the wrong key, and a genuine
+          # branch-protection breach would have arrived as a routine digest.
+          # (Superscar #2 / W101 — a fail-closed path decapitated by `-e`.)
+          # `|| rc=$?` is exempt from -e because the command is part of an
+          # OR-list, which is the whole point.
           set -uo pipefail
+          rc=0
           python3 scripts/probe_merge_gate_integrity.py \
-            --sha "$TARGET_SHA" --json > /tmp/verdict.json
-          rc=$?
+            --sha "$TARGET_SHA" --json > /tmp/verdict.json || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # A hard crash can leave the file empty; the alert step json.load()s
+          # it, so give it something valid to read rather than a second,
+          # more confusing failure on top of the first.
+          if [ ! -s /tmp/verdict.json ]; then
+            printf '{"verdict":"CANNOT-VERIFY","subject":"%s","error":"probe produced no output (rc=%s)"}\n' \
+              "$TARGET_SHA" "$rc" > /tmp/verdict.json
+          fi
           cat /tmp/verdict.json
 
       # Machine-readable rc, never re-derived from prose (W88 — judge by
