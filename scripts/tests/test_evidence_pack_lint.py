@@ -9,6 +9,7 @@ colpevolezza" — each guard needs BOTH proofs registered).
 
 from __future__ import annotations
 
+import datetime
 import subprocess
 import sys
 import tempfile
@@ -22,9 +23,12 @@ SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
 from evidence_pack_lint import (  # noqa: E402
+    LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
+    _is_anthropic_seat,
     check_brief_ref_exists,
     check_dissent_nonempty_on_gear3,
     check_gear_floor,
+    check_lanes_build_seat_diversity,
     check_pii_scan_clean,
     check_receipts_have_provenance,
     check_size_budget,
@@ -702,3 +706,214 @@ def test_numstat_file_cli_flag_wired_end_to_end(tmp_path):
     )
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert "gear_override" in (proc.stdout + proc.stderr)
+
+
+# --------------------------------------------------------- check_lanes_build_seat_diversity
+
+
+def _lane_pack(*lanes):
+    return {"lanes": list(lanes)}
+
+
+LANE_BUILD_ANTHRO = {"lane": "D1", "role": "build", "seat": "sonnet"}
+LANE_BUILD_CODEX = {"lane": "D2", "role": "build", "seat": "codex"}
+LANE_REVIEW_ANTHRO = {"lane": "D3", "role": "review", "seat": "opus"}
+
+
+def test_lanes_guilt_gear2_two_anthropic_builders_post_flip():
+    """GUILT: Gear 2, two build lanes, both Anthropic -> violation on/after
+    the enforcement date."""
+    pack = _lane_pack(LANE_BUILD_ANTHRO, {"lane": "D2", "role": "build", "seat": "opus"})
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=2, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations
+    assert notice is None
+    assert "D3" in violations[0]
+
+
+def test_lanes_notice_gear2_two_anthropic_builders_pre_flip():
+    """NOTICE (not guilt): same shape as above, but before the flip date —
+    the rule reports via the notice return, not via violations."""
+    pack = _lane_pack(LANE_BUILD_ANTHRO, {"lane": "D2", "role": "build", "seat": "opus"})
+    before = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+    violations, notice = check_lanes_build_seat_diversity(pack, gear=2, today=before)
+    assert violations == []
+    assert notice is not None
+    assert "D3" in notice
+
+
+def test_lanes_guilt_gear3_three_anthropic_builders_post_flip():
+    """GUILT: Gear 3, three Anthropic build lanes (mixed name styles) ->
+    violation on/after the enforcement date."""
+    pack = _lane_pack(
+        LANE_BUILD_ANTHRO,
+        {"lane": "D2", "role": "build", "seat": "opus"},
+        {"lane": "D3", "role": "build", "seat": "claude-sonnet-5"},
+    )
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=3, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations
+    assert notice is None
+
+
+def test_lanes_guilt_not_a_list():
+    """GUILT: `lanes` present but not a list is always a violation."""
+    violations, notice = check_lanes_build_seat_diversity({"lanes": "nope"}, gear=2)
+    assert violations
+    assert "list" in violations[0]
+    assert notice is None
+
+
+def test_lanes_guilt_entry_not_mapping():
+    """GUILT: a lane entry that is not a mapping is always a violation."""
+    pack = _lane_pack("not-a-mapping")
+    violations, notice = check_lanes_build_seat_diversity(pack, gear=2)
+    assert violations
+    assert "mapping" in violations[0]
+    assert notice is None
+
+
+def test_lanes_guilt_missing_seat():
+    """GUILT: a lane entry missing `seat` is always a violation."""
+    pack = {"lanes": [{"lane": "D1", "role": "build"}]}
+    violations, notice = check_lanes_build_seat_diversity(pack, gear=2)
+    assert violations
+    assert "seat" in violations[0]
+    assert notice is None
+
+
+def test_lanes_guilt_invalid_role():
+    """GUILT: `role: deploy` is not in {build, review, read}."""
+    pack = {"lanes": [{"lane": "D1", "role": "deploy", "seat": "codex"}]}
+    violations, notice = check_lanes_build_seat_diversity(pack, gear=2)
+    assert violations
+    assert "deploy" in violations[0]
+    assert notice is None
+
+
+def test_lanes_innocence_mixed_builders_clean_both_sides():
+    """INNOCENCE: Gear 2, two build lanes, one non-Anthropic (codex) ->
+    clean on both sides of the flip date."""
+    pack = _lane_pack(LANE_BUILD_ANTHRO, LANE_BUILD_CODEX)
+    before = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+    for today in (before, LANES_NON_ANTHROPIC_ENFORCEMENT_DATE):
+        violations, notice = check_lanes_build_seat_diversity(pack, gear=2, today=today)
+        assert violations == []
+        assert notice is None
+
+
+def test_lanes_innocence_one_build_plus_reviews():
+    """INNOCENCE: Gear 2, only ONE build lane + two review lanes (all
+    Anthropic) -> exempt by the <2-build-lanes carve-out."""
+    pack = _lane_pack(LANE_BUILD_ANTHRO, LANE_REVIEW_ANTHRO, LANE_REVIEW_ANTHRO)
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=2, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations == []
+    assert notice is None
+
+
+def test_lanes_innocence_gear1_exempt():
+    """INNOCENCE: Gear 1 with two Anthropic build lanes is exempt."""
+    pack = _lane_pack(LANE_BUILD_ANTHRO, {"lane": "D2", "role": "build", "seat": "opus"})
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=1, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations == []
+    assert notice is None
+
+
+def test_lanes_innocence_absent():
+    """INNOCENCE: `lanes` key absent entirely -> clean."""
+    violations, notice = check_lanes_build_seat_diversity({}, gear=2)
+    assert violations == []
+    assert notice is None
+
+
+def test_lanes_innocence_overmatch_guard_opusculum_claude_ish():
+    """INNOCENCE: seats literally named `opusculum` or `claude_ish` are
+    treated as non-Anthropic (word/prefix-aware match, not bare substring)."""
+    pack = _lane_pack(
+        {"lane": "D1", "role": "build", "seat": "opusculum"},
+        {"lane": "D2", "role": "build", "seat": "claude_ish"},
+    )
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=2, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations == []
+    assert notice is None
+
+
+def test_lanes_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
+    """Wired through lint(): a Gear-2 pack with two Anthropic build lanes
+    before the flip date prints a NOTICE to stderr but returns exit 0."""
+    root, write_brief, write_pack = tmp_repo
+    write_brief(gear=2)
+    pack_path = write_pack(lanes=[
+        {"lane": "D1", "role": "build", "seat": "sonnet"},
+        {"lane": "D2", "role": "build", "seat": "opus"},
+    ])
+    # lint() uses the real clock; today is before 2026-09-05, so it must notice
+    rc, violations = lint(pack_path, root, None)
+    assert rc == 0
+    assert violations == []
+
+
+@pytest.mark.parametrize(
+    "seat,expected",
+    [
+        ("opus-5", True),
+        ("sonnet-5", True),
+        ("haiku-4-5", True),
+        ("claude-opus-5", True),
+        ("claude-sonnet-5", True),
+        ("sonnet", True),
+        ("opus", True),
+        ("haiku", True),
+        ("Claude-Sonnet-5", True),
+        ("  sonnet  ", True),
+    ],
+)
+def test_is_anthropic_seat_guilt_anthropic_token_matches(seat, expected):
+    """GUILT (for the matcher): roster-style Anthropic names are recognised
+    regardless of trailing version tokens, case, or surrounding whitespace."""
+    assert _is_anthropic_seat(seat) is expected
+
+
+@pytest.mark.parametrize(
+    "seat,expected",
+    [
+        ("opusculum", False),
+        ("claude_ish", False),
+        ("codex", False),
+        ("kimi", False),
+        ("glm", False),
+        ("qwen", False),
+        ("codex-sol", False),
+    ],
+)
+def test_is_anthropic_seat_innocence_non_anthropic_token_matches(seat, expected):
+    """INNOCENCE (for the matcher): non-Anthropic names are not swept up by
+    substring or prefix matching, and ``_`` is not treated as a separator."""
+    assert _is_anthropic_seat(seat) is expected
+
+
+def test_lanes_gear3_opus5_sonnet5_flip_behavior():
+    """End-to-end under-match regression: roster-style Anthropic build seats
+    must be a VIOLATION post-flip and a NOTICE pre-flip."""
+    pack = _lane_pack(
+        {"lane": "D1", "role": "build", "seat": "opus-5"},
+        {"lane": "D2", "role": "build", "seat": "sonnet-5"},
+    )
+    before = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+    violations, notice = check_lanes_build_seat_diversity(pack, gear=3, today=before)
+    assert violations == []
+    assert notice is not None
+
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=3, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations
+    assert notice is None
