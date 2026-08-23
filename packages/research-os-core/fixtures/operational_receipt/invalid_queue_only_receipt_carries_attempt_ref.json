@@ -1,0 +1,52 @@
+{
+  "operational_receipt_id": "a5000000-0000-4000-8000-000000000001",
+  "operational_receipt_family_id": "com.example.operational_receipt.family-001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "receipt_type": "queue.triage",
+  "subject_refs": [
+    {
+      "object_kind": "com.example.action_item",
+      "object_id": "a1000000-0000-4000-8000-000000000001",
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "execution_attempt_ref": {
+    "execution_attempt_id": "a4000000-0000-4000-8000-000000000001",
+    "object_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "classification": {
+    "risk_class": "red",
+    "sensitivity": "client_pii"
+  },
+  "actor_or_executor": {
+    "producer": {
+      "name": "com.example.fixture_builder",
+      "version": "1.0.0"
+    }
+  },
+  "terminal_outcome": "succeeded",
+  "outcome_code": "com.example.outcome.triaged",
+  "effects": [],
+  "artifact_refs": [],
+  "evidence_refs": [],
+  "observed_at": "2026-03-01T00:25:00Z",
+  "recorded_at": "2026-03-01T00:25:05Z",
+  "idempotency_key": "synthetic-operational-receipt-001",
+  "reconciliation": {
+    "state": "pending",
+    "evidence_refs": []
+  },
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": true
+  },
+  "object_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+}
