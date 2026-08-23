@@ -204,6 +204,45 @@ const CURRENT_STATUS_CODES = [
   "ITK_FROM_VISIT_D",
   "ITK_PERALIHAN",
 ] as const;
+// 29 real product codes, verbatim from `rulepack-prod-007.source.json`
+// (`products[].product_code`, filtered to `E`-prefix). Only reachable via
+// `stay_permit_code` (tree.ts), gated behind `holds_stay_permit === "yes"`
+// — see `mapCurrentStatusCode` below. Not the same list as
+// `CURRENT_STATUS_CODES` above: that one is the non-E ITK/visit-class
+// catalogue, this one is the ITAS/ITAP catalogue backing
+// `derived.has_active_stay_permit`'s positive branch (fact_registry.py's
+// `^E\d+[A-Z]?$` heuristic).
+const STAY_PERMIT_CODES = [
+  "E23",
+  "E23U",
+  "E23V",
+  "E28A",
+  "E28B",
+  "E28C",
+  "E28D",
+  "E28F",
+  "E30",
+  "E30A",
+  "E30B",
+  "E30E",
+  "E30F",
+  "E31A",
+  "E31B",
+  "E31C",
+  "E31D",
+  "E31E",
+  "E31F",
+  "E31G",
+  "E31H",
+  "E31J",
+  "E33",
+  "E33A",
+  "E33B",
+  "E33C",
+  "E33E",
+  "E33F",
+  "E33G",
+] as const;
 const SPONSOR_TYPES = [
   "NONE",
   "INDIVIDUAL",
@@ -400,7 +439,24 @@ export function mapDisclosedReviewFlags(
   return [...flags].sort();
 }
 
+// Two source questions feed this ONE FactPath. The `holds_stay_permit` gate
+// (tree.ts) makes them mutually exclusive in the tree — "yes" routes to the
+// KITAS/KITAP transcription question (`stay_permit_code`, validated against
+// the real E-code catalogue), "no" routes to the original 8-code visit-class
+// question (`current_status_code`), unchanged — and `pruneFacts` (flow.ts)
+// drops whichever one falls out of history on every EDIT, so at most one of
+// the two raw fields is ever populated at a time. Branching on THAT
+// (presence of the raw field actually answered) rather than on
+// `holds_stay_permit`'s value keeps this mapper correct even when it's
+// invoked in isolation — e.g. a test that answers `stay_permit_code` alone,
+// without also setting `holds_stay_permit` — instead of silently resolving
+// to NOT_ASKED because the gate field was never populated. Both branches go
+// through `enumFact`, so an unrecognized or "unsure" value resolves UNKNOWN
+// either way — never a guessed KNOWN.
 function mapCurrentStatusCode(facts: OracleFacts): FactValue<string> {
+  if (facts.stay_permit_code !== undefined) {
+    return enumFact(facts.stay_permit_code, STAY_PERMIT_CODES);
+  }
   return enumFact(facts.current_status_code, CURRENT_STATUS_CODES);
 }
 

@@ -177,6 +177,85 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.current_status_code" },
     notSure: { mode: "human-review" },
   },
+  // Two-step gate (2026-08-23 owner ruling, D12/derived.has_active_stay_permit
+  // reachability): `derived.has_active_stay_permit`'s `KNOWN(True)` branch
+  // requires an E-prefix `current_status_code`, which the 8-code list above
+  // never offers — the positive path was dormant since PR #4650. Ruled
+  // against an umbrella sentinel (would require editing the freshly-merged
+  // backend derivation, the MORE invasive option, and discards the specific
+  // code other rules will want) and against discrete-codes-only with no gate
+  // (asks precision a layperson may not have; a guessed answer would resolve
+  // KNOWN and be trusted). This gate asks first, then the code is a
+  // TRANSCRIPTION of what's printed on the applicant's own card — not recall
+  // of a legal taxonomy, a materially different trust class from
+  // `family_sponsor_permit_basis` (see `mapFamilySponsorPermitBasis` in
+  // fact-mapper.ts), which is exactly why that fact needed a wall and this
+  // one does not.
+  holds_stay_permit: {
+    id: "holds_stay_permit",
+    i18nKey: "q.holds_stay_permit",
+    kind: "branch",
+    group: "location",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: false,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.holds_stay_permit" },
+    notSure: { mode: "human-review" },
+  },
+  // 29 real product codes, verbatim from `rulepack-prod-007.source.json`
+  // (`products[].product_code` + `products[].names`), not invented — every
+  // one is `category: "LIMITED_STAY"`, i.e. an actual ITAS a person can
+  // currently hold, not merely a visa product applied for. "I'm not sure"
+  // is the existing universal `notSure` affordance below, not a listed
+  // option — `enumFact()` already resolves the literal string "unsure" to
+  // UNKNOWN(UNVERIFIED), never a guessed KNOWN (fact-mapper.ts).
+  stay_permit_code: {
+    id: "stay_permit_code",
+    i18nKey: "q.stay_permit_code",
+    kind: "choice",
+    group: "location",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["immigration.current_status_code"],
+    },
+    sensitive: true,
+    options: [
+      { key: "E23", labelI18nKey: "q.stay_permit_code.opt.E23" },
+      { key: "E23U", labelI18nKey: "q.stay_permit_code.opt.E23U" },
+      { key: "E23V", labelI18nKey: "q.stay_permit_code.opt.E23V" },
+      { key: "E28A", labelI18nKey: "q.stay_permit_code.opt.E28A" },
+      { key: "E28B", labelI18nKey: "q.stay_permit_code.opt.E28B" },
+      { key: "E28C", labelI18nKey: "q.stay_permit_code.opt.E28C" },
+      { key: "E28D", labelI18nKey: "q.stay_permit_code.opt.E28D" },
+      { key: "E28F", labelI18nKey: "q.stay_permit_code.opt.E28F" },
+      { key: "E30", labelI18nKey: "q.stay_permit_code.opt.E30" },
+      { key: "E30A", labelI18nKey: "q.stay_permit_code.opt.E30A" },
+      { key: "E30B", labelI18nKey: "q.stay_permit_code.opt.E30B" },
+      { key: "E30E", labelI18nKey: "q.stay_permit_code.opt.E30E" },
+      { key: "E30F", labelI18nKey: "q.stay_permit_code.opt.E30F" },
+      { key: "E31A", labelI18nKey: "q.stay_permit_code.opt.E31A" },
+      { key: "E31B", labelI18nKey: "q.stay_permit_code.opt.E31B" },
+      { key: "E31C", labelI18nKey: "q.stay_permit_code.opt.E31C" },
+      { key: "E31D", labelI18nKey: "q.stay_permit_code.opt.E31D" },
+      { key: "E31E", labelI18nKey: "q.stay_permit_code.opt.E31E" },
+      { key: "E31F", labelI18nKey: "q.stay_permit_code.opt.E31F" },
+      { key: "E31G", labelI18nKey: "q.stay_permit_code.opt.E31G" },
+      { key: "E31H", labelI18nKey: "q.stay_permit_code.opt.E31H" },
+      { key: "E31J", labelI18nKey: "q.stay_permit_code.opt.E31J" },
+      { key: "E33", labelI18nKey: "q.stay_permit_code.opt.E33" },
+      { key: "E33A", labelI18nKey: "q.stay_permit_code.opt.E33A" },
+      { key: "E33B", labelI18nKey: "q.stay_permit_code.opt.E33B" },
+      { key: "E33C", labelI18nKey: "q.stay_permit_code.opt.E33C" },
+      { key: "E33E", labelI18nKey: "q.stay_permit_code.opt.E33E" },
+      { key: "E33F", labelI18nKey: "q.stay_permit_code.opt.E33F" },
+      { key: "E33G", labelI18nKey: "q.stay_permit_code.opt.E33G" },
+    ],
+    whyWeAsk: { i18nKey: "why.stay_permit_code" },
+    notSure: { mode: "human-review" },
+  },
   overstay_days: {
     id: "overstay_days",
     i18nKey: "q.overstay_days",
