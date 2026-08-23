@@ -1,23 +1,30 @@
 brief_ref: evidence/brief.yml
 plan_ref: >-
-  P04-D1 canonical OutcomeEvent (CONTRACTS.md section 16), PR #4653; evidence pack revision 4 of 4 (2026-08-23)
-  — refreshes revision 3's numbers to HEAD 8f98e5de3 after merging origin/main (14332eb3e, which landed
-  PR #4635's risk_reclassification_receipt/ sanitization_receipt kinds concurrently) into this branch
-  a second time. The evidence-file collision (cicatrix-superscar family #9) recurred for the same structural
-  reason as revision 1; this revision resolves it the same way (--ours on both evidence files) and additionally
-  proves the 3 shared registration files (cli.py, models/__init__.py, schemas/__init__.py) lost nothing
-  of origin/main's concurrent additions across the merge.
+  P04-D1 canonical OutcomeEvent (CONTRACTS.md section 16), PR #4653; evidence pack revision 5 of 5 (2026-08-23)
+  — refreshes revision 4's numbers after merging origin/main (3f41c6b0294f04576fdd33480361aaba911454bb,
+  which landed several more PRs concurrently, none touching this PR's outcome_event surface) into this
+  branch a third time. The evidence-file collision (cicatrix-superscar family #9) recurred for the same
+  structural reason as revisions 1 and 4; this revision resolves it the same way (--ours on evidence/pack.yml
+  — evidence/brief.yml did not conflict this round) and re-proves the 3 shared registration files (cli.py,
+  models/__init__.py, schemas/__init__.py) lost nothing of origin/main's concurrent additions. Also corrects
+  a phantom commit SHA that revision 4's own text introduced: the merge commit it described was written
+  as `8f98e5de3` (never existed in this branch's history — not found by `git log --all`); the real commit
+  git actually produced for that merge is `77a3ad6f3`, parents `b9e777a64` + `14332eb3e`, confirmed via
+  `git show --no-patch --format='%H %P' 77a3ad6f3`. Corrected here rather than left, per cicatrix-superscar
+  family #6 (anti-hallucination blindness) — a pack actively being edited for accuracy should not carry
+  a known-false SHA forward.
 diff:
   net_lines: >-
-    +2334/-190, 21 files, net +2144 -- measured fresh THIS turn by `git diff --numstat origin/main HEAD`
-    (see receipts). Now measured directly against origin/main's tip (14332eb3e) rather than the original
-    merge-base c4242cd444, because after this revision's merge commit origin/main IS an ancestor of HEAD
-    -- `git diff origin/main HEAD` therefore shows exactly this PR's own unique contribution and correctly
-    excludes every one of origin/main's own commits (both the ones already incorporated at the original
-    merge-base and the new ones this merge just absorbed), with no manual subtraction needed. Same 21-file
-    set as revision 3 (this PR never touched a governance-receipt file); the line-count delta from revision
-    3's +2170/-114 is origin/main's own concurrent edits to the 3 shared registration files (cli.py/models/__init__.py/schemas/__init__.py
-    gained entries for the 2 new kinds between the two merge-bases), not new work by this PR.
+    +2561/-139, 21 files, net +2422 -- measured fresh THIS turn by `git diff --numstat
+    3f41c6b0294f04576fdd33480361aaba911454bb` against the post-merge working tree (post-resolution,
+    pre-commit; see receipts). Same 21-file set as revisions 3 and 4 (this PR never touched a
+    governance-receipt file). Of the total, evidence/pack.yml and evidence/brief.yml themselves account
+    for +451/-82 and +191/-57 respectively (self-referential — the pack describes its own diff); the
+    other 19 files (this PR's actual work: outcome_event model/schema/fixtures/test + the 3 registration
+    files' +2/+2/+2 lines each) total +1919/-0, unchanged in substance from revision 4 since this round's
+    merge touched none of them — the net_lines growth since revision 4's +2334/-190 is entirely the
+    evidence files' own accumulated revision history plus origin/main moving further ahead (a wider base
+    diff on the same two self-describing files), not new work by this PR.
   behaviour_change: >-
     Adds one new contract kind end-to-end (model + schema + fixtures + tests + registration), PLUS as
     of ce82bb93e: (a) the model's metric_profile_ref/metric_result_ref joint-presence invariant is now
@@ -261,9 +268,10 @@ receipts:
     ts: 2026-08-23T10:36Z
     seat: claude
   - claim: >-
-      Merge finalized (`git commit --no-edit`, merge commit 8f98e5de3, parents b9e777a64 and origin/main's
-      14332eb3e). origin/main is now a strict ancestor of HEAD, confirmed via `git merge-base --is-ancestor
-      origin/main HEAD` (exit 0).
+      Merge finalized (`git commit --no-edit`, merge commit 77a3ad6f3 [corrected in revision 5 -- this
+      receipt originally named a phantom SHA 8f98e5de3 that never existed; see plan_ref], parents b9e777a64
+      and origin/main's 14332eb3e). origin/main is now a strict ancestor of HEAD, confirmed via `git
+      merge-base --is-ancestor origin/main HEAD` (exit 0).
     cmd: git commit --no-edit && git merge-base --is-ancestor origin/main HEAD
     exit: 0
     ts: "2026-08-23T10:36:37Z"
@@ -350,10 +358,60 @@ receipts:
     exit: 0
     ts: "2026-08-23T10:43:26Z"
     seat: claude
+  - claim: >-
+      REVISION 5: origin/main moved to 3f41c6b0294f04576fdd33480361aaba911454bb (several more PRs landed
+      concurrently since revision 4's 14332eb3e/8d2ed25f3) since revision 4's merge. `git fetch origin
+      main` then `git merge origin/main --no-edit` conflicted on exactly 1 file this round -- evidence/pack.yml
+      (the same fixed-path collision as revisions 1 and 4, cicatrix-superscar family #9) -- evidence/brief.yml
+      auto-merged cleanly this time (origin/main's commits in this range did not touch it), and the 3 shared
+      registration files again auto-merged cleanly, no conflict markers.
+    cmd: git fetch origin main && git merge origin/main --no-edit
+    exit: 1
+    ts: "2026-08-23T18:53Z"
+    seat: claude
+  - claim: >-
+      evidence/pack.yml resolved --ours (this branch's version wins, matching revisions 1 and 4's established
+      resolution pattern for this exact collision class); 0 conflict markers remain anywhere in the tree
+      after resolution.
+    cmd: git checkout --ours evidence/pack.yml && git add evidence/pack.yml && git diff --check
+    exit: 0
+    ts: "2026-08-23T18:53Z"
+    seat: claude
+  - claim: >-
+      LOSS-CHECK, non-zero hit counts on both sides, not a visual "looks fine": origin/main
+      (3f41c6b0294f04576fdd33480361aaba911454bb) BEFORE this merge had exactly 14 kinds registered in
+      each of the 3 shared files' import-line count (action_intent, action_item, approval_receipt,
+      conductor_handoff, execution_attempt, metric_profile, metric_result, object_successor_edge,
+      operational_receipt, revocation_receipt, risk_reclassification_receipt, sanitization_receipt,
+      verification_receipt, workflow_run) and 14 CONTRACT_MODELS/__all__/SCHEMA_MODELS entries each --
+      outcome_event present in NONE of them (0 hits, correctly, since it is this PR's own addition). The
+      merged tree (post-resolution, pre-commit) has exactly 15 in each -- origin/main's 14 PLUS
+      outcome_event, nothing dropped; strict-subset check passed on every one of the 3 files.
+    cmd: >-
+      git show 3f41c6b0294f04576fdd33480361aaba911454bb:packages/research-os-core/research_os/cli.py |
+      grep -cE '^from research_os\.models\.'; grep -cE '^from research_os\.models\.'
+      packages/research-os-core/research_os/cli.py (repeated per-file for models/__init__.py and
+      schemas/__init__.py, both import-line count and __all__/dict-block entry count)
+    exit: 0
+    ts: "2026-08-23T18:54Z"
+    seat: claude
+  - claim: >-
+      diff.net_lines refreshed against the fresh merge-tree measurement: 21 files (same set as revisions
+      3 and 4), +2561/-139, net +2422 -- of which evidence/pack.yml and evidence/brief.yml themselves are
+      +451/-82 and +191/-57 (self-referential); the other 19 files (this PR's real work) are unchanged
+      from revision 4 in substance at +1919/-0, since this round's merge touched none of the outcome_event
+      surface. See diff: block above for the full breakdown.
+    cmd: >-
+      git diff --numstat 3f41c6b0294f04576fdd33480361aaba911454bb -- . | awk '{a+=$1; d+=$2; n++}
+      END{print "files="n, "added="a, "deleted="d, "net="a-d}'
+    exit: 0
+    ts: "2026-08-23T18:55Z"
+    seat: claude
 tests:
   - >-
     apps/backend-rag/backend/tests/unit/research_os (full suite, 266 passed as of the revision-4 merge commit
-    8f98e5de3 -- was 232 pre-merge, +34 from origin/main's own concurrent test_governance_receipts.py and
+    77a3ad6f3 [corrected in revision 5 from a phantom SHA 8f98e5de3; see plan_ref] -- was 232 pre-merge,
+    +34 from origin/main's own concurrent test_governance_receipts.py and
     related additions, none of it this PR's work -- /1 pre-existing skip) and the outcome_event/schemas
     subsets in isolation — all green per receipts above. This IS the applicable test surface for a contracts-package
     addition; there is no separate integration surface because packages/research-os-core is not yet wired
