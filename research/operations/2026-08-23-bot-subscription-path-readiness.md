@@ -79,7 +79,7 @@ fail-closes on the mismatch, done. **The timeline refuses that story as the ORIG
 | Gauge advancing, daemon healthy | 2026-08-20 01:11→01:12Z | ledger row, 08-20 |
 | **Gauge freezes — daemon stops claiming** | **2026-08-20 03:45:11Z** | `wa_broker_gauge` today |
 | **Pro reboots** | **2026-08-20 09:49:54Z** | `sysctl -n kern.boottime` |
-| **codex-cli 0.149.0 installed** | **2026-08-20 20:45:25Z** | `stat` on the resolved binary |
+| **codex-cli 0.149.0 installed** | **2026-08-21 15:59:23Z** | `stat` on the resolved binary |
 | Measurement | 2026-08-23 ~01:20Z | this document |
 
 Two consequences, both arithmetic:
@@ -87,15 +87,15 @@ Two consequences, both arithmetic:
 1. **launchd's `runs` counter resets at boot**, so the 7,514 restarts span the window since
    **09:49:54Z on 08-20**, not since the gauge froze: 63.50 h, an implied spacing of **30.42 s**
    against a 30 s floor.
-2. The window since the CLI updated is only 52.58 h, which at a strict 30 s floor caps the
-   restarts at **6,309**. We observe **7,514**. **Therefore the crash-loop began at least 10 hours
-   BEFORE codex-cli was upgraded — the version-pin mismatch cannot be the original cause.**
+2. The window since the CLI updated is only 33.35 h, which at a strict 30 s floor caps the
+   restarts at **4,002**. We observe **7,514**. **Therefore ~3,512 restarts (~29 hours) predate
+   the 0.149.0 upgrade — the version-pin mismatch cannot be the original cause.**
 
 **What is actually established:**
 
 - The daemon stopped claiming at 03:45:11Z on 08-20, **6.08 h before the reboot** — so it was
   already failing under the pre-reboot launchd session. **That first cause is unknown.**
-- Since 20:45:25Z on 08-20 the pin mismatch is real and, given the code path, would by itself be
+- Since 15:59:23Z on 08-21 the pin mismatch is real and, given the code path, would by itself be
   sufficient to keep the daemon down. So it is a genuine **second** cause, layered on the first.
 - **Consequence for the cure: bumping the pin alone may not revive the daemon.** It removes a
   blocker that certainly exists now; it does not address whatever killed it on 08-20.
@@ -151,6 +151,20 @@ its expected token, rc 0.
 — `--sandbox`, `--skip-git-repo-check`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules` —
 are all still accepted by 0.149.0 (`codex exec --help`), and a live `codex exec --sandbox
 read-only` probe returned normally today. Nothing in the adapter's call shape depends on 0.147.0.
+
+**The log has now been read, and it confirms the CURRENT crash cause — not the initiating one.**
+The operator read `/Users/zantara-codex/logs/wa-codex-broker.err` (the root-only blocker noted
+above is cleared). The tail shows exactly the pin-mismatch startup refusal: `RuntimeError:
+wa-codex-daemon: startup refused — CLI version does not match
+WA_CODEX_CLI_VERSION_PIN='0.147.0'`, with the daemon separately logging `CLI version '0.149.0'
+does not match pin '0.147.0'`. The wrapper sidecar
+`/Users/zantara-codex/.organism/last_seen/pro.wa_codex_broker.json` reads `{"status":"starting",
+"note":"exec daemon"}`, confirming the wrapper reached `exec` (its own guards would have exited
+78, not 1, had it failed earlier). **This settles the CURRENT cause and NOT the initiating one**:
+the log tail shows today's crashes, and the ~29 h window before the upgrade (arithmetic above) is
+still unexplained. The leading untested hypothesis: an intermediate codex version (0.148.x)
+auto-installed around `2026-08-20T03:45Z` — the exact moment the gauge froze — which npm would
+have overwritten invisibly, since only the latest install's mtime survives on disk.
 
 ### 1.3 The seat sentinel — never armed, and the reason is a timing accident worth recording
 
@@ -304,9 +318,9 @@ argued away.
 1. **The daemon's cause was misattributed.** The first draft said codex-cli's auto-update broke the
    version pin, full stop. Kimi attacked the arithmetic and was right. Re-measured: launchd's `runs`
    counter **resets at boot** (`sysctl -n kern.boottime` = `09:49:54Z 08-20`), so 7,514 restarts span
-   the 63.50 h since boot, not since the gauge froze; and the 52.58 h since the 0.149.0 binary's
-   mtime cap restarts at 6,309 against a 30 s floor. Observing 7,514 proves **the crash-loop began
-   ≥10 h before the upgrade**. The pin explains persistence, never initiation. The initiating cause
+   the 63.50 h since boot, not since the gauge froze; and the 33.35 h since the 0.149.0 binary's
+   mtime cap restarts at 4,002 against a 30 s floor. Observing 7,514 proves **the crash-loop began
+   ~29 h before the upgrade**. The pin explains persistence, never initiation. The initiating cause
    is **unknown** and sits in a root-only log.
 2. **A corroboration was withdrawn, not weakened.** The draft argued "restart spacing = the 30 s
    floor plus ~3.3 s of real work, therefore the daemon reached `codex --version`". Void:
