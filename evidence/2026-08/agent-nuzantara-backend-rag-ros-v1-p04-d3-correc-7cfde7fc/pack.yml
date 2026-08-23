@@ -1,0 +1,154 @@
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D3 correction: fix false matrix-approval citations after an independent REFUSE verdict (claims #10/#11/#12), 2026-08-24"
+diff:
+  net_lines: >-
+    +245/-43, 4 files: action_item_adapter.py (+203/-39, docstring + 3 field
+    comments/warnings rewritten, extensions call site extended), synthesis.py
+    (+19/-2, unbacked_refs_extension() gains an optional pending_ruling parameter, merged into
+    the same payload dict), test_action_item_adapter.py (+21/-2, one new test), PENDING-ARMS.md
+    (+2/-0, one new ledger row). Measured this session via `git diff --numstat` against this
+    branch's own base (origin/main @ bf85e81b0acb09459bc9560d9deefc078ed09823, re-fetched fresh,
+    zero drift from merge-base).
+  behaviour_change: >-
+    Zero change to any adapted VALUE: priority="p2", sla.due_at from expires_at, and
+    current_intent_ref=None are byte-identical to what PR #4749 shipped. The only behavioural
+    delta is additive: extensions['com.balizero.research-os-adapters'].payload gains a second
+    key, pending_ruling. This DOES change object_hash for every ActionItem this adapter
+    produces (measured: pre-correction 305489949ff73447eb4c5825ffd07c5b4708fb90cc609ee204a4714790a324ee
+    vs post-correction dd7d5a2dcb869d8121793bf5ad01ee9d4ef5f54c3f6b8da4952646dfff510e22 on the
+    identical fixture row) -- confirmed harmless today per brief.yml's risks section (no
+    hardcoded hash literal anywhere, no parity probe compares object_hash, zero persistence of
+    this kind yet, still zero non-test consumers of this adapter package).
+receipts:
+  - claim: "Base SHA re-measured fresh in this session, not copied from any document/prompt"
+    cmd: "git fetch origin main && git rev-parse origin/main"
+    exit: 0
+    ts: "2026-08-24T07:05:00Z"
+    seat: "session (pro)"
+  - claim: "This branch's merge-base with origin/main is identical to origin/main's own tip -- zero drift"
+    cmd: "git merge-base HEAD origin/main"
+    exit: 0
+    ts: "2026-08-24T07:05:10Z"
+    seat: "session (pro)"
+  - claim: "Diff on the 3 code/test files is exactly +243/-43 (203/39 + 19/2 + 21/2)"
+    cmd: "git diff --numstat -- apps/backend-rag/backend/services/research_os/action_item_adapter.py apps/backend-rag/backend/services/research_os/synthesis.py apps/backend-rag/backend/tests/services/research_os/test_action_item_adapter.py"
+    exit: 0
+    ts: "2026-08-24T07:20:00Z"
+    seat: "session (pro)"
+  - claim: "PENDING-ARMS.md diff is exactly +2/-0 (one blank separator + one new row, matching the file's own entry-separation convention)"
+    cmd: "git diff --numstat -- .claude/skills/modus/PENDING-ARMS.md"
+    exit: 0
+    ts: "2026-08-24T07:32:00Z"
+    seat: "session (pro)"
+  - claim: "The full research_os adapter test suite passes, including the new pending_ruling test (9/9, was 8/8 before this correction)"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/ -q --no-header"
+    exit: 0
+    ts: "2026-08-24T07:15:00Z"
+    seat: "session (pro)"
+  - claim: "ruff check and ruff format --check both pass clean on the 3 touched files after auto-reformatting"
+    cmd: "python3 -m ruff check backend/services/research_os/action_item_adapter.py backend/services/research_os/synthesis.py backend/tests/services/research_os/test_action_item_adapter.py && python3 -m ruff format --check <same 3 files>"
+    exit: 0
+    ts: "2026-08-24T07:18:00Z"
+    seat: "session (pro)"
+  - claim: >-
+      Empirically measured (not assumed) that extensions participates in object_hash, and the
+      exact before/after hash values on the identical fixture row, BEFORE building the
+      pending_ruling channel, per the conductor's explicit prior instruction
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -c "construct two ActionItem model_construct drafts
+      differing only in extensions payload, compute object_hash() on each, compare"
+    exit: 0
+    ts: "2026-08-24T06:40:00Z"
+    seat: "session (pro)"
+  - claim: "Zero hardcoded object_hash literal anywhere that this correction would silently break"
+    cmd: "git grep -n '305489949ff73447\\|object_hash ==' -- apps/backend-rag/backend/tests apps/backend-rag/backend/services/research_os"
+    exit: 1
+    ts: "2026-08-24T07:22:00Z"
+    seat: "session (pro)"
+    # exit 1 = grep found zero hardcoded hash literals -- confirmed absence, not a failed command.
+  - claim: "The not-yet-opened parity-probe slice (3b, this same worktree) never compares object_hash field-by-field, only individual adapted values"
+    cmd: "grep -n 'object_hash' backend/services/research_os/parity.py"
+    exit: 1
+    ts: "2026-08-24T07:23:00Z"
+    seat: "session (pro)"
+    # exit 1 = zero references to object_hash in parity.py -- confirmed, the parity probe
+    # compares mapped field values, not the hash.
+  - claim: "pending_ruling and unbacked_refs are both absent from V1_RESERVED_EXTENSION_FIELD_NAMES, so validate_extensions() accepts this payload"
+    cmd: 'PYTHONPATH=. .venv/bin/python3 -c "from research_os.primitives import V1_RESERVED_EXTENSION_FIELD_NAMES; print(''unbacked_refs'' in V1_RESERVED_EXTENSION_FIELD_NAMES, ''pending_ruling'' in V1_RESERVED_EXTENSION_FIELD_NAMES)"'
+    exit: 0
+    ts: "2026-08-24T06:20:00Z"
+    seat: "session (pro)"
+  - claim: "The frozen D3 compatibility matrix's item 0 and item 6 text was read directly this session, not transcribed from the reviewer's paraphrase"
+    cmd: "grep -n 'Ruling must decide' -A4 <matrix-scratchpad-path> ; grep -n 'current_intent_ref' <matrix-scratchpad-path>"
+    exit: 0
+    ts: "2026-08-24T06:05:00Z"
+    seat: "session (pro)"
+  - claim: "operations-repository.ts's 24h authorization-window TTL check was read directly, grounding the expires_at correction in measured code, not the reviewer's own softer framing"
+    cmd: "sed -n '685,715p' apps/bali-zero-magazine/lib/server/operations-repository.ts"
+    exit: 0
+    ts: "2026-08-24T06:10:00Z"
+    seat: "session (pro)"
+  - claim: "New PENDING-ARMS.md row parses cleanly, zero PHANTOM-OPERATOR/MALFORMED introduced"
+    cmd: "python3 scripts/pending_arms_report.py --strict-phantom"
+    exit: 0
+    ts: "2026-08-24T07:35:00Z"
+    seat: "session (pro)"
+  - claim: "pending_arms_report.py's own test suite (100 tests) still passes after the ledger edit"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest ../../scripts/tests/test_pending_arms_report.py -q --no-header"
+    exit: 0
+    ts: "2026-08-24T07:36:00Z"
+    seat: "session (pro)"
+tests:
+  - "backend/tests/services/research_os/test_action_item_adapter.py -- 8 pre-existing tests
+    unaffected + 1 new test (test_pending_ruling_is_machine_checkable_not_only_prose), asserting
+    extensions['com.balizero.research-os-adapters'].payload['pending_ruling'] ==
+    {'priority', 'sla.due_at', 'current_intent_ref'}."
+  - "backend/tests/services/research_os/ (full suite, 9 tests) -- exit 0."
+  - "scripts/tests/test_pending_arms_report.py (100 tests) -- exit 0, confirms the ledger append
+    does not break the report's own parser."
+static:
+  - "ruff check: 0 issues."
+  - "ruff format --check: 0 issues (2 files needed --fix after manual edits, re-verified clean
+    afterward, then re-ran pytest to confirm the reformat changed no behaviour)."
+runtime_proof:
+  - >-
+    Same as PR #4749 (no live consumer, by design -- zero non-test consumers of
+    backend.services.research_os anywhere in the repo, re-confirmed this session with a
+    precise import-level grep after an earlier bare-name grep produced a false positive against
+    an unrelated pre-existing ActionItem dataclass in apps/backend-rag/backend/services/naga).
+    The functional proof is the adapter's own round-trip, re-run after this correction: a
+    synthetic ops_intents row -> ActionItem with priority/sla.due_at/current_intent_ref
+    unchanged in value, and extensions.payload carrying BOTH unbacked_refs and pending_ruling
+    in the same dict, verified by direct execution and printed above in brief.yml.
+dissent: []
+lanes:
+  - lane: "p04-d3-magazine-action-chain-adapters-correction"
+    role: build
+    seat: "claude-sonnet-5"
+residual_risks:
+  - >-
+    The pending ruling itself (matrix items 0 and 6) is not resolved by this PR -- it is a
+    business decision (Legge 5), recorded as a new PENDING-ARMS.md row, owned by Zero via the
+    conductor. Slices 2 (ActionIntent), 3a (OperationalReceipt), 3b (shadow+parity) remain
+    frozen/unopened pending this correction landing, per the conductor's explicit instruction,
+    and must not replicate the same "matrix as approval" citation defect for any of their own
+    fields that similarly await a ruling.
+  - >-
+    object_hash changes for every ActionItem this adapter has ever produced or will produce
+    before vs. after this correction (measured, see diff.behaviour_change above). Harmless
+    today; flagged so a future persistence/parity PR does not discover it as a surprise.
+sources:
+  - "Independent reviewer's REFUSE verdict (d4-VERDICT.md), read in full this session -- claims
+    #10/#11/#12 specifically, plus the surrounding AGREE findings (#9, #13) that confirm the
+    measurement work (priority/SLA absence, 1:1 receipt fusion) was not itself defective."
+  - "The frozen D3 compatibility matrix (d3-matrix-FROZEN), items 0 and 6 and §1.2's field
+    table, read directly and quoted verbatim in the corrected code comments, not transcribed
+    from the reviewer's paraphrase."
+  - "apps/bali-zero-magazine/lib/server/operations-repository.ts:685-715, read directly this
+    session to ground the expires_at TTL correction in measured code."
+  - "packages/research-os-core/research_os/hashing.py, read in full to confirm object_hash's
+    exclude_unset=True mechanics before empirically verifying the extensions consequence."
+  - "Fresh gate/test runs in this worktree, this session (receipts above) -- not recalled from
+    memory or an earlier turn."
+pii_scan: clean
+size_tokens: 2100

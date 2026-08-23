@@ -40,7 +40,10 @@ def test_priority_loss_is_disclosed_not_silent(ops_intent_row):
     result = adapt_ops_intent_to_action_item(ops_intent_row)
 
     assert any("priority" in w for w in result.loss_report.warnings)
-    assert any("decision_packet_ref" in w and "SYNTHESIZED_UNBACKED" in w for w in result.loss_report.warnings)
+    assert any(
+        "decision_packet_ref" in w and "SYNTHESIZED_UNBACKED" in w
+        for w in result.loss_report.warnings
+    )
 
 
 def test_unbacked_refs_are_machine_checkable_not_only_prose(ops_intent_row):
@@ -52,7 +55,23 @@ def test_unbacked_refs_are_machine_checkable_not_only_prose(ops_intent_row):
     item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
     marker = item.extensions["com.balizero.research-os-adapters"]
     assert marker.extension_version == "1.0.0"
-    assert set(marker.payload["unbacked_refs"]) == {"decision_packet_ref", "requested_action_spec_ref"}
+    assert set(marker.payload["unbacked_refs"]) == {
+        "decision_packet_ref",
+        "requested_action_spec_ref",
+    }
+
+
+def test_pending_ruling_is_machine_checkable_not_only_prose(ops_intent_row):
+    """Per an independent reviewer's REFUSE verdict (claims #10/#11/#12): the
+    matrix documents an absent legacy source and poses an open ruling
+    question for `priority`/`sla.due_at`/`current_intent_ref` -- it does not
+    endorse the values used here. The comment saying so is prose a reader
+    could skip; this is the same fact made branch-able in code.
+    """
+
+    item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
+    marker = item.extensions["com.balizero.research-os-adapters"]
+    assert set(marker.payload["pending_ruling"]) == {"priority", "sla.due_at", "current_intent_ref"}
 
 
 def test_status_value_set_map_covers_every_legacy_status():

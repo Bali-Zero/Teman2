@@ -51,16 +51,33 @@ _ADAPTER_NAMESPACE = uuid5(NAMESPACE_URL, "https://balizero.com/research-os/adap
 UNBACKED_REFS_EXTENSION_NAMESPACE = "com.balizero.research-os-adapters"
 
 
-def unbacked_refs_extension(*field_names: str) -> dict[str, ExtensionValue]:
+def unbacked_refs_extension(
+    *field_names: str, pending_ruling: tuple[str, ...] = ()
+) -> dict[str, ExtensionValue]:
     """Build the `extensions` payload naming which of this object's own ref
     fields are synthesized/unbacked (see module docstring). Safe against the
     frozen core vocabulary jail (`validate_extensions`): `unbacked_refs` is
     not in `V1_RESERVED_EXTENSION_FIELD_NAMES`, verified this session.
+
+    `pending_ruling` (added in a correction PR, per an independent reviewer's
+    REFUSE verdict, claims #10/#11/#12): names field(s) whose CURRENT VALUE
+    is this adapter's own placeholder, not a value the compatibility matrix
+    endorsed -- the matrix documented an absence of legacy source and posed
+    an open "Ruling must decide" question for these fields, it did not
+    recommend a resolution. This is the same two-channel discipline as
+    `unbacked_refs` (prose in the loss report AND a machine-checkable
+    marker): a comment claiming matrix approval is prose a reader could
+    trust without checking; this lets a downstream consumer branch on the
+    fact in code instead. `pending_ruling` is likewise not in
+    `V1_RESERVED_EXTENSION_FIELD_NAMES`, verified this session.
     """
 
+    payload: dict[str, object] = {"unbacked_refs": list(field_names)}
+    if pending_ruling:
+        payload["pending_ruling"] = list(pending_ruling)
     return {
         UNBACKED_REFS_EXTENSION_NAMESPACE: ExtensionValue(
-            extension_version="1.0.0", payload={"unbacked_refs": list(field_names)}
+            extension_version="1.0.0", payload=payload
         )
     }
 
