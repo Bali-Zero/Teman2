@@ -18,7 +18,7 @@
         "value": "What is VERIFIED"
       }
     ],
-    "content_sha256": "26e15992682b8fe7384da45094186e1911416864ebf623f0218dca237d0c21b0",
+    "content_sha256": "27b27a629392b94256464452d190cc00f378aea3b7f4446f29228bbfc39bd9e9",
     "legal_period": {
       "from": "2026-08-23T00:00:00Z",
       "to": null
@@ -64,6 +64,6 @@
     "product_version_ids": [
       "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
     ],
-    "_note": "on_unknown=NEEDS_INPUT mirrors the sibling hf.d12-onshore-conversion-excluded and the fact's own derivation docstring (fact_registry.py: guessing False on an UNKNOWN input would wrongly ADMIT an applicant with an undisclosed active permit -- fail-closed by construction). safety_critical=false matches the sibling D12 HARD_FILTER, not a claim this shouldn't be reviewed -- it mirrors house convention for this product's existing filter rather than asserting a new judgment; the fold author should confirm this convention still holds at fold time rather than inherit it blindly."
+    "_note": "on_unknown=NEEDS_INPUT mirrors the sibling hf.d12-onshore-conversion-excluded and the fact's own derivation docstring (fact_registry.py: guessing False on an UNKNOWN input would wrongly ADMIT an applicant with an undisclosed active permit -- fail-closed by construction). safety_critical=false is NOT a convention-mirroring choice -- the sibling hf.d12-onshore-conversion-excluded actually has safety_critical=true in seq-13 (verified against the live source file), so an earlier draft of this note that claimed to match it was simply wrong. The real, load-bearing reason true is unavailable here: evaluate_path._apply_safety_critical_source_hold walks every active safety_critical rule pack-wide and forces decision.state=HUMAN_REVIEW_REQUIRED on every otherwise-conclusive decision in the WHOLE pack unless every one of that rule source_refs passes _source_is_authoritative_and_applicable. That function requires authority_type in _PRIMARY_AUTHORITY_TYPES (PRIMARY_LAW / IMPLEMENTING_REGULATION / OFFICIAL_PORTAL / OFFICIAL_CIRCULAR) AND canonical_url on the pinned https government-host allowlist in _has_official_source_url. This source_record fails BOTH: authority_type is BALI_ZERO_POLICY (not a member of that frozenset) and canonical_url is a repo-relative path (no https scheme at all). freshness_policy=null adds a third, independent failure mode (_evaluate_source_freshness returns UNKNOWN/FRESHNESS_POLICY_NOT_DEFINED). Setting safety_critical=true on this rule would therefore trigger a pack-wide HUMAN_REVIEW_REQUIRED override -- a production outage -- the instant it activates in a signed pack. Verified by reading models.py:480-490, evaluate_path.py _apply_safety_critical_source_hold/_source_is_authoritative_and_applicable/_PRIMARY_AUTHORITY_TYPES/_has_official_source_url in full, and cross-checked against the already-passing test_safety_source_hold_applies_when_safety_rules_are_in_force in test_evaluate_endpoint.py, which proves the downstream HRR-override mechanism generically on the gold pack. Do not flip this to true to match the sibling -- that would be the mistake this note exists to prevent."
   }
 }

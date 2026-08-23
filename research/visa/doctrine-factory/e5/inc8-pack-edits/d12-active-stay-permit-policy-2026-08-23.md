@@ -174,3 +174,33 @@ sync unverified" for the real cure (a shared generated artifact or a
 frontend-side test — not a pytest parsing TypeScript). Mutation-checked:
 flipping the rule's condition value turns this test red along with the
 others, confirming it has real bite.
+**Near-miss found during pre-fold due diligence (2026-08-24): `safety_critical`
+almost got "corrected" to match a sibling, which would have broken production.**
+Re-checking this rule's draft against the live seq-13 source file before folding
+it into seq-14 turned up that the sibling `hf.d12-onshore-conversion-excluded`
+carries `safety_critical: true`, contradicting an earlier version of this rule's
+`_note`, which claimed `safety_critical: false` "matches the sibling D12
+HARD_FILTER." That claim was false — worth stopping on, because the two rules
+are NOT interchangeable on this field. `safety_critical` is read pack-wide by
+`evaluate_path._apply_safety_critical_source_hold`: for every active rule with
+`safety_critical=true`, it demands every one of that rule's `source_refs` pass
+`_source_is_authoritative_and_applicable` (authority_type in
+`{PRIMARY_LAW, IMPLEMENTING_REGULATION, OFFICIAL_PORTAL, OFFICIAL_CIRCULAR}` AND
+a `canonical_url` on the pinned government-host allowlist) — any failure forces
+`HUMAN_REVIEW_REQUIRED` on every otherwise-conclusive decision in the entire
+pack, not just this product. This source_record's `authority_type` is
+`BALI_ZERO_POLICY` (not in that set) and its `canonical_url` is a repo-relative
+path (no scheme at all) — it fails on two independent grounds, plus a third via
+`freshness_policy: null` (`_evaluate_source_freshness` returns
+`FRESHNESS_POLICY_NOT_DEFINED`). Flipping this rule to `safety_critical: true`
+to mirror the sibling would therefore have triggered a pack-wide
+`HUMAN_REVIEW_REQUIRED` override the moment it activated in a signed pack — a
+silent, system-wide production outage disguised as a routine convention match.
+`safety_critical: false` is correct, but for this reason, not the one the
+earlier note gave; the note itself has been corrected in the source JSON. This
+was caught by re-deriving the claim from the actual mechanism
+(`evaluate_path.py`) rather than trusting a plausible-sounding note, and cross-
+checked against the already-passing `test_safety_source_hold_applies_when_safety_rules_are_in_force`
+in `test_evaluate_endpoint.py`, which proves the pack-wide HRR-override
+mechanism generically. No code change was needed — the draft's value was
+already right — only the reasoning attached to it.
