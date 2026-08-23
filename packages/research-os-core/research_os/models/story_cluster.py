@@ -44,6 +44,23 @@ Interpretation notes (fields section 11 names but does not type further):
   member is exactly the mistake the purpose clause names, so it does not
   count (corrected 2026 after adversarial review of PR #4610 -- the
   original check counted syndicated members as attestation).
+- That exclusion is scoped to exactly the relationship word section 11's
+  purpose clause names -- ``syndicated`` -- and no other.
+  ``members[].relationship`` carries five other values (``exact``,
+  ``near``, ``translation``, ``update``, ``same_event``); of these,
+  ``translation`` and ``update`` are counted as independent attestation
+  DELIBERATELY, not by oversight. A translated or updated republish is
+  not the mechanical, no-new-verification reproduction the purpose
+  clause names -- ``syndicated`` alone denotes that -- and excluding the
+  other two on an implementer's own inference from the same prose would
+  be exactly the unilateral narrowing of a frozen contract the
+  Adversarial-review note below documents and reverts for a different
+  clause. Whether corroboration-inflation risk nonetheless argues for
+  excluding ``translation``/``update`` too is a live freeze-change
+  question this module does not answer here; per section 21's closing
+  rule ("if implementation evidence contradicts this freeze, stop and
+  raise a versioned freeze-change proposal"), it stays open pending that
+  proposal rather than being resolved unilaterally in code.
 - Adversarial-review note (2026, PR #4610, corrected on a third pass): a
   second-pass draft of this fix forbade ``extensions`` outright whenever
   ``classification.sensitivity`` is ``client_pii``/``restricted_osint``.
@@ -110,9 +127,7 @@ class StoryClusterMember(FrozenCoreModel):
     """``members`` item: ``{event_ref, relationship, source_group_id, relation_score}``."""
 
     event_ref: EventRef
-    relationship: Literal[
-        "exact", "near", "syndicated", "translation", "update", "same_event"
-    ]
+    relationship: Literal["exact", "near", "syndicated", "translation", "update", "same_event"]
     source_group_id: str = Field(min_length=1)
     relation_score: float = Field(ge=0, le=1)
 
@@ -174,9 +189,7 @@ class StoryCluster(FrozenCoreModel):
     def validate_story_cluster(self) -> StoryCluster:
         validate_extensions(self.extensions)
 
-        if len(set(self.independent_source_groups)) != len(
-            self.independent_source_groups
-        ):
+        if len(set(self.independent_source_groups)) != len(self.independent_source_groups):
             raise PydanticCustomError(
                 "independent_source_groups_not_distinct",
                 "independent_source_groups must not contain duplicate values",
@@ -185,13 +198,9 @@ class StoryCluster(FrozenCoreModel):
         # that is the exact mistake section 11's purpose clause names
         # ("without mistaking syndication for corroboration").
         attested_groups = {
-            member.source_group_id
-            for member in self.members
-            if member.relationship != "syndicated"
+            member.source_group_id for member in self.members if member.relationship != "syndicated"
         }
-        if any(
-            group not in attested_groups for group in self.independent_source_groups
-        ):
+        if any(group not in attested_groups for group in self.independent_source_groups):
             raise PydanticCustomError(
                 "independent_source_group_not_attested_by_member",
                 "every independent_source_groups entry must match at least "

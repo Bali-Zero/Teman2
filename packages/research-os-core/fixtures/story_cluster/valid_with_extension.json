@@ -24,7 +24,7 @@
         "event_id": "30000000-0000-4000-8000-000000000006",
         "object_hash": "0000000000000000000000000000000000000000000000000000000000000142"
       },
-      "relationship": "translation",
+      "relationship": "near",
       "source_group_id": "com.example.source_group_e",
       "relation_score": 0.4
     }
@@ -70,5 +70,5 @@
       }
     }
   },
-  "object_hash": "9b9624c0bb3b94c53f004de5054058bf4c6a4a5c397a625163781ab48bf1e1f3"
+  "object_hash": "8ebc4d9fdbfd60ab660bfb08ea436556f1a037793f97705ab682f84f079fc10a"
 }
