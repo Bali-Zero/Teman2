@@ -117,7 +117,7 @@ BY DESIGN until the first real case (F4b).
   purpose guard, 23 gold personas. `RelationType.SIBLING` added for E31J.
   First signed PRODUCTION RulePack (#3090): 38 products, 110 rules,
   28 sources, seq 1, version `2026.7.25`, payload sha `47a97c32…`.
-- **Pricing**: `VisaType.E33` + dedicated rows: base 39M; E33E 45M 5-year
+- **Pricing**: `VisaType.E33` + dedicated rows: base 35M; E33E 45M 5-year
   (+ 10M extend); E33F 14M offshore / 16M onshore (+ 10M extend). Bridge
   resolves all three.
 - **Guard**: `e33_claim_guard.py` hooked in `orchestrator_core.py` step 12b
