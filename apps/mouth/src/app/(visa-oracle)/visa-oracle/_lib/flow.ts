@@ -568,7 +568,14 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       "family_relation",
       "marital_status",
       "family_sponsor_nationalities",
-      ...(needsPermitCode ? ["family_sponsor_status_code"] : []),
+      // `family_sponsor_permit_basis` rides the same condition as
+      // `family_sponsor_status_code` (2026-08-23 owner ruling): the
+      // Permenkumham 11/2024 Pasal 33 ayat (7) family-reunification-chaining
+      // exclusion only matters when the sponsor itself is a foreign
+      // ITAS/ITAP holder, not an Indonesian citizen.
+      ...(needsPermitCode
+        ? ["family_sponsor_status_code", "family_sponsor_permit_basis"]
+        : []),
       // PARENT added 2026-08-19 (seq-10 companion change, Kimi refuter
       // finding 1): E31C's engine rules require the PARENTS' registered
       // marriage (`family.marriage_registered`), but this question only
@@ -578,6 +585,16 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       ...(facts.family_relation === "SPOUSE" ||
       facts.family_relation === "PARENT"
         ? ["family_marriage_registered"]
+        : []),
+      // STEPCHILD added 2026-08-23 (owner ruling — E31D vocabulary
+      // extension): both evidence facts the ruling named, marriage
+      // certificate of the WNA-WNI parents and birth certificate of the
+      // stepchild, asked together whenever the relation is STEPCHILD.
+      ...(facts.family_relation === "STEPCHILD"
+        ? [
+            "family_stepchild_marriage_certificate_confirmed",
+            "family_stepchild_birth_certificate_confirmed",
+          ]
         : []),
       "family_sponsor_confirmed",
       "stay_days",
