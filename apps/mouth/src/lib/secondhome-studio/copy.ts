@@ -445,6 +445,7 @@ export const COPY = {
     savedConfirmation: "Plan saved on this device",
     copyLinkButton: "Copy plan link",
     copiedConfirmation: "Plan link copied",
+    printButton: "Print / Save as PDF",
     linkWarning:
       "Anyone who receives the link may be able to view the answers it contains.",
     clearButton: "Clear saved plan",
