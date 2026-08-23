@@ -21,18 +21,71 @@ implements):
   public payload") are not given field-level detail in section 4; the
   concrete ``DurablePayloadReference``/``InlinePublicPayload`` layout
   below is this packet's canonical choice, discriminated on ``ref_type``.
+
+Adversarial-review corrections (2026, post-merge refuter pass on PR #4610):
+
+- ``DurablePayloadReference.uri`` was originally an unconstrained string.
+  A "reference" whose locator is a ``data:`` URI is not a reference at
+  all -- it is the payload, copied inline, wearing a reference's label.
+  ``_DURABLE_REFERENCE_URI_PATTERN`` now requires an ``https://`` or
+  ``s3://`` locator with a non-empty host, so ``data:``/``blob:``/
+  ``javascript:`` URIs (and any scheme-less or host-less string) fail
+  field-level validation before the model is even constructed. ``https``
+  covers a stable web/API reference (including an S3-compatible
+  endpoint's HTTPS form); ``s3`` covers this repo's actual object-storage
+  backend (Tigris, S3-compatible -- see the ``tigris`` skill). This is a
+  single ``Field(pattern=...)``, not a duplicate Python-only check, so
+  the constraint is visible in the checked-in JSON Schema too (a
+  non-Python consumer gets the same guard). The scheme match is
+  case-INsensitive (RFC 3986 section 3.1: the scheme component is
+  case-insensitive, so ``HTTPS://``/``Https://`` are valid ``https``
+  URIs, not a different, forbidden scheme) -- corrected 2026, third pass
+  on PR #4610, after review found the original lowercase-only pattern
+  rejected legitimate case variants with no such rule declared anywhere.
+- The inline/reference gate used to read "protected sensitivities must
+  use a reference" (i.e. everything except ``client_pii``/
+  ``restricted_osint`` could inline). Section 4's own wire text says
+  "validated inline **public** payload" -- the inline arm is for
+  ``sensitivity: public`` only, not merely "not the two named protected
+  ones". ``internal``/``confidential`` payloads must also use a
+  reference. This narrows previously-accepted behaviour; see
+  ``invalid_internal_payload_inline`` fixture.
+- A second-pass draft of this fix (PR #4610) added a Python check
+  forbidding ``extensions`` outright whenever ``classification.
+  sensitivity`` is ``client_pii``/``restricted_osint``. That check has
+  been REMOVED (third pass, same PR): CONTRACTS.md section 2 grants
+  every core object namespaced ``extensions`` unconditionally, and no
+  clause in section 2 or section 4 conditions that grant on
+  ``classification.sensitivity`` -- the check was an implementer-chosen
+  narrowing of a frozen contract, not a spec-derived one, and it was
+  invisible to non-Python consumers (no matching JSON Schema
+  constraint). Per section 21, a rule not in the freeze belongs in a
+  versioned freeze-change proposal for the Conductor to rule on, not in
+  a silent validator addition. The gap this would have closed is real
+  and stays a DECLARED LIMIT instead of a guard: nothing on this object
+  detects free-form PII/OSINT content hidden inside an arbitrary,
+  producer-defined ``extensions`` payload whose ``classification.
+  sensitivity`` is (correctly or incorrectly) something other than
+  ``client_pii``/``restricted_osint`` -- no field in section 2's
+  extension envelope declares what "PII-shaped" means, and a single
+  immutable object cannot discharge that judgment about its own opaque
+  payload. That responsibility belongs to whichever component assigns
+  ``classification.sensitivity`` in the first place (the producer
+  pipeline) or to a content-classification gate upstream of ingestion,
+  not to this structural validator.
 """
 
 from __future__ import annotations
 
+from hashlib import sha256
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from research_os.enums import RiskClass, Sensitivity
-from research_os.hashing import object_hash
+from research_os.hashing import canonicalize, object_hash
 from research_os.primitives import (
     Extensions,
     FrozenCoreModel,
@@ -44,7 +97,45 @@ from research_os.primitives import (
     validate_extensions,
 )
 
-_PROTECTED_SENSITIVITIES = frozenset({Sensitivity.RESTRICTED_OSINT, Sensitivity.CLIENT_PII})
+# A durable reference must be an https:// or s3:// locator with a
+# non-empty host -- see the "Adversarial-review corrections" docstring
+# note above. The scheme is matched case-insensitively (spelled-out
+# per-letter character classes, not an inline flag -- ECMA-262/Draft
+# 2020-12 ``pattern`` has no inline-flag syntax) because RFC 3986
+# section 3.1 makes the scheme component case-insensitive: ``HTTPS://``
+# is the same scheme as ``https://``, not a different, forbidden one.
+# No possessive quantifiers/atomic groups (ECMA-262 safe); linear in
+# input length (single alternation, one non-overlapping character-class
+# run, one optional trailing greedy group).
+_DURABLE_REFERENCE_URI_PATTERN = r"^([hH][tT][tT][pP][sS]|[sS]3)://[^/]+(/.*)?$"
+
+
+def _intel_event_json_schema_extra(schema: dict[str, Any], _model: type[Any]) -> None:
+    """Express the inline-requires-public invariant for non-Python consumers.
+
+    ``validate_event`` below enforces this in Python; Draft 2020-12's
+    ``if``/``then`` lets the same constraint reach the checked-in schema
+    artifact, so a Go/TypeScript validator rejects the same documents.
+    """
+
+    schema["if"] = {
+        "required": ["payload_ref"],
+        "properties": {
+            "payload_ref": {
+                "required": ["ref_type"],
+                "properties": {"ref_type": {"const": "inline_public"}},
+            }
+        },
+    }
+    schema["then"] = {
+        "required": ["classification"],
+        "properties": {
+            "classification": {
+                "required": ["sensitivity"],
+                "properties": {"sensitivity": {"const": "public"}},
+            }
+        },
+    }
 
 
 class EventRef(FrozenCoreModel):
@@ -115,22 +206,48 @@ class IntelEventLineage(FrozenCoreModel):
 
 
 class DurablePayloadReference(FrozenCoreModel):
-    """The "durable reference" half of ``payload_ref`` -- an out-of-line pointer."""
+    """The "durable reference" half of ``payload_ref`` -- an out-of-line pointer.
+
+    ``uri`` must denote an actual durable external storage location (an
+    ``https://`` or ``s3://`` locator with a host) -- see the module
+    docstring's "Adversarial-review corrections" note. This rejects
+    ``data:``/``blob:``/``javascript:`` URIs, which are not references
+    to anything durable: a ``data:`` URI IS the payload, inline.
+    """
 
     ref_type: Literal["reference"]
-    uri: str = Field(min_length=1)
+    uri: str = Field(min_length=1, pattern=_DURABLE_REFERENCE_URI_PATTERN)
     content_hash: Sha256Hex
 
 
 class InlinePublicPayload(FrozenCoreModel):
-    """The "validated inline public payload" half of ``payload_ref``."""
+    """The "validated inline public payload" half of ``payload_ref``.
+
+    ``content_hash`` is verified against the actual ``payload`` bytes
+    (RFC 8785 canonical JSON + sha256, the same rule section 2 uses for
+    ``object_hash``) so the field cannot be a decorative, unchecked
+    label -- see the module docstring's "Adversarial-review corrections"
+    note.
+    """
 
     ref_type: Literal["inline_public"]
     payload: dict[str, Any]
     content_hash: Sha256Hex
 
+    @model_validator(mode="after")
+    def validate_inline_content_hash(self) -> InlinePublicPayload:
+        expected = sha256(canonicalize(self.payload)).hexdigest()
+        if self.content_hash != expected:
+            raise PydanticCustomError(
+                "inline_payload_content_hash_mismatch",
+                "content_hash must equal sha256(RFC 8785 canonical payload)",
+            )
+        return self
+
 
 class IntelEvent(FrozenCoreModel):
+    model_config = ConfigDict(json_schema_extra=_intel_event_json_schema_extra)
+
     event_id: UUID
     contract_version: Literal["research-os/v1.0.0"]
     tenant: Literal["bali-zero"]
@@ -141,7 +258,9 @@ class IntelEvent(FrozenCoreModel):
     identity: IntelEventIdentity
     classification: IntelEventClassification
     lineage: IntelEventLineage
-    payload_ref: DurablePayloadReference | InlinePublicPayload = Field(discriminator="ref_type")
+    payload_ref: DurablePayloadReference | InlinePublicPayload = Field(
+        discriminator="ref_type"
+    )
     retention: Retention
     object_hash: Sha256Hex
     extensions: Extensions | None = None
@@ -150,22 +269,32 @@ class IntelEvent(FrozenCoreModel):
     def validate_event(self) -> IntelEvent:
         validate_extensions(self.extensions)
 
-        # Section 4 invariant: "restricted_osint or client_pii payloads are
-        # references to protected Pro storage, never copied into general
-        # event payloads."
-        if self.classification.sensitivity in _PROTECTED_SENSITIVITIES and isinstance(
-            self.payload_ref, InlinePublicPayload
+        # Section 4 invariant, narrowed to what the wire text actually
+        # says ("validated inline PUBLIC payload"): inline is valid only
+        # for sensitivity=public. Every other sensitivity -- including
+        # internal/confidential, not just the two protected ones -- must
+        # use a durable reference. See the "Adversarial-review
+        # corrections" module docstring note.
+        if (
+            isinstance(self.payload_ref, InlinePublicPayload)
+            and self.classification.sensitivity != Sensitivity.PUBLIC
         ):
             raise PydanticCustomError(
-                "protected_payload_must_be_reference",
-                "restricted_osint and client_pii payloads must use a durable "
-                "reference, never an inline payload",
+                "inline_payload_requires_public_sensitivity",
+                "payload_ref may only be inline_public when "
+                "classification.sensitivity is public; every other "
+                "sensitivity must use a durable reference",
             )
 
         # NOTE: two section-4 invariants are repository-level, not checkable
         # on one standalone canonical object, and are therefore not enforced
         # here: "(producer.name, identity.idempotency_key) is unique" and
         # "replay creates delivery attempts, not duplicate canonical events."
+        #
+        # NOTE: this validator does NOT gate ``extensions`` on
+        # ``classification.sensitivity`` -- see the module docstring's
+        # "Adversarial-review corrections" note (last bullet) for why that
+        # was tried and reverted, and what the resulting declared limit is.
 
         expected = object_hash(self)
         if self.object_hash != expected:

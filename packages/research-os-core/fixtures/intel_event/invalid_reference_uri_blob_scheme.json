@@ -17,7 +17,7 @@
   },
   "times": {
     "published_at": "2026-01-01T00:00:00Z",
-    "observed_at": "2026-01-01T08:05:00+08:00",
+    "observed_at": "2026-01-01T00:05:00Z",
     "ingested_at": "2026-01-01T00:10:00Z"
   },
   "identity": {
@@ -41,12 +41,12 @@
   },
   "payload_ref": {
     "ref_type": "reference",
-    "uri": "s3://research-os-fixtures/synthetic/event-001.json",
+    "uri": "blob:https://example.com/8f3a1c2e-uuid",
     "content_hash": "0000000000000000000000000000000000000000000000000000000000000003"
   },
   "retention": {
     "retention_class": "operational",
     "legal_hold": false
   },
-  "object_hash": "2e42586ea48b00f5a1faf302dd83f87c26c1c0019228aa8d6f08eb99110ec254"
+  "object_hash": "f856275e1a6e49f2ea06fc1f937c1dc6c60f937e103bd8fc6345e96dd7f498c3"
 }

@@ -22,7 +22,7 @@
   },
   "classification": {
     "risk_class": "green",
-    "sensitivity": "client_pii"
+    "sensitivity": "public"
   },
   "lineage": {
     "pipeline_run_id": "30000000-0000-4000-8000-000000900003",
@@ -39,7 +39,7 @@
       "headline": "synthetic regulation notice",
       "code": "REG-2026-003"
     },
-    "content_hash": "0000000000000000000000000000000000000000000000000000000000000008"
+    "content_hash": "0000000000000000000000000000000000000000000000000000000000067932"
   },
   "retention": {
     "retention_class": "operational",
@@ -53,5 +53,5 @@
       }
     }
   },
-  "object_hash": "4a0687ae5b1dfd7dd36f3b91fb6f714e97ef03bc9077e85f3c0aa46b0a5c9f02"
+  "object_hash": "299522f56d5d1d8d5bd5785ce70fe266a6efe47f8285107385a1e1eada34a1db"
 }

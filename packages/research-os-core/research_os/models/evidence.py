@@ -20,6 +20,21 @@ Interpretation notes (fields section 5 names but does not type further):
   offsets; ``quote_hash``: a content hash, so ``sha256`` per section 2.
 - ``provenance.extractor``: a categorical producer-like token, modeled as
   ``Identifier`` (matching ``Producer.name``'s treatment elsewhere).
+
+Adversarial-review note (2026, PR #4610, corrected on a third pass): a
+second-pass draft of this fix forbade ``extensions`` outright whenever
+``classification.sensitivity`` is ``client_pii``/``restricted_osint``.
+That check has been REMOVED -- CONTRACTS.md section 2 grants every core
+object namespaced ``extensions`` unconditionally, and no clause anywhere
+in the freeze conditions that grant on ``classification.sensitivity``,
+so the check was an implementer-chosen narrowing of a frozen contract,
+not a spec-derived one, with no matching JSON Schema constraint for a
+non-Python consumer. See the same note on
+``research_os.models.intel_event.IntelEvent`` for the full reasoning,
+which applies unchanged here: this stays a DECLARED LIMIT -- nothing on
+this object detects PII/OSINT content hidden inside an ``extensions``
+payload whose declared sensitivity is (correctly or not) something
+else -- rather than a guard.
 """
 
 from __future__ import annotations
@@ -150,6 +165,11 @@ class Evidence(FrozenCoreModel):
         # maps to ObjectSuccessorEdge.family_id", "forks or stale
         # predecessors quarantine the family") are enforced by
         # research_os.graph over a collection, not on one standalone object.
+        #
+        # NOTE: this validator does NOT gate ``extensions`` on
+        # ``classification.sensitivity`` -- see the module docstring's
+        # "Adversarial-review note" for why that was tried and reverted,
+        # and what the resulting declared limit is.
 
         expected = object_hash(self)
         if self.object_hash != expected:

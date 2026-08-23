@@ -22,7 +22,7 @@
   },
   "classification": {
     "risk_class": "green",
-    "sensitivity": "public"
+    "sensitivity": "internal"
   },
   "lineage": {
     "pipeline_run_id": "30000000-0000-4000-8000-000000900003",
@@ -53,5 +53,5 @@
       }
     }
   },
-  "object_hash": "b887d122631a76161c24bf6347fa16b9e0449376be2cb014c8ab07dff50dd891"
+  "object_hash": "88aebd43423b28411c50215185fa871899328e0510de84cf3a6bec5943ca6ce7"
 }

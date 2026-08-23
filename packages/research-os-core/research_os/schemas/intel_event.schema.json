@@ -2,7 +2,7 @@
   "$defs": {
     "DurablePayloadReference": {
       "additionalProperties": false,
-      "description": "The \"durable reference\" half of ``payload_ref`` -- an out-of-line pointer.",
+      "description": "The \"durable reference\" half of ``payload_ref`` -- an out-of-line pointer.\n\n``uri`` must denote an actual durable external storage location (an\n``https://`` or ``s3://`` locator with a host) -- see the module\ndocstring's \"Adversarial-review corrections\" note. This rejects\n``data:``/``blob:``/``javascript:`` URIs, which are not references\nto anything durable: a ``data:`` URI IS the payload, inline.",
       "properties": {
         "content_hash": {
           "pattern": "^[0-9a-f]{64}$",
@@ -16,6 +16,7 @@
         },
         "uri": {
           "minLength": 1,
+          "pattern": "^([hH][tT][tT][pP][sS]|[sS]3)://[^/]+(/.*)?$",
           "title": "Uri",
           "type": "string"
         }
@@ -62,7 +63,7 @@
     },
     "InlinePublicPayload": {
       "additionalProperties": false,
-      "description": "The \"validated inline public payload\" half of ``payload_ref``.",
+      "description": "The \"validated inline public payload\" half of ``payload_ref``.\n\n``content_hash`` is verified against the actual ``payload`` bytes\n(RFC 8785 canonical JSON + sha256, the same rule section 2 uses for\n``object_hash``) so the field cannot be a decorative, unchecked\nlabel -- see the module docstring's \"Adversarial-review corrections\"\nnote.",
       "properties": {
         "content_hash": {
           "pattern": "^[0-9a-f]{64}$",
@@ -411,6 +412,19 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "if": {
+    "properties": {
+      "payload_ref": {
+        "properties": {
+          "ref_type": {
+            "const": "inline_public"
+          }
+        },
+        "required": ["ref_type"]
+      }
+    },
+    "required": ["payload_ref"]
+  },
   "properties": {
     "classification": {
       "$ref": "#/$defs/IntelEventClassification"
@@ -507,6 +521,19 @@
     "retention",
     "object_hash"
   ],
+  "then": {
+    "properties": {
+      "classification": {
+        "properties": {
+          "sensitivity": {
+            "const": "public"
+          }
+        },
+        "required": ["sensitivity"]
+      }
+    },
+    "required": ["classification"]
+  },
   "title": "IntelEvent",
   "type": "object"
 }

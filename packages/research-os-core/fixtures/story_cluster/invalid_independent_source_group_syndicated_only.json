@@ -39,15 +39,14 @@
         "event_id": "30000000-0000-4000-8000-000000000003",
         "object_hash": "0000000000000000000000000000000000000000000000000000000000000130"
       },
-      "relationship": "near",
+      "relationship": "syndicated",
       "source_group_id": "com.example.source_group_b",
       "relation_score": 0.7
     }
   ],
   "independent_source_groups": [
     "com.example.source_group_a",
-    "com.example.source_group_b",
-    "com.example.source_group_a"
+    "com.example.source_group_b"
   ],
   "decision": {
     "layers_run": ["exact", "normalized", "near"],
@@ -79,5 +78,5 @@
     "retention_class": "operational",
     "legal_hold": false
   },
-  "object_hash": "1d6ba19e183aa63459d4ed3859d8e621bb996d07c1eb696da97fa903d3f6c91d"
+  "object_hash": "5c0c3e5edb5413a5e57970c3b52c77a05d7315afe90a154ebcf5a1840326db32"
 }
