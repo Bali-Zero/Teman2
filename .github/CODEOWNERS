@@ -63,6 +63,18 @@
 /scripts/ci/impact_map.py                             @Balizero1987
 /scripts/ci/test_impact_map.py                        @Balizero1987
 
+# Backend-test shard partitioner (tests.yml `backend-shard` + the
+# `Backend Tests (Python)` fan-in, S11 2026-08-23) — SAME trust boundary,
+# and the reason it is here is a refuter finding, not symmetry: this module
+# decides which test modules exist and who owns each one, so a PR that
+# widened its EXCLUDED_DIRS (or narrowed _is_test_file) would make the shards
+# AND the partition guard agree on a shrunken corpus, and the required
+# context would go green with tests silently dropped. The fan-in extracts it
+# from BASE_SHA and adjudicates with the trusted copy; this entry is the
+# defense in depth alongside that.
+/scripts/ci/shard_tests.py                            @Balizero1987
+/scripts/ci/test_shard_tests.py                       @Balizero1987
+
 # Ring-gating manual kill-switch (Merge-OS v2 round-2 Cure #1, adapted
 # 2026-08-18) — sits in the same trust boundary as the classifier files
 # above: a PR that neuters this script's ability to force the full suite
