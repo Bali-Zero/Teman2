@@ -1,0 +1,79 @@
+{
+  "conductor_handoff_id": "60000000-0000-4000-8000-000000000002",
+  "conductor_handoff_family_id": "com.example.conductor_handoff.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "session_ref": {
+    "scheme": "claude-code-session",
+    "purpose": "editorial_drafting",
+    "opaque_id": "synthetic-session-001",
+    "record_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "operator_actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "approval",
+    "pseudonym": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "assistant_producer": {
+    "provider": "com.example.anthropic",
+    "model": "com.example.claude-opus",
+    "model_version": "5.0.0",
+    "prompt_version": "1.0.0"
+  },
+  "operator_inputs": [],
+  "decision_packet_refs": [
+    {
+      "decision_packet_id": "70000000-0000-4000-8000-000000000001",
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ],
+  "verification_receipt_refs": [],
+  "considered_options": [
+    {
+      "option_id": "option-a",
+      "disposition": "maybe",
+      "reason_code": "com.example.best_evidence"
+    },
+    {
+      "option_id": "option-b",
+      "disposition": "rejected",
+      "reason_code": "com.example.weak_evidence"
+    }
+  ],
+  "requested_action_spec_refs": [],
+  "decision": {
+    "outcome": "content",
+    "rationale_codes": ["com.example.evidence_sufficient"]
+  },
+  "unresolved_questions": [],
+  "handoff_summary": "Synthetic minimal handoff awaiting more evidence.",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "workflow_run_ref": {
+    "workflow_run_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "state": "operator_confirmed",
+  "created_at": "2026-04-10T00:00:00Z",
+  "recorded_at": "2026-04-10T00:00:01Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "topic_lock_ref": {
+    "topic_lock_id": "80000000-0000-4000-8000-000000000001",
+    "object_hash": "5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "creative_lock_ref": {
+    "creative_lock_id": "90000000-0000-4000-8000-000000000001",
+    "object_hash": "6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "object_hash": "fb35087c80898425ebb049be7c3879dae775a35e36bb8b1cfb7b426fe78e38d1"
+}

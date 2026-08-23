@@ -9,6 +9,13 @@ diff:
   net_lines:
     "measured merge-base-anchored: +233/-107, net +126; 13 files changed
     (eca4b258e..3204fa225, git diff --no-renames --numstat)"
+lanes:
+  - lane: "D1"
+    role: "build"
+    seat: "opus-5"
+  - lane: "D2"
+    role: "review"
+    seat: "sonnet-5"
 receipts:
   - claim:
       "PR #4640 (branch agent/nuzantara/ops/seat6-consumers) diff, merge-base
