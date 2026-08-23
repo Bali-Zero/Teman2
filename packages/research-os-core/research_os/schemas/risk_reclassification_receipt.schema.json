@@ -1,0 +1,528 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "format": "uuid",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["claim_id", "object_hash"],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": {
+          "format": "uuid",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["evidence_id", "object_hash"],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "FlatClassifiedObjectRef": {
+      "additionalProperties": false,
+      "description": "``{object_kind, object_id, object_hash, risk_class, sensitivity}``\n-- section 18's FLAT shape (contrast section 17's nested\n``classification: {...}``; see module docstring).",
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": [
+        "object_kind",
+        "object_id",
+        "object_hash",
+        "risk_class",
+        "sensitivity"
+      ],
+      "title": "FlatClassifiedObjectRef",
+      "type": "object"
+    },
+    "MandatoryWorkflowLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {workflow_run_ref: {workflow_run_id, object_hash},\ninput_hashes: []}`` with ``workflow_run_ref`` MANDATORY -- see the\nmodule docstring's judgment-call note.",
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "MandatoryWorkflowLineage",
+      "type": "object"
+    },
+    "PermittedUse": {
+      "additionalProperties": false,
+      "description": "``permitted_use: {purpose, destination, consumer, expires_at?}`` --\nunlike section 17's ``SanitizationReceipt``, ``expires_at`` carries a\n``?`` and is optional here.",
+      "properties": {
+        "consumer": {
+          "minLength": 1,
+          "title": "Consumer",
+          "type": "string"
+        },
+        "destination": {
+          "minLength": 1,
+          "title": "Destination",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": ["purpose", "destination", "consumer"],
+      "title": "PermittedUse",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Remediation": {
+      "additionalProperties": false,
+      "properties": {
+        "changed_field_paths": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Changed Field Paths",
+          "type": "array"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "type": {
+          "enum": [
+            "authoritative_source_added",
+            "contradiction_resolved",
+            "grounding_repaired",
+            "prohibited_scope_removed",
+            "classification_error_corrected"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": ["type", "reason_codes", "changed_field_paths"],
+      "title": "Remediation",
+      "type": "object"
+    },
+    "ResidualRisk": {
+      "additionalProperties": false,
+      "properties": {
+        "findings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        }
+      },
+      "required": ["risk_class", "findings"],
+      "title": "ResidualRisk",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "Reviewer": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_ref": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "independence_class": {
+          "minLength": 1,
+          "title": "Independence Class",
+          "type": "string"
+        }
+      },
+      "required": ["actor_ref", "independence_class"],
+      "title": "Reviewer",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "SupersessionRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_successor_edge_id": {
+          "format": "uuid",
+          "title": "Object Successor Edge Id",
+          "type": "string"
+        }
+      },
+      "required": ["object_successor_edge_id", "object_hash"],
+      "title": "SupersessionRef",
+      "type": "object"
+    },
+    "VerificationReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "verification_receipt_id": {
+          "format": "uuid",
+          "title": "Verification Receipt Id",
+          "type": "string"
+        }
+      },
+      "required": ["verification_receipt_id", "object_hash"],
+      "title": "VerificationReceiptRef",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "claim_refs": {
+      "items": {
+        "$ref": "#/$defs/ClaimRef"
+      },
+      "title": "Claim Refs",
+      "type": "array"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "lineage": {
+      "$ref": "#/$defs/MandatoryWorkflowLineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "output_object": {
+      "$ref": "#/$defs/FlatClassifiedObjectRef"
+    },
+    "permitted_use": {
+      "$ref": "#/$defs/PermittedUse"
+    },
+    "policy": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "remediation": {
+      "$ref": "#/$defs/Remediation"
+    },
+    "residual_risk": {
+      "$ref": "#/$defs/ResidualRisk"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "reviewer": {
+      "$ref": "#/$defs/Reviewer"
+    },
+    "risk_reclassification_receipt_id": {
+      "format": "uuid",
+      "title": "Risk Reclassification Receipt Id",
+      "type": "string"
+    },
+    "source_object": {
+      "$ref": "#/$defs/FlatClassifiedObjectRef"
+    },
+    "supersession_ref": {
+      "$ref": "#/$defs/SupersessionRef"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "verification_receipt_refs": {
+      "items": {
+        "$ref": "#/$defs/VerificationReceiptRef"
+      },
+      "title": "Verification Receipt Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "risk_reclassification_receipt_id",
+    "contract_version",
+    "tenant",
+    "source_object",
+    "output_object",
+    "supersession_ref",
+    "remediation",
+    "claim_refs",
+    "evidence_refs",
+    "verification_receipt_refs",
+    "policy",
+    "reviewer",
+    "residual_risk",
+    "permitted_use",
+    "issued_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "RiskReclassificationReceipt",
+  "type": "object"
+}

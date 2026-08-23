@@ -1,0 +1,132 @@
+{
+  "metric_profile_id": "a0000000-0000-4000-8000-000000000002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "metric_name": "com.example.conversion_rate",
+  "question": "Does the new pricing page raise lead-to-client conversion?",
+  "unit": "ratio",
+  "numerator": {
+    "event": "com.example.client_converted"
+  },
+  "denominator": {
+    "event": "com.example.lead_created"
+  },
+  "window": {
+    "type": "calendar_month",
+    "duration": "P1M",
+    "timezone": "Asia/Makassar",
+    "late_arrival_policy": "com.example.impute_after_7d"
+  },
+  "baseline": {
+    "source": "com.example.prior_quarter_cohort",
+    "window": {
+      "started_at": "2026-01-01T00:00:00Z",
+      "ended_at": "2026-03-31T23:59:59Z"
+    },
+    "frozen_at": "2026-04-01T00:00:00Z"
+  },
+  "evaluation_data": {
+    "dataset_ref": {
+      "dataset_id": "com.example.crm_conversion_events",
+      "version": "2026-04-01-snapshot",
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "split": {
+      "strategy": "com.example.time_based_holdout",
+      "assignment_hash": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "exclusion_rules": [
+      {
+        "rule_id": "com.example.excl_internal_test_accounts",
+        "definition_hash": "6666666666666666666666666666666666666666666666666666666666666666"
+      },
+      {
+        "rule_id": "com.example.excl_duplicate_leads",
+        "definition_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+      }
+    ]
+  },
+  "minimum_sample": {
+    "overall": 500,
+    "per_subgroup": 50,
+    "power_target": 0.8
+  },
+  "estimator": {
+    "method": "bootstrap",
+    "version": "2.1.0",
+    "confidence_interval_or_bootstrap": {
+      "resamples": 2000,
+      "ci_level": 0.95
+    }
+  },
+  "subgroups": [
+    {
+      "name": "com.example.nationality_id",
+      "definition": {
+        "field": "nationality",
+        "value": "ID"
+      }
+    },
+    {
+      "name": "com.example.nationality_foreign",
+      "definition": {
+        "field": "nationality",
+        "op": "ne",
+        "value": "ID"
+      }
+    }
+  ],
+  "guardrails": [
+    {
+      "metric_name": "com.example.refund_rate",
+      "direction": "does_not_increase",
+      "threshold": 0.02
+    }
+  ],
+  "decision_rule": {
+    "expression": "value - baseline_value >= 0.05",
+    "confidence": 0.95
+  },
+  "missing_data_policy": "exclude",
+  "owner_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "verification",
+    "pseudonym": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "validity": {
+    "valid_from": "2026-04-01T00:00:00Z",
+    "expires_at": "2026-07-01T00:00:00Z"
+  },
+  "classification": {
+    "risk_class": "amber",
+    "sensitivity": "confidential"
+  },
+  "created_at": "2026-04-01T00:00:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "b0000000-0000-4000-8000-000000000001",
+      "object_hash": "9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "input_hashes": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "extensions": {
+    "com.balizero.pricing": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "campaign": "com.example.pricing_page_v2"
+      }
+    }
+  },
+  "object_hash": "d1be4bce18fb90c809bb961996db30ffe8225377dededd680a5aa7da85624e81"
+}

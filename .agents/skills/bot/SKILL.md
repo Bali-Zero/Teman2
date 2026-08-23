@@ -22,6 +22,69 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-23 — keep current)
 
+- **🔇 THE PRODUCT HAS SERVED NOBODY SINCE 2026-07-30 01:23:58Z — 24 DAYS — AND EVERY GAUGE READ
+  GREEN THE WHOLE TIME (measured 2026-08-23 on Fly prod, read-only SQL; this supersedes every
+  entry below as the lane's actual state, because they all describe a lane whose product was
+  already off the air).** The daemon-revival entry immediately below is TRUE and was worth doing;
+  it is also not the thing that mattered, and neither was the DLP batch shipped the same morning.
+  Both landed on a code path that was carrying **zero client traffic**.
+  - **The two signals that speak for the product**, both measured on machine `1781e5eda03438`:
+    last `wa_outbox` row with `status='done'` = **2026-07-30 01:23:58Z**; last `inbound_webhooks`
+    row where `channel='whatsapp'` = **the same instant**. Zero inbound in the last 7 days.
+    `wa_outbox` totals 325 rows, 217 of them `failed`. Delivery-STATUS webhooks
+    (`wa_status_pending`) kept arriving until 2026-08-14 13:25Z — so Meta was still talking to us;
+    it is the MESSAGE webhooks that stopped.
+  - **Why nothing went red.** Simultaneously green: `/health` 200 + DB connected; the broker gauge
+    advancing every 30s; `breaker_state='closed'`, `consecutive_failures=0`; the codex seat probe
+    `{"verdict":"ok"}`; `WA_INBOUND_BOT_AUTOREPLY='true'`. Every one measures a COMPONENT. None
+    measures THROUGHPUT. The broker gauge proves the daemon is polling — it polls an empty queue
+    exactly as eagerly as a full one. **A queue depth of zero and a queue depth of
+    zero-because-nothing-arrives are the same number.** Nothing in the repo watched the difference:
+    `grep -rln "inbound_webhooks" scripts/` returned nothing, and `wa_mirror_freshness_liveness.py:104`
+    watches `whatsapp_message_context` — the personal-mirror table, last written 2026-05-25 — not
+    the bot product. **The missing organ is PR #4630** (`scripts/wa_bot_throughput_sentinel.py`):
+    replayed against this incident it fires p0 at **+1.5h**, and an exhaustive 10-day scan bounds
+    its longest silent window at 13.0h (one overnight).
+  - **Ruled out with evidence, each re-measured, not inferred**: Meta token — `debug_token`
+    `is_valid:true`, `expires_at:0`, SYSTEM_USER, 41 scopes incl. `whatsapp_business_messaging`.
+    Phone `1104946272705747` — `+62 821-3465-159`, `verified_name:BALI ZERO`,
+    `quality_rating:GREEN`, CLOUD_API. WABA `1236411107897853` — `account_review_status:APPROVED`.
+    Our endpoint — `GET /webhook/whatsapp` answers **403** to a wrong `hub.verify_token`, i.e. the
+    Meta handshake works. Code — `git log --since=2026-07-26 --until=2026-08-03 --
+.../routers/whatsapp_chat.py` is **empty**; the only backend commit in the 07-29..07-31 window
+    is a frontend pricing change. Flag — autoreply is `'true'`.
+  - **STILL OPEN, and it needs a phone**: `GET /{WABA}/subscribed_apps` answers
+    `500 {"code":1,"error_subcode":99}` reproducibly (3/3), which is consistent with a lapsed
+    `messages` subscription but does not prove it. The discriminator is one WhatsApp message sent
+    to the number from a handset (`operator[physical]`): a row appearing in `inbound_webhooks`
+    within seconds means the subscription lives and clients simply stopped writing; nothing
+    appearing means it is gone and is restored from Business Manager (`operator[gui]`).
+  - **The separate downstream disease, now named by query.** The 217 failures decompose as: **94
+    `24h_window_closed`** (2026-06-17 → 2026-08-14), 62 `superseded_by_coalescing` (benign burst
+    dedup), 44 `auto-reply not enabled` (June, flag genuinely off), ~17 assorted (RAG abstained /
+    empty answer / 500 / 401) — across 38 threads, of which only 4 carry `human_handling=true`,
+    which kills the human-takeover explanation. The 94 are **not wasted RAG calls**: control flow
+    is `:734` status→generating, `:754` ack, `:797`/`:823` generate, **`:962` persist body**,
+    `:1034` window check, `:1061` fail — so the answer IS written to `meta_inbox_messages.body`
+    before the window check discards the send, and `wa_inbox.py` (the human takeover queue) reads
+    those rows. The cost is real, the draft survives. Moving the check before generation would save
+    the call and destroy the draft — a trade-off, **not an obvious win**, and it turns on whether
+    anyone actually works that queue. Owner decision, not a session's.
+  - `attempts=0` on the failed rows is not a puzzle: of the seven paths that set `status='failed'`
+    in `wa_outbox_worker.py`, only `:868` and `:1085` increment `attempts` first; `:675`, `:704`,
+    `:1012` and `:1047` (the 24h check) all fire on the generation-SUCCESS path. Same reason
+    `apology_sent_at` is NULL on all 325 rows — `_maybe_send_apology` is only reached from the two
+    incrementing paths, so those 94 clients were never even told the bot had given up. (Outside the
+    24h window Meta forbids free-form messages anyway, so an apology is not sendable without an
+    approved template — a platform constraint, not our bug.)
+  - **🔴 SECURITY, independent of the outage, found on the way**: `WHATSAPP_APP_SECRET` and
+    `META_APP_SECRET` are **both UNSET** in prod, and `_verify_whatsapp_signature`
+    (`whatsapp_chat.py:1163-1167`) does `return True` when the secret is missing — documented as
+    "dev mode". The production webhook therefore **accepts unsigned POSTs**: anyone who knows the
+    URL can inject forged inbound WhatsApp messages, which are persisted and processed. Closing it
+    needs the App Secret from Business Manager (`operator[gui]`), then `fly secrets set`.
+  - Memory: `discovery_the_whatsapp_bot_answered_nobody_for_24_days_while_every_gauge_read_green_2026_08_23`.
+
 - **💀 THE PRO DAEMON HAS BEEN DEAD FOR ~70 HOURS AND EVERY HEALTH INDICATOR READS GREEN — the
   S3-ARMED entry below is not wrong, it EXPIRED 2.5 hours after it was written (2026-08-23,
   measured on Pro at SHA `148f0bfca`, probes between 01:00Z and 01:40Z).**

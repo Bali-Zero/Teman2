@@ -1,0 +1,55 @@
+{
+  "conductor_handoff_id": "60000000-0000-4000-8000-000000000001",
+  "conductor_handoff_family_id": "com.example.conductor_handoff.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "session_ref": {
+    "scheme": "claude-code-session",
+    "purpose": "editorial_drafting",
+    "opaque_id": "synthetic-session-001",
+    "record_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "operator_actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "approval",
+    "pseudonym": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "assistant_producer": {
+    "provider": "com.example.anthropic",
+    "model": "com.example.claude-opus",
+    "model_version": "5.0.0",
+    "prompt_version": "1.0.0"
+  },
+  "operator_inputs": [],
+  "decision_packet_refs": [],
+  "verification_receipt_refs": [],
+  "considered_options": [],
+  "requested_action_spec_refs": [],
+  "decision": {
+    "outcome": "defer",
+    "rationale_codes": []
+  },
+  "unresolved_questions": [],
+  "handoff_summary": "Synthetic minimal handoff awaiting more evidence.",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "workflow_run_ref": {
+    "workflow_run_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "state": "draft",
+  "created_at": "2026-04-10T00:00:00Z",
+  "recorded_at": "2026-04-10T00:00:01Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+}

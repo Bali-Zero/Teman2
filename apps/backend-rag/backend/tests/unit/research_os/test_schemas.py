@@ -13,9 +13,15 @@ from jsonschema import (  # type: ignore[import-untyped]
 from research_os.schemas import (
     SCHEMA_DIRECTORY,
     SCHEMA_MODELS,
+    _prettier_json,
     checked_in_schemas_match,
     validate_schema_artifacts,
 )
+
+# packages/research-os-core/research_os/schemas -> repo root is 4 levels up
+# (schemas -> research_os -> research-os-core -> packages -> repo root).
+_REPO_ROOT = SCHEMA_DIRECTORY.parents[3]
+_PRETTIER_ESM_ENTRYPOINT = _REPO_ROOT / "node_modules" / "prettier" / "index.mjs"
 
 
 def test_checked_in_schemas_are_byte_identical_to_fresh_regeneration() -> None:
@@ -143,3 +149,150 @@ def test_shipped_schema_asserts_utc_timestamp_offset(invalid_timestamp: str) -> 
 
     with pytest.raises(ValidationError):
         Draft202012Validator(schema).validate(payload)
+
+
+# --- _prettier_json vs. real Prettier -----------------------------------
+#
+# `test_checked_in_schemas_are_byte_identical_to_fresh_regeneration` and
+# `test_generated_schemas_are_valid_draft_2020_12` above both compare
+# `_prettier_json`'s output against itself (the checked-in files were
+# produced by the same function) -- a self-consistency check that can never
+# catch a defect in `_prettier_json`'s own understanding of Prettier's
+# layout rules, no matter how the function is wrong. Every test below
+# instead asks a real `prettier` (Node, `parser: "json"`) to format the
+# same value and asserts byte-identical output, so a divergence in the
+# algorithm itself -- not just a divergence from what we last generated --
+# fails the suite.
+#
+# Note on invocation: the `prettier` *CLI*, when given a file argument (not
+# stdin) and invoked with a cwd inside this git repository, was observed
+# during authoring to silently skip wrapping some over-width JSON arrays
+# that it wraps correctly from any other cwd or via `--stdin-filepath`
+# (confirmed cwd-dependent, not flaky -- 100% reproducible either way, same
+# Prettier version, byte-identical `node_modules/prettier` package
+# contents). That CLI quirk is orthogonal to this bug and not something
+# this test is trying to characterize, so it is sidestepped entirely here:
+# we call Prettier's own JS `format()` API directly (proven cwd-independent
+# during authoring), never the CLI, so the oracle is Prettier's formatting
+# engine itself with no CLI config-resolution layer in between.
+
+_PRETTIER_BATCH_FORMAT_SCRIPT = """
+const prettierPath = process.argv[1];
+const prettier = (await import(prettierPath)).default;
+const chunks = [];
+process.stdin.on("data", (c) => chunks.push(c));
+process.stdin.on("end", async () => {
+  const values = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  const results = [];
+  for (const v of values) {
+    results.push(await prettier.format(JSON.stringify(v), { parser: "json" }));
+  }
+  process.stdout.write(JSON.stringify(results));
+});
+"""
+
+
+def _real_prettier_batch(values: list[Any]) -> list[str]:
+    """Format each of `values` with real Prettier's JS API, in one Node process."""
+    result = subprocess.run(
+        [
+            "node",
+            "--input-type=module",
+            "-e",
+            _PRETTIER_BATCH_FORMAT_SCRIPT,
+            _PRETTIER_ESM_ENTRYPOINT.as_uri(),
+        ],
+        input=json.dumps(values),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
+    formatted: list[str] = json.loads(result.stdout)
+    return formatted
+
+
+def _shape_table() -> list[tuple[str, Any]]:
+    """(label, value) pairs sweeping the axes that reproduce the bug.
+
+    Every shape here is an array-of-arrays (or array-of-objects /
+    object-of-object-of-array): the ONLY place `_prettier_json`'s list
+    branch recurses into a child whose own inline-vs-break decision depends
+    on `starting_column`/`trailing_comma` -- a same-level array of bare
+    strings never recurses that way (its compact form is measured directly
+    against `budget`, without a per-item recursive call), which is exactly
+    why the missing-parameter defect stayed invisible to every existing
+    fixture. Each entry sweeps the varying string's length so the probe
+    array's would-be single-line width crosses 78..83 -- the exact band the
+    original defect (80 without a trailing comma vs. 81 with one) lives in
+    -- inside a distinct container (array vs. object), sibling position
+    (last vs. non-last), and nesting depth (2 through 4).
+    """
+    entries: list[tuple[str, Any]] = []
+
+    # A: array container, probe is the LAST sibling, depth 2.
+    #    starting_column=2 (outer array's child indent), trailing_comma=False
+    #    (last item) => budget=80, width = 2 + (n+4) = n + 6.
+    for n in range(72, 78):
+        entries.append((f"array_last_sibling_n{n}", [["short"], ["x" * n]]))
+
+    # B: array container, probe is the FIRST (non-last) sibling, depth 2.
+    #    starting_column=2, trailing_comma=True => budget=79, same width
+    #    formula n + 6 -- this is the original bug's own shape (a trailing
+    #    comma shifts the wrap boundary down by one).
+    for n in range(72, 78):
+        entries.append((f"array_non_last_sibling_n{n}", [["x" * n], ["short"]]))
+
+    # C: object container, single (=> last) key, depth 3 (object > array >
+    #    array). starting_column=4 (grandchild indent), trailing_comma=False
+    #    => budget=80, width = 4 + (n+4) = n + 8.
+    for n in range(70, 76):
+        entries.append((f"object_last_key_n{n}", {"only": [["short"], ["x" * n]]}))
+
+    # D: object container, non-last key (sorted before its sibling), same
+    #    depth/width formula as C -- the outer key's own trailing_comma
+    #    doesn't reach the probe (the array's inline shortcut is already
+    #    skipped because it contains list items), but the extra sibling
+    #    exercises comma-joining across a genuinely different document.
+    for n in range(70, 76):
+        entries.append(
+            (f"object_non_last_key_n{n}", {"a_probe": [["short"], ["x" * n]], "z_other": 1})
+        )
+
+    # E: object-of-object-of-array, depth 4. starting_column=6, width = n+10.
+    for n in range(68, 74):
+        entries.append((f"nested_object_depth4_n{n}", {"outer": {"inner": [["short"], ["x" * n]]}}))
+
+    # F: array-of-objects-of-array, depth 4. Same width formula as E, but a
+    #    structurally different container mix (list branch wrapping a dict
+    #    item, whose own value is the probe array).
+    for n in range(68, 74):
+        entries.append((f"array_of_objects_depth4_n{n}", [{"k": [["short"], ["x" * n]]}]))
+
+    # The bug report's own reproduction, verbatim.
+    entries.append(("original_bug_repro", {"outer": [["short"], ["x" * 73]]}))
+
+    return entries
+
+
+@pytest.mark.skipif(
+    shutil.which("node") is None or not _PRETTIER_ESM_ENTRYPOINT.is_file(),
+    reason="node or the repo's node_modules/prettier install is not available",
+)
+def test_prettier_json_matches_real_prettier_across_shape_table() -> None:
+    table = _shape_table()
+    ours = [_prettier_json(value) + "\n" for _, value in table]
+    real = _real_prettier_batch([value for _, value in table])
+
+    mismatches = [
+        (label, our, expected)
+        for (label, _), our, expected in zip(table, ours, real, strict=True)
+        if our != expected
+    ]
+    details = "\n".join(
+        f"--- {label} ---\nours:  {our!r}\nreal:  {expected!r}"
+        for label, our, expected in mismatches
+    )
+    assert not mismatches, (
+        f"{len(mismatches)}/{len(table)} shapes disagree with real Prettier:\n{details}"
+    )

@@ -1,0 +1,58 @@
+{
+  "metric_result_id": "c0000000-0000-4000-8000-000000000003",
+  "metric_result_family_id": "com.example.conversion_rate.family_001",
+  "supersedes_metric_result_ref": {
+    "metric_result_id": "c0000000-0000-4000-8000-000000000002",
+    "object_hash": "5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "metric_profile_ref": {
+    "metric_profile_id": "a0000000-0000-4000-8000-000000000002",
+    "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "subject_refs": [],
+  "source_observation_refs": [],
+  "window": {
+    "started_at": "2026-04-01T00:00:00Z",
+    "ended_at": "2026-04-30T23:59:59Z",
+    "data_cutoff_at": "2026-05-10T00:00:00Z"
+  },
+  "sample": {
+    "overall": 655,
+    "subgroups": [],
+    "exclusions": []
+  },
+  "measurement": {
+    "value": 0.081,
+    "unit": "ratio"
+  },
+  "guardrail_results": [],
+  "decision_rule_evaluation": {
+    "result": "pass",
+    "reason_codes": []
+  },
+  "gate_disposition": "pass",
+  "result_state": "measured",
+  "reason_codes": ["late_arriving_data_included"],
+  "classification": {
+    "risk_class": "amber",
+    "sensitivity": "confidential",
+    "aggregation_level": "individual_run"
+  },
+  "observed_at": "2026-05-01T00:00:00Z",
+  "recorded_at": "2026-05-10T00:10:00Z",
+  "idempotency_key": "synthetic-metric-result-003",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "object_hash": "c060a98ea75848f27e109eef595c47946d0e9edcb9e9cf4a79a31c1b36e340f0"
+}

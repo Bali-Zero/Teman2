@@ -1,0 +1,37 @@
+{
+  "action_item_id": "a1000000-0000-4000-8000-000000000001",
+  "action_item_family_id": "com.example.action_item.family-001",
+  "revision": 1,
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "decision_packet_ref": {
+    "decision_packet_id": "d1000000-0000-4000-8000-000000000001",
+    "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "requested_action_spec_ref": {
+    "requested_action_spec_id": "d2000000-0000-4000-8000-000000000001",
+    "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "queue_state": "new",
+  "risk_class": "amber",
+  "sensitivity": "internal",
+  "priority": "p1",
+  "sla": {
+    "opened_at": "2026-03-01T00:00:00Z",
+    "due_at": "2026-03-03T00:00:00Z"
+  },
+  "created_at": "2026-03-01T00:00:00Z",
+  "recorded_at": "2026-03-01T00:00:01Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+}
