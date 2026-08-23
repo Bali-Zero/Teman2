@@ -130,9 +130,9 @@ Calendar duration is deliberately not guessed. Preregistered operating windows g
 | P | Workstream | Prep now | Mutation/integration gate | Primary node/lane | Shared collision |
 |---:|---|---|---|---|---|
 | 01 | NEXUS containment | Tasks 1–6 after a sanitized Pro snapshot | Task 7 waits for reviewed P04 primitive and five exact effect authorities | Pro, external OSINT-Nexus worktree | NEXUS runtime; P07 waits for containment |
-| 02 | Publishing truth | Audit, policy fixtures, golden set | P04 contract PASS; migration 271 after 270 | Pro / `backend-rag` | publication state and migration train |
+| 02 | Publishing truth | Audit, policy fixtures, golden set | P04 contract PASS; migration 271 after P04's `research_os_contract_core` migration (no fixed number — see §0) | Pro / `backend-rag` | publication state and migration train |
 | 03 | WR3/FlowKit readiness | Yes, zero-spend only | Compatibility review against P04 before it can unlock P11 | Pro / `wr3` | same WR3 runtime files later owned by P11 |
-| 04 | Canonical contracts | Ready first | None beyond fresh Pro truth and exclusive leases | Pro / `backend-rag` | contract exports, repository core, migration 270 |
+| 04 | Canonical contracts | Ready first | None beyond fresh Pro truth and exclusive leases | Pro / `backend-rag` | contract exports, repository core, `research_os_contract_core` migration (no fixed number — see §0) |
 | 05 | Intel Lake + MATA | Inventory, replay fixtures, ownership map | P04 PASS; migration 272 after 271 | Pro | Intel/MATA queues and schema |
 | 06 | NAGA claim ledger | Schema mapping, fixtures, temporal cases | P04 PASS; migration 273 after 272 | Pro | claim/evidence registry and schema |
 | 07 | NEXUS entity resolution | Golden set and synthetic clone plan | P01, P04, P05, P06 PASS; never mutate production graph | Pro / `organism` | P01 external repo boundary; P05 typed message |
@@ -158,7 +158,7 @@ Calendar duration is deliberately not guessed. Preregistered operating windows g
 Schema design can happen on packet branches. Migration integration and application are one ordered queue:
 
 ```text
-270 P04 canonical core
+research_os_contract_core P04 canonical core (symbolic name, integer bound at integration time — see §0; shipped as 279)
   ↓
 271 P02 publication truth
   ↓
