@@ -40,7 +40,6 @@ type ProposedRole = KnownValue<"investment.proposed_role">;
 type FamilyRelation = KnownValue<"family.relation_to_sponsor">;
 type StudyLevel = KnownValue<"study.level">;
 type SponsorTypeValue = KnownValue<"sponsor.type">;
-type SponsorPermitBasisValue = KnownValue<"family.sponsor_permit_basis">;
 
 const NOT_ASKED: UnknownReasonWire = "NOT_ASKED";
 const UNVERIFIED: UnknownReasonWire = "UNVERIFIED";
@@ -213,23 +212,6 @@ const SPONSOR_TYPES = [
   "INVESTMENT",
   "GOVERNMENT",
 ] as const satisfies readonly SponsorTypeValue[];
-// Mirrors the closed `SponsorPermitBasis` enum 1:1 (2026-08-23 owner
-// ruling — Permenkumham 11/2024 Pasal 33 ayat (2) huruf a-l).
-const SPONSOR_PERMIT_BASES = [
-  "EXPERT",
-  "WORKER",
-  "MARITIME_CREW",
-  "CLERGY",
-  "FOREIGN_INVESTMENT",
-  "SCIENTIFIC_RESEARCH",
-  "EDUCATION",
-  "FAMILY_REUNIFICATION",
-  "REPATRIATION",
-  "SECOND_HOME",
-  "MEDICAL_TREATMENT",
-  "WORKING_HOLIDAY",
-  "OTHER",
-] as const satisfies readonly SponsorPermitBasisValue[];
 
 export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   tourism: "TOURISM",
@@ -409,7 +391,10 @@ export function mapDisclosedReviewFlags(
   ) {
     flags.add("ACTIVITY_BOUNDARY");
   }
-  if (facts.family_sponsor_status_code !== undefined) {
+  if (
+    facts.family_sponsor_status_code !== undefined ||
+    facts.family_sponsor_permit_basis !== undefined
+  ) {
     flags.add("AMBIGUOUS_SPONSOR");
   }
   return [...flags].sort();
@@ -452,6 +437,40 @@ function mapFamilySponsorStatus(facts: OracleFacts): FactValue<string> {
   // The UI accepts a human-entered status label. It is not backed by the
   // signed status-code catalogue, so even a syntactically plausible value
   // must never satisfy an engine rule that checks `op: known`.
+  return unknownFact(UNVERIFIED);
+}
+
+/**
+ * `family.sponsor_permit_basis` shipped in PR #4650 wired straight to
+ * `enumFact()` — self-declaration resolving directly to `KNOWN`. That
+ * missed the parallel to its sibling immediately above: the applicant/
+ * sponsor is asked to classify the sponsor's OWN permit into one of 13
+ * Pasal 33 ayat (2) huruf a-l legal categories, a taxonomy they are no
+ * more likely to know precisely than a signed status code. Ruling 2's
+ * whole purpose is Pasal 33 ayat (7), an EXCLUSIONARY gate — a wrong
+ * self-declared category does not just fail to help, it can wrongly
+ * exclude an eligible applicant. Mirrors `mapFamilySponsorStatus` exactly:
+ * collected, flagged for human review (`AMBIGUOUS_SPONSOR`, below), never
+ * trusted for `op: known`, until a document-verified source (e.g. an
+ * OCR'd sponsor permit card cross-checked against the signed catalogue —
+ * which does not exist yet for `sponsor_status_code` either) supplies one.
+ */
+function mapFamilySponsorPermitBasis(
+  facts: OracleFacts,
+): FactValue<KnownValue<"family.sponsor_permit_basis">> {
+  if (facts.family_sponsor_confirmed === "no") {
+    return unknownFact(NOT_APPLICABLE);
+  }
+  if (facts.family_sponsor_confirmed === "unsure") {
+    return unknownFact(UNVERIFIED);
+  }
+  if (facts.family_sponsor_confirmed !== "yes") {
+    return facts.family_sponsor_permit_basis === undefined
+      ? unknownFact(NOT_ASKED)
+      : unknownFact(UNVERIFIED);
+  }
+  const value = facts.family_sponsor_permit_basis;
+  if (value === undefined) return unknownFact(NOT_ASKED);
   return unknownFact(UNVERIFIED);
 }
 
@@ -531,10 +550,7 @@ export function mapOracleFactsToApplicantFacts(
     "family.stepchild_birth_certificate_confirmed": booleanFact(
       facts.family_stepchild_birth_certificate_confirmed,
     ),
-    "family.sponsor_permit_basis": enumFact(
-      facts.family_sponsor_permit_basis,
-      SPONSOR_PERMIT_BASES,
-    ),
+    "family.sponsor_permit_basis": mapFamilySponsorPermitBasis(facts),
     "family.sponsor_confirmed": booleanFact(facts.family_sponsor_confirmed),
     "study.level": enumFact(facts.study_level, STUDY_LEVELS),
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),
