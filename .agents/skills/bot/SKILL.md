@@ -20,7 +20,79 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-20 — keep current)
+## 1. LIVE STATE (last update 2026-08-23 — keep current)
+
+- **💀 THE PRO DAEMON HAS BEEN DEAD FOR ~70 HOURS AND EVERY HEALTH INDICATOR READS GREEN — the
+  S3-ARMED entry below is not wrong, it EXPIRED 2.5 hours after it was written (2026-08-23,
+  measured on Pro at SHA `148f0bfca`, probes between 01:00Z and 01:40Z).**
+  - **The state.** `launchctl print system/com.balizero.wa-codex-broker` → `active count = 0`,
+    `state = spawn scheduled`, **`runs = 7514`**, **`last exit code = 1`**, `job state = exited`;
+    zero matching processes in `ps`. Downstream ground truth — prod
+    `SELECT * FROM wa_broker_gauge` via `fly ssh console` — **`broker_last_seen_at =
+2026-08-20 03:45:11Z`**, frozen, while `breaker_state = closed` and
+    `consecutive_failures = 0`. **The breaker is green because the daemon never connects far
+    enough to fail.** A dashboard reading it reported health for the whole outage.
+  - **🔻 Cause — HALF identified, and the first draft of this entry got it WRONG. An adversarial
+    pass (Kimi K3, on the frozen diff) forced the correction; this is the corrected version.**
+    The tempting story was pure pin drift: `wa_codex_daemon.run_forever()` raises `RuntimeError`
+    BEFORE the loop when `codex --version` ≠ `WA_CODEX_CLI_VERSION_PIN` — fail-closed by design
+    (spec chaos row 8), comment _"a daemon that cannot legally exec must not sit green (scar
+    family #2)"_ — uncaught → exit **1** → `KeepAlive{SuccessfulExit:false}` +
+    `ThrottleInterval 30` relaunches forever. **The timeline refuses that as the ORIGINAL cause.**
+    Stamps: gauge froze **03:45:11Z 08-20** · **Pro REBOOTED 09:49:54Z 08-20**
+    (`sysctl -n kern.boottime`) · **codex-cli 0.149.0 installed 20:45:25Z 08-20** (`stat` on the
+    resolved binary) · measured ~01:20Z 08-23. Two arithmetic consequences: (a) **launchd's
+    `runs` counter resets at boot**, so the 7,514 restarts span the **63.50 h since boot** —
+    implied spacing **30.42 s** against a 30 s floor; (b) the window since the CLI upgrade is only
+    52.58 h, capping restarts at **6,309** at that floor, and we observe **7,514** — **so the
+    crash-loop began at least 10 h BEFORE the upgrade.** The pin mismatch is therefore a real
+    **second** cause (certainly active since 20:45Z 08-20) layered on a **first cause that is
+    still unknown** and lives in a root-only log. The gauge also froze **6.08 h before the
+    reboot**, so the daemon was already failing under the pre-reboot launchd session.
+  - **⚠️ WITHDRAWN from the first draft, so nobody re-derives it:** that draft read the implied
+    spacing as "throttle floor + ~3.3 s of real work per cycle" and offered it as evidence the
+    process reached the `codex --version` call. It proves nothing — `ThrottleInterval` is measured
+    **from launch, not from exit**, so any runtime under 30 s yields the same ~30 s spacing. It
+    was also computed from the wrong start time.
+  - **The bump is safe — and NOW it is genuinely verified rather than assumed.** `codex --version`
+    prints `codex-cli 0.149.0` and the daemon's own `_SEMVER_RE` (`(\d+\.\d+\.\d+)`) parses it to
+    `0.149.0`, so a pin of `0.149.0` matches. The adapter's exact call shape — `_FIXED_ARGV_PREFIX`
+    = `exec --sandbox read-only --skip-git-repo-check --ephemeral --ignore-user-config
+--ignore-rules` plus the `-` stdin sentinel, **all five flags together** — ran live against
+    0.149.0 today and returned its expected token, rc 0. (The first draft probed with ONE flag and
+    still said "verified"; that is what made the claim overstated then.) **But safe ≠ sufficient:
+    the bump clears a blocker that certainly exists now, it does not address the first cause.**
+  - **Not a HOME-fork.** `cmp -s /usr/local/libexec/wa-codex-broker-wrapper.sh
+infra/launchagents/wrappers/…` → IDENTICAL. Superscar #1 is clean here; this is #2.
+  - **The seat sentinel — the organ that would have caught this within the hour — was never
+    armed, and the reason is not an operator error.** `/usr/local/var/wa-codex-broker` does not
+    exist and `crontab -l | grep -c seat-sentinel` = 0. Zero DID run the provisioning on 08-20
+    (the installed wrapper + runtime tree, `08:39` local = `00:39Z`, prove it) — but the
+    seat-probe section was added by **#4405 (`ecd3a3da0`), merged 07:48Z the same day**, AFTER
+    that run. **A provisioning run cannot install a section that does not yet exist.**
+  - **The meta-pattern, worth more than the incident.** Three organs each behaved correctly and
+    the chain still went dark: the daemon refused loudly; the wrapper's sidecar is deliberately
+    unwatched (`expected_hb_seconds=0`, because the wrapper itself names the server-side gauge as
+    the ground truth); and the gauge went stale with the breaker still reading green. **Not a
+    component that lies — a correct fail-closed refusal wired to an alarm channel nobody armed.**
+    Same lesson the ledger already carries in another costume: _"armata" non è uno stato, è un
+    istante_ — the 08-20 entry was TRUE at 01:11→01:12Z and nothing existed to notice it stop
+    being true.
+  - **Cure = READ THE LOG FIRST, then the pin bump** (`operator[credential]`: both
+    `/Users/zantara-codex/logs/wa-codex-broker.err` and the `0600` env file are root/other-user
+    owned, and Pro has no passwordless sudo — probed). **Do not skip the log**: the pin bump alone
+    may leave the daemon down, because it does not touch the first cause. Re-running the
+    provisioning does not touch the pin either — it skips an existing env file by design. Exact
+    paste + the correct proof-of-armed in
+    `research/operations/2026-08-23-bot-subscription-path-readiness.md` §3. **Prove it by two
+    ADVANCING gauge reads, never by one fresh-looking timestamp and never by `breaker_state`.**
+  - **Ladder status from Zero, today:** **G-P2** (Art. 56 basis artifact) — _"non ora"_, stays
+    `operator[business]`, and it is the ONLY item no amount of building can advance. **G-P6**
+    (bounded credential residual) — **ACCEPTED at the §4.2 bound**, recorded; **the gate is NOT
+    closed**, because the spec's own row requires the bound to be _verified, not assumed_ (scope
+    inventory of what a stolen `auth.json` reaches + a revocation test) and neither probe has
+    run. **WhatsApp is still served by Gemini** — `WA_GENERATION_PROVIDER` is absent from
+    `fly secrets list -a nuzantara-rag`, so it defaults off, as intended.
 
 - **📉 IMPLICIT PREFIX-CACHE: VERIFIED HEALTHY, NOTHING TO BUILD — July's 0% was the LEDGER'S
   blindness, and the live answering model has been the FALLBACK since 08-10 (2026-08-20, measured
