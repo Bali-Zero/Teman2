@@ -1,59 +1,94 @@
 brief_ref: evidence/brief.yml
-plan_ref: "pro-visa-freshness-sentinel.sh wrapper header self-reference fix, split out of PR #4592 (2026-08-23)"
+plan_ref: "scripts/fleet_sessions.py — cross-machine session visibility + healer receptor 6 (mandate 2026-08-23)"
+gear: 2
+lanes:
+  - lane: B1
+    role: build
+    seat: "tp1-deepseek-v4-pro (Alibaba Token Plan, non-Anthropic)"
+    note: "authored scripts/fleet_sessions.py. Codex was the mandated builder but its seat is AUTH_DEAD on both Mini and Pro (refresh_token_invalidated / node-not-on-PATH, arsenal_probe measured live) and it exited 0 having written zero files — re-routed, declared, not silently substituted."
+  - lane: B2
+    role: build
+    seat: "tp1-deepseek-v4-pro"
+    note: "authored scripts/tests/test_fleet_sessions.py against the pinned JSON contract. A first attempt on tp1-qwen3.8-max returned empty."
+  - lane: R1
+    role: review
+    seat: "kimi-code/k3 (Moonshot, cross-family, fresh context)"
+    note: "adversarial refutation of the full diff, asked specifically for false-green and for leak paths. Findings K1/K3/K4/K5 reproduced by the grader before any fix."
+  - lane: G1
+    role: review
+    seat: "session (Opus 5, mini-pro2)"
+    note: "final on-disk gate: every defect re-measured live on the fleet, not accepted from a report."
 diff:
-  net_lines: "+2/-2, 1 file, measured by `git show HEAD --numstat` at HEAD f27cb936f (this PR's only commit)."
-  behaviour_change: "none — two `#` comment lines only; `set -u` and every executable line byte-identical before/after"
+  net_lines: "+1861 net across 4 files (2 new: scripts/fleet_sessions.py, scripts/tests/test_fleet_sessions.py; 2 edited: infra/healer/healer-run.sh +49, infra/healer/HEALER-MANDATE.md +11), measured by `git diff --numstat` against the merge-base."
+  behaviour_change: "New read-only reporting tool. The healer gains ONE receptor whose only ACTIONABLE conditions are coverage loss (a host UNREACHABLE) and blindness (exit 2). No existing receptor, cure path or perimeter is touched."
 receipts:
-  - claim: "The diff is exactly the two header comment lines; ORGAN_ID and LOG_DIR (legitimate underscores) are untouched"
-    cmd: "git show HEAD --numstat -- infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh"
+  - claim: "The tool works across all three machines from Mini and isolates a downed host"
+    cmd: "python3 scripts/fleet_sessions.py --json -> exit 0, hosts_ok 3/3, 270 sessions, unreachable 0; python3 scripts/fleet_sessions.py --hosts local,nonexistent-host --json -> exit 1, hosts_unreachable 1, reason 'ssh exit 255: ssh: Could not resolve hostname nonexistent-host', other host still fully reported"
     exit: 0
-    ts: "2026-08-23T10:31:22Z"
-    seat: "session (m5)"
-  - claim: "The old header named a file that has never existed: repo history never has the underscore path; the live Pro copy resolves the hyphen path; the plist's ProgramArguments uses the hyphen path"
-    cmd: "grep -c pro-visa_freshness_sentinel.sh infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (post-fix, ->0); ssh pro 'ls ~/scripts/pro-visa-freshness-sentinel.sh' (exists) and 'ls ~/scripts/pro-visa_freshness_sentinel.sh' (No such file or directory); ssh pro 'launchctl print gui/501/com.nuzantara.visa-freshness-sentinel' shows program ~/scripts/pro-visa-freshness-sentinel.sh"
+    ts: "2026-08-23T08:30Z"
+    seat: "session (mini-pro2)"
+  - claim: "THE COMMISSIONED PREMISE IS FALSE: a healer session running minutes is CORRECT, not dead. All 10 DECLARED-SPAN-UNMET rows on the live fleet are healthy healer ticks"
+    cmd: "grep -A1 StartInterval infra/launchagents/com.nuzantara.healer.4h.plist -> 14400 (launchd relaunches every 4h); HEALER-MANDATE.md rule 6 -> 'max ~40 min di lavoro' per tick; tail ~/logs/healer/healer.log -> 'ACTIONABLE ... 15:12:12' then 'session exit=0' at '15:23:16' with a substantive result. 'loop 4h' in the mandate TITLE is the cron cadence, not the session runtime."
     exit: 0
-    ts: "2026-08-23T10:32Z"
-    seat: "session (m5)"
-  - claim: "infra/home-fork/declared-pairs.json pair[146] already declares the hyphen form on both live and repo sides for this organ -- scripts/lint_home_fork.py was never blind to the real pair, only the wrapper's own header comment was wrong"
-    cmd: 'python3 -c "import json; d=json.load(open(''infra/home-fork/declared-pairs.json'')); print(d[146])" -> {''live'': ''~/scripts/pro-visa-freshness-sentinel.sh'', ''repo'': ''infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh'', ''machines'': [''pro'']}'
+    ts: "2026-08-23T08:05Z"
+    seat: "session (mini-pro2)"
+  - claim: "ps without -e is blind: it sees 25 processes of 693 and 2 of the 4 live subagents, which would have inverted the tool into a false-alarm machine"
+    cmd: "ps -o pid= -o args= | wc -l -> 25 ; ps -eo pid= -o args= | wc -l -> 693 ; same pipes grepping parent-session-id -> 2 vs 4"
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: "No script in the repo parses the # Canon: / # Live: comment lines back out of an EXISTING wrapper to do anything functional. The only other hit for the literal 'Canon:' in scripts/*.py is scripts/organ_birth.py:80, and that line is inside wrapper_template() -- an f-string that GENERATES a new wrapper's header text at organ-birth time, never a reader of an existing file"
-    cmd: "grep -rl 'Canon:' scripts/*.py -> scripts/organ_birth.py only; sed -n '75,85p' scripts/organ_birth.py confirms it is inside an f-string head='''...''' template, not a file read"
+    ts: "2026-08-23T07:05Z"
+    seat: "session (mini-pro2)"
+  - claim: "lsof -c claude returns ZERO rows on Pro while four sessions run; asking lsof about the PIDs ps already classified works on both machines"
+    cmd: "ssh pro 'lsof -c claude -a -d cwd -Fpn | grep -c ^p' -> 0 ; ssh pro 'lsof -p <pidlist> -a -d cwd -Fpn' -> four p/fcwd/n triples. Consequence before the fix: every Pro row read NO-PROCESS, an absence never observed."
     exit: 0
-    ts: "2026-08-23T10:33Z"
-    seat: "session (m5)"
-  - claim: "python3 scripts/lint_home_fork.py passes (no regression) and bash -n is clean on the fixed file"
-    cmd: "python3 scripts/lint_home_fork.py -> '25 live copy/copies match their repo twin' + 'clean' on the 1 undeclared-payload discovery pass; bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> exit 0, no output"
+    ts: "2026-08-23T07:20Z"
+    seat: "session (mini-pro2)"
+  - claim: "One transcript, two paths: ~/.claude/projects/-Users-nuzantara-nuzantara is a SYMLINK to the -Desktop- form, so the same session was reported twice and every finding double-counted (29 rows for 17 sessions)"
+    cmd: "readlink -- ./-Users-nuzantara-nuzantara -> .../-Users-nuzantara-Desktop-nuzantara ; stat -f inode on 733cf2de-....jsonl via both paths -> 53353008 both. Cured by deduping on (st_dev, st_ino)."
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: 'The organ stays ARMED and unaffected: Pro''s launchd job is loaded, last_seen is fresh, and today''s run already reports pack_source:"database" -- this comment edit needs no restart/redeploy'
-    cmd: 'ssh pro ''launchctl print gui/$(id -u)/com.nuzantara.visa-freshness-sentinel'' (loaded, program path correct); ssh pro ''cat ~/.organism/last_seen/pro.visa_freshness_sentinel.json'' -> {"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}; ssh pro ''tail -5 ~/logs/pro-visa_freshness_sentinel/run.log'' -> pack_sequence 12, pack_source "database"'
+    ts: "2026-08-23T07:45Z"
+    seat: "session (mini-pro2)"
+  - claim: "REFUTER K1 reproduced: a host that fails to probe ITSELF exits 0, so it counted as a successful probe and the healer stayed silent about an unobserved machine"
+    cmd: 'monkeypatched run_host_probe to return (0, ''{"status":"UNREACHABLE",...}'', '''') -> main() returned exit 0 with summary.hosts_unreachable == 1 and hosts_ok == 0. Cured by reading the payload''s status, not the transport''s exit code.'
     exit: 0
-    ts: "2026-08-23T10:30Z"
-    seat: "session (m5)"
+    ts: "2026-08-23T08:12Z"
+    seat: "session (mini-pro2)"
+  - claim: "REFUTER K4 reproduced in BOTH directions and cured, verified on a 16-case corpus built from real fleet text"
+    cmd: "before: declared_long('loop di 4 ore') -> (False, None) and declared_long('the daemon ran 48h nonstop before crashing') -> (True, 2880). after: 16/16 correct across true positives, the five phrasings the refuter named as missed, the reverse-order narrative, and the five originally-measured false accusations."
+    exit: 0
+    ts: "2026-08-23T08:22Z"
+    seat: "session (mini-pro2)"
+  - claim: "PROVE-LIVE: a REAL healer tick reported a fleet finding, reached the session prompt, and spooled its Telegram"
+    cmd: "bash infra/healer/healer-run.sh with the LLM stubbed and TG_DRY_RUN=1, one host deliberately down -> healer.log 'ACTIONABLE: ... fleet:1-host-unreachable'; the spawned prompt carries 'receptor scattati: ... fleet:1-host-unreachable'; tg spool holds key healer-mini:fleet-unreachable. Nothing was sent and no LLM window was spent."
+    exit: 0
+    ts: "2026-08-23T08:34Z"
+    seat: "session (mini-pro2)"
 tests:
-  - "No unit test exists or is warranted for a 2-line comment change with zero executable delta; bash -n (syntax) and lint_home_fork.py (the ONE guard whose job includes this file's identity) are the applicable checks and both pass, per receipts above."
+  - "36 tests in scripts/tests/test_fleet_sessions.py, /usr/bin/python3 -m pytest -q -> 36 passed in 0.08s. Fully hermetic: an earlier revision took 207s because two tests called main() without --hosts and ssh'd to pro/air for real; those are now host-explicit, and the 0.08s runtime is itself the proof that no test touches the network."
+  - "Guilt paired with innocence per classifier (superscar #3), built on the REAL argv strings and REAL mandate text measured on the fleet — including the four shapes a naive exclusion list misses because the path has a dot before `claude`, not a slash."
+  - 'python3 scripts/fleet_sessions.py --selftest -> ''selftest PASSED'', exit 0. It caught two real defects during the build (an exclusion written against a path form that does not exist, and `"claude" in cmd` matching `not-claude`).'
 static:
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> clean"
-  - "scripts/lint_home_fork.py -> clean (25/25 checkable pairs on m5 match; this pair is pro-only so its LIVE side is not checkable from m5 -- see dissent #3 below for the post-merge consequence)"
+  - "bash -n infra/healer/healer-run.sh -> clean"
+  - "pre-commit hooks (anti-reward-hacking lint, secret scan, python lint, off-limits guard) -> all passed on both commits"
 runtime_proof:
-  - "Not applicable in the classic sense (no code path executes differently). The closest runtime proof is that the organ this wrapper launches is independently confirmed ARMED and HEALTHY on Pro before and after this diff (receipts above) -- the fix changes documentation the organ never reads."
+  - "The live table from three machines is in the session transcript: 3 of 3 hosts probed, 270 sessions, 0 unreachable. Both exit paths were exercised against the real fleet, not simulated."
+  - "The healer receptor was executed as the wrapper executes it (not a transcription) and produced REASONS='fleet:1-host-unreachable'."
 dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context, dispatched via `kimi -p ... -m kimi-code/k3`, independent of the diff's author)"
-    objection: "Tried to refute all 4 of the author's claims by re-running the underlying commands itself (git show --numstat, ssh pro ls/launchctl, python declared-pairs read, grep Canon: across scripts/*.py and .github/workflows/) rather than trusting the brief. All 4 confirmed true. Found 3 things beyond the claims, none blocking: (a) evidence/brief.yml existed in the worktree but was UNCOMMITTED at review time -- a real process gap, since the whole reason this fix was split out of #4592 was to carry a floor-3 evidence pack; (b) the root cause is unfixed and will recur: scripts/organ_birth.py:80's wrapper_template() does organ_id.replace('.', '-'), which only replaces the dot and leaves internal underscores alone, so ANY future organ_id containing '_' is born with the same wrong header; 3 sibling wrappers carry the identical live bug today (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh -- declared-pairs indices 32/68/151), correctly left untouched by this PR's tight scope but flagged so the pattern is not lost; (c) merging this diff will transiently desynchronize declared-pairs pair[146] -- the live copy on Pro still carries the pre-fix underscore header (confirmed by ssh), so lint_home_fork.py --check run FROM PRO will read the pair as sha256-divergent until the repo-authoritative content is synced to the live path; expected/self-healing under the existing repo-is-canon model, not a defect of this diff, but the sync should be confirmed rather than assumed."
-    status: PLAUSIBLE
+  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context — the diff's author was tp1-deepseek-v4-pro, so generator != grader holds)"
+    objection: "Attacked false-green and leak paths. CONFIRMED and fixed: K1 (remote self-failure exits 0 -> healer silent), K3 (lookback drops corpses exactly when the healer was itself down; and a declared span may exceed the window), K4 (declared_long both misses real Italian/English phrasings and still fires on narrative), K5 (ssh stderr unbounded in a field that reaches Telegram). PARTIALLY ACCEPTED: K2 — 'UNMAPPED is treated as dead-eligible, so a live session idle at a prompt gets accused'. The refuter's proposed cure (require NO-PROCESS) was REJECTED on measurement: the one Pro true-positive was itself UNMAPPED, so that fix would have destroyed detection. It is moot in the shipped state anyway, since the verdict no longer alarms. NOT ACCEPTED but recorded: a zombie subagent outliving its parent would mark a dead parent ALIVE — real, low-frequency, and unfixable from process data alone."
+    status: CONFIRMED
 residual_risks:
-  - "The organ_birth.py:80 template bug (dot-only replace, underscores in organ_id survive into the generated header) is NOT fixed here -- deliberately out of scope for a 2-line self-reference correction. 3 sibling wrappers (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh) carry the same wrong header today and any future organ with an underscore in its id will be born with it again. A follow-up PENDING-ARMS line is warranted; not opened in this PR to keep scope tight (constraints in brief.yml)."
-  - "Transient post-merge divergence: until the live copy on Pro (~/scripts/pro-visa-freshness-sentinel.sh) is synced from the repo-authoritative content, `scripts/lint_home_fork.py --check` run on Pro will report pair[146] as sha256-divergent (comment-only bytes differ). This is the normal repo-is-canon flow and self-heals on the next sync of this pair -- confirmed the sync mechanism exists (this repo has synced this exact pair before, per the pair's own presence in declared-pairs.json since the organ's birth) but did NOT independently re-verify a sync fires automatically post-merge; flagged rather than assumed."
+  - "THE HEADLINE VERDICT IS UNCALIBRATED AND SHIPS THAT WAY, DECLARED. DECLARED-SPAN-UNMET matched 10 of 10 healthy healer ticks on the live fleet. It is reported, never alarmed on, and the healer reads only UNREACHABLE/BLIND. The mandate asked for this detector as the deliverable's centre; it is delivered as an INFORMATIONAL field instead, because shipping it as an alarm would wire an organ to a signal that is wrong every time it fires. This is the one place the delivered scope is narrower than the scope requested, and it is narrowed deliberately and visibly, not quietly."
+  - "The real fix is a design change, not a regex: the runner should write its own expected duration into a sidecar the way it already writes a heartbeat. Text cannot distinguish 'this document declares its runtime' from 'this document's title names a cron cadence' — three narrowings each traded one error direction for the other, which is the repo's three-rounds signal that the surface is under-specified."
+  - "HOME-fork (superscar #1) is OPEN until post-merge sync: the wrapper reads $HOME/scripts/HEALER-MANDATE.md FIRST, and that copy has 0 occurrences of fleet_sessions.py while the repo copy has 2. Proven this session — the stubbed tick's prompt did NOT carry the new mandate step. Both files are DECLARED pairs in infra/home-fork/declared-pairs.json, and the healer cannot sync them itself (its own files are outside its perimeter, by constitution). ALIGN-FLEET action, tracked."
+  - "The identity slice is PII-BOUNDED, not PII-free: the first 90 characters of a first message ARE emitted, by design, and a test pins the cap. Nothing past it ever leaves the host."
+  - "alive detection on Pro rests on UNMAPPED for most rows: many sessions share one project dir, so a cwd match cannot attribute a process to a session id. The tool says UNMAPPED rather than guessing — honest, but it means Pro liveness is weaker than Mini's."
 sources:
-  - infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (this PR's only changed file)
-  - infra/home-fork/declared-pairs.json (pair[146], read-only reference)
-  - scripts/organ_birth.py:75-85 (read-only reference, root-cause template)
-  - Pro live state via ssh (launchctl, last_seen json, run.log) -- re-verified fresh this session, not recalled
+  - scripts/fleet_sessions.py (new)
+  - scripts/tests/test_fleet_sessions.py (new)
+  - infra/healer/healer-run.sh (receptor 6)
+  - infra/healer/HEALER-MANDATE.md (step 1)
+  - infra/launchagents/com.nuzantara.healer.4h.plist (read-only — StartInterval 14400, the measurement that falsified the premise)
+  - ~/logs/healer/healer.log (read-only — tick 15:12:12 -> exit 0 15:23:16)
+  - live ssh probes of pro and air, re-run fresh this session
 pii_scan: clean
-# ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
-# at write time = 7701 bytes -> ~1925 tokens, well inside the 30,000 hard cap.
-size_tokens: 1925
+size_tokens: 2350
