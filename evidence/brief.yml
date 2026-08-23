@@ -1,65 +1,111 @@
-task_id: ci-backend-test-sharding-0823
+task_id: s12-c1-merge-gate-integrity-watch
 gear: 3
-l_level: L2
+l_level: L1
 gate_class: opus
 objective: |
-  Shard `Backend Tests (Python)` three ways. It is the single largest fixed cost in every
-  merge-queue transit and every code PR pays it TWICE (PR lane + merge-group lane). Measured
-  on this workflow, not estimated: merge_group run 32626973483 spent 797s of a 1068s job in
-  "Run unit tests" (74.6%); schedule run 32624568684 spent 726s of 975s (74.5%). Every other
-  required gate on the same PR finishes in under 2 minutes.
+  Silence an alarm that has been crying since the day it was armed — without
+  silencing the thing it exists to hear.
 
-  Intra-job parallelism is already saturated — `-n auto --dist loadfile` was re-added
-  2026-08-21 with per-xdist-worker Postgres isolation and a 2-core `ubuntu-latest` runner has
-  nothing left to give. The only remaining lever is CROSS-JOB sharding: 3 x 2 cores instead of
-  1 x 2.
+  `merge-gate-integrity-watch` has failed on EVERY push to main. Twelve runs
+  sampled on 2026-08-23: twelve reds, 100%. The mandate that sent me here
+  named ONE cause (squash merges producing a SHA with no pre-merge check runs
+  of its own). Reading the script and reproducing it locally found that cause
+  to be WRONG and three others to be real. This is the honest version: the
+  hypothesis I was handed did not survive contact with the code, and the fix
+  is not the fix that was ordered.
 
-  Gear 3 is the DETERMINISTIC FLOOR here, not a choice: the diff touches
-  `.github/workflows/`, which floors at 3 regardless of size (fleet-order-spec.md §4).
+  DEFECT 1 — the exit code was never captured (superscar #2 / W101). The step
+  ran `python3 ... > /tmp/verdict.json` then `rc=$?`. The runner's default
+  shell is `bash --noprofile --norc -e -o pipefail`, and `set -uo pipefail`
+  cannot cancel that `-e`: the probe exiting non-zero aborted the step BEFORE
+  `rc=$?`, so $GITHUB_OUTPUT never received `rc`, the classify step read
+  rc="" and fell through to its `*)` arm. This is worse than noise. A REAL
+  branch-protection violation (rc=1, tier p0, a Telegram page) was
+  indistinguishable from a broken probe (rc=3, tier digest). The alarm was
+  not merely crying — it was crying in the wrong key, and had the gate ever
+  actually failed, the finding would have arrived as routine digest traffic.
+  The `cat /tmp/verdict.json` never ran either, which is exactly why 26 red
+  runs carried no diagnosis anyone could read.
 
-  THE ONE THING THIS PR IS REALLY ABOUT, and the reason the evidence below is sized the way it
-  is: `Backend Tests (Python)` is one of the 27 REQUIRED status contexts in classic branch
-  protection on main. A `strategy.matrix` renames its check runs to "... (1)", "... (2)" — the
-  bare required context then never reports again, every merge-queue entry waits out
-  `checkResponseTimeout` (5400s) and fails with nothing red to fix. That is cicatrix-superscar
-  #2 / W69 (required checks silently disarmed), and it would be self-inflicted by a change whose
-  whole purpose is to make the queue faster. The cure is structural: a fan-in job keeps the exact
-  name and the shards get new, non-required names.
+  DEFECT 2 — the required-context list is unreadable in CI. The probe reads
+  `branches/main/protection`, which requires repo-ADMIN scope; `administration`
+  is not among the permissions a workflow GITHUB_TOKEN can be granted at all.
+  That call raised on every run, and every raise maps to CANNOT-VERIFY. The
+  repo ALREADY checks the same list in at infra/required.d/contexts.json.
 
-  The second failure mode this design has to defeat is worse because it is INVISIBLE: if the
-  three chunks stop tiling the corpus, tests silently stop running and the required context stays
-  green. A sharded suite that under-runs looks exactly like a healthy one. Four independent
-  refusals in the fan-in close it (upstream results, partition guard against the shards' OWN
-  uploaded chunk lists, junit proof-of-work, coverage combine before threshold).
+  DEFECT 3 — and this one is why fixing 1 and 2 alone would have made things
+  WORSE. "skipped" was treated as a violation. Path-filtered jobs conclude
+  skipped and branch protection accepts them. With 1 and 2 fixed and 3 left
+  alone, 26 ignorable digest reds/day become 26 p0 Telegram pages/day, one
+  per docs-only merge. The alarm would have gotten louder and more wrong.
 constraints:
-  - "The `name:` of the fan-in job must remain the byte-exact string `Backend Tests (Python)`,
-    and its job id must remain `backend-tests` — `test-summary` consumes
-    `needs.backend-tests.result`, and branch protection consumes the name."
-  - "Do NOT change the merge_group scoping semantic: the PR lane runs impact-scoped selection,
-    merge_group DELIBERATELY runs unscoped (impact_map.py docstring, 'SCOPE, DECLARED'). The
-    partitioner reads the same IMPACT_* env with the same fail-open convention and never narrows
-    the corpus on its own initiative."
-  - "Do NOT touch the workflow-level `concurrency:` block. It is scar tissue encoding three
-    asymmetries (merge_group / schedule / push-to-main) that look like bugs at a glance; the new
-    jobs inherit it unchanged."
-  - "No new dependencies. pytest-split was considered and deliberately deferred to v2, gated on a
-    MEASURED shard imbalance > ~2x — which this PR instruments rather than assumes."
-  - "Larger paid runners: rejected (cost). Self-hosted runners: rejected outright — this is a
-    public repository, so that means arbitrary PR code executing on our machines."
+  - "Do not weaken the detector. Every guilt case it could catch before, it
+    must still catch: absent job, failed/cancelled/timed_out/action_required
+    conclusion, zero-duration phantom, completion after the merge decision,
+    zero merge_group runs at all, unresolvable SHA."
+  - "Widen the passing set by EXACTLY what was measured, and no further.
+    `neutral` is widely said to satisfy required checks too; it was NOT
+    measured on this repo and therefore stays a finding (superscar #3 — every
+    scar in that family is a guard widened past its evidence)."
+  - "The snapshot is a FALLBACK, never a replacement: the live API is tried
+    first so a privileged caller keeps ground truth, and the verdict records
+    which source answered."
+  - "Never let an empty required-context list count as clean. An empty list
+    makes every commit vacuously green — a fail-OPEN detector, which is the
+    W84 'green but dead' shape this probe exists to catch elsewhere."
+  - "The workflow stays a SIGNALER: not required, never blocking, never
+    auto-acting. Unchanged by this PR."
 acceptance:
-  - "`Backend Tests (Python)` still reports on every event type it reported on before and never
-    hangs unreported. CORRECTED after a refuter (Codex GPT-5.6) checked the trigger list instead
-    of trusting it: those events are pull_request, merge_group, schedule and workflow_dispatch —
-    there is NO `push:` trigger on this workflow. The pre-existing comment at tests.yml:42 claims
-    `every main push now runs to completion`, and that claim has been false for as long as it has
-    been there. This PR does not fix that (out of scope, and the concurrency block is explicitly
-    off-limits per the constraints below) but it must not REPEAT it: an earlier draft of this very
-    acceptance criterion listed `push`, i.e. the diff was about to inherit a false premise from a
-    comment rather than from the code."
-  - "All 27 required contexts report on the probe head SHA."
-  - "Wall-clock for the required context on a full unscoped (merge-group) transit is <= 8 min."
-  - "GUILT: a failing test makes the fan-in RED. GUILT: a corrupted chunk list makes the
-    partition guard RED. INNOCENCE: a clean transit is green."
-  - "Coverage `--fail-under=55` is still enforced on the lane that collects it (merge_group /
-    push / schedule / dispatch — NOT pull_request), over the COMBINED shard data."
-  - "PR-lane scoped selection is unchanged: the same modules are selected, only distributed."
+  - "On the 10 most recent first-parent pushes to main, the probe returns
+    CLEAN or VIOLATION — zero CANNOT-VERIFY. (Was: 100% CANNOT-VERIFY.)"
+  - "Guilt preserved: a fabricated SHA still returns CANNOT-VERIFY; the
+    #3227 guilt fixture still returns VIOLATION."
+  - "The `|| rc=$?` idiom captures rc=3 under the runner's REAL shell
+    (`bash -e -o pipefail`), where the previous idiom captured nothing."
+  - "Tests both directions: skipped passes AND nothing else was widened."
+consumer_map:
+  - "`.github/workflows/merge-gate-integrity-watch.yml` — the only caller of
+    the probe in CI; both its permissions block and its probe step change."
+  - "`infra/required.d/contexts.json` — becomes load-bearing in CI for the
+    first time (it was written by scripts/ci/snapshot_required_contexts.py
+    for scripts/ci/check_required_workflow_conformance.py). Verified
+    content-identical to live branch protection on 2026-08-23: 27 contexts,
+    no diff either direction. Its staleness risk is a declared residual, in
+    risks below — it is a real cost, not a hand-wave."
+  - "`scripts/tg_notify.py` — receives the tier. This PR changes WHICH tier a
+    given outcome maps to (that is the point of defect 1), not the gateway."
+  - "The checkout step in the workflow — previously decorative for the probe
+    step, now load-bearing, because the snapshot is read from the working
+    tree. Named here so a future 'this checkout looks unused' cleanup cannot
+    remove it silently."
+risks:
+  - "SNAPSHOT DRIFT, declared and NOT closed by this PR. If someone adds a
+    required context in GitHub Settings and nobody regenerates
+    infra/required.d/contexts.json, the probe verifies 27 of 28 and reports
+    CLEAN on a commit it has not fully checked. This is a genuine narrowing
+    of coverage — but measured against the status quo it is a strict
+    improvement, because the status quo verified ZERO contexts and reported
+    CANNOT-VERIFY 26 times a day. The honest framing: this trades a total
+    blind spot that screams for a partial blind spot that is quiet. Closing
+    it properly needs a scheduled snapshot-freshness check, which is a
+    separate concern and is going to PENDING-ARMS rather than being smuggled
+    into this diff."
+  - "A required check that SHOULD have run but was skipped by an over-broad
+    `paths:` filter now passes the probe. Mitigated, not eliminated: skipped
+    contexts are reported in the verdict JSON under `skipped_contexts` and in
+    the prose output, so they remain visible in the run log. Detecting an
+    over-broad path filter is a different detector's job and is not claimed
+    here."
+  - "This PR touches `.github/workflows/`, so a mistake in the probe step's
+    shell could break the workflow silently. Countered by proving the idiom
+    under the runner's actual shell rather than reasoning about it."
+grader: |
+  Independent adversarial refuter on fresh context, NON-Anthropic seat
+  (Kimi K3), explicitly tasked to refute rather than review, and pointed at
+  the four surfaces most likely to be wrong (skipped-hole, snapshot
+  fail-open, the rc idiom under signals, tests-passing-for-wrong-reasons).
+  Seat diversity is DEGRADED and declared: Codex was live-probed this session
+  and is AUTH_DEAD ("refresh token was revoked"), GLM CRED_UNAVAILABLE, agy
+  TIMEOUT — one non-Anthropic family available, not two.
+budget: 1 refuter seat, no council (a three-defect CI fix does not warrant one)
+pii: none
