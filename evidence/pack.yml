@@ -2,9 +2,13 @@ brief_ref: evidence/brief.yml
 plan_ref: "P04-D1 canonical ContentObject/MediaManifest (CONTRACTS.md sections 9-10), PR #4643 (2026-08-23)"
 diff:
   net_lines: >-
-    +4264/-0, 53 files, measured this session via `git diff --numstat <merge-base> HEAD` against
-    merge-base bc323dde9 (origin/main) -> HEAD f36ba58e6. The PR's two content commits are
-    126f7a000 (original build) and cf34c8ad7 (independent-review fix, see dissent below).
+    +4264/-0, 53 files -- the PR's actual product diff, unchanged by the merge below (main's new
+    commits never touched packages/research-os-core, per the loss-check receipts). The PR's two
+    content commits are 126f7a000 (original build) and cf34c8ad7 (independent-review fix, see
+    dissent below). HEAD is now a merge commit that additionally resolves a real conflict against
+    origin/main (which had advanced to b72f1885f, PR #4654 -- also a fixed-root-path evidence
+    writer) on evidence/brief.yml and evidence/pack.yml only; this PR's own content won via git
+    checkout --ours, per the merge-resolution receipts below.
   behaviour_change: >-
     New library package surface only (packages/research-os-core): two new frozen Pydantic models
     (ContentObject, MediaManifest), their generated JSON Schemas, fixtures, tests, and
@@ -102,6 +106,74 @@ receipts:
     exit: 0
     ts: "2026-08-23T09:57:20Z"
     seat: "session (pro)"
+  - claim: >-
+      Confirmed the CONFLICTING mergeability GitHub reported was REAL (main had since absorbed
+      PR #4654, which also touched evidence/brief.yml + evidence/pack.yml at their fixed root
+      paths) -- verified with a real local dry-run merge before believing GitHub's flag, then
+      cleanly aborted it with zero residual changes
+    cmd: >-
+      git fetch origin main ; git merge --no-commit --no-ff origin/main ; git status
+      --porcelain=v1 ; git merge --abort ; git status --porcelain=v1
+    exit: 0
+    ts: "2026-08-23T10:04:30Z"
+    seat: "session (pro)"
+  - claim: >-
+      Resolved the real conflict: merged origin/main (moved further to b72f1885f, PR #4654) into
+      this branch. Only evidence/brief.yml and evidence/pack.yml conflicted; all other files
+      (PENDING-ARMS.md, main-push-failure-watch.yml, wr3-spend-gate-tests.yml,
+      MODEL_ROSTER.md, guard-conformance/registry.json, evidence_pack_lint.py,
+      test_evidence_pack_lint.py) auto-merged clean with zero manual resolution. The two evidence
+      files were resolved with git checkout --ours (this PR's own truthful content wins over
+      #4654's evidence, per instruction)
+    cmd: >-
+      git fetch origin main && git merge origin/main -m '...' ; git status --porcelain=v1 | grep
+      '^UU' ; git checkout --ours evidence/brief.yml evidence/pack.yml && git add
+      evidence/brief.yml evidence/pack.yml
+    exit: 1
+    ts: "2026-08-23T10:09:15Z"
+    seat: "session (pro)"
+  - claim: >-
+      Loss-check on the three registration files after the merge: probe proven ALIVE (non-zero
+      hit counts everywhere, not the "0 kinds on both sides" trap a sibling lane hit earlier
+      today with a from-. pattern against this package's absolute imports). CONTRACT_MODELS
+      (cli.py) = 16 entries, SCHEMA_MODELS (schemas/__init__.py) = 16 entries, __all__
+      (models/__init__.py) = 16 entries -- all three consistent with each other and with the 14
+      pre-existing kinds + content_object + media_manifest = 16. content_object and
+      media_manifest each hit exactly 2 times per file (import line + registry entry) in all
+      three files. No registration file showed a merge conflict at all -- main's new commits
+      (#4654) never touched packages/research-os-core; the auto-merge was clean. NOTHING LOST.
+    cmd: >-
+      awk '/^CONTRACT_MODELS: dict/,/^}/' cli.py | grep -c '": ' ; awk '/^SCHEMA_MODELS:
+      dict/,/^}/' schemas/__init__.py | grep -c '": ' ; awk '/^__all__ = /,/^\]/'
+      models/__init__.py | grep -c '^\s*"' ; grep -c 'content_object\|ContentObject' <each file>
+      ; grep -c 'media_manifest\|MediaManifest' <each file>
+    exit: 0
+    ts: "2026-08-23T10:12:40Z"
+    seat: "session (pro)"
+  - claim: >-
+      Post-merge, on the merged tree: research_os.cli fixtures --check still passes clean (same
+      137/0 as before the merge -- the merge touched zero fixture files)
+    cmd: "cd packages/research-os-core && PYTHONPATH=. <venv>/python -m research_os.cli fixtures --check"
+    exit: 0
+    ts: "2026-08-23T10:13:10Z"
+    seat: "session (pro)"
+  - claim: >-
+      Post-merge, on the merged tree: the full research_os pytest suite still passes clean (the
+      merge touched zero test files)
+    cmd: "cd apps/backend-rag && PYTHONPATH=. <venv>/python -m pytest backend/tests/unit/research_os -q"
+    exit: 0
+    ts: "2026-08-23T10:13:45Z"
+    seat: "session (pro)"
+  - claim: >-
+      scripts/evidence_pack_lint.py changed on origin/main between the two fetches (auto-merged
+      clean into this branch) -- diffed the merged worktree copy against the earlier
+      origin/main-sourced copy this session had already used and confirmed they are
+      byte-identical, so every earlier lint run in this pack remains valid against the current
+      script
+    cmd: "diff /tmp/lint_main.py scripts/evidence_pack_lint.py | wc -l"
+    exit: 0
+    ts: "2026-08-23T10:14:05Z"
+    seat: "session (pro)"
 tests:
   - >-
     backend/tests/unit/research_os/test_content_object.py and test_media_manifest.py -- exercised
@@ -197,5 +269,5 @@ sources:
   - "Fresh gate runs in this worktree this session (receipts above) -- not recalled from memory"
 pii_scan: clean
 # ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
-# at write time = 12130 bytes -> ~3032 tokens, well inside the 30,000 hard cap.
-size_tokens: 3032
+# at write time = 16428 bytes -> ~4107 tokens, well inside the 30,000 hard cap.
+size_tokens: 4107
