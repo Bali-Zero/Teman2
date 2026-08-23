@@ -220,8 +220,17 @@ carry a future review deadline.
 
 ### 7. Complete and approve the DPIA
 
-Use `docs/audits/2026-08-06-visa-oracle-dpia-v1.md` as the evidence packet.
-It intentionally remains `DRAFT / NO-GO` while any high residual risk is open.
+Use `docs/audits/2026-08-20-visa-oracle-dpia-v2.md` as the evidence packet
+(corrected 2026-08-23: supersedes `docs/audits/2026-08-06-visa-oracle-dpia-v1.md`,
+which stays on disk as the incorporated baseline record — V2 references its
+processing description, data-flow table and rights/deletion model rather than
+restating them). Its §8 is signed: Product owner (Zero) in person, 2026-08-23;
+the Privacy/DPO and Security/Infra owner lines are recorded as adopted on Zero's
+instruction, not personally executed (§8 provenance note). Signing approved the
+assessment — it does not authorize ENFORCE. Two High residual risks stay open
+per §8/§D and keep mode in SHADOW: the analytics destination behind
+`NEXT_PUBLIC_ANALYTICS_ENDPOINT` is still unidentified, and the cross-border
+processor/subprocessor register (Annex 1) is still `OPEN`/`UNKNOWN`.
 The signed DPIA must name:
 
 - controller, processors, storage regions and cross-border safeguards;
