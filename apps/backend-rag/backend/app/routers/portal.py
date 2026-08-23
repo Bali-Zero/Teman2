@@ -255,6 +255,16 @@ async def get_current_client(
                 detail="Client profile not linked to account",
             )
 
+        client_row = await conn.fetchrow(
+            "SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL",
+            row["linked_client_id"],
+        )
+        if not client_row:
+            raise HTTPException(
+                status_code=403,
+                detail="This portal account is no longer active. Please contact Bali Zero.",
+            )
+
         return {
             "client_id": row["linked_client_id"],
             "user_id": row["id"],
