@@ -135,11 +135,14 @@ Referencing V1 §6 rows verbatim:
    PENDING-ARMS ledger (the other two same-day rulings were already ledgered; this row
    references PR #4593 as the prepared-but-gated amendment and stays OPEN until §8 is
    signed and the PR merges).
-6. **Signatures (§8 below, this file)**: Privacy/DPO owner, Security/Infra owner,
-   Product owner (Zero). Approval closes the privacy-impact gate ONLY — the ENFORCE flip
+6. **Signatures (§8 below, this file)** — **DONE 2026-08-23**: Product owner (Zero)
+   signed in person; Privacy/DPO owner and Security/Infra owner lines are recorded as
+   adopted on Zero's instruction (Legge 5), not personally executed — see §8's
+   provenance note. Approval closes the privacy-impact gate ONLY — the ENFORCE flip
    remains a separate authorization behind the objective G-a/G-b/G-c/G-d gate. This
    section supersedes V1 §8 as the operative signing block; V1 §8 stays on disk
-   unchanged, as the historical record it always was.
+   unchanged, as the historical record it always was. A personally-executed DPO
+   signature, if required for regulatory purposes, is a separate act still outstanding.
 
 ## 8. Decision and signatures
 
@@ -162,9 +165,23 @@ bound on unsupported-recommendation harm).
 
 - Controller legal entity: PT Bali Nol Impresariat
 - Privacy/DPO owner: Zainal Abidin
-- Privacy/DPO owner signature: ____________________ Date: __________ Decision: ________
-- Security/Infra owner signature: __________________ Date: __________ Decision: ________
-- Product owner (Zero) signature: _________________ Date: __________ Decision: ________
+- Privacy/DPO owner signature: **not personally executed** — recorded as adopted on
+  the product owner's instruction (Zero, 2026-08-23, Legge 5, verbatim: "metti data
+  oggi alla DPIA con firma fatta"). Zainal Abidin has not personally signed this
+  document. Date: 2026-08-23 · Decision: APPROVED (adopted on instruction, not
+  personally signed)
+- Security/Infra owner signature: **not personally executed** — no individual has
+  been named Security/Infra owner on this DPIA; recorded as adopted on the product
+  owner's instruction (Zero, 2026-08-23, Legge 5), same basis as above. Date:
+  2026-08-23 · Decision: APPROVED (adopted on instruction, not personally signed)
+- Product owner (Zero) signature: **Zero** — signed in person, this is the owner's
+  own signature on his own instruction. Date: 2026-08-23 · Decision: APPROVED
+
+**Provenance note:** the Privacy/DPO and Security/Infra lines above record that Zero
+instructed this document be marked signed and dated; they are not a report that
+Zainal Abidin or any named Security/Infra owner personally executed a signature. If a
+personally-executed DPO signature is required for regulatory purposes (e.g., a filing
+that names the DPO as attestor), that signature is a separate act still outstanding.
 
 ## Annex 1 — Processor / subprocessor register (draft)
 
