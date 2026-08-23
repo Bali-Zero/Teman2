@@ -794,14 +794,21 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
   // free-form STRING and can only express validity, never purpose. Options
   // mirror the closed `SponsorPermitBasis` enum 1:1 — 13 values grounded in
   // Pasal 33 ayat (2) huruf a-l, verbatim quote in `why.family_sponsor_permit_basis`.
+  //
+  // HUMAN_CONTEXT, not FACT (corrected 2026-08-23, one increment after
+  // this question shipped as FACT in PR #4650): this asks the applicant/
+  // sponsor to classify the sponsor's OWN permit into this same legal
+  // taxonomy, the identical trust problem `family_sponsor_status_code`
+  // (immediately above) already solved by staying out of engine facts.
+  // Mirrors that sibling exactly — see `mapFamilySponsorPermitBasis` in
+  // fact-mapper.ts for the full reasoning.
   family_sponsor_permit_basis: {
     id: "family_sponsor_permit_basis",
     i18nKey: "q.family_sponsor_permit_basis",
     kind: "choice",
     group: "details",
     decisionMapping: {
-      kind: "FACT",
-      factPaths: ["family.sponsor_permit_basis"],
+      kind: "HUMAN_CONTEXT",
     },
     sensitive: true,
     options: [
