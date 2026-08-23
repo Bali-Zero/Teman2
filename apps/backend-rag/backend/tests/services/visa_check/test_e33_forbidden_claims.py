@@ -243,11 +243,37 @@ class TestGuardPatternConsistency:
 # found this defect), never by "does the term appear anywhere in the
 # sentence/file".
 
+_SECOND_HOME_DURATION_VOCABULARY: dict[str, dict[str, tuple[str, ...]]] = {
+    # language: conjunction separators, year units
+    "en": {"conjunctions": ("or",), "units": ("year", "years")},
+    "it": {"conjunctions": ("o",), "units": ("anno", "anni")},
+    "id": {"conjunctions": ("atau",), "units": ("tahun",)},
+    "fr": {"conjunctions": ("ou", "à"), "units": ("an", "ans")},
+    "ru": {"conjunctions": ("или",), "units": ("год", "года", "лет")},
+}
+_SYMBOLIC_ALTERNATION_SEPARATORS = ("-", "–", "/")
+
+
+def _duration_alternation_pattern(
+    vocabulary: dict[str, tuple[str, ...]],
+) -> str:
+    """Match an alternation between 5 and 10 of one language's year unit."""
+    conjunctions = "|".join(re.escape(item) for item in vocabulary["conjunctions"])
+    units = "|".join(
+        re.escape(item) for item in sorted(vocabulary["units"], key=len, reverse=True)
+    )
+    symbols = "|".join(re.escape(item) for item in _SYMBOLIC_ALTERNATION_SEPARATORS)
+    separator = rf"(?:{symbols}|\b(?:{conjunctions})\b)"
+    optional_first_unit = rf"(?:(?:\s*-\s*|\s+)(?:{units}))?"
+    required_second_unit = rf"(?:\s*-\s*|\s+)(?:{units})\b"
+    return rf"\b5{optional_first_unit}\s*{separator}\s*10{required_second_unit}"
+
+
 _SECOND_HOME_DURATION_RE = re.compile(
-    r"5[ ]?(?:"
-    r"[-–][ ]?10[ ]?"
-    r"|(?:or|atau|o|ou|à|или)[ ]?10(?:[ ]?[-–])?[ ]?"
-    r")(years?|year|anni|anno|ans|an|tahun|лет|года|год)",
+    "|".join(
+        _duration_alternation_pattern(vocabulary)
+        for vocabulary in _SECOND_HOME_DURATION_VOCABULARY.values()
+    ),
     re.IGNORECASE,
 )
 _GOLDEN_VISA_RE = re.compile(
@@ -353,6 +379,96 @@ class TestMouthContentSecondHomeDuration:
         assert offenders, "guard must flag the real Second-Home conjunction claim"
 
     @pytest.mark.parametrize(
+        "claim",
+        [
+            'Renewals: "After 5/10 years",',
+            'Renewals: "Dopo 5/10 anni",',
+            'Renewals: "Setelah 5/10 tahun",',
+            'Renouvellements: "Après 5/10 ans",',
+            'Renewals: "Через 5/10 лет",',
+        ],
+    )
+    def test_guilt_real_second_home_slash_is_flagged(self, claim: str) -> None:
+        """The five real pre-fix renewal lines must exercise the slash branch."""
+        text = f'name: "Second Home Visa"\n{claim}'
+        assert _SECOND_HOME_DURATION_RE.search(claim), (
+            "guilt fixture must exercise the slash duration matcher"
+        )
+        offenders = _find_second_home_predicated_5_10_offenders(text)
+        assert offenders, "guard must flag the real Second-Home slash claim"
+
+    def test_guilt_real_second_home_repeated_unit_is_flagged(self) -> None:
+        """The real canonical-guide sentence must exercise repeated year units."""
+        text = (
+            "**Second Home Visa (SHV)** adalah izin tinggal jangka panjang Indonesia "
+            "untuk orang asing yang ingin menjadikan Indonesia sebagai kediaman kedua "
+            "— tanpa memerlukan perusahaan sponsor. Tersedia dalam dua opsi: 5 tahun "
+            "atau 10 tahun, dengan syarat utama bukti kemampuan finansial sesuai "
+            "ketentuan imigrasi yang berlaku."
+        )
+        assert _SECOND_HOME_DURATION_RE.search(text), (
+            "guilt fixture must exercise the repeated-unit duration matcher"
+        )
+        offenders = _find_second_home_predicated_5_10_offenders(text)
+        assert offenders, "guard must flag the real repeated-unit Second-Home claim"
+
+    @pytest.mark.parametrize(
+        ("relative_path", "text"),
+        [
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.mdx",
+                "### What happens if I don't renew after 5/10 years?",
+                id="golden-slash-en",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.it.mdx",
+                "### Cosa succede se non rinnovo dopo 5/10 anni?",
+                id="golden-slash-it",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.id.mdx",
+                "### Apa yang terjadi jika saya tidak memperbarui setelah 5/10 tahun?",
+                id="golden-slash-id",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.fr.mdx",
+                "### Que se passe-t-il si je ne renouvelle pas après 5/10 ans ?",
+                id="golden-slash-fr",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.ru.mdx",
+                "### Что произойдет, если я не продлю визу через 5/10 лет?",
+                id="golden-slash-ru",
+            ),
+        ],
+    )
+    def test_innocence_real_golden_slash_stays_clean(
+        self, relative_path: str, text: str
+    ) -> None:
+        """Real Golden-Visa slash sentences must remain legitimate."""
+        source = MOUTH_CONTENT_DIR / relative_path
+        source_text = source.read_text()
+        assert text in source_text, f"innocence sentence drifted from {source}"
+        assert _SECOND_HOME_DURATION_RE.search(text), (
+            "innocence fixture must exercise the slash duration matcher"
+        )
+        assert not _find_second_home_predicated_5_10_offenders(source_text)
+
+    def test_innocence_real_golden_repeated_unit_stays_clean(self) -> None:
+        """The real Golden-Visa repeated-unit feature must stay legitimate."""
+        source = (
+            MOUTH_CONTENT_DIR
+            / "articles/immigration/golden-visa-indonesia-complete-guide.mdx"
+        )
+        text = "- **5-year or 10-year validity** - No annual renewals"
+        source_text = source.read_text()
+        assert text in source_text, f"innocence sentence drifted from {source}"
+        assert _SECOND_HOME_DURATION_RE.search(text), (
+            "innocence fixture must exercise the repeated-unit duration matcher"
+        )
+        assert not _find_second_home_predicated_5_10_offenders(source_text)
+
+    @pytest.mark.parametrize(
         ("relative_path", "text"),
         [
             pytest.param(
@@ -442,6 +558,11 @@ class TestMouthContentSecondHomeDuration:
                 "articles/business/bpjs-ketenagakerjaan-employer-guide.it.mdx",
                 "4. Elaborazione: 5-10 giorni lavorativi",
                 id="italian-working-days",
+            ),
+            pytest.param(
+                "articles/immigration/second-home-visa-indonesia.id.mdx",
+                "### Tahap 1: Persiapan Dokumen (5-10 Hari)",
+                id="indonesian-document-preparation-days",
             ),
         ],
     )
