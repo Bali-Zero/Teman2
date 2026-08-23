@@ -1,77 +1,135 @@
 brief_ref: evidence/brief.yml
-plan_ref: "Fast gate off the critical path — follow-up to S11 (#4647), single commit 245bfbe33 moving one step from backend-shard to backend-static"
-diff:
-  net_lines: "One file, .github/workflows/tests.yml. The step block moves from backend-shard to backend-static and grows a comment header explaining WHY it moved and what would break if the fan-in stopped reading needs.backend-static.result; one 12-line upload step is added so the core junit does not silently vanish from the artifacts. Roughly +45 / -10 net. Small by construction: this is a relocation, not a redesign."
-  behaviour_change: "The fast gate executes ONCE per run instead of three times, in a job that is off the critical path. What does NOT change: the gate's command, the module it runs, the circumstances under which it runs (both jobs carry a byte-identical classifier `if:`), the fan-in's name, the required-context set, the merge_group unscoped semantic, and the fact that a red core test reddens `Backend Tests (Python)`."
-receipts:
-  - claim: "The step really did run three times, and the cost really is on the critical path — this is measurement, not inference from the YAML"
-    cmd: "gh api repos/Bali-Zero/Teman2/actions/runs/32632670541/jobs --jq per-shard steps matching 'fast gate' -> Backend Shard 1 7s, Shard 2 8s, Shard 3 8s. Same run's main step: 'Run unit tests (sharded)' 244s / 213s / 253s. Critical path = slowest shard (381s) + fan-in (111s)."
-    exit: 0
-    ts: "2026-08-23T18:30Z"
-    seat: "session (pro)"
-  - claim: "The guilt chain survives the move — the fan-in's assert reads backend-static in the SAME loop as backend-shard, so this job being a non-required context does not make a red core test invisible"
-    cmd: 'sed -n ''954,1010p'' .github/workflows/tests.yml -> the fan-in''s `Assert every upstream job succeeded` iterates `for pair in "backend-static:$STATIC_RESULT" "backend-shard:$SHARD_RESULT"` and exits non-zero if EITHER is not ''success''. The shard half of that same loop was proven live on dispatch run 32634126661 (one red leg of three -> fan-in red at exactly this step).'
-    exit: 0
-    ts: "2026-08-23T19:05Z"
-    seat: "session (pro)"
-  - claim: "The gate will run in exactly the same circumstances as before — the two jobs' classifier predicates are identical, so the move cannot silently change coverage"
-    cmd: "Compared the `if:` blocks of backend-static (line 510) and backend-shard (line 629): both are `!cancelled() && ((github.event_name != 'pull_request' && github.event_name != 'merge_group') || needs.changes.result != 'success' || needs.changes.outputs.run_backend_tests != 'false')` — byte-identical."
-    exit: 0
-    ts: "2026-08-23T19:08Z"
-    seat: "session (pro)"
-  - claim: "The module genuinely needs no postgres/redis, so dropping the inherited DATABASE_URL/REDIS_URL into a job with no `services:` is safe — proven by execution against DEAD endpoints, not by reading imports"
-    cmd: "pg_isready -> postgres DOWN locally. Then: `env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py` -> 24 passed, rc=0. Then the stronger form, forcing a failure if the services were secretly used: the same command with DATABASE_URL pointed at a CLOSED port on loopback (127.0.0.1, port 59999, throwaway user and password) and REDIS_URL at 127.0.0.1 port 59998 — written in prose rather than as a DSN because a DSN-shaped string trips detect-secrets on FORM, not provenance -> 24 passed, rc=0."
-    exit: 0
-    ts: "2026-08-23T19:02Z"
-    seat: "session (pro)"
-  - claim: "backend-static already has the runner it now needs — no new install step, so the move does not just relocate the cost"
-    cmd: "grep -icE '^(pytest|pytest-asyncio|pytest-cov)==' apps/backend-rag/requirements.lock.txt -> 1 each (present); pytest-mock / fakeredis / pytest-xdist -> 0 (absent). The module uses only @pytest.fixture, and the single conftest on its collection path (backend/tests/conftest.py) imports only stdlib, pydantic and pytest. pyproject `addopts` requires no plugins."
-    exit: 0
-    ts: "2026-08-23T19:10Z"
-    seat: "session (pro)"
-  - claim: "Nothing gates on the core junit, and it does not vanish silently either"
-    cmd: "The fan-in's 'Prove each shard reported executed tests' reads only `test-results-unit-<shard>.xml`. The core junit reached the `backend-test-results` artifact through the glob `shard-receipts/test-results-*.xml`, which the move removes it from — hence a dedicated `backend-core-gate-results` upload with `if: always()`. `grep -n 'test-results-core-' tests.yml` after the change -> no matches (no orphan reference to the old shard-indexed path)."
-    exit: 0
-    ts: "2026-08-23T19:12Z"
-    seat: "session (pro)"
-  - claim: "The change is mechanically sound and did not narrow the guard that S11 itself re-anchored"
-    cmd: "python3 -c 'yaml.safe_load(...)' -> 11 jobs, backend-static 10 steps, backend-shard 11 steps. actionlint tests.yml -> rc=0. pytest scripts/tests/test_test_deps_declared.py -> 7 passed. python3 scripts/ci/test_shard_tests.py -> Ran 31 tests, OK."
-    exit: 0
-    ts: "2026-08-23T19:14Z"
-    seat: "session (pro)"
-  - claim: "The exact command the moved step will run works in the conditions backend-static provides, and produces the receipt the upload expects"
-    cmd: "env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py -q -ra --no-header --tb=short --durations=10 -x --junit-xml=/tmp/core-gate-smoke.xml -> rc=0; parsing that junit -> tests=24 errors=0."
-    exit: 0
-    ts: "2026-08-23T19:15Z"
-    seat: "session (pro)"
-tests:
-  - "scripts/tests/test_test_deps_declared.py — 7 passed (the S11 re-anchored guard across backend-static/backend-shard/backend-tests)"
-  - "scripts/ci/test_shard_tests.py — 31 passed (partitioner guilt+innocence corpus, untouched by this change and proven still green)"
-static:
-  - "actionlint .github/workflows/tests.yml — rc=0"
-  - "yaml.safe_load on tests.yml — 11 jobs parse"
+plan_ref: "S12/C3 — auto-update-branch organ for stuck PRs (mandate ~/sessioni-2026-08-23/S12-mini-ship-accelerators.md, Mini, 2026-08-23)"
 lanes:
-  # One build lane: this is a single-seat relocation. The cross-family seat below
-  # is a REFUTER, not a builder (generator != grader), so it is `review` and does
-  # not count toward the D3 build-diversity floor.
-  - lane: "fastgate-build"
+  - lane: s12-c3
     role: build
-    seat: "opus-5"
-  - lane: "fastgate-refute"
+    seat: "claude-sonnet-5 (implementer subagent, Mini)"
+  - lane: s12-c3-gate
     role: review
-    seat: "codex-gpt-5.6-sol"
-dissent:
-  - seat: "codex gpt-5.6-sol at xhigh (OpenAI, cross-family, fresh context, read-only sandbox) — round 1, against a frozen snapshot of 245bfbe33"
-    objection: 'Verdict REQUEST CHANGES, three findings. It explicitly did NOT find a guilt-chain fail-open: it enumerated pull_request, merge_group, workflow_dispatch, schedule, a failed/skipped `changes` job and whole-workflow cancellation, and in every case a red core test still reaches the fan-in as a non-success upstream. It also independently confirmed `push` is not a trigger of this workflow and that comments mentioning it are stale. CURED HERE: (1) HIGH — the new `Upload core-gate test results` step carried a comment saying nothing gates on its file, while the step itself had no `continue-on-error`; a transient artifact-service error concludes backend-static `failure`, the fan-in asserts on `needs.backend-static.result`, and the required context goes red with every real gate green. `if-no-files-found: warn` covers only a MISSING file and does not make the upload best-effort. Fixed with `continue-on-error: true`. (2) MEDIUM — the gate had been placed BEFORE pip-audit, so a broken core test would skip the rest of the job and MASK four independent gates (pip-audit, mypy, import-chain, LLM cost coverage) that reported unconditionally before the move, backend-static being independent of the shards. Moved to LAST, which costs no latency because the fan-in waits on all three shards either way. (3) LOW — "parity with the pre-move state" was an overclaim: the junit now lands in a DIFFERENT artifact under a DIFFERENT name, so an external consumer of `backend-test-results` looking for `test-results-core-*.xml` finds nothing; no in-repo consumer exists, external ones are not visible from a diff. Comment corrected rather than the behaviour, since a dedicated artifact is the intended design. ACCEPTED AND NOT CURED, moved to residual_risks instead: its observation that the RED path is now much slower (a core regression went red in ~10s inside the shards, versus ~350s now that the fan-in waits on them) is correct and inherent to the move; its suggested remedy — a separate `backend-core` job wired into the fan-in — would restore fail-fast at the cost of a fifth concurrent job, against runner-slot pressure this workflow already names as the binding constraint. It also corrected the authors arithmetic: the module executes twice per full run, not once, since the shard that owns it in the corpus still runs it — down from four, not to one.'
-    status: CONFIRMED
-residual_risks:
-  - "THE RED PATH IS NOW MUCH SLOWER, AND THIS IS A DELIBERATE TRADE (refuter finding 2b, accepted not cured). Inside `backend-shard` a core regression turned the required context red in ~10s — each leg exited at ~8s via `-x`. Now the fan-in still waits on all three shards, so the same regression goes red in ~350s. That is a real loss, taken for an ~8s gain on the GREEN path, which is every run rather than the rare one. The named alternative that would keep both — a separate `backend-core` job wired into the fan-in's needs — adds a fifth concurrent job, and tests.yml's own concurrency comments call runner slots the binding constraint on main's velocity, so it is declined here rather than overlooked."
-  - "THE SAVING IS PROJECTED, NOT YET MEASURED LIVE. ~8s off the critical path is arithmetic on a measured per-shard step duration (7-8s). The PR's own transit is the first measurement, and 8s is close enough to run-to-run variance (shards measured 239-385s across runs) that a single run cannot confirm it — the honest read will need the step to be visibly absent from the shard job and present once in the static job, plus a critical path that does not regress."
-  - "THIS DOES NOT CLOSE THE MISSED TARGET. merge_group/schedule runs measured 489s / 492s / 496s against a <=8 min (480s) target. Removing 8s lands at roughly 481-488s — still at or just above the line. The dominant open question, ledgered separately in #4668, is why merge_group shards run ~35% slower than pull_request shards on the same corpus; this PR deliberately does not touch it."
-  - "THE FAST GATE IS NOW ARGUABLY REDUNDANT, AND THIS PR DOES NOT DECIDE THAT. `test_confidence.py` is already in the sharded corpus (shard 2 owns it), so the gate is a duplicate execution whose only value is failing ~8s in rather than ~250s in. Deleting it outright would save the remaining ~8s of runner time too. That is a judgement about a gate somebody added deliberately, so it is left alone here and named rather than silently taken."
-  - "RUNNER SLOT PRESSURE IS UNCHANGED. This moves work between existing jobs; it does not reduce the 5-jobs-per-run count S11 introduced, which tests.yml's own concurrency comments identify as the binding constraint on main's velocity."
-sources:
-  - "merge_group run 32632670541 (the S11 merge commit's own run) — per-shard fast-gate durations and the 381s+111s critical path"
-  - "dispatch run 32634126661 — the live guilt proof of the fan-in's assert step with one red matrix leg of three"
-  - ".claude/skills/modus/PENDING-ARMS.md — the two S11 rows landed by #4668; this PR closes the second"
+    seat: "claude-opus-5 (S12 conductor — generator != grader, did not write the diff)"
+diff:
+  net_lines: >-
+    3 new files, +802/-0: scripts/queue_unstick.py (488),
+    scripts/queue_unstick_cron.sh (56), scripts/tests/test_queue_unstick.py
+    (258). Deterministic gear floor computed from the diff = 1 (no hot-zone
+    hit); declared Gear 2 because it is a new 500-line organ with a cron, not
+    because the floor demanded it. Declaring Gear 1 to dodge the ceremony
+    would be gaming a classifier the repo relies on.
+  behaviour_change: >-
+    Nothing existing changes behaviour. This adds a script and a cron wrapper;
+    the cron is NOT installed by this PR (see notes).
+receipts:
+  - claim: "The 20 guilt+innocence tests pass — re-run by the gate, not trusted from the implementer's report"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_queue_unstick.py -q"
+    result: "20 passed in 0.05s"
+    exit: 0
+    ts: "2026-08-23T11:05Z"
+    seat: "session (mini, conductor)"
+  - claim: "LIVE dry-run against the real open PRs classifies correctly and mutates nothing"
+    cmd: "python3 scripts/queue_unstick.py --dry-run"
+    result: >-
+      examined=15 updated=0 dirty_signalled=1 skipped=14
+      skip_reasons={"draft": 6, "queued": 2, "recent_commit": 2,
+      "status_BLOCKED": 1, "status_UNKNOWN": 3}. TWO QUEUED PRs were present
+      and both were skipped — that is the destructive case (updating a queued
+      PR evicts it) exercised against live state, not a fixture.
+    exit: 0
+    ts: "2026-08-23T11:05Z"
+    seat: "session (mini, conductor)"
+  - claim: "The conflicting-file prober WORKS on a real DIRTY PR and names the real file — the one path --dry-run never reaches, so the gate exercised it directly"
+    cmd: 'python3 -c ''import queue_unstick as q; q.get_conflicting_files({"number":4653,"base_ref":"main"})'''
+    result: >-
+      "evidence/pack.yml" — the real conflicting path on a real open PR. Note
+      what this independently confirms: PR #4653 is stuck on exactly the
+      fixed-root-path evidence collision that S12/C6 exists to remove, found
+      here by a completely different code path (a local merge simulation)
+      than the one that diagnosed it (a git merge on another lane's branch).
+    exit: 0
+    ts: "2026-08-23T11:08Z"
+    seat: "session (mini, conductor)"
+  - claim: "The prober leaves NO refs behind — it fetches into PID-namespaced scratch refs and deletes them in a finally block"
+    cmd: "git -C ~/nuzantara for-each-ref 'refs/queue-unstick/' | wc -l   (before and after the call above)"
+    result: "0 before, 0 after"
+    exit: 0
+    ts: "2026-08-23T11:08Z"
+    seat: "session (mini, conductor)"
+  - claim: "The merge-queue membership field was VERIFIED live, not assumed — `gh pr view --json isInMergeQueue` does not exist"
+    cmd: "gh pr view <N> --json isInMergeQueue  ->  error; then gh api graphql ... pullRequest{mergeQueueEntry{state position}}"
+    result: >-
+      'Unknown JSON field: \"isInMergeQueue\"' from the REST-ish view; the
+      GraphQL `mergeQueueEntry` field exists and returns null for a
+      non-queued PR. The script uses GraphQL.
+    exit: 0
+    ts: "2026-08-23T10:55Z"
+    seat: "s12-c3 implementer, re-read by the gate in the script docstring"
+  - claim: "The exclusion order is correct BY CONSTRUCTION: every exclusion precedes every action, in a pure function"
+    cmd: "read scripts/queue_unstick.py::classify (lines 230-247)"
+    result: >-
+      draft -> queued -> hold_label -> recent_commit, all returning skip,
+      and only then BEHIND/DIRTY dispatch. plan_actions() is pure over
+      already-fetched dicts, which is what makes the 20 tests able to
+      exercise the destructive case without a network.
+    exit: 0
+    ts: "2026-08-23T11:03Z"
+    seat: "session (mini, conductor)"
 pii_scan: clean
+dissent:
+  - seat: "S12 conductor (gate) against the implementer's first draft"
+    objection: >-
+      The mandate required the DIRTY signal to NAME the conflicting files,
+      and `--dry-run` prints "conflicting files not computed in dry-run" —
+      which could equally mean the capability was never built. The claim was
+      therefore unverified by the dry-run that appeared to demonstrate it.
+    status: CONFIRMED
+    note: >-
+      Resolved by exercising `get_conflicting_files()` directly against real
+      PR #4653 rather than accepting either reading (receipt above). It is
+      built and it works. Recorded because "the demo did not cover the clause
+      the demo appeared to cover" is a shape that passes review by default.
+  - seat: "S12 conductor, carrying a correction it had itself sent to the implementer"
+    objection: >-
+      An earlier instruction from the conductor told the implementer that
+      `mergeQueueEntry` is THE discriminator for "is this PR armed". That is
+      wrong at the edge, per cicatrix W111: neither `autoMergeRequest` nor
+      `isInMergeQueue` alone answers "armed" — armed-but-not-yet-queued and
+      queued-with-the-request-consumed are both real states.
+    status: CONFIRMED
+    note: >-
+      The correction was sent mid-build and the script's docstring records
+      the distinction: `mergeQueueEntry` alone IS the right question for
+      "will an update evict this PR", which is the only question this script
+      asks. It never asks "is this armed", so the W111 trap is out of its
+      scope by construction rather than by care.
+  - seat: "S12 conductor (gate), on a gap deliberately left open"
+    objection: >-
+      A PR deliberately disarmed WITHOUT a hold label gets re-armed by this
+      organ's own update-branch push, because auto-merge-whitelist.yml runs
+      on `synchronize` with `draft == false` as its only gate (W123).
+    status: CONFIRMED
+    note: >-
+      Left open ON PURPOSE and named in the brief's risks. There is no
+      reliable signal distinguishing "disarmed on purpose" from "never
+      armed", and inventing a heuristic for it would be a guard built on a
+      guess — the #3 scar family in one move. The durable hold is draft,
+      which this script already excludes.
+tests:
+  - "scripts/tests/test_queue_unstick.py — 20 tests, pure functions over fixtures, no network. Guilt: queued PR not selected; 2-minute-old commit not selected; hold-labelled not selected; draft not selected; DIRTY never update-branch; a second run on the same DIRTY PR+SHA emits zero additional signals; the 6th BEHIND PR in a tick is not updated. Innocence: a BEHIND, non-draft, unlabelled, 30-minute-old PR IS selected."
+static:
+  - "bash -n scripts/queue_unstick_cron.sh -> clean"
+  - "pre-commit hooks pass (lease-check, anti-reward-hacking, secret scan, python lint)"
+notes:
+  - >-
+    The cron is written but NOT installed by this PR. Installation is a
+    separate, deliberate arming step so the organ is observed on real state
+    before it is allowed to act unattended — and until it is installed this
+    is a built-but-not-armed artifact, which is why it carries a PENDING-ARMS
+    line rather than being declared done.
+  - >-
+    Generator != grader was real here, not ceremonial: the implementer that
+    wrote all 802 lines is a different model (Sonnet 5) from the seat that
+    gated it (Opus 5), and the gate re-ran every claim rather than reading
+    the implementer's report. Seat diversity across FAMILIES is nonetheless
+    DEGRADED and declared — both seats are Anthropic. The non-Anthropic
+    seats were live-probed this session: kimi alive, codex AUTH_DEAD
+    (refresh token revoked), glm CRED_UNAVAILABLE, agy TIMEOUT. Kimi was
+    spent on the C1 diff, which had the larger blast radius.

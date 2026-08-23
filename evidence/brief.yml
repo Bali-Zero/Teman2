@@ -1,28 +1,71 @@
-task_id: ci-fastgate-off-critical-path-0823
-gear: 3
-l_level: L2
+task_id: s12-c3-queue-unstick
+gear: 2
+l_level: L1
 gate_class: opus
-objective: >-
-  The `Run core tests (fast gate)` step is written once but lives inside the
-  `backend-shard` matrix job, so S11 (#4647) silently multiplied it by three.
-  Move it to `backend-static` so it runs once and off the critical path,
-  WITHOUT weakening the chain that makes a red core test redden the one
-  required context, `Backend Tests (Python)`.
-why_now: >-
-  Measured on merge_group run 32632670541: 7s / 8s / 8s per shard, i.e. ~16s of
-  duplicated runner time and ~8s on the critical path (critical path = slowest
-  shard + fan-in). The same run missed the mandate's <=8 min per-run target by
-  12-40s, so this single step is 20-65% of that miss. Ledgered in #4668.
+objective: |
+  Kill the DIRTY/BEHIND stall. Measured on 2026-08-23: 5+ episodes of PRs
+  sitting BEHIND or DIRTY for 40-90 minutes each, every one of them waiting
+  for a gesture a cron could make in ten.
+
+  `scripts/queue_unstick.py` + a 10-minute cron. It does exactly two things
+  and refuses to do a third:
+    - `BEHIND` -> `gh pr update-branch`, hard-capped at 5 per tick.
+    - `DIRTY` (a true conflict) -> NEVER touches the branch. It signals ONCE
+      per PR+head-SHA to the fleet mailbox, naming the PR and the ACTUAL
+      conflicting files, so a conductor acts in minutes instead of finding
+      out on a round.
+
+  The DIRTY asymmetry is the whole design. Updating a branch that has a real
+  conflict is a second-writer race against whoever owns it (superscar #5,
+  scar 2026-08-21); the value of this organ is that it tells a human quickly,
+  not that it acts bravely.
 constraints:
-  - "The required context name `Backend Tests (Python)` must stay byte-exact — it is one of 27 required contexts in classic branch protection. Renaming it strands every queue entry (superscar #2 / W69)."
-  - "The guilt chain must survive: `backend-static` is NOT a required context. If the fan-in's assert did not read `needs.backend-static.result`, moving the gate there would make a broken core test invisible — reproducing the exact defect S11 was built to avoid."
-  - "Do not touch the concurrency block (scar tissue) and do not change the merge_group unscoped-selection semantic."
-  - "No new dependencies, no paid runners, no self-hosted runners (public repo)."
-  - "One PR, one concern: this moves a step. It does not delete the gate, and it does not attempt the separate open question of why merge_group shards run ~35% slower than PR-lane shards."
+  - "NEVER update a PR that is in the merge queue — updating a queued PR
+    EVICTS it. This is the single most destructive action available to this
+    script, so the exclusion is checked before any action, in a pure function
+    the tests exercise directly."
+  - "NEVER touch a DIRTY branch. Signal only, deduped by PR + head SHA so a
+    PR dirty for six hours produces one message, not thirty-six."
+  - "Never invent a conflicting filename. When the local merge simulation
+    cannot answer, the message says the literal string 'unobtainable via
+    API'."
+  - "Every tick writes a receipt, including a tick that did nothing (W108: a
+    mute cron is a dead cron)."
+  - "A failed `gh` query is CANNOT-VERIFY, never 'nothing to do' — an empty
+    PR list from a broken query must not read as a quiet, healthy repo."
 acceptance:
-  - "actionlint clean on tests.yml, and the file still parses as YAML with all 11 jobs present."
-  - "`scripts/tests/test_test_deps_declared.py` still passes — the guard S11 re-anchored across all three backend jobs must not be narrowed again by this move."
-  - "`scripts/ci/test_shard_tests.py` (31 cases) still passes — the partitioner is untouched and must stay so."
-  - "The fast gate runs green in a job with NO postgres/redis services and with DATABASE_URL/REDIS_URL unset, proven by execution rather than by reading the code."
-  - "No orphan reference remains to the old receipt path `shard-receipts/test-results-core-<n>.xml`, and the core junit still reaches an artifact rather than vanishing."
-  - "A live run shows the fast gate executing exactly ONCE, inside `Backend Static (Python)`, and the measured critical path (slowest shard + fan-in) is ~8s lower than the 381+111 baseline."
+  - "Live dry-run against the real open PRs classifies correctly and mutates
+    nothing."
+  - "A queued PR is never selected. A draft, a hold-labelled PR, and a PR
+    whose last commit is under 5 minutes old are never selected."
+  - "A DIRTY PR is never updated, produces exactly one signal, and the signal
+    names the real conflicting files."
+  - "The 6th BEHIND PR in a tick is not updated (anti-storm cap)."
+consumer_map:
+  - "`scripts/cron-runner.sh` — the existing runner and receipt mechanism.
+    Used, not reinvented."
+  - "`scripts/fleet_mail.sh pro broadcast` — where the DIRTY signal lands."
+  - "`gh pr update-branch` — the only mutation this script performs, and
+    only on BEHIND."
+  - "`.github/workflows/auto-merge-whitelist.yml` — NOT edited, but a
+    consumer of this script's side effect: it runs on `synchronize`, so the
+    update-branch push RE-ARMS auto-merge on a non-draft PR. Documented at
+    the top of the script rather than guessed around (cicatrix W123)."
+risks:
+  - "update-branch is a push, and a push re-arms auto-merge on any non-draft
+    PR. A PR deliberately disarmed WITHOUT a hold label would be re-armed by
+    this organ. Not silently accepted: it is documented in the script header
+    with the W123 reference, and the durable way to hold a PR is draft, which
+    this script already excludes. No heuristic was invented to guess
+    'disarmed on purpose' — there is no reliable signal for it, and inventing
+    one would be worse than naming the gap."
+  - "`mergeStateStatus` UNKNOWN (GitHub still computing) is skipped rather
+    than guessed at. A PR that stays UNKNOWN is never helped; that is the
+    safe direction and it is visible in the receipt's skip_reasons."
+grader: |
+  Independent verification by the S12 conductor (Opus 5), not the implementer
+  that wrote it: the diff was read, the 20 tests re-run, the live dry-run
+  executed against the real open PRs, and `get_conflicting_files()` exercised
+  directly against a real DIRTY PR — the one path the dry-run does not reach.
+budget: 1 implementer lane + conductor gate; no council (a scoped cron organ)
+pii: none
