@@ -77,15 +77,45 @@ def _ledger_unreachable_reason(ledger_path: Path) -> str | None:
     correct: if `~/.cache` is unreadable then `~/.cache/wr3` reports "does not
     exist", and a check that stopped at the immediate parent would believe it.
 
-    `os.access` is a pre-check, not the belt — it can disagree with the kernel
-    under ACLs or on a network filesystem. The OSError handlers at the call
-    sites remain the actual guarantee; this covers only what they cannot.
+    `os.access` is still a pre-check, not the belt — it can disagree with the
+    kernel under ACLs or on a network filesystem. The OSError handlers at the
+    call sites remain the actual guarantee for everything that raises; this
+    function exists for what does NOT raise anywhere in the chain.
     """
+    # `os.access(p, F_OK)` was the first spelling of this walk and it was WRONG
+    # in the one direction that matters: it answers False both for "not there"
+    # and for "there but unresolvable", collapsing the exact distinction this
+    # function exists to make. Measured with a self-referencing symlink at the
+    # ledger's directory, on 3.11 and 3.14 alike: `os.access(F_OK)` False,
+    # `Path.exists()` False, and `open()` raising OSError errno 62 (ELOOP) — so
+    # the walk stepped straight past the loop, found a perfectly readable
+    # grandparent, and reported believable absence. End to end that meant the
+    # gate read "0 spent today" and PASSED against a ledger it could not open:
+    # the same silent under-count, through a different door.
+    #
+    # `os.stat` is used instead because it does not collapse them — it raises,
+    # and the errno says which. ENOENT alone means "keep walking up, absence is
+    # real"; anything else (ELOOP, EACCES, ENOTDIR, ENAMETOOLONG, …) means the
+    # path cannot be resolved and must not be read as empty.
     probe = ledger_path.parent
-    while not os.access(probe, os.F_OK):
-        if probe.parent == probe:
-            return None
-        probe = probe.parent
+    while True:
+        try:
+            os.stat(probe)
+        except FileNotFoundError:
+            # Genuinely not there. Keep going up: the ledger simply has not
+            # been created yet, and that IS a believable zero.
+            if probe.parent == probe:
+                return None
+            probe = probe.parent
+            continue
+        except OSError as e:
+            return f"ledger path {probe} is unreachable ({e.strerror or e})"
+        break
+    if not probe.is_dir():
+        # An ancestor is a regular file. Nothing under it can ever be a ledger,
+        # and no permission bit can make it one — reported separately from a
+        # permissions fault because the cure is different.
+        return f"ledger path {probe} is not a directory"
     if not os.access(probe, os.R_OK | os.X_OK):
         return f"ledger directory {probe} is not readable (permissions?)"
     return None

@@ -416,7 +416,45 @@ def test_unreachable_ledger_is_caught_without_relying_on_permission_bits(tmp_pat
     assert res.returncode == 0, res.stderr
     cost = _verdict(ep)["checks"]["cost"]
     assert cost["passed"] is False, cost
-    assert "not readable" in " ".join(cost["reasons"]), cost["reasons"]
+    # Reported as its own cause rather than folded into "not readable": no
+    # permission bit can turn a regular file into a directory, so the cure is
+    # a different one and the message has to say so.
+    assert "is not a directory" in " ".join(cost["reasons"]), cost["reasons"]
+
+
+def test_symlink_loop_at_the_ledger_directory_fails_closed(tmp_path):
+    """The vector that got past the first version of this guard.
+
+    A self-referencing symlink where the ledger's directory should be is
+    UNREACHABLE, not absent — a real read raises `OSError` errno 62 (ELOOP).
+    But nothing in the chain reports that. Measured on 3.11 and 3.14 alike:
+    `os.access(F_OK)` answers False, `Path.exists()` answers False, and so
+    `read_integrity()`, the malformed scan and `read_records()` each conclude
+    "no ledger here". The first spelling of `_ledger_unreachable_reason` used
+    `os.access(F_OK)` for its walk, stepped straight past the loop to a
+    perfectly readable grandparent, and returned "believable absence" — so the
+    gate read 0 spent today and PASSED against a ledger it could not open.
+
+    Same silent under-count as the unreadable-directory case above, through a
+    door that case's test could not see. Found by an independent adversarial
+    review of the fix, not by the fix's own author.
+    """
+    loop = tmp_path / "loopdir"
+    loop.symlink_to(loop)  # self-referencing: any resolution attempt is ELOOP
+    ledger_path = loop / "ledger.jsonl"
+    ep = _episode(tmp_path, n_shots=3)  # projects 60cr, ceiling 190
+    quota_path = tmp_path / "flow-quota.json"
+    _write_quota(quota_path, daily_ceiling_cr=190, balance_remaining_cr=2400)
+
+    res = _run_gate(ep, tmp_path, ledger_path=ledger_path, quota_path=quota_path)
+
+    assert res.returncode == 0, res.stderr
+    cost = _verdict(ep)["checks"]["cost"]
+    assert cost["passed"] is False, (
+        "the gate passed against a ledger it cannot open — an unresolvable "
+        "path was read as an empty one"
+    )
+    assert "unreachable" in " ".join(cost["reasons"]), cost["reasons"]
 
 
 def test_unreadable_failures_sidecar_still_produces_a_verdict(tmp_path):
@@ -494,6 +532,36 @@ def test_unreadable_ledger_file_in_a_readable_directory_fails_closed(tmp_path):
     assert cost["passed"] is False, cost
     joined = " ".join(cost["reasons"])
     assert "unreadable" in joined, cost["reasons"]
+
+
+def test_a_working_symlinked_directory_is_still_believed(tmp_path):
+    """INNOCENCE for the loop test above.
+
+    Rejecting every symlink would be the lazy version of that fix and would
+    break any legitimate setup that puts the ledger behind one. Only a symlink
+    that cannot be RESOLVED is a fault; one that lands on a real directory is
+    ordinary.
+    """
+    real = tmp_path / "real-state"
+    real.mkdir()
+    link = tmp_path / "linked"
+    link.symlink_to(real)
+    ledger_path = link / "ledger.jsonl"
+    record_spend(
+        episode_id="via-symlink", shot_index=0, credits=10, mode="real",
+        veo_job_id="wf-link", source="test-seed", clip_cost_cr=20,
+        ledger_path=ledger_path, ts=datetime.now(timezone.utc).isoformat(),
+    )
+    ep = _episode(tmp_path, n_shots=3)  # projects 60cr, ceiling 190
+    quota_path = tmp_path / "flow-quota.json"
+    _write_quota(quota_path, daily_ceiling_cr=190, balance_remaining_cr=2400)
+
+    res = _run_gate(ep, tmp_path, ledger_path=ledger_path, quota_path=quota_path)
+
+    assert res.returncode == 0, res.stderr
+    cost = _verdict(ep)["checks"]["cost"]
+    assert cost["spent_today_cr"] == 10, cost
+    assert cost["passed"] is True, cost["reasons"]
 
 
 def test_absent_ledger_is_not_mistaken_for_an_unreachable_one(tmp_path):
