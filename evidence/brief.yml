@@ -56,8 +56,19 @@ risks:
     actually touches the surface each check covers, and says
     `skipped — <reason>` otherwise, so a silent run means 'nothing to say',
     not 'nothing checked'."
-  - "The SLOW path (impact-scoped pytest on a backend diff) is NOT measured
-    in this pack — only the fast path is. Declared rather than estimated."
+  - "The R1 heading matcher is STRICTLY NARROWER than CI's: quickcheck wants
+    `^## Adversarial review` exactly and case-sensitively, while
+    `scripts/check_adversarial_review.py` accepts `^#{2,}\\s+Adversarial
+    review\\b` case-insensitively. So quickcheck can cry MISSING on a body CI
+    would pass. Kept deliberately — the direction is safe (a false alarm sends
+    you to the real gate; it can never produce a false all-clear) — but it is
+    a real divergence, not a duplicate, and it is named rather than left to be
+    rediscovered in anger."
+  - "`actionlint` is not installed on this host, so that branch of the script
+    was never exercised end-to-end here. Correct by inspection only. It was
+    deliberately NOT auto-downloaded into a hook: CI's pinned binary is
+    linux_amd64 and shipping an unpinned download inside a pre-push hook is a
+    supply-chain shortcut this repo does not take."
 grader: |
   Independent verification by the S12 conductor (Opus 5), which did not write
   any of the 497 lines: the diff scope was read, the deviation from the

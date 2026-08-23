@@ -73,42 +73,102 @@ receipts:
     exit: 0
     ts: "2026-08-23T12:16Z"
     seat: "session (mini, conductor/gate)"
+  - claim: "SLOW path measured too — scoped pytest actually runs and names the broken test"
+    cmd: "time bash scripts/quickcheck.sh (deliberately-broken test committed, diff isolated via the script's own QUICKCHECK_BASE_REF override)"
+    result: >-
+      3.38s user 0.24s system 53% cpu, 6.811s total — names
+      test_quickcheck_probe_deliberately_broken with its AssertionError.
+      Measured by the IMPLEMENTER and reported to the gate; recorded here
+      attributed to it, not reproduced as if the gate ran it. The isolation is
+      necessary and self-cancelling: against real origin/main this PR's diff
+      is mixed, impact_map fails open on out-of-scope paths by its own
+      contract, and the fast path fires instead (0.87s) — an artifact of
+      testing the check inside the PR that introduces it, gone once merged.
+    exit: 0
+    ts: "2026-08-23T11:54Z"
+    seat: "s12-c4 implementer (claude-sonnet-5)"
+  - claim: "ADVISORY proven by a REAL `git push`, not only by a stub: a failing quickcheck does not block a push"
+    cmd: "git push /tmp/quickcheck-fake-remote-XXXXX.git HEAD:refs/heads/proof-isolated   (throwaway LOCAL bare repo, never origin, broken test committed)"
+    result: >-
+      quickcheck reported '[pytest] scoped suite reported failures (advisory,
+      rc=1)' and named the AssertionError; the push still completed —
+      '* [new branch] HEAD -> proof-isolated', EXIT_CODE=0 — and the object
+      was verified present in the bare repo. Same push in the unmodified state
+      also EXIT_CODE=0. Bare repo destroyed, probe reverted, `git remote -v`
+      back to origin/pro/m5 only. Measured by the IMPLEMENTER; this is a
+      stronger proof than the gate's own `sh -e` stub test, which is retained
+      above because the two exercise different layers.
+    exit: 0
+    ts: "2026-08-23T11:54Z"
+    seat: "s12-c4 implementer (claude-sonnet-5)"
 pii_scan: clean
 dissent:
-  - seat: "S12 conductor (gate) against its own instruction to the implementer"
+  - seat: "the implementer, against the gate — and the implementer was RIGHT"
     objection: >-
-      The gate explicitly instructed the implementer: "Confirm you have NOT
-      wired it into .git/hooks/pre-push or any installed hook. Installation is
-      a separate arming step and must not ride in this PR." The implementer
-      wired it into .husky/pre-push anyway. The gate caught this by reading
-      the diff scope, NOT from the implementer's report.
+      An earlier draft of this pack recorded the `.husky/pre-push` wiring as a
+      CONFIRMED deviation from an explicit gate instruction, and stated that
+      the gate caught it by reading the diff "NOT from the implementer's
+      report". The implementer contested both claims. On re-checking the
+      primary sources rather than the gate's memory of them, BOTH gate claims
+      were false.
+    status: RETRACTED
+    note: >-
+      Retracted in full, and the retraction is kept in the record rather than
+      the entry being deleted. (1) The wiring was ORDERED, not deviated from —
+      the S12 mandate, line 38, verbatim: "Wire into `.husky/pre-push` as
+      **advisory** (WARN, never a second blocking gate ...)". The gate's later
+      question ("confirm you have NOT wired it into .git/hooks/pre-push or any
+      installed hook") was about a different layer, the machine-level
+      git-hooks mechanism, and the implementer answered it correctly and
+      completely: `.git/hooks/` untouched, `core.hooksPath=.husky/_`
+      pre-existing and not installed by it, no `husky install` run. (2) It was
+      disclosed UPFRONT — the first line of the implementer's first report
+      names ".husky/pre-push wired via `bash scripts/quickcheck.sh || true`"
+      as one of three headline deliverables. The gate did not discover it; it
+      was told, and later mis-remembered being told. (3) The gate also wrote
+      that the implementer "went quiet before sending the numbers" — also
+      false: the numbers were sent (fast/slow `time` output, two real pushes
+      with captured exit codes, a CI-overlap audit) and arrived while the gate
+      was already mid-gate. That is message ordering, not silence, and the
+      gate should have said so. This entry stays because a gate that
+      mis-states a teammate's conduct in a permanent record is a worse defect
+      than the one it thought it had found, and deleting the accusation would
+      hide the correction along with it.
+  - seat: "the implementer (named finding the gate had not caught), on R1 vs CI"
+    objection: >-
+      The R1 heading matcher DISAGREES with CI and is strictly narrower.
+      quickcheck matches `^## Adversarial review` (exact, case-sensitive); CI's
+      `scripts/check_adversarial_review.py` matches
+      `^#{2,}\s+Adversarial review\b` (case-INsensitive, 2+ hashes, flexible
+      whitespace). So quickcheck reports MISSING on bodies CI would PASS —
+      `### Adversarial review`, two spaces after the hashes, or lowercase.
     status: CONFIRMED
     note: >-
-      Deviation confirmed and ACCEPTED on measured merit, not waved through.
-      Reasoning, recorded so a future reader can disagree with it: shipping
-      the script unwired would have created precisely the dead-artifact
-      pattern this repo's ledger is full of (superscar #2, exists != armed) —
-      a "built" organ acting on nothing. The reason the gate wanted it unwired
-      was to observe before it runs unattended; that concern is answered
-      instead by the two independently-proven guarantees above plus a kill
-      switch, which is a stronger answer than an observation period. Recorded
-      as dissent rather than silently accepted because an implementer
-      overriding an explicit constraint is a fact the next reviewer should
-      see, even when the override was right.
-  - seat: "S12 conductor (gate), on a gap left open"
+      Verified by the gate by reading both regexes, not accepted on assertion.
+      Left as-is deliberately: the disagreement direction is the safe one (a
+      false alarm sends you to look at the real gate; it can never produce a
+      false all-clear), and this is an advisory check whose failure mode is
+      annoyance. But it IS a real divergence, not a duplicate of CI, and it is
+      named here rather than left for someone to rediscover when quickcheck
+      cries about a heading CI is perfectly happy with. Found and reported by
+      the implementer, not by the gate.
+  - seat: "S12 conductor (gate), on the slow-path measurement"
     objection: >-
-      Only the FAST path was timed (1.0s, everything skipped). The slow path —
-      impact-scoped pytest on a diff that actually touches
-      apps/backend-rag/backend/*.py — was never measured, so the claim "cheap
-      enough to run before every push" is proven only for the case where the
-      script has nothing to do.
-    status: CONFIRMED
+      An earlier draft claimed only the FAST path had been timed. The
+      implementer had in fact measured both, and its caveat is more
+      interesting than the numbers.
+    status: RETRACTED
     note: >-
-      Left open and declared in the brief's risks rather than estimated. The
-      failure direction is mild (a slow advisory hook is annoying, not
-      blocking, and QUICKCHECK_SKIP=1 exists), but stating a measured 1.0s
-      without saying WHICH path it measures would be the more misleading
-      option.
+      Both paths are measured (see receipts). The caveat that matters, in the
+      implementer's own framing: to reach the slow path at all it had to
+      isolate the diff with `QUICKCHECK_BASE_REF`, because measured against
+      real origin/main this PR's diff is MIXED (it contains quickcheck's own
+      non-.py files), and `impact_map.py` fails open on any out-of-scope path
+      by its own declared contract — so pytest never runs and the fast path
+      fires instead (0.87s). That is a structural artifact of testing a check
+      inside the PR that introduces it, and it disappears once merged: a
+      normal single-concern PR will not carry `scripts/quickcheck.sh` in its
+      own diff. 6.811s is what a real future backend-touching PR sees.
 tests:
   - "scripts/tests/test_quickcheck.sh — ALL PASS, re-run by the gate rather than trusted from the implementer's report. Guilt on the R1 guard: bare substring rejected, wrong hash count rejected, heading-without-hashes rejected."
 static:
@@ -120,3 +180,19 @@ notes:
     the acceptance) was correctly reverted by the implementer before this pack
     was written; the branch head carries only the feature commit. Verified by
     the gate reading git log, not by asking.
+  - >-
+    PROCESS FINDING, more useful than anything else in this pack. The gate
+    wrote three false statements about the implementer's conduct into an
+    earlier draft — that it deviated from an instruction, that the gate caught
+    the deviation by reading the diff, and that it "went quiet". All three
+    came from the gate reasoning over its own recollection of the mandate and
+    of the message order, instead of re-reading the mandate file and its own
+    inbox. The implementer contested them with citations; every citation held.
+    The mechanism is exactly the anti-hallucination rule this repo already has
+    ("never cite a tool's output without having run it THIS turn") applied to
+    a surface it is usually not applied to: a claim about a COLLEAGUE'S
+    conduct is a claim about world-state and needs a primary source in the
+    same turn, at least as much as a file path does. Cheap to prevent
+    (`grep` the mandate, re-read the message), expensive to leave standing —
+    an evidence pack is permanent and this one would have libelled a
+    teammate's process on main forever.
