@@ -20,7 +20,58 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-20 — keep current)
+## 1. LIVE STATE (last update 2026-08-23 — keep current)
+
+- **💀 THE PRO DAEMON HAS BEEN DEAD FOR ~72 HOURS AND EVERY HEALTH INDICATOR READS GREEN — the
+  S3-ARMED entry below is not wrong, it EXPIRED 2.5 hours after it was written (2026-08-23,
+  measured on Pro at SHA `148f0bfca`, probes between 01:00Z and 01:40Z).**
+  - **The state.** `launchctl print system/com.balizero.wa-codex-broker` → `active count = 0`,
+    `state = spawn scheduled`, **`runs = 7514`**, **`last exit code = 1`**, `job state = exited`;
+    zero matching processes in `ps`. Downstream ground truth — prod
+    `SELECT * FROM wa_broker_gauge` via `fly ssh console` — **`broker_last_seen_at =
+2026-08-20 03:45:11Z`**, frozen, while `breaker_state = closed` and
+    `consecutive_failures = 0`. **The breaker is green because the daemon never connects far
+    enough to fail.** A dashboard reading it reported health for the whole outage.
+  - **Cause, read from the code rather than inferred from the symptom.**
+    `wa_codex_daemon.run_forever()` raises `RuntimeError` BEFORE the loop when `codex --version`
+    ≠ `WA_CODEX_CLI_VERSION_PIN` — fail-closed by design (spec chaos row 8), with the comment
+    _"a daemon that cannot legally exec must not sit green (scar family #2)"_. Uncaught → Python
+    exits **1** → `KeepAlive{SuccessfulExit:false}` + `ThrottleInterval 30` relaunches it every
+    30 s. 7,514 × 30 s ≈ **62 h**, consistent with a death shortly after 03:45Z on 08-20.
+    **The pin reads `0.147.0` (correct when Zero filled it on 08-20); Pro now reports
+    `codex-cli 0.149.0`. The CLI auto-updated, the pin did not.**
+  - **The bump is safe — verified, not assumed.** All five flags the adapter passes
+    (`--sandbox`, `--skip-git-repo-check`, `--ephemeral`, `--ignore-user-config`,
+    `--ignore-rules`) are still accepted by 0.149.0 (`codex exec --help`), and a live
+    `codex exec --sandbox read-only` probe returned normally today.
+  - **Not a HOME-fork.** `cmp -s /usr/local/libexec/wa-codex-broker-wrapper.sh
+infra/launchagents/wrappers/…` → IDENTICAL. Superscar #1 is clean here; this is #2.
+  - **The seat sentinel — the organ that would have caught this within the hour — was never
+    armed, and the reason is not an operator error.** `/usr/local/var/wa-codex-broker` does not
+    exist and `crontab -l | grep -c seat-sentinel` = 0. Zero DID run the provisioning on 08-20
+    (the installed wrapper + runtime tree, `08:39` local = `00:39Z`, prove it) — but the
+    seat-probe section was added by **#4405 (`ecd3a3da0`), merged 07:48Z the same day**, AFTER
+    that run. **A provisioning run cannot install a section that does not yet exist.**
+  - **The meta-pattern, worth more than the incident.** Three organs each behaved correctly and
+    the chain still went dark: the daemon refused loudly; the wrapper's sidecar is deliberately
+    unwatched (`expected_hb_seconds=0`, because the wrapper itself names the server-side gauge as
+    the ground truth); and the gauge went stale with the breaker still reading green. **Not a
+    component that lies — a correct fail-closed refusal wired to an alarm channel nobody armed.**
+    Same lesson the ledger already carries in another costume: _"armata" non è uno stato, è un
+    istante_ — the 08-20 entry was TRUE at 01:11→01:12Z and nothing existed to notice it stop
+    being true.
+  - **Cure = one operator paste** (`operator[credential]`: the env file is `0600` in another
+    user's home and Pro has no passwordless sudo — probed). Re-running the provisioning does NOT
+    fix it: it skips an existing env file by design. Exact text + the correct proof-of-armed in
+    `research/operations/2026-08-23-bot-subscription-path-readiness.md` §3. **Prove it by two
+    ADVANCING gauge reads, never by one fresh-looking timestamp and never by `breaker_state`.**
+  - **Ladder status from Zero, today:** **G-P2** (Art. 56 basis artifact) — _"non ora"_, stays
+    `operator[business]`, and it is the ONLY item no amount of building can advance. **G-P6**
+    (bounded credential residual) — **ACCEPTED at the §4.2 bound**, recorded; **the gate is NOT
+    closed**, because the spec's own row requires the bound to be _verified, not assumed_ (scope
+    inventory of what a stolen `auth.json` reaches + a revocation test) and neither probe has
+    run. **WhatsApp is still served by Gemini** — `WA_GENERATION_PROVIDER` is absent from
+    `fly secrets list -a nuzantara-rag`, so it defaults off, as intended.
 
 - **📉 IMPLICIT PREFIX-CACHE: VERIFIED HEALTHY, NOTHING TO BUILD — July's 0% was the LEDGER'S
   blindness, and the live answering model has been the FALLBACK since 08-10 (2026-08-20, measured
