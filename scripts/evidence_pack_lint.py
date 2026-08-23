@@ -124,8 +124,8 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         declaration. Missing `lanes:`, an empty `lanes: []`,
                         and a declared multi-build set with zero non-
                         Anthropic builders all share the same phased
-                        rollout: before 2026-09-05 each emits a NOTICE and
-                        does not fail; on/after 2026-09-05 each is a
+                        rollout: before 2026-08-24 each emits a NOTICE and
+                        does not fail; on/after 2026-08-24 each is a
                         violation. Shape violations (lanes not a list, entry
                         not a mapping, missing/empty lane/role/seat, invalid
                         role) fail immediately whenever `lanes:` is a
@@ -235,9 +235,13 @@ VALID_GEARS = (1, 2, 3)
 # lanes; when it declares >= 2 build lanes, at least one builder seat must be
 # non-Anthropic. The flip date lives IN THE LINT because a ledger line nobody
 # reads cannot gate a merge — the code itself must enforce the grace window.
-# Before 2026-09-05 either breach NOTICES; on/after 2026-09-05 it FAILS.
-# (14-day grace: rule ratified 2026-08-22.)
-LANES_NON_ANTHROPIC_ENFORCEMENT_DATE = datetime.date(2026, 9, 5)
+# Before 2026-08-24 either breach NOTICES; on/after 2026-08-24 it FAILS.
+# (Rule ratified 2026-08-22 with a 14-day grace to 2026-09-05; owner ruling
+# 2026-08-23 shortened the grace to 2026-08-24 — the rule had never actually
+# fired on anything, and the fleet lanes running right now are the ones that
+# must adopt `lanes:`, so a two-week wait bought two more weeks of zero
+# adoption instead of protecting anyone from a live enforcement surprise.)
+LANES_NON_ANTHROPIC_ENFORCEMENT_DATE = datetime.date(2026, 8, 24)
 VALID_LANE_ROLES = ("build", "review", "read")
 
 
@@ -1148,8 +1152,8 @@ def selftest() -> int:
         check("guilt: invalid lane role rejected", rc == 1)
 
         # two Anthropic build lanes on Gear 2 -> violation on/after flip date
-        before_flip = datetime.date(2026, 9, 4)
-        after_flip = datetime.date(2026, 9, 5)
+        before_flip = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+        after_flip = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
         write(root / "evidence" / "pack.yml", {
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",

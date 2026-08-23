@@ -223,7 +223,7 @@ Implementer routing is **task-shaped across the full roster above**, not Sonnet-
 - **Hard / architectural / red-team** → `opus-5` at `xhigh` / `codex-sol` at xhigh-max.
 - **Effort is a dial, not a constant** — pick per task; `low`/`medium` on Opus 5 are a real
   cost/latency lever, not a quality compromise to avoid by reflex.
-- Multi-PR campaigns must route **at least one lane through a non-Anthropic builder** — enforced by `scripts/evidence_pack_lint.py` (NOTICE until 2026-09-05, then FAIL) and the `model_routing_gate.py` routing floor hook.
+- Multi-PR campaigns must route **at least one lane through a non-Anthropic builder** — enforced by `scripts/evidence_pack_lint.py` (NOTICE until 2026-08-24, then FAIL — grace shortened from 2026-09-05 by owner ruling 2026-08-23) and the `model_routing_gate.py` routing floor hook.
 - **Refuter always a different family from the builder** — generator≠grader, family-exclusion is
   hard (fleet-order-spec §3.2).
 - **Final gate, all gears (ruling Zero 2026-08-20, supersedes the 2026-08-19 gear split)** — **Opus 5,

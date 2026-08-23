@@ -931,17 +931,25 @@ def test_lanes_innocence_overmatch_guard_opusculum_claude_ish():
 
 def test_lanes_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
     """Wired through lint(): a Gear-2 pack with two Anthropic build lanes
-    before the flip date prints a NOTICE to stderr but returns exit 0."""
+    NOTICEs (exit 0) before LANES_NON_ANTHROPIC_ENFORCEMENT_DATE and fails
+    (exit 1) on/after it. lint() has no `today` override, so this exercises
+    the real wall clock — assert conditionally on the actual date rather
+    than assuming which side of the flip "today" falls on (the flip date
+    turns this test red by the calendar otherwise, which is exactly the
+    failure mode this conditional exists to avoid)."""
     root, write_brief, write_pack = tmp_repo
     write_brief(gear=2)
     pack_path = write_pack(lanes=[
         {"lane": "D1", "role": "build", "seat": "sonnet"},
         {"lane": "D2", "role": "build", "seat": "opus"},
     ])
-    # lint() uses the real clock; today is before 2026-09-05, so it must notice
     rc, violations = lint(pack_path, root, None)
-    assert rc == 0
-    assert violations == []
+    if datetime.date.today() < LANES_NON_ANTHROPIC_ENFORCEMENT_DATE:
+        assert rc == 0
+        assert violations == []
+    else:
+        assert rc == 1
+        assert violations and "D3" in violations[0]
 
 
 @pytest.mark.parametrize(
