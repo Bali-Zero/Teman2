@@ -113,7 +113,13 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; the
     exit 0
 fi
 echo $$ > "$PIDFILE"
-trap 'rm -f "$PIDFILE"' EXIT
+# The declaration close is a FALLBACK stamp: any exit path that is not the
+# explicit close below (an error return, a handled signal) still records that
+# this runner came back. close is idempotent and keeps the FIRST outcome, so
+# the precise stamp made after `wait` always wins over this generic one.
+# A -9 leaves the declaration OPEN on purpose — that is a real abandonment and
+# must stay visible (scripts/session_declaration.py).
+trap 'rm -f "$PIDFILE"; [ -n "${DECL_RUN_ID:-}" ] && python3 "$REPO/scripts/session_declaration.py" close --run-id "$DECL_RUN_ID" --outcome failed >/dev/null 2>&1; true' EXIT
 
 # ---- secrets (Telegram; claude on Mini auths via its own login) ------------
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
@@ -271,6 +277,46 @@ except Exception:
     fi
 fi
 
+# ---- receptor 7: runs that started and never came back --------------------
+# The REAL detector for "an autonomous run died and every gauge stayed green",
+# replacing the prose-parsing verdict that measured 10/10 false positives.
+# It is safe to alert on because it is an OBSERVATION, not an inference: the
+# wrapper opened a declaration, the wrapper never stamped it, and the recorded
+# process is gone from the OS process table (pid + start-time, so a recycled
+# pid cannot resurrect a dead run).
+#   exit 0 = nothing abandoned · exit 1 = at least one · exit 2 = store
+#   unreadable, which is BLIND and must never read as clean (W97).
+# This receptor CAN accuse this very wrapper's previous tick. That is correct:
+# a healer that gets killed every run IS the failure it exists to report.
+if [ -f "scripts/session_declaration.py" ]; then
+    DECL_JSON=$(python3 scripts/session_declaration.py scan --json 2>/dev/null)
+    DECL_EXIT=$?
+    if [ "$DECL_EXIT" -eq 2 ]; then
+        ACTIONABLE=1; REASONS="${REASONS}declarations-blind "
+        telegram p0 "healer-mini:declarations-blind" "🛰 DICHIARAZIONI (Mini): lo store delle dichiarazioni di run non e leggibile - l'abbandono silenzioso non e piu rilevabile. Dettaglio: python3 scripts/session_declaration.py scan"
+    elif [ "$DECL_EXIT" -eq 1 ]; then
+        # Same key the tool emits (W120), and the SPAWNER names, because "one
+        # run was abandoned" without saying whose is not actionable.
+        DECL_SUM=$(printf '%s' "$DECL_JSON" | python3 -c "
+import json, sys
+try:
+    s = json.load(sys.stdin).get('summary', {})
+    print('%d %s' % (s.get('abandoned', 0),
+                     ','.join(s.get('abandoned_spawners', [])) or '-'))
+except Exception:
+    print('0 -')
+" 2>/dev/null)
+        DECL_N=$(printf '%s' "$DECL_SUM" | cut -d' ' -f1)
+        DECL_WHO=$(printf '%s' "$DECL_SUM" | cut -d' ' -f2)
+        if [ "${DECL_N:-0}" -gt 0 ] 2>/dev/null; then
+            # Folded into REASONS, no second routine line: this wrapper is
+            # allowed exactly ONE routine digest and it already carries REASONS
+            # verbatim (anti-regrowth gateway lint counts routine senders).
+            ACTIONABLE=1; REASONS="${REASONS}abandoned:${DECL_N}-run(${DECL_WHO}) "
+        fi
+    fi
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
     # ---- CONVERGENCE mission (DNA/GENOME §CONVERGENCE v2, panel-hardened) ----
     # Receptors all quiet: instead of sleeping, bring ONE grandfathered organ
@@ -341,6 +387,23 @@ if [ ! -x "$CASCADE_BIN" ]; then
     heartbeat "error" "claude cascade missing"
     exit 1
 fi
+# TWO-PHASE COMMIT (scripts/session_declaration.py). Opened here, stamped after
+# `wait`. An open declaration past its own cap with a dead runner is the ONLY
+# honest "this run died and nobody noticed" signal — the prose-parsing verdict
+# it replaces accused ten healthy ticks out of ten (PR #4646).
+# CADENCE IS READ FROM THE PLIST, never hardcoded: StartInterval is what
+# actually schedules this wrapper, and a second copy of that number is exactly
+# the drift that made "loop 4h" readable as a runtime in the first place.
+DECL_CADENCE=$(/usr/libexec/PlistBuddy -c "Print :StartInterval" \
+    "$HOME/Library/LaunchAgents/com.nuzantara.healer.4h.plist" 2>/dev/null || true)
+DECL_RUN_ID=$(python3 "$REPO/scripts/session_declaration.py" open \
+    --spawner "healer-run.sh" \
+    --cap-sec "$MAX_WALL_S" \
+    ${DECL_CADENCE:+--cadence-sec "$DECL_CADENCE"} \
+    --mandate "$MANDATE" \
+    --pid $$ 2>/dev/null) || DECL_RUN_ID=""
+[ -n "$DECL_RUN_ID" ] || log "WARN: session declaration not opened — this run is invisible to the abandonment scan"
+
 "$CASCADE_BIN" "$(cat "$MANDATE")
 
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
@@ -381,6 +444,19 @@ wait "$CPID"
 CEXIT=$?
 kill "$WPID" 2>/dev/null || true
 wait "$WPID" 2>/dev/null || true
+
+# 143 = 128+SIGTERM: the wall-clock watchdog above reaped the child. Recorded as
+# its own outcome rather than folded into "failed" — a run the cap killed and a
+# run that failed on its own need different cures.
+if [ -n "${DECL_RUN_ID:-}" ]; then
+    if [ "$CEXIT" -eq 0 ]; then DECL_OUTCOME=completed
+    elif [ "$CEXIT" -eq 143 ]; then DECL_OUTCOME=killed-by-watchdog
+    else DECL_OUTCOME=failed
+    fi
+    python3 "$REPO/scripts/session_declaration.py" close \
+        --run-id "$DECL_RUN_ID" --outcome "$DECL_OUTCOME" --exit-code "$CEXIT" >/dev/null 2>&1 \
+        || log "WARN: could not stamp declaration $DECL_RUN_ID"
+fi
 
 TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$CEXIT — tail: ${TAIL:0:300}"
