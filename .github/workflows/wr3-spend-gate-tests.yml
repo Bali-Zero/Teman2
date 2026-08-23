@@ -1,0 +1,104 @@
+name: WR3 spend gate tests
+
+# Guilt+innocence+mutation-verified corpus for scripts/wr3_gatekeeper_check.py --
+# the pre-render cost breaker that decides whether a WR3 episode may spend Veo
+# credits. Without a workflow naming it, scripts/tests/*.py runs only in the
+# nightly report-only sweep (scripts-tests-sweep.yml), which states in its own
+# header that it gates nothing and that 174 of 235 files there are named by no
+# workflow at all. That is cicatrix superscar #2 ("exists != armed") applied to
+# a guard whose entire purpose is to be armed -- same rationale as
+# s7-yield-dispatch-tests.yml and yield-optimizer-pii-gate-tests.yml, which
+# this file mirrors.
+#
+# Found the hard way: PR #4639 shipped a fix for a defect in this gate with 15
+# green tests, and "CI is clean" on that PR was true while meaning nothing
+# about those tests -- no check ran them.
+#
+# WHY A PYTHON MATRIX, and why THESE two versions. Measured 2026-08-23 on this
+# repo's own interpreters: `Path.exists()` on a file behind an unreadable
+# directory RAISES PermissionError on 3.9/3.11 and returns False on 3.14. The
+# workflows pin 3.11; `#!/usr/bin/env python3` -- how launchd and cron actually
+# start this script on the render hosts -- resolves to 3.14. So a single-version
+# leg would certify a program that is not the program being run, and for THIS
+# gate the divergence decided whether it blocked a render or passed one. The
+# 3.14 leg exists to make that class of difference go red somewhere. If
+# setup-python cannot provide 3.14 the leg fails loudly rather than being
+# quietly dropped -- an absent leg that looks green is the defect this whole
+# file is about.
+#
+# `paths:` filtered to the gate, the two modules it reads spend state through,
+# their tests and this file.
+#
+# test_wr3_credit_ledger.py IS IN THE PYTEST COMMAND, not only in `paths:`, and
+# the distinction is the whole point. An independent review of the first draft
+# caught it listed as a trigger while going unexecuted: `wr3_credit_ledger.py`
+# would MATCH the filter, the workflow would RUN, and the two files it did
+# execute import only `record_spend`/`read_records` — so a break in
+# `discover_backfill_records`, `dedupe_against_ledger` or the backfill CLI would
+# ship under a green check, on a module this filter treats as in scope. A path
+# that triggers a job which cannot see it is worse than an absent path: it reads
+# as coverage. 42 tests, green before being wired in (a red one would have
+# broken the workflow on arrival). NOT added to branch-protection required checks
+# here: that is a repo-settings change, made separately and only once this has
+# been observed green on main (see PENDING-ARMS).
+
+on:
+  pull_request:
+    paths:
+      - "scripts/wr3_gatekeeper_check.py"
+      - "scripts/wr3_credit_ledger.py"
+      - "scripts/wr3_spend_authority.py"
+      - "scripts/tests/test_wr3_gatekeeper_cost.py"
+      - "scripts/tests/test_wr3_ledger_isolation.py"
+      - "scripts/tests/test_wr3_credit_ledger.py"
+      - "scripts/tests/conftest.py"
+      - ".github/workflows/wr3-spend-gate-tests.yml"
+  merge_group:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/wr3_gatekeeper_check.py"
+      - "scripts/wr3_credit_ledger.py"
+      - "scripts/wr3_spend_authority.py"
+      - "scripts/tests/test_wr3_gatekeeper_cost.py"
+      - "scripts/tests/test_wr3_ledger_isolation.py"
+      - "scripts/tests/test_wr3_credit_ledger.py"
+      - "scripts/tests/conftest.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wr3-spend-gate-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  spend-gate-tests:
+    name: WR3 spend gate tests (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Show the interpreter actually under test
+        run: python -VV
+      - name: Run the spend-gate guilt + innocence corpus
+        run: |
+          python -m pip install --quiet --disable-pip-version-check pytest
+          PYTHONPATH=. python -m pytest \
+            scripts/tests/test_wr3_gatekeeper_cost.py \
+            scripts/tests/test_wr3_ledger_isolation.py \
+            scripts/tests/test_wr3_credit_ledger.py -v
+      - name: Sanity-compile the gate and the modules it reads spend through
+        run: |
+          python -m py_compile \
+            scripts/wr3_gatekeeper_check.py \
+            scripts/wr3_credit_ledger.py \
+            scripts/wr3_spend_authority.py

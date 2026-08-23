@@ -93,6 +93,26 @@ runtime_proof:
     out of the pytest cwd, the coverage decision moved to workflow env, the trusted-extraction
     fail-closed, the deps-guard re-anchor) change the plumbing and need their own green run."
 
+lanes:
+  # One build lane, declared honestly: the implementation was single-seat. The
+  # cross-family seats below were REFUTERS, not builders (generator != grader),
+  # so they are `review` and do not count toward the D3 build-diversity floor.
+  - lane: "S11-build"
+    role: build
+    seat: "opus-5"
+  - lane: "S11-refute-r1"
+    role: review
+    seat: "kimi-code-k3"
+  - lane: "S11-refute-r2-codex"
+    role: review
+    seat: "codex-gpt-5.6-sol"
+  - lane: "S11-refute-r2-kimi"
+    role: review
+    seat: "kimi-code-k3"
+  - lane: "S11-ci-red-triage"
+    role: review
+    seat: "claude-fleet-watch"
+
 dissent:
   - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context) — ROUND 1, against the live worktree"
     objection: 'Two CONFIRMED findings, both real, both cured before this pack was written. (1) THE MONEY QUESTION: the shards and the fan-in both ran the PR OWN copy of scripts/ci/shard_tests.py, so a diff appending one entry to EXCLUDED_DIRS made both agree perfectly on a shrunken corpus — chunks tile it exactly, guard green, required context green, and the test catching the diff regression never ran. It noted the author had built exactly this defence (BASE_SHA extraction) for change_map.py/impact_map.py and not for the new file, and that the change-map classifying the PR as run_all=true does not help, because forcing the jobs to RUN does not stop a modified enumerator from shrinking what they run. Cured in 0b298c253. (2) The fan-in derived its coverage pin from requirements.lock.txt while the shards install the lock closure and then an unpinned pytest-cov on top, so the comment claimed a same-version guarantee the code did not deliver. Cured in 535b27784. It REFUTED the ARG_MAX concern (~28KB of args vs a ~2MB limit), the stuck-required-context paths, and a pytest python_files mismatch. Its FINAL "CRITICAL FINDING" — that test_shard_tests.py references a --union flag shard_tests.py does not have — is an ARTEFACT OF THE AUTHOR OWN METHOD: it was reading a worktree being edited in response to its own earlier finding, so it got a torn read. Disproved by re-running the corpus against a frozen `git archive` of the committed SHA: 28/28. Recorded in modus AMENDMENTS as the author lesson, not the refuter finding.'
