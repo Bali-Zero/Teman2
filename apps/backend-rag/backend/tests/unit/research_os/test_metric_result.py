@@ -129,6 +129,43 @@ def test_measurement_value_accepts_explicit_null_too(load_json: Any) -> None:
     assert result.measurement.value is None
 
 
+def test_measured_pass_with_no_value_is_currently_accepted(load_json: Any) -> None:
+    """OPEN RATIFICATION ITEM for the conductor -- pins the cost of the
+    `value: Any = None` widening, not just its benefit.
+
+    `insufficient_evidence` + no `value` is the case this widening exists
+    for (see test_insufficient_evidence_result_omits_measurement_value
+    above) and section 20 supports it directly via rule 9. But the same
+    widening also accepts a `result_state == "measured"` +
+    `gate_disposition == "pass"` document with NO `value` at all -- a
+    result claiming to be a completed, passing measurement while reporting
+    nothing measured. That is NOT separately named as invalid anywhere:
+    section 20's enumerated invariant ("Unmet sample floors, unavailable
+    denominators, failed mandatory guardrails, expired profiles, or
+    invalidated inputs cannot be encoded as a passing measurement") lists
+    five specific things that block a passing measurement and does not
+    name a missing `value` as a sixth -- which is why this model does not
+    extend that list on its own authority. Deliberate, not an oversight:
+    inventing that sixth item would be exactly the "REJECT a document the
+    spec's text permits" failure mode the P04-D1 mandate warns against,
+    and getting it wrong in the strict direction is the unrecoverable one
+    across a packet boundary (P05/P06 producers integrate against this
+    kind) -- so the model errs wide here and this test exists so a future
+    narrowing has to turn this specific case red on purpose, not land as
+    a silent green-to-green cleanup.
+    """
+    payload = load_json(FIXTURES_ROOT / CONTRACT_KIND / "valid_measured_with_extension.json")
+    candidate = deepcopy(payload)
+    del candidate["measurement"]["value"]
+    candidate["result_state"] = "measured"
+    candidate["gate_disposition"] = "pass"
+    candidate = _rehash(candidate)
+    result = MetricResult.model_validate(candidate)  # currently ACCEPTED -- see docstring
+    assert result.result_state.value == "measured"
+    assert result.gate_disposition.value == "pass"
+    assert result.measurement.value is None
+
+
 def test_measurement_unit_stays_required(load_json: Any) -> None:
     """Only `value` is relaxed by rule 9 -- `unit` keeps its literal
     required reading; nothing in section 20 or contract rule 9 exempts it."""
