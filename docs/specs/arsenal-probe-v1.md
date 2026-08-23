@@ -15,15 +15,15 @@ humans (`--table`).
 
 ## Seats & probe commands (each: subprocess, per-seat timeout, thread-parallel)
 
-| seat | probe | LIVE signal |
-|---|---|---|
-| claude | `$ARSENAL_CLAUDE_BIN -p "Reply with exactly: PONG" --model claude-sonnet-5` (default bin `/opt/homebrew/bin/claude`; strip `ANTHROPIC_API_KEY` from env, pass through `CLAUDE_CODE_OAUTH_TOKEN` if set) | `PONG` in stdout |
-| glm | token = `security find-generic-password -s glm-coding-plan-token -w` (NEVER logged); direct `curl` POST `https://api.z.ai/api/anthropic/v1/messages`, model `glm-5.2`, max_tokens 8, anthropic-version 2023-06-01 | HTTP 200 + `"model"` in body |
-| agy | `agy -p "Reply with exactly: PONG"` (which-resolve; also try `~/.local/bin/agy`) | `PONG` in stdout |
-| codex | `codex exec --sandbox read-only --skip-git-repo-check "Reply with exactly: PONG"` with stdin=DEVNULL (it blocks on open stdin) | `PONG` in stdout |
-| deepseek | key = parse `DEEPSEEK_API_KEY=` from `~/.openclaw/workspace/.env.master` (read in-python, value NEVER logged); `curl` POST `https://api.deepseek.com/chat/completions` model `deepseek-v4-flash`, max_tokens 1 | HTTP 200 |
-| ollama | `ollama list` → presence of `qwen3.5`; with `--live-gen` also 1-token `ollama run qwen3.5:9b` | model listed (or gen output) |
-| nlm | `nlm list notebooks` (which-resolve) | stdout parses as JSON (list or dict) |
+| seat        | probe                                                                                                                                                                                                                        | LIVE signal                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| claude      | `$ARSENAL_CLAUDE_BIN -p "Reply with exactly: PONG" --model claude-sonnet-5` (default bin `/opt/homebrew/bin/claude`; strip `ANTHROPIC_API_KEY` from env, pass through `CLAUDE_CODE_OAUTH_TOKEN` if set)                      | `PONG` in stdout                       |
+| tp1-glm-5.2 | key loaded by `load_tp1_settings_key()` from `~/.qwen/settings.json` (NEVER logged); direct POST to `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions`, model `glm-5.2`, max_tokens 8 | HTTP 200 + non-empty assistant content |
+| agy         | `agy -p "Reply with exactly: PONG"` (which-resolve; also try `~/.local/bin/agy`)                                                                                                                                             | `PONG` in stdout                       |
+| codex       | `codex exec --sandbox read-only --skip-git-repo-check "Reply with exactly: PONG"` with stdin=DEVNULL (it blocks on open stdin)                                                                                               | `PONG` in stdout                       |
+| deepseek    | key = parse `DEEPSEEK_API_KEY=` from `~/.openclaw/workspace/.env.master` (read in-python, value NEVER logged); `curl` POST `https://api.deepseek.com/chat/completions` model `deepseek-v4-flash`, max_tokens 1               | HTTP 200                               |
+| ollama      | `ollama list` → presence of `qwen3.5`; with `--live-gen` also 1-token `ollama run qwen3.5:9b`                                                                                                                                | model listed (or gen output)           |
+| nlm         | `nlm list notebooks` (which-resolve)                                                                                                                                                                                         | stdout parses as JSON (list or dict)   |
 
 Timeouts (defaults, per-seat override via `--timeout SEC` global multiplier): claude 120s,
 glm 45s, agy 120s, codex 180s, deepseek 45s, ollama 30s (live-gen 120s), nlm 60s.
@@ -58,14 +58,33 @@ Non-required seats always probed and reported (unless filtered), just never fail
 
 1. Report `~/.organism/arsenal/last.json` (atomic write via tempfile+rename; keep previous as
    `prev.json` before overwrite):
+
 ```json
-{"schema": 1, "machine": "mini", "ts": "2026-07-06T12:00:00Z",
- "context": {"ssh": true, "interactive": false},
- "seats": [{"seat": "glm", "status": "LIVE", "healthy": true, "latency_ms": 1240,
-             "evidence": "HTTP 200 model glm-5.2", "required": true}],
- "transitions": [{"seat": "codex", "from": "LIVE", "to": "AUTH_DEAD"}],
- "summary": {"live": 5, "dead_strict": 1, "context_limited": 1, "transient": 0}}
+{
+  "schema": 1,
+  "machine": "mini",
+  "ts": "2026-07-06T12:00:00Z",
+  "context": { "ssh": true, "interactive": false },
+  "seats": [
+    {
+      "seat": "glm",
+      "status": "LIVE",
+      "healthy": true,
+      "latency_ms": 1240,
+      "evidence": "HTTP 200 model glm-5.2",
+      "required": true
+    }
+  ],
+  "transitions": [{ "seat": "codex", "from": "LIVE", "to": "AUTH_DEAD" }],
+  "summary": {
+    "live": 5,
+    "dead_strict": 1,
+    "context_limited": 1,
+    "transient": 0
+  }
+}
 ```
+
 2. Heartbeat `~/.organism/last_seen/<machine>.arsenal_probe.json` — same shape as healer's:
    `{"organ": "<machine>.arsenal_probe", "status": "ok|degraded", "note": "<summary line>", "ts": ...}`
    (`degraded` iff any strict-fail among required seats).
@@ -90,7 +109,8 @@ Authorization header never appears in error strings). `security`/env.master read
 ## Selftest (W84 blind-scan guard)
 
 `--selftest`: (a) classifier table — canned output samples per status (the real strings above:
-z.ai 1211 body, 529 body, codex token_revoked line, agy auth-failed line, deepseek 402, quota
+TP1 HTTP-200 empty-response and model-mismatch bodies, codex token_revoked line, agy
+auth-failed line, deepseek 402, quota
 strings) each classify correctly; (b) scrub() removes a planted fake token; (c) blind-scan guard:
 a run that probed 0 seats must exit 2, never "clean"; (d) `--read-last` on a fixture file. Exit 0
 only if all pass, print `SELFTEST OK — N checks`.
