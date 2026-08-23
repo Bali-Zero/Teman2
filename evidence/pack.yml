@@ -1,133 +1,144 @@
 brief_ref: evidence/brief.yml
-plan_ref: "wire scripts/tests/test_wr3_gatekeeper_cost.py into a pull_request-triggered check (PR #4649, 2026-08-23), after an adversarial review of #4639 found the corpus was named by no workflow at all"
+plan_ref: "S11 backend-test sharding — PR #4647, three commits (b54bddecf design, 0b298c253 trust boundary, 535b27784 coverage receipt)"
 diff:
-  net_lines: >-
-    3 files, +156/-62 measured by `git diff --stat origin/main`. Of the 62 deletions, 60 are
-    evidence/brief.yml being replaced (it is a per-PR file, rewritten by each harness-gated PR
-    — see `git log --oneline -- evidence/brief.yml`). The substantive change is ONE new
-    workflow file plus ONE entry and its comment in the watcher census.
-  behaviour_change: >-
-    No executable code changes. Runtime behaviour of every script is byte-identical. What
-    changes is that a corpus which previously ran nowhere on pull requests now runs, on two
-    interpreters.
+  net_lines: "+353 net on .github/workflows/tests.yml (526 insertions / 173 deletions), +2 new files under scripts/ci/ (partitioner 280 lines, its guilt+innocence corpus 380 lines), +11 lines on .github/CODEOWNERS. Measured by `git diff --numstat origin/main...HEAD`. Larger than the ~400-line PR guideline and DECLARED as such: a job cannot be split into three without restating the setup blocks each piece needs, and roughly half the tests.yml delta is load-bearing comments carried over verbatim from the pre-split job so the scar rationale is not lost."
+  behaviour_change: "One required status context keeps its exact name and semantics; the work behind it moves from 1 job to 5. Coverage, thresholds, the PR-lane impact scoping, the merge_group unscoped semantic, and the change-map skip predicate are all preserved. No application code is touched."
 receipts:
-  - claim: "The corpus this workflow executes is green on the interpreter CI pins (3.11) — all THREE files, after the third was added in response to the review finding below"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py -q"
-    result: "64 passed in 0.89s (was 22 before test_wr3_credit_ledger.py was wired in; that file is 898 lines / 42 tests and was green BEFORE being added — a red one would have broken the workflow on arrival)"
+  - claim: "The step being cured really is the dominant cost, and it is not a one-night anomaly — it is 74.5-74.6% of the job on two different event types"
+    cmd: 'gh api repos/Bali-Zero/Teman2/actions/runs/32626973483/jobs --jq ''.jobs[]|select(.name=="Backend Tests (Python)")|.steps[]'' -> Run unit tests 797s of a 1068s job; same shape on schedule run 32624568684 -> 726s of 975s. Mypy 90s/76s, pip-audit 37s/35s, everything else 142s/138s.'
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
+    ts: "2026-08-23T16:25Z"
     seat: "session (pro)"
-  - claim: "...and on 3.14, the version `#!/usr/bin/env python3` resolves to on the render hosts — measured locally in a 3.14.6 venv, not inferred from the workflow file"
-    cmd: "PYTHONPATH=. <scratch 3.14.6 venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py -q"
-    result: "22 passed in 0.81s"
+  - claim: "A naive whole-job matrix MISSES the <=8min target, which is why the static job exists. This is arithmetic on the measurement above, not a preference"
+    cmd: "269s of non-test work + 797/3 = 535s per shard, plus a fan-in ~= 10.5 min. Lifting mypy (90s) + pip-audit (37s) onto a concurrent job leaves ~= 388s per shard. MEASURED on the first PR transit: `Backend Static (Python)` completed in 170s (run 32629406562), i.e. below the 205s projection and never the critical path."
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
+    ts: "2026-08-23T16:52Z"
     seat: "session (pro)"
-  - claim: "Both matrix legs actually RAN and concluded SUCCESS on this PR — the runner can provide 3.14, which was the one thing about this file that could not be settled locally"
-    cmd: "gh pr view 4649 --json statusCheckRollup, filtered to checks matching 'WR3 spend gate'"
-    result: "WR3 spend gate tests (py3.11) -> SUCCESS; WR3 spend gate tests (py3.14) -> SUCCESS"
+  - claim: "`Backend Tests (Python)` is genuinely a required context, and there are exactly 27 of them — the fan-in's name is infrastructure, not a label"
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq '.contexts[]' | nl -> 27 lines, #4 is `Backend Tests (Python)`"
     exit: 0
-    ts: "2026-08-23T08:59Z"
+    ts: "2026-08-23T16:22Z"
     seat: "session (pro)"
-  - claim: "actionlint accepts the new workflow"
-    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
-    result: "no output"
+  - claim: "The partitioner tiles the real corpus exactly, and its own guilt+innocence corpus passes on the COMMITTED bytes (not on a working tree being edited)"
+    cmd: "git archive 535b27784 <4 files> | tar -x -C <frozen snapshot>; cd snapshot && python3 scripts/ci/test_shard_tests.py -> Ran 28 tests, OK. In the worktree: shard_tests.py enumerate | wc -l -> 1425; chunk --shard 1|2|3 -> 475 / 475 / 475."
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
+    ts: "2026-08-23T17:02Z"
     seat: "session (pro)"
-  - claim: "Every path named in the workflow's paths: filter exists at this head — a workflow naming a file that is not there is a gate that runs nothing and reports success"
-    cmd: "for each quoted .py/.yml path in the workflow file: test -f"
-    result: "0 missing"
+  - claim: "The exact new pytest invocation shape works — this was smoke-tested for real, not reasoned about"
+    cmd: "cd apps/backend-rag && COVERAGE_FILE=$PWD/coverage-data-shardT1 pytest <2 explicit files> --cov=backend --cov-branch --cov-report= --junit-xml=... -> data file 450560 bytes + junit 4055 bytes written. Second file likewise. Then `coverage combine coverage-data-shardT1 coverage-data-shardT2` -> 'Combined 2 files'; `coverage xml` -> written; `coverage report` -> TOTAL printed. The fan-in's own junit parser read both: tests=27/time=0.473 and tests=25/time=3.704."
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
+    ts: "2026-08-23T16:38Z"
     seat: "session (pro)"
-  - claim: "The watcher census now names this workflow, so a failure of it on main alerts like every other"
-    cmd: "python3 scripts/check_watcher_coverage.py"
-    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (was 99 before this PR; the missing entry is what turned the `check` job red on this PR's first run)"
+  - claim: "The empty-chunk guard and the chunk read loop behave under the runner's shell, including errexit — an empty chunk must never reach pytest, because pytest with no file arguments collects the ENTIRE rootdir, the exact opposite of what an empty chunk means"
+    cmd: "bash -euo pipefail -c '<while IFS= read -r ... [ -n ] && CHUNK+=()>' over a file containing a blank line -> 2 entries, exit 0 (the AND-list does not trip errexit); over an empty file -> the `[ ${#CHUNK[@]} -eq 0 ]` branch fires. `mapfile` was replaced with `while read` after `mapfile` proved unavailable in the session shell — a bash-version dependency this step does not need."
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
+    ts: "2026-08-23T16:45Z"
     seat: "session (pro)"
-  - claim: "The gap this PR closes is real and is stated by the repo itself, not only by me"
-    cmd: "grep -rln test_wr3_gatekeeper_cost .github/workflows/  ; and read scripts-tests-sweep.yml's header"
-    result: >-
-      grep returns NOTHING. scripts-tests-sweep.yml states in its own header: THIS WORKFLOW DOES
-      NOT GATE ANYTHING, continue-on-error true, not in branch-protection required checks,
-      TRIGGER schedule + workflow_dispatch deliberately NOT pull_request, and that 61 of 235
-      files under scripts/tests/ are named by a workflow while 174 are named by nothing.
+  - claim: "Static gates pass on the changed workflow"
+    cmd: "actionlint .github/workflows/tests.yml -> clean (the two SC2086 infos it first reported were fixed by quoting the --junit-xml args); python3 scripts/ci/lint_unreachable_workflow_conditions.py -> exit 0; python3 -c 'yaml.safe_load(...)' -> jobs parse, names are ['Change map','Backend Static (Python)','Backend Shard ${{ matrix.shard }}','Backend Tests (Python)', ...]"
     exit: 0
-    ts: "2026-08-23T08:45Z"
+    ts: "2026-08-23T17:00Z"
     seat: "session (pro)"
-pii_scan: clean
-dissent:
-  - seat: "independent adversarial review of PR #4639 (read-only, fresh context, not the author)"
-    objection: >-
-      "The tests are a real gate" is REFUTED at the CI-wiring level: no pull_request-triggered
-      workflow names scripts/tests/test_wr3_gatekeeper_cost.py, so a regression breaking every
-      test in that file would not block the PR introducing it, and "CI is clean" on #4639 did
-      not mean what it appeared to mean.
-    status: CONFIRMED
-    note: >-
-      Verified independently rather than accepted: `grep -rln test_wr3_gatekeeper_cost
-      .github/workflows/` returns nothing, the branch-protection required_status_checks list
-      contains no check that runs it, and scripts-tests-sweep.yml states the same thing in its
-      own header. This PR exists BECAUSE of this objection.
-  - seat: "Harness floor recompute (CI, deterministic)"
-    objection: >-
-      This PR was opened declaring Gear 2 while its diff touches .github/workflows/, which is
-      hot-zone and floors at Gear 3 by path regardless of size — a Gear-3-floor diff cannot
-      pass as "not a harness task".
-    status: CONFIRMED
-    note: >-
-      The floor is not the author's to choose, which is the point of computing it from the diff.
-      Answered by supplying brief+pack, never by touching the check.
-  - seat: "scripts/check_watcher_coverage.py (CI)"
-    objection: >-
-      The new workflow was absent from main-push-failure-watch.yml's census, so a failure of it
-      on main would have alerted nobody.
-    status: CONFIRMED
-    note: >-
-      A workflow nobody watches is the same exists-!=-armed shape this PR exists to close.
-      Coverage 99 -> 100; being caught by this checker on the way in is the system working.
-  - seat: "independent adversarial review of THIS PR (read-only, fresh context, not the author)"
-    objection: >-
-      The workflow lists scripts/wr3_credit_ledger.py in `paths:` but its pytest step did not
-      execute scripts/tests/test_wr3_credit_ledger.py — the only file exercising
-      dedupe_against_ledger, discover_backfill_records, read_integrity, spend_by_episode,
-      total_spend and the backfill CLI. A PR breaking any of them would MATCH the filter, run
-      the workflow, pass both legs (the two executed files import only record_spend /
-      read_records), pass py_compile (a logic bug, not syntax) and ship under a green check.
-      The evidence also called that module "under test" while naming only the other two files
-      as executed.
-    status: CONFIRMED
-    note: >-
-      Verified independently rather than accepted: the file is 898 lines with 42 test functions
-      (the reviewer said 38 — a small miscount that does not touch the finding, recorded because
-      a number that matches for the wrong reason is worse than one that differs), `grep -rn
-      test_wr3_credit_ledger .github/workflows/` returns zero hits repo-wide, and the two
-      executed files import exactly `record_spend` and `read_records, record_spend`. Fixed in
-      this PR by adding the file to both `paths:` blocks AND the pytest command — 64 tests now
-      run. A path that triggers a job which cannot see it is worse than an absent path, because
-      it reads as coverage.
-  - seat: "session (author, against its own earlier claim)"
-    objection: >-
-      An earlier message from this session asserted that the dispatched subagent channel was
-      broken because no grader had reported. That was wrong — three verdicts arrived, late —
-      and one of them is dissent entry #1 above.
-    status: RETRACTED
-    note: >-
-      Recorded because a pack that shows only objections from others, and none the author had
-      to withdraw, is the "consenso sospetto" this field exists to prevent.
+  - claim: "The required context's downstream consumer is unaffected: the job ID `backend-tests` is preserved, so `test-summary`'s `needs.backend-tests.result` now reads the fan-in verdict"
+    cmd: 'python3 -c "yaml.safe_load(...)[''jobs''][''test-summary''][''needs'']" -> [''backend-tests'',''mcp-tests'',''evaluator-critical-tests'',''frontend-tests'',''packages-core-tests'',''e2e-tests'']. Four stale in-file cross-references (''see backend-tests comment above'') were repointed to backend-shard, which now carries the original long rationale.'
+    exit: 0
+    ts: "2026-08-23T16:47Z"
+    seat: "session (pro)"
+  - claim: "The lock file is a CLAIM about the environment, not an observation of it — which is why the coverage version is now a receipt written by the interpreter that produces the data"
+    cmd: "grep '^coverage==' apps/backend-rag/requirements.lock.txt -> coverage==7.15.4; apps/backend-rag/.venv/bin/python -c 'import coverage; print(coverage.__version__)' -> 7.14.3. Two different answers to the same question in the same tree."
+    exit: 0
+    ts: "2026-08-23T16:57Z"
+    seat: "session (pro)"
+  - claim: "`actions/download-artifact@v7` exists — the version matching this repo's upload-artifact@v7 house standard was verified against the real tag, not assumed"
+    cmd: "curl -o /dev/null -w '%{http_code}' https://api.github.com/repos/actions/download-artifact/git/ref/tags/v7 -> 200 (v4/v5/v6 also 200)"
+    exit: 0
+    ts: "2026-08-23T16:31Z"
+    seat: "session (pro)"
+  - claim: "The re-anchored test-deps guard sees SEVEN packages where the un-re-anchored one saw ONE — the split had moved the install line out of its field of view without tripping any of its assertions"
+    cmd: 'python3 -c "import test_test_deps_declared as g; print(sorted(g.inline_installed_packages()))" -> [''coverage'',''fakeredis'',''pytest'',''pytest-asyncio'',''pytest-cov'',''pytest-mock'',''pytest-xdist'']; with BACKEND_JOBS narrowed back to (''backend-tests'',) the new guilt test raises: "the scan no longer reaches the job that installs the test runtime — saw [''coverage'']"'
+    exit: 0
+    ts: "2026-08-23T17:30Z"
+    seat: "session (pro)"
 tests:
-  - "The workflow's own subject IS the test corpus: 22 tests (15 spend-gate + 7 ledger-isolation), run together on 3.11 and 3.14, receipts above. No new test is warranted for a workflow file; the applicable checks are actionlint, the watcher-coverage checker, and the workflow's own two legs concluding on this PR — all three are green and all three are cited above."
+  - "scripts/ci/test_shard_tests.py — 28 cases, run on the frozen committed bytes. GUILT (each is a way a sharded suite can silently under-run and look green): a dropped module, a module running twice, a module outside the corpus, a shard that never ran, a shard running someone else's files, a stray chunk index, and the worst case of all — every shard publishing an empty list. INNOCENCE: a sound partition, a corpus smaller than the shard count (scoped PR lane, shard 3 legitimately empty), determinism across calls, the e2e exclusion, and the fail-open target resolution (narrowing requires BOTH the flag and a non-empty selection; 'banana' as IMPACT_RUN_ALL yields the full corpus)."
+  - "The union/security mode has its OWN guilt+innocence split, because it is the pass a malicious diff has to defeat: it must keep catching a dropped module, an overlap, an empty partition and a missing shard, while accepting a different assignment algorithm and a PR that adds test modules — and the full/drift mode must still reject both of those, which is what makes the two passes distinct rather than redundant."
 static:
-  - "actionlint -> clean"
-  - "python3 -c yaml.safe_load on the new workflow -> parses"
-  - "scripts/check_watcher_coverage.py -> exit 0"
-notes:
-  - >-
-    Two checks correctly rejected the first version of this PR and both were answered by
-    complying, never by editing the check: `Harness floor recompute` (a .github/workflows/ diff
-    floors at Gear 3 by PATH — this PR had been opened declaring Gear 2, and the floor is not
-    the author's to choose) and `check` / check_watcher_coverage.py (a new workflow nobody
-    watches is the same exists-!=-armed shape this PR exists to close). Being caught by the
-    second one on the way in is the system working.
+  - "actionlint .github/workflows/tests.yml -> clean"
+  - "scripts/ci/lint_unreachable_workflow_conditions.py -> exit 0"
+  - "pre-commit hook chain (lease-check, anti-reward-hacking test lint, secrets, python lint, off-limits) -> all passed on all three commits"
+runtime_proof:
+  - "MEASURED on run 32629845135 (conclusion success, head 27b8dea23), and it is the FULL corpus,
+    not a scoped PR selection — each shard log reads `owns 476 of 1428 test modules`. Wall-clock:
+    Backend Shard 3 283s, Shard 2 259s, Shard 1 249s, Backend Static 195s (concurrent, never the
+    critical path), Backend Tests (Python) fan-in 66s. Critical path for the required context =
+    slowest shard + fan-in = 283 + 66 = 349s = 5.8 min, against a 1068s (17.8 min) baseline on
+    merge_group run 32626973483. That is a 67% reduction, and code PRs pay it twice."
+  - "Every fan-in gate actually ran and passed, read from the job step list rather than inferred
+    from the job conclusion: Assert every upstream job succeeded / Verify the partitioner own
+    guilt and innocence corpus / Extract trusted partitioner (base ref) / Partition guard / Prove
+    each shard reported executed tests / Combine shard coverage / Report shard balance. `Upload
+    coverage to Codecov` shows `skipped`, exactly as predicted from the absent token."
+  - "The partition guard printed BOTH passes on real data: `partition sound (union mode): 1428
+    test modules, 3 shards, disjoint and complete` and `partition sound (full mode): ...`. The
+    shards executed 8858 + 8695 + 8364 = 25,917 tests with 0 collection errors."
+  - "Shard balance MEASURED, not assumed: `slowest/fastest = 1.32x`, below the ~2x threshold at
+    which a duration-aware splitter would be worth adding. Round-robin over path order is
+    adequate for this corpus today; the instrument that would say otherwise is now in the job."
+  - "NOT PROVEN, stated because the run is green and could be over-read: the coverage combine +
+    --fail-under path did NOT execute. This was the pull_request lane, where BACKEND_COLLECT_COVERAGE
+    is false, so the step exited early on `threshold not applicable`. The combine, the version
+    agreement check and the 55% gate are exercised only on merge_group / schedule / dispatch — the
+    first real test of them is this PR's own queue transit."
+  - "ALSO NOT PROVEN: this measurement is of head 27b8dea23. The commits after it (receipts moved
+    out of the pytest cwd, the coverage decision moved to workflow env, the trusted-extraction
+    fail-closed, the deps-guard re-anchor) change the plumbing and need their own green run."
+
+lanes:
+  # One build lane, declared honestly: the implementation was single-seat. The
+  # cross-family seats below were REFUTERS, not builders (generator != grader),
+  # so they are `review` and do not count toward the D3 build-diversity floor.
+  - lane: "S11-build"
+    role: build
+    seat: "opus-5"
+  - lane: "S11-refute-r1"
+    role: review
+    seat: "kimi-code-k3"
+  - lane: "S11-refute-r2-codex"
+    role: review
+    seat: "codex-gpt-5.6-sol"
+  - lane: "S11-refute-r2-kimi"
+    role: review
+    seat: "kimi-code-k3"
+  - lane: "S11-ci-red-triage"
+    role: review
+    seat: "claude-fleet-watch"
+
+dissent:
+  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context) — ROUND 1, against the live worktree"
+    objection: 'Two CONFIRMED findings, both real, both cured before this pack was written. (1) THE MONEY QUESTION: the shards and the fan-in both ran the PR OWN copy of scripts/ci/shard_tests.py, so a diff appending one entry to EXCLUDED_DIRS made both agree perfectly on a shrunken corpus — chunks tile it exactly, guard green, required context green, and the test catching the diff regression never ran. It noted the author had built exactly this defence (BASE_SHA extraction) for change_map.py/impact_map.py and not for the new file, and that the change-map classifying the PR as run_all=true does not help, because forcing the jobs to RUN does not stop a modified enumerator from shrinking what they run. Cured in 0b298c253. (2) The fan-in derived its coverage pin from requirements.lock.txt while the shards install the lock closure and then an unpinned pytest-cov on top, so the comment claimed a same-version guarantee the code did not deliver. Cured in 535b27784. It REFUTED the ARG_MAX concern (~28KB of args vs a ~2MB limit), the stuck-required-context paths, and a pytest python_files mismatch. Its FINAL "CRITICAL FINDING" — that test_shard_tests.py references a --union flag shard_tests.py does not have — is an ARTEFACT OF THE AUTHOR OWN METHOD: it was reading a worktree being edited in response to its own earlier finding, so it got a torn read. Disproved by re-running the corpus against a frozen `git archive` of the committed SHA: 28/28. Recorded in modus AMENDMENTS as the author lesson, not the refuter finding.'
+    status: CONFIRMED
+  - seat: "codex gpt-5.6-sol at xhigh (OpenAI, cross-family, fresh context, read-only sandbox) — ROUND 2, against an immutable `git archive` snapshot of 535b27784"
+    objection: 'Verdict DEFECTIVE, 7 numbered findings. CURED HERE: (a) the `trusted=introduced` branch treated ANY `git show` failure as "the file is new", so an unfetched base SHA or a transient git error silently downgraded the security gate to the diff own copy — now three explicit states, and only a READABLE base commit that genuinely lacks the file is allowed to degrade; anything else exits 1. (b) The junit gate checked only `tests > 0` and `errors == 0`, so a conftest that blanket-skips passes it — now also refuses when every collected test was skipped, and the step is RENAMED from "Prove each shard actually executed its chunk" to "Prove each shard reported executed tests", because the old name claimed a per-module guarantee it does not deliver. (c) The `collect-coverage-N.txt` receipt was written into the same directory pytest then runs PR code in, so a `pytest_sessionfinish` could rewrite every shard to `false` and the fan-in would skip the combine and the threshold entirely — the decision now lives in a workflow-level `env:` that nothing the job runs can write, still ONE definition read by both sides. (d) All remaining receipts moved out of the pytest cwd into $RUNNER_TEMP. (e) The comment claiming "the BASE ref corpus" was false and is corrected in place: it is BASE LOGIC over the HEAD tree. (f) The `push:` trigger it flagged as absent IS absent — verified independently against the parsed `on:` block — and the brief acceptance criterion that listed it has been corrected. ACCEPTED AND NOT CURED, because they are pre-existing and not sharding regressions: deleting a test file, relocating one into backend/tests/e2e/, the change-map skip path, and PR-lane impact scoping all remove tests from a run under ANY design that reads the working tree; the pre-split job had the same properties. It REFUTED the matrix-aggregate concern and found no current bash bypass.'
+    status: CONFIRMED
+  - seat: "kimi-code/k3 — ROUND 2, same frozen snapshot, dispatched independently of the Codex run"
+    objection: "Reached the same top two findings independently (unmergeable-on-target-removal, and the git-error/absent conflation), which is corroboration rather than novelty. Its distinct catch, CURED HERE: `resolve_targets` passed a selection NOT under `apps/backend-rag/` through repo-root-relative, and since the shards run from `apps/backend-rag` that path does not exist there — so the first impact-map change that ever emitted one (a bot test, a packages/ test) would abort enumeration and red every shard. Worse, this module OWN test suite ASSERTED the broken form, which is how a latent false-red gets blessed as intended behaviour; the test now asserts the `../../` form and carries a guilt case for the old one. Also cured: the SystemExit on a target that no longer exists made renaming `backend/tests/` permanently unmergeable — the security pass now drops a vanished target with a loud ::warning:: instead of aborting, while the shards keep failing loud, and both halves have tests. Also flagged and fixed: two sibling comments had drifted to two different corpus counts (1423 vs 1425) while the true figure was 1428 — the counts are removed rather than corrected, since a number in a comment is a claim with no test behind it."
+    status: CONFIRMED
+  - seat: "Nuzantara:fleet-watch (a sibling session on another machine, via the fleet mailbox) — CI-red triage"
+    objection: 'Reported two red required checks and diagnosed them. Both confirmed by direct inspection rather than taken on trust, and its diagnosis of the first was correct but INCOMPLETE in the way that mattered: it said "declare coverage in the backend test deps file". Declaring it was necessary; the real defect was that `scripts/tests/test_test_deps_declared.py` anchors on the single job id `backend-tests`, and the sharding split moved the test-runtime install (`pytest pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist`) out of it into `backend-shard`. The anchor still resolved, still found run: steps, still parsed a package — so no assertion fired — while the install line the guard exists to police had left its field of view entirely. That is this PR own thesis turned on the PR: a guard silently narrowed by a change that never touched it. Re-anchored to the whole backend test lane, with a guilt test that fails if the anchor is narrowed back (falsified locally: it then sees only [coverage]). Measured before/after: 1 package visible vs 7.'
+    status: CONFIRMED
+
+residual_risks:
+  - "THE WALL-CLOCK TARGET IS NOT YET PROVEN. The <=8min figure is arithmetic on a measured breakdown plus one measured data point (Backend Static 170s). The honest status is: projected, not demonstrated. If the measured shard wall-clock lands above target, the next lever is the duration-aware splitter this design already instruments for (see below) -- not a wider matrix."
+  - "SHARD BALANCE IS UNMEASURED BY CONSTRUCTION. Round-robin over the canonical path order balances FILE COUNT exactly (475/475/475) and says nothing about TIME. The fan-in emits a slowest/fastest ratio from junit's own `time` attribute precisely so the pytest-split decision is made on data; above ~2x, round-robin is the wrong splitter. Deferring that to v2 is a declared choice, and this PR's own transit is its first measurement."
+  - "RUNNER SLOT PRESSURE, DECLARED. This turns 1 job into 5 per run, and both the PR lane and the merge-group lane run. tests.yml's own concurrency comments identify runner slots as the binding constraint on main's velocity, so trading slots for wall-clock is a real trade, not a free win. Public repo => the minutes are free; the SLOTS are not. Not mitigated in this PR."
+  - "THE 'INTRODUCED' BRANCH OF THE TRUST BOUNDARY IS WIDE OPEN ON THIS PR AND ONLY THIS PR. `git show BASE_SHA:scripts/ci/shard_tests.py` fails because the base ref has no such file, so this PR's own guard adjudicates with its own head copy. That is unavoidable for the commit that introduces a trusted file; it is declared loudly (a ::warning:: in the run log) rather than silently downgraded, and the CODEOWNERS entries added here mean every LATER edit always has a base copy to be judged against."
+  - "A PR whose base predates this commit will have a base copy of shard_tests.py without the `--union` flag, and the security pass would fail on an argparse error. That fails CLOSED (red), not open, and the window closes as soon as this lands."
+  - "Codecov remains unarmed. There is no CODECOV_TOKEN secret in this repository, so the upload step has been skipping on every run since before this change (measured 0s). Carried over unchanged rather than deleted; arming it is a separate decision and is NOT part of this PR."
+sources:
+  - .github/workflows/tests.yml (the changed file)
+  - scripts/ci/shard_tests.py + scripts/ci/test_shard_tests.py (new)
+  - .github/CODEOWNERS (2 entries added)
+  - "GitHub Actions runs 32626973483 / 32624568684 (the baseline measurement) and 32629406562 / 32629697496 (this PR's transits)"
+  - "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks (the 27 contexts)"
+pii_scan: clean
+size_tokens: 4945
