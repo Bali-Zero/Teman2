@@ -1,0 +1,52 @@
+{
+  "verification_receipt_id": "50000000-0000-4000-8000-000000000001",
+  "verification_receipt_family_id": "com.example.verification_receipt.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "target_objects": [
+    {
+      "object_kind": "com.example.claim",
+      "object_id": "synthetic-claim-001",
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "verification_type": "com.example.fact_check",
+  "verifier": {
+    "name": "com.example.verifier_service",
+    "version": "1.0.0",
+    "independence_class": "independent"
+  },
+  "criteria_version": "1.0.0",
+  "temporal_scope": {
+    "checked_at": "2026-04-01T00:00:00Z"
+  },
+  "checks": [
+    {
+      "check_id": "source_exists",
+      "result": "pass",
+      "evidence_refs": []
+    }
+  ],
+  "verdict": "pass",
+  "limits": [],
+  "source_versions": [],
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "issued_at": "2026-04-01T00:00:01Z",
+  "recorded_at": "2026-04-01T00:00:02Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "object_hash": "fcada17575445d623491126a9215930dfa2b02b77775ff73e62436aa7bb453fc",
+  "unexpected": true
+}

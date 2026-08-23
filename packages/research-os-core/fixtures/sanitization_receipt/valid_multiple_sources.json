@@ -1,0 +1,95 @@
+{
+  "sanitization_receipt_id": "30000000-0000-4000-8000-000000000002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_objects": [
+    {
+      "object_kind": "com.example.synthetic_record",
+      "object_id": "synthetic-source-002a",
+      "object_hash": "ac4f936b82fbe06580bf26037dc269f5aeb73a09d1497b4ee8f2fa82f6db7b35",
+      "classification": {
+        "risk_class": "green",
+        "sensitivity": "public"
+      }
+    },
+    {
+      "object_kind": "com.example.synthetic_record",
+      "object_id": "synthetic-source-002b",
+      "object_hash": "66be239d8b80991a51b9e380fbd45c42bc58c64ebcff11a8e8d9091730f04a8b",
+      "classification": {
+        "risk_class": "amber",
+        "sensitivity": "confidential"
+      }
+    }
+  ],
+  "output_object": {
+    "object_kind": "com.example.synthetic_projection",
+    "object_id": "synthetic-output-002",
+    "object_hash": "a7c6867f6798e4d2a257f94d2283db31ecad58bdc166ac09acb26ecc47d2a6da",
+    "classification": {
+      "risk_class": "red",
+      "sensitivity": "public"
+    }
+  },
+  "policy": {
+    "name": "com.example.sanitize_policy",
+    "version": "1.1.0"
+  },
+  "transformations": [
+    {
+      "field_path": "$.client.email",
+      "operation": "remove",
+      "result_sensitivity": "public"
+    },
+    {
+      "field_path": "$.client.address",
+      "operation": "generalize",
+      "result_sensitivity": "public"
+    }
+  ],
+  "residual_risk": {
+    "rating": "medium",
+    "findings": ["aggregate_cohort_below_10"]
+  },
+  "reviewer_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "audit",
+    "pseudonym": "d07db217b9409c2965eb3080c49892b8b5b4496552f4af241c968bbdb84fe5cb"
+  },
+  "permitted_use": {
+    "purpose": "public_aggregate_report",
+    "destination": "com.example.public_report_pipeline",
+    "consumer": "com.example.marketing_team",
+    "expires_at": "2026-04-01T00:00:00Z"
+  },
+  "issued_at": "2026-02-03T00:01:00Z",
+  "propagation_scope": [
+    {
+      "system": "com.example.qdrant_projection",
+      "object_ref": {
+        "object_kind": "com.example.synthetic_record",
+        "object_id": "synthetic-proj-002",
+        "object_hash": "4ae3c6c2b812ffb1f5a58eb63b6f3b840be12554d97d306e711193c7da709843"
+      }
+    }
+  ],
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "30000000-0000-4000-8000-000000000102",
+      "object_hash": "7455b72ccb4cffb958181cd35404cbcae25b9120923e600ec06564dd3f5eaed7"
+    },
+    "input_hashes": [
+      "aad54599591e52c11a5456b439d24cec3c98da7ad53738d1bdca9e8113789834"
+    ]
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": true
+  },
+  "object_hash": "97c4e78dc227f92ab444969ee9e1e00b8a3606d40d4b7f9b34c27805393117ec"
+}

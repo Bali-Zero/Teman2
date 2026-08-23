@@ -1,0 +1,591 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "DatasetRef": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_id": {
+          "minLength": 1,
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["dataset_id", "version", "object_hash"],
+      "title": "DatasetRef",
+      "type": "object"
+    },
+    "Estimator": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence_interval_or_bootstrap": {
+          "title": "Confidence Interval Or Bootstrap"
+        },
+        "method": {
+          "minLength": 1,
+          "title": "Method",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["method", "version", "confidence_interval_or_bootstrap"],
+      "title": "Estimator",
+      "type": "object"
+    },
+    "EvaluationData": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_ref": {
+          "$ref": "#/$defs/DatasetRef"
+        },
+        "exclusion_rules": {
+          "items": {
+            "$ref": "#/$defs/ExclusionRule"
+          },
+          "title": "Exclusion Rules",
+          "type": "array"
+        },
+        "split": {
+          "$ref": "#/$defs/EvaluationSplit"
+        }
+      },
+      "required": ["dataset_ref", "split", "exclusion_rules"],
+      "title": "EvaluationData",
+      "type": "object"
+    },
+    "EvaluationSplit": {
+      "additionalProperties": false,
+      "properties": {
+        "assignment_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Assignment Hash",
+          "type": "string"
+        },
+        "strategy": {
+          "minLength": 1,
+          "title": "Strategy",
+          "type": "string"
+        }
+      },
+      "required": ["strategy", "assignment_hash"],
+      "title": "EvaluationSplit",
+      "type": "object"
+    },
+    "ExclusionRule": {
+      "additionalProperties": false,
+      "properties": {
+        "definition_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Definition Hash",
+          "type": "string"
+        },
+        "rule_id": {
+          "minLength": 1,
+          "title": "Rule Id",
+          "type": "string"
+        }
+      },
+      "required": ["rule_id", "definition_hash"],
+      "title": "ExclusionRule",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Guardrail": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "minLength": 1,
+          "title": "Direction",
+          "type": "string"
+        },
+        "metric_name": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "threshold": {
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "required": ["metric_name", "direction", "threshold"],
+      "title": "Guardrail",
+      "type": "object"
+    },
+    "Lineage": {
+      "additionalProperties": false,
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowRunRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["input_hashes"],
+      "title": "Lineage",
+      "type": "object"
+    },
+    "MetricBaseline": {
+      "additionalProperties": false,
+      "properties": {
+        "frozen_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Frozen At",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "window": {
+          "title": "Window"
+        }
+      },
+      "required": ["source", "window", "frozen_at"],
+      "title": "MetricBaseline",
+      "type": "object"
+    },
+    "MetricProfileValidity": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "valid_from": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Valid From",
+          "type": "string"
+        }
+      },
+      "required": ["valid_from", "expires_at"],
+      "title": "MetricProfileValidity",
+      "type": "object"
+    },
+    "MetricSubgroup": {
+      "additionalProperties": false,
+      "properties": {
+        "definition": {
+          "title": "Definition"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": ["name", "definition"],
+      "title": "MetricSubgroup",
+      "type": "object"
+    },
+    "MetricWindowPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "duration": {
+          "minLength": 1,
+          "title": "Duration",
+          "type": "string"
+        },
+        "late_arrival_policy": {
+          "minLength": 1,
+          "title": "Late Arrival Policy",
+          "type": "string"
+        },
+        "timezone": {
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "type": {
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": ["type", "duration", "timezone", "late_arrival_policy"],
+      "title": "MetricWindowPolicy",
+      "type": "object"
+    },
+    "MinimumSample": {
+      "additionalProperties": false,
+      "properties": {
+        "overall": {
+          "minimum": 0,
+          "title": "Overall",
+          "type": "integer"
+        },
+        "per_subgroup": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Per Subgroup"
+        },
+        "power_target": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Power Target"
+        }
+      },
+      "required": ["overall"],
+      "title": "MinimumSample",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "baseline": {
+      "$ref": "#/$defs/MetricBaseline"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Created At",
+      "type": "string"
+    },
+    "decision_rule": {
+      "title": "Decision Rule"
+    },
+    "denominator": {
+      "title": "Denominator"
+    },
+    "estimator": {
+      "$ref": "#/$defs/Estimator"
+    },
+    "evaluation_data": {
+      "$ref": "#/$defs/EvaluationData"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "guardrails": {
+      "items": {
+        "$ref": "#/$defs/Guardrail"
+      },
+      "title": "Guardrails",
+      "type": "array"
+    },
+    "lineage": {
+      "$ref": "#/$defs/Lineage"
+    },
+    "metric_name": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Metric Name",
+      "type": "string"
+    },
+    "metric_profile_id": {
+      "format": "uuid",
+      "title": "Metric Profile Id",
+      "type": "string"
+    },
+    "minimum_sample": {
+      "$ref": "#/$defs/MinimumSample"
+    },
+    "missing_data_policy": {
+      "enum": ["exclude", "impute_registered", "insufficient_evidence"],
+      "title": "Missing Data Policy",
+      "type": "string"
+    },
+    "numerator": {
+      "title": "Numerator"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "owner_ref": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "question": {
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "subgroups": {
+      "items": {
+        "$ref": "#/$defs/MetricSubgroup"
+      },
+      "title": "Subgroups",
+      "type": "array"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "unit": {
+      "minLength": 1,
+      "title": "Unit",
+      "type": "string"
+    },
+    "validity": {
+      "$ref": "#/$defs/MetricProfileValidity"
+    },
+    "window": {
+      "$ref": "#/$defs/MetricWindowPolicy"
+    }
+  },
+  "required": [
+    "metric_profile_id",
+    "contract_version",
+    "tenant",
+    "metric_name",
+    "question",
+    "unit",
+    "numerator",
+    "denominator",
+    "window",
+    "baseline",
+    "evaluation_data",
+    "minimum_sample",
+    "estimator",
+    "subgroups",
+    "guardrails",
+    "decision_rule",
+    "missing_data_policy",
+    "owner_ref",
+    "validity",
+    "classification",
+    "created_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "MetricProfile",
+  "type": "object"
+}
