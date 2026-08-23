@@ -101,6 +101,15 @@ def verify_action_intent_matches_action_item(item: ActionItem, intent: ActionInt
     exact facts, not just its own say-so" half of the chain -- the
     authorization half (an intent needs an *unexpired approval*) is
     ``approval_receipt.authorizes_action_intent``.
+
+    REVISED 2026-08-23: added the ``item.current_intent_ref == intent``
+    identity check below -- section 13's shared invariants state "when
+    ``current_intent_ref`` is present it is exact; dashboards are
+    rebuildable projections and never authority," and a cross-family
+    refuter found this enforced nowhere in the package.
+    ``item.current_intent_ref`` is optional (absent on an item that has
+    never yet linked an intent), so ``None`` passes unconditionally; when
+    present it must name and pin this exact ``intent``.
     """
 
     if intent.action_item_ref.action_item_id != item.action_item_id:
@@ -117,3 +126,10 @@ def verify_action_intent_matches_action_item(item: ActionItem, intent: ActionInt
         raise ValueError("action_intent.risk_class diverges from action_item.risk_class")
     if intent.sensitivity != item.sensitivity:
         raise ValueError("action_intent.sensitivity diverges from action_item.sensitivity")
+    if item.current_intent_ref is not None:
+        if item.current_intent_ref.action_intent_id != intent.action_intent_id:
+            raise ValueError("action_item.current_intent_ref does not name this action_intent")
+        if item.current_intent_ref.object_hash != intent.object_hash:
+            raise ValueError(
+                "action_item.current_intent_ref does not pin this exact action_intent revision"
+            )

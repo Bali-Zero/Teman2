@@ -174,6 +174,10 @@ class ApprovalReceipt(FrozenCoreModel):
                     "non_action_approval_carries_arguments_hash",
                     "lock/editorial approvals reject bindings.arguments_hash",
                 )
+        # INTERPRETATION: not a transcribed clause -- an approval whose
+        # expiry does not strictly follow its issuance describes either an
+        # already-expired grant or a clock that ran backwards (mirrored on
+        # `Sla`'s ordering convention in `action_item.py`).
         if self.expires_at <= self.issued_at:
             raise PydanticCustomError(
                 "expires_at_not_after_issued_at",

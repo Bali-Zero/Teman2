@@ -69,29 +69,38 @@ MINIMUM_OPERATIONAL_RECEIPT_TYPES: frozenset[str] = frozenset(
     }
 )
 
+_EXECUTION_RESULT_RECEIPT_TYPE = "execution.result"
+
 # INTERPRETATION: section 13, shared invariants: "A queue-only triage,
 # assignment, snooze, rejection, split, merge-duplicate, evidence-request,
 # or closure atomically appends the next ActionItem revision ... carries no
 # ExecutionAttempt, has no ApprovalReceipt subject, and cannot authorize a
-# downstream effect." That sentence names 7 queue actions; mapped onto the
-# v1 receipt-type registry above by name, "assignment" is `routing.assignment`
-# and the rest are their `queue.*` siblings. "closure" has no dedicated v1
-# receipt_type (an ActionItem closure is recorded on the ActionItem revision
-# itself via `close_reason`, not a distinct OperationalReceipt type), so it
-# is not in this set.
-QUEUE_ONLY_RECEIPT_TYPES: frozenset[str] = frozenset(
-    {
-        "routing.assignment",
-        "queue.triage",
-        "queue.rejected",
-        "queue.snoozed",
-        "queue.split",
-        "queue.merge_duplicate",
-        "queue.evidence_requested",
-    }
+# downstream effect." `receipt_type` is an open `RegisteredName` (rule
+# 1.10), not a closed enum -- domain packets may register more receipt
+# types after this file is frozen. A guard built as a closed list of the
+# FORBIDDEN types therefore fails OPEN: every type this file does not yet
+# know about sails an `execution_attempt_ref` through unchallenged, forever.
+#
+# REVISED 2026-08-23: a cross-family refuter (Kimi K3) plus an independent
+# reproduction both broke the original `QUEUE_ONLY_RECEIPT_TYPES` blocklist
+# this way -- `queue.closed` (unregistered; no v1 receipt_type exists for
+# ActionItem closure -- see the module docstring's second invariant and the
+# open freeze-change question this leaves for the Conductor) sailed an
+# `execution_attempt_ref` straight through, because it was not one of the 7
+# named entries. Inverted below to fail CLOSED instead: enumerate the
+# receipt types PERMITTED to carry `execution_attempt_ref` and reject every
+# other type, named or not-yet-named. Today that allow-list has exactly one
+# member -- `execution.result` is the only v1 receipt_type this contract
+# ties to an ExecutionAttempt at all (see `validate_operational_receipt`
+# below and `close_execution_attempt`). The trade-off this direction
+# accepts, deliberately: a genuinely new execution-shaped receipt_type is
+# rejected until it is registered here, rather than silently admitted.
+# That is the safe failure for a contract about execution authority --
+# refusing a legitimate future type until someone reviews it costs a
+# registration PR; admitting an unreviewed one costs the invariant.
+EXECUTION_ATTEMPT_CAPABLE_RECEIPT_TYPES: frozenset[str] = frozenset(
+    {_EXECUTION_RESULT_RECEIPT_TYPE}
 )
-
-_EXECUTION_RESULT_RECEIPT_TYPE = "execution.result"
 
 
 class OperationalReceiptRef(FrozenCoreModel):
@@ -169,10 +178,13 @@ class OperationalReceipt(FrozenCoreModel):
                     "execution_result_missing_terminal_outcome",
                     "receipt_type=execution.result requires terminal_outcome",
                 )
-        if self.receipt_type in QUEUE_ONLY_RECEIPT_TYPES and self.execution_attempt_ref is not None:
+        if (
+            self.execution_attempt_ref is not None
+            and self.receipt_type not in EXECUTION_ATTEMPT_CAPABLE_RECEIPT_TYPES
+        ):
             raise PydanticCustomError(
-                "queue_only_receipt_carries_attempt_ref",
-                "a queue-only receipt_type cannot carry execution_attempt_ref",
+                "receipt_type_cannot_carry_execution_attempt_ref",
+                "this receipt_type is not registered to carry execution_attempt_ref",
             )
         # INTERPRETATION: not a transcribed clause -- `terminal_outcome`'s
         # own type, `ExecutionTerminalOutcome` (succeeded/failed/cancelled/
@@ -189,6 +201,11 @@ class OperationalReceipt(FrozenCoreModel):
                 "terminal_outcome_without_attempt_ref",
                 "terminal_outcome requires execution_attempt_ref",
             )
+        # INTERPRETATION: not a transcribed clause -- `observed_at` is when
+        # the underlying fact became true and `recorded_at` is the
+        # system-time it was filed, so a filing that predates the fact it
+        # files describes a clock that ran backwards (mirrored on `Sla`'s
+        # ordering convention in `action_item.py`).
         if self.observed_at > self.recorded_at:
             raise PydanticCustomError(
                 "observed_at_after_recorded_at",
@@ -224,6 +241,10 @@ def close_execution_attempt(receipt: OperationalReceipt, attempt: ExecutionAttem
         )
     if receipt.terminal_outcome is None:
         raise ValueError("receipt carries no terminal_outcome")
+    # INTERPRETATION: not a transcribed clause -- a result observed before
+    # the attempt it closes even started describes a clock that ran
+    # backwards (same convention as `Sla` and `observed_at_after_recorded_at`
+    # above).
     if receipt.observed_at < attempt.started_at:
         raise ValueError("receipt.observed_at precedes attempt.started_at")
 

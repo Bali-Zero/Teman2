@@ -159,9 +159,11 @@ class ActionItem(FrozenCoreModel):
                 "supersedes_ref_is_self",
                 "supersedes_action_item_ref cannot name this same action_item_id",
             )
-        # close_reason is the terminal disposition of a closed queue_state
-        # and only makes sense there; a non-closed row asserting a close
-        # reason is asserting a fact its own queue_state contradicts.
+        # INTERPRETATION: not a transcribed clause -- close_reason is the
+        # terminal disposition of a closed queue_state and only makes
+        # sense there; a non-closed row asserting a close reason is
+        # asserting a fact its own queue_state contradicts (mirrored on
+        # `OperationalReceipt`'s `execution.result` biconditional pairing).
         if self.queue_state == QueueState.CLOSED and self.close_reason is None:
             raise PydanticCustomError(
                 "closed_without_close_reason",

@@ -26,7 +26,7 @@ from pydantic import BaseModel, ValidationError
 from research_os.cli import FIXTURES_ROOT
 from research_os.hashing import object_hash
 from research_os.models.action_intent import ActionIntent, verify_action_intent_matches_action_item
-from research_os.models.action_item import ActionItem
+from research_os.models.action_item import ActionIntentRef, ActionItem
 from research_os.models.approval_receipt import ApprovalReceipt, authorizes_action_intent
 from research_os.models.execution_attempt import (
     ExecutionAttempt,
@@ -144,8 +144,16 @@ def test_frozen_model_rejects_mutation(contract_kind: str, load_json: Any) -> No
 
 
 def _item_and_matching_intent(load_json: Any) -> tuple[ActionItem, ActionIntent]:
+    # valid_minimal_new.json (not valid_assigned_with_intent.json) is the
+    # base here deliberately: it carries no current_intent_ref. Building a
+    # real intent to match this item and separately exercising
+    # current_intent_ref via model_copy (see the tests below) would
+    # otherwise require item.current_intent_ref and intent.action_item_ref
+    # to each name the other's TRUE final object_hash simultaneously -- a
+    # mutual SHA-256 fixed point, computationally infeasible. A base
+    # fixture with no current_intent_ref sidesteps that entirely.
     item = ActionItem.model_validate(
-        load_json(FIXTURES_ROOT / "action_item" / "valid_assigned_with_intent.json")
+        load_json(FIXTURES_ROOT / "action_item" / "valid_minimal_new.json")
     )
     intent_payload = load_json(FIXTURES_ROOT / "action_intent" / "valid_minimal.json")
     intent = _revalidated(
@@ -173,9 +181,13 @@ def test_verify_action_intent_matches_action_item_rejects_wrong_action_item_id(
     load_json: Any,
 ) -> None:
     item, intent = _item_and_matching_intent(load_json)
+    # other_item must differ from _item_and_matching_intent's own base
+    # fixture (now valid_minimal_new.json) or this stops testing a
+    # mismatch at all -- valid_closed_completed.json is a distinct
+    # action_item_id in the same family.
     other_item = _revalidated(
         ActionItem,
-        load_json(FIXTURES_ROOT / "action_item" / "valid_minimal_new.json"),
+        load_json(FIXTURES_ROOT / "action_item" / "valid_closed_completed.json"),
     )
     with pytest.raises(ValueError, match="does not name this action_item"):
         verify_action_intent_matches_action_item(other_item, intent)
@@ -229,6 +241,53 @@ def test_verify_action_intent_matches_action_item_rejects_spec_ref_divergence(
     )
     with pytest.raises(ValueError, match="requested_action_spec_ref diverges"):
         verify_action_intent_matches_action_item(item, other_spec_intent)
+
+
+def test_verify_action_intent_matches_action_item_accepts_a_matching_current_intent_ref(
+    load_json: Any,
+) -> None:
+    item, intent = _item_and_matching_intent(load_json)
+    linked_item = item.model_copy(
+        update={
+            "current_intent_ref": ActionIntentRef(
+                action_intent_id=intent.action_intent_id,
+                object_hash=intent.object_hash,
+            )
+        }
+    )
+    assert verify_action_intent_matches_action_item(linked_item, intent) is None
+
+
+def test_verify_action_intent_matches_action_item_rejects_current_intent_ref_wrong_id(
+    load_json: Any,
+) -> None:
+    item, intent = _item_and_matching_intent(load_json)
+    linked_item = item.model_copy(
+        update={
+            "current_intent_ref": ActionIntentRef(
+                action_intent_id="a2000000-0000-4000-8000-000000000099",
+                object_hash=intent.object_hash,
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="current_intent_ref does not name this action_intent"):
+        verify_action_intent_matches_action_item(linked_item, intent)
+
+
+def test_verify_action_intent_matches_action_item_rejects_current_intent_ref_wrong_hash(
+    load_json: Any,
+) -> None:
+    item, intent = _item_and_matching_intent(load_json)
+    linked_item = item.model_copy(
+        update={
+            "current_intent_ref": ActionIntentRef(
+                action_intent_id=intent.action_intent_id,
+                object_hash="9" * 64,
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="does not pin this exact action_intent revision"):
+        verify_action_intent_matches_action_item(linked_item, intent)
 
 
 # ---------------------------------------------------------------------------
