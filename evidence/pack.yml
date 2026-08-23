@@ -1,133 +1,135 @@
 brief_ref: evidence/brief.yml
-plan_ref: "wire scripts/tests/test_wr3_gatekeeper_cost.py into a pull_request-triggered check (PR #4649, 2026-08-23), after an adversarial review of #4639 found the corpus was named by no workflow at all"
+plan_ref: "S12/C3 — auto-update-branch organ for stuck PRs (mandate ~/sessioni-2026-08-23/S12-mini-ship-accelerators.md, Mini, 2026-08-23)"
+lanes:
+  - lane: s12-c3
+    role: build
+    seat: "claude-sonnet-5 (implementer subagent, Mini)"
+  - lane: s12-c3-gate
+    role: review
+    seat: "claude-opus-5 (S12 conductor — generator != grader, did not write the diff)"
 diff:
   net_lines: >-
-    3 files, +156/-62 measured by `git diff --stat origin/main`. Of the 62 deletions, 60 are
-    evidence/brief.yml being replaced (it is a per-PR file, rewritten by each harness-gated PR
-    — see `git log --oneline -- evidence/brief.yml`). The substantive change is ONE new
-    workflow file plus ONE entry and its comment in the watcher census.
+    3 new files, +802/-0: scripts/queue_unstick.py (488),
+    scripts/queue_unstick_cron.sh (56), scripts/tests/test_queue_unstick.py
+    (258). Deterministic gear floor computed from the diff = 1 (no hot-zone
+    hit); declared Gear 2 because it is a new 500-line organ with a cron, not
+    because the floor demanded it. Declaring Gear 1 to dodge the ceremony
+    would be gaming a classifier the repo relies on.
   behaviour_change: >-
-    No executable code changes. Runtime behaviour of every script is byte-identical. What
-    changes is that a corpus which previously ran nowhere on pull requests now runs, on two
-    interpreters.
+    Nothing existing changes behaviour. This adds a script and a cron wrapper;
+    the cron is NOT installed by this PR (see notes).
 receipts:
-  - claim: "The corpus this workflow executes is green on the interpreter CI pins (3.11) — all THREE files, after the third was added in response to the review finding below"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py -q"
-    result: "64 passed in 0.89s (was 22 before test_wr3_credit_ledger.py was wired in; that file is 898 lines / 42 tests and was green BEFORE being added — a red one would have broken the workflow on arrival)"
+  - claim: "The 20 guilt+innocence tests pass — re-run by the gate, not trusted from the implementer's report"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_queue_unstick.py -q"
+    result: "20 passed in 0.05s"
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "...and on 3.14, the version `#!/usr/bin/env python3` resolves to on the render hosts — measured locally in a 3.14.6 venv, not inferred from the workflow file"
-    cmd: "PYTHONPATH=. <scratch 3.14.6 venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py -q"
-    result: "22 passed in 0.81s"
-    exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "Both matrix legs actually RAN and concluded SUCCESS on this PR — the runner can provide 3.14, which was the one thing about this file that could not be settled locally"
-    cmd: "gh pr view 4649 --json statusCheckRollup, filtered to checks matching 'WR3 spend gate'"
-    result: "WR3 spend gate tests (py3.11) -> SUCCESS; WR3 spend gate tests (py3.14) -> SUCCESS"
-    exit: 0
-    ts: "2026-08-23T08:59Z"
-    seat: "session (pro)"
-  - claim: "actionlint accepts the new workflow"
-    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
-    result: "no output"
-    exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "Every path named in the workflow's paths: filter exists at this head — a workflow naming a file that is not there is a gate that runs nothing and reports success"
-    cmd: "for each quoted .py/.yml path in the workflow file: test -f"
-    result: "0 missing"
-    exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "The watcher census now names this workflow, so a failure of it on main alerts like every other"
-    cmd: "python3 scripts/check_watcher_coverage.py"
-    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (was 99 before this PR; the missing entry is what turned the `check` job red on this PR's first run)"
-    exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "The gap this PR closes is real and is stated by the repo itself, not only by me"
-    cmd: "grep -rln test_wr3_gatekeeper_cost .github/workflows/  ; and read scripts-tests-sweep.yml's header"
+    ts: "2026-08-23T11:05Z"
+    seat: "session (mini, conductor)"
+  - claim: "LIVE dry-run against the real open PRs classifies correctly and mutates nothing"
+    cmd: "python3 scripts/queue_unstick.py --dry-run"
     result: >-
-      grep returns NOTHING. scripts-tests-sweep.yml states in its own header: THIS WORKFLOW DOES
-      NOT GATE ANYTHING, continue-on-error true, not in branch-protection required checks,
-      TRIGGER schedule + workflow_dispatch deliberately NOT pull_request, and that 61 of 235
-      files under scripts/tests/ are named by a workflow while 174 are named by nothing.
+      examined=15 updated=0 dirty_signalled=1 skipped=14
+      skip_reasons={"draft": 6, "queued": 2, "recent_commit": 2,
+      "status_BLOCKED": 1, "status_UNKNOWN": 3}. TWO QUEUED PRs were present
+      and both were skipped — that is the destructive case (updating a queued
+      PR evicts it) exercised against live state, not a fixture.
     exit: 0
-    ts: "2026-08-23T08:45Z"
-    seat: "session (pro)"
+    ts: "2026-08-23T11:05Z"
+    seat: "session (mini, conductor)"
+  - claim: "The conflicting-file prober WORKS on a real DIRTY PR and names the real file — the one path --dry-run never reaches, so the gate exercised it directly"
+    cmd: 'python3 -c ''import queue_unstick as q; q.get_conflicting_files({"number":4653,"base_ref":"main"})'''
+    result: >-
+      "evidence/pack.yml" — the real conflicting path on a real open PR. Note
+      what this independently confirms: PR #4653 is stuck on exactly the
+      fixed-root-path evidence collision that S12/C6 exists to remove, found
+      here by a completely different code path (a local merge simulation)
+      than the one that diagnosed it (a git merge on another lane's branch).
+    exit: 0
+    ts: "2026-08-23T11:08Z"
+    seat: "session (mini, conductor)"
+  - claim: "The prober leaves NO refs behind — it fetches into PID-namespaced scratch refs and deletes them in a finally block"
+    cmd: "git -C ~/nuzantara for-each-ref 'refs/queue-unstick/' | wc -l   (before and after the call above)"
+    result: "0 before, 0 after"
+    exit: 0
+    ts: "2026-08-23T11:08Z"
+    seat: "session (mini, conductor)"
+  - claim: "The merge-queue membership field was VERIFIED live, not assumed — `gh pr view --json isInMergeQueue` does not exist"
+    cmd: "gh pr view <N> --json isInMergeQueue  ->  error; then gh api graphql ... pullRequest{mergeQueueEntry{state position}}"
+    result: >-
+      'Unknown JSON field: \"isInMergeQueue\"' from the REST-ish view; the
+      GraphQL `mergeQueueEntry` field exists and returns null for a
+      non-queued PR. The script uses GraphQL.
+    exit: 0
+    ts: "2026-08-23T10:55Z"
+    seat: "s12-c3 implementer, re-read by the gate in the script docstring"
+  - claim: "The exclusion order is correct BY CONSTRUCTION: every exclusion precedes every action, in a pure function"
+    cmd: "read scripts/queue_unstick.py::classify (lines 230-247)"
+    result: >-
+      draft -> queued -> hold_label -> recent_commit, all returning skip,
+      and only then BEHIND/DIRTY dispatch. plan_actions() is pure over
+      already-fetched dicts, which is what makes the 20 tests able to
+      exercise the destructive case without a network.
+    exit: 0
+    ts: "2026-08-23T11:03Z"
+    seat: "session (mini, conductor)"
 pii_scan: clean
 dissent:
-  - seat: "independent adversarial review of PR #4639 (read-only, fresh context, not the author)"
+  - seat: "S12 conductor (gate) against the implementer's first draft"
     objection: >-
-      "The tests are a real gate" is REFUTED at the CI-wiring level: no pull_request-triggered
-      workflow names scripts/tests/test_wr3_gatekeeper_cost.py, so a regression breaking every
-      test in that file would not block the PR introducing it, and "CI is clean" on #4639 did
-      not mean what it appeared to mean.
+      The mandate required the DIRTY signal to NAME the conflicting files,
+      and `--dry-run` prints "conflicting files not computed in dry-run" —
+      which could equally mean the capability was never built. The claim was
+      therefore unverified by the dry-run that appeared to demonstrate it.
     status: CONFIRMED
     note: >-
-      Verified independently rather than accepted: `grep -rln test_wr3_gatekeeper_cost
-      .github/workflows/` returns nothing, the branch-protection required_status_checks list
-      contains no check that runs it, and scripts-tests-sweep.yml states the same thing in its
-      own header. This PR exists BECAUSE of this objection.
-  - seat: "Harness floor recompute (CI, deterministic)"
+      Resolved by exercising `get_conflicting_files()` directly against real
+      PR #4653 rather than accepting either reading (receipt above). It is
+      built and it works. Recorded because "the demo did not cover the clause
+      the demo appeared to cover" is a shape that passes review by default.
+  - seat: "S12 conductor, carrying a correction it had itself sent to the implementer"
     objection: >-
-      This PR was opened declaring Gear 2 while its diff touches .github/workflows/, which is
-      hot-zone and floors at Gear 3 by path regardless of size — a Gear-3-floor diff cannot
-      pass as "not a harness task".
+      An earlier instruction from the conductor told the implementer that
+      `mergeQueueEntry` is THE discriminator for "is this PR armed". That is
+      wrong at the edge, per cicatrix W111: neither `autoMergeRequest` nor
+      `isInMergeQueue` alone answers "armed" — armed-but-not-yet-queued and
+      queued-with-the-request-consumed are both real states.
     status: CONFIRMED
     note: >-
-      The floor is not the author's to choose, which is the point of computing it from the diff.
-      Answered by supplying brief+pack, never by touching the check.
-  - seat: "scripts/check_watcher_coverage.py (CI)"
+      The correction was sent mid-build and the script's docstring records
+      the distinction: `mergeQueueEntry` alone IS the right question for
+      "will an update evict this PR", which is the only question this script
+      asks. It never asks "is this armed", so the W111 trap is out of its
+      scope by construction rather than by care.
+  - seat: "S12 conductor (gate), on a gap deliberately left open"
     objection: >-
-      The new workflow was absent from main-push-failure-watch.yml's census, so a failure of it
-      on main would have alerted nobody.
+      A PR deliberately disarmed WITHOUT a hold label gets re-armed by this
+      organ's own update-branch push, because auto-merge-whitelist.yml runs
+      on `synchronize` with `draft == false` as its only gate (W123).
     status: CONFIRMED
     note: >-
-      A workflow nobody watches is the same exists-!=-armed shape this PR exists to close.
-      Coverage 99 -> 100; being caught by this checker on the way in is the system working.
-  - seat: "independent adversarial review of THIS PR (read-only, fresh context, not the author)"
-    objection: >-
-      The workflow lists scripts/wr3_credit_ledger.py in `paths:` but its pytest step did not
-      execute scripts/tests/test_wr3_credit_ledger.py — the only file exercising
-      dedupe_against_ledger, discover_backfill_records, read_integrity, spend_by_episode,
-      total_spend and the backfill CLI. A PR breaking any of them would MATCH the filter, run
-      the workflow, pass both legs (the two executed files import only record_spend /
-      read_records), pass py_compile (a logic bug, not syntax) and ship under a green check.
-      The evidence also called that module "under test" while naming only the other two files
-      as executed.
-    status: CONFIRMED
-    note: >-
-      Verified independently rather than accepted: the file is 898 lines with 42 test functions
-      (the reviewer said 38 — a small miscount that does not touch the finding, recorded because
-      a number that matches for the wrong reason is worse than one that differs), `grep -rn
-      test_wr3_credit_ledger .github/workflows/` returns zero hits repo-wide, and the two
-      executed files import exactly `record_spend` and `read_records, record_spend`. Fixed in
-      this PR by adding the file to both `paths:` blocks AND the pytest command — 64 tests now
-      run. A path that triggers a job which cannot see it is worse than an absent path, because
-      it reads as coverage.
-  - seat: "session (author, against its own earlier claim)"
-    objection: >-
-      An earlier message from this session asserted that the dispatched subagent channel was
-      broken because no grader had reported. That was wrong — three verdicts arrived, late —
-      and one of them is dissent entry #1 above.
-    status: RETRACTED
-    note: >-
-      Recorded because a pack that shows only objections from others, and none the author had
-      to withdraw, is the "consenso sospetto" this field exists to prevent.
+      Left open ON PURPOSE and named in the brief's risks. There is no
+      reliable signal distinguishing "disarmed on purpose" from "never
+      armed", and inventing a heuristic for it would be a guard built on a
+      guess — the #3 scar family in one move. The durable hold is draft,
+      which this script already excludes.
 tests:
-  - "The workflow's own subject IS the test corpus: 22 tests (15 spend-gate + 7 ledger-isolation), run together on 3.11 and 3.14, receipts above. No new test is warranted for a workflow file; the applicable checks are actionlint, the watcher-coverage checker, and the workflow's own two legs concluding on this PR — all three are green and all three are cited above."
+  - "scripts/tests/test_queue_unstick.py — 20 tests, pure functions over fixtures, no network. Guilt: queued PR not selected; 2-minute-old commit not selected; hold-labelled not selected; draft not selected; DIRTY never update-branch; a second run on the same DIRTY PR+SHA emits zero additional signals; the 6th BEHIND PR in a tick is not updated. Innocence: a BEHIND, non-draft, unlabelled, 30-minute-old PR IS selected."
 static:
-  - "actionlint -> clean"
-  - "python3 -c yaml.safe_load on the new workflow -> parses"
-  - "scripts/check_watcher_coverage.py -> exit 0"
+  - "bash -n scripts/queue_unstick_cron.sh -> clean"
+  - "pre-commit hooks pass (lease-check, anti-reward-hacking, secret scan, python lint)"
 notes:
   - >-
-    Two checks correctly rejected the first version of this PR and both were answered by
-    complying, never by editing the check: `Harness floor recompute` (a .github/workflows/ diff
-    floors at Gear 3 by PATH — this PR had been opened declaring Gear 2, and the floor is not
-    the author's to choose) and `check` / check_watcher_coverage.py (a new workflow nobody
-    watches is the same exists-!=-armed shape this PR exists to close). Being caught by the
-    second one on the way in is the system working.
+    The cron is written but NOT installed by this PR. Installation is a
+    separate, deliberate arming step so the organ is observed on real state
+    before it is allowed to act unattended — and until it is installed this
+    is a built-but-not-armed artifact, which is why it carries a PENDING-ARMS
+    line rather than being declared done.
+  - >-
+    Generator != grader was real here, not ceremonial: the implementer that
+    wrote all 802 lines is a different model (Sonnet 5) from the seat that
+    gated it (Opus 5), and the gate re-ran every claim rather than reading
+    the implementer's report. Seat diversity across FAMILIES is nonetheless
+    DEGRADED and declared — both seats are Anthropic. The non-Anthropic
+    seats were live-probed this session: kimi alive, codex AUTH_DEAD
+    (refresh token revoked), glm CRED_UNAVAILABLE, agy TIMEOUT. Kimi was
+    spent on the C1 diff, which had the larger blast radius.

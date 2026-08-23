@@ -1,75 +1,71 @@
-task_id: wr3-spend-gate-ci-0823
-gear: 3
+task_id: s12-c3-queue-unstick
+gear: 2
 l_level: L1
 gate_class: opus
 objective: |
-  Make an EXISTING test corpus actually run on pull requests. `scripts/wr3_gatekeeper_check.py`
-  is the pre-render cost breaker that decides whether a WR3 episode may spend Veo credits, and
-  its tests were named by no workflow at all — verified by grepping every file in
-  `.github/workflows/`, and stated outright in `scripts-tests-sweep.yml`'s own header, which
-  says it gates nothing (`continue-on-error: true`), is deliberately not `pull_request:`-
-  triggered, is not in branch protection, and that 174 of 235 files under `scripts/tests/` are
-  named by nothing. Cicatrix superscar #2 ("exists != armed") applied to a guard whose entire
-  purpose is to be armed.
+  Kill the DIRTY/BEHIND stall. Measured on 2026-08-23: 5+ episodes of PRs
+  sitting BEHIND or DIRTY for 40-90 minutes each, every one of them waiting
+  for a gesture a cron could make in ten.
 
-  Found the hard way, and the honest version matters: PR #4639 shipped a real fix to this gate
-  with 15 green tests, and "CI is clean" on that PR was TRUE while saying nothing whatsoever
-  about those tests — no check ran them. An independent adversarial review of #4639 surfaced
-  both that and a live defect in the fix itself (#4648).
+  `scripts/queue_unstick.py` + a 10-minute cron. It does exactly two things
+  and refuses to do a third:
+    - `BEHIND` -> `gh pr update-branch`, hard-capped at 5 per tick.
+    - `DIRTY` (a true conflict) -> NEVER touches the branch. It signals ONCE
+      per PR+head-SHA to the fleet mailbox, naming the PR and the ACTUAL
+      conflicting files, so a conductor acts in minutes instead of finding
+      out on a round.
 
-  BE HONEST ABOUT THE SIZE: this is one new workflow file plus one line in the watcher census.
-  Zero executable code changes. It is Gear 3 by PATH (`.github/workflows/` is hot-zone, floor is
-  a lower bound and not the author's choice — this PR was originally opened declaring Gear 2 and
-  the floor recompute correctly rejected it), not by blast radius. The evidence below is sized
-  to the change, not padded to match the gear.
-
-  The python matrix is the second half and is not decoration. Measured 2026-08-23 on this
-  machine's own interpreters: `Path.exists()` on a file behind an unreadable directory RAISES
-  PermissionError on 3.9/3.11 and returns False on 3.14. Every workflow here pins 3.11 or 3.12;
-  `#!/usr/bin/env python3` — how launchd and cron actually start these scripts on the render
-  hosts — resolves to 3.14. For THIS gate that difference decided whether it blocked a render or
-  passed one. The 3.14 leg gives that class of divergence somewhere to go red. It is the first
-  3.14 leg in the repo.
+  The DIRTY asymmetry is the whole design. Updating a branch that has a real
+  conflict is a second-writer race against whoever owns it (superscar #5,
+  scar 2026-08-21); the value of this organ is that it tells a human quickly,
+  not that it acts bravely.
 constraints:
-  - "No executable code changes: the diff is one new workflow file and one entry (plus its
-    comment) in main-push-failure-watch.yml's census list."
-  - "NOT added to branch-protection required_status_checks in this PR. That is a repo-settings
-    change and must only happen after this has been observed green on main — adding a
-    never-run workflow to branch protection can hard-block the merge queue. Same call
-    s7-yield-dispatch-tests.yml made, for the same reason."
-  - "Do not weaken any existing check to make this pass. The two reds this PR first drew
-    (harness floor; watcher coverage) were both correct and were answered by complying with
-    them, not by editing them."
+  - "NEVER update a PR that is in the merge queue — updating a queued PR
+    EVICTS it. This is the single most destructive action available to this
+    script, so the exclusion is checked before any action, in a pure function
+    the tests exercise directly."
+  - "NEVER touch a DIRTY branch. Signal only, deduped by PR + head SHA so a
+    PR dirty for six hours produces one message, not thirty-six."
+  - "Never invent a conflicting filename. When the local merge simulation
+    cannot answer, the message says the literal string 'unobtainable via
+    API'."
+  - "Every tick writes a receipt, including a tick that did nothing (W108: a
+    mute cron is a dead cron)."
+  - "A failed `gh` query is CANNOT-VERIFY, never 'nothing to do' — an empty
+    PR list from a broken query must not read as a quiet, healthy repo."
 acceptance:
-  - "Both matrix legs appear on this PR and CONCLUDE SUCCESS: `WR3 spend gate tests (py3.11)`
-    and `WR3 spend gate tests (py3.14)`."
-  - "`python3 scripts/check_watcher_coverage.py` exits 0 with the new workflow counted."
-  - "`actionlint` passes on the new file."
-  - "Every path named in the workflow's `paths:` filter exists at this PR's head."
+  - "Live dry-run against the real open PRs classifies correctly and mutates
+    nothing."
+  - "A queued PR is never selected. A draft, a hold-labelled PR, and a PR
+    whose last commit is under 5 minutes old are never selected."
+  - "A DIRTY PR is never updated, produces exactly one signal, and the signal
+    names the real conflicting files."
+  - "The 6th BEHIND PR in a tick is not updated (anti-storm cap)."
 consumer_map:
-  - "`.github/workflows/main-push-failure-watch.yml` — the census that must name every live
-    workflow; updated in this PR, enforced by `scripts/check_watcher_coverage.py`."
-  - "`scripts/tests/test_wr3_gatekeeper_cost.py`, `scripts/tests/test_wr3_ledger_isolation.py`
-    and `scripts/tests/test_wr3_credit_ledger.py` — the corpus this workflow executes; 64 tests,
-    run together locally before commit. The third was MISSING from the first draft's pytest
-    command while its module already sat in `paths:` — see the dissent entry in the pack; this
-    line was an overclaim until the workflow was widened to make it true."
-  - "`scripts/wr3_gatekeeper_check.py`, `wr3_credit_ledger.py`, `wr3_spend_authority.py` — the
-    modules under test and in the `paths:` filter."
-  - "Branch protection `required_status_checks` — NOT touched here; the arming step, deliberately
-    separate (see constraints)."
+  - "`scripts/cron-runner.sh` — the existing runner and receipt mechanism.
+    Used, not reinvented."
+  - "`scripts/fleet_mail.sh pro broadcast` — where the DIRTY signal lands."
+  - "`gh pr update-branch` — the only mutation this script performs, and
+    only on BEHIND."
+  - "`.github/workflows/auto-merge-whitelist.yml` — NOT edited, but a
+    consumer of this script's side effect: it runs on `synchronize`, so the
+    update-branch push RE-ARMS auto-merge on a non-draft PR. Documented at
+    the top of the script rather than guessed around (cicatrix W123)."
 risks:
-  - "A `pull_request:` workflow that is not required is VISIBLE, not BLOCKING. This PR does not
-    claim otherwise: it makes the tests run and observable; it does not make them mandatory."
-  - "`paths:` filtering means a breaking change from outside the filtered set will not trigger
-    this workflow. Accepted cost of the per-file pattern this repo already uses; the nightly
-    sweep remains the backstop for that case."
-  - "If a future runner cannot provide 3.14, that leg fails loudly rather than being silently
-    dropped. That is deliberate — an absent leg that reads as green is the exact defect this
-    file exists to close."
-grader:
-  independent adversarial review dispatched on this PR (read-only, fresh context, not the
-  author) — tasked to refute the paths-filter completeness, whether the 3.14 leg really ran
-  3.14, and whether this can wrongly block the queue
-budget: 1 review seat, no council (a one-workflow diff does not warrant one)
+  - "update-branch is a push, and a push re-arms auto-merge on any non-draft
+    PR. A PR deliberately disarmed WITHOUT a hold label would be re-armed by
+    this organ. Not silently accepted: it is documented in the script header
+    with the W123 reference, and the durable way to hold a PR is draft, which
+    this script already excludes. No heuristic was invented to guess
+    'disarmed on purpose' — there is no reliable signal for it, and inventing
+    one would be worse than naming the gap."
+  - "`mergeStateStatus` UNKNOWN (GitHub still computing) is skipped rather
+    than guessed at. A PR that stays UNKNOWN is never helped; that is the
+    safe direction and it is visible in the receipt's skip_reasons."
+grader: |
+  Independent verification by the S12 conductor (Opus 5), not the implementer
+  that wrote it: the diff was read, the 20 tests re-run, the live dry-run
+  executed against the real open PRs, and `get_conflicting_files()` exercised
+  directly against a real DIRTY PR — the one path the dry-run does not reach.
+budget: 1 implementer lane + conductor gate; no council (a scoped cron organ)
 pii: none
