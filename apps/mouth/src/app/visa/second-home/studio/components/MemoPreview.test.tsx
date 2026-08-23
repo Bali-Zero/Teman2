@@ -67,7 +67,9 @@ describe("MemoPreview", () => {
     expect(screen.getByText("Capital")).toBeInTheDocument();
     expect(screen.getByText("USD 130,000 is ready")).toBeInTheDocument();
     expect(screen.getByText("Senior funding")).toBeInTheDocument();
-    expect(screen.getByText("USD 3,000 monthly income only")).toBeInTheDocument();
+    expect(
+      screen.getByText("USD 3,000 monthly income only"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Family")).toBeInTheDocument();
     expect(screen.getByText("Spouse")).toBeInTheDocument();
     expect(screen.getByText("Timeline")).toBeInTheDocument();
@@ -88,7 +90,9 @@ describe("MemoPreview", () => {
     );
 
     expect(screen.getByText("Property")).toBeInTheDocument();
-    expect(screen.getByText("I own qualifying completed strata-title property")).toBeInTheDocument();
+    expect(
+      screen.getByText("I own qualifying completed strata-title property"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Capital")).toBeNull();
   });
 
