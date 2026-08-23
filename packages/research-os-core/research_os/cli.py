@@ -16,10 +16,13 @@ from research_os.hashing import HASH_OMISSION_FIELDS, object_hash
 from research_os.models.action_intent import ActionIntent
 from research_os.models.action_item import ActionItem
 from research_os.models.approval_receipt import ApprovalReceipt
+from research_os.models.conductor_handoff import ConductorHandoff
 from research_os.models.execution_attempt import ExecutionAttempt
 from research_os.models.operational_receipt import OperationalReceipt
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
+from research_os.models.verification_receipt import VerificationReceipt
+from research_os.models.workflow_run import WorkflowRun
 from research_os.version import check_compatibility
 
 LOGGER = logging.getLogger(__name__)
@@ -29,10 +32,13 @@ CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "action_intent": ActionIntent,
     "action_item": ActionItem,
     "approval_receipt": ApprovalReceipt,
+    "conductor_handoff": ConductorHandoff,
     "execution_attempt": ExecutionAttempt,
     "object_successor_edge": ObjectSuccessorEdge,
     "operational_receipt": OperationalReceipt,
     "revocation_receipt": RevocationReceipt,
+    "verification_receipt": VerificationReceipt,
+    "workflow_run": WorkflowRun,
 }
 
 
