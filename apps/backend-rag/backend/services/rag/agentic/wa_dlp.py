@@ -130,8 +130,52 @@ _EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.\w{2,}")
 # ONE-WAY CATEGORY (spalla S1): see `_ONE_WAY_CATEGORIES` below.
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b")
 _PEM_RE = re.compile(r"-----BEGIN [A-Z ]*KEY-----")
-_KEY_PREFIX_RE = re.compile(r"\b(?:sk|ghp|gho|xoxb|xoxp|AKIA)[A-Za-z0-9_-]{16,}\b")
+# F5: the vendor prefixes now REQUIRE their separator. Without it, `sk`
+# followed by 16+ word characters swallows ordinary vocabulary
+# ("skincareproducts2026", "skillsheet1234567890") — and CREDENTIAL is a
+# ONE-WAY category with no reversal map, so such a false positive is an
+# IRRECOVERABLE hole in the customer's own reply. AKIA is a separate
+# alternative: its format carries no separator by construction.
+_KEY_PREFIX_RE = re.compile(
+    r"\b(?:"
+    r"sk[-_][A-Za-z0-9_-]{16,}"
+    r"|ghp_[A-Za-z0-9_-]{16,}"
+    r"|gho_[A-Za-z0-9_-]{16,}"
+    r"|xoxb-[A-Za-z0-9_-]{16,}"
+    r"|xoxp-[A-Za-z0-9_-]{16,}"
+    r"|AKIA[A-Z0-9]{16}"
+    r")\b"
+)
 _BEARER_RE = re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}")
+
+# F5b (Kimi round-3 BLOCKER): requiring the separator was not enough. The
+# tail class still contains `-` and `_`, so `sk-` followed by hyphen-separated
+# WORDS satisfies the 16-char minimum — and `SK` is Surat Keputusan, the
+# single most-cited document type this business writes about
+# (`sk-kemenkumham-ahu-0012345`, the article slug `sk-immigration-update-2026`).
+# CREDENTIAL is ONE-WAY: that span would be deleted from the customer's own
+# answer with no way back.
+#
+# The distinguisher is STRUCTURAL, not a word list: a real key carries its
+# entropy in one UNBROKEN alphanumeric run (`sk-proj-A1b2...` — 32 chars with
+# no separator), while human text is short words joined by hyphens. So the
+# `sk` alternative additionally requires one unbroken run of >=16 alphanumeric
+# characters somewhere after the prefix. The other prefixes are left alone:
+# `ghp_`/`gho_`/`xoxb-`/`xoxp-`/`AKIA` are not words in any language this
+# business writes, so they have no innocent collision to protect against —
+# narrow at the false positive, never at the canonical form.
+_KEY_ENTROPY_RUN_RE = re.compile(r"[A-Za-z0-9]{16,}")
+
+
+def _validate_key_prefix(_source: str, match: re.Match[str]) -> bool:
+    # `_source` is unused: unlike the amount/passport validators, this one
+    # decides entirely on the matched span's own shape — surrounding prose
+    # cannot make a hyphenated slug more or less of a credential. The
+    # parameter stays to satisfy the `Validator` signature.
+    surface = match.group(0)
+    if not surface.startswith(("sk-", "sk_")):
+        return True
+    return _KEY_ENTROPY_RUN_RE.search(surface[3:]) is not None
 
 # NPWP — reused verbatim from backend/middleware/pii_scanner.py's Presidio
 # patterns (already hardened, already the codebase's chosen shapes):
@@ -166,6 +210,33 @@ _NIK_LABEL_RE = re.compile(r"(?i)\b(?:nik|ktp|no\.?\s*ktp)\b[\s:=#-]*(\d[\d\s.-]
 _NIK_BARE_RE = re.compile(r"\b\d{16}\b")
 _NIK_SEPARATED_RE = re.compile(r"\b\d(?:[\s.-]?\d){14,15}\b")
 
+# F1b — a list of three 5-digit KBLI codes ("55130 70100 64210") is exactly
+# 15 separator-joined digits, so the NIK matcher claimed the whole span and
+# redacted this business's DAILY vocabulary out of the package.
+#
+# The guard declines the KBLI SHAPE, not everything unlike a NIK. An earlier
+# attempt required a 4-4-4-4 grouping instead and broke TWO real cases the
+# corpus already pinned: a NIK written `32 04 15 12 88 00 0001` (2-digit
+# groups — a legitimate way to type one) and a bare 15-digit old-format NPWP.
+# Narrow at the false positive, never at the canonical form.
+_KBLI_LIST_RE = re.compile(r"\d{5}(?:[\s.-]\d{5}){2}")
+
+# F1 — date shapes, BOTH directions, with the separator pinned by a
+# backreference so "20-08.2026" is not a date. The year is anchored to FOUR
+# digits on purpose: digits 7-12 of a real NIK encode the date of birth as
+# ddmmyy (day +40 for women), so a 2-digit-year rule would decline the
+# canonical NIK shape and blind the detector. The decline applies only to
+# separator-bearing forms — NEVER to bare digits.
+_DATE_SHAPE_RE = re.compile(
+    r"(?<!\d)(?:"
+    r"(?:0[1-9]|[12]\d|3[01])(?P<dmy_sep>[-./])"
+    r"(?:0[1-9]|1[0-2])(?P=dmy_sep)(?:19|20)\d{2}"
+    r"|"
+    r"(?:19|20)\d{2}(?P<ymd_sep>[-./])"
+    r"(?:0[1-9]|1[0-2])(?P=ymd_sep)(?:0[1-9]|[12]\d|3[01])"
+    r")(?!\d)"
+)
+
 # PASSPORT — reused verbatim from pii_scanner.py, now (Kimi M2) case-
 # INSENSITIVE: a lowercase-first-letter passport ("b1234567") is a real
 # shape that the original `[A-Z]` char class silently missed. Widening to
@@ -177,9 +248,16 @@ _NIK_SEPARATED_RE = re.compile(r"\b\d(?:[\s.-]?\d){14,15}\b")
 # design spec this is the ONE chosen for this module, not an attempt to
 # unify the other 4.
 _PASSPORT_RE = re.compile(r"(?i)\b[A-Za-z]{1,2}\d{6,7}\b")
-_PASSPORT_DECLINE_PREFIXES = frozenset(
-    {"po", "no", "id", "pt", "cv", "rp", "os", "wa", "inv", "ref", "sku"}
-)
+# F4: `inv`, `ref` and `sku` are REMOVED and must not come back — they were
+# dead entries. `_PASSPORT_RE` captures at most TWO leading letters, so a
+# three-letter prefix can never be produced and never be compared here.
+_PASSPORT_DECLINE_PREFIXES = frozenset({"po", "no", "id", "pt", "cv", "rp", "os", "wa"})
+
+# F4: the deny-list is context-blind — it refuses a REAL passport that happens
+# to start with PO/NO. When the customer says "passport"/"paspor" just before
+# the value, that word overrides the deny-list. Bounded window, looking
+# BACKWARD only: a mention after the match must not license a redaction.
+_PASSPORT_CONTEXT_RE = re.compile(r"(?i)\b(?:passport|paspor)\b")
 
 # BANK_ACCOUNT — label-anchored ONLY (bare digit runs are Bali addresses,
 # prices, KBLI codes — scar family #3). Both label-then-digits and
@@ -232,7 +310,10 @@ def _digits_only(s: str) -> str:
 # "62500000000 rupiah"), never a same-sentence coincidence several clauses
 # away.
 _AMOUNT_PREFIX_RE = re.compile(r"(?i)\b(?:rp|idr)\.?\s*$")
-_AMOUNT_SUFFIX_RE = re.compile(r"(?i)^\s*(?:rupiah|juta|milyar|miliar|ribu)\b")
+# F3: `,-` is the local way to close a Rupiah figure and `IDR` its trailing
+# code. `,-` cannot carry a `\b` (both `-` and what follows are non-word
+# positions), so it is a separate alternative OUTSIDE the word-boundary group.
+_AMOUNT_SUFFIX_RE = re.compile(r"(?i)^\s*(?:(?:rupiah|juta|milyar|miliar|ribu|idr)\b|,-)")
 
 
 def _looks_like_amount(source: str, match: re.Match[str]) -> bool:
@@ -242,8 +323,19 @@ def _looks_like_amount(source: str, match: re.Match[str]) -> bool:
 
 
 def _validate_nik_separated(source: str, match: re.Match[str]) -> bool:
-    digits = _digits_only(match.group(0))
+    surface = match.group(0)
+    digits = _digits_only(surface)
     if len(digits) not in (15, 16):
+        return False
+    # F1: a separator-bearing date anywhere in the span means the run is a
+    # date plus a bystander number, not an identifier. Anchored to a FOUR-digit
+    # year, so a real NIK's own ddmmyy block (digits 7-12) cannot trip it.
+    if _DATE_SHAPE_RE.search(surface):
+        return False
+    # F1b: three separator-joined 5-digit codes is a KBLI list, not an
+    # identifier. This declines the KBLI SHAPE specifically — the 15/16 digit
+    # class above stays, because a bare 15-digit old-format NPWP lives in it.
+    if _KBLI_LIST_RE.fullmatch(surface) is not None:
         return False
     return not _looks_like_amount(source, match)
 
@@ -257,7 +349,10 @@ def _validate_phone_digit_count(source: str, match: re.Match[str]) -> bool:
     return not _looks_like_amount(source, match)
 
 
-def _validate_passport_prefix(_source: str, match: re.Match[str]) -> bool:
+def _validate_passport_prefix(source: str, match: re.Match[str]) -> bool:
+    context_before = source[max(0, match.start() - 24) : match.start()]
+    if _PASSPORT_CONTEXT_RE.search(context_before):
+        return True
     letters = "".join(c for c in match.group(0) if c.isalpha()).lower()
     return letters not in _PASSPORT_DECLINE_PREFIXES
 
@@ -296,7 +391,7 @@ _CATEGORY_PATTERNS: tuple[tuple[str, tuple[_PatternSpec, ...]], ...] = (
         (
             _PatternSpec(_JWT_RE),
             _PatternSpec(_PEM_RE),
-            _PatternSpec(_KEY_PREFIX_RE),
+            _PatternSpec(_KEY_PREFIX_RE, validator=_validate_key_prefix),
             _PatternSpec(_BEARER_RE),
         ),
     ),

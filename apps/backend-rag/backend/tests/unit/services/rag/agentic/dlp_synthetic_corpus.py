@@ -26,9 +26,32 @@ specifically so recall == coverage; if a FUTURE corpus edit introduces a
 duplicate literal within one category's list, recall would read a false
 regression (fewer hits than items) even though nothing leaked — the fix
 in that case is to make the literal distinct, not to lower the floor.
+
+G-P3 r2 ADDITION (Kimi round-2 FIX-FIRST batch): `realistic_nik_corpus`,
+`realistic_passport_corpus`, `realistic_npwp_old_dotted_corpus`,
+`realistic_npwp_new16_bare_corpus` and `realistic_npwp_new16_dotted_corpus`
+below generate REAL-ENCODING-SHAPED (never real-VALUE) identifiers for the
+r2 guilt tests in `test_wa_dlp.py` — a NIK with a genuine
+province/regency/district prefix and a plausible ddmmyy DOB (day +40 for
+the official female encoding), a 1-2-letter/6-7-digit passport, and both
+NPWP dotted/bare-16 forms. These use a SEEDED `random.Random` instance
+(never the bare `random` module's global state, never unseeded entropy)
+so a re-run is byte-identical — a different generation strategy than the
+formulaic index-keyed functions above, chosen because the realistic
+shapes need more structural freedom than a loop index alone provides, but
+held to the SAME determinism bar.
+
+PLAINLY, for anyone editing this file: every value anywhere in this
+module — formulaic or seeded-random — is FABRICATED. Reading a fixture
+out of `conversations`, the CRM, `meta_inbox_*`, or any other live table
+is FORBIDDEN for this file, full stop (project CLAUDE.md §14 PII
+boundary) — a miss on any test built from this module must always be
+traceable to a synthetic literal, never to a real customer's data.
 """
 
 from __future__ import annotations
+
+import random
 
 _CORPUS_SIZE = 50
 
@@ -116,3 +139,103 @@ CORPUS: dict[str, list[str]] = {
 # corpus — it is OUR corpus; a miss means a pattern regressed." ONE
 # constant, read by the test — lowering it is a visible diff.
 RECALL_FLOOR = 1.00
+
+
+# ============================================================================
+# G-P3 r2 — real-encoding-shaped synthetic generators (seeded, deterministic)
+#
+# Deliberately kept OUT of `CORPUS`/`RECALL_FLOOR` above: these feed
+# dedicated guilt tests in test_wa_dlp.py (F1/F4 r2 batch), not the
+# per-category recall-floor sweep, so a rare structural coincidence in one
+# generated item (e.g. a NIK digit run that also happens to read as an
+# amount) can never silently erode the registered 1.00 floor for a
+# category it was never meant to test.
+# ============================================================================
+
+
+def realistic_nik_corpus(n: int = 20) -> list[str]:
+    """16-digit NIK built from the REAL encoding, not a flat random string:
+    2-digit province + 2-digit regency/city + 2-digit district (kecamatan)
+    code, then a plausible date of birth as ddmmyy (day +40 on odd indices,
+    the official female-encoding offset), then a 4-digit sequence number.
+    Province codes are drawn from 11-94 (real range, never leading zero) so
+    these can never collide with NPWP's leading-zero 16-digit shape — the
+    ONE precedence case the design spec names explicitly."""
+    rng = random.Random(20260822)
+    out: list[str] = []
+    for i in range(n):
+        province = rng.randint(11, 94)
+        regency = rng.randint(1, 79)
+        district = rng.randint(1, 79)
+        day = rng.randint(1, 28) + (40 if i % 2 == 1 else 0)
+        month = rng.randint(1, 12)
+        year = rng.randint(0, 99)
+        seq = rng.randint(1, 9999)
+        nik = (
+            f"{province:02d}{regency:02d}{district:02d}"
+            f"{day:02d}{month:02d}{year:02d}{seq:04d}"
+        )
+        out.append(f"NIK saya {nik} terdaftar di Dukcapil.")
+    return out
+
+
+def realistic_passport_corpus(n: int = 20) -> list[str]:
+    """1-2 letter prefix + 6-7 digit passport number. Letters are chosen
+    from a pool that never collides with `_PASSPORT_DECLINE_PREFIXES`, so
+    these stay guilty regardless of whether the F4 context-override cure
+    has landed yet."""
+    rng = random.Random(20260823)
+    letters_pool = ("A", "B", "C", "X", "Y", "AB", "XY", "CN", "MZ")
+    out: list[str] = []
+    for _ in range(n):
+        letters = rng.choice(letters_pool)
+        digit_len = rng.choice((6, 7))
+        number = rng.randint(10 ** (digit_len - 1), 10**digit_len - 1)
+        out.append(f"Passport {letters}{number} on file for verification.")
+    return out
+
+
+def realistic_npwp_old_dotted_corpus(n: int = 20) -> list[str]:
+    """Old NPWP shape: `XX.XXX.XXX.X-XXX.XXX` (2-3-3-1-3-3 dotted digit
+    groups with a hyphen before the last pair) — matches `_NPWP_OLD_RE`
+    verbatim."""
+    rng = random.Random(20260824)
+    out: list[str] = []
+    for _ in range(n):
+        a = rng.randint(0, 99)
+        b = rng.randint(0, 999)
+        c = rng.randint(0, 999)
+        d = rng.randint(0, 9)
+        e = rng.randint(0, 999)
+        f = rng.randint(0, 999)
+        npwp = f"{a:02d}.{b:03d}.{c:03d}.{d}-{e:03d}.{f:03d}"
+        out.append(f"NPWP lama {npwp} terdaftar di KPP.")
+    return out
+
+
+def realistic_npwp_new16_bare_corpus(n: int = 20) -> list[str]:
+    """New 16-digit bare NPWP: a leading zero plus 15 more digits — matches
+    `_NPWP_NEW16_RE` verbatim."""
+    rng = random.Random(20260825)
+    out: list[str] = []
+    for _ in range(n):
+        rest = "".join(str(rng.randint(0, 9)) for _ in range(15))
+        out.append(f"NPWP baru saya 0{rest} sudah aktif.")
+    return out
+
+
+def realistic_npwp_new16_dotted_corpus(n: int = 20) -> list[str]:
+    """New 16-digit dotted NPWP: `0XX.XXX.XXX.X-XXX.XXX` — matches
+    `_NPWP_NEW_DOTTED_RE` verbatim."""
+    rng = random.Random(20260826)
+    out: list[str] = []
+    for _ in range(n):
+        xx = rng.randint(0, 99)
+        b = rng.randint(0, 999)
+        c = rng.randint(0, 999)
+        d = rng.randint(0, 9)
+        e = rng.randint(0, 999)
+        f = rng.randint(0, 999)
+        npwp = f"0{xx:02d}.{b:03d}.{c:03d}.{d}-{e:03d}.{f:03d}"
+        out.append(f"NPWP terformat {npwp} untuk verifikasi.")
+    return out

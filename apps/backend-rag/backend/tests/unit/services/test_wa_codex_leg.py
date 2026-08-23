@@ -977,14 +977,29 @@ async def test_leg_restores_placeholders_before_the_customer_sees_them(
 
     The placeholder is embedded in an otherwise-normal sentence (not a bare
     token) so a real finalize's text-defect checks would not eat it —
-    matching the coordinator's harness note."""
+    matching the coordinator's harness note.
+
+    G-P3 r2 F6 (ORDER pin): asserting on `result.text` alone only proves
+    restore happened SOMEWHERE in the pipeline — it cannot tell "restore
+    before finalize" apart from "finalize first, then restore the
+    RETURNED text", because `_echo_finalize` simply forwards whatever it
+    is given straight back out, and either ordering would still leave
+    `result.text` fully restored. The assertion on
+    `echo_finalize.await_args.kwargs["data"]["answer"]` below closes that
+    gap: it inspects the value the finalize call ITSELF received, which
+    can only be the restored text if `restore_text` ran BEFORE that call.
+    Mutation pin: moving the `restore_text` call to run on `result.text`
+    AFTER `finalize_wa_answer` returns would leave this kwarg holding the
+    raw `[PII-PHONE-1]` placeholder and this assertion goes red, even
+    though the old `result.text`-only assertions below would still pass."""
     build = {**_GOOD_BUILD, "reversal_map": {"[PII-PHONE-1]": "+628111234567"}}
     stubs = _wire_stubs(
         monkeypatch,
         build=build,
         consume="Please call [PII-PHONE-1] to confirm your appointment.",
     )
-    monkeypatch.setattr(wa_codex_leg, "finalize_wa_answer", _echo_finalize())
+    echo_finalize = _echo_finalize()
+    monkeypatch.setattr(wa_codex_leg, "finalize_wa_answer", echo_finalize)
     conn = ScriptedConn(
         fetchrow_results=[{"human_handling": False, "handling_version": 3}]
     )
@@ -993,6 +1008,10 @@ async def test_leg_restores_placeholders_before_the_customer_sees_them(
     assert "+628111234567" in result.text
     assert "[PII-" not in result.text
     stubs.rag_client.post.assert_awaited_once()  # sanity: build actually ran
+
+    received_answer = echo_finalize.await_args.kwargs["data"]["answer"]
+    assert "+628111234567" in received_answer
+    assert "[PII-" not in received_answer
 
 
 @pytest.mark.asyncio
