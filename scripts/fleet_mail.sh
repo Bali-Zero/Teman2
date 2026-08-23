@@ -108,12 +108,21 @@ read -r -d '' PY_SEND <<'PYEOF' || true
 import os, sys
 root = os.environ.get("NUZ_MAILBOX_DIR") or os.path.expanduser("~/.nuzantara-mailbox")
 session, filename, from_label = sys.argv[1], sys.argv[2], sys.argv[3]
-target = os.path.join(root, "broadcast") if session == "broadcast" else os.path.join(root, session)
-os.makedirs(target, exist_ok=True)
+# Owner-only root is the whole security story (messages become assistant-
+# visible context) -- create it 0700, and re-tighten it if some earlier
+# run left it wider (os.makedirs' mode is not honored on every platform).
+os.makedirs(root, mode=0o700, exist_ok=True)
 try:
-    os.chmod(target, 0o700)
+    os.chmod(root, 0o700)
 except OSError:
     pass
+target = os.path.join(root, "broadcast") if session == "broadcast" else os.path.join(root, session)
+os.makedirs(target, exist_ok=True)
+for d in (root, target):  # owner-only: the root dir IS the security boundary
+    try:
+        os.chmod(d, 0o700)
+    except OSError:
+        pass
 body = sys.stdin.buffer.read()
 tmp = os.path.join(root, ".tmp-" + filename + "." + str(os.getpid()))
 with open(tmp, "wb") as fh:
