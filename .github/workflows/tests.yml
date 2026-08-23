@@ -999,6 +999,10 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          # Full history so the trusted-partitioner extraction below can read
+          # the BASE ref's copy of shard_tests.py.
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v7
@@ -1020,18 +1024,94 @@ jobs:
         # make impossible.
         run: python3 scripts/ci/test_shard_tests.py
 
+      - name: Extract trusted partitioner (base ref)
+        # CRITICAL, found by an adversarial refuter on this PR (cross-family,
+        # Kimi K3) and NOT by the author: without this the guard is defeatable
+        # in one line. The shards and the fan-in both run the PR's OWN copy of
+        # shard_tests.py, so a PR that appended one entry to EXCLUDED_DIRS (or
+        # narrowed _is_test_file) would make the shards and the guard agree
+        # PERFECTLY on a shrunken corpus — chunks tile it exactly, guard green,
+        # `Backend Tests (Python)` green, and the test that catches the PR's own
+        # regression never ran. The docstring's claim that "a shard cannot
+        # silently disagree with the guard" was true and beside the point: both
+        # can agree to be wrong together.
+        #
+        # This is the identical trust boundary the `changes` job already
+        # enforces for change_map.py / impact_map.py (red-team CRITICAL-1,
+        # 2026-08-14), applied to the same class of file: LOGIC from the base
+        # ref, DATA (the tree being enumerated) from this checkout. A PR that
+        # legitimately ADDS test modules is unaffected — the trusted enumerator
+        # walks the head tree and finds them, and the shards must own them.
+        id: trusted
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+          TRUSTED_DIR="$RUNNER_TEMP/trusted-partitioner"
+          mkdir -p "$TRUSTED_DIR"
+          if [ -z "${BASE_SHA:-}" ]; then
+            # push / schedule / workflow_dispatch: there is no PR to distrust,
+            # the checkout IS the trusted ref.
+            echo "no base ref for this event — the checkout is the trusted copy"
+            echo "path=scripts/ci/shard_tests.py" >> "$GITHUB_OUTPUT"
+            echo "trusted=self" >> "$GITHUB_OUTPUT"
+          elif git show "${BASE_SHA}:scripts/ci/shard_tests.py" > "$TRUSTED_DIR/shard_tests.py" 2>/dev/null; then
+            echo "adjudicating with the base ref's partitioner ($BASE_SHA)"
+            echo "path=$TRUSTED_DIR/shard_tests.py" >> "$GITHUB_OUTPUT"
+            echo "trusted=base" >> "$GITHUB_OUTPUT"
+          else
+            # Only reachable when the base ref has no such file at all — i.e.
+            # the PR that INTRODUCES it (this one). Declared loudly rather than
+            # silently downgraded: the file is CODEOWNERS-protected, so a later
+            # edit always has a base copy to be judged against.
+            echo "::warning::scripts/ci/shard_tests.py does not exist at $BASE_SHA — this PR introduces it; adjudicating with the head copy"
+            echo "path=scripts/ci/shard_tests.py" >> "$GITHUB_OUTPUT"
+            echo "trusted=introduced" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Partition guard — the shards tiled the corpus exactly
-        # Re-derives the full corpus from this checkout and adjudicates it
-        # against the chunk lists the shards ACTUALLY consumed (downloaded
-        # artifacts, not a recomputation of itself — a guard that only checks its
-        # own arithmetic is a tautology). Refuses on: a missing shard, an overlap,
-        # a module owned by nobody, a module outside the corpus, or a chunk-N
-        # outside 1..SHARD_COUNT.
+        # Re-derives the full corpus and adjudicates it against the chunk lists
+        # the shards ACTUALLY consumed (downloaded artifacts, not a
+        # recomputation of itself — a guard that only checks its own arithmetic
+        # is a tautology). Refuses on: a missing shard, an overlap, a module
+        # owned by nobody, a module outside the corpus, or a chunk-N outside
+        # 1..SHARD_COUNT. Runs the TRUSTED copy resolved above.
         env:
           IMPACT_RUN_ALL: ${{ needs.changes.outputs.impact_run_all || 'true' }}
           IMPACT_SELECTED_TESTS: ${{ needs.changes.outputs.impact_selected_tests }}
+          TRUSTED_PARTITIONER: ${{ steps.trusted.outputs.path }}
+          TRUSTED_ORIGIN: ${{ steps.trusted.outputs.trusted }}
         run: |
+          set -euo pipefail
           cd apps/backend-rag
+          case "$TRUSTED_PARTITIONER" in
+            /*) PARTITIONER="$TRUSTED_PARTITIONER" ;;
+            *)  PARTITIONER="$GITHUB_WORKSPACE/$TRUSTED_PARTITIONER" ;;
+          esac
+
+          # TWO PASSES, asking two different questions. Collapsing them into one
+          # was the author's first attempt at the refuter's finding and it was
+          # wrong in a way worth recording: adjudicating per-shard OWNERSHIP with
+          # the base ref's copy would make any future PR that legitimately
+          # changes the assignment algorithm — the duration-aware v2 splitter
+          # this design explicitly anticipates — permanently unmergeable. A guard
+          # that blocks its own successor is a bug, not rigor.
+          #
+          # SECURITY pass (trusted logic, head data): did every module in the
+          # BASE ref's corpus run somewhere, exactly once? Deliberately silent
+          # about who owns what and about modules the base ref never heard of —
+          # running MORE than the trusted corpus is never a defect, running LESS
+          # always is. This is the pass a malicious diff has to get past, and it
+          # cannot, because the logic did not come from the diff.
+          echo "== security pass: $PARTITIONER (origin: $TRUSTED_ORIGIN) =="
+          python3 "$PARTITIONER" verify --union \
+            --shards "$SHARD_COUNT" \
+            --chunk-dir "$GITHUB_WORKSPACE/shard-receipts"
+
+          # DRIFT pass (head logic): did each shard consume EXACTLY the files
+          # this checkout's partitioner says it owns? Catches the shards and the
+          # guard falling out of step within the PR's own scheme.
+          echo "== drift pass: head copy =="
           python3 ../../scripts/ci/shard_tests.py verify \
             --shards "$SHARD_COUNT" \
             --chunk-dir "$GITHUB_WORKSPACE/shard-receipts"

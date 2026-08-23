@@ -248,6 +248,76 @@ class PartitionGuilt(unittest.TestCase):
         self.assertTrue(any("ran on NO shard" in p for p in problems), problems)
 
 
+class UnionModeIsTheSecurityCheck(unittest.TestCase):
+    """`--union` is what the fan-in runs with the BASE ref's copy.
+
+    It has to keep catching the one defect that matters (a module that ran
+    nowhere) while tolerating the two things a legitimate PR is allowed to do:
+    change how files are assigned to shards, and add new test modules. If it
+    ever stopped tolerating those, this guard would make its own successor
+    unmergeable; if it ever stopped catching a dropped module, it would be
+    decoration.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        _tree(self.root, ["backend/tests/test_%02d.py" % i for i in range(9)])
+        self.corpus = st.enumerate_tests(["backend/tests/"], self.root)
+        self.chunk_dir = self.root / "chunks"
+        self.sound = {s: st.chunk_for(self.corpus, 3, s) for s in (1, 2, 3)}
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _problems(self, chunks, union_only):
+        _write_chunks(self.chunk_dir, chunks)
+        return st.verify(self.corpus, 3, self.chunk_dir, union_only=union_only)
+
+    def test_guilt_a_dropped_module_is_still_caught(self):
+        chunks = {s: list(v) for s, v in self.sound.items()}
+        chunks[2].pop()
+        problems = self._problems(chunks, union_only=True)
+        self.assertTrue(any("ran on NO shard" in p for p in problems), problems)
+
+    def test_guilt_an_overlap_is_still_caught(self):
+        chunks = {s: list(v) for s, v in self.sound.items()}
+        chunks[3].append(chunks[1][0])
+        problems = self._problems(chunks, union_only=True)
+        self.assertTrue(any("overlap" in p for p in problems), problems)
+
+    def test_guilt_the_empty_partition_is_still_caught(self):
+        problems = self._problems({1: [], 2: [], 3: []}, union_only=True)
+        self.assertTrue(any("ran on NO shard" in p for p in problems), problems)
+
+    def test_guilt_a_missing_shard_is_still_caught(self):
+        chunks = {s: list(v) for s, v in self.sound.items()}
+        del chunks[2]
+        problems = self._problems(chunks, union_only=True)
+        self.assertTrue(any("published no chunk list" in p for p in problems), problems)
+
+    def test_innocence_a_different_assignment_algorithm_passes(self):
+        # What a v2 duration-aware splitter looks like from here: same union,
+        # completely different ownership. `--union` must not care.
+        flat = [f for s in (1, 2, 3) for f in self.sound[s]]
+        chunks = {1: flat[:2], 2: flat[2:7], 3: flat[7:]}
+        self.assertEqual(sorted(f for c in chunks.values() for f in c), sorted(self.corpus))
+        self.assertEqual(self._problems(chunks, union_only=True), [])
+        # ...while the full/drift mode, which the HEAD copy runs, still bites.
+        self.assertTrue(self._problems(chunks, union_only=False))
+
+    def test_innocence_running_more_than_the_trusted_corpus_passes(self):
+        # A PR that ADDS test modules: the shards run files the base ref's
+        # enumeration never heard of. Running MORE is never the defect.
+        chunks = {s: list(v) for s, v in self.sound.items()}
+        chunks[1].append("backend/tests/test_brand_new.py")
+        self.assertEqual(self._problems(chunks, union_only=True), [])
+        # The full mode is stricter on purpose and rejects the same input.
+        self.assertTrue(
+            any("not in the corpus" in p for p in self._problems(chunks, union_only=False))
+        )
+
+
 class CommandLine(unittest.TestCase):
     """The workflow calls this as a subprocess — the exit code IS the guard."""
 
@@ -298,6 +368,20 @@ class CommandLine(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 1)
         self.assertIn("PARTITION GUARD FAILED", result.stderr)
+
+    def test_union_flag_reaches_the_verifier(self):
+        chunks = {s: st.chunk_for(self.corpus, 3, s) for s in (1, 2, 3)}
+        flat = [f for s in (1, 2, 3) for f in chunks[s]]
+        _write_chunks(self.chunk_dir, {1: flat[:1], 2: flat[1:4], 3: flat[4:]})
+        union = self._run(
+            ["verify", "--shards", "3", "--chunk-dir", "chunks", "--union"], self.root
+        )
+        self.assertEqual(union.returncode, 0, union.stderr)
+        self.assertIn("union mode", union.stdout)
+        full = self._run(
+            ["verify", "--shards", "3", "--chunk-dir", "chunks"], self.root
+        )
+        self.assertEqual(full.returncode, 1, full.stdout)
 
     def test_chunk_rejects_an_out_of_range_shard(self):
         result = self._run(["chunk", "--shards", "3", "--shard", "4"], self.root)

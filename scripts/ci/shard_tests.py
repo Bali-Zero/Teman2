@@ -143,8 +143,26 @@ def _read_chunk_file(path):
     return [line.strip() for line in path.read_text().splitlines() if line.strip()]
 
 
-def verify(all_tests, shards, chunk_dir):
-    """Return a list of problems; empty means the partition is sound."""
+def verify(all_tests, shards, chunk_dir, union_only=False):
+    """Return a list of problems; empty means the partition is sound.
+
+    Two modes, because two different questions are being asked and conflating
+    them makes this guard block its own successor:
+
+    ``full`` (default) — the DRIFT check. Every shard must have consumed exactly
+    the files this module says it owns. Run with the HEAD copy, where "this
+    module" and "what the shards ran" are the same code by construction.
+
+    ``union_only`` — the SECURITY check, run with the BASE ref's copy. It asks
+    only the question that can hide a regression: did every module in the
+    trusted corpus run somewhere, exactly once? It deliberately does NOT check
+    per-shard ownership (a PR is allowed to change the assignment algorithm) and
+    deliberately does NOT flag modules the shards ran that the trusted corpus
+    does not know about (a PR is allowed to ADD tests). The asymmetry is the
+    point: running MORE than the trusted corpus is never a defect, running LESS
+    always is. Without it, the v2 duration-aware splitter this file's own
+    comments anticipate would be permanently unmergeable.
+    """
     problems = []
     owner = {}
 
@@ -170,7 +188,7 @@ def verify(all_tests, shards, chunk_dir):
             continue
         consumed = _read_chunk_file(path)
         expected = chunk_for(all_tests, shards, shard)
-        if consumed != expected:
+        if not union_only and consumed != expected:
             only_consumed = sorted(set(consumed) - set(expected))
             only_expected = sorted(set(expected) - set(consumed))
             detail = []
@@ -197,12 +215,13 @@ def verify(all_tests, shards, chunk_dir):
         problems.append(
             "%d test module(s) ran on NO shard, e.g. %s" % (len(missing), missing[:5])
         )
-    extra = sorted(set(owner) - set(all_tests))
-    if extra:
-        problems.append(
-            "%d module(s) ran that are not in the corpus, e.g. %s"
-            % (len(extra), extra[:5])
-        )
+    if not union_only:
+        extra = sorted(set(owner) - set(all_tests))
+        if extra:
+            problems.append(
+                "%d module(s) ran that are not in the corpus, e.g. %s"
+                % (len(extra), extra[:5])
+            )
     return problems
 
 
@@ -213,6 +232,11 @@ def main(argv=None):
     parser.add_argument("--shards", type=int, default=3)
     parser.add_argument("--shard", type=int)
     parser.add_argument("--chunk-dir")
+    parser.add_argument(
+        "--union",
+        action="store_true",
+        help="security mode: assert only that the trusted corpus ran, disjointly",
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root)
@@ -238,19 +262,22 @@ def main(argv=None):
 
     if not args.chunk_dir:
         parser.error("--chunk-dir is required for `verify`")
-    problems = verify(all_tests, args.shards, Path(args.chunk_dir))
+    problems = verify(
+        all_tests, args.shards, Path(args.chunk_dir), union_only=args.union
+    )
+    mode = "union" if args.union else "full"
     if problems:
         print(
-            "PARTITION GUARD FAILED — corpus is %d test modules across %d shards:"
-            % (len(all_tests), args.shards),
+            "PARTITION GUARD FAILED (%s mode) — corpus is %d test modules across "
+            "%d shards:" % (mode, len(all_tests), args.shards),
             file=sys.stderr,
         )
         for problem in problems:
             print("  - %s" % problem, file=sys.stderr)
         return 1
     print(
-        "partition sound: %d test modules, %d shards, disjoint and complete"
-        % (len(all_tests), args.shards)
+        "partition sound (%s mode): %d test modules, %d shards, disjoint and complete"
+        % (mode, len(all_tests), args.shards)
     )
     return 0
 
