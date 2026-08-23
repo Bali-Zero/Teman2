@@ -5,10 +5,11 @@ description: "Corner for Visa Oracle v2 — the immigration Decision Tree rebuil
 
 # VISA ORACLE v2 — Decision Tree (corner /visaoracle)
 
-> **CURRENT HANDOFF (read first):** `CURRENT_STATE.md` contains the canonical
-> 2026-08-07 repository/production state, reviewed SHAs, gate matrix, evidence,
-> open operational blockers and safe resume sequence. Its production verdict is
-> **NO-GO / SHADOW** even though repository G0–G6 passed on the frozen baseline.
+> **CURRENT HANDOFF (read first):** read **LIVE STATE** below FIRST — it is the current record,
+> updated on every state change. `CURRENT_STATE.md` is a SUPERSEDED 2026-08-15 snapshot (reviewed
+> SHAs, gate matrix, evidence, safe resume sequence as of that date) kept as archaeology; four pack
+> activations (seq-9 through seq-12) have shipped since it was last touched. Production verdict is
+> unchanged from that snapshot: **NO-GO / SHADOW**, repository G0–G6 passed on the frozen baseline.
 
 ## Mission
 
@@ -112,6 +113,244 @@ hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5)
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-08-23 (M5, truth-first ledger backfill — D1): **SEQ-12 IS LIVE IN PRODUCTION SHADOW; this
+  corner's ledger had never recorded it.** `grep -c "seq-12" SKILL.md` returned 0 on both this
+  checkout and `origin/main` before this entry, despite the pack chain having closed three days
+  earlier: fold+source-restamp PR #4409 merged `2026-08-20T07:43:45Z` ("RulePack seq-12 — weekly
+  re-attestation of all 18 portal sources") → signed on M5 (`kid prod-2026-07-1`, protected header
+  `signed_at 2026-08-20T07:45:28.449722Z`, `payload_sha256
+ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d`) → signed bundle PR #4413
+  merged `2026-08-20T08:45:32Z`. Independently verified against the signed pack bytes on disk
+  (`apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-012.signed.json`):
+  `payload.sequence 12`, `payload.version "2026.8.20"`, 110 rules, 28 source_records, of which 18
+  carry `authority_type "OFFICIAL_PORTAL"` re-stamped `verified_at` `2026-08-20T06:14:00Z` /
+  `06:15:00Z` with `freshness_policy.max_age_seconds 604800` (7 days) → **expires
+  2026-08-27T06:14Z**.
+
+  **Sentinel (`pro.visa_freshness_sentinel`, PR #4410) is LOADED, RUNNING, and READING THE
+  ACTIVE PACK FROM THE PRODUCTION DB on Pro — NOT "built but not armed" as PENDING-ARMS still
+  claimed** (row closed by this same PR, scope corrected below). Re-verified live this session,
+  not recalled from context: `launchctl print gui/501/com.nuzantara.visa-freshness-sentinel`
+  shows the job loaded (`program /Users/nuzantara/scripts/pro-visa-freshness-sentinel.sh`);
+  `~/logs/pro-visa_freshness_sentinel/run.log` and `~/.organism/last_seen/pro.visa_freshness_sentinel.json`
+  report `{"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}` / `[2026-08-23 05:58:09]
+run done rc=0` reporting `"pack_sequence": 12, "pack_version": "2026.8.20", "pack_source":
+"database"` — **these are ONE run cited twice, not two witnesses**: Pro's local clock is WITA
+  (UTC+8, confirmed live), so `05:58:09` local and `21:58:09Z` are the identical instant.
+  `pack_source: "database"` is meaningful — `_fetch_active_pack_from_db`
+  (`scripts/visa_freshness_sentinel.py:407-447`) runs a real bitemporal ACTIVE-pack query against
+  Postgres (`legal_period`/`system_period @> now()`), not the labelled repository fallback — so
+  this run genuinely read the live pack.
+
+  **What this does NOT prove: that an alert would ever reach anyone.** The alert path is
+  fire-and-forget by explicit design — `send_alert` (`scripts/visa_freshness_sentinel.py:626-661`,
+  under a section literally headed "Telegram gateway — fire-and-forget, exact house pattern")
+  routes through `scripts/tg_notify.py`, and on ANY failure (`tg_notify.py` missing, subprocess
+  exception, non-zero exit) only `logger.warning` fires — the docstring states the house contract
+  verbatim: "NEVER raises — a gateway failure must not crash the sentinel." **A sentinel with a
+  dead Telegram path produces byte-identical evidence to what is cited above** — same `status:ok`,
+  same `rc=0`, same fresh `last_seen` — because `send_alert` short-circuits to `return None` the
+  instant `verdict.outcome == OUTCOME_OK`, which is exactly the outcome this one observed run had:
+  the alert path was never even exercised, let alone proven to deliver. This is cicatrix
+  superscar family #2 (Esiste≠Armato) — the sentinel's own `G2_heartbeat` gene names the
+  discipline this entry initially failed to apply to its own claim.
+
+  **Delivery proof is therefore still owed, ideally before 2026-08-25T06:14Z** (the sentinel's
+  48h-ahead warn window on the 2026-08-27T06:14Z expiry above) — because after that date, silence
+  from the sentinel is ambiguous: equally consistent with "nothing to warn about yet" and with
+  "the send path is dead." A new PENDING-ARMS row is opened for this (owner: team-lead/orchestrator
+  session, this same review lane — proof-of-armed = an observed test alert actually arriving on
+  Telegram, not another green run log). The PENDING-ARMS row this PR closes is narrower than that
+  and stays closed: its own proof-of-armed clause (fresh `last_seen` AND non-fallback
+  `pack_source`) asked only about load+DB-read state, and that clause is genuinely satisfied — the
+  delivery gap is a distinct, newly-opened claim, not a reopening of the old one.
+
+  **CORRECTION, amended same day (2026-08-23) — this entry's own first version overclaimed.**
+  The two "residual doctrine gaps" this backfill's own originating mandate named as open are
+  PARTIALLY cured since seq-10 (2026-08-19), not fully as the first version of this entry said.
+  Verified against the signed seq-12 payload bytes, not against any narrative:
+  `el.c2.corporate-sponsor-type` is **ABSENT** from `rules[]` (retired behavior-preservingly in
+  seq-10 — its promised tightening was refuted by the live C2 page, CF-17). `el.e31c-mixed-marriage-parents`
+  is **PRESENT**, tightened to 4 conjuncts (`intent.purposes intersects [FAMILY]`,
+  `family.relation_to_sponsor eq PARENT`, `family.sponsor_nationalities intersects [ID]`,
+  `family.marriage_registered eq true`). NEW `hf.e31c-marriage-not-registered` is **PRESENT**
+  (`stage HARD_FILTER`, `effect.type EXCLUDE`, `safety_critical: true`), scoped to 3 conjuncts
+  (drops the nationality conjunct so non-FAMILY paths stay uncontaminated). **That registration
+  leg genuinely works** — fail-closed EXCLUDE on `marriage_registered: false`, `BLOCKED_UNKNOWN`
+  on unknown (engine precedence: a definite-TRUE hard filter returns EXCLUDED before any SUPPORT
+  rule is even consulted). The cure shipped in seq-10 (PR #4350, 2-family refuter quorum — Codex
+  GPT-5.6-sol xhigh REJECT→cured, Kimi K3 MAJOR→cured; see the 2026-08-19 third LIVE STATE entry
+  below for the full chain); rationale on main at
+  `research/visa/doctrine-factory/e5/inc4-pack-edits/cure-c2-e31c.md`.
+  `apps/backend-rag/backend/tests/services/visa_engine/test_seq10_pack.py` already asserts this
+  cure structure. `test_pack_chain_and_pricing.py:370`'s `_KNOWN_PRE_EXISTING_LINT_RESIDUALS`
+  still names both rule ids — that is CORRECT and deliberate: it is scoped to the `seq9_source`
+  fixture and pins seq-9's true historical state, and this entry does not touch it.
+
+  **What the first version missed: a third E31C rule, untouched by the seq-10 cure, independently
+  grants the same product.** `el.e31c-child-mixed-marriage-support` (present unchanged since
+  seq-9) carries `product_version_ids: ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]` — the identical
+  E31C product id as both rules above — and fires SUPPORT/`PURPOSE_PRODUCT_MATCH` on exactly
+  **2 conjuncts**: `intent.purposes intersects [FAMILY]` and `family.relation_to_sponsor eq
+PARENT`. No `sponsor_nationalities` conjunct, no `marriage_registered` conjunct. Because
+  `hit_policy.eligibility = "COVER_ALL_DECLARED_PURPOSES"` makes rule coverage OR-like — ONE
+  firing SUPPORT rule suffices regardless of what sibling rules decide — this rule alone carries
+  the product to SUPPORTED. **Proven live against the real evaluator, not inferred from the rule
+  graph** (found by Kimi K3's cross-family review of this entry, independently re-run against
+  `evaluate_product` on a real `CompiledRulePack` built from the seq-12 payload): FAMILY intent +
+  PARENT relation + `marriage_registered=true` + `sponsor_nationalities=["US"]` →
+  `ProductProofStatus.SUPPORTED`, `support_rules=['el.e31c-child-mixed-marriage-support']` alone
+  — the tightened rule correctly withholds (no `ID` nationality) and the hard filter correctly
+  does not fire (marriage IS registered), and the untouched sibling carries the product through
+  by itself. Positive control: excluding the sibling from the compiled rule set in memory drops
+  the identical US case to `UNSUPPORTED`, while the `ID` case still reaches SUPPORTED via the
+  tightened rule alone — clean discrimination, not a shared artifact of the harness. Exactly
+  three rules in seq-12 are scoped to this E31C product id; no fourth, uncited hard filter covers
+  the nationality leg.
+
+  **Client-facing shape, stated plainly because that is what a future reader needs to act on:**
+  E31C is "Family Visa — Child of Legal Mixed Marriage" — a _perkawinan campuran_ is by
+  definition between an Indonesian citizen and a foreign national. Today the engine reaches
+  SUPPORTED for a child of two non-Indonesian parents whose marriage happens to be registered.
+  The **registration leg is cured**; the **nationality leg is unenforced**.
+
+  This defect is **PRE-EXISTING, not introduced by seq-10/11/12** —
+  `el.e31c-child-mixed-marriage-support` is byte-unchanged since seq-9; it was surfaced by
+  adversarial review of this entry's own overclaim, not by a new pack edit. Worth recording as
+  method: the overclaim ("already cured") is what made a real, unrelated-to-the-cure gap
+  findable — a correction that itself needs a correction is not a failure of this ledger's
+  discipline, it is the discipline working across two rounds instead of one.
+
+  **Correcting, not quietly dropping, this entry's own earlier conclusion: noindex condition (b)
+  is NOT satisfied by seq-12, and a seq-13 IS warranted** — see the noindex bullet below and the
+  new PENDING-ARMS row this entry opens for the artifact itself.
+
+  **Zero's rulings, 2026-08-23 (Legge 5):**
+  - **DPIA V2 §8** (`docs/audits/2026-08-20-visa-oracle-dpia-v2.md`) signatory fields: controller
+    entity = **PT Bali Nol Impresariat**, DPO = **Zainal Abidin**. Zero gave these two identity
+    fields today but NOT a signing date — the date field is left for him. Signature itself still
+    pending — the retention preflight (`scripts/visa_oracle_analytics_retention_preflight.py`,
+    `EXPECTED_TTL_DAYS = 90`) stays hard-locked at 90 days until §8 is actually signed
+    (PENDING-ARMS row, unchanged by this entry — a separate PR).
+  - **noindex on `/visa-oracle`: RESTORE now, RATIFY at ENFORCE.** The `index: false` directive
+    removed in the G0–G6 rebuild (`63234a12a`, PR #3732, 2026-08-07 — see the POSTURE FINDING
+    below) is to be put back immediately; indexability itself is ratified only once ALL of:
+    (a) DPIA §8 signed; (b) seq-13 active with the two doctrine gaps cured; (c) the
+    SHADOW→ENFORCE decision taken (or at minimum the accuracy gate passed); (d) E30 prices
+    defined. **Correcting this entry's own earlier conclusion here (found wrong the same day by
+    adversarial review — see the amended CORRECTION above): condition (b) as stated names
+    seq-13, and it IS actually required — not for the reason the originating mandate gave (both
+    doctrine gaps assumed cured), but because the nationality leg of the E31C mixed-marriage cure
+    is unenforced (`el.e31c-child-mixed-marriage-support`, 2-conjunct SUPPORT, no nationality
+    check). The mandate named the right deliverable for the wrong reason; the corrected reason is
+    the PENDING-ARMS row this entry opens below.** The restore action itself (an `index: false`
+    code change in `apps/mouth`) is a separate PR, not this docs/ledger one, and is NOT yet
+    shipped as of this entry.
+  - **E30/E30E/E30F pricing formula RULED, and the PNBP research lane CONCLUDED
+    2026-08-23.** Zero's formula: client-facing price = PNBP + IDR 3,000,000, exposed as one
+    all-inclusive number (extends standing ruling R1 2026-07-17 — never a PNBP-vs-fee split
+    shown to the client). The authoritative PNBP source is the "Biaya (PNBP)" field on the
+    official per-code Ditjen page (`imigrasi.go.id/wna/daftar-visa-indonesia/<CODE>`), NOT the PP
+    45/2024 lampiran — PR #4383 established this and the arithmetic reconciles exactly against
+    the live price file: E30A 1y PNBP Rp 6.000.000 → listed 9.0M; E30A 2y Rp 8.500.000 → 11.5M;
+    E30B 4y Rp 12.000.000 → 15.0M (all verified in
+    `apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` this session). The E30A
+    page states its PNBP figure already composes four components (visa, ITAS, re-entry,
+    verification fee) — re-deriving one from PP 45/2024 line items will NOT reproduce the portal
+    figure and must not be attempted. **The formula is ruled but INAPPLICABLE to E30/E30E/E30F**:
+    fetched live today (positive control on the same page shape) `E30A` returns
+    `Rp. 6.000.000,-` / `Rp. 8.500.000,-` (byte-stable vs #4383, proving the fetch mechanism
+    works), while `E30E` ("Visa Pendidikan Kawasan Ekonomi Khusus") and `E30F` ("Visa Pertukaran
+    Pelajar") both return **`Data Belum Tersedia`** with no duration options listed at all — a
+    genuine state-side absence, not a probe failure. **Correction, same day: the first version of
+    this paragraph never actually fetched plain `E30` — its unpriced status was carried by
+    association with its two siblings, the identical inference-from-neighbours shape the E31C
+    correction above exists to warn against.** Fetched independently this session, two ways
+    (a summarized fetch + a raw `curl` with tag-stripped grep on the same response, HTTP 200):
+    `imigrasi.go.id/wna/daftar-visa-indonesia/E30` — title `E30 Visa Pendidikan` — ALSO returns
+    `Data Belum Tersedia` immediately after the title, with no duration options, same shape as
+    E30E/E30F. The paragraph's conclusion was correct; it is now measured for all three products,
+    not inferred for one of them. Pricing any of the three would require asserting a PNBP the
+    state has not published — a business decision (Legge 5), not a fact; do not attempt a
+    workaround. **Correction to this entry's own first-pass framing here, found wrong the same
+    day by adversarial review and independently re-verified against the running code, not just
+    the payload: `public_catalog` is metadata with NO runtime consumer, and reading it as a
+    suppression switch was the error.** Repo-wide grep for `public_catalog` (excluding
+    worktrees) returns exactly one non-test hit — a plain model field,
+    `VisaProductVersion.public_catalog` (`services/visa_engine/models.py:371`) — and zero hits
+    in any router, service, adapter, or compiler; `compiler.py`'s `compiled_products` is built as
+    an unconditional comprehension over `payload.products` with no `public_catalog` filter of
+    any kind, and no `internal_only` flag or equivalent exists anywhere in the models. The raw
+    field values were correctly transcribed (`E30 public_catalog: false`; `E30E`/`E30F
+public_catalog: true`) — it is the SEMANTICS that were wrong: `E30` is not internal-only and
+    is not exempt from needing a price. All three of `E30`/`E30E`/`E30F` are reachable by the
+    compiler (three seq-12 rules cite E30's `product_version_id`) and all three resolve to
+    `CONTACT_REQUIRED` at pricing time (`pricing_adapter.py:122-126`, triggered whenever
+    `pricing_key is None`) — concrete, not hypothetical, since all three DO have `pricing_key:
+null`. **General form, because it is the reusable lesson: reading a metadata flag and
+    concluding about runtime behaviour is not the same as finding the code that actually
+    consumes it.** Does not change the E30-family LIVE STATE below (2026-08-20 entry) — the
+    three products remain deliberately unpriced, now for the correct reason.
+
+  - **NEW FINDING, 2026-08-23 (adversarial review of this entry's own "current record" framing,
+    independently re-run twice — once by a separate verification lane, once by this session):
+    the offline gold-persona replay has been failing at the SAME 4/20 with ZERO movement across
+    at least two pack sequences, and the first version of this entry promoted itself to "current
+    record" without disclosing that against a gate this same file names as an ENFORCE
+    precondition.** Re-run this session, `--offline` against the currently-signed pack
+    (`apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py`): `matches=4/20`,
+    `unexplained_divergences=16`, `explained_divergences=0`, `overall_pass: false`. Re-run again
+    against an isolated copy of ONLY `rulepack-prod-011.signed.json` (seq-11, the immediately
+    preceding pack): byte-identical — same `4/20`, same `16` unexplained, same divergent
+    persona-id set `[1,2,5,6,7,8,9,10,11,13,14,15,16,17,19,20]`, and every persona's `actual`
+    decision identical field-for-field. **Seq-12 introduced no regression — the gate has simply
+    never passed across this window.** This is NOT comparable to `CURRENT_STATE.md`'s "5 fixture
+    matches / 15 unexplained divergences" figure (line ~38) — that number comes from a `--live`
+    bounded replay dated 2026-08-14 against the production endpoint stack, a different code path
+    and a different, older pack; presenting 5/15 → 4/16 as movement would be comparing two
+    different instruments, not two points on the same one. The ENFORCE-GATE section of this file
+    requires "the current gold-persona replay has zero unexplained divergences" — the first
+    version of this entry was incomplete, not wrong on the bytes it cited, in promoting itself to
+    current record while omitting the current state of a named ENFORCE precondition.
+
+    The divergence shape matters more than the count. Most of the 16 are the engine erring
+    toward MORE caution than the fixture expects (e.g. personas 6/11/14/15: fixture expects
+    `SUPPORTED_CANDIDATES`, engine returns `HUMAN_REVIEW_REQUIRED`/`NEEDS_INPUT` — conservative,
+    not dangerous). Four are the opposite and more serious — the engine lands at full
+    `SUPPORTED_CANDIDATES` where the fixture expects something stricter: persona 8
+    (marriage-registration unverified, expected `NEEDS_INPUT`), persona 9 (investor direct
+    onshore conversion, expected `NO_SUPPORTED_PATH`), persona 10 (same investor facts via
+    status bridging, expected `HUMAN_REVIEW_REQUIRED`), persona 16 (investor capital 1 IDR below
+    minimum, expected `NO_SUPPORTED_PATH`). Recurring review codes on the abstention side:
+    `CITIZENSHIP_LIST_DIVERGENCE` ×2, `MINOR_GUARDIAN_PRIVACY_REVIEW` ×2,
+    `E33G_INCOME_EVIDENCE_REVIEW` ×2.
+
+    **The 4-vs-6 count, RESOLVED as definitional, not factual (2026-08-23, same-day
+    reconciliation).** **4** is measured this session by running the driver under the narrow
+    axis stated above — "lands at full `SUPPORTED_CANDIDATES` against a stricter expectation":
+    personas 8, 9, 10, 16. **6** was relayed from a cross-family review and never independently
+    re-measured at the time it was first written into this entry. Re-checked this session under
+    the WIDER axis the cross-family review implied — any persona whose `actual` state is
+    strictly MORE permissive than `expected` under the ranking `NO_SUPPORTED_PATH <
+NEEDS_INPUT < HUMAN_REVIEW_REQUIRED < SUPPORTED_CANDIDATES` (i.e. treating a review
+    triggered further into evaluation as more open than a request for more facts) — reproduces
+    **exactly 6**: personas 1, 8, 9, 10, 16, 20 (persona 1: `NO_SUPPORTED_PATH` →
+    `HUMAN_REVIEW_REQUIRED`; persona 20: `NEEDS_INPUT` → `HUMAN_REVIEW_REQUIRED`, both newly
+    included under this axis). **Both numbers are correct under their own definition; the
+    discrepancy is resolved, not open.** The qualitative point is unaffected by which axis is
+    used: personas exist — at minimum 4, as many as 6 depending on definition — that land MORE
+    permissive than the fixture expects, the same direction as the E31C nationality gap above.
+
+    **Named pattern, not three separate incidents — this is the finding of the session.**
+    Personas 9 and 16 above and the E31C nationality-leg correction earlier in this entry are the
+    SAME disease: the engine grants SUPPORT where the fact that DEFINES the product is absent or
+    contradicted, because `hit_policy.eligibility = "COVER_ALL_DECLARED_PURPOSES"` makes rule
+    coverage OR-like — one broad SUPPORT rule dominates regardless of what its siblings decide,
+    and nothing in the rule graph systematically checks that a product cannot be reached without
+    its own defining constraint. This reframes the E31C fix from "patch one rule" to "audit the
+    class" — a separate PENDING-ARMS row is opened for the gold gate below, distinct from the
+    E31C row, because the audit this implies is broader than E31C alone.
 
 - 2026-08-20 (M5, fourth entry — seq-11 SHIPPED end-to-end): **SEQ-11 IS LIVE IN PRODUCTION
   SHADOW — E30A/E30B now carry a resolvable `pricing_key`.** The executed half of Zero's
@@ -1166,7 +1405,9 @@ visa_decisions` — the retention worker operates through `SECURITY DEFINER` fun
   E31B/E31D refuter claims — PR #4245) and E2b prep (fused query bank
   A∪B∪C, 247 unique queries, coverage matrix skeleton, zero holes on the 27
   reachable products — PR #4241) dispatched same day. The noindex ruling
-  remains OPEN.
+  was RULED by Zero 2026-08-23 — restore `index: false` now, ratify indexability at ENFORCE
+  under a 4-condition checklist — see the 2026-08-23 LIVE STATE entry above. The restore code
+  change is a separate `apps/mouth` PR, not yet shipped as of that entry.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
