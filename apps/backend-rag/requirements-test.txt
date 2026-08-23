@@ -24,6 +24,13 @@ fakeredis
 # `pytest_configure` — see that function's docstring and
 # backend/tests/db/test_xdist_worker_isolation.py.
 pytest-xdist
+# coverage: installed inline by the `backend-tests` FAN-IN job (S11 sharding,
+# 2026-08-23), which combines the three shards' data files before applying
+# --fail-under. It is pinned there to the exact version the shards RECORDED
+# writing the data with — coverage's on-disk data file is schema-versioned, so a
+# reader that guesses wrong cannot combine. Declared here for the same reason as
+# every line above it: an inline workflow install is not a manifest.
+coverage
 # DO NOT add `fastmcp` here. An earlier draft of this file did, because the
 # sync-checker below originally scanned ALL of tests.yml and picked it up from
 # the separate `mcp-tests` job. It does not belong to backend-rag: it lives in
