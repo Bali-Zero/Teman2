@@ -42,8 +42,7 @@ Console snapshots: sources with no API live in `~/.agent/seat-usage/console_quot
 ## cswap — Claude-profile rotation (2026-08-11)
 
 `cswap.py` swaps `CLAUDE_CONFIG_DIR` across the seats mapped in `seat_map.json`
-(A1/A2/A3/AZ + the orphan/legacy entries it flags) — the same `CLAUDE_CONFIG_DIR`
-pattern already proven by `scripts/claude-glm.sh` for the z.ai GLM seat. Lane-affine
+(A1/A2/A3/AZ + the orphan/legacy entries it flags) using `CLAUDE_CONFIG_DIR`. Lane-affine
 per the harness-flotta dossier (`Desktop/harness-flotta-2026-08-09/2026-08-09-quattro-gruppi-e-continuita.md`
 §1): A1 interactive/architect · A2 subagents/build · A3 cron/batch (donor) · AZ =
 the Team Premium gate-primary seat and this M5's default `~/.claude`.

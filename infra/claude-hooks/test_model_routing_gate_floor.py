@@ -8,7 +8,7 @@ Why the routing floor exists: measured 2026-08-22, 355 Agent(model:"sonnet")
 build dispatches vs 7 cross-family workspace-write Codex builds. Rule 1
 ("no Agent without an explicit model") cannot fix this on its own — every
 one of the 355 already carried an explicit `model:"sonnet"`. Rule 2 forces a
-periodic detour through `scripts/seat_build.sh` (Codex/Kimi/Qwen/GLM) so
+periodic detour through `scripts/seat_build.sh` (Codex/Kimi/Qwen) so
 quota, resilience and parallelism spread across the arsenal instead of one
 pool absorbing every build.
 
@@ -467,7 +467,7 @@ def test_innocence_chained_seat_build_invocation_resets_counter():
 # ── addendum (2026-08-22, cross-family refuter finding, DeepSeek v4-pro) ───
 # "The guard recognises exactly ONE spelling of compliance: its own
 # wrapper" — a raw call to the seat CLI seat_build.sh wraps (codex/kimi/
-# qwen/claude-glm), or a build-shaped Agent dispatch on a genuinely
+# qwen), or a build-shaped Agent dispatch on a genuinely
 # non-Anthropic model, left the streak running and denied a session that
 # had already complied by a different, equally legitimate route. Now any
 # of the three routes resets.
@@ -504,23 +504,20 @@ def test_guilt_raw_kimi_call_resets_counter():
     assert rc == 0, f"a raw kimi call must reset the counter: rc={rc} err={err!r}"
 
 
-def test_guilt_raw_qwen_and_claude_glm_calls_reset_counter():
+def test_guilt_raw_qwen_call_resets_counter():
     tmp = tempfile.mkdtemp()
     repo = _make_repo_fixture(pathlib.Path(tmp))
-    for binary_cmd in (
-        "qwen -p 'implement the retry logic' < /dev/null",
-        "claude-glm -p 'implement the retry logic'",
-    ):
-        history = [
-            _build("fix the retry logic"),
-            _build("implement the new endpoint"),
-            ("Bash", {"command": binary_cmd}),
-        ]
-        rc, _, err = run_gate(
-            {"description": "add another feature", "model": "sonnet"},
-            cwd=repo, transcript_events=history, home=tmp,
-        )
-        assert rc == 0, f"{binary_cmd!r} must reset the counter: rc={rc} err={err!r}"
+    binary_cmd = "qwen -p 'implement the retry logic' < /dev/null"
+    history = [
+        _build("fix the retry logic"),
+        _build("implement the new endpoint"),
+        ("Bash", {"command": binary_cmd}),
+    ]
+    rc, _, err = run_gate(
+        {"description": "add another feature", "model": "sonnet"},
+        cwd=repo, transcript_events=history, home=tmp,
+    )
+    assert rc == 0, f"{binary_cmd!r} must reset the counter: rc={rc} err={err!r}"
 
 
 def test_innocence_mere_mention_of_codex_or_kimi_does_not_reset():
@@ -763,11 +760,11 @@ MUTANTS = [
     (
         # Addendum (2026-08-22, cross-family refuter finding): reverts the
         # seat-binary set back to seat_build.sh only, so a raw codex/kimi/
-        # qwen/claude-glm Bash call no longer resets. Must be killed by
+        # qwen Bash call no longer resets. Must be killed by
         # test_guilt_raw_codex_call_resets_counter (and the sibling
-        # kimi/qwen/claude-glm cases).
+        # kimi/qwen cases).
         "seat_binary_names_narrowed_to_wrapper_only",
-        'SEAT_BINARY_NAMES = {"seat_build.sh", "codex", "kimi", "qwen", "claude-glm"}',
+        'SEAT_BINARY_NAMES = {"seat_build.sh", "codex", "kimi", "qwen"}',
         'SEAT_BINARY_NAMES = {"seat_build.sh"}',
     ),
     (
