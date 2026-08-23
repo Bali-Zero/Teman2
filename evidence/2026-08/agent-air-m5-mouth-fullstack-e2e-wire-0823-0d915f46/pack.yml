@@ -19,17 +19,27 @@ seat_diversity_note: >-
   `grader` field, not something this pack can self-certify.
 diff:
   net_lines: >-
-    AS OF 06a0974a0 (pinned deliberately — a fixed-path collision on
-    evidence/brief.yml + evidence/pack.yml bit the precedent PR the same
-    day, per that pack's own notes): 3 files changed in the code commit
-    (.github/workflows/tests.yml, apps/backend-rag/backend/scripts/
-    visa_engine/fullstack_smoke.py, apps/mouth/e2e/visa-oracle-fullstack.spec.ts),
-    105 insertions(+), 2 deletions(-), measured from `git show --stat` on
-    that commit. This evidence pack (brief.yml + pack.yml) is added on top,
-    a fourth and fifth file, authored together in this same diff per the
-    workflow's Step 7b requirement. Deterministic gear floor recomputed from
-    the changed-files list = 3 (hot-zone: .github/workflows/tests.yml).
-    Gear 3 is the floor, not a choice.
+    UPDATED AS OF aaf29ea71 (2026-08-24, cure commit for this PR's own first
+    real CI run — see the new receipts below): `git diff --numstat
+    origin/main...HEAD` = 5 files, 372 insertions(+), 2 deletions(-) total:
+    .github/workflows/tests.yml 111/-0, fullstack_smoke.py 1/-1,
+    visa-oracle-fullstack.spec.ts 10/-1, this brief.yml 75/-0, this pack.yml
+    (line count changes with this edit, not re-measured against itself).
+    tests.yml's own number moved from 94/-0 (06a0974a0, the original
+    net_lines entry below) to 111/-0 against origin/main — NOT simply
+    94+23-6 read naively, but exactly that arithmetic once you account for
+    aaf29ea71's diff being taken against 06a0974a0 (which already carried
+    the 94 insertions vs main): 94 + 23 - 6 = 111. The 6 "deletions" in
+    aaf29ea71 are lines the PRIOR commit had already inserted relative to
+    main (the old advisory-mechanism comment), replaced by new lines in the
+    same commit — net-new-vs-main only counts the difference, not two
+    separate edits. Original entry, kept for the record: 3 files changed in
+    the code commit (.github/workflows/tests.yml, apps/backend-rag/backend/
+    scripts/visa_engine/fullstack_smoke.py, apps/mouth/e2e/
+    visa-oracle-fullstack.spec.ts), 105 insertions(+), 2 deletions(-),
+    measured from `git show --stat` on 06a0974a0. Deterministic gear floor
+    recomputed from the changed-files list = 3 (hot-zone:
+    .github/workflows/tests.yml). Gear 3 is the floor, not a choice.
   behaviour_change: >-
     One E2E spec's assertion changes from asserting UI text the product does
     not render to asserting the text it actually renders (no product code
@@ -39,7 +49,13 @@ diff:
     it via .venv/bin/python; newly WORKING on a machine that doesn't have a
     .venv, e.g. CI). One new, separate, advisory (continue-on-error) CI job
     is added — it can run and fail without blocking anything, and is not yet
-    wired into any required-check surface.
+    wired into any required-check surface. aaf29ea71 (cure commit, added
+    after the job's first real CI run went red) adds JWT_SECRET_KEY/API_KEYS
+    to that job's env — no product behaviour change, since these are
+    test-only throwaway values gating an import-time pydantic validator, not
+    anything the smoke itself exercises — and rewords the job's own comment
+    about why it is non-blocking (comment-only, see the corrected-claim
+    receipt below).
 receipts:
   - claim: "The disposable-DB fullstack smoke passes for real, after both the assertion fix and the sys.executable fix, from a clean local run"
     cmd: "cd apps/backend-rag && source .venv/bin/activate && VISA_ORACLE_FULLSTACK=1 VISA_ORACLE_SMOKE_ADMIN_DSN=postgresql://test@127.0.0.1:5432/postgres PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.fullstack_smoke"
@@ -111,6 +127,78 @@ receipts:
     exit: 0
     ts: "2026-08-23T16:08Z"
     seat: "session (M5, build lane)"
+  - claim: 'RED #1 (first real CI run, job 97222544510): reproduced the exact ValidationError locally with the job''s own env, from a CWD with no local .env so pydantic-settings'' env_file=".env" default can''t mask a missing var the way it does when run from inside a checkout that happens to carry one'
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" VISA_ORACLE_FULLSTACK=1 VISA_ORACLE_SMOKE_ADMIN_DSN=postgresql://test:test@127.0.0.1:5432/postgres PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python -c "from backend.app.core import settings"'
+    result: >-
+      pydantic_core.ValidationError: 2 validation errors for Settings —
+      jwt_secret_key / api_keys, identical messages to the CI log verbatim.
+    exit: 1
+    ts: "2026-08-24T00:15Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824 — RED-fix follow-up to aaf29ea71)"
+  - claim: "Adding JWT_SECRET_KEY/API_KEYS (same convention values as every other job in this file) is sufficient — no further missing settings behind these two, checked at both the config-module and the smoke-entrypoint-module import level"
+    cmd: 'same env as above plus JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only_min_32_chars_long API_KEYS=test_api_key_1,test_api_key_2 — first `python -c "from backend.app.core import settings"`, then `python -c "import backend.scripts.visa_engine.fullstack_smoke"`'
+    result: >-
+      Both succeed: \"IMPORT OK\" / \"MODULE IMPORT OK\", only a
+      non-fatal \"OPENAI_API_KEY not set\" warning on stderr (pre-existing,
+      not gated by a validator, unrelated to this PR's job). No third
+      ValidationError appears.
+    exit: 0
+    ts: "2026-08-24T00:17Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "The two added values are not new detect-secrets findings — they hash-match strings already audited as false positives in .secrets.baseline for this exact file"
+    cmd: "python3 -m detect_secrets scan --baseline .secrets.baseline .github/workflows/tests.yml (run against a throwaway copy of the baseline output, then diffed by hand — NOT committed, see note below)"
+    result: >-
+      4 findings in tests.yml, hashed_secret values
+      a94a8fe5.../45140d58.../340c2061..., all is_secret:false — identical
+      hashes to the 4 entries already present in the committed
+      .secrets.baseline for this file (git show HEAD:.secrets.baseline).
+      CAUTION for future sessions: `detect-secrets scan --baseline
+      <file> <single-target>` rewrites the WHOLE baseline file in place,
+      dropping every other file's entries and the filters_used/generated_at
+      header — this run's baseline mutation was reverted with `git checkout
+      -- .secrets.baseline` immediately after reading the result and was
+      never staged or committed.
+    exit: 0
+    ts: "2026-08-24T00:20Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "RED #2 (Harness floor recompute, job 97221726076) is not a code defect in this PR — it is the documented external-commit-status-posted-after-the-run-finished case (CLAUDE.md Agent PR Contract rule 3), and no workflow/code change fixes it"
+    cmd: 'gh run view --job 97221726076 (step list) + gh run view --job 97221726076 --log-failed; gh api repos/Bali-Zero/Teman2/commits/e07c999b54e3dc1427544039b5cc634148b892e8/statuses --jq ''.[] | select(.context=="harness/fable-gate")'''
+    result: >-
+      Every other step in the job passed, INCLUDING \"Gear-3 — validate
+      evidence/pack.yml against the Evidence Pack contract\" (this file) and
+      \"Compare declared gear to the deterministic floor\" — the only failing
+      step is \"Gear-3 — read the real gate verdict\", whose own error text
+      says \"This is NOT a defect: the gate session has not run
+      scripts/harness_fable_gate.py yet\". Confirmed by timestamp: the job
+      ran 16:08:15-16:08:46Z; the harness/fable-gate commit status (PASS)
+      was posted at 16:14:40Z, six minutes later, on the same SHA
+      e07c999b5. The fix is procedural (`gh run rerun` on the original
+      pull_request run, per the same rule) after a verdict exists for
+      whatever SHA is current — moot for e07c999b5 specifically once this
+      PR's head SHA moves to aaf29ea71 with this commit, since a fresh
+      pull_request run will fire on the new SHA and need the same sequence
+      (CI runs -> gate posts on the new SHA -> rerun) rather than a rerun of
+      the now-superseded e07c999b5 run.
+    exit: 0
+    ts: "2026-08-24T00:25Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "The job's own comment claim about continue-on-error was wrong about the mechanism, corrected in aaf29ea71 — measured on the same first CI run, not asserted"
+    cmd: 'gh pr checks 4709 | grep fullstack; gh api repos/Bali-Zero/Teman2/commits/e07c999b54e3dc1427544039b5cc634148b892e8/check-runs --jq ''.check_runs[] | select(.name|test("fullstack smoke";"i")) | {conclusion}''; gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq ''.checks // .contexts'''
+    result: >-
+      gh pr checks: \"fail\". check-run conclusion: \"failure\" — despite
+      continue-on-error: true at job level. The job's name is absent from
+      required_status_checks (27 required contexts, none match
+      \"fullstack\"), which is the actual reason it does not block merging
+      today.
+    exit: 0
+    ts: "2026-08-24T00:22Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
+  - claim: "The updated workflow file is still actionlint-clean after aaf29ea71"
+    cmd: "actionlint .github/workflows/tests.yml"
+    result: "no output — zero findings."
+    exit: 0
+    ts: "2026-08-24T00:18Z"
+    seat: "session (mouth lane, task fullstack-smoke-fix-0824)"
 pii_scan: clean
 tests:
   - "backend/tests/scripts/visa_engine/test_fullstack_smoke.py — 10 passed, no regression from the sys.executable change (receipt above)."
@@ -126,6 +214,26 @@ notes:
     This PR uses the per-PR evidence/<YYYY-MM>/<slug>/ layout
     scripts/ci/evidence_paths.py now resolves, specifically to avoid adding
     a third collision to that day's count.
+  - >-
+    aaf29ea71 (2026-08-24) is a cure commit for this PR's own first real CI
+    run, not a new concern — the residual risk this pack already recorded
+    below ("This PR's own new CI job has not yet been observed passing in
+    CI... the job's first real CI run is itself part of what this PR needs
+    to demonstrate") turned out to be right: the job's very first run
+    surfaced a real infra gap (JWT_SECRET_KEY/API_KEYS missing at import
+    time). Fixed in-PR rather than papered over. This commit's own diff
+    against origin/main is folded into the `diff.net_lines` field above.
+  - >-
+    The original comment on this job named the PENDING-ARMS row this pack's
+    own commit opened alongside it as the place tracking promotion status.
+    That row's owner (a separate lane, t1-tests, working PR #4706) is
+    rewriting it to a post-wiring state; team-lead ruling 2026-08-24 (mid-
+    task) reassigned PENDING-ARMS.md exclusively to that lane to avoid two
+    branches writing the same file. aaf29ea71 drops the specific
+    cross-reference from the workflow comment rather than risk pointing at
+    a row this PR does not control the final wording of — the promotion
+    criterion is now stated plainly in the comment itself instead of by
+    reference.
 dissent:
   - seat: "the build lane, against its own new CI job"
     objection: >-
