@@ -1,50 +1,138 @@
 brief_ref: evidence/brief.yml
-plan_ref: "BUILD LANE B1 mandate (team-lead, GARUDA VOA engine) — B1 max-stay boundary off-by-one, garuda-b1-max-stay-boundary-0823"
-diff:
-  net_lines: "Three files: constants.py (+28/-0, new documented helper b1_max_total_stay_exceeded() plus its sourcing comment), internal_preview_cli.py (+4/-1, swaps the inline strict comparison for the helper call), test_internal_preview_cli.py (+30/-0, one GUILT test at the ==60 boundary and one INNOCENCE test at ==59). Net +61 across the real diff (evidence/*.yml excluded, they are PR scratch)."
-  behaviour_change: "The B1 extension max-stay guard now REJECTS a printed expiry whose day-difference from entry_date is exactly the legal max (60), not only strictly above it. Nothing else changes: VISA_META's B1 duration_days/extensions data is untouched, the derivation of max_total_stay_days is untouched, every other validation branch in _validate_entry_window is untouched, and safe_clock.py's separate estimated-stay-end approximation is explicitly out of scope and untouched."
-receipts:
-  - claim: "The mandate's exact reproduction reproduces on truly unmodified source (fix stashed via `git stash push` on only the two source files, re-run, then popped back) — decision=ACCEPT for a 60-day difference, one day past the B1 legal maximum — and after popping the fix back, the SAME call REJECTS"
-    cmd: 'PYTHONPATH=. python3 -c "...InternalPreviewRequest+build_internal_preview(EXTENSION, entry=2026-07-01, voa_expiry=2026-08-30, today=2026-08-23)...": before fix -> ''decision= ACCEPT published_filing_deadline= 2026-08-23''; after fix (same call, PreviewInputError caught) -> "REJECTED: extension expiry exceeds B1 maximum stay"'
-    exit: 0
-    ts: "2026-08-23T13:12:00Z"
-    seat: "opus-5"
-  - claim: "Guilt test (==60 boundary) was RED on unmodified code, not written after the fact"
-    cmd: "PYTHONPATH=. pytest backend/tests/services/garuda_flow/test_internal_preview_cli.py -k b1_max_total_stay_boundary -v -> test_extension_rejects_printed_expiry_exactly_at_b1_max_total_stay_boundary FAILED (Failed: DID NOT RAISE <class 'ValueError'>); test_extension_accepts_printed_expiry_one_day_inside_b1_max_total_stay_boundary PASSED. 1 failed, 1 passed."
-    exit: 1
-    ts: "2026-08-23T13:03:00Z"
-    seat: "opus-5"
-  - claim: "After the fix, the guilt test, the innocence test, and the pre-existing 61-day-difference boundary test all pass together"
-    cmd: 'PYTHONPATH=. pytest backend/tests/services/garuda_flow/test_internal_preview_cli.py -k "b1_max_total_stay_boundary or beyond_b1_max_total_stay" -v -> 3 passed, 20 deselected'
-    exit: 0
-    ts: "2026-08-23T13:07:00Z"
-    seat: "opus-5"
-  - claim: "The full garuda_flow suite is green after the change, and the count moved by exactly the 2 tests added (no collateral breakage, no collateral skip)"
-    cmd: "PYTHONPATH=. pytest backend/tests/services/garuda_flow/ -> before: 125 passed; after: 127 passed"
-    exit: 0
-    ts: "2026-08-23T13:08:00Z"
-    seat: "opus-5"
-  - claim: "The wider GARUDA surface (garuda_flow/ + the two garuda_voa router test files) is green and matches the mandate's known-good baseline of 162 plus the 2 tests this PR adds"
-    cmd: "PYTHONPATH=. pytest backend/tests/services/garuda_flow/ backend/tests/app/routers/test_garuda_voa.py backend/tests/app/routers/test_garuda_voa_no_internal_leak.py -> 164 passed"
-    exit: 0
-    ts: "2026-08-23T13:09:00Z"
-    seat: "opus-5"
-  - claim: "The dependency-injection import chain is unbroken by this change"
-    cmd: 'python -c "from backend.app.dependencies import get_current_user; print(''OK'')" -> OK'
-    exit: 0
-    ts: "2026-08-23T13:09:30Z"
-    seat: "opus-5"
-tests:
-  - "backend/tests/services/garuda_flow/test_internal_preview_cli.py::test_extension_rejects_printed_expiry_exactly_at_b1_max_total_stay_boundary — new GUILT test, red on unmodified code, green after fix"
-  - "backend/tests/services/garuda_flow/test_internal_preview_cli.py::test_extension_accepts_printed_expiry_one_day_inside_b1_max_total_stay_boundary — new INNOCENCE test, green throughout"
-  - "backend/tests/services/garuda_flow/test_internal_preview_cli.py::test_extension_rejects_printed_expiry_beyond_b1_max_total_stay — pre-existing 61-day boundary test, unchanged, still green"
-  - "backend/tests/services/garuda_flow/ (full dir) — 127 passed (was 125)"
-  - "backend/tests/services/garuda_flow/ + test_garuda_voa.py + test_garuda_voa_no_internal_leak.py — 164 passed (matches mandate's 162 baseline + 2 new tests)"
-static:
-  - "python -c 'from backend.app.dependencies import get_current_user; print(OK)' -> OK (import chain smoke, CLAUDE.md §11 pre-deploy step)"
+plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
 lanes:
-  - lane: "garuda-b1-boundary-build"
+  - lane: wr3-spend-gate-enforce
     role: build
-    seat: "opus-5"
+    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
+  - lane: wr3-spend-gate-enforce-evidence
+    role: review
+    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
+  one non-Anthropic) does not fire. Both lanes present here are Anthropic
+  seats by construction (this is a narrow evidence-authoring task, not a
+  cross-family council dispatch); declared rather than left to read as
+  satisfied.
+diff:
+  net_lines: >-
+    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
+    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
+    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
+    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
+    the runtime gate itself is pre-existing, unmodified production code.
+  behaviour_change: >-
+    No runtime behaviour change to any shipped code path. The workflow now also runs
+    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
+    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
+    `_generate_video` helpers the pre-existing tests already covered.
+receipts:
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
+    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
+    exit: 0
+    ts: "2026-08-23T23:05Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
+    exit: 0
+    ts: "2026-08-23T23:07Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
+    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
+    exit: 0
+    ts: "2026-08-23T23:09Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
+    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
+    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
+    exit: 1
+    ts: "2026-08-23T23:11Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
+    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
+    exit: 0
+    ts: "2026-08-23T23:13Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "actionlint accepts the modified workflow"
+    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
+    result: "no output (clean)"
+    exit: 0
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
+    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
+    result: "exit 0, no output"
+    exit: 0
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
+    exit: 0
+    ts: "2026-08-23T23:15Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
+    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
+    result: >-
+      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
+      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
+      same position relative to its own HTTP call. Both call sites precede any network code in
+      their respective functions.
+    exit: 0
+    ts: "2026-08-23T23:16Z"
+    seat: "session (M5, evidence-pack task)"
 pii_scan: clean
-dissent: []
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
+      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
+      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
+      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
+      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
+    status: CONFIRMED
+    note: >-
+      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
+      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
+      matching the check. Answered here by supplying both files, never by editing the check
+      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
+      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
+      complied-with).
+  - seat: "session (this evidence-authoring task), against its own first instinct"
+    objection: >-
+      The mandate offered the PR body's own self-reported mutation-test result (comment out
+      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
+      verbatim without re-running it would have been citing a tool output this turn never
+      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
+      prevent, applied to a prior session's claim rather than to memory.
+    status: RETRACTED
+    note: >-
+      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
+      receipt above) rather than trusting the PR body's report. Result matched: both tests went
+      red with the identical `AssertionError: network path reached`, file restored clean.
+      Retracted because the concern was real but the independent re-run resolved it — the
+      PR body's claim held up under a fresh execution, it was not merely repeated.
+tests:
+  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
+  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
+static:
+  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
+  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
+  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
+notes:
+  - >-
+    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
+    was already committed and pushed by a prior session/task. No production code, no test
+    content, and no workflow logic was authored or edited as part of writing this pack — every
+    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
+    a first-time authoring of the underlying fix.
+  - >-
+    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
+    same `Harness floor recompute` shape first and its own evidence pack documents the identical
+    resolution — supply brief+pack, never edit the gate. That pack (`git show
+    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
+    content is specific to this PR's diff.
