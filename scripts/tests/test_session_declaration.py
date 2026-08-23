@@ -329,5 +329,50 @@ class TestCli(StoreCase):
         self.assertEqual(sd._selftest(), 0)
 
 
+class TestCrossFamilyReviewFindings(StoreCase):
+    """Every one of these pins a defect a cross-family refuter found in the
+    FIRST cured version — i.e. one my own tests had already passed over."""
+
+    def test_prune_never_deletes_a_record_that_is_not_provably_dead(self):
+        # The bug: `not closed and age > 30d -> delete` also deleted a LIVE
+        # long-running job and every unread abandonment, while the docstring
+        # promised open records are never pruned. Code contradicted its own doc.
+        d = self.open_run(cap=10**7, now=T0)          # cap longer than retention
+        very_old = T0 + sd.RETAIN_ABANDONED_SEC + 10_000
+        removed = sd.prune(now=very_old)
+        self.assertEqual(removed, 0, "a still-live long run must survive retention")
+        self.assertEqual(len(sd.read_all()[0]), 1)
+
+    def test_prune_does_remove_a_closed_record_past_retention(self):
+        d = self.open_run(cap=10)
+        sd.close_declaration(d["run_id"], "completed", 0, now=T0 + 1)
+        self.assertEqual(sd.prune(now=T0 + sd.RETAIN_CLOSED_SEC + 1), 1)
+        self.assertEqual(sd.read_all()[0], [])
+
+    def test_scan_for_pid_answers_about_that_run_not_the_whole_store(self):
+        # The bug: the lock check counted hung runs of EVERY spawner, then
+        # blamed "the previous healer run" — accusing a healthy run by name.
+        mine = self.open_run(spawner="healer-run.sh", cap=10**6)   # healthy, inside cap
+        other = sd.open_declaration("other-organ", cap_sec=10, pid=999_999, now=T0)
+        rep = sd.scan(now=T0 + 10**5, alive_fn=lambda _d: True, for_pid=mine["pid"])
+        self.assertEqual(len(rep["rows"]), 1)
+        self.assertEqual(rep["rows"][0]["spawner"], "healer-run.sh")
+        self.assertEqual(rep["summary"]["hung"], 0, "my healthy run must not inherit another's hang")
+
+    def test_a_record_we_cannot_parse_makes_the_scan_blind_not_clean(self):
+        # It was reported in summary.malformed and consumed by nothing — a
+        # cosmetic field. An unparseable declaration is a run we cannot
+        # classify, which is indistinguishable from an abandonment we missed.
+        self.open_run()
+        with open(os.path.join(os.environ["SESSION_DECLARATION_DIR"], "torn.json"), "w") as fh:
+            fh.write("{oops")
+        self.assertEqual(sd.main(["scan", "--json"]), 2)
+
+    def test_row_carries_the_pid_so_a_consumer_can_correlate_a_lock(self):
+        d = self.open_run()
+        rep = sd.scan(now=T0 + 1, alive_fn=lambda _d: True)
+        self.assertEqual(rep["rows"][0]["pid"], d["pid"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

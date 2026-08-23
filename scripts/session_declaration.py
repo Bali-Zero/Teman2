@@ -231,7 +231,15 @@ def prune(now: Optional[float] = None) -> int:
         if closed and age > RETAIN_CLOSED_SEC:
             pass
         elif not closed and age > RETAIN_ABANDONED_SEC:
-            pass
+            # An UNCLOSED record is not automatically an old abandonment: it is
+            # also what a still-running long job looks like, and what every
+            # abandonment looks like before anyone reads it. Age alone deleted
+            # both — the docstring above promised otherwise and the code did it
+            # anyway (found by cross-family review, 2026-08-23). Delete only
+            # what is PROVABLY dead: the runner is gone AND it is past its
+            # reporting window.
+            if classify(d, ts) != ABANDONED_STALE:
+                continue
         else:
             continue
         try:
@@ -404,8 +412,15 @@ def scan(
     grace_sec: int = DEFAULT_GRACE_SEC,
     now: Optional[float] = None,
     alive_fn: Optional[Any] = None,
+    for_pid: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Classify the whole store.
+    """Classify the whole store, or only the run owning `for_pid`.
+
+    for_pid exists because a global count answers the wrong question at a lock:
+    "is something somewhere hung?" is not "is the run HOLDING THIS LOCK hung?",
+    and alerting on the first while naming the second is a false accusation of a
+    healthy run — the exact class this module was built to remove (found by
+    cross-family review, 2026-08-23).
 
     alive_fn is a TEST SEAM (same family as the healer's FLEET_HOSTS_OVERRIDE):
     without it, the abandoned branch can only be exercised by forging pid data
@@ -415,6 +430,8 @@ def scan(
     decls, malformed, readable = read_all()
     ts = time.time() if now is None else now
     liveness = runner_alive if alive_fn is None else alive_fn
+    if for_pid is not None:
+        decls = [d for d in decls if d.get("pid") == for_pid]
     rows = []
     for d in decls:
         # alive_fn is HANDED DOWN, never called here: liveness costs a `ps`
@@ -434,6 +451,7 @@ def scan(
                 "cadence_sec": d.get("cadence_sec"),
                 "age_sec": round(age) if age is not None else None,
                 "session_id": d.get("session_id"),
+                "pid": d.get("pid"),
             }
         )
     rows.sort(key=lambda r: (r["state"] not in (ABANDONED, HUNG), r["spawner"] or "", r["run_id"] or ""))
@@ -607,6 +625,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_scan = sub.add_parser("scan", help="classify every declaration in the store")
     p_scan.add_argument("--json", action="store_true")
     p_scan.add_argument("--grace-sec", type=int, default=DEFAULT_GRACE_SEC)
+    p_scan.add_argument("--for-pid", type=int, help="only the run owning this pid")
 
     args = ap.parse_args(argv)
 
@@ -636,11 +655,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     if args.cmd == "scan":
-        report = scan(grace_sec=args.grace_sec)
+        report = scan(grace_sec=args.grace_sec, for_pid=args.for_pid)
         print(json.dumps(report, indent=2) if args.json else render_table(report))
-        if not report["summary"]["store_readable"]:
+        s_ = report["summary"]
+        if not s_["store_readable"] or s_["malformed"]:
+            # A record we cannot parse is a run we cannot classify — which is
+            # indistinguishable from an abandonment we failed to see. Reporting
+            # it in a field nothing reads left it cosmetic; it is blindness.
             return 2
-        return 1 if (report["summary"]["abandoned"] or report["summary"]["hung"]) else 0
+        return 1 if (s_["abandoned"] or s_["hung"]) else 0
 
     ap.print_help()
     return 2

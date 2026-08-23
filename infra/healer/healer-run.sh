@@ -106,27 +106,65 @@ if [ -n "${HEALER_RUN:-}" ]; then
     exit 0
 fi
 
+# ---- secrets (Telegram; claude on Mini auths via its own login) ------------
+[ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
+# NOTE ON ORDER (moved above the lock 2026-08-23, cross-family review): the
+# lock's early-exit can now raise a p0, and telegram() called before this line
+# has no credentials in its environment — it would log "alert NOT sent" and
+# nothing would reach Zero. The one alert that matters most ("the lock is held
+# by a hung run, so NO receptor can run") would have been mute in exactly the
+# scenario where nothing else is left to speak (W108). Sourcing env early is
+# side-effect free; alerting without it is not.
+
 # ---- anti-overlap lock -----------------------------------------------------
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
     log "previous healer run still alive (pid $(cat "$PIDFILE")) — skipping this tick"
-    # A HUNG previous run is checked HERE, before the skip, and nowhere else.
-    # Receptor 7 lives ~200 lines below this early exit, so in the one scenario
-    # it was built to catch — a wrapper stuck past its own cap, still holding
-    # this very lock — it would never be reached: every later tick would exit
-    # right here and the alarm could not fire by construction. A guard placed
-    # after the condition that skips it is not a guard (superscar #2).
-    # `|| true` because a broken detector must not turn the skip into a crash.
-    if [ -f "$REPO/scripts/session_declaration.py" ]; then
-        HUNG_N=$(cd "$REPO" && python3 scripts/session_declaration.py scan --json 2>/dev/null \
-            | python3 -c "import json,sys
-try: print(int(json.load(sys.stdin).get('summary', {}).get('hung', 0)))
-except Exception: print(0)" 2>/dev/null) || HUNG_N=0
-        if [ "${HUNG_N:-0}" -gt 0 ] 2>/dev/null; then
-            log "PREVIOUS RUN IS HUNG (${HUNG_N}) — it holds this lock, so no tick can proceed"
-            heartbeat "degraded" "previous run hung: holds the lock, receptors unreachable"
-            telegram p0 "healer-mini:run-hung" "⛔️ HEALER (Mini): il run precedente è APPESO oltre il proprio tetto e tiene il lock — nessun tick può procedere e TUTTI i receptor sono irraggiungibili. Dettaglio: python3 scripts/session_declaration.py scan"
-            exit 0
-        fi
+    # The state of the run HOLDING THIS LOCK is checked here and nowhere else.
+    # Receptor 7 lives ~200 lines below this early exit, so in the two scenarios
+    # it was built to catch — a wrapper stuck past its cap, or one killed -9
+    # leaving a stale pidfile — it could never be reached: every later tick
+    # exits right here. A guard placed after the condition that skips it is not
+    # a guard (superscar #2).
+    # SCOPED TO THE LOCK PID, not a global count: "is something somewhere hung?"
+    # is a different question from "is the run holding this lock hung?", and
+    # alerting on the first while naming the second falsely accuses a healthy
+    # run — the exact class this detector exists to remove (cross-family review).
+    LOCK_PID=$(cat "$PIDFILE" 2>/dev/null || echo "")
+    if [ -f "$REPO/scripts/session_declaration.py" ] && [ -n "$LOCK_PID" ]; then
+        LOCK_JSON=$(cd "$REPO" && python3 scripts/session_declaration.py scan --json --for-pid "$LOCK_PID" 2>/dev/null)
+        LOCK_EXIT=$?
+        LOCK_STATE=$(printf '%s' "$LOCK_JSON" | python3 -c "
+import json, sys
+try:
+    rows = json.load(sys.stdin).get('rows', [])
+    print(rows[0]['state'] if rows else 'NONE')
+except Exception:
+    print('ERR')" 2>/dev/null)
+        case "${LOCK_STATE:-ERR}" in
+            HUNG)
+                log "LOCK HELD BY A HUNG RUN (pid $LOCK_PID) — no tick can proceed"
+                heartbeat "degraded" "lock held by hung run: every receptor unreachable"
+                telegram p0 "healer-mini:run-hung" "HEALER (Mini): il run che tiene il lock (pid $LOCK_PID) e APPESO oltre il proprio tetto - nessun tick puo procedere e TUTTI i receptor sono irraggiungibili. Dettaglio: python3 scripts/session_declaration.py scan"
+                exit 0 ;;
+            ABANDONED|ABANDONED-STALE)
+                # The declaration proves that run is dead (pid AND start-time
+                # mismatch), yet the pidfile pid answers kill -0: the pid was
+                # RECYCLED by an unrelated process. Without this branch the
+                # healer skips every tick forever, green, and nothing ever
+                # reaches receptor 7 - the disease itself, through the lock.
+                # The stale pidfile is NOT removed here: weakening the
+                # anti-overlap invariant belongs in its own change. Alerting
+                # already breaks the silence, which is the disease.
+                log "STALE LOCK: pid $LOCK_PID is recycled; the run that took this lock is $LOCK_STATE"
+                heartbeat "degraded" "stale pidfile: lock held by a recycled pid"
+                telegram p0 "healer-mini:stale-lock" "HEALER (Mini): il pidfile trattiene pid $LOCK_PID, ma la dichiarazione di quel run dice $LOCK_STATE - il pid e stato RICICLATO. Il guaritore salta ogni tick e resta verde. Cura: rm -f $PIDFILE"
+                exit 0 ;;
+            ERR)
+                log "declaration store unreadable at the lock check - blind, not clean"
+                heartbeat "degraded" "declarations unreadable at lock check"
+                telegram p0 "healer-mini:declarations-blind" "HEALER (Mini): store delle dichiarazioni illeggibile al controllo del lock (exit ${LOCK_EXIT}) - non posso distinguere un run vivo da uno appeso."
+                exit 0 ;;
+        esac
     fi
     heartbeat "ok" "skipped: previous run alive"
     exit 0
@@ -142,10 +180,8 @@ echo $$ > "$PIDFILE"
 # the cascade session is still running would leave an ORPHAN — no wrapper, no
 # declaration, and nothing that could ever flag it again. Killing first makes
 # the stamp true at the moment it is written.
-trap 'rm -f "$PIDFILE"; [ -n "${CPID:-}" ] && kill "$CPID" 2>/dev/null; [ -n "${DECL_RUN_ID:-}" ] && python3 "$REPO/scripts/session_declaration.py" close --run-id "$DECL_RUN_ID" --outcome failed >/dev/null 2>&1; true' EXIT
+trap 'rm -f "$PIDFILE"; [ -n "${CPID:-}" ] && kill -0 "$CPID" 2>/dev/null && kill "$CPID" 2>/dev/null; [ -n "${DECL_RUN_ID:-}" ] && python3 "$REPO/scripts/session_declaration.py" close --run-id "$DECL_RUN_ID" --outcome failed >/dev/null 2>&1; true' EXIT
 
-# ---- secrets (Telegram; claude on Mini auths via its own login) ------------
-[ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
 
 # ---- W84 trampoline: non-ssh contexts ALWAYS re-exec via ssh-localhost ------
 # TCC grants are PER-BINARY: under launchd, bash/ls/python3 can read ~/Desktop
@@ -311,8 +347,8 @@ fi
 #   unreadable, which is BLIND and must never read as clean (W97).
 # This receptor CAN accuse this very wrapper's previous tick. That is correct:
 # a healer that gets killed every run IS the failure it exists to report.
-if [ -f "scripts/session_declaration.py" ]; then
-    DECL_JSON=$(python3 scripts/session_declaration.py scan --json 2>/dev/null)
+if [ -f "$REPO/scripts/session_declaration.py" ]; then
+    DECL_JSON=$(python3 "$REPO/scripts/session_declaration.py" scan --json 2>/dev/null)
     DECL_EXIT=$?
     if [ "$DECL_EXIT" -eq 2 ]; then
         ACTIONABLE=1; REASONS="${REASONS}declarations-blind "
