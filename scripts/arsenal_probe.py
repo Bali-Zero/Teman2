@@ -453,7 +453,15 @@ def load_tp1_settings_key(
         return None, f"{p} not found"
     try:
         parsed = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
+    except (OSError, ValueError) as e:
+        # ValueError covers json.JSONDecodeError AND UnicodeDecodeError (a stray
+        # non-UTF-8 byte in the settings file raises the latter from read_text
+        # itself, before json.loads ever runs) — Kimi round-2 finding #1: an
+        # undecodable file must degrade this one credential lookup to
+        # CRED_UNAVAILABLE (context-limited, non-strict-fail), never propagate
+        # as a raw exception that would otherwise only be caught by the
+        # generic Exception handler in probe_seat() and mis-tagged UNKNOWN_ERR
+        # (strict-fail) for all seven TP1 seats at once.
         return None, f"{p} unreadable: {type(e).__name__}"
     if not isinstance(parsed, dict):
         return None, f"env.BAILIAN_TOKEN_PLAN_API_KEY not set in {p}"
@@ -853,9 +861,15 @@ def _tp1_has_live_answer(status_code: Optional[int], full_body: str) -> tuple[bo
     deepseek-v4-flash-0731, glm-5.2) can return HTTP 200 with an empty
     `message.content` while `message.reasoning_content` is populated — that is
     the model spending its whole token budget on reasoning, not a dead seat
-    (see TP1_PROBE_MAX_TOKENS comment above). That shape is still LIVE, with a
-    note explaining why content was empty; an HTTP 200 with BOTH fields empty
-    has no positive proof and is not live.
+    (see TP1_PROBE_MAX_TOKENS comment above). That shape is LIVE only when the
+    choice's `finish_reason` is NOT "length" — Kimi round-2 finding #2: a
+    length-truncated reasoning-only reply (a throttled/degraded model that
+    burns the WHOLE 256-token budget on reasoning and never reaches an
+    answer) produced nothing usable for a real caller and must not be
+    reported LIVE forever just because reasoning_content is non-empty. A
+    content-bearing answer is unaffected by finish_reason — it already proved
+    the model answered. An HTTP 200 with both content and reasoning_content
+    empty has no positive proof and is not live.
     """
     if status_code != 200:
         return False, None
@@ -875,10 +889,31 @@ def _tp1_has_live_answer(status_code: Optional[int], full_body: str) -> tuple[bo
             return True, None
         reasoning_content = message.get("reasoning_content")
         if isinstance(reasoning_content, str) and reasoning_content.strip():
+            if first.get("finish_reason") == "length":
+                return False, "reasoning-only response truncated by finish_reason=length (thinking budget exhausted, no answer reached)"
             return True, "reasoning-only response, no final content (thinking budget exhausted before answer)"
         return False, None
     except (json.JSONDecodeError, AttributeError, TypeError):
         return False, None
+
+
+def _tp1_model_mismatch_note(requested_model: str, full_body: str) -> Optional[str]:
+    """Kimi round-2 finding #4: a gateway that silently reroutes the requested
+    slug to a fallback still returns HTTP 200 + non-empty content, so
+    _tp1_has_live_answer alone reports LIVE for the SEAT WE THINK WE ASKED FOR.
+    This adds a non-fatal note when the response's own echoed `model` field
+    disagrees with what we requested — informational only, never changes the
+    LIVE/dead verdict (a gateway is free to omit or normalize the field)."""
+    try:
+        parsed = json.loads(full_body)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    echoed = parsed.get("model")
+    if isinstance(echoed, str) and echoed and echoed != requested_model:
+        return f"requested {requested_model} but response echoed model={echoed}"
+    return None
 
 
 def probe_tp1_model(model: str, timeout: float) -> tuple[str, str, int]:
@@ -921,6 +956,9 @@ def probe_tp1_model(model: str, timeout: float) -> tuple[str, str, int]:
     evidence = f"{model}: HTTP {status_code} {ev}"
     if note:
         evidence = f"{evidence} ({note})"
+    mismatch_note = _tp1_model_mismatch_note(model, full_body)
+    if mismatch_note:
+        evidence = f"{evidence} ({mismatch_note})"
     return status, evidence, latency_ms
 
 
