@@ -7,7 +7,13 @@
  * §8 signed, seq-13 active with its two doctrine gaps cured, a
  * SHADOW→ENFORCE decision or accuracy gate passed, E30 prices defined).
  * Restored 2026-08-23 (Legge 5).
+ *
+ * This unit test pins the exported `metadata` object only — it cannot prove
+ * what actually ships in the response (a page-level override, a route move,
+ * or a Next merge-semantics change would all be invisible here). The served
+ * <head> is asserted separately in e2e/visa-oracle-v2.spec.ts.
  */
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import VisaOracleLayout, { metadata } from "./layout";
@@ -25,9 +31,7 @@ describe("visa-oracle layout metadata: SHADOW engine stays out of search indexes
   });
 
   it("innocence: children still render through the layout", () => {
-    const result = VisaOracleLayout({
-      children: "oracle child" as unknown as React.ReactNode,
-    });
-    expect(result.props.children[1]).toBe("oracle child");
+    render(<VisaOracleLayout>oracle child</VisaOracleLayout>);
+    expect(screen.getByText("oracle child")).toBeInTheDocument();
   });
 });
