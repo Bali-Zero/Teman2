@@ -368,11 +368,17 @@ const ONSHORE_APPLICATION_CHANNELS = new Set([
  * class), so a request built outside this interview can still POST the
  * exact contradictory pair straight to `/api/visa-oracle/evaluate` and
  * have it accepted. This guard improves the honest interview user's
- * experience; it closes nothing at the API. The rulepack-side defense for
- * `hf.d12-onshore-conversion-excluded` reading only one of the two facts
- * is a separate, not-yet-landed fix out of this PR's scope (apps/mouth
- * only) — do not read this guard's existence as evidence that gap is
- * closed.
+ * experience; it closes nothing at the API.
+ *
+ * The rulepack-side gap — `hf.d12-onshore-conversion-excluded` reads only
+ * `process.wants_onshore_conversion` — is real, but the correct fix for
+ * it is NOT yet determined (as of 2026-08-23; under adjudication whether
+ * D12's affected eligibility rule is missing a conjunct its siblings
+ * correctly carry, or its siblings wrongly carry one D12 was never
+ * supposed to gate on). Do not read this guard's existence as evidence
+ * that gap is closed, and do not assume any specific rulepack edit is
+ * already agreed — the mechanism is undetermined, not merely unlanded.
+ * Any such fix is out of this PR's scope (apps/mouth only) regardless.
  */
 export function channelConflictsWithOnshoreIntent(
   wantsOnshoreConversion: string | undefined,
