@@ -4,6 +4,12 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from backend.services.portal.invite_service import InviteService
+from backend.services.portal.portal_profile_service import PLACEHOLDER_PIN_HASH
+
+# A pin_hash that is NOT the placeholder: a client who really completed
+# registration once. The distinction between this and PLACEHOLDER_PIN_HASH is
+# the whole point of the guard below.
+REAL_PIN_HASH = "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123"
 
 
 class AcquireContext:
@@ -317,7 +323,7 @@ async def test_complete_registration_rejects_active_existing_account() -> None:
                 "used_at": None,
                 "client_name": "Client Name",
             },
-            {"id": 55, "active": True},
+            {"id": 55, "active": True, "pin_hash": REAL_PIN_HASH},
         ]
     )
     service = InviteService(FakePool(conn))
@@ -346,7 +352,7 @@ async def test_complete_registration_reactivates_inactive_existing_account() -> 
                 "used_at": None,
                 "client_name": "Client Name",
             },
-            {"id": 55, "active": False},
+            {"id": 55, "active": False, "pin_hash": REAL_PIN_HASH},
         ]
     )
     service = InviteService(FakePool(conn))
@@ -370,3 +376,99 @@ async def test_complete_registration_reactivates_inactive_existing_account() -> 
     update_query, update_args = conn.execute_calls[0]
     assert "SET pin_hash = $1, active = true, portal_access = true" in update_query
     assert update_args[1] == 55
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_allows_placeholder_active_account() -> None:
+    """A2 REGRESSION — the ordinary first-time registration must succeed.
+
+    `create_client` calls `ensure_portal_profile` (crm_clients.py:736), which
+    provisions EVERY CRM client into `team_members` as `active=true` carrying
+    PLACEHOLDER_PIN_HASH. An earlier revision of this guard refused on the
+    `active` flag alone, which would have rejected essentially every real
+    client's first invite completion while still letting a takeover through on
+    any inactive row — a self-DoS of the flow the guard exists to protect.
+
+    Found by an adversarial review of the patch, not by the patch's own tests:
+    the two tests above BOTH pass under the broken guard, because neither
+    fixture carried a placeholder PIN. That is the gap this test closes."""
+    now = datetime.now(timezone.utc)
+    conn = FakeConnectionWithTransaction(
+        fetchrow_results=[
+            {
+                "id": 9,
+                "client_id": 7,
+                "email": "client@example.com",
+                "expires_at": now + timedelta(hours=1),
+                "used_at": None,
+                "client_name": "Client Name",
+            },
+            # active=True AND never registered — the provisioned-but-unused row.
+            {"id": 55, "active": True, "pin_hash": PLACEHOLDER_PIN_HASH},
+        ]
+    )
+    service = InviteService(FakePool(conn))
+
+    with patch(
+        "backend.services.common.cache._invalidate_cache",
+        new=AsyncMock(return_value=1),
+    ):
+        result = await service.complete_registration(token="tok", pin="1234")
+
+    assert result["success"] is True
+    assert result["user_id"] == 55
+    # The real PIN is written over the placeholder — this IS onboarding.
+    update_query, update_args = conn.execute_calls[0]
+    assert "SET pin_hash = $1, active = true, portal_access = true" in update_query
+    assert update_args[1] == 55
+
+
+@pytest.mark.asyncio
+async def test_existing_account_lookup_is_scoped_to_the_client_role() -> None:
+    """The lookup must not gate on an arbitrary row: `team_members` mixes staff
+    and client-portal logins in one table, so without `role = 'client'` a stray
+    staff row sharing `linked_client_id` could decide whether a client may
+    register."""
+    now = datetime.now(timezone.utc)
+    conn = FakeConnectionWithTransaction(
+        fetchrow_results=[
+            {
+                "id": 9,
+                "client_id": 7,
+                "email": "client@example.com",
+                "expires_at": now + timedelta(hours=1),
+                "used_at": None,
+                "client_name": "Client Name",
+            },
+            None,
+            {"id": 77},
+        ]
+    )
+    service = InviteService(FakePool(conn))
+
+    with patch(
+        "backend.services.common.cache._invalidate_cache",
+        new=AsyncMock(return_value=1),
+    ):
+        await service.complete_registration(token="tok", pin="1234")
+
+    lookup_query = conn.fetchrow_calls[1][0]
+    assert "FROM team_members" in lookup_query
+    assert "role = 'client'" in lookup_query
+    assert "pin_hash" in lookup_query
+
+
+@pytest.mark.asyncio
+async def test_validate_token_excludes_archived_clients() -> None:
+    """A4 completeness — `validate_token` is the PUBLIC read half of the same
+    invariant the minting paths enforce. Leaving it unfiltered let an archived
+    client's outstanding token still resolve, disclosing full_name/email/
+    client_id to whoever held the link before failing confusingly at complete."""
+    conn = FakeConnection(fetchrow_results=[None])
+    service = InviteService(FakePool(conn))
+
+    assert await service.validate_token("tok-archived") is None
+
+    query, args = conn.fetchrow_calls[0]
+    assert "JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL" in query
+    assert args == ("tok-archived",)

@@ -18,7 +18,14 @@ logger = get_logger(__name__)
 
 # Placeholder bcrypt hash for "$NOLOGIN$" — login attempts will never match.
 # The real pin_hash is set when the client completes registration via invite.
-_PLACEHOLDER_PIN_HASH = "$2b$12$000000000000000000000uNOLOGIN.placeholder.hash.nevermatches"
+#
+# PUBLIC ON PURPOSE: this value is a CONTRACT between the two halves of the
+# onboarding flow, not a private detail. `ensure_portal_profile` writes it with
+# `active=true`, and `InviteService.complete_registration` reads it back as the
+# ONLY reliable "this account has never been registered" signal — the `active`
+# flag cannot carry that meaning, because every CRM-created client is already
+# active from the moment the profile is provisioned.
+PLACEHOLDER_PIN_HASH = "$2b$12$000000000000000000000uNOLOGIN.placeholder.hash.nevermatches"
 
 
 class PortalProfileService:
@@ -71,7 +78,7 @@ class PortalProfileService:
                     """,
                     full_name,
                     email,
-                    _PLACEHOLDER_PIN_HASH,
+                    PLACEHOLDER_PIN_HASH,
                     client_id,
                 )
 
