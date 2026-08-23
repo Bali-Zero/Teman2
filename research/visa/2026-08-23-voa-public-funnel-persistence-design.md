@@ -166,16 +166,24 @@ This is the spec the rebuild follows for the result-persistence layer.
 2. **No personal data in the URL.** Result page stays `/visa/voa/<opaque-id>`; nationality, dates,
    verdict, and price never appear in path or query — this was already true of the pre-withdrawal
    design and must not regress with the stateless-token idea reintroducing it.
-3. **Automatic retention: 90 days**, enforced by a purge job, not a promise in a document. Bali
-   Zero already has a working precedent for exactly this shape of decision — the Visa Oracle
-   engine's own retention system (`db/migrations_v2/264_visa_decision_retention_policy.sql`,
-   `266_visa_retention_evidence.sql`, `268_visa_retention_binding_security_definer.sql`): a
-   `visa_decision_retention_policies` table that is **fail-closed until Zero records an explicit
-   duration, anchor, effective period, approver, and approval reference** — new inserts are
-   rejected until a policy row exists, purge is exposed as a bounded database primitive with no
-   invented cadence, and legal-hold transitions are tracked per-decision. The GARUDA rebuild should
-   reuse this pattern rather than hand-roll a cron script that silently no-ops if misconfigured
-   (cicatrix family #2 — exists ≠ armed).
+3. **Automatic retention, enforced by a fail-closed policy primitive — not a duration this document
+   sets, and not a promise in a document.** Bali Zero already has a working precedent for exactly
+   this shape of decision — the Visa Oracle engine's own retention system
+   (`db/migrations_v2/264_visa_decision_retention_policy.sql`, `266_visa_retention_evidence.sql`,
+   `268_visa_retention_binding_security_definer.sql`): a `visa_decision_retention_policies` table
+   whose own COMMENT reads *"Zero-approved retention authority; activation requires a separated
+   policy-writer owner/role"* and that is **fail-closed until Zero records an explicit duration,
+   anchor, effective period, approver, and approval reference** — new inserts are rejected until a
+   policy row exists, purge is exposed as a bounded database primitive with no invented cadence,
+   and legal-hold transitions are tracked per-decision. This is the strongest property in the
+   whole design, and it should lead, not follow: the rebuilt funnel is *structurally* unable to
+   persist a single submission until Zero has signed off on retention — that beats any promise a
+   document can make. The GARUDA rebuild should bind to this exact primitive (a new
+   `approved_by`/`approval_reference` policy row scoped to `garuda_voa_checks`) rather than
+   hand-roll a cron script that silently no-ops if misconfigured (cicatrix family #2 — exists ≠
+   armed). **The retention duration itself is not this session's to set.** 90 days is offered below
+   as this session's *proposed* value for that record — a number for Zero to approve or replace,
+   never a ruled fact.
 4. **Explicit notice and acknowledgement at submit**: what is stored, why, for how long, how to
    delete it. Not present in the withdrawn funnel — no consent field existed on the table at all.
 5. **Self-service deletion from the result page** — no email round-trip. This is what the
@@ -224,16 +232,21 @@ individual row) must never appear in a report, log, or memory entry per the repo
 
 ### Proposed action on legacy rows (proposal only — not executed here)
 
-Given the ruled design's 90-day retention (§4.3) and the schema-verified `created_at` column
-(§2), the following disposition is proposed for Zero's decision once the count/range above is
-known — this document does not execute it:
+Given the fail-closed retention primitive (§4.3) and the schema-verified `created_at` column (§2),
+the following disposition is proposed for Zero's decision once the count/range above is known —
+this document does not execute it, and it deliberately does not key off any fixed number of days:
+it keys off the policy row Zero has not yet created.
 
-- **If the measured `max(created_at)` is already >90 days old**: the entire legacy set falls
-  outside any retention window this design would apply going forward. Proposed: fold it into the
-  same retention policy as new rows (§4.3, the `visa_decision_retention_policies` pattern) rather
-  than special-casing it — collapse to the coarse aggregate (§4.6), then purge the rows.
-- **If some legacy rows are <90 days old**: those age out under the same policy on their own
-  schedule; no special action needed for them beyond enrolling the table under the policy.
+- **Once a `garuda_voa_checks` policy row exists** (§4.3 — `approved_by` + `approval_reference` +
+  a Zero-chosen `retention_interval`, 90 days being this session's proposed starting value, not a
+  ruled one): rows older than the *recorded* `retention_interval`, measured from the recorded
+  anchor, fall out under it. Nothing here hardens 90 — or any other number — into the disposition
+  logic; the policy row is the single source of truth once it exists.
+- **Until that policy row exists**: the legacy set sits exactly where §4.3's fail-closed design
+  says data must sit absent an approved policy — untouched, not purged, not aggregated. This
+  section is not proposing an exception to the primitive for legacy rows; it is proposing that
+  Zero's policy decision, once made, apply to them too rather than only to rows written after the
+  rebuild ships (the "half a policy" gap both adversarial seats flagged, §3).
 - **Either way**: no notice was ever given to the visitors who generated these rows (the withdrawn
   funnel had no consent field, §2), so there is no consent to honor or withdraw — this is a
   straightforward "this data should not have accumulated without a retention limit, and the fix is
@@ -260,6 +273,19 @@ coordinated.
 Both seats also independently surfaced the legacy-row gap (§3, §5) that neither the original design
 nor its replacement addresses by construction — that finding survives into this document as an
 open, unmeasured item rather than a resolved one.
+
+**A second, smaller reversal, on this same document.** The first draft of §4.3 stated "automatic
+retention: 90 days" as part of the ruled design — a number this document's own directing brief
+had stated as settled, reproduced here without independently checking it. It was wrong for the
+same class of reason as the token design: the `visa_decision_retention_policies` primitive that
+same draft cited in the very next sentence is built, explicitly, to refuse exactly that — a
+duration set by anyone other than Zero, recorded with an `approved_by` and `approval_reference`.
+The two claims sat in the same paragraph and contradicted each other; grounding the retention
+mechanism in a real repo precedent (found while writing §4.3, not assumed) is what surfaced the
+contradiction. Corrected in this revision: §4.3 now leads with the fail-closed property instead of
+the number, and §5's disposition keys off the recorded policy rather than off 90. Two reversals in
+one document, both caught by checking a claim against something verifiable rather than accepting
+it because it had already been approved upstream.
 
 ## 7. Open items for whoever picks up the rebuild
 
