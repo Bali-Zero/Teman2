@@ -468,8 +468,13 @@ def probe_local(
 
     # ONE TRANSCRIPT, MANY PATHS (measured live 2026-08-23). On Mini AND on M5,
     # ~/.claude/projects/-Users-<u>-nuzantara is a SYMLINK to
-    # -Users-<u>-Desktop-nuzantara (because ~/Desktop/nuzantara is itself a
-    # symlink to ~/nuzantara). os.listdir therefore walks the same real files
+    # -Users-<u>-Desktop-nuzantara. That second name is the encoding of the
+    # legacy pre-migration cwd, still a compat symlink into the repo — do NOT
+    # rebuild it as a filesystem path: on Pro that location is TCC-denied over
+    # ssh and a walk through it reads EMPTY with no error (W84). Only the
+    # encoded NAME is used here, never the path it encodes, so this module
+    # never touches the protected folder.
+    # os.listdir therefore walks the same real files
     # twice and the same session is reported twice — 29 rows for 17 sessions,
     # and every finding double-counted. Identity is the INODE, never the path:
     # dedup on (st_dev, st_ino). Measured proof: both paths to
