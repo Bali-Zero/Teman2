@@ -73,8 +73,8 @@ def _prettier_json(
             return compact
         child_indent = indent + 2
         children = [
-            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent)}"
-            for item in value
+            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent, starting_column=child_indent, trailing_comma=index < len(value) - 1)}"
+            for index, item in enumerate(value)
         ]
         return "[\n" + ",\n".join(children) + f"\n{' ' * indent}]"
 

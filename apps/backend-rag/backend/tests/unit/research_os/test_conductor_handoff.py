@@ -57,7 +57,7 @@ def test_conductor_handoff_is_immutable(load_json: Any) -> None:
     payload = load_json(FIXTURES_ROOT / CONTRACT_KIND / "valid_minimal.json")
     handoff = ConductorHandoff.model_validate(payload)
     with pytest.raises(ValidationError):
-        handoff.state = "rejected"  # type: ignore[misc]
+        handoff.state = "rejected"  # type: ignore[assignment]
 
 
 def test_handoff_carries_no_lineage_field_per_section_15(load_json: Any) -> None:

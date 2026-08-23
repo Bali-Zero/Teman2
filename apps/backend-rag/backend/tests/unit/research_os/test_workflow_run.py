@@ -59,7 +59,7 @@ def test_workflow_run_is_immutable(load_json: Any) -> None:
     payload = load_json(FIXTURES_ROOT / CONTRACT_KIND / "valid_minimal.json")
     run = WorkflowRun.model_validate(payload)
     with pytest.raises(ValidationError):
-        run.state = "failed"  # type: ignore[misc]
+        run.state = "failed"  # type: ignore[assignment]
 
 
 def _revalidated(payload: dict[str, Any], **updates: Any) -> dict[str, Any]:
