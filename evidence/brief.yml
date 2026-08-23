@@ -1,80 +1,35 @@
-task_id: s12-c4-quickcheck
+task_id: garuda-b1-max-stay-boundary-0823
 gear: 2
-l_level: L1
+l_level: L2
 gate_class: opus
-objective: |
-  Kill mechanical red CI rounds before they reach CI. Measured the same day:
-  a red PR round whose cause is purely mechanical — a prepush-guards miss, a
-  Prettier diff, an adversarial-review gate missing its literal heading —
-  costs a lane roughly 30 minutes of wall-clock, and the diagnosis is
-  available locally in about a second.
-
-  `scripts/quickcheck.sh` runs four checks, each scoped to what actually
-  changed vs origin/main, and is wired ADVISORY-ONLY into `.husky/pre-push`.
-
-  The single hard constraint is that it must NEVER become a second blocking
-  gate. That is not a promise in a comment here — it is proven twice below,
-  by two independent mechanisms, because a pre-push hook that can block is a
-  hook that will one day block someone at the worst possible moment.
+objective: >-
+  `internal_preview_cli.py::_validate_entry_window` rejects a B1 extension's
+  printed expiry only when `(printed_expiry - entry_date).days` is STRICTLY
+  GREATER THAN the legal max-stay day count (60). Because B1 stay is counted
+  with the arrival day AS DAY 1, a difference of exactly 60 is already the
+  61st calendar day of stay — one day past the legal maximum — and the strict
+  `>` silently ACCEPTed it. Make the comparison inclusive and single-source
+  the day-counting convention in a documented helper so the next reader does
+  not have to re-derive it from a bare operator.
+why_now: >-
+  Independently reproduced and confirmed by three instruments this session
+  (cross-family red-team, cross-family refuter, Google-grounded research
+  pass): `build_internal_preview(EXTENSION, entry=2026-07-01,
+  voa_expiry=2026-08-30, today=2026-08-23)` returned `decision=ACCEPT` with a
+  published filing deadline, for a stay that is one day beyond what
+  imigrasi.go.id's own B1 page allows ("maksimal 30 hari, dihitung sejak
+  tanggal kedatangan"). The only existing boundary test used a 61-day
+  difference (clearly over) and never exercised the ==60 edge, so the gap was
+  live and undocumented.
 constraints:
-  - 'NEVER blocks a push. Guaranteed at two independent layers: the script
-    itself ends `main "$@"; exit 0` (its exit status is unconditional and
-    does not depend on what any check returned), and the call site in
-    `.husky/pre-push` invokes it as `bash ... || true`. Either layer alone
-    would suffice; both are present deliberately.'
-  - "Reuses the engines the PR lane already uses rather than inventing
-    parallel ones: `scripts/ci/impact_map.py` for test selection (never the
-    full 17k-test suite), `prettier --check` on changed files with the same
-    extension scope as package.json's own format:check, and actionlint with
-    the same auto-discovery scope as .github/workflows/actionlint.yml. A
-    local check that disagrees with CI is worse than no local check."
-  - "The R1 heading check matches the LITERAL line `## Adversarial review` —
-    exact, anchored, case-sensitive. NOT a substring match on `adversarial`:
-    superscar family #3 catalogues ~20 scars in this repo caused by exactly
-    that shortcut, and this check is guarded by guilt tests that reject the
-    bare substring and the wrong hash count."
-  - "Every check is skippable and every one degrades to a skip-with-reason,
-    never to a false pass or a hang. `QUICKCHECK_SKIP=1` disables the hook
-    entirely."
+  - "OUT of scope: safe_clock.py's estimated stay-end (entry + 30) — a documented, deliberately accepted +1-day optimism with a printed_expiry override and an existing pinning test from a 2026-07-25 grader round. Not touched."
+  - "OUT of scope: the 6-month passport rule (spec says 'from entry', already correct)."
+  - "OUT of scope: anything under apps/mouth/, apps/admin-dashboard-local/, or any non-garuda_flow path."
+  - "The fix must not touch VISA_META's B1 duration_days/extensions data — only the comparison semantics against the already-derived max_total_stay_days."
+  - "No hardcoded day-count constant that duplicates VISA_META's derived value (that would drift silently if VISA_META B1 data ever changes) — express the convention as a named helper instead."
 acceptance:
-  - "Exit code is 0 on a clean tree AND when checks find problems — measured,
-    not asserted."
-  - "A quickcheck that exits non-zero still lets the push proceed, including
-    under `sh -e` (the W101 decapitation shape)."
-  - "Runtime on the fast path is low enough to sit in front of every push."
-  - "The R1 guard rejects the substring and the wrong heading level."
-consumer_map:
-  - "`.husky/pre-push` — the call site. Advisory, existence-guarded,
-    kill-switched. This PR DOES wire it (see dissent: that deviates from the
-    gate's own instruction and was accepted on measured merit, not waved
-    through)."
-  - "`scripts/ci/impact_map.py` — reused, not reimplemented."
-  - "`.github/workflows/actionlint.yml` — scope mirrored, not duplicated."
-risks:
-  - "An advisory check that is always green teaches people to ignore it. The
-    mitigation here is scope, not severity: it only speaks when the diff
-    actually touches the surface each check covers, and says
-    `skipped — <reason>` otherwise, so a silent run means 'nothing to say',
-    not 'nothing checked'."
-  - "The R1 heading matcher is STRICTLY NARROWER than CI's: quickcheck wants
-    `^## Adversarial review` exactly and case-sensitively, while
-    `scripts/check_adversarial_review.py` accepts `^#{2,}\\s+Adversarial
-    review\\b` case-insensitively. So quickcheck can cry MISSING on a body CI
-    would pass. Kept deliberately — the direction is safe (a false alarm sends
-    you to the real gate; it can never produce a false all-clear) — but it is
-    a real divergence, not a duplicate, and it is named rather than left to be
-    rediscovered in anger."
-  - "`actionlint` is not installed on this host, so that branch of the script
-    was never exercised end-to-end here. Correct by inspection only. It was
-    deliberately NOT auto-downloaded into a hook: CI's pinned binary is
-    linux_amd64 and shipping an unpinned download inside a pre-push hook is a
-    supply-chain shortcut this repo does not take."
-grader: |
-  Independent verification by the S12 conductor (Opus 5), which did not write
-  any of the 497 lines: the diff scope was read, the deviation from the
-  no-install instruction was caught by reading `.husky/pre-push` rather than
-  taken from the implementer's report, both advisory guarantees were proven
-  by execution, the runtime was timed, the deterministic floor was recomputed
-  from the diff, and the test suite was re-run.
-budget: 1 implementer lane + conductor gate; no council (a local advisory script)
-pii: none
+  - "A printed expiry at entry_date + 60 days (arrival-day-inclusive day 61) is REJECTED with a 'maximum stay' ValueError."
+  - "A printed expiry at entry_date + 59 days (day 60, the legal maximum itself) is still ACCEPTED."
+  - "The pre-existing 61-day-difference boundary test (test_extension_rejects_printed_expiry_beyond_b1_max_total_stay) still passes unchanged."
+  - "The day-counting convention (arrival day = day 1, hence inclusive >= comparison) is documented once, in constants.py, next to the existing MIN_PASSPORT_VALIDITY_DAYS/PUBLISHED_FILING_DEADLINE_DAYS sourcing comments, not re-derived inline."
+  - "Full backend/tests/services/garuda_flow/ suite passes after the change (measured before and after)."
