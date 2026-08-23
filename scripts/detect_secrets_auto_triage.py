@@ -368,6 +368,34 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the public signed seq-11 RulePack payload, triple-derived at run "
         "time; exact value pinned, never a credential",
     ),
+    # fold_pack_seq13_rules.py: _EXPECTED_SEQ12_PAYLOAD_SHA256 is the chain
+    # anchor — same class/purpose as the seq10/11/12 rules immediately
+    # above (content-derived sha256 of the PUBLIC signed seq-12 RulePack
+    # payload, triple-derived at run time: declared == anchor == recomputed
+    # from the seq-12 source bytes). Content-keyed and pinned to the EXACT
+    # anchor value, not a hex shape, for the same reason as the seq12 rule:
+    # this is production code with an open surface for future edits.
+    #
+    # 2026-08-23: this reason string ends in the same "...chain anchor —
+    # content-derived sha256 ..." shape as the seq10/11/12 rules above, on
+    # purpose (four consecutive-sequence anchors reading in order). A test
+    # that looks a rule up via test_detect_secrets_auto_triage.py's
+    # _find_content_keyed_rule("chain anchor") would now match FOUR entries
+    # and fail loudly (it asserts exactly one) — that is correct behavior,
+    # not a bug in the lookup. Any future test targeting THIS rule must key
+    # on "seq-12 chain anchor", the substring unique to it.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules\.py$"
+        ),
+        re.compile(
+            r'^\s*"ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d"\s*$'
+        ),
+        "fold_pack_seq13_rules.py: seq-12 chain anchor — content-derived "
+        "sha256 of the public signed seq-12 RulePack payload, "
+        "triple-derived at run time; exact value pinned, never a "
+        "credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
