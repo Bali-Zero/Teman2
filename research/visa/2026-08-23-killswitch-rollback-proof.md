@@ -2,19 +2,24 @@
 date: 2026-08-23
 domain: visa
 client_case: none — internal engineering/governance artifact for the Visa Oracle ENFORCE-GATE
+adversarial_review: codex
 sources:
-  - apps/backend-rag/backend/services/visa_engine/evaluate_path.py (HEAD 868b62322)
+  - apps/backend-rag/backend/services/visa_engine/evaluate_path.py
   - apps/backend-rag/backend/services/visa_engine/enums.py
-  - apps/backend-rag/backend/services/visa_engine/bundle.py (validate_activation)
+  - apps/backend-rag/backend/services/visa_engine/bundle.py (validate_activation, verify_rule_pack)
   - apps/backend-rag/backend/scripts/visa_engine/activate_pack.py
   - apps/backend-rag/backend/scripts/visa_engine/replace_activation_set.py
+  - apps/backend-rag/backend/scripts/visa_engine/sign_pack.py
   - apps/backend-rag/backend/db/migrations_v2/250_visa_engine_core.sql
   - apps/backend-rag/backend/db/migrations_v2/251_visa_activation_writer.sql
+  - apps/backend-rag/backend/db/migrations_v2/253_visa_activation_writer_hardening.sql
   - apps/backend-rag/backend/db/migrations_v2/267_visa_replace_activation_set.sql
   - apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_endpoint.py
   - apps/backend-rag/backend/tests/services/visa_engine/test_activation_writer.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_repository.py (_builders, _trust_store_for)
   - apps/backend-rag/backend/tests/scripts/visa_engine/test_activate_pack.py
   - apps/backend-rag/backend/tests/scripts/visa_engine/test_replace_activation_set.py
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/runtime-mode.ts
 ---
 
 # Visa Oracle kill-switch — rollback proof (2026-08-23)
@@ -23,9 +28,17 @@ sources:
 Oracle kill switches named in the ENFORCE-GATE (`.agents/skills/visaoracle/SKILL.md`), without
 touching production in any way. Worktree: `.worktrees/backend-rag-visaoracle-killswitch-proof-0823`
 (created via `scripts/agent_start.py --lane backend-rag --task-id visaoracle-killswitch-proof-0823`),
-HEAD `868b62322df0be7fddd9cf48ebdb1c01f50b7f8d` (2026-08-23 05:01:35 UTC). No commit, no push, no
-PR opened per instruction — this file and its two companion scripts (below) are uncommitted in
-the worktree.
+branched from `origin/main` at `868b62322df0be7fddd9cf48ebdb1c01f50b7f8d` (2026-08-23 05:01:35 UTC).
+
+**Provenance (corrected 2026-08-23, second pass)**: the first version of this file, written before
+it was committed, said "No commit, no push" — true at the time of writing, false the instant it
+landed as part of a commit, and it was never updated after that happened. This is now
+**PR #4616** (`agent/air-m5/backend-rag/visaoracle-killswitch-proof-0823` → `main`), containing this
+file and its two companion scripts. Do not read a specific commit SHA off this paragraph — a value
+hardcoded here would go stale on the very next amendment to this same file, which is exactly the
+class of self-referential-evidence mistake the first version made. Run `git log --oneline -1 --
+research/visa/2026-08-23-killswitch-rollback-proof.md` (or `gh pr view 4616 --json headRefOid`) for
+the current head SHA of this branch.
 
 **Safety**: every command below ran either with zero DB access (unit tests, `--dry-run` CLI
 invocations) or against a disposable local/ephemeral Postgres database that this session created
@@ -41,19 +54,26 @@ the task description.** Both mechanisms were driven end-to-end today, through th
 code path (not a mock), against a local Postgres 17.10 instance (M5's `brew` Postgres — see
 **Known limitation** below for the version delta against CI's `postgres:15`).
 
-1. **The MODE switch** (`VISA_ENGINE_EVALUATE_MODE`) is a **fail-safe, read-fresh-per-call**
-   three-state gate (`OFF|SHADOW|ENFORCE`) that determines whether an evaluate response is
-   authoritative. **PROVEN LOCALLY, both directions, same facts, same pack.**
+1. **The MODE switch** (`VISA_ENGINE_EVALUATE_MODE`, the **backend** resolver) is a **fail-safe,
+   read-fresh-per-call** three-state gate (`OFF|SHADOW|ENFORCE`) that determines whether an
+   evaluate response is authoritative. **PROVEN LOCALLY, both directions, same facts, same pack.**
+   The frontend has a separate, differently-behaved resolver — see §1.1's scope note — not covered
+   by this claim and not proven safe by this proof.
 2. **The PACK rollback** (`activate_pack.py` / `replace_activation_set.py` / the
    `visa_replace_activation_set`/`visa_activate_rule_pack` SQL functions) is a
    **strictly-forward, hash-chained, append-only ledger with a triple-redundant anti-rollback
    gate** (Python pre-check, SQL trigger, and — for the multi-segment path — the SQL function's own
-   explicit chain-walk). **A pack can never be reactivated at a lower-or-equal sequence number, by
-   design, at every layer.** The system's actual "rollback" mechanism is: re-sign the desired
-   content as a NEW pack at the next sequence number, chained from the true current head, and
-   activate that. **PROVEN LOCALLY, both the guilt case (naive reactivation rejected) and the
-   innocence case (legitimate content-restore succeeds, exactly one open activation, no temporal
-   gap), at two levels: the DB/repository layer AND the actual `activate_pack.py` CLI subprocess.**
+   explicit chain-walk). **A pack can never be reactivated at a lower-or-equal sequence number by
+   the intended executor role**, with the trigger enabled at its normal operating condition (see
+   §2.1's precisely-scoped consequence — the first version of this claim was an unscoped absolute
+   that did not hold). The system's actual "rollback" mechanism is: re-sign the desired content as
+   a NEW pack at the next sequence number, chained from the true current head, and activate that.
+   **PROVEN LOCALLY, both the guilt case (naive reactivation rejected) and the innocence case
+   (legitimate content-restore succeeds, exactly one open activation, no temporal gap), at three
+   levels: the DB/repository layer, the actual `activate_pack.py` CLI subprocess, AND — the part
+   added after adversarial review — the restored pack driven through the real, unmocked evaluate
+   path (`verify_rule_pack` → `build_compiled_pack` → `evaluate_with_trace`), reproducing the
+   original pack's actual DECISION on fixed facts, not merely a matching ledger row.**
 
 ---
 
@@ -89,6 +109,20 @@ ValueError: return EngineMode.OFF` is the only fallback path in the function.
   old value.
 - **Response-mode mapping** (`resolve_response_mode()`, `evaluate_path.py:233-243`): `ENFORCE` →
   `"ENGINE"` (authoritative); `OFF` and `SHADOW` both → `"CURATED"` (never authoritative).
+- **Scope of this claim — the BACKEND resolver only.** Everything above describes
+  `evaluate_path.resolve_evaluate_mode()`. The frontend has a **separate, unrelated** resolver,
+  `resolveVisaOracleMode()` (`apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/runtime-mode.ts:21-32`),
+  and it does **not** fail closed the same way: on unset/invalid `NEXT_PUBLIC_VISA_ORACLE_MODE`
+  outside a `NODE_ENV=test` build, it returns `"ENGINE"`, not a safe default (`runtime-mode.ts:32`:
+  `return nodeEnvironment === "test" ? "PREVIEW" : "ENGINE";`). This was flagged by an adversarial
+  review (§ below) and is real — read here, not inferred. It is not, on its own, an authority
+  bypass: `"ENGINE"` only tells the mouth app which UI/adapter code path to render, and that
+  adapter still requires a genuine `"mode": "ENGINE"` **envelope from the backend** (the field this
+  section proves the backend fails closed on) before it will show anything as authoritative — the
+  frontend resolver choosing `"ENGINE"` cannot manufacture an authoritative decision the backend
+  never sent. But it is a real asymmetry worth naming plainly: the two kill-switch halves fail in
+  OPPOSITE directions on a misconfigured/unset env var, and only one of them is proven safe by the
+  reasoning in this section.
 - **OFF short-circuits before any I/O**: `run_evaluation()` checks `engine_mode is EngineMode.OFF`
   and returns `build_temp_unavailable_body(..., code="EVALUATE_SURFACE_DISABLED", ...)`
   **immediately**, before the retention-policy check, before pack binding, before any DB access
@@ -215,28 +249,52 @@ re-triggered all three:
    caller already holds (which, for `activate_pack.py`, are **operator-supplied CLI args**, not
    DB-queried — a courtesy check, not the source of truth).
 
-2. **SQL trigger**, `reject_visa_activation_insert()` / `visa_activation_insert_guard`
-   (migration 250, `250_visa_engine_core.sql:380-440`): fires on every INSERT into
-   `visa_ruleset_activations`, **independently re-derives the true current head** via `SELECT
-p.sequence, p.payload_sha256 ... ORDER BY p.sequence DESC LIMIT 1` over the live table — it does
-   **not** trust anything the Python layer or the CLI operator claimed. Rejects `pack.sequence <=
-head.seq` (message: `"visa activation rollback rejected: pack sequence % <= prior activated
-sequence %"`) and a broken hash chain (`"visa activation hash chain broken"`). **This is the real
-   enforcement layer** — a lying/stale `--current-sequence` CLI argument cannot get a rollback past
-   this trigger.
+2. **SQL trigger**, `reject_visa_activation_insert()` / `visa_activation_insert_guard`. **Citation
+   correction**: the trigger function was originally *created* by migration 250
+   (`250_visa_engine_core.sql:380-440`), but its LIVE, currently-installed body is the one
+   `CREATE OR REPLACE FUNCTION public.reject_visa_activation_insert()` in migration
+   **253** (`253_visa_activation_writer_hardening.sql:260`, further replaced once more at
+   `:721` in the same file) — 253 is the authoritative-current definition; 250 only defines the
+   pre-hardening ancestor of it. This proof cites 253. The runtime behavior is what §2.2's tests
+   (`test_activation_writer.py::test_trigger_resolves_to_hardened_public_function`) actually
+   exercise: it fires on every INSERT into `visa_ruleset_activations`, **independently re-derives
+   the true current head** via a query over the live table's own current-highest-sequence row — it
+   does **not** trust anything the Python layer or the CLI operator claimed. Rejects
+   `pack.sequence <= head.seq` (message: `"visa activation rollback rejected: pack sequence % <=
+prior activated sequence %"`) and a broken hash chain (`"visa activation hash chain broken"`).
+   **This is the real enforcement layer** — a lying/stale `--current-sequence` CLI argument cannot
+   get a rollback past this trigger.
 
 3. **The `visa_replace_activation_set` function itself** (migration 267, multi-segment path) does
    its OWN explicit forward chain-walk (`267_visa_replace_activation_set.sql:150-180`) in addition
    to relying on the same insert trigger — belt-and-suspenders for the batch case.
 
-**Consequence, stated plainly: there is no code path anywhere in this system that can reactivate a
-pack at a sequence number less than or equal to the current head.** This is enforced at the SQL
-layer independent of the Python layer, so it cannot be bypassed by a buggy or malicious CLI
-argument. **"Rollback" in this system therefore does not mean "go back" — it means "author a NEW
+**Consequence, precisely scoped** (narrowed 2026-08-23 after adversarial review — the first version
+of this sentence claimed an unscoped absolute that does not hold): **there is no code path
+available to the intended executor role — with the trigger enabled and normal
+`session_replication_role=origin`, the operating condition for any real production connection —
+that can reactivate a pack at a sequence number less than or equal to the current head.** That
+scoping is load-bearing, not decorative: an ordinary (non-`ENABLE ALWAYS`) Postgres trigger, this
+one included, is bypassable either by `SET session_replication_role=replica` for the session, or by
+a role with `ALTER TABLE` privilege directly disabling it. This proof's own test suite demonstrates
+the second form is *practicable*, not merely theoretical:
+`test_repository.py:1316` runs `ALTER TABLE visa_ruleset_activations DISABLE TRIGGER
+visa_activation_insert_guard` to build a controlled pre-condition for an unrelated fixture (a
+legal-period CHECK-constraint test) — proof that a role holding table-owner privilege can silence
+this exact trigger. What makes this safe in practice, and the actual claim this proof supports: the
+production executor role (`activate_pack.py`'s `_assert_production_separation`, §2.2's
+`test_ownership_and_grant_boundary_real_roles` family) is deliberately granted only `EXECUTE` on
+the activation functions, never table ownership, `ALTER TABLE`, or superuser privileges — it has no
+ability to disable the trigger or change `session_replication_role` in the first place. So the
+practical guarantee holds for the role that actually runs in production, not because the trigger is
+architecturally unbypassable in the abstract — a genuinely different (and narrower, correct) claim
+than the original absolute. This is enforced at the SQL layer independent of the Python layer, so
+it cannot be bypassed by a buggy or malicious CLI argument using the intended executor's own
+privileges. **"Rollback" in this system therefore does not mean "go back" — it means "author a NEW
 pack, at the next sequence number, whose content restores the desired prior behavior, chained
 forward from the true current head, and activate that."** This is exactly the pattern the
-2026-08-08 Cameroon/Guinea Calling Visa correction used in production (LIVE STATE:
-"re-signed identical content as seq 3... retroactive").
+2026-08-08 Cameroon/Guinea Calling Visa correction used in production (LIVE STATE: "re-signed
+identical content as seq 3... retroactive").
 
 ### 2.2 Reproduced locally — DB/repository layer (guilt + innocence + no-gap bookkeeping)
 
@@ -282,42 +340,95 @@ Postgres roles (not mocks):
   `..._rejects_one_login_using_two_set_roles` / `..._rejects_superuser` (`test_activate_pack.py`) —
   direct unit coverage of `_assert_production_separation`'s guilt and innocence cases.
 
-**My own targeted scenario** (companion file:
-`research/visa/2026-08-23-killswitch-pack-rollback-proof-test.py`, a temporary pytest test —
-written into `apps/backend-rag/backend/tests/services/visa_engine/`, run, then removed from the
-tests directory; the copy in `research/visa/` is the permanent record). It builds the exact
-"emergency rollback ceremony" end to end, reusing this directory's own `repo`/`visa_schema`
-fixtures and `test_repository.py`'s pure builder helpers (no new mechanism invented):
+**My own targeted scenario — SECOND VERSION (2026-08-23, this is the corrected proof; see
+Adversarial review for what was wrong with the first).** The first version of this scenario used
+`test_repository.py`'s `_pack_hash()` helper — its own docstring says plainly "NOT a real SHA-256
+digest" — and a fabricated random-UUID `signature` field, and only ever called
+`repo.load_active_rule_pack()` (a DB read) to check the "restore." It never called
+`verify_rule_pack`, `build_compiled_pack`, or the actual evaluator. That proved the ledger accepts
+and orders rows correctly; it did **not** prove a restored pack is cryptographically verifiable,
+compiles, or produces the same applicant-facing decisions as the original — exactly the gap a real
+adversarial review exists to catch, and did.
 
-1. Activate pack A (sequence 1, content `"RULES_V1_GOOD"`).
-2. Activate pack B (sequence 2, content `"RULES_V2_BAD"`, chained from A's hash) — A closes exactly
-   when B opens (adjacent, no gap).
-3. **GUILT**: attempt to reactivate pack A verbatim (sequence 1 ≤ head sequence 2) → **rejected**.
-   B's activation is verified untouched afterward.
-4. **INNOCENCE — the legitimate rollback**: insert pack C (sequence 3, content
-   `"RULES_V1_GOOD"` — i.e., the SAME rules as pack A — chained from **B's** hash, the true current
-   head) and activate it → **succeeds**.
-5. Verify: B's `system_period` closes exactly when C's opens (no gap); exactly ONE row has an open
-   `system_period`; that row is C; `load_active_rule_pack()` (the real engine read path) resolves
-   to C's payload, whose content equals pack A's original content, at `sequence=3` — **the ledger
-   never moved backward, but the applicant-facing ruleset was genuinely restored.**
+Companion file (same file path as before, content replaced):
+`research/visa/2026-08-23-killswitch-pack-rollback-proof-test.py` — a temporary pytest test written
+into `apps/backend-rag/backend/tests/services/visa_engine/`, run, then removed from the tests
+directory; the copy in `research/visa/` is the permanent record. This version signs three **real**
+Ed25519-signed, real-JCS-hashed envelopes over the actual checked-in evaluatable TEST pack
+(`rulepack-test-c1-tourism.source.json`: one product, C1 Tourist Visit Visa; a HARD_FILTER
+excluding `overstay_days > 60`; an ELIGIBILITY rule supporting TOURISM stays `<= 30` days) — using
+this exact test suite's own established real-signing idiom
+(`_builders.ephemeral_ed25519_keypair` + `_builders.sign_rule_pack_envelope`, already exercised
+end-to-end by `test_repository.py::_insert_activate_load_verify`, that file's own P0-1/P1-8 proof —
+no new mechanism invented) — and drives the FULL production evaluate path
+(`evaluate_path.run_evaluation`) against fixed facts, **unmocked** from `_resolve_active_pack_binding`
+through `verify_rule_pack` → `build_compiled_pack` → `evaluate_with_trace` →
+`apply_public_policy_adapters`, asserting the restored pack reproduces the original's **decision**
+on identical facts — not that a ledger row landed.
 
-**Command and result**:
+Two things are deliberately mocked, both orthogonal to pack correctness and disclosed in the
+script's own module docstring rather than silently patched: `active_retention_policy_available`
+(stubbed `True` — the real gate lives behind a Zero retention-policy record this proof's migration
+set does not provision; it decides whether to PERSIST a decision, never what the decision IS), and
+`_save_evaluate_decision` (stubbed no-op — its target table, `visa_decisions`, is created by a
+migration outside this proof's applied set 250/251/253/254/267; the function only writes an audit
+row of an already-computed decision, it never reads or influences one). Pricing-catalog acquisition
+is untouched: `run_evaluation` already catches any exception from `get_pricing_service()` and
+degrades to `UnavailablePricingCatalog()` — that real degrade path runs here, not a test double.
+
+The scenario:
+
+1. **Pack A** (sequence 1, the real checked-in payload, unmodified rules): sign for real, insert,
+   activate. Drive `run_evaluation()` against fixed facts (TOURISM, `stay_days=20`,
+   `overstay_days=10`) → real decision: `state=SUPPORTED_CANDIDATES`, `candidates=[C1]`.
+2. **Pack B** — the "bad deploy": content-identical to A except the HARD_FILTER threshold is
+   tightened from 60 days to 5 (`payload["rules"][0]["when"]["value"] = 5`), sequence 2, chained
+   from A's REAL payload hash. Sign, insert, activate — A closes exactly when B opens (adjacent, no
+   gap, asserted against the DB). Drive `run_evaluation()` again, SAME facts → real decision: `C1`
+   is genuinely EXCLUDED (`overstay_days=10 > 5`), `state != SUPPORTED_CANDIDATES` — **the bad
+   deploy demonstrably changes the applicant-facing outcome, through the real evaluator, not just
+   in the abstract.**
+3. **GUILT**: attempt to reactivate pack A verbatim while B is head (sequence 1 ≤ 2) →
+   `asyncpg.exceptions.RaiseError, match="rollback rejected"`. B's activation verified untouched
+   afterward (still open, `open_count == 1`).
+4. **INNOCENCE — the legitimate rollback**: sign pack C — same `products`/`rules` content as A,
+   byte-identical (asserted directly: `payload_c["rules"] == payload_a["rules"]` and
+   `["products"] == ["products"]`) — sequence 3, chained from **B's** REAL payload hash (the true
+   current head, not A's stale one). Insert, activate → succeeds. B's `system_period` closes
+   exactly when C's opens (no gap); exactly ONE open activation; that row is C.
+5. **The proof this file exists for**: drive `run_evaluation()` a third time, SAME fixed facts,
+   with C now active — real decision: `state=SUPPORTED_CANDIDATES`, `candidates=[C1]`, **identical
+   `reason_codes` and `product_version_id`** to pack A's original decision. The restored pack does
+   not merely satisfy the ledger — it reproduces the real applicant-facing outcome, through the
+   unmocked evaluator, exactly.
+
+**Command and result** (run 2026-08-23, this session, local ephemeral Postgres 17.10,
+pytest-xdist-cloned, real Ed25519 keys generated fresh in-process — never touching any real signing
+key):
 ```
+cd apps/backend-rag && source .venv/bin/activate
+export TEST_DATABASE_URL="postgresql://test@localhost:5432/nuzantara_test"
 PYTHONPATH=. python -m pytest \
   backend/tests/services/visa_engine/test_zzz_killswitch_rollback_proof.py -n 1 -v -rA
 ```
 ```
-PASSED backend/tests/services/visa_engine/test_zzz_killswitch_rollback_proof.py::test_emergency_rollback_ceremony_end_to_end
+PASSED backend/tests/services/visa_engine/test_zzz_killswitch_rollback_proof.py::test_emergency_rollback_ceremony_reproduces_real_decisions
 ```
-Captured stdout:
+Captured stdout (real UUIDs and real SHA-256 hex digests from this run — not illustrative):
 ```
-ROLLBACK CEREMONY PROOF HOLDS: activation_a=ffe6d186-e7f9-4472-83f5-335a9821fa30
-activation_b=07580d94-40c3-4f8f-8c32-3cfecfa00458 activation_c=b157d56e-8f13-4d3f-b733-f85408d99fe2
--- naive reactivation of pack A (seq 1) was rejected while B (seq 2) was head; re-signing A's
-CONTENT as pack C (seq 3, chained from B's hash) was accepted; final state: exactly 1 open
-activation (C), B/C system_period adjacent with no gap, engine reads sequence 3 whose payload
-content equals the original sequence-1 ruleset.
+DECISION-REPRODUCTION PROOF HOLDS: pack_a=6cb46f47-fc57-429b-9956-ca9ebc36395a
+pack_b=973f2425-c4b5-4211-8e38-4f4a102e4eaa pack_c=f962da81-fd4b-4540-9497-91e35f065879
+activation_a=cf542919-609e-4aff-bf72-1a386f7fdb4d activation_b=50d581a0-86c0-45b9-93ab-ca624b3a8c44
+activation_c=6b14a0a8-11d8-460b-a396-286b0e920cba
+payload_sha256(A)=8fc7c71a6b18ff52261c13f484bea2028687c0ce9b72f249dc251fe054ec2d32
+payload_sha256(B)=e960ba9cd6e3cab8e1510247641a82a3a49fa143823b00f29bb89ef6118e135c
+payload_sha256(C)=dad82b8fdda13a25c6db746dc01dbb12b738d5871f9463cb1648d394400842ca -- real
+Ed25519-signed pack A, driven through the real unmocked evaluate path, produced
+state=SUPPORTED_CANDIDATES candidates=[C1]; real bad-deploy pack B (HARD_FILTER 60d->5d, same
+facts) genuinely EXCLUDED C1; naive reactivation of A was rejected while B was head; re-signed
+content-identical pack C (chained from B's real hash) was accepted and, driven through the same
+real evaluate path, reproduced A's exact decision: SUPPORTED_CANDIDATES=[C1] with identical
+reason_codes and product_version_id.
 ```
 Captured log (the guilt step's real DB error, unaltered):
 ```
@@ -325,6 +436,17 @@ ERROR VisaEngineRepository:base_repository.py:50 fetchrow failed: visa activatio
 rejected: pack sequence 1 <= prior activated sequence 2 | query=SELECT
 public.visa_activate_rule_pack($1, $2, $3) AS activation_id
 ```
+
+**One thing this proof does NOT cover, stated plainly rather than silently left out**: the
+checked-in TEST source payload ships without a `freshness_policy` on its source record, and
+`compile_pack`'s `EXTENSION_POLICY_STATUS_REQUIRED` gate only fires for sequence≥2 products. Both
+are real, documented behaviors of this system (the freshness gate is the same mechanism behind
+prod SHADOW's stale-abstain history in this skill's own LIVE STATE log) that would otherwise make
+every one of packs A/B/C abstain into `HUMAN_REVIEW_REQUIRED`/`NEEDS_INPUT` regardless of the
+rollback mechanism being tested. The script adds a generous (1-year) `freshness_policy` and a
+`VERIFIED` `extension_policy.status` to every pack's payload uniformly (A/B/C alike) — a deliberate
+simplification, disclosed in the script's own docstring, that isolates the pack-rollback mechanism
+under test from these two unrelated gates rather than silently working around them.
 
 ### 2.3 Reproduced locally — the actual `activate_pack.py` CLI subprocess
 
@@ -415,19 +537,25 @@ already running before this session started). CI's visa_engine integration jobs 
 `scripts-tests-sweep.yml:97`, `intel-router-tests.yml:30`, `fly-deploy.yml:36`). No Docker was
 available in this environment to spin up a matching `postgres:15` container (`docker` not found).
 
-I judge this delta **low-risk to the conclusions above**, not zero-risk, for a stated reason: the
-repository's own code is explicitly version-aware where it matters —
+I judge this delta **low-risk to the conclusions above**, for a stated reason, now confirmed rather
+than merely argued: the repository's own code is explicitly version-aware where it matters —
 `_supported_table_privileges()` in both `activate_pack.py` and `replace_activation_set.py` branches
 on `server_version_num >= 170000` to add the PG17-only `MAINTAIN` privilege to its checked set,
-which is direct evidence the authors already accounted for the 15-vs-17 boundary at exactly the
-layer this proof exercises (privilege introspection). The anti-rollback SQL itself (triggers,
-`tstzrange`, `EXCLUDE USING gist`, `SECURITY DEFINER` functions) uses no PG16/17-only syntax I
-found while reading migrations 250/251/253/254/267 in full. I did not independently confirm this on
-a real `postgres:15` instance — that would be the one thing worth re-running if Zero wants
-maximum rigor before flipping any doctrine on the strength of this proof; concretely: `TEST_DATABASE_URL`
-pointed at a `postgres:15` Docker container (`docker run -p 5433:5432 -e POSTGRES_PASSWORD=test -e
-POSTGRES_USER=test public.ecr.aws/docker/library/postgres:15`), same three `pytest -n 1` commands
-in §2.2.
+direct evidence the authors already accounted for the 15-vs-17 boundary at exactly the layer this
+proof exercises (privilege introspection). The anti-rollback SQL itself (triggers, `tstzrange`,
+`EXCLUDE USING gist`, `SECURITY DEFINER` functions) uses no PG16/17-only syntax found while reading
+migrations 250/251/253/254/267 in full. This report's own adversarial review (Codex gpt-5.6-sol
+xhigh, see below) was specifically briefed to try to find a PG15/17 divergence risk in this
+mechanism and reported none, having checked the same primitives — triggers,
+`session_replication_role`, `pg_advisory_xact_lock`, ranges/`range_agg`, `SECURITY DEFINER`/
+search_path/privileges — against both versions' documented behavior. That is a genuine
+independently-checked non-finding, not merely this report's own author reasoning about its own
+work — the environment delta is disclosed, and the conclusion above it stands on two independent
+passes, not one. The one thing that would raise this from "checked twice, no divergence found" to
+"measured directly" is still what it was: `TEST_DATABASE_URL` pointed at a `postgres:15` Docker
+container (`docker run -p 5433:5432 -e POSTGRES_PASSWORD=test -e POSTGRES_USER=test
+public.ecr.aws/docker/library/postgres:15`), same commands as §2.2 — available if Zero wants it,
+not required to close this ENFORCE-GATE item.
 
 Separately: the local role `nuzantara` (CI's default) does not exist on this M5 Postgres instance
 (only `balizero` and `test`, both superuser) — I used `test` throughout, which is a benign
@@ -436,21 +564,76 @@ naming plainly rather than silently.
 
 ## Adversarial review
 
-Self-reviewed against the two failure modes most relevant to this kind of proof: (a) did I actually
-drive the real code path, or a stand-in for it? — for the MODE switch, `run_evaluation()` and
-`resolve_evaluate_mode()`/`resolve_response_mode()` are called directly and unmocked; only the
-DB/pack-verify/pack-compile I/O boundary is stubbed to a deterministic gold pack (the same
-technique the suite's own reviewed tests use), and OFF is proven to touch zero I/O via a
-hard-failing sentinel, not merely asserted. For the PACK rollback, the guilt/innocence proof runs
-against a real Postgres instance with the real migrated triggers and the real
-`SECURITY DEFINER` function — not a mock — and the CLI-subprocess proof in §2.3 adds real Ed25519
-signature verification on a real checked-in signed artifact. (b) did I claim anything about
-production I didn't verify? — §1.4 and §2.4 name exactly what was not re-verified live and hand
-over exact, safe, non-destructive commands rather than asserting the mechanism "should" work in
-production; the only production claim made (that the code-level MODE mechanism is unchanged since
-the 2026-08-08 live drill) is backed by a `git log`/`git show` diff check, not inference.
+**This section describes an actual cross-family review that happened, not a self-review label
+attached after the fact.** After the first version of this report was committed and opened as
+PR #4616, a real adversarial refutation was run against it: **Codex gpt-5.6-sol at `xhigh` effort**,
+briefed to attack six specific axes — (1) does the PACK-rollback proof actually verify a restored
+pack cryptographically and functionally, or only its ledger bookkeeping; (2) is the "no code path
+anywhere" claim actually unscoped/false; (3) is the MODE-switch claim actually product-wide or only
+backend; (4) are the migration citations current; (5) does the report's own provenance stay true
+after landing; (6) is there a real PG15/17 semantic divergence risk in the primitives used. The
+verdict was **DO-NOT-SHIP**, with six findings, two of them severity P1 (one of those effectively
+FATAL to the report's central pack-rollback claim as originally written). All six were real; none
+were rejected; every fix below is a substantive change, not a wording patch:
 
-No PR opened, no commit made, per instruction. This file and its two companions
-(`2026-08-23-killswitch-mode-proof.py`, `2026-08-23-killswitch-pack-rollback-proof-test.py`) are
-currently uncommitted in the worktree.
+- **P1 (FATAL) — the pack-rollback proof only proved ledger bookkeeping.** The original
+  `test_zzz_killswitch_rollback_proof.py` built its "restored" pack C using
+  `test_repository.py`'s `_pack_hash()` (a documented non-real placeholder — 32 identical bytes,
+  its own docstring says so) and a random-UUID `signature`, then checked only
+  `repo.load_active_rule_pack()` — a DB read. It never called `verify_rule_pack`,
+  `build_compiled_pack`, or the real evaluator, so it never actually proved a restored pack is
+  cryptographically verifiable, compiles, or reproduces the original's decisions. **Fixed**: the
+  proof now signs real Ed25519 envelopes over the real evaluatable TEST pack and drives
+  `evaluate_path.run_evaluation()` unmocked end to end, asserting real decision equality between
+  the original and the restored pack, and a real decision DIFFERENCE for the intervening bad
+  deploy — see the rewritten §2.2 above, run and observed this session, real SHAs and UUIDs
+  included.
+- **P1 — the ENFORCE-GATE LIVE STATE entry overclaimed before the above was true.** Flagged and
+  held: the LIVE STATE entry in `.agents/skills/visaoracle/SKILL.md` and the ENFORCE-GATE bullet
+  were not touched again until the real proof above existed and passed. See that file's own
+  history for the corrected wording.
+- **P2 — the MODE-switch claim was stated as a product-wide invariant when it is backend-only.**
+  The frontend's `resolveVisaOracleMode()` fails OPEN to `"ENGINE"` on unset/invalid outside a test
+  build — read directly at `runtime-mode.ts:21-32`, confirmed real, not a false alarm. **Fixed**:
+  §1.1 and the summary verdict now scope the claim to the backend resolver and name the frontend
+  asymmetry explicitly, including why it is not (currently) exploitable on its own.
+- **P2 — the "no code path anywhere" pack-rollback claim was an unscoped absolute, plus a citation
+  pointing at a superseded migration.** `session_replication_role=replica` or a table-owning role
+  can bypass an ordinary trigger; this report's own test suite (`test_repository.py:1316`) proves
+  the direct-disable form is practicable. Migration 250 only created the trigger function's
+  original body; migration 253 replaced it twice and is the live definition. **Fixed**: §2.1 now
+  scopes the claim to the intended executor role under normal trigger/replication conditions, cites
+  253 as authoritative, and states the privilege-separation reason the scoped claim still holds
+  operationally.
+- **P3 — the report's own provenance paragraph was self-contradicting once committed.** "No commit,
+  no push" was true when written, false the instant the file landed in a commit, and was never
+  updated. **Fixed**: the mandate section now points at PR #4616 and the branch name instead of a
+  self-referential SHA, with an explicit note not to hardcode a commit hash that a future amendment
+  to this same file would immediately stale out.
+- **P3 (non-finding, independently confirmed) — no real PG15/17 semantic divergence.** Codex was
+  specifically asked to find one and checked the actual primitives (triggers,
+  `session_replication_role`, `pg_advisory_xact_lock`, ranges/`range_agg`, `SECURITY
+DEFINER`/search_path/privileges) against both versions' documented behavior. None found — §3 above
+  now states this as a confirmed, doubly-checked conclusion rather than a hedge.
+
+**What survived intact, stated plainly rather than only listing what broke**: the MODE-switch
+*backend* mechanism and its proof (§1) were attacked on exactly the axes that would matter — unset/
+empty/invalid/casing/whitespace handling, whether anything reaches `ENFORCE` unintentionally, and
+whether OFF genuinely touches zero I/O — and held without a single required change; the CLI-
+subprocess proof in §2.3 (real signature verification, real checked-in signed artifact, dry-run
+zero DB access) was reviewed and not challenged. Both are exactly as strong as originally
+described. The reviewer's own framing, worth repeating rather than softening: the MODE half of this
+work survived a serious attack intact because it had actually been done properly; the PACK half's
+first version had not been, and this rewrite is the actual fix, not a rebuttal of the finding.
+
+Two independent verification passes now stand behind this report: this session's own re-execution
+of every command in it, and Codex's adversarial pass against the resulting artifact. Neither
+alone would carry the weight both carry together — generator≠grader (CLAUDE.md §6): the same
+session that produced the first flawed proof could not be the one to certify it correct, and did
+not; a genuinely independent review, on fresh context, found what self-review had missed.
+
+This file and its two companion scripts (`2026-08-23-killswitch-mode-proof.py`,
+`2026-08-23-killswitch-pack-rollback-proof-test.py`) are committed as part of PR #4616 — see the
+provenance note at the top of this report for how to find the current head SHA rather than reading
+a stale one off this paragraph.
 
