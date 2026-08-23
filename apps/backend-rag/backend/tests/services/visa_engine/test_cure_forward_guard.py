@@ -323,6 +323,27 @@ class TestConjunctCheckerIsNotVacuous:
         assert _RETIRED_RULE_ID in mutated_ids  # RED shape
         assert _RETIRED_RULE_ID not in ids  # GREEN, real pack
 
+    def test_widening_the_nationality_intersects_values_breaks_the_match(
+        self, highest_source: dict[str, Any]
+    ) -> None:
+        """Positive control for the ``values`` LIST specifically (Kimi K3
+        refuter finding, 2026-08-23) — none of the four controls above
+        mutate it; they mutate cardinality, an ``eq`` value, a conjunct's
+        presence, and rule-ID membership. ``_conjunct`` normalizes
+        ``values`` via ``tuple(sorted(...))``, so a checker regression that
+        compared only (fact, op) and ignored ``values`` would pass every
+        existing control AND every real test in this module, even if the
+        pack's ``family.sponsor_nationalities`` values drifted from
+        ``["ID"]`` to ``["ID", "US"]`` — the exact nationality dimension
+        this file exists to guard."""
+        rule = _find_rule(highest_source["rules"], _EDITED_RULE_ID)
+        mutated_when = copy.deepcopy(rule["when"])
+        for arg in mutated_when["args"]:
+            if arg["fact"] == "family.sponsor_nationalities":
+                arg["values"] = list(arg["values"]) + ["US"]
+        assert _conjuncts(mutated_when) != _E31C_SUPPORT_CONJUNCTS  # RED
+        assert _conjuncts(rule["when"]) == _E31C_SUPPORT_CONJUNCTS  # GREEN, unmutated
+
 
 # ---------------------------------------------------------------------------
 # (b) evaluator witnesses on the highest pack (behavioural half)
@@ -500,8 +521,20 @@ class TestE31CNationalityGapKnownOpen:
             "family.marriage_registered": _known(True),
         }
         proof = _proof(highest_compiled, "E31C", overrides)
-        assert proof.status is ProductProofStatus.SUPPORTED
-        assert {r.rule_id for r in proof.support_rules} == {_NATIONALITY_GAP_RULE_ID}
+        assert proof.status is ProductProofStatus.SUPPORTED, (
+            "KNOWN-OPEN GAP PIN: a red here may mean the E31C nationality "
+            "leg was CURED — read the banner above "
+            "TestE31CNationalityGapKnownOpen before touching this assertion."
+        )
+        # Membership, not equality (Kimi K3 refuter finding, 2026-08-23):
+        # the pinned defect is "the gap rule fires on a US-nationality fact
+        # pattern", not "the gap rule is the ONLY support rule that fires".
+        # A future fold that adds a legitimately-scoped support rule (e.g.
+        # one requiring `marriage_registered eq True`) would fire here too
+        # and turn a set-equality assertion red while the nationality gap
+        # is still open — a false red on a pin whose own banner says do
+        # NOT simply widen or delete the assertion.
+        assert _NATIONALITY_GAP_RULE_ID in {r.rule_id for r in proof.support_rules}
 
     def test_indonesian_nationality_control_fires_both_sibling_rules(
         self, highest_compiled: compiler.CompiledRulePack
@@ -521,10 +554,12 @@ class TestE31CNationalityGapKnownOpen:
         }
         proof = _proof(highest_compiled, "E31C", overrides)
         assert proof.status is ProductProofStatus.SUPPORTED
-        assert {r.rule_id for r in proof.support_rules} == {
-            _NATIONALITY_GAP_RULE_ID,
-            _EDITED_RULE_ID,
-        }
+        # Membership, not equality — same rationale as the US-nationality
+        # case above: this must not go red merely because a future,
+        # legitimately-scoped support rule also fires on this pattern.
+        support_rule_ids = {r.rule_id for r in proof.support_rules}
+        assert _NATIONALITY_GAP_RULE_ID in support_rule_ids
+        assert _EDITED_RULE_ID in support_rule_ids
 
 
 class TestNationalityGapPinIsNotVacuous:
