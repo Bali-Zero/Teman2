@@ -109,6 +109,25 @@ fi
 # ---- anti-overlap lock -----------------------------------------------------
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
     log "previous healer run still alive (pid $(cat "$PIDFILE")) — skipping this tick"
+    # A HUNG previous run is checked HERE, before the skip, and nowhere else.
+    # Receptor 7 lives ~200 lines below this early exit, so in the one scenario
+    # it was built to catch — a wrapper stuck past its own cap, still holding
+    # this very lock — it would never be reached: every later tick would exit
+    # right here and the alarm could not fire by construction. A guard placed
+    # after the condition that skips it is not a guard (superscar #2).
+    # `|| true` because a broken detector must not turn the skip into a crash.
+    if [ -f "$REPO/scripts/session_declaration.py" ]; then
+        HUNG_N=$(cd "$REPO" && python3 scripts/session_declaration.py scan --json 2>/dev/null \
+            | python3 -c "import json,sys
+try: print(int(json.load(sys.stdin).get('summary', {}).get('hung', 0)))
+except Exception: print(0)" 2>/dev/null) || HUNG_N=0
+        if [ "${HUNG_N:-0}" -gt 0 ] 2>/dev/null; then
+            log "PREVIOUS RUN IS HUNG (${HUNG_N}) — it holds this lock, so no tick can proceed"
+            heartbeat "degraded" "previous run hung: holds the lock, receptors unreachable"
+            telegram p0 "healer-mini:run-hung" "⛔️ HEALER (Mini): il run precedente è APPESO oltre il proprio tetto e tiene il lock — nessun tick può procedere e TUTTI i receptor sono irraggiungibili. Dettaglio: python3 scripts/session_declaration.py scan"
+            exit 0
+        fi
+    fi
     heartbeat "ok" "skipped: previous run alive"
     exit 0
 fi
@@ -119,7 +138,11 @@ echo $$ > "$PIDFILE"
 # the precise stamp made after `wait` always wins over this generic one.
 # A -9 leaves the declaration OPEN on purpose — that is a real abandonment and
 # must stay visible (scripts/session_declaration.py).
-trap 'rm -f "$PIDFILE"; [ -n "${DECL_RUN_ID:-}" ] && python3 "$REPO/scripts/session_declaration.py" close --run-id "$DECL_RUN_ID" --outcome failed >/dev/null 2>&1; true' EXIT
+# The child is killed BEFORE the stamp, deliberately: stamping "closed" while
+# the cascade session is still running would leave an ORPHAN — no wrapper, no
+# declaration, and nothing that could ever flag it again. Killing first makes
+# the stamp true at the moment it is written.
+trap 'rm -f "$PIDFILE"; [ -n "${CPID:-}" ] && kill "$CPID" 2>/dev/null; [ -n "${DECL_RUN_ID:-}" ] && python3 "$REPO/scripts/session_declaration.py" close --run-id "$DECL_RUN_ID" --outcome failed >/dev/null 2>&1; true' EXIT
 
 # ---- secrets (Telegram; claude on Mini auths via its own login) ------------
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
@@ -297,23 +320,36 @@ if [ -f "scripts/session_declaration.py" ]; then
     elif [ "$DECL_EXIT" -eq 1 ]; then
         # Same key the tool emits (W120), and the SPAWNER names, because "one
         # run was abandoned" without saying whose is not actionable.
+        # A parse failure prints ERR, never "0": a detector whose output we
+        # cannot read is BLIND, and blind must never render as clean (W97).
+        # HUNG counts alongside ABANDONED — a wrapper stuck past its cap still
+        # holds the PIDFILE, so it blinds every later tick of this very organ.
         DECL_SUM=$(printf '%s' "$DECL_JSON" | python3 -c "
 import json, sys
 try:
     s = json.load(sys.stdin).get('summary', {})
-    print('%d %s' % (s.get('abandoned', 0),
-                     ','.join(s.get('abandoned_spawners', [])) or '-'))
+    n = int(s.get('abandoned', 0)) + int(s.get('hung', 0))
+    who = sorted(set(s.get('abandoned_spawners', []) + s.get('hung_spawners', [])))
+    print('%d %s' % (n, ','.join(who) or '-'))
 except Exception:
-    print('0 -')
+    print('ERR -')
 " 2>/dev/null)
         DECL_N=$(printf '%s' "$DECL_SUM" | cut -d' ' -f1)
         DECL_WHO=$(printf '%s' "$DECL_SUM" | cut -d' ' -f2)
-        if [ "${DECL_N:-0}" -gt 0 ] 2>/dev/null; then
+        if [ "$DECL_N" = "ERR" ] || [ -z "$DECL_N" ]; then
+            ACTIONABLE=1; REASONS="${REASONS}declarations-unreadable "
+        elif [ "${DECL_N:-0}" -gt 0 ] 2>/dev/null; then
             # Folded into REASONS, no second routine line: this wrapper is
             # allowed exactly ONE routine digest and it already carries REASONS
             # verbatim (anti-regrowth gateway lint counts routine senders).
             ACTIONABLE=1; REASONS="${REASONS}abandoned:${DECL_N}-run(${DECL_WHO}) "
         fi
+    elif [ "$DECL_EXIT" -ne 0 ]; then
+        # 127 (not found), a traceback, a signal — anything the contract does not
+        # define. Receptor 1 already treats any nonzero as actionable; this one
+        # used to fall through to silence, which is the failure mode the whole
+        # module exists to remove.
+        ACTIONABLE=1; REASONS="${REASONS}declarations-broken(exit${DECL_EXIT}) "
     fi
 fi
 

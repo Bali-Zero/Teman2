@@ -88,10 +88,44 @@ class TestInnocence(StoreCase):
         # must not even be consulted, or a slow-starting child would be accused.
         self.assertEqual(sd.classify(d, T0 + HEALER_CAP_SEC - 1, alive=False), sd.OPEN)
 
-    def test_past_the_cap_but_runner_demonstrably_alive_is_open(self):
-        # A late watchdog is the wrapper's bug to fix, not an abandonment.
+    def test_just_past_the_cap_but_alive_is_open_not_hung(self):
+        # The wrapper is shutting down. Naming that a hang would be the same
+        # impatience that produced the retired detector's false positives.
         d = self.open_run()
-        self.assertEqual(sd.classify(d, T0 + 10 * HEALER_CAP_SEC, alive=True), sd.OPEN)
+        self.assertEqual(sd.classify(d, T0 + HEALER_CAP_SEC + 60, alive=True), sd.OPEN)
+
+    def test_a_hang_is_never_reported_as_an_abandonment(self):
+        # Different disease, different cure: abandonment means nobody is there,
+        # a hang means somebody is stuck. Folding them loses which one it is.
+        d = self.open_run()
+        far = T0 + HEALER_CAP_SEC + sd.DEFAULT_HUNG_MARGIN_SEC + 1
+        self.assertEqual(sd.classify(d, far, alive=True), sd.HUNG)
+        self.assertEqual(sd.classify(d, far, alive=False), sd.ABANDONED)
+
+    def test_an_abandonment_stops_driving_the_alarm_after_the_window(self):
+        # Without this, ONE dead run keeps the healer permanently non-idle and
+        # spawns a paid LLM session every 4h forever over an already-reported
+        # fact. The record stays on disk; it just stops being actionable.
+        d = self.open_run()
+        fresh = T0 + HEALER_CAP_SEC + sd.DEFAULT_GRACE_SEC + 1
+        stale = T0 + sd.DEFAULT_REPORT_WINDOW_SEC + 1
+        self.assertEqual(sd.classify(d, fresh, alive=False), sd.ABANDONED)
+        self.assertEqual(sd.classify(d, stale, alive=False), sd.ABANDONED_STALE)
+
+    def test_scan_never_spawns_ps_for_records_that_cannot_need_it(self):
+        # A CLOSED record and one still inside its cap must not cost a probe.
+        calls = []
+        self.open_run(cap=10**6)                      # inside cap
+        c = self.open_run(cap=10)
+        sd.close_declaration(c["run_id"], "completed", 0, now=T0 + 1)
+        sd.scan(now=T0 + 100, alive_fn=lambda d: calls.append(d) or False)
+        self.assertEqual(calls, [], "liveness must be resolved lazily, never eagerly")
+
+    def test_hung_is_actionable_and_moves_the_exit_code(self):
+        self.open_run(cap=10)
+        rep = sd.scan(now=T0 + 10 + sd.DEFAULT_HUNG_MARGIN_SEC + 1, alive_fn=lambda _d: True)
+        self.assertEqual(rep["summary"]["hung"], 1)
+        self.assertEqual(rep["summary"]["abandoned"], 0)
 
     def test_a_run_with_no_open_timestamp_is_never_accused(self):
         # Cannot be aged, therefore cannot be proven abandoned. Never guess.

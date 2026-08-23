@@ -70,11 +70,39 @@ from typing import Any, Dict, List, Optional, Tuple
 OPEN = "OPEN"
 CLOSED = "CLOSED"
 ABANDONED = "ABANDONED"
+# Abandoned, but past the reporting window: still true, no longer actionable.
+ABANDONED_STALE = "ABANDONED-STALE"
+# Alive, but far past its own cap: the wrapper's watchdog did not reap it.
+# A DIFFERENT disease from abandonment and it must not be folded into it — but
+# it is just as actionable, and nothing else can see it. Measured 2026-08-23:
+# the healer's watchdog sends ONE SIGTERM and never escalates to SIGKILL, and a
+# wrapper stuck in `wait` keeps holding the PIDFILE lock — so a single hang
+# makes every later tick exit at "previous run still alive" before reaching ANY
+# receptor. One hang blinds the whole healer, silently, forever.
+HUNG = "HUNG"
 
 # A declaration is only suspicious once it has outlived the runner's OWN cap.
 # The grace exists because a wrapper's last act — stamping the outcome — happens
 # after the cap has already elapsed in the watchdog-kill path.
 DEFAULT_GRACE_SEC = 300
+
+# An abandonment is ACTIONABLE only while it is fresh. Without this window a
+# single dead run would keep the healer permanently non-idle: REASONS would never
+# be empty, so every 4h tick would spawn an LLM session forever over a fact that
+# was already reported on the first one. The record stays on disk for forensics —
+# it simply stops driving the alarm. The healer's own cadence (4h) is far inside
+# this window, so nothing real is missed before it is seen at least once.
+DEFAULT_REPORT_WINDOW_SEC = 172800  # 48h
+
+# The watchdog fires AT the cap. Still alive this long after it is unambiguous —
+# generous on purpose, so a slow shutdown is never called a hang.
+DEFAULT_HUNG_MARGIN_SEC = 1800  # 30 min past the cap
+
+# Retention, applied at open() — one bounded sweep per run, never on the read
+# path. A scan that silently deleted what it reports would be a probe with a side
+# effect on its own subject.
+RETAIN_CLOSED_SEC = 604800     # 7d: a closed run has no diagnostic value after
+RETAIN_ABANDONED_SEC = 2592000 # 30d: findings outlive their reporting window
 
 # Outcomes a wrapper may stamp. Free-form is deliberately NOT allowed: an
 # outcome vocabulary that anyone can extend stops being comparable across
@@ -101,6 +129,14 @@ def store_dir() -> str:
 
 # ---------------------------------------------------------------- liveness
 
+# Absolute path, not a PATH lookup. This codebase has repeatedly been bitten by
+# a bare binary name being unresolvable under launchd/ssh (the wrapper's own
+# telegram() carries an absolute-path fallback for exactly that reason). If `ps`
+# went missing, EVERY liveness answer would fail closed at once and every live
+# run past its cap would be called abandoned — a fleet-wide false positive.
+_PS_BIN = "/bin/ps" if os.path.exists("/bin/ps") else "ps"
+
+
 def process_start(pid: int) -> Optional[str]:
     """Return the process's start time as reported by ps, or None if it is gone.
 
@@ -112,7 +148,7 @@ def process_start(pid: int) -> Optional[str]:
     """
     try:
         out = subprocess.run(
-            ["ps", "-p", str(pid), "-o", "lstart="],
+            [_PS_BIN, "-p", str(pid), "-o", "lstart="],
             capture_output=True,
             text=True,
             timeout=10,
@@ -168,6 +204,45 @@ def _write_atomic(path: str, payload: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def prune(now: Optional[float] = None) -> int:
+    """Delete records that can no longer inform anything. Returns the count.
+
+    Called from open() — one bounded sweep per run, at the moment a wrapper is
+    already writing. Deliberately NOT called from scan(): a read that mutates
+    what it reports is a probe with a side effect on its own subject, and the
+    next reader would see a different store than the one that produced the
+    verdict it was handed.
+
+    OPEN records are NEVER pruned at any age: an open declaration is either a
+    live run or an abandonment, and deleting it would erase exactly the finding
+    this module exists to make.
+    """
+    ts = time.time() if now is None else now
+    removed = 0
+    decls, _, readable = read_all()
+    if not readable:
+        return 0
+    for d in decls:
+        opened = d.get("opened_at")
+        if not isinstance(opened, (int, float)):
+            continue
+        age = ts - opened
+        closed = d.get("closed_at") is not None
+        if closed and age > RETAIN_CLOSED_SEC:
+            pass
+        elif not closed and age > RETAIN_ABANDONED_SEC:
+            pass
+        else:
+            continue
+        try:
+            os.remove(_path_for(d["run_id"]))
+            removed += 1
+        except OSError:
+            # A record we cannot delete is not an error worth failing a run for.
+            pass
+    return removed
+
+
 def open_declaration(
     spawner: str,
     cap_sec: int,
@@ -211,6 +286,11 @@ def open_declaration(
         "exit_code": None,
     }
     _write_atomic(_path_for(decl["run_id"]), decl)
+    try:
+        prune(now=ts)
+    except OSError:
+        # Retention is housekeeping: never let it stop a run from being declared.
+        pass
     return decl
 
 
@@ -282,8 +362,11 @@ def classify(
     now: float,
     grace_sec: int = DEFAULT_GRACE_SEC,
     alive: Optional[bool] = None,
+    report_window_sec: int = DEFAULT_REPORT_WINDOW_SEC,
+    hung_margin_sec: int = DEFAULT_HUNG_MARGIN_SEC,
+    alive_fn: Optional[Any] = None,
 ) -> str:
-    """CLOSED | OPEN | ABANDONED — the whole detector, in one function.
+    """CLOSED | OPEN | HUNG | ABANDONED | ABANDONED-STALE — the whole detector.
 
     Deliberately NOT a function of how long the run lasted. A run that closes
     after 30 seconds is CLOSED; a run still inside its own cap is OPEN however
@@ -300,12 +383,20 @@ def classify(
     cap = int(cap) if isinstance(cap, (int, float)) and cap > 0 else 0
     if now - opened <= cap + grace_sec:
         return OPEN
-    is_alive = runner_alive(decl) if alive is None else alive
+    # Resolved HERE and nowhere earlier: every branch above returns without ever
+    # needing it, so a CLOSED or still-inside-cap record never costs a `ps` spawn.
+    if alive is not None:
+        is_alive = alive
+    else:
+        is_alive = (alive_fn or runner_alive)(decl)
     if is_alive:
-        # Past its own cap but the runner is still there. That is the wrapper's
-        # watchdog being late, not an abandonment — and it is the wrapper's job
-        # to kill its own child, not this tool's to accuse it.
+        # Just past the cap and still there: the wrapper is shutting down. Only
+        # once it is FAR past does this become a hang worth naming.
+        if now - opened > cap + hung_margin_sec:
+            return HUNG
         return OPEN
+    if now - opened > report_window_sec:
+        return ABANDONED_STALE
     return ABANDONED
 
 
@@ -326,7 +417,11 @@ def scan(
     liveness = runner_alive if alive_fn is None else alive_fn
     rows = []
     for d in decls:
-        state = classify(d, ts, grace_sec, alive=liveness(d))
+        # alive_fn is HANDED DOWN, never called here: liveness costs a `ps`
+        # spawn per record, and classify() reaches it only on the one branch
+        # that needs it. Calling it eagerly made scan cost grow with every run
+        # ever recorded, CLOSED ones included.
+        state = classify(d, ts, grace_sec, alive_fn=liveness)
         age = ts - d["opened_at"] if isinstance(d.get("opened_at"), (int, float)) else None
         rows.append(
             {
@@ -341,8 +436,9 @@ def scan(
                 "session_id": d.get("session_id"),
             }
         )
-    rows.sort(key=lambda r: (r["state"] != ABANDONED, r["spawner"] or "", r["run_id"] or ""))
+    rows.sort(key=lambda r: (r["state"] not in (ABANDONED, HUNG), r["spawner"] or "", r["run_id"] or ""))
     abandoned = [r for r in rows if r["state"] == ABANDONED]
+    hung = [r for r in rows if r["state"] == HUNG]
     return {
         "rows": rows,
         "summary": {
@@ -350,6 +446,8 @@ def scan(
             "abandoned": len(abandoned),
             "open": sum(1 for r in rows if r["state"] == OPEN),
             "closed": sum(1 for r in rows if r["state"] == CLOSED),
+            "hung": len(hung),
+            "hung_spawners": sorted({r["spawner"] for r in hung if r["spawner"]}),
             "abandoned_spawners": sorted({r["spawner"] for r in abandoned if r["spawner"]}),
             "malformed": malformed,
             "store_readable": readable,
@@ -376,7 +474,7 @@ def render_table(report: Dict[str, Any]) -> str:
     lines.append("")
     lines.append(
         f"{s['total']} declaration(s): {s['abandoned']} ABANDONED, "
-        f"{s['open']} open, {s['closed']} closed"
+        f"{s.get('hung', 0)} HUNG, {s['open']} open, {s['closed']} closed"
     )
     if s["malformed"]:
         lines.append(f"WARNING — {len(s['malformed'])} unparseable file(s): {', '.join(s['malformed'])}")
@@ -415,9 +513,29 @@ def _selftest() -> int:
         running = open_declaration("healer-run.sh", cap_sec=3300, pid=os.getpid(), now=t0)
         check("run inside its cap is OPEN", classify(running, t0 + 600) == OPEN)
 
-        # INNOCENCE 3 — past the cap but the runner is demonstrably alive:
-        # a late watchdog is the wrapper's problem, not an abandonment.
-        check("past cap but alive is OPEN", classify(running, t0 + 99_999, alive=True) == OPEN)
+        # INNOCENCE 3 — just past the cap and still alive: the wrapper is
+        # shutting down, that is not a hang and not an abandonment.
+        check(
+            "just past cap but alive is OPEN",
+            classify(running, t0 + 3300 + 60, alive=True) == OPEN,
+        )
+
+        # GUILT 3 — FAR past its cap and still alive: the watchdog never reaped
+        # it. Measured: that wrapper still holds the PIDFILE, so every later tick
+        # exits before reaching any receptor — one hang blinds the whole healer.
+        check(
+            "far past cap but alive is HUNG",
+            classify(running, t0 + 3300 + DEFAULT_HUNG_MARGIN_SEC + 1, alive=True) == HUNG,
+        )
+
+        # An abandonment past the reporting window stops driving the alarm but
+        # stays on disk: otherwise one dead run spawns an LLM session every 4h
+        # forever over a fact already reported on the first tick.
+        check(
+            "abandonment past the window goes STALE",
+            classify(running, t0 + DEFAULT_REPORT_WINDOW_SEC + 10_000, alive=False)
+            == ABANDONED_STALE,
+        )
 
         # GUILT 1 — past its own cap, runner gone: the runner never came back.
         check(
@@ -522,7 +640,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(json.dumps(report, indent=2) if args.json else render_table(report))
         if not report["summary"]["store_readable"]:
             return 2
-        return 1 if report["summary"]["abandoned"] else 0
+        return 1 if (report["summary"]["abandoned"] or report["summary"]["hung"]) else 0
 
     ap.print_help()
     return 2
