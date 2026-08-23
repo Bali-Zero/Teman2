@@ -30,7 +30,8 @@ TOKEN_VALUES = {
     "token2": "fixture-seat-two-secret",
     "token3": "fixture-seat-three-secret",
     "token4": "fixture-seat-four-secret",
-    "token5": "fixture-zero-team-secret",
+    "token5": "fixture-seat-five-secret",
+    "token6": "fixture-zero-team-secret",
     "legacy": "fixture-legacy-secret",
 }
 
@@ -55,7 +56,7 @@ def _fake_fleet(
 
     cases = "\n".join(
         f'  "{TOKEN_VALUES[label]}") label="{label}" ;;'
-        for label in ("token1", "token2", "token3", "token4", "token5", "legacy")
+        for label in ("token1", "token2", "token3", "token4", "token5", "token6", "legacy")
     )
     actions = "\n".join(
         f'  "{label}") {seat_bodies[label]} ;;'
@@ -65,6 +66,7 @@ def _fake_fleet(
             "token3",
             "token4",
             "token5",
+            "token6",
             "legacy",
             "keychain",
         )
@@ -80,6 +82,7 @@ def _fake_fleet(
             'for forbidden in CLAUDE_CODE_OAUTH_TOKEN_1 '
             "CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 "
             "CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5 "
+            "CLAUDE_CODE_OAUTH_TOKEN_6 "
             "ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN "
             "ANTHROPIC_BASE_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY "
             "VERTEX_AI_PROJECT GOOGLE_APPLICATION_CREDENTIALS "
@@ -113,6 +116,7 @@ def _fake_fleet(
         'for forbidden in CLAUDE_CODE_OAUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN_1 '
         "CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 "
         "CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5 "
+        "CLAUDE_CODE_OAUTH_TOKEN_6 "
         "ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL "
         "AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY VERTEX_AI_PROJECT "
         "GOOGLE_APPLICATION_CREDENTIALS CLAUDE_CODE_USE_BEDROCK "
@@ -179,6 +183,7 @@ def _fake_fleet(
         "CLAUDE_CODE_OAUTH_TOKEN_3": TOKEN_VALUES["token3"],
         "CLAUDE_CODE_OAUTH_TOKEN_4": TOKEN_VALUES["token4"],
         "CLAUDE_CODE_OAUTH_TOKEN_5": TOKEN_VALUES["token5"],
+        "CLAUDE_CODE_OAUTH_TOKEN_6": TOKEN_VALUES["token6"],
         "CLAUDE_CODE_OAUTH_TOKEN": TOKEN_VALUES["legacy"],
         "CLAUDE_CASCADE_OLLAMA_BIN": str(home / ".local/bin/ollama"),
         "CLAUDE_CASCADE_OLLAMA_CURL_BIN": str(home / ".local/bin/ollama-curl-stub"),
@@ -197,6 +202,7 @@ def _default_bodies() -> dict[str, str]:
         "token3": "exit 1",
         "token4": "exit 1",
         "token5": "exit 1",
+        "token6": "exit 1",
         "legacy": "exit 1",
         "keychain": "exit 1",
         "team-wrapper": "exit 1",
@@ -440,6 +446,7 @@ def test_explicit_order_reaches_team_then_legacy_then_keychain(
         "token3",
         "token4",
         "token5",
+        "token6",
         "legacy",
         "keychain",
     ]
@@ -452,7 +459,7 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
     bodies = _default_bodies()
     bodies["team-wrapper"] = 'printf "protected-team-success\\n"\nexit 0'
     call_log, _, env = _fake_fleet(tmp_path, bodies)
-    env.pop("CLAUDE_CODE_OAUTH_TOKEN_5")
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN_6")
 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
@@ -463,9 +470,10 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
         "token2",
         "token3",
         "token4",
+        "token5",
         "team-wrapper",
     ]
-    assert "used: claude-token-5-team-wrapper" in result.stderr
+    assert "used: claude-token-6-team-wrapper" in result.stderr
 
 
 def test_claude_only_never_crosses_provider_boundary_when_all_seats_fail(
