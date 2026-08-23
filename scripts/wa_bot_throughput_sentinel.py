@@ -95,7 +95,12 @@ DEAD_CHANNEL_KEY = "wa-bot:throughput:dead-channel"
 INBOUND_STALE_KEY = "wa-bot:throughput:inbound-stale"
 # Not a channel condition: the organ is reading a database that has no WA
 # history at all. Its own dedup key so it can never be mistaken for an outage.
-WRONG_DB_KEY = "wa-bot:throughput:wrong-database"
+# pragma below: a Telegram dedup key, not a credential — same shape as the three
+# constants above. detect-secrets flags only THIS one of the four; probed and not
+# fully explained (renaming the variable OR changing the value each clears it, so
+# both participate), so the suppression is scoped to the one real finding rather
+# than widened on a mechanism I could not isolate.
+WRONG_DB_KEY = "wa-bot:throughput:wrong-database"  # pragma: allowlist secret
 
 _PY3_CANDIDATES: tuple[str, ...] = (
     "/usr/bin/python3",
