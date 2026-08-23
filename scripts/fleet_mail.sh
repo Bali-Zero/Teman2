@@ -96,25 +96,46 @@ RAW_FROM="$(hostname -s 2>/dev/null || echo unknown):${FLEET_MAIL_FROM:-fleet-wa
 FROM_LABEL="$(printf '%s' "$RAW_FROM" | tr -cd 'A-Za-z0-9:_.-')"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 FILENAME="${TS}-$(printf '%04x' $((RANDOM % 65536))).md"
-# Literal (quoted heredoc): FM_SESSION/FM_FILENAME/FM_FROM are env vars set by
-# the caller below, never string-interpolated into this text.
-read -r -d '' SEND_SCRIPT <<'REMOTE_SEND' || true
-set -uo pipefail
-ROOT="${NUZ_MAILBOX_DIR:-$HOME/.nuzantara-mailbox}"
-if [ "$FM_SESSION" = "broadcast" ]; then TARGET="$ROOT/broadcast"; else TARGET="$ROOT/$FM_SESSION"; fi
-mkdir -p "$TARGET" || exit 1
-chmod 700 "$TARGET" 2>/dev/null || true
-TMP="$ROOT/.tmp-$FM_FILENAME.$$"
-{ printf 'from: %s\n\n' "$FM_FROM"; cat; } > "$TMP" || exit 1
-mv "$TMP" "$TARGET/$FM_FILENAME" || exit 1
-REMOTE_SEND
+
+# Delivery logic as a Python program (never a shell script read via `bash -s`
+# from stdin): a script sourced from stdin and a `cat` reading MORE stdin
+# inside that same script cannot safely share one ssh channel — bash buffers
+# ahead when parsing a piped script and silently eats bytes meant for the
+# later `cat` (found by refuter round 1: only `.tmp-*` ever landed, `mv`
+# never ran). Passing this program via `-c` (argv, not stdin) keeps stdin
+# free end-to-end for the message BODY, identically for local and remote.
+read -r -d '' PY_SEND <<'PYEOF' || true
+import os, sys
+root = os.environ.get("NUZ_MAILBOX_DIR") or os.path.expanduser("~/.nuzantara-mailbox")
+session, filename, from_label = sys.argv[1], sys.argv[2], sys.argv[3]
+target = os.path.join(root, "broadcast") if session == "broadcast" else os.path.join(root, session)
+os.makedirs(target, exist_ok=True)
+try:
+    os.chmod(target, 0o700)
+except OSError:
+    pass
+body = sys.stdin.buffer.read()
+tmp = os.path.join(root, ".tmp-" + filename + "." + str(os.getpid()))
+with open(tmp, "wb") as fh:
+    fh.write(("from: " + from_label + "\n\n").encode())
+    fh.write(body)
+os.replace(tmp, os.path.join(target, filename))
+PYEOF
+
 if [ "$HOST" = "local" ]; then
-    printf '%s' "$BODY" | FM_SESSION="$SESSION" FM_FILENAME="$FILENAME" FM_FROM="$FROM_LABEL" \
-        bash -c "$SEND_SCRIPT" || die "local delivery to $SESSION failed"
+    printf '%s' "$BODY" | python3 -c "$PY_SEND" "$SESSION" "$FILENAME" "$FROM_LABEL" \
+        || die "local delivery to $SESSION failed"
 else
-    { printf '%s\n' "$SEND_SCRIPT"; printf '%s' "$BODY"; } | \
-        ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOST" \
-            "FM_SESSION='$SESSION' FM_FILENAME='$FILENAME' FM_FROM='$FROM_LABEL' bash -s" \
+    # Remote command is built as ONE argv string for ssh (never `-s`/stdin),
+    # so the remote shell's stdin stays untouched and forwards straight to
+    # python's sys.stdin — this is what fixes the CRITICAL bug above. The
+    # program is base64-embedded to sidestep quoting entirely (session/
+    # filename/from-label are already charset-validated, so single-quoting
+    # them is safe — none can contain a single quote).
+    B64="$(printf '%s' "$PY_SEND" | base64 | tr -d '\n')"
+    POP_AND_EXEC='import base64,sys;b=sys.argv.pop(1);exec(base64.b64decode(b).decode())'
+    REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL'"
+    printf '%s' "$BODY" | ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOST" "$REMOTE_CMD" \
         || die "ssh delivery to $HOST:$SESSION failed"
 fi
 echo "delivered to $HOST:$SESSION ($FILENAME)"
