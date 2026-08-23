@@ -46,6 +46,26 @@ Su Pro al 2026-06-01 è `false` in `~/.claude/settings.json` (single-operator
 interactive). Su M5 è armato (`true`) per il caso multi-agente "8 finestre × N
 agenti che committano". Decisione: memory `session_2026_06_01_m5_worktree_hooks_fix.md`.
 
+## mailbox_inject.py — PostToolUse/Stop (context only)
+
+Legge `~/.nuzantara-mailbox/<session_id>/*.md` (diretto) e
+`~/.nuzantara-mailbox/broadcast/*.md` (tutte le sessioni), inietta fino a 3
+messaggi non consegnati via `hookSpecificOutput.additionalContext`. Su `Stop`
+questo fa proseguire il turno — wake-up cross-macchina voluto. Non blocca MAI
+un comando: registrato in `guard-conformance/registry.json`
+`command_hooks.exempt` (come `dispatch_nudge.py`), non `entries`.
+
+Mittente: `scripts/fleet_mail.sh <host> <session_id|broadcast> "<msg>"` (host
+∈ `local|pro|mini`), scrittura atomica (`.tmp-*` poi `mv`), dir sessione
+0700; il file diretto consegnato è rinominato `<name>.delivered-<ts>`.
+
+**Kill switch**: `NUZ_MAILBOX_OFF=1`. Root override: `NUZ_MAILBOX_DIR`.
+
+**Sicurezza**: superficie di prompt-injection per costruzione — root 0700
+(scrivibile solo via ssh con la chiave dell'operatore), ogni messaggio porta
+un trailer che lo etichetta input non fidato di un teammate, mai istruzione
+elevata né l'utente che parla.
+
 ## Test regressione regex
 
 ```bash

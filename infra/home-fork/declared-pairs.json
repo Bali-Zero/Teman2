@@ -886,6 +886,12 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.vercel-autopromote.plist",
       "repo": "infra/launchagents/com.nuzantara.vercel-autopromote.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/.claude/hooks/mailbox_inject.py",
+      "repo": "infra/claude-hooks/mailbox_inject.py",
+      "_note": "Context-only PostToolUse/Stop hook (fleet mailbox reader) added 2026-08-23. Installed by infra/claude-hooks/install_mailbox_hook.sh (self-verifying vaccine, same pattern as install_worktree_hooks.sh). Never blocks a command — no guilt/innocence contract, registered in guard-conformance registry.json command_hooks.exempt like dispatch_nudge.py, not entries. Declared at PR-open, before any machine has installed it: --check will report the live copy ABSENT on all three machines until install_mailbox_hook.sh runs there — expected, not drift.",
+      "machines": ["all"]
     }
   ],
   "allow": [
