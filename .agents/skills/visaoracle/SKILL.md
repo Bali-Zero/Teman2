@@ -128,16 +128,43 @@ ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d`) → signed bu
   `06:15:00Z` with `freshness_policy.max_age_seconds 604800` (7 days) → **expires
   2026-08-27T06:14Z**.
 
-  **Sentinel (`pro.visa_freshness_sentinel`, PR #4410) is ARMED AND HEALTHY on Pro — NOT
-  "built but not armed" as PENDING-ARMS still claimed** (row closed by this same PR). Re-verified
-  live this session, not recalled from context: `launchctl print gui/501/com.nuzantara.visa-freshness-sentinel`
+  **Sentinel (`pro.visa_freshness_sentinel`, PR #4410) is LOADED, RUNNING, and READING THE
+  ACTIVE PACK FROM THE PRODUCTION DB on Pro — NOT "built but not armed" as PENDING-ARMS still
+  claimed** (row closed by this same PR, scope corrected below). Re-verified live this session,
+  not recalled from context: `launchctl print gui/501/com.nuzantara.visa-freshness-sentinel`
   shows the job loaded (`program /Users/nuzantara/scripts/pro-visa-freshness-sentinel.sh`);
-  `~/.organism/last_seen/pro.visa_freshness_sentinel.json` → `{"ts":"2026-08-22T21:58:09Z",
-"status":"ok","note":"run done"}`; `~/logs/pro-visa_freshness_sentinel/run.log` tail shows a
-  run TODAY (`2026-08-23 05:58:09`, `rc=0`) reporting `"pack_sequence": 12, "pack_version":
-"2026.8.20", "pack_source": "database"` — both halves of the row's own proof-of-armed clause
-  (fresh `last_seen` timestamp AND `pack_source: "database"`, never `"repository-fallback"`) are
-  satisfied. The 48h-ahead warn window lands ~2026-08-25T06:14Z.
+  `~/logs/pro-visa_freshness_sentinel/run.log` and `~/.organism/last_seen/pro.visa_freshness_sentinel.json`
+  report `{"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}` / `[2026-08-23 05:58:09]
+run done rc=0` reporting `"pack_sequence": 12, "pack_version": "2026.8.20", "pack_source":
+"database"` — **these are ONE run cited twice, not two witnesses**: Pro's local clock is WITA
+  (UTC+8, confirmed live), so `05:58:09` local and `21:58:09Z` are the identical instant.
+  `pack_source: "database"` is meaningful — `_fetch_active_pack_from_db`
+  (`scripts/visa_freshness_sentinel.py:407-447`) runs a real bitemporal ACTIVE-pack query against
+  Postgres (`legal_period`/`system_period @> now()`), not the labelled repository fallback — so
+  this run genuinely read the live pack.
+
+  **What this does NOT prove: that an alert would ever reach anyone.** The alert path is
+  fire-and-forget by explicit design — `send_alert` (`scripts/visa_freshness_sentinel.py:626-661`,
+  under a section literally headed "Telegram gateway — fire-and-forget, exact house pattern")
+  routes through `scripts/tg_notify.py`, and on ANY failure (`tg_notify.py` missing, subprocess
+  exception, non-zero exit) only `logger.warning` fires — the docstring states the house contract
+  verbatim: "NEVER raises — a gateway failure must not crash the sentinel." **A sentinel with a
+  dead Telegram path produces byte-identical evidence to what is cited above** — same `status:ok`,
+  same `rc=0`, same fresh `last_seen` — because `send_alert` short-circuits to `return None` the
+  instant `verdict.outcome == OUTCOME_OK`, which is exactly the outcome this one observed run had:
+  the alert path was never even exercised, let alone proven to deliver. This is cicatrix
+  superscar family #2 (Esiste≠Armato) — the sentinel's own `G2_heartbeat` gene names the
+  discipline this entry initially failed to apply to its own claim.
+
+  **Delivery proof is therefore still owed, ideally before 2026-08-25T06:14Z** (the sentinel's
+  48h-ahead warn window on the 2026-08-27T06:14Z expiry above) — because after that date, silence
+  from the sentinel is ambiguous: equally consistent with "nothing to warn about yet" and with
+  "the send path is dead." A new PENDING-ARMS row is opened for this (owner: team-lead/orchestrator
+  session, this same review lane — proof-of-armed = an observed test alert actually arriving on
+  Telegram, not another green run log). The PENDING-ARMS row this PR closes is narrower than that
+  and stays closed: its own proof-of-armed clause (fresh `last_seen` AND non-fallback
+  `pack_source`) asked only about load+DB-read state, and that clause is genuinely satisfied — the
+  delivery gap is a distinct, newly-opened claim, not a reopening of the old one.
 
   **CORRECTION — the two "residual doctrine gaps" this backfill's own originating mandate still
   named as open are ALREADY CURED and LIVE, since seq-10 (2026-08-19).** Verified against the
