@@ -8,7 +8,7 @@ sources:
   - path: data/source_documents/t0_regulations/permenkumham_11_2024_perubahan_visa.pdf
     note: "amendment, item 14 (replaces Pasal 50) + item 15 (inserts Pasal 50A) — re-extracted this session"
 discovered_by: agent.air-m5.backend-rag.visaoracle-seq13-rules-0823
-adversarial_review: none yet — see note below
+adversarial_review: exempt-no-external-seat-dispatched-fix-held-not-shipped-see-adversarial-review-section
 ---
 
 # inc6 claim ledger — sponsor-status value check (seq-13, Fix 4)
@@ -251,7 +251,11 @@ merely inert**:
    backed by the signed status-code catalogue, so even a syntactically plausible value must
    never satisfy an engine rule that checks `op: known`."* — i.e. a PRIOR author already knew
    `op:known` was too permissive and built this frontend guard specifically to defeat it on the
-   interview path. That guard was written against `op:known`'s behavior, not `op:in`'s:
+   interview path. **That guard was written against `op:known`'s FALSE-on-unknown behavior —
+   swap the operator to `op:in` and the same guard silently stops protecting and starts
+   producing the dead-end instead. A mitigation written against one operator becoming a
+   liability under another is a genuinely non-obvious failure mode**, not a coincidence of this
+   one fact:
    ```
    op:known on UNKNOWN  ->  FALSE     ->  silent UNSUPPORTED        (today, live)
    op:in    on UNKNOWN  ->  UNKNOWN   ->  on_unknown=NEEDS_INPUT (8 of 9 rules)
