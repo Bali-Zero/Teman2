@@ -351,6 +351,58 @@ def _split_trailing_update_notes(parts: Sequence[str]) -> tuple[List[str], List[
     return core, notes
 
 
+# Owner/proof extraction by LABEL, not position — the fix for a live blind spot
+# proven 2026-08-23 (v2-d12): `parts[-2]`/`parts[-1]` assumes owner and proof are
+# the LAST two fields, true only for the canonical 5-field shape. A hand-added
+# trailing field (most commonly `| source: <path>`, a provenance note appended
+# after proof) shifts that anchor one slot — `owner` reads what is actually the
+# PROOF text, `proof` reads the trailing extra field, and the real, explicitly
+# `owner:`-labeled field sits unexamined, absorbed into `missing_step` by
+# `_extract_missing_step`'s own `parts[2:-2]` recovery. Measured against the live
+# ledger the day this was found: 34 of 396 open entries carry an `owner:` label
+# that `parts[-2]` misses this way. Proven exploitable, not just untidy: a
+# synthetic row shaped `... | owner: operator | proof: ... | source: ...` (a
+# textbook bare-phantom, no category tag) parsed to `class: TECH-DEBT` and made
+# `--strict-phantom` exit 0 on a scratch copy of the real ledger — the classifier
+# never saw the word "operator" in the field it thought was `owner`, because that
+# field was actually the proof text. A label match is unambiguous wherever it
+# fires (a field starting with `owner:` unambiguously IS the owner, regardless of
+# position), so it is tried FIRST; position is the fallback only when no label is
+# present anywhere — which is still most of the ledger's canonical unlabeled
+# 5-field entries (`me`, `operator[secret]`, no label at all) and must keep
+# resolving exactly as before.
+_LABEL_PATTERNS = {
+    "owner": re.compile(r"^\s*[`\"'*_]*\s*owner\s*:\s*", re.IGNORECASE),
+    "proof-of-armed": re.compile(r"^\s*[`\"'*_]*\s*proof-of-armed\s*:\s*", re.IGNORECASE),
+    "proof": re.compile(r"^\s*[`\"'*_]*\s*proof\s*:\s*", re.IGNORECASE),
+}
+
+
+def _find_labeled_fields(parts: Sequence[str], label: str) -> List[tuple[int, str]]:
+    """Return every (index, stripped-value-after-label) pair among `parts` whose
+    text starts with `<label>:` (case-insensitive, tolerant of surrounding
+    markdown emphasis/backtick markup), in file order. Returns ALL matches, not
+    just the first: a live ledger pattern (confirmed against 2 real entries,
+    #128/"77 phantom KBLI codes" and #263/"queue_rearm.sh scheduling") is a
+    session appending a restated `owner: ... | proof: ...` pair AFTER a `**UPDATE
+    ...**`-style progress note, when the update narrows or reassigns scope rather
+    than just adding commentary — a second full pair, not just the trailing-note
+    shape `_split_trailing_update_notes` already handles. The caller takes the
+    LAST hit as current (same "latest restatement wins" reading a human gives the
+    line, and the same philosophy trailing UPDATE notes already use) — never the
+    first, and never flags multiple hits as an error: every multi-hit case found
+    in the real corpus was this legitimate growth pattern, not corruption.
+    """
+    pattern = _LABEL_PATTERNS[label]
+    hits: List[tuple[int, str]] = []
+    for idx, p in enumerate(parts):
+        stripped = p.strip()
+        m = pattern.match(stripped)
+        if m:
+            hits.append((idx, stripped[m.end() :].strip()))
+    return hits
+
+
 def _truncate(text: str, limit: int = 120) -> str:
     if len(text) <= limit:
         return text
@@ -510,9 +562,37 @@ def parse_entry(raw: str, now: date) -> Entry:
     parts, trailing_notes = _split_trailing_update_notes(all_parts)
 
     artifact = _safe_get(parts, 1)
-    missing_step = _extract_missing_step(parts)
-    owner = _safe_get(parts, -2)
-    proof_core = _safe_get(parts, -1)
+
+    # Label-anchored extraction FIRST (see _find_labeled_fields docstring for why):
+    # a field starting with `owner:`/`proof:`/`proof-of-armed:` unambiguously IS
+    # that field, wherever it sits. Position is the fallback only when no label
+    # exists anywhere in the entry — the canonical unlabeled 5-field shape.
+    owner_hits = _find_labeled_fields(parts, "owner")
+    proof_hits = _find_labeled_fields(parts, "proof-of-armed") or _find_labeled_fields(parts, "proof")
+
+    owner_idx: Optional[int] = None
+    if owner_hits:
+        owner_idx, owner = owner_hits[-1]
+    else:
+        owner = _safe_get(parts, -2)
+
+    proof_idx: Optional[int] = None
+    if proof_hits:
+        proof_idx, proof_core = proof_hits[-1]
+    else:
+        proof_core = _safe_get(parts, -1)
+
+    if owner_idx is not None or proof_idx is not None:
+        # At least one field was label-anchored — missing_step is everything
+        # between artifact and the FIRST anchored field, not the fixed
+        # `parts[2:-2]` outside-in guess (which assumes owner/proof are the
+        # last two fields, false once a label anchors one of them elsewhere).
+        anchor = min(x for x in (owner_idx, proof_idx) if x is not None)
+        middle = parts[2:anchor]
+        missing_step = "|".join(p.strip() for p in middle).strip() if middle else _safe_get(parts, 2)
+    else:
+        missing_step = _extract_missing_step(parts)
+
     proof = "|".join([proof_core, *trailing_notes]).strip() if trailing_notes else proof_core
 
     if date_match and len(all_parts) >= 3 and not owner:
@@ -532,6 +612,37 @@ def parse_entry(raw: str, now: date) -> Entry:
         # shape (verified: 45/225 real entries, all with real, nonempty,
         # correctly-extracted owners).
         reasons.append("owner field is empty after parsing (unparseable/corrupted owner)")
+
+    # Strong-signal owner-corruption backstop for the entries a LABEL cannot
+    # rescue (no `owner:` label exists anywhere to correct the position-based
+    # fallback) — 2 of 36 audited live cases had none. Deliberately narrow:
+    # only two unambiguous tells, never a loose "doesn't start with
+    # me/operator/session" shape check. That looser check has real false
+    # positives in this corpus — a legitimately-phrased owner like "next
+    # war-room-lane session" starts with neither token and is not corrupt; a
+    # shape check flags it anyway. These two tells fire only on content that
+    # cannot legitimately BE an owner under any phrasing: text explicitly
+    # re-labeled as proof (an anchor collision, not a phrasing choice), or an
+    # exact bare status word lifted from elsewhere in the entry.
+    #
+    # Exempted for FIREBREAK-classified entries (`"firebreak" in raw.lower()`,
+    # checked the same way `cls` itself is decided below): a FIREBREAK is
+    # informational-only by design (never alarmed, never blocks a merge) — the
+    # entire point of this backstop is to stop an owner-shape defect from
+    # silently hiding a live CI risk, and a firebreak entry carries no such
+    # risk regardless of how its owner field reads. Found live 2026-08-23: the
+    # unguarded version of this check newly flagged a real, pre-existing,
+    # harmless FIREBREAK row (`INTERACTIVE-DEFAULT RULING`, owner text reduced
+    # to the stray word "closed" by its own closure prose) as MALFORMED —
+    # which fails `--strict-phantom` unconditionally, so shipping this fix
+    # without the exemption would have gone CI-red on the real, UNCHANGED
+    # ledger. The fix is for the READER, not a mandate to also correct every
+    # row's prose in the same PR (see this fix's own PR description).
+    if date_match and len(all_parts) >= 3 and owner and "firebreak" not in raw.lower():
+        if _LABEL_PATTERNS["proof-of-armed"].match(owner) or _LABEL_PATTERNS["proof"].match(owner):
+            reasons.append("owner field holds text labeled proof:/proof-of-armed: — anchor collision")
+        elif owner.strip().rstrip(".").lower() in {"closed", "tech-debt"}:
+            reasons.append(f"owner field is a bare status word ({owner.strip()!r}), not an owner")
 
     age_days: Optional[int] = None
     overdue = False
