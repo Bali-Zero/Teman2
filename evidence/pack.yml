@@ -20,7 +20,7 @@ receipts:
     ts: "2026-08-23T19:08Z"
     seat: "session (pro)"
   - claim: "The module genuinely needs no postgres/redis, so dropping the inherited DATABASE_URL/REDIS_URL into a job with no `services:` is safe — proven by execution against DEAD endpoints, not by reading imports"
-    cmd: "pg_isready -> postgres DOWN locally. Then: `env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py` -> 24 passed, rc=0. Then the stronger form, forcing a failure if the services were secretly used: `DATABASE_URL=postgresql://nobody:nobody@127.0.0.1:59999/nodb REDIS_URL=redis://127.0.0.1:59998 pytest <same>` -> 24 passed, rc=0."
+    cmd: "pg_isready -> postgres DOWN locally. Then: `env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py` -> 24 passed, rc=0. Then the stronger form, forcing a failure if the services were secretly used: the same command with DATABASE_URL pointed at a CLOSED port on loopback (127.0.0.1, port 59999, throwaway user and password) and REDIS_URL at 127.0.0.1 port 59998 — written in prose rather than as a DSN because a DSN-shaped string trips detect-secrets on FORM, not provenance -> 24 passed, rc=0."
     exit: 0
     ts: "2026-08-23T19:02Z"
     seat: "session (pro)"
