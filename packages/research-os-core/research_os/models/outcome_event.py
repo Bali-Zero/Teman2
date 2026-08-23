@@ -68,7 +68,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from research_os.enums import AttributionStrength, RiskClass, Sensitivity
@@ -214,7 +214,51 @@ class OutcomeEventRef(FrozenCoreModel):
     object_hash: Sha256Hex
 
 
+# Section 16 joint-presence invariant, mirrored into JSON Schema (2026-08-23
+# adversarial-review finding): metric_profile_ref and metric_result_ref must
+# be jointly present-with-a-value or jointly absent/null. This is
+# deliberately NOT a plain `dependentRequired` -- dependentRequired tests
+# only KEY PRESENCE, and this contract uses presence-preserving null
+# semantics (hashing.py's "option b": an absent key and a key explicitly set
+# to JSON `null` are different wire documents, but the SAME validation state
+# for THIS rule -- validate_event() below tests `is None`, which is True for
+# both "absent" and "explicit null"). A document with both keys PRESENT but
+# one explicitly `null` would slip past a bare `dependentRequired` while
+# still being rejected by validate_event(); the two subschemas below test
+# the VALUE (not `null`), not just key presence, and are combined
+# bidirectionally (if A then B, and if B then A) to express "A iff B" --
+# mirroring MetricResult's json_schema_extra precedent (metric_result.py).
+_METRIC_PROFILE_REF_PRESENT_AND_NOT_NULL: dict[str, Any] = {
+    "required": ["metric_profile_ref"],
+    "properties": {"metric_profile_ref": {"not": {"type": "null"}}},
+}
+_METRIC_RESULT_REF_PRESENT_AND_NOT_NULL: dict[str, Any] = {
+    "required": ["metric_result_ref"],
+    "properties": {"metric_result_ref": {"not": {"type": "null"}}},
+}
+
+
 class OutcomeEvent(FrozenCoreModel):
+    # Merges with (does not replace) FrozenCoreModel.model_config, per
+    # pydantic's ConfigWrapper.for_model base-then-namespace update order --
+    # extra="forbid" and frozen=True survive alongside json_schema_extra
+    # (same pattern already shipped in metric_result.py, empirically
+    # re-verified for this file: see PR discussion).
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": _METRIC_PROFILE_REF_PRESENT_AND_NOT_NULL,
+                    "then": _METRIC_RESULT_REF_PRESENT_AND_NOT_NULL,
+                },
+                {
+                    "if": _METRIC_RESULT_REF_PRESENT_AND_NOT_NULL,
+                    "then": _METRIC_PROFILE_REF_PRESENT_AND_NOT_NULL,
+                },
+            ]
+        }
+    )
+
     outcome_event_id: UUID
     outcome_event_family_id: RegisteredName
     contract_version: Literal["research-os/v1.0.0"]

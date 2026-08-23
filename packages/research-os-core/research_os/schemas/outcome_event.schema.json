@@ -651,6 +651,52 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "metric_profile_ref": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": ["metric_profile_ref"]
+      },
+      "then": {
+        "properties": {
+          "metric_result_ref": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": ["metric_result_ref"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_result_ref": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": ["metric_result_ref"]
+      },
+      "then": {
+        "properties": {
+          "metric_profile_ref": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": ["metric_profile_ref"]
+      }
+    }
+  ],
   "properties": {
     "classification": {
       "$ref": "#/$defs/OutcomeClassification"

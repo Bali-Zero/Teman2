@@ -61,7 +61,7 @@
     "suppressed": false
   },
   "observed_at": "2026-04-15T00:05:00Z",
-  "recorded_at": "2026-04-15T00:05:01Z",
+  "recorded_at": "2026-04-15T00:05:02Z",
   "classification": {
     "risk_class": "green",
     "sensitivity": "internal",
@@ -96,5 +96,5 @@
       }
     }
   },
-  "object_hash": "15fda9aca8647273d37885330a14d37e8b8622440ae58441d73b4b1a71e51e87"
+  "object_hash": "88076246fd48090e64d637b957dcde91c605c0d4195d9a3d2f19500a3b28b32b"
 }
