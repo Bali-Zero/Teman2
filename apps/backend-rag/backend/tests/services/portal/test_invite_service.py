@@ -217,3 +217,156 @@ async def test_get_client_invitations_maps_statuses() -> None:
 
     assert [invite["status"] for invite in invitations] == ["used", "expired", "pending"]
     assert conn.fetch_calls[0][1] == (7,)
+
+
+# ---------------------------------------------------------------------------
+# P0 account-takeover fix (2026-08-23, SPEC-p0-invite.md "PR A").
+#
+# A2: complete_registration must never let an invitation function as a
+#     password reset on an ALREADY-ACTIVE portal account. Re-onboarding an
+#     INACTIVE account (the legitimate re-invite flow) stays allowed.
+# A4: an archived client (clients.deleted_at IS NOT NULL) can't be
+#     (re-)invited, and an invitation JOIN can't resolve to an archived
+#     client's row. FakeConnection doesn't enforce SQL semantics — it
+#     returns whatever is queued regardless of query text — so these tests
+#     assert on the captured query text itself; a behavioral-only test
+#     (e.g. "returns None -> raises") wouldn't discriminate the fix, since
+#     the pre-fix query also raises on a genuinely-missing client. Removing
+#     "AND deleted_at IS NULL" (or "AND c.deleted_at IS NULL" on the JOIN)
+#     makes these fail while leaving every other test in this file green.
+# ---------------------------------------------------------------------------
+
+
+class _NoopTransaction:
+    """No-op async context manager standing in for asyncpg's real transaction."""
+
+    async def __aenter__(self) -> None:
+        return None
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+class FakeConnectionWithTransaction(FakeConnection):
+    """FakeConnection + a working `.transaction()` for complete_registration,
+    which runs its body inside `async with conn.transaction():`."""
+
+    def transaction(self) -> _NoopTransaction:
+        return _NoopTransaction()
+
+
+@pytest.mark.asyncio
+async def test_create_invitation_excludes_archived_clients_by_query() -> None:
+    conn = FakeConnection(fetchrow_results=[None])
+    service = InviteService(FakePool(conn))
+
+    with pytest.raises(ValueError, match="Client with ID 501 not found"):
+        await service.create_invitation(
+            client_id=501,
+            email="archived@example.com",
+            created_by="team@example.com",
+        )
+
+    query, args = conn.fetchrow_calls[0]
+    assert "deleted_at IS NULL" in query
+    assert args == (501,)
+
+
+@pytest.mark.asyncio
+async def test_resend_invitation_excludes_archived_clients_by_query() -> None:
+    conn = FakeConnection(fetchrow_results=[None])
+    service = InviteService(FakePool(conn))
+
+    with pytest.raises(ValueError, match="Client not found or has no email"):
+        await service.resend_invitation(client_id=501, created_by="team@example.com")
+
+    query, args = conn.fetchrow_calls[0]
+    assert "deleted_at IS NULL" in query
+    assert args == (501,)
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_join_excludes_archived_clients_by_query() -> None:
+    """A4 — the invitation JOIN must not resolve to an archived client's row
+    (invite created before the client was archived; token still exists but
+    must no longer function)."""
+    conn = FakeConnectionWithTransaction(fetchrow_results=[None])
+    service = InviteService(FakePool(conn))
+
+    with pytest.raises(ValueError, match="Invalid invitation token"):
+        await service.complete_registration(token="tok-archived", pin="1234")
+
+    query, args = conn.fetchrow_calls[0]
+    assert "c.deleted_at IS NULL" in query
+    assert args == ("tok-archived",)
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_rejects_active_existing_account() -> None:
+    """A2 GUILT — consuming an invitation must never reset the PIN of an
+    ACTIVE account. This is the exact chain step (#3 in SPEC-p0-invite.md)
+    that turned a leaked invite link into a full account takeover."""
+    now = datetime.now(timezone.utc)
+    conn = FakeConnectionWithTransaction(
+        fetchrow_results=[
+            {
+                "id": 9,
+                "client_id": 7,
+                "email": "victim@example.com",
+                "expires_at": now + timedelta(hours=1),
+                "used_at": None,
+                "client_name": "Client Name",
+            },
+            {"id": 55, "active": True},
+        ]
+    )
+    service = InviteService(FakePool(conn))
+
+    with pytest.raises(ValueError, match="already has an active portal account"):
+        await service.complete_registration(token="tok", pin="1234")
+
+    # The guard must trip BEFORE any mutation — no UPDATE/INSERT at all.
+    assert conn.execute_calls == []
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_reactivates_inactive_existing_account() -> None:
+    """A2 INNOCENCE — re-onboarding an INACTIVE account (the legitimate
+    re-invite flow) must keep working. Same fixture shape as the GUILT test
+    above except `active: False` — this is what makes the guilt test a real
+    discriminator rather than "any existing_user rejects"."""
+    now = datetime.now(timezone.utc)
+    conn = FakeConnectionWithTransaction(
+        fetchrow_results=[
+            {
+                "id": 9,
+                "client_id": 7,
+                "email": "client@example.com",
+                "expires_at": now + timedelta(hours=1),
+                "used_at": None,
+                "client_name": "Client Name",
+            },
+            {"id": 55, "active": False},
+        ]
+    )
+    service = InviteService(FakePool(conn))
+
+    with patch(
+        "backend.services.common.cache._invalidate_cache",
+        new=AsyncMock(return_value=1),
+    ):
+        result = await service.complete_registration(token="tok", pin="1234")
+
+    assert result == {
+        "success": True,
+        "user_id": 55,
+        "client_id": 7,
+        "email": "client@example.com",
+        "name": "Client Name",
+    }
+    # 3 mutations: reactivate the team_member row, mark the invitation used,
+    # seed default client_preferences.
+    assert len(conn.execute_calls) == 3
+    update_query, update_args = conn.execute_calls[0]
+    assert "SET pin_hash = $1, active = true, portal_access = true" in update_query
+    assert update_args[1] == 55
