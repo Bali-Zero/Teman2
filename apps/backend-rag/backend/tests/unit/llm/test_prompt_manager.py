@@ -236,14 +236,23 @@ class TestPromptManagerFailLoudOnUnknownVersion:
           logger's own level or handlers are ever consulted, so a suppressed
           level never even constructs a record — no handler, including ours,
           gets a chance to see it. pytest's own `caplog.set_level()`/
-          `at_level()` manipulate this exact global under the hood
-          (`_pytest/logging.py::_force_enable_logging`), and third-party code
-          does too (e.g. `sentence_transformers.util.misc.disable_logging`).
-          Any of them running earlier in the SAME process — CI runs this suite
-          under `pytest-xdist --dist loadfile`, which puts many files through
-          one worker process — can leave it elevated if interrupted between
-          set and restore, or simply outlive a test that never expected to
-          share a process with this one.
+          `at_level()` do touch this exact global under the hood
+          (`_pytest/logging.py::_force_enable_logging`) — but only ever to
+          LOOSEN it: that helper's two write paths either lower the
+          threshold (`logging.disable(max(level - 10, logging.NOTSET))`) or
+          clear it outright (`logging.disable(logging.NOTSET)`), and
+          `at_level()` restores the pre-existing value in a `finally`. So
+          pytest is not a suppression source for this knob — cited here for
+          the direction it moves it, not as a threat. No producer of an
+          elevated global mute exists in this repo today: across the whole
+          `backend/` tree, all 21 `conftest.py` included, the only site that
+          touches `manager.disable` at all is
+          `backend/tests/core/test_telegram_token_never_reaches_a_log.py`,
+          and it only ever *un*-mutes (`logging.disable(logging.NOTSET)`),
+          saving and restoring around it. This capture is therefore
+          hardening of the promise this docstring already makes —
+          "independently of the global logging config" — not the diagnosis
+          of whatever CI failure motivated it, which remains unreproduced.
         * this logger's own `.filters` — `Logger.filter()` runs before
           `callHandlers()`, so a drop-everything filter attached directly to
           `backend.llm.prompt_manager` (by this test file or any other) would
@@ -320,12 +329,17 @@ class TestPromptManagerFailLoudOnUnknownVersion:
         assert pm.PROMPT_VERSION_ACTIVE == "v1"
 
     def test_capture_survives_a_pre_existing_global_logging_disable(self, monkeypatch):
-        """GUILT: a process-global mute (exactly what `logging.disable(N)` sets,
-        and what pytest's own `caplog.set_level()`/`at_level()` toggle under the
-        hood — `_pytest/logging.py::_force_enable_logging`) must not blind the
-        capture. Simulates a sibling test/module in the SAME process (CI runs
-        this suite under `pytest-xdist --dist loadfile`, many files per worker)
-        leaving `logging.Logger.manager.disable` elevated when this test starts.
+        """GUILT: a process-global mute — whatever calls `logging.disable(N)` —
+        must not blind the capture. pytest's own `caplog.set_level()`/
+        `at_level()` do touch this exact global (`_pytest/logging.py::
+        _force_enable_logging`), but only ever to LOOSEN it, never to raise
+        it — so this is not a reproduction of pytest's own behaviour. It is a
+        synthetic worst case: simulates a sibling test/module in the SAME
+        process (CI runs this suite under `pytest-xdist --dist loadfile`,
+        many files per worker) leaving `logging.Logger.manager.disable`
+        elevated by SOME OTHER means when this test starts, so the capture
+        stays defensive even though no such producer is known to exist in
+        this repo today.
         """
         import backend.llm.prompt_manager as pm
 
