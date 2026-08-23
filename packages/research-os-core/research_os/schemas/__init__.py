@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
 from research_os.models.conductor_handoff import ConductorHandoff
+from research_os.models.outcome_event import OutcomeEvent
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 from research_os.models.verification_receipt import VerificationReceipt
@@ -19,6 +20,7 @@ SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "conductor_handoff": ConductorHandoff,
     "object_successor_edge": ObjectSuccessorEdge,
+    "outcome_event": OutcomeEvent,
     "revocation_receipt": RevocationReceipt,
     "verification_receipt": VerificationReceipt,
     "workflow_run": WorkflowRun,

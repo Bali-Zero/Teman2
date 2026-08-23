@@ -1,0 +1,100 @@
+{
+  "outcome_event_id": "b0000000-0000-4000-8000-000000000003",
+  "outcome_event_family_id": "com.example.outcome_event.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "subject_refs": {
+    "decision_packet_ref": {
+      "decision_packet_id": "70000000-0000-4000-8000-000000000001",
+      "object_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "content_object_ref": {
+      "content_object_id": "e0000000-0000-4000-8000-000000000001",
+      "revision": 2,
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "action_intent_ref": {
+      "action_intent_id": "f0000000-0000-4000-8000-000000000001",
+      "object_hash": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "execution_attempt_ref": {
+      "execution_attempt_id": "10100000-0000-4000-8000-000000000001",
+      "object_hash": "6666666666666666666666666666666666666666666666666666666666666666"
+    },
+    "operational_receipt_ref": {
+      "operational_receipt_id": "10200000-0000-4000-8000-000000000001",
+      "object_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "claim_refs": [
+      {
+        "claim_id": "10300000-0000-4000-8000-000000000001",
+        "object_hash": "8888888888888888888888888888888888888888888888888888888888888888"
+      }
+    ],
+    "campaign_ref": {
+      "campaign_id": "synthetic-campaign-001",
+      "revision": 1,
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "workflow_run_ref": {
+      "workflow_run_id": "30000000-0000-4000-8000-000000000001",
+      "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  },
+  "outcome_type": "com.example.workflow_completed",
+  "value": {
+    "delta": -3,
+    "notes": "synthetic correction"
+  },
+  "window": {
+    "started_at": "2026-04-15T00:00:00Z",
+    "ended_at": "2026-04-15T00:05:00Z"
+  },
+  "source_system": "CRM",
+  "quality": {
+    "attribution_strength": "deterministic",
+    "completeness": 1.0,
+    "caveats": [],
+    "collection_version": "1.0.0"
+  },
+  "cohort": {
+    "suppressed": false
+  },
+  "observed_at": "2026-04-15T00:05:00Z",
+  "recorded_at": "2026-04-15T00:05:01Z",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal",
+    "aggregation_level": "individual_run"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "idempotency_key": "synthetic-outcome-001",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": [
+      "3333333333333333333333333333333333333333333333333333333333333333"
+    ],
+    "code_version": "1.0.0",
+    "model_version": "opus-5",
+    "prompt_version": "1.0.0"
+  },
+  "supersedes_outcome_event_ref": {
+    "outcome_event_id": "b0000000-0000-4000-8000-000000000001",
+    "object_hash": "9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "extensions": {
+    "com.example.provenance": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "batch": "synthetic-batch-001"
+      }
+    }
+  },
+  "object_hash": "15fda9aca8647273d37885330a14d37e8b8622440ae58441d73b4b1a71e51e87"
+}

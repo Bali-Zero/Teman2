@@ -1,0 +1,816 @@
+{
+  "$defs": {
+    "ActionIntentRef": {
+      "additionalProperties": false,
+      "properties": {
+        "action_intent_id": {
+          "format": "uuid",
+          "title": "Action Intent Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["action_intent_id", "object_hash"],
+      "title": "ActionIntentRef",
+      "type": "object"
+    },
+    "ArtifactRevisionRef": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_revision_id": {
+          "minLength": 1,
+          "title": "Artifact Revision Id",
+          "type": "string"
+        },
+        "artifact_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        }
+      },
+      "required": ["artifact_revision_id", "artifact_sha256"],
+      "title": "ArtifactRevisionRef",
+      "type": "object"
+    },
+    "AttributionStrength": {
+      "enum": [
+        "direct",
+        "deterministic",
+        "modeled",
+        "correlational",
+        "unattributed"
+      ],
+      "title": "AttributionStrength",
+      "type": "string"
+    },
+    "CampaignRef": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "minLength": 1,
+          "title": "Campaign Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        }
+      },
+      "required": ["campaign_id", "object_hash"],
+      "title": "CampaignRef",
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "format": "uuid",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["claim_id", "object_hash"],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "ContentObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_object_id": {
+          "format": "uuid",
+          "title": "Content Object Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "revision": {
+          "exclusiveMinimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": ["content_object_id", "revision", "object_hash"],
+      "title": "ContentObjectRef",
+      "type": "object"
+    },
+    "DecisionPacketRef": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_packet_id": {
+          "format": "uuid",
+          "title": "Decision Packet Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["decision_packet_id", "object_hash"],
+      "title": "DecisionPacketRef",
+      "type": "object"
+    },
+    "ExecutionAttemptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_attempt_id": {
+          "format": "uuid",
+          "title": "Execution Attempt Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["execution_attempt_id", "object_hash"],
+      "title": "ExecutionAttemptRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "MetricProfileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "metric_profile_id": {
+          "format": "uuid",
+          "title": "Metric Profile Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["metric_profile_id", "object_hash"],
+      "title": "MetricProfileRef",
+      "type": "object"
+    },
+    "MetricResultRef": {
+      "additionalProperties": false,
+      "properties": {
+        "metric_result_id": {
+          "format": "uuid",
+          "title": "Metric Result Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["metric_result_id", "object_hash"],
+      "title": "MetricResultRef",
+      "type": "object"
+    },
+    "OperationalReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "operational_receipt_id": {
+          "format": "uuid",
+          "title": "Operational Receipt Id",
+          "type": "string"
+        }
+      },
+      "required": ["operational_receipt_id", "object_hash"],
+      "title": "OperationalReceiptRef",
+      "type": "object"
+    },
+    "OutcomeClassification": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation_level": {
+          "minLength": 1,
+          "title": "Aggregation Level",
+          "type": "string"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity", "aggregation_level"],
+      "title": "OutcomeClassification",
+      "type": "object"
+    },
+    "OutcomeCohort": {
+      "additionalProperties": false,
+      "properties": {
+        "minimum_required": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum Required"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "suppressed": {
+          "title": "Suppressed",
+          "type": "boolean"
+        }
+      },
+      "required": ["suppressed"],
+      "title": "OutcomeCohort",
+      "type": "object"
+    },
+    "OutcomeEventLineage": {
+      "additionalProperties": false,
+      "properties": {
+        "code_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code Version"
+        },
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "workflow_run_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowRunRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["input_hashes"],
+      "title": "OutcomeEventLineage",
+      "type": "object"
+    },
+    "OutcomeEventRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "outcome_event_id": {
+          "format": "uuid",
+          "title": "Outcome Event Id",
+          "type": "string"
+        }
+      },
+      "required": ["outcome_event_id", "object_hash"],
+      "title": "OutcomeEventRef",
+      "type": "object"
+    },
+    "OutcomeQuality": {
+      "additionalProperties": false,
+      "properties": {
+        "attribution_strength": {
+          "$ref": "#/$defs/AttributionStrength"
+        },
+        "caveats": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Caveats",
+          "type": "array"
+        },
+        "collection_version": {
+          "minLength": 1,
+          "title": "Collection Version",
+          "type": "string"
+        },
+        "completeness": {
+          "title": "Completeness",
+          "type": "number"
+        }
+      },
+      "required": [
+        "attribution_strength",
+        "completeness",
+        "caveats",
+        "collection_version"
+      ],
+      "title": "OutcomeQuality",
+      "type": "object"
+    },
+    "OutcomeWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "ended_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Ended At",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Started At",
+          "type": "string"
+        }
+      },
+      "required": ["started_at", "ended_at"],
+      "title": "OutcomeWindow",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "SubjectRefs": {
+      "additionalProperties": false,
+      "properties": {
+        "action_intent_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionIntentRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "artifact_revision_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRevisionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "campaign_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CampaignRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "claim_refs": {
+          "items": {
+            "$ref": "#/$defs/ClaimRef"
+          },
+          "title": "Claim Refs",
+          "type": "array"
+        },
+        "content_object_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContentObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "decision_packet_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecisionPacketRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "execution_attempt_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionAttemptRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "operational_receipt_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OperationalReceiptRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "verification_receipt_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VerificationReceiptRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "workflow_run_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowRunRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["claim_refs"],
+      "title": "SubjectRefs",
+      "type": "object"
+    },
+    "VerificationReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "verification_receipt_id": {
+          "format": "uuid",
+          "title": "Verification Receipt Id",
+          "type": "string"
+        }
+      },
+      "required": ["verification_receipt_id", "object_hash"],
+      "title": "VerificationReceiptRef",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "classification": {
+      "$ref": "#/$defs/OutcomeClassification"
+    },
+    "cohort": {
+      "$ref": "#/$defs/OutcomeCohort"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "idempotency_key": {
+      "minLength": 1,
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "lineage": {
+      "$ref": "#/$defs/OutcomeEventLineage"
+    },
+    "metric_profile_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MetricProfileRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "metric_result_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MetricResultRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "outcome_event_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Outcome Event Family Id",
+      "type": "string"
+    },
+    "outcome_event_id": {
+      "format": "uuid",
+      "title": "Outcome Event Id",
+      "type": "string"
+    },
+    "outcome_type": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Outcome Type",
+      "type": "string"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "quality": {
+      "$ref": "#/$defs/OutcomeQuality"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "source_system": {
+      "enum": [
+        "GSC",
+        "GA4",
+        "CRM",
+        "social",
+        "workflow",
+        "human_review",
+        "platform",
+        "product",
+        "compliance"
+      ],
+      "title": "Source System",
+      "type": "string"
+    },
+    "subject_refs": {
+      "$ref": "#/$defs/SubjectRefs"
+    },
+    "supersedes_outcome_event_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutcomeEventRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "value": {
+      "title": "Value"
+    },
+    "window": {
+      "$ref": "#/$defs/OutcomeWindow"
+    }
+  },
+  "required": [
+    "outcome_event_id",
+    "outcome_event_family_id",
+    "contract_version",
+    "tenant",
+    "subject_refs",
+    "outcome_type",
+    "value",
+    "window",
+    "source_system",
+    "quality",
+    "cohort",
+    "observed_at",
+    "recorded_at",
+    "classification",
+    "retention",
+    "idempotency_key",
+    "producer",
+    "lineage",
+    "object_hash"
+  ],
+  "title": "OutcomeEvent",
+  "type": "object"
+}
