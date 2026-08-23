@@ -702,3 +702,37 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await expect(page.locator(".oracle-constellation")).toHaveCount(0);
   });
 });
+
+test.describe("Visa Oracle noindex — served <head>, not just the metadata object", () => {
+  // #4591 (2026-08-23): source-level analysis (next/dist/lib/metadata/
+  // resolve-metadata.js) proved Next.js resolves `robots` as a whole-field
+  // REPLACEMENT — never merged with the root layout's indexable `googleBot`
+  // — so the exported `metadata.robots` object is trustworthy evidence for
+  // what Next *computes*. It is not evidence for what actually ships in the
+  // response: a page-level `metadata` export added later, a route moved out
+  // from under this layout, a co-deletion of layout+unit-test in one
+  // rewrite, or a future Next upgrade that changes merge semantics would
+  // all be invisible to layout.test.tsx. Assert the SERVED <head> instead,
+  // for every route under the SHADOW-engine layout.
+  for (const routePath of [
+    "/visa-oracle",
+    "/visa-oracle/privacy",
+    "/visa-oracle/unlock",
+  ]) {
+    test(`${routePath} serves a noindex robots meta tag`, async ({ page }) => {
+      await page.goto(routePath);
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+        "content",
+        /noindex/,
+      );
+      // The specific failure mode the source-level analysis ruled out: a
+      // stray indexable googlebot tag next to the noindex robots tag —
+      // Google obeys whichever tag is more specific to it. If Next ever
+      // emits one (it doesn't today), it must not contradict the noindex.
+      const googlebot = page.locator('meta[name="googlebot"]');
+      if ((await googlebot.count()) > 0) {
+        await expect(googlebot.first()).toHaveAttribute("content", /noindex/);
+      }
+    });
+  }
+});
