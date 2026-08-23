@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sys
 import urllib.error
 from pathlib import Path
@@ -18,6 +19,22 @@ from wr3_spend_authority import zero_spend_enabled  # noqa: E402
 
 EP = Path(sys.argv[1])
 ENDPOINT = os.environ.get("WR3_FLOWKIT_ENDPOINT", "http://127.0.0.1:8100")
+
+
+def _shot_index(shot_id: str) -> int:
+    """`s001` -> 1. Rejects anything else loudly.
+
+    `str.lstrip` strips a CHARACTER SET, not a prefix: `"shot-2".lstrip("s")`
+    is `"hot-2"`, so a non-conforming id used to reach `int()` and raise
+    ValueError from outside any handler.
+    """
+    if not re.fullmatch(r"s\d+", shot_id):
+        raise ValueError(f"expected s<digits>, got {shot_id!r}")
+    return int(shot_id[1:])
+
+
+def _write_report(report: dict) -> None:
+    (EP / "render-report.json").write_text(json.dumps(report, indent=2))
 
 
 def _health() -> dict:
@@ -57,20 +74,39 @@ async def main() -> int:
     # run and a real run otherwise emit the same shape, and total_cost_cr is 0
     # in both whenever a real run fails before its first charge.
     report = {"rendered": [], "failed": [], "extension_drop": False, "total_cost_cr": 0,
-              "mode": "placeholder" if zero_spend else "real"}
+              "mode": "placeholder" if zero_spend else "real", "status": "incomplete"}
+    # Stamp the report on disk BEFORE the first clip. Without this a run that
+    # dies mid-flight leaves the PREVIOUS run's render-report.json in place —
+    # so fresh placeholder clips can sit next to a stale `"mode": "real"` report
+    # carrying genuine veo_job_ids, and the label describes the wrong run.
+    # `status` stays "incomplete" until the loop finishes normally, so a
+    # truncated run is legible as truncated instead of silently absent.
+    _write_report(report)
 
     for shot in shots:
-        idx = int(shot["shot_id"].lstrip("s"))  # s001 -> 1
-        req = fk.ClipRequest(
-            shot_index=idx,
-            positive_prompt=shot["prompt_positive"],
-            negative_prompt=shot.get("prompt_negative", ""),
-            identity_tokens=tuple(shot.get("identity_tokens") or []),
-            duration_s=int(round(shot.get("duration_s", 8))),
-            resolution=shot_pack.get("resolution", "720x1280"),
-            aspect=shot_pack.get("aspect_ratio", "9:16"),
-            image_prompt=shot["prompt_positive"],
-        )
+        # Building the request is INSIDE a handler: a malformed shot entry must
+        # be a recorded failure, not an uncaught exception. Both statements here
+        # used to sit outside every try — `int("shot-2".lstrip("s"))` raises
+        # (lstrip strips a character SET, not a prefix) and a missing
+        # `prompt_positive` raises KeyError — killing the process mid-loop
+        # before any report was written.
+        try:
+            idx = _shot_index(shot["shot_id"])
+            req = fk.ClipRequest(
+                shot_index=idx,
+                positive_prompt=shot["prompt_positive"],
+                negative_prompt=shot.get("prompt_negative", ""),
+                identity_tokens=tuple(shot.get("identity_tokens") or []),
+                duration_s=int(round(shot.get("duration_s", 8))),
+                resolution=shot_pack.get("resolution", "720x1280"),
+                aspect=shot_pack.get("aspect_ratio", "9:16"),
+                image_prompt=shot["prompt_positive"],
+            )
+        except (KeyError, TypeError, ValueError) as e:
+            report["failed"].append({"shot_id": shot.get("shot_id"),
+                                     "reason": f"malformed shot entry: {e}"})
+            print(f"[render] skipping malformed shot: {e}", file=sys.stderr)
+            continue
         last_err = None
         for attempt in range(3):  # 1 + 2 retries
             try:
@@ -88,13 +124,13 @@ async def main() -> int:
                     report["failed"].append({"shot_id": shot["shot_id"], "reason": "503_extension_dropped"})
                     print(json.dumps({"status": "HALT", "reason": "extension_dropped_503",
                                       "shot": shot["shot_id"], "report": report}))
-                    (EP / "render-report.json").write_text(json.dumps(report, indent=2))
+                    _write_report(report)
                     return 3
                 last_err = f"HTTP {e.code}"
             except fk.FlowkitQuotaError as e:
                 report["failed"].append({"shot_id": shot["shot_id"], "reason": f"quota:{e}"})
                 print(json.dumps({"status": "HALT", "reason": "quota_exceeded", "report": report}))
-                (EP / "render-report.json").write_text(json.dumps(report, indent=2))
+                _write_report(report)
                 return 4
             except (fk.FlowkitError, fk.FlowkitTimeoutError, Exception) as e:
                 last_err = str(e)
@@ -102,8 +138,9 @@ async def main() -> int:
         else:
             report["failed"].append({"shot_id": shot["shot_id"], "reason": last_err, "needs_broll_curator": True})
 
-    (EP / "render-report.json").write_text(json.dumps(report, indent=2))
-    status = "OK" if not report["failed"] else "PARTIAL"
+    report["status"] = "OK" if not report["failed"] else "PARTIAL"
+    _write_report(report)
+    status = report["status"]
     print(json.dumps({"status": status, "rendered": len(report["rendered"]),
                       "failed": len(report["failed"]), "total_cost_cr": report["total_cost_cr"],
                       "mode": report["mode"]}))
