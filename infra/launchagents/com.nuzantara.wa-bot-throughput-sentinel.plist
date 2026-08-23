@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.wa-bot-throughput-sentinel — the organ that watches whether the
+  WhatsApp bot actually SERVES anyone (2026-08-23).
+
+  Why it exists: on 2026-08-23 the bot was measured to have produced its last
+  successful answer, and received its last inbound message-webhook, both at
+  2026-07-30 01:23:58Z — 24 days of total silence — while /health returned 200,
+  the broker gauge advanced every 30s, the breaker read closed with zero
+  failures, the codex seat probe said ok, and the autoreply flag was true.
+  Every one of those measures a COMPONENT. None measured THROUGHPUT. A queue
+  depth of zero and a queue depth of zero-because-nothing-arrives are the same
+  number, and nothing in the fleet watched the difference.
+
+  Every 900s (15min) tick: scripts/wa_bot_throughput_sentinel.py reads
+  max(received_at) off inbound_webhooks WHERE channel='whatsapp' and
+  max(created_at) off wa_outbox WHERE status='done' (SELECT-only, PRODUCTION
+  Postgres via the 127.0.0.1:15432 tunnel), and separates three conditions:
+    bot_broken    p0      inbound fresh, outbound stale — messages arriving,
+                          none answered. The loudest, and the one that would
+                          have caught the real outage: replayed against it,
+                          it fires at +1.5h.
+    dead_channel  p0      both silent >48h, RAW age, evaluated 24/7 — this one
+                          deliberately ignores business hours, because 24 days
+                          of silence must never be excused by "it is Sunday".
+    inbound_stale digest  nobody writing; business hours only.
+
+  Business-hours discipline (Mon-Sat 08:00-20:00 Asia/Makassar) is inherited
+  from com.nuzantara.wa-mirror-freshness-liveness, including its hard-won
+  `max(newest, today_open)` floor, so a quiet overnight line is Law 6 and not a
+  page. Exhaustively scanned over a 10-day replay, the longest silent window
+  that floor can produce is 13.0h — bounded, self-correcting, well under the
+  48h dead_channel threshold.
+
+  PRO-ONLY, and for a reason distinct from its sibling's (superscar #10): this
+  organ needs the PRODUCTION tunnel, and the tunnel is launchd-supervised HERE
+  (com.balizero.wr2.pg-proxy, KeepAlive). On Mini the equivalent flyctl proxy
+  is a bare unsupervised process — measured 2026-08-23: PID 8883, PPID 1, six
+  days uptime, launchd knows nothing about it — so installing there would hang
+  this organ off a leg nobody restarts. Do NOT install on Mini/M5.
+
+  superscar #7 (KeepAlive misconfig): this is a StartInterval PROBE, not a
+  daemon — KeepAlive=false, no `nohup ... &`, nothing to restart.
+
+  Kill switch: WA_BOT_THROUGHPUT_SENTINEL_ENABLED=false (honoured in the
+  wrapper, which writes its own status=disabled heartbeat before exiting).
+
+  Install:
+    cp infra/launchagents/com.nuzantara.wa-bot-throughput-sentinel.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.wa-bot-throughput-sentinel.plist
+
+  Proof-of-armed is NOT a green exit code and NOT the presence of this file —
+  both are the evidence class that let the outage run for 24 days. It is the
+  heartbeat sidecar ~/.organism/last_seen/pro.wa_bot_throughput_sentinel.json
+  read TWICE at least one interval apart and seen to ADVANCE, plus a negative
+  control against a history-free database confirming it reports
+  wrong-database rather than dead-channel.
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.wa-bot-throughput-sentinel</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/wa_bot_throughput_sentinel_run.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>WA_BOT_THROUGHPUT_SENTINEL_ENABLED</key>
+        <string>true</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wa-bot-throughput-sentinel.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wa-bot-throughput-sentinel.err.log</string>
+
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+</dict>
+</plist>
