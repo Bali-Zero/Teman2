@@ -3,6 +3,7 @@ date: 2026-08-23
 domain: visa
 client_case: none
 sources: 26
+adversarial_review: kimi-k3
 ---
 
 # GARUDA VOA — regulatory truth-sheet refresh + engine audit (2026-08-23)
@@ -320,6 +321,43 @@ Patterns 1, 2, 6 address document rework; patterns 3, 4, 5 address deadline anxi
   own words; F's CONFIRMED verdict on Afghanistan-ineligibility is preserved because V1's
   conductor-layer explicitly recorded it before the transcript ended, not because R2's own file
   shows a completed sign-off.
+
+---
+
+## Adversarial review
+
+Reviewer seat: **Kimi K3** (`kimi-k3`), run locally on Mini as R2 — a different model family than
+this document's author (Claude), tasked specifically with judging the LEGAL PREMISES behind R1's
+red-team findings, not the code and not this write-up. R2's own transcript is the source for
+every line below; nothing here is paraphrased optimism.
+
+**Objections that survive — not resolved by this capture, reported as open:**
+1. **D-7 calendar-independence (§4).** Kimi's claim E refuted Codex's "no adjustment needed"
+   position: the general kanim filing-deadline rule Kimi found is expressed in working days
+   (D-1 working day, not D-7 calendar days), and an engine relying on a Sunday/holiday deadline
+   with no shift is, in Kimi's judgment, the wrong default. This capture does **not** side with
+   Codex over Kimi (or vice versa) — §4 states both arguments and names what would settle it.
+   Objection stands.
+2. **6-month passport validity measured "from filing" (§3, Finding 5).** Kimi's claim C could not
+   find any 6-month passport-validity condition in the official Yogyakarta kanim extension
+   requirement list at all (it lists only "paspor yang sah dan masih berlaku"). This is why
+   Finding 5 is reported as **DROPPED / premise-contested** rather than defended as either a
+   confirmed defect or a confirmed non-defect. Objection stands; this capture does not rehabilitate
+   the original claim.
+
+**Objections that did not survive (Kimi confirmed these; this capture adopts them without
+contest):** claim A (arrival-day-as-day-1 counting, feeding §1.1 and Finding 1), claim B (60-day
+inclusive max, feeding Finding 2), claim D (90-day eVOA validity from issuance, feeding §1.1 and
+Finding 4), and claim F (Afghanistan excluded from the 97-nationality list, feeding §1.6 and
+Finding 3). None of these were contested — Kimi's own reasoning for each is reproduced inline
+where each claim is used.
+
+**Declared limitation on the review itself**, not laundered into a stronger claim than it is:
+R2's run was cut off by a timeout mid-sentence during its own write-up of claim E, before it
+finished stating its full reasoning and before it produced a standalone write-up of claim F (F's
+CONFIRMED status is recovered from the empirical grader V1's conductor-layer annotation, which
+recorded it before the transcript ended — see §0 and §6). Treat this review as real but partial,
+not exhaustive.
 
 ---
 
