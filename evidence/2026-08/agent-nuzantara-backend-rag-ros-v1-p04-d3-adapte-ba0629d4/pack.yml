@@ -1,0 +1,91 @@
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D3 Magazine action-chain adapters, slice 3b of 3 (shadow dual-write + parity probe), stacked on slice 3a"
+diff:
+  net_lines: >-
+    +438/-0, 4 files (shadow.py +109, parity.py +175, test_shadow_flag_off_is_noop.py +82,
+    test_parity_probe.py +72). Measured this session via `git diff --cached --numstat` on top of
+    slice 3a's own commit (this branch was created from slice 3a's tip; the whole 1->2->3a->3b
+    stack is unmerged, so this is the correct comparison until slice 1 (#4749) lands).
+  behaviour_change: >-
+    Additive: two new files beside slices 1/2/3a's. Zero existing file touched. shadow.py's
+    flag-ON path is the first CODE in this deliverable that actually calls all three adapters
+    together, but it is gated behind an env var that defaults off, and is itself never called by
+    any existing production code path yet (no live consumer).
+receipts:
+  - claim: "This branch's own four new files total exactly +438/-0"
+    cmd: "git diff --cached --numstat"
+    exit: 0
+    ts: "2026-08-24T06:05:00Z"
+    seat: "session (pro)"
+  - claim: "Full research_os adapter test suite (slices 1+2+3a+3b combined, 48 tests) passes together"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/ -q --no-header"
+    exit: 0
+    ts: "2026-08-24T06:00:00Z"
+    seat: "session (pro)"
+  - claim: "ruff reports zero issues on all four new files"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m ruff check backend/services/research_os/shadow.py backend/services/research_os/parity.py backend/tests/services/research_os/test_shadow_flag_off_is_noop.py backend/tests/services/research_os/test_parity_probe.py"
+    exit: 0
+    ts: "2026-08-24T06:00:30Z"
+    seat: "session (pro)"
+  - claim: "Flag OFF (default) never calls any of the three adapters -- every adapter function is monkeypatched to raise if invoked, and the call does not raise"
+    cmd: "pytest -k test_flag_off_never_calls_any_adapter -q"
+    exit: 0
+    ts: "2026-08-24T06:00:00Z"
+    seat: "session (pro)"
+  - claim: "Flag ON isolates an adapter exception -- it is caught, logged, and surfaced via ShadowRunResult.error, never propagated"
+    cmd: "pytest -k test_flag_on_isolates_an_adapter_failure_never_raises -q"
+    exit: 0
+    ts: "2026-08-24T06:00:00Z"
+    seat: "session (pro)"
+  - claim: "Each of the 3 parity probes is clean on a correct adaptation AND catches a deliberately corrupted field (6 tests total)"
+    cmd: "pytest backend/tests/services/research_os/test_parity_probe.py -v --no-header"
+    exit: 0
+    ts: "2026-08-24T06:00:00Z"
+    seat: "session (pro)"
+  - claim: "First pass: bare-name grep for research_os.models.* imports outside this package DOES surface 2 files -- but both are a false positive (NAGA's own unrelated ActionItem dataclass) plus one genuine pre-existing hit (packages/research-os-core's own model unit-test suite, test_decision_chain.py, which predates this deliverable and imports the models directly, not this package's adapters)"
+    cmd: "grep -rl \"research_os\\.models\\.action_item\\|research_os\\.models\\.action_intent\\|research_os\\.models\\.operational_receipt\\|research_os_adapters\\|services\\.research_os\\.action_item_adapter\\|services\\.research_os\\.action_intent_adapter\\|services\\.research_os\\.operational_receipt_adapter\\|services\\.research_os\\.shadow\" apps/backend-rag/backend --include=\"*.py\" | grep -v \"backend/services/research_os/\\|backend/tests/services/research_os/\""
+    exit: 0
+    ts: "2026-08-24T06:10:00Z"
+    seat: "session (pro), via a dispatched Explore subagent (orchestrate_gate required it)"
+  - claim: "The claim that actually matters -- zero files anywhere outside this package's own module + test tree import THIS package's own adapter modules (action_item_adapter/action_intent_adapter/operational_receipt_adapter/shadow/parity) -- has zero hits, confirming shadow.py has no live caller yet"
+    cmd: "grep -rl \"services\\.research_os\\.action_item_adapter\\|services\\.research_os\\.action_intent_adapter\\|services\\.research_os\\.operational_receipt_adapter\\|services\\.research_os\\.shadow\\|services\\.research_os\\.parity\" apps/backend-rag/backend --include=\"*.py\" | grep -v \"backend/services/research_os/\\|backend/tests/services/research_os/\""
+    exit: 1
+    ts: "2026-08-24T06:12:00Z"
+    seat: "session (pro)"
+tests:
+  - "test_shadow_flag_off_is_noop.py -- 5 tests: flag defaults off with no env var, flag-off
+    never calls any adapter, flag-on runs all three adapters, flag-on without a receipt row still
+    adapts the intent half, flag-on isolates an adapter failure without raising."
+  - "test_parity_probe.py -- 6 tests: each of the 3 probes (ActionItem/ActionIntent/
+    OperationalReceipt) clean on a correct adaptation + catches one deliberately corrupted field."
+  - "Combined with slices 1+2+3a's existing suites -- 48 tests, exit 0."
+static:
+  - "ruff check: 0 issues."
+runtime_proof:
+  - >-
+    No live consumer of this package's own adapter modules yet (verified at import-level, see
+    receipts above -- the one pre-existing hit on a bare model-name grep is packages/research-os-core's
+    own unrelated model unit-test suite, not a caller of these adapters). Functional proof is the
+    flag-off no-op test (spy-based, asserts zero calls) plus the flag-on failure-isolation test
+    plus the parity probes' divergence-detection tests.
+dissent: []
+lanes:
+  - lane: "p04-d3-magazine-action-chain-adapters-slice3b"
+    role: build
+    seat: "claude-sonnet-5"
+residual_risks:
+  - "shadow.py's flag-ON path has never run against a real Magazine row -- proven at the code
+    level (monkeypatch-based tests), not exercised end-to-end against production data, since no
+    live consumer exists yet to exercise it with."
+  - "Same as slices 1/2/3a (SYNTHESIZED_UNBACKED refs, disclosed judgment call) -- not
+    re-litigated, see slice 1's evidence pack for the full adversarial-review record."
+  - "This branch is stacked on slice 3a, itself stacked on slice 2, itself stacked on slice 1
+    (#4749); the whole stack's diff/evidence comparisons are only valid until slice 1 merges, at
+    which point every slice should be rebased onto main and re-measured before opening PRs."
+sources:
+  - "The packet's own 'Shadow and rollback' section (research/operations/specs/
+    evidence-to-action-freeze-2026-08-15/work-packets/04-canonical-contracts.md), read in full
+    at dispatch time this session."
+  - "Fresh test/lint/grep runs in this worktree, this session (receipts above)."
+pii_scan: clean
+size_tokens: 1050

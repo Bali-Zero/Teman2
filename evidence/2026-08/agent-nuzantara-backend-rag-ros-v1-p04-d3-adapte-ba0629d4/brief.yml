@@ -1,0 +1,92 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-slice3b-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D3. Slice 3b of 3 (final slice): the
+  shadow dual-write flag (`shadow.py`) and the parity probe (`parity.py`) the packet's own
+  "Shadow and rollback" section and this deliverable's non-negotiable properties both require.
+
+  `shadow.py` implements the flag: "All domain dual-write flags default off ... canonical write
+  failures must be observable but must not corrupt legacy truth." The flag-OFF path is a genuine
+  no-op -- it returns a shared, pre-built sentinel `ShadowRunResult` WITHOUT calling any adapter,
+  proven by a test that monkeypatches every adapter function to raise if called
+  (`test_flag_off_never_calls_any_adapter`). This is the acceptance test itself, not an
+  aspiration. There is deliberately no canonical persistence layer to write INTO yet -- the
+  compatibility matrix's own finding, re-verified this session, is that the canonical models have
+  zero non-test consumers anywhere in the repo. (A naive `grep -rl "ActionItem("` outside this
+  package's own files DOES surface two hits -- `backend/services/naga/actions/action_engine.py`
+  and its test -- but reading them shows a pre-existing, unrelated, locally-defined `ActionItem`
+  dataclass in NAGA's own module, importing only `backend.core.claims.models`, never
+  `research_os.models.action_item` -- a pure name collision, not a consumer of this deliverable's
+  canonical model. A precise import-level grep for `research_os.models.action_item`/
+  `action_intent`/`operational_receipt` also surfaces one further hit,
+  `backend/tests/unit/research_os/test_decision_chain.py` -- but that is
+  `packages/research-os-core`'s OWN pre-existing unit-test suite for the canonical models
+  themselves (constructs the Pydantic objects directly to test the models, predates this
+  deliverable, and does not import anything from this adapter package). The claim that actually
+  matters -- that THIS package's own adapter modules (`action_item_adapter`, `action_intent_adapter`,
+  `operational_receipt_adapter`, `shadow`, `parity`) have zero importers anywhere outside their
+  own package and test tree -- checks out with zero hits.) That is Work Packet 04 Deliverable 5
+  (`research_os_contract_core`, a different
+  deliverable, already merged per this session's origin/main fetch) -- a `# TODO` in shadow.py
+  marks exactly where its writer slots in once wired.
+
+  `parity.py` implements the second non-negotiable property: it compares an adapted canonical
+  object back against its legacy record and REPORTS divergence, never asserts blanket equality.
+  Only fields each adapter's own loss report marks MAPPED (a genuine 1:1 or
+  independently-recomputable value) are compared -- comparing an APPROXIMATED or
+  SYNTHESIZED_UNBACKED field against the raw legacy value would be a false test of a documented
+  design decision, not a real regression check.
+constraints:
+  - "Additive only, two new files + two new test files. shadow.py imports all three prior
+    slices' adapters (action_item_adapter, action_intent_adapter, operational_receipt_adapter) --
+    the only slice with a real import dependency on the full stack, which is why it is the LAST
+    slice and stacked on top of all three."
+  - "Slightly over the ~400-net-line soft target (438 lines) -- not split further because
+    shadow.py and parity.py are the two halves of this deliverable's remaining non-negotiable
+    properties (dual-write + parity) and splitting them apart would leave either one landing
+    without its sibling test coverage story being reviewable as a whole."
+  - "No PII: synthetic fixtures only, reused from slice 1's conftest.py."
+  - "Branch stays unopened as a PR until slices 2/3a themselves open (gated on slice 1, #4749,
+    merging first) -- same 'one PR per lane at a time' serialization practice."
+acceptance:
+  - "Flag OFF (default, no env var set): shadow_adapt_magazine_action_chain never calls any
+    adapter -- proven by test_flag_off_never_calls_any_adapter, which monkeypatches every adapter
+    function in the module's own namespace to raise AssertionError if invoked."
+  - "Flag ON: an adapter exception is caught, logged via logger.error (observable), and reported
+    through ShadowRunResult.error -- it never propagates and never corrupts legacy truth, proven
+    by test_flag_on_isolates_an_adapter_failure_never_raises."
+  - "Each parity probe reports ParityDivergence entries rather than raising or asserting equality
+    -- a deliberately corrupted canonical object (via .model_copy(update=...)) is caught as a
+    divergence, not silently accepted or crashed on."
+  - "The env var (RESEARCH_OS_SHADOW_MAGAZINE_ACTIONS) defaults OFF on any unset/falsy value,
+    matching the packet's own 'all domain dual-write flags default off' requirement verbatim."
+consumer_map:
+  - "This is the last slice of D3's Magazine action-chain adapter subsystem -- no further
+    consumer within this deliverable. Work Packet 04 Deliverable 5's canonical repository
+    (already merged) is the eventual consumer of the shadow flag's TODO once wired, not built
+    here."
+  - "Same GitHub Harness floor recompute check as slices 1/2/3a -- floor 1 (no hot-zone path
+    touched, verified against HOTZONE_PATTERNS directly, not assumed)."
+risks:
+  - "The shadow flag's flag-ON path is written and unit-tested but has never run against a real
+    Magazine row in this session (no live consumer yet, per the deliverable's own scoping note)
+    -- its exception-isolation behavior is proven at the code level, not yet exercised
+    end-to-end against production data."
+  - "Same disclosed judgment call as slices 1/2/3a on SYNTHESIZED_UNBACKED refs -- not
+    re-litigated here, see slice 1's evidence pack for the full adversarial-review record."
+  - "This is genuinely new behavioral surface (a dual-write code path, even though its default
+    state is inert) rather than a third repetition of an already-reviewed pattern -- flagged
+    here rather than silently folded into the 'no new design surface' reasoning slices 2/3a used."
+grader: |
+  session (this lane) wrote shadow.py, parity.py, and their tests. Unlike slices 2/3a, this slice
+  introduces genuinely new behavior (the dual-write flag itself, not another instance of the
+  SYNTHESIZED_UNBACKED pattern) -- flagged in risks above rather than claimed as a repeat of
+  slice 1's already-reviewed design surface. No new adversarial review was run this session
+  given zero live consumers and Gear-2 scope; this is a disclosed choice, not a hidden gap.
+budget: |
+  1 build lane, no new council -- Gear-2, additive, zero live consumers. The genuinely-new-surface
+  risk noted above is disclosed rather than gated behind an adversarial pass, consistent with the
+  deliverable's Gear-2 classification (no hot-zone path, no live write target yet).
+pii: none
