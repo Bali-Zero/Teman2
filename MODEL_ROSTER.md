@@ -104,7 +104,9 @@ scoped to what the task declares.
 OpenAI-compatible base URL
 `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`; the key is read by
 `load_tp1_settings_key()` from `~/.qwen/settings.json` (0600, field
-`env.BAILIAN_TOKEN_PLAN_API_KEY`).
+`env.BAILIAN_TOKEN_PLAN_API_KEY`); optional Anthropic-protocol adapter base
+`https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic` uses
+`ANTHROPIC_AUTH_TOKEN` only, never `ANTHROPIC_API_KEY`.
 
 **Console-verified 2026-08-14** — see `FLEET_TOPOLOGY.json`'s
 `accounts.alibaba.slots.TP1.console_verified_2026_08_14` block and

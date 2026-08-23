@@ -2721,8 +2721,8 @@ lotN-launcher.js`, byte-exact membership injection via Python, canonical-sha fen
   citable provenance (correct fail-closed demote → drove contract refinement #2).**
 - **Standing infra state:** Redis lease registry NOAUTH from sessions → LEASE-GUARD SKIPPED
   declared in every gate with compensating isolation. Local vault mirror on Pro
-  (`~/nuzantara-vault`) serves dossier_pull without Mini. GLM seat: `claude --print` +
-  `CLAUDE_CONFIG_DIR=~/.claude-glm` + keychain token, probe-first from staging BASE.
+  (`~/nuzantara-vault`) serves dossier_pull without Mini. GLM seat: TP1 `tp1-glm-5.2`
+  (OpenAI-compatible base `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`, key loaded by `load_tp1_settings_key()` from `~/.qwen/settings.json`) — probe-first from staging BASE.
 - **Standalone metadata cure-list BACKLOG (grows lot-by-lot, not yet a dedicated spec+PR — the
   only place this list is currently tracked; update here when it changes):** `01629` + `71204`
   (Lot 5 gate §m5-POS, 2026-07-19 — multi-parent crosswalk metadata false, evidence-gated) ·
