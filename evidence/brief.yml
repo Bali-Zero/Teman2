@@ -1,97 +1,35 @@
-task_id: wa-throughput-arm
-gear: 3
+task_id: garuda-b1-max-stay-boundary-0823
+gear: 2
 l_level: L2
 gate_class: opus
-objective: |
-  ARM the WA-bot throughput sentinel on Pro. The sentinel script and its 45
-  tests already merged (PR #4630); this PR is the part that makes it actually
-  run — a launcher, a LaunchAgent, and the organs-registry entry that lets
-  sentinel-aggregate see it at all.
-
-  Why it exists, measured 2026-08-23: the WhatsApp bot answered NOBODY for 24
-  days. The last inbound message-webhook and the last successful answer share
-  a timestamp, 2026-07-30T01:23:58Z. Throughout that window /health returned
-  200, the broker gauge advanced every 30s, the breaker read closed with zero
-  consecutive failures, and the seat probe said ok. Every gauge was green
-  because every gauge watched a COMPONENT. Nothing watched the PRODUCT.
-  `grep -rln "inbound_webhooks" scripts/` returned nothing.
-
-  The defect is not a broken part. It is that a queue depth of zero and a
-  queue depth of zero-because-nothing-arrives are the same number, and no
-  organ was reading the one signal that tells them apart.
+objective: >-
+  `internal_preview_cli.py::_validate_entry_window` rejects a B1 extension's
+  printed expiry only when `(printed_expiry - entry_date).days` is STRICTLY
+  GREATER THAN the legal max-stay day count (60). Because B1 stay is counted
+  with the arrival day AS DAY 1, a difference of exactly 60 is already the
+  61st calendar day of stay — one day past the legal maximum — and the strict
+  `>` silently ACCEPTed it. Make the comparison inclusive and single-source
+  the day-counting convention in a documented helper so the next reader does
+  not have to re-derive it from a bare operator.
+why_now: >-
+  Independently reproduced and confirmed by three instruments this session
+  (cross-family red-team, cross-family refuter, Google-grounded research
+  pass): `build_internal_preview(EXTENSION, entry=2026-07-01,
+  voa_expiry=2026-08-30, today=2026-08-23)` returned `decision=ACCEPT` with a
+  published filing deadline, for a stay that is one day beyond what
+  imigrasi.go.id's own B1 page allows ("maksimal 30 hari, dihitung sejak
+  tanggal kedatangan"). The only existing boundary test used a 61-day
+  difference (clearly over) and never exercised the ==60 edge, so the gap was
+  live and undocumented.
 constraints:
-  - "READ-ONLY against production. SELECT max() over two tables, nothing else;
-    no INSERT/UPDATE/DELETE anywhere in the payload or the wrapper."
-  - "Pro ONLY. The tunnel this depends on is launchd-supervised HERE
-    (com.balizero.wr2.pg-proxy). Measured 2026-08-23: Mini's equivalent
-    flyctl proxy is a bare PPID-1 process launchd knows nothing about
-    (`launchctl list | grep -c pg-proxy` = 0 there), so installing on Mini
-    would hang this organ off a leg nobody restarts — superscar #10."
-  - "It must REFUSE TO RUN rather than run against the wrong database. Every
-    precondition failure exits without spawning python, leaving a heartbeat
-    that says which precondition failed."
-  - "The DSN is exported, never passed on argv, so it never appears in `ps`
-    (superscar #4)."
-  - "Quiet is not broken. Only two of the three conditions page: a stale
-    INBOUND channel with nothing else wrong emits --tier digest, deliberately
-    not p0 — an alarm that fires on every quiet night is an alarm nobody
-    reads."
+  - "OUT of scope: safe_clock.py's estimated stay-end (entry + 30) — a documented, deliberately accepted +1-day optimism with a printed_expiry override and an existing pinning test from a 2026-07-25 grader round. Not touched."
+  - "OUT of scope: the 6-month passport rule (spec says 'from entry', already correct)."
+  - "OUT of scope: anything under apps/mouth/, apps/admin-dashboard-local/, or any non-garuda_flow path."
+  - "The fix must not touch VISA_META's B1 duration_days/extensions data — only the comparison semantics against the already-derived max_total_stay_days."
+  - "No hardcoded day-count constant that duplicates VISA_META's derived value (that would drift silently if VISA_META B1 data ever changes) — express the convention as a named helper instead."
 acceptance:
-  - "The deterministic gear floor recomputed from the diff is 3, and the PR
-    declares 3 — never below the floor."
-  - "check_organ_conformance.py passes FROM INSIDE THE WORKTREE, and is
-    guilt-tested: removing the registry label reproduces the exact CI failure."
-  - "A live run through the wrapper reaches PRODUCTION and reports the real
-    outage, not a fallback database."
-  - "lint_plist_keepalive.py does not flag the new plist."
-consumer_map:
-  - "launchd on Pro — runs the plist every 900s. Not yet installed: that is
-    the post-merge arming step, and it is the only thing that makes any of
-    this real."
-  - "scripts/sentinel-aggregate.py — reads expected_hb_seconds and the
-    last_seen sidecar to classify the organ ok/stale/dead."
-  - "scripts/tg_notify.py — the alert gateway. The tiers this organ emits
-    (p0, digest) are the ones that gateway actually accepts; a test
-    ast-parses its TIERS tuple so a renamed tier fails here, not silently at
-    2am (a p1 tier copied from two live scripts was rejected by the real
-    gateway and was caught this way)."
-  - "com.balizero.wr2.pg-proxy — the tunnel. A hard dependency, guarded
-    explicitly rather than discovered as a connect failure."
-risks:
-  - "ARMED IS NOT INSTALLED. Merging this changes nothing on the machine.
-    The organ only exists once the plist is bootstrapped on Pro and the
-    heartbeat sidecar is seen to ADVANCE across two reads at least one
-    interval apart. A green exit code and the presence of a plist line are
-    NOT proof — that is precisely the superscar-#2 error this whole sentinel
-    was built to catch, and it would be ironic to commit it here."
-  - "RESOLVED IN THIS PR, kept because the reasoning is the lesson. The wrapper
-    sources ~/.nuzantara-secrets.env, and the payload prefers
-    INTAKE_DATABASE_URL and LOCAL_DATABASE_URL over the exported
-    DATABASE_URL_LOCAL — so either name arriving from that file would silently
-    repoint the sentinel. The first attempt at this settled for verifying the
-    property BY EFFECT, on the grounds that reading the file is guarded. The
-    cross-family gate refuted that: the wrapper has just sourced the file into
-    its own process, so testing the names costs one line and reads nothing.
-    Now a deterministic guard unsets either name and logs the override. The
-    same seat found that the unguarded `source` itself was a silent-exit path
-    that also echoed the offending line — a credential fragment — to the
-    organ.s error log; both are cured and both are guilt-tested."
-  - "The gate is bound to the head SHA, and this pack lives at a FIXED root
-    path every Gear-3 PR rewrites. So a base movement does not merely require
-    a rebase: it voids the verdict and buys another full gate. Another lane
-    measured that bill the same day — three graders, three times, on
-    byte-identical code."
-  - "scripts/lint_home_fork.py exits 2 repo-wide (123 undeclared pairs). NONE
-    of them is this organ — grep for it in that output returns 0, and the
-    payload path is the canonical checkout, so no declared pair applies. This
-    is pre-existing debt, recorded rather than implied clean."
-grader: |
-  Independent gate on fresh context (Opus 5), which wrote none of these three
-  files: it re-read the diff, traced every wrapper exit path for the
-  green-while-doing-nothing shape, ran the keepalive and conformance linters
-  itself from inside the worktree, and attacked the DSN chain and the
-  alarm thresholds. Verdict recorded in evidence/pack.yml and posted as the
-  harness/fable-gate commit status.
-budget: 1 build lane (this session) + 1 independent gate; no council — an
-  arming PR for an already-reviewed payload does not meet the council gate.
-pii: none
+  - "A printed expiry at entry_date + 60 days (arrival-day-inclusive day 61) is REJECTED with a 'maximum stay' ValueError."
+  - "A printed expiry at entry_date + 59 days (day 60, the legal maximum itself) is still ACCEPTED."
+  - "The pre-existing 61-day-difference boundary test (test_extension_rejects_printed_expiry_beyond_b1_max_total_stay) still passes unchanged."
+  - "The day-counting convention (arrival day = day 1, hence inclusive >= comparison) is documented once, in constants.py, next to the existing MIN_PASSPORT_VALIDITY_DAYS/PUBLISHED_FILING_DEADLINE_DAYS sourcing comments, not re-derived inline."
+  - "Full backend/tests/services/garuda_flow/ suite passes after the change (measured before and after)."
