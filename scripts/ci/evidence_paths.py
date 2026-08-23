@@ -48,6 +48,25 @@ the ONLY place in this module a date is generated, and it is a write-time
 convenience for a human invoking the CLI, never a value fed back into
 validation. Resist the urge to "simplify" this into a computed month
 somewhere on the read path — that is precisely the bug described above.
+
+CI MUST NOT COMPUTE THE SLUG — IT MUST DISCOVER THE PATH INSTEAD. This is
+a second, sharper instance of the same "don't derive from a clock/ref you
+don't control" lesson as the month rule above, and it is why this module
+also ships ``resolve_evidence_path`` / ``--resolve`` alongside
+``slug_for_ref`` / ``--ref``. On a ``merge_group`` event the ref GitHub
+hands CI is ``gh-readonly-queue/main/pr-NNNN-<sha>`` — NOT the PR's own
+branch ref. Feeding that into ``slug_for_ref`` would compute a DIFFERENT
+slug than the one the PR's author used when writing its evidence files on
+``pull_request``, so a Gear-3 PR would pass its own ``pull_request`` run
+and then fail in the merge queue looking for a directory that was never
+going to exist under that ref. ``slug_for_ref`` stays exactly as written —
+it is the correct, collision-safe tool for a HUMAN/CI-at-PR-open-time to
+pick a write-time directory. It is simply the wrong tool for CI to use
+later to find that directory again. For that, CI reads its own
+``changed-files`` enumeration (already computed once per run, merge-base
+anchored, per ``hotzone_changed_files.sh`` — never re-derived from a ref)
+and asks "which ``evidence/<kind>.yml`` did THIS diff actually touch" —
+see ``resolve_evidence_path`` below.
 """
 
 from __future__ import annotations
@@ -57,6 +76,7 @@ import hashlib
 import json
 import re
 import sys
+from collections.abc import Iterable
 from datetime import datetime, timezone
 
 _NON_ALNUM_RUN = re.compile(r"[^a-z0-9]+")
@@ -132,6 +152,77 @@ def suggested_write_path(ref: str, *, today: datetime | None = None) -> str:
     return f"evidence/{stamp:%Y-%m}/{slug_for_ref(ref)}/"
 
 
+class AmbiguousEvidencePathError(ValueError):
+    """Raised by ``resolve_evidence_path`` when a PR's own diff touches more
+    than one ``evidence/<kind>.yml`` candidate.
+
+    Two evidence directories in one diff is ambiguous and must fail
+    closed, never silently pick one — "just take the first match" is
+    precisely the guard-over-match disease (family #3 in
+    ``.claude/rules/cicatrix-superscar.md``): a guard that resolves
+    ambiguity by guessing is a guard that can be fooled.
+    """
+
+
+def _evidence_pattern(kind: str) -> re.Pattern[str]:
+    if kind not in ("brief", "pack"):
+        raise ValueError(f"unknown evidence kind: {kind!r} (must be 'brief' or 'pack')")
+    # Anchored, full-line match against a changed-file path — never a bare
+    # substring test (superscar #3: a substring guard is how W68/W72/W73
+    # happened). The literal root path ("evidence/pack.yml") deliberately
+    # does NOT match this pattern: after "evidence/" there is no further
+    # "/" left for ".*/ " to consume before "pack.yml", so the un-migrated
+    # root file can never be misread as a per-PR nested path.
+    return re.compile(rf"^evidence/.*/{re.escape(kind)}\.yml$")
+
+
+def resolve_evidence_path(kind: str, changed_files: Iterable[str]) -> str:
+    """Discover which ``evidence/<kind>.yml`` path THIS PR's own diff touches.
+
+    This is a DISCOVERY function operating on a changed-files list, never
+    a computation from a branch ref — see the module docstring's "CI must
+    not compute the slug" section for why ``slug_for_ref`` is the wrong
+    tool for this job (a ``merge_group`` ref is not the PR's branch ref).
+
+    Args:
+        kind: ``"brief"`` or ``"pack"``.
+        changed_files: This PR's own changed-file paths (e.g. the lines of
+            ``hotzone_changed_files.sh``'s output) — POSIX-style relative
+            paths, one file per element.
+
+    Returns:
+        - Exactly one path in ``changed_files`` matches
+          ``^evidence/.*/<kind>\\.yml$`` -> that path.
+        - Zero matches -> the ROOT path ``evidence/<kind>.yml``. This
+          preserves pre-migration behavior exactly for every PR that has
+          not adopted a per-PR evidence directory yet. It is also what
+          keeps the "a PR that writes NEITHER path must not pass by
+          inheriting root evidence/pack.yml" invariant honest: the
+          returned root path is still handed to
+          ``scripts/ci/tracked_file_present_in_diff.sh``, which reports it
+          ``inherited`` (not ``present``) when this diff didn't actually
+          touch it, and the existing hot-zone gate fails closed on that.
+          This function must never special-case that away — it always
+          returns a concrete path, never an empty string, never a
+          "not found" sentinel that a caller could forget to check.
+
+    Raises:
+        AmbiguousEvidencePathError: two or more matches — see that
+            exception's docstring.
+    """
+    pattern = _evidence_pattern(kind)
+    matches = [path for path in changed_files if pattern.match(path)]
+    if len(matches) > 1:
+        raise AmbiguousEvidencePathError(
+            f"{len(matches)} evidence/{kind}.yml candidates in this PR's "
+            f"diff (ambiguous, refusing to guess which one is THIS PR's "
+            f"evidence): {matches!r}"
+        )
+    if matches:
+        return matches[0]
+    return f"evidence/{kind}.yml"
+
+
 def _build_result(ref: str) -> dict[str, str]:
     return {
         "ref": ref,
@@ -141,15 +232,58 @@ def _build_result(ref: str) -> dict[str, str]:
     }
 
 
+def _read_changed_files(path: str) -> list[str]:
+    """Read a newline-delimited changed-files list (blank lines dropped).
+
+    Same format ``hotzone_changed_files.sh`` writes to
+    ``/tmp/changed-files.txt`` in the CI workflows — this module does not
+    invent a second format.
+    """
+    with open(path, encoding="utf-8") as fh:
+        return [line.strip() for line in fh if line.strip()]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Map a git branch ref to its per-PR evidence directory slug/glob."
+            "Map a git branch ref to its per-PR evidence directory slug/glob "
+            "(--ref), or discover THIS PR's evidence/<kind>.yml path from its "
+            "own changed-files list (--resolve) — see the module docstring "
+            "for why these are two different operations, not one."
         )
     )
-    parser.add_argument("--ref", required=True, help="Git branch ref, e.g. agent/host/lane/task")
-    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    parser.add_argument("--ref", help="Git branch ref, e.g. agent/host/lane/task")
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON (--ref mode only)")
+    parser.add_argument(
+        "--resolve",
+        choices=["brief", "pack"],
+        help=(
+            "Discovery mode: print THIS PR's own evidence/<kind>.yml path, "
+            "found in --changed-files-file. Mutually exclusive with --ref."
+        ),
+    )
+    parser.add_argument(
+        "--changed-files-file",
+        help="Path to a newline-delimited changed-files list (required with --resolve).",
+    )
     args = parser.parse_args(argv)
+
+    if args.resolve:
+        if args.ref:
+            parser.error("--ref and --resolve are mutually exclusive")
+        if not args.changed_files_file:
+            parser.error("--resolve requires --changed-files-file")
+        changed_files = _read_changed_files(args.changed_files_file)
+        try:
+            resolved = resolve_evidence_path(args.resolve, changed_files)
+        except AmbiguousEvidencePathError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print(resolved)
+        return 0
+
+    if not args.ref:
+        parser.error("--ref is required unless --resolve is given")
 
     result = _build_result(args.ref)
 

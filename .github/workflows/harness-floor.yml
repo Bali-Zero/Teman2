@@ -297,6 +297,62 @@ jobs:
           echo "---------------------"
 
       # -----------------------------------------------------------------
+      # Step 2b — resolve THIS PR's own evidence/brief.yml and
+      # evidence/pack.yml paths (S12/C6, 2026-08-23). DISCOVERY, not
+      # computation: a per-PR evidence directory
+      # (evidence/<YYYY-MM>/<slug>/) is chosen by the PR AUTHOR at write
+      # time via `scripts/ci/evidence_paths.py --ref <branch>` (a git
+      # branch ref). CI must NEVER recompute that slug from a ref of its
+      # own here — on a merge_group run
+      # `github.event.merge_group.head_ref` is
+      # `gh-readonly-queue/main/pr-NNNN-<sha>`, not the PR's branch, so
+      # slug_for_ref() on it would name a DIFFERENT directory than the one
+      # the PR actually wrote on its pull_request run, and every Gear-3 PR
+      # would pass pull_request and then fail in the queue looking for a
+      # directory that was never going to exist. Instead this step asks
+      # the changed-files list Step 2 already enumerated (merge-base
+      # anchored, the same source every other step in this job reads)
+      # which evidence/<kind>.yml THIS diff actually touches —
+      # `evidence_paths.py --resolve` fails closed (exit 1, nothing on
+      # stdout) if a diff ambiguously touches two candidates, and this
+      # step propagates that failure rather than silently picking one.
+      #
+      # BOOTSTRAP WINDOW — deliberately NOT scoped to a single declared PR
+      # number, unlike the tracked_file_present_in_diff.sh /
+      # harness_gate_read.py bootstrap guards elsewhere in this file. A
+      # missing scripts/ci/evidence_paths.py degrades to exactly the two
+      # ROOT paths (evidence/brief.yml, evidence/pack.yml) this workflow
+      # hardcoded before this step existed — that IS today's already-
+      # reviewed behavior, not a weaker one, so there is no fail-open here
+      # to bound with a sentinel. Any future run whose base checkout lacks
+      # this script (a legitimate first-introduction run, or a script
+      # accidentally removed) gets the old behavior back, never a
+      # silently disabled check.
+      # -----------------------------------------------------------------
+      - name: Resolve this PR's evidence paths
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: evpaths
+        run: |
+          set -u
+          if [[ ! -f scripts/ci/evidence_paths.py ]]; then
+            echo "::notice::scripts/ci/evidence_paths.py not in base checkout — falling back to root evidence/brief.yml + evidence/pack.yml (this is pre-migration behavior, not a fail-open: identical to what this workflow always did before per-PR evidence paths existed)"
+            echo "brief=evidence/brief.yml" >> "$GITHUB_OUTPUT"
+            echo "pack=evidence/pack.yml" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! BRIEF_PATH="$(python3 scripts/ci/evidence_paths.py --resolve brief --changed-files-file /tmp/changed-files.txt)"; then
+            echo "::error::could not resolve this PR's evidence/brief.yml path (ambiguous or failed — see evidence_paths.py output above) — failing closed"
+            exit 1
+          fi
+          if ! PACK_PATH="$(python3 scripts/ci/evidence_paths.py --resolve pack --changed-files-file /tmp/changed-files.txt)"; then
+            echo "::error::could not resolve this PR's evidence/pack.yml path (ambiguous or failed — see evidence_paths.py output above) — failing closed"
+            exit 1
+          fi
+          echo "brief=$BRIEF_PATH" >> "$GITHUB_OUTPUT"
+          echo "pack=$PACK_PATH" >> "$GITHUB_OUTPUT"
+          echo "resolved evidence paths — brief: $BRIEF_PATH — pack: $PACK_PATH"
+
+      # -----------------------------------------------------------------
       # Step 3 — compute the deterministic floor UNCONDITIONALLY (brief or
       # not). Adversarial-review finding 2026-08-10: the first cut only
       # computed this INSIDE the "brief present" branch, so a hot-zone diff
@@ -376,6 +432,7 @@ jobs:
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          BRIEF_PATH: ${{ steps.evpaths.outputs.brief }}
         run: |
           set -u
           # Bootstrap-window exemption (same pattern as evidence_pack_lint.py
@@ -417,9 +474,9 @@ jobs:
               exit 1
             fi
             echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — inlining its check for THIS run only"
-            if git cat-file -e "${HEAD_SHA}:evidence/brief.yml" 2>/dev/null && grep -qxF "evidence/brief.yml" /tmp/changed-files.txt; then
+            if git cat-file -e "${HEAD_SHA}:${BRIEF_PATH}" 2>/dev/null && grep -qxF "$BRIEF_PATH" /tmp/changed-files.txt; then
               echo "present=true" >> "$GITHUB_OUTPUT"
-              git show "${HEAD_SHA}:evidence/brief.yml" > /tmp/brief.yml
+              git show "${HEAD_SHA}:${BRIEF_PATH}" > /tmp/brief.yml
             else
               echo "present=false" >> "$GITHUB_OUTPUT"
               echo "::notice::evidence/brief.yml is not present-and-diff-touched at HEAD (bootstrap-window inline check) — not a harness-gated task (pending the floor check below)"
@@ -431,11 +488,11 @@ jobs:
             echo "::error::HEAD commit ${HEAD_SHA} could not be resolved after fetch — failing closed (cannot verify whether evidence/brief.yml exists, this is NOT the same as 'no brief')"
             exit 1
           fi
-          RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/brief.yml /tmp/changed-files.txt)"
+          RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" "$BRIEF_PATH" /tmp/changed-files.txt)"
           case "$RESULT" in
             present)
               echo "present=true" >> "$GITHUB_OUTPUT"
-              git show "$HEAD_SHA:evidence/brief.yml" > /tmp/brief.yml
+              git show "$HEAD_SHA:${BRIEF_PATH}" > /tmp/brief.yml
               ;;
             inherited)
               echo "present=false" >> "$GITHUB_OUTPUT"
@@ -615,6 +672,7 @@ jobs:
           NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          PACK_PATH: ${{ steps.evpaths.outputs.pack }}
         run: |
           set -u
           # Same corrected reasoning as Step 3 (Kimi K3 finding #3):
@@ -643,16 +701,16 @@ jobs:
               exit 1
             fi
             echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — inlining its check for THIS run only"
-            if ! git cat-file -e "${HEAD_SHA}:evidence/pack.yml" 2>/dev/null; then
+            if ! git cat-file -e "${HEAD_SHA}:${PACK_PATH}" 2>/dev/null; then
               echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
               exit 1
             fi
-            if ! grep -qxF "evidence/pack.yml" /tmp/changed-files.txt; then
+            if ! grep -qxF "$PACK_PATH" /tmp/changed-files.txt; then
               echo "::error::gear 3 declared in evidence/brief.yml (authored by this diff) but evidence/pack.yml was NOT touched by this diff — a Gear-3 PR must author BOTH files together in the same diff, never validate a pack.yml inherited from a prior PR"
               exit 1
             fi
           else
-            RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/pack.yml /tmp/changed-files.txt)"
+            RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" "$PACK_PATH" /tmp/changed-files.txt)"
             case "$RESULT" in
               present) : ;; # falls through to validation below
               absent)
@@ -669,7 +727,7 @@ jobs:
                 ;;
             esac
           fi
-          git show "$HEAD_SHA:evidence/pack.yml" > /tmp/evidence-check/evidence/pack.yml
+          git show "$HEAD_SHA:${PACK_PATH}" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
           EXTRA_ARGS=()
           if [[ "$NETLINES_AVAILABLE" == "true" ]]; then

@@ -16,7 +16,15 @@ from __future__ import annotations
 
 import re
 
-from scripts.ci.evidence_paths import evidence_glob, slug_for_ref
+import pytest
+
+from scripts.ci.evidence_paths import (
+    AmbiguousEvidencePathError,
+    evidence_glob,
+    main,
+    resolve_evidence_path,
+    slug_for_ref,
+)
 
 # Shape every slug must satisfy: one or more lowercase alnum "words"
 # joined by single dashes, ending in the mandatory 8-hex-char digest
@@ -198,3 +206,231 @@ class TestEvidenceGlob:
         glob = evidence_glob("///")
         assert glob.count("*") == 1
         assert glob.startswith("evidence/*/")
+
+
+# ---------------------------------------------------------------------------
+# resolve_evidence_path — CI's DISCOVERY entry point (never slug_for_ref).
+#
+# On a merge_group event the ref GitHub hands CI is
+# gh-readonly-queue/main/pr-NNNN-<sha>, not the PR's own branch — computing
+# a slug from it would look for the WRONG directory. resolve_evidence_path
+# instead answers "which evidence/<kind>.yml did THIS PR's own diff touch",
+# from the changed-files list CI already has. Tests below are paired
+# guilt+innocence per superscar #3 (guard-over-match discipline): every
+# "this must match" case has a sibling "this must NOT match" case.
+# ---------------------------------------------------------------------------
+
+
+class TestResolveEvidencePathInnocence:
+    """Cases that must resolve WITHOUT raising, including the load-bearing
+    invariant: a PR that touches neither evidence path must get the ROOT
+    path back (never an empty string, never a raised error) so that the
+    existing tracked_file_present_in_diff.sh -> "inherited" -> hot-zone-FAIL
+    chain still catches it downstream. This function must never special-
+    case that chain away.
+    """
+
+    def test_no_evidence_file_at_all_returns_root_path(self) -> None:
+        """THE invariant seat6/S11/H1-P04 all flagged: a diff with NO
+        evidence file whatsoever must resolve to the concrete root path,
+        not an empty string and not a raised error — the caller still has
+        something to hand to tracked_file_present_in_diff.sh, which is
+        what actually fails a hot-zone diff carrying neither path."""
+        changed_files = ["apps/backend-rag/backend/app/main.py", "README.md"]
+
+        resolved = resolve_evidence_path("pack", changed_files)
+
+        assert resolved == "evidence/pack.yml"
+        assert resolved != ""
+
+    def test_empty_changed_files_list_returns_root_path(self) -> None:
+        assert resolve_evidence_path("brief", []) == "evidence/brief.yml"
+
+    def test_root_path_literal_in_diff_is_not_mistaken_for_a_nested_match(self) -> None:
+        """Explicit check (asked for by design review): the literal root
+        path itself, when it DOES appear in changed_files (an un-migrated
+        PR touching evidence/pack.yml directly), must not be matched by
+        the nested-path pattern — it still comes back via the zero-matches
+        fallback branch, which happens to equal the same string, but the
+        two code paths must not be confused. Proven here by asserting the
+        pattern truly has zero matches, not just that the return value
+        looks right."""
+        changed_files = ["evidence/pack.yml"]
+
+        resolved = resolve_evidence_path("pack", changed_files)
+
+        assert resolved == "evidence/pack.yml"
+        # The literal root path was not counted as a "nested" match — a
+        # second, distinct nested path in the same diff must still be free
+        # to raise Ambiguous (proven in test_root_path_plus_nested_is_not_two_matches).
+
+    def test_root_path_plus_nested_is_not_two_matches(self) -> None:
+        """If the pattern wrongly matched the literal root path too, this
+        would raise AmbiguousEvidencePathError (2 matches). It must not —
+        the root literal never counts as a "nested" candidate."""
+        changed_files = ["evidence/pack.yml", "evidence/2026-08/some-slug-abcd1234/pack.yml"]
+
+        resolved = resolve_evidence_path("pack", changed_files)
+
+        assert resolved == "evidence/2026-08/some-slug-abcd1234/pack.yml"
+
+    def test_single_nested_match_returns_that_path(self) -> None:
+        changed_files = [
+            "apps/backend-rag/backend/app/main.py",
+            "evidence/2026-08/agent-mini-pro2-infra-s12-c6-35e07be7/pack.yml",
+        ]
+
+        resolved = resolve_evidence_path("pack", changed_files)
+
+        assert resolved == "evidence/2026-08/agent-mini-pro2-infra-s12-c6-35e07be7/pack.yml"
+
+    def test_other_kind_present_does_not_satisfy_this_kind(self) -> None:
+        """A diff that writes its brief but not its pack must resolve
+        "pack" to the root fallback, not to the brief's nested path —
+        kinds are independent lookups."""
+        changed_files = ["evidence/2026-08/some-slug-abcd1234/brief.yml"]
+
+        resolved = resolve_evidence_path("pack", changed_files)
+
+        assert resolved == "evidence/pack.yml"
+
+    def test_unrelated_changed_files_are_ignored(self) -> None:
+        changed_files = [
+            "scripts/ci/evidence_paths.py",
+            "docs/wr2/flowkit-integration.md",
+            "evidence/2026-08/some-slug-abcd1234/pack.yml",
+        ]
+
+        resolved = resolve_evidence_path("pack", changed_files)
+
+        assert resolved == "evidence/2026-08/some-slug-abcd1234/pack.yml"
+
+
+class TestResolveEvidencePathGuilt:
+    """Cases that must be rejected: ambiguous diffs (fail closed, never
+    guess) and substring-trap near-misses (guard-over-match, superscar
+    #3) that must NOT be mistaken for a real evidence path.
+    """
+
+    def test_two_nested_candidates_raises_ambiguous(self) -> None:
+        changed_files = [
+            "evidence/2026-08/slug-one-aaaaaaaa/pack.yml",
+            "evidence/2026-08/slug-two-bbbbbbbb/pack.yml",
+        ]
+
+        with pytest.raises(AmbiguousEvidencePathError):
+            resolve_evidence_path("pack", changed_files)
+
+    def test_three_nested_candidates_raises_and_names_all_of_them(self) -> None:
+        changed_files = [
+            "evidence/2026-08/a/pack.yml",
+            "evidence/2026-08/b/pack.yml",
+            "evidence/2026-09/c/pack.yml",
+        ]
+
+        with pytest.raises(AmbiguousEvidencePathError) as excinfo:
+            resolve_evidence_path("pack", changed_files)
+
+        message = str(excinfo.value)
+        for path in changed_files:
+            assert path in message
+
+    def test_substring_trap_extra_suffix_not_matched(self) -> None:
+        """"pack.yml.bak" contains "pack.yml" as a substring but must not
+        match the anchored, full-line pattern."""
+        changed_files = ["evidence/2026-08/some-slug/pack.yml.bak"]
+
+        assert resolve_evidence_path("pack", changed_files) == "evidence/pack.yml"
+
+    def test_substring_trap_wrong_filename_not_matched(self) -> None:
+        """"not-pack.yml" ends with "pack.yml" but is a different file —
+        a non-anchored ".*pack\\.yml$" pattern would wrongly match this."""
+        changed_files = ["evidence/2026-08/some-slug/not-pack.yml"]
+
+        assert resolve_evidence_path("pack", changed_files) == "evidence/pack.yml"
+
+    def test_missing_leading_evidence_segment_not_matched(self) -> None:
+        changed_files = ["notevidence/2026-08/some-slug/pack.yml"]
+
+        assert resolve_evidence_path("pack", changed_files) == "evidence/pack.yml"
+
+    def test_cross_kind_confusion_not_matched(self) -> None:
+        """A "brief.yml" nested path must never satisfy a "pack" lookup —
+        proven separately from test_other_kind_present_does_not_satisfy_this_kind
+        by also asserting the reverse direction here."""
+        changed_files = ["evidence/2026-08/some-slug/brief.yml"]
+
+        assert resolve_evidence_path("pack", changed_files) == "evidence/pack.yml"
+        assert (
+            resolve_evidence_path("brief", changed_files)
+            == "evidence/2026-08/some-slug/brief.yml"
+        )
+
+    def test_unknown_kind_raises_value_error(self) -> None:
+        with pytest.raises(ValueError):
+            resolve_evidence_path("brief_and_pack", ["evidence/pack.yml"])
+
+
+class TestResolveEvidencePathCLI:
+    """--resolve wired through main(): the discovery mode CI actually
+    invokes as a subprocess."""
+
+    def test_single_match_prints_path_and_exits_zero(self, tmp_path, capsys) -> None:
+        changed_files_path = tmp_path / "changed-files.txt"
+        changed_files_path.write_text(
+            "apps/backend-rag/backend/app/main.py\n"
+            "evidence/2026-08/some-slug/pack.yml\n"
+        )
+
+        exit_code = main(["--resolve", "pack", "--changed-files-file", str(changed_files_path)])
+
+        assert exit_code == 0
+        out = capsys.readouterr().out
+        assert out.strip() == "evidence/2026-08/some-slug/pack.yml"
+
+    def test_zero_matches_prints_root_path_and_exits_zero(self, tmp_path, capsys) -> None:
+        changed_files_path = tmp_path / "changed-files.txt"
+        changed_files_path.write_text("README.md\n")
+
+        exit_code = main(["--resolve", "brief", "--changed-files-file", str(changed_files_path)])
+
+        assert exit_code == 0
+        out = capsys.readouterr().out
+        assert out.strip() == "evidence/brief.yml"
+
+    def test_ambiguous_prints_nothing_to_stdout_error_to_stderr_exit_one(
+        self, tmp_path, capsys
+    ) -> None:
+        changed_files_path = tmp_path / "changed-files.txt"
+        changed_files_path.write_text(
+            "evidence/2026-08/a/pack.yml\nevidence/2026-08/b/pack.yml\n"
+        )
+
+        exit_code = main(["--resolve", "pack", "--changed-files-file", str(changed_files_path)])
+
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "ambiguous" in captured.err.lower()
+
+    def test_ref_and_resolve_are_mutually_exclusive(self, tmp_path) -> None:
+        changed_files_path = tmp_path / "changed-files.txt"
+        changed_files_path.write_text("README.md\n")
+
+        with pytest.raises(SystemExit) as excinfo:
+            main(
+                [
+                    "--ref",
+                    "agent/pro/lane/task",
+                    "--resolve",
+                    "pack",
+                    "--changed-files-file",
+                    str(changed_files_path),
+                ]
+            )
+        assert excinfo.value.code == 2
+
+    def test_resolve_without_changed_files_file_errors(self) -> None:
+        with pytest.raises(SystemExit) as excinfo:
+            main(["--resolve", "pack"])
+        assert excinfo.value.code == 2
