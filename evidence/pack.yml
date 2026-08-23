@@ -1,94 +1,198 @@
 brief_ref: evidence/brief.yml
-plan_ref: "S12/C6 — de-serialize the evidence pack (evidence/pack.yml + evidence/brief.yml fixed-root-path collision, 4 rewrites in 8h measured on origin/main) so two Gear>=2 PRs can coexist in the merge queue (S12 mandate, 2026-08-23, C6 lane)"
-gear: 3
+plan_ref: "S12/C4 — advisory pre-push quickcheck (mandate ~/sessioni-2026-08-23/S12-mini-ship-accelerators.md, Mini, 2026-08-23)"
 lanes:
-  - lane: C6
+  - lane: s12-c4
     role: build
-    seat: "opus-5 (session, mini-pro2 — S12 C6 build lane)"
-    note: "authored scripts/ci/evidence_paths.py (slug_for_ref/evidence_glob/suggested_write_path, then resolve_evidence_path/AmbiguousEvidencePathError + --resolve CLI mode), scripts/tests/test_evidence_paths.py (32 guilt+innocence tests), and wired discovery into .github/workflows/harness-floor.yml."
-  - lane: G1
+    seat: "claude-sonnet-5 (implementer subagent, Mini)"
+  - lane: s12-c4-gate
     role: review
-    seat: "session (S12 conductor/team-lead)"
-    note: "independent gate review, NOT the diff's author (generator != grader). Re-ran the 32 tests on their own worktree read, exercised resolve_evidence_path() directly against 3 hand-built changed-files lists, read the YAML wiring. Found ONE real defect: the brief_ref staging-layout contract was undocumented — CONFIRMED and fixed in a follow-up commit before this gate. Explicitly noted they could not run actionlint locally (not installed on their machine) and did not claim it passed."
+    seat: "claude-opus-5 (S12 conductor — generator != grader, wrote none of the 497 lines)"
 seat_diversity: degraded
-seat_diversity_note: 'Both lanes are Anthropic seats (opus-5 build, opus-5-family review) — declared explicitly rather than left to read as satisfied. This pack has only 1 build lane, so the D3 seat-diversity rule''s own floor (>=2 build lanes) does not technically fire, but the absence of diversity is real. CORRECTED (a sibling lane''s live measurement, after this note''s first draft claimed agy TIMEOUT): codex is genuinely AUTH_DEAD (401, refresh token revoked) and glm is genuinely CRED_UNAVAILABLE, but agy was ALIVE and reachable from Pro the whole time (`ssh pro`, `PATH=$HOME/.local/bin:$PATH`, `agy -p "Reply exactly: PONG"` -> PONG, exit 0) — the earlier TIMEOUT reading measured a prober''s own wrong PATH export (`/opt/homebrew/bin`, where the binary is not), not the seat. So the honest line is not ''the non-Anthropic roster was unavailable'': one seat (kimi) was used on S12''s C1 concern, and the other reachable seat (agy) was available and skipped, under time pressure, not because it was down. That is a real gap in this lane''s cross-family review, not a constraint.'
+seat_diversity_note: >-
+  Both lanes are Anthropic seats. Only one build lane, so the D3 rule's own
+  floor (>=2 build lanes) does not fire, but the absence is real and is
+  declared rather than left to read as satisfied. Roster state measured this
+  session: codex AUTH_DEAD (401, refresh token revoked), glm CRED_UNAVAILABLE,
+  kimi LIVE but spent on S12/C1 (larger blast radius), and agy — contrary to
+  an earlier reading — was ALIVE and reachable from Pro the whole time. So
+  for this lane the missing cross-family review is a CHOICE made under time
+  pressure, not an unavailable-seat constraint.
 diff:
-  net_lines: "+828 net across the 3 code files (scripts/ci/evidence_paths.py +318, scripts/tests/test_evidence_paths.py +436, .github/workflows/harness-floor.yml +82/-8), measured by `git diff --numstat` against the merge-base (3f41c6b0294f04576fdd33480361aaba911454bb). This evidence pack pair is additional, on top."
-  behaviour_change: "New CI-facing module (scripts/ci/evidence_paths.py) with no existing callers before this PR, plus one new gated step in harness-floor.yml (id: evpaths) that resolves per-PR evidence paths and feeds them into the two existing steps (Step 4 'brief', Step 7b 'packlint') that previously hardcoded the literal root paths at every functional git/grep call site. No existing check's PASS/FAIL logic changes for any PR that has not adopted a per-PR evidence directory — the resolver's zero-matches fallback reproduces the exact literal paths those steps used before this PR."
+  net_lines: >-
+    3 files, +497/-0: scripts/quickcheck.sh (358), scripts/tests/test_quickcheck.sh
+    (109), .husky/pre-push (+30). Deterministic gear floor RECOMPUTED from the
+    diff by the gate = 1 (.husky/pre-push is NOT a hot-zone path). Declared
+    Gear 2 because it is a new 358-line script that runs on every developer's
+    push, not because the floor demanded it.
+  behaviour_change: >-
+    Every `git push` in this repo now runs an advisory check first. Nothing
+    can newly fail: the hook cannot block (proven twice below), and
+    QUICKCHECK_SKIP=1 disables it.
 receipts:
-  - claim: "The full test suite (32 tests: 13 slug/glob/collision tests + 19 resolve-mode guilt+innocence tests) passes"
-    cmd: "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_evidence_paths.py -q"
+  - claim: "Exit code is 0 and the fast path is ~1 second"
+    cmd: "time bash scripts/quickcheck.sh   (clean tree, 3 changed files vs origin/main)"
+    result: >-
+      EXIT=0; real 1.011s (0.09s user, 0.06s system). Output named each
+      skipped check with its reason (no backend .py in diff, no
+      ts/js/json/md/yml in diff, no open PR for the branch) rather than
+      printing a bare green.
     exit: 0
-    ts: "2026-08-23T11:46:55Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "actionlint — the exact CI-pinned version (1.7.12), downloaded directly from the same github.com/rhysd/actionlint release .github/workflows/actionlint.yml uses (darwin_arm64 build, since no actionlint binary exists on this Mini and the CI job downloads linux_amd64) — is clean on harness-floor.yml alone AND repo-wide (auto-discovering every workflow file, no regressions introduced elsewhere)"
-    cmd: "/tmp/actionlint -color -shellcheck= .github/workflows/harness-floor.yml; /tmp/actionlint -color -shellcheck="
+    ts: "2026-08-23T12:14Z"
+    seat: "session (mini, conductor/gate)"
+  - claim: "GUARANTEE 1 — the script's own exit status is unconditional, independent of what any check returned"
+    cmd: "tail -12 scripts/quickcheck.sh"
+    result: >-
+      The entrypoint is `main \"$@\"` followed by a bare `exit 0` on the next
+      line — main's return value is discarded by construction. Read from the
+      file, not from the header's claim about itself.
     exit: 0
-    ts: "2026-08-23T11:47:11Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "Every run: block in the modified workflow (13 total) was extracted via PyYAML (never eyeballed for indentation) and independently syntax-checked with bash -n — all valid"
-    cmd: 'python3 -c "import yaml,subprocess; steps=yaml.safe_load(open(''.github/workflows/harness-floor.yml''))[''jobs''][''harness-floor''][''steps'']; [subprocess.run([''bash'',''-n'',''-c'',s[''run'']],check=True) for s in steps if ''run'' in s]"'
+    ts: "2026-08-23T12:15Z"
+    seat: "session (mini, conductor/gate)"
+  - claim: "GUARANTEE 2 — a quickcheck that exits 1 STILL lets the push proceed, including under `sh -e` (the W101 decapitation shape)"
+    cmd: 'sh -e -c ''bash <stub-that-prints-and-exits-1> || true; echo "PUSH PROCEEDS (rc=$?)"'''
+    result: >-
+      'SIMULATED FAILURE' then 'PUSH PROCEEDS (rc=0)', outer rc=0. Exercised
+      against a stub that hard-exits 1, because the real script cannot be made
+      to exit non-zero — which is exactly why the call site needed testing
+      SEPARATELY from the script. Two independent layers, either sufficient.
     exit: 0
-    ts: "2026-08-23T11:40Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "The --resolve CLI mode behaves exactly per spec on all three cases: single per-PR match prints that path (rc=0), zero matches prints the literal root path (rc=0, preserving pre-migration behavior), two candidates print NOTHING to stdout and an error to stderr (rc=1, fail-closed, never guesses)"
-    cmd: "python3 scripts/ci/evidence_paths.py --resolve pack --changed-files-file <single-match-file>  ->  evidence/2026-08/some-slug-abcd1234/pack.yml (rc=0); ... --changed-files-file <zero-match-file>  ->  evidence/pack.yml (rc=0); ... --changed-files-file <two-match-file>  ->  stdout empty, stderr 'error: 2 evidence/pack.yml candidates ... ambiguous, refusing to guess ...' (rc=1)"
+    ts: "2026-08-23T12:15Z"
+    seat: "session (mini, conductor/gate)"
+  - claim: "The R1 heading guard has real guilt tests — it is not a substring match on 'adversarial'"
+    cmd: "bash scripts/tests/test_quickcheck.sh"
+    result: >-
+      ALL PASS, including the three guilt cases: rejects 'Adversarial review'
+      with no hashes, rejects the bare substring 'adversarial' with no
+      heading, rejects '### Adversarial review' (wrong hash count).
     exit: 0
-    ts: "2026-08-23T11:47:31Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "No secrets (Telegram bot token, Postgres DSN password, Google OAuth credential) in any of the three touched files, and no trailing whitespace — the applicable subset of pre-commit's file-scoped hooks, run directly since pre-commit itself isn't installed as a CLI on this machine"
-    cmd: "python3 scripts/lint_telegram_tokens.py scripts/ci/evidence_paths.py scripts/tests/test_evidence_paths.py .github/workflows/harness-floor.yml && python3 scripts/lint_pg_dsn_credentials.py <same 3 files> && python3 scripts/lint_google_oauth_credentials.py <same 3 files> && grep -n ' $' <same 3 files>"
+    ts: "2026-08-23T12:16Z"
+    seat: "session (mini, conductor/gate)"
+  - claim: "The deterministic gear floor is 1 — recomputed by the gate from the actual diff, not taken from the brief"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/c4-changed.txt; evidence_pack_lint.py --print-floor --changed-files-file /tmp/c4-changed.txt"
+    result: "1 (.husky/pre-push, scripts/quickcheck.sh, scripts/tests/test_quickcheck.sh — no hot-zone hit)"
     exit: 0
-    ts: "2026-08-23T09:29Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "All three commits (d2989134c, c3ce285f9, 1354d905f) passed the repo's real husky pre-commit hook chain — anti-reward-hacking test lint, secret scanners, hot-zone Redis lease-check (flock fallback, Redis unavailable), Python linting, off-limits-file guard — not bypassed with --no-verify"
-    cmd: "git commit -m ... (three times); each printed '✅ All pre-commit checks passed!' before the commit object was created; git log confirms all three land on branch agent/mini-pro2/infra/s12-c6-evidence-per-pr with no --no-verify used"
+    ts: "2026-08-23T12:16Z"
+    seat: "session (mini, conductor/gate)"
+  - claim: "SLOW path measured too — scoped pytest actually runs and names the broken test"
+    cmd: "time bash scripts/quickcheck.sh (deliberately-broken test committed, diff isolated via the script's own QUICKCHECK_BASE_REF override)"
+    result: >-
+      3.38s user 0.24s system 53% cpu, 6.811s total — names
+      test_quickcheck_probe_deliberately_broken with its AssertionError.
+      Measured by the IMPLEMENTER and reported to the gate; recorded here
+      attributed to it, not reproduced as if the gate ran it. The isolation is
+      necessary and self-cancelling: against real origin/main this PR's diff
+      is mixed, impact_map fails open on out-of-scope paths by its own
+      contract, and the fast path fires instead (0.87s) — an artifact of
+      testing the check inside the PR that introduces it, gone once merged.
     exit: 0
-    ts: "2026-08-23T11:47:45Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "tracked_file_present_in_diff.sh is fully generic on its <relative_path> argument (no hardcoding to evidence/brief.yml or evidence/pack.yml), confirmed by reading its source BEFORE rewiring its 2 call sites to pass the discovered per-PR path instead of a literal"
-    cmd: "cat scripts/ci/tracked_file_present_in_diff.sh — the present/inherited/absent logic operates on argv[2] (REL_PATH) with no literal evidence/ path anywhere in the script"
+    ts: "2026-08-23T11:54Z"
+    seat: "s12-c4 implementer (claude-sonnet-5)"
+  - claim: "ADVISORY proven by a REAL `git push`, not only by a stub: a failing quickcheck does not block a push"
+    cmd: "git push /tmp/quickcheck-fake-remote-XXXXX.git HEAD:refs/heads/proof-isolated   (throwaway LOCAL bare repo, never origin, broken test committed)"
+    result: >-
+      quickcheck reported '[pytest] scoped suite reported failures (advisory,
+      rc=1)' and named the AssertionError; the push still completed —
+      '* [new branch] HEAD -> proof-isolated', EXIT_CODE=0 — and the object
+      was verified present in the bare repo. Same push in the unmodified state
+      also EXIT_CODE=0. Bare repo destroyed, probe reverted, `git remote -v`
+      back to origin/pro/m5 only. Measured by the IMPLEMENTER; this is a
+      stronger proof than the gate's own `sh -e` stub test, which is retained
+      above because the two exercise different layers.
     exit: 0
-    ts: "2026-08-23T11:30Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "Gate review independently re-ran the full test suite on a separate read of this worktree and got the same 32/32 pass result, then exercised resolve_evidence_path() directly against 3 hand-built changed-files lists (zero-match -> root path rc=0; two-per-PR-packs -> rc=1, error on stderr, nothing on stdout; one-per-PR-pack -> that path, rc=0) — matching this session's own receipts independently, not by re-reading them"
-    cmd: "(reported by the gate reviewer, a separate session — not reproduced verbatim here since it was not this session's own tool call; recorded as a receipt because it is a real, attributable, independently-executed verification, per the dissent entry below)"
-    exit: 0
-    ts: "2026-08-23T11:20Z"
-    seat: "session (S12 conductor/team-lead)"
-  - claim: "INNOCENCE, independently proven by the gate reviewer (not this session): brief_ref: evidence/brief.yml (the documented, canonical staging-name value) lints clean in a synthetic staging tree"
-    cmd: 'evidence_pack_lint.py run by the gate reviewer against a synthetic staging tree with brief_ref: evidence/brief.yml -> "evidence_pack_lint: clean"'
-    exit: 0
-    ts: "2026-08-23T11:53:36Z"
-    seat: "session (S12 conductor/team-lead)"
-  - claim: "GUILT, independently proven by the gate reviewer (not this session): brief_ref: evidence/2026-08/slug-deadbeef/brief.yml (the 'obviously correct' per-PR-looking value) FAILS with exactly the error text now quoted in both doc locations (harness-floor.yml staging comment + evidence_paths.py module docstring) -- the brief_ref contract documented in commit 1354d905f is now a measured fact, not an assertion"
-    cmd: 'evidence_pack_lint.py run by the gate reviewer against the same synthetic staging tree with brief_ref: evidence/2026-08/slug-deadbeef/brief.yml -> FAIL, 1 violation: "brief_ref: ''evidence/2026-08/slug-deadbeef/brief.yml'' does not resolve to a file on disk"'
-    exit: 1
-    ts: "2026-08-23T11:53:36Z"
-    seat: "session (S12 conductor/team-lead)"
-tests:
-  - "scripts/tests/test_evidence_paths.py: 32 tests, 0.06-0.08s, fully hermetic (pure functions, tmp_path/capsys fixtures for the 5 CLI-level tests, no network, no filesystem outside pytest's own tmp dirs)."
-  - "Guilt paired with innocence throughout, per superscar #3 discipline: every 'this must match/resolve' case (TestInjectivity, TestResolveEvidencePathInnocence) has a sibling 'this must NOT match/must fail closed' case (TestResolveEvidencePathGuilt) — substring-trap near-misses ('pack.yml.bak', 'not-pack.yml'), missing leading 'evidence/' segment, cross-kind confusion, and the ambiguous-diff fail-closed path are all explicitly exercised, not just the happy path."
-  - "The load-bearing invariant (no evidence file anywhere in the diff -> resolves to the concrete root path, never '' and never an exception) has its own named test, test_no_evidence_file_at_all_returns_root_path, plus two more proving the root literal is never mistaken for or confused with a nested match."
-static:
-  - "python3 -m py_compile / ast.parse on scripts/ci/evidence_paths.py -> clean; no 3.12-only syntax used, verified live against the venv's Python 3.11.15."
-  - "actionlint v1.7.12 (CI-pinned version) -> 0 findings, harness-floor.yml alone and repo-wide."
-  - "bash -n on all 13 run: blocks of the modified workflow, extracted via PyYAML -> clean."
-  - "pre-commit hooks (anti-reward-hacking test lint, secret scanners x3, Python lint, hot-zone lease-check, off-limits guard) -> all passed on all 3 commits, none bypassed."
-dissent:
-  - seat: "session (S12 conductor/team-lead — a separate session from the diff's author, generator != grader holds)"
-    objection: "First-round design review: the initial CLI-wiring draft would have let CI compute a per-PR evidence slug directly from a merge_group ref (github.event.merge_group.head_ref), which is gh-readonly-queue/main/pr-NNNN-<sha>, NOT the PR's own branch — slug_for_ref() on that ref would name a DIFFERENT directory than the one the PR actually wrote on its pull_request run, deadlocking every Gear-3 PR's first merge-queue transit. CONFIRMED and redesigned: CI now only DISCOVERS a path (resolve_evidence_path(), over the already-enumerated changed-files list), it never computes one from a ref. Second-round gate finding: the brief_ref staging-layout contract (a per-PR pack must still declare brief_ref: evidence/brief.yml, never its own real per-PR-looking path, because evidence_pack_lint.py lints a synthetic staging tree, not the pack in place) was a real, undocumented trap of exactly the shape this PR exists to remove. CONFIRMED and fixed — documented at the staging call site in harness-floor.yml and in evidence_paths.py's module docstring, where a future pack author will actually be looking."
-    status: CONFIRMED
-residual_risks:
-  - "actionlint could not be verified by the gate reviewer locally (not installed on their machine) — only by this session, using a version downloaded fresh from GitHub releases rather than the repo's own vendored/pinned artifact. If CI's actual run disagrees, that is round 1 of a real disagreement, not a surprise the gate missed silently — the gate reviewer explicitly declined to claim actionlint passed rather than assume it from this session's report."
-  - "This PR ships the DISCOVERY/WRITE-TIME machinery only. No existing PR (including this one) has actually adopted the per-PR evidence/<YYYY-MM>/<slug>/ layout yet — every current and near-term PR still writes the literal root evidence/brief.yml + evidence/pack.yml, so the collision this PR exists to fix is not yet resolved in practice. That adoption (calling `evidence_paths.py --ref` at write time instead of the root paths) is a follow-up, not part of this PR's scope."
-  - "The bootstrap-window fallback in the new 'Resolve this PR's evidence paths' step is intentionally NOT scoped to a single PR number (unlike the sibling tracked_file_present_in_diff.sh / harness_gate_read.py bootstrap guards in the same file) — reasoned as safe because it degrades to exactly this workflow's pre-existing hardcoded behavior. That reasoning has not been independently adversarially attacked beyond the gate reviewer's read-through; it is a judgment call about equivalence to prior behavior, not a property proven by a test."
-sources:
-  - scripts/ci/evidence_paths.py (new — slug_for_ref/evidence_glob/suggested_write_path + resolve_evidence_path/AmbiguousEvidencePathError + CLI)
-  - scripts/tests/test_evidence_paths.py (new — 32 guilt+innocence tests)
-  - .github/workflows/harness-floor.yml (edited — new "Resolve this PR's evidence paths" step + 9 call-site substitutions + brief_ref contract comment)
-  - scripts/ci/tracked_file_present_in_diff.sh (read-only — confirmed generic before rewiring its call sites)
-  - scripts/evidence_pack_lint.py (read-only — confirmed the exact rule set and the brief_ref/staging-tree mechanism this pack itself must satisfy)
-  - .github/workflows/actionlint.yml (read-only — confirmed the exact pinned actionlint version, 1.7.12, used for this pack's own actionlint receipt)
+    ts: "2026-08-23T11:54Z"
+    seat: "s12-c4 implementer (claude-sonnet-5)"
 pii_scan: clean
-size_tokens: 3045
+dissent:
+  - seat: "the implementer, against the gate — and the implementer was RIGHT"
+    objection: >-
+      An earlier draft of this pack recorded the `.husky/pre-push` wiring as a
+      CONFIRMED deviation from an explicit gate instruction, and stated that
+      the gate caught it by reading the diff "NOT from the implementer's
+      report". The implementer contested both claims. On re-checking the
+      primary sources rather than the gate's memory of them, BOTH gate claims
+      were false.
+    status: RETRACTED
+    note: >-
+      Retracted in full, and the retraction is kept in the record rather than
+      the entry being deleted. (1) The wiring was ORDERED, not deviated from —
+      the S12 mandate, line 38, verbatim: "Wire into `.husky/pre-push` as
+      **advisory** (WARN, never a second blocking gate ...)". The gate's later
+      question ("confirm you have NOT wired it into .git/hooks/pre-push or any
+      installed hook") was about a different layer, the machine-level
+      git-hooks mechanism, and the implementer answered it correctly and
+      completely: `.git/hooks/` untouched, `core.hooksPath=.husky/_`
+      pre-existing and not installed by it, no `husky install` run. (2) It was
+      disclosed UPFRONT — the first line of the implementer's first report
+      names ".husky/pre-push wired via `bash scripts/quickcheck.sh || true`"
+      as one of three headline deliverables. The gate did not discover it; it
+      was told, and later mis-remembered being told. (3) The gate also wrote
+      that the implementer "went quiet before sending the numbers" — also
+      false: the numbers were sent (fast/slow `time` output, two real pushes
+      with captured exit codes, a CI-overlap audit) and arrived while the gate
+      was already mid-gate. That is message ordering, not silence, and the
+      gate should have said so. This entry stays because a gate that
+      mis-states a teammate's conduct in a permanent record is a worse defect
+      than the one it thought it had found, and deleting the accusation would
+      hide the correction along with it.
+  - seat: "the implementer (named finding the gate had not caught), on R1 vs CI"
+    objection: >-
+      The R1 heading matcher DISAGREES with CI and is strictly narrower.
+      quickcheck matches `^## Adversarial review` (exact, case-sensitive); CI's
+      `scripts/check_adversarial_review.py` matches
+      `^#{2,}\s+Adversarial review\b` (case-INsensitive, 2+ hashes, flexible
+      whitespace). So quickcheck reports MISSING on bodies CI would PASS —
+      `### Adversarial review`, two spaces after the hashes, or lowercase.
+    status: CONFIRMED
+    note: >-
+      Verified by the gate by reading both regexes, not accepted on assertion.
+      Left as-is deliberately: the disagreement direction is the safe one (a
+      false alarm sends you to look at the real gate; it can never produce a
+      false all-clear), and this is an advisory check whose failure mode is
+      annoyance. But it IS a real divergence, not a duplicate of CI, and it is
+      named here rather than left for someone to rediscover when quickcheck
+      cries about a heading CI is perfectly happy with. Found and reported by
+      the implementer, not by the gate.
+  - seat: "S12 conductor (gate), on the slow-path measurement"
+    objection: >-
+      An earlier draft claimed only the FAST path had been timed. The
+      implementer had in fact measured both, and its caveat is more
+      interesting than the numbers.
+    status: RETRACTED
+    note: >-
+      Both paths are measured (see receipts). The caveat that matters, in the
+      implementer's own framing: to reach the slow path at all it had to
+      isolate the diff with `QUICKCHECK_BASE_REF`, because measured against
+      real origin/main this PR's diff is MIXED (it contains quickcheck's own
+      non-.py files), and `impact_map.py` fails open on any out-of-scope path
+      by its own declared contract — so pytest never runs and the fast path
+      fires instead (0.87s). That is a structural artifact of testing a check
+      inside the PR that introduces it, and it disappears once merged: a
+      normal single-concern PR will not carry `scripts/quickcheck.sh` in its
+      own diff. 6.811s is what a real future backend-touching PR sees.
+tests:
+  - "scripts/tests/test_quickcheck.sh — ALL PASS, re-run by the gate rather than trusted from the implementer's report. Guilt on the R1 guard: bare substring rejected, wrong hash count rejected, heading-without-hashes rejected."
+static:
+  - "bash -n scripts/quickcheck.sh -> clean"
+  - "pre-commit hooks pass, none bypassed"
+notes:
+  - >-
+    An earlier commit on this branch (a deliberately-broken test used to probe
+    the acceptance) was correctly reverted by the implementer before this pack
+    was written; the branch head carries only the feature commit. Verified by
+    the gate reading git log, not by asking.
+  - >-
+    PROCESS FINDING, more useful than anything else in this pack. The gate
+    wrote three false statements about the implementer's conduct into an
+    earlier draft — that it deviated from an instruction, that the gate caught
+    the deviation by reading the diff, and that it "went quiet". All three
+    came from the gate reasoning over its own recollection of the mandate and
+    of the message order, instead of re-reading the mandate file and its own
+    inbox. The implementer contested them with citations; every citation held.
+    The mechanism is exactly the anti-hallucination rule this repo already has
+    ("never cite a tool's output without having run it THIS turn") applied to
+    a surface it is usually not applied to: a claim about a COLLEAGUE'S
+    conduct is a claim about world-state and needs a primary source in the
+    same turn, at least as much as a file path does. Cheap to prevent
+    (`grep` the mandate, re-read the message), expensive to leave standing —
+    an evidence pack is permanent and this one would have libelled a
+    teammate's process on main forever.

@@ -44,6 +44,7 @@ def _find_repo_root(start: Path) -> Path:
 
 REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 BACKEND_DIR = REPO_ROOT / "apps/backend-rag/backend"
+MOUTH_CONTENT_DIR = REPO_ROOT / "apps/mouth/src/content"
 
 SURFACES: dict[str, Path] = {
     "catalogue": BACKEND_DIR / "services/visa_check/catalogue.py",
@@ -227,3 +228,137 @@ class TestGuardPatternConsistency:
                 f"guard pattern '{pattern.pattern_id}' references unknown registry fact "
                 f"'{pattern.registry_ref}'"
             )
+
+
+# --- Second-Home-predicated "5-10 years" over apps/mouth/src/content ---
+#
+# S13-510: base E33 is a 5-year first grant with a cumulative cap under
+# Permenkumham 22/2023 Pasal 113 (first grant >=5y -> 10y cumulative) — two
+# facts, never one bare "5-10 years" range. But the Golden Visa genuinely IS
+# a 5-10 year product, and "5-10 Days" appears for unrelated document-prep
+# timelines. A bare substring/whole-sentence scan over-matches the Golden
+# Visa content (guard family #3, cicatrix-superscar.md) — instead this
+# classifies each match by its NEAREST visa-name predicate (within a ±300
+# char window, either direction, mirroring the sentence-scoped census that
+# found this defect), never by "does the term appear anywhere in the
+# sentence/file".
+
+_SECOND_HOME_DURATION_RE = re.compile(
+    r"5[ ]?[-–][ ]?10[ ]?(years?|year|anni|anno|ans|an|tahun|лет|года|год)",
+    re.IGNORECASE,
+)
+_GOLDEN_VISA_RE = re.compile(
+    r"Golden\s+Visa|Visa\s+Emas|Золотая\s+Виза|золотую?\s+визу?\w*",
+    re.IGNORECASE,
+)
+_SECOND_HOME_VISA_RE = re.compile(
+    r"Second\s+Home(?:\s+Visa)?|Visa\s+Rumah\s+Kedua|Visa\s+Second\s+Home"
+    r"|Rumah\s+Kedua|Виза\s+второго\s+дома"
+    r"|второго\s+дома",
+    re.IGNORECASE,
+)
+_PROXIMITY_WINDOW = 300
+
+
+def _nearest_marker_distance(
+    text: str, start: int, end: int, pattern: re.Pattern[str]
+) -> int | None:
+    """Char-distance from [start, end) to the nearest match of `pattern`
+    within `_PROXIMITY_WINDOW` chars either side. None if no match in range."""
+    lo = max(0, start - _PROXIMITY_WINDOW)
+    hi = min(len(text), end + _PROXIMITY_WINDOW)
+    segment = text[lo:hi]
+    best: int | None = None
+    for marker in pattern.finditer(segment):
+        m_start, m_end = marker.start() + lo, marker.end() + lo
+        if m_end <= start:
+            distance = start - m_end
+        elif m_start >= end:
+            distance = m_start - end
+        else:
+            distance = 0
+        if best is None or distance < best:
+            best = distance
+    return best
+
+
+def _find_second_home_predicated_5_10_offenders(text: str) -> list[tuple[int, str]]:
+    """Nearest-predicate scan: flag a '5-10 year(s)/anni/tahun/...' range
+    ONLY when the nearest visa-name predicate is Second Home, not Golden
+    Visa. A range with no Second-Home predicate within the window at all
+    (e.g. blacklist-ban durations, KITAP renewal, unrelated '5-10 days')
+    is never flagged."""
+    offenders: list[tuple[int, str]] = []
+    for match in _SECOND_HOME_DURATION_RE.finditer(text):
+        start, end = match.span()
+        second_home_dist = _nearest_marker_distance(text, start, end, _SECOND_HOME_VISA_RE)
+        if second_home_dist is None:
+            continue
+        golden_dist = _nearest_marker_distance(text, start, end, _GOLDEN_VISA_RE)
+        if golden_dist is not None and golden_dist < second_home_dist:
+            continue
+        offenders.append((start, match.group(0)))
+    return offenders
+
+
+def _iter_mouth_content_files() -> list[Path]:
+    if not MOUTH_CONTENT_DIR.is_dir():
+        return []
+    return sorted(
+        p
+        for p in MOUTH_CONTENT_DIR.rglob("*")
+        if p.is_file() and p.suffix in {".mdx", ".ts", ".tsx"}
+    )
+
+
+class TestMouthContentSecondHomeDuration:
+    """Guards apps/mouth/src/content against the Second-Home '5-10 years'
+    claim that TestStaticSurfaces above never saw (it only scans
+    apps/backend-rag/backend/**)."""
+
+    def test_second_home_predicated_5_10_year_range_absent(self) -> None:
+        offenders: list[str] = []
+        for path in _iter_mouth_content_files():
+            text = path.read_text(errors="replace")
+            for start, matched in _find_second_home_predicated_5_10_offenders(text):
+                line_no = text.count("\n", 0, start) + 1
+                offenders.append(f"{path.relative_to(REPO_ROOT)}:{line_no}: {matched!r}")
+        assert not offenders, (
+            "Second-Home-predicated '5-10 years' claim in apps/mouth/src/content — base "
+            "E33 is a 5-year first grant, renewable up to a 10-year cumulative maximum "
+            f"(Permenkumham 22/2023 Pasal 113), never a bare 5-10 range: {offenders}"
+        )
+
+    def test_guilt_second_home_predicated_range_is_flagged(self) -> None:
+        """A Second-Home-predicated '5-10 years' line re-introduced into a
+        mouth content file MUST make the guard fail."""
+        text = 'answer: "Second Home Visa (5-10 years with IDR 2B savings)."'
+        offenders = _find_second_home_predicated_5_10_offenders(text)
+        assert offenders, "guard must flag a Second-Home-predicated 5-10 year range"
+
+    def test_innocence_golden_visa_range_stays_clean(self) -> None:
+        """The real second-home-visa-indonesia.mdx sentence (canonical guide,
+        verified CLEAN in the S13-510 census) must stay green: the Golden
+        Visa duration is a legitimate 5-10 year range."""
+        text = (
+            "## What Is the Second Home Visa?\n\n"
+            "Indonesia's Second Home Visa (Visa Rumah Kedua) is a long-term stay permit. "
+            "The visa grants a 5-year stay permit. It sits between the KITAS "
+            "(1-2 years, work-focused) and the Golden Visa (5-10 years, investment-focused) "
+            "in terms of duration and requirements."
+        )
+        offenders = _find_second_home_predicated_5_10_offenders(text)
+        assert not offenders, "guard must not flag the legitimate Golden Visa 5-10 year range"
+
+    def test_innocence_document_prep_days_stays_clean(self) -> None:
+        """'5-10 Days' is a document-prep timeline, not a visa-duration claim,
+        and must stay green even in a Second-Home-titled document."""
+        text = (
+            "## Second Home Visa Application Process\n\n"
+            "### Stage 1: Document Preparation (5-10 Days)\n\n"
+            "Gather your bank statements and proof of funds."
+        )
+        offenders = _find_second_home_predicated_5_10_offenders(text)
+        assert not offenders, (
+            "guard must not flag '5-10 Days' (document prep, not a visa duration claim)"
+        )
