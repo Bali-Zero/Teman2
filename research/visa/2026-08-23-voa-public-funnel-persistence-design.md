@@ -272,7 +272,7 @@ exist yet, for a primitive extension that does not exist yet either.
   to apply one retroactively," not a request-driven deletion. That framing, and the actual
   execution, is Zero's call — flagged here, not decided here.
 
-## 6. Adversarial review
+## Adversarial review
 
 Two independent seats reviewed the conductor's approved stateless-signed-token design, on fresh
 context, without contact with each other or foreknowledge of each other's brief.
