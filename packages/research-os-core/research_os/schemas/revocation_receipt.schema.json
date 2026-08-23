@@ -63,7 +63,7 @@
           "type": "string"
         },
         "object_kind": {
-          "pattern": "^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$",
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
           "title": "Object Kind",
           "type": "string"
         }
@@ -120,7 +120,7 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "pattern": "^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$",
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
           "title": "Name",
           "type": "string"
         },
@@ -141,7 +141,7 @@
           "$ref": "#/$defs/ExactObjectRef"
         },
         "system": {
-          "pattern": "^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$",
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
           "title": "System",
           "type": "string"
         }
@@ -199,7 +199,7 @@
       "additionalProperties": false,
       "properties": {
         "role": {
-          "pattern": "^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$",
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
           "title": "Role",
           "type": "string"
         },
@@ -309,7 +309,7 @@
       "$ref": "#/$defs/Producer"
     },
     "reason_code": {
-      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9][a-z0-9_-]*)+$",
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9][a-z0-9_-]*(?:\\.[a-z0-9][a-z0-9_-]*)*$",
       "title": "Reason Code",
       "type": "string"
     },

@@ -26,8 +26,29 @@ _REVERSE_DNS_RE = re.compile(
     r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
     r"[a-z](?:[a-z0-9-]*[a-z0-9])?$"
 )
-_REGISTERED_NAME_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9][a-z0-9_-]*)+$")
-_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$")
+# ReDoS note (CodeQL py/redos, two high-severity alerts, cured 2026-08-23).
+# Both patterns below previously used a separator class that OVERLAPPED the body
+# class next to it — `[._-]` beside `[a-z0-9_-]`, and `[.-]` beside `[a-z0-9_-]`.
+# `_` and `-` therefore belonged to both, so a run of them could be partitioned
+# between "separator" and "body" in exponentially many ways and a non-matching
+# suffix forced the engine to try all of them. Measured on the pre-cure patterns:
+# 46 characters took 1.0s and each further 2 characters doubled it, i.e. an ~80
+# character identifier stalls the process for minutes. These are pydantic
+# `Field(pattern=...)` validators (see RegisteredName / Identifier below), so the
+# input is attacker-controlled by construction.
+#
+# The cure keeps every class pairwise DISJOINT. It relies on one observation: the
+# body class already contains `_` and `-`, so those two never needed to be
+# separators as well — only `.` adds expressive power, and it must be followed by
+# a body character. The accepted language is therefore UNCHANGED, which is proven
+# exhaustively rather than argued: see
+# apps/backend-rag/backend/tests/unit/research_os/test_primitives_redos.py, which
+# compares old and new over every string of an alphabet containing all the
+# interesting characters.
+_REGISTERED_NAME_RE = re.compile(
+    r"^[a-z][a-z0-9]*[._-][a-z0-9][a-z0-9_-]*(?:\.[a-z0-9][a-z0-9_-]*)*$"
+)
+_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)*$")
 _UTC_OFFSET_PATTERN = r"(?:Z|\+00:00)$"
 
 # Frozen union of the canonical field vocabulary in CONTRACTS.md for
