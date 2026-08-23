@@ -159,7 +159,8 @@ EXCLUDE`, `safety_critical: true`), scoped to 3 conjuncts (drops the nationality
 
   **Zero's rulings, 2026-08-23 (Legge 5):**
   - **DPIA V2 §8** (`docs/audits/2026-08-20-visa-oracle-dpia-v2.md`) signatory fields: controller
-    entity = **PT Bali Nol Impresariat**, DPO = **Zainal Abidin**. Signature itself still
+    entity = **PT Bali Nol Impresariat**, DPO = **Zainal Abidin**. Zero gave these two identity
+    fields today but NOT a signing date — the date field is left for him. Signature itself still
     pending — the retention preflight (`scripts/visa_oracle_analytics_retention_preflight.py`,
     `EXPECTED_TTL_DAYS = 90`) stays hard-locked at 90 days until §8 is actually signed
     (PENDING-ARMS row, unchanged by this entry — a separate PR).
@@ -173,12 +174,31 @@ EXCLUDE`, `safety_critical: true`), scoped to 3 conjuncts (drops the nationality
     are live in seq-12 — no seq-13 activation is actually required to satisfy (b).** The restore
     action itself (an `index: false` code change in `apps/mouth`) is a separate PR, not this
     docs/ledger one, and is NOT yet shipped as of this entry.
-  - **E30/E30E/E30F pricing formula RULED**: client-facing price = PNBP + IDR 3,000,000, exposed
-    as one all-inclusive number (extends standing ruling R1 2026-07-17 — never a PNBP-vs-fee
-    split shown to the client). The INPUT is still missing: the Ditjen pages for E30/E30E/E30F
-    read "Data Belum Tersedia", so the PNBP figure is not yet established; a separate research
-    lane is hunting it. Does not change the E30-family LIVE STATE below (2026-08-20 entry) — the
-    three products remain deliberately unpriced pending that number.
+  - **E30/E30E/E30F pricing formula RULED, and the PNBP research lane CONCLUDED
+    2026-08-23.** Zero's formula: client-facing price = PNBP + IDR 3,000,000, exposed as one
+    all-inclusive number (extends standing ruling R1 2026-07-17 — never a PNBP-vs-fee split
+    shown to the client). The authoritative PNBP source is the "Biaya (PNBP)" field on the
+    official per-code Ditjen page (`imigrasi.go.id/wna/daftar-visa-indonesia/<CODE>`), NOT the PP
+    45/2024 lampiran — PR #4383 established this and the arithmetic reconciles exactly against
+    the live price file: E30A 1y PNBP Rp 6.000.000 → listed 9.0M; E30A 2y Rp 8.500.000 → 11.5M;
+    E30B 4y Rp 12.000.000 → 15.0M (all verified in
+    `apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` this session). The E30A
+    page states its PNBP figure already composes four components (visa, ITAS, re-entry,
+    verification fee) — re-deriving one from PP 45/2024 line items will NOT reproduce the portal
+    figure and must not be attempted. **The formula is ruled but INAPPLICABLE to E30/E30E/E30F**:
+    fetched live today (positive control on the same page shape) `E30A` returns
+    `Rp. 6.000.000,-` / `Rp. 8.500.000,-` (byte-stable vs #4383, proving the fetch mechanism
+    works), while `E30E` ("Visa Pendidikan Kawasan Ekonomi Khusus") and `E30F` ("Visa Pertukaran
+    Pelajar") both return **`Data Belum Tersedia`** with no duration options listed at all — a
+    genuine state-side absence, not a probe failure. Pricing them would require asserting a PNBP
+    the state has not published — a business decision (Legge 5), not a fact; do not attempt a
+    workaround. **Catalog asymmetry that matters for prioritisation** (verified against the
+    seq-12 payload `products[]` this session): `E30` itself is `public_catalog: false`
+    (internal-only, needs no client-facing price at all), while **`E30E` and `E30F` are
+    `public_catalog: true` with `pricing_key: null`** — i.e. they are publicly listed with no
+    price attached. That is the only part of this that is actually client-facing, and it is the
+    part still open. Does not change the E30-family LIVE STATE below (2026-08-20 entry) — the
+    three products remain deliberately unpriced.
 
 - 2026-08-20 (M5, fourth entry — seq-11 SHIPPED end-to-end): **SEQ-11 IS LIVE IN PRODUCTION
   SHADOW — E30A/E30B now carry a resolvable `pricing_key`.** The executed half of Zero's
