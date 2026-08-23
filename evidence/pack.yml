@@ -11,9 +11,9 @@ diff:
     changes is that a corpus which previously ran nowhere on pull requests now runs, on two
     interpreters.
 receipts:
-  - claim: "The corpus this workflow executes is green on the interpreter CI pins (3.11)"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py -q"
-    result: "22 passed in 0.82s"
+  - claim: "The corpus this workflow executes is green on the interpreter CI pins (3.11) — all THREE files, after the third was added in response to the review finding below"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py -q"
+    result: "64 passed in 0.89s (was 22 before test_wr3_credit_ledger.py was wired in; that file is 898 lines / 42 tests and was green BEFORE being added — a red one would have broken the workflow on arrival)"
     exit: 0
     ts: "2026-08-23T09:02:08Z"
     seat: "session (pro)"
@@ -88,6 +88,26 @@ dissent:
     note: >-
       A workflow nobody watches is the same exists-!=-armed shape this PR exists to close.
       Coverage 99 -> 100; being caught by this checker on the way in is the system working.
+  - seat: "independent adversarial review of THIS PR (read-only, fresh context, not the author)"
+    objection: >-
+      The workflow lists scripts/wr3_credit_ledger.py in `paths:` but its pytest step did not
+      execute scripts/tests/test_wr3_credit_ledger.py — the only file exercising
+      dedupe_against_ledger, discover_backfill_records, read_integrity, spend_by_episode,
+      total_spend and the backfill CLI. A PR breaking any of them would MATCH the filter, run
+      the workflow, pass both legs (the two executed files import only record_spend /
+      read_records), pass py_compile (a logic bug, not syntax) and ship under a green check.
+      The evidence also called that module "under test" while naming only the other two files
+      as executed.
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted: the file is 898 lines with 42 test functions
+      (the reviewer said 38 — a small miscount that does not touch the finding, recorded because
+      a number that matches for the wrong reason is worse than one that differs), `grep -rn
+      test_wr3_credit_ledger .github/workflows/` returns zero hits repo-wide, and the two
+      executed files import exactly `record_spend` and `read_records, record_spend`. Fixed in
+      this PR by adding the file to both `paths:` blocks AND the pytest command — 64 tests now
+      run. A path that triggers a job which cannot see it is worse than an absent path, because
+      it reads as coverage.
   - seat: "session (author, against its own earlier claim)"
     objection: >-
       An earlier message from this session asserted that the dispatched subagent channel was

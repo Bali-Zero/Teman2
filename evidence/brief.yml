@@ -49,8 +49,11 @@ acceptance:
 consumer_map:
   - "`.github/workflows/main-push-failure-watch.yml` — the census that must name every live
     workflow; updated in this PR, enforced by `scripts/check_watcher_coverage.py`."
-  - "`scripts/tests/test_wr3_gatekeeper_cost.py` and `scripts/tests/test_wr3_ledger_isolation.py`
-    — the corpus this workflow executes; 22 tests, run together locally before commit."
+  - "`scripts/tests/test_wr3_gatekeeper_cost.py`, `scripts/tests/test_wr3_ledger_isolation.py`
+    and `scripts/tests/test_wr3_credit_ledger.py` — the corpus this workflow executes; 64 tests,
+    run together locally before commit. The third was MISSING from the first draft's pytest
+    command while its module already sat in `paths:` — see the dissent entry in the pack; this
+    line was an overclaim until the workflow was widened to make it true."
   - "`scripts/wr3_gatekeeper_check.py`, `wr3_credit_ledger.py`, `wr3_spend_authority.py` — the
     modules under test and in the `paths:` filter."
   - "Branch protection `required_status_checks` — NOT touched here; the arming step, deliberately

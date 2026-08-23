@@ -27,7 +27,18 @@ name: WR3 spend gate tests
 # file is about.
 #
 # `paths:` filtered to the gate, the two modules it reads spend state through,
-# their tests and this file. NOT added to branch-protection required checks
+# their tests and this file.
+#
+# test_wr3_credit_ledger.py IS IN THE PYTEST COMMAND, not only in `paths:`, and
+# the distinction is the whole point. An independent review of the first draft
+# caught it listed as a trigger while going unexecuted: `wr3_credit_ledger.py`
+# would MATCH the filter, the workflow would RUN, and the two files it did
+# execute import only `record_spend`/`read_records` — so a break in
+# `discover_backfill_records`, `dedupe_against_ledger` or the backfill CLI would
+# ship under a green check, on a module this filter treats as in scope. A path
+# that triggers a job which cannot see it is worse than an absent path: it reads
+# as coverage. 42 tests, green before being wired in (a red one would have
+# broken the workflow on arrival). NOT added to branch-protection required checks
 # here: that is a repo-settings change, made separately and only once this has
 # been observed green on main (see PENDING-ARMS).
 
@@ -39,6 +50,7 @@ on:
       - "scripts/wr3_spend_authority.py"
       - "scripts/tests/test_wr3_gatekeeper_cost.py"
       - "scripts/tests/test_wr3_ledger_isolation.py"
+      - "scripts/tests/test_wr3_credit_ledger.py"
       - "scripts/tests/conftest.py"
       - ".github/workflows/wr3-spend-gate-tests.yml"
   merge_group:
@@ -51,6 +63,7 @@ on:
       - "scripts/wr3_spend_authority.py"
       - "scripts/tests/test_wr3_gatekeeper_cost.py"
       - "scripts/tests/test_wr3_ledger_isolation.py"
+      - "scripts/tests/test_wr3_credit_ledger.py"
       - "scripts/tests/conftest.py"
 
 permissions:
@@ -81,7 +94,8 @@ jobs:
           python -m pip install --quiet --disable-pip-version-check pytest
           PYTHONPATH=. python -m pytest \
             scripts/tests/test_wr3_gatekeeper_cost.py \
-            scripts/tests/test_wr3_ledger_isolation.py -v
+            scripts/tests/test_wr3_ledger_isolation.py \
+            scripts/tests/test_wr3_credit_ledger.py -v
       - name: Sanity-compile the gate and the modules it reads spend through
         run: |
           python -m py_compile \
