@@ -1,75 +1,69 @@
-task_id: wr3-spend-gate-ci-0823
-gear: 3
+task_id: s12-c4-quickcheck
+gear: 2
 l_level: L1
 gate_class: opus
 objective: |
-  Make an EXISTING test corpus actually run on pull requests. `scripts/wr3_gatekeeper_check.py`
-  is the pre-render cost breaker that decides whether a WR3 episode may spend Veo credits, and
-  its tests were named by no workflow at all — verified by grepping every file in
-  `.github/workflows/`, and stated outright in `scripts-tests-sweep.yml`'s own header, which
-  says it gates nothing (`continue-on-error: true`), is deliberately not `pull_request:`-
-  triggered, is not in branch protection, and that 174 of 235 files under `scripts/tests/` are
-  named by nothing. Cicatrix superscar #2 ("exists != armed") applied to a guard whose entire
-  purpose is to be armed.
+  Kill mechanical red CI rounds before they reach CI. Measured the same day:
+  a red PR round whose cause is purely mechanical — a prepush-guards miss, a
+  Prettier diff, an adversarial-review gate missing its literal heading —
+  costs a lane roughly 30 minutes of wall-clock, and the diagnosis is
+  available locally in about a second.
 
-  Found the hard way, and the honest version matters: PR #4639 shipped a real fix to this gate
-  with 15 green tests, and "CI is clean" on that PR was TRUE while saying nothing whatsoever
-  about those tests — no check ran them. An independent adversarial review of #4639 surfaced
-  both that and a live defect in the fix itself (#4648).
+  `scripts/quickcheck.sh` runs four checks, each scoped to what actually
+  changed vs origin/main, and is wired ADVISORY-ONLY into `.husky/pre-push`.
 
-  BE HONEST ABOUT THE SIZE: this is one new workflow file plus one line in the watcher census.
-  Zero executable code changes. It is Gear 3 by PATH (`.github/workflows/` is hot-zone, floor is
-  a lower bound and not the author's choice — this PR was originally opened declaring Gear 2 and
-  the floor recompute correctly rejected it), not by blast radius. The evidence below is sized
-  to the change, not padded to match the gear.
-
-  The python matrix is the second half and is not decoration. Measured 2026-08-23 on this
-  machine's own interpreters: `Path.exists()` on a file behind an unreadable directory RAISES
-  PermissionError on 3.9/3.11 and returns False on 3.14. Every workflow here pins 3.11 or 3.12;
-  `#!/usr/bin/env python3` — how launchd and cron actually start these scripts on the render
-  hosts — resolves to 3.14. For THIS gate that difference decided whether it blocked a render or
-  passed one. The 3.14 leg gives that class of divergence somewhere to go red. It is the first
-  3.14 leg in the repo.
+  The single hard constraint is that it must NEVER become a second blocking
+  gate. That is not a promise in a comment here — it is proven twice below,
+  by two independent mechanisms, because a pre-push hook that can block is a
+  hook that will one day block someone at the worst possible moment.
 constraints:
-  - "No executable code changes: the diff is one new workflow file and one entry (plus its
-    comment) in main-push-failure-watch.yml's census list."
-  - "NOT added to branch-protection required_status_checks in this PR. That is a repo-settings
-    change and must only happen after this has been observed green on main — adding a
-    never-run workflow to branch protection can hard-block the merge queue. Same call
-    s7-yield-dispatch-tests.yml made, for the same reason."
-  - "Do not weaken any existing check to make this pass. The two reds this PR first drew
-    (harness floor; watcher coverage) were both correct and were answered by complying with
-    them, not by editing them."
+  - 'NEVER blocks a push. Guaranteed at two independent layers: the script
+    itself ends `main "$@"; exit 0` (its exit status is unconditional and
+    does not depend on what any check returned), and the call site in
+    `.husky/pre-push` invokes it as `bash ... || true`. Either layer alone
+    would suffice; both are present deliberately.'
+  - "Reuses the engines the PR lane already uses rather than inventing
+    parallel ones: `scripts/ci/impact_map.py` for test selection (never the
+    full 17k-test suite), `prettier --check` on changed files with the same
+    extension scope as package.json's own format:check, and actionlint with
+    the same auto-discovery scope as .github/workflows/actionlint.yml. A
+    local check that disagrees with CI is worse than no local check."
+  - "The R1 heading check matches the LITERAL line `## Adversarial review` —
+    exact, anchored, case-sensitive. NOT a substring match on `adversarial`:
+    superscar family #3 catalogues ~20 scars in this repo caused by exactly
+    that shortcut, and this check is guarded by guilt tests that reject the
+    bare substring and the wrong hash count."
+  - "Every check is skippable and every one degrades to a skip-with-reason,
+    never to a false pass or a hang. `QUICKCHECK_SKIP=1` disables the hook
+    entirely."
 acceptance:
-  - "Both matrix legs appear on this PR and CONCLUDE SUCCESS: `WR3 spend gate tests (py3.11)`
-    and `WR3 spend gate tests (py3.14)`."
-  - "`python3 scripts/check_watcher_coverage.py` exits 0 with the new workflow counted."
-  - "`actionlint` passes on the new file."
-  - "Every path named in the workflow's `paths:` filter exists at this PR's head."
+  - "Exit code is 0 on a clean tree AND when checks find problems — measured,
+    not asserted."
+  - "A quickcheck that exits non-zero still lets the push proceed, including
+    under `sh -e` (the W101 decapitation shape)."
+  - "Runtime on the fast path is low enough to sit in front of every push."
+  - "The R1 guard rejects the substring and the wrong heading level."
 consumer_map:
-  - "`.github/workflows/main-push-failure-watch.yml` — the census that must name every live
-    workflow; updated in this PR, enforced by `scripts/check_watcher_coverage.py`."
-  - "`scripts/tests/test_wr3_gatekeeper_cost.py`, `scripts/tests/test_wr3_ledger_isolation.py`
-    and `scripts/tests/test_wr3_credit_ledger.py` — the corpus this workflow executes; 64 tests,
-    run together locally before commit. The third was MISSING from the first draft's pytest
-    command while its module already sat in `paths:` — see the dissent entry in the pack; this
-    line was an overclaim until the workflow was widened to make it true."
-  - "`scripts/wr3_gatekeeper_check.py`, `wr3_credit_ledger.py`, `wr3_spend_authority.py` — the
-    modules under test and in the `paths:` filter."
-  - "Branch protection `required_status_checks` — NOT touched here; the arming step, deliberately
-    separate (see constraints)."
+  - "`.husky/pre-push` — the call site. Advisory, existence-guarded,
+    kill-switched. This PR DOES wire it (see dissent: that deviates from the
+    gate's own instruction and was accepted on measured merit, not waved
+    through)."
+  - "`scripts/ci/impact_map.py` — reused, not reimplemented."
+  - "`.github/workflows/actionlint.yml` — scope mirrored, not duplicated."
 risks:
-  - "A `pull_request:` workflow that is not required is VISIBLE, not BLOCKING. This PR does not
-    claim otherwise: it makes the tests run and observable; it does not make them mandatory."
-  - "`paths:` filtering means a breaking change from outside the filtered set will not trigger
-    this workflow. Accepted cost of the per-file pattern this repo already uses; the nightly
-    sweep remains the backstop for that case."
-  - "If a future runner cannot provide 3.14, that leg fails loudly rather than being silently
-    dropped. That is deliberate — an absent leg that reads as green is the exact defect this
-    file exists to close."
-grader:
-  independent adversarial review dispatched on this PR (read-only, fresh context, not the
-  author) — tasked to refute the paths-filter completeness, whether the 3.14 leg really ran
-  3.14, and whether this can wrongly block the queue
-budget: 1 review seat, no council (a one-workflow diff does not warrant one)
+  - "An advisory check that is always green teaches people to ignore it. The
+    mitigation here is scope, not severity: it only speaks when the diff
+    actually touches the surface each check covers, and says
+    `skipped — <reason>` otherwise, so a silent run means 'nothing to say',
+    not 'nothing checked'."
+  - "The SLOW path (impact-scoped pytest on a backend diff) is NOT measured
+    in this pack — only the fast path is. Declared rather than estimated."
+grader: |
+  Independent verification by the S12 conductor (Opus 5), which did not write
+  any of the 497 lines: the diff scope was read, the deviation from the
+  no-install instruction was caught by reading `.husky/pre-push` rather than
+  taken from the implementer's report, both advisory guarantees were proven
+  by execution, the runtime was timed, the deterministic floor was recomputed
+  from the diff, and the test suite was re-run.
+budget: 1 implementer lane + conductor gate; no council (a local advisory script)
 pii: none
