@@ -13,16 +13,22 @@ from typing import Any, NoReturn
 from pydantic import BaseModel, ValidationError
 
 from research_os.hashing import HASH_OMISSION_FIELDS, object_hash
+from research_os.models.conductor_handoff import ConductorHandoff
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
+from research_os.models.verification_receipt import VerificationReceipt
+from research_os.models.workflow_run import WorkflowRun
 from research_os.version import check_compatibility
 
 LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES_ROOT = PACKAGE_ROOT / "fixtures"
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
+    "conductor_handoff": ConductorHandoff,
     "object_successor_edge": ObjectSuccessorEdge,
     "revocation_receipt": RevocationReceipt,
+    "verification_receipt": VerificationReceipt,
+    "workflow_run": WorkflowRun,
 }
 
 

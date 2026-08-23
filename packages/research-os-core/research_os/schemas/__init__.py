@@ -9,31 +9,55 @@ from typing import Any
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
+from research_os.models.conductor_handoff import ConductorHandoff
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
+from research_os.models.verification_receipt import VerificationReceipt
+from research_os.models.workflow_run import WorkflowRun
 
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
+    "conductor_handoff": ConductorHandoff,
     "object_successor_edge": ObjectSuccessorEdge,
     "revocation_receipt": RevocationReceipt,
+    "verification_receipt": VerificationReceipt,
+    "workflow_run": WorkflowRun,
 }
 
 
-def _prettier_json(value: Any, *, indent: int = 0, starting_column: int = 0) -> str:
-    """Render generated schemas with Prettier's stable JSON layout."""
+def _prettier_json(
+    value: Any,
+    *,
+    indent: int = 0,
+    starting_column: int = 0,
+    trailing_comma: bool = False,
+) -> str:
+    """Render generated schemas with Prettier's stable JSON layout.
+
+    ``trailing_comma`` tells the width check whether a "," will be appended
+    on this same printed line once the caller joins siblings with ",\\n" --
+    every sibling except the last one gets one. Omitting it from the budget
+    is an off-by-one: a value that measures exactly ``printWidth`` (80)
+    without the comma still overflows once the comma lands, so real Prettier
+    breaks it onto multiple lines while a comma-blind check would inline it.
+    Reproduced concretely by ``HandoffState``'s 5-value enum, which lands at
+    exactly 80 without the comma and 81 with it.
+    """
 
     if isinstance(value, dict):
         if not value:
             return "{}"
         child_indent = indent + 2
+        keys = sorted(value)
         lines = []
-        for key in sorted(value):
+        for index, key in enumerate(keys):
             key_text = json.dumps(key, ensure_ascii=False)
             prefix = f"{' ' * child_indent}{key_text}: "
             child = _prettier_json(
                 value[key],
                 indent=child_indent,
                 starting_column=len(prefix),
+                trailing_comma=index < len(keys) - 1,
             )
             lines.append(f"{prefix}{child}")
         return "{\n" + ",\n".join(lines) + f"\n{' ' * indent}}}"
@@ -42,13 +66,15 @@ def _prettier_json(value: Any, *, indent: int = 0, starting_column: int = 0) -> 
         if not value:
             return "[]"
         compact = json.dumps(value, ensure_ascii=False, separators=(", ", ": "))
+        budget = 80 - (1 if trailing_comma else 0)
         if all(not isinstance(item, (dict, list)) for item in value) and (
-            starting_column + len(compact) <= 80
+            starting_column + len(compact) <= budget
         ):
             return compact
         child_indent = indent + 2
         children = [
-            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent)}" for item in value
+            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent)}"
+            for item in value
         ]
         return "[\n" + ",\n".join(children) + f"\n{' ' * indent}]"
 
