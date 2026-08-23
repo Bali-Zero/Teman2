@@ -122,7 +122,7 @@ def _install_factory(
 
 
 @pytest.mark.asyncio
-async def test_slot5_team_succeeds_after_quota_auth_empty_and_429(
+async def test_slot5_succeeds_after_quota_auth_empty_and_429(
     clean_auth_env: None,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
@@ -157,7 +157,10 @@ async def test_slot5_team_succeeds_after_quota_auth_empty_and_429(
         assert not (_PROVIDER_KEYS & env.keys())
         assert not any(key.startswith("CLAUDE_CODE_OAUTH_TOKEN_") for key in env)
     logs = caplog.text
-    assert "slot5-team" in logs
+    # Slot 5 is a plain MAX seat as of the 2026-08-23 remap (the Team seat
+    # moved to slot 6) — its label must be bare "slot5", never "slot5-team".
+    assert "slot5-team" not in logs
+    assert "Claude OAuth success via slot5\n" in logs
     assert all(token not in logs for token in tokens)
     assert all(f"provider-secret-{key}" not in logs for key in _PROVIDER_KEYS)
 
@@ -168,12 +171,17 @@ def test_token_chain_is_deduplicated_and_keychain_is_last(
 ) -> None:
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "same")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "same")
-    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_5", "team")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_5", "max5")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_6", "team")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "legacy")
 
+    # Slot 5 is a plain MAX seat, slot 6 is the Team seat (last by
+    # position, per the 2026-08-23 remap) — the "-team" label must follow
+    # the Team token to whichever slot actually carries it.
     assert dispatch._collect_claude_seats() == [
         ("slot1", "same"),
-        ("slot5-team", "team"),
+        ("slot5", "max5"),
+        ("slot6-team", "team"),
         ("legacy", "legacy"),
         ("keychain", ""),
     ]

@@ -2,8 +2,9 @@
 # claude-cascade.sh — single entry point for autonomous Claude invocations with full fallback cascade.
 #
 # Tries CLI binaries in this order, falling back on quota/auth/empty/timeout:
-#   1. Explicit Claude OAuth seats: token_1, token_2, token_3, token_4,
-#      token_5 (zero@ Team), legacy token, then macOS keychain
+#   1. Explicit Claude OAuth seats: token_1, token_2, token_3, token_4, token_5
+#      (5 MAX seats, in order), token_6 (zero@ Team, last resort by position),
+#      legacy token, then macOS keychain
 #   2. agy -p (Antigravity CLI Gemini 3.1 Pro, Google AI Ultra sub)
 #   3. Kimi Code K3
 #   4. codex exec --sandbox read-only (ChatGPT Pro)
@@ -785,9 +786,17 @@ DEFAULT_CLAUDE_BIN="${CLAUDE_CASCADE_DEFAULT_BIN:-$HOME/.local/share/mise/shims/
 [ ! -x "$DEFAULT_CLAUDE_BIN" ] && DEFAULT_CLAUDE_BIN="/opt/homebrew/bin/claude"
 
 # The authoritative fleet order is explicit and deterministic:
-#   1 → 2 → 3 → 4 → 5 (zero@ Team) → legacy → keychain.
+#   1 → 2 → 3 → 4 → 5 → 6 (zero@ Team) → legacy → keychain.
 # Each explicit token receives an isolated config directory and each child sees
 # only its selected token. Duplicate values are skipped without being logged.
+#
+# Slot→account mapping verified 2026-08-23 (`claude auth status` per profile +
+# setup-token transcript): 1=antonellosiano@gmail.com 2=sianoantonello@gmail.com
+# 3=applevisionpro1987@gmail.com 4=antozero1987@gmail.com
+# 5=kaiser198719871987@gmail.com (all 5 are MAX) 6=zero@balizero.com (TEAM).
+# The Team seat is LAST ON PURPOSE (weekly caps, ruled by Zero) — it is the
+# fallback of last resort, never promoted ahead of a MAX slot. Anyone who
+# reorders this violates that ruling.
 typeset -a SEEN_OAUTH_TOKENS
 SEEN_OAUTH_TOKENS=()
 oauth_token_seen() {
@@ -799,7 +808,7 @@ oauth_token_seen() {
     return 1
 }
 
-for index in 1 2 3 4 5; do
+for index in 1 2 3 4 5 6; do
     case "$index" in
         1)
             label="claude-token-1-env"
@@ -819,11 +828,16 @@ for index in 1 2 3 4 5; do
         4)
             label="claude-token-4-env"
             token="${CLAUDE_CODE_OAUTH_TOKEN_4:-}"
-            config_dir="$HOME/.claude-acct4"
+            config_dir="$HOME/.claude-antozero"
             ;;
         5)
-            label="claude-token-5-team-env"
+            label="claude-token-5-env"
             token="${CLAUDE_CODE_OAUTH_TOKEN_5:-}"
+            config_dir="$HOME/.claude-kaiser"
+            ;;
+        6)
+            label="claude-token-6-team-env"
+            token="${CLAUDE_CODE_OAUTH_TOKEN_6:-}"
             config_dir="$HOME/.claude-zero-team"
             ;;
     esac
@@ -836,11 +850,14 @@ for index in 1 2 3 4 5; do
     fi
 done
 
-# The protected Team wrapper is a compatibility fallback only when token_5 is
+# The protected Team wrapper is a compatibility fallback only when token_6 is
 # unavailable. It is never tried ahead of the explicit subscription chain.
-if [ -z "${CLAUDE_CODE_OAUTH_TOKEN_5:-}" ]; then
+# (Renumbered 2026-08-23: this used to gate on token_5 back when slot 5 was
+# the Team seat. Slot 5 is now a MAX seat — kaiser198719871987@gmail.com — and
+# the Team seat moved to slot 6, so the gate moved with it.)
+if [ -z "${CLAUDE_CODE_OAUTH_TOKEN_6:-}" ]; then
     try_claude "$HOME/.local/bin/claude-zero-team" \
-        "claude-token-5-team-wrapper" "" "$HOME/.claude-zero-team"
+        "claude-token-6-team-wrapper" "" "$HOME/.claude-zero-team"
     rc=$?
     [ $rc -eq 0 ] && exit 0
 fi

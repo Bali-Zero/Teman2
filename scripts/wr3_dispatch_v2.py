@@ -184,10 +184,10 @@ def _collect_claude_seats(
     values = os.environ if source is None else source
     seats: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for slot in range(1, 6):
+    for slot in range(1, 7):
         token = values.get(f"{_OAUTH_TOKEN_ENV}_{slot}", "").strip()
         if token and token not in seen:
-            label = "slot5-team" if slot == 5 else f"slot{slot}"
+            label = "slot6-team" if slot == 6 else f"slot{slot}"
             seats.append((label, token))
             seen.add(token)
     legacy = values.get(_OAUTH_TOKEN_ENV, "").strip()

@@ -9,6 +9,7 @@ always be appended after slot 5 in every consumer — never inserted
 in the middle, never reordered ahead of a MAX seat.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,11 @@ SLOT6_CONSUMERS = (
         "CLAUDE_CODE_OAUTH_TOKEN_6",
     ),
     ("scripts/ai-dispatch.sh", '"CLAUDE_CODE_OAUTH_TOKEN_6"'),
+    (
+        "infra/launchagents/wrappers/claude-cascade.sh",
+        "CLAUDE_CODE_OAUTH_TOKEN_6",
+    ),
+    ("scripts/wr3_dispatch_v2.py", "range(1, 7)"),
     ("scripts/dlq_autopilot.py", "for i in (1, 2, 3, 4, 5, 6):"),
     ("scripts/wr2_html_renderer/claude_vision.py", "for index in (1, 2, 3, 4, 5, 6):"),
     ("scripts/zantara-gateway/claude_client.py", "for i in (1, 2, 3, 4, 5, 6):"),
@@ -92,17 +98,21 @@ def test_mata_runtime_documents_all_six_slot_identities() -> None:
 #
 # "Last resort" is a property of POSITION, not of any special-cased logic —
 # so the mechanical guarantee has to be that slot 6's marker never appears
-# before slot 5's marker in source. Two shapes exist across the 14
+# before slot 5's marker in source. Three shapes exist across the 16
 # consumers:
 #
 #   (a) two independent, order-comparable markers (numbered-var / array /
-#       list consumers) — compared directly via str.index();
+#       list / shell-case consumers) — compared directly via str.index();
 #   (b) a single shared tuple literal `(1, 2, 3, 4, 5, 6)` (the 7 Python
 #       files that loop `for <var> in (1, 2, 3, 4, 5, 6):`) — there slot 6
 #       can only ever be textually after slot 5 (it is one literal), so the
 #       meaningful proof is that 6 was APPENDED at the tuple's tail rather
 #       than inserted before 5 (e.g. never `(1, 2, 3, 4, 6, 5)` or
 #       `(6, 1, 2, 3, 4, 5)`).
+#   (c) a `range(1, 7)` call (scripts/wr3_dispatch_v2.py) — order is
+#       guaranteed by construction (a range is monotonic), so there is no
+#       marker pair to compare; the meaningful proof is the endpoint (7,
+#       exclusive) and the slot-6 label, covered by its own test below.
 #
 # The 3 mata-garuda callers (daily_briefing_agent.py / weekly_digest_agent.py
 # / run_ai_digest.py) only import `claude_token_chain` — they carry no order
@@ -129,6 +139,11 @@ ORDER_MARKER_CONSUMERS = (
         "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py",
         '"CLAUDE_CODE_OAUTH_TOKEN_5"',
         '"CLAUDE_CODE_OAUTH_TOKEN_6"',
+    ),
+    (
+        "infra/launchagents/wrappers/claude-cascade.sh",
+        "${CLAUDE_CODE_OAUTH_TOKEN_5:-}",
+        "${CLAUDE_CODE_OAUTH_TOKEN_6:-}",
     ),
 )
 
@@ -178,3 +193,67 @@ def test_tuple_loop_appends_slot6_after_slot5(relative_path: str) -> None:
         "tuple — the Team seat must be appended after slot 5, never "
         "inserted mid-tuple"
     )
+
+
+def test_wr3_dispatch_v2_range_covers_slot6_with_correct_label() -> None:
+    """``scripts/wr3_dispatch_v2.py::_collect_claude_seats`` used
+    ``range(1, 6)`` (slots 1-5 only, exclusive upper bound) with a
+    ``"slot5-team"`` label wired to slot 5 — both stale as of the
+    2026-08-23 remap that moved the Team seat to slot 6. A ``range()`` call
+    is monotonic by construction (unlike a hand-written tuple/list it
+    cannot be reordered to put 6 ahead of 5), so the meaningful proof here
+    is the endpoint and the label, not an index() comparison."""
+    source = (REPO_ROOT / "scripts/wr3_dispatch_v2.py").read_text(encoding="utf-8")
+
+    assert "range(1, 7)" in source, (
+        "the seat loop must run through slot 6 (range(1, 7), exclusive upper "
+        "bound) — range(1, 6) stops at slot 5 and never reaches the Team seat"
+    )
+    assert "range(1, 6)" not in source, (
+        "a stale range(1, 6) alongside range(1, 7) would mean a second, "
+        "unconverted seat loop exists"
+    )
+    assert 'label = "slot6-team" if slot == 6 else f"slot{slot}"' in source, (
+        "the Team label must be wired to slot == 6, not slot == 5"
+    )
+    assert "slot5-team" not in source, (
+        "the stale 'slot5-team' label must not survive the slot-6 remap — "
+        "slot 5 is a plain MAX seat now"
+    )
+
+
+def test_claude_cascade_team_config_dir_only_on_slot6() -> None:
+    """The 2026-08-23 slot remap broke silently once already: slot 5 kept
+    pointing at ``$HOME/.claude-zero-team`` (the Team profile) and slot 5's
+    label still said "team", even after the Team seat itself moved to
+    slot 6. This proves the slot<->profile coupling mechanically by parsing
+    each numbered case branch out of the picker and asserting the Team
+    config dir and any "team"-naming label appear in the slot-6 branch and
+    nowhere else."""
+    source = (REPO_ROOT / "infra/launchagents/wrappers/claude-cascade.sh").read_text(
+        encoding="utf-8"
+    )
+
+    branches = dict(re.findall(r"\n {8}(\d)\)\n(.*?)\n {12};;", source, flags=re.DOTALL))
+    assert set(branches) == {"1", "2", "3", "4", "5", "6"}, (
+        f"expected exactly 6 numbered case branches in the OAuth seat "
+        f"picker, found {sorted(branches)}"
+    )
+
+    for slot, body in branches.items():
+        has_team_config_dir = ".claude-zero-team" in body
+        has_team_label = "team" in body.lower()
+        if slot == "6":
+            assert has_team_config_dir, "slot 6 must select the Team config dir"
+            assert has_team_label, "slot 6's label should name it as the Team seat"
+        else:
+            assert not has_team_config_dir, (
+                f"slot {slot} points at the Team config dir "
+                "($HOME/.claude-zero-team) — that is exactly how the "
+                "2026-08-23 remap broke (slot 5 kept the old Team profile "
+                "after the Team seat moved to slot 6)"
+            )
+            assert not has_team_label, (
+                f"slot {slot}'s label must not mention 'team' — only slot 6 "
+                "is the Team seat"
+            )
