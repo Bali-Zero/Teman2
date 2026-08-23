@@ -1,3 +1,7 @@
+---
+adversarial_review: kimi-k3
+---
+
 # P03 — WR3/FlowKit zero-spend — design decision
 
 **Builder:** H3 · **Gear:** 2 · **base:** `5117d9908a37cdc5f23924f6fe19cd823e2ed6c5`
@@ -104,7 +108,8 @@ MCP today. The risk is latent, not active: registering `server.py` would hand an
 credit-spending tool (`flowkit_generate_video`) with no decision token anywhere in its path — and
 that tool stages the CLI onto Pro over ssh, so it is remote execution as well as spend.
 
-**Consequence, said plainly:** delivered exactly as specified, this packet makes WR3 zero-spend and
+**Consequence, said plainly:** delivered exactly as specified, this packet makes the WR3 **library**
+zero-spend (through the CLI driver it is unreachable — see F11) and
 leaves four other doors to the same pool ungated. That is not a reason to widen the diff past the
 ceiling — it is a reason the successor dispatch must be scoped to the CHOKE POINT (the gateway
 itself, or a shared authority module every client imports), not to WR3. One PENDING-ARMS line per
@@ -165,3 +170,69 @@ socket to the gateway is opened at all (caught by pointing `WR3_FLOWKIT_ENDPOINT
 spend that passes the one instrumented call site. Per F8 there are four other live doors to the same
 credit pool. So the honest claim is *"this run spent zero credits through WR3"*, never *"zero
 credits were spent"*. The packet must not be reported as more than that.
+
+
+## F1c — the range [12, 34] was ALSO wrong, and the correct answer is "undeterminable"
+
+Byte-comparing the artifacts (this session) refutes both my `[12, 34]` and the implementer lane's
+judgement that the sibling dirs are staging copies:
+
+| Comparison | Result |
+|---|---|
+| `clips_lipsync_bak_20260602T201944` vs `clips_lipsync` | **3 identical, 8 DIFFERING** — not a pure backup |
+| `clips_original_backup_2026-06-01/606.mp4` vs `clips/606.mp4` | identical — a true backup |
+| `clips_lipsync_incoming_2026-06-03` vs `clips_lipsync` | 7 identical (staging copies), **shot 01 has two files, both differing** |
+
+Byte-distinct contents, excluding `master.mp4` and exact duplicates: **22**.
+
+**But 22 is not an upper bound on Veo charges, and this is the point.** Those directories hold
+**lipsync** output — a local post-process. Re-encoding a clip changes its bytes **without any Veo
+call**. So a byte difference does not evidence a second render, and the filesystem cannot
+distinguish "re-rendered by Veo" from "re-encoded locally".
+
+**Corrected finding:** the lower bound is 12 (distinct shot keys). There is **no derivable upper
+bound** — not 34, not 22. The artifacts cannot settle the historical spend *even in principle*,
+because the evidence a charge leaves (an API call) and the evidence a file carries (bytes) are not
+the same evidence.
+
+That is a stronger statement of F1 than the one it replaces: the ledger is not merely missing, it
+is **unreconstructible after the fact**. Only a record written at the charge site can ever answer
+this question — which is what this packet adds, and why the backfill is labelled a FLOOR with no
+ceiling claimed.
+
+
+## Adversarial review
+
+Refuted by **Kimi K3** (cross-family, fresh context) against the whole evidence package. Accepted
+findings, applied above or recorded here:
+
+1. **A SIXTH door exists and this document missed it — the Google Flow web UI.** A human opening
+   Flow in a browser and clicking generate spends the *same* credit pool and traverses none of the
+   five code doors. The repo even carries a skill (`nuzantara-flowkit-flow-generation`) describing
+   that manual path. No code gate can ever cover it. F8's table is therefore a count of *repo* doors,
+   not of ways to spend.
+2. **The MCP dormancy claim was scoped too broadly.** I proved it from ONE config file (`.mcp.json`
+   registering only `server_knowledge.py`). Other agent CLIs on this fleet (kimi, codex, agy) carry
+   their own MCP registrations, unexamined. Corrected claim: *no MCP server registered in this repo's
+   `.mcp.json` exposes the flowkit tools*; whether another client registers `server.py` is
+   **UNVERIFIED**.
+3. **F8's audit is a lower bound, not a census.** It found doors by grepping charging-endpoint
+   strings; a caller reaching the gateway via `localhost:8100`, a tailnet address, or an
+   env-configured base URL would not match. "Five doors" means "five found by this search".
+4. **The floor was challenged as 13, not 12 — and the challenge is itself refuted by F1c.** The
+   refuter argued the surviving `01_before`/`01_replaced` pair proves a second charge, so the floor
+   is 13. But F1c establishes that these directories hold **lipsync** output, and a local re-encode
+   changes bytes with no Veo call. Byte difference does not evidence a render. **The floor stays 12**,
+   and the reason it cannot be raised is the same reason it cannot be capped.
+5. **The dead-port canary covers less than implied — CONCEDED, verified.** It only redirects paths
+   that honor `WR3_FLOWKIT_ENDPOINT`. Measured: `wr3_probe_single_clip.py:17` **hardcodes**
+   `http://127.0.0.1:8100`, and `flowkit_cli.py:26` reads a *different* variable
+   (`FLOWKIT_BASE_URL`). The probe script is nonetheless safe — but by the **gate**, which raises
+   before any socket, not by the canary. Two distinct protections; conflating them overstated the
+   canary.
+6. **The most dangerous unstated assumption — ACCEPTED, and it belongs at the top of any report of
+   this packet.** *The Google account balance is never queried.* Every claim here is about the
+   instrumentation, not about credits. The honest ceiling on what this packet can ever prove is
+   **"this process spent nothing through the instrumented WR3 path"** — never "no credits were
+   spent". Concurrent spend from another door, a queued job completing later, or a human in the web
+   UI are all invisible to it by construction.

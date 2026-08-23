@@ -1,105 +1,117 @@
+---
+adversarial_review: kimi-k3
+---
+
 # P03 Deliverable 3 — `com.balizero.flowkit-pro-tunnel` (M5 → Pro)
 
 **Method:** read-only. No `launchctl load/unload/bootout/kickstart`, no plist edit, no write on M5
 beyond the repo probe's own heartbeat sidecar. `service_control: none` respected.
 
-## Verdict: the mandate's premise is FALSIFIED — the tunnel is ALIVE
+> This document was rewritten after adversarial review. An earlier draft claimed the tunnel "was
+> not dead then either" and that "the 43h of quiet was 43h of the tunnel working". **Both were
+> wrong**, and the refuter proved it from this document's own numbers. The correction is in the
+> body, not in a footnote — an annotation underneath does not unsay an assertion above it.
 
-The dispatch states the tunnel "is **exit 255 / silent 43h** … currently dead". Measured this
-session, it is not dead and, on the evidence, was not dead then either.
+## Verdict: the tunnel is ALIVE NOW — but it has been dying and self-healing
 
-| Claim | Measurement (2026-08-23 ~11:55 WITA) |
+| Claim under test | Measurement (2026-08-23, this session) |
 |---|---|
-| tunnel dead | **`curl http://127.0.0.1:8100/health` FROM M5 → HTTP 200**, returning byte-identical JSON to what Pro's gateway serves locally (`connects:17,disconnects:17`). A real HTTP reply traversed the tunnel. |
-| exit 255 | `launchctl print` returns **`state = running`, `pid = 18724`, `last exit code = 255` in the same read**. 255 belongs to a PREVIOUS instance. `ps -p 18724` → alive, ELAPSED **09:52:31**. |
-| silent 43h | `~/Library/Logs/flowkit-pro-tunnel.err` last write **Aug 23 02:02:46**, i.e. ~9h52m of silence — and this log is written **only on failure**. For this organ, **silence is the signature of health.** |
+| tunnel currently dead | **FALSE.** `curl http://127.0.0.1:8100/health` **from M5** → HTTP 200, byte-identical JSON to what Pro's gateway serves locally (`connects:17,disconnects:17`). A real HTTP reply traversed the forward. |
+| exit 255 means dead | **Misleading.** `launchctl print` returns `state = running`, `pid = 18724`, `last exit code = 255` **in the same read**. 255 is the *previous* instance's epitaph. `ps -p 18724` → alive, ELAPSED `09:52:31`. |
+| silent 43h means dead | **The silence is real; the inference was wrong in BOTH directions — see below.** |
 
-**Why the false alarm is structural, not a typo.** `ssh -N -T` writes nothing to stdout and nothing
-to stderr while it works. So a healthy tunnel produces an eternally silent error log. The digest
-used *log silence* + *last exit code* as evidence of death — for an organ whose healthy output IS
-silence. The modus doctrine already names this exact failure ("a receptor whose HEALTHY output is
-silence must expose a self-probe that distinguishes healthy-silent from dead"); the digest violated
-it. Silence was read as death, and the 43h of quiet was 43h of the tunnel working.
+## The arithmetic that overturns the first draft
 
-## Root cause, ATTRIBUTED (not inferred) — two organs disagree, right now
+- `~/Library/Logs/flowkit-pro-tunnel.err` last write: **2026-08-23 02:02:46**.
+- `ps` ELAPSED for pid 18724 at 11:55:17: **09:52:31** → the process started at **02:02:46**.
+- `11:55:17 − 9:52:31 = 02:02:46`. **Delta zero, to the second.**
 
-Running M5's own detector read-only, live:
+The current instance was born at the exact second of the last stderr write. Since this log is
+written *only on failure*, that write is **the death of the previous instance**, and the pid's
+birth is KeepAlive restarting it. So:
+
+- The 9h52m of silence **since** 02:02:46 does indicate a healthy tunnel.
+- But the tunnel **demonstrably died and was restarted today**, and its stderr holds **844 failure
+  lines**. Deaths are happening; `KeepAlive` is hiding them by healing them.
+
+**Corrected reading of the digest.** The digest was not simply wrong. It read a *real* signal —
+this job does fail — through a *broken instrument* (last-exit-code plus log silence), and drew a
+wrong conclusion (permanently dead for 43h) from partially true evidence. That is worse than a
+plain false positive, because the underlying phenomenon is genuine and will recur.
+
+## Root cause, ATTRIBUTED — two organs disagree, right now
+
+M5's own detector, run read-only, live:
 
 ```json
 {"label":"com.balizero.flowkit-pro-tunnel","verdict":"FAILING-HONESTLY",
  "last_exit":255,"program":"/usr/bin/ssh","program_exists":true,
  "log_marker":null,"stale_green":false}
 ```
-— `scripts/launchd_liveness_detector.py --json`, on M5, **while the tunnel was serving HTTP 200**.
+— `scripts/launchd_liveness_detector.py --json`, **while the tunnel was serving HTTP 200**.
 
-Its sibling, `scripts/check_flowkit_tunnel.py` (registered in `proprioception.py:1056`, `machines:
-["m5"]`, P2), had written 1 minute earlier:
+`launchd_liveness_detector.py` judges on `last_exit` and never reads `state`/`pid`, so it
+structurally cannot tell "currently running" from "dead".
 
-```json
-{"organ":"m5.flowkit_tunnel","status":"ok","degraded":false,
- "note":"PID 18724 alive, http://127.0.0.1:8100/ answered (HTTP 404)","ts":"2026-08-23T03:54:23Z"}
-```
+Its sibling `scripts/check_flowkit_tunnel.py` — written 2026-08-21, whose docstring names this exact
+trap — gets it right. **But it is registered and NOT armed**, and the first draft of this document
+got that wrong too: I inferred "armed" from a fresh heartbeat sidecar that **this dispatch's own
+manual run had just written**. Measured properly afterwards:
 
-**Two probes, same machine, same job, opposite verdicts in the same minute — and the digest quotes
-the wrong one.** `launchd_liveness_detector.py` judges on `last_exit` and never reads `state`/`pid`,
-so it structurally cannot tell "currently running" from "dead". `check_flowkit_tunnel.py` — written
-2026-08-21, whose docstring documents this precise trap ("`launchctl list` prints the LAST exit code
-even while the job is CURRENTLY RUNNING") — gets it right and is already armed.
+- M5 has **no proprioception plist and no proprioception cron** — sweeps are session-triggered only.
+- M5's last sweep is `2026-08-22T01:56:41+0800` (**34h old**) and ran **1 probe** — `organs_heartbeat`
+  alone. `flowkit` is **ABSENT from `last.json`**.
 
-**CORRECTION to my own first reading.** I initially inferred from the sidecar's fresh mtime that
-`check_flowkit_tunnel.py` was armed and running. That was false: the 11:54 write was **this
-dispatch's own manual invocation** — I measured a system my own agent was perturbing. Verified
-after the fact:
+So between 2026-08-22 01:56 and the manual run at 11:54 today, nothing on M5 ever contradicted the
+detector's verdict.
 
-- M5 has **no proprioception plist and no proprioception cron** — the sweep is session-triggered only.
-- M5's last sweep is `2026-08-22T01:56:41+0800` (**34h old**) and ran **1 probe out of the whole
-  registry** — `organs_heartbeat` alone. `flowkit` is **ABSENT from `last.json`**.
+## NAMED DECISION: **REPAIR** — of the instrumentation, not the tunnel
 
-So the probe is **registered but never armed**: `proprioception.py:1056` declares it, nothing
-schedules it, and it did not run in the last recorded sweep. Between 2026-08-22 01:56 and my manual
-run at 11:54 today, nothing on M5 ever contradicted the detector's false verdict.
+- **Not RETIREMENT**: the tunnel is live, needed (M5 control → Pro render), and correctly shaped
+  (`KeepAlive` + `ThrottleInterval=10` is right for a persistent `-N -T` forward; it is what performed
+  the self-heal).
+- **Not "write a probe"**: the correct probe exists and is right.
+- **The repair, all three parts** — fixing one leaves the disease:
+  1. `launchd_liveness_detector.py` must not return a failure verdict for a job whose `state = running`
+     with a live pid. `last exit code` is the previous instance's epitaph, not a verdict.
+  2. **Arm `check_flowkit_tunnel.py`** — `StartInterval` LaunchAgent on M5 (**not** `KeepAlive`; it is
+     one-shot, superscar #7), or a Mini cron given Pro's crontab is TCC-blocked over ssh.
+  3. **Count the death-restart cycles.** This is the part the first draft would have missed entirely:
+     a tunnel that dies and self-heals every few hours is *not* healthy, and both a point-in-time HTTP
+     probe and an exit-code reader report it as fine. The signal is the stderr write rate and the pid's
+     age resetting — neither is watched today.
 
-## The two defects compose — that is the actual disease
+Proof-of-armed for (2) is **not** "the plist is installed": it is the sidecar
+`~/.organism/last_seen/m5.flowkit_tunnel.json` showing a `ts` that advances **with nobody running it
+by hand** — the exact distinction this dispatch got wrong once.
 
-1. `launchd_liveness_detector.py` **emits** the false signal (judges `last_exit`, never reads
-   `state`/`pid`, so it cannot distinguish running from dead).
-2. `check_flowkit_tunnel.py` — the probe written specifically to refute that signal, whose docstring
-   names the trap verbatim — is **registered and unscheduled**, so nothing periodically refutes it.
-
-Either alone is survivable. Together they produce a confident, wrong, unchallenged claim that
-outlived two days and reached a work-packet dispatch as a stated fact. Superscar #2 (Esiste ≠
-Armato) in its purest form: the cure was written on 2026-08-21, and has never run.
-
-## NAMED DECISION: **REPAIR** — of the detector, not of the tunnel
-
-- **Not RETIREMENT**: the tunnel is live, needed (M5 control → Pro render), correctly configured
-  (`KeepAlive` + `ThrottleInterval=10` is the right shape for a persistent `-N -T` forward, and it
-  self-healed twice through real Tailscale flaps).
-- **Not "write a probe"**: it exists, is armed, and is right.
-- **The repair, both halves** (fixing only one leaves the disease):
-  (a) `scripts/launchd_liveness_detector.py` must not return a failure verdict for a job whose
-      `state = running` with a live pid. `last exit code` is not a verdict for a KeepAlive
-      long-runner — it is the previous instance's epitaph. Classify on the CURRENT instance.
-  (b) **Arm `check_flowkit_tunnel.py`** — it exists, is tested, is right, and is scheduled nowhere.
-      A `StartInterval` LaunchAgent on M5 (NOT `KeepAlive` — it is one-shot, superscar #7), or a
-      Mini cron given that Pro's crontab is TCC-blocked over ssh.
-  Proof-of-armed for (b) is NOT "the plist is installed": it is the sidecar
-  `~/.organism/last_seen/m5.flowkit_tunnel.json` showing a `ts` that advances **without anyone
-  running it by hand** — the exact distinction this dispatch just got wrong once.
-
-**This is a successor dispatch, not mine.** `launchd_liveness_detector.py` is outside P03's owned
-scope (`wr3_*`, `docs/wr3/`, `evidence/p03/`). It ships as a PENDING-ARMS line, per the dispatch's
-own instruction that the ledger line — not the `launchctl` call — is this deliverable.
+**Successor dispatch, not mine.** `launchd_liveness_detector.py` is outside P03's owned scope. Ships
+as a PENDING-ARMS line, per the dispatch's instruction that the ledger line — not the `launchctl`
+call — is this deliverable.
 
 ## Ruled out, each with its evidence
-- **HOME-fork (#1)**: `ProgramArguments[0]` = `/usr/bin/ssh`, a system binary. No `~/scripts/` wrapper exists to diverge.
-- **Pro-side listener absent**: Pro PID 1062 `~/flowkit/venv/bin/python -m agent.main`, uptime 2d17h51m — never restarted across the incident window.
-- **KeepAlive-on-one-shot (#7)**: `-N -T` is a persistent forward; `KeepAlive=true` is correct here and is what performed the self-heal.
-- **TCC/keychain (#4/W84)**: `BatchMode=yes` + `IdentitiesOnly yes` + explicit `IdentityFile`; no host-key or auth failure in 844 lines of stderr.
+- **HOME-fork (#1)**: `ProgramArguments[0]` = `/usr/bin/ssh`, a system binary. No `~/scripts/` wrapper can diverge.
+- **Pro-side listener absent**: Pro PID 1062 `~/flowkit/venv/bin/python -m agent.main`, uptime 2d17h51m — never restarted across the window.
+- **KeepAlive-on-one-shot (#7)**: `-N -T` is a persistent forward; `KeepAlive=true` is correct here.
+- **TCC/keychain (#4/W84)**: `BatchMode=yes` + `IdentitiesOnly yes` + explicit `IdentityFile`; no auth or host-key failure in 844 stderr lines.
 
-## Evidence caveat I corrected
-The lane's first end-to-end proof was `nc -z` on M5. That probe cannot be red in the right way:
-`ssh -L` binds the local port **even when the remote side is unreachable**, so `nc -z` succeeds
-against a bound-but-dead tunnel — the lane's own log excerpt (`channel 2: open failed: connect
-failed`) is that exact state. Replaced with a real HTTP request through the forward, which is the
-probe that can fail. The verdict survived the stronger probe; the evidence for it did not.
+## Adversarial review
+
+Refuted by **Kimi K3** (cross-family, fresh context), which attacked this document's tunnel verdict
+directly. Findings accepted and applied:
+
+1. **"Was not dead then either" / "the 43h of quiet was 43h of the tunnel working" — REFUTED.** The
+   refuter derived from this document's own figures that the pid's birth coincides with the last
+   stderr write. I re-computed it independently: `11:55:17 − 09:52:31 = 02:02:46`, **delta zero**.
+   A log written only on failure, written at the instant the current process was born, records a
+   death. Both sentences were removed and the section above replaces them.
+2. **Self-contradiction — REFUTED.** The draft said both "is already armed" and "registered but never
+   armed". Only the second is true; the first came from a heartbeat sidecar my own manual run had
+   written moments earlier. Rewritten in place.
+3. **"HTTP 200 proves the forward carried it" — PARTIALLY CONCEDED.** The refuter notes no
+   `lsof -i :8100` on M5 was cited to bind the answering socket to pid 18724. The byte-identical
+   payload including the `connects:17/disconnects:17` counters makes the attribution strong but not
+   airtight. Recorded as a residual, not repaired — the successor's armed probe settles it.
+4. **Residual, declared:** the death-restart *rate* over the digest's 43h window remains
+   **UNVERIFIED** — 844 stderr lines are cited without a per-event breakdown. Repair part (3) exists
+   precisely because nothing measures it today.

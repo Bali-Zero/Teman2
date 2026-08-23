@@ -1,3 +1,7 @@
+---
+adversarial_review: kimi-k3
+---
+
 # P03 Deliverable 4 — zero-spend dry run (PROVE-LIVE)
 
 **Host:** Pro · **Date:** 2026-08-23 ~12:23 WITA · **base:** `5117d9908a37cdc5f23924f6fe19cd823e2ed6c5`
@@ -39,13 +43,16 @@ _generate_video → URLError <urlopen error [Errno 61] Connection refused>
 So the port is genuinely dead **and** the charging path genuinely reaches for it. The zero-spend
 run's success is not an artifact of an unused code path.
 
-**B — the gate fires BEFORE the socket.** Same episode, no decision token:
+**B — an authorization error is raised before any connection is attempted.** Same episode, no token:
 ```
 _generate_video      → SpendNotAuthorizedError: WR3_SPEND_DECISION is unset or empty
 _generate_start_image → SpendNotAuthorizedError: WR3_SPEND_DECISION is unset or empty
 ```
 Note the discriminator: an **authorization** error, not a connection error. If the guard sat after
-the POST we would have seen `URLError` here, as in A.
+the POST we would have seen `URLError` here, as in A. **Stated precisely:** this shows the auth check
+runs and raises first; the ordering relative to the socket syscall is *inferred from the exception
+type*, not instrumented. Proving "no socket opened" outright would need a counting socket mock or
+`dtrace`. Recorded as a residual, not claimed as measured.
 
 **What would make this RED:** credits differ · row count differs by anything but the 3 placeholder
 rows · the two runs print different ledger paths · integrity reads DEGRADED · any byte reaches the
@@ -95,3 +102,25 @@ if not zero_spend_enabled():
 else:
     print("[render] WR3_ZERO_SPEND — health gate skipped, placeholder path", file=sys.stderr)
 ```
+
+
+## Adversarial review
+
+Refuted by **Kimi K3** (cross-family, fresh context). Accepted findings, applied above or recorded:
+
+1. **"The gate fires BEFORE the socket" was stronger than the evidence.** Exception-type
+   discrimination shows an auth error precedes a connection error; it does not instrument the socket.
+   Softened in place.
+2. **`BEFORE = 0` is partly tautological.** The run used a *fresh temp ledger*, so "before" was an
+   empty file by construction, not a measurement of prior state. What the pair genuinely proves is
+   the **delta**: three `placeholder` rows, **zero `real` rows**, zero credits — and `integrity: OK`,
+   so no write was silently lost. That delta is the load-bearing claim, not the absolute `0`.
+3. **The dead-port canary scopes to `WR3_FLOWKIT_ENDPOINT`-honoring paths.** Verified:
+   `wr3_probe_single_clip.py:17` hardcodes the URL, `flowkit_cli.py:26` reads `FLOWKIT_BASE_URL`.
+   Those paths are protected by the **gate**, not by this canary.
+4. **"The live production call shape" overstated it.** The run replicates the driver's
+   `shot_id → shot_index` mapping by hand at library level; **the production CLI driver itself was
+   never executed** (see F11 — it cannot enter zero-spend mode). Say "library-level call shape",
+   never "production path".
+5. **Ground truth is never consulted.** The Google account balance is not queried anywhere in this
+   packet. The provable claim is "this process spent nothing through the instrumented WR3 path".
