@@ -3,15 +3,15 @@
   "id": "glm-5.2",
   "display_name": "GLM 5.2",
   "identity": {
-    "provider": "z.ai",
+    "provider": "alibaba",
     "family": "glm",
     "kind": "language",
     "aliases": [],
     "evidence": [
       {
-        "level": "declared",
-        "ref": "MODEL_ROSTER.md#z.ai",
-        "observed_at": "2026-08-21"
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
       }
     ]
   },
@@ -20,9 +20,9 @@
     "automated_routing": false,
     "evidence": [
       {
-        "level": "declared",
-        "ref": "MODEL_ROSTER.md#z.ai",
-        "observed_at": "2026-08-21"
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
       }
     ]
   },
@@ -32,9 +32,9 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     },
@@ -43,9 +43,9 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     }
@@ -56,8 +56,8 @@
       "evidence": [
         {
           "level": "unmeasured",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         },
         {
           "level": "declared",
@@ -71,8 +71,8 @@
       "evidence": [
         {
           "level": "unmeasured",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     }
@@ -94,9 +94,9 @@
       "value": false,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     },
@@ -105,9 +105,9 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     },
@@ -116,9 +116,9 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     }
@@ -126,9 +126,9 @@
   "task_scores": [],
   "evidence": [
     {
-      "level": "declared",
-      "ref": "MODEL_ROSTER.md#z.ai",
-      "observed_at": "2026-08-21"
+      "level": "production",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+      "observed_at": "2026-08-14"
     },
     {
       "level": "declared",

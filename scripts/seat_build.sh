@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Give Codex, Kimi, Qwen, and GLM one non-interactive build call shape so an
+# Give Codex, Kimi, and Qwen one non-interactive build call shape so an
 # orchestrator does not need to reimplement worktree setup, stdin closure,
 # output parsing, or a watchdog. Fleet hosts have no working timeout(1) or
 # gtimeout(1), so the sourced watchdog is pure Bash and kills process groups.
@@ -21,7 +21,7 @@ quota_output_exhausted() {
     local output_file="$1"
     # A bare 429 may be a diffstat, and bare "exhausted" is ordinary prose.
     # Require HTTP/status/code/Too Many context for 429 and a quota-shaped noun
-    # for exhausted; "insufficient balance" is the literal z.ai error body.
+    # for exhausted; "insufficient balance" is a provider error body.
     grep -qiE \
         -e 'out of extra usage' \
         -e 'usage limit' \
@@ -135,7 +135,6 @@ main() {
         codex) binary_name="codex"; MODEL="codex-default" ;;
         kimi) binary_name="kimi"; MODEL="kimi-code/kimi-for-coding" ;;
         qwen) binary_name="qwen"; MODEL="qwen-default" ;;
-        glm) binary_name="claude-glm"; MODEL="glm-5.2" ;;
         "") refuse 64 "missing --seat" ;;
         *) refuse 64 "unknown seat: $SEAT" ;;
     esac
@@ -173,7 +172,6 @@ main() {
             ;;
         kimi) seat_argv=("$seat_binary" -p "$task_text" -m kimi-code/kimi-for-coding); task_index=2 ;;
         qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;
-        glm) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;
     esac
     strip_env_args=()
     stripped_names=()

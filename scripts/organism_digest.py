@@ -172,7 +172,6 @@ _DOOR_MAX_CHARS = 56
 # own ALL_SEATS so a missing/broken import still renders something honest.
 _SEAT_PROVIDER = {
     "claude": "Anthropic",
-    "glm": "z.ai",
     "kimi": "Moonshot",
     "agy": "Google",
     "codex": "OpenAI",
@@ -182,7 +181,7 @@ _SEAT_PROVIDER = {
     "qwen-cloud-code": "Alibaba Token Plan (TP1)",
     "jules": "Google",
 }
-_FALLBACK_ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "codex-spark",
+_FALLBACK_ALL_SEATS = ["claude", "kimi", "agy", "codex", "codex-spark",
                         "ollama", "nlm", "qwen-cloud-code", "jules"]
 
 
@@ -475,7 +474,6 @@ def _selftest() -> int:
         # gets a door line, so a healthy world has zero "no door: line" gaps.
         (fake_repo / "MODEL_ROSTER.md").write_text(
             "## Anthropic — door: `claude` CLI\n"
-            "## z.ai — door: `claude-glm` shim\n"
             "## Moonshot — door: `kimi` CLI\n"
             "## Google — door: `agy` CLI\n"
             "## OpenAI — door: `codex exec` CLI\n"
