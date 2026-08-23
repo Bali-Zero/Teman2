@@ -80,6 +80,18 @@ describe("tree.ts — interview decision boundary", () => {
     });
   });
 
+  // 2026-08-23: `family_sponsor_permit_basis` shipped as FACT in PR #4650,
+  // one increment before this fix — self-declaring a Pasal 33(2) legal
+  // category into engine trust, the same defect this file's sibling
+  // assertion above exists to prevent. Corrected to mirror
+  // `family_sponsor_status_code` exactly. See `mapFamilySponsorPermitBasis`
+  // in fact-mapper.ts for the full reasoning.
+  it("keeps self-declared sponsor permit basis outside engine facts too", () => {
+    expect(QUESTIONS.family_sponsor_permit_basis.decisionMapping).toEqual({
+      kind: "HUMAN_CONTEXT",
+    });
+  });
+
   it("does not carry the 2 dead legacy nodes (E4 slice — question-registry-audit.md §2)", () => {
     // Both were unreachable in the live graph (flow.ts's dispatch never
     // routed to them from any FIXED_CATEGORY_QUESTIONS or dynamic branch

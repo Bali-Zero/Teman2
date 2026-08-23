@@ -169,6 +169,52 @@ class TestSecondExtensionLimit:
         assert verdict.decision is Decision.ACCEPT
 
 
+class TestB1MaxTotalStayBoundary:
+    """`constants.b1_max_total_stay_exceeded()` (2026-08-23, PR #4685) fixed
+    a strict-`>` inline comparison in `internal_preview_cli` that silently
+    ACCEPTed a printed extension expiry exactly at the 60-day max — one day
+    past the legal B1 maximum (arrival day counts as day 1). That guard
+    lived in exactly ONE caller (the owner-local CLI, which raises before
+    ever reaching `build_verdict`). This promotes the same boundary into
+    the shared engine so a future public-funnel restore built on
+    `build_verdict()` cannot silently reintroduce the bug on the
+    client-facing surface — surfaced here as a DECLINE + neutral code
+    (never a bare error), per the SOP's "decline always still routes to
+    WhatsApp" rule.
+
+    Dates mirror the CLI's own boundary tests (`entry_date=2026-07-01`,
+    `voa_expiry_date` at +60/+59 days) for continuity. `today=_TODAY`
+    (2026-07-27) keeps `days_until_expiry` at 34/33 — far beyond the
+    7-day published filing deadline — so `EXPIRES_TOO_SOON` cannot fire
+    and mask the boundary result.
+    """
+
+    def test_printed_expiry_exactly_at_max_total_stay_declines(self) -> None:
+        # GUILT: entry 2026-07-01 + 60 days difference = 2026-08-30 — B1's
+        # inclusive day-count max means this is day 61 of stay, one day
+        # PAST the legal maximum of 60. Must DECLINE.
+        req = _extension(entry_date=date(2026, 7, 1), voa_expiry_date=date(2026, 8, 30))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "EXTENSION_EXCEEDS_MAX_STAY" in verdict.decline_codes
+
+    def test_printed_expiry_one_day_inside_max_total_stay_accepts(self) -> None:
+        # INNOCENCE: entry 2026-07-01 + 59 days = 2026-08-29 is day 60 of
+        # stay — the legal maximum itself, still valid. Must remain ACCEPT.
+        req = _extension(entry_date=date(2026, 7, 1), voa_expiry_date=date(2026, 8, 29))
+        verdict = build_verdict(req, today=_TODAY)
+        assert verdict.accepted is True
+        assert "EXTENSION_EXCEEDS_MAX_STAY" not in verdict.decline_codes
+
+    def test_issuance_ignores_this_gate_even_with_a_stray_voa_expiry_date(self) -> None:
+        # The gate is structurally extension-only; an issuance case must
+        # never be declined by it (the field isn't even populated in
+        # practice, but the check itself must not run for ISSUANCE).
+        req = _issuance()
+        verdict = build_verdict(req, today=_TODAY)
+        assert "EXTENSION_EXCEEDS_MAX_STAY" not in verdict.decline_codes
+
+
 class TestIssuanceSubmissionWindowGate:
     """Owner ruling (2026-07-27): a VOA is issued in a few hours, so the
     online funnel accepts an issuance request up to the day BEFORE arrival
@@ -272,8 +318,16 @@ class TestIssuanceSubmissionWindowGate:
         # Belt-and-braces: even an extension whose (past) original entry_date
         # sits outside the calendar's coverage window must not trip the
         # issuance-only fail-closed path.
+        #
+        # entry_date is 2026-06-20 (before COVERAGE_START 2026-07-28, so
+        # still "outside coverage" for this test's purpose) rather than the
+        # original 2020-01-01: the max-total-stay guard (added 2026-08-23,
+        # TestB1MaxTotalStayBoundary) correctly declines a printed expiry
+        # implying a multi-thousand-day stay from a 2020 entry, which would
+        # mask what THIS test checks. 55 days of runway keeps the
+        # day-difference at 55 (< the 60-day max) and stays clear of it.
         today = date(2026, 7, 27)
-        req = _extension(entry_date=date(2020, 1, 1), voa_expiry_date=today + timedelta(days=18))
+        req = _extension(entry_date=date(2026, 6, 20), voa_expiry_date=today + timedelta(days=18))
         verdict = build_verdict(req, today=today)
         assert verdict.accepted is True
         assert verdict.submit_by_date is None
@@ -340,6 +394,47 @@ class TestClientFacingBoundary:
         verdict = build_verdict(_issuance(), today=_TODAY)
         d7 = verdict.checkpoint_at("D-7")
         assert d7 == verdict.published_filing_deadline
+
+
+class TestNationalityEligibility:
+    """End-to-end wiring of the nationality-eligibility dataset (2026-08-23)
+    through `build_verdict`. `test_nationality_eligibility.py` pins the
+    dataset and the pure lookup function in isolation; this class pins the
+    full request -> verdict path, including the decline reason/code.
+
+    Before this dataset existed, `nationality_entry_eligible` was hardcoded
+    `True`, so `AFG` (not VOA-eligible) silently ACCEPTed — this class's
+    guilt tests are the ones that were RED against that old code and are
+    GREEN against the fix.
+    """
+
+    def test_afg_declines_with_the_nationality_reason(self) -> None:
+        verdict = build_verdict(_issuance(nationality="AFG"), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "NATIONALITY_NOT_ELIGIBLE" in verdict.decline_codes
+        assert any("nationality" in r and "not eligible" in r for r in verdict.decline_reasons)
+
+    def test_prk_also_declines_with_the_nationality_reason(self) -> None:
+        # A second non-listed nationality so the guilt case isn't a
+        # single-fixture coincidence.
+        verdict = build_verdict(_issuance(nationality="PRK"), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "NATIONALITY_NOT_ELIGIBLE" in verdict.decline_codes
+
+    def test_usa_default_fixture_still_accepts(self) -> None:
+        # `_issuance()`'s default nationality is "USA" — every other test in
+        # this file already exercises this implicitly; this test makes the
+        # nationality dependency explicit and named.
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.accepted is True
+
+    def test_lowercase_nationality_is_not_case_sensitive_end_to_end(self) -> None:
+        # `internal_preview_cli.InternalPreviewRequest` normalises to upper
+        # case before `VoaIntakeRequest` is ever built in production, but a
+        # direct caller of `build_verdict` must not silently mis-decline a
+        # perfectly eligible lower-case nationality.
+        verdict = build_verdict(_issuance(nationality="usa"), today=_TODAY)
+        assert verdict.accepted is True
 
 
 class TestPurity:

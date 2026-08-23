@@ -30,6 +30,11 @@ import { OracleShell } from "./OracleShell";
 
 const ANSWERS = [
   ["in_indonesia", "no"],
+  // Offshore now asks a single permit-status gate question, converging
+  // immediately on "no" (fixed 2026-08-24, D12 offshore-reachability P0,
+  // then re-fixed same day after a funnel-cost review) — answered "no"
+  // to preserve this fixture's original downstream intent.
+  ["holds_stay_permit", "no"],
   ["overstay_days", "0"],
   ["nationalities", "US"],
   ["birth_date", "1990-01-01"],
@@ -92,6 +97,18 @@ async function completeFreshInterview(): Promise<void> {
   fireEvent.click(
     await screen.findByRole("button", { name: /planning ahead/i }),
   );
+
+  // Offshore now asks a single permit-status gate question before
+  // converging (fixed 2026-08-24, D12 offshore-reachability P0, then
+  // re-fixed same day after a funnel-cost review — see flow.ts's
+  // `in_indonesia`/`holds_stay_permit` cases). "no" here converges
+  // straight to overstay_days with no further permit questions — the
+  // fact resolves from this answer alone via fact-mapper.ts's
+  // synthesized NO_STAY_PERMIT (see fact-mapper.test.ts for that proof).
+  await screen.findByRole("heading", {
+    name: /do you currently hold a limited or permanent stay permit/i,
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /^no$/i }));
 
   fireEvent.change(await screen.findByRole("spinbutton"), {
     target: { value: "0" },

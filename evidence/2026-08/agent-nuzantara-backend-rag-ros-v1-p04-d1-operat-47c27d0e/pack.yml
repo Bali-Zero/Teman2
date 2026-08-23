@@ -1,0 +1,128 @@
+brief_ref: evidence/brief.yml
+plan_ref: "packages/research-os-core operator-decision surface (CONTRACTS.md §7, §8.1-8.3) — Research OS P04 D1, PR #4621"
+pii_scan: clean
+diff:
+  net_lines: >-
+    +4910/-185 (net +4725), 64 files, this PR's OWN contribution measured by
+    `git diff --numstat` between merge-base 1979434ca (the branch's fork point from
+    origin/main) and this branch's pre-merge tip 3b94a9f22 — i.e. excluding everything this
+    turn's merge brought in from origin/main's own newer commits (including sibling PR
+    #4643's content_object/media_manifest kinds). Covers both real commits on this branch
+    (93337550d feat, 8e859c0d0 fix) plus this turn's second merge-conflict resolution of the
+    three shared registration files and the full rewrite/relocation of this evidence pair to
+    its per-PR path.
+  behaviour_change: >-
+    Additive only for every consumer of the pre-existing (as of this merge) 16 registered
+    kinds — CONTRACT_MODELS (cli.py), SCHEMA_MODELS (schemas/__init__.py), and
+    models.__all__ each gain exactly 4 new keys (creative_lock, decision_packet,
+    requested_action_spec, topic_lock). Nothing pre-existing is renamed, removed, or
+    re-typed by the merge — verified below (receipt 5): origin/main's own 16-kind registered
+    set (14 baseline + sibling PR #4643's content_object/media_manifest, landed between this
+    branch's first and second merge) is unchanged and is a strict subset of the merged
+    20-kind set.
+receipts:
+  - claim: "All 169 fixtures across the full 20-kind registry (16 pre-existing as of this merge + this PR's 4) validate against their models with exact reason_code matching on invalid fixtures"
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m research_os.cli fixtures --check"
+    result: '{"checked": 169, "failures": [], "valid": true}'
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+  - claim: "The full research_os unit test suite (303 tests, includes test_cli.py::test_fixtures_check_validates_full_tree and test_schemas.py's schema-determinism tests which parameterize over the full registry) is green after the (second) merge"
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -q"
+    result: "303 passed in 2.67s"
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+  - claim: "The whole research_os package (29 source files, including the 4 new models and the 3 hand-merged registration files) type-checks clean under mypy --strict"
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict research_os"
+    result: "Success: no issues found in 29 source files"
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+  - claim: "Every checked-in schema.json (20, including the 4 new ones) is byte-identical to a fresh regeneration from its Pydantic model, and every one validates as a well-formed Draft 2020-12 schema"
+    cmd: 'cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts; print(checked_in_schemas_match(), validate_schema_artifacts())"'
+    result: "() ()"
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+  - claim: "The hand-resolved union merge of cli.py/models/__init__.py/schemas/__init__.py (SECOND merge round, against origin/main's now-16-kind registry) is LOSSLESS: origin/main's registered-kind set (16) is a strict subset of the merged set (20), and the only 4 additions are exactly this PR's own kinds — no sibling PR's kind (including #4643's content_object/media_manifest) was dropped by the conflict resolution"
+    cmd: "python3 -c script comparing regex-extracted import-module names from `git show origin/main:packages/research-os-core/research_os/cli.py` against the merged working-tree cli.py"
+    result: "main_count=16 merged_count=20 added=['creative_lock','decision_packet','requested_action_spec','topic_lock'] lost=[]"
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+  - claim: "The merged registration is also a 1:1 match against the .py files actually present on disk under research_os/models/ (20 module files excluding __init__.py) — no file on disk is unregistered and no registered import module lacks a file"
+    cmd: "glob packages/research-os-core/research_os/models/*.py (20 non-init files) diffed in Python against the merged cli.py import-module set"
+    result: "disk_count=20 merged_import_module_count=20 disk-merged=set() merged-disk=set()"
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+  - claim: "The three hand-resolved registration files (cli.py, models/__init__.py, schemas/__init__.py) contain zero leftover conflict markers and byte-compile cleanly"
+    cmd: "grep -rn '<<<<<<<\\|=======\\|>>>>>>>' <the 3 files> ; python3 -m py_compile <the 3 files>"
+    result: "grep: no match (exit 1, none found) ; py_compile: no output"
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+  - claim: "The repo-root evidence/brief.yml and evidence/pack.yml, after this turn's conflict resolution, are byte-identical to origin/main's own current root files — this PR's content lives only at the per-PR path, never overwriting a sibling's root evidence"
+    cmd: "git show origin/main:evidence/brief.yml | diff -q - evidence/brief.yml ; git show origin/main:evidence/pack.yml | diff -q - evidence/pack.yml"
+    result: "both diffs empty"
+    exit: 0
+    ts: "2026-08-23T20:20:25Z"
+    seat: "session (pro)"
+dissent:
+  - seat: "claude-opus-5 (commit 93337550d, self-flagged in-code)"
+    objection: >-
+      TopicLock/CreativeLock's lock_version<=>supersedes_ref coupling (lock_version==1
+      forbids a supersedes ref, lock_version>1 requires one, checked both directions) is
+      applied by analogy to the family_id+revision pattern sections 7 and 13.1 spell out
+      literally for DecisionPacket/ActionItem — sections 8.1/8.2 never say this in so many
+      words for locks. Code comment (topic_lock.py validate_topic_lock): "FLAGGING FOR
+      RATIFICATION: strong-but-inferred, not spec-literal."
+    status: PLAUSIBLE
+  - seat: "claude-opus-5 (commit 93337550d, self-flagged in-code)"
+    objection: >-
+      Six fields across the four kinds (DecisionPacket.evidence_summary / .alternatives /
+      .downstream_candidates, TopicLock.audience, CreativeLock.tone / .narrative_arc /
+      .must_keep / .must_avoid) are modeled as free-form JSON objects because the frozen
+      CONTRACTS.md prose gives zero or near-zero key-name guidance for their shape — an
+      invented shape (mirroring ExtensionValue.payload's precedent) that could diverge from
+      what a future consumer actually expects on the wire, not presented as spec-derived.
+    status: PLAUSIBLE
+  - seat: "claude-sonnet-5 (commit 8e859c0d0)"
+    objection: >-
+      EvidenceSummary.citations originally carried Field(min_length=1) on the reasoning that
+      a field called "citation-bearing" with zero citations contradicts its own name.
+    status: RETRACTED
+    resolution: >-
+      Removed after verifying it rejected a DecisionPacket that CONTRACTS.md Rule 9 (section
+      1) explicitly permits — "Missing evidence is not negative evidence. `unknown`,
+      `inconclusive`, and `insufficient_evidence` are valid outcomes." DecisionPacket already
+      accepts empty claim_refs and empty evidence_refs (neither has a min_length); the
+      citations constraint rejected that same already-permitted packet one field later.
+      Proven by fixtures/decision_packet/valid_no_evidentiary_support.json (an operational/
+      scheduling packet with empty claim_refs, empty evidence_refs, empty
+      evidence_summary.citations), added in the same fix commit.
+lanes:
+  - lane: B1
+    role: build
+    seat: "claude (session, pro)"
+    note: >-
+      Authored the operator-decision surface across the two real commits on this branch:
+      93337550d (feat, Claude Opus 5) added DecisionPacket/TopicLock/CreativeLock/
+      RequestedActionSpec + schemas + 31 fixtures + registration (104 tests green at commit
+      time); 8e859c0d0 (fix, Claude Sonnet 5) relaxed EvidenceSummary.citations after finding
+      it rejected a Rule-9-valid packet (45 fixtures green at commit time).
+  - lane: R1
+    role: review
+    seat: "claude (session, pro)"
+    note: >-
+      Resolved the SECOND 2026-08-23 origin/main merge on this branch as a verified-lossless
+      union across cli.py / models/__init__.py / schemas/__init__.py (16 kinds on the newer
+      origin/main -> 20 merged, the only 4 additions being exactly this PR's own kinds;
+      origin/main had advanced from 14 to 16 kinds between the branch's first and second
+      merge via sibling PR #4643's content_object/media_manifest), re-ran the
+      fixtures/pytest/mypy/schema-consistency gates post-merge, and relocated this evidence
+      pair to its per-PR path (scripts/ci/evidence_paths.py, #4678) — the repo-root
+      evidence/{brief,pack}.yml this branch had most recently inherited, verbatim, from an
+      unrelated sibling PR (wr3-spend-gate-enforce-0823) that landed on origin/main between
+      the two merges, are left as an exact copy of origin/main's own current root files.

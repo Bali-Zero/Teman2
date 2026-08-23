@@ -1,0 +1,72 @@
+{
+  "media_manifest_id": "40000000-0000-4000-8000-000000000001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "content_object_ref": {
+    "content_object_id": "30000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "object_hash": "7062ac46ce60951bf77277cbee4442132101546db0f4747111c8b6bc3c0d2b73"
+  },
+  "media_type": "carousel",
+  "claim_refs": [
+    {
+      "claim_id": "40000000-0000-4000-8000-000000000101",
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ],
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "assets": [
+    {
+      "asset_id": "hero-slide-01",
+      "sha256": "1b814f904174b2cafe2f097e6bc8908de16b81b7815a28483f59a6c9e2b82ae5",
+      "risk_class": "green",
+      "sensitivity": "public",
+      "source": "imagegen:session-2026-08-15-01",
+      "derivation": "generated",
+      "rights": "wr2.rights.brand-owned",
+      "model": "nano-banana-pro",
+      "seed": 42,
+      "tool_version": "flowkit-1.0.2"
+    }
+  ],
+  "timeline_or_slides": {
+    "locator": "gs://wr2-assets/kbli-2025-update/slides.json",
+    "sha256": "6bfb138260b28e1b73a7212f533407cfa6f095ff0f01eb9dbf3b6467a06769ed"
+  },
+  "quality": {
+    "checks": [
+      {
+        "probe": "mismatch"
+      }
+    ]
+  },
+  "platform_specs": [
+    {
+      "platform": "instagram",
+      "aspect_ratio": "4:5",
+      "safe_zone": "center-80pct",
+      "duration_or_count": 8
+    }
+  ],
+  "producer": {
+    "name": "wr2.layout-composer",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "40000000-0000-4000-8000-000000000102",
+      "object_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "input_hashes": [
+      "8888888888888888888888888888888888888888888888888888888888888888"
+    ]
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "9c4c46a0e097d2d15b7652e385c8131848f3e3ed7697d81ed4a4d4c424c671ec"
+}

@@ -185,7 +185,7 @@ class TestE33SeniorRoutes:
 
     def test_e33e_full_pricing_name_matches_by_code_not_prose(self) -> None:
         # The code wins even though the string also contains "second home senior".
-        rule = match_rule("kitas", "E33E Second Home Senior (5 Years, Offshore)")
+        rule = match_rule("kitas", "E33E Second Home Senior (5 Years)")
         assert rule.rule_id == "e33e_senior_renewal"
 
     def test_e33f_extend_pricing_name_matches(self) -> None:

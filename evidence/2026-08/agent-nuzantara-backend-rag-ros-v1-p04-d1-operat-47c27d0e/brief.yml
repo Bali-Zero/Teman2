@@ -1,0 +1,65 @@
+task_id: research-os-p04-d1-operator-decision-surface-0823
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Ship the canonical Research OS "operator decision" producer family from frozen
+  CONTRACTS.md sections 7 and 8.1-8.3 — the four object kinds a Conductor session hands to a
+  human or downstream automation: DecisionPacket (§7), TopicLock (§8.1), CreativeLock (§8.2),
+  RequestedActionSpec (§8.3). Each kind ships as: a Pydantic v2 FrozenCoreModel with a
+  model_validator(mode="after") enforcing the family_id + revision(/lock_version) +
+  supersedes_ref triple where the spec calls for it (revision==1 <=> no supersedes ref,
+  checked both directions, plus a self-reference guard), an object_hash check last; a
+  generated Draft 2020-12 JSON Schema (research_os.schemas.write_schema_artifacts, byte-
+  identical regeneration proven by checked_in_schemas_match); >=3 valid + >=3 invalid
+  fixtures per kind (each invalid fixture pinned to exactly one reason_code); and
+  registration in the three shared files every sibling P04 kind also touches
+  (research_os/cli.py CONTRACT_MODELS, research_os/models/__init__.py,
+  research_os/schemas/__init__.py).
+
+  Two real commits on this branch: 93337550d (feat, Claude Opus 5 — the four models +
+  schemas + 31 fixtures + registration, 104 tests green at commit time) and 8e859c0d0 (fix,
+  Claude Sonnet 5 — relaxing EvidenceSummary.citations after finding it rejected a
+  DecisionPacket that CONTRACTS.md Rule 9 explicitly permits: "missing evidence is not
+  negative evidence").
+
+  This branch has now been merged with origin/main TWICE. The first merge (recorded in an
+  earlier version of this evidence pair, superseded by this one) resolved against an
+  origin/main carrying 14 registered kinds, producing a verified-lossless 18-kind union. This
+  turn is a SECOND re-merge: between that first merge and now, origin/main advanced further
+  with a P04 sibling PR (#4643, landed) that itself registered two more kinds —
+  content_object and media_manifest — taking origin/main's own registered-kind count from 14
+  to 16. This turn's merge reconciles that newer origin/main against this branch's unchanged
+  own four kinds, hand-resolving real textual conflicts in the three shared registration
+  files (cli.py / models/__init__.py / schemas/__init__.py — both PRs inserted new entries at
+  the same alphabetical position, immediately after conductor_handoff) as a VERIFIED lossless
+  union: origin/main's 16 registered kinds are a strict subset of the merged 20, and the only
+  four additions are this PR's own creative_lock / decision_packet / requested_action_spec /
+  topic_lock, cross-checked against the .py files actually on disk under
+  research_os/models/ (20/20, zero mismatch either direction). And rewrote this evidence
+  pair — evidence/brief.yml and evidence/pack.yml at the repo root are fixed paths every
+  Gear>=2 PR rewrites in full, so on this branch they had most recently been inherited
+  verbatim from an unrelated sibling PR (wr3-spend-gate-enforce-0823) that landed on
+  origin/main between the two merges; this PR's own record now lives at the per-PR path
+  below (scripts/ci/evidence_paths.py, landed on main as #4678 specifically to end this
+  fixed-path collision class), while the repo-root evidence/{brief,pack}.yml are left as an
+  exact copy of origin/main's own current root files, untouched by this PR's content.
+
+  No dedicated per-kind test files (test_creative_lock.py etc.) are added — coverage runs
+  through the existing generic fixture-driven infrastructure that already parameterizes over
+  the FULL CONTRACT_MODELS / SCHEMA_MODELS registries: `research_os.cli fixtures --check`
+  (exercised by test_cli.py::test_fixtures_check_validates_full_tree) validates every
+  fixture against its model with exact reason_code matching, and test_schemas.py's
+  checked_in_schemas_match() / validate_schema_artifacts() cover schema determinism and
+  Draft 2020-12 validity for every registered kind, these four included.
+
+  DECLARED INTERPRETATIONS carried over from the feature commit (spec silent or thin on
+  shape — flagged in-code for owner ratification, not presented as spec-derived; see
+  `dissent:` below): six free-form-JSON fields across the four kinds where the frozen prose
+  gives zero or near-zero key-name guidance; RequestedActionSpec.arguments_ref modeled as an
+  opaque locator string rather than a discriminated protected|public union; CreativeLock's
+  reference_assets[].rights_state modeled as an open RegisteredName because section 3's
+  closed enum registry has no entry for it; and the lock_version<=>supersedes_ref coupling
+  on TopicLock/CreativeLock applied by analogy to the revision pattern spelled out literally
+  elsewhere in the freeze (DecisionPacket §7, ActionItem §13.1), not by direct textual
+  instruction in sections 8.1/8.2.

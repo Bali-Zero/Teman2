@@ -56,6 +56,9 @@ Pasal 33(10)(d) still reads **60** — operate on 55, disclose the ambiguity
   decompose into PNBP + service fee in any client-facing material (org rule:
   single all-inclusive price; Fable-5 gate item 4.5). Repriced from 39M on
   2026-08-19 (Zero ruling D2 — match Flado).
+- **E33E pricing (2026-08-24)** → **IDR 45,000,000 all-inclusive** for the
+  5-year first grant, carried by one PricingTool row with no offshore/onshore
+  split. E33E Extend remains IDR 10,000,000.
 - **Branch merge** → the content-freeze and fact-registry branches are
   approved for Claude-session review & merge (master list item 0.1).
 - **Dependent pricing** → **start price-alignment work now** (no final number

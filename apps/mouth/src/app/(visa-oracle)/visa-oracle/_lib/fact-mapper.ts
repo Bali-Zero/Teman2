@@ -40,7 +40,6 @@ type ProposedRole = KnownValue<"investment.proposed_role">;
 type FamilyRelation = KnownValue<"family.relation_to_sponsor">;
 type StudyLevel = KnownValue<"study.level">;
 type SponsorTypeValue = KnownValue<"sponsor.type">;
-type SponsorPermitBasisValue = KnownValue<"family.sponsor_permit_basis">;
 
 const NOT_ASKED: UnknownReasonWire = "NOT_ASKED";
 const UNVERIFIED: UnknownReasonWire = "UNVERIFIED";
@@ -205,6 +204,45 @@ const CURRENT_STATUS_CODES = [
   "ITK_FROM_VISIT_D",
   "ITK_PERALIHAN",
 ] as const;
+// 29 real product codes, verbatim from `rulepack-prod-007.source.json`
+// (`products[].product_code`, filtered to `E`-prefix). Only reachable via
+// `stay_permit_code` (tree.ts), gated behind `holds_stay_permit === "yes"`
+// — see `mapCurrentStatusCode` below. Not the same list as
+// `CURRENT_STATUS_CODES` above: that one is the non-E ITK/visit-class
+// catalogue, this one is the ITAS/ITAP catalogue backing
+// `derived.has_active_stay_permit`'s positive branch (fact_registry.py's
+// `^E\d+[A-Z]?$` heuristic).
+const STAY_PERMIT_CODES = [
+  "E23",
+  "E23U",
+  "E23V",
+  "E28A",
+  "E28B",
+  "E28C",
+  "E28D",
+  "E28F",
+  "E30",
+  "E30A",
+  "E30B",
+  "E30E",
+  "E30F",
+  "E31A",
+  "E31B",
+  "E31C",
+  "E31D",
+  "E31E",
+  "E31F",
+  "E31G",
+  "E31H",
+  "E31J",
+  "E33",
+  "E33A",
+  "E33B",
+  "E33C",
+  "E33E",
+  "E33F",
+  "E33G",
+] as const;
 const SPONSOR_TYPES = [
   "NONE",
   "INDIVIDUAL",
@@ -213,23 +251,6 @@ const SPONSOR_TYPES = [
   "INVESTMENT",
   "GOVERNMENT",
 ] as const satisfies readonly SponsorTypeValue[];
-// Mirrors the closed `SponsorPermitBasis` enum 1:1 (2026-08-23 owner
-// ruling — Permenkumham 11/2024 Pasal 33 ayat (2) huruf a-l).
-const SPONSOR_PERMIT_BASES = [
-  "EXPERT",
-  "WORKER",
-  "MARITIME_CREW",
-  "CLERGY",
-  "FOREIGN_INVESTMENT",
-  "SCIENTIFIC_RESEARCH",
-  "EDUCATION",
-  "FAMILY_REUNIFICATION",
-  "REPATRIATION",
-  "SECOND_HOME",
-  "MEDICAL_TREATMENT",
-  "WORKING_HOLIDAY",
-  "OTHER",
-] as const satisfies readonly SponsorPermitBasisValue[];
 
 export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   tourism: "TOURISM",
@@ -409,14 +430,57 @@ export function mapDisclosedReviewFlags(
   ) {
     flags.add("ACTIVITY_BOUNDARY");
   }
-  if (facts.family_sponsor_status_code !== undefined) {
+  if (
+    facts.family_sponsor_status_code !== undefined ||
+    facts.family_sponsor_permit_basis !== undefined
+  ) {
     flags.add("AMBIGUOUS_SPONSOR");
   }
   return [...flags].sort();
 }
 
+// Two source questions feed this ONE FactPath. The `holds_stay_permit` gate
+// (tree.ts) makes them mutually exclusive in the tree — "yes" routes to the
+// KITAS/KITAP transcription question (`stay_permit_code`, validated against
+// the real E-code catalogue), "no" routes to the original 8-code visit-class
+// question (`current_status_code`), unchanged — and `pruneFacts` (flow.ts)
+// drops whichever one falls out of history on every EDIT, so at most one of
+// the two raw fields is ever populated at a time. Branching on THAT
+// (presence of the raw field actually answered) rather than on
+// `holds_stay_permit`'s value keeps this mapper correct even when it's
+// invoked in isolation — e.g. a test that answers `stay_permit_code` alone,
+// without also setting `holds_stay_permit` — instead of silently resolving
+// to NOT_ASKED because the gate field was never populated. Both branches go
+// through `enumFact`, so an unrecognized or "unsure" value resolves UNKNOWN
+// either way — never a guessed KNOWN.
+//
+// A THIRD case (added 2026-08-24, P0 offshore-reachability fix): an
+// OFFSHORE applicant (`in_indonesia === "no"`) who answers
+// `holds_stay_permit === "no"` is never asked `current_status_code` at all
+// — `flow.ts::computeNextNode`'s offshore branch converges straight to
+// `overstay_days` instead, specifically to avoid paying a redundant
+// question for a fact `holds_stay_permit`'s own answer already fully
+// determines (measured funnel-cost review, PR #4727: asking it anyway
+// would cost every offshore applicant of every product 3 questions to
+// serve one product's rule). When neither raw field is populated but
+// `holds_stay_permit` is explicitly "no", emit the synthesized
+// `NO_STAY_PERMIT` sentinel directly (see `fact_registry.py`'s
+// `_VISIT_CLASS_STATUS_CODES` docstring for why this is honest, not a
+// guess) rather than falling through to NOT_ASKED. This branch can never
+// fire for onshore: onshore always asks the real `current_status_code`
+// question on "no" (unchanged), so that raw field is already populated by
+// the time this mapper runs and the second branch above wins first.
 function mapCurrentStatusCode(facts: OracleFacts): FactValue<string> {
-  return enumFact(facts.current_status_code, CURRENT_STATUS_CODES);
+  if (facts.stay_permit_code !== undefined) {
+    return enumFact(facts.stay_permit_code, STAY_PERMIT_CODES);
+  }
+  if (facts.current_status_code !== undefined) {
+    return enumFact(facts.current_status_code, CURRENT_STATUS_CODES);
+  }
+  if (facts.holds_stay_permit === "no") {
+    return known("NO_STAY_PERMIT");
+  }
+  return unknownFact(NOT_ASKED);
 }
 
 /**
@@ -452,6 +516,40 @@ function mapFamilySponsorStatus(facts: OracleFacts): FactValue<string> {
   // The UI accepts a human-entered status label. It is not backed by the
   // signed status-code catalogue, so even a syntactically plausible value
   // must never satisfy an engine rule that checks `op: known`.
+  return unknownFact(UNVERIFIED);
+}
+
+/**
+ * `family.sponsor_permit_basis` shipped in PR #4650 wired straight to
+ * `enumFact()` — self-declaration resolving directly to `KNOWN`. That
+ * missed the parallel to its sibling immediately above: the applicant/
+ * sponsor is asked to classify the sponsor's OWN permit into one of 13
+ * Pasal 33 ayat (2) huruf a-l legal categories, a taxonomy they are no
+ * more likely to know precisely than a signed status code. Ruling 2's
+ * whole purpose is Pasal 33 ayat (7), an EXCLUSIONARY gate — a wrong
+ * self-declared category does not just fail to help, it can wrongly
+ * exclude an eligible applicant. Mirrors `mapFamilySponsorStatus` exactly:
+ * collected, flagged for human review (`AMBIGUOUS_SPONSOR`, below), never
+ * trusted for `op: known`, until a document-verified source (e.g. an
+ * OCR'd sponsor permit card cross-checked against the signed catalogue —
+ * which does not exist yet for `sponsor_status_code` either) supplies one.
+ */
+function mapFamilySponsorPermitBasis(
+  facts: OracleFacts,
+): FactValue<KnownValue<"family.sponsor_permit_basis">> {
+  if (facts.family_sponsor_confirmed === "no") {
+    return unknownFact(NOT_APPLICABLE);
+  }
+  if (facts.family_sponsor_confirmed === "unsure") {
+    return unknownFact(UNVERIFIED);
+  }
+  if (facts.family_sponsor_confirmed !== "yes") {
+    return facts.family_sponsor_permit_basis === undefined
+      ? unknownFact(NOT_ASKED)
+      : unknownFact(UNVERIFIED);
+  }
+  const value = facts.family_sponsor_permit_basis;
+  if (value === undefined) return unknownFact(NOT_ASKED);
   return unknownFact(UNVERIFIED);
 }
 
@@ -531,10 +629,7 @@ export function mapOracleFactsToApplicantFacts(
     "family.stepchild_birth_certificate_confirmed": booleanFact(
       facts.family_stepchild_birth_certificate_confirmed,
     ),
-    "family.sponsor_permit_basis": enumFact(
-      facts.family_sponsor_permit_basis,
-      SPONSOR_PERMIT_BASES,
-    ),
+    "family.sponsor_permit_basis": mapFamilySponsorPermitBasis(facts),
     "family.sponsor_confirmed": booleanFact(facts.family_sponsor_confirmed),
     "study.level": enumFact(facts.study_level, STUDY_LEVELS),
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),
