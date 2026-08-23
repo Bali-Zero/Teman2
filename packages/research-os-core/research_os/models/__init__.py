@@ -3,11 +3,14 @@
 from research_os.models.action_intent import ActionIntent
 from research_os.models.action_item import ActionItem
 from research_os.models.approval_receipt import ApprovalReceipt
+from research_os.models.claim import Claim
 from research_os.models.conductor_handoff import ConductorHandoff
 from research_os.models.content_object import ContentObject
 from research_os.models.creative_lock import CreativeLock
 from research_os.models.decision_packet import DecisionPacket
+from research_os.models.evidence import Evidence
 from research_os.models.execution_attempt import ExecutionAttempt
+from research_os.models.intel_event import IntelEvent
 from research_os.models.media_manifest import MediaManifest
 from research_os.models.metric_profile import MetricProfile
 from research_os.models.metric_result import MetricResult
@@ -17,6 +20,7 @@ from research_os.models.requested_action_spec import RequestedActionSpec
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.risk_reclassification_receipt import RiskReclassificationReceipt
 from research_os.models.sanitization_receipt import SanitizationReceipt
+from research_os.models.story_cluster import StoryCluster
 from research_os.models.successor_edge import ObjectSuccessorEdge
 from research_os.models.topic_lock import TopicLock
 from research_os.models.verification_receipt import VerificationReceipt
@@ -26,11 +30,14 @@ __all__ = [
     "ActionIntent",
     "ActionItem",
     "ApprovalReceipt",
+    "Claim",
     "ConductorHandoff",
     "ContentObject",
     "CreativeLock",
     "DecisionPacket",
+    "Evidence",
     "ExecutionAttempt",
+    "IntelEvent",
     "MediaManifest",
     "MetricProfile",
     "MetricResult",
@@ -41,6 +48,7 @@ __all__ = [
     "RevocationReceipt",
     "RiskReclassificationReceipt",
     "SanitizationReceipt",
+    "StoryCluster",
     "TopicLock",
     "VerificationReceipt",
     "WorkflowRun",
