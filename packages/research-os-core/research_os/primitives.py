@@ -26,8 +26,61 @@ _REVERSE_DNS_RE = re.compile(
     r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
     r"[a-z](?:[a-z0-9-]*[a-z0-9])?$"
 )
-_REGISTERED_NAME_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9][a-z0-9_-]*)+$")
-_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:[.-][a-z0-9_-]+)*$")
+# Restructured with disjoint character classes -- NOT possessive quantifiers
+# (`*+`/`++`). This text is reused verbatim as the JSON Schema "pattern"
+# keyword for these fields (`Field(pattern=...)` below feeds both pydantic
+# runtime validation AND `model_json_schema()` / the checked-in
+# schemas/*.schema.json, which are a cross-language wire contract). ECMA-262
+# -- the dialect JSON Schema's "pattern" keyword is specified against, and
+# what any Go/TypeScript/Java consumer of that contract compiles with -- has
+# no possessive quantifiers or atomic groups; `new RegExp(...)` raises
+# "Nothing to repeat" on them. So the fix has to be an unambiguous pattern
+# using only constructs ECMA (and Python `re`) both support, not merely a
+# non-backtracking instrument that's Python-only. One pattern string per
+# field, used everywhere -- never a possessive Python-only variant paired
+# with a plain schema-only variant; two texts encoding "the same" constraint
+# is itself a defect class (test_every_schema_pattern_compiles_under_ecma_262
+# in test_schemas.py guards this, red-tested against the possessive form).
+#
+# Root cause (CodeQL py/redos, PR #4586): the body character class of each
+# repeated group overlapped the separator character class that follows it --
+# hyphen was in both the "identifier body" set and the original "." / "-"
+# separator set. _IDENTIFIER_RE's fix drops the redundant "-" from the
+# separator class: "-" is already accepted by the body class
+# `[a-z0-9_-]`, so the separator can be reduced to a bare `\.` with the
+# accepted language unchanged (the "-"-as-separator branch never described
+# any string the body class didn't already accept unconstrained). That
+# leaves dot and body strictly disjoint -- dot can only ever be a
+# separator, body chars can never be dots -- so there is nothing left to
+# backtrack between; plain `*`/`+` are safe here without any special
+# instrument.
+#
+# _REGISTERED_NAME_RE needed real restructuring, not just a class
+# reduction: unlike _IDENTIFIER_RE, "_"/"-" as separators there aren't
+# redundant (e.g. "a_b" has no dot at all and must still match), so the
+# separator class can't just be trimmed to "\.". Instead: the leading
+# `[a-z0-9]*` run is alnum-only (disjoint from the separator set by
+# construction, so it's already unambiguous), then exactly one mandatory
+# `[._-][a-z0-9]` opening establishes the (required) first separator, and
+# the tail loop offers two alternatives disjoint on their first character --
+# a single `[a-z0-9_-]` body char, or a literal `.` that must be followed by
+# one more alnum char. Every subsequent "_"/"-" is just more body (it was
+# never required to re-trigger a fresh separator+mandatory-alnum pair to
+# stay in the accepted language); every "." still forces the
+# alnum-immediately-after constraint the original grammar had. No two ways
+# to consume the same character exist, so nothing to backtrack into.
+#
+# Verified three ways for both patterns: (1) exhaustive comparison old vs.
+# new over the alphabet {a,0,-,_,.} for every string of length 1-7/1-8 plus
+# a curated set of realistic longer identifiers, run under Python `re` --
+# zero differences; (2) the same exhaustive comparison run under Node's V8
+# (a real ECMA-262 engine, not just "is it valid Python") -- zero
+# differences; (3) a pathological-input timing series ("a"+"-"*n+"!" /
+# "a"+"-0"*n+"!" for n up to 200) showing a flat curve in both Python and
+# Node, versus the old pattern's exponential blowup (seconds at n=26-28).
+# See backend/tests/unit/research_os/test_primitives_redos.py.
+_REGISTERED_NAME_RE = re.compile(r"^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\.[a-z0-9])*$")
+_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)*$")
 _UTC_OFFSET_PATTERN = r"(?:Z|\+00:00)$"
 
 # Frozen union of the canonical field vocabulary in CONTRACTS.md for
