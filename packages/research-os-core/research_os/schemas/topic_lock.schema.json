@@ -1,0 +1,386 @@
+{
+  "$defs": {
+    "ClaimRef": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "format": "uuid",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["claim_id", "object_hash"],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "DecisionPacketRef": {
+      "additionalProperties": false,
+      "description": "``{decision_packet_id, object_hash}`` -- the typed pointer every\noperator-decision kind in this producer family (TopicLock, CreativeLock\nvia TopicLock, RequestedActionSpec) binds back to its originating packet.",
+      "properties": {
+        "decision_packet_id": {
+          "format": "uuid",
+          "title": "Decision Packet Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["decision_packet_id", "object_hash"],
+      "title": "DecisionPacketRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "LockState": {
+      "enum": ["current", "stale", "superseded"],
+      "title": "LockState",
+      "type": "string"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "RequiredWorkflowLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {workflow_run_ref: {workflow_run_id, object_hash}, input_hashes: []}``.\n\nSections 8.1, 8.2, and 8.3 all spell this exact two-field shape\nverbatim, with ``workflow_run_ref`` MANDATORY -- unlike\n``primitives.Lineage``, whose ``workflow_run_ref`` is optional for kinds\nthat may run outside a workflow. TopicLock, CreativeLock, and\nRequestedActionSpec import this type rather than each redefining it.",
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "RequiredWorkflowLineage",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "description": "``source_refs: [{source_id, version_id, content_hash}]``.\n\nDeliberately NOT the generic ``ExactObjectRef`` or DecisionPacket's\n``SourceDocumentRef``: section 8.1 names distinct keys\n(``source_id``/``version_id``/``content_hash``) from section 7's\n``source_document_refs`` (``document_id``/``document_version_id``/\n``document_content_hash``) -- a different wire shape, preserved exactly\nrather than collapsed into one \"source ref\" type the freeze never wrote.",
+      "properties": {
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "version_id": {
+          "minLength": 1,
+          "title": "Version Id",
+          "type": "string"
+        }
+      },
+      "required": ["source_id", "version_id", "content_hash"],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "TopicLockRef": {
+      "additionalProperties": false,
+      "description": "``{topic_lock_id, object_hash}`` -- also the pointer CreativeLock\n(section 8.2) binds back to its exact selected Topic Lock revision.",
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "topic_lock_id": {
+          "format": "uuid",
+          "title": "Topic Lock Id",
+          "type": "string"
+        }
+      },
+      "required": ["topic_lock_id", "object_hash"],
+      "title": "TopicLockRef",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "angle": {
+      "minLength": 1,
+      "title": "Angle",
+      "type": "string"
+    },
+    "audience": {
+      "additionalProperties": true,
+      "title": "Audience",
+      "type": "object"
+    },
+    "claim_refs": {
+      "items": {
+        "$ref": "#/$defs/ClaimRef"
+      },
+      "title": "Claim Refs",
+      "type": "array"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decision_packet_ref": {
+      "$ref": "#/$defs/DecisionPacketRef"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "lineage": {
+      "$ref": "#/$defs/RequiredWorkflowLineage"
+    },
+    "lock_version": {
+      "minimum": 1,
+      "title": "Lock Version",
+      "type": "integer"
+    },
+    "must_resolve_before_use": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Must Resolve Before Use",
+      "type": "array"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "source_refs": {
+      "items": {
+        "$ref": "#/$defs/SourceRef"
+      },
+      "title": "Source Refs",
+      "type": "array"
+    },
+    "state": {
+      "$ref": "#/$defs/LockState"
+    },
+    "supersedes_topic_lock_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopicLockRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "topic": {
+      "minLength": 1,
+      "title": "Topic",
+      "type": "string"
+    },
+    "topic_lock_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Topic Lock Family Id",
+      "type": "string"
+    },
+    "topic_lock_id": {
+      "format": "uuid",
+      "title": "Topic Lock Id",
+      "type": "string"
+    },
+    "why_now": {
+      "minLength": 1,
+      "title": "Why Now",
+      "type": "string"
+    }
+  },
+  "required": [
+    "topic_lock_id",
+    "topic_lock_family_id",
+    "contract_version",
+    "tenant",
+    "decision_packet_ref",
+    "topic",
+    "angle",
+    "audience",
+    "why_now",
+    "claim_refs",
+    "source_refs",
+    "must_resolve_before_use",
+    "classification",
+    "lock_version",
+    "state",
+    "recorded_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "TopicLock",
+  "type": "object"
+}
