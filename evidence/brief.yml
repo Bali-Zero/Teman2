@@ -1,35 +1,46 @@
-task_id: garuda-b1-max-stay-boundary-0823
+task_id: organism-session-declarations
 gear: 2
 l_level: L2
 gate_class: opus
-objective: >-
-  `internal_preview_cli.py::_validate_entry_window` rejects a B1 extension's
-  printed expiry only when `(printed_expiry - entry_date).days` is STRICTLY
-  GREATER THAN the legal max-stay day count (60). Because B1 stay is counted
-  with the arrival day AS DAY 1, a difference of exactly 60 is already the
-  61st calendar day of stay — one day past the legal maximum — and the strict
-  `>` silently ACCEPTed it. Make the comparison inclusive and single-source
-  the day-counting convention in a documented helper so the next reader does
-  not have to re-derive it from a bare operator.
-why_now: >-
-  Independently reproduced and confirmed by three instruments this session
-  (cross-family red-team, cross-family refuter, Google-grounded research
-  pass): `build_internal_preview(EXTENSION, entry=2026-07-01,
-  voa_expiry=2026-08-30, today=2026-08-23)` returned `decision=ACCEPT` with a
-  published filing deadline, for a stay that is one day beyond what
-  imigrasi.go.id's own B1 page allows ("maksimal 30 hari, dihitung sejak
-  tanggal kedatangan"). The only existing boundary test used a 61-day
-  difference (clearly over) and never exercised the ==60 edge, so the gap was
-  live and undocumented.
-constraints:
-  - "OUT of scope: safe_clock.py's estimated stay-end (entry + 30) — a documented, deliberately accepted +1-day optimism with a printed_expiry override and an existing pinning test from a 2026-07-25 grader round. Not touched."
-  - "OUT of scope: the 6-month passport rule (spec says 'from entry', already correct)."
-  - "OUT of scope: anything under apps/mouth/, apps/admin-dashboard-local/, or any non-garuda_flow path."
-  - "The fix must not touch VISA_META's B1 duration_days/extensions data — only the comparison semantics against the already-derived max_total_stay_days."
-  - "No hardcoded day-count constant that duplicates VISA_META's derived value (that would drift silently if VISA_META B1 data ever changes) — express the convention as a named helper instead."
-acceptance:
-  - "A printed expiry at entry_date + 60 days (arrival-day-inclusive day 61) is REJECTED with a 'maximum stay' ValueError."
-  - "A printed expiry at entry_date + 59 days (day 60, the legal maximum itself) is still ACCEPTED."
-  - "The pre-existing 61-day-difference boundary test (test_extension_rejects_printed_expiry_beyond_b1_max_total_stay) still passes unchanged."
-  - "The day-counting convention (arrival day = day 1, hence inclusive >= comparison) is documented once, in constants.py, next to the existing MIN_PASSPORT_VALIDITY_DAYS/PUBLISHED_FILING_DEADLINE_DAYS sourcing comments, not re-derived inline."
-  - "Full backend/tests/services/garuda_flow/ suite passes after the change (measured before and after)."
+objective: |
+  Build the REAL detector for "an autonomous run started, died, and every gauge stayed green"
+  (superscar #2), replacing the prose-parsing verdict that PR #4646 was forced to ship as
+  informational-only.
+
+  WHY THE PREVIOUS ONE FAILED, because it constrains this design. That detector read a
+  session's own prose and asked "did it run as long as it declared?". Against the live fleet it
+  returned ten rows and all ten were HEALTHY healer ticks: "loop 4h" in a mandate's TITLE is the
+  cron cadence (com.nuzantara.healer.4h.plist carries StartInterval 14400), not the session's
+  runtime, and no regex separates "this document declares its own runtime" from "this document's
+  title names a schedule" — three narrowing passes each traded one error direction for the other.
+
+  THE SECOND TRAP, found while designing this one and worth recording because it is the obvious
+  design: measuring real duration against the wrapper's own number would have rebuilt the same
+  false positive. MAX_WALL_S=3300 is a CAP, not an expectation. A tick that finishes its work in
+  11 minutes against a 55-minute cap is CORRECT.
+
+  So this measures neither prose nor duration. It measures whether the runner came BACK: a
+  two-phase commit. open() before the work (pid + process start-time, the wrapper's own cap, and
+  the cron cadence in a SEPARATE field so the two numbers can never again collapse into one),
+  close() stamped on the way out. A declaration still OPEN past its own cap whose recorded
+  process is gone from the OS process table means the runner never returned — an OBSERVATION,
+  not an inference, which is precisely why the healer is permitted to alarm on this and was not
+  permitted to alarm on its predecessor. It cannot fire on a healthy short tick, because a
+  healthy tick closes its own declaration.
+
+scope:
+  in:
+    - "scripts/session_declaration.py — the protocol (open/close/scan/prune) + selftest"
+    - "scripts/tests/test_session_declaration.py — 33 hermetic guilt+innocence tests"
+    - "infra/healer/healer-run.sh — first producer (open before spawn, stamp after wait) and first consumer (receptor 7 + a HUNG check at the anti-overlap lock)"
+    - "infra/healer/HEALER-MANDATE.md — receptor 7 documented for the spawned session"
+  out:
+    - "Retiring DECLARED-SPAN-UNMET from scripts/fleet_sessions.py — 18 sites in the module and 26 references in its tests. Its own concern, its own PR. Harmless meanwhile: it is already informational-only and no organ routes on it."
+    - "Escalating the healer watchdog from SIGTERM to SIGKILL. The adversarial review surfaced it as a real gap while analysing hangs; it changes the healer's kill semantics and is a separate concern. This PR DETECTS the hang instead."
+    - "Passing --session-id to join a declaration to a transcript. Measured: claude-cascade.sh collects EXTRA_ARGS after `--` and replays them on every seat attempt, so a caller-supplied session id would collide across retries. session_id stays an optional, non-load-bearing field."
+    - "Wiring the other ~20 spawners in the fleet. One producer proves the protocol; a sweep is a migration."
+
+risks:
+  - "The detector alarms, unlike its predecessor. A false positive here costs a paid LLM session every 4h, so the innocence half of the suite is pinned with the real measured numbers written out literally rather than read back from the module — a test that derives its expectation from its subject agrees by construction."
+  - "The store is per-host and unreplicated. A machine whose declarations nobody scans is not covered; this PR wires the Mini healer only."
+  - "prune() deletes records. It never touches OPEN ones at any age (that is the finding itself), only CLOSED past 7d and abandoned past 30d, and it runs at open() rather than on the read path."
