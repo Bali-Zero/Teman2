@@ -42,7 +42,12 @@ module-level `_tg_notify`/`_heartbeat`, `run()`/`_tick()` split so tests
 inject a fake clock + fake rows + fake tg without touching the DB or network).
 
 Env:
-  INTAKE_DATABASE_URL / LOCAL_DATABASE_URL   DSN (default local nuzantara_dev)
+  INTAKE_DATABASE_URL / LOCAL_DATABASE_URL / DATABASE_URL_LOCAL
+                                             DSN, tried in that order (default
+                                             local nuzantara_dev, which is EMPTY —
+                                             DATABASE_URL_LOCAL is the name with a
+                                             live path to production via the
+                                             flyctl proxy on 127.0.0.1:15432)
   WA_BOT_THROUGHPUT_SENTINEL_ENABLED         kill switch (default true)
   WA_BOT_INBOUND_STALE_MIN                   default 180 (3h) — business-hours-adjusted, digest tier
   WA_BOT_OUTBOUND_STALE_MIN                  default 60  (1h) — business-hours-adjusted, only
@@ -459,7 +464,23 @@ async def run(*, dry_run: bool) -> int:
     if lock_fd is None:
         return 0
     try:
-        dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
+        # DSN resolution order, and why the third name is here (audited 2026-08-23):
+        # every organ in this repo that sets INTAKE_DATABASE_URL sets it to the
+        # LOCAL dev database — three plists hardcode nuzantara_dev — so those two
+        # names alone would have armed this sentinel against an empty world. The
+        # one name with a proven, live path to PRODUCTION is DATABASE_URL_LOCAL,
+        # sourced from ~/.nuzantara-secrets.env and reaching Fly Postgres through
+        # the `flyctl proxy 15432:5432` tunnel the wr2 organs already depend on.
+        # Verified through it this session: 244 whatsapp inbound rows, 108 done.
+        # CAUTION: DATABASE_URL_LOCAL and LOCAL_DATABASE_URL are different names
+        # with opposite meanings — the first is production via tunnel, the second
+        # is a dev override. They are one word-swap apart; do not "tidy" them.
+        dsn = (
+            os.getenv("INTAKE_DATABASE_URL")
+            or os.getenv("LOCAL_DATABASE_URL")
+            or os.getenv("DATABASE_URL_LOCAL")
+            or DEFAULT_DSN
+        )
         try:
             conn = await asyncpg.connect(
                 dsn, server_settings={"default_transaction_read_only": "on"}, timeout=20
