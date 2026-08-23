@@ -77,79 +77,65 @@ canonicalUrl: "https://balizero.com/immigration/global-citizenship-indonesia"
 ogImage: "/static/blog/global-citizenship.jpg"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "fdc1857cdd82c2c92fdeeefbc894d78cb8d2dc889f40113c08b3eb637ccae6ea"
+source_sha256: "f4e62166ecd2a02a2f629d351c28a692dd1cdea46d83e43d8ca48c25a7f06d3f"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Kewarganegaraan Global Indonesia: Pelukan yang Ditunggu Lama
 
-# Kewarganegaraan Global Indonesia: Pelukan yang Lama Ditunggu
-
-Selama puluhan tahun, Indonesia mengatakan kepada anak-anaknya di luar negeri: _pilih_. Kami atau mereka. Paspor merah atau paspor asing. Tidak ada jalan tengah. Jutaan memilih — seringkali dengan hati berat — untuk membangun kehidupan di tempat lain, meninggalkan bukan hanya sebuah dokumen, tetapi sebagian dari diri mereka.
+Selama beberapa dekade, Indonesia memberi pesan kepada anak-anaknya di luar negeri: _pilih_. Kita atau mereka. Paspor merah atau paspor asing. Tidak ada jalan tengah. Jutaan orang memilih — seringkali dengan hati berat — untuk membangun kehidupan di tempat lain, meninggalkan bukan hanya sebuah dokumen, tetapi sebagian dari siapa mereka.
 
 Pada **19 November 2025**, sesuatu berubah.
 
 <InfoCard variant="highlight" title="Apa itu GCI?">
-Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarganegaraan ganda (yang tetap dilarang secara konstitusional), tetapi sesuatu yang sangat mirip.
+Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarganegaraan ganda (yang tetap terlarang secara konstitusional), tetapi sesuatu yang sangat mirip.
 
-**Izin tinggal permanen tanpa tanggal kedaluwarsa**. Tanpa perpanjangan. Tanpa sponsor yang diperlukan. Sebuah pelukan terlambat, tetapi nyata.
+Izin tinggal permanen **tanpa tanggal kedaluwarsa**. Tidak perlu perpanjangan. Tidak perlu sponsor. Sebuah pelukan yang terlambat, namun nyata.
 
 </InfoCard>
 
 ---
 
-## Siapa yang Bisa Pulang?
+## Siapa yang Bisa Kembali?
 
 <DecisionTree
-  title="Apakah Saya Memenuhi Syarat untuk GCI?"
-  description="Jawab pertanyaan-pertanyaan ini untuk memeriksa kelayakan Anda"
+  title="Apakah Saya Memenuhi Syarat GCI?"
+  description="Jawab pertanyaan ini untuk memeriksa kelayakan Anda"
   nodes={[
     {
       id: "start",
-      question: "Apa koneksi Anda dengan Indonesia?",
+      question: "Apa hubungan Anda dengan Indonesia?",
       options: [
         {
-          label: "Mantan warga negara Indonesia (naturalisasi di luar negeri)",
+          label: "Warga negara Indonesia sebelumnya (alami kewarganegaraan asing)",
           nextId: "eligible-former",
         },
         {
-          label: "Anak/cucu warga negara Indonesia",
+          label: "Anak/cucu dari warga negara Indonesia",
           nextId: "eligible-descendant",
         },
-        { label: "Pasangan warga negara Indonesia", nextId: "eligible-spouse" },
-        { label: "Tidak ada koneksi langsung", nextId: "not-eligible" },
+        { label: "Suami/istri dari warga negara Indonesia", nextId: "eligible-spouse" },
+        { label: "Tidak ada hubungan langsung", nextId: "not-eligible" },
       ],
     },
     {
       id: "eligible-former",
-      question:
-        "Apakah Anda memiliki dokumentasi yang membuktikan kewarganegaraan sebelumnya?",
+      question: "Apakah Anda memiliki dokumen yang membuktikan kewarganegaraan sebelumnya?",
       options: [
         {
           label: "Ya (KTP lama, akta kelahiran, paspor)",
           nextId: "docs-check",
         },
-        {
-          label: "Tidak, tetapi keluarga dapat menyediakan dokumen",
-          nextId: "docs-check",
-        },
-        { label: "Tidak ada dokumentasi yang tersedia", nextId: "docs-needed" },
+        { label: "Tidak, tapi keluarga bisa menyediakan dokumen", nextId: "docs-check" },
+        { label: "Tidak ada dokumen yang tersedia", nextId: "docs-needed" },
       ],
     },
     {
       id: "eligible-descendant",
-      question:
-        "Dapatkah Anda membuktikan orang tua/kakek-nenek Anda adalah warga negara Indonesia?",
+      question: "Apakah Anda bisa membuktikan orang tua/kakek/nenek Anda adalah warga negara Indonesia?",
       options: [
         { label: "Ya, saya memiliki dokumen mereka", nextId: "docs-check" },
-        { label: "Catatan keluarga ada di Indonesia", nextId: "docs-check" },
-        { label: "Tidak yakin di mana menemukan bukti", nextId: "docs-needed" },
+        { label: "Dokumen keluarga ada di Indonesia", nextId: "docs-check" },
+        { label: "Tidak yakin di mana mencari bukti", nextId: "docs-needed" },
       ],
     },
     {
@@ -157,15 +143,12 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
       question: "Apakah pasangan Indonesia Anda masih warga negara?",
       options: [
         { label: "Ya, warga negara Indonesia aktif", nextId: "docs-check" },
-        {
-          label: "Mantan warga negara (naturalisasi)",
-          nextId: "eligible-former",
-        },
+        { label: "Warga negara sebelumnya (alami kewarganegaraan asing)", nextId: "eligible-former" },
       ],
     },
     {
       id: "docs-check",
-      question: "Apakah Anda memiliki dana minimum USD 2.000?",
+      question: "Apakah Anda memiliki dana minimal USD 2.000?",
       options: [
         { label: "Ya", nextId: "likely-eligible" },
         { label: "Tidak", nextId: "funds-needed" },
@@ -174,9 +157,9 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
     {
       id: "likely-eligible",
       result: {
-        title: "Anda Kemungkinan Memenuhi Syarat untuk GCI!",
+        title: "Anda Kemungkinan Memenuhi Syarat GCI!",
         description:
-          "Berdasarkan jawaban Anda, Anda tampaknya memenuhi persyaratan kelayakan dasar untuk Kewarganegaraan Global Indonesia. Hubungi kami untuk penilaian detail.",
+          "Berdasarkan jawaban Anda, Anda tampaknya memenuhi persyaratan dasar untuk Kewarganegaraan Global Indonesia. Hubungi kami untuk penilaian terperinci.",
         variant: "success",
         cta: { label: "Dapatkan Penilaian", href: "/contact" },
       },
@@ -186,17 +169,17 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
       result: {
         title: "GCI Mungkin Tidak Tersedia",
         description:
-          "GCI secara spesifik untuk mereka dengan warisan atau hubungan keluarga Indonesia. Namun, Anda mungkin memenuhi syarat untuk visa jangka panjang lain seperti Second Home Visa, Retirement KITAS, atau Investor KITAS.",
+          "GCI khusus untuk mereka yang memiliki warisan atau hubungan keluarga Indonesia. Namun, Anda mungkin memenuhi syarat untuk visa jangka panjang lainnya seperti Visa Rumah Kedua, KITAS Pensiun, atau KITAS Investor.",
         variant: "warning",
-        cta: { label: "Jelajahi Opsi Lain", href: "/insights/immigration" },
+        cta: { label: "Jelajahi Pilihan Lain", href: "/insights/immigration" },
       },
     },
     {
       id: "docs-needed",
       result: {
-        title: "Penelitian Dokumentasi Diperlukan",
+        title: "Diperlukan Penelitian Dokumen",
         description:
-          "Anda mungkin masih memenuhi syarat, tetapi kami perlu membantu Anda menemukan atau merekonstruksi dokumentasi warisan Indonesia Anda. Ini umum terjadi dan biasanya dapat diatasi.",
+          "Anda mungkin masih memenuhi syarat, tetapi kami perlu membantu Anda menemukan atau merekonstruksi dokumentasi warisan Indonesia Anda. Ini umum dan biasanya dapat diselesaikan.",
         variant: "info",
         cta: { label: "Bantuan Dokumen", href: "/contact" },
       },
@@ -206,7 +189,7 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
       result: {
         title: "Persyaratan Keuangan Tidak Terpenuhi",
         description:
-          "GCI memerlukan bukti dana minimum USD 2.000. Ini adalah ambang batas yang relatif rendah - pertimbangkan untuk menabung sebelum mendaftar.",
+          "GCI memerlukan bukti dana minimal USD 2.000. Ini adalah ambang batas yang relatif rendah - pertimbangkan menabung sebelum mengajukan permohonan.",
         variant: "warning",
       },
     },
@@ -218,49 +201,50 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
 ## Apa yang Anda Butuhkan?
 
 <Checklist
-  title="Persyaratan Aplikasi GCI"
+  title="Persyaratan Pengajuan GCI"
   description="Dokumen dan persyaratan untuk Kewarganegaraan Global"
   persistKey="gci-requirements-checklist"
   items={[
     {
       id: "passport",
-      label: "Paspor asing yang valid",
-      description: "Validitas minimum 24 bulan direkomendasikan",
+      label: "Paspor asing yang berlaku",
+      description: "Disarankan minimal 24 bulan berlaku",
       required: true,
       category: "identity",
     },
     {
       id: "heritage-proof",
-      label: "Bukti koneksi Indonesia",
-      description: "KTP lama, akta kelahiran, ijazah sekolah, dokumen keluarga",
+      label: "Bukti hubungan dengan Indonesia",
+      description:
+        "KTP lama, akta kelahiran, ijazah sekolah, dokumen keluarga",
       required: true,
       category: "heritage",
     },
     {
       id: "funds",
       label: "Bukti dana (min USD 2.000)",
-      description: "Rekening koran atau yang setara",
+      description: "Laporan rekening bank atau setara",
       required: true,
       category: "financial",
     },
     {
       id: "photos",
       label: "Foto paspor (4x6cm, latar merah)",
-      description: "Foto terbaru, 4 lembar",
+      description: "Foto terbaru, 4 salinan",
       required: true,
       category: "identity",
     },
     {
       id: "family-tree",
-      label: "Dokumentasi silsilah keluarga",
-      description: "Jika mendaftar melalui koneksi orang tua/kakek-nenek",
+      label: "Dokumentasi pohon keluarga",
+      description: "Jika mengajukan melalui hubungan orang tua/kakek/nenek",
       required: false,
       category: "heritage",
     },
     {
       id: "marriage-cert",
-      label: "Akta pernikahan",
-      description: "Jika mendaftar sebagai pasangan warga negara Indonesia",
+      label: "Sertifikat pernikahan",
+      description: "Jika mengajukan sebagai suami/istri dari warga negara Indonesia",
       required: false,
       category: "heritage",
     },
@@ -275,10 +259,10 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
 
 ---
 
-## GCI vs Opsi Jangka Panjang Lainnya
+## GCI vs Pilihan Jangka Panjang Lainnya
 
 <ComparisonTable
-  title="Opsi Izin Tinggal Permanen Dibandingkan"
+  title="Pilihan Tinggal Permanen Dibandingkan"
   description="Bagaimana GCI dibandingkan dengan jalur lainnya"
   items={[
     {
@@ -286,15 +270,15 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
       subtitle: "Untuk diaspora",
       values: {
         Eligibility: "Warisan Indonesia",
-        Duration: "Permanen (tanpa kedaluwarsa)",
-        "Work Rights": "Tidak dapat bekerja secara lokal",
+        Duration: "Permanen (tidak kadaluarsa)",
+        "Work Rights": "Tidak bisa bekerja secara lokal",
         Cost: "IDR 50.000.000 (layanan kami)",
-        Renewals: "Tidak diperlukan",
+        Renewals: "Tidak ada yang diperlukan",
       },
       highlight: true,
     },
     {
-      name: "KITAP (Tinggal Tetap)",
+      name: "KITAP (Tinggal Permanen)",
       subtitle: "Jalur tradisional",
       values: {
         Eligibility: "5 tahun di KITAS",
@@ -305,25 +289,25 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
       },
     },
     {
-      name: "Second Home Visa",
-      subtitle: "Individu berkekayaan",
+      name: "Visa Rumah Kedua",
+      subtitle: "Individu kaya",
       values: {
         Eligibility: "Dana USD 130.000+",
-        Duration: "5 tahun (dapat diperpanjang hingga 10 tahun kumulatif)",
+        Duration: "5 tahun (dapat diperpanjang hingga 10 kumulatif)",
         "Work Rights": "Tidak",
         Cost: "~IDR 20.000.000",
         Renewals: "Setelah 5/10 tahun",
       },
     },
     {
-      name: "Retirement KITAS",
-      subtitle: "Usia 55+",
+      name: "KITAS Pensiun",
+      subtitle: "Umur 55+",
       values: {
         Eligibility: "55+, bukti pensiun",
         Duration: "1-5 tahun",
         "Work Rights": "Tidak",
         Cost: "IDR 14-18.000.000",
-        Renewals: "Tahunan atau 5 tahunan",
+        Renewals: "Tahunan atau 5 tahun",
       },
     },
   ]}
@@ -333,97 +317,94 @@ Pemerintah meluncurkan **Kewarganegaraan Global Indonesia (GCI)**: bukan kewarga
 
 ## Apa yang GCI BUKAN
 
-<InfoCard variant="warning" title="Keterbatasan Penting">
+<InfoCard variant="warning" title="Pembatasan Penting">
 Mari kita jelas: **ini bukan kewarganegaraan**.
 
-- **Tidak dapat memilih** dalam pemilihan Indonesia
-- **Tidak dapat membeli tanah hak milik** (Hak Milik)
-- **Tidak dapat bekerja sebagai karyawan** untuk perusahaan Indonesia
+- **Tidak bisa memilih** dalam pemilihan Indonesia
+- **Tidak bisa membeli tanah hak milik** (Hak Milik)
+- **Tidak bisa bekerja sebagai karyawan** untuk perusahaan Indonesia
 - Tidak ada gaji lokal, tidak ada kontrak kerja
 
-Tetapi Anda BISA:
+Tapi Anda BISA:
 
 - Tinggal di sini secara permanen
-- Berinvestasi dan menjalankan bisnis asing dari jarak jauh
+- Berinvestasi dan menjalankan bisnis asing secara remote
 - Mengelola aset Anda
-- Pensiun di persawahan
-- Keluar masuk tanpa kekhawatiran visa
+- Pensiun di sawah
+- Datang dan pergi tanpa kekhawatiran visa
 </InfoCard>
 
 ---
 
-## Pembatasan Kerja: Pendapat Kami
+## Pembatasan Kerja: Pandangan Kami
 
-<InfoCard variant="note" title="Opini Editorial">
-Hukum tegas — pemegang GCI **tidak dapat menerima upah dari entitas Indonesia**.
+<InfoCard variant="note" title="Pendapat Editorial">
+Hukumnya eksplisit — pemegang GCI **tidak bisa menerima gaji dari entitas Indonesia**.
 
-Bagi pensiunan, investor, dan pekerja jarak jauh, ini tidak mengubah apa pun. Tetapi bagi profesional diaspora yang bermimpi kembali bekerja di Jakarta atau Surabaya? Ini adalah pintu yang masih setengah tertutup.
+Bagi pensiunan, investor, dan pekerja remote, ini tidak mengubah apa pun. Tapi bagi profesional diaspora yang bermimpi kembali bekerja di Jakarta atau Surabaya? Itu pintu yang masih setengah tertutup.
 
-**Pandangan jujur kami**: Pembatasan ini masuk akal untuk saat ini. Indonesia sedang menguji air. Program ini modelnya mengikuti OCI India, yang juga membatasi pekerjaan lokal.
+**Pandangan jujur kami**: Pembatasan ini masuk akal untuk saat ini. Indonesia sedang mencoba air. Program ini dimodelkan setelah OCI India, yang juga membatasi pekerjaan lokal.
 
-Jika GCI terbukti sukses dan diaspora menunjukkan nilai tanpa menggeser pekerja lokal, kami tidak akan terkejut melihat aturan ini melunak dalam revisi mendatang. Untuk saat ini, rencanakan dengan bijak.
+Jika GCI terbukti sukses dan diaspora menunjukkan nilai tanpa menggantikan pekerja lokal, kami tidak akan terkejut melihat aturan ini melunak dalam revisi masa depan. Untuk saat ini, rencanakan sesuai.
 
 </InfoCard>
 
 ---
 
-## Proses Aplikasi
+## Proses Pengajuan
 
 <JourneyMap
-  title="Perjalanan Aplikasi GCI"
-  description="Dari pemeriksaan kelayakan hingga izin tinggal permanen"
-  estimatedTotal="Timeline TBD - program baru"
+  title="Perjalanan Pengajuan GCI"
+  description="Dari pemeriksaan kelayakan hingga tinggal permanen"
+  estimatedTotal="Jadwal Belum Ditentukan - program baru"
   steps={[
     {
       id: "assessment",
       title: "Penilaian Kelayakan",
-      description: "Verifikasi koneksi Indonesia Anda",
+      description: "Verifikasi hubungan Anda dengan Indonesia",
       duration: "1-2 hari",
       status: "required",
       tips: [
         "Kumpulkan semua dokumen warisan",
         "Hubungi keluarga di Indonesia jika diperlukan",
-        "Kami dapat membantu menemukan catatan",
+        "Kami bisa membantu menemukan catatan",
       ],
     },
     {
       id: "documents",
       title: "Persiapan Dokumen",
-      description: "Susun dan verifikasi semua dokumen yang diperlukan",
+      description: "Kumpulkan dan verifikasi semua dokumen yang diperlukan",
       duration: "1-2 minggu",
       status: "required",
       documents: ["Paspor", "Bukti warisan", "Bukti keuangan", "Foto"],
     },
     {
       id: "application",
-      title: "Pengiriman Portal e-Visa",
-      description: "Aplikasi online melalui portal resmi",
+      title: "Pengajuan Portal e-Visa",
+      description: "Pengajuan online melalui portal resmi",
       duration: "TBD",
       status: "required",
-      tips: [
-        "Sistem masih sedang diselesaikan",
-        "Kami menangani pengiriman untuk Anda",
-      ],
-      warnings: ["Portal mungkin memiliki masalah teknis di awal"],
+      tips: ["Sistem masih diselesaikan", "Kami menangani pengajuan untuk Anda"],
+      warnings: ["Portal mungkin mengalami masalah teknis di awal"],
     },
     {
       id: "processing",
       title: "Pemrosesan Imigrasi",
-      description: "Tinjauan dan persetujuan",
+      description: "Peninjauan dan persetujuan",
       duration: "TBD",
       status: "required",
-      tips: ["Waktu resmi belum diumumkan", "Harapkan kejelasan di awal 2026"],
+      tips: [
+        "Waktu resmi belum diumumkan",
+        "Harapkan kejelasan di awal 2026",
+      ],
     },
     {
       id: "approval",
       title: "Penerbitan GCI",
-      description: "Terima dokumen izin tinggal permanen",
+      description: "Terima dokumen tinggal permanen",
       duration: "TBD",
       status: "final",
-      tips: [
-        "Tidak ada tanggal kedaluwarsa",
-        "Tidak perlu perpanjangan di masa depan",
-      ],
+      tips: ["Tidak ada tanggal kedaluwarsa", "Tidak ada perpanjangan di masa depan"],
     },
   ]}
 />
@@ -432,33 +413,33 @@ Jika GCI terbukti sukses dan diaspora menunjukkan nilai tanpa menggeser pekerja 
 
 ## Layanan Kami
 
-| Item                | Biaya                                                             |
-| ------------------- | ----------------------------------------------------------------- |
-| Layanan GCI Lengkap | **IDR 50.000.000**                                                |
-| Termasuk            | Penilaian kelayakan, persiapan dokumen, pengiriman, tindak lanjut |
-| Biaya pemerintah    | Termasuk                                                          |
-| Dukungan timeline   | Sampai persetujuan                                                |
+| Item                 | Biaya                                                                |
+| -------------------- | ------------------------------------------------------------------- |
+| Layanan GCI Lengkap  | **IDR 50.000.000**                                                  |
+| Termasuk             | Penilaian kelayakan, persiapan dokumen, pengajuan, tindak lanjut |
+| Biaya pemerintah     | Termasuk                                                            |
+| Dukungan jadwal      | Hingga persetujuan                                                  |
 
 ---
 
-## Gambaran Besar
+## Gambar Besar
 
-Ada pepatah Jawa: _"Pisang tidak akan jatuh jauh dari pohonnya"_ — pisang tidak pernah jatuh jauh dari pohonnya.
+Ada pepatah Jawa: _"Pisang tidak akan jatuh jauh dari pohonnya"_ — pisang tidak akan jatuh jauh dari pohonnya.
 
-Setelah puluhan tahun pintu tertutup, Indonesia akhirnya membangun jalan pulang bagi mereka yang ingin kembali ke akar mereka. Bukan sebagai turis. **Sebagai keluarga**.
+Setelah beberapa dekade pintu tertutup, Indonesia akhirnya membangun jalan pulang bagi mereka yang ingin kembali ke akar mereka. Bukan sebagai turis. **Sebagai keluarga**.
 
 ---
 
 ## Pertanyaan?
 
 <AskZantara
-  context="Kewarganegaraan Global Indonesia, GCI, diaspora, izin tinggal permanen, warisan Indonesia, pembatasan kerja"
-  placeholder="Tanyakan tentang kelayakan GCI..."
+  context="Kewarganegaraan Global Indonesia, GCI, diaspora, tinggal permanen, warisan Indonesia, pembatasan kerja"
+  placeholder="Tanya tentang kelayakan GCI..."
   suggestedQuestions={[
-    "Bisakah saya bekerja jarak jauh dengan GCI?",
+    "Bisakah saya bekerja remote dengan GCI?",
     "Bagaimana jika saya kehilangan dokumen Indonesia saya?",
-    "Bisakah anak-anak saya juga mendapatkan GCI?",
-    "Apa bedanya GCI dengan KITAP?",
+    "Bisakah anak saya juga mendapatkan GCI?",
+    "Bagaimana GCI berbeda dengan KITAP?",
   ]}
 />
 
@@ -466,6 +447,6 @@ Setelah puluhan tahun pintu tertutup, Indonesia akhirnya membangun jalan pulang 
 
 ## Artikel Terkait
 
-- [Retirement Visa Indonesia](/insights/immigration/retirement-visa-indonesia)
-- [Second Home Visa](/insights/immigration/second-home-visa)
-- [Investor KITAS Guide](/insights/immigration/investor-kitas-guide)
+- [Visa Pensiun Indonesia](/insights/immigration/retirement-visa-indonesia)
+- [Visa Rumah Kedua](/insights/immigration/second-home-visa)
+- [Panduan Investor KITAS](/insights/immigration/investor-kitas-guide)

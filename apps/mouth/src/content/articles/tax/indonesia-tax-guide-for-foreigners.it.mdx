@@ -60,51 +60,34 @@ faq:
     answer: "Si applicano aliquote progressive: 5% sul reddito fino a 60 milioni di IDR, 15% su 60-250 milioni di IDR, 25% su 250-500 milioni di IDR, 30% su 500 milioni - 5 miliardi di IDR e 35% oltre i 5 miliardi di IDR. I non residenti pagano una ritenuta d'acconto fissa del 20% sui redditi di fonte indonesiana."
   - question: "Gli espatriati in Indonesia pagano le tasse sul reddito estero?"
     answer: "Secondo la PMK 18/2021, il reddito di fonte estera è tassato allo 0% se non rimesso in Indonesia, a condizione che si soddisfino specifiche condizioni. Ciò crea un sistema fiscale territoriale a beneficio degli espatriati che guadagnano da clienti o datori di lavoro all'estero."
-source_sha256: "2270fbd80a32179e2a75fad202f3c609c9d0ba242ec38f6be4b2383855cdad0e"
+source_sha256: "e3a2fced7bd00f33cf172976c36d60ff14efb65556879a23011aee3db4854137"
 ---
 
-import {
-  DecisionTree,
-  Calculator,
-  ComparisonTable,
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  GlossaryTerm,
-  ConfidenceMeter,
-  AskZantara,
-  LegalDecoder,
-} from "@/components/insights/interactive";
+# Guida Fiscale per l'Indonesia per gli Stranieri 2026
 
-# Guida Fiscale Indonesia per Stranieri 2026
+Vivere o fare business in Indonesia come straniero comporta obblighi fiscali che possono essere confusi. La buona notizia? Il sistema fiscale dell'Indonesia, sebbene complesso, segue regole logiche e comprenderle può farti risparmiare denaro e stress.
 
-Vivere o fare affari in Indonesia come straniero comporta obblighi fiscali che possono creare confusione. La buona notizia? Il sistema fiscale indonesiano, sebbene complesso, segue regole logiche e comprenderle può farti risparmiare tempo e stress.
-
-Questa guida completa spiega la tassazione indonesiana dal punto di vista di uno straniero, coprendo tutto, dalla determinazione del tuo stato di residenza fiscale alla presentazione della tua dichiarazione dei redditi annuale.
+Questa guida completa spiega la tassazione indonesiana dal punto di vista dello straniero, coprendo tutto, dal determinare il tuo status di residenza fiscale al presentare la dichiarazione annuale delle tasse.
 
 <ConfidenceMeter
-  title="Affidabilità delle Informazioni"
+  title="Information Confidence"
   items={[
     {
-      label: "Regole Residenza Fiscale",
+      label: "Tax Residency Rules",
       confidence: 98,
-      source: "UU PPh & Regolamenti DJP",
+      source: "UU PPh & DJP Regulations",
     },
-    { label: "Aliquote & Scaglioni", confidence: 98, source: "UU HPP 2021" },
+    { label: "Tax Rates & Brackets", confidence: 98, source: "UU HPP 2021" },
     {
-      label: "Requisiti di Dichiarazione",
+      label: "Filing Requirements",
       confidence: 95,
-      source: "Linee Guida DJP 2024",
+      source: "DJP Guidelines 2024",
     },
+    { label: "Tax Treaty Info", confidence: 92, source: "DJP Treaty Database" },
     {
-      label: "Info Trattati Fiscali",
-      confidence: 92,
-      source: "Database Trattati DJP",
-    },
-    {
-      label: "Deduzioni & Crediti",
+      label: "Deductions & Credits",
       confidence: 88,
-      source: "Regolamenti PMK",
+      source: "PMK Regulations",
     },
   ]}
 />
@@ -113,11 +96,11 @@ Questa guida completa spiega la tassazione indonesiana dal punto di vista di uno
 
 ## Sei un Residente Fiscale?
 
-La domanda più importante per ogni straniero in Indonesia è: **Sei un residente fiscale?** Questo determina se l'Indonesia tassa solo il tuo reddito indonesiano o il tuo reddito mondiale.
+La domanda più importante per qualsiasi straniero in Indonesia: **Sei un residente fiscale?** Questo determina se l'Indonesia tassa solo il tuo reddito indonesiano o il tuo reddito mondiale.
 
 <DecisionTree
-  title="Determina il Tuo Stato di Residenza Fiscale"
-  description="Rispondi a queste domande per comprendere i tuoi obblighi fiscali indonesiani"
+  title="Determina il tuo Status di Residenza Fiscale"
+  description="Rispondi a queste domande per comprendere i tuoi obblighi fiscali in Indonesia"
   nodes={[
     {
       id: "start",
@@ -134,24 +117,22 @@ La domanda più importante per ogni straniero in Indonesia è: **Sei un resident
     },
     {
       id: "check-intent",
-      question:
-        "Hai intenzione di rimanere in Indonesia in modo permanente o a lungo termine?",
+      question: "Pensi di rimanere in Indonesia in modo permanente o a lungo termine?",
       options: [
-        { label: "Sì, ho intenzione di vivere qui", nextNodeId: "check-ties" },
-        { label: "No, solo soggiorno temporaneo", nextNodeId: "check-kitas" },
+        { label: "Sì, pianifico di vivere qui", nextNodeId: "check-ties" },
+        { label: "No, solo un soggiorno temporaneo", nextNodeId: "check-kitas" },
       ],
     },
     {
       id: "check-ties",
       question: "Hai forti legami con l'Indonesia?",
-      helpText:
-        "Famiglia, casa permanente, attività commerciali principali, ecc.",
+      helpText: "Famiglia, casa permanente, attività commerciali principali, ecc.",
       options: [
         {
           label: "Sì, ho forti legami",
           nextNodeId: "result-resident-ties",
         },
-        { label: "Nessun legame forte ancora", nextNodeId: "check-kitas" },
+        { label: "Nessun forte legame ancora", nextNodeId: "check-kitas" },
       ],
     },
     {
@@ -162,22 +143,19 @@ La domanda più importante per ogni straniero in Indonesia è: **Sei un resident
           label: "KITAS (lavoro, coniuge, investitore)",
           nextNodeId: "result-likely-resident",
         },
-        { label: "Visa turistico / VOA", nextNodeId: "check-work" },
-        {
-          label: "Visa business / ingressi multipli",
-          nextNodeId: "check-work",
-        },
+        { label: "Visto turistico / VOA", nextNodeId: "check-work" },
+        { label: "Visto per affari / multipla entrata", nextNodeId: "check-work" },
       ],
     },
     {
       id: "check-work",
-      question: "Guadagni un reddito in Indonesia?",
+      question: "Guadagni redditi in Indonesia?",
       options: [
         {
           label: "Sì, da fonti indonesiane",
           nextNodeId: "result-non-resident-taxable",
         },
-        { label: "No, solo reddito estero", nextNodeId: "result-non-resident" },
+        { label: "No, solo redditi esteri", nextNodeId: "result-non-resident" },
         {
           label: "Lavoro remoto per azienda estera",
           nextNodeId: "result-remote-complex",
@@ -187,7 +165,7 @@ La domanda più importante per ogni straniero in Indonesia è: **Sei un resident
     {
       id: "count-days",
       question:
-        "Contiamo i tuoi giorni. Negli ultimi 12 mesi, circa quanti giorni hai trascorso in Indonesia?",
+        "Contiamo i tuoi giorni. Negli ultimi 12 mesi, quanti giorni circa sei stato in Indonesia?",
       options: [
         { label: "0-90 giorni", nextNodeId: "result-short-stay" },
         { label: "91-182 giorni", nextNodeId: "result-approaching" },
@@ -199,14 +177,14 @@ La domanda più importante per ogni straniero in Indonesia è: **Sei un resident
       isResult: true,
       title: "Residente Fiscale (Regola dei 183 Giorni)",
       description:
-        "Sei un residente fiscale indonesiano in base alla presenza fisica.",
+        "Sei un residente fiscale indonesiano basato sulla presenza fisica.",
       recommendation:
-        "Come residente fiscale, l'Indonesia può tassare il tuo reddito mondiale. Devi ottenere l'NPWP, presentare l'SPT annuale e dichiarare tutte le fonti di reddito. Sono disponibili crediti d'imposta per le tasse pagate all'estero.",
+        "Come residente fiscale, l'Indonesia può tassare il tuo reddito mondiale. Devi ottenere NPWP, presentare la dichiarazione annuale SPT e dichiarare tutte le fonti di reddito. Sono disponibili crediti fiscali per le tasse estere pagate.",
       nextSteps: [
-        "Registrati immediatamente per l'NPWP",
+        "Registrati per NPWP immediatamente",
         "Traccia tutte le fonti di reddito",
-        "Considera i benefici dei trattati fiscali",
-        "Presenta l'SPT Tahunan entro il 31 marzo",
+        "Valuta i benefici del trattato fiscale",
+        "Presenta SPT Tahunan entro il 31 marzo",
       ],
     },
     {
@@ -214,57 +192,56 @@ La domanda più importante per ogni straniero in Indonesia è: **Sei un resident
       isResult: true,
       title: "Residente Fiscale (Intenzione/Legami)",
       description:
-        "Potresti essere considerato residente fiscale in base all'intenzione di soggiornare e ai legami.",
+        "Potresti essere considerato residente fiscale basato sull'intenzione di rimanere e sui legami.",
       recommendation:
-        "Anche senza 183 giorni, forti legami (famiglia, proprietà di una casa, affari) possono stabilire la residenza. Consulta un consulente fiscale per confermare il tuo stato.",
+        "Anche senza 183 giorni, forti legami (famiglia, proprietà immobiliare, attività commerciali) possono stabilire la residenza. Consulta un consulente fiscale per confermare il tuo status.",
       nextSteps: [
         "Documenta i tuoi legami con l'Indonesia",
-        "Ottieni l'NPWP",
-        "Considera il momento della residenza",
+        "Ottieni NPWP",
+        "Valuta il tempismo della residenza",
         "Rivedi il trattato fiscale",
       ],
     },
     {
       id: "result-likely-resident",
       isResult: true,
-      title: "Probabile Residente Fiscale (Titolare di KITAS)",
-      description:
-        "I titolari di KITAS sono generalmente trattati come residenti fiscali.",
+      title: "Probabilmente Residente Fiscale (Detentore KITAS)",
+      description: "I detentori KITAS sono generalmente trattati come residenti fiscali.",
       recommendation:
-        "Se possiedi un KITAS e lavori in Indonesia, sei quasi certamente un residente fiscale. Il tuo datore di lavoro dovrebbe trattenere la PPh 21. Devi presentare l'SPT annuale.",
+        "Se detieni KITAS e lavori in Indonesia, sei quasi certamente un residente fiscale. Il tuo datore di lavoro dovrebbe trattenere PPh 21. Devi presentare la dichiarazione annuale SPT.",
       nextSteps: [
         "NPWP tramite datore di lavoro o diretto",
-        "Ritenuta mensile PPh 21",
-        "Dichiarazione SPT annuale",
-        "Controlla se devi dichiarare i beni all'estero",
+        "Trattenuta mensile PPh 21",
+        "Presentazione SPT annuale",
+        "Verifica se devi dichiarare attività estere",
       ],
     },
     {
       id: "result-non-resident-taxable",
       isResult: true,
-      title: "Non Residente con Reddito Indonesiano",
+      title: "Non-Residente con Reddito Indonesiano",
       description:
-        "Non sei un residente fiscale ma hai un reddito di fonte indonesiana.",
+        "Non sei un residente fiscale ma hai redditi da fonti indonesiane.",
       recommendation:
-        "I non residenti pagano le tasse solo sui redditi di fonte indonesiana. Si applica una ritenuta d'acconto (PPh 26) al 20%, a meno che un trattato fiscale non la riduca. Non è richiesta la presentazione dell'SPT.",
+        "I non-residenti pagano tasse solo sui redditi da fonti indonesiane. La ritenuta alla fonte (PPh 26) del 20% si applica a meno che un trattato fiscale non riduca questo importo. Non è richiesta la presentazione SPT.",
       nextSteps: [
-        "Controlla se si applica un trattato fiscale",
+        "Verifica se si applica un trattato fiscale",
         "Assicurati che la ritenuta sia corretta",
-        "Ottieni l'SKD per i benefici del trattato",
-        "Conserva i registri per il tuo paese d'origine",
+        "Ottieni SKD per i benefici del trattato",
+        "Conserva le registrazioni per il paese d'origine",
       ],
     },
     {
       id: "result-non-resident",
       isResult: true,
-      title: "Non Residente, Nessun Reddito Indonesiano",
-      description: "Non hai obblighi fiscali indonesiani.",
+      title: "Non-Residente, Nessun Reddito Indonesiano",
+      description: "Non hai obblighi fiscali in Indonesia.",
       recommendation:
-        "Nessun reddito di fonte indonesiana significa nessuna passività fiscale indonesiana. Non hai bisogno dell'NPWP. Fai attenzione a non superare i 183 giorni o a creare una presenza imponibile.",
+        "Nessun reddito da fonti indonesiane significa nessun obbligo fiscale indonesiano. Non hai bisogno di NPWP. Fai attenzione a non superare i 183 giorni o a creare una presenza tassabile.",
       nextSteps: [
-        "Traccia i tuoi giorni con attenzione",
-        "Evita redditi di fonte indonesiana",
-        "Considera gli obblighi nel tuo paese d'origine",
+        "Traccia i tuoi giorni con cura",
+        "Evita redditi da fonti indonesiane",
+        "Valuta gli obblighi del paese d'origine",
         "Rivedi se la situazione cambia",
       ],
     },
@@ -274,38 +251,38 @@ La domanda più importante per ogni straniero in Indonesia è: **Sei un resident
       title: "Digital Nomad / Lavoratore Remoto",
       description: "La tua situazione richiede un'analisi attenta.",
       recommendation:
-        "Il lavoro remoto è un'area grigia. Tecnicamente, il lavoro svolto in Indonesia potrebbe essere considerato reddito di fonte indonesiana. Molti nomadi digitali non si registrano, ma questo comporta dei rischi. I titolari di Visa Second Home hanno regole specifiche.",
+        "Il lavoro remoto è una zona grigia. Tecnicamente, il lavoro svolto in Indonesia potrebbe essere reddito da fonte indonesiana. Molti digital nomads non si registrano, ma ciò comporta rischi. I detentori del Second Home Visa hanno regole specifiche.",
       nextSteps: [
-        "Considera le regole del Visa Second Home",
-        "Traccia i giorni con attenzione",
+        "Valuta le regole del Second Home Visa",
+        "Traccia i giorni con cura",
         "Consulta un professionista fiscale",
-        "Considera la registrazione volontaria",
+        "Valuta la registrazione volontaria",
       ],
     },
     {
       id: "result-short-stay",
       isResult: true,
       title: "Visitatore a Breve Termine",
-      description: "Chiaramente non sei un residente fiscale.",
+      description: "Sei chiaramente non residente fiscalmente.",
       recommendation:
-        "Con meno di 90 giorni, sei un non residente. Solo il reddito di fonte indonesiana è tassabile (raro per i visitatori brevi). Concentrati sugli obblighi fiscali del tuo paese d'origine.",
+        "Con meno di 90 giorni, sei un non-residente. Solo i redditi da fonti indonesiane sono tassabili (raro per i visitatori a breve termine). Concentrati sugli obblighi fiscali del tuo paese d'origine.",
       nextSteps: [
-        "Nessuna registrazione fiscale indonesiana necessaria",
-        "Dichiara ogni reddito indonesiano a casa",
-        "Traccia le date di ingresso/uscita",
+        "Non è necessaria registrazione fiscale indonesiana",
+        "Dichiara eventuali redditi indonesiani nel paese d'origine",
+        "Traccia date di ingresso e uscita",
       ],
     },
     {
       id: "result-approaching",
       isResult: true,
-      title: "In Avvicinamento alla Soglia di Residenza",
-      description: "Sei vicino a diventare un residente fiscale.",
+      title: "Vicino alla Soglia di Residenza",
+      description: "Sei vicino a diventare residente fiscale.",
       recommendation:
-        "91-182 giorni significano che ti stai avvicinando alla soglia. Traccia attentamente i tuoi giorni. Valuta se diventare residente sia vantaggioso o se dovresti limitare il tuo soggiorno.",
+        "91-182 giorni significa che sei vicino alla soglia. Traccia i tuoi giorni con cura. Valuta se diventare residente è vantaggioso o se dovresti limitare il soggiorno.",
       nextSteps: [
         "Traccia i giorni con precisione",
         "Pianifica una strategia di uscita se necessario",
-        "Considera le implicazioni fiscali",
+        "Valuta le implicazioni fiscali",
         "Consulta un consulente prima di superare i 183",
       ],
     },
@@ -313,15 +290,15 @@ La domanda più importante per ogni straniero in Indonesia è: **Sei un resident
 />
 
 <InfoCard variant="important" title="La Regola dei 183 Giorni">
-I 183 giorni non devono essere consecutivi. L'Indonesia conta i giorni in qualsiasi **periodo di 12 mesi**, che può comprendere anni solari diversi. I giorni di entrata e di uscita contano entrambi come giorni interi.
+I 183 giorni non devono essere consecutivi. L'Indonesia conta i giorni in qualsiasi **periodo di 12 mesi**, che può coprire anni fiscali diversi. I giorni di ingresso e uscita contano entrambi come giorni interi.
 
-Esempio: Se arrivi il 1° ottobre 2024 e conti in avanti di 12 mesi fino al 30 settembre 2025, il totale dei giorni trascorsi in Indonesia durante questo periodo determina la residenza.
+Esempio: Se arrivi il 1° ottobre 2024 e conti in avanti 12 mesi fino al 30 settembre 2026—il totale dei giorni in Indonesia durante questo periodo determina la residenza.
 
 </InfoCard>
 
 ---
 
-## Comprendere i Tipi di Tasse Indonesiane
+## Comprendere i Tipi di Tassa Indonesiana
 
 <LegalDecoder
   title="Termini Fiscali Chiave per gli Stranieri"
@@ -329,73 +306,73 @@ Esempio: Se arrivi il 1° ottobre 2024 e conti in avanti di 12 mesi fino al 30 s
   documentType="UU"
   publishedDate="Ottobre 2021"
   status="active"
-  summary="Il sistema fiscale indonesiano comprende l'imposta sul reddito (PPh), l'imposta sul valore aggiunto (PPN) e varie ritenute d'acconto. Ecco i termini chiave che devi conoscere."
+  summary="Il sistema fiscale indonesiano include la tassa sul reddito (PPh), l'IVA (PPN) e varie ritenute alla fonte. Ecco i termini chiave che devi conoscere."
   sections={[
     {
       id: "pph",
       original:
         "Pajak Penghasilan (PPh) adalah pajak yang dikenakan terhadap orang pribadi atau badan atas penghasilan yang diterima atau diperoleh dalam tahun pajak.",
       explanation:
-        "La PPh (Imposta sul Reddito) viene applicata su tutti i redditi guadagnati da persone fisiche o entità. Per gli stranieri, questo include lo stipendio, il reddito d'impresa, i rendimenti degli investimenti e (se residenti) il reddito mondiale.",
+        "PPh (Tassa sul Reddito) è applicato a tutti i redditi guadagnati da individui o entità. Per gli stranieri, questo include stipendio, reddito d'impresa, rendimenti degli investimenti e (se residenti) reddito mondiale.",
       keyPoints: [
-        "Si applica in modo diverso ai residenti e ai non residenti",
+        "Si applica diversamente ai residenti e non-residenti",
         "Residenti: tassati sul reddito mondiale",
-        "Non residenti: tassati solo sul reddito indonesiano",
+        "Non-residenti: tassati solo sul reddito indonesiano",
         "Vari tipi di PPh: 21 (stipendio), 23 (servizi), 26 (pagamenti esteri)",
       ],
       impact:
-        "Questo è il tuo obbligo fiscale principale. Capire quale PPh si applica al tuo reddito è essenziale.",
+        "Questo è il tuo principale obbligo fiscale. Comprendere quale PPh si applica al tuo reddito è essenziale.",
       severity: "high",
-      reference: "UU PPh Articolo 2",
+      reference: "UU PPh Pasal 2",
     },
     {
       id: "pph21",
       original:
         "PPh Pasal 21 adalah pajak atas penghasilan sehubungan dengan pekerjaan, jasa, atau kegiatan dengan nama dan dalam bentuk apa pun.",
       explanation:
-        "La PPh 21 è la tassa trattenuta dallo stipendio dal datore di lavoro. Se sei impiegato in Indonesia, il tuo datore di lavoro la detrae mensilmente e la versa all'ufficio delle tasse per tuo conto.",
+        "PPh 21 è la tassa trattenuta dal tuo stipendio dal datore di lavoro. Se sei assunto in Indonesia, il tuo datore di lavoro lo detrae mensilmente e lo paga all'ufficio delle tasse a tuo nome.",
       keyPoints: [
-        "Trattenuta mensilmente dal datore di lavoro",
-        "Aliquote progressive: dal 5% al 35%",
-        "Include indennità e benefit",
-        "Finale per la maggior parte dei dipendenti",
+        "Trattenuto mensilmente dal datore di lavoro",
+        "Aliquote progressive: 5% a 35%",
+        "Include indennità e benefici",
+        "Definitivo per la maggior parte dei dipendenti",
       ],
       impact:
-        "Se sei un dipendente, vedrai la PPh 21 sulla tua busta paga. Verifica che sia calcolata correttamente.",
+        "Se assunto, vedrai PPh 21 nella tua busta paga. Controlla che sia calcolato correttamente.",
       severity: "high",
-      reference: "UU PPh Articolo 21",
+      reference: "UU PPh Pasal 21",
     },
     {
       id: "pph26",
       original:
         "PPh Pasal 26 adalah pajak yang dipotong atas penghasilan yang dibayarkan kepada Wajib Pajak luar negeri.",
       explanation:
-        "La PPh 26 viene trattenuta dai pagamenti ai non residenti. Se non sei un residente fiscale ma ricevi redditi indonesiani (dividendi, royalty, servizi), in genere viene trattenuto il 20%, a meno che un trattato fiscale non riduca questa aliquota.",
+        "PPh 26 è trattenuto dai pagamenti ai non-residenti. Se non sei un residente fiscale ma ricevi redditi indonesiani (dividendi, royalty, servizi), il 20% è tipicamente trattenuto—a meno che un trattato fiscale non lo riduca.",
       keyPoints: [
         "Aliquota standard: 20%",
-        "I trattati fiscali possono ridurla al 10-15%",
+        "I trattati fiscali possono ridurlo al 10-15%",
         "Si applica a: dividendi, royalty, interessi, servizi",
-        "Trattenuta dal pagatore in Indonesia",
+        "Trattenuto dal pagatore in Indonesia",
       ],
       impact:
-        "Non residenti: assicuratevi che i pagatori applichino le corrette aliquote del trattato. Conservate la prova della ritenuta per il vostro paese d'origine.",
+        "Non-residenti: assicurati che i pagatori applichino le aliquote del trattato corrette. Conserva la prova della ritenuta per il tuo paese d'origine.",
       severity: "medium",
-      reference: "UU PPh Articolo 26",
+      reference: "UU PPh Pasal 26",
     },
     {
       id: "npwp",
       original:
         "Nomor Pokok Wajib Pajak (NPWP) adalah nomor yang diberikan kepada Wajib Pajak sebagai sarana dalam administrasi perpajakan.",
       explanation:
-        "L'NPWP è il tuo numero di identificazione fiscale. Tutti i residenti fiscali devono averne uno. È necessario anche per molti scopi amministrativi: apertura di conti bancari, acquisto di proprietà, alcuni processi per il visto.",
+        "NPWP è il tuo numero di identificazione fiscale. Tutti i residenti fiscali devono averne uno. È anche necessario per molti scopi amministrativi: aprire conti bancari, acquistare proprietà, determinati processi di visto.",
       keyPoints: [
         "Formato: XX.XXX.XXX.X-XXX.XXX",
-        "Richiesto per la dichiarazione dei redditi",
+        "Necessario per la dichiarazione delle tasse",
         "Necessario per conti bancari, proprietà",
         "Gli stranieri usano il passaporto per la registrazione",
       ],
       impact:
-        "Ottieni l'NPWP al più presto. Senza di esso, potresti subire una ritenuta più elevata (maggiorazione del 20%) e difficoltà amministrative.",
+        "Ottieni NPWP presto. Senza di esso, potresti affrontare ritenute più elevate (markup del 20%) e difficoltà amministrative.",
       severity: "high",
       reference: "UU KUP",
     },
@@ -404,79 +381,79 @@ Esempio: Se arrivi il 1° ottobre 2024 e conti in avanti di 12 mesi fino al 30 s
       original:
         "Surat Pemberitahuan (SPT) adalah surat yang oleh Wajib Pajak digunakan untuk melaporkan penghitungan dan/atau pembayaran pajak.",
       explanation:
-        "L'SPT è la tua dichiarazione dei redditi annuale. I residenti fiscali devono presentare l'SPT Tahunan (dichiarazione annuale) entro il 31 marzo di ogni anno, dichiarando tutti i redditi anche se la tassa è già stata trattenuta.",
+        "SPT è la tua dichiarazione annuale delle tasse. I residenti fiscali devono presentare SPT Tahunan (dichiarazione annuale) entro il 31 marzo di ogni anno, dichiarando tutti i redditi anche se la tassa è già stata trattenuta.",
       keyPoints: [
-        "Scadenza: 31 marzo per le persone fisiche",
-        "Riporta tutte le fonti di reddito",
+        "Scadenza: 31 marzo per gli individui",
+        "Segnala tutte le fonti di reddito",
         "Puoi richiedere deduzioni e crediti",
         "Presentata online tramite DJP Online",
       ],
       impact:
         "Presentazione tardiva = sanzioni. Anche se non devi tasse aggiuntive, devi presentare la dichiarazione.",
       severity: "high",
-      reference: "UU KUP Articolo 3",
+      reference: "UU KUP Pasal 3",
     },
   ]}
 />
 
 ---
 
-## Aliquote dell'Imposta sul Reddito per le Persone Fisiche
+## Aliquote Fiscali sul Reddito per gli Individui
 
-L'Indonesia utilizza un sistema di **aliquote fiscali progressive** per il reddito delle persone fisiche:
+L'Indonesia utilizza un sistema di **aliquota progressiva** per il reddito individuale:
 
 <ComparisonTable
-  title="Aliquote Imposta sul Reddito Persone Fisiche 2026"
-  description="Le aliquote progressive si applicano al reddito imponibile annuale (dopo le deduzioni)"
+  title="Aliquote Fiscali Individuali 2026"
+  description="Le aliquote progressive si applicano al reddito imponibile annuo (dopo le deduzioni)"
   items={[
     {
-      name: "Scaglione 1",
+      name: "Fascia 1",
       subtitle: "0 - 60 milioni",
       values: {
-        "Fascia Reddito Annuale": "0 - 60.000.000 IDR",
-        "Aliquota Fiscale": "5%",
-        "Tassa sullo Scaglione": "Fino a 3.000.000 IDR",
-        "Equivalente Mensile": "~0-5M IDR/mese",
+        "Annual Income Range": "IDR 0 - 60.000.000",
+        "Tax Rate": "5%",
+        "Tax on Bracket": "Fino a IDR 3.000.000",
+        "Monthly Equivalent": "~IDR 0-5M/mese",
       },
     },
     {
-      name: "Scaglione 2",
+      name: "Fascia 2",
       subtitle: "60 - 250 milioni",
       values: {
-        "Fascia Reddito Annuale": "60.000.001 - 250.000.000 IDR",
-        "Aliquota Fiscale": "15%",
-        "Tassa sullo Scaglione": "Fino a 28.500.000 IDR",
-        "Equivalente Mensile": "~5-21M IDR/mese",
+        "Annual Income Range": "IDR 60.000.001 - 250.000.000",
+        "Tax Rate": "15%",
+        "Tax on Bracket": "Fino a IDR 28.500.000",
+        "Monthly Equivalent": "~IDR 5-21M/mese",
       },
     },
     {
-      name: "Scaglione 3",
+      name: "Fascia 3",
       subtitle: "250 - 500 milioni",
       values: {
-        "Fascia Reddito Annuale": "250.000.001 - 500.000.000 IDR",
-        "Aliquota Fiscale": "25%",
-        "Tassa sullo Scaglione": "Fino a 62.500.000 IDR",
-        "Equivalente Mensile": "~21-42M IDR/mese",
+        "Annual Income Range": "IDR 250.000.001 - 500.000.000",
+        "Tax Rate": "25%",
+        "Tax on Bracket": "Fino a IDR 62.500.000",
+        "Monthly Equivalent": "~IDR 21-42M/mese",
       },
     },
     {
-      name: "Scaglione 4",
+      name: "Fascia 4",
       subtitle: "500M - 5 miliardi",
       values: {
-        "Fascia Reddito Annuale": "500.000.001 - 5.000.000.000 IDR",
-        "Aliquota Fiscale": "30%",
-        "Tassa sullo Scaglione": "Fino a 1.350.000.000 IDR",
-        "Equivalente Mensile": "~42-417M IDR/mese",
+        "Annual Income Range": "IDR 500.000.001 - 5.000.000.000",
+        "Tax Rate": "30%",
+        "Tax on Bracket": "Fino a IDR 1.350.000.000",
+        "Monthly Equivalent": "~IDR 42-417M/mese",
       },
     },
     {
-      name: "Scaglione 5",
+      name: "Fascia 5",
       subtitle: "Oltre 5 miliardi",
       values: {
-        "Fascia Reddito Annuale": "> 5.000.000.000 IDR",
-        "Aliquota Fiscale": "35%",
-        "Tassa sullo Scaglione": "Illimitata",
-        "Equivalente Mensile": "> 417M IDR/mese",
+        "Annual Income Range": "> IDR 5.000.000.000",
+        "Tax Rate": "35%",
+        "Tax on Bracket": "Illimitato",
+        "Monthly Equivalent": "> IDR 417M/mese",
       },
       highlight: true,
     },
@@ -485,34 +462,30 @@ L'Indonesia utilizza un sistema di **aliquote fiscali progressive** per il reddi
     {
       id: "income",
       label: "Reddito",
-      fields: ["Fascia Reddito Annuale", "Equivalente Mensile"],
+      fields: ["Annual Income Range", "Monthly Equivalent"],
     },
-    {
-      id: "tax",
-      label: "Tassa",
-      fields: ["Aliquota Fiscale", "Tassa sullo Scaglione"],
-    },
+    { id: "tax", label: "Tassa", fields: ["Tax Rate", "Tax on Bracket"] },
   ]}
 />
 
-<InfoCard variant="tip" title="Come Funziona la Tassazione Progressiva">
-Non paghi il 35% su tutto il tuo reddito se guadagni oltre 5 miliardi di IDR. Ogni scaglione si applica solo al reddito all'interno di quella fascia.
+<InfoCard variant="tip" title="Come Funziona la Tassa Progressiva">
+Non paghi il 35% su tutto il tuo reddito se guadagni oltre IDR 5 miliardi. Ogni fascia si applica solo al reddito entro quel range.
 
-**Esempio:** Se guadagni 300 milioni di IDR all'anno:
+**Esempio:** Se guadagni IDR 300 milioni all'anno:
 
-- Primi 60M tassati al 5% = 3.000.000 IDR
-- Successivi 190M (60M-250M) tassati al 15% = 28.500.000 IDR
-- Successivi 50M (250M-300M) tassati al 25% = 12.500.000 IDR
-- **Tassa totale: 44.000.000 IDR** (aliquota effettiva: ~14,7%)
+- I primi IDR 60M tassati al 5% = IDR 3.000.000
+- I successivi IDR 190M (60M-250M) tassati al 15% = IDR 28.500.000
+- I successivi IDR 50M (250M-300M) tassati al 25% = IDR 12.500.000
+- **Tassa totale: IDR 44.000.000** (aliquota effettiva: ~14,7%)
 </InfoCard>
 
 ---
 
-## Calcolatore Tasse
+## Calcolatore Fiscale
 
 <Calculator
-  title="Calcolatore Imposta sul Reddito Indonesia"
-  description="Stima la tua imposta sul reddito annuale in base a stipendio e indennità"
+  title="Calcolatore del Reddito Fiscale Indonesiano"
+  description="Stima la tua tassa sul reddito annuale basata su stipendio e indennità"
   fields={[
     {
       id: "monthly-salary",
@@ -525,7 +498,7 @@ Non paghi il 35% su tutto il tuo reddito se guadagni oltre 5 miliardi di IDR. Og
     },
     {
       id: "allowances",
-      label: "Indennità Mensili (alloggio, trasporti, ecc.)",
+      label: "Indennità Mensili (casa, trasporti, ecc.)",
       type: "number",
       defaultValue: 15000000,
       min: 0,
@@ -550,7 +523,7 @@ Non paghi il 35% su tutto il tuo reddito se guadagni oltre 5 miliardi di IDR. Og
       type: "select",
       options: [
         { value: "single", label: "Single (TK/0)" },
-        { value: "married-0", label: "Sposato, senza figli (K/0)" },
+        { value: "married-0", label: "Sposato, nessun figlio (K/0)" },
         { value: "married-1", label: "Sposato, 1 figlio (K/1)" },
         { value: "married-2", label: "Sposato, 2 figli (K/2)" },
         { value: "married-3", label: "Sposato, 3 figli (K/3)" }
@@ -559,7 +532,7 @@ Non paghi il 35% su tutto il tuo reddito se guadagni oltre 5 miliardi di IDR. Og
     },
     {
       id: "has-npwp",
-      label: "Possiedi l'NPWP?",
+      label: "Hai NPWP?",
       type: "checkbox",
       defaultValue: true
     }
@@ -569,7 +542,7 @@ Non paghi il 35% su tutto il tuo reddito se guadagni oltre 5 miliardi di IDR. Og
     const bonusMonths = Number(values['bonus-months']);
     const annual = (monthly * 12) + (Number(values['monthly-salary']) * bonusMonths);
 
-    // PTKP (non-taxable income)
+    // PTKP (reddito non tassabile)
     const ptkpMap = {
       'single': 54000000,
       'married-0': 58500000,
@@ -579,48 +552,48 @@ Non paghi il 35% su tutto il tuo reddito se guadagni oltre 5 miliardi di IDR. Og
     };
     const ptkp = ptkpMap[values['marital-status']] || 54000000;
 
-    // Calculate taxable income
+    // Calcola reddito imponibile
     let taxableIncome = annual - ptkp;
     if (taxableIncome < 0) taxableIncome = 0;
 
-    // Calculate tax
+    // Calcola tassa
     let tax = 0;
     let remaining = taxableIncome;
 
-    // Bracket 1: 0-60M at 5%
+    // Fascia 1: 0-60M al 5%
     if (remaining > 0) {
       const bracket1 = Math.min(remaining, 60000000);
       tax += bracket1 * 0.05;
       remaining -= bracket1;
     }
 
-    // Bracket 2: 60M-250M at 15%
+    // Fascia 2: 60M-250M al 15%
     if (remaining > 0) {
       const bracket2 = Math.min(remaining, 190000000);
       tax += bracket2 * 0.15;
       remaining -= bracket2;
     }
 
-    // Bracket 3: 250M-500M at 25%
+    // Fascia 3: 250M-500M al 25%
     if (remaining > 0) {
       const bracket3 = Math.min(remaining, 250000000);
       tax += bracket3 * 0.25;
       remaining -= bracket3;
     }
 
-    // Bracket 4: 500M-5B at 30%
+    // Fascia 4: 500M-5B al 30%
     if (remaining > 0) {
       const bracket4 = Math.min(remaining, 4500000000);
       tax += bracket4 * 0.30;
       remaining -= bracket4;
     }
 
-    // Bracket 5: >5B at 35%
+    // Fascia 5: >5B al 35%
     if (remaining > 0) {
       tax += remaining * 0.35;
     }
 
-    // Non-NPWP penalty: 20% higher
+    // Penalità non-NPWP: 20% più alta
     if (!values['has-npwp']) {
       tax = tax * 1.2;
     }
@@ -632,86 +605,74 @@ Non paghi il 35% su tutto il tuo reddito se guadagni oltre 5 miliardi di IDR. Og
     return {
       total: tax,
       breakdown: [
-        { label: "Reddito Lordo Annuale", amount: annual },
+        { label: "Reddito Annuo Lordo", amount: annual },
         { label: `PTKP (${values['marital-status']})`, amount: -ptkp },
         { label: "Reddito Imponibile", amount: taxableIncome },
         { label: "Tassa Annuale (PPh 21)", amount: tax },
         { label: "Ritenuta Fiscale Mensile", amount: monthlyTax },
-        { label: "Netto Annuale", amount: takeHome }
+        { label: "Reddito Netto Annuo", amount: takeHome }
       ],
       currency: "IDR",
-      note: `Aliquota fiscale effettiva: ${effectiveRate}%${!values['has-npwp'] ? ' (include il 20% di penalità per mancanza di NPWP)' : ''}`
+      note: `Aliquota fiscale effettiva: ${effectiveRate}%${!values['has-npwp'] ? ' (include penalità non-NPWP del 20%)' : ''}`
     };
 
 }}
-ctaText="Consulta un Consulente Fiscale"
+ctaText="Consulta Consulente Fiscale"
 ctaAction={() => window.open('/contact?service=tax-consultation', '\_blank')}
 />
 
 ---
 
-## PTKP: Quota di Reddito Esente da Imposte
+## PTKP: Detrazione per Reddito Non Tassabile
 
 <GlossaryTerm
   term="PTKP"
-  definition="Penghasilan Tidak Kena Pajak - la soglia di reddito non imponibile che riduce il reddito imponibile in base alle circostanze personali."
+  definition="Penghasilan Tidak Kena Pajak - la soglia di reddito non tassabile che riduce il tuo reddito imponibile in base alle circostanze personali."
   indonesian="Penghasilan Tidak Kena Pajak"
   relatedTerms={["PPh 21", "SPT", "NPWP"]}
 >
   PTKP
 </GlossaryTerm>
-è la tua quota esente da imposte. Viene detratta dal reddito lordo prima del
-calcolo della tassa.
+è la tua detrazione per reddito non tassabile. Viene detratta dal reddito lordo prima di calcolare la tassa.
 
-| Stato                   | Codice | PTKP Annuale   |
-| ----------------------- | ------ | -------------- |
-| Single, nessun a carico | TK/0   | 54.000.000 IDR |
-| Single + 1 a carico     | TK/1   | 58.500.000 IDR |
-| Single + 2 a carico     | TK/2   | 63.000.000 IDR |
-| Single + 3 a carico     | TK/3   | 67.500.000 IDR |
-| Sposato, senza figli    | K/0    | 58.500.000 IDR |
-| Sposato + 1 figlio      | K/1    | 63.000.000 IDR |
-| Sposato + 2 figli       | K/2    | 67.500.000 IDR |
-| Sposato + 3 figli       | K/3    | 72.000.000 IDR |
+| Status                | Codice | PTKP Annuale    |
+| --------------------- | ---- | -------------- |
+| Single, nessun carico familiare | TK/0 | IDR 54.000.000 |
+| Single + 1 carico familiare  | TK/1 | IDR 58.500.000 |
+| Single + 2 carichi familiari | TK/2 | IDR 63.000.000 |
+| Single + 3 carichi familiari | TK/3 | IDR 67.500.000 |
+| Sposato, nessun figlio  | K/0  | IDR 58.500.000 |
+| Sposato + 1 figlio     | K/1  | IDR 63.000.000 |
+| Sposato + 2 figli  | K/2  | IDR 67.500.000 |
+| Sposato + 3 figli  | K/3  | IDR 72.000.000 |
 
-<InfoCard variant="note" title="Definizione di Familiari a Carico">
+<InfoCard variant="note" title="Definizione di Carichi Familiari">
 
-  I familiari a carico devono essere: - Membri della famiglia per sangue (3
-  generazioni) o matrimonio (in linea retta) - Conviventi nel tuo nucleo
-  familiare - Privi di reddito proprio - È possibile richiedere la detrazione
-  per un massimo di 3 familiari a carico
+  I carichi familiari devono essere: - Familiari per sangue (3 generazioni) o matrimonio (in linea retta) - Viventi nel tuo nucleo familiare - Non guadagnano reddito da soli -
+  Massimo 3 carichi familiari possono essere dichiarati
 </InfoCard>
 
 ---
 
 ## Trattati Fiscali: Evitare la Doppia Tassazione
 
-L'Indonesia ha <GlossaryTerm term="Tax Treaty" definition="Perjanjian Penghindaran Pajak Berganda (P3B) - accordi tra l'Indonesia e altri paesi per evitare che lo stesso reddito venga tassato due volte." indonesian="Perjanjian Penghindaran Pajak Berganda">trattati fiscali</GlossaryTerm> con oltre 70 paesi per prevenire la doppia tassazione. Se il tuo paese d'origine ha un trattato con l'Indonesia, potresti beneficiare di:
+L'Indonesia ha <GlossaryTerm term="Trattato Fiscale" definition="Perjanjian Penghindaran Pajak Berganda (P3B) - accordi tra l'Indonesia e altri paesi per impedire che lo stesso reddito sia tassato due volte." indonesian="Perjanjian Penghindaran Pajak Berganda">trattati fiscali</GlossaryTerm> con oltre 70 paesi per prevenire la doppia tassazione. Se il tuo paese d'origine ha un trattato con l'Indonesia, potresti beneficiare di:
 
 - **Aliquote di ritenuta ridotte** su dividendi, interessi, royalty
-- **Crediti d'imposta** per le tasse indonesiane pagate
-- **Regole tie-breaker** per i conflitti di residenza
+- **Crediti fiscali** per le tasse indonesiane pagate
+- **Regole di risoluzione dei conflitti** per la residenza
 
 <ComparisonTable
   title="Aliquote Chiave dei Trattati Fiscali"
-  description="Aliquote della ritenuta d'acconto secondo i trattati fiscali comuni (rispetto allo standard del 20%)"
+  description="Aliquote di ritenuta fiscale sotto comuni trattati fiscali (vs. standard 20%)"
   items={[
-    {
-      name: "Italia",
-      values: {
-        Dividendi: "10%/15%",
-        Interessi: "10%",
-        Royalty: "10%/15%",
-        "Anno Trattato": "1990",
-      },
-    },
     {
       name: "Australia",
       values: {
         Dividendi: "15%",
         Interessi: "10%",
         Royalty: "10%/15%",
-        "Anno Trattato": "1992",
+        "Anno del Trattato": "1992",
       },
     },
     {
@@ -720,7 +681,7 @@ L'Indonesia ha <GlossaryTerm term="Tax Treaty" definition="Perjanjian Penghindar
         Dividendi: "10%/15%",
         Interessi: "10%",
         Royalty: "10%/15%",
-        "Anno Trattato": "1993",
+        "Anno del Trattato": "1993",
       },
     },
     {
@@ -729,7 +690,7 @@ L'Indonesia ha <GlossaryTerm term="Tax Treaty" definition="Perjanjian Penghindar
         Dividendi: "10%/15%",
         Interessi: "10%",
         Royalty: "10%",
-        "Anno Trattato": "1988",
+        "Anno del Trattato": "1988",
       },
     },
     {
@@ -738,7 +699,7 @@ L'Indonesia ha <GlossaryTerm term="Tax Treaty" definition="Perjanjian Penghindar
         Dividendi: "10%/15%",
         Interessi: "10%",
         Royalty: "10%",
-        "Anno Trattato": "1990",
+        "Anno del Trattato": "1990",
       },
     },
     {
@@ -747,29 +708,47 @@ L'Indonesia ha <GlossaryTerm term="Tax Treaty" definition="Perjanjian Penghindar
         Dividendi: "10%/15%",
         Interessi: "10%",
         Royalty: "10%",
-        "Anno Trattato": "2002",
+        "Anno del Trattato": "2002",
+      },
+    },
+    {
+      name: "Giappone",
+      values: {
+        Dividendi: "10%/15%",
+        Interessi: "10%",
+        Royalty: "10%",
+        "Anno del Trattato": "1982",
+      },
+    },
+    {
+      name: "Germania",
+      values: {
+        Dividendi: "10%/15%",
+        Interessi: "10%",
+        Royalty: "10%/15%",
+        "Anno del Trattato": "1990",
       },
     },
   ]}
 />
 
-<InfoCard variant="tip" title="Richiedere i Benefici del Trattato">
-Per richiedere le aliquote ridotte del trattato, di solito sono necessari:
+<InfoCard variant="tip" title="Richiedere Benefici del Trattato">
+Per richiedere aliquote ridotte del trattato, solitamente hai bisogno di:
 
 1. **SKD (Surat Keterangan Domisili)** - Certificato di residenza fiscale del tuo paese d'origine
-2. **Modulo DGT** - Modulo indonesiano per richiedere i benefici del trattato
-3. **Documentazione** - Prova di essere il beneficiario effettivo del reddito
+2. **Modulo DGT** - Modulo indonesiano per richiedere benefici del trattato
+3. **Documentazione** - Prova che sei il beneficiario effettivo del reddito
 
-Invia questi documenti al pagatore indonesiano prima del pagamento per assicurarti la corretta ritenuta.
+Presenta questi documenti al pagatore indonesiano prima del pagamento per assicurarti la ritenuta corretta.
 
 </InfoCard>
 
 ---
 
-## Registrazione NPWP per Stranieri
+## Registrazione NPWP per gli Stranieri
 
 <JourneyMap
-  title="Ottenere il tuo NPWP"
+  title="Ottieni il tuo NPWP"
   description="Processo passo-passo per gli stranieri per ottenere il numero fiscale indonesiano"
   estimatedTotal="1-7 giorni"
   steps={[
@@ -778,18 +757,18 @@ Invia questi documenti al pagatore indonesiano prima del pagamento per assicurar
       title: "Prepara i Documenti",
       description: "Raccogli tutti i documenti richiesti",
       duration: "1 giorno",
-      status: "required",
+      status: "richiesto",
       documents: [
-        "Passaporto (copia a colori)",
-        "KITAS/KITAP (copia a colori)",
-        "Lettera di domicilio (se impiegato, dal datore di lavoro)",
-        "Contratto di lavoro (se impiegato)",
+        "Passaporto (copia colorata)",
+        "KITAS/KITAP (copia colorata)",
+        "Lettera di domicilio (se assunto, dal datore di lavoro)",
+        "Contratto di lavoro (se assunto)",
         "Modulo di richiesta NPWP",
       ],
       tips: [
-        "Il passaporto deve essere in corso di validità",
-        "Il KITAS deve essere attuale",
-        "La lettera del datore di lavoro aiuta a velocizzare il processo",
+        "Il passaporto deve essere valido",
+        "Il KITAS deve essere in corso",
+        "La lettera del datore di lavoro aiuta ad accelerare il processo",
       ],
     },
     {
@@ -797,35 +776,29 @@ Invia questi documenti al pagatore indonesiano prima del pagamento per assicurar
       title: "Completa la Richiesta",
       description: "Compila il modulo di registrazione NPWP",
       duration: "30 minuti",
-      status: "required",
+      status: "richiesto",
       documents: [
         "Modulo compilato in indonesiano",
-        "Dettagli del datore di lavoro (se impiegato)",
+        "Dettagli del datore di lavoro (se assunto)",
         "Indirizzo in Indonesia",
       ],
-      tips: [
-        "Usa il tuo indirizzo KITAS",
-        "Il KPP è determinato dalla posizione dell'indirizzo",
-      ],
+      tips: ["Usa il tuo indirizzo KITAS", "KPP determinato dalla posizione dell'indirizzo"],
     },
     {
       id: "submit",
-      title: "Invia la Richiesta",
-      description: "Invia all'ufficio delle tasse appropriato (KPP)",
+      title: "Presenta la Richiesta",
+      description: "Presenta all'ufficio delle tasse appropriato (KPP)",
       duration: "1-2 ore",
-      status: "required",
-      documents: [
-        "Tutti i documenti sopra indicati",
-        "Passaporto originale per verifica",
-      ],
+      status: "richiesto",
+      documents: ["Tutti i documenti sopra", "Passaporto originale per verifica"],
       tips: [
-        "Vai al KPP in base all'indirizzo di domicilio",
-        "Alcuni KPP consentono la pre-registrazione online",
-        "In alcuni uffici potrebbe essere disponibile un 'Bule Counter'",
+        "Vai al KPP basato sull'indirizzo di domicilio",
+        "Alcuni KPP permettono pre-registrazione online",
+        "Il Bule Counter potrebbe essere disponibile in alcuni uffici",
       ],
       warnings: [
-        "Possibili lunghe code",
-        "Potrebbe essere necessario tornare se i documenti sono incompleti",
+        "Code lunghe possibili",
+        "Potresti dover tornare se i documenti sono incompleti",
       ],
     },
     {
@@ -833,157 +806,149 @@ Invia questi documenti al pagatore indonesiano prima del pagamento per assicurar
       title: "Verifica",
       description: "L'ufficio delle tasse verifica i tuoi documenti",
       duration: "Stesso giorno - 3 giorni",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Alcuni uffici emettono il numero lo stesso giorno",
-        "Altri possono impiegare fino a 3 giorni lavorativi",
+        "Alcuni uffici emettono lo stesso giorno",
+        "Altri potrebbero richiedere fino a 3 giorni lavorativi",
         "Controlla lo stato online tramite DJP",
       ],
     },
     {
       id: "receive",
-      title: "Ricevi l'NPWP",
-      description: "Ottieni la tua tessera NPWP e il certificato",
+      title: "Ricevi NPWP",
+      description: "Ottieni la tua carta NPWP e certificato",
       duration: "Stesso giorno o ritiro successivo",
-      status: "final",
-      documents: [
-        "Tessera NPWP (fisica)",
-        "SKT (certificato di registrazione)",
-      ],
+      status: "finale",
+      documents: ["Carta NPWP (fisica)", "SKT (certificato di registrazione)"],
       tips: [
         "Salva immediatamente il tuo numero NPWP",
-        "Registrati su DJP Online",
-        "Aggiorna i conti bancari con l'NPWP",
+        "Registrati per DJP Online",
+        "Aggiorna i conti bancari con NPWP",
       ],
     },
   ]}
 />
 
-<InfoCard variant="warning" title="Niente NPWP = Tasse più Elevate">
+<InfoCard variant="warning" title="Nessun NPWP = Tasse più Alte">
 
-  Se non possiedi l'NPWP, la tua ritenuta fiscale è **superiore del 20%**
-  rispetto alle aliquote normali. Questo può accumularsi significativamente nel
-  corso di un anno. Ottieni il tuo NPWP non appena diventi residente fiscale.
+  Se non hai NPWP, la ritenuta fiscale è **del 20% più alta** rispetto alle aliquote normali. Questo può sommarsi significativamente nel corso di un anno. Ottieni il tuo NPWP non appena diventi residente fiscale.
 </InfoCard>
 
 ---
 
-## Presentazione della Dichiarazione dei Redditi Annuale (SPT)
+## Presentazione Dichiarazione Annuale delle Tasse (SPT)
 
 <Checklist
-  title="Checklist per la Presentazione dell'SPT"
-  description="Tutto ciò di cui hai bisogno per presentare la tua dichiarazione dei redditi annuale"
+  title="Checklist Presentazione SPT"
+  description="Tutto ciò di cui hai bisogno per presentare la tua dichiarazione annuale delle tasse"
   persistKey="spt-checklist"
   items={[
     {
       id: "bukti-potong",
-      label: "Raccogli il Bukti Potong PPh 21",
+      label: "Raccogli Bukti Potong PPh 21",
       description:
-        "Modulo 1721-A1 dal datore di lavoro che mostra il reddito annuale e le tasse trattenute",
+        "Modulo 1721-A1 dal datore di lavoro che mostra reddito annuale e tassa trattenuta",
       required: true,
-      category: "documents",
+      category: "documenti",
     },
     {
       id: "other-income",
       label: "Documenta altri redditi indonesiani",
-      description:
-        "Interessi, dividendi, redditi da locazione, lavoro freelance",
+      description: "Interessi, dividendi, reddito da affitto, lavoro freelance",
       required: false,
-      category: "documents",
+      category: "documenti",
     },
     {
       id: "foreign-income",
-      label: "Documenta il reddito estero (solo residenti)",
-      description: "Stipendi esteri, investimenti, redditi da locazione",
+      label: "Documenta redditi esteri (solo residenti)",
+      description: "Stipendi esteri, investimenti, reddito da affitto",
       required: false,
-      category: "documents",
+      category: "documenti",
     },
     {
       id: "foreign-tax",
-      label: "Certificati delle tasse pagate all'estero",
-      description: "Per richiedere i crediti d'imposta esteri",
+      label: "Certificati di tasse estere pagate",
+      description: "Per richiedere crediti fiscali esteri",
       required: false,
-      category: "documents",
+      category: "documenti",
     },
     {
       id: "efin",
-      label: "Ottieni l'EFIN (Electronic Filing ID)",
-      description:
-        "Richiesto per l'accesso a DJP Online - registrazione una tantum",
+      label: "Ottieni EFIN (ID per Presentazione Elettronica)",
+      description: "Necessario per l'accesso a DJP Online - registrazione una tantum",
       required: true,
-      category: "registration",
+      category: "registrazione",
     },
     {
       id: "djp-login",
       label: "Accedi a DJP Online",
-      description: "Accedi su djponline.pajak.go.id",
+      description: "Accedi a djponline.pajak.go.id",
       required: true,
-      category: "registration",
+      category: "registrazione",
     },
     {
       id: "form-type",
       label: "Seleziona il modulo corretto",
-      description: "1770SS (&lt;60M), 1770S (dipendente) o 1770 (impresa/misto)",
+      description: "1770SS (&lt;60M), 1770S (dipendente), o 1770 (impresa/misto)",
       required: true,
-      category: "filing",
+      category: "presentazione",
     },
     {
       id: "fill-form",
       label: "Completa il modulo SPT online",
       description: "Inserisci redditi, deduzioni e calcola la tassa",
       required: true,
-      category: "filing",
+      category: "presentazione",
     },
     {
       id: "check-calc",
-      label: "Verifica il calcolo delle tasse",
-      description:
-        "Controlla se c'è un debito o un credito (Kurang/Lebih Bayar)",
+      label: "Verifica il calcolo della tassa",
+      description: "Controlla se sottopagato o sovrapagato (Kurang/Lebih Bayar)",
       required: true,
-      category: "filing",
+      category: "presentazione",
     },
     {
       id: "payment",
-      label: "Paga eventuali debiti",
+      label: "Paga eventuali sottopagamenti",
       description: "Se devi tasse aggiuntive, paga prima della presentazione",
       required: false,
-      category: "payment",
+      category: "pagamento",
     },
     {
       id: "submit",
-      label: "Invia l'SPT elettronicamente",
-      description: "E-filing tramite DJP Online",
+      label: "Presenta SPT elettronicamente",
+      description: "Presentazione elettronica tramite DJP Online",
       required: true,
-      category: "filing",
+      category: "presentazione",
     },
     {
       id: "receipt",
-      label: "Salva il BPE (ricevuta elettronica)",
-      description: "Prova della presentazione - conservare nei registri",
+      label: "Salva BPE (ricevuta elettronica)",
+      description: "Prova di presentazione - conserva per i registri",
       required: true,
-      category: "filing",
+      category: "presentazione",
     },
   ]}
   categories={[
-    { id: "documents", label: "Documenti", color: "blue" },
-    { id: "registration", label: "Registrazione", color: "purple" },
-    { id: "filing", label: "Presentazione", color: "green" },
-    { id: "payment", label: "Pagamento", color: "amber" },
+    { id: "documenti", label: "Documenti", color: "blue" },
+    { id: "registrazione", label: "Registrazione", color: "purple" },
+    { id: "presentazione", label: "Presentazione", color: "green" },
+    { id: "pagamento", label: "Pagamento", color: "amber" },
   ]}
   showProgress={true}
   allowExport={true}
 />
 
 <InfoCard variant="important" title="Scadenze SPT">
-- **SPT Persone Fisiche**: 31 marzo (per il reddito dell'anno precedente)
-- **SPT Società**: 30 aprile
+- **SPT Individuale**: 31 marzo (per il reddito dell'anno precedente)
+- **SPT Aziendale**: 30 aprile
 
 Sanzioni per presentazione tardiva:
 
-- Persone fisiche: 100.000 IDR
-- Società: 1.000.000 IDR
+- Individuale: IDR 100.000
+- Aziendale: IDR 1.000.000
 
-Pagamento tardivo: 2% mensile sulla tassa non pagata
+Pagamento tardivo: 2% al mese sulle tasse non pagate
 
 </InfoCard>
 
@@ -991,60 +956,60 @@ Pagamento tardivo: 2% mensile sulla tassa non pagata
 
 ## Situazioni Fiscali Speciali
 
-### Lavoratori Remoti / Nomadi Digitali
+### Lavoratori Remoti / Digital Nomads
 
-<InfoCard variant="warning" title="Area Grigia Fiscale per i Nomadi Digitali">
-L'Indonesia non ha un regime fiscale specifico per i "nomadi digitali". Tecnicamente:
+<InfoCard variant="warning" title="Zona Grigia Fiscale Digital Nomad">
+L'Indonesia non ha un regime fiscale specifico per "digital nomad". Tecnicamente:
 
-- Lavoro svolto in Indonesia = potenziale reddito di fonte indonesiana
+- Lavoro svolto in Indonesia = potenzialmente reddito da fonte indonesiana
 - 183+ giorni = residente fiscale, reddito mondiale tassabile
 - I visti turistici non cambiano gli obblighi fiscali
 
-**Realtà**: Molti nomadi digitali non si registrano. Questo è un rischio. L'ufficio delle tasse è sempre più consapevole dei lavoratori remoti.
+**Realtà**: Molti digital nomads non si registrano. Questo è un rischio. L'ufficio delle tasse è sempre più consapevole dei lavoratori remoti.
 
-**Approccio più sicuro**: Rimanere sotto i 183 giorni, o considerare la registrazione volontaria se si rimane più a lungo.
+**Approccio più sicuro**: Rimani sotto i 183 giorni, o valuta la registrazione volontaria se rimani più a lungo.
 
 </InfoCard>
 
-### Titolari di Visa Second Home
+### Detentori del Second Home Visa
 
-Il nuovo **Visa Second Home** (concessione iniziale di 5 anni, rinnovabile fino a 10 anni cumulativi) non crea automaticamente la residenza fiscale, ma:
+Il nuovo **Second Home Visa** (primo rilascio di 5 anni, rinnovabile fino a un massimo cumulativo di 10 anni) non crea automaticamente la residenza fiscale, ma:
 
-- 183+ giorni fanno comunque scattare la residenza
-- Potrebbe essere necessario dimostrare che il reddito non proviene dall'Indonesia
-- Considera la registrazione NPWP volontaria per scopi bancari/immobiliari
+- 183+ giorni ancora attiva la residenza
+- Potresti dover provare che il reddito non proviene dall'Indonesia
+- Valuta la registrazione volontaria NPWP per banche e proprietà
 
-### Espatriati in Distacco
+### Espatriati in Assegnazione
 
-Se il datore di lavoro del tuo paese d'origine ti assegna all'Indonesia:
+Se il tuo datore di lavoro del paese d'origine ti assegna in Indonesia:
 
-- Di solito diventi residente fiscale indonesiano
-- Potresti aver diritto alla **tax equalization** (il datore di lavoro copre la differenza)
-- Controlla gli accordi per la **tassa ipotetica** (hypothetical tax)
-- Coordinati con i consulenti fiscali del paese d'origine e di quello ospitante
+- Diventi solitamente residente fiscale indonesiano
+- Potresti essere eleggibile per **equalizzazione fiscale** (il datore di lavoro copre la differenza)
+- Controlla per gli accordi di **tassa ipotetica**
+- Coordina con i consulenti fiscali del paese d'origine e ospitante
 
 ---
 
 ## Errori Comuni da Evitare
 
-<InfoCard variant="error" title="Errori Fiscali che Costano Caro">
-**1. Non ottenere l'NPWP**
-Maggiorazione fiscale del 20% senza NPWP. Ottienilo non appena diventi residente.
+<InfoCard variant="error" title="Errori Fiscali che Costano Denaro">
+**1. Non Ottenere NPWP**
+Markup del 20% sulla tassa senza NPWP. Ottienilo non appena diventi residente.
 
-**2. Mancare la scadenza di presentazione**
-L'SPT scade il 31 marzo. In ritardo = sanzioni. Imposta un promemoria.
+**2. Mancare la Scadenza di Presentazione**
+SPT dovuta il 31 marzo. Tardiva = sanzioni. Imposta un promemoria.
 
-**3. Ignorare il reddito estero**
-I residenti devono dichiarare il reddito mondiale. Conti bancari esteri, investimenti, redditi da locazione: tutto è tassabile.
+**3. Ignorare i Redditi Esteri**
+I residenti devono dichiarare il reddito mondiale. Conti bancari esteri, investimenti, reddito da affitto—tutti tassabili.
 
-**4. Tipo di modulo errato**
-Usare il 1770SS quando si hanno più fonti di reddito. Usa il modulo corretto per la tua situazione.
+**4. Modulo Tipo Errato**
+Usare 1770SS quando hai più fonti di reddito. Usa il modulo corretto per la tua situazione.
 
-**5. Non richiedere i benefici del trattato**
-Se sei tassato al 20% ma il tuo paese ha un trattato per il 10%, stai pagando troppo.
+**5. Non Richiedere Benefici del Trattato**
+Se sei tassato al 20% ma il tuo paese ha un trattato per il 10%, stai sovrapagando.
 
-**6. Nessun registro**
-Conserva buste paga, Bukti Potong, estratti conto per 10 anni. L'ufficio delle tasse può effettuare audit.
+**6. Nessun Registro**
+Conserva buste paga, Bukti Potong, estratti conto bancari per 10 anni. L'ufficio delle tasse può fare un'audit.
 
 </InfoCard>
 
@@ -1052,17 +1017,17 @@ Conserva buste paga, Bukti Potong, estratti conto per 10 anni. L'ufficio delle t
 
 ## Hai Bisogno di Aiuto?
 
-La tassazione indonesiana può essere complessa, specialmente per gli stranieri con molteplici fonti di reddito o situazioni transfrontaliere. Se hai domande specifiche:
+La tassazione indonesiana può essere complessa, specialmente per gli stranieri con più fonti di reddito o situazioni transfrontaliere. Se hai domande specifiche:
 
 <AskZantara
   context="Tassazione indonesiana, PPh, registrazione NPWP, presentazione SPT, trattati fiscali, tasse espatriati"
-  placeholder="Chiedi sulla tua specifica situazione fiscale..."
+  placeholder="Chiedi sulla tua situazione fiscale specifica..."
   suggestedQuestions={[
     "Come faccio a sapere se sono un residente fiscale?",
     "Devo dichiarare il mio reddito estero?",
-    "Qual è la sanzione per la presentazione tardiva dell'SPT?",
+    "Qual è la sanzione per la presentazione tardiva della SPT?",
     "Come richiedo i benefici del trattato fiscale?",
-    "Posso detrarre l'affitto dal reddito imponibile?",
+    "Posso dedurre il mio affitto dal reddito tassabile?",
   ]}
 />
 
@@ -1071,10 +1036,13 @@ La tassazione indonesiana può essere complessa, specialmente per gli stranieri 
 ## Articoli Correlati
 
 - [Registrazione NPWP per Stranieri: Passo dopo Passo](/insights/tax-legal/npwp-registration-foreigners)
-- [Guida alla Dichiarazione dei Redditi Annuale (SPT) per Espatriati](/insights/tax-legal/annual-tax-return-guide)
+- [Guida alla Dichiarazione Annuale delle Tasse (SPT) per Espatriati](/insights/tax-legal/annual-tax-return-guide)
 - [Trattati Fiscali: Evitare la Doppia Tassazione](/insights/tax-legal/tax-treaties-explained)
-- [Tasse Societarie in Indonesia](/insights/tax-legal/corporate-tax-indonesia)
-- [Tasse per Freelancer in Indonesia](/insights/tax-legal/freelancer-taxes-indonesia)
+- [Tassa Aziendale in Indonesia](/insights/tax-legal/corporate-tax-indonesia)
+- [Tasse per Freelance in Indonesia](/insights/tax-legal/freelancer-taxes-indonesia)
+- [Residenza Fiscale in Indonesia: La Regola dei 183 Giorni Spiegata](/insights/tax/tax-residency-indonesia)
+- [Tassa sul Reddito da Affitto in Indonesia 2026: 10% PPh Finale per Ville e Proprietà](/insights/tax/rental-income-tax-indonesia)
+- [Ritenuta Fiscale in Indonesia 2026: Guida Completa PPh](/insights/tax/withholding-tax-guide)
 
 ---
 
@@ -1090,7 +1058,7 @@ La tassazione indonesiana può essere complessa, specialmente per gli stranieri 
   ufficiali** e potrebbero non realizzarsi.
 </InfoCard>
 
-### Possibili sviluppi fiscali 2026-2027 (OPINIONE)
+### Possibili Sviluppi Fiscali 2026-2027 (OPINIONE)
 
 Basandosi sulle discussioni in corso nel settore fiscale indonesiano:
 
@@ -1108,8 +1076,6 @@ Basandosi sulle discussioni in corso nel settore fiscale indonesiano:
 
 <InfoCard variant="note" title="Disclaimer">
 
-  Questa guida ha solo scopo informativo e non costituisce consulenza fiscale.
-  Le leggi fiscali cambiano frequentemente e le circostanze individuali variano.
-  Consulta sempre un professionista fiscale qualificato per consigli specifici
-  sulla tua situazione. Ultimo aggiornamento: gennaio 2026.
+  Questa guida è a scopo informativo solo e non costituisce consulenza fiscale. Le leggi fiscali cambiano frequentemente e le circostanze individuali variano. Consulta sempre un professionista fiscale qualificato per consigli specifici alla tua situazione.
+  Ultimo aggiornamento: Gennaio 2026.
 </InfoCard>
