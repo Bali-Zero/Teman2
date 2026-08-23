@@ -1,0 +1,34 @@
+{
+  "simulated": true,
+  "episode_id": "p03-zerospend-fixture-2026-08-23",
+  "note": "SYNTHETIC FIXTURE for work packet P03 zero-spend dry run. Not an editorial storyboard: prompts are neutral placeholder strings written to exercise the gatekeeper check matrix, not to be rendered. No real Veo job may ever be submitted from this pack.",
+  "total_duration_s": 24,
+  "resolution": "720x1280",
+  "aspect_ratio": "9:16",
+  "shots": [
+    {
+      "shot_id": "s001",
+      "shot_type": "zantara_presenter",
+      "duration_s": 8,
+      "identity_tokens": ["A007"],
+      "prompt_positive": "A calm presenter seated at a plain desk, neutral grey backdrop, soft even light, steady frame, muted palette",
+      "prompt_negative": "text overlay, logo, watermark, distortion"
+    },
+    {
+      "shot_id": "s002",
+      "shot_type": "insert_abstract",
+      "duration_s": 8,
+      "identity_tokens": [],
+      "prompt_positive": "Slow push across an empty meeting room, chairs aligned, morning light through vertical blinds, quiet and still",
+      "prompt_negative": "people, faces, text overlay, watermark"
+    },
+    {
+      "shot_id": "s003",
+      "shot_type": "insert_abstract",
+      "duration_s": 8,
+      "identity_tokens": [],
+      "prompt_positive": "Overhead view of a bare wooden table, a closed folder and a glass of water, neutral tones, static camera",
+      "prompt_negative": "hands, faces, text overlay, watermark"
+    }
+  ]
+}
