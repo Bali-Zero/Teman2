@@ -1268,3 +1268,21 @@ if: github.event.pull_request.draft == false
 ### ℹ️ W68b (no independent record)
 
 Citato nella famiglia #3 (guard-over-match) come variante minore di W68 — `_guard_property_zoning` che matcha "lease" — nessun dettaglio ulteriore oltre quello già coperto dall'entry W68 (villa-leasehold zoning, archiviata).
+
+---
+
+### 🐛 W124 (2026-08-23): una PR DIRTY riceve una CI silenziosa — il check-suite si dichiara `completed` su un sottoinsieme, non su zero corse
+
+_Scoperto 2026-08-23 su M5, lane visa-oracle fact-vocabulary, su PR #4650, dopo un push seguito da un rebase su `origin/main` mosso (7+ PR mergiate in un'ora)._
+
+**TRAUMA.** Dopo il push, `gh pr checks 4650` mostrava solo 4 righe (Vercel + due workflow di ammissione), invece delle ~40 richieste dal branch protection. `gh api .../commits/<sha>/check-runs` confermava: **3 check-run totali**, zero per `tests.yml` ("Tests & Coverage"). Ho interrogato `gh api .../actions/workflows/tests.yml/runs?branch=<branch>` per ~10 minuti a intervalli di 30s: nessuna corsa, nemmeno in stato `queued`, per quello SHA — non un rallentamento, un'assenza totale. Nel frattempo `gh pr view --json mergeable,mergeStateStatus` diceva `CONFLICTING`/`DIRTY`: il base era avanzato oltre il mio branch mentre facevo altro.
+
+**MECCANISMO, letto dal check-suite non dedotto dall'assenza.** `gh api .../commits/<sha>/check-suites` mostrava il suite `GitHub Actions` già **`completed`/`success`** — ma con lo stesso, piccolo sottoinsieme di workflow che *erano* effettivamente girati (quelli senza dipendenza dal contenuto del merge, es. `Auto-merge whitelist`). `tests.yml` è `on: pull_request: types: [opened, synchronize, reopened]` — nessun filtro `paths:` — quindi l'evento `synchronize` del push l'avrebbe innescato in condizioni normali. Con la PR `DIRTY`, il merge-ref sintetico che i workflow `pull_request` valutano non esiste (non c'è un contenuto da testare), e GitHub non mette la corsa in coda: la salta, e il check-suite si richiude come "completato" contando solo ciò che è realmente partito. Non è un rallentamento da smaltire aspettando: è la CI a **non promettere mai** di girare finché la PR non torna mergeable.
+
+**Perché costa.** Il segnale letto (`gh pr checks` corto, nessuna corsa nuova) è indistinguibile a colpo d'occhio da "CI lenta/in coda per il traffico" — la reazione naturale è aspettare. Ho aspettato ~10 minuti prima di controllare `mergeStateStatus`, tempo speso a fissare uno stato che non si sarebbe mai mosso. Il check-suite che si dichiara `completed`/`success` è la parte ingannevole: non dice "ho verificato tutto", dice "ho fatto girare tutto ciò che ho deciso di far girare" — famiglia #2 nella sua forma più letterale, il verde che nasconde un buco invece di un guasto.
+
+**CURA.** Prima di aspettare una CI silenziosa (zero check-run nuovi su uno SHA per più di un minuto o due), leggi `mergeStateStatus`/`mergeable` PRIMA di sospettare il workflow: `DIRTY`/`CONFLICTING` spiega l'assenza per costruzione, e nessuna attesa la risolve — solo un repoint (`git merge origin/main` risolto a mano, o `gh pr update-branch`) e un nuovo push la sblocca. Confermato empiricamente: al primo push post-repoint la corsa `tests.yml` è comparsa entro pochi secondi. In un periodo di traffico PR alto (più lane sullo stesso albero, es. più PR visa-oracle in parallelo) questo può ripetersi più volte di fila — non è segno di errore proprio, è la fisica della coda quando il base si muove più in fretta del tempo di un ciclo GROUND→VERIFY→push.
+
+**GOTCHA.** Non fidarti nemmeno del `check-suite` "completato": un `completed`/`success` prematuro su un sottoinsieme striminzito (qui: 3-4 check contro i ~40 attesi) è esso stesso il segnale che qualcosa non è partito, non la prova che tutto sia a posto — va incrociato col CONTEGGIO atteso (`branch protection required_status_checks`), non letto da solo.
+
+**Famiglia: superscar #2 (Esiste ≠ Armato / cron theater).** Variante "check-suite theater": il gate non mente sul proprio esito, mente per omissione — dichiara fatto ciò che non ha nemmeno tentato.
