@@ -4,12 +4,15 @@
 This module SKIPS cleanly (not error, not red) unless BOTH of this fold's
 inputs exist on disk: ``rulepack-prod-013.rules-only.json`` (PR #4660,
 ``fold_pack_seq13_rules.py``) and the s13-fresh lane's freshness restamp
-JSON. Neither is guaranteed to be present in every checkout of this
-branch — the rules-only half ships in a separate, independently-armed PR,
-and the freshness half is a research capture from a third lane. An absent
-input here is a legitimate pre-join state, not a defect (contrast
-``test_seq12_pack.py``, which does NOT skip: seq-12 ships its pack in the
-same PR as its single-source fold).
+edit-pair JSON (``inc7-pack-edits/source-restamp-edits.json``, the same
+schema as seq-12's own ``inc5-pack-edits/source-restamp-edits.json``).
+Neither is guaranteed to be present in every checkout of this branch — the
+rules-only half ships in a separate, independently-armed PR, and the
+freshness half is coordinated directly with its own lane (see the fold
+module's ``_FRESHNESS_INPUT`` comment). An absent input here is a
+legitimate pre-join state, not a defect (contrast ``test_seq12_pack.py``,
+which does NOT skip: seq-12 ships its pack in the same PR as its
+single-source fold).
 
 Checks, each verified against the real files on disk or a fresh
 ``assemble_payload()`` call — never eyeballed:
@@ -24,15 +27,17 @@ Checks, each verified against the real files on disk or a fresh
     the rules-only artifact's ``rules`` byte-for-byte, and everything
     OUTSIDE ``rules`` in the rules-only artifact equals seq-12
     byte-for-byte (the rules lane kept its own promise); the freshness
-    input carries no ``rules``/``products`` key at all.
+    input carries no top-level key outside ``{"_comment", "restamps"}``
+    (whitelist, not a blacklist).
 (c) restamp parity — exactly 18 source_records differ from seq-12, each
     ONLY in ``verified_at``/``verified_by``; the restamped set is exactly
     the OFFICIAL_PORTAL set (entity, not a frozen id list); every restamp
     advances the clock past what the freshness input declares as the
-    PRIOR value, cross-checked against seq-12's actual bytes (ledger
+    CURRENT value, cross-checked against seq-12's actual bytes (ledger
     drift); no restamp is timestamped after the pack's own
     ``created_at``; ``content_sha256`` is byte-identical on all 28
-    records.
+    records (true by construction here — the edit-pair schema has no
+    slot for it at all).
 (d) byte-invariance — products and the 10 non-restamped source_records
     are fully identical to seq-12; every top-level key outside the
     identity set is identical.
@@ -44,7 +49,9 @@ Checks, each verified against the real files on disk or a fresh
     the module's OWN (re-imported, not re-implemented) machinery, proving
     the guard is reachable and not vacuously green. Also covers the
     identical-timestamp NOTE: fires on a batch with fewer distinct stamps
-    than records, does not fire once every record's stamp is distinct.
+    than records (reporting the real 1<-2<-7 resolution trend), does not
+    fire once every record's stamp is distinct, degrades gracefully when
+    its purely-informational third trend point is unavailable.
 """
 
 from __future__ import annotations
@@ -76,7 +83,22 @@ _SEQ12_SIGNED_PATH = _PACKS_DIR / "rulepack-prod-012.signed.json"
 _SEQ13_RULES_ONLY_PATH = _PACKS_DIR / "rulepack-prod-013.rules-only.json"
 _SEQ13_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-013.source.json"
 _FRESHNESS_INPUT_PATH = (
-    _REPO_ROOT / "research" / "visa" / "2026-08-23-seq13-restamp-source-records.json"
+    _REPO_ROOT
+    / "research"
+    / "visa"
+    / "doctrine-factory"
+    / "e5"
+    / "inc7-pack-edits"
+    / "source-restamp-edits.json"
+)
+_INC5_HISTORY_PATH = (
+    _REPO_ROOT
+    / "research"
+    / "visa"
+    / "doctrine-factory"
+    / "e5"
+    / "inc5-pack-edits"
+    / "source-restamp-edits.json"
 )
 
 _EXPECTED_RESTAMP_COUNT = 18
@@ -85,13 +107,24 @@ _RESTAMP_FIELDS = frozenset({"verified_at", "verified_by"})
 _IDENTITY_KEYS = frozenset(
     {"sequence", "version", "rule_pack_id", "previous_payload_sha256", "created_at", "created_by"}
 )
+_RESTAMP_EDIT_FIELDS = frozenset(
+    {
+        "source_record_id",
+        "source_key",
+        "field",
+        "current_verified_at",
+        "current_verified_by",
+        "new_verified_at",
+        "new_verified_by",
+    }
+)
 
 pytestmark = pytest.mark.skipif(
     not (_SEQ13_RULES_ONLY_PATH.exists() and _FRESHNESS_INPUT_PATH.exists()),
     reason=(
         "seq-13 join needs BOTH rulepack-prod-013.rules-only.json (PR #4660) and "
-        "the s13-fresh freshness restamp JSON on disk — at least one is missing. "
-        "This module SKIPS, not reds, until both land."
+        "the s13-fresh freshness restamp edit-pair JSON on disk — at least one is "
+        "missing. This module SKIPS, not reds, until both land."
     ),
 )
 
@@ -189,11 +222,22 @@ class TestComplementOfRulesFold:
                 "identity is not the rules lane's to change"
             )
 
-    def test_freshness_input_carries_no_rule_or_product_key(
+    def test_freshness_input_carries_only_whitelisted_top_level_keys(
         self, freshness_input: dict[str, Any]
     ) -> None:
+        assert set(freshness_input) <= {"_comment", "restamps"}
         assert "rules" not in freshness_input
         assert "products" not in freshness_input
+
+    def test_every_restamp_edit_carries_only_whitelisted_fields(
+        self, freshness_input: dict[str, Any]
+    ) -> None:
+        for edit in freshness_input["restamps"]:
+            assert set(edit) == _RESTAMP_EDIT_FIELDS, (
+                f"restamp edit {edit.get('source_record_id')!r} has fields "
+                f"{sorted(edit)}, expected exactly {sorted(_RESTAMP_EDIT_FIELDS)}"
+            )
+            assert edit["field"] == "verified_at+verified_by"
 
 
 # ---------------------------------------------------------------------------
@@ -235,17 +279,17 @@ class TestRestampParity:
         assert changed == portal
         assert len(portal) == _EXPECTED_RESTAMP_COUNT
 
-    def test_every_restamp_advances_past_freshness_declared_prior(
+    def test_every_restamp_advances_past_freshness_declared_current(
         self, seq13_source: dict[str, Any], freshness_input: dict[str, Any]
     ) -> None:
         seq13_by_id = {r["source_record_id"]: r for r in seq13_source["source_records"]}
-        for fr in freshness_input["restamped_source_records"]:
-            sid = fr["source_record_id"]
+        for edit in freshness_input["restamps"]:
+            sid = edit["source_record_id"]
             pack_record = seq13_by_id[sid]
-            assert pack_record["verified_at"] == fr["verified_at"]
-            assert pack_record["verified_by"] == fr["verified_by"]
-            assert fr["verified_at"] > fr["_prior_verified_at"], (
-                f"{sid!r}: freshness input's own declared new/prior stamps do not advance"
+            assert pack_record["verified_at"] == edit["new_verified_at"]
+            assert pack_record["verified_by"] == edit["new_verified_by"]
+            assert edit["new_verified_at"] > edit["current_verified_at"], (
+                f"{sid!r}: freshness input's own declared new/current stamps do not advance"
             )
 
     def test_no_restamp_is_after_pack_created_at(self, seq13_source: dict[str, Any]) -> None:
@@ -294,7 +338,7 @@ class TestByteInvariance:
     def test_non_restamped_records_fully_identical(
         self, seq12_source: dict[str, Any], seq13_source: dict[str, Any], freshness_input: dict[str, Any]
     ) -> None:
-        restamped_ids = {r["source_record_id"] for r in freshness_input["restamped_source_records"]}
+        restamped_ids = {e["source_record_id"] for e in freshness_input["restamps"]}
         seq12_by_id = {r["source_record_id"]: r for r in seq12_source["source_records"]}
         drifted = []
         checked = 0
@@ -348,6 +392,12 @@ class TestRegenerationParity:
 # ---------------------------------------------------------------------------
 
 
+def _write_freshness(tmp_path: Path, mutated: dict[str, Any]) -> Path:
+    path = tmp_path / "freshness.json"
+    path.write_text(json.dumps(mutated), encoding="utf-8")
+    return path
+
+
 class TestGuardsFireOnMutation:
     def test_chain_hash_guard_fires_on_wrong_expected_anchor(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
@@ -389,17 +439,15 @@ class TestGuardsFireOnMutation:
         with pytest.raises(m.FoldPackError, match="owns neither products nor source_records"):
             m.assemble_payload()
 
-    def test_freshness_forbidden_key_guard_fires(
+    def test_freshness_unexpected_top_level_key_guard_fires(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freshness_input: dict[str, Any]
     ) -> None:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         mutated = copy.deepcopy(freshness_input)
         mutated["products"] = []
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
-        with pytest.raises(m.FoldPackError, match="owns only source_records"):
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
+        with pytest.raises(m.FoldPackError, match="unexpected top-level key"):
             m.assemble_payload()
 
     def test_freshness_wrong_record_count_guard_fires(
@@ -408,11 +456,58 @@ class TestGuardsFireOnMutation:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         mutated = copy.deepcopy(freshness_input)
-        mutated["restamped_source_records"] = mutated["restamped_source_records"][:-1]
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
+        mutated["restamps"] = mutated["restamps"][:-1]
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
         with pytest.raises(m.FoldPackError, match=f"expected exactly {_EXPECTED_RESTAMP_COUNT} restamps"):
+            m.assemble_payload()
+
+    def test_freshness_edit_missing_field_guard_fires(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freshness_input: dict[str, Any]
+    ) -> None:
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        mutated = copy.deepcopy(freshness_input)
+        del mutated["restamps"][0]["source_key"]
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
+        with pytest.raises(m.FoldPackError, match="missing field"):
+            m.assemble_payload()
+
+    def test_freshness_edit_extra_field_guard_fires_on_content_sha256_smuggle_attempt(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freshness_input: dict[str, Any]
+    ) -> None:
+        """The class of attack the old full-record shape needed a
+        content-parity comparison to catch — smuggling a content field
+        through the freshness input — is now caught by the field
+        whitelist instead, before the record is ever touched."""
+
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        mutated = copy.deepcopy(freshness_input)
+        mutated["restamps"][0]["content_sha256"] = "f" * 64
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
+        with pytest.raises(m.FoldPackError, match="unexpected field"):
+            m.assemble_payload()
+
+    def test_freshness_edit_wrong_field_value_guard_fires(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freshness_input: dict[str, Any]
+    ) -> None:
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        mutated = copy.deepcopy(freshness_input)
+        mutated["restamps"][0]["field"] = "content_sha256"
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
+        with pytest.raises(m.FoldPackError, match="this fold only ever restamps"):
+            m.assemble_payload()
+
+    def test_freshness_source_key_mismatch_guard_fires(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freshness_input: dict[str, Any]
+    ) -> None:
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        mutated = copy.deepcopy(freshness_input)
+        mutated["restamps"][0]["source_key"] = "not-the-real-source-key"
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
+        with pytest.raises(m.FoldPackError, match="id/key mismatch"):
             m.assemble_payload()
 
     def test_freshness_ledger_drift_guard_fires(
@@ -421,24 +516,9 @@ class TestGuardsFireOnMutation:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         mutated = copy.deepcopy(freshness_input)
-        mutated["restamped_source_records"][0]["_prior_verified_at"] = "2099-01-01T00:00:00Z"
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
+        mutated["restamps"][0]["current_verified_at"] = "2099-01-01T00:00:00Z"
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
         with pytest.raises(m.FoldPackError, match="ledger drift"):
-            m.assemble_payload()
-
-    def test_freshness_content_drift_guard_fires_on_content_sha256_change(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freshness_input: dict[str, Any]
-    ) -> None:
-        from backend.scripts.visa_engine import fold_pack_seq13_source as m
-
-        mutated = copy.deepcopy(freshness_input)
-        mutated["restamped_source_records"][0]["content_sha256"] = "f" * 64
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
-        with pytest.raises(m.FoldPackError, match="changed beyond verified_at/verified_by"):
             m.assemble_payload()
 
     def test_freshness_backward_stamp_guard_fires(
@@ -447,12 +527,10 @@ class TestGuardsFireOnMutation:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         mutated = copy.deepcopy(freshness_input)
-        rec = mutated["restamped_source_records"][0]
-        rec["verified_at"] = rec["_prior_verified_at"]  # holds time still
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
-        with pytest.raises(m.FoldPackError, match="does not advance past the prior"):
+        edit = mutated["restamps"][0]
+        edit["new_verified_at"] = edit["current_verified_at"]  # holds time still
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
+        with pytest.raises(m.FoldPackError, match="does not advance past the current"):
             m.assemble_payload()
 
     def test_freshness_future_stamp_guard_fires(
@@ -461,10 +539,8 @@ class TestGuardsFireOnMutation:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         mutated = copy.deepcopy(freshness_input)
-        mutated["restamped_source_records"][0]["verified_at"] = "2099-01-01T00:00:00Z"
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
+        mutated["restamps"][0]["new_verified_at"] = "2099-01-01T00:00:00Z"
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
         with pytest.raises(m.FoldPackError, match="is after this pack's own created_at"):
             m.assemble_payload()
 
@@ -474,15 +550,13 @@ class TestGuardsFireOnMutation:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         mutated = copy.deepcopy(freshness_input)
-        mutated["restamped_source_records"] = mutated["restamped_source_records"][1:]
-        extra = copy.deepcopy(freshness_input["restamped_source_records"][0])
+        mutated["restamps"] = mutated["restamps"][1:]
+        extra = copy.deepcopy(freshness_input["restamps"][0])
         extra["source_record_id"] = str(uuid.uuid4())
-        extra["_prior_verified_at"] = "2020-01-01T00:00:00Z"
-        extra["_prior_verified_by"] = "nobody"
-        mutated["restamped_source_records"].append(extra)
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
+        extra["current_verified_at"] = "2020-01-01T00:00:00Z"
+        extra["current_verified_by"] = "nobody"
+        mutated["restamps"].append(extra)
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
         with pytest.raises(m.FoldPackError, match="not exactly the OFFICIAL_PORTAL set"):
             m.assemble_payload()
 
@@ -545,15 +619,13 @@ class TestIdenticalTimestampNote:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         mutated = copy.deepcopy(freshness_input)
-        assert len(mutated["restamped_source_records"]) <= 60, "helper below assumes < 60 records"
-        for i, rec in enumerate(mutated["restamped_source_records"]):
-            # Still a legal UTC-Z shape, still after _prior_verified_at,
+        assert len(mutated["restamps"]) <= 60, "helper below assumes < 60 records"
+        for i, edit in enumerate(mutated["restamps"]):
+            # Still a legal UTC-Z shape, still after current_verified_at,
             # still not after created_at — only made pairwise distinct via
             # the seconds field.
-            rec["verified_at"] = f"2026-08-23T06:14:{i:02d}Z"
-        bad_path = tmp_path / "freshness.json"
-        bad_path.write_text(json.dumps(mutated), encoding="utf-8")
-        monkeypatch.setattr(m, "_FRESHNESS_INPUT", bad_path)
+            edit["new_verified_at"] = f"2026-08-23T06:14:{i:02d}Z"
+        monkeypatch.setattr(m, "_FRESHNESS_INPUT", _write_freshness(tmp_path, mutated))
 
         m.assemble_payload()
         captured = capsys.readouterr()
@@ -600,16 +672,7 @@ class TestHistoricalTrendHelper:
     def test_seq12_restamp_history_carries_seven_distinct_prior_stamps(
         self, seq12_source: dict[str, Any]
     ) -> None:
-        history_path = (
-            _REPO_ROOT
-            / "research"
-            / "visa"
-            / "doctrine-factory"
-            / "e5"
-            / "inc5-pack-edits"
-            / "source-restamp-edits.json"
-        )
-        data = _read_json(history_path)
+        data = _read_json(_INC5_HISTORY_PATH)
         portal_ids = {
             r["source_record_id"]
             for r in seq12_source["source_records"]

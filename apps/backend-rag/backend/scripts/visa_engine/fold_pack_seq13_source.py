@@ -5,6 +5,42 @@ re-attestation of the OFFICIAL_PORTAL ``source_records``, the seq-12
 pattern applied to seq-13) into the actual, signable
 ``rulepack-prod-013.source.json``.
 
+**The freshness half's input contract is the EDIT-PAIR shape** — the same
+schema seq-12's own ``source-restamp-edits.json`` uses: each restamp
+carries ``source_record_id``, ``source_key`` (cross-checked against
+seq-12's actual record, not just trusted — an id/key mismatch aborts),
+``field`` (must read exactly ``"verified_at+verified_by"`` — this fold
+refuses to consume an edit-pair claiming to touch anything else),
+``current_verified_at``/``current_verified_by``, and
+``new_verified_at``/``new_verified_by`` — 7 fields, verified against the
+real ``inc5``/``inc7`` files on disk, not assumed from a routing message
+(the first draft of this contract assumed 5). Not a full-record blob.
+Settled 2026-08-23 (team-lead, after a same-day architecture fork — see
+the "seq-14" note below): the edit-pair shape is
+strictly better for a joiner, not merely consistent with family
+convention — it lets this fold assert the declared PRIOR against seq-12's
+ACTUAL bytes before mutating (a real ledger-drift gate), where a
+full-record blob only asks to be trusted for what it claims to contain.
+It also makes "content_sha256 never touched" true BY CONSTRUCTION rather
+than by comparison: the edit-pair schema has no slot for content fields
+at all, so there is nothing for a freshness input to smuggle even if it
+tried — this fold's own field-scoped mutation (`verified_at`/
+`verified_by` only, nothing else ever assigned) is the second, redundant
+half of that guarantee.
+
+**A same-day architecture fork, caught before it shipped.** Mid-build, the
+freshness lane's worktree independently produced an uncommitted
+``fold_pack_seq14.py`` that chained directly off seq-12 (same signed
+hash), skipping seq-13 entirely — freshness-only, with NO rules-only
+fixes (no E31C nationality-gap close, no D12 removal). Two children of one
+parent, one signed active pack: had it shipped, the fixes would have
+silently lost with nothing going red. The team-lead ruled it out
+(traced to a routing-message race on their end, not a decision anyone
+made) — **seq-13 combined is the path, seq-14 is stopped.** Left here
+because the failure mode is worth knowing: a freshness-only re-attestation
+convenience fold is easy to reach for and easy to get structurally wrong
+when a rules-fix lane is mid-flight on the same parent.
+
 Two lanes, two disjoint concerns, one join. Neither half's own fold owns
 identity (``sequence``/``version``/``rule_pack_id``/
 ``previous_payload_sha256``/``created_at``/``created_by``) — both leave it
@@ -70,10 +106,14 @@ the join).
 fetches of unchanged content hash differently — there is no
 canonical-extraction script in this repo. Verification of those 18
 sources is by verbatim quotation (the QW-5 report), not by hash
-recomputation. This fold's only hash-side check on ``content_sha256`` is
-that it rides through byte-identical from seq-12 on every restamped
-record — the same "did anything besides the declared field change"
-guard every sibling fold in this family runs.
+recomputation. Two independent guarantees, not one: the edit-pair input
+schema has no field for content at all (nothing to smuggle even if the
+freshness lane tried), AND this fold's own final byte-invariance sweep
+(``_assert_untouched``) asserts every restamped record rides through
+byte-identical from seq-12 outside ``verified_at``/``verified_by`` — the
+same "did anything besides the declared field change" guard every
+sibling fold in this family runs, now redundant-by-design rather than
+the sole line of defense.
 
 Every input is read from disk at run time. The chain hash is read LIVE
 from ``rulepack-prod-012.signed.json`` and asserted against the expected
@@ -83,8 +123,9 @@ fold. Deterministic: fixed timestamps, no ``datetime.now()`` — re-running
 is byte-identical. Both input halves are read from disk at fixed paths;
 either being absent raises a clear ``FoldPackError``, never an unhandled
 crash — the rules-only half ships in PR #4660 (not yet merged as of this
-module's authoring) and the freshness half is still being corrected by
-its own lane as of this module's authoring.
+module's authoring) and the freshness half's exact commit path was still
+being coordinated directly with its lane as of this module's authoring
+(see ``_FRESHNESS_INPUT``'s own comment).
 
 Usage::
 
@@ -121,12 +162,23 @@ _SEQ12_SIGNED = _PACKS_DIR / "rulepack-prod-012.signed.json"
 _SEQ13_RULES_ONLY = _PACKS_DIR / "rulepack-prod-013.rules-only.json"
 _SEQ13_SOURCE_OUT = _PACKS_DIR / "rulepack-prod-013.source.json"
 
-# Where the s13-fresh lane's re-attestation lands. Matches the file already
-# on disk in that lane's own worktree at the time this fold was authored
-# (research/visa/2026-08-23-seq13-restamp-source-records.json) — a research
-# capture next to its own report (2026-08-23-freshness-restamp-seq13.md),
-# not yet committed as of this module's authoring.
-_FRESHNESS_INPUT = _REPO_ROOT / "research" / "visa" / "2026-08-23-seq13-restamp-source-records.json"
+# Where the s13-fresh lane's re-attestation lands: the edit-pair shape
+# (see module docstring), same schema and same directory convention as
+# seq-12's own inc5-pack-edits/source-restamp-edits.json, one increment
+# later. Matches what is staged (uncommitted) in that lane's own worktree
+# at the time this fold was authored — coordinated directly with that
+# lane per the team-lead's instruction (this is a two-lane integration
+# detail, not something adjudicated from outside). If the committed path
+# ends up different, this is the one constant to repoint.
+_FRESHNESS_INPUT = (
+    _REPO_ROOT
+    / "research"
+    / "visa"
+    / "doctrine-factory"
+    / "e5"
+    / "inc7-pack-edits"
+    / "source-restamp-edits.json"
+)
 
 # Informational only, never a hard dependency: seq-12's OWN restamp ledger,
 # read purely to report the resolution-trend NOTE (see module docstring).
@@ -326,30 +378,65 @@ def _apply_rules(payload: dict[str, Any], seq12_source: dict[str, Any]) -> dict[
 # ---------------------------------------------------------------------------
 
 
+#: The only top-level keys the edit-pair freshness input may carry. A
+#: whitelist, not a blacklist: any key outside this set — including,
+#: but not limited to, a "rules"/"products" fragment that would smuggle
+#: a change outside the freshness lane's territory — aborts the fold.
+_FRESHNESS_INPUT_ALLOWED_KEYS = frozenset({"_comment", "restamps"})
+
+#: The exact fields one restamp edit in the edit-pair shape carries —
+#: verified against the REAL inc5/inc7 files on disk (not assumed from a
+#: routing message): 7 fields, not 5. ``source_key``/``field`` are
+#: descriptive metadata this fold cross-checks (entity consistency /
+#: scope), not merely tolerated passthrough. Extra or missing keys abort
+#: — a whitelist so a future accidental field (e.g. a stray
+#: content_sha256) is caught by construction, not by remembering to check
+#: for it.
+_RESTAMP_EDIT_FIELDS = frozenset(
+    {
+        "source_record_id",
+        "source_key",
+        "field",
+        "current_verified_at",
+        "current_verified_by",
+        "new_verified_at",
+        "new_verified_by",
+    }
+)
+_RESTAMP_EDIT_EXPECTED_FIELD_VALUE = "verified_at+verified_by"
+
+
 def _apply_freshness(payload: dict[str, Any], seq12_source: dict[str, Any]) -> set[str]:
     freshness = _load_json(_FRESHNESS_INPUT, what="seq-13 freshness restamp JSON")
 
-    # The freshness input is a bespoke research-capture document, not a
-    # RulePackPayload fragment — it must not carry rule/product edits at
-    # all. This is the complement half of the rules-fold cross-check above:
-    # each half is refused the other's territory even if its SHAPE changed
-    # to make that possible.
-    for forbidden_key in ("rules", "products"):
-        if forbidden_key in freshness:
-            raise FoldPackError(
-                f"the freshness input declares a {forbidden_key!r} key — the "
-                "freshness lane owns only source_records; refusing to consume "
-                "a change outside its territory"
-            )
+    extra_keys = set(freshness) - _FRESHNESS_INPUT_ALLOWED_KEYS
+    if extra_keys:
+        raise FoldPackError(
+            f"the freshness input declares unexpected top-level key(s) {sorted(extra_keys)} "
+            f"— only {sorted(_FRESHNESS_INPUT_ALLOWED_KEYS)} are allowed in the edit-pair "
+            "shape; refusing to consume a change outside the freshness lane's territory"
+        )
 
-    records = freshness.get("restamped_source_records")
+    records = freshness.get("restamps")
     if records is None:
-        raise FoldPackError("freshness input is missing 'restamped_source_records'")
+        raise FoldPackError("freshness input is missing 'restamps'")
     if len(records) != _EXPECTED_RESTAMP_COUNT:
         raise FoldPackError(
             f"expected exactly {_EXPECTED_RESTAMP_COUNT} restamps, freshness input "
             f"carries {len(records)}"
         )
+
+    for edit in records:
+        extra = set(edit) - _RESTAMP_EDIT_FIELDS
+        missing = _RESTAMP_EDIT_FIELDS - set(edit)
+        if extra or missing:
+            raise FoldPackError(
+                f"restamp edit {edit.get('source_record_id')!r} has "
+                f"{'unexpected field(s) ' + str(sorted(extra)) if extra else ''}"
+                f"{' and ' if extra and missing else ''}"
+                f"{'missing field(s) ' + str(sorted(missing)) if missing else ''} "
+                f"— must carry exactly {sorted(_RESTAMP_EDIT_FIELDS)}"
+            )
 
     payload_records_by_id = {r["source_record_id"]: r for r in payload["source_records"]}
 
@@ -365,66 +452,62 @@ def _apply_freshness(payload: dict[str, Any], seq12_source: dict[str, Any]) -> s
     if len(restamp_ids) != len(records):
         raise FoldPackError("freshness input names a duplicate source_record_id")
     if restamp_ids != portal_ids:
-        missing = sorted(portal_ids - restamp_ids)
-        extra = sorted(restamp_ids - portal_ids)
+        missing_ids = sorted(portal_ids - restamp_ids)
+        extra_ids = sorted(restamp_ids - portal_ids)
         raise FoldPackError(
             "freshness restamp set is not exactly the OFFICIAL_PORTAL set — "
-            f"portal records not restamped: {missing}; "
-            f"restamps naming non-portal/unknown records: {extra}"
+            f"portal records not restamped: {missing_ids}; "
+            f"restamps naming non-portal/unknown records: {extra_ids}"
         )
 
     created_at_dt = _parse_utc(_SEQ13_CREATED_AT)
     new_stamps: list[str] = []
     replaced_stamps: list[str] = []
 
-    for fresh_record_raw in records:
-        sid = fresh_record_raw["source_record_id"]
+    for edit in records:
+        sid = edit["source_record_id"]
         baseline = payload_records_by_id.get(sid)
         if baseline is None:
             raise FoldPackError(f"freshness restamp names unknown source_record_id {sid!r}")
 
-        prior_verified_at = fresh_record_raw.get("_prior_verified_at")
-        prior_verified_by = fresh_record_raw.get("_prior_verified_by")
-        if prior_verified_at is None or prior_verified_by is None:
+        if edit["field"] != _RESTAMP_EDIT_EXPECTED_FIELD_VALUE:
             raise FoldPackError(
-                f"freshness record {sid!r} is missing _prior_verified_at/_prior_verified_by "
-                "— cannot ledger-drift-check a restamp without its declared prior value"
+                f"restamp edit {sid!r} declares field={edit['field']!r}, expected "
+                f"{_RESTAMP_EDIT_EXPECTED_FIELD_VALUE!r} — this fold only ever restamps "
+                "verified_at+verified_by; any other declared field is out of scope"
             )
-        if baseline.get("verified_at") != prior_verified_at or baseline.get("verified_by") != prior_verified_by:
+        if edit["source_key"] != baseline.get("source_key"):
+            raise FoldPackError(
+                f"restamp edit {sid!r} declares source_key={edit['source_key']!r}, but "
+                f"seq-12's actual record {sid!r} has source_key={baseline.get('source_key')!r} "
+                "— id/key mismatch, refusing to apply against the wrong record"
+            )
+
+        current_verified_at = edit["current_verified_at"]
+        current_verified_by = edit["current_verified_by"]
+
+        # Ledger-drift guard: the edit-pair's declared "current" value must
+        # match seq-12's ACTUAL bytes — this is the exact strengthening the
+        # edit-pair shape buys over a full-record blob (team-lead, on
+        # adopting this contract): a claim about what is being replaced,
+        # checked against reality, not merely trusted.
+        if baseline.get("verified_at") != current_verified_at or baseline.get("verified_by") != current_verified_by:
             raise FoldPackError(
                 f"source_record {sid!r}: seq-12's actual verified_at/verified_by "
                 f"({baseline.get('verified_at')!r}, {baseline.get('verified_by')!r}) does not "
-                f"match the freshness input's declared prior value ({prior_verified_at!r}, "
-                f"{prior_verified_by!r}) — ledger drift, refusing to apply blind"
+                f"match the freshness input's declared current value ({current_verified_at!r}, "
+                f"{current_verified_by!r}) — ledger drift, refusing to apply blind"
             )
 
-        # Full-content parity: strip verified_at/verified_by (the only
-        # fields a restamp may change) AND the leading-underscore ledger
-        # metadata (not part of the pack schema) from the freshness
-        # record, then require canonical equality against seq-12's own
-        # record. This is what makes "content_sha256 never touched" a
-        # mechanical guard rather than a promise: any drift on
-        # content_sha256, title, locators, etc. fails here, loud.
-        cleaned = {
-            k: v for k, v in fresh_record_raw.items() if k not in _RESTAMP_FIELDS and not k.startswith("_")
-        }
-        baseline_stripped = {k: v for k, v in baseline.items() if k not in _RESTAMP_FIELDS}
-        if _canon(cleaned) != _canon(baseline_stripped):
-            raise FoldPackError(
-                f"freshness record {sid!r} changed beyond verified_at/verified_by — "
-                "content_sha256 and every other field must ride through untouched "
-                "on a pure re-stamp"
-            )
-
-        new_verified_at = fresh_record_raw["verified_at"]
-        new_verified_by = fresh_record_raw["verified_by"]
+        new_verified_at = edit["new_verified_at"]
+        new_verified_by = edit["new_verified_by"]
 
         new_dt = _parse_utc(new_verified_at)
-        prior_dt = _parse_utc(prior_verified_at)
-        if not new_dt > prior_dt:
+        current_dt = _parse_utc(current_verified_at)
+        if not new_dt > current_dt:
             raise FoldPackError(
                 f"source_record {sid!r}: new verified_at {new_verified_at!r} does not "
-                f"advance past the prior {prior_verified_at!r} — a re-stamp that moves "
+                f"advance past the current {current_verified_at!r} — a re-stamp that moves "
                 "time backward or holds it still is not an attestation"
             )
         if new_dt > created_at_dt:
@@ -434,10 +517,17 @@ def _apply_freshness(payload: dict[str, Any], seq12_source: dict[str, Any]) -> s
                 "attest to a fetch that (per this pack's own clock) hasn't happened yet"
             )
 
+        # content_sha256 and every other field are untouched BY
+        # CONSTRUCTION here — the edit-pair schema has no slot for them,
+        # and only these two fields are ever assigned onto `baseline`.
+        # No comparison is needed; there is nothing for the input to have
+        # smuggled. `_assert_untouched` below re-derives the same
+        # guarantee independently from the final payload, for defense in
+        # depth against a bug in THIS function.
         baseline["verified_at"] = new_verified_at
         baseline["verified_by"] = new_verified_by
         new_stamps.append(new_verified_at)
-        replaced_stamps.append(prior_verified_at)
+        replaced_stamps.append(current_verified_at)
 
     # FLAGGED, not rejected — see module docstring for the reasoning. A
     # batch of identical-to-the-second stamps is a disclosed pass-level
