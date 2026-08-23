@@ -1,65 +1,91 @@
-task_id: ci-backend-test-sharding-0823
+task_id: s12-c6-evidence-per-pr
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  Shard `Backend Tests (Python)` three ways. It is the single largest fixed cost in every
-  merge-queue transit and every code PR pays it TWICE (PR lane + merge-group lane). Measured
-  on this workflow, not estimated: merge_group run 32626973483 spent 797s of a 1068s job in
-  "Run unit tests" (74.6%); schedule run 32624568684 spent 726s of 975s (74.5%). Every other
-  required gate on the same PR finishes in under 2 minutes.
+  De-serialize the Evidence Pack: `evidence/pack.yml` and `evidence/brief.yml` are FIXED paths
+  at the repo root, and every Gear>=2 PR rewrites them entirely. Measured on origin/main
+  (S12 mandate, 2026-08-23): those two files were rewritten 4 times in 8 hours (#4599, #4649,
+  #4647, #4646). Each rewrite dirties EVERY other open Gear>=2 PR's evidence pack
+  simultaneously, so two such PRs cannot coexist cleanly in the merge queue — by construction,
+  not bad luck. One sibling lane (S11, PR #4647) paid two full re-gate rounds on a PR whose
+  code never changed, purely from this collision.
 
-  Intra-job parallelism is already saturated — `-n auto --dist loadfile` was re-added
-  2026-08-21 with per-xdist-worker Postgres isolation and a 2-core `ubuntu-latest` runner has
-  nothing left to give. The only remaining lever is CROSS-JOB sharding: 3 x 2 cores instead of
-  1 x 2.
+  This PR is the migration itself: `scripts/ci/evidence_paths.py`, a small, pure,
+  dependency-free module + CLI that is the single source of truth for mapping a branch ref to
+  a per-PR evidence directory (`evidence/<YYYY-MM>/<slug>/`) at WRITE time, and for
+  DISCOVERING which `evidence/<kind>.yml` a PR's own diff touches at CI READ time — these are
+  deliberately two different operations (see the module docstring's "CI must not compute the
+  slug" section): a `merge_group` ref is `gh-readonly-queue/main/pr-NNNN-<sha>`, not the PR's
+  branch, so computing a slug from it at CI time would look for the wrong directory.
 
-  Gear 3 is the DETERMINISTIC FLOOR here, not a choice: the diff touches
-  `.github/workflows/`, which floors at 3 regardless of size (fleet-order-spec.md §4).
+  Gear 3 is the deterministic floor here, not a choice: the diff touches
+  `.github/workflows/harness-floor.yml`, which floors at 3 regardless of size
+  (fleet-order-spec.md §4, `HOTZONE_PATTERNS` in evidence_pack_lint.py).
 
-  THE ONE THING THIS PR IS REALLY ABOUT, and the reason the evidence below is sized the way it
-  is: `Backend Tests (Python)` is one of the 27 REQUIRED status contexts in classic branch
-  protection on main. A `strategy.matrix` renames its check runs to "... (1)", "... (2)" — the
-  bare required context then never reports again, every merge-queue entry waits out
-  `checkResponseTimeout` (5400s) and fails with nothing red to fix. That is cicatrix-superscar
-  #2 / W69 (required checks silently disarmed), and it would be self-inflicted by a change whose
-  whole purpose is to make the queue faster. The cure is structural: a fan-in job keeps the exact
-  name and the shards get new, non-required names.
-
-  The second failure mode this design has to defeat is worse because it is INVISIBLE: if the
-  three chunks stop tiling the corpus, tests silently stop running and the required context stays
-  green. A sharded suite that under-runs looks exactly like a healthy one. Four independent
-  refusals in the fan-in close it (upstream results, partition guard against the shards' OWN
-  uploaded chunk lists, junit proof-of-work, coverage combine before threshold).
+  This PR itself uses the OLD (root-path) scheme — it is the migration, so it cannot use the
+  scheme it is introducing; `resolve_evidence_path()`'s zero-matches fallback to the literal
+  root path is exactly what makes that consistent rather than a special case.
 constraints:
-  - "The `name:` of the fan-in job must remain the byte-exact string `Backend Tests (Python)`,
-    and its job id must remain `backend-tests` — `test-summary` consumes
-    `needs.backend-tests.result`, and branch protection consumes the name."
-  - "Do NOT change the merge_group scoping semantic: the PR lane runs impact-scoped selection,
-    merge_group DELIBERATELY runs unscoped (impact_map.py docstring, 'SCOPE, DECLARED'). The
-    partitioner reads the same IMPACT_* env with the same fail-open convention and never narrows
-    the corpus on its own initiative."
-  - "Do NOT touch the workflow-level `concurrency:` block. It is scar tissue encoding three
-    asymmetries (merge_group / schedule / push-to-main) that look like bugs at a glance; the new
-    jobs inherit it unchanged."
-  - "No new dependencies. pytest-split was considered and deliberately deferred to v2, gated on a
-    MEASURED shard imbalance > ~2x — which this PR instruments rather than assumes."
-  - "Larger paid runners: rejected (cost). Self-hosted runners: rejected outright — this is a
-    public repository, so that means arbitrary PR code executing on our machines."
+  - "Collision-safety is non-negotiable, not cosmetic: the slug must be injective even when a
+    naive sanitize-only scheme (lowercase, collapse non-alnum runs to '-') would collapse two
+    distinct branches to the same string — this repo's `agent/<host>/<lane>/<task>` branches
+    are full of hyphens, so `agent/mini-pro2/infra/foo-bar` and `agent/mini-pro2/infra-foo/bar`
+    both naively sanitize to the identical `agent-mini-pro2-infra-foo-bar`. Cure: hash the FULL
+    ORIGINAL ref (never the sanitized/truncated form) and append the digest — the
+    sanitized/truncated prefix is for human readability only."
+  - "The month directory (`evidence/<YYYY-MM>/<slug>/`) must never be recomputed from a clock
+    at CI read time — a PR opened on the last day of a month and merged the next would have its
+    files under the OLD month while a clock-derived validator looked under the NEW one and
+    found nothing. `evidence_glob()` returns a glob (`evidence/*/<slug>`); the CLI's
+    'suggested write path for today' is the only place a date is generated, at write time,
+    for a human — never fed back into validation."
+  - "CI must never compute a slug from a ref to DISCOVER an existing PR's evidence path — only
+    `--resolve {brief,pack} --changed-files-file` (a pure discovery over the already-enumerated
+    changed-files list) may be used for that, per the design correction from gate review. This
+    is the load-bearing correction of the CI-wiring round: the first draft of this PR wired
+    `slug_for_ref` into CI directly, which would have deadlocked every Gear-3 PR in the merge
+    queue on its very first `merge_group` run."
+  - "A PR whose diff ambiguously touches two `evidence/<kind>.yml` candidates must fail closed
+    (exit 1, nothing on stdout), never silently pick one — guard-over-match discipline
+    (cicatrix-superscar.md #3)."
+  - "A PR that writes NEITHER evidence path must not pass by inheriting the root
+    `evidence/pack.yml` left by a prior Gear-3 PR — this invariant is NOT re-implemented here;
+    it survives by construction because the resolver's zero-matches fallback returns the
+    concrete root path, which `tracked_file_present_in_diff.sh` then reports `inherited` (not
+    `present`) for a diff that didn't touch it, and the existing Step 5b hot-zone-FAIL catches
+    that. `resolve_evidence_path()` must never special-case this away."
+  - "Do not touch `tracked_file_present_in_diff.sh`, Step 5b, or `evidence_pack_lint.py`'s own
+    internal `brief_ref`-resolution contract — this PR changes WHICH path is handed to those,
+    never their own logic. Verified generic-on-path-argument by reading
+    `tracked_file_present_in_diff.sh`'s source before rewiring its call sites."
+  - "A per-PR pack must still declare `brief_ref: evidence/brief.yml` (the canonical STAGING
+    name), never its own real per-PR-looking path — `evidence_pack_lint.py` never lints a pack
+    in place; CI stages both resolved files under canonical names in a synthetic
+    `/tmp/evidence-check` tree and lints that. Documented at the staging call site and in the
+    module docstring after a gate finding flagged it as an undocumented trap of exactly the
+    shape this PR exists to remove."
+  - "Standard library only in `evidence_paths.py` — no yaml, no external deps — CI calls this
+    before installing anything. Must run on Python 3.11 and 3.12."
 acceptance:
-  - "`Backend Tests (Python)` still reports on every event type it reported on before and never
-    hangs unreported. CORRECTED after a refuter (Codex GPT-5.6) checked the trigger list instead
-    of trusting it: those events are pull_request, merge_group, schedule and workflow_dispatch —
-    there is NO `push:` trigger on this workflow. The pre-existing comment at tests.yml:42 claims
-    `every main push now runs to completion`, and that claim has been false for as long as it has
-    been there. This PR does not fix that (out of scope, and the concurrency block is explicitly
-    off-limits per the constraints below) but it must not REPEAT it: an earlier draft of this very
-    acceptance criterion listed `push`, i.e. the diff was about to inherit a false premise from a
-    comment rather than from the code."
-  - "All 27 required contexts report on the probe head SHA."
-  - "Wall-clock for the required context on a full unscoped (merge-group) transit is <= 8 min."
-  - "GUILT: a failing test makes the fan-in RED. GUILT: a corrupted chunk list makes the
-    partition guard RED. INNOCENCE: a clean transit is green."
-  - "Coverage `--fail-under=55` is still enforced on the lane that collects it (merge_group /
-    push / schedule / dispatch — NOT pull_request), over the COMBINED shard data."
-  - "PR-lane scoped selection is unchanged: the same modules are selected, only distributed."
+  - "`slug_for_ref()` is injective: two branch refs that sanitize identically under a naive
+    scheme still produce distinct slugs, proven for at least two independently-devised
+    colliding pairs, plus a case where a 60+ character shared prefix (past the 48-char
+    truncation limit) is the ONLY thing that would defeat injectivity if the hash were computed
+    over the truncated form instead of the original ref."
+  - "`resolve_evidence_path()` returns the concrete root path (never '', never an exception) for
+    a changed-files list touching neither evidence file — the exact invariant three independent
+    lanes (S11, H1/P04, this session's gate reviewer) flagged as non-negotiable."
+  - "`resolve_evidence_path()` fails closed (raises `AmbiguousEvidencePathError`, CLI prints
+    nothing to stdout / an error to stderr / exits 1) on two or more candidates in one diff."
+  - "`harness-floor.yml`'s new 'Resolve this PR's evidence paths' step sits between the
+    changed-files enumeration and the floor computation, degrades to the two literal root paths
+    (unconditionally, no PR-number sentinel) when `evidence_paths.py` is absent from the base
+    checkout, and every functional git/grep call site in Step 4 and Step 7b reads the resolved
+    path instead of a hardcoded literal."
+  - "actionlint (the exact CI-pinned version, 1.7.12) is clean on `harness-floor.yml` and
+    repo-wide; every `run:` block is extracted via a YAML parser (never eyeballed) and passes
+    `bash -n`."
+  - "GUILT: an ambiguous diff, a substring-trap near-miss ('pack.yml.bak', 'not-pack.yml'), or a
+    missing leading `evidence/` segment must NOT resolve to a real evidence path. INNOCENCE: a
+    single well-formed nested match, or the true zero-match case, must resolve cleanly."
