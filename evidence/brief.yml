@@ -1,71 +1,91 @@
-task_id: s12-c3-queue-unstick
-gear: 2
-l_level: L1
+task_id: s12-c6-evidence-per-pr
+gear: 3
+l_level: L2
 gate_class: opus
 objective: |
-  Kill the DIRTY/BEHIND stall. Measured on 2026-08-23: 5+ episodes of PRs
-  sitting BEHIND or DIRTY for 40-90 minutes each, every one of them waiting
-  for a gesture a cron could make in ten.
+  De-serialize the Evidence Pack: `evidence/pack.yml` and `evidence/brief.yml` are FIXED paths
+  at the repo root, and every Gear>=2 PR rewrites them entirely. Measured on origin/main
+  (S12 mandate, 2026-08-23): those two files were rewritten 4 times in 8 hours (#4599, #4649,
+  #4647, #4646). Each rewrite dirties EVERY other open Gear>=2 PR's evidence pack
+  simultaneously, so two such PRs cannot coexist cleanly in the merge queue — by construction,
+  not bad luck. One sibling lane (S11, PR #4647) paid two full re-gate rounds on a PR whose
+  code never changed, purely from this collision.
 
-  `scripts/queue_unstick.py` + a 10-minute cron. It does exactly two things
-  and refuses to do a third:
-    - `BEHIND` -> `gh pr update-branch`, hard-capped at 5 per tick.
-    - `DIRTY` (a true conflict) -> NEVER touches the branch. It signals ONCE
-      per PR+head-SHA to the fleet mailbox, naming the PR and the ACTUAL
-      conflicting files, so a conductor acts in minutes instead of finding
-      out on a round.
+  This PR is the migration itself: `scripts/ci/evidence_paths.py`, a small, pure,
+  dependency-free module + CLI that is the single source of truth for mapping a branch ref to
+  a per-PR evidence directory (`evidence/<YYYY-MM>/<slug>/`) at WRITE time, and for
+  DISCOVERING which `evidence/<kind>.yml` a PR's own diff touches at CI READ time — these are
+  deliberately two different operations (see the module docstring's "CI must not compute the
+  slug" section): a `merge_group` ref is `gh-readonly-queue/main/pr-NNNN-<sha>`, not the PR's
+  branch, so computing a slug from it at CI time would look for the wrong directory.
 
-  The DIRTY asymmetry is the whole design. Updating a branch that has a real
-  conflict is a second-writer race against whoever owns it (superscar #5,
-  scar 2026-08-21); the value of this organ is that it tells a human quickly,
-  not that it acts bravely.
+  Gear 3 is the deterministic floor here, not a choice: the diff touches
+  `.github/workflows/harness-floor.yml`, which floors at 3 regardless of size
+  (fleet-order-spec.md §4, `HOTZONE_PATTERNS` in evidence_pack_lint.py).
+
+  This PR itself uses the OLD (root-path) scheme — it is the migration, so it cannot use the
+  scheme it is introducing; `resolve_evidence_path()`'s zero-matches fallback to the literal
+  root path is exactly what makes that consistent rather than a special case.
 constraints:
-  - "NEVER update a PR that is in the merge queue — updating a queued PR
-    EVICTS it. This is the single most destructive action available to this
-    script, so the exclusion is checked before any action, in a pure function
-    the tests exercise directly."
-  - "NEVER touch a DIRTY branch. Signal only, deduped by PR + head SHA so a
-    PR dirty for six hours produces one message, not thirty-six."
-  - "Never invent a conflicting filename. When the local merge simulation
-    cannot answer, the message says the literal string 'unobtainable via
-    API'."
-  - "Every tick writes a receipt, including a tick that did nothing (W108: a
-    mute cron is a dead cron)."
-  - "A failed `gh` query is CANNOT-VERIFY, never 'nothing to do' — an empty
-    PR list from a broken query must not read as a quiet, healthy repo."
+  - "Collision-safety is non-negotiable, not cosmetic: the slug must be injective even when a
+    naive sanitize-only scheme (lowercase, collapse non-alnum runs to '-') would collapse two
+    distinct branches to the same string — this repo's `agent/<host>/<lane>/<task>` branches
+    are full of hyphens, so `agent/mini-pro2/infra/foo-bar` and `agent/mini-pro2/infra-foo/bar`
+    both naively sanitize to the identical `agent-mini-pro2-infra-foo-bar`. Cure: hash the FULL
+    ORIGINAL ref (never the sanitized/truncated form) and append the digest — the
+    sanitized/truncated prefix is for human readability only."
+  - "The month directory (`evidence/<YYYY-MM>/<slug>/`) must never be recomputed from a clock
+    at CI read time — a PR opened on the last day of a month and merged the next would have its
+    files under the OLD month while a clock-derived validator looked under the NEW one and
+    found nothing. `evidence_glob()` returns a glob (`evidence/*/<slug>`); the CLI's
+    'suggested write path for today' is the only place a date is generated, at write time,
+    for a human — never fed back into validation."
+  - "CI must never compute a slug from a ref to DISCOVER an existing PR's evidence path — only
+    `--resolve {brief,pack} --changed-files-file` (a pure discovery over the already-enumerated
+    changed-files list) may be used for that, per the design correction from gate review. This
+    is the load-bearing correction of the CI-wiring round: the first draft of this PR wired
+    `slug_for_ref` into CI directly, which would have deadlocked every Gear-3 PR in the merge
+    queue on its very first `merge_group` run."
+  - "A PR whose diff ambiguously touches two `evidence/<kind>.yml` candidates must fail closed
+    (exit 1, nothing on stdout), never silently pick one — guard-over-match discipline
+    (cicatrix-superscar.md #3)."
+  - "A PR that writes NEITHER evidence path must not pass by inheriting the root
+    `evidence/pack.yml` left by a prior Gear-3 PR — this invariant is NOT re-implemented here;
+    it survives by construction because the resolver's zero-matches fallback returns the
+    concrete root path, which `tracked_file_present_in_diff.sh` then reports `inherited` (not
+    `present`) for a diff that didn't touch it, and the existing Step 5b hot-zone-FAIL catches
+    that. `resolve_evidence_path()` must never special-case this away."
+  - "Do not touch `tracked_file_present_in_diff.sh`, Step 5b, or `evidence_pack_lint.py`'s own
+    internal `brief_ref`-resolution contract — this PR changes WHICH path is handed to those,
+    never their own logic. Verified generic-on-path-argument by reading
+    `tracked_file_present_in_diff.sh`'s source before rewiring its call sites."
+  - "A per-PR pack must still declare `brief_ref: evidence/brief.yml` (the canonical STAGING
+    name), never its own real per-PR-looking path — `evidence_pack_lint.py` never lints a pack
+    in place; CI stages both resolved files under canonical names in a synthetic
+    `/tmp/evidence-check` tree and lints that. Documented at the staging call site and in the
+    module docstring after a gate finding flagged it as an undocumented trap of exactly the
+    shape this PR exists to remove."
+  - "Standard library only in `evidence_paths.py` — no yaml, no external deps — CI calls this
+    before installing anything. Must run on Python 3.11 and 3.12."
 acceptance:
-  - "Live dry-run against the real open PRs classifies correctly and mutates
-    nothing."
-  - "A queued PR is never selected. A draft, a hold-labelled PR, and a PR
-    whose last commit is under 5 minutes old are never selected."
-  - "A DIRTY PR is never updated, produces exactly one signal, and the signal
-    names the real conflicting files."
-  - "The 6th BEHIND PR in a tick is not updated (anti-storm cap)."
-consumer_map:
-  - "`scripts/cron-runner.sh` — the existing runner and receipt mechanism.
-    Used, not reinvented."
-  - "`scripts/fleet_mail.sh pro broadcast` — where the DIRTY signal lands."
-  - "`gh pr update-branch` — the only mutation this script performs, and
-    only on BEHIND."
-  - "`.github/workflows/auto-merge-whitelist.yml` — NOT edited, but a
-    consumer of this script's side effect: it runs on `synchronize`, so the
-    update-branch push RE-ARMS auto-merge on a non-draft PR. Documented at
-    the top of the script rather than guessed around (cicatrix W123)."
-risks:
-  - "update-branch is a push, and a push re-arms auto-merge on any non-draft
-    PR. A PR deliberately disarmed WITHOUT a hold label would be re-armed by
-    this organ. Not silently accepted: it is documented in the script header
-    with the W123 reference, and the durable way to hold a PR is draft, which
-    this script already excludes. No heuristic was invented to guess
-    'disarmed on purpose' — there is no reliable signal for it, and inventing
-    one would be worse than naming the gap."
-  - "`mergeStateStatus` UNKNOWN (GitHub still computing) is skipped rather
-    than guessed at. A PR that stays UNKNOWN is never helped; that is the
-    safe direction and it is visible in the receipt's skip_reasons."
-grader: |
-  Independent verification by the S12 conductor (Opus 5), not the implementer
-  that wrote it: the diff was read, the 20 tests re-run, the live dry-run
-  executed against the real open PRs, and `get_conflicting_files()` exercised
-  directly against a real DIRTY PR — the one path the dry-run does not reach.
-budget: 1 implementer lane + conductor gate; no council (a scoped cron organ)
-pii: none
+  - "`slug_for_ref()` is injective: two branch refs that sanitize identically under a naive
+    scheme still produce distinct slugs, proven for at least two independently-devised
+    colliding pairs, plus a case where a 60+ character shared prefix (past the 48-char
+    truncation limit) is the ONLY thing that would defeat injectivity if the hash were computed
+    over the truncated form instead of the original ref."
+  - "`resolve_evidence_path()` returns the concrete root path (never '', never an exception) for
+    a changed-files list touching neither evidence file — the exact invariant three independent
+    lanes (S11, H1/P04, this session's gate reviewer) flagged as non-negotiable."
+  - "`resolve_evidence_path()` fails closed (raises `AmbiguousEvidencePathError`, CLI prints
+    nothing to stdout / an error to stderr / exits 1) on two or more candidates in one diff."
+  - "`harness-floor.yml`'s new 'Resolve this PR's evidence paths' step sits between the
+    changed-files enumeration and the floor computation, degrades to the two literal root paths
+    (unconditionally, no PR-number sentinel) when `evidence_paths.py` is absent from the base
+    checkout, and every functional git/grep call site in Step 4 and Step 7b reads the resolved
+    path instead of a hardcoded literal."
+  - "actionlint (the exact CI-pinned version, 1.7.12) is clean on `harness-floor.yml` and
+    repo-wide; every `run:` block is extracted via a YAML parser (never eyeballed) and passes
+    `bash -n`."
+  - "GUILT: an ambiguous diff, a substring-trap near-miss ('pack.yml.bak', 'not-pack.yml'), or a
+    missing leading `evidence/` segment must NOT resolve to a real evidence path. INNOCENCE: a
+    single well-formed nested match, or the true zero-match case, must resolve cleanly."
