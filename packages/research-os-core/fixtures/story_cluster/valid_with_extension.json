@@ -1,0 +1,74 @@
+{
+  "story_cluster_id": "60000000-0000-4000-8000-000000000003",
+  "story_cluster_family_id": "60000000-0000-4000-8000-000000100003",
+  "revision": 1,
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "predecessor_refs": [],
+  "canonical_event_ref": {
+    "event_id": "30000000-0000-4000-8000-000000000005",
+    "object_hash": "0000000000000000000000000000000000000000000000000000000000000141"
+  },
+  "members": [
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000005",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000141"
+      },
+      "relationship": "same_event",
+      "source_group_id": "com.example.source_group_d",
+      "relation_score": 1.0
+    },
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000006",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000142"
+      },
+      "relationship": "translation",
+      "source_group_id": "com.example.source_group_e",
+      "relation_score": 0.4
+    }
+  ],
+  "independent_source_groups": [
+    "com.example.source_group_d",
+    "com.example.source_group_e"
+  ],
+  "decision": {
+    "layers_run": ["exact", "normalized", "near", "semantic", "human"],
+    "thresholds_version": "2026.1",
+    "verdict": "review",
+    "reasons": ["com.example.ambiguous_translation"],
+    "decided_by": "human",
+    "decided_at": "2026-01-17T00:00:00Z"
+  },
+  "recorded_at": "2026-01-17T00:05:00Z",
+  "classification": {
+    "risk_class": "amber",
+    "sensitivity": "internal"
+  },
+  "producer": {
+    "name": "com.example.story_clusterer",
+    "version": "1.1.0"
+  },
+  "lineage": {
+    "run_id": "60000000-0000-4000-8000-000000900004",
+    "code_version": "1.1.0",
+    "model_version": "1.0.0",
+    "input_hashes": [
+      "0000000000000000000000000000000000000000000000000000000000000143"
+    ]
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "extensions": {
+    "com.example.cluster-note": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "synthetic_note_code": "fixture-only"
+      }
+    }
+  },
+  "object_hash": "0a1b42bfc28b8244fd149053eecbc3466873b38a22b6887601aef89977532a6a"
+}

@@ -1,0 +1,54 @@
+{
+  "evidence_id": "40000000-0000-4000-8000-000000000003",
+  "evidence_family_id": "com.example.evidence_family_001",
+  "supersedes_evidence_ref": {
+    "evidence_id": "40000000-0000-4000-8000-000000000003",
+    "object_hash": "00000000000000000000000000000000000000000000000000000000000003e7"
+  },
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_event_ref": {
+    "event_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "0000000000000000000000000000000000000000000000000000000000000065"
+  },
+  "document_id": "doc-source-001",
+  "document_version_id": "rev-2026-02-01",
+  "document_content_hash": "000000000000000000000000000000000000000000000000000000000000007a",
+  "source_span": {
+    "locator": "para-12",
+    "start": 100,
+    "end": 260,
+    "quote_hash": "000000000000000000000000000000000000000000000000000000000000007b"
+  },
+  "source_tier": "com.example.primary_source",
+  "stance": "supports",
+  "times": {
+    "observed_at": "2026-02-05T00:05:00Z",
+    "recorded_at": "2026-02-05T00:10:00Z"
+  },
+  "provenance": {
+    "extractor": "com.example.pdf_extractor",
+    "extractor_version": "1.1.0",
+    "run_id": "40000000-0000-4000-8000-000000900003",
+    "extraction_input_hash": "000000000000000000000000000000000000000000000000000000000000007c"
+  },
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal",
+    "rights": "internal_use"
+  },
+  "review_state": "human_approved",
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "extensions": {
+    "com.example.evidence-note": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "synthetic_note_code": "fixture-only"
+      }
+    }
+  },
+  "object_hash": "8b9be6a17da6d1d8f376978361a0a92b5e76151ab9debcc22ea4e18c5419ad9d"
+}

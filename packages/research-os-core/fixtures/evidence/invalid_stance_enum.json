@@ -1,0 +1,47 @@
+{
+  "evidence_id": "40000000-0000-4000-8000-000000000001",
+  "evidence_family_id": "com.example.evidence_family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_event_ref": {
+    "event_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "0000000000000000000000000000000000000000000000000000000000000065"
+  },
+  "document_id": "doc-source-001",
+  "document_version_id": "rev-2026-01-01",
+  "document_content_hash": "0000000000000000000000000000000000000000000000000000000000000066",
+  "source_span": {
+    "locator": "para-12",
+    "start": 100,
+    "end": 240,
+    "page": 2,
+    "section": "3.2",
+    "quote_hash": "0000000000000000000000000000000000000000000000000000000000000067"
+  },
+  "source_tier": "com.example.primary_source",
+  "stance": "maybe",
+  "times": {
+    "published_at": "2026-01-05T00:00:00Z",
+    "observed_at": "2026-01-05T00:05:00Z",
+    "valid_from": "2026-01-05T00:00:00Z",
+    "valid_to": "2027-01-05T00:00:00Z",
+    "recorded_at": "2026-01-05T00:10:00Z"
+  },
+  "provenance": {
+    "extractor": "com.example.pdf_extractor",
+    "extractor_version": "1.0.0",
+    "run_id": "40000000-0000-4000-8000-000000900001",
+    "extraction_input_hash": "0000000000000000000000000000000000000000000000000000000000000068"
+  },
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal",
+    "rights": "internal_use"
+  },
+  "review_state": "machine_checked",
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "6f6e61a030de066f72d3d6093b551d08f4a1cb785a484f62dd3d8651bbcbb920"
+}

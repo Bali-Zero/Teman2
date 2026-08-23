@@ -1,0 +1,51 @@
+{
+  "story_cluster_id": "60000000-0000-4000-8000-000000000002",
+  "story_cluster_family_id": "60000000-0000-4000-8000-000000100002",
+  "revision": 1,
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "predecessor_refs": [],
+  "canonical_event_ref": {
+    "event_id": "30000000-0000-4000-8000-000000000004",
+    "object_hash": "0000000000000000000000000000000000000000000000000000000000000137"
+  },
+  "members": [
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000004",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000137"
+      },
+      "relationship": "same_event",
+      "source_group_id": "com.example.source_group_c",
+      "relation_score": 1.0
+    }
+  ],
+  "independent_source_groups": ["com.example.source_group_c"],
+  "decision": {
+    "layers_run": ["exact"],
+    "thresholds_version": "2026.1",
+    "verdict": "merged",
+    "reasons": ["com.example.single_member"],
+    "decided_by": "deterministic",
+    "decided_at": "2026-01-16T00:00:00Z"
+  },
+  "recorded_at": "2026-01-16T00:05:00Z",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "producer": {
+    "name": "com.example.story_clusterer",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "run_id": "60000000-0000-4000-8000-000000900003",
+    "code_version": "1.0.0",
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "e30846f521838149389fc5ad9d4520735fd17e56043c05f7584ffef4d558d759"
+}

@@ -1,0 +1,52 @@
+{
+  "event_id": "30000000-0000-4000-8000-000000000001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "event_type": "com.example.regulatory_update_observed",
+  "producer": {
+    "name": "com.example.intel_ingestor",
+    "version": "1.0.0",
+    "machine_class": "cloud_batch"
+  },
+  "source": {
+    "uri": "https://example.gov/regulation/2026-001",
+    "native_id": "reg-2026-001",
+    "canonical_url": "https://example.gov/regulation/2026-001",
+    "source_type": "government_gazette",
+    "jurisdiction": "id"
+  },
+  "times": {
+    "published_at": "2026-01-01T00:00:00Z",
+    "observed_at": "2026-01-01T08:05:00+08:00",
+    "ingested_at": "2026-01-01T00:10:00Z"
+  },
+  "identity": {
+    "content_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+    "normalized_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+    "idempotency_key": "com.example.intel_ingestor:reg-2026-001"
+  },
+  "classification": {
+    "language": "en",
+    "domain": "visa",
+    "risk_class": "green",
+    "sensitivity": "public",
+    "rights": "public_domain"
+  },
+  "lineage": {
+    "pipeline_run_id": "30000000-0000-4000-8000-000000900001",
+    "input_event_refs": [],
+    "parser_version": "1.0.0",
+    "model_version": "1.0.0",
+    "prompt_version": "1.0.0"
+  },
+  "payload_ref": {
+    "ref_type": "reference",
+    "uri": "s3://research-os-fixtures/synthetic/event-001.json",
+    "content_hash": "0000000000000000000000000000000000000000000000000000000000000003"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "a31e373efabae4cd53430cd1e889a61010353dbc46128cc583f90a5715d55182"
+}

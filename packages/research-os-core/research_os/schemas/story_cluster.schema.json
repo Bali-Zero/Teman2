@@ -1,0 +1,404 @@
+{
+  "$defs": {
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "EventRef": {
+      "additionalProperties": false,
+      "description": "Exact reference to one immutable ``IntelEvent`` revision.\n\nReused verbatim (same two fields) wherever section 4/5/11 reference an\n``IntelEvent`` by ``{event_id, object_hash}`` -- ``IntelEvent.lineage.\ninput_event_refs``, ``Evidence.source_event_ref``, and ``StoryCluster.\ncanonical_event_ref``/``members[].event_ref``.",
+      "properties": {
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["event_id", "object_hash"],
+      "title": "EventRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "StoryClusterDecision": {
+      "additionalProperties": false,
+      "description": "``decision: {layers_run, thresholds_version, verdict, reasons, decided_by, decided_at}``.",
+      "properties": {
+        "decided_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decided_by": {
+          "enum": ["deterministic", "model", "human"],
+          "title": "Decided By",
+          "type": "string"
+        },
+        "layers_run": {
+          "items": {
+            "enum": ["exact", "normalized", "near", "semantic", "human"],
+            "type": "string"
+          },
+          "title": "Layers Run",
+          "type": "array"
+        },
+        "reasons": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "thresholds_version": {
+          "minLength": 1,
+          "title": "Thresholds Version",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": ["merged", "split", "review"],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "layers_run",
+        "thresholds_version",
+        "verdict",
+        "reasons",
+        "decided_by",
+        "decided_at"
+      ],
+      "title": "StoryClusterDecision",
+      "type": "object"
+    },
+    "StoryClusterLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {run_id, code_version, model_version?, input_hashes}``.",
+      "properties": {
+        "code_version": {
+          "minLength": 1,
+          "title": "Code Version",
+          "type": "string"
+        },
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["run_id", "code_version", "input_hashes"],
+      "title": "StoryClusterLineage",
+      "type": "object"
+    },
+    "StoryClusterMember": {
+      "additionalProperties": false,
+      "description": "``members`` item: ``{event_ref, relationship, source_group_id, relation_score}``.",
+      "properties": {
+        "event_ref": {
+          "$ref": "#/$defs/EventRef"
+        },
+        "relation_score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Relation Score",
+          "type": "number"
+        },
+        "relationship": {
+          "enum": [
+            "exact",
+            "near",
+            "syndicated",
+            "translation",
+            "update",
+            "same_event"
+          ],
+          "title": "Relationship",
+          "type": "string"
+        },
+        "source_group_id": {
+          "minLength": 1,
+          "title": "Source Group Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_ref",
+        "relationship",
+        "source_group_id",
+        "relation_score"
+      ],
+      "title": "StoryClusterMember",
+      "type": "object"
+    },
+    "StoryClusterPredecessorRef": {
+      "additionalProperties": false,
+      "description": "``predecessor_refs`` item: ``{story_cluster_id, object_hash, operation}``.",
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "operation": {
+          "enum": ["merge", "split", "canonical_change"],
+          "title": "Operation",
+          "type": "string"
+        },
+        "story_cluster_id": {
+          "format": "uuid",
+          "title": "Story Cluster Id",
+          "type": "string"
+        }
+      },
+      "required": ["story_cluster_id", "object_hash", "operation"],
+      "title": "StoryClusterPredecessorRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "canonical_event_ref": {
+      "$ref": "#/$defs/EventRef"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/StoryClusterDecision"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "independent_source_groups": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Independent Source Groups",
+      "type": "array"
+    },
+    "lineage": {
+      "$ref": "#/$defs/StoryClusterLineage"
+    },
+    "members": {
+      "items": {
+        "$ref": "#/$defs/StoryClusterMember"
+      },
+      "title": "Members",
+      "type": "array"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "predecessor_refs": {
+      "items": {
+        "$ref": "#/$defs/StoryClusterPredecessorRef"
+      },
+      "title": "Predecessor Refs",
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "revision": {
+      "exclusiveMinimum": 0,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "story_cluster_family_id": {
+      "format": "uuid",
+      "title": "Story Cluster Family Id",
+      "type": "string"
+    },
+    "story_cluster_id": {
+      "format": "uuid",
+      "title": "Story Cluster Id",
+      "type": "string"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    }
+  },
+  "required": [
+    "story_cluster_id",
+    "story_cluster_family_id",
+    "revision",
+    "contract_version",
+    "tenant",
+    "predecessor_refs",
+    "canonical_event_ref",
+    "members",
+    "independent_source_groups",
+    "decision",
+    "recorded_at",
+    "classification",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "StoryCluster",
+  "type": "object"
+}

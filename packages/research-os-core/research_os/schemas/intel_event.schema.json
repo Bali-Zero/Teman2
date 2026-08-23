@@ -1,0 +1,512 @@
+{
+  "$defs": {
+    "DurablePayloadReference": {
+      "additionalProperties": false,
+      "description": "The \"durable reference\" half of ``payload_ref`` -- an out-of-line pointer.",
+      "properties": {
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "ref_type": {
+          "const": "reference",
+          "title": "Ref Type",
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": ["ref_type", "uri", "content_hash"],
+      "title": "DurablePayloadReference",
+      "type": "object"
+    },
+    "EventRef": {
+      "additionalProperties": false,
+      "description": "Exact reference to one immutable ``IntelEvent`` revision.\n\nReused verbatim (same two fields) wherever section 4/5/11 reference an\n``IntelEvent`` by ``{event_id, object_hash}`` -- ``IntelEvent.lineage.\ninput_event_refs``, ``Evidence.source_event_ref``, and ``StoryCluster.\ncanonical_event_ref``/``members[].event_ref``.",
+      "properties": {
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["event_id", "object_hash"],
+      "title": "EventRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "InlinePublicPayload": {
+      "additionalProperties": false,
+      "description": "The \"validated inline public payload\" half of ``payload_ref``.",
+      "properties": {
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "ref_type": {
+          "const": "inline_public",
+          "title": "Ref Type",
+          "type": "string"
+        }
+      },
+      "required": ["ref_type", "payload", "content_hash"],
+      "title": "InlinePublicPayload",
+      "type": "object"
+    },
+    "IntelEventClassification": {
+      "additionalProperties": false,
+      "description": "``classification: {language?, domain?, risk_class, sensitivity, rights?}``.",
+      "properties": {
+        "domain": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Domain"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        },
+        "rights": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "IntelEventClassification",
+      "type": "object"
+    },
+    "IntelEventIdentity": {
+      "additionalProperties": false,
+      "description": "``identity: {content_hash, normalized_hash?, idempotency_key}``.",
+      "properties": {
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "minLength": 1,
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "normalized_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalized Hash"
+        }
+      },
+      "required": ["content_hash", "idempotency_key"],
+      "title": "IntelEventIdentity",
+      "type": "object"
+    },
+    "IntelEventLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {pipeline_run_id, input_event_refs, parser_version?, model_version?, prompt_version?}``.",
+      "properties": {
+        "input_event_refs": {
+          "items": {
+            "$ref": "#/$defs/EventRef"
+          },
+          "title": "Input Event Refs",
+          "type": "array"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "parser_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parser Version"
+        },
+        "pipeline_run_id": {
+          "format": "uuid",
+          "title": "Pipeline Run Id",
+          "type": "string"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        }
+      },
+      "required": ["pipeline_run_id", "input_event_refs"],
+      "title": "IntelEventLineage",
+      "type": "object"
+    },
+    "IntelEventProducer": {
+      "additionalProperties": false,
+      "description": "``producer: {name, version, machine_class}`` -- section 4.",
+      "properties": {
+        "machine_class": {
+          "minLength": 1,
+          "title": "Machine Class",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version", "machine_class"],
+      "title": "IntelEventProducer",
+      "type": "object"
+    },
+    "IntelEventSource": {
+      "additionalProperties": false,
+      "description": "``source: {uri, native_id?, canonical_url?, source_type, jurisdiction?}``.",
+      "properties": {
+        "canonical_url": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Canonical Url"
+        },
+        "jurisdiction": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Jurisdiction"
+        },
+        "native_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Native Id"
+        },
+        "source_type": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Source Type",
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": ["uri", "source_type"],
+      "title": "IntelEventSource",
+      "type": "object"
+    },
+    "IntelEventTimes": {
+      "additionalProperties": false,
+      "description": "``times: {published_at?, observed_at, ingested_at}``.",
+      "properties": {
+        "ingested_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Ingested At",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        }
+      },
+      "required": ["observed_at", "ingested_at"],
+      "title": "IntelEventTimes",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "classification": {
+      "$ref": "#/$defs/IntelEventClassification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "event_id": {
+      "format": "uuid",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "event_type": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Event Type",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "identity": {
+      "$ref": "#/$defs/IntelEventIdentity"
+    },
+    "lineage": {
+      "$ref": "#/$defs/IntelEventLineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "payload_ref": {
+      "discriminator": {
+        "mapping": {
+          "inline_public": "#/$defs/InlinePublicPayload",
+          "reference": "#/$defs/DurablePayloadReference"
+        },
+        "propertyName": "ref_type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/DurablePayloadReference"
+        },
+        {
+          "$ref": "#/$defs/InlinePublicPayload"
+        }
+      ],
+      "title": "Payload Ref"
+    },
+    "producer": {
+      "$ref": "#/$defs/IntelEventProducer"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "source": {
+      "$ref": "#/$defs/IntelEventSource"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "times": {
+      "$ref": "#/$defs/IntelEventTimes"
+    }
+  },
+  "required": [
+    "event_id",
+    "contract_version",
+    "tenant",
+    "event_type",
+    "producer",
+    "source",
+    "times",
+    "identity",
+    "classification",
+    "lineage",
+    "payload_ref",
+    "retention",
+    "object_hash"
+  ],
+  "title": "IntelEvent",
+  "type": "object"
+}
