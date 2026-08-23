@@ -217,42 +217,50 @@ PY
     fi
 fi
 
-# Receptor 6: fleet session visibility (scripts/fleet_sessions.py) — until
+# Receptor 6: fleet session VISIBILITY (scripts/fleet_sessions.py). Until
 # 2026-08-23 no organ could see the Claude Code sessions running on the OTHER
-# machines, so a lane that DECLARED a long autonomous run and died minutes in
-# stayed green everywhere. Canonical miss: session f9dd23da on this very Mini —
-# its first message was THIS healer's mandate ("loop 4h"), its transcript spans
-# 6m31s, launchd exited 0, and nothing anywhere raised a hand (superscar #2).
-# Exit 1 = findings; exit 2 = BLIND, no host probed at all.
-# ACTIONABLE fires on a DEAD-BUT-DECLARED-LONG (a genuinely dead organ) or on
-# BLIND (the receptor itself lost coverage — same semantics as receptor 4's
-# exit 2). A PARTIALLY unreachable fleet is usually a sleeping laptop, so it
-# takes the deduped Telegram ladder instead of spawning an LLM session every
-# 4h; the mandate's step 1 still reports it in the ledger on any tick that runs.
+# machines - the healer that is supposed to notice dead organs was blind to
+# three quarters of them, and a fleet audit had to be done by hand.
+#
+# WHAT THIS RECEPTOR FIRES ON, and deliberately what it does NOT:
+#   exit 2  = BLIND, no host answered at all -> the receptor itself lost its
+#             senses, same semantics as receptor 4's exit 2. ACTIONABLE.
+#   UNREACHABLE host = coverage lost on that machine. Deduped Telegram: a
+#             sleeping laptop must not spawn an LLM session every 4h, but it
+#             must not read as silence either.
+#   DECLARED-SPAN-UNMET rows are REPORTED by the tool, never alerted on here.
+#             Measured 2026-08-23: the detector returned 10 such rows and all
+#             10 were HEALTHY healer ticks - this plist's own StartInterval is
+#             14400s, so "loop 4h" in a mandate TITLE is the cron cadence, not
+#             the session's runtime. Wiring an alarm to a signal with a
+#             measured 10/10 false-positive rate is how an alarm gets muted.
 if [ -f "scripts/fleet_sessions.py" ]; then
-    FLEET_JSON=$(python3 scripts/fleet_sessions.py --json 2>/dev/null)
+    # FLEET_HOSTS_OVERRIDE is a TEST SEAM, same family as HEALER_REPO /
+    # HEALER_CASCADE_BIN above: it lets a session exercise this receptor's
+    # coverage-loss path (and its Telegram ladder) without taking a real machine
+    # down. Unset in production, where the tool's own default local,pro,air wins.
+    FLEET_JSON=$(python3 scripts/fleet_sessions.py --json ${FLEET_HOSTS_OVERRIDE:+--hosts "$FLEET_HOSTS_OVERRIDE"} 2>/dev/null)
     FLEET_EXIT=$?
     if [ "$FLEET_EXIT" -eq 2 ]; then
         ACTIONABLE=1; REASONS="${REASONS}fleet-sessions-blind "
+        telegram p0 "healer-mini:fleet-blind" "🛰 FLOTTA (Mini): fleet_sessions non ha sondato NESSUN host - visibilita cross-macchina persa. Dettaglio: python3 scripts/fleet_sessions.py --table"
     elif [ "$FLEET_EXIT" -eq 1 ]; then
+        # Read the SAME keys the tool emits (W120: a probe that reads a key the
+        # reporter never writes zeroes its own alarm, silently).
         FLEET_SUM=$(printf '%s' "$FLEET_JSON" | python3 -c "
 import json, sys
 try:
     s = json.load(sys.stdin).get('summary', {})
-    print('%d %d %s' % (s.get('dead_but_declared_long', 0),
-                        s.get('hosts_unreachable', 0),
-                        ','.join(s.get('unreachable_hosts', [])) or '-'))
+    print('%d %s' % (s.get('hosts_unreachable', 0),
+                     ','.join(s.get('unreachable_hosts', [])) or '-'))
 except Exception:
-    print('0 0 -')
+    print('0 -')
 " 2>/dev/null)
-        FLEET_DEAD=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f1)
-        FLEET_UNREACH=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f2)
-        FLEET_HOSTS=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f3)
-        if [ "${FLEET_DEAD:-0}" -gt 0 ] 2>/dev/null; then
-            ACTIONABLE=1; REASONS="${REASONS}fleet:${FLEET_DEAD}-dead-but-declared-long "
-        fi
+        FLEET_UNREACH=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f1)
+        FLEET_HOSTS=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f2)
         if [ "${FLEET_UNREACH:-0}" -gt 0 ] 2>/dev/null; then
-            telegram digest "healer-mini:fleet-unreachable" "🛰 FLOTTA (Mini): ${FLEET_UNREACH} host non raggiungibile (${FLEET_HOSTS}) — sessioni non osservabili su quelle macchine. Dettaglio: python3 scripts/fleet_sessions.py --table"
+            ACTIONABLE=1; REASONS="${REASONS}fleet:${FLEET_UNREACH}-host-unreachable "
+            telegram digest "healer-mini:fleet-unreachable" "🛰 FLOTTA (Mini): ${FLEET_UNREACH} host non raggiungibile (${FLEET_HOSTS}) - sessioni non osservabili la. Dettaglio: python3 scripts/fleet_sessions.py --table"
         fi
     fi
 fi

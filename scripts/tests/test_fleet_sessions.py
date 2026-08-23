@@ -8,7 +8,9 @@ HOME=tmp_path and mocked subprocess calls.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -93,11 +95,11 @@ def _mock_run_host_probe(return_code=0, stdout="{}", stderr="", exc=None):
 # 1. GUILT — canonical dead-but-declared-long
 # ---------------------------------------------------------------------------
 
-def test_guilt_dead_but_declared_long(tmp_path, monkeypatch, capsys):
+def test_guilt_declared_span_unmet(tmp_path, monkeypatch, capsys):
     """
     A session whose first user message declares a long run ("loop 4h"),
     NO live process, transcript 193 minutes stale, span 6.5 minutes
-    => DEAD-BUT-DECLARED-LONG.
+    => DECLARED-SPAN-UNMET.
     """
     monkeypatch.setenv("HOME", str(tmp_path))
     NOW = 1690000000.0
@@ -140,7 +142,7 @@ def test_guilt_dead_but_declared_long(tmp_path, monkeypatch, capsys):
     assert len(sessions) == 1
     s = sessions[0]
     assert s["session_id"] == "f9dd23da-8d36-4b7b-957d-077091090fec"
-    assert s["verdict"] == fs.DEAD_BUT_DECLARED_LONG
+    assert s["verdict"] == fs.DECLARED_SPAN_UNMET
     assert s["declared_long"] is True
     assert s["declared_span_min"] == 240
     assert s["transcript_span_min"] == 6.5
@@ -195,8 +197,8 @@ def test_innocence_alive_same_long_declaration(tmp_path, monkeypatch):
     assert s["alive"] == fs.ALIVE
     assert s["verdict"] == fs.PRODUCING   # fresh, so PRODUCING
     assert s["declared_long"] is True
-    # not flagged as DEAD-BUT-DECLARED-LONG
-    assert s["verdict"] != fs.DEAD_BUT_DECLARED_LONG
+    # not flagged as DECLARED-SPAN-UNMET
+    assert s["verdict"] != fs.DECLARED_SPAN_UNMET
 
 
 # ---------------------------------------------------------------------------
@@ -564,7 +566,7 @@ def test_alive_unmapped_matching_cwd(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_exit_code_zero_no_findings(tmp_path, monkeypatch, capsys):
-    """All hosts ok, no DEAD-BUT-DECLARED-LONG => exit 0."""
+    """All hosts ok, no DECLARED-SPAN-UNMET => exit 0."""
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr(time, "time", lambda: 1690000000.0)
     monkeypatch.setattr(subprocess, "check_output", _make_mock_check_output("", ""))
@@ -573,22 +575,46 @@ def test_exit_code_zero_no_findings(tmp_path, monkeypatch, capsys):
     assert exit_code == 0
 
 
-def test_exit_code_one_dead_but_declared_long(tmp_path, monkeypatch, capsys):
-    """At least one DEAD-BUT-DECLARED-LONG => exit 1."""
-    monkeypatch.setenv("HOME", str(tmp_path))
-    NOW = 1690000000.0
-    monkeypatch.setattr(time, "time", lambda: NOW)
-    lines = [
-        {"type": "user", "message": {"content": "loop 4h"}, "timestamp": "2026-08-23T06:00:00Z"},
-        {"type": "assistant", "message": {"content": "ok"}, "timestamp": "2026-08-23T06:05:00Z"},
-    ]
-    _write_transcript(
-        tmp_path, "-tmp", "sid", lines, NOW - 193 * 60,
-    )
-    monkeypatch.setattr(subprocess, "check_output", _make_mock_check_output("", ""))
-    exit_code = fs.main(["--hosts", "local", "--json"])  # host-explicit: a bare main() would ssh to pro/air for real
-    assert exit_code == 1
+def test_exit_code_declared_span_unmet_is_reported_but_not_actionable():
+    """A DECLARED-SPAN-UNMET row is REPORTED and does NOT move the exit code.
 
+    Measured on the live fleet 2026-08-23: 10 of 10 such rows were HEALTHY
+    healer ticks -- `com.nuzantara.healer.4h.plist` has StartInterval 14400, so
+    "loop 4h" in a mandate's TITLE is the cron cadence, not the session's
+    runtime. The exit code is reserved for coverage loss (1) and blindness (2);
+    an exit code that cries "finding" when nothing is actionable trains its only
+    consumer to stop reading it.
+    """
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        report = {
+            "host": "remote", "machine": "R", "status": "OK", "skipped_unreadable": 0,
+            "skipped_stale": 0,
+            "sessions": [{
+                "session_id": "sid", "project_dir": "-tmp", "cwd": "-tmp",
+                "mtime_epoch": 1.0, "mtime_iso": "2026-08-23T00:00:00Z",
+                "stale_min": 193.0, "size_bytes": 10, "identity": "loop 4h",
+                "declared_long": True, "declared_span_min": 240,
+                "transcript_span_min": 5.0, "subagents": 0,
+                "alive": fs.NO_PROCESS, "verdict": fs.DECLARED_SPAN_UNMET,
+            }],
+        }
+        monkeypatch.setattr(
+            fs, "run_host_probe",
+            _mock_run_host_probe(return_code=0, stdout=json.dumps(report)),
+        )
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            exit_code = fs.main(["--hosts", "remote", "--json"])
+        data = json.loads(buf.getvalue())
+        # the row IS reported ...
+        assert data["summary"]["declared_span_unmet"] == 1
+        assert data["hosts"][0]["sessions"][0]["verdict"] == fs.DECLARED_SPAN_UNMET
+        # ... and the run is still clean, because nothing was lost
+        assert exit_code == 0
+        assert data["summary"]["hosts_unreachable"] == 0
+    finally:
+        monkeypatch.undo()
 
 def test_exit_code_one_unreachable(tmp_path, monkeypatch, capsys):
     """A host unreachable => exit 1."""
@@ -621,7 +647,7 @@ def test_exit_code_blind_all_unreachable(tmp_path, monkeypatch, capsys):
 # ---------------------------------------------------------------------------
 
 def test_json_output_contract(tmp_path, monkeypatch, capsys):
-    """--json emits the pinned contract with summary.dead_but_declared_long etc."""
+    """--json emits the pinned contract with summary.declared_span_unmet etc."""
     monkeypatch.setenv("HOME", str(tmp_path))
     NOW = 1690000000.0
     monkeypatch.setattr(time, "time", lambda: NOW)
@@ -643,7 +669,7 @@ def test_json_output_contract(tmp_path, monkeypatch, capsys):
     captured = capsys.readouterr().out
     data = json.loads(captured)
     summary = data["summary"]
-    assert summary["dead_but_declared_long"] == 1
+    assert summary["declared_span_unmet"] == 1
     assert summary["hosts_unreachable"] == 0
     assert summary["unreachable_hosts"] == []
     assert "findings" in summary
@@ -694,8 +720,50 @@ GUILT_SPANS = [
     ("# HEALER-MANDATE — sessione autonoma di cura (Mini-Pro2, loop 4h) ...", 240),
     ("# HEALER-PRO-MANDATE — sessione autonoma di cura runtime (Pro, loop 6h)", 360),
     ("Questa lane gira H24 sul Mini.", 1440),
-    ("Run this as a 90m loop and report.", 90),
+    # Refuter kimi-code/k3 named these as MISSED by a <=3-char adjacency, and
+    # "loop di 4 ore" is exactly how Zero writes it. Short filler words between
+    # the run word and its duration are now allowed.
+    ("loop di 4 ore", 240),
+    ("Gira in loop di 6 ore e non fermarti.", 360),
+    ("Run autonomously for the next 4 hours", 240),
+    ("lavora in modo autonomo per le prossime 6 ore", 360),
+    ("run continuously for 90 minutes", 90),
 ]
+
+# The match is DELIBERATELY asymmetric: run-word THEN duration, never the
+# reverse. "48h nonstop" / "a 2h continuous integration run" are noun phrases in
+# which the duration modifies something else, and they fired on plain narrative.
+# Losing "4h loop" is the accepted price -- no real mandate on this fleet writes
+# it that way.
+REVERSE_ORDER_INNOCENCE = [
+    "the CI was green after a 2h continuous integration run",
+    "the daemon ran 48h nonstop before crashing",
+    "after 3h continuous failures we gave up",
+    "Run this as a 90m loop and report.",
+]
+
+
+def test_declared_long_reverse_order_does_not_fire():
+    """Duration-then-run-word is narrative, not a declaration (guard-over-match)."""
+    for text in REVERSE_ORDER_INNOCENCE:
+        is_long, span = fs.declared_long(text)
+        assert is_long is False, (text, span)
+        assert span is None
+
+
+def test_declared_long_only_reads_the_declaration_zone():
+    """A duration deep in the BODY is subject matter, not a declaration.
+
+    Measured: every false accusation on the live fleet came from body prose --
+    "crash-looped for 73.5 hours", "~3512 restarts (~29 h) predate the upgrade",
+    "inbound stale 3h during business hours".
+    """
+    body_only = "READ-ONLY audit. " + ("padding " * 80) + " it crash-looped for 73 hours."
+    assert len(body_only) > fs.DECLARATION_ZONE_CHARS
+    assert fs.declared_long(body_only) == (False, None)
+    # the SAME phrase inside the zone is still refused, because `crash-loop` is
+    # a hyphen compound naming a failure mode, not an instruction
+    assert fs.declared_long("it crash-looped for 73 hours.") == (False, None)
 
 def test_declared_long_guilt_spans():
     for text, expected in GUILT_SPANS:
@@ -800,4 +868,26 @@ def test_classify_verdict_alive_not_dead_despite_long(tmp_path, monkeypatch):
         stale_min_threshold=45,
     )
     assert v == fs.STALE  # stale, but NOT accused: alive sessions are never flagged
-    assert v != fs.DEAD_BUT_DECLARED_LONG
+    assert v != fs.DECLARED_SPAN_UNMET
+
+
+# ---------------------------------------------------------------------------
+# identity slice: the wrapper-tag strip (measured usability defect, 2026-08-23)
+# ---------------------------------------------------------------------------
+
+def test_identity_slice_strips_leading_harness_wrapper_tag():
+    """`<teammate-message ...>` ate 42 of the 90 characters on every dispatched lane."""
+    raw = '<teammate-message teammate_id="team-lead"> Build five canonical contract kinds for Research OS'
+    ident = fs.identity_slice(raw)
+    assert not ident.startswith("<teammate-message")
+    assert ident.startswith("Build five canonical")
+    assert len(ident) <= 90
+
+
+def test_identity_slice_does_not_strip_a_mid_text_angle_bracket():
+    """Innocence twin: only a LEADING wrapper tag goes; real content is untouched."""
+    raw = "Fix the parser so <div> tags survive the sanitiser"
+    assert fs.identity_slice(raw) == raw
+    # and a non-wrapper leading tag is left alone
+    raw2 = "<important> read this first"
+    assert fs.identity_slice(raw2) == raw2

@@ -1,21 +1,67 @@
 #!/usr/bin/env python3
 """
-fleet_sessions — GEAR 2, builder = Codex
+fleet_sessions — cross-machine visibility over Claude Code sessions.
 
-DISEASE KILLED: phantom organ death — sessions that declare a long-running loop
-(e.g. "loop 4h") but silently die after a few minutes with no alarm, as measured
-on Mini 2026-08-23.  The classic scar is superscar #2 "Esiste != Armato": session
-f9dd23da-8d36-4b7b-957d-077091090fec, first_ts → last_ts = 6m31s, declared 240m.
+THE BLINDNESS IT CURES: no organ could see the sessions running on another
+machine. The healer on Mini is the organ meant to notice dead organs, and three
+quarters of them — every lane on Pro and M5 — were outside its senses. A fleet
+audit had to be done by hand, by three parallel subagents, because there was no
+command that answered "what is running, where, and is it still moving?".
 
-TRAPS ENCODED (so the next reader does not rediscover them):
-  - `ls` is eza on this fleet; never shell out to `ls`.
-  - `ps | grep claude-code/bin/claude` misses main sessions on Pro and Mini.
-  - `lsof … .jsonl` finds nothing — live sessions do not hold transcripts open.
-  - Subagents carry `--parent-session-id`, giving an exact alive mapping.
-  - `until` is an ordinary English word; it must be narrowed to loop contexts.
-  - A run that probed nothing must NOT report clean (blind-scan guard, exit 2).
-  - Transcripts never leave the host that owns them.
-  - Hard boundaries: never read settings, env, plists; never print full bodies.
+This is that command. From any machine it reports, per host: every recent
+transcript, how stale it is, the lane's identity (a capped 90-char slice of its
+first message), a subagent count, an evidence-based liveness state, and a
+verdict. Per-host failures are isolated — an unreachable host is one row, never
+an exception that kills the run — and a run that probed nothing exits 2 rather
+than reporting clean (superscar #2: a lint that scanned nothing is not "clean").
+
+WHAT THE `DECLARED-SPAN-UNMET` VERDICT IS, AND WHAT IT IS NOT
+------------------------------------------------------------
+It is a FACT: the session's opening named a duration, and its transcript spans
+less than that, and it is stale, and no live process could be attributed to it.
+
+It is NOT an accusation of death. This module was commissioned to flag exactly
+that — "a session declared `loop 4h` and stopped after minutes, launchd exited
+0, no alarm anywhere" — with session f9dd23da on Mini as the canonical case.
+Run against the live fleet, the detector returned TEN such rows and every one
+was a HEALER TICK. The premise was wrong, and the measurement that disproves it
+is this: `com.nuzantara.healer.4h.plist` carries `StartInterval 14400`, and the
+mandate's own Rule 6 budgets "max ~40 min di lavoro" per tick. "loop 4h" in that
+document's TITLE is the CRON CADENCE, not the session's runtime. A healer tick
+that works for eleven minutes and exits 0 is behaving correctly — verified in
+`~/logs/healer/healer.log`: spawned 15:12:12, `session exit=0` at 15:23:16, with
+a real result.
+
+So the verdict is reported and never alerted on. The healer consumes only
+UNREACHABLE and BLIND from this tool — states that mean "coverage was lost",
+which is unambiguous. Wiring an alerting organ to a signal with a measured
+10-of-10 false-positive rate is how a detector gets muted, and a muted detector
+is the disease this tool exists to cure.
+
+Deciding "this document declares its own runtime" from "this document's title
+names a cron cadence" is not recoverable from the first message's text — three
+successive narrowings of `declared_long` each traded one error direction for the
+other. The real signal has to come from the runner, not the prose: a wrapper
+that writes its own expected duration into a sidecar the way it already writes a
+heartbeat. That is a design change, not a regex, and it is written up rather
+than guessed at.
+
+TRAPS ENCODED (each measured on the fleet 2026-08-23, so nobody re-finds them):
+  - `ls` is eza here and `find` is bfs; never shell out to either.
+  - `ps` without `-e` sees 25 processes of 693, and 2 of 4 live subagents.
+  - `ps | grep claude-code/bin/claude` false-negatives on Pro and Mini, whose
+    main sessions are argv `claude` and `claude interactive`.
+  - `lsof -c claude` returns ZERO rows on Pro while four sessions run; ask lsof
+    about the PIDs `ps` already classified instead.
+  - `lsof … .jsonl` finds nothing anywhere — a live session does not hold its
+    transcript open, so PID→session_id is not available that way. Say UNMAPPED.
+  - `~/.claude/projects/-Users-<u>-nuzantara` is a SYMLINK to the `-Desktop-`
+    form on Mini and M5: identity is the inode, never the path.
+  - `"claude" in command` matches `not-claude`; discriminate on argv[0].
+  - Transcripts never leave the host that owns them; only counts and the capped
+    identity slice travel.
+  - Hard boundaries: never read settings, env, plists, or credentials; never
+    print a message body beyond the 90-char slice.
 """
 
 import argparse
@@ -41,11 +87,19 @@ UNREACHABLE = "UNREACHABLE"
 PRODUCING = "PRODUCING"
 QUIET = "QUIET"
 STALE = "STALE"
-DEAD_BUT_DECLARED_LONG = "DEAD-BUT-DECLARED-LONG"
+# NOT an accusation of death — a FACT about the transcript. See the module
+# docstring's "WHAT THIS VERDICT IS NOT". Renamed from DEAD-BUT-DECLARED-LONG
+# after the live run disproved that reading (2026-08-23).
+DECLARED_SPAN_UNMET = "DECLARED-SPAN-UNMET"
 
 # argv[0] basenames that ARE a Claude Code session (case-sensitive on purpose:
 # `Claude` with a capital C is the Electron desktop app, not a session).
 SESSION_BINARY_BASENAMES = frozenset({"claude", "claude.exe"})
+
+# A mandate declares its own span in its opening lines. Past this many characters
+# the text is body prose, where durations and loop-words are SUBJECT MATTER, not
+# instructions — see declared_long()'s docstring for the measured evidence.
+DECLARATION_ZONE_CHARS = 400
 
 # Defense-in-depth only — the basename test above is the real discriminator.
 NON_SESSION_MARKERS = (
@@ -143,9 +197,25 @@ def parse_lsof_cwd(text: str) -> Dict[int, str]:
     return pid_cwd
 
 
+_WRAPPER_TAG_RE = re.compile(r"^\s*<(teammate-message|command-name|command-message)\b[^>]*>\s*")
+
+
 def identity_slice(text: str) -> str:
-    """First user message text, whitespace-collapsed, truncated to 90 chars."""
+    """First user message text, whitespace-collapsed, capped at 90 chars.
+
+    This 90-char slice is the ONLY message content that ever leaves the host
+    that owns the transcript, and the cap lives here, in one place, so a test
+    can pin it. The slice is PII-BOUNDED, not PII-free: whatever sits in the
+    first 90 characters of a first message IS emitted, by design.
+
+    A leading harness wrapper tag is stripped first. Measured on the live fleet:
+    `<teammate-message teammate_id="team-lead">` alone consumes 42 of the 90
+    characters, so nearly half of every dispatched lane's identity was spent on
+    a constant prefix that distinguishes nothing — the slice is there to tell
+    two lanes apart, and it could not.
+    """
     collapsed = " ".join(text.split())
+    collapsed = _WRAPPER_TAG_RE.sub("", collapsed)
     return collapsed[:90]
 
 
@@ -190,10 +260,18 @@ def declared_long(text: str) -> Tuple[bool, Optional[int]]:
     if not text:
         return False, None
 
+    # WHERE it looks (refuter K4, both directions confirmed by repro). A mandate
+    # declares its own span in its OPENING — a heading, a first line — never in
+    # paragraph twelve. The BODY is full of durations and loops, because that is
+    # what this fleet's sessions discuss all day; every measured false accusation
+    # came from body text ("crash-looped for 73.5 hours", "~3512 restarts (~29 h)
+    # predate the upgrade", "inbound stale 3h during business hours"). Both real
+    # positives declare themselves inside the first 70 characters.
+    zone = text[:DECLARATION_ZONE_CHARS]
     spans: List[int] = []
 
     # H24 is a span by itself (24h), but only as a standalone token.
-    if re.search(r"(?<![\w-])H24(?![\w-])", text, re.IGNORECASE):
+    if re.search(r"(?<![\w-])H24(?![\w-])", zone, re.IGNORECASE):
         spans.append(1440)
 
     unit_min = {
@@ -201,24 +279,33 @@ def declared_long(text: str) -> Tuple[bool, Optional[int]]:
         "m": 1, "min": 1, "mins": 1, "minute": 1, "minutes": 1, "minuto": 1, "minuti": 1,
     }
     # A run word, NOT preceded by a hyphen (kills `crash-loop`).
-    run_word = r"(?<!-)\b(?:loop|autonomous|autonomo|autonoma|non-?stop|nonstop|continuous(?:ly)?|h24)\b"
+    run_word = (r"(?<!-)\b(?:loop|autonomous(?:ly)?|autonomo|autonoma|autonomia|"
+                r"non-?stop|nonstop|continuous(?:ly)?|h24)\b")
     duration = r"(\d{1,4})\s*(h|hrs?|hours?|ore|ora|m|mins?|minutes?|minuti|minuto)\b"
-    # ADJACENCY, both orders: at most 3 separator chars ("loop 4h", "4h loop",
-    # "loop: 4h", "loop - 6h"). Not a 40-char window.
-    joiner = r"[\s:\-\u2013\u2014,]{0,3}"
+    # A <=3-char adjacency was too TIGHT for how these mandates are really
+    # written: the refuter named "loop di 4 ore" — exactly how Zero writes it —
+    # and "run autonomously for the next 4 hours", both MISSED. That is the
+    # dangerous direction, since catching declared-long sessions is the whole
+    # job. Allow a few short filler words.
+    filler = (r"(?:[\s:,\-]*\b(?:di|for|per|of|the|next|prossime|prossimi|prossima|"
+              r"le|in|modo|a|an|circa|about|around|almeno|at|least|un|una)\b){0,3}"
+              r"[\s:,\-]{0,3}")
 
-    for pat in (run_word + joiner + duration, duration + joiner + run_word):
-        for m in re.finditer(pat, text, re.IGNORECASE):
-            num = int(m.group(1))
-            unit = m.group(2).lower()
-            mult = unit_min.get(unit)
-            if mult is None:
-                continue
-            minutes = num * mult
-            # Sanity floor/ceiling: under 10 minutes is not a "long run"
-            # declaration, and over 7 days is a number that wandered in.
-            if 10 <= minutes <= 7 * 24 * 60:
-                spans.append(minutes)
+    # ORDER is deliberately asymmetric — run-word THEN duration, never the
+    # reverse. "48h nonstop", "a 2h continuous integration run" are noun phrases
+    # where the duration modifies something else, and they fired on narrative.
+    # Losing "4h loop" is the price; no real mandate on this fleet writes it.
+    for m in re.finditer(run_word + filler + duration, zone, re.IGNORECASE):
+        num = int(m.group(1))
+        unit = m.group(2).lower()
+        mult = unit_min.get(unit)
+        if mult is None:
+            continue
+        minutes = num * mult
+        # Sanity floor/ceiling: under 10 minutes is not a "long run"
+        # declaration, and over 7 days is a number that wandered in.
+        if 10 <= minutes <= 7 * 24 * 60:
+            spans.append(minutes)
 
     if not spans:
         return False, None
@@ -250,7 +337,7 @@ def classify_verdict(
             or (transcript_span_min is not None and transcript_span_min < declared_span_min)
         )
     ):
-        verdict = DEAD_BUT_DECLARED_LONG
+        verdict = DECLARED_SPAN_UNMET
 
     return verdict
 
@@ -326,7 +413,7 @@ def probe_local(
     hostname = platform.node()
     projects_dir = os.path.join(home, ".claude", "projects")
     if not os.path.isdir(projects_dir):
-        return {"machine": hostname, "sessions": [], "status": "OK", "skipped_unreadable": 0}
+        return {"machine": hostname, "sessions": [], "status": "OK", "skipped_unreadable": 0, "skipped_stale": 0}
 
     # gather process info
     try:
@@ -377,6 +464,7 @@ def probe_local(
     lookback_sec = lookback_min * 60
     sessions: List[Dict[str, Any]] = []
     skipped_unreadable = 0
+    skipped_stale = 0
 
     # ONE TRANSCRIPT, MANY PATHS (measured live 2026-08-23). On Mini AND on M5,
     # ~/.claude/projects/-Users-<u>-nuzantara is a SYMLINK to
@@ -407,6 +495,16 @@ def probe_local(
                 mtime = st.st_mtime
                 size = st.st_size
                 if now - mtime > lookback_sec:
+                    # REFUTER FINDING K3 (kimi-code/k3, 2026-08-23) — CONFIRMED.
+                    # A corpse older than the window vanishes from the report
+                    # entirely, and the window is narrowest exactly when it
+                    # matters: if the healer itself was down (which IS the
+                    # scenario — its own session died), the corpse is hours old by
+                    # the time anyone looks. Measured on Mini: 474 of 501 local
+                    # transcripts fell outside the old 360-minute default. The
+                    # window is now 24h, and what it drops is COUNTED — a number a
+                    # reader can see beats a silence a reader mistakes for clean.
+                    skipped_stale += 1
                     continue
 
                 # Read the transcript once
@@ -477,7 +575,11 @@ def probe_local(
                 cwd = cwd_to_encoded.get(encoded_dir, encoded_dir)
 
                 subagents = subagent_counts.get(session_id, 0)
-                stale_min_val = (now - mtime) / 60.0
+                # Clamp at 0: sub-second rounding (and a clock that stepped
+                # back) otherwise renders "-0.0m", which reads as a bug in the
+                # tool rather than as "just written". Refuter flagged the skew
+                # case as PLAUSIBLE; a negative age is never meaningful here.
+                stale_min_val = max(0.0, (now - mtime) / 60.0)
                 verdict = classify_verdict(
                     stale_min=stale_min_val,
                     alive=alive,
@@ -521,7 +623,8 @@ def probe_local(
                 skipped_unreadable += 1
                 continue
 
-    return {"machine": hostname, "sessions": sessions, "status": "OK", "skipped_unreadable": skipped_unreadable}
+    return {"machine": hostname, "sessions": sessions, "status": "OK",
+            "skipped_unreadable": skipped_unreadable, "skipped_stale": skipped_stale}
 
 
 # ---------------------------------------------------------------------------
@@ -541,7 +644,7 @@ def render_fleet_table(results: List[Dict[str, Any]], hosts_list: List[str]) -> 
     lines.append("-" * 200)
 
     total_sessions = 0
-    dead_but_declared = 0
+    declared_span_unmet_n = 0
     unreachable = 0
     ok_hosts = 0
     total_skipped = 0
@@ -562,8 +665,8 @@ def render_fleet_table(results: List[Dict[str, Any]], hosts_list: List[str]) -> 
             sessions = r.get("sessions", [])
             total_sessions += len(sessions)
             for s in sessions:
-                if s["verdict"] == DEAD_BUT_DECLARED_LONG:
-                    dead_but_declared += 1
+                if s["verdict"] == DECLARED_SPAN_UNMET:
+                    declared_span_unmet_n += 1
                 lines.append(
                     f"{host_token:8} {machine:20} {s['session_id']:40} {s['project_dir']:30} "
                     f"{s['cwd']:30} {s['mtime_iso']:20} {s['stale_min']:5.1f}m "
@@ -574,10 +677,10 @@ def render_fleet_table(results: List[Dict[str, Any]], hosts_list: List[str]) -> 
 
     N = ok_hosts
     M = len(hosts_list)
-    D = dead_but_declared
+    D = declared_span_unmet_n
     U = unreachable
     S = total_sessions
-    lines.append(f"{N} of {M} hosts probed — {S} sessions — {D} DEAD-BUT-DECLARED-LONG, {U} unreachable")
+    lines.append(f"{N} of {M} hosts probed — {S} sessions — {D} DECLARED-SPAN-UNMET, {U} unreachable")
     if total_skipped > 0:
         lines.append(f"{total_skipped} transcripts skipped (unreadable)")
     return "\n".join(lines)
@@ -674,7 +777,7 @@ n/private/tmp
         quiet_min=5,
         stale_min_threshold=45,
     )
-    assert v == DEAD_BUT_DECLARED_LONG, f"expected DEAD_BUT_DECLARED_LONG, got {v}"
+    assert v == DECLARED_SPAN_UNMET, f"expected DECLARED_SPAN_UNMET, got {v}"
 
     v2 = classify_verdict(
         stale_min=1.0,
@@ -721,8 +824,8 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument(
         "--lookback-min",
         type=int,
-        default=360,
-        help="Ignore transcripts older than this many minutes (default: 360)",
+        default=1440,
+        help="Ignore transcripts older than this many minutes (default: 1440 = 24h;\n              must outlive the healer's own 4h cadence and any declared span,\n              or a corpse silently falls out of the window — refuter K3)",
     )
     parser.add_argument(
         "--quiet-min",
@@ -771,7 +874,7 @@ def main(argv: Optional[list] = None) -> int:
     hosts = [h.strip() for h in args.hosts.split(",") if h.strip()]
     results: List[Dict[str, Any]] = []
     any_successful_probe = False
-    any_finding = False
+    coverage_lost = False
 
     for host in hosts:
         if host == "local":
@@ -784,9 +887,6 @@ def main(argv: Optional[list] = None) -> int:
                 report["host"] = "local"
                 results.append(report)
                 any_successful_probe = True
-                for s in report.get("sessions", []):
-                    if s["verdict"] == DEAD_BUT_DECLARED_LONG:
-                        any_finding = True
             except Exception as exc:
                 results.append(
                     {
@@ -796,7 +896,7 @@ def main(argv: Optional[list] = None) -> int:
                         "reason": f"{type(exc).__name__}: {str(exc)[:200]}",
                     }
                 )
-                any_finding = True
+                coverage_lost = True
         else:
             remote_argv = [
                 "--__host-probe",
@@ -810,26 +910,47 @@ def main(argv: Optional[list] = None) -> int:
                     report = json.loads(stdout)
                     report["host"] = host
                     results.append(report)
-                    any_successful_probe = True
-                    for s in report.get("sessions", []):
-                        if s["verdict"] == DEAD_BUT_DECLARED_LONG:
-                            any_finding = True
+                    # REFUTER FINDING K1 (kimi-code/k3, 2026-08-23) — CONFIRMED by
+                    # repro. The remote `--__host-probe` branch catches its own
+                    # exception, prints {"status": UNREACHABLE, ...} and STILL
+                    # exits 0. Trusting rc alone therefore counted a host that
+                    # failed to probe ITSELF as a successful probe: exit 0, and the
+                    # healer — which acts only on exit 1 — stayed silent while a
+                    # whole machine went unobserved. The STATUS IN THE PAYLOAD is
+                    # the truth; the transport's exit code is a proxy (W104: read
+                    # the body, never the status line).
+                    if report.get("status") == UNREACHABLE:
+                        coverage_lost = True
+                    else:
+                        any_successful_probe = True
                 else:
                     results.append(
                         {
                             "host": host,
                             "machine": None,
                             "status": UNREACHABLE,
-                            "reason": f"ssh exit {rc}: {stderr.strip()}",
+                            # bounded like every other reason (K5): ssh stderr can
+                            # carry key paths and host detail, and this field
+                            # travels into a report that reaches Telegram
+                            "reason": f"ssh exit {rc}: {stderr.strip()[:200]}",
                         }
                     )
-                    any_finding = True
+                    coverage_lost = True
             except Exception as exc:
                 results.append(
                     {"host": host, "machine": None, "status": UNREACHABLE, "reason": f"{type(exc).__name__}: {str(exc)[:200]}"}
                 )
-                any_finding = True
+                coverage_lost = True
 
+    # EXIT CONTRACT — deliberately narrow, so a consumer can branch on it:
+    #   2 = BLIND, nothing was probed at all
+    #   1 = coverage LOST on >=1 host (UNREACHABLE) — an unambiguous fact
+    #   0 = every requested host answered
+    # DECLARED-SPAN-UNMET rows do NOT move the exit code. They are reported in
+    # the payload for a human to read, never alerted on: measured 2026-08-23,
+    # 10 of 10 such rows were HEALTHY healer ticks (see the module docstring).
+    # An exit code that says "finding" when nothing is actionable trains its
+    # only consumer to stop reading it.
     # Blind-scan guard (superscar #2 — a run that probed nothing must never
     # report clean). Exit 2, but STILL EMIT THE REPORT below: "I know nothing,
     # and here is the evidence of why" is strictly more useful to a consumer
@@ -839,7 +960,7 @@ def main(argv: Optional[list] = None) -> int:
         print("BLIND: no host produced a successful probe", file=sys.stderr)
         exit_code = 2
     else:
-        exit_code = 1 if any_finding else 0
+        exit_code = 1 if coverage_lost else 0
 
     if args.json:
         from_host = platform.node()
@@ -848,7 +969,7 @@ def main(argv: Optional[list] = None) -> int:
         hosts_unreachable = sum(1 for r in results if r.get("status") == UNREACHABLE)
         unreachable_hosts = [r["host"] for r in results if r.get("status") == UNREACHABLE]
         sessions_total = sum(len(r.get("sessions", [])) for r in results)
-        producing = quiet = stale = dead_but_declared = 0
+        producing = quiet = stale = declared_span_unmet_n = 0
         findings = []
         for r in results:
             for s in r.get("sessions", []):
@@ -859,9 +980,9 @@ def main(argv: Optional[list] = None) -> int:
                     quiet += 1
                 elif verdict == STALE:
                     stale += 1
-                elif verdict == DEAD_BUT_DECLARED_LONG:
-                    dead_but_declared += 1
-                if verdict == DEAD_BUT_DECLARED_LONG:
+                elif verdict == DECLARED_SPAN_UNMET:
+                    declared_span_unmet_n += 1
+                if verdict == DECLARED_SPAN_UNMET:
                     findings.append(
                         {
                             "host": r.get("host"),
@@ -881,7 +1002,7 @@ def main(argv: Optional[list] = None) -> int:
             "producing": producing,
             "quiet": quiet,
             "stale": stale,
-            "dead_but_declared_long": dead_but_declared,
+            "declared_span_unmet": declared_span_unmet_n,
             "findings": findings,
         }
         output = {
