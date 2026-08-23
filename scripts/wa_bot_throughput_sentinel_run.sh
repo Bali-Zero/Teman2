@@ -82,10 +82,28 @@ if ! nc -z "$TUNNEL_HOST" "$TUNNEL_PORT" >/dev/null 2>&1; then
 fi
 
 # The script's own resolution order is INTAKE_DATABASE_URL, LOCAL_DATABASE_URL,
-# DATABASE_URL_LOCAL, then the dev default. Neither of the first two is set by
-# anything on this path, so the export below is what it actually uses; it is
-# exported rather than passed on argv so the DSN never appears in `ps`.
+# DATABASE_URL_LOCAL, then the dev default — so either of the first two, if the
+# sourced secrets file ever defines one, SILENTLY OUTRANKS the export below.
+# This wrapper cannot prove they are unset (reading that file is guarded, and
+# rightly — superscar #4), so the property is verified by EFFECT instead: a live
+# run returns real production row ages, whereas the dev database holds zero rows
+# in both tables and would trip the payload's wrong-database branch. If this
+# organ ever starts reporting wrong-database on a healthy tunnel, look here
+# first. Exported rather than passed on argv so the DSN never appears in `ps`.
 export DATABASE_URL_LOCAL
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 PYBIN="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+
+# The interpreter is a precondition like any other, and it was the one this
+# wrapper did NOT check: with the venv missing, the exec below failed and bash
+# exited WITHOUT a heartbeat, leaving staleness as the only signal — slower
+# than the paths above and carrying no cause. Measured 2026-08-23 by repointing
+# PYBIN at a nonexistent path with ORGANISM_LAST_SEEN_DIR isolated: zero files
+# written. In an organ built against superscar #2, a failure path that emits no
+# signal is exactly the wrong one to leave open.
+if [[ ! -x "$PYBIN" ]]; then
+  organism_heartbeat "$ORGAN_ID" "error" "venv interpreter missing: $PYBIN"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) FATAL: $PYBIN not executable — the backend venv is missing or moved" >&2
+  exit 78  # EX_CONFIG — same class as the other unmet preconditions
+fi
 exec "$PYBIN" -u "$REPO_ROOT/scripts/wa_bot_throughput_sentinel.py" "$@"

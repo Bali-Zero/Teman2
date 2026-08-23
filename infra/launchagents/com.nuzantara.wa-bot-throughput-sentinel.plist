@@ -49,6 +49,7 @@
   Install:
     cp infra/launchagents/com.nuzantara.wa-bot-throughput-sentinel.plist \
        ~/Library/LaunchAgents/
+    chmod 444 ~/Library/LaunchAgents/com.nuzantara.wa-bot-throughput-sentinel.plist
     launchctl bootstrap gui/$(id -u) \
        ~/Library/LaunchAgents/com.nuzantara.wa-bot-throughput-sentinel.plist
 
@@ -59,7 +60,10 @@
   control against a history-free database confirming it reports
   wrong-database rather than dead-channel.
 
-  Plist permissions hardened to 0444 per cicatrix P0-3.
+  Plist permissions hardened to 0444 per cicatrix P0-3 — by the chmod in the
+  install steps above, which is where it has to live: git cannot carry 0444
+  (this blob is 100644, like every other plist here), so before that line
+  existed this sentence asserted a property nothing performed.
 -->
 <plist version="1.0">
 <dict>
