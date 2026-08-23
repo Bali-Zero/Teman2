@@ -99,6 +99,7 @@ from backend.services.integrations.wa_inbox_bot import (
     _tell_a_human,
     is_bot_autoreply_enabled,
 )
+from backend.services.rag.agentic.wa_dlp import restore_text
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +237,11 @@ async def _attempt(
         client = await _get_rag_client()
         resp = await client.post(
             "/api/wa-package/build",
-            json={"query": query, "history": history, "thread_epoch": epoch},
+            # dlp=True (G-P3): the codex leg is the ONLY caller of this
+            # endpoint (grep-verified) and is the ONE route that hands
+            # customer text to an external generator — the DLP gate applies
+            # here and only here, never on the Gemini leg.
+            json={"query": query, "history": history, "thread_epoch": epoch, "dlp": True},
             timeout=_BUILD_TIMEOUT,
         )
         resp.raise_for_status()
@@ -253,6 +258,11 @@ async def _attempt(
         return CodexLegResult(reason=f"unbuildable:{built['unbuildable']}")
     wire = built.get("package_wire")
     package_hash = built.get("package_hash")
+    # G-P3: local variable of THIS coroutine only — never persisted, never
+    # logged, never forwarded past the `restore_text` call below (same
+    # invocation of `_attempt` that requested the build, per the ground
+    # map's "provably never leaves Fly" verification).
+    reversal_map: dict[str, str] = built.get("reversal_map") or {}
     if not wire or not package_hash:
         # A builder that answered 200 without either half of the sealed
         # envelope is a contract break, not a route decision.
@@ -512,6 +522,17 @@ async def _attempt(
             offer.job_id,
         )
         return CodexLegResult(reason="consume_lost")
+
+    # G-P3 restore: the generator answered against a REDACTED package (its
+    # prompt carried `[PII-CATEGORY-N]` placeholders, never the customer's
+    # real values), so its completion may echo those same placeholders back
+    # — substitute them for the real values HERE, before the shared
+    # finalize pipeline and before this ever becomes CodexLegResult.text. A
+    # placeholder shape the generator invented (never issued for this
+    # package) is stripped, not restored to garbage (wa_dlp.restore_text).
+    # No-op when reversal_map is empty (dlp=False build, or a redaction
+    # that found nothing to redact).
+    text = restore_text(text, reversal_map)
 
     # Finalize — the SHARED pipeline, provider="codex" (spec 2.3): abstain
     # verdict from the FROZEN evidence, text-defect checks, channel

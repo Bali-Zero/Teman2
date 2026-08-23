@@ -101,10 +101,17 @@ class TestBuildWaPackageRoute:
         # copy was struck — an unsealed copy can diverge from the sealed one
         # inside package_wire. Consumers parse evidence_inputs OUT OF the wire.
         assert not hasattr(response, "evidence_inputs")
+        # reversal_map (G-P3) is admissible where evidence_inputs was not:
+        # it is NOT a copy of sealed content (nothing to diverge from — its
+        # whole purpose is to stay OUTSIDE the sealed wire), it travels only
+        # build->leg on localhost within Fly, and the router logs nothing of
+        # it. Any OTHER new field here still needs this test changed on
+        # purpose, with its own rationale.
         assert set(WaPackageBuildResponse.model_fields) == {
             "package_wire",
             "package_hash",
             "unbuildable",
+            "reversal_map",
         }
 
         # Load-bearing: package_hash must cover package_wire's EXACT bytes
