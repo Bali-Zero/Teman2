@@ -23,6 +23,8 @@ from research_os.models.metric_result import MetricResult
 from research_os.models.operational_receipt import OperationalReceipt
 from research_os.models.outcome_event import OutcomeEvent
 from research_os.models.revocation_receipt import RevocationReceipt
+from research_os.models.risk_reclassification_receipt import RiskReclassificationReceipt
+from research_os.models.sanitization_receipt import SanitizationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 from research_os.models.verification_receipt import VerificationReceipt
 from research_os.models.workflow_run import WorkflowRun
@@ -43,6 +45,8 @@ CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "operational_receipt": OperationalReceipt,
     "outcome_event": OutcomeEvent,
     "revocation_receipt": RevocationReceipt,
+    "risk_reclassification_receipt": RiskReclassificationReceipt,
+    "sanitization_receipt": SanitizationReceipt,
     "verification_receipt": VerificationReceipt,
     "workflow_run": WorkflowRun,
 }
@@ -92,7 +96,12 @@ def _validate(contract_kind: str, path: Path) -> int:
     except (OSError, json.JSONDecodeError) as exc:
         LOGGER.warning("cannot read validation input %s: %s", path, exc)
         _emit(
-            {"contract": contract_kind, "file": str(path), "valid": False, "error": "invalid_json"}
+            {
+                "contract": contract_kind,
+                "file": str(path),
+                "valid": False,
+                "error": "invalid_json",
+            }
         )
         return 1
     _emit({"contract": contract_kind, "file": str(path), "valid": True})
@@ -110,7 +119,14 @@ def _hash(path: Path) -> int:
         digest = object_hash(payload)
     except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
         LOGGER.warning("cannot hash %s: %s", path, exc)
-        _emit({"file": str(path), "valid": False, "error": "hash_failed", "detail": str(exc)})
+        _emit(
+            {
+                "file": str(path),
+                "valid": False,
+                "error": "hash_failed",
+                "detail": str(exc),
+            }
+        )
         return 1
     _emit({"file": str(path), "object_hash": digest, "valid": True})
     return 0
@@ -139,7 +155,9 @@ def _check_fixtures() -> int:
         for fixture_path in _fixture_paths(contract_kind, "invalid"):
             checked += 1
             try:
-                expected = _read_json(fixture_path.with_suffix(".expect.json"))["reason_code"]
+                expected = _read_json(fixture_path.with_suffix(".expect.json"))[
+                    "reason_code"
+                ]
                 model.model_validate(_read_json(fixture_path))
             except ValidationError as exc:
                 actual_codes = {str(error["type"]) for error in exc.errors()}
@@ -155,7 +173,9 @@ def _check_fixtures() -> int:
             except (OSError, json.JSONDecodeError, KeyError) as exc:
                 failures.append({"file": str(fixture_path), "reason": str(exc)})
             else:
-                failures.append({"file": str(fixture_path), "reason": "invalid_fixture_accepted"})
+                failures.append(
+                    {"file": str(fixture_path), "reason": "invalid_fixture_accepted"}
+                )
     _emit({"valid": not failures, "checked": checked, "failures": failures})
     return 0 if not failures else 1
 
@@ -187,7 +207,9 @@ def _build_parser() -> JsonArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     validate_parser = subparsers.add_parser("validate")
-    validate_parser.add_argument("--contract", choices=sorted(CONTRACT_MODELS), required=True)
+    validate_parser.add_argument(
+        "--contract", choices=sorted(CONTRACT_MODELS), required=True
+    )
     validate_parser.add_argument("--file", type=Path, required=True)
 
     hash_parser = subparsers.add_parser("hash")

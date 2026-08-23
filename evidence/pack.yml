@@ -1,16 +1,24 @@
 brief_ref: evidence/brief.yml
 plan_ref: "P04-D1 canonical OutcomeEvent (CONTRACTS.md section 16), PR #4653; evidence pack
-  revision 3 of 3 (2026-08-23) — refreshes revision 1's numbers to HEAD ce82bb93e after the
-  adversarial-review-fix commit landed."
+  revision 4 of 4 (2026-08-23) — refreshes revision 3's numbers to HEAD 8f98e5de3 after merging
+  origin/main (14332eb3e, which landed PR #4635's risk_reclassification_receipt/
+  sanitization_receipt kinds concurrently) into this branch a second time. The evidence-file
+  collision (cicatrix-superscar family #9) recurred for the same structural reason as revision 1;
+  this revision resolves it the same way (--ours on both evidence files) and additionally proves
+  the 3 shared registration files (cli.py, models/__init__.py, schemas/__init__.py) lost nothing
+  of origin/main's concurrent additions across the merge."
 diff:
-  net_lines: "+2170/-114, 21 files, measured fresh THIS turn by `git diff --numstat` between
-    merge-base c4242cd444e8396bb37e31fbd0c945c7b69c940a (#4637) and HEAD ce82bb93ebfdff8f71b2821ae585be0d82d4faef
-    (see receipts). Superset of revision 1's 19 files (+1665/-0 at HEAD 03af27444): the 2 extra
-    files are evidence/brief.yml and evidence/pack.yml themselves (revision 1's own diff, now
-    inside the measured range since it's a real commit on this branch), and the extra lines beyond
-    revision 1's are the adversarial-review-fix commit ce82bb93e's content (4 functional files:
-    the corrected fixture, the model's new json_schema_extra, the regenerated schema, and 2 new
-    tests + 2 glob assertions in the test file) plus this pack's own accumulating revisions."
+  net_lines: "+2334/-190, 21 files, net +2144 -- measured fresh THIS turn by `git diff --numstat
+    origin/main HEAD` (see receipts). Now measured directly against origin/main's tip
+    (14332eb3e) rather than the original merge-base c4242cd444, because after this revision's
+    merge commit origin/main IS an ancestor of HEAD -- `git diff origin/main HEAD` therefore
+    shows exactly this PR's own unique contribution and correctly excludes every one of
+    origin/main's own commits (both the ones already incorporated at the original merge-base and
+    the new ones this merge just absorbed), with no manual subtraction needed. Same 21-file set as
+    revision 3 (this PR never touched a governance-receipt file); the line-count delta from
+    revision 3's +2170/-114 is origin/main's own concurrent edits to the 3 shared registration
+    files (cli.py/models/__init__.py/schemas/__init__.py gained entries for the 2 new kinds
+    between the two merge-bases), not new work by this PR."
   behaviour_change: "Adds one new contract kind end-to-end (model + schema + fixtures + tests +
     registration), PLUS as of ce82bb93e: (a) the model's metric_profile_ref/metric_result_ref
     joint-presence invariant is now also expressed in the generated JSON Schema as a bidirectional
@@ -162,11 +170,124 @@ receipts:
     exit: 0
     ts: "2026-08-23T10:24:31Z"
     seat: claude
+  - claim: "REVISION 4: origin/main moved to 14332eb3e (PR #4635's risk_reclassification_receipt/
+    sanitization_receipt, plus unrelated PRs) since revision 3's merge-base. `git fetch origin
+    main` then `git merge origin/main --no-edit` conflicted on exactly 2 files -- evidence/brief.yml
+    and evidence/pack.yml (the same fixed-path collision as revision 1, cicatrix-superscar family
+    #9) -- with the 3 shared registration files (cli.py, models/__init__.py, schemas/__init__.py)
+    auto-merging cleanly, no conflict markers."
+    cmd: "git fetch origin main && git merge origin/main --no-edit"
+    exit: 1
+    ts: "2026-08-23T10:36Z (single bracketing capture for this whole revision-4 batch, per-command date not separately shelled; merge attempt itself intentionally exits 1 on conflict, resolved below)"
+    seat: claude
+  - claim: "Both evidence files resolved --ours (this branch's version wins, matching revision 1's
+    established resolution pattern for this exact collision class); 0 conflict markers remain
+    anywhere in the tree after resolution."
+    cmd: "git checkout --ours evidence/brief.yml evidence/pack.yml && git add evidence/brief.yml evidence/pack.yml && git status --porcelain=v1 | grep -E '^UU|^AA|^DD' | wc -l"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "LOSS-CHECK, non-zero hit counts, not a visual 'looks fine': origin/main BEFORE this
+    merge had exactly 14 kinds registered in each of the 3 shared files (action_intent,
+    action_item, approval_receipt, conductor_handoff, execution_attempt, metric_profile,
+    metric_result, object_successor_edge, operational_receipt, revocation_receipt,
+    risk_reclassification_receipt, sanitization_receipt, verification_receipt, workflow_run) --
+    outcome_event present in NONE of them (0 hits, correctly, since it is this PR's own addition).
+    Measured directly via `git show origin/main:<path>` (read-only, working tree untouched) AND
+    independently corroborated by a dispatched subagent doing the same measurement blind --
+    both agree exactly: 14/14/14 kinds, 0/0/0 outcome_event hits."
+    cmd: "git show origin/main:packages/research-os-core/research_os/cli.py | sed -n '/^CONTRACT_MODELS/,/^}/p' | grep -c '\": '"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "LOSS-CHECK continued: the MERGED tree (post-resolution, pre-commit at that point) has
+    exactly 15 entries in each of the 3 files -- origin/main's 14 PLUS outcome_event, nothing
+    dropped. Non-zero grep hit-count grid proving the pattern is alive (not a broken 0-vs-0
+    false-green): cli.py outcome_event=2/risk_reclassification_receipt=2/sanitization_receipt=2;
+    models/__init__.py outcome_event=1/risk_reclassification_receipt=1/sanitization_receipt=1
+    (CamelCase __all__ entries don't match the lowercase snake_case substring, so only the
+    import-path line hits); schemas/__init__.py outcome_event=2/risk_reclassification_receipt=2/
+    sanitization_receipt=2. Every cell non-zero."
+    cmd: "for f in cli.py models/__init__.py schemas/__init__.py; do grep -c outcome_event $f; grep -c risk_reclassification_receipt $f; grep -c sanitization_receipt $f; done"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "Merge finalized (`git commit --no-edit`, merge commit 8f98e5de3, parents b9e777a64 and
+    origin/main's 14332eb3e). origin/main is now a strict ancestor of HEAD, confirmed via
+    `git merge-base --is-ancestor origin/main HEAD` (exit 0)."
+    cmd: "git commit --no-edit && git merge-base --is-ancestor origin/main HEAD"
+    exit: 0
+    ts: "2026-08-23T10:36:37Z"
+    seat: claude
+  - claim: "REVISION 4, re-run fresh on the merged+committed tree: `python -m research_os.cli
+    fixtures --check` now covers 119 fixtures (was 102 pre-merge): {\"checked\": 119, \"failures\":
+    [], \"valid\": true}. The +17 delta is fully reconciled in `static:` below via the tool's real
+    counting unit (one valid_*/invalid_*.json per fixture, .expect.json siblings never counted) --
+    not a naive raw-file-count sum, which would have overshot to 127."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m research_os.cli fixtures --check"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "REVISION 4: the full research_os unit test suite on the merged tree passes: 266 passed
+    (was 232 pre-merge, +34 for origin/main's own test_governance_receipts.py and related
+    additions), 1 skipped (same pre-existing node/prettier-unavailable skip), 0 failed."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os -q --no-header"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "REVISION 4: test_outcome_event.py in isolation, unaffected by the merge (this branch's
+    own file, no conflict): still 13/13 passed."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py -q --no-header"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "REVISION 4: mypy --strict on the 4 functional files, re-verified post-merge, still
+    clean -- 'Success: no issues found in 4 source files'. mypy --strict on test_outcome_event.py
+    still red at the same finding, same line 73, unchanged in substance (merge did not touch this
+    file) -- reported honestly again, not swept."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict research_os/models/outcome_event.py research_os/cli.py research_os/models/__init__.py research_os/schemas/__init__.py --explicit-package-bases"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "REVISION 4: checked_in_schemas_match() and validate_schema_artifacts() both still ->
+    () on the merged tree -- outcome_event.schema.json unaffected by origin/main's concurrent
+    schema additions for the 2 other kinds."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c \"import sys; sys.path.insert(0,'.'); from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts; print(checked_in_schemas_match()); print(validate_schema_artifacts())\""
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "scripts/evidence_pack_lint.py itself was modified by this merge (origin/main's own
+    edit, unrelated to this PR); confirmed the working-tree copy is byte-identical to
+    origin/main:scripts/evidence_pack_lint.py (diff empty, rc 0) before using it -- no stale
+    /tmp copy reused."
+    cmd: "diff <(git show origin/main:scripts/evidence_pack_lint.py) scripts/evidence_pack_lint.py"
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: claude
+  - claim: "HONEST DISCLOSURE, not a defect: the `origin/main` label is a moving ref and it moved a
+    second time DURING this same revision's work -- from 14332eb3e (what was actually fetched and
+    merged into this commit) to 8d2ed25f3 (one further commit, #4658, landed independently mid-
+    session). A bare `git diff origin/main HEAD` re-run AFTER that second move momentarily
+    appeared to show HEAD missing 2 lines of .claude/skills/modus/PENDING-ARMS.md that origin/
+    main's NEW tip has -- investigated fully rather than assumed benign: `git diff 14332eb3e HEAD
+    -- .claude/skills/modus/PENDING-ARMS.md` is EMPTY (0 lines, byte-identical) -- this branch
+    never touched that file and the merge correctly reproduced 14332eb3e's content for it
+    exactly. The 2 'missing' lines are the PENDING-ARMS row that #4658 itself closed/removed on
+    origin/main AFTER 14332eb3e -- work this PR was never asked to (and did not) merge in. Every
+    number in this pack's diff/receipts is pinned to 14332eb3e, the SHA actually fetched and
+    merged, not to the live `origin/main` label -- re-running the bare-label commands today will
+    correctly show a further 1-commit delta that is out of this PR's scope."
+    cmd: "git diff 14332eb3e5a2b8ce45479ee66a8f77dd4313e56d HEAD -- .claude/skills/modus/PENDING-ARMS.md | wc -l"
+    exit: 0
+    ts: "2026-08-23T10:43:26Z"
+    seat: claude
 tests:
-  - "apps/backend-rag/backend/tests/unit/research_os (full suite, 232 passed as of ce82bb93e --
-    was 230 -- /1 pre-existing skip) and the outcome_event/schemas subsets in isolation — all green
-    per receipts above. This IS the applicable test surface for a contracts-package addition; there
-    is no separate integration surface because packages/research-os-core is not yet wired into any
+  - "apps/backend-rag/backend/tests/unit/research_os (full suite, 266 passed as of the revision-4
+    merge commit 8f98e5de3 -- was 232 pre-merge, +34 from origin/main's own concurrent
+    test_governance_receipts.py and related additions, none of it this PR's work -- /1
+    pre-existing skip) and the outcome_event/schemas subsets in isolation — all green per receipts
+    above. This IS the applicable test surface for a contracts-package addition; there is no
+    separate integration surface because packages/research-os-core is not yet wired into any
     backend-rag service."
   - "The 2 adversarial-review-fix tests specifically both drive REAL production code paths, not
     reimplementations: test_supersedes_fixture_is_current_in_the_real_graph_resolver calls the
@@ -176,7 +297,17 @@ tests:
     independently-derived expected verdict (not schema==model, which would be an identity check on
     two things built from the same source, not a guard)."
 static:
-  - "python -m research_os.cli fixtures --check -> {\"checked\": 102, \"failures\": [], \"valid\": true}"
+  - "python -m research_os.cli fixtures --check -> {\"checked\": 119, \"failures\": [], \"valid\": true}
+    on the merged tree (was 102 pre-merge). Reconciled exactly, not left as an unexplained gap:
+    the CLI's counting unit is one valid_*.json or invalid_*.json fixture file -- an invalid
+    fixture's paired *.expect.json sibling is opened only to read its reason_code and is NEVER
+    separately counted (read directly from _fixture_paths()/_check_fixtures() in cli.py, not
+    inferred). risk_reclassification_receipt contributes 3 valid + 7 invalid = 10 checked units
+    (from 17 files on disk, 7 of them .expect.json and correctly excluded);
+    sanitization_receipt contributes 3 valid + 4 invalid = 7 checked units (from 11 files on
+    disk, 4 excluded). 10 + 7 = 17, and 102 + 17 = 119 exactly -- no residual gap. A naive
+    102+13+12=127 (raw fixture-directory file counts including .expect.json) does not match
+    the tool's real counting unit and was never the right arithmetic to check against."
   - "mypy --strict on outcome_event.py/cli.py/models/__init__.py/schemas/__init__.py -> clean
     (re-verified at ce82bb93e, after the ConfigDict(json_schema_extra=...) addition)"
   - "mypy --strict on test_outcome_event.py -> 1 unused-ignore finding (line 73 as of ce82bb93e, was
@@ -244,6 +375,6 @@ sources:
   - apps/backend-rag/pyproject.toml [tool.mypy] (read-only reference — confirms no pydantic plugin)
 pii_scan: clean
 # approx_tokens() per scripts/evidence_pack_lint.py: len(raw bytes) // 4.
-# Measured `wc -c evidence/pack.yml` at write time (revision 3) = ~19010 bytes -> ~4752 tokens
+# Measured `wc -c evidence/pack.yml` at write time (revision 4) = 29118 bytes -> 7279 tokens
 # (cap 30000).
-size_tokens: 4752
+size_tokens: 7279

@@ -31,8 +31,18 @@ and disclosed here rather than silently patched:
 
   - `evaluate_path.active_retention_policy_available` -> stubbed True.
     The real gate lives behind a Zero retention-policy record this
-    proof's migration set does not provision; it decides whether to
-    PERSIST a decision, never what the decision IS.
+    proof's migration set does not provision. Corrected characterization
+    (2026-08-23, gate-review follow-up): this is not a downstream
+    persistence toggle -- `_retention_gate_allows_persistence`
+    (evaluate_path.py:270-296) is checked at evaluate_path.py:1466,
+    *before* `_resolve_active_pack_binding`, so a False short-circuits
+    the whole call to `RETENTION_POLICY_UNAVAILABLE` before any pack is
+    even looked up. It gates entry to the entire evaluate path, not
+    merely whether the resulting decision gets written down. Stubbing it
+    True remains legitimate and non-hollowing for this proof's purpose:
+    it does not influence WHAT the decision is once the real evaluator
+    runs, only WHETHER the real evaluator runs at all -- which this
+    proof needs, since its migration set provisions no retention record.
   - `evaluate_path._save_evaluate_decision` -> stubbed no-op. Its target
     table (`visa_decisions`) is created by a migration outside this
     proof's applied set (250/251/253/254/267); the function only writes

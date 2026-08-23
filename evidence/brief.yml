@@ -89,7 +89,7 @@ objective: |
   those calls; it reports that they exist and are already on record in the source file a future
   reader will open.
 
-  SCOPE HISTORY OF THIS EVIDENCE PACK, so a future reader isn't confused by 3 revisions on one
+  SCOPE HISTORY OF THIS EVIDENCE PACK, so a future reader isn't confused by 4 revisions on one
   file: `evidence/brief.yml`/`evidence/pack.yml` are fixed root-relative paths every Gear>=2 PR in
   this repo rewrites (cicatrix-superscar family #9, state-schema mutation drift — a fixed-path
   collision class actively observed fleet-wide as of this timestamp). REVISION 1 (`ffe3e9aa5`,
@@ -99,19 +99,29 @@ objective: |
   functional code changed in that commit. REVISION 2 is not a pack edit at all: `ce82bb93e` fixed 2
   real defects (+ 1 test hardening) found by an independent adversarial review, touching 4
   functional files (fixture, model, schema, test) — see the "ADVERSARIAL-REVIEW FIXES" block below
-  for exactly what changed. REVISION 3 (this one, evidence files only again) refreshes this pack's
+  for exactly what changed. REVISION 3 (evidence files only again) refreshed this pack's
   narrative and receipts to match `ce82bb93e` — net_lines, file count, and test counts had drifted
-  stale after revision 2 landed. Verified against `origin/main`'s current lint at each revision.
+  stale after revision 2 landed. REVISION 4 (this one, merge commit `8f98e5de3`): `origin/main`
+  moved to `14332eb3e` (landing PR #4635's `risk_reclassification_receipt`/`sanitization_receipt`
+  kinds concurrently) after revision 3 landed, and the same fixed-path collision hit both evidence
+  files a second time — resolved identically (`--ours`), plus a formal non-zero-hit-count
+  loss-check on the 3 shared registration files (`cli.py`, `models/__init__.py`,
+  `schemas/__init__.py`) proving nothing origin/main added was dropped by the merge. Verified
+  against `origin/main`'s current lint at each revision.
 constraints:
   - "Per-commit edit scope, not per-PR: `ffe3e9aa5` touched evidence/brief.yml + evidence/pack.yml
     ONLY; `ce82bb93e` touched exactly 4 functional files (the fixture, outcome_event.py,
     outcome_event.schema.json, test_outcome_event.py) and explicitly did NOT touch primitives.py
-    or evidence/*.yml; this current revision touches evidence/brief.yml + evidence/pack.yml ONLY
-    again, to refresh their numbers against ce82bb93e — verified via `git diff --stat` at each
-    commit, not assumed."
-  - "Do NOT arm, enqueue, un-draft, or merge this PR. It stays DRAFT (fleet-wide HOLD ARMS pending
-    PR #4647, and this branch is additionally held under the P04-D1 serialization order set
-    2026-08-23 — #4653 queues immediately after #4643)."
+    or evidence/*.yml; revision 3 touched evidence/brief.yml + evidence/pack.yml ONLY again to
+    refresh their numbers against ce82bb93e; this revision-4 merge commit (`8f98e5de3`) is
+    necessarily wider (it absorbs origin/main's own concurrent commits by construction of being a
+    merge), but this PR's OWN unique contribution remains the same 21-file set as revision 3 —
+    verified via `git diff origin/main HEAD --numstat` now that origin/main is an ancestor of
+    HEAD, not assumed."
+  - "Do NOT arm, enqueue, un-draft, or merge this PR. It stays DRAFT. PR #4647 has genuinely
+    MERGED (`mergedAt=2026-08-23T10:20:01Z`, merge commit `862579787`) and this PR is now FIRST in
+    the P04-D1 serialization order — un-drafting is the requesting session's call to make after
+    gating this merge resolution, not this session's."
   - "Do NOT touch scripts/wr3_* or docs/wr3/contracts/ (H3/P03 holds that lease)."
   - "workflow_run.py / verification_receipt.py / conductor_handoff.py and their fixtures/schemas
     exist in this branch's git history (commit 8d5f6a057) but are BYTE-IDENTICAL between the
@@ -119,9 +129,12 @@ constraints:
     net diff. Do not re-touch them here."
 acceptance:
   - "`python -m research_os.cli fixtures --check` (run from packages/research-os-core) exits 0
-    over the full fixture tree (all 13 kinds, 102 fixtures), not just outcome_event's 13."
-  - "`pytest apps/backend-rag/backend/tests/unit/research_os` exits 0 (232 passed as of `ce82bb93e`
-    — was 230, +2 for the adversarial-review-fix tests — 1 pre-existing unrelated skip —
+    over the full fixture tree — 15 kinds (13 pre-existing + this PR's outcome_event + origin/
+    main's concurrent risk_reclassification_receipt/sanitization_receipt), 119 fixtures as of the
+    revision-4 merge commit `8f98e5de3` (was 102 pre-merge), not just outcome_event's 13."
+  - "`pytest apps/backend-rag/backend/tests/unit/research_os` exits 0 (266 passed as of the
+    revision-4 merge commit `8f98e5de3` — was 232 pre-merge, +34 from origin/main's own
+    concurrent test additions, none of it this PR's work — 1 pre-existing unrelated skip —
     node/prettier unavailable in this environment, see receipts)."
   - "`pytest .../test_outcome_event.py` exits 0, 13/13 passed (was 11/11)."
   - "`mypy --strict` on the touched non-test Python files (outcome_event.py, cli.py,

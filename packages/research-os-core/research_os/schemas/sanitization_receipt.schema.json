@@ -1,0 +1,452 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "ClassifiedObjectRef": {
+      "additionalProperties": false,
+      "description": "``{object_kind, object_id, object_hash, classification: {risk_class,\nsensitivity}}`` -- section 17's shape for both ``source_objects``\nentries and the singular ``output_object``. Note this NESTS\nclassification under a ``classification`` key, unlike section 18's\nflat ``{..., risk_class, sensitivity}`` -- the two sections use\ndifferent shapes and this module does not share a type with\n``risk_reclassification_receipt.py``'s ``FlatClassifiedObjectRef``.",
+      "properties": {
+        "classification": {
+          "$ref": "#/$defs/Classification"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        }
+      },
+      "required": ["object_kind", "object_id", "object_hash", "classification"],
+      "title": "ClassifiedObjectRef",
+      "type": "object"
+    },
+    "ExactObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        }
+      },
+      "required": ["object_kind", "object_id", "object_hash"],
+      "title": "ExactObjectRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "MandatoryWorkflowLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {workflow_run_ref: {workflow_run_id, object_hash},\ninput_hashes: []}`` with ``workflow_run_ref`` MANDATORY -- see the\nmodule docstring's judgment-call note.",
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "MandatoryWorkflowLineage",
+      "type": "object"
+    },
+    "PermittedUse": {
+      "additionalProperties": false,
+      "description": "``permitted_use: {purpose, destination, consumer, expires_at}`` --\nunlike section 18's ``RiskReclassificationReceipt``, ``expires_at``\ncarries no ``?`` here and is mandatory.",
+      "properties": {
+        "consumer": {
+          "minLength": 1,
+          "title": "Consumer",
+          "type": "string"
+        },
+        "destination": {
+          "minLength": 1,
+          "title": "Destination",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": ["purpose", "destination", "consumer", "expires_at"],
+      "title": "PermittedUse",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "PropagationScopeEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "object_ref": {
+          "$ref": "#/$defs/ExactObjectRef"
+        },
+        "system": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "System",
+          "type": "string"
+        }
+      },
+      "required": ["system", "object_ref"],
+      "title": "PropagationScopeEntry",
+      "type": "object"
+    },
+    "ResidualRiskRating": {
+      "additionalProperties": false,
+      "properties": {
+        "findings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "rating": {
+          "minLength": 1,
+          "title": "Rating",
+          "type": "string"
+        }
+      },
+      "required": ["rating", "findings"],
+      "title": "ResidualRiskRating",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "Transformation": {
+      "additionalProperties": false,
+      "properties": {
+        "field_path": {
+          "minLength": 1,
+          "title": "Field Path",
+          "type": "string"
+        },
+        "operation": {
+          "enum": ["remove", "generalize", "aggregate", "pseudonymize"],
+          "title": "Operation",
+          "type": "string"
+        },
+        "result_sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["field_path", "operation", "result_sensitivity"],
+      "title": "Transformation",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "lineage": {
+      "$ref": "#/$defs/MandatoryWorkflowLineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "output_object": {
+      "$ref": "#/$defs/ClassifiedObjectRef"
+    },
+    "permitted_use": {
+      "$ref": "#/$defs/PermittedUse"
+    },
+    "policy": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "propagation_scope": {
+      "items": {
+        "$ref": "#/$defs/PropagationScopeEntry"
+      },
+      "title": "Propagation Scope",
+      "type": "array"
+    },
+    "residual_risk": {
+      "$ref": "#/$defs/ResidualRiskRating"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "reviewer_ref": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "sanitization_receipt_id": {
+      "format": "uuid",
+      "title": "Sanitization Receipt Id",
+      "type": "string"
+    },
+    "source_objects": {
+      "items": {
+        "$ref": "#/$defs/ClassifiedObjectRef"
+      },
+      "title": "Source Objects",
+      "type": "array"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "transformations": {
+      "items": {
+        "$ref": "#/$defs/Transformation"
+      },
+      "title": "Transformations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sanitization_receipt_id",
+    "contract_version",
+    "tenant",
+    "source_objects",
+    "output_object",
+    "policy",
+    "transformations",
+    "residual_risk",
+    "reviewer_ref",
+    "permitted_use",
+    "issued_at",
+    "propagation_scope",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "SanitizationReceipt",
+  "type": "object"
+}

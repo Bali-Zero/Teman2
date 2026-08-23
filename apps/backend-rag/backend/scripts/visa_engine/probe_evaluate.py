@@ -33,6 +33,21 @@ For the rare legitimate case a probe must exercise the exact real-caller
 code path, pass ``--as-real-i-know-what-i-am-doing`` explicitly -- it is loud
 (prints a warning banner) and never the default.
 
+By default this CLI prints a deliberately small summary (mode/state/rule
+pack identity) -- enough to prove the endpoint answered, not enough to
+verify what it actually decided. Pass ``--full-body`` (or set
+``$VISA_ORACLE_PROBE_FULL_BODY=1``) to print the complete, pretty-printed
+JSON response instead -- candidates, reason codes, review reasons and all.
+The evaluate endpoint's response envelope never echoes applicant facts back
+(see ``visa_oracle_evaluate.py``'s module docstring and the ``Decision`` /
+``VisaOracleDisplayDTO`` schemas: candidates carry product/rule-pack/pricing
+data only, ``missing_facts`` is fact *paths* not values, and
+``facts_fingerprint`` is an HMAC digest) -- so the full body is safe for a
+synthetic-payload probe run in a terminal. The one thing the response can
+carry that must never reach a scrollback is the driver-token header
+reflected by a misbehaving proxy; the redaction below covers both output
+shapes.
+
 This module never imports the FastAPI app; it is a pure HTTP client CLI,
 offline-ops posture like its ``visa_engine`` script siblings
 (``sign_pack.py``, ``activate_pack.py``).
@@ -59,6 +74,10 @@ logger = logging.getLogger("visa_engine.probe_evaluate")
 DEFAULT_URL = "https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate"
 URL_ENV = "VISA_ORACLE_PROBE_URL"
 
+#: Opt-in to the full pretty-printed response body instead of the small
+#: mode/state/rule_pack summary -- see module docstring.
+FULL_BODY_ENV = "VISA_ORACLE_PROBE_FULL_BODY"
+
 DEFAULT_DRIVER_TOKEN_FILE = Path.home() / ".config" / "nuzantara" / "visa-signing" / "driver-token"
 DRIVER_TOKEN_FILE_ENV = "VISA_ENGINE_DRIVER_TOKEN_FILE"
 DRIVER_TOKEN_HEADER = "X-Visa-Driver-Token"
@@ -81,6 +100,12 @@ _GROUP_OTHER_BITS = stat.S_IRWXG | stat.S_IRWXO
 
 class ProbeEvaluateError(RuntimeError):
     """A fail-closed condition this CLI refuses to proceed past."""
+
+
+def _env_flag(name: str) -> bool:
+    """Truthy-string env parse for a boolean CLI default (``--full-body``)."""
+
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _check_token_file_permissions(path: Path, mode: int) -> None:
@@ -247,6 +272,28 @@ def _summarize_response(response: httpx.Response) -> str:
     return "\n".join(lines)
 
 
+def _full_body_text(response: httpx.Response) -> str:
+    """``--full-body``: the complete, pretty-printed JSON response.
+
+    Unlike ``_summarize_response`` this is NOT deliberately small -- it is
+    the whole decision (candidates, reason codes, review/no-path reasons,
+    sources, display) that a real prove-live needs to actually verify. Its
+    caller (``run``) applies the exact same driver-token redaction to this
+    text as it does to the small summary -- see the comment at that call
+    site for why.
+    """
+
+    lines = [f"HTTP {response.status_code}"]
+    try:
+        body = response.json()
+    except ValueError:
+        lines.append(f"non-JSON body ({len(response.content)} bytes)")
+        return "\n".join(lines)
+
+    lines.append(json.dumps(body, indent=2, sort_keys=True))
+    return "\n".join(lines)
+
+
 def run(args: argparse.Namespace) -> int:
     try:
         traffic_source = resolve_traffic_source(args)
@@ -282,9 +329,9 @@ def run(args: argparse.Namespace) -> int:
 
     # The endpoint never returns the driver token, but a misbehaving proxy
     # must not turn that contract into a CLI secret leak.  Redact the exact
-    # credential from the deliberately small human-facing summary as a final
-    # defense in depth.
-    summary = _summarize_response(response)
+    # credential from the human-facing output -- summary or full body, same
+    # rule either way -- as a final defense in depth.
+    summary = _full_body_text(response) if args.full_body else _summarize_response(response)
     driver_token = headers.get(DRIVER_TOKEN_HEADER)
     if driver_token:
         summary = summary.replace(driver_token, "[REDACTED]")
@@ -328,6 +375,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--request-category", default=None)
     parser.add_argument("--idempotency-key", default=None)
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    parser.add_argument(
+        "--full-body",
+        action="store_true",
+        default=_env_flag(FULL_BODY_ENV),
+        help=(
+            "Print the complete, pretty-printed JSON response body instead of "
+            "the small mode/state/rule_pack summary -- candidates, reason "
+            "codes and review reasons included. Same driver-token redaction "
+            f"applies either way. Default: off (env {FULL_BODY_ENV}=1 to "
+            "opt in)."
+        ),
+    )
     parser.add_argument(
         "--as-real-i-know-what-i-am-doing",
         action="store_true",

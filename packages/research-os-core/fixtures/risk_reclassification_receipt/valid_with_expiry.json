@@ -1,0 +1,76 @@
+{
+  "risk_reclassification_receipt_id": "40000000-0000-4000-8000-000000000002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_object": {
+    "object_kind": "com.example.synthetic_claim",
+    "object_id": "synthetic-claim-source-002",
+    "object_hash": "897b71a13bc485b5e7f2db83e6aca992ec7b28990a4a726e4679f2cec617bed3",
+    "risk_class": "red",
+    "sensitivity": "confidential"
+  },
+  "output_object": {
+    "object_kind": "com.example.synthetic_claim",
+    "object_id": "synthetic-claim-output-002",
+    "object_hash": "c1a0cbbcdbc79427cdc07a0460edadfd84049ba461db40203cdc11611370a30e",
+    "risk_class": "green",
+    "sensitivity": "confidential"
+  },
+  "supersession_ref": {
+    "object_successor_edge_id": "40000000-0000-4000-8000-000000000202",
+    "object_hash": "4d3e3017572e209eb27d6b346d2401fefb9fa49859601eb5c752a9705442b95c"
+  },
+  "remediation": {
+    "type": "contradiction_resolved",
+    "reason_codes": [
+      "com.example.contradiction_withdrawn",
+      "com.example.source_reverified"
+    ],
+    "changed_field_paths": []
+  },
+  "claim_refs": [],
+  "evidence_refs": [],
+  "verification_receipt_refs": [],
+  "policy": {
+    "name": "com.example.risk_reclassification_policy",
+    "version": "1.0.0"
+  },
+  "reviewer": {
+    "actor_ref": {
+      "scheme": "hmac-sha256",
+      "key_version": "synthetic-key-v1",
+      "purpose": "audit",
+      "pseudonym": "7cc04efb27e0e98f1ed2fdb0ba210ac7bbe0e42ef0f41f1648364e5a60657f34"
+    },
+    "independence_class": "independent_reviewer"
+  },
+  "residual_risk": {
+    "risk_class": "green",
+    "findings": []
+  },
+  "permitted_use": {
+    "purpose": "public_republication",
+    "destination": "com.example.public_site",
+    "consumer": "com.example.marketing_team",
+    "expires_at": "2026-06-01T00:00:00Z"
+  },
+  "issued_at": "2026-02-04T00:01:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "40000000-0000-4000-8000-000000000602",
+      "object_hash": "68c0536d31f1b769ed2c11f1cb7a79d463e46fd8f94908373c051655506ebb4f"
+    },
+    "input_hashes": [
+      "fe814970b9eb56113acd505dc78c5f51b4c7e6c33919af3673ce87e6d0da078a"
+    ]
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "e71611b5b6affba736288fe47caa967f81463da7f7b70365fc49d3ad1ef6ee1e"
+}
