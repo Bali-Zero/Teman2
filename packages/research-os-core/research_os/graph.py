@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from research_os.models.successor_edge import ObjectSuccessorEdge
 from research_os.primitives import (
@@ -52,22 +52,32 @@ def _ref_key(reference: ExactObjectRef) -> tuple[str, str]:
 
 
 def _has_cycle(adjacency: dict[tuple[str, str], set[tuple[str, str]]]) -> bool:
-    visiting: set[tuple[str, str]] = set()
-    visited: set[tuple[str, str]] = set()
+    unseen, visiting, visited = 0, 1, 2
+    states: dict[tuple[str, str], int] = {}
 
-    def visit(node: tuple[str, str]) -> bool:
-        if node in visiting:
-            return True
-        if node in visited:
-            return False
-        visiting.add(node)
-        if any(visit(successor) for successor in adjacency.get(node, set())):
-            return True
-        visiting.remove(node)
-        visited.add(node)
-        return False
+    for start in adjacency:
+        if states.get(start, unseen) != unseen:
+            continue
+        states[start] = visiting
+        stack: list[tuple[tuple[str, str], Iterator[tuple[str, str]]]] = [
+            (start, iter(adjacency.get(start, set())))
+        ]
+        while stack:
+            node, successors = stack[-1]
+            try:
+                successor = next(successors)
+            except StopIteration:
+                states[node] = visited
+                stack.pop()
+                continue
 
-    return any(visit(node) for node in adjacency)
+            successor_state = states.get(successor, unseen)
+            if successor_state == visiting:
+                return True
+            if successor_state == unseen:
+                states[successor] = visiting
+                stack.append((successor, iter(adjacency.get(successor, set()))))
+    return False
 
 
 def select_current_member(
@@ -77,7 +87,9 @@ def select_current_member(
     """Select the unique current member or quarantine every broken family."""
 
     reasons: list[str] = []
-    family_identities = {(member.object_kind, member.tenant, member.family_id) for member in members}
+    family_identities = {
+        (member.object_kind, member.tenant, member.family_id) for member in members
+    }
     if len(family_identities) > 1:
         reasons.append("family_identity_mismatch")
     members_by_key: dict[tuple[str, str], GraphMember] = {}

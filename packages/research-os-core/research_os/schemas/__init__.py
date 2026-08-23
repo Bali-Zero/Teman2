@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 
-
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "object_successor_edge": ObjectSuccessorEdge,
@@ -49,8 +48,7 @@ def _prettier_json(value: Any, *, indent: int = 0, starting_column: int = 0) -> 
             return compact
         child_indent = indent + 2
         children = [
-            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent)}"
-            for item in value
+            f"{' ' * child_indent}{_prettier_json(item, indent=child_indent)}" for item in value
         ]
         return "[\n" + ",\n".join(children) + f"\n{' ' * indent}]"
 

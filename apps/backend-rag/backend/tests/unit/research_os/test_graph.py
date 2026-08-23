@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from research_os.graph import Current, GraphMember, Quarantined, select_current_member
+from research_os.hashing import object_hash as compute_object_hash
 from research_os.models.successor_edge import ObjectSuccessorEdge
 
 UTC = timezone.utc
@@ -20,7 +21,7 @@ def _member(index: int, *, object_hash: str | None = None) -> GraphMember:
     )
 
 
-def _edge(predecessor: GraphMember, successor: GraphMember, *, salt: int = 10) -> ObjectSuccessorEdge:
+def _edge(predecessor: GraphMember, successor: GraphMember) -> ObjectSuccessorEdge:
     payload = {
         "object_successor_edge_id": str(uuid4()),
         "contract_version": "research-os/v1.0.0",
@@ -34,9 +35,9 @@ def _edge(predecessor: GraphMember, successor: GraphMember, *, salt: int = 10) -
         "producer": {"name": "synthetic.test", "version": "1.0.0"},
         "lineage": {"input_hashes": []},
         "retention": {"retention_class": "audit", "legal_hold": False},
-        "object_hash": f"{salt:064x}",
     }
-    return ObjectSuccessorEdge.model_validate(payload, context={"skip_object_hash_check": True})
+    payload["object_hash"] = compute_object_hash(payload)
+    return ObjectSuccessorEdge.model_validate(payload)
 
 
 def test_graph_selects_unique_current_member() -> None:
@@ -48,14 +49,16 @@ def test_graph_selects_unique_current_member() -> None:
 
 def test_fork_quarantines_family() -> None:
     first, second, third = _member(0), _member(1), _member(2)
-    result = select_current_member([_edge(first, second), _edge(first, third, salt=11)], [first, second, third])
+    result = select_current_member(
+        [_edge(first, second), _edge(first, third)], [first, second, third]
+    )
     assert isinstance(result, Quarantined)
     assert "fork" in result.reason_codes
 
 
 def test_cycle_quarantines_family() -> None:
     first, second = _member(0), _member(1)
-    result = select_current_member([_edge(first, second), _edge(second, first, salt=11)], [first, second])
+    result = select_current_member([_edge(first, second), _edge(second, first)], [first, second])
     assert isinstance(result, Quarantined)
     assert "cycle" in result.reason_codes
 
@@ -88,3 +91,24 @@ def test_members_from_multiple_families_quarantine_without_edges() -> None:
     result = select_current_member([], [first, second])
     assert isinstance(result, Quarantined)
     assert "family_identity_mismatch" in result.reason_codes
+
+
+def test_long_linear_chain_returns_current_member_without_recursion_failure() -> None:
+    members = [_member(index) for index in range(5_001)]
+    edges = [_edge(members[index], members[index + 1]) for index in range(5_000)]
+
+    result = select_current_member(edges, members)
+
+    assert isinstance(result, Current)
+    assert result.member == members[-1]
+
+
+def test_long_cyclic_chain_quarantines_without_recursion_failure() -> None:
+    members = [_member(index) for index in range(5_001)]
+    edges = [_edge(members[index], members[index + 1]) for index in range(5_000)]
+    edges.append(_edge(members[-1], members[0]))
+
+    result = select_current_member(edges, members)
+
+    assert isinstance(result, Quarantined)
+    assert "cycle" in result.reason_codes

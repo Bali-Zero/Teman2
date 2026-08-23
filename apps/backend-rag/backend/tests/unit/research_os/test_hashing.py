@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import unicodedata
 from inspect import signature
-from typing import Literal
+from typing import Literal, cast
 
 import pytest
 import research_os.hashing as hashing
@@ -16,6 +16,8 @@ from research_os.hashing import (
     validate_sha256_hex,
 )
 from research_os.version import CONTRACT_VERSION
+
+TYPED_CONTRACT_VERSION = cast(Literal["research-os/v1.0.0"], CONTRACT_VERSION)
 
 
 def test_hash_wire_format_rejects_every_noncanonical_form() -> None:
@@ -34,6 +36,20 @@ def test_hash_wire_format_rejects_every_noncanonical_form() -> None:
 def test_canonicalize_translates_rfc8785_failure_to_typed_error() -> None:
     with pytest.raises(CanonicalizationError):
         canonicalize({"unsafe": float("nan")})
+
+
+def test_rfc8785_number_serialization_reference_vector() -> None:
+    value = [333333333.33333329, 1e30, 4.50, 2e-3, 1e-27]
+
+    assert canonicalize(value) == b"[333333333.3333333,1e+30,4.5,0.002,1e-27]"
+
+
+def test_rfc8785_unicode_and_escaping_reference_vector() -> None:
+    value = {"string": '\u20ac$\u000f\nA\'B"\\\\"/', "literals": [None, True, False]}
+
+    assert canonicalize(value) == (
+        b'{"literals":[null,true,false],"string":"\xe2\x82\xac$\\u000f\\nA\'B\\"\\\\\\\\\\"/"}'
+    )
 
 
 def test_object_hash_is_stable_across_key_permutations_and_runs() -> None:
@@ -71,7 +87,7 @@ class _OptionalWireModel(BaseModel):
 
 def test_explicit_null_remains_present_in_canonical_bytes() -> None:
     explicit_null = _OptionalWireModel(
-        contract_version=CONTRACT_VERSION,
+        contract_version=TYPED_CONTRACT_VERSION,
         optional_value=None,
     )
 
@@ -81,9 +97,9 @@ def test_explicit_null_remains_present_in_canonical_bytes() -> None:
 
 
 def test_explicit_null_and_absent_optional_field_hash_differ() -> None:
-    absent = _OptionalWireModel(contract_version=CONTRACT_VERSION)
+    absent = _OptionalWireModel(contract_version=TYPED_CONTRACT_VERSION)
     explicit_null = _OptionalWireModel(
-        contract_version=CONTRACT_VERSION,
+        contract_version=TYPED_CONTRACT_VERSION,
         optional_value=None,
     )
 

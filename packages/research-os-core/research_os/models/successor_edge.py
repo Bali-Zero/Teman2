@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import ValidationInfo, model_validator
+from pydantic import model_validator
 from pydantic_core import PydanticCustomError
 
 from research_os.hashing import object_hash
@@ -23,6 +23,8 @@ from research_os.primitives import (
     UtcDateTime,
     validate_extensions,
 )
+
+
 class ObjectSuccessorEdge(FrozenCoreModel):
     object_successor_edge_id: UUID
     contract_version: Literal["research-os/v1.0.0"]
@@ -41,7 +43,7 @@ class ObjectSuccessorEdge(FrozenCoreModel):
     extensions: Extensions | None = None
 
     @model_validator(mode="after")
-    def validate_edge(self, info: ValidationInfo) -> ObjectSuccessorEdge:
+    def validate_edge(self) -> ObjectSuccessorEdge:
         if self.predecessor_ref == self.successor_ref:
             raise PydanticCustomError(
                 "successor_ref_same_as_predecessor",
@@ -55,18 +57,17 @@ class ObjectSuccessorEdge(FrozenCoreModel):
                 "object_kind_mismatch",
                 "edge and both exact references must have the same object_kind",
             )
-        validate_extensions(self.extensions, core_fields=set(type(self).model_fields))
+        validate_extensions(self.extensions)
 
         # FREEZE-CONFLICT: section 3.1's exact_object_ref has no tenant,
         # family_id, or recorded_at fields. Those frozen cross-object
         # invariants cannot be checked on this wire object without adding
         # noncanonical fields, so graph.select_current_member enforces them
         # against the referenced complete members instead.
-        if not (info.context or {}).get("skip_object_hash_check", False):
-            expected = object_hash(self)
-            if self.object_hash != expected:
-                raise PydanticCustomError(
-                    "object_hash_mismatch",
-                    "object_hash does not match the canonical object",
-                )
+        expected = object_hash(self)
+        if self.object_hash != expected:
+            raise PydanticCustomError(
+                "object_hash_mismatch",
+                "object_hash does not match the canonical object",
+            )
         return self

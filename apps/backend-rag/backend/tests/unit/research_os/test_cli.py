@@ -45,7 +45,9 @@ def test_fixtures_check_validates_full_tree() -> None:
 
 def test_hash_cli_prints_lowercase_sha256(tmp_path: Path) -> None:
     payload_path = tmp_path / "object.json"
-    payload_path.write_text(json.dumps({"contract_version": "research-os/v1.0.0", "value": 1}), encoding="utf-8")
+    payload_path.write_text(
+        json.dumps({"contract_version": "research-os/v1.0.0", "value": 1}), encoding="utf-8"
+    )
     result = _run_cli("hash", "--file", str(payload_path))
     assert result.returncode == 0
     assert len(json.loads(result.stdout)["object_hash"]) == 64

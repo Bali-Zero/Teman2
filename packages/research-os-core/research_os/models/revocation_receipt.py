@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Literal
 from uuid import UUID
 
-from pydantic import Field, ValidationInfo, model_validator
+from pydantic import Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from research_os.hashing import object_hash
@@ -25,6 +26,8 @@ from research_os.primitives import (
     UtcDateTime,
     validate_extensions,
 )
+
+
 class RevocationAuthority(FrozenCoreModel):
     role: Identifier
     scope: str = Field(min_length=1)
@@ -60,21 +63,27 @@ class RevocationReceipt(FrozenCoreModel):
         return reference == self.target_ref
 
     @model_validator(mode="after")
-    def validate_receipt(self, info: ValidationInfo) -> RevocationReceipt:
-        validate_extensions(self.extensions, core_fields=set(type(self).model_fields))
-        if not (info.context or {}).get("skip_object_hash_check", False):
-            expected = object_hash(self)
-            if self.object_hash != expected:
-                raise PydanticCustomError(
-                    "object_hash_mismatch",
-                    "object_hash does not match the canonical object",
-                )
+    def validate_receipt(self) -> RevocationReceipt:
+        validate_extensions(self.extensions)
+        expected = object_hash(self)
+        if self.object_hash != expected:
+            raise PydanticCustomError(
+                "object_hash_mismatch",
+                "object_hash does not match the canonical object",
+            )
         return self
 
 
 @dataclass(frozen=True)
 class ResolvedRevocation:
-    receipt: RevocationReceipt
+    receipts: tuple[RevocationReceipt, ...]
+
+    @property
+    def receipt(self) -> RevocationReceipt:
+        """Return the receipt when resolution produced exactly one identity."""
+        if len(self.receipts) != 1:
+            raise ValueError("resolved batch contains multiple independent receipts")
+        return self.receipts[0]
 
 
 @dataclass(frozen=True)
@@ -86,21 +95,27 @@ class QuarantinedRevocations:
 def resolve_revocation_replay(
     receipts: Sequence[RevocationReceipt],
 ) -> ResolvedRevocation | QuarantinedRevocations:
-    """Resolve replay or quarantine a conflicting idempotency-key claim."""
+    """Resolve independent claims and exact replays, or quarantine an identity conflict."""
 
     if not receipts:
         return QuarantinedRevocations(("missing_receipt",), ())
-    first = receipts[0]
-    for candidate in receipts[1:]:
-        conflict = (
-            candidate.idempotency_key != first.idempotency_key
-            or candidate.target_ref != first.target_ref
-            or candidate.authority != first.authority
-            or candidate.reason_code != first.reason_code
+
+    grouped: dict[tuple[str, str, str], list[RevocationReceipt]] = {}
+    for receipt in receipts:
+        replay_identity = (
+            receipt.target_ref.object_kind,
+            receipt.target_ref.object_id,
+            receipt.idempotency_key,
         )
-        if conflict:
+        grouped.setdefault(replay_identity, []).append(receipt)
+
+    resolved: list[RevocationReceipt] = []
+    for claims in grouped.values():
+        canonical_receipt = claims[0]
+        if any(claim != canonical_receipt for claim in claims[1:]):
             return QuarantinedRevocations(
                 ("conflicting_idempotency_key",),
                 tuple(receipts),
             )
-    return ResolvedRevocation(first)
+        resolved.append(canonical_receipt)
+    return ResolvedRevocation(tuple(resolved))

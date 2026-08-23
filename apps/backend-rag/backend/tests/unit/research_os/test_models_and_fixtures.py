@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from jsonschema import Draft202012Validator
-from pydantic import ValidationError
+from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
+from pydantic import BaseModel, ValidationError
 from research_os.cli import FIXTURES_ROOT
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 from research_os.schemas import SCHEMA_DIRECTORY
 
-CONTRACT_MODELS = {
+CONTRACT_MODELS: dict[str, type[BaseModel]] = {
     "object_successor_edge": ObjectSuccessorEdge,
     "revocation_receipt": RevocationReceipt,
 }
@@ -32,7 +32,9 @@ def test_valid_fixtures_round_trip(contract_kind: str, load_json: Any) -> None:
 
 
 @pytest.mark.parametrize("contract_kind", sorted(CONTRACT_MODELS))
-def test_invalid_fixtures_reject_with_exact_expected_reason(contract_kind: str, load_json: Any) -> None:
+def test_invalid_fixtures_reject_with_exact_expected_reason(
+    contract_kind: str, load_json: Any
+) -> None:
     model = CONTRACT_MODELS[contract_kind]
     fixture_paths = (
         path
@@ -47,9 +49,28 @@ def test_invalid_fixtures_reject_with_exact_expected_reason(contract_kind: str, 
 
 
 @pytest.mark.parametrize("model", CONTRACT_MODELS.values())
-def test_contract_models_reject_unknown_top_level_fields(model: object, load_json: Any) -> None:
+def test_contract_models_reject_unknown_top_level_fields(
+    model: type[BaseModel], load_json: Any
+) -> None:
     contract_kind = next(kind for kind, candidate in CONTRACT_MODELS.items() if candidate is model)
     fixture_path = next((FIXTURES_ROOT / contract_kind).glob("valid_*.json"))
     payload = {**load_json(fixture_path), "unexpected": True}
     with pytest.raises(ValidationError):
-        model.model_validate(payload)  # type: ignore[attr-defined]
+        model.model_validate(payload)
+
+
+@pytest.mark.parametrize("model", CONTRACT_MODELS.values())
+def test_validation_context_cannot_bypass_exact_object_hash(
+    model: type[BaseModel], load_json: Any
+) -> None:
+    contract_kind = next(kind for kind, candidate in CONTRACT_MODELS.items() if candidate is model)
+    fixture_path = next((FIXTURES_ROOT / contract_kind).glob("valid_*.json"))
+    payload = {**load_json(fixture_path), "object_hash": "0" * 64}
+
+    with pytest.raises(ValidationError) as caught:
+        model.model_validate(
+            payload,
+            context={"skip_object_hash_check": True},
+        )
+
+    assert "object_hash_mismatch" in _reason_codes(caught.value)

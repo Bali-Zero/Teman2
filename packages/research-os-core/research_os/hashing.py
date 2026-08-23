@@ -9,17 +9,16 @@ object; producers in every language must implement the same rule.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from hashlib import sha256
 from types import MappingProxyType
-import re
 from typing import Any
 
-from pydantic import BaseModel
 import rfc8785
+from pydantic import BaseModel
 
 from research_os.version import CONTRACT_VERSION
-
 
 SHA256_HEX_PATTERN = r"^[0-9a-f]{64}$"
 _SHA256_HEX_RE = re.compile(SHA256_HEX_PATTERN)
@@ -32,10 +31,7 @@ TRANSPORT_METADATA_FIELDS: Mapping[str, frozenset[str]] = MappingProxyType(
     }
 )
 HASH_OMISSION_FIELDS: Mapping[str, frozenset[str]] = MappingProxyType(
-    {
-        CONTRACT_VERSION: frozenset({"object_hash"})
-        | TRANSPORT_METADATA_FIELDS[CONTRACT_VERSION]
-    }
+    {CONTRACT_VERSION: frozenset({"object_hash"}) | TRANSPORT_METADATA_FIELDS[CONTRACT_VERSION]}
 )
 
 
@@ -75,7 +71,9 @@ def object_hash(obj: Mapping[str, Any] | BaseModel) -> str:
     )
     contract_version = _contract_version_from_object(wire_object)
     omission_fields = HASH_OMISSION_FIELDS[contract_version]
-    hashable_object = {key: value for key, value in wire_object.items() if key not in omission_fields}
+    hashable_object = {
+        key: value for key, value in wire_object.items() if key not in omission_fields
+    }
     return sha256(canonicalize(hashable_object)).hexdigest()
 
 

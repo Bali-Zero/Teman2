@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-import re
-from typing import Any, Mapping
-
+from typing import Any
 
 CONTRACT_FAMILY = "research-os"
 CONTRACT_VERSION = "research-os/v1.0.0"

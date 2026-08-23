@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -24,6 +24,6 @@ sys.path.insert(0, str(PACKAGE_ROOT))
 @pytest.fixture
 def load_json() -> Any:
     def _load(path: Path) -> dict[str, Any]:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
 
     return _load

@@ -161,6 +161,7 @@
           "anyOf": [
             {
               "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
               "type": "string"
             },
             {
@@ -179,6 +180,7 @@
           "anyOf": [
             {
               "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
               "type": "string"
             },
             {
@@ -208,6 +210,7 @@
         },
         "verified_at": {
           "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
           "title": "Verified At",
           "type": "string"
         }
@@ -290,6 +293,7 @@
     },
     "issued_at": {
       "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
       "title": "Issued At",
       "type": "string"
     },

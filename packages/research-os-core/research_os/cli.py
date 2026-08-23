@@ -5,9 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from pathlib import Path
 import sys
-from typing import Any, NoReturn, Sequence
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any, NoReturn
 
 from pydantic import BaseModel, ValidationError
 
@@ -15,7 +16,6 @@ from research_os.hashing import HASH_OMISSION_FIELDS, object_hash
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 from research_os.version import check_compatibility
-
 
 LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -69,7 +69,9 @@ def _validate(contract_kind: str, path: Path) -> int:
         return 1
     except (OSError, json.JSONDecodeError) as exc:
         LOGGER.warning("cannot read validation input %s: %s", path, exc)
-        _emit({"contract": contract_kind, "file": str(path), "valid": False, "error": "invalid_json"})
+        _emit(
+            {"contract": contract_kind, "file": str(path), "valid": False, "error": "invalid_json"}
+        )
         return 1
     _emit({"contract": contract_kind, "file": str(path), "valid": True})
     return 0
