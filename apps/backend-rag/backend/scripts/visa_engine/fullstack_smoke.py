@@ -436,7 +436,7 @@ async def run() -> int:
             )
             backend_process = await _start_process(
                 (
-                    str(backend_root / ".venv" / "bin" / "python"),
+                    sys.executable,
                     "-m",
                     "uvicorn",
                     "backend.app.main_api:app",
