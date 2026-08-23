@@ -1,0 +1,89 @@
+{
+  "media_manifest_id": "40000000-0000-4000-8000-000000000002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "content_object_ref": {
+    "content_object_id": "30000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "object_hash": "7062ac46ce60951bf77277cbee4442132101546db0f4747111c8b6bc3c0d2b73"
+  },
+  "media_type": "video",
+  "claim_refs": [
+    {
+      "claim_id": "40000000-0000-4000-8000-000000000101",
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ],
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "assets": [
+    {
+      "asset_id": "clip-01",
+      "sha256": "38b07ec55557f2a88d94540778145a073db901f023611299dd92753146b3360b",
+      "risk_class": "amber",
+      "sensitivity": "internal",
+      "source": "veo:flow-session-2026-08-15-02",
+      "derivation": "rendered",
+      "rights": "wr3.rights.licensed-veo",
+      "rights_expires_at": "2027-08-15T00:00:00Z",
+      "prompt_ref": "wr3-shot-pack:2026-08-15-02:shot-01",
+      "model": "veo-3.1-fast",
+      "seed": 7,
+      "tool_version": "flowkit-1.0.2"
+    }
+  ],
+  "timeline_or_slides": {
+    "locator": "gs://wr2-assets/kbli-2025-update/slides.json",
+    "sha256": "6bfb138260b28e1b73a7212f533407cfa6f095ff0f01eb9dbf3b6467a06769ed"
+  },
+  "quality": {
+    "checks": [
+      {
+        "name": "arcface_cosine",
+        "result": "pass",
+        "score": 0.71
+      }
+    ]
+  },
+  "platform_specs": [
+    {
+      "platform": "tiktok",
+      "aspect_ratio": "9:16",
+      "safe_zone": "center-90pct",
+      "duration_or_count": 8.0
+    }
+  ],
+  "audio": {
+    "transcript_hash": "3a70781b969c2597171753c5b69ce76e5ddf15d50fbd22ee1be455349dc5870e",
+    "subtitle_hash": "c60feffd64b0fca5e04f3e1d56132bac152f478f830cb055a99a89f15e8dc625",
+    "loudness_lufs": -14.2,
+    "sync_result": "wr3.sync-result.pass"
+  },
+  "identity": {
+    "anchor_ref": {
+      "asset_id": "zantara-anchor-v3",
+      "content_hash": "ac7ba245f3ce9996741e4d2e00bbf70e2f9c344dd687fd3f5934fee8981eb422"
+    },
+    "verification_result": "wr3.identity.match"
+  },
+  "producer": {
+    "name": "wr2.layout-composer",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "40000000-0000-4000-8000-000000000102",
+      "object_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "input_hashes": [
+      "8888888888888888888888888888888888888888888888888888888888888888"
+    ]
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "0f1e8ab4aeeade82dacbdd6a42a0e27f67e72afbdefc9b2e2e642b8101dd8d6c"
+}

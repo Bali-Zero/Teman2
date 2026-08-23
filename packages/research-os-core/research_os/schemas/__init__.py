@@ -9,11 +9,15 @@ from typing import Any
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
+from research_os.models.content_object import ContentObject
+from research_os.models.media_manifest import MediaManifest
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
+    "content_object": ContentObject,
+    "media_manifest": MediaManifest,
     "object_successor_edge": ObjectSuccessorEdge,
     "revocation_receipt": RevocationReceipt,
 }
@@ -42,8 +46,20 @@ def _prettier_json(value: Any, *, indent: int = 0, starting_column: int = 0) -> 
         if not value:
             return "[]"
         compact = json.dumps(value, ensure_ascii=False, separators=(", ", ": "))
+        # "+ 1" reserves a column for the trailing "," this join adds when the
+        # value is not the parent's last key (`",\n".join(lines)` above) --
+        # without it, a compacted array landing at EXACTLY column 80 passes
+        # this check but renders an 81-column line, which real Prettier
+        # (this function's own documented contract: "Prettier's stable JSON
+        # layout") would have kept expanded. Caught by
+        # `PlatformSpec.required` (research_os/models/media_manifest.py,
+        # section 10) landing at exactly column 80 before this fix; verified
+        # byte-identical regeneration of every OTHER checked-in schema
+        # (object_successor_edge, revocation_receipt) after this change --
+        # more conservative can only expand a boundary case, never
+        # re-compact one.
         if all(not isinstance(item, (dict, list)) for item in value) and (
-            starting_column + len(compact) <= 80
+            starting_column + len(compact) + 1 <= 80
         ):
             return compact
         child_indent = indent + 2

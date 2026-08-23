@@ -1,0 +1,622 @@
+{
+  "$defs": {
+    "Availability": {
+      "additionalProperties": false,
+      "description": "``availability: {state, severity, reason_code?, requested_at?,\nrequired_by?, resolved_at?}``.\n\n``severity`` is given as an explicit inline closed list\n(``low | medium | high | critical``) directly in section 9's wire\nshape -- unlike ``status`` above, this one is not silent, so it is a\nclosed ``Literal`` rather than an open ``RegisteredName``.\n\n``reason_code`` is spelled ``string?`` in section 9's prose --\ndeliberately NOT \"registered namespaced string\", the wording every\nother ``reason_code`` field in this contract family uses (see\n``ObjectSuccessorEdge.reason_code``, ``RevocationReceipt.reason_code``).\nFollowed literally: a bare optional string, not ``RegisteredName``.",
+      "properties": {
+        "reason_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Code"
+        },
+        "requested_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested At"
+        },
+        "required_by": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required By"
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved At"
+        },
+        "severity": {
+          "enum": ["low", "medium", "high", "critical"],
+          "title": "Severity",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/AvailabilityState"
+        }
+      },
+      "required": ["state", "severity"],
+      "title": "Availability",
+      "type": "object"
+    },
+    "AvailabilityState": {
+      "enum": [
+        "active",
+        "correction_required",
+        "withdrawal_requested",
+        "withdrawn"
+      ],
+      "title": "AvailabilityState",
+      "type": "string"
+    },
+    "ChannelPlanEntry": {
+      "additionalProperties": false,
+      "description": "``channel_plan: [{surface, objective, cta, status}]``.\n\nINTERPRETATION: ``status`` has no entry in section 3's closed enum\nregistry. Reusing the sibling top-level ``publication_state`` enum was\nconsidered and rejected: section 9 never says a per-channel status\nshares that vocabulary, and a channel might legitimately need a state\n(e.g. \"paused\", \"rejected\") ``PublicationState`` does not have.\nModeled as an open ``RegisteredName`` -- the same open-vocabulary idiom\nused below for ``MediaAsset.rights``/``AudioMetadata.sync_result``/\n``IdentityMetadata.verification_result`` -- rather than fabricating a\nclosed ``Literal`` set the freeze never wrote down. A freeze-change\naddition to section 3 is the correct place for a closed vocabulary if\none was intended.",
+      "properties": {
+        "cta": {
+          "minLength": 1,
+          "title": "Cta",
+          "type": "string"
+        },
+        "objective": {
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "status": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Status",
+          "type": "string"
+        },
+        "surface": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Surface",
+          "type": "string"
+        }
+      },
+      "required": ["surface", "objective", "cta", "status"],
+      "title": "ChannelPlanEntry",
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "description": "``{claim_id, object_hash}`` -- no ``stance``, unlike ``Claim.evidence_refs``\n(section 6). Section 9 spells this pair-only shape verbatim for\n``ContentObject.claim_refs``.",
+      "properties": {
+        "claim_id": {
+          "format": "uuid",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["claim_id", "object_hash"],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "ContentLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {workflow_run_ref: {...}, input_hashes: [], code_version?,\nmodel_version?, prompt_version?}`` -- ``workflow_run_ref`` has no ``?``\nin either section 9 or section 10, so (unlike ``primitives.Lineage``,\nwhose ``workflow_run_ref`` is optional for kinds that may run outside a\nworkflow) it is mandatory here, mirroring the sibling operator-decision\nlane's identical ``DecisionPacketLineage`` shape for section 7.",
+      "properties": {
+        "code_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code Version"
+        },
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "ContentLineage",
+      "type": "object"
+    },
+    "ContentObjectRef": {
+      "additionalProperties": false,
+      "description": "``{content_object_id, revision, object_hash}`` -- unlike every other\n``supersedes_*_ref`` in this contract family (``ActionItemRef``,\n``DecisionPacketRef``, ...), section 9 explicitly bakes the\npredecessor's own ``revision`` into the exact reference rather than\nleaving it to be looked up. This same ref shape is what\n``MediaManifest.content_object_ref`` (section 10) points at a\n``ContentObject`` with, so it is defined here and imported there.",
+      "properties": {
+        "content_object_id": {
+          "format": "uuid",
+          "title": "Content Object Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": ["content_object_id", "revision", "object_hash"],
+      "title": "ContentObjectRef",
+      "type": "object"
+    },
+    "CreativeLockRef": {
+      "additionalProperties": false,
+      "description": "``{creative_lock_id, object_hash}``.",
+      "properties": {
+        "creative_lock_id": {
+          "format": "uuid",
+          "title": "Creative Lock Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["creative_lock_id", "object_hash"],
+      "title": "CreativeLockRef",
+      "type": "object"
+    },
+    "DecisionPacketRef": {
+      "additionalProperties": false,
+      "description": "``{decision_packet_id, object_hash}``.",
+      "properties": {
+        "decision_packet_id": {
+          "format": "uuid",
+          "title": "Decision Packet Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["decision_packet_id", "object_hash"],
+      "title": "DecisionPacketRef",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "``{evidence_id, object_hash}``.",
+      "properties": {
+        "evidence_id": {
+          "format": "uuid",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["evidence_id", "object_hash"],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "PublicationState": {
+      "enum": [
+        "generated",
+        "staged",
+        "human_approved",
+        "publishing",
+        "deployed",
+        "indexed_verified"
+      ],
+      "title": "PublicationState",
+      "type": "string"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "SourceDocumentRef": {
+      "additionalProperties": false,
+      "properties": {
+        "document_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Document Content Hash",
+          "type": "string"
+        },
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_version_id": {
+          "minLength": 1,
+          "title": "Document Version Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "document_version_id",
+        "document_content_hash"
+      ],
+      "title": "SourceDocumentRef",
+      "type": "object"
+    },
+    "TopicLockRef": {
+      "additionalProperties": false,
+      "description": "``{topic_lock_id, object_hash}``.",
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "topic_lock_id": {
+          "format": "uuid",
+          "title": "Topic Lock Id",
+          "type": "string"
+        }
+      },
+      "required": ["topic_lock_id", "object_hash"],
+      "title": "TopicLockRef",
+      "type": "object"
+    },
+    "VerificationState": {
+      "enum": ["unverified", "verified", "stale"],
+      "title": "VerificationState",
+      "type": "string"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "availability": {
+      "$ref": "#/$defs/Availability"
+    },
+    "campaign_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Campaign Id"
+    },
+    "channel_plan": {
+      "items": {
+        "$ref": "#/$defs/ChannelPlanEntry"
+      },
+      "title": "Channel Plan",
+      "type": "array"
+    },
+    "claim_refs": {
+      "items": {
+        "$ref": "#/$defs/ClaimRef"
+      },
+      "title": "Claim Refs",
+      "type": "array"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "content_object_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Content Object Family Id",
+      "type": "string"
+    },
+    "content_object_id": {
+      "format": "uuid",
+      "title": "Content Object Id",
+      "type": "string"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "creative_lock_ref": {
+      "$ref": "#/$defs/CreativeLockRef"
+    },
+    "evidence_refs": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "lineage": {
+      "$ref": "#/$defs/ContentLineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "origin_decision_packet_ref": {
+      "$ref": "#/$defs/DecisionPacketRef"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "publication_state": {
+      "$ref": "#/$defs/PublicationState"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "revision": {
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "source_document_refs": {
+      "items": {
+        "$ref": "#/$defs/SourceDocumentRef"
+      },
+      "title": "Source Document Refs",
+      "type": "array"
+    },
+    "supersedes_content_object_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContentObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "topic_lock_ref": {
+      "$ref": "#/$defs/TopicLockRef"
+    },
+    "verification_state": {
+      "$ref": "#/$defs/VerificationState"
+    }
+  },
+  "required": [
+    "content_object_id",
+    "content_object_family_id",
+    "contract_version",
+    "tenant",
+    "origin_decision_packet_ref",
+    "revision",
+    "topic_lock_ref",
+    "creative_lock_ref",
+    "claim_refs",
+    "evidence_refs",
+    "source_document_refs",
+    "classification",
+    "channel_plan",
+    "publication_state",
+    "verification_state",
+    "availability",
+    "recorded_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "ContentObject",
+  "type": "object"
+}
