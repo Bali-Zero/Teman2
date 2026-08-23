@@ -8,9 +8,13 @@
 #
 # 1. THIS ORGAN READS PRODUCTION, ITS SIBLING READS LOCAL DEV.
 #    The wa-mirror table lives on Pro's local Postgres; the bot's own
-#    inbound_webhooks / wa_outbox rows live on Fly. Audited 2026-08-23: every
-#    organ in this repo that sets INTAKE_DATABASE_URL points it at local
-#    nuzantara_dev, whose copies of those two tables carry ZERO rows. So this
+#    inbound_webhooks / wa_outbox rows live on Fly. Audited ONCE, 2026-08-23:
+#    every organ in this repo that sets INTAKE_DATABASE_URL points it at local
+#    nuzantara_dev, whose copies of those two tables carried ZERO rows THAT DAY.
+#    Read that as a dated observation, not a standing property — it is live
+#    database state and nothing re-checks it. Nothing here depends on it any
+#    more either: since the override guard below, the DSN is enforced rather
+#    than inferred from what another database happens to contain. So this
 #    wrapper sources ~/.nuzantara-secrets.env and exports DATABASE_URL_LOCAL —
 #    the one name with a proven live path to production, through the
 #    `flyctl proxy 15432:5432 -a nuzantara-postgres` tunnel that

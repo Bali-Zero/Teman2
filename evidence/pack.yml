@@ -26,14 +26,23 @@ seat_diversity_note: >-
   delivery fix and turned out to be the substantive one.
 diff:
   net_lines: >-
-    5 files, +545/-170 measured THREE-DOT against the merge base
-    (origin/main...HEAD) — never two-dot, which on a moved base blames this PR
-    for files that landed on main after the branch point (W102). Two of the
-    five are evidence/brief.yml and evidence/pack.yml, which already exist on
-    main from an earlier Gear-3 PR and are therefore REWRITTEN, not created:
-    that is the fixed-path collision hazard in the flesh, not a hypothetical.
-    Deterministic gear floor recomputed from this diff = 3 (hot-zone:
-    infra/launchagents/). Gear 3 is the floor, not a choice.
+    AS OF 85954fccd (pinned deliberately — see below): 5 files, +749/-78,
+    measured THREE-DOT against the merge base. Never two-dot, which on a moved
+    base blames this PR for files that landed on main after the branch point
+    (W102). Two of the five are evidence/brief.yml and evidence/pack.yml, which
+    already exist on main and are therefore REWRITTEN, not created — the
+    fixed-path collision hazard, which duly bit: PR #4693 landed rewriting both
+    while this PR was in flight, GitHub marked it CONFLICTING, and a
+    CONFLICTING PR fires ZERO workflows, so the green could never arrive and
+    nothing was red to say why. Deterministic gear floor recomputed from this
+    diff = 3 (hot-zone: infra/launchagents/). Gear 3 is the floor, not a choice.
+
+    The pin is the point. An earlier revision of this field carried a bare
+    "3 files, +222/-1", which an independent fact-check found to be both stale
+    AND arithmetically wrong when written (91+102+30 is 223, not 222). A byte
+    count stated unqualified inside a file that every subsequent commit
+    changes is a claim that decays by construction; the only form that stays
+    true is one bound to a named SHA.
   behaviour_change: >-
     NOTHING changes on any machine when this merges. It adds the artifacts
     that let an operator install the organ; installing it is a separate,
@@ -80,20 +89,38 @@ receipts:
       outbound_age_min=848.2 raw_inbound_h=588.7 raw_outbound_h=588.7",
       wrapper rc=0. 588.7h before the run timestamp is 2026-07-30T01:26Z,
       which reconciles with the independently known last successful answer
-      at 2026-07-30T01:23:58Z. This also settles the DSN hazard by EFFECT:
-      the dev database carries zero rows in both tables, so a mispointed
-      chain would have produced the wrong-database branch, not real ages.
+      at 2026-07-30T01:23:58Z. What this receipt proves on its own is the
+      part that matters: the run reached a database holding REAL production
+      history through the chain the wrapper builds.
+
+      One claim that used to ride inside this receipt has been demoted, on an
+      independent fact-check: "the dev database carries zero rows in both
+      tables" is an assertion about live Postgres state with no receipt of its
+      own — not reproducible from the repo, and it was sitting in narrative
+      form beside a genuinely measured result, where it borrowed that result's
+      standing. It is inherited from the wrapper header's 2026-08-23 audit and
+      is NOT independently verified here. The argument does not need it: the
+      measured output is real production ages, and since round 3 the DSN
+      property is enforced by a deterministic guard rather than inferred from
+      what some other database does or does not contain.
     exit: 0
     ts: "2026-08-23T14:08Z"
     seat: "session (pro, build lane)"
   - claim: "The KeepAlive linter does not flag the new plist (superscar #7)"
     cmd: "scripts/lint_plist_keepalive.py"
     result: >-
-      "clean — no KeepAlive=true wrapper shows a one-shot smell", rc=0. The
-      three WARN lines it prints are pre-existing organs (wr2.pg-proxy,
-      matagaruda.kg-query-api, nuzantara.intake-worker), none of them this
-      one: this plist is StartInterval=900 with KeepAlive=false, the correct
-      shape for a one-shot.
+      "clean — no KeepAlive=true wrapper shows a one-shot smell", rc=0, and the
+      new plist is not among the findings: it is StartInterval=900 with
+      KeepAlive=false, the correct shape for a one-shot.
+
+      CORRECTED after an independent fact-check. This receipt first said "the
+      three WARN lines it prints". The linter prints TWELVE. The author had
+      read its output through `tail -4` and reported the tail as the whole —
+      a display cap mistaken for the complete set, which is a scar this repo
+      already catalogues (W97) and the author was supposed to know. The
+      load-bearing half of the claim (rc=0, this plist not flagged) was true
+      and is unchanged; the count beside it was not, and a wrong number
+      standing next to a right one borrows its credibility.
     exit: 0
     ts: "2026-08-23T14:10Z"
     seat: "session (pro, build lane)"
