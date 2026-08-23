@@ -114,6 +114,31 @@ same reason; the `0.147.0` figure comes from the ledger row of 08-20, not from t
 by the wrapper's own exit codes: missing env file, unfilled placeholders, missing venv python (all
 exit **78**) and the kill switch (exit **0**). Everything else that can exit **1** remains open.
 
+**The daemon's two version-check paths are ASYMMETRIC, and that asymmetry proves a separate
+termination event.** (Found by the same adversarial pass; confirmed by reading the code.) The
+STARTUP check raises and exits 1. The MID-RUN recheck does the opposite — `if not
+self._version_ok: await self._sleep(self._config.poll_s); continue` — it **stops claiming and
+keeps the process alive**. So if the CLI had auto-updated under a healthy daemon, the designed
+end-state would be *process alive, gauge frozen, `runs` flat*. What we observe is *no process,
+`runs` climbing, exit 1*. **Therefore something terminated the daemon at ~03:45Z on 08-20, and
+only afterwards did every respawn hit the startup refusal.** The pin story explains the outage's
+*persistence*; it cannot explain its *initiation*.
+
+**Named candidates for the initiation event, so the log read in §3 is targeted rather than
+open-ended.** All of them exit **1** and are indistinguishable from outside:
+
+- **The `codex` binary not resolvable on the daemon's PATH.** `_read_cli_version` resolves
+  `self._config.codex_bin or shutil.which("codex")`, and the plist gives the job only
+  `/opt/homebrew/bin:/usr/bin:/bin`. `/opt/homebrew/bin/codex` is an npm symlink whose mtime is
+  **2026-08-21T15:59Z** — i.e. it was last rewritten *during* the outage. `shutil.which` returning
+  `None`, an `OSError`, a non-zero `codex --version`, or output with no semver token all collapse
+  into the same "mismatch" refusal. **If this is the cause, bumping the pin changes nothing.**
+- **`DaemonConfig.from_env` raising `ValueError`** — it validates every knob and refuses to start
+  half-configured: blank `WA_BROKER_KEY`, blank base URL, non-numeric `WA_BROKER_POLL_S` /
+  `WA_BROKER_NET_MARGIN_S`, or a `WA_CODEX_MODEL` outside the allowlist
+  (`gpt-5.6-sol|terra|luna`; the template sets `gpt-5.6-terra`).
+- Any import-time failure in the runtime tree.
+
 **What the pin bump IS good for, verified today rather than assumed.** `codex --version` prints
 `codex-cli 0.149.0`, and the daemon's own `_SEMVER_RE` (`(\d+\.\d+\.\d+)`) parses that to
 `0.149.0` — so a pin of `0.149.0` will match. And the adapter's exact call shape —
