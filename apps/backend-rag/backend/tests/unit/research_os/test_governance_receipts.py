@@ -26,6 +26,7 @@ import pytest
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel, ValidationError
 from research_os.cli import FIXTURES_ROOT
+from research_os.graph import GraphMember, Quarantined, select_current_member
 from research_os.hashing import object_hash
 from research_os.models.risk_reclassification_receipt import (
     RiskReclassificationReceipt,
@@ -303,26 +304,22 @@ def test_risk_reclassification_rejects_output_kind_mismatch(load_json: Any) -> N
     assert "output_object_kind_mismatch" in _reason_codes(caught.value)
 
 
-def test_risk_reclassification_accepts_output_id_equal_to_source_when_hash_differs(
-    load_json: Any,
-) -> None:
-    # The §9/§10 "distinct output revision" case (CONTRACTS.md:453/:485):
-    # ContentObject/MediaManifest keep object_id STABLE across revisions
-    # (CONTRACTS.md:417 -- the field that changes is `revision`, not the
-    # id) while object_hash changes. This must be ACCEPTED, not rejected
-    # -- it was the P04-D1 defect fixed here: an earlier draft cited
-    # ObjectSuccessorEdge.validate_edge as requiring object_id to differ
-    # on its own, but that sibling check is full
-    # {object_kind, object_id, object_hash} identity equality, satisfied
-    # the instant the hash differs even when the id is unchanged.
+def test_risk_reclassification_rejects_output_id_equal_to_source(load_json: Any) -> None:
+    # object_id must differ even when object_hash already differs:
+    # CONTRACTS.md section 9 gives ContentObject a SEPARATE
+    # content_object_family_id field for cross-revision stability, so
+    # content_object_id identifies one immutable version (same split as
+    # section 6 Claim's claim_id / claim_family_id) -- see
+    # test_risk_reclassification_same_object_id_would_quarantine_the_graph_family
+    # below for the operational proof.
     payload = load_json(FIXTURES_ROOT / "risk_reclassification_receipt" / "valid_minimal.json")
     same_id_output = {
         **payload["output_object"],
         "object_id": payload["source_object"]["object_id"],
     }
-    instance = _revalidated(RiskReclassificationReceipt, payload, output_object=same_id_output)
-    assert instance.source_object.object_id == instance.output_object.object_id
-    assert instance.source_object.object_hash != instance.output_object.object_hash
+    with pytest.raises(ValidationError) as caught:
+        _revalidated(RiskReclassificationReceipt, payload, output_object=same_id_output)
+    assert "output_object_id_same_as_source" in _reason_codes(caught.value)
 
 
 def test_risk_reclassification_rejects_output_same_as_source_on_full_identity(
@@ -331,7 +328,9 @@ def test_risk_reclassification_rejects_output_same_as_source_on_full_identity(
     # Guilt arm: source and output equal across their WHOLE identity
     # (object_kind AND object_id AND object_hash) -- mirrors
     # ObjectSuccessorEdge.validate_edge's
-    # predecessor_ref == successor_ref check.
+    # predecessor_ref == successor_ref check. This is the specific,
+    # informative reason a fully-identical pair gets, ahead of the more
+    # generic output_object_id_same_as_source above.
     payload = load_json(FIXTURES_ROOT / "risk_reclassification_receipt" / "valid_minimal.json")
     identical_output = {
         **payload["output_object"],
@@ -341,6 +340,35 @@ def test_risk_reclassification_rejects_output_same_as_source_on_full_identity(
     with pytest.raises(ValidationError) as caught:
         _revalidated(RiskReclassificationReceipt, payload, output_object=identical_output)
     assert "output_object_same_as_source" in _reason_codes(caught.value)
+
+
+def test_risk_reclassification_same_object_id_would_quarantine_the_graph_family(
+    load_json: Any,
+) -> None:
+    # Grounds the module docstring's claim in the package's OWN graph
+    # resolver rather than asserting it: if a revision reused its
+    # predecessor's object_id, the two GraphMembers for that family would
+    # collide on select_current_member's (object_kind, object_id) key and
+    # the family would quarantine as duplicate_member -- fatal to a
+    # contract family whose entire purpose is to accumulate revisions.
+    payload = load_json(FIXTURES_ROOT / "risk_reclassification_receipt" / "valid_minimal.json")
+    source = GraphMember(
+        object_kind=payload["source_object"]["object_kind"],
+        object_id=payload["source_object"]["object_id"],
+        object_hash=payload["source_object"]["object_hash"],
+        tenant="bali-zero",
+        family_id="com.example.family-1",
+        recorded_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    same_id_output = source.model_copy(
+        update={
+            "object_hash": payload["output_object"]["object_hash"],
+            "recorded_at": datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc),
+        }
+    )
+    result = select_current_member([], [source, same_id_output])
+    assert isinstance(result, Quarantined)
+    assert "duplicate_member" in result.reason_codes
 
 
 # ---------------------------------------------------------------------------

@@ -66,36 +66,47 @@ for ratification -- see the P04-D1 report):
   own prose spells the flat shape, differing from section 17's nested one,
   and the two are kept as distinct types (``FlatClassifiedObjectRef`` here)
   rather than collapsed or cross-imported.
-- ``source_object.object_hash != output_object.object_hash`` and
-  ``.object_kind ==`` are enforced (verbatim: "distinct immutable
-  successor"). CORRECTED (P04-D1 defect, see the P04-D1 report): an earlier
-  draft of this module additionally forced
-  ``source_object.object_id != output_object.object_id`` unconditionally,
-  citing ``ObjectSuccessorEdge.validate_edge``'s
-  ``predecessor_ref != successor_ref`` check as "the one-layer-up sibling of
-  this same rule". That citation was false: ``validate_edge`` compares the
-  full ``{object_kind, object_id, object_hash}`` triple for equality (see
-  ``successor_edge.py``) -- it imposes no constraint that ``object_id``
-  differ on its own, and is satisfied the instant the hash differs even
-  when the id is unchanged. Section 1 rule 4 ("canonical objects are never
-  overwritten ... append a successor object") does not require a new
-  object_id either: ``ContentObject`` (CONTRACTS.md section 9) is the
-  worked example -- ``content_object_id`` is STABLE across revisions
-  (``revision`` is the field that increments; contrast section 6 ``Claim``,
-  which mints a fresh ``claim_id`` per version because its own prose says
-  "``claim_id`` identifies one immutable claim version"). Sections 9 and 10
-  state, verbatim, "a distinct output revision may lower sensitivity only
-  with a valid ``SanitizationReceipt``, lower risk only with a valid
-  ``RiskReclassificationReceipt``" -- a *revision*, not a distinct object;
-  the removed guard rejected exactly the workflow those sections authorize.
-  The check now enforces what ``validate_edge`` actually enforces: the
-  source and output must not be equal across their WHOLE identity
-  (``object_kind`` AND ``object_id`` AND ``object_hash`` all matching,
-  mirroring ``predecessor_ref == successor_ref``) -- reason code
-  ``output_object_same_as_source``. It runs first in this validator (as
-  ``validate_edge``'s equivalent check runs first in its own validator) so
-  a fully-identical source/output pair reports that specific reason
-  instead of the more generic ``output_same_as_source_hash``.
+- ``source_object.object_hash != output_object.object_hash``,
+  ``.object_kind ==``, and ``source_object.object_id != output_object.object_id``
+  are ALL enforced, unconditionally. ``object_id`` MUST differ:
+  ``ContentObject`` (CONTRACTS.md section 9) lists ``content_object_id``
+  AND a SEPARATE ``content_object_family_id`` field ("stable namespaced
+  family identifier") six lines below it in the same block. That second
+  field is what stays stable across revisions; ``content_object_id``
+  therefore identifies one immutable VERSION, exactly like section 6
+  ``Claim``'s ``claim_id`` (which its own prose calls out explicitly:
+  "``claim_id`` identifies one immutable claim version;
+  ``claim_family_id`` connects versions of the same proposition").
+  Operationally: ``research_os.graph.select_current_member`` keys every
+  family member by ``(object_kind, object_id)``
+  (``_member_key``/``duplicate_member`` in ``graph.py``) -- if a revision
+  reused its predecessor's ``object_id``, the two members would collide on
+  that key and the family would quarantine the moment it had a second
+  revision, which is fatal to a contract family whose entire purpose is to
+  accumulate revisions. ``test_governance_receipts.py`` proves this
+  directly by feeding a same-``object_id`` pair through
+  ``select_current_member`` and asserting ``duplicate_member``.
+  Historical note: a mid-course draft of this fix removed the ``object_id``
+  guard, reasoning from the three-field ref SHAPE
+  (``{content_object_id, revision, object_hash}``) that the id must be
+  stable, without checking the field list six lines above that shape for a
+  separate family id. That draft was wrong and is not this file's history
+  to re-litigate; what stands from it is the one part it verified
+  independently of that error: ``ObjectSuccessorEdge.validate_edge``'s
+  ``predecessor_ref != successor_ref`` check is genuinely NOT "the
+  one-layer-up sibling of this rule" -- ``validate_edge`` compares the
+  full ``{object_kind, object_id, object_hash}`` triple for equality and
+  imposes no constraint that ``object_id`` differ on its own; it was never
+  a valid citation for this guard, which stands on the section 9/6 field
+  lists and the graph resolver above instead. This module's own analogous
+  guard against the ``validate_edge`` shape is the full-identity check
+  below (``output_object_same_as_source``): it rejects only when
+  ``object_kind`` AND ``object_id`` AND ``object_hash`` are ALL equal,
+  mirroring ``predecessor_ref == successor_ref`` exactly, and runs first
+  in this validator (as ``validate_edge``'s equivalent check runs first in
+  its own validator) so a fully-identical source/output pair reports that
+  specific reason instead of the more generic ``output_same_as_source_hash``
+  or ``output_object_id_same_as_source`` below it.
 - "Sensitivity cannot decrease under this receipt" IS enforced --
   verbatim, unconditional (the one hard constraint this receipt carries on
   the dimension it does NOT own). Whether risk_class must actually DECREASE
@@ -260,16 +271,12 @@ class RiskReclassificationReceipt(FrozenCoreModel):
     @model_validator(mode="after")
     def validate_risk_reclassification_receipt(self) -> RiskReclassificationReceipt:
         # Mirrors ObjectSuccessorEdge.validate_edge's
-        # ``predecessor_ref == successor_ref`` check -- reject only when
-        # source and output are equal across their WHOLE identity
-        # (object_kind AND object_id AND object_hash). Runs first, exactly
-        # as validate_edge's equivalent check runs first, so a
-        # fully-identical pair reports this specific reason rather than the
-        # more generic hash-only reason below. See module docstring --
-        # object_id is deliberately NOT required to differ on its own: a
-        # revision that keeps object_id stable and changes only
-        # object_hash (CONTRACTS.md:453/:485 "a distinct output revision")
-        # is a valid instance of this receipt, not a violation.
+        # ``predecessor_ref == successor_ref`` check -- reject when source
+        # and output are equal across their WHOLE identity (object_kind
+        # AND object_id AND object_hash). Runs first, exactly as
+        # validate_edge's equivalent check runs first, so a
+        # fully-identical pair reports this specific reason rather than
+        # the more generic reasons below. See module docstring.
         if (
             self.source_object.object_kind == self.output_object.object_kind
             and self.source_object.object_id == self.output_object.object_id
@@ -291,6 +298,18 @@ class RiskReclassificationReceipt(FrozenCoreModel):
             raise PydanticCustomError(
                 "output_object_kind_mismatch",
                 "output_object.object_kind must equal source_object.object_kind",
+            )
+        # object_id MUST also differ: CONTRACTS.md section 9 gives
+        # ContentObject a SEPARATE content_object_family_id field for
+        # cross-revision stability, so content_object_id identifies one
+        # immutable version (same split as section 6 Claim's claim_id /
+        # claim_family_id) -- and graph.select_current_member quarantines
+        # any family whose members collide on (object_kind, object_id).
+        # See module docstring.
+        if self.source_object.object_id == self.output_object.object_id:
+            raise PydanticCustomError(
+                "output_object_id_same_as_source",
+                "output_object.object_id must differ from source_object.object_id",
             )
         # "Sensitivity cannot decrease under this receipt." -- verbatim,
         # unconditional. Checked as: output sensitivity is already the
