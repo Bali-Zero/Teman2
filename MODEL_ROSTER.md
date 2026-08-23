@@ -99,19 +99,14 @@ scoped to what the task declares.
 
 ---
 
-## z.ai — door: `claude-glm` shim (Anthropic-Messages-compatible endpoint, z.ai Coding Plan)
-
-| Model     | Role / strengths                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `glm-5.2` | Counter-builder (parallel implementations that dogfood dissent against a Sonnet candidate) + general refuter-ladder hop. **ARMED** via z.ai Coding Plan (`scripts/claude-glm.sh`); the Alibaba TP1 door is its PROBATION backup — Zero's ruling 2026-08-10: do not renew z.ai when it lapses, let the TP1 door take over once burn-rate is measured. `clear_thinking:false` mandatory in agent use. Never architecture, never client-facing, never merge. |
-
----
-
 ## Alibaba Token Plan (TP1) — "Pro Plan", mixed ARMED/PROBATION; doors: DashScope
 
-OpenAI-compatible **and** Anthropic-Messages-compatible baseURL
-(`~/.qwen/settings.json`, 0600, `BAILIAN_TOKEN_PLAN_API_KEY`; Anthropic-protocol door
-`.../apps/anthropic` — `ANTHROPIC_AUTH_TOKEN` only, never `ANTHROPIC_API_KEY`, CLAUDE.md §5)
+OpenAI-compatible base URL
+`https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`; the key is read by
+`load_tp1_settings_key()` from `~/.qwen/settings.json` (0600, field
+`env.BAILIAN_TOKEN_PLAN_API_KEY`); optional Anthropic-protocol adapter base
+`https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic` uses
+`ANTHROPIC_AUTH_TOKEN` only, never `ANTHROPIC_API_KEY`.
 
 **Console-verified 2026-08-14** — see `FLEET_TOPOLOGY.json`'s
 `accounts.alibaba.slots.TP1.console_verified_2026_08_14` block and
@@ -138,15 +133,15 @@ none is quorum-eligible pending a separate owner promotion.
 
 `TP1-OAI` door: `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions`.
 
-| Model                    | Door                                | Role / strengths                                                                                                                                                                                                    | Effort notes                       | Gate / quorum                                   |
-| ------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------- |
-| `deepseek-v4-pro`        | `TP1-OAI`                           | Hard logic, complex implementation, architecture counter-analysis, and adversarial refutation. Subscription door only; never conflate it with the retired standalone per-token endpoint.                            | high/max task class                | Implementer/refuter only; final: no; quorum: no |
-| `deepseek-v4-flash-0731` | `TP1-OAI`                           | High-throughput reasoner for batch implementation, math/logic second opinions, and fast refuter-chain hops. Exact dated slug required.                                                                              | low/medium; high for bounded tasks | Implementer/refuter only; final: no; quorum: no |
-| `glm-5.2`                | `TP1-OAI` (backup to the z.ai door) | Counter-builder and general refuter-ladder hop; useful for independent implementations that challenge an incumbent candidate.                                                                                       | medium/high                        | Implementer/refuter only; final: no; quorum: no |
-| `qwen3.8-max`            | `TP1-OAI`                           | Strategy-panel voice, rigorous instruction following, non-PII mass-document work, and complex pipeline execution. Compliance-exact extraction still requires an independent NotebookLM/Anthropic verification lane. | medium/high                        | Implementer/refuter only; final: no; quorum: no |
-| `qwen3.7-max`            | `TP1-OAI`                           | Strong general implementation and refutation reserve for work that needs more depth than the plus/flash lanes.                                                                                                      | medium/high                        | Implementer/refuter only; final: no; quorum: no |
-| `qwen3.7-plus`           | `TP1-OAI`                           | Economical standard implementer, second-line batch reviewer, and constructive second opinion.                                                                                                                       | low/medium                         | Implementer/refuter only; final: no; quorum: no |
-| `qwen3.6-flash`          | `TP1-OAI`                           | Fast grunt lane for classification, extraction, formatting, and bounded implementation iterations.                                                                                                                  | low; medium for bounded review     | Implementer/refuter only; final: no; quorum: no |
+| Model                    | Door                        | Role / strengths                                                                                                                                                                                                    | Effort notes                       | Gate / quorum                                   |
+| ------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------- |
+| `deepseek-v4-pro`        | `TP1-OAI`                   | Hard logic, complex implementation, architecture counter-analysis, and adversarial refutation. Subscription door only; never conflate it with the retired standalone per-token endpoint.                            | high/max task class                | Implementer/refuter only; final: no; quorum: no |
+| `deepseek-v4-flash-0731` | `TP1-OAI`                   | High-throughput reasoner for batch implementation, math/logic second opinions, and fast refuter-chain hops. Exact dated slug required.                                                                              | low/medium; high for bounded tasks | Implementer/refuter only; final: no; quorum: no |
+| `glm-5.2`                | `tp1-glm-5.2` via `TP1-OAI` | Counter-builder and general refuter-ladder hop; useful for independent implementations that challenge an incumbent candidate.                                                                                       | medium/high                        | Implementer/refuter only; final: no; quorum: no |
+| `qwen3.8-max`            | `TP1-OAI`                   | Strategy-panel voice, rigorous instruction following, non-PII mass-document work, and complex pipeline execution. Compliance-exact extraction still requires an independent NotebookLM/Anthropic verification lane. | medium/high                        | Implementer/refuter only; final: no; quorum: no |
+| `qwen3.7-max`            | `TP1-OAI`                   | Strong general implementation and refutation reserve for work that needs more depth than the plus/flash lanes.                                                                                                      | medium/high                        | Implementer/refuter only; final: no; quorum: no |
+| `qwen3.7-plus`           | `TP1-OAI`                   | Economical standard implementer, second-line batch reviewer, and constructive second opinion.                                                                                                                       | low/medium                         | Implementer/refuter only; final: no; quorum: no |
+| `qwen3.6-flash`          | `TP1-OAI`                   | Fast grunt lane for classification, extraction, formatting, and bounded implementation iterations.                                                                                                                  | low; medium for bounded review     | Implementer/refuter only; final: no; quorum: no |
 
 Non-text plan families remain outside `arsenal_probe.py` TP1 coverage in this task:
 

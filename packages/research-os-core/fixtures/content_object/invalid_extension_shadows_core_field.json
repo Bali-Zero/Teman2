@@ -1,0 +1,83 @@
+{
+  "content_object_id": "30000000-0000-4000-8000-000000000003",
+  "content_object_family_id": "wr2.carousel.kbli-2025-update",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "origin_decision_packet_ref": {
+    "decision_packet_id": "30000000-0000-4000-8000-000000000101",
+    "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "revision": 1,
+  "topic_lock_ref": {
+    "topic_lock_id": "30000000-0000-4000-8000-000000000102",
+    "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "creative_lock_ref": {
+    "creative_lock_id": "30000000-0000-4000-8000-000000000103",
+    "object_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "claim_refs": [
+    {
+      "claim_id": "30000000-0000-4000-8000-000000000104",
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ],
+  "evidence_refs": [
+    {
+      "evidence_id": "30000000-0000-4000-8000-000000000105",
+      "object_hash": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  ],
+  "source_document_refs": [
+    {
+      "document_id": "com.example.doc.kbli-2025-regulation",
+      "document_version_id": "synthetic-rev-3",
+      "document_content_hash": "6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  ],
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "channel_plan": [
+    {
+      "surface": "instagram_carousel",
+      "objective": "Educate followers on the KBLI 2025 update",
+      "cta": "Save this post for later",
+      "status": "wr2.channel-status.planned"
+    }
+  ],
+  "publication_state": "generated",
+  "verification_state": "unverified",
+  "availability": {
+    "state": "active",
+    "severity": "low"
+  },
+  "recorded_at": "2026-08-15T09:00:00Z",
+  "producer": {
+    "name": "wr2.content-composer",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "30000000-0000-4000-8000-000000000106",
+      "object_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "input_hashes": [
+      "8888888888888888888888888888888888888888888888888888888888888888"
+    ]
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "415e71800bb878cc114bfcc8017ae1434865307b3530cdc38d2a3f027f7a3e6a",
+  "extensions": {
+    "com.example.wr2-note": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "object_hash": "should-not-be-allowed-here"
+      }
+    }
+  }
+}

@@ -118,7 +118,26 @@ _PY3_CANDIDATES: tuple[str, ...] = (
 # records every generated reply, 'done' meaning it actually went out. Both
 # SELECT-only, both scoped to the BOT product's own writers — never the
 # wa-mirror tables wa_mirror_freshness_liveness.py already watches.
-INBOUND_SQL = "SELECT max(received_at) AS newest FROM inbound_webhooks WHERE channel = 'whatsapp'"
+# The product routes on the phone_number_id, and so must this sentinel — MEASURED
+# 2026-08-23, three hours after this organ was armed. Someone pressed "Test" in the
+# Meta app dashboard; Meta delivered a sample payload carrying the documentation
+# placeholders (phone_number_id 123456123, display 16505551111). whatsapp_chat.py
+# correctly IGNORED it — it routes only its own number — but this sentinel counted
+# it as inbound traffic, reset its freshness clock from 589h to 0.5h, and so
+# suppressed dead_channel for the next 48 hours. One click on a test button blinded
+# the organ to the very outage it exists to watch, and nothing went red.
+#
+# So: count only the webhooks the PRODUCT would act on. Measured blast radius on
+# prod before changing this — 244 rows carry our id, 1 carries the placeholder, and
+# the JSON path is present on 100% of 245 rows, so the filter narrows the query
+# without risking the empty-result branch. A sentinel whose input set is wider than
+# its subject's is not measuring its subject.
+ROUTING_PHONE_NUMBER_ID = "1104946272705747"  # SSOT: wa_outbox_worker.META_INBOX_PHONE_NUMBER_ID
+_PNID_JSON_PATH = "payload->'entry'->0->'changes'->0->'value'->'metadata'->>'phone_number_id'"
+INBOUND_SQL = (
+    "SELECT max(received_at) AS newest FROM inbound_webhooks "
+    "WHERE channel = 'whatsapp' AND " + _PNID_JSON_PATH + " = $1"
+)
 OUTBOUND_SQL = "SELECT max(created_at) AS newest FROM wa_outbox WHERE status = 'done'"
 # Discriminator, measured 2026-08-23: the LOCAL dev database carries both tables
 # with ZERO rows, so a run against the default DSN would read NULL on both signals
@@ -126,6 +145,13 @@ OUTBOUND_SQL = "SELECT max(created_at) AS newest FROM wa_outbox WHERE status = '
 # alarm that always fires is an alarm nobody reads, which is worse than none. So
 # "this table has never held a row" is separated from "its newest row is old":
 # the first is a misconfiguration (wrong DSN / unprovisioned DB), never an outage.
+# DELIBERATELY NOT filtered by phone_number_id, unlike INBOUND_SQL above, and the
+# asymmetry is the point rather than an oversight: this query answers "does this
+# database hold ANY WhatsApp history at all", which is how a mispointed DSN is told
+# apart from a real outage. Narrowing it to our own number would make a database
+# that merely lacks OUR traffic indistinguishable from an empty one, and the
+# sentinel would announce a config fault where there is an outage. Do not "tidy"
+# these two into agreement.
 HISTORY_SQL = "SELECT (SELECT count(*) FROM wa_outbox) AS outbox_rows, (SELECT count(*) FROM inbound_webhooks WHERE channel = 'whatsapp') AS inbound_rows"
 
 
@@ -343,7 +369,7 @@ async def _tick(conn: Any, now_wita: datetime, *, dry_run: bool) -> int:
     end_hour = int(os.getenv("WA_BOT_BUSINESS_END", "20"))
     business_days = _business_days_from_env()
 
-    inbound_row = await conn.fetchrow(INBOUND_SQL, timeout=30)
+    inbound_row = await conn.fetchrow(INBOUND_SQL, ROUTING_PHONE_NUMBER_ID, timeout=30)
     outbound_row = await conn.fetchrow(OUTBOUND_SQL, timeout=30)
     inbound_newest = inbound_row["newest"]
     outbound_newest = outbound_row["newest"]

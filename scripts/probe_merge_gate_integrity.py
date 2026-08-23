@@ -83,13 +83,49 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Sequence
 
 DEFAULT_GRACE_SECONDS = 30
-PASSING_CONCLUSIONS = {"success"}
+
+# WHY "skipped" PASSES (measured live 2026-08-23, not assumed — S12/C1). A
+# path-filtered job that GitHub decides not to run reports conclusion
+# "skipped", and branch protection accepts that as satisfying its required
+# context. The proof is a merge, not a doc: PR #4654 (docs-only, touching
+# only .claude/skills/modus/PENDING-ARMS.md) LANDED on main while four of the
+# 27 required contexts — 'Backend Tests (Python)', 'E2E Tests (Playwright)',
+# 'MCP Server Tests', 'Bandit Python Security' — concluded "skipped" in its
+# merge_group run. Branch protection was active and listed all four. If
+# GitHub had not treated skipped as satisfied, that merge could not have
+# happened. Treating skipped as a VIOLATION therefore does not detect the
+# #3227 class at all — it fires a p0 on every docs-only merge, which is the
+# alarm-fatigue this probe exists to avoid creating (superscar #2/W120: the
+# red everyone ignores is the one that masks the real one).
+#
+# It is deliberately NOT widened past this. "neutral" is also commonly said
+# to satisfy required checks; it was NOT measured here, so it is not in the
+# set (superscar #3 discipline: a guard widened past its evidence is how this
+# repo has been bitten from W68 to W119). Skipped contexts are still reported
+# in the verdict under `skipped_contexts` so an over-broad path filter stays
+# visible in the run log instead of becoming silently invisible.
+PASSING_CONCLUSIONS = {"success", "skipped"}
+SILENT_PASS_CONCLUSIONS = {"skipped"}
+
+# Token-safe fallback for the required-context list. `branches/{b}/protection`
+# needs repo-ADMIN scope, and `administration` is not among the permissions a
+# workflow's GITHUB_TOKEN can even be granted — so in CI that call has always
+# raised, and every push to main since this workflow was armed reported
+# CANNOT-VERIFY (26 consecutive failed runs on 2026-08-23 alone). The repo
+# already checks in the same list at infra/required.d/contexts.json
+# (scripts/ci/snapshot_required_contexts.py writes it); verified content-
+# identical to the live API on 2026-08-23 — 27 contexts, same names, no diff.
+# Advisory-but-present beats authoritative-but-unreadable: the live API is
+# still tried FIRST, so a privileged caller keeps ground truth, and the
+# verdict records which source was used.
+SNAPSHOT_CONTEXTS_PATH = "infra/required.d/contexts.json"
 
 
 def _parse_ts(value: str) -> datetime:
@@ -121,9 +157,11 @@ def evaluate(
     grace_seconds: int = DEFAULT_GRACE_SECONDS,
 ) -> dict[str, Any]:
     """Pure function — no network. Returns {"clean": bool, "findings": [str],
-    "merge_group_job_count": int}. See module docstring for why each rule
-    exists and what live data it was measured against."""
+    "merge_group_job_count": int, "skipped_contexts": [str]}. See module
+    docstring for why each rule exists and what live data it was measured
+    against."""
     findings: list[str] = []
+    skipped_contexts: list[str] = []
 
     if not merge_group_jobs:
         findings.append(
@@ -135,6 +173,7 @@ def evaluate(
             "clean": False,
             "findings": findings,
             "merge_group_job_count": 0,
+            "skipped_contexts": [],
         }
 
     merged_dt = _parse_ts(merged_at)
@@ -153,6 +192,14 @@ def evaluate(
         conclusion = job.get("conclusion")
         if conclusion not in PASSING_CONCLUSIONS:
             findings.append(f"{ctx!r}: conclusion={conclusion!r} (not success)")
+            continue
+
+        if conclusion in SILENT_PASS_CONCLUSIONS:
+            # Satisfies branch protection, so it is not a finding — but it is
+            # recorded so an over-broad path filter cannot hide here. A
+            # skipped job has no real compute, so the duration/timing rules
+            # below do not apply to it and must not be run against it.
+            skipped_contexts.append(ctx)
             continue
 
         started_at = job.get("started_at")
@@ -182,6 +229,7 @@ def evaluate(
         "clean": not findings,
         "findings": findings,
         "merge_group_job_count": len(merge_group_jobs),
+        "skipped_contexts": skipped_contexts,
     }
 
 
@@ -221,7 +269,62 @@ def _gh_api_paginated_stream(path: str, jq_filter: str) -> list[Any]:
     return out
 
 
-def fetch_live(repo: str, sha: str, merged_at: Optional[str]) -> tuple[list[dict], list[str], str]:
+def _required_contexts_from_snapshot(repo_root: str) -> tuple[list[str], str]:
+    """Read the checked-in snapshot. Raises if it is absent or malformed —
+    an unreadable fallback must surface as CANNOT-VERIFY, never as an empty
+    required list (an empty list would make EVERY commit vacuously clean,
+    which is a fail-OPEN detector: the exact W84-class 'green but dead' shape
+    this probe was built to catch elsewhere)."""
+    path = os.path.join(repo_root, SNAPSHOT_CONTEXTS_PATH)
+    with open(path) as fh:
+        snapshot = json.load(fh)
+    contexts = [c["name"] for c in snapshot["contexts"]]
+    if not contexts:
+        raise RuntimeError(f"{SNAPSHOT_CONTEXTS_PATH} lists zero required contexts")
+    # Stamp the snapshot's own generation date onto the source label. The
+    # declared residual risk of this fallback is DRIFT — a context added in
+    # GitHub Settings that nobody regenerated the file for would be verified
+    # by nobody while the verdict still said CLEAN. This does not close that
+    # hole, but it stops it being invisible: every verdict that used the
+    # snapshot carries the date it was taken, in the run log, where a human
+    # reading a suspicious CLEAN can see "…generated 2026-08-11" and know
+    # what to distrust.
+    return contexts, snapshot.get("generated_at", "unknown")
+
+
+def fetch_required_contexts(repo: str, repo_root: str) -> tuple[list[str], str]:
+    """Live branch protection first, checked-in snapshot second.
+
+    Returns (contexts, source) where source is "api" or "snapshot:<path>".
+    Both failing raises -> CANNOT-VERIFY.
+
+    The live endpoint needs repo-ADMIN scope. A workflow's GITHUB_TOKEN cannot
+    be granted it at all (`administration` is not a grantable `permissions:`
+    key), so in CI this always fell through to the exception handler and every
+    single run reported CANNOT-VERIFY. Trying the API first keeps a privileged
+    local/PAT caller on ground truth; the snapshot keeps CI able to answer."""
+    try:
+        protection = _gh_api_json(f"repos/{repo}/branches/main/protection")
+        contexts = list(protection.get("required_status_checks", {}).get("contexts", []))
+        if contexts:
+            return contexts, "api"
+        api_error = "branch protection returned zero required contexts"
+    except Exception as exc:  # noqa: BLE001 — any failure means "try the snapshot"
+        api_error = str(exc)
+
+    try:
+        contexts, generated_at = _required_contexts_from_snapshot(repo_root)
+        return contexts, f"snapshot:{SNAPSHOT_CONTEXTS_PATH}@{generated_at}"
+    except Exception as snap_exc:  # noqa: BLE001
+        raise RuntimeError(
+            f"could not determine required contexts — live API: {api_error}; "
+            f"snapshot: {snap_exc}"
+        ) from snap_exc
+
+
+def fetch_live(
+    repo: str, sha: str, merged_at: Optional[str], repo_root: str
+) -> tuple[list[dict], list[str], str, str]:
     """Network path. Raises on any failure — callers map that to CANNOT-VERIFY,
     never to a silent 'clean'."""
     runs = _gh_api_paginated_stream(
@@ -231,7 +334,14 @@ def fetch_live(repo: str, sha: str, merged_at: Optional[str]) -> tuple[list[dict
     jobs: list[dict[str, Any]] = []
     for run in runs:
         run_id = run["id"]
-        run_jobs = _gh_api_json(f"repos/{repo}/actions/runs/{run_id}/jobs")
+        # per_page=100, not GitHub's default of 30. Latent before this change
+        # (max observed is 10 jobs on a real run) but the failure mode is bad
+        # enough to close on sight: a run with >30 jobs would silently
+        # truncate, and every required context that fell off the page would
+        # be reported as "never evaluated pre-merge" — a false VIOLATION p0
+        # manufactured by pagination. Found by an adversarial review of this
+        # PR; pre-existing, fixed here because it is one query parameter.
+        run_jobs = _gh_api_json(f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100")
         for job in run_jobs.get("jobs", []):
             jobs.append(
                 {
@@ -243,8 +353,7 @@ def fetch_live(repo: str, sha: str, merged_at: Optional[str]) -> tuple[list[dict
                 }
             )
 
-    protection = _gh_api_json(f"repos/{repo}/branches/main/protection")
-    required = list(protection.get("required_status_checks", {}).get("contexts", []))
+    required, required_source = fetch_required_contexts(repo, repo_root)
 
     if merged_at is None:
         # NOT commit.committer.date — measured live 2026-08-21 on PR #4464:
@@ -268,7 +377,7 @@ def fetch_live(repo: str, sha: str, merged_at: Optional[str]) -> tuple[list[dict
             )
         merged_at = max(p["merged_at"] for p in merged)
 
-    return jobs, required, merged_at
+    return jobs, required, merged_at, required_source
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -297,8 +406,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             required = data["required_contexts"]
             merged_at = args.merged_at or data["merged_at"]
             subject = data.get("merge_commit_sha", args.fixture)
+            required_source = "fixture"
         else:
-            jobs, required, merged_at = fetch_live(args.repo, args.sha, args.merged_at)
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            jobs, required, merged_at, required_source = fetch_live(
+                args.repo, args.sha, args.merged_at, repo_root
+            )
             subject = args.sha
     except Exception as exc:  # noqa: BLE001 — deliberately broad: any failure here is CANNOT-VERIFY
         if args.json:
@@ -310,12 +423,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     result = evaluate(jobs, required, merged_at, grace_seconds=args.grace_seconds)
 
     if args.json:
-        print(json.dumps({"subject": subject, "merged_at": merged_at, **result}, indent=2))
+        print(json.dumps(
+            {
+                "subject": subject,
+                "merged_at": merged_at,
+                "required_source": required_source,
+                **result,
+            },
+            indent=2,
+        ))
     else:
         verdict = "CLEAN" if result["clean"] else "VIOLATION"
-        print(f"{verdict}: {subject} (merged_at={merged_at}, merge_group_jobs={result['merge_group_job_count']})")
+        print(f"{verdict}: {subject} (merged_at={merged_at}, merge_group_jobs={result['merge_group_job_count']}, required_source={required_source})")
         for finding in result["findings"]:
             print(f"  - {finding}")
+        if result["skipped_contexts"]:
+            print(
+                f"  (informational — satisfied by GitHub as skipped, not a finding: "
+                f"{', '.join(result['skipped_contexts'])})"
+            )
 
     return 0 if result["clean"] else 1
 

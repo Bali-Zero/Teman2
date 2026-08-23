@@ -1,6 +1,6 @@
 {
   "api_timeout_ms": "3000000",
-  "base_url": "https://api.z.ai/api/anthropic",
-  "model_map": { "haiku": "glm-4.7", "opus": "glm-5.2", "sonnet": "glm-5.2" },
+  "base_url": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+  "model_map": { "haiku": "glm-5.2", "opus": "glm-5.2", "sonnet": "glm-5.2" },
   "schema_version": 1
 }

@@ -645,3 +645,90 @@ if __name__ == "__main__":
     import pytest
 
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+# ------------------------------------------------- routing phone_number_id (incident 2026-08-23)
+
+
+def test_inbound_sql_filters_on_the_routing_phone_number_id():
+    """GUILT for the 2026-08-23 incident: three hours after this organ was armed, a
+    "Test" click in the Meta app dashboard delivered a sample payload carrying the
+    documentation placeholders (phone_number_id 123456123). whatsapp_chat.py ignored
+    it correctly; this sentinel counted it as traffic, reset inbound freshness from
+    589h to 0.5h, and suppressed dead_channel for 48h. The query must be narrowed to
+    what the PRODUCT routes on, and must be parameterised rather than interpolated."""
+    assert "phone_number_id" in wbts.INBOUND_SQL
+    assert "$1" in wbts.INBOUND_SQL, "the id must be a bound parameter, never inlined"
+    assert wbts.ROUTING_PHONE_NUMBER_ID not in wbts.INBOUND_SQL
+
+
+def test_history_sql_stays_unfiltered_so_wrong_database_stays_distinguishable():
+    """INNOCENCE for the asymmetry: HISTORY_SQL answers "does this database hold ANY
+    WhatsApp history", which is how a mispointed DSN is told apart from a real
+    outage. Narrowing it too would make a database that merely lacks OUR traffic
+    report as empty, i.e. a config fault announced where an outage lives."""
+    assert "phone_number_id" not in wbts.HISTORY_SQL
+    assert "channel = 'whatsapp'" in wbts.HISTORY_SQL
+
+
+def test_tick_actually_binds_the_routing_id_not_merely_declares_it():
+    """A filter in the query text proves nothing if the parameter is never passed.
+
+    REWRITTEN after the first version SURVIVED its own mutation: it called
+    `conn.fetchrow(INBOUND_SQL, ROUTING_PHONE_NUMBER_ID)` itself and then asserted
+    on the arguments it had just supplied — a check that derives its reference from
+    its subject, which always agrees. Deleting the real binding in _tick left it
+    green. This version drives the SENTINEL's own code path and inspects what the
+    sentinel passed.
+    """
+    import asyncio
+
+    seen = {}
+
+    class _RecordingConn:
+        async def fetchrow(self, query, *args, **kwargs):
+            if "inbound_webhooks" in query and "phone_number_id" in query:
+                seen["inbound_args"] = args
+                return {"newest": None}
+            if "wa_outbox" in query and "count(" in query:
+                return {"outbox_rows": 1, "inbound_rows": 1}
+            if "wa_outbox" in query:
+                return {"newest": None}
+            if "inbound_webhooks" in query:
+                return {"outbox_rows": 1, "inbound_rows": 1}
+            raise AssertionError(f"unexpected query: {query}")
+
+    now_wita = datetime(2026, 8, 24, 10, 0, tzinfo=wbts.WITA)
+    asyncio.run(wbts._tick(_RecordingConn(), now_wita, dry_run=True))
+
+    assert "inbound_args" in seen, "_tick never issued the filtered inbound query"
+    assert seen["inbound_args"] == (wbts.ROUTING_PHONE_NUMBER_ID,), (
+        f"_tick bound {seen['inbound_args']!r}, not the routing id"
+    )
+
+
+def test_routing_id_matches_the_products_own_constant_or_this_organ_watches_a_ghost():
+    """SSOT drift guard. ROUTING_PHONE_NUMBER_ID is duplicated from
+    wa_outbox_worker.META_INBOX_PHONE_NUMBER_ID because this script runs outside the
+    backend package (its launcher execs it with no backend PYTHONPATH), so it cannot
+    import it. A duplicated constant that nothing compares is a constant that drifts:
+    if the product is ever re-pointed at a new WhatsApp number and this is not, the
+    sentinel goes quiet on a live channel and nothing turns red. Parse the product's
+    file rather than trusting a comment."""
+    import ast
+    import pathlib
+
+    repo = pathlib.Path(__file__).resolve().parents[2]
+    src = repo / "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py"
+    assert src.is_file(), f"product module not found at {src}"
+    tree = ast.parse(src.read_text(encoding="utf-8"))
+    found = None
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name) and tgt.id == "META_INBOX_PHONE_NUMBER_ID":
+                    found = ast.literal_eval(node.value)
+    assert found is not None, "META_INBOX_PHONE_NUMBER_ID no longer a module-level literal — re-anchor this guard"
+    assert wbts.ROUTING_PHONE_NUMBER_ID == found, (
+        f"sentinel routes on {wbts.ROUTING_PHONE_NUMBER_ID} but the product routes on {found}"
+    )

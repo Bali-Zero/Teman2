@@ -222,6 +222,33 @@ class TestExtensionAlreadyUsedDeclineIsCleanOnTheWire:
         _assert_payload_clean(response.model_dump_json())
 
 
+class TestMaxTotalStayDeclineIsCleanOnTheWire:
+    """The B1 max-total-stay boundary (`DeclineCode.EXTENSION_EXCEEDS_MAX_STAY`,
+    layered on by `intake.build_verdict` — same construction path as
+    ``EXTENSION_ALREADY_USED`` above, promoted 2026-08-23 from the
+    owner-local `internal_preview_cli` guard) must never leak the derived
+    day-count or any internal-checkpoint wording onto the wire."""
+
+    def test_max_total_stay_decline_is_clean_on_the_wire(self) -> None:
+        today = date(2026, 7, 27)
+        req = VoaIntakeRequest(
+            case_type=CaseType.EXTENSION,
+            nationality="USA",
+            entry_date=date(2026, 7, 1),
+            passport_expiry_date=today + timedelta(days=400),
+            purpose=Purpose.TOURISM,
+            travellers=1,
+            self_pay=True,
+            voa_expiry_date=date(2026, 8, 30),  # exactly at the 60-day max
+            extension_already_used=False,
+        )
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision.value == "DECLINE"
+        assert "EXTENSION_EXCEEDS_MAX_STAY" in verdict.decline_codes
+        response = _decline_response(verdict.decline_codes)
+        _assert_payload_clean(response.model_dump_json())
+
+
 class TestIssuanceSubmissionGateDeclineIsCleanOnTheWire:
     """The issuance-only submission-window gate (owner ruling 2026-07-27,
     `services.garuda_flow.operating_calendar`) is layered on by

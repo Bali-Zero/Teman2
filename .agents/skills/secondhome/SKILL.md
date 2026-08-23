@@ -117,8 +117,9 @@ BY DESIGN until the first real case (F4b).
   purpose guard, 23 gold personas. `RelationType.SIBLING` added for E31J.
   First signed PRODUCTION RulePack (#3090): 38 products, 110 rules,
   28 sources, seq 1, version `2026.7.25`, payload sha `47a97c32…`.
-- **Pricing**: `VisaType.E33` + dedicated rows: base 39M; E33E/E33F
-  14M offshore / 16M onshore; E33F extend 10M. Bridge resolves all three.
+- **Pricing**: `VisaType.E33` + dedicated rows: base 35M; E33E 45M 5-year
+  (+ 10M extend); E33F 14M offshore / 16M onshore (+ 10M extend). Bridge
+  resolves all three.
 - **Guard**: `e33_claim_guard.py` hooked in `orchestrator_core.py` step 12b
   (log + safe fallback note, non-blocking). 10 forbidden patterns:
   USD 1,500, any-bank, E33S/E33R, local work, ITAP-automatic, 5-10y,
@@ -154,17 +155,21 @@ BY DESIGN until the first real case (F4b).
 Method for every row: a live prod probe or a `postgres-nuzantara` query in the
 same turn — never a report. Re-verify before trusting; update when you change it.
 
-| Organ              | Verified state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pricing            | ✅ **LIVE** — `search_service_pricing` prod returns E33 = 35.000.000 IDR all-inclusive (repriced 2026-08-19; re-verify on prod after the next backend deploy), + E33E 14/16M, E33F 14/16M, E33F extend 10M                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Landing            | ✅ **LIVE, EN/IT/ID** — `/visa/second-home` 200, "second home" ×31, "130,000" ×9. Localized via an on-page language switcher (66 keys per locale, live since `f2b325b79` 2026-07-24 — path-based `/it/`/`/id/` 404 is a different, never-used mechanism); since 2026-08-20 `?lang=it\|id` also works on first load in shared links (#4386). `/visa/second-home-e33`, the URL the playbook calls canonical, now **308-redirects to `/visa/second-home`** (#4386, probed live 2026-08-20) — the "serves the wrong page" state is fixed                                                                         |
-| Migration 259      | ✅ **APPLIED in prod** — `e33_cases` exists. (The pre-2026-07-25 corner claimed "NOT applied" — that was **wrong**.)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| RulePack prod-001  | ⚠️ **ROW SUPERSEDED — the visaoracle lane owns this**: seq-9 folded+merged 2026-08-19 (#4332, signed bundle #4338 in flight); the 2026-07-25 'seq 1 only' claim is archaeology. See `/visaoracle` corner.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **Case entrance**  | ✅ **LIVE 2026-08-19** — router `/api/e33` (PR #4334, backend-rag v4139): POST/GET cases, advance (tx + FOR UPDATE), evidence, summary; every endpoint behind `require_team_member`, RBAC assigned_to; hardened by Codex+Kimi adversarial round (same-stage advance 409, Day-90 gate needs `guarantee_evidence_complete`, nested-metadata custody smuggling closed). Internal console at **kita.balizero.com/second-home** (PR #4335 + `vercel promote`; public host 301s to kita). `e33_cases` = 0 rows until the first real case — authenticated round-trip QA pending (operator[gui]: logged-in browser). |
-| Day-90 kill switch | ❌ **STILL UNPROVISIONED** — prod query on `system_settings` for `%e33%`/`%guarantee%` returns **0 rows** (2026-07-30) — unprovisioned BY DESIGN until F4b (entrance now exists; F4b unblocks at the first real case).                                                                                                                                                                                                                                                                                                                                                                                       |
-| Day-90 cron        | ⚠️ **EXISTS AND RUNS — AND IS BLOCKED EVERY TIME.** The workflow the old row said was missing was added by **#3110**; it fires daily 23:10 UTC and has **4 green runs**. Reading the run BODY instead of its checkmark: `"status":"blocked"`, `"reason":"switch_not_provisioned"`. Green ✅ on GitHub, zero work done                                                                                                                                                                                                                                                                                        |
-| Engine output      | ⚠️ **ROW SUPERSEDED**: the 2026-08-12 gold-personas sweep vs PROD (seq-7) found prod coherent with its pack — 18/23 match, 5 residuals were probe bugs, ZERO prod defects; persona 55-59 gets SUPPORTED + advisory `E33E_AGE_55_59_ADVISOR_CHECK`, not HUMAN_REVIEW. The review-saturation finding below is historical. See `/visaoracle` corner (MOS memories 12221/12225).                                                                                                                                                                                                                                 |
-| Studio             | ✅ **LIVE (probed 2026-08-19)** — `/visa/second-home/studio` 200 on balizero.com, content + radiogroup roles server-rendered; CTA on `/visa/second-home` landing links to it; sitemap lists it (commit `2ce6d0457`); 256 vitest tests pin rules/codec/copy/whatsapp-contract; adversarial round-1 (Codex + Kimi cross-family) cures landed in the same PR (#4359).                                                                                                                                                                                                                                           |
+| Organ                       | Verified state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pricing                     | ✅ **LIVE** — `search_service_pricing` prod returns (re-probed 2026-08-24): E33 Second Home (5 Years) **35.000.000 IDR**; E33E Second Home Senior (5 Years) **45.000.000 IDR**; E33E Second Home Senior (Extend) **10.000.000 IDR**; E33F Second Home Senior (1 Year, Offshore) **14.000.000 IDR**; E33F Second Home Senior (1 Year, Altus/Onshore) **16.000.000 IDR**; E33F Second Home Senior (Extend) **10.000.000 IDR**.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| PNBP (official)             | ✅ **CONFIRMED 2026-08-23** — each Ditjen Imigrasi index page's own **Biaya** field, never a sum recomposed from PP 45/2024 line items: E33 5y and E33E 5y = **Rp 13,000,000**; E33F 1y and E33G 1y = **Rp 7,000,000**. See `research/visa/2026-08-23-e33-second-home-ultra-research.md`. Same figure the §2 "internal reference, pending letter 006 Q3" PNBP bullet already carries for the 5y tier — this row upgrades the _source_ to the regulator's own published fee field, the number does not change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Landing                     | ✅ **LIVE, EN/IT/ID** — `/visa/second-home` 200, "second home" ×31, "130,000" ×9. Localized via an on-page language switcher (66 keys per locale, live since `f2b325b79` 2026-07-24 — path-based `/it/`/`/id/` 404 is a different, never-used mechanism); since 2026-08-20 `?lang=it\|id` also works on first load in shared links (#4386). `/visa/second-home-e33`, the URL the playbook calls canonical, now **308-redirects to `/visa/second-home`** (#4386, probed live 2026-08-20) — the "serves the wrong page" state is fixed. **#4418 (2026-08-20) accent fix confirmed LIVE by content 2026-08-23**: `data-funnel="visa"` — the PR's actual root-cause fix, without which `--accent-funnel` falls through to the default McKinsey blue instead of the visa funnel's red identity — is present in the HTML this page serves.                                                                                                                                                                                                                                                                                                                       |
+| Browser QA                  | ✅ **DONE 2026-08-23** — six production URLs probed via headless Chrome: `/visa/second-home`, `?lang=it`, `?lang=id`, `/visa/second-home/studio` all HTTP 200 with **zero console errors**; `/visa/second-home-e33` 200 after landing on `/visa/second-home` (the 308 works end-to-end in a real browser, not only via curl); `kita.balizero.com/second-home` correctly redirects to `/login` (401 on the profile call) — confirms the console is auth-gated, consistent with the Case-entrance row's "authenticated round-trip pending" note below, which this does NOT close.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Migration 259               | ✅ **APPLIED in prod** — `e33_cases` exists. (The pre-2026-07-25 corner claimed "NOT applied" — that was **wrong**.)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| RulePack prod-001           | ⚠️ **ROW SUPERSEDED — the visaoracle lane owns this**: seq-9 folded+merged 2026-08-19 (#4332, signed bundle #4338 in flight); the 2026-07-25 'seq 1 only' claim is archaeology. See `/visaoracle` corner.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Case entrance**           | ✅ **LIVE 2026-08-19** — router `/api/e33` (PR #4334, backend-rag v4139): POST/GET cases, advance (tx + FOR UPDATE), evidence, summary; every endpoint behind `require_team_member`, RBAC assigned_to; hardened by Codex+Kimi adversarial round (same-stage advance 409, Day-90 gate needs `guarantee_evidence_complete`, nested-metadata custody smuggling closed). Internal console at **kita.balizero.com/second-home** (PR #4335 + `vercel promote`; public host 301s to kita). `e33_cases` = 0 rows until the first real case — authenticated round-trip QA pending (operator[gui]: logged-in browser; the 2026-08-23 Browser QA row above confirmed the redirect gate but not the logged-in path).                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Day-90 kill switch          | ❌ **STILL UNPROVISIONED** — prod query on `system_settings` for `%e33%`/`%guarantee%` returns **0 rows** (2026-07-30) — unprovisioned BY DESIGN until F4b (entrance now exists; F4b unblocks at the first real case).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Day-90 cron                 | ⚠️ **EXISTS AND RUNS — AND IS BLOCKED EVERY TIME.** The workflow the old row said was missing was added by **#3110**; it fires daily 23:10 UTC. Reading the run BODY instead of its checkmark, re-confirmed 2026-08-23 on the 2026-08-22 23:33Z run: `{"service":"e33_guarantee_scan","status":"blocked","switch_state":"unprovisioned","reason":"switch_not_provisioned"}`. Green ✅ on GitHub, zero work done — correctly so, per the F4b ordering (§5).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| E33 claim guard enforcement | ⚠️ **NOT ARMED IN PROD (measured 2026-08-23)** — `E33_CLAIM_GUARD_ENFORCE` is absent from Fly secrets on `nuzantara-rag` and absent from `fly.toml`; the code default (`orchestrator_core.py::_E33_CLAIM_GUARD_ENFORCE`, ~L109) is `false`. The guard scans and LOGS every generated answer but never routes it to abstain — the 10 forbidden patterns (USD 1,500, any-bank, split-deposit, ITAP-automatic, ...) can still reach a client on all four channels. Arming is deliberately non-trivial: the code's own comment (~L105-108) warns a false positive must degrade to "parked for a human", never a mangled/refused answer — see `.claude/rules/cicatrix-superscar.md` family #3 (guard over-match). PENDING-ARMS row opened.                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Engine output               | ⚠️ **ROW SUPERSEDED**: the 2026-08-12 gold-personas sweep vs PROD (seq-7) found prod coherent with its pack — 18/23 match, 5 residuals were probe bugs, ZERO prod defects; persona 55-59 gets SUPPORTED + advisory `E33E_AGE_55_59_ADVISOR_CHECK`, not HUMAN_REVIEW. The review-saturation finding below is historical. See `/visaoracle` corner (MOS memories 12221/12225).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Studio                      | ✅ **LIVE (probed 2026-08-19; re-verified 2026-08-23)** — `/visa/second-home/studio` 200 on balizero.com, content + radiogroup roles server-rendered; CTA on `/visa/second-home` landing links to it; sitemap lists it (commit `2ce6d0457`); 256 vitest tests pin rules/codec/copy/whatsapp-contract; adversarial round-1 (Codex + Kimi cross-family) cures landed in the same PR (#4359). **#4418 (2026-08-20) accent/gating polish confirmed LIVE by content 2026-08-23**: `data-funnel="visa"` is present in this page's served HTML too, with 7 `accent-funnel` occurrences — the MERGED-NON-PROMOTED debt is closed. **Continue gating PROVEN, not merely styled**: a DOM probe on prod reports the Continue button `disabled: true`, `opacity 0.6`, `cursor: not-allowed`; a forced click does not advance it (`Step 1 of 6` before and after, page body byte-identical); the step-1 `Back` button is likewise `disabled: true`. Caution for future sessions: a screenshot alone cannot distinguish a disabled saturated-red button from an enabled one — this session first misread it visually and had to self-correct with the state probe above. |
+| Seats (Mini, cross-family)  | ⚠️ **MEASURED 2026-08-23** — correction: the prior claim that the TP1 Alibaba key returned 401 was wrong (`~/.qwen/settings.json` is present, mode 0600, untouched; any 401 would have been upstream/transient). On Mini: `tp1-glm-5.2` LIVE 1173ms, `tp1-qwen3.8-max` LIVE 3324ms, `tp1-deepseek-v4-pro` LIVE 1827ms, `kimi` LIVE 11378ms (kimi 0.35.0, PONG), `agy` LIVE 12590ms (PONG — not the auth-timeout the old row claimed), `codex` PONG rc=0. Every cross-family seat answers ON MINI. The only missing piece is NotebookLM MCP registration, so its ground-truth must come from Pro; the cross-family red-team itself runs fine on Mini. PENDING-ARMS row opened.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ### The review-saturation finding (2026-07-25)
 
@@ -203,39 +208,82 @@ ceremony + adversarial review. Propose it; never hand-edit a signed pack.
 
 ## 5. Open phases (the roadmap to "done")
 
-- **F4 — Activation. ⚠️ THE ORDER IN THIS LINE WAS WRONG — corrected 2026-07-30.**
-  It said "seed `e33_guarantee_scan_enabled` + add the cron workflow". The cron
-  half is DONE (#3110). **Do NOT do the seeding half next.** There is no writer
-  for `e33_cases` (see §4bis), so arming the switch would point a scanner at a set
-  that is structurally empty — and it would trade an honest
-  `"status":"blocked","reason":"switch_not_provisioned"` for a
-  healthy-looking `"scanned": 0`. **Arming the guard before the entrance does not
-  add protection; it removes the last true signal that the organ is unarmed.**
-  Correct order — the order a case travels:
-  **F4a** ✅ DONE 2026-08-19 (PRs #4334/#4335 — router + internal console on kita;
-  Fit-Memo-lead auto-conversion deliberately deferred, cases are created manually
-  from the console);
-  **F4b** then seed `e33_guarantee_scan_enabled` and prove it by a real alert row
-  on a seeded case, not by a green run;
-  **F4c** ✅ **CORRECTED 2026-08-20**: `/it/`+`/id/` PATH landings were never
-  the mechanism — the landing is fully localized (66 keys EN/IT/ID) behind an
-  on-page language switcher since `f2b325b79` (2026-07-24). Residual: the
-  `/visa/second-home-e33` wrong-page URL (301, fixed in a sibling PR) and
-  SEO-grade localized rendering (SSR/hreflang) — a D4 decision for Zero.
-  Then: harvest QA corrections rounds 3–5 to prod Qdrant
-  (review-gated — wrong E33F/KITAP rows are LIVE until then); send addenda **007**
-  (Imigrasi) and **008** (banks), both in `~/Downloads/` — operator[physical]:
-  sign + stamp + dispatch.
-- **F5 — Letter-reply intake**: promote pending facts per the tracker;
-  stricter path wins on conflict; resolve BSI/split/dependents/ITAP.
-- **F6 — Commercial**: dependent go-live (12M confirm → PricingTool),
-  StayGuard offer, property module, senior price review (E33E 5y = E33F 1y
-  same price today — questionable), oracle interview tree "Retirement &
-  second home" + E33F senior card, FR/RU landing translations.
-- **F7 — Hygiene**: npm waiver removal, noIndex articles editorial
-  rewrite-or-delete, `.husky/_` → .gitignore, llms files regeneration check.
-- **F8 — Marketing (Legge 5, Zero only)**: canonical article update, WR2
-  dispatch, newsletter. ITAP only with written confirmation.
+Every phase carries an explicit status — **SHIPPED** (proven live),
+**SUSPENDED** (named cause), or **OPEN, NOT STARTED** (no blocker, simply not
+reached — free to pick up). Status sweep 2026-08-23.
+
+- **F4 — Activation.** Order corrected 2026-07-30: the cron half (#3110) was
+  built before any writer for `e33_cases` existed, so seeding the switch
+  early would trade an honest `"status":"blocked"` for a healthy-looking
+  `"scanned": 0` with nothing behind it (see §4bis). Correct order, the order
+  a case actually travels:
+  - **F4a** — ✅ **SHIPPED** 2026-08-19 (PRs #4334/#4335 — router + internal
+    console on kita; Fit-Memo-lead auto-conversion deliberately deferred,
+    cases are created manually from the console).
+  - **F4b** — ⏸️ **SUSPENDED**, cause: firebreak, business-data wait. Needs a
+    real E33 case at active-permit stage before `e33_guarantee_scan_enabled`
+    can be seeded and proven by a real alert row; `e33_cases` is still
+    empty. Re-confirmed 2026-08-23 by reading the cron's payload, not its
+    checkmark (§4bis Day-90 cron row).
+  - **F4c localization** — ✅ **SHIPPED**: the landing is fully localized (66
+    keys EN/IT/ID) behind an on-page language switcher since `f2b325b79`
+    (2026-07-24); `/visa/second-home-e33` now redirects (#4386). Residual
+    SSR/hreflang — ⏸️ **SUSPENDED**, cause: needs its own design pass,
+    already carried by the standing PENDING-ARMS row on `<html lang>`/
+    hreflang (path-based locale routing) — a priority call for the owner,
+    not a patch.
+  - **F4c harvest** — ⏸️ **SUSPENDED**. Harvest QA corrections rounds 3–5 to
+    prod Qdrant. **Corrected 2026-08-23 — the old framing overstated it**:
+    the E33F-cap and KITAP-RET rows were rounds 1-2, already applied
+    2026-07-20 per
+    `research/curated-qa-corrections-2026-07-21/README.md`'s status header
+    — no E33 emergency is live. Caveat: that same README's body
+    (`## What's already live and wrong`, `## How to apply`) still
+    describes rounds 1-2 as unapplied, an unresolved internal
+    contradiction, and the local `curated_qa/` dir on this machine holds
+    only a README (no jsonl/manifests) — "applied" is NOT independently
+    re-verifiable from disk here; settle it with a live Qdrant query, not
+    the README. What IS a real unharvested backlog: rounds 3-5,
+    overwhelmingly KBLI/company-domain, with exactly ONE non-KITAP E33 row
+    (round 3, `visa-golden-investor.jsonl` Q17, "E33 is not a work visa").
+    Harvest path `scripts/curated_qa_harvest.py` — in-place upsert by
+    stable id, no purge, no schema change, low blast radius.
+  - **Addenda 007/008** (Imigrasi, banks; both in `~/Downloads/`) — ⏸️
+    **SUSPENDED**, cause: `operator[physical]` — sign, stamp, dispatch.
+- **F5 — Letter-reply intake** — ⏸️ **SUSPENDED**, cause: external
+  dependency, no replies received; 16 facts still pending on the tracker.
+  Promote pending facts per the tracker when they land; stricter path wins
+  on conflict; resolve BSI/split/dependents/ITAP.
+- **F6 — Commercial**:
+  - **Dependent go-live** — 🔒 **CLOSED BY RULING** (Zero, 2026-08-20): the
+    12M-flat draft is superseded; E33 family members use the existing
+    Dependent/Spouse KITAS PricingTool rows, never a bespoke E33 add-on
+    (§3). Not an open phase any more.
+  - **StayGuard offer** — ⏸️ **SUSPENDED**, cause: blocked by F4b.
+  - **Property module** — ⏸️ **SUSPENDED**, cause: blocked on
+    `property_validation_standard` (addendum 007 Q5).
+  - **Senior price review** — 🔒 **CLOSED BY RULING (Zero, 2026-08-23)**: the
+    same-price anomaly was real — E33E (5y) and E33F (1y) were both selling at
+    the same price point
+    (14M offshore / 16M onshore).
+    E33E's PNBP (Rp 13,000,000 — §4bis PNBP row) is nearly double E33F's
+    (Rp 7,000,000). That gap meant
+    E33E offshore cleared only Rp 1,000,000 over PNBP, Rp 2,000,000 BELOW the
+    informal PNBP+3jt yardstick the rest of this pricing follows, while
+    E33F/E33G sat +6M to +9M over PNBP. The PNBP+3jt pattern is itself an
+    internal composition yardstick, not a documented ruling — see
+    `research/visa/2026-08-23-e33-second-home-ultra-research.md`. The owner
+    resolved it by repricing E33E 5y to **IDR 45.000.000 all-inclusive**
+    (E33E extend 10M); E33F is unchanged.
+  - **Oracle interview tree** ("Retirement & second home" + E33F senior
+    card) **and FR/RU landing translations** — ⬜ **OPEN, NOT STARTED**
+    this session. No blocker — simply not reached; free to pick up.
+- **F7 — Hygiene** — ⬜ **OPEN, NOT STARTED** this session. No blocker: npm
+  waiver removal, noIndex articles editorial rewrite-or-delete,
+  `.husky/_` → .gitignore, llms files regeneration check.
+- **F8 — Marketing** — `operator[business]` only (Legge 5), unchanged:
+  canonical article update, WR2 dispatch, newsletter. ITAP only with
+  written confirmation.
 
 ## 6. Gotchas / scars (read before touching)
 
@@ -243,12 +291,18 @@ ceremony + adversarial review. Propose it; never hand-edit a signed pack.
   DELIBERATE: `match_tree.Purpose` has no `SECOND_HOME` member, so the match
   wizard can never surface E33. Note that the engine's own `enums.VisaPurpose`
   **does** have `SECOND_HOME` — two vocabularies. Don't "fix" one side alone.
-- **Senior renewal rule**: `renewal_rules.py:276-300` — `e33_second_home_renewal`
-  matches pattern `"e33"`, so E33E/E33F (income-only, NO deposit) inherit
-  `guarantee_proof_bank_confirmation_or_property_title`, and it sits at priority
-  5 in `RULE_PRIORITY_ORDER`, ahead of `kitas_retirement_extend` (which matches
-  `"retirement"` only). A senior is asked for a bank letter that does not exist.
-  Fix before E33E/F renewals are sold.
+- **Senior renewal rule — CURED 2026-08-23** (verified on disk against the live
+  file, not from memory): the gap this gotcha used to describe —
+  `e33_second_home_renewal` matching bare `"e33"` and handing E33E/E33F
+  (income-only, NO deposit) the main-route
+  `guarantee_proof_bank_confirmation_or_property_title` checklist — is fixed.
+  `renewal_rules.py:282-359` now carries dedicated `e33e_senior_renewal`,
+  `e33f_senior_renewal` and `e33_senior_route_unspecified` rules ahead of the
+  generic `e33_second_home_renewal`, with an in-code comment (`:277-280`)
+  warning that the E33E/E33F patterns must precede the generic E33 substring
+  match; the priority order at `:407-410` backs it. Original reasoning kept
+  for context: a senior asked for a bank confirmation letter that does not
+  exist on their route was the failure mode this closes.
 - **`E33_ITAP_EVAL_ENABLED=False`** gates the ITAP stage. Flip only after letter 006 Q7.
 - **Corner drift** — this file is the ONLY corner. Two stale copies disagree with
   prod and must not be trusted: `~/.claude/commands/secondhome.md` (14 Jul, points

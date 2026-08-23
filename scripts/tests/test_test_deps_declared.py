@@ -47,7 +47,23 @@ import yaml
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "tests.yml"
 MANIFEST = REPO_ROOT / "apps" / "backend-rag" / "requirements-test.txt"
-BACKEND_JOB = "backend-tests"
+# RE-ANCHORED 2026-08-23 (S11 backend-test sharding). This was a single job id,
+# `backend-tests`. That job still exists — but it is now a FAN-IN, and the test
+# runtime it used to install moved to `backend-shard`. A one-job anchor would
+# still have resolved, still had run: steps, still parsed a package or two, and
+# quietly stopped covering the install line it exists to police: `pytest
+# pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist`. That is exactly
+# the silent-narrowing this checker's own docstring warns about, arriving through
+# a job SPLIT rather than a rename, so the "job not found" assertion below could
+# never have fired.
+#
+# The anchor is now the whole backend TEST LANE, and every named job must exist —
+# a split or rename fails loudly instead of shrinking the scan. Scope discipline
+# is unchanged and still load-bearing: `mcp-tests` is NOT in this list, so
+# `fastmcp` cannot be laundered into the backend manifest (see the manifest's own
+# DO-NOT-ADD note).
+BACKEND_JOBS = ("backend-static", "backend-shard", "backend-tests")
+BACKEND_JOB = "/".join(BACKEND_JOBS)  # for error messages only
 
 # Flags that CONSUME the next token — its value is never a package name.
 # `--target/-t`, `--prefix`, `--root` were added after an adversarial review
@@ -76,17 +92,25 @@ def _normalise(name: str) -> str:
 
 
 def _backend_job_run_blocks() -> list[str]:
-    """Every `run:` script belonging to the backend job — and nothing else."""
+    """Every `run:` script belonging to the backend test lane — and nothing else."""
     doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     jobs = (doc or {}).get("jobs") or {}
-    job = jobs.get(BACKEND_JOB)
-    if job is None:
+    missing = [name for name in BACKEND_JOBS if jobs.get(name) is None]
+    if missing:
         raise AssertionError(
-            f"job '{BACKEND_JOB}' not found in {WORKFLOW} (jobs: {sorted(jobs)}). "
-            "It was renamed or removed — re-anchor this checker rather than "
-            "letting it silently scan nothing."
+            f"backend test-lane job(s) {missing} not found in {WORKFLOW} "
+            f"(jobs: {sorted(jobs)}). They were renamed, split or removed — "
+            "re-anchor this checker rather than letting it silently scan a "
+            "subset of the lane."
         )
-    return [s["run"] for s in (job.get("steps") or []) if isinstance(s, dict) and s.get("run")]
+    blocks: list[str] = []
+    for name in BACKEND_JOBS:
+        blocks += [
+            step["run"]
+            for step in (jobs[name].get("steps") or [])
+            if isinstance(step, dict) and step.get("run")
+        ]
+    return blocks
 
 
 def _is_installer_at(tokens: list[str], i: int) -> int | None:
@@ -200,6 +224,28 @@ def test_inputs_are_readable_and_non_empty() -> None:
         f"no inline-installed packages parsed out of the '{BACKEND_JOB}' job — "
         "the install step was reformatted and this test would silently pass "
         "against an empty set. Re-anchor the parser."
+    )
+
+
+def test_the_anchor_still_covers_the_job_that_installs_the_test_runtime() -> None:
+    """GUILT for a re-narrowed anchor (S11, 2026-08-23).
+
+    `pytest-xdist` is installed by `backend-shard` and by NO other job in the
+    lane. Before this checker was re-anchored it read only `backend-tests`, and
+    after the sharding split that job installs `coverage` alone — so the scan
+    stayed non-empty, every assertion stayed green, and the install line this
+    file exists to police had quietly left its field of view.
+
+    A non-empty scan is not the same as a complete one (superscar #2 / W97).
+    This pins the difference: narrow the anchor back to one job and this fails.
+    """
+    seen = inline_installed_packages()
+    assert "pytest-xdist" in seen, (
+        "the scan no longer reaches the job that installs the test runtime — "
+        f"saw {sorted(seen)}. `pytest-xdist` comes only from `backend-shard`; "
+        "if it is gone, BACKEND_JOBS has been narrowed or the shard job was "
+        "renamed, and this checker is now policing a job that installs almost "
+        "nothing."
     )
 
 

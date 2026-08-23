@@ -1,0 +1,419 @@
+{
+  "_comment": "E5 increment 6 (seq-13) — RULES-ONLY half of the seq-13 fold (a separate lane owns the source-freshness half; a third step folds both). Three rule entries, each an in-pack-precedent tightening of an OR-like `hit_policy` gap named by .agents/skills/visaoracle/SKILL.md's 2026-08-23 LIVE STATE entry ('audit the class', not 'patch one rule'). (1) EDIT el.e31c-child-mixed-marriage-support: adds the family.sponsor_nationalities intersects [ID] conjunct the sibling el.e31c-mixed-marriage-parents already carries (seq-10), grounded by the SAME claim (CL-E31C-03) that grounded the sibling's identical conjunct — this rule was simply never touched when that claim was first compiled. (2) INSERT hf.e31c-sponsor-not-indonesian: the paired HARD_FILTER, mirroring hf.e31c-marriage-not-registered's shape exactly (EXCLUDE + safety_critical + NEEDS_INPUT on unknown) so a future untouched sibling rule can never re-open this same gap — HARD_FILTER stage runs before any SUPPORT rule is even consulted (engine precedence, SKILL.md 2026-08-23). (3) EDIT el.d12-multi-entry-support: adds the investment.pt_pma_committed neq true conjunct all 5 of its ELIGIBILITY siblings already carry, restructured into their identical nested-all shape — grounded by CL-D12-01 (D12 is 'an exploratory pre-PT-PMA-incorporation instrument'; an applicant who has already committed PT PMA capital is past that stage). E31D (the E31D relationship-model gap named by the same audit) has NO entry here — research/visa/2026-08-15-gold-family-refuter.md explicitly blocks a direct pack edit: the fact vocabulary has no STEPCHILD relation_to_sponsor value and no dedicated WNA-WNI mixed-marriage-basis fact (re-verified live this session: RelationType enum unchanged since 2026-08-15), and using the existing CHILD/PARENT facts would overload them with new semantics the refuter names as 'another legally misleading boundary'. That fix needs a Zero/legal decision + a fact-vocabulary extension (backend reader + frontend writer) — out of a RULES-ONLY fold's authority; reported back, not authored. ADDENDUM (Fix 4, GO'd by team-lead): 9 more entries — el.e31b-spouse-itas-support/el.e31b-sponsor-itas-itap (E31B), el.e31e-child-itas-support/el.e31e-sponsor-itas-itap (E31E), el.e31h-parent-itas-child-support/el.e31h-sponsor-itas-itap (E31H), el.e31j-sibling-itas-support/el.e31j-sponsor-itas-itap/el.e31j-dependency-age (E31J) — each edits the family.sponsor_status_code leaf from op:known (presence-only) to op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], grounded by inc6-sponsor-status-claim-ledger.md (4 independently-worded articles, one per product, each with its own VITAS-fallback ayat).",
+  "rules": [
+    {
+      "rule": {
+        "rule_id": "el.e31c-child-mixed-marriage-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "PARENT"
+            },
+            {
+              "fact": "family.sponsor_nationalities",
+              "op": "intersects",
+              "values": [
+                "ID"
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "family.relation_to_sponsor",
+          "family.sponsor_nationalities",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "40523028-431b-5ae0-a937-277882f0f243",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31c-child-mixed-marriage-support",
+        "safety_critical": false,
+        "product_version_ids": [
+          "62ab2d13-1d7e-5048-9cf7-9622c0098439"
+        ]
+      },
+      "claim_ids": [
+        "CL-E31C-03",
+        "CL-E31C-04"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-E31C-03",
+          "note": "The page requires the WNI parent's application letter (item 1) and the WNI parent's Kartu Keluarga (item 9); that the formal penjamin must BE that parent is an inference from those items (typical-case reading) — the foreign-parent-as-penjamin shape is not addressed by the page. Codex refuter finding 4, 2026-08-19 (same caveat already carried by el.e31c-mixed-marriage-parents's identical conjunct, seq-10; reused verbatim here because it is the same claim backing the same fact on a sibling rule of the same product, not a fresh inference)."
+        }
+      ],
+      "product_code": "E31C",
+      "must_reference_facts": [
+        "family.sponsor_nationalities"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "hf.e31c-sponsor-not-indonesian",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-23T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "PARENT"
+            },
+            {
+              "op": "not",
+              "arg": {
+                "fact": "family.sponsor_nationalities",
+                "op": "intersects",
+                "values": [
+                  "ID"
+                ]
+              }
+            }
+          ]
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "REQ_PARENT_SPONSOR_INDONESIAN"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "family.relation_to_sponsor",
+          "family.sponsor_nationalities",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "40523028-431b-5ae0-a937-277882f0f243",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.hf.e31c-sponsor-not-indonesian",
+        "safety_critical": true,
+        "product_version_ids": [
+          "62ab2d13-1d7e-5048-9cf7-9622c0098439"
+        ]
+      },
+      "claim_ids": [
+        "CL-E31C-03",
+        "CL-E31C-04"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-E31C-03",
+          "note": "The page requires the WNI parent's application letter (item 1) and the WNI parent's Kartu Keluarga (item 9); that the formal penjamin must BE that parent is an inference from those items (typical-case reading) — the foreign-parent-as-penjamin shape is not addressed by the page. Codex refuter finding 4, 2026-08-19 (same caveat already carried by el.e31c-mixed-marriage-parents's identical conjunct, seq-10; reused verbatim here for the paired HARD_FILTER on the same fact)."
+        }
+      ],
+      "product_code": "E31C",
+      "must_reference_facts": [
+        "family.sponsor_nationalities"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.d12-passport-validity",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "INVESTMENT"
+              ]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 180
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "intent.stay_days"
+        ],
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d12-passport-validity",
+        "safety_critical": false,
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ]
+      },
+      "claim_ids": [
+        "CL-D12-02"
+      ],
+      "product_code": "D12"
+    },
+    {
+      "rule": {
+        "rule_id": "el.d12-funds-usd-5000",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "INVESTMENT"
+              ]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 180
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PROOF_OF_FUNDS_D12",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "intent.stay_days"
+        ],
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d12-funds-usd-5000",
+        "safety_critical": false,
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ]
+      },
+      "claim_ids": [
+        "CL-D12-02"
+      ],
+      "product_code": "D12"
+    },
+    {
+      "rule": {
+        "rule_id": "el.d12-cv-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "INVESTMENT"
+              ]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 180
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "CV_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "intent.stay_days"
+        ],
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d12-cv-required",
+        "safety_critical": false,
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ]
+      },
+      "claim_ids": [
+        "CL-D12-02"
+      ],
+      "product_code": "D12"
+    },
+    {
+      "rule": {
+        "rule_id": "el.d12-itinerary-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "INVESTMENT"
+              ]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 180
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "ITINERARY_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "intent.stay_days"
+        ],
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d12-itinerary-required",
+        "safety_critical": false,
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ]
+      },
+      "claim_ids": [
+        "CL-D12-02"
+      ],
+      "product_code": "D12"
+    },
+    {
+      "rule": {
+        "rule_id": "el.d12-support-letter",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "INVESTMENT"
+              ]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 180
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "SUPPORT_LETTER_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "intent.stay_days"
+        ],
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d12-support-letter",
+        "safety_critical": false,
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ]
+      },
+      "claim_ids": [
+        "CL-D12-02"
+      ],
+      "product_code": "D12"
+    }
+  ]
+}

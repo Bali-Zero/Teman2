@@ -43,7 +43,7 @@ matches `implement|build|fix|write|add|cure|ship|refactor|create|patch`
 cicatrix-superscar.md #3, guard-over-match: "fix" must not match "prefix",
 "add" must not match "address"). The counter resets to zero the instant
 ANY of these is seen: a `scripts/seat_build.sh` Bash call, a raw
-codex/kimi/qwen/claude-glm Bash call (SEAT_BINARY_NAMES, command position),
+codex/kimi/qwen Bash call (SEAT_BINARY_NAMES, command position),
 or a build-shaped Agent dispatch whose model is genuinely non-Anthropic
 (addendum 2026-08-22 — watching only the wrapper's literal spelling was
 itself a false-accusation bug, found by a cross-family refuter: see
@@ -211,20 +211,14 @@ ENV_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # Addendum (2026-08-22, same fix round — found by a cross-family refuter,
 # DeepSeek v4-pro): the floor used to reset ONLY on its own wrapper's exact
 # spelling (seat_build.sh) and silently let a RAW direct call to the seat
-# CLI it wraps — codex/kimi/qwen/claude-glm — leave the streak running,
+# CLI it wraps — codex/kimi/qwen — leave the streak running,
 # which is a FALSE ACCUSATION against a session that already complied with
 # the mandate by a different, equally legitimate route (the session that
 # built this very mandate routed D1 to Codex and D3 to Kimi via raw `codex
 # exec`/`kimi -p` calls, before seat_build.sh existed). This is the same
-# set scripts/seat_build.sh --seat accepts (codex|kimi|qwen|glm) — kept in
-# sync by NAME here so the two cannot silently diverge; "claude-glm" is the
-# actual binary name for the glm seat (CLAUDE.md: "GLM via `claude-glm -p`
-# (shim, hand it PATHS)"), not a typo for an Anthropic seat.
-# NOTE: scripts/seat_build.sh does not exist on disk yet (D1 lane in
-# flight) — this list is derived from the mandate's own D1 spec
-# (docs/mandates/2026-08-22-arsenal-routing-mandate.md §D1) rather than
-# imported from that script; reconcile the two once D1 lands.
-SEAT_BINARY_NAMES = {"seat_build.sh", "codex", "kimi", "qwen", "claude-glm"}
+# set scripts/seat_build.sh --seat accepts (codex|kimi|qwen) — kept in sync
+# by NAME here so the wrapper and raw-call paths cannot silently diverge.
+SEAT_BINARY_NAMES = {"seat_build.sh", "codex", "kimi", "qwen"}
 
 
 def agent_def_pins_model(subagent_type: str, cwd: str) -> bool:
@@ -359,7 +353,7 @@ def _command_invokes_non_anthropic_seat(command: str) -> bool:
     executed in some sub-command — never merely quoted/mentioned as an
     argument (2026-08-22 fix round: `echo 'use seat_build.sh next time'`
     used to reset the counter under the prior bare substring check, and a
-    raw `codex`/`kimi`/`qwen`/`claude-glm` call wasn't recognised at all —
+    raw `codex`/`kimi`/`qwen` call wasn't recognised at all —
     see SEAT_BINARY_NAMES's own comment for why that second gap was a
     false-accusation bug, not a cosmetic one). See the module-level
     SHELL_SEPARATOR_RE/KNOWN_INTERPRETERS comment for the exact heuristic
@@ -475,7 +469,7 @@ def _floor_state(text: str, cwd: str, patterns) -> int:
     ADDENDUM (2026-08-22, same fix round, found by a cross-family refuter):
     the counter used to reset ONLY on scripts/seat_build.sh by its exact
     spelling — a non-Anthropic seat used any other way (a raw `codex exec`/
-    `kimi -p`/`qwen`/`claude-glm` Bash call, or a build-shaped Agent
+    `kimi -p`/`qwen` Bash call, or a build-shaped Agent
     dispatch whose model is genuinely non-Anthropic) left the streak
     running, which is a FALSE ACCUSATION against a session that already
     complied with the mandate's intent by a different, equally legitimate
@@ -561,11 +555,11 @@ def _apply_routing_floor(payload: dict, tool_input: dict, model: str, cwd: str) 
         "(docs/mandates/2026-08-22-arsenal-routing-mandate.md D2): "
         f"{total} consecutive Anthropic build dispatch(es) "
         f"({desc!r}, model={model!r}) with NO EVIDENCE a non-Anthropic build seat was "
-        "used (scripts/seat_build.sh, a raw codex/kimi/qwen/claude-glm call, or a "
+        "used (scripts/seat_build.sh, a raw codex/kimi/qwen call, or a "
         "non-Anthropic Agent dispatch) in this transcript since the last reset. Route "
         "this build through a non-Anthropic seat instead:\n"
         "  scripts/seat_build.sh --seat codex --worktree <path> --task-file <path>\n"
-        "(swap --seat codex for kimi|qwen|glm — or call codex/kimi/qwen/claude-glm "
+        "(swap --seat codex for kimi|qwen — or call codex/kimi/qwen "
         "directly). Any of those resets the "
         "counter. Override if this really must stay Anthropic: set "
         "ROUTING_FLOOR_OK=<reason> in the Agent prompt or in the environment — "

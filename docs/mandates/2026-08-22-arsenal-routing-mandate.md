@@ -47,12 +47,23 @@ The orchestrator already _convokes_ the cross-family arsenal (Kimi/Codex/agy/Qwe
 A single entry point that gives Codex / Kimi / Qwen / GLM the same call shape as `Agent`:
 
 ```
-scripts/seat_build.sh --seat codex|kimi|qwen|glm \
+scripts/seat_build.sh --seat codex|kimi|qwen \
   --worktree <path>  --task-file <path>  [--tests "<cmd>"] \
   [--effort low|medium|high|xhigh] [--timeout 1800] [--out <report.json>]
 ```
 
-- Runs the seat's CLI with the quirks pre-solved: Codex `exec --sandbox workspace-write --skip-git-repo-check -c model_reasoning_effort=… < /dev/null`; Kimi `-m kimi-code/kimi-for-coding`; Qwen with `< /dev/null` + watchdog kill (memory: hangs on open stdin, ignores SIGTERM); GLM via `claude-glm -p` (shim, hand it PATHS). Reuse `scripts/ai-dispatch.sh::run_codex()` and `infra/launchagents/wrappers/regulatory-watcher-run.sh` cascade-detection (`out of extra usage|quota|429`) — do not re-invent.
+- Original 2026-08-22 instruction (superseded 2026-08-24): run the seat CLIs with their
+  quirks pre-solved — Codex `exec --sandbox workspace-write --skip-git-repo-check -c
+model_reasoning_effort=… < /dev/null`; Kimi `-m kimi-code/kimi-for-coding`; Qwen with
+  `< /dev/null` + watchdog kill; GLM used the then-current z.ai shim and accepted file paths.
+  Reuse `scripts/ai-dispatch.sh::run_codex()` and
+  `infra/launchagents/wrappers/regulatory-watcher-run.sh` cascade-detection
+  (`out of extra usage|quota|429`) — do not re-invent.
+- **Superseding note 2026-08-24 (Zero ruling 2026-08-23):** the z.ai seat and shim are retired.
+  GLM survives only through Alibaba TP1 seat `tp1-glm-5.2`; there is no replacement binary
+  (`no door: line in roster`). Use the OpenAI-compatible base
+  `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`; the key is loaded by
+  `load_tp1_settings_key()` from `~/.qwen/settings.json`.
 - Always in a worktree (`scripts/agent_start.py`), never in a main checkout. Refuses to start if `--worktree` is a main checkout or is dirty.
 - Output contract (`--out`): `{seat, model, effort, rc, duration_s, diff_stat, tests: {cmd, rc}, quota_exhausted: bool}` — exactly the fields an evidence-pack receipt needs (`claim, cmd, exit, ts, seat`).
 - **Never merges, never arms, never pushes.** The orchestrating session verifies the diff (generator≠grader) and ships.

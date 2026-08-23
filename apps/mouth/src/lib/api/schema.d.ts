@@ -5807,6 +5807,11 @@ export interface paths {
      * @description Send portal invitation to a client from CRM.
      *
      *     If email not provided, uses client's email from the clients table.
+     *
+     *     B1 (SPEC-p0-invite.md, 2026-08-23): this is a fourth invitation-minting
+     *     path — `write=True` requires the caller's email to match the client's
+     *     `assigned_to`/`created_by` or be an admin, and the response never
+     *     carries the raw `token`/`invite_url`.
      */
     post: operations["send_portal_invite_api_crm_portal_clients__client_id__invite_post"];
     delete?: never;
@@ -5833,6 +5838,12 @@ export interface paths {
     /**
      * Send Message To Client
      * @description Send a message to a client (team → client).
+     *
+     *     B2 (SPEC-p0-invite.md, 2026-08-23 — owner ruling): restricted to
+     *     `write=True` — only the client's assigned team member (or `created_by`)
+     *     or a CRM admin may send. Behaviour change for staff: a colleague who is
+     *     not assigned to the client now gets 403 instead of being able to send a
+     *     client-visible message.
      */
     post: operations["send_message_to_client_api_crm_portal_clients__client_id__messages_post"];
     delete?: never;
@@ -5920,6 +5931,13 @@ export interface paths {
      * @description Get count of unread messages from all clients.
      *
      *     For header notification badge.
+     *
+     *     B3 (SPEC-p0-invite.md, 2026-08-23): scoped to the caller's assignment,
+     *     same pattern as `get_recent_portal_activity` below — `assigned_filter`
+     *     is None for admins (no filter, full book) and the caller's lowercased
+     *     email otherwise. Applied to BOTH queries: a total count that ignored
+     *     the filter would still leak the volume of a client the caller cannot
+     *     otherwise see.
      */
     get: operations["get_unread_messages_count_api_crm_portal_messages_unread_count_get"];
     put?: never;
@@ -6549,6 +6567,33 @@ export interface paths {
      * @description Check practices with no activity for 7+ days and alert team leaders.
      */
     post: operations["run_stale_practice_notifier_api_cron_notifiers_stale_practices_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/cron/notifiers/team-whatsapp": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Run Team Whatsapp Send
+     * @description Send free-form WhatsApp text to a Bali Zero team member, resolved
+     *     server-side from team_members by email.
+     *
+     *     Built for the S7 Yield WhatsApp digest (Law-2 derogation authorized
+     *     2026-08-21, see SYMBIOSIS.md — "il cancello vive anche lato server"): an
+     *     inactive or unknown assignee is rejected HERE independently of whatever
+     *     the caller's own client-side gate already decided — the same fact
+     *     checked twice. No fallback recipient exists on any path.
+     */
+    post: operations["run_team_whatsapp_send_api_cron_notifiers_team_whatsapp_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -8037,6 +8082,116 @@ export interface paths {
      *     to the BZ root folder, not the implicit root).
      */
     get: operations["drive_status_api_drive_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/e33/cases": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Cases */
+    get: operations["list_cases_api_e33_cases_get"];
+    put?: never;
+    /**
+     * Create Case
+     * @description Mint a new E33 case starting at ``fit_memo``.
+     *
+     *     Property basis is out of V1 scope (pending addendum 007 —
+     *     ``property_validation_standard``). Client existence, archival state and
+     *     RBAC are checked BEFORE any insert.
+     *
+     *     On a case_id collision (``asyncpg.UniqueViolationError``) re-mint once;
+     *     a second collision is a 500 (astronomically unlikely — 6 hex chars).
+     */
+    post: operations["create_case_api_e33_cases_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/e33/cases/{case_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Case */
+    get: operations["get_case_api_e33_cases__case_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/e33/cases/{case_id}/advance": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Advance Case
+     * @description Advance a case's stage.
+     *
+     *     load -> mutate -> save runs inside one transaction with a
+     *     ``SELECT ... FOR UPDATE`` row lock so two concurrent advances against
+     *     the same case serialize instead of the second silently clobbering the
+     *     first's write with a stale in-memory copy.
+     */
+    post: operations["advance_case_api_e33_cases__case_id__advance_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/e33/cases/{case_id}/evidence": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Add Evidence
+     * @description Attach an evidence reference to a case.
+     *
+     *     Same transaction + ``FOR UPDATE`` pattern as :func:`advance_case` — see
+     *     its docstring.
+     */
+    post: operations["add_evidence_api_e33_cases__case_id__evidence_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/e33/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Summary */
+    get: operations["get_summary_api_e33_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -16412,6 +16567,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/wa-broker/claim": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Claim */
+    post: operations["claim_api_wa_broker_claim_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa-broker/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Complete */
+    post: operations["complete_api_wa_broker_complete_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/wa-inbox/threads": {
     parameters: {
       query?: never;
@@ -16491,6 +16680,26 @@ export interface paths {
     put?: never;
     /** Takeover */
     post: operations["takeover_api_wa_inbox_threads__thread_id__takeover_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/wa-package/build": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Build Wa Package
+     * @description Build the deterministic context package for one WA codex-route turn.
+     */
+    post: operations["build_wa_package_api_wa_package_build_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -17410,55 +17619,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/webhook/telegram": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Telegram Webhook
-     * @description Telegram Bot API webhook endpoint — ack-first pattern (P0-6 audit 2026-04-29).
-     *
-     *     Flow:
-     *       1. Parse + validate update_id (Telegram-provided idempotency key).
-     *       2. Persist payload to ``inbound_webhooks`` (idempotent on update_id).
-     *       3. Handle callback_query OR route via ChannelRouter (existing behavior).
-     *       4. Return 200 OK — Telegram requires this even on error to prevent retries.
-     *
-     *     Returns:
-     *         Success confirmation (Telegram expects 200 OK)
-     */
-    post: operations["telegram_webhook_webhook_telegram_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/webhook/telegram/health": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Telegram Health
-     * @description Health check for Telegram webhook.
-     */
-    get: operations["telegram_health_webhook_telegram_health_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/webhook/twitter": {
     parameters: {
       query?: never;
@@ -17814,6 +17974,14 @@ export interface components {
        */
       send_notification: boolean;
     };
+    /** AdvanceBody */
+    AdvanceBody: {
+      /** Note */
+      note?: string | null;
+      /** Occurred On */
+      occurred_on?: string | null;
+      to_stage: components["schemas"]["E33Stage"];
+    };
     /** AgentExecutionResponse */
     AgentExecutionResponse: {
       /** Agent Name */
@@ -18161,8 +18329,10 @@ export interface components {
     /**
      * ApplicantFactsData
      * @description ``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-     *     with all keys required except the one transitional field documented on
-     *     ``sponsor_type`` below. Field order mirrors ``enums.FactPath``'s
+     *     with all keys required except the four transitional fields documented on
+     *     ``sponsor_type`` and the three ``family.stepchild_*``/
+     *     ``family.sponsor_permit_basis`` fields below (2026-08-23, same rollout
+     *     mechanism). Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
      *     grouping.
@@ -18202,10 +18372,40 @@ export interface components {
       "family.sponsor_nationalities":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownCountrySet"];
+      /**
+       * Family.Sponsor Permit Basis
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "family.sponsor_permit_basis":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownSponsorPermitBasis"];
       /** Family.Sponsor Status Code */
       "family.sponsor_status_code":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownString"];
+      /**
+       * Family.Stepchild Birth Certificate Confirmed
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "family.stepchild_birth_certificate_confirmed":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
+       * Family.Stepchild Marriage Certificate Confirmed
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "family.stepchild_marriage_certificate_confirmed":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
       /** Immigration.Current Status Code */
       "immigration.current_status_code":
         | components["schemas"]["UnknownFact"]
@@ -18875,6 +19075,20 @@ export interface components {
       extension: components["schemas"]["ExtensionPolicy"];
       stay: components["schemas"]["StayPolicy"];
     };
+    /** CaseCreateBody */
+    CaseCreateBody: {
+      basis: components["schemas"]["GuaranteeBasis"];
+      /** Client Id */
+      client_id: number;
+      /** Dependent Code */
+      dependent_code?: string | null;
+      /** Owner Email */
+      owner_email?: string | null;
+      /** Practice Id */
+      practice_id?: number | null;
+      /** Principal Case Id */
+      principal_case_id?: string | null;
+    };
     /** ChatRequest */
     ChatRequest: {
       /** Check Hash */
@@ -18962,6 +19176,21 @@ export interface components {
       topics?: string[];
       /** Total Chunks */
       total_chunks: number;
+    };
+    /** ClaimResponse */
+    ClaimResponse: {
+      /** Deadline At */
+      deadline_at?: string | null;
+      /** Fence Token */
+      fence_token?: string | null;
+      /** Job Id */
+      job_id?: string | null;
+      /** Package */
+      package?: string | null;
+      /** Package Hash */
+      package_hash?: string | null;
+      /** Server Now */
+      server_now?: string | null;
     };
     /**
      * ClaimSearchResponse
@@ -19434,6 +19663,11 @@ export interface components {
       pin: string;
       /** Token */
       token: string;
+    };
+    /** CompleteResponse */
+    CompleteResponse: {
+      /** Status */
+      status: string;
     };
     /**
      * ComposeRequestValidator
@@ -20226,6 +20460,25 @@ export interface components {
       total: number;
     };
     /**
+     * E33Stage
+     * @description Lifecycle stages of an E33 Second Home case.
+     * @enum {string}
+     */
+    E33Stage:
+      | "fit_memo"
+      | "bank_precheck"
+      | "application"
+      | "payment"
+      | "visa_issued"
+      | "entry"
+      | "itas_active"
+      | "guarantee_proof_due"
+      | "annual_maintenance"
+      | "renewal"
+      | "epo"
+      | "status_change"
+      | "itap_eval";
+    /**
      * EditStagingItemRequest
      * @description Request body for editing staging item
      */
@@ -20475,6 +20728,35 @@ export interface components {
       /** Last Id */
       last_id: number;
     };
+    /** EvidenceBody */
+    EvidenceBody: {
+      /** Document Ref */
+      document_ref: string;
+      /** Filed On */
+      filed_on?: string | null;
+      /** Issued On */
+      issued_on?: string | null;
+      /** Issuing Party */
+      issuing_party?: string | null;
+      kind: components["schemas"]["EvidenceKind"];
+      /** Metadata */
+      metadata?: {
+        [key: string]: unknown;
+      };
+      /** Note */
+      note?: string | null;
+    };
+    /**
+     * EvidenceKind
+     * @description Evidence categories. All are REFERENCES, never financial data.
+     * @enum {string}
+     */
+    EvidenceKind:
+      | "bank_confirmation"
+      | "property_title"
+      | "immigration_filing"
+      | "immigration_receipt"
+      | "other";
     /** ExtensionPolicy */
     ExtensionPolicy: {
       /** Allowed */
@@ -20500,10 +20782,13 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 41 applicant-collected
-     *     + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
-     *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and
-     *     by ``sponsor.type`` for the sponsor-category question, 2026-08-10).
+     * @description Every fact path the engine may ever reference — 44 applicant-collected
+     *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
+     *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
+     *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, and by the
+     *     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
+     *     and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings —
+     *     see each path's inline comment for its own grounding).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -20542,6 +20827,9 @@ export interface components {
       | "family.sponsor_status_code"
       | "family.marriage_registered"
       | "family.sponsor_confirmed"
+      | "family.stepchild_marriage_certificate_confirmed"
+      | "family.stepchild_birth_certificate_confirmed"
+      | "family.sponsor_permit_basis"
       | "study.level"
       | "study.admission_confirmed"
       | "study.sponsor_confirmed"
@@ -20557,7 +20845,8 @@ export interface components {
       | "commercial.wants_quote"
       | "derived.age_years"
       | "derived.is_minor"
-      | "derived.has_indonesian_citizenship";
+      | "derived.has_indonesian_citizenship"
+      | "derived.has_active_stay_permit";
     /** FamilyMemberCreate */
     FamilyMemberCreate: {
       /** Current Visa Type */
@@ -20801,6 +21090,16 @@ export interface components {
       /** Route Id */
       route_id: string;
     };
+    /**
+     * GuaranteeBasis
+     * @description Which qualifying-guarantee route the case uses.
+     *
+     *     Mid-permit basis switch (deposit ↔ property) is BELUM_DIATUR_PUBLIK in
+     *     the E33 fact registry — a basis change mid-permit is therefore NOT a
+     *     normal transition and must go through STATUS_CHANGE handling instead.
+     * @enum {string}
+     */
+    GuaranteeBasis: "deposit" | "property";
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -20842,6 +21141,11 @@ export interface components {
      * @description Health check response
      */
     HealthResponse: {
+      /**
+       * Build Sha
+       * @default unknown
+       */
+      build_sha: string;
       /** Database */
       database: {
         [key: string]: unknown;
@@ -21176,6 +21480,16 @@ export interface components {
       licensing_note?: string | null;
       /** Licensing Status */
       licensing_status: string;
+      /**
+       * Pma Cap Special
+       * @default false
+       */
+      pma_cap_special: boolean;
+      /**
+       * Pma Cap Verified
+       * @default false
+       */
+      pma_cap_verified: boolean;
       /** Pma Max Asing */
       pma_max_asing?: number | string | null;
       /** Pma Official Basis */
@@ -21253,6 +21567,8 @@ export interface components {
     KBLISearchResult: {
       /** Bali Blocked */
       bali_blocked?: boolean | null;
+      /** Bali Needs Review */
+      bali_needs_review?: boolean | null;
       /**
        * Bali Reason
        * @default
@@ -21268,6 +21584,16 @@ export interface components {
       expert_legal?: {
         [key: string]: unknown;
       } | null;
+      /**
+       * Pma Cap Special
+       * @default false
+       */
+      pma_cap_special: boolean;
+      /**
+       * Pma Cap Verified
+       * @default false
+       */
+      pma_cap_verified: boolean;
       /** Pma Max Asing */
       pma_max_asing?: number | string | null;
       /** Pma Official Basis */
@@ -21523,6 +21849,21 @@ export interface components {
        */
       status: "KNOWN";
       value: components["schemas"]["RelationType"];
+    };
+    /**
+     * KnownSponsorPermitBasis
+     * @description What activity basis the SPONSOR's own stay permit was granted under —
+     *     see ``enums.SponsorPermitBasis``'s docstring for the Pasal 33 ayat (7)
+     *     grounding. Distinct from ``KnownSponsorType`` (WHO the sponsor is, not
+     *     what basis their own permit rests on).
+     */
+    KnownSponsorPermitBasis: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["SponsorPermitBasis"];
     };
     /**
      * KnownSponsorType
@@ -21799,25 +22140,6 @@ export interface components {
       /** Whatsapp Url */
       whatsapp_url: string;
     };
-    /**
-     * PublicLeadSource
-     * @enum {string}
-     */
-    PublicLeadSource:
-      | "visa_clock"
-      | "visa_match"
-      | "kbli_decoder"
-      | "kbli_builder"
-      | "tax_gap"
-      | "zoning_check"
-      | "article"
-      | "kbli_navigator"
-      | "zantara_widget_handoff"
-      | "cta_handoff"
-      | "pricing_modal"
-      | "homepage_hero"
-      | "property_chat_question"
-      | "property_article_cta";
     /** LeaveRequestCreate */
     LeaveRequestCreate: {
       /**
@@ -22181,7 +22503,7 @@ export interface components {
       expected_arrival_date?: string | null;
       /** Nationality */
       nationality: string;
-      purpose: components["schemas"]["backend__services__visa_check__match_tree__Purpose"];
+      purpose: components["schemas"]["Purpose"];
     };
     /** MatchResponse */
     MatchResponse: {
@@ -23308,6 +23630,30 @@ export interface components {
       | "EMPLOYEE"
       | "NO_OPERATIONAL_ROLE"
       | "OTHER";
+    /**
+     * PublicLeadSource
+     * @description Lead sources accepted by the public capture API.
+     *
+     *     ``LeadSource.GARUDA_VOA`` intentionally remains in the persistence enum so
+     *     historical rows continue to decode. It is absent here because the public
+     *     GARUDA funnel is retired.
+     * @enum {string}
+     */
+    PublicLeadSource:
+      | "visa_clock"
+      | "visa_match"
+      | "kbli_decoder"
+      | "kbli_builder"
+      | "tax_gap"
+      | "zoning_check"
+      | "article"
+      | "kbli_navigator"
+      | "zantara_widget_handoff"
+      | "cta_handoff"
+      | "pricing_modal"
+      | "homepage_hero"
+      | "property_chat_question"
+      | "property_article_cta";
     /** PublishIGRequest */
     PublishIGRequest: {
       /**
@@ -23397,6 +23743,19 @@ export interface components {
        */
       position: string;
     };
+    /**
+     * Purpose
+     * @enum {string}
+     */
+    Purpose:
+      | "work_remote"
+      | "investor"
+      | "work_employee"
+      | "family"
+      | "long_tourism"
+      | "retirement"
+      | "student"
+      | "other";
     /**
      * QueryRequest
      * @description Request model for custom query execution
@@ -23670,10 +24029,38 @@ export interface components {
     };
     /**
      * RelationType
+     * @description The applicant's relationship to the family sponsor (``family.relation_to_sponsor``).
+     *
+     *     ``STEPCHILD`` added 2026-08-23 (owner ruling, verbatim: "figliastro =
+     *     figlio del coniuge, serve akta nikah + akta lahir"): E31D ("Family Visa —
+     *     Stepchild of Foreigner in Legal Mixed Marriage") is a distinct product
+     *     from CHILD (a couple's own biological/adopted child) and from SPOUSE, but
+     *     every one of its three ELIGIBILITY rules could previously only test bare
+     *     ``intent.purposes intersects ["FAMILY"]`` — the vocabulary had no way to
+     *     say "stepchild" at all (`research/visa/2026-08-15-gold-family-refuter.md`,
+     *     which reproduced this as fail-open product manufacture on sequence 7 and
+     *     explicitly blocked a rule-only repair, demanding this vocabulary
+     *     extension first). Grounded independently in Permenkumham 11/2024's
+     *     Pasal 33 ayat (2) huruf h angka 4: "anak dari Orang Asing yang kawin
+     *     secara sah dengan warga negara Indonesia" ("child OF A FOREIGNER who is
+     *     legally married to an Indonesian citizen") — exactly the stepchild-of-a-
+     *     lawful-mixed-marriage shape E31D names. The two evidence facts the owner
+     *     named for this relation — the parents' marriage certificate and the
+     *     child's birth certificate — are ``FactPath.FAMILY_STEPCHILD_MARRIAGE_
+     *     CERTIFICATE_CONFIRMED`` / ``FAMILY_STEPCHILD_BIRTH_CERTIFICATE_CONFIRMED``
+     *     below. This PR adds the vocabulary only; the rules that consume it
+     *     (a real STEPCHILD/evidence-gated E31D ELIGIBILITY rule, replacing the
+     *     three purpose-only ones) land in a separate, later PR.
      * @enum {string}
      */
     RelationType:
-      "SPOUSE" | "CHILD" | "PARENT" | "SIBLING" | "DEPENDENT" | "OTHER";
+      | "SPOUSE"
+      | "CHILD"
+      | "PARENT"
+      | "SIBLING"
+      | "DEPENDENT"
+      | "STEPCHILD"
+      | "OTHER";
     /**
      * RenameRequest
      * @description Request to rename a file/folder.
@@ -24676,6 +25063,54 @@ export interface components {
       voice: string | null;
     };
     /**
+     * SponsorPermitBasis
+     * @description What activity BASIS the sponsor's own stay permit (ITAS/ITAP) was
+     *     granted under — added 2026-08-23 so a rule can express Permenkumham
+     *     11/2024's Pasal 33 ayat (7) exclusion (verbatim, re-extracted from the
+     *     primary PDF ``data/source_documents/t0_regulations/
+     *     permenkumham_11_2024_perubahan_visa.pdf``, item 10):
+     *
+     *         "Visa tinggal terbatas sebagaimana dimaksud pada ayat (2) huruf h
+     *         angka 2, angka 5, angka 8, dan angka 9 tidak dapat diajukan untuk
+     *         penyatuan kepada pemegang Izin Tinggal Penyatuan Keluarga."
+     *
+     *     Those four angka are exactly the four family-reunification products
+     *     whose sponsor must already hold an ITAS/ITAP — E31B (spouse of ITAS/ITAP
+     *     holder), E31E (minor child of ITAS/ITAP-holder parent), E31H (parent of
+     *     ITAS/ITAP-holder child) and E31J (minor sibling of ITAS/ITAP holder). The
+     *     law forbids chaining one of those four onto a sponsor whose OWN permit
+     *     was itself granted under huruf h (penyatuan keluarga / family
+     *     reunification) — no daisy-chaining family-reunification permits across
+     *     generations. ``family.sponsor_status_code`` (a free-form product-code
+     *     STRING, no ``allowed_values``) can express whether the sponsor's permit
+     *     is merely *valid*; it cannot express *what it is for*, which is the gap
+     *     this fact closes.
+     *
+     *     The value domain is transcribed directly from Pasal 33 ayat (2) huruf
+     *     a-l — the complete, exhaustive list of limited-stay-visa activity
+     *     categories in the regulation, not a guessed binary. ``FAMILY_REUNIFICATION``
+     *     (huruf h) is the one basis ayat (7) excludes; every other member is a
+     *     real, distinct huruf. ``OTHER`` is the closed-vocabulary escape hatch for
+     *     a sponsor permit that predates this classification or does not cleanly
+     *     map to a single huruf — it is deliberately NOT the same value as
+     *     ``FAMILY_REUNIFICATION`` and must never be used as a proxy for it.
+     * @enum {string}
+     */
+    SponsorPermitBasis:
+      | "EXPERT"
+      | "WORKER"
+      | "MARITIME_CREW"
+      | "CLERGY"
+      | "FOREIGN_INVESTMENT"
+      | "SCIENTIFIC_RESEARCH"
+      | "EDUCATION"
+      | "FAMILY_REUNIFICATION"
+      | "REPATRIATION"
+      | "SECOND_HOME"
+      | "MEDICAL_TREATMENT"
+      | "WORKING_HOLIDAY"
+      | "OTHER";
+    /**
      * SponsorType
      * @description The sponsor CATEGORY a product record declares (``sponsor_types``,
      *     ``models.VisaProductVersion``) and an applicant answers (``sponsor.type``,
@@ -25230,6 +25665,27 @@ export interface components {
       practice_id?: number | null;
       /** Subject */
       subject?: string | null;
+    };
+    /**
+     * TeamWhatsAppRequest
+     * @description Request for the 'send WhatsApp text to a team member, by email' primitive.
+     *
+     *     `team_email`, never a phone number — the caller (scripts/s7_yield_dispatch.py)
+     *     must not resolve or hold a phone itself; that happens server-side in
+     *     team_whatsapp_sender.py so the active/has-a-number check cannot be
+     *     bypassed by a bug in the caller's own gate.
+     */
+    TeamWhatsAppRequest: {
+      /**
+       * Team Email
+       * @description Bali Zero team member's @balizero.com email
+       */
+      team_email: string;
+      /**
+       * Text
+       * @description Message text
+       */
+      text: string;
     };
     /** ThreadMessages */
     ThreadMessages: {
@@ -26218,6 +26674,70 @@ export interface components {
       /** Offset */
       offset: number;
     };
+    /** WaPackageBuildRequest */
+    WaPackageBuildRequest: {
+      /**
+       * Dlp
+       * @default false
+       */
+      dlp: boolean;
+      /** History */
+      history?: components["schemas"]["WaPackageHistoryMessage"][];
+      /** Query */
+      query: string;
+      /** Thread Epoch */
+      thread_epoch: number;
+    };
+    /**
+     * WaPackageBuildResponse
+     * @description Exactly one of `package_wire` / `unbuildable` is populated.
+     *
+     *     HTTP 200 either way: an unbuildable intent is a ROUTE decision for the
+     *     worker (send this row to the Gemini leg), not a server error — see
+     *     ``PackageUnbuildable``'s docstring.
+     *
+     *     ``package_wire`` is the SEALED ENVELOPE — verbatim the bytes
+     *     ``package_hash`` covers (``ContextPackage.wire_text()``), which is what
+     *     ``offer_job`` must store and the broker verifies. The earlier draft
+     *     returned ``to_payload()`` here, whose own docstring says it is NOT the
+     *     wire format (its 7-key view includes package_hash itself): a consumer
+     *     re-serializing that dict would produce bytes the hash does not cover
+     *     and every broker-side verification would reject a valid package.
+     *     EXACTLY one representation of the sealed fact crosses this contract —
+     *     the wire plus its hash, nothing else. An earlier draft also returned a
+     *     top-level ``evidence_inputs`` copy; the S2 adversarial gate (round 2)
+     *     struck it: an unsealed copy can diverge from the sealed one inside the
+     *     wire and steer the consumer's frozen-evidence abstain verdict with
+     *     values the hash never covered. Consumers parse evidence_inputs OUT OF
+     *     the wire.
+     *
+     *     ``reversal_map`` (G-P3) travels ALONGSIDE the sealed wire, never inside
+     *     it: placeholder -> original PII value, populated only when the request
+     *     asked for ``dlp=True`` and the package actually redacted something.
+     *     Absent (None) on every unbuildable response and on any dlp=False build.
+     *     The caller is trusted to keep this local and never persist/log it (see
+     *     `wa_codex_leg._attempt`, the only caller today) — this endpoint does
+     *     not log it either.
+     */
+    WaPackageBuildResponse: {
+      /** Package Hash */
+      package_hash?: string | null;
+      /** Package Wire */
+      package_wire?: string | null;
+      /** Reversal Map */
+      reversal_map?: {
+        [key: string]: string;
+      } | null;
+      /** Unbuildable */
+      unbuildable?: string | null;
+    };
+    /** WaPackageHistoryMessage */
+    WaPackageHistoryMessage: {
+      /** Content */
+      content: string;
+      /** Role */
+      role: string;
+    };
     /** WaiveRequest */
     WaiveRequest: {
       /** Reason */
@@ -26925,19 +27445,6 @@ export interface components {
        */
       to: string[];
     };
-    /**
-     * Purpose
-     * @enum {string}
-     */
-    backend__services__visa_check__match_tree__Purpose:
-      | "work_remote"
-      | "investor"
-      | "work_employee"
-      | "family"
-      | "long_tourism"
-      | "retirement"
-      | "student"
-      | "other";
   };
   responses: never;
   parameters: never;
@@ -36480,6 +36987,41 @@ export interface operations {
       };
     };
   };
+  run_team_whatsapp_send_api_cron_notifiers_team_whatsapp_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TeamWhatsAppRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   run_unpaid_invoice_notifier_api_cron_notifiers_unpaid_invoices_post: {
     parameters: {
       query?: never;
@@ -38399,6 +38941,206 @@ export interface operations {
     };
   };
   drive_status_api_drive_status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  list_cases_api_e33_cases_get: {
+    parameters: {
+      query?: {
+        stage?: string | null;
+        client_id?: number | null;
+        basis?: string | null;
+        active_only?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_case_api_e33_cases_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CaseCreateBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_case_api_e33_cases__case_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        case_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  advance_case_api_e33_cases__case_id__advance_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        case_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdvanceBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  add_evidence_api_e33_cases__case_id__evidence_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        case_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EvidenceBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_summary_api_e33_summary_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -51024,6 +51766,46 @@ export interface operations {
       };
     };
   };
+  claim_api_wa_broker_claim_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ClaimResponse"];
+        };
+      };
+    };
+  };
+  complete_api_wa_broker_complete_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CompleteResponse"];
+        };
+      };
+    };
+  };
   list_threads_api_wa_inbox_threads_get: {
     parameters: {
       query?: {
@@ -51175,6 +51957,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HandlingResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  build_wa_package_api_wa_package_build_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WaPackageBuildRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WaPackageBuildResponse"];
         };
       };
       /** @description Validation Error */
@@ -52318,50 +53133,6 @@ export interface operations {
     };
   };
   instagram_webhook_webhook_instagram_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
-        };
-      };
-    };
-  };
-  telegram_webhook_webhook_telegram_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
-        };
-      };
-    };
-  };
-  telegram_health_webhook_telegram_health_get: {
     parameters: {
       query?: never;
       header?: never;

@@ -106,17 +106,82 @@ if [ -n "${HEALER_RUN:-}" ]; then
     exit 0
 fi
 
+# ---- secrets (Telegram; claude on Mini auths via its own login) ------------
+[ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
+# NOTE ON ORDER (moved above the lock 2026-08-23, cross-family review): the
+# lock's early-exit can now raise a p0, and telegram() called before this line
+# has no credentials in its environment — it would log "alert NOT sent" and
+# nothing would reach Zero. The one alert that matters most ("the lock is held
+# by a hung run, so NO receptor can run") would have been mute in exactly the
+# scenario where nothing else is left to speak (W108). Sourcing env early is
+# side-effect free; alerting without it is not.
+
 # ---- anti-overlap lock -----------------------------------------------------
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
     log "previous healer run still alive (pid $(cat "$PIDFILE")) — skipping this tick"
+    # The state of the run HOLDING THIS LOCK is checked here and nowhere else.
+    # Receptor 7 lives ~200 lines below this early exit, so in the two scenarios
+    # it was built to catch — a wrapper stuck past its cap, or one killed -9
+    # leaving a stale pidfile — it could never be reached: every later tick
+    # exits right here. A guard placed after the condition that skips it is not
+    # a guard (superscar #2).
+    # SCOPED TO THE LOCK PID, not a global count: "is something somewhere hung?"
+    # is a different question from "is the run holding this lock hung?", and
+    # alerting on the first while naming the second falsely accuses a healthy
+    # run — the exact class this detector exists to remove (cross-family review).
+    LOCK_PID=$(cat "$PIDFILE" 2>/dev/null || echo "")
+    if [ -f "$REPO/scripts/session_declaration.py" ] && [ -n "$LOCK_PID" ]; then
+        LOCK_JSON=$(cd "$REPO" && python3 scripts/session_declaration.py scan --json --for-pid "$LOCK_PID" 2>/dev/null)
+        LOCK_EXIT=$?
+        LOCK_STATE=$(printf '%s' "$LOCK_JSON" | python3 -c "
+import json, sys
+try:
+    rows = json.load(sys.stdin).get('rows', [])
+    print(rows[0]['state'] if rows else 'NONE')
+except Exception:
+    print('ERR')" 2>/dev/null)
+        case "${LOCK_STATE:-ERR}" in
+            HUNG)
+                log "LOCK HELD BY A HUNG RUN (pid $LOCK_PID) — no tick can proceed"
+                heartbeat "degraded" "lock held by hung run: every receptor unreachable"
+                telegram p0 "healer-mini:run-hung" "HEALER (Mini): il run che tiene il lock (pid $LOCK_PID) e APPESO oltre il proprio tetto - nessun tick puo procedere e TUTTI i receptor sono irraggiungibili. Dettaglio: python3 scripts/session_declaration.py scan"
+                exit 0 ;;
+            ABANDONED|ABANDONED-STALE)
+                # The declaration proves that run is dead (pid AND start-time
+                # mismatch), yet the pidfile pid answers kill -0: the pid was
+                # RECYCLED by an unrelated process. Without this branch the
+                # healer skips every tick forever, green, and nothing ever
+                # reaches receptor 7 - the disease itself, through the lock.
+                # The stale pidfile is NOT removed here: weakening the
+                # anti-overlap invariant belongs in its own change. Alerting
+                # already breaks the silence, which is the disease.
+                log "STALE LOCK: pid $LOCK_PID is recycled; the run that took this lock is $LOCK_STATE"
+                heartbeat "degraded" "stale pidfile: lock held by a recycled pid"
+                telegram p0 "healer-mini:stale-lock" "HEALER (Mini): il pidfile trattiene pid $LOCK_PID, ma la dichiarazione di quel run dice $LOCK_STATE - il pid e stato RICICLATO. Il guaritore salta ogni tick e resta verde. Cura: rm -f $PIDFILE"
+                exit 0 ;;
+            ERR)
+                log "declaration store unreadable at the lock check - blind, not clean"
+                heartbeat "degraded" "declarations unreadable at lock check"
+                telegram p0 "healer-mini:declarations-blind" "HEALER (Mini): store delle dichiarazioni illeggibile al controllo del lock (exit ${LOCK_EXIT}) - non posso distinguere un run vivo da uno appeso."
+                exit 0 ;;
+        esac
+    fi
     heartbeat "ok" "skipped: previous run alive"
     exit 0
 fi
 echo $$ > "$PIDFILE"
-trap 'rm -f "$PIDFILE"' EXIT
+# The declaration close is a FALLBACK stamp: any exit path that is not the
+# explicit close below (an error return, a handled signal) still records that
+# this runner came back. close is idempotent and keeps the FIRST outcome, so
+# the precise stamp made after `wait` always wins over this generic one.
+# A -9 leaves the declaration OPEN on purpose — that is a real abandonment and
+# must stay visible (scripts/session_declaration.py).
+# The child is killed BEFORE the stamp, deliberately: stamping "closed" while
+# the cascade session is still running would leave an ORPHAN — no wrapper, no
+# declaration, and nothing that could ever flag it again. Killing first makes
+# the stamp true at the moment it is written.
+trap 'rm -f "$PIDFILE"; [ -n "${CPID:-}" ] && kill -0 "$CPID" 2>/dev/null && kill "$CPID" 2>/dev/null; [ -n "${DECL_RUN_ID:-}" ] && python3 "$REPO/scripts/session_declaration.py" close --run-id "$DECL_RUN_ID" --outcome failed >/dev/null 2>&1; true' EXIT
 
-# ---- secrets (Telegram; claude on Mini auths via its own login) ------------
-[ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
 
 # ---- W84 trampoline: non-ssh contexts ALWAYS re-exec via ssh-localhost ------
 # TCC grants are PER-BINARY: under launchd, bash/ls/python3 can read ~/Desktop
@@ -217,6 +282,113 @@ PY
     fi
 fi
 
+# Receptor 6: fleet session VISIBILITY (scripts/fleet_sessions.py). Until
+# 2026-08-23 no organ could see the Claude Code sessions running on the OTHER
+# machines - the healer that is supposed to notice dead organs was blind to
+# three quarters of them, and a fleet audit had to be done by hand.
+#
+# WHAT THIS RECEPTOR FIRES ON, and deliberately what it does NOT:
+#   exit 2  = BLIND, no host answered at all -> the receptor itself lost its
+#             senses, same semantics as receptor 4's exit 2. ACTIONABLE.
+#   UNREACHABLE host = coverage lost on that machine. Deduped Telegram: a
+#             sleeping laptop must not spawn an LLM session every 4h, but it
+#             must not read as silence either.
+#   DECLARED-SPAN-UNMET rows are REPORTED by the tool, never alerted on here.
+#             Measured 2026-08-23: the detector returned 10 such rows and all
+#             10 were HEALTHY healer ticks - this plist's own StartInterval is
+#             14400s, so "loop 4h" in a mandate TITLE is the cron cadence, not
+#             the session's runtime. Wiring an alarm to a signal with a
+#             measured 10/10 false-positive rate is how an alarm gets muted.
+if [ -f "scripts/fleet_sessions.py" ]; then
+    # FLEET_HOSTS_OVERRIDE is a TEST SEAM, same family as HEALER_REPO /
+    # HEALER_CASCADE_BIN above: it lets a session exercise this receptor's
+    # coverage-loss path (and its Telegram ladder) without taking a real machine
+    # down. Unset in production, where the tool's own default local,pro,air wins.
+    FLEET_JSON=$(python3 scripts/fleet_sessions.py --json ${FLEET_HOSTS_OVERRIDE:+--hosts "$FLEET_HOSTS_OVERRIDE"} 2>/dev/null)
+    FLEET_EXIT=$?
+    if [ "$FLEET_EXIT" -eq 2 ]; then
+        ACTIONABLE=1; REASONS="${REASONS}fleet-sessions-blind "
+        telegram p0 "healer-mini:fleet-blind" "🛰 FLOTTA (Mini): fleet_sessions non ha sondato NESSUN host - visibilita cross-macchina persa. Dettaglio: python3 scripts/fleet_sessions.py --table"
+    elif [ "$FLEET_EXIT" -eq 1 ]; then
+        # Read the SAME keys the tool emits (W120: a probe that reads a key the
+        # reporter never writes zeroes its own alarm, silently).
+        FLEET_SUM=$(printf '%s' "$FLEET_JSON" | python3 -c "
+import json, sys
+try:
+    s = json.load(sys.stdin).get('summary', {})
+    print('%d %s' % (s.get('hosts_unreachable', 0),
+                     ','.join(s.get('unreachable_hosts', [])) or '-'))
+except Exception:
+    print('0 -')
+" 2>/dev/null)
+        FLEET_UNREACH=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f1)
+        FLEET_HOSTS=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f2)
+        if [ "${FLEET_UNREACH:-0}" -gt 0 ] 2>/dev/null; then
+            # No second routine alert line here, deliberately. This wrapper is
+            # allowed exactly ONE routine summary message, and that summary
+            # already carries REASONS verbatim: proven live, it read
+            # "run completato su ... fleet:1-host-unreachable". A duplicate
+            # would spam Zero AND trip the anti-regrowth gateway lint, which
+            # counts routine senders per wrapper. The host names are folded
+            # into REASONS instead, so the one message says everything.
+            ACTIONABLE=1; REASONS="${REASONS}fleet:${FLEET_UNREACH}-host-unreachable(${FLEET_HOSTS}) "
+        fi
+    fi
+fi
+
+# ---- receptor 7: runs that started and never came back --------------------
+# The REAL detector for "an autonomous run died and every gauge stayed green",
+# replacing the prose-parsing verdict that measured 10/10 false positives.
+# It is safe to alert on because it is an OBSERVATION, not an inference: the
+# wrapper opened a declaration, the wrapper never stamped it, and the recorded
+# process is gone from the OS process table (pid + start-time, so a recycled
+# pid cannot resurrect a dead run).
+#   exit 0 = nothing abandoned · exit 1 = at least one · exit 2 = store
+#   unreadable, which is BLIND and must never read as clean (W97).
+# This receptor CAN accuse this very wrapper's previous tick. That is correct:
+# a healer that gets killed every run IS the failure it exists to report.
+if [ -f "$REPO/scripts/session_declaration.py" ]; then
+    DECL_JSON=$(python3 "$REPO/scripts/session_declaration.py" scan --json 2>/dev/null)
+    DECL_EXIT=$?
+    if [ "$DECL_EXIT" -eq 2 ]; then
+        ACTIONABLE=1; REASONS="${REASONS}declarations-blind "
+        telegram p0 "healer-mini:declarations-blind" "🛰 DICHIARAZIONI (Mini): lo store delle dichiarazioni di run non e leggibile - l'abbandono silenzioso non e piu rilevabile. Dettaglio: python3 scripts/session_declaration.py scan"
+    elif [ "$DECL_EXIT" -eq 1 ]; then
+        # Same key the tool emits (W120), and the SPAWNER names, because "one
+        # run was abandoned" without saying whose is not actionable.
+        # A parse failure prints ERR, never "0": a detector whose output we
+        # cannot read is BLIND, and blind must never render as clean (W97).
+        # HUNG counts alongside ABANDONED — a wrapper stuck past its cap still
+        # holds the PIDFILE, so it blinds every later tick of this very organ.
+        DECL_SUM=$(printf '%s' "$DECL_JSON" | python3 -c "
+import json, sys
+try:
+    s = json.load(sys.stdin).get('summary', {})
+    n = int(s.get('abandoned', 0)) + int(s.get('hung', 0))
+    who = sorted(set(s.get('abandoned_spawners', []) + s.get('hung_spawners', [])))
+    print('%d %s' % (n, ','.join(who) or '-'))
+except Exception:
+    print('ERR -')
+" 2>/dev/null)
+        DECL_N=$(printf '%s' "$DECL_SUM" | cut -d' ' -f1)
+        DECL_WHO=$(printf '%s' "$DECL_SUM" | cut -d' ' -f2)
+        if [ "$DECL_N" = "ERR" ] || [ -z "$DECL_N" ]; then
+            ACTIONABLE=1; REASONS="${REASONS}declarations-unreadable "
+        elif [ "${DECL_N:-0}" -gt 0 ] 2>/dev/null; then
+            # Folded into REASONS, no second routine line: this wrapper is
+            # allowed exactly ONE routine digest and it already carries REASONS
+            # verbatim (anti-regrowth gateway lint counts routine senders).
+            ACTIONABLE=1; REASONS="${REASONS}abandoned:${DECL_N}-run(${DECL_WHO}) "
+        fi
+    elif [ "$DECL_EXIT" -ne 0 ]; then
+        # 127 (not found), a traceback, a signal — anything the contract does not
+        # define. Receptor 1 already treats any nonzero as actionable; this one
+        # used to fall through to silence, which is the failure mode the whole
+        # module exists to remove.
+        ACTIONABLE=1; REASONS="${REASONS}declarations-broken(exit${DECL_EXIT}) "
+    fi
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
     # ---- CONVERGENCE mission (DNA/GENOME §CONVERGENCE v2, panel-hardened) ----
     # Receptors all quiet: instead of sleeping, bring ONE grandfathered organ
@@ -287,6 +459,23 @@ if [ ! -x "$CASCADE_BIN" ]; then
     heartbeat "error" "claude cascade missing"
     exit 1
 fi
+# TWO-PHASE COMMIT (scripts/session_declaration.py). Opened here, stamped after
+# `wait`. An open declaration past its own cap with a dead runner is the ONLY
+# honest "this run died and nobody noticed" signal — the prose-parsing verdict
+# it replaces accused ten healthy ticks out of ten (PR #4646).
+# CADENCE IS READ FROM THE PLIST, never hardcoded: StartInterval is what
+# actually schedules this wrapper, and a second copy of that number is exactly
+# the drift that made "loop 4h" readable as a runtime in the first place.
+DECL_CADENCE=$(/usr/libexec/PlistBuddy -c "Print :StartInterval" \
+    "$HOME/Library/LaunchAgents/com.nuzantara.healer.4h.plist" 2>/dev/null || true)
+DECL_RUN_ID=$(python3 "$REPO/scripts/session_declaration.py" open \
+    --spawner "healer-run.sh" \
+    --cap-sec "$MAX_WALL_S" \
+    ${DECL_CADENCE:+--cadence-sec "$DECL_CADENCE"} \
+    --mandate "$MANDATE" \
+    --pid $$ 2>/dev/null) || DECL_RUN_ID=""
+[ -n "$DECL_RUN_ID" ] || log "WARN: session declaration not opened — this run is invisible to the abandonment scan"
+
 "$CASCADE_BIN" "$(cat "$MANDATE")
 
 CONTESTO DI QUESTO TICK — receptor scattati: ${REASONS}" \
@@ -327,6 +516,19 @@ wait "$CPID"
 CEXIT=$?
 kill "$WPID" 2>/dev/null || true
 wait "$WPID" 2>/dev/null || true
+
+# 143 = 128+SIGTERM: the wall-clock watchdog above reaped the child. Recorded as
+# its own outcome rather than folded into "failed" — a run the cap killed and a
+# run that failed on its own need different cures.
+if [ -n "${DECL_RUN_ID:-}" ]; then
+    if [ "$CEXIT" -eq 0 ]; then DECL_OUTCOME=completed
+    elif [ "$CEXIT" -eq 143 ]; then DECL_OUTCOME=killed-by-watchdog
+    else DECL_OUTCOME=failed
+    fi
+    python3 "$REPO/scripts/session_declaration.py" close \
+        --run-id "$DECL_RUN_ID" --outcome "$DECL_OUTCOME" --exit-code "$CEXIT" >/dev/null 2>&1 \
+        || log "WARN: could not stamp declaration $DECL_RUN_ID"
+fi
 
 TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$CEXIT — tail: ${TAIL:0:300}"

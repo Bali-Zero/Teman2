@@ -368,6 +368,71 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the public signed seq-11 RulePack payload, triple-derived at run "
         "time; exact value pinned, never a credential",
     ),
+    # fold_pack_seq13_rules.py: _EXPECTED_SEQ12_PAYLOAD_SHA256 is the chain
+    # anchor — same class/purpose as the seq10/11/12 rules immediately
+    # above (content-derived sha256 of the PUBLIC signed seq-12 RulePack
+    # payload, triple-derived at run time: declared == anchor == recomputed
+    # from the seq-12 source bytes). Content-keyed and pinned to the EXACT
+    # anchor value, not a hex shape, for the same reason as the seq12 rule:
+    # this is production code with an open surface for future edits.
+    #
+    # 2026-08-23: this reason string ends in the same "...chain anchor —
+    # content-derived sha256 ..." shape as the seq10/11/12 rules above, on
+    # purpose (four consecutive-sequence anchors reading in order). A test
+    # that looks a rule up via test_detect_secrets_auto_triage.py's
+    # _find_content_keyed_rule("chain anchor") would now match FIVE entries
+    # (a fifth landed the same day: fold_pack_seq13_source.py, the JOIN
+    # fold, also chains off seq-12 and so also reads "seq-12 chain anchor")
+    # and fail loudly (it asserts exactly one) — that is correct behavior,
+    # not a bug in the lookup. "seq-12 chain anchor" alone is no longer
+    # unique either, now that two files share it; a lookup for THIS rule
+    # must key on the file-qualified reason prefix, e.g.
+    # "fold_pack_seq13_rules.py: seq-12 chain anchor".
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules\.py$"
+        ),
+        re.compile(
+            r'^\s*"ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d"\s*$'
+        ),
+        "fold_pack_seq13_rules.py: seq-12 chain anchor — content-derived "
+        "sha256 of the public signed seq-12 RulePack payload, "
+        "triple-derived at run time; exact value pinned, never a "
+        "credential",
+    ),
+    # fold_pack_seq13_source.py: _EXPECTED_SEQ12_PAYLOAD_SHA256 is the chain
+    # anchor — the content-derived sha256 of the PUBLIC signed seq-12
+    # RulePack payload (same value class as the three fold_pack_seq1{0,1,2}
+    # rules above: hashes of public legal documents, never credentials). This
+    # JOIN fold pins it so the seq-13 chain link is triple-derived at run
+    # time (declared == anchor == recomputed from the seq-12 source bytes)
+    # and any mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits — a real
+    # credential pasted anywhere else in the file (or even another 64-hex
+    # value on this line) stays flagged. The approved line is the bare
+    # continuation-string line of the parenthesized assignment, end-anchored.
+    #
+    # 2026-08-23: this fold and fold_pack_seq13_rules.py (the rule
+    # immediately above) both chain off seq-12 and so both read "seq-12
+    # chain anchor" in their reason string — deliberately not disambiguated
+    # by inventing a different anchor description for the same value. A
+    # lookup by that substring alone is ambiguous by construction; use the
+    # file-qualified prefix, e.g. "fold_pack_seq13_source.py: seq-12 chain
+    # anchor", to select this one specifically.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_source\.py$"
+        ),
+        re.compile(
+            r'^\s*"ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d"\s*$'
+        ),
+        "fold_pack_seq13_source.py: seq-12 chain anchor — content-derived "
+        "sha256 of the public signed seq-12 RulePack payload, "
+        "triple-derived at run time; exact value pinned, never a "
+        "credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
