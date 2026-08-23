@@ -1,4 +1,16 @@
-brief_ref: evidence/2026-08/agent-nuzantara-ops-wa-throughput-arm-1454a982/brief.yml
+# STAGING PATH, NOT THE REAL ONE — and this is the documented contract, not
+# an oversight. harness-floor.yml copies both files into a synthetic tree at
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their CANONICAL names,
+# whatever their real location, and evidence_pack_lint.py resolves brief_ref
+# against THAT root. So this field must always read the literal
+# evidence/brief.yml even when the files live at
+# evidence/<YYYY-MM>/<slug>/. The real brief for this PR is
+# evidence/2026-08/agent-nuzantara-ops-wa-throughput-arm-1454a982/brief.yml.
+# Writing the per-PR path here — the "obviously correct" value — is the exact
+# trap the workflow comment warns about, and this pack walked into it: the
+# resulting failure reads "brief_ref does not resolve to a file on disk",
+# which says nothing about staging versus real layout. Do not "fix" this back.
+brief_ref: evidence/brief.yml
 plan_ref: "/bot corner Gear-3 mandate — arm the WA throughput sentinel merged in PR #4630 (Pro, 2026-08-23)"
 lanes:
   - lane: wa-throughput-arm
