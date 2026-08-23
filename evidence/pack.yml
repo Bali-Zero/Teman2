@@ -1,94 +1,100 @@
 brief_ref: evidence/brief.yml
-plan_ref: "S12/C6 — de-serialize the evidence pack (evidence/pack.yml + evidence/brief.yml fixed-root-path collision, 4 rewrites in 8h measured on origin/main) so two Gear>=2 PRs can coexist in the merge queue (S12 mandate, 2026-08-23, C6 lane)"
-gear: 3
+pii_scan: clean
+plan_ref: "organism-session-declarations — the real detector for 'an autonomous run started, died, and every gauge stayed green' (superscar #2), replacing the prose-parsing verdict PR #4646 had to ship as informational-only after it accused 10 healthy healer ticks out of 10"
+gear: 2
 lanes:
-  - lane: C6
+  - lane: B1
     role: build
-    seat: "opus-5 (session, mini-pro2 — S12 C6 build lane)"
-    note: "authored scripts/ci/evidence_paths.py (slug_for_ref/evidence_glob/suggested_write_path, then resolve_evidence_path/AmbiguousEvidencePathError + --resolve CLI mode), scripts/tests/test_evidence_paths.py (32 guilt+innocence tests), and wired discovery into .github/workflows/harness-floor.yml."
+    seat: "opus-5 (session, mini-pro2)"
+    note: "authored scripts/session_declaration.py (protocol + selftest), scripts/tests/test_session_declaration.py (38 hermetic guilt+innocence tests), the healer wiring (open before spawn, stamp after wait, receptor 7, lock-scoped state check) and the mandate step."
+  - lane: R1
+    role: review
+    seat: "sonnet-5 subagent (Anthropic) — adversarial, did not write the code"
+    note: "8 findings, 6 real. Confirmed sound the five surfaces it was asked to attack first (ssh-trampoline pid, $$ in command substitution, set -u, $REPO scope in the trap, explicit-close vs trap-close ordering). Found the two HIGH ones: a hang was invisible AND blinded the whole healer via the pidfile; one abandonment kept the healer permanently non-idle forever."
+  - lane: R2
+    role: review
+    seat: "kimi-code/k3 (Moonshot, NON-Anthropic) — adversarial, fresh context, same diff"
+    note: "Six MORE real defects on the ALREADY-CURED diff, including two R1 had explicitly cleared. Decisive: the lock's new p0 fired BEFORE secrets were sourced (mute alarm, W108 rebuilt inside its own cure); prune() deleted exactly what its docstring promised it never would; the lock check counted every spawner's hangs then named the healer's own run. Cross-family lens found what a second same-family lens did not."
   - lane: G1
     role: review
-    seat: "session (S12 conductor/team-lead)"
-    note: "independent gate review, NOT the diff's author (generator != grader). Re-ran the 32 tests on their own worktree read, exercised resolve_evidence_path() directly against 3 hand-built changed-files lists, read the YAML wiring. Found ONE real defect: the brief_ref staging-layout contract was undocumented — CONFIRMED and fixed in a follow-up commit before this gate. Explicitly noted they could not run actionlint locally (not installed on their machine) and did not claim it passed."
-seat_diversity: degraded
-seat_diversity_note: 'Both lanes are Anthropic seats (opus-5 build, opus-5-family review) — declared explicitly rather than left to read as satisfied. This pack has only 1 build lane, so the D3 seat-diversity rule''s own floor (>=2 build lanes) does not technically fire, but the absence of diversity is real. CORRECTED (a sibling lane''s live measurement, after this note''s first draft claimed agy TIMEOUT): codex is genuinely AUTH_DEAD (401, refresh token revoked) and glm is genuinely CRED_UNAVAILABLE, but agy was ALIVE and reachable from Pro the whole time (`ssh pro`, `PATH=$HOME/.local/bin:$PATH`, `agy -p "Reply exactly: PONG"` -> PONG, exit 0) — the earlier TIMEOUT reading measured a prober''s own wrong PATH export (`/opt/homebrew/bin`, where the binary is not), not the seat. So the honest line is not ''the non-Anthropic roster was unavailable'': one seat (kimi) was used on S12''s C1 concern, and the other reachable seat (agy) was available and skipped, under time pressure, not because it was down. That is a real gap in this lane''s cross-family review, not a constraint.'
+    seat: "opus-5 (session, mini-pro2) — final on-disk gate"
+    note: "Reproduced EVERY finding before acting on it, including the two factual premises new code was built on (the watchdog sends one SIGTERM and never escalates: verified by grep of the watchdog body; liveness was resolved eagerly: verified at the call site). Declined two R1 findings with stated reasons. Re-proved live end-to-end after each round of fixes."
+seat_diversity: satisfied
+seat_diversity_note: "One build lane, so the >=2-build-lane rule does not fire — but the review side is genuinely cross-family (R2 = kimi-code/k3, non-Anthropic), and it was NOT ceremonial: it produced six real defects on a diff that had already passed a same-family adversarial pass, two of which that pass had explicitly cleared. Recorded because it is the measurement that justifies the doctrine, not because a field demanded it."
 diff:
-  net_lines: "+828 net across the 3 code files (scripts/ci/evidence_paths.py +318, scripts/tests/test_evidence_paths.py +436, .github/workflows/harness-floor.yml +82/-8), measured by `git diff --numstat` against the merge-base (3f41c6b0294f04576fdd33480361aaba911454bb). This evidence pack pair is additional, on top."
-  behaviour_change: "New CI-facing module (scripts/ci/evidence_paths.py) with no existing callers before this PR, plus one new gated step in harness-floor.yml (id: evpaths) that resolves per-PR evidence paths and feeds them into the two existing steps (Step 4 'brief', Step 7b 'packlint') that previously hardcoded the literal root paths at every functional git/grep call site. No existing check's PASS/FAIL logic changes for any PR that has not adopted a per-PR evidence directory — the resolver's zero-matches fallback reproduces the exact literal paths those steps used before this PR."
+  net_lines: "+1163 / -2 across 4 files: scripts/session_declaration.py (+560, new), scripts/tests/test_session_declaration.py (+408, new), infra/healer/healer-run.sh (+184/-2), infra/healer/HEALER-MANDATE.md (+11). Measured with `git diff --numstat` against merge-base 3f41c6b0294f04576fdd33480361aaba911454bb. Above the ~400-line guidance: the protocol, its first producer and its first consumer are one concern — shipping the detector without a producer would be an unarmed organ, which is the disease."
+  behaviour_change: "New module with no prior callers. The healer gains: a state check scoped to the lock-holding pid at the anti-overlap early exit (new p0 paths healer-mini:run-hung / :stale-lock / :declarations-blind), a declaration opened before the cascade spawn and stamped after `wait`, and receptor 7 folding ABANDONED+HUNG counts into REASONS. Secrets sourcing moved above the lock (order only, no semantic change). The single routine digest is unchanged at 1 — the anti-regrowth gateway lint invariant. No existing check's PASS/FAIL logic changes."
 receipts:
-  - claim: "The full test suite (32 tests: 13 slug/glob/collision tests + 19 resolve-mode guilt+innocence tests) passes"
-    cmd: "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_evidence_paths.py -q"
+  - claim: "38 hermetic tests pass (no ssh, no network, no real spawns, no wall-clock waits). Five of them each pin a defect the cross-family refuter found that the first suite had passed over."
+    cmd: "python3.11 -m pytest scripts/tests/test_session_declaration.py -q"
     exit: 0
-    ts: "2026-08-23T11:46:55Z"
+    ts: "2026-08-23T14:55Z"
     seat: "opus-5 (session, mini-pro2)"
-  - claim: "actionlint — the exact CI-pinned version (1.7.12), downloaded directly from the same github.com/rhysd/actionlint release .github/workflows/actionlint.yml uses (darwin_arm64 build, since no actionlint binary exists on this Mini and the CI job downloads linux_amd64) — is clean on harness-floor.yml alone AND repo-wide (auto-discovering every workflow file, no regressions introduced elsewhere)"
-    cmd: "/tmp/actionlint -color -shellcheck= .github/workflows/harness-floor.yml; /tmp/actionlint -color -shellcheck="
+  - claim: "The module's own in-process selftest passes: guilt (abandoned, hung, opened-but-never-stamped) AND innocence (the exact 11-minute/3300s-cap/14400s-cadence shape that produced the 10 false positives)"
+    cmd: "python3 scripts/session_declaration.py --selftest"
     exit: 0
-    ts: "2026-08-23T11:47:11Z"
+    ts: "2026-08-23T14:52Z"
     seat: "opus-5 (session, mini-pro2)"
-  - claim: "Every run: block in the modified workflow (13 total) was extracted via PyYAML (never eyeballed for indentation) and independently syntax-checked with bash -n — all valid"
-    cmd: 'python3 -c "import yaml,subprocess; steps=yaml.safe_load(open(''.github/workflows/harness-floor.yml''))[''jobs''][''harness-floor''][''steps'']; [subprocess.run([''bash'',''-n'',''-c'',s[''run'']],check=True) for s in steps if ''run'' in s]"'
+  - claim: "LIVE INNOCENCE — a real healer tick (LLM stubbed, Telegram dry-run) opens a declaration and stamps it completed/exit 0, with cap_sec=3300 and cadence_sec=14400 as SEPARATE fields, the cadence read from com.nuzantara.healer.4h.plist's StartInterval rather than hardcoded; scan then reports it CLOSED, exit 0"
+    cmd: "HEALER_REPO=$PWD HEALER_TRAMPOLINED=1 HEALER_CASCADE_BIN=<stub> TG_DRY_RUN=1 SESSION_DECLARATION_DIR=<tmp> bash infra/healer/healer-run.sh; python3 scripts/session_declaration.py scan"
     exit: 0
-    ts: "2026-08-23T11:40Z"
+    ts: "2026-08-23T15:00Z"
     seat: "opus-5 (session, mini-pro2)"
-  - claim: "The --resolve CLI mode behaves exactly per spec on all three cases: single per-PR match prints that path (rc=0), zero matches prints the literal root path (rc=0, preserving pre-migration behavior), two candidates print NOTHING to stdout and an error to stderr (rc=1, fail-closed, never guesses)"
-    cmd: "python3 scripts/ci/evidence_paths.py --resolve pack --changed-files-file <single-match-file>  ->  evidence/2026-08/some-slug-abcd1234/pack.yml (rc=0); ... --changed-files-file <zero-match-file>  ->  evidence/pack.yml (rc=0); ... --changed-files-file <two-match-file>  ->  stdout empty, stderr 'error: 2 evidence/pack.yml candidates ... ambiguous, refusing to guess ...' (rc=1)"
-    exit: 0
-    ts: "2026-08-23T11:47:31Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "No secrets (Telegram bot token, Postgres DSN password, Google OAuth credential) in any of the three touched files, and no trailing whitespace — the applicable subset of pre-commit's file-scoped hooks, run directly since pre-commit itself isn't installed as a CLI on this machine"
-    cmd: "python3 scripts/lint_telegram_tokens.py scripts/ci/evidence_paths.py scripts/tests/test_evidence_paths.py .github/workflows/harness-floor.yml && python3 scripts/lint_pg_dsn_credentials.py <same 3 files> && python3 scripts/lint_google_oauth_credentials.py <same 3 files> && grep -n ' $' <same 3 files>"
-    exit: 0
-    ts: "2026-08-23T09:29Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "All three commits (d2989134c, c3ce285f9, 1354d905f) passed the repo's real husky pre-commit hook chain — anti-reward-hacking test lint, secret scanners, hot-zone Redis lease-check (flock fallback, Redis unavailable), Python linting, off-limits-file guard — not bypassed with --no-verify"
-    cmd: "git commit -m ... (three times); each printed '✅ All pre-commit checks passed!' before the commit object was created; git log confirms all three land on branch agent/mini-pro2/infra/s12-c6-evidence-per-pr with no --no-verify used"
-    exit: 0
-    ts: "2026-08-23T11:47:45Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "tracked_file_present_in_diff.sh is fully generic on its <relative_path> argument (no hardcoding to evidence/brief.yml or evidence/pack.yml), confirmed by reading its source BEFORE rewiring its 2 call sites to pass the discovered per-PR path instead of a literal"
-    cmd: "cat scripts/ci/tracked_file_present_in_diff.sh — the present/inherited/absent logic operates on argv[2] (REL_PATH) with no literal evidence/ path anywhere in the script"
-    exit: 0
-    ts: "2026-08-23T11:30Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "Gate review independently re-ran the full test suite on a separate read of this worktree and got the same 32/32 pass result, then exercised resolve_evidence_path() directly against 3 hand-built changed-files lists (zero-match -> root path rc=0; two-per-PR-packs -> rc=1, error on stderr, nothing on stdout; one-per-PR-pack -> that path, rc=0) — matching this session's own receipts independently, not by re-reading them"
-    cmd: "(reported by the gate reviewer, a separate session — not reproduced verbatim here since it was not this session's own tool call; recorded as a receipt because it is a real, attributable, independently-executed verification, per the dissent entry below)"
-    exit: 0
-    ts: "2026-08-23T11:20Z"
-    seat: "session (S12 conductor/team-lead)"
-  - claim: "INNOCENCE, independently proven by the gate reviewer (not this session): brief_ref: evidence/brief.yml (the documented, canonical staging-name value) lints clean in a synthetic staging tree"
-    cmd: 'evidence_pack_lint.py run by the gate reviewer against a synthetic staging tree with brief_ref: evidence/brief.yml -> "evidence_pack_lint: clean"'
-    exit: 0
-    ts: "2026-08-23T11:53:36Z"
-    seat: "session (S12 conductor/team-lead)"
-  - claim: "GUILT, independently proven by the gate reviewer (not this session): brief_ref: evidence/2026-08/slug-deadbeef/brief.yml (the 'obviously correct' per-PR-looking value) FAILS with exactly the error text now quoted in both doc locations (harness-floor.yml staging comment + evidence_paths.py module docstring) -- the brief_ref contract documented in commit 1354d905f is now a measured fact, not an assertion"
-    cmd: 'evidence_pack_lint.py run by the gate reviewer against the same synthetic staging tree with brief_ref: evidence/2026-08/slug-deadbeef/brief.yml -> FAIL, 1 violation: "brief_ref: ''evidence/2026-08/slug-deadbeef/brief.yml'' does not resolve to a file on disk"'
+  - claim: "LIVE GUILT — a wrapper killed with -9 mid-run leaves its declaration OPEN with no outcome; `ps` confirms the recorded pid is gone (empty output, read directly and not through a pipe whose exit code belongs to head); scan then reports ABANDONED and exits 1"
+    cmd: "bash infra/healer/healer-run.sh & ; kill -9 $WRAPPER ; ps -p <pid> ; python3 scripts/session_declaration.py scan"
     exit: 1
-    ts: "2026-08-23T11:53:36Z"
-    seat: "session (S12 conductor/team-lead)"
-tests:
-  - "scripts/tests/test_evidence_paths.py: 32 tests, 0.06-0.08s, fully hermetic (pure functions, tmp_path/capsys fixtures for the 5 CLI-level tests, no network, no filesystem outside pytest's own tmp dirs)."
-  - "Guilt paired with innocence throughout, per superscar #3 discipline: every 'this must match/resolve' case (TestInjectivity, TestResolveEvidencePathInnocence) has a sibling 'this must NOT match/must fail closed' case (TestResolveEvidencePathGuilt) — substring-trap near-misses ('pack.yml.bak', 'not-pack.yml'), missing leading 'evidence/' segment, cross-kind confusion, and the ambiguous-diff fail-closed path are all explicitly exercised, not just the happy path."
-  - "The load-bearing invariant (no evidence file anywhere in the diff -> resolves to the concrete root path, never '' and never an exception) has its own named test, test_no_evidence_file_at_all_returns_root_path, plus two more proving the root literal is never mistaken for or confused with a nested match."
-static:
-  - "python3 -m py_compile / ast.parse on scripts/ci/evidence_paths.py -> clean; no 3.12-only syntax used, verified live against the venv's Python 3.11.15."
-  - "actionlint v1.7.12 (CI-pinned version) -> 0 findings, harness-floor.yml alone and repo-wide."
-  - "bash -n on all 13 run: blocks of the modified workflow, extracted via PyYAML -> clean."
-  - "pre-commit hooks (anti-reward-hacking test lint, secret scanners x3, Python lint, hot-zone lease-check, off-limits guard) -> all passed on all 3 commits, none bypassed."
+    ts: "2026-08-23T14:10Z"
+    seat: "opus-5 (session, mini-pro2)"
+  - claim: "LIVE STALE-LOCK — with a declaration whose pid_start no longer matches (a recycled pid) and a pidfile holding that pid, the wrapper's lock check names it instead of skipping green: log reads 'STALE LOCK: pid N is recycled; the run that took this lock is ABANDONED' and the gateway is reached WITH credentials ('tg_notify: sent'), which is the live proof of the secrets-ordering fix — before it, telegram() would have logged 'alert NOT sent'"
+    cmd: "SESSION_DECLARATION_DIR=<tmp> bash infra/healer/healer-run.sh (pidfile primed, pid_start forged to 1990); tail ~/logs/healer/healer.log"
+    exit: 0
+    ts: "2026-08-23T15:02Z"
+    seat: "opus-5 (session, mini-pro2)"
+  - claim: "No real Telegram was sent by any of these proofs — verified by reading the gateway, not by trusting the flag: tg_notify.py's send path is `if DRY_RUN: _append(spool, 'sent-dry.jsonl', ...); return True`, so 'sent' under TG_DRY_RUN=1 is a spool write with no network call"
+    cmd: "grep -n DRY_RUN scripts/tg_notify.py; sed -n '388,394p' scripts/tg_notify.py"
+    exit: 0
+    ts: "2026-08-23T15:05Z"
+    seat: "opus-5 (session, mini-pro2)"
+  - claim: "The wrapper parses under bash and the anti-regrowth gateway invariant still holds at exactly one routine digest per wrapper"
+    cmd: "bash -n infra/healer/healer-run.sh && grep -c 'telegram digest ' infra/healer/healer-run.sh"
+    exit: 0
+    ts: "2026-08-23T15:01Z"
+    seat: "opus-5 (session, mini-pro2)"
+  - claim: "The two factual premises that new code was built on were re-measured here rather than taken on a refuter's word: the healer watchdog sends one SIGTERM and never escalates to SIGKILL (so a hang really is possible), and liveness really was resolved eagerly for every record"
+    cmd: "grep -nE 'SIGTERM|SIGKILL|os.kill' infra/healer/healer-run.sh; grep -n 'alive=liveness(d)' scripts/session_declaration.py"
+    exit: 0
+    ts: "2026-08-23T14:40Z"
+    seat: "opus-5 (session, mini-pro2)"
+  - claim: "All three commits passed the repo's real husky pre-commit chain (anti-reward-hacking test lint, secret scanners, hot-zone lease check, Python linting, off-limits guard) — never bypassed with --no-verify"
+    cmd: "git commit (x3); each printed 'All pre-commit checks passed!' before the commit object was created"
+    exit: 0
+    ts: "2026-08-23T15:10Z"
+    seat: "opus-5 (session, mini-pro2)"
 dissent:
-  - seat: "session (S12 conductor/team-lead — a separate session from the diff's author, generator != grader holds)"
-    objection: "First-round design review: the initial CLI-wiring draft would have let CI compute a per-PR evidence slug directly from a merge_group ref (github.event.merge_group.head_ref), which is gh-readonly-queue/main/pr-NNNN-<sha>, NOT the PR's own branch — slug_for_ref() on that ref would name a DIFFERENT directory than the one the PR actually wrote on its pull_request run, deadlocking every Gear-3 PR's first merge-queue transit. CONFIRMED and redesigned: CI now only DISCOVERS a path (resolve_evidence_path(), over the already-enumerated changed-files list), it never computes one from a ref. Second-round gate finding: the brief_ref staging-layout contract (a per-PR pack must still declare brief_ref: evidence/brief.yml, never its own real per-PR-looking path, because evidence_pack_lint.py lints a synthetic staging tree, not the pack in place) was a real, undocumented trap of exactly the shape this PR exists to remove. CONFIRMED and fixed — documented at the staging call site in harness-floor.yml and in evidence_paths.py's module docstring, where a future pack author will actually be looking."
-    status: CONFIRMED
+  - seat: "sonnet-5 subagent (R1)"
+    objection: "FINDING 1 — record the cascade child's pid ($CPID) instead of the wrapper's ($$), and escalate the watchdog from SIGTERM to SIGKILL."
+    status: "CONFIRMED"
+    resolution: "The CONSEQUENCE was accepted and is now detected: a HUNG state, checked at the lock itself. The two proposed cures were declined with reasons. The declaration is about the RUN, whose owner is the wrapper — swapping to the child's pid would make a wrapper that outlives its child unobservable. SIGKILL escalation is a real gap but changes the healer's kill semantics: its own concern, declared out of scope in the brief."
+  - seat: "sonnet-5 subagent (R1)"
+    objection: "FINDING 7 — the wrapper invokes `python3` by bare name; if PATH lost it, declaration coverage silently drops to zero."
+    status: "CONFIRMED"
+    resolution: "The objection is real; the cure is declined here. A pre-existing whole-script pattern the refuter itself flagged as 'not a new regression'. Changing every invocation is a separate sweep. The new code does log a WARN when the open fails."
+  - seat: "sonnet-5 subagent (R1)"
+    objection: "FINDING 8 (SPECULATIVE) — locale-dependent `ps -o lstart=` formatting could make an unchanged process read as a different one."
+    status: "PLAUSIBLE"
+    resolution: "The refuter could not construct a trigger and said so. BSD lstart is ctime()-style and both calls run in the same context. Recorded rather than acted on."
+  - seat: "kimi-code/k3 (R2, non-Anthropic)"
+    objection: "Six defects on the already-cured diff: mute alarm (secrets sourced after the lock's p0), prune() deleting live OPEN records against its own docstring, the lock check counting every spawner's hangs then naming the healer's own run, a recycled pid making the healer permanently green-and-dead through the lock, an unparseable declaration reported in a field nothing consumed, and the trap able to signal a recycled pid."
+    status: "CONFIRMED"
+    resolution: "All six fixed and pinned by five new tests plus a live stale-lock proof. Two of them (the lock ordering and the trap) sat inside code R1 had explicitly cleared — which is the measurement that justifies a cross-family second lens rather than a second pass of the same one."
+  - seat: "kimi-code/k3 (R2)"
+    objection: "A forward NTP step inflates apparent age past the hung margin, so a healthy run could read HUNG."
+    status: "PLAUSIBLE"
+    resolution: "The mechanism is real but I did NOT reproduce an NTP step here, so it is recorded as plausible rather than claimed as measured. Unfixed. A declaration must survive process death, so elapsed time cannot be held in memory and monotonic clocks do not persist. Declared as residual risk rather than silently carried."
 residual_risks:
-  - "actionlint could not be verified by the gate reviewer locally (not installed on their machine) — only by this session, using a version downloaded fresh from GitHub releases rather than the repo's own vendored/pinned artifact. If CI's actual run disagrees, that is round 1 of a real disagreement, not a surprise the gate missed silently — the gate reviewer explicitly declined to claim actionlint passed rather than assume it from this session's report."
-  - "This PR ships the DISCOVERY/WRITE-TIME machinery only. No existing PR (including this one) has actually adopted the per-PR evidence/<YYYY-MM>/<slug>/ layout yet — every current and near-term PR still writes the literal root evidence/brief.yml + evidence/pack.yml, so the collision this PR exists to fix is not yet resolved in practice. That adoption (calling `evidence_paths.py --ref` at write time instead of the root paths) is a follow-up, not part of this PR's scope."
-  - "The bootstrap-window fallback in the new 'Resolve this PR's evidence paths' step is intentionally NOT scoped to a single PR number (unlike the sibling tracked_file_present_in_diff.sh / harness_gate_read.py bootstrap guards in the same file) — reasoned as safe because it degrades to exactly this workflow's pre-existing hardcoded behavior. That reasoning has not been independently adversarially attacked beyond the gate reviewer's read-through; it is a judgment call about equivalence to prior behavior, not a property proven by a test."
-sources:
-  - scripts/ci/evidence_paths.py (new — slug_for_ref/evidence_glob/suggested_write_path + resolve_evidence_path/AmbiguousEvidencePathError + CLI)
-  - scripts/tests/test_evidence_paths.py (new — 32 guilt+innocence tests)
-  - .github/workflows/harness-floor.yml (edited — new "Resolve this PR's evidence paths" step + 9 call-site substitutions + brief_ref contract comment)
-  - scripts/ci/tracked_file_present_in_diff.sh (read-only — confirmed generic before rewiring its call sites)
-  - scripts/evidence_pack_lint.py (read-only — confirmed the exact rule set and the brief_ref/staging-tree mechanism this pack itself must satisfy)
-  - .github/workflows/actionlint.yml (read-only — confirmed the exact pinned actionlint version, 1.7.12, used for this pack's own actionlint receipt)
-pii_scan: clean
-size_tokens: 3045
+  - "NTP forward steps can produce a false HUNG on a healthy run (above). Bounded: the alarm names the pid, and the next scan after the step is correct."
+  - "Coverage is one producer. The healer declares its runs; the other ~20 fleet spawners do not, so an abandonment there is still invisible. Wiring them is a migration, deliberately not bundled."
+  - "The store is per-host and unreplicated: a machine nobody scans is not covered."
+  - "A stale pidfile is ALERTED on but not auto-cleared, so a healer left in that state stays skipped until someone acts. Chosen over weakening the anti-overlap invariant inside this PR."
+  - "The retired DECLARED-SPAN-UNMET verdict still exists in fleet_sessions.py. Harmless (informational-only, no organ routes on it) but two verdicts about one question is a documentation hazard until the follow-up lands."
+  - "prune() now calls classify() for old unclosed records, which spawns `ps` per record. Bounded by how few such records exist, but it is real work on the open() path."

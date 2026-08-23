@@ -1,91 +1,46 @@
-task_id: s12-c6-evidence-per-pr
-gear: 3
+task_id: organism-session-declarations
+gear: 2
 l_level: L2
 gate_class: opus
 objective: |
-  De-serialize the Evidence Pack: `evidence/pack.yml` and `evidence/brief.yml` are FIXED paths
-  at the repo root, and every Gear>=2 PR rewrites them entirely. Measured on origin/main
-  (S12 mandate, 2026-08-23): those two files were rewritten 4 times in 8 hours (#4599, #4649,
-  #4647, #4646). Each rewrite dirties EVERY other open Gear>=2 PR's evidence pack
-  simultaneously, so two such PRs cannot coexist cleanly in the merge queue — by construction,
-  not bad luck. One sibling lane (S11, PR #4647) paid two full re-gate rounds on a PR whose
-  code never changed, purely from this collision.
+  Build the REAL detector for "an autonomous run started, died, and every gauge stayed green"
+  (superscar #2), replacing the prose-parsing verdict that PR #4646 was forced to ship as
+  informational-only.
 
-  This PR is the migration itself: `scripts/ci/evidence_paths.py`, a small, pure,
-  dependency-free module + CLI that is the single source of truth for mapping a branch ref to
-  a per-PR evidence directory (`evidence/<YYYY-MM>/<slug>/`) at WRITE time, and for
-  DISCOVERING which `evidence/<kind>.yml` a PR's own diff touches at CI READ time — these are
-  deliberately two different operations (see the module docstring's "CI must not compute the
-  slug" section): a `merge_group` ref is `gh-readonly-queue/main/pr-NNNN-<sha>`, not the PR's
-  branch, so computing a slug from it at CI time would look for the wrong directory.
+  WHY THE PREVIOUS ONE FAILED, because it constrains this design. That detector read a
+  session's own prose and asked "did it run as long as it declared?". Against the live fleet it
+  returned ten rows and all ten were HEALTHY healer ticks: "loop 4h" in a mandate's TITLE is the
+  cron cadence (com.nuzantara.healer.4h.plist carries StartInterval 14400), not the session's
+  runtime, and no regex separates "this document declares its own runtime" from "this document's
+  title names a schedule" — three narrowing passes each traded one error direction for the other.
 
-  Gear 3 is the deterministic floor here, not a choice: the diff touches
-  `.github/workflows/harness-floor.yml`, which floors at 3 regardless of size
-  (fleet-order-spec.md §4, `HOTZONE_PATTERNS` in evidence_pack_lint.py).
+  THE SECOND TRAP, found while designing this one and worth recording because it is the obvious
+  design: measuring real duration against the wrapper's own number would have rebuilt the same
+  false positive. MAX_WALL_S=3300 is a CAP, not an expectation. A tick that finishes its work in
+  11 minutes against a 55-minute cap is CORRECT.
 
-  This PR itself uses the OLD (root-path) scheme — it is the migration, so it cannot use the
-  scheme it is introducing; `resolve_evidence_path()`'s zero-matches fallback to the literal
-  root path is exactly what makes that consistent rather than a special case.
-constraints:
-  - "Collision-safety is non-negotiable, not cosmetic: the slug must be injective even when a
-    naive sanitize-only scheme (lowercase, collapse non-alnum runs to '-') would collapse two
-    distinct branches to the same string — this repo's `agent/<host>/<lane>/<task>` branches
-    are full of hyphens, so `agent/mini-pro2/infra/foo-bar` and `agent/mini-pro2/infra-foo/bar`
-    both naively sanitize to the identical `agent-mini-pro2-infra-foo-bar`. Cure: hash the FULL
-    ORIGINAL ref (never the sanitized/truncated form) and append the digest — the
-    sanitized/truncated prefix is for human readability only."
-  - "The month directory (`evidence/<YYYY-MM>/<slug>/`) must never be recomputed from a clock
-    at CI read time — a PR opened on the last day of a month and merged the next would have its
-    files under the OLD month while a clock-derived validator looked under the NEW one and
-    found nothing. `evidence_glob()` returns a glob (`evidence/*/<slug>`); the CLI's
-    'suggested write path for today' is the only place a date is generated, at write time,
-    for a human — never fed back into validation."
-  - "CI must never compute a slug from a ref to DISCOVER an existing PR's evidence path — only
-    `--resolve {brief,pack} --changed-files-file` (a pure discovery over the already-enumerated
-    changed-files list) may be used for that, per the design correction from gate review. This
-    is the load-bearing correction of the CI-wiring round: the first draft of this PR wired
-    `slug_for_ref` into CI directly, which would have deadlocked every Gear-3 PR in the merge
-    queue on its very first `merge_group` run."
-  - "A PR whose diff ambiguously touches two `evidence/<kind>.yml` candidates must fail closed
-    (exit 1, nothing on stdout), never silently pick one — guard-over-match discipline
-    (cicatrix-superscar.md #3)."
-  - "A PR that writes NEITHER evidence path must not pass by inheriting the root
-    `evidence/pack.yml` left by a prior Gear-3 PR — this invariant is NOT re-implemented here;
-    it survives by construction because the resolver's zero-matches fallback returns the
-    concrete root path, which `tracked_file_present_in_diff.sh` then reports `inherited` (not
-    `present`) for a diff that didn't touch it, and the existing Step 5b hot-zone-FAIL catches
-    that. `resolve_evidence_path()` must never special-case this away."
-  - "Do not touch `tracked_file_present_in_diff.sh`, Step 5b, or `evidence_pack_lint.py`'s own
-    internal `brief_ref`-resolution contract — this PR changes WHICH path is handed to those,
-    never their own logic. Verified generic-on-path-argument by reading
-    `tracked_file_present_in_diff.sh`'s source before rewiring its call sites."
-  - "A per-PR pack must still declare `brief_ref: evidence/brief.yml` (the canonical STAGING
-    name), never its own real per-PR-looking path — `evidence_pack_lint.py` never lints a pack
-    in place; CI stages both resolved files under canonical names in a synthetic
-    `/tmp/evidence-check` tree and lints that. Documented at the staging call site and in the
-    module docstring after a gate finding flagged it as an undocumented trap of exactly the
-    shape this PR exists to remove."
-  - "Standard library only in `evidence_paths.py` — no yaml, no external deps — CI calls this
-    before installing anything. Must run on Python 3.11 and 3.12."
-acceptance:
-  - "`slug_for_ref()` is injective: two branch refs that sanitize identically under a naive
-    scheme still produce distinct slugs, proven for at least two independently-devised
-    colliding pairs, plus a case where a 60+ character shared prefix (past the 48-char
-    truncation limit) is the ONLY thing that would defeat injectivity if the hash were computed
-    over the truncated form instead of the original ref."
-  - "`resolve_evidence_path()` returns the concrete root path (never '', never an exception) for
-    a changed-files list touching neither evidence file — the exact invariant three independent
-    lanes (S11, H1/P04, this session's gate reviewer) flagged as non-negotiable."
-  - "`resolve_evidence_path()` fails closed (raises `AmbiguousEvidencePathError`, CLI prints
-    nothing to stdout / an error to stderr / exits 1) on two or more candidates in one diff."
-  - "`harness-floor.yml`'s new 'Resolve this PR's evidence paths' step sits between the
-    changed-files enumeration and the floor computation, degrades to the two literal root paths
-    (unconditionally, no PR-number sentinel) when `evidence_paths.py` is absent from the base
-    checkout, and every functional git/grep call site in Step 4 and Step 7b reads the resolved
-    path instead of a hardcoded literal."
-  - "actionlint (the exact CI-pinned version, 1.7.12) is clean on `harness-floor.yml` and
-    repo-wide; every `run:` block is extracted via a YAML parser (never eyeballed) and passes
-    `bash -n`."
-  - "GUILT: an ambiguous diff, a substring-trap near-miss ('pack.yml.bak', 'not-pack.yml'), or a
-    missing leading `evidence/` segment must NOT resolve to a real evidence path. INNOCENCE: a
-    single well-formed nested match, or the true zero-match case, must resolve cleanly."
+  So this measures neither prose nor duration. It measures whether the runner came BACK: a
+  two-phase commit. open() before the work (pid + process start-time, the wrapper's own cap, and
+  the cron cadence in a SEPARATE field so the two numbers can never again collapse into one),
+  close() stamped on the way out. A declaration still OPEN past its own cap whose recorded
+  process is gone from the OS process table means the runner never returned — an OBSERVATION,
+  not an inference, which is precisely why the healer is permitted to alarm on this and was not
+  permitted to alarm on its predecessor. It cannot fire on a healthy short tick, because a
+  healthy tick closes its own declaration.
+
+scope:
+  in:
+    - "scripts/session_declaration.py — the protocol (open/close/scan/prune) + selftest"
+    - "scripts/tests/test_session_declaration.py — 33 hermetic guilt+innocence tests"
+    - "infra/healer/healer-run.sh — first producer (open before spawn, stamp after wait) and first consumer (receptor 7 + a HUNG check at the anti-overlap lock)"
+    - "infra/healer/HEALER-MANDATE.md — receptor 7 documented for the spawned session"
+  out:
+    - "Retiring DECLARED-SPAN-UNMET from scripts/fleet_sessions.py — 18 sites in the module and 26 references in its tests. Its own concern, its own PR. Harmless meanwhile: it is already informational-only and no organ routes on it."
+    - "Escalating the healer watchdog from SIGTERM to SIGKILL. The adversarial review surfaced it as a real gap while analysing hangs; it changes the healer's kill semantics and is a separate concern. This PR DETECTS the hang instead."
+    - "Passing --session-id to join a declaration to a transcript. Measured: claude-cascade.sh collects EXTRA_ARGS after `--` and replays them on every seat attempt, so a caller-supplied session id would collide across retries. session_id stays an optional, non-load-bearing field."
+    - "Wiring the other ~20 spawners in the fleet. One producer proves the protocol; a sweep is a migration."
+
+risks:
+  - "The detector alarms, unlike its predecessor. A false positive here costs a paid LLM session every 4h, so the innocence half of the suite is pinned with the real measured numbers written out literally rather than read back from the module — a test that derives its expectation from its subject agrees by construction."
+  - "The store is per-host and unreplicated. A machine whose declarations nobody scans is not covered; this PR wires the Mini healer only."
+  - "prune() deletes records. It never touches OPEN ones at any age (that is the finding itself), only CLOSED past 7d and abandoned past 30d, and it runs at open() rather than on the read path."
