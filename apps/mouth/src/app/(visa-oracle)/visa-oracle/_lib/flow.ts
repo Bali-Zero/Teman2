@@ -321,7 +321,11 @@ function sameNode(a: OracleNode, b: OracleNode): boolean {
 /** `application_channel` values that only exist while the applicant stays
  * in Indonesia through the whole process — a status-bridging permit exists
  * solely to cover someone already onshore whose conversion is pending
- * (Permenkumham 11/2024 / Permen Imipas 3/2025 Pasal 45); an onshore
+ * (created by Permenkumham 11/2024, inserting Ps. 80(3)(f), 80(4)(d), 86A,
+ * 94A, 94B into Permenkumham 22/2023 — the bridging articles are
+ * unaffected by the later Permen Imipas 3/2025 partial revocation, which
+ * touches only Ps. 43/45/52/53/54/55; see
+ * `research/visa/2026-07-24-w2-factbase-bridging.md:21,37`); an onshore
  * conversion is, by definition, done without leaving. `OFFSHORE` is the
  * only channel that requires leaving. */
 const ONSHORE_APPLICATION_CHANNELS = new Set([
@@ -345,13 +349,30 @@ const ONSHORE_APPLICATION_CHANNELS = new Set([
  * here disarm the safety-critical hard filter
  * `hf.d12-onshore-conversion-excluded` (which reads only
  * `process.wants_onshore_conversion`) while `ONSHORE_CONVERSION` sat
- * unread by every rule in the pack — D12 got recommended as if the
- * applicant were applying from offshore.
+ * unread by every rule in the pack — D12 ("Visit Visa Pre-Investment —
+ * Multiple Entry", `names.en` in rulepack-prod-012.source.json:1583-1586;
+ * NOT the pricing-catalog `item_key` "D12 Business Investigation (1
+ * Year)" at line 1622, a price-list label, not the product's regulatory
+ * identity) got recommended as if the applicant were applying from
+ * offshore.
  *
  * "unsure" on either side is never a disagreement — it is the tri-state
  * safety net the engine already relies on (NEEDS_INPUT) — so it is
  * deliberately excluded here, as is an as-yet-unanswered
  * `wantsOnshoreConversion`.
+ *
+ * LIMITATION — this is a browser-side courtesy, not an API boundary.
+ * `ApplicantFactsData` in `models.py` has no cross-field validator between
+ * `process.application_channel` and `process.wants_onshore_conversion`
+ * (verified by reading the model: no `model_validator` sits on that
+ * class), so a request built outside this interview can still POST the
+ * exact contradictory pair straight to `/api/visa-oracle/evaluate` and
+ * have it accepted. This guard improves the honest interview user's
+ * experience; it closes nothing at the API. The rulepack-side defense for
+ * `hf.d12-onshore-conversion-excluded` reading only one of the two facts
+ * is a separate, not-yet-landed fix out of this PR's scope (apps/mouth
+ * only) — do not read this guard's existence as evidence that gap is
+ * closed.
  */
 export function channelConflictsWithOnshoreIntent(
   wantsOnshoreConversion: string | undefined,

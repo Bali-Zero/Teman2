@@ -392,21 +392,56 @@ describe("wants_onshore_conversion / application_channel cross-validation (2026-
     return state;
   }
 
-  describe("guilt: every contradictory pair is blocked", () => {
-    it.each([
-      ["no", "ONSHORE_CONVERSION"],
-      ["no", "STATUS_BRIDGING"],
-      ["yes", "OFFSHORE"],
-    ] as const)(
-      "refuses application_channel=%s when wants_onshore_conversion=%s disagrees",
-      (wants, channel) => {
-        const before = reachApplicationChannel(wants);
-        const after = reduce(before, {
-          type: "ANSWER",
-          questionId: "application_channel",
-          value: channel,
-        });
-        // Blocked: still parked on the same question, the fact never
+  /**
+   * The FULL cross product, enumerated rather than sampled: 3
+   * `wants_onshore_conversion` values × 4 `application_channel` values =
+   * 12 combinations, 3 of them contradictory. Sampling risks the exact
+   * failure mode a guard like this can hide — a widened check (here,
+   * `yes + OFFSHORE` was added beyond the originally-measured leak) is
+   * precisely where a false positive on an honest, coherent answer would
+   * live undetected. Every one of the other 9 is asserted to pass, not
+   * merely a representative few.
+   */
+  const WANTS_VALUES = ["yes", "no", "unsure"] as const;
+  const CHANNEL_VALUES = [
+    "OFFSHORE",
+    "ONSHORE_CONVERSION",
+    "STATUS_BRIDGING",
+    "unsure",
+  ] as const;
+  const BLOCKED_PAIRS = new Set([
+    "no|ONSHORE_CONVERSION",
+    "no|STATUS_BRIDGING",
+    "yes|OFFSHORE",
+  ]);
+  const FULL_CROSS_PRODUCT = WANTS_VALUES.flatMap((wants) =>
+    CHANNEL_VALUES.map(
+      (channel) =>
+        [wants, channel, BLOCKED_PAIRS.has(`${wants}|${channel}`)] as const,
+    ),
+  );
+
+  it("the cross product table itself covers exactly 12 combinations, 3 blocked and 9 passing", () => {
+    expect(FULL_CROSS_PRODUCT).toHaveLength(12);
+    expect(FULL_CROSS_PRODUCT.filter(([, , blocked]) => blocked)).toHaveLength(
+      3,
+    );
+    expect(FULL_CROSS_PRODUCT.filter(([, , blocked]) => !blocked)).toHaveLength(
+      9,
+    );
+  });
+
+  it.each(FULL_CROSS_PRODUCT)(
+    "wants_onshore_conversion=%s + application_channel=%s -> blocked=%s",
+    (wants, channel, shouldBlock) => {
+      const before = reachApplicationChannel(wants);
+      const after = reduce(before, {
+        type: "ANSWER",
+        questionId: "application_channel",
+        value: channel,
+      });
+      if (shouldBlock) {
+        // GUILT: still parked on the same question, the fact never
         // recorded, neither answer touched or overwritten.
         expectQuestion(after, "application_channel");
         expect(after.facts.application_channel).toBeUndefined();
@@ -415,9 +450,18 @@ describe("wants_onshore_conversion / application_channel cross-validation (2026-
           questionId: "application_channel",
           conflictsWithQuestionId: "wants_onshore_conversion",
         });
-      },
-    );
+      } else {
+        // INNOCENCE: advances untouched, both facts recorded exactly as
+        // answered, no block set.
+        expectQuestion(after, "nationalities");
+        expect(after.facts.wants_onshore_conversion).toBe(wants);
+        expect(after.facts.application_channel).toBe(channel);
+        expect(after.blockedAnswer).toBeNull();
+      }
+    },
+  );
 
+  describe("guilt: every contradictory pair is blocked", () => {
     it("the exact measured production leak never reaches facts: false + ONSHORE_CONVERSION", () => {
       const before = reachApplicationChannel("no");
       const after = reduce(before, {
@@ -454,24 +498,6 @@ describe("wants_onshore_conversion / application_channel cross-validation (2026-
       expect(backed.blockedAnswer).toBeNull();
       expectQuestion(backed, "wants_onshore_conversion");
     });
-  });
-
-  describe("innocence: coherent pairs pass untouched", () => {
-    it.each([
-      ["no", "OFFSHORE"],
-      ["yes", "ONSHORE_CONVERSION"],
-      ["yes", "STATUS_BRIDGING"],
-    ] as const)(
-      "accepts wants_onshore_conversion=%s + application_channel=%s",
-      (wants, channel) => {
-        const before = reachApplicationChannel(wants);
-        const after = answer(before, "application_channel", channel);
-        expectQuestion(after, "nationalities");
-        expect(after.facts.wants_onshore_conversion).toBe(wants);
-        expect(after.facts.application_channel).toBe(channel);
-        expect(after.blockedAnswer).toBeNull();
-      },
-    );
   });
 
   describe("innocence: 'unsure' on either side is never treated as a conflict", () => {
