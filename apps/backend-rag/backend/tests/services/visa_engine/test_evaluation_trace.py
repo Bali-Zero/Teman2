@@ -52,14 +52,22 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
     # from one that was rubber-stamped: `facts_hmac` is an HMAC over
     # `canonical_fact_payload`, which is `facts.model_dump(by_alias=True)` —
     # the WHOLE snapshot, not the subset some rule happened to read. So every
-    # persona gaining one `UNKNOWN` key necessarily moves it. Measured, not
-    # assumed: zero of the 84 trace nodes name `sponsor.type` (no rule reads
-    # it yet), and all 23 personas' expected decisions still replay unchanged.
+    # persona gaining one `UNKNOWN` key necessarily moves it.
+    #
+    # Moved again 2026-08-23 (`73aa8af1…` -> `4e18c56e…`) when
+    # `family.stepchild_marriage_certificate_confirmed`,
+    # `family.stepchild_birth_certificate_confirmed` and
+    # `family.sponsor_permit_basis` joined the fact vocabulary (vocabulary-only
+    # PR — no rule consumes them yet). Same precedent, same verification:
+    # zero of the 84 trace nodes name any of the three new facts (still 84,
+    # unchanged count), and all 23 `gold_harness` personas plus all 20
+    # canonical `test_evaluator_gold` personas still replay their expected
+    # decisions unchanged (`test_gold_replay_artifact.py` zero-divergence).
     # If this literal ever moves again while the node set or a persona's
     # decision ALSO changed, that is a behaviour change wearing a fixture's
     # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "73aa8af1b255b1cf9b788a5fa3803de655999e9f77010253d4cc63c67a46619d"
+        first.trace.sha256() == "4e18c56e329acd1d16a290fbdb08e50c52afbdae8f30b702c8d64bf302db3b2c"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace
