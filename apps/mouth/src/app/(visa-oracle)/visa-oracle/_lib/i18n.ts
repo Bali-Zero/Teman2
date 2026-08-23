@@ -309,7 +309,7 @@ const en = {
   "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
   "q.family_sponsor_permit_basis.opt.OTHER": "Another basis",
   "why.family_sponsor_permit_basis":
-    "Some permit bases block a family-reunification permit from being layered on top of them; the engine checks this directly.",
+    "Some permit bases block a family-reunification permit from being layered on top of them. We can't verify your answer automatically, so our team reviews it directly rather than the system deciding on its own.",
   "q.family_marriage_registered": "Is the marriage officially registered?",
   "q.family_marriage_registered.hint":
     "If your sponsor is your parent, this asks about your parents' marriage. Choose Not applicable if the family relationship involves no marriage.",
@@ -1062,7 +1062,7 @@ const id: Record<Keys, string> = {
   "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
   "q.family_sponsor_permit_basis.opt.OTHER": "Dasar lain",
   "why.family_sponsor_permit_basis":
-    "Beberapa dasar izin dapat menghalangi penerbitan izin penyatuan keluarga di atasnya; mesin memeriksa ini secara langsung.",
+    "Beberapa dasar izin dapat menghalangi penerbitan izin penyatuan keluarga di atasnya. Kami tidak dapat memverifikasi jawaban Anda secara otomatis, sehingga tim kami yang meninjau langsung, bukan sistem yang memutuskan sendiri.",
   "q.family_marriage_registered": "Apakah pernikahan tercatat secara resmi?",
   "q.family_marriage_registered.hint":
     "Jika sponsor Anda adalah orang tua, pertanyaan ini mengenai pernikahan orang tua Anda. Pilih Tidak berlaku jika hubungan keluarga tidak melibatkan pernikahan.",
