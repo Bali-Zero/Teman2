@@ -8,7 +8,7 @@ sources:
   - .agents/skills/bot/SKILL.md §1 (LIVE STATE, BOT-V4 S2/S3 entries)
   - memory decision_gemini_is_not_the_bot_chatgpt_is_2026_08_21 (Zero ruling — destination)
   - memory decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15 (subscription-only constraint)
-adversarial_review: pending
+adversarial_review: kimi-k3
 ---
 
 # What is still missing between "daemon live on Pro" and "WhatsApp answers through ChatGPT by subscription"
@@ -197,8 +197,8 @@ Steps are ordered by dependency: each is blocked by the one above it.
 
 | # | Step | Owner | Why it sits here |
 |---|---|---|---|
-| **0** | **Diagnose, THEN revive the Pro daemon.** Read `/Users/zantara-codex/logs/wa-codex-broker.err` — that is the one artifact that names the original cause, and it is root-only. Then bump `WA_CODEX_CLI_VERSION_PIN` to `0.149.0` and kickstart. Proof = `broker_last_seen_at` ADVANCES between two reads. | **`operator[credential]`** — both the log and the env file are root/other-user-owned, and Pro has no passwordless sudo (probed: `sudo -n true` → password required). One paste, exact text in §3. | Nothing on the ladder can be measured while the executor is dead. **Do not skip the log:** §1.2 proves the pin mismatch is not the original cause, so the bump alone may leave the daemon down. Re-running the provisioning script does **not** touch the pin either — it skips an existing env file by design ("never overwritten"). |
-| **0b** | **Arm the seat sentinel** — the organ that would have caught step 0 within the hour instead of after 72. Re-run the provisioning (idempotent; installs the §1.3 section the 08-20 run predated), then arm the crontab from the **GUI terminal**. | **`operator[credential]`** for the provisioning, **`operator[tcc-gui]`** for the crontab: writing the crontab on Pro is TCC-blocked from every non-GUI context (measured 2026-08-20 via both sshd and a live tmux server). | Without it, the next silent death also lasts days. Highest value-per-minute item on this list. |
+| **0** | **Diagnose, THEN revive the Pro daemon.** Read `/Users/zantara-codex/logs/wa-codex-broker.err` — that is the one artifact that names the original cause, and it is root-only. Then bump `WA_CODEX_CLI_VERSION_PIN` to `0.149.0` and kickstart. Proof = `broker_last_seen_at` ADVANCES between two reads. | **`operator[secret]`** — both the log and the env file are root/other-user-owned, and Pro has no passwordless sudo (probed: `sudo -n true` → password required). One paste, exact text in §3. | Nothing on the ladder can be measured while the executor is dead. **Do not skip the log:** §1.2 proves the pin mismatch is not the original cause, so the bump alone may leave the daemon down. Re-running the provisioning script does **not** touch the pin either — it skips an existing env file by design ("never overwritten"). |
+| **0b** | **Arm the seat sentinel** — the organ that would have caught step 0 within the hour instead of after 72. Re-run the provisioning (idempotent; installs the §1.3 section the 08-20 run predated), then arm the crontab from the **GUI terminal**. | **`operator[secret]`** for the provisioning, **`operator[tcc]`** for the crontab: writing the crontab on Pro is TCC-blocked from every non-GUI context (measured 2026-08-20 via both sshd and a live tmux server). | Without it, the next silent death also lasts days. Highest value-per-minute item on this list. |
 | **0c** | **Cure the class, not the instance:** make version-pin drift *detectable* — the sentinel's RED must name "pin mismatch", and the pin bump belongs to whatever updates codex-cli. | session | codex-cli auto-updates. This will recur, and next time it should be a 5-minute alert rather than an archaeology exercise. |
 | **1** | **G-P1** — live verification of the ChatGPT **and Codex-specific** data-control settings on the seat, dated, re-checked at S4. | **`operator[gui]`** + session record | Account-level toggles are visible only in the web UI. The 2026-08-19 owner attestation covered the ChatGPT-level toggle; the spec (§6, G-P1) leaves the Codex-specific controls explicitly open. |
 | **2** | **G-P3** — the named DLP policy with a **measured recall floor**. | session | **In flight today.** The redaction module is built and tested; the round-2 cure batch (NIK-vs-date over-match plus four smaller findings) is the PR this session is shipping. What remains after that PR is the *registered recall number* on the synthetic corpus — a figure Zero should see, not a claim. |
@@ -289,3 +289,46 @@ runs. A single fresh-looking timestamp is not proof; two advancing ones are. `br
 - It does not treat Zero's 2026-08-21 destination ruling as a schedule. WhatsApp stays on Gemini
   until the subscription path is armed, and "armed" means every row in §2 closed — not merged.
 - It does not claim G-P6 is closed. See §2.2.
+
+---
+
+## Adversarial review
+
+Seat: **Kimi K3**, on the frozen diff, fresh context, generator≠grader. Verdict **FIX-FIRST(6)**.
+Three findings were material and are folded into the text above; three survive as stated limits.
+Kimi's own second pass confirmed the three survivors were correctly dispositioned rather than
+argued away.
+
+### Folded in (the memo was WRONG before these)
+
+1. **The daemon's cause was misattributed.** The first draft said codex-cli's auto-update broke the
+   version pin, full stop. Kimi attacked the arithmetic and was right. Re-measured: launchd's `runs`
+   counter **resets at boot** (`sysctl -n kern.boottime` = `09:49:54Z 08-20`), so 7,514 restarts span
+   the 63.50 h since boot, not since the gauge froze; and the 52.58 h since the 0.149.0 binary's
+   mtime cap restarts at 6,309 against a 30 s floor. Observing 7,514 proves **the crash-loop began
+   ≥10 h before the upgrade**. The pin explains persistence, never initiation. The initiating cause
+   is **unknown** and sits in a root-only log.
+2. **A corroboration was withdrawn, not weakened.** The draft argued "restart spacing = the 30 s
+   floor plus ~3.3 s of real work, therefore the daemon reached `codex --version`". Void:
+   `ThrottleInterval` is measured **from launch, not from exit**, so any sub-30 s runtime yields the
+   same spacing. It distinguishes nothing and was removed rather than hedged.
+3. **"Verified, not assumed" was overstated.** The draft claimed the five adapter flags were
+   verified against 0.149.0; one flag had been probed. The exact five-flag call shape was then run
+   live — rc 0 — and `_SEMVER_RE` confirmed to parse `codex-cli 0.149.0`. The claim now matches
+   what was actually executed.
+4. The headline duration was corrected 72 h → **~70 h** (69.58 h measured).
+
+### Surviving objections, recorded as limits rather than cured
+
+5. **The initiating cause remains unidentified.** Named candidates, none proven: `shutil.which("codex")`
+   returning `None` under the plist's `PATH` (the `/opt/homebrew/bin/codex` symlink was rewritten
+   `2026-08-21T15:59Z`, *during* the outage); a `DaemonConfig.from_env` `ValueError`; an import-time
+   failure. Reading the log is `operator[secret]` — Pro has no passwordless sudo, probed this
+   session (`sudo -n true` → password required). This is a measured boundary, not a deferral.
+6. **G-P6's accepted bound is still unmeasured.** Zero accepted the residual, and the spec's own row
+   requires the bound be *verified*: a probed scope inventory of what a stolen `auth.json` reaches,
+   plus a revocation test. Neither has run. Acceptance of a number nobody measured is recorded here
+   as exactly that.
+7. **This memo cannot prove its own §3 paste works.** The cure is written from source, not from a
+   successful execution — nobody has run it. Its proof-of-armed is therefore stated as a *future*
+   observation (two advancing reads of `broker_last_seen_at`), never as a result.
