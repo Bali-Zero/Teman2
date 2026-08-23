@@ -1326,7 +1326,7 @@ Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di
 
 **GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) ma non ancora adottato dai produttori dei pack, e finché non lo è la finestra si riapre a ogni PR Gear≥2.
 
-### 🐛 W126 (2026-08-23): un `Formatter` mutava `record.levelname` IN PLACE — il test confrontava la stringa RESA (ANSI-colorata), non l'IDENTITÀ stabile del livello
+### 🐛 W127 (2026-08-23): un `Formatter` mutava `record.levelname` IN PLACE — il test confrontava la stringa RESA (ANSI-colorata), non l'IDENTITÀ stabile del livello
 
 _Scoperto 2026-08-23, lane P04, diagnosticando la CI flake `test_prompt_manager.py::TestPromptManagerFailLoudOnUnknownVersion::test_unrecognized_explicit_value_logs_error`, che aveva espulso PR #4643 dalla merge queue due volte e sospeso PR #4653. La premessa "non riproducibile in locale" (5 tentativi) era falsa per assenza di corpus, non per assenza del difetto: riproducibile deterministicamente non appena il file giusto condivideva la sessione pytest._
 

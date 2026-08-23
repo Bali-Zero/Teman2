@@ -92,7 +92,7 @@ traduzioni) · W83 (3 falsi BLOCK ssh/cd/quote) · W84 (`[^q]*` matcha newline, 
 font-inject) · W105 (troncatura primo segmento `.worktrees/`) · W109 (esenzione per collocazione non
 contenuto) · W112 (Prettier riscrive i propri record di cicatrice) · W115 (veto post-selezione, non
 filtro pre) · W117 (`_strip_noise` svuota payload prima dell'esenzione) · W119 (`\s` separatore
-attraversa il newline) · W126 (guardia confronta `levelname` reso, non `levelno` stabile).
+attraversa il newline) · W127 (guardia confronta `levelname` reso, non `levelno` stabile).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W68/W72)
 **PR-1 landing** (corpo in `PENDING-ARMS.md`): `git branch -D` da worktree è repo-wide, la guardia giudica il cwd.
 
