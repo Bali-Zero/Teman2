@@ -744,6 +744,120 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.family_sponsor_confirmed" },
     notSure: { mode: "human-review" },
   },
+  // Stepchild route (2026-08-23 owner ruling — the E31D stepchild-of-a-
+  // mixed-marriage product exists in the catalog, but every one of its
+  // rules could previously only read `intent.purposes ∩ FAMILY`; the
+  // contract had no way to say "stepchild" at all. Both evidence facts
+  // follow `family_marriage_registered`'s branch idiom exactly — two plain
+  // yes/no confirmations, sensitive (documentary evidence of a personal
+  // relationship), NotSure → human-review same as every sibling in this
+  // group. See `research/visa/2026-08-15-gold-family-refuter.md`.
+  family_stepchild_marriage_certificate_confirmed: {
+    id: "family_stepchild_marriage_certificate_confirmed",
+    i18nKey: "q.family_stepchild_marriage_certificate_confirmed",
+    kind: "branch",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["family.stepchild_marriage_certificate_confirmed"],
+    },
+    sensitive: true,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: {
+      i18nKey: "why.family_stepchild_marriage_certificate_confirmed",
+    },
+    notSure: { mode: "human-review" },
+  },
+  family_stepchild_birth_certificate_confirmed: {
+    id: "family_stepchild_birth_certificate_confirmed",
+    i18nKey: "q.family_stepchild_birth_certificate_confirmed",
+    kind: "branch",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["family.stepchild_birth_certificate_confirmed"],
+    },
+    sensitive: true,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.family_stepchild_birth_certificate_confirmed" },
+    notSure: { mode: "human-review" },
+  },
+  // Sponsor permit basis (2026-08-23 owner ruling — Permenkumham 11/2024
+  // Pasal 33 ayat (7) blocks family-reunification chaining for four
+  // specific ayat (2) huruf h categories; `family.sponsor_status_code` is
+  // free-form STRING and can only express validity, never purpose. Options
+  // mirror the closed `SponsorPermitBasis` enum 1:1 — 13 values grounded in
+  // Pasal 33 ayat (2) huruf a-l, verbatim quote in `why.family_sponsor_permit_basis`.
+  family_sponsor_permit_basis: {
+    id: "family_sponsor_permit_basis",
+    i18nKey: "q.family_sponsor_permit_basis",
+    kind: "choice",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["family.sponsor_permit_basis"],
+    },
+    sensitive: true,
+    options: [
+      {
+        key: "EXPERT",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.EXPERT",
+      },
+      {
+        key: "WORKER",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.WORKER",
+      },
+      {
+        key: "MARITIME_CREW",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.MARITIME_CREW",
+      },
+      {
+        key: "CLERGY",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.CLERGY",
+      },
+      {
+        key: "FOREIGN_INVESTMENT",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.FOREIGN_INVESTMENT",
+      },
+      {
+        key: "SCIENTIFIC_RESEARCH",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.SCIENTIFIC_RESEARCH",
+      },
+      {
+        key: "EDUCATION",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.EDUCATION",
+      },
+      {
+        key: "FAMILY_REUNIFICATION",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.FAMILY_REUNIFICATION",
+      },
+      {
+        key: "REPATRIATION",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.REPATRIATION",
+      },
+      {
+        key: "SECOND_HOME",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.SECOND_HOME",
+      },
+      {
+        key: "MEDICAL_TREATMENT",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.MEDICAL_TREATMENT",
+      },
+      {
+        key: "WORKING_HOLIDAY",
+        labelI18nKey: "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY",
+      },
+      { key: "OTHER", labelI18nKey: "q.family_sponsor_permit_basis.opt.OTHER" },
+    ],
+    whyWeAsk: { i18nKey: "why.family_sponsor_permit_basis" },
+    notSure: { mode: "human-review" },
+  },
   retirement_basis: {
     id: "retirement_basis",
     i18nKey: "q.retirement_basis",
