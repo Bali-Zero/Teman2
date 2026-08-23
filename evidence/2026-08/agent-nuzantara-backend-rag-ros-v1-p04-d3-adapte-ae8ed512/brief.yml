@@ -1,0 +1,56 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-slice2-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D3. Slice 2 of 3: `ActionIntent`
+  adapter (CONTRACTS.md §13.2) mapping the SAME Magazine `ops_intents` row that slice 1's
+  `ActionItem` adapter consumes.
+
+  STACKED ON PR #4749 (slice 1, still draft/unmerged as of this branch's creation): this
+  branch's history includes slice 1's commit unchanged. This is NOT opened as a PR yet --
+  pushed as a bare branch per the fleet's "one PR per lane at a time" serialization
+  practice observed live in the mailbox this session; open it once #4749 merges (the CI
+  diff/gate for a PR from this branch would otherwise include slice 1's own files a second
+  time, since GitHub bases the comparison on the merge-base with main, which slice 1 has
+  not yet joined).
+
+  `action_item_ref` is genuinely backed here (not synthesized): it pins the exact
+  `object_hash` of the SAME row's `ActionItem`, built by calling slice 1's
+  `adapt_ops_intent_to_action_item` directly and reading its real hash -- verified by a
+  dedicated test (`test_action_item_ref_pins_the_real_sibling_action_item`).
+constraints:
+  - "Additive only, one new file + one new test file. Depends on slice 1's
+    action_item_adapter.py (already in this branch's history, unchanged)."
+  - "Same exclusions as slice 1: ApprovalReceipt/ExecutionAttempt are not adapted in this
+    deliverable's first pass (see slice 1's brief.yml for the independently-verified
+    zero-legacy-source finding)."
+  - "No PII: synthetic fixtures only, reused from slice 1's conftest.py."
+  - "Branch stays unopened as a PR until slice 1 (#4749) lands; not armed, not enqueued."
+acceptance:
+  - "`authority_required.expires_after_seconds` is derived from REAL legacy timestamps
+    (floor(expires_at - created_at) in seconds), not a synthesized constant -- a genuine
+    legacy-derived value the compatibility matrix's own item 4 had marked as having no
+    candidate at all."
+  - "A row whose sibling ActionItem adaptation was rejected (bad clock data) is itself
+    rejected, never producing an ActionIntent that references a nonexistent ActionItem."
+  - "requested_action_spec_ref and target.object_ref.object_hash are disclosed as
+    SYNTHESIZED_UNBACKED both in the loss report AND in extensions (same machine-checkable
+    pattern as slice 1, added there in response to Kimi K3's adversarial review)."
+consumer_map:
+  - "Slice 3 (OperationalReceipt + shadow + parity, staged, not yet a branch created):
+    shadow.py imports this adapter directly alongside slice 1's."
+  - "Same GitHub Harness floor recompute check as slice 1 -- floor 1 (no hot-zone path
+    touched)."
+risks:
+  - "Same disclosed judgment call as slice 1 on SYNTHESIZED_UNBACKED refs -- not re-litigated
+    here, see slice 1's brief.yml risks section for the full adversarial-review record."
+grader: |
+  session (this lane) wrote the adapter and tests. Re-uses slice 1's already-completed
+  adversarial review (Kimi K3) rather than re-running an identical review on the same
+  design pattern applied to a second kind -- no new design surface introduced here beyond
+  what slice 1's dissent already covers.
+budget: |
+  1 build lane, no new council -- same reasoning as slice 1 (Gear-2, additive, zero live
+  consumers).
+pii: none

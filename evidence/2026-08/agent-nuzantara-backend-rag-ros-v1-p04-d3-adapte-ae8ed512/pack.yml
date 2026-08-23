@@ -1,0 +1,59 @@
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D3 Magazine action-chain adapters, slice 2 of 3 (ActionIntent), stacked on #4749"
+diff:
+  net_lines: >-
+    +236/-0, 2 files (action_intent_adapter.py, test_action_intent_adapter.py). Measured this
+    session via `git diff --cached --numstat` on top of slice 1's own commit (this branch was
+    created from slice 1's branch tip, not from origin/main directly -- slice 1 is not yet
+    merged, so this is the correct comparison until it lands).
+  behaviour_change: >-
+    Purely additive: one new file beside slice 1's. Zero existing file touched. Zero live
+    consumer (same grep as slice 1 still holds -- nothing new imports this module).
+receipts:
+  - claim: "This branch's own two new files total exactly +236/-0"
+    cmd: "git diff --cached --numstat"
+    exit: 0
+    ts: "2026-08-23T22:13:00Z"
+    seat: "session (pro)"
+  - claim: "action_intent_adapter.py + test_action_intent_adapter.py + slice 1's test_action_item_adapter.py all pass together (14 tests)"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/test_action_intent_adapter.py backend/tests/services/research_os/test_action_item_adapter.py -q --no-header"
+    exit: 0
+    ts: "2026-08-23T22:13:20Z"
+    seat: "session (pro)"
+  - claim: "ruff reports zero issues on both new files"
+    cmd: "python3 -m ruff check backend/services/research_os/action_intent_adapter.py backend/tests/services/research_os/test_action_intent_adapter.py"
+    exit: 0
+    ts: "2026-08-23T22:13:25Z"
+    seat: "session (pro)"
+  - claim: "action_item_ref genuinely pins the sibling ActionItem's real object_hash, not a placeholder -- exercised by a dedicated test"
+    cmd: "pytest -k test_action_item_ref_pins_the_real_sibling_action_item -q"
+    exit: 0
+    ts: "2026-08-23T22:13:20Z"
+    seat: "session (pro)"
+  - claim: "expires_after_seconds is a real legacy-derived value: floor(11:30:00 - 10:00:00) == 5400 seconds, asserted exactly"
+    cmd: "pytest -k test_expires_after_seconds_is_derived_from_real_legacy_timestamps -q"
+    exit: 0
+    ts: "2026-08-23T22:13:20Z"
+    seat: "session (pro)"
+tests:
+  - "test_action_intent_adapter.py -- 6 tests: real backed action_item_ref, derived expires_after_seconds, direct field maps, rejection-propagation from a rejected sibling ActionItem, disclosed unbacked-ref warnings, idempotent re-adaptation of the same row."
+  - "Combined with slice 1's test_action_item_adapter.py -- 14 tests, exit 0."
+static:
+  - "ruff check: 0 issues."
+runtime_proof:
+  - >-
+    Same as slice 1: no live consumer yet. Functional proof is the adapter round-trip plus
+    the cross-object real-hash-pinning test above.
+dissent: []
+lanes:
+  - lane: "p04-d3-magazine-action-chain-adapters-slice2"
+    role: build
+    seat: "claude-sonnet-5"
+residual_risks:
+  - "Same as slice 1 (SYNTHESIZED_UNBACKED refs, disclosed judgment call) -- not re-litigated, see slice 1's evidence pack for the full adversarial-review record."
+  - "This branch is stacked on slice 1 (#4749); its own evidence/diff comparison is only valid until slice 1 merges, at which point this branch should be rebased onto main and this pack's diff re-measured before opening a PR."
+sources:
+  - "packages/research-os-core/research_os/models/action_intent.py (read in full, slice 1's session)"
+  - "Fresh test/lint runs in this worktree, this session (receipts above)"
+pii_scan: clean
+size_tokens: 900
