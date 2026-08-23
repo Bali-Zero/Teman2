@@ -207,7 +207,8 @@ class InviteService:
                 existing_user = await conn.fetchrow(
                     """
                     SELECT id, active, pin_hash FROM team_members
-                    WHERE linked_client_id = $1 AND role = 'client'
+                    WHERE linked_client_id = $1
+                    ORDER BY (role = 'client') DESC, created_at
                     """,
                     invitation["client_id"],
                 )

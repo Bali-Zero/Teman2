@@ -424,11 +424,12 @@ async def test_complete_registration_allows_placeholder_active_account() -> None
 
 
 @pytest.mark.asyncio
-async def test_existing_account_lookup_is_scoped_to_the_client_role() -> None:
-    """The lookup must not gate on an arbitrary row: `team_members` mixes staff
-    and client-portal logins in one table, so without `role = 'client'` a stray
-    staff row sharing `linked_client_id` could decide whether a client may
-    register."""
+async def test_existing_account_lookup_is_deterministic_without_role_filter() -> None:
+    """`team_members` mixes staff and client-portal logins in one table, so a
+    stray row sharing `linked_client_id` could decide whether a client may
+    register. The fix is ORDERING, not filtering: `email` is UNIQUE NOT NULL
+    (portal_qa_schema.sql:62), so a role filter that hides the existing row
+    sends the flow into INSERT and straight into a unique violation."""
     now = datetime.now(timezone.utc)
     conn = FakeConnectionWithTransaction(
         fetchrow_results=[
@@ -454,8 +455,14 @@ async def test_existing_account_lookup_is_scoped_to_the_client_role() -> None:
 
     lookup_query = conn.fetchrow_calls[1][0]
     assert "FROM team_members" in lookup_query
-    assert "role = 'client'" in lookup_query
     assert "pin_hash" in lookup_query
+    # The lookup must NOT filter by role. `linked_client_id` is what makes a row
+    # the client's portal login; filtering on role would miss a row carrying a
+    # different one, fall through to the INSERT branch, and hit
+    # `team_members.email UNIQUE` — a 500 on a path that works today.
+    assert "role = 'client'" not in lookup_query.replace("(role = 'client') DESC", "")
+    # ...but it must be deterministic: a client row wins when several share the link.
+    assert "ORDER BY (role = 'client') DESC" in lookup_query
 
 
 @pytest.mark.asyncio
