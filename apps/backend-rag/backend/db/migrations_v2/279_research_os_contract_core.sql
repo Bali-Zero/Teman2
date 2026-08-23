@@ -1,20 +1,35 @@
--- DRAFT migration for symbolic reservation `research_os_contract_core`
+-- Migration 279: research_os_contract_core
 -- (Research OS v1.0.0, Work Packet 04, sub-task D2 — persistence).
 --
--- NOT YET INTEGRATED. Per the 2026-08-23 Conductor migration-ledger
--- decision (research/operations/execution/research-os-v1.0.0/SESSION-BOARD.md
--- §"Migration-ledger decision 001"): a packet reserves a SYMBOLIC name, never
--- an integer; the integer is bound at INTEGRATION time by the integrating
--- session, re-measured from a fresh `ls apps/backend-rag/backend/db/
--- migrations_v2/ | sort | tail` (`ls` is `eza` on this fleet — use the real
--- binary) plus an open-PR check, never copied from a document. Measured at
--- draft time (this file's own commit): head is migration 278
--- (278_reassign_orphaned_clients_setup_team.sql), base commit
--- 37a02fb721af68a0451451dba6e358297e314a06, zero open PRs touching
--- migrations_v2/ at that moment. DO NOT trust that number by the time this
--- file is copied into migrations_v2/ as `<N>_research_os_contract_core.sql`
--- — re-measure then. This file intentionally has NO numeric prefix so nothing
--- discovers or applies it from this location.
+-- INTEGER BOUND LATE, AT INTEGRATION TIME, per the 2026-08-23 Conductor
+-- migration-ledger decision (research/operations/execution/research-os-v1.0.0/
+-- SESSION-BOARD.md §"Migration-ledger decision 001") and per
+-- research/operations/execution/research-os-v1.0.0/evidence/p04/
+-- ledger-revision-request-001.md §6 recommendation 1: a packet reserves a
+-- SYMBOLIC name, never an integer; the integer is bound at INTEGRATION time
+-- by the integrating session, re-measured fresh, never copied from a prompt
+-- or a document (scar W40 — TOCTOU on a shared mutable counter).
+--
+-- Bound 2026-08-24 in this session. Measurement (all fresh in this turn):
+--   * `git fetch origin main && git rev-parse origin/main` ->
+--     32e38dc701dd3f1d15f4b96593c89f220f31b733
+--   * `git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/
+--     db/migrations_v2/ | sort` -> highest present is 278
+--     (278_reassign_orphaned_clients_setup_team.sql). `ls` is `eza` on this
+--     fleet (cicatrix #1 shell trap) — used the real listing via `git
+--     ls-tree`, not the `ls` binary, precisely to avoid that trap.
+--   * `gh pr list --state open --limit 200 --json number,files` (16 open
+--     PRs) -> zero PRs with any file under migrations_v2/. Cross-checked
+--     with `gh api search/code -f q='filename:279 ... path:.../
+--     migrations_v2'` -> 0 results, and every local `.worktrees/*` checkout
+--     that has this directory tops out at 278 too.
+--   -> next available integer: 279. No collision at bind time.
+-- NOTE for future readers: an earlier draft/example in
+-- ledger-revision-request-001.md §6 illustrates the placeholder option
+-- with the literal name `279_research_os_contract_core.sql` — that was a
+-- coincidental illustration in a proposal document, not a reservation;
+-- this binding was independently re-measured against a freshly fetched
+-- origin/main per the rule above, not copied from that document.
 --
 -- Purpose
 -- -------
@@ -120,7 +135,10 @@
 -- PostgreSQL 15 compatibility (target is PG15, NOT 17 — CI runs
 -- `postgres:15` per `tests.yml` ×2, `fly-deploy.yml`,
 -- `intel-router-tests.yml`, `scripts-tests-sweep.yml`, and
--- `docker-compose.yml` pins `postgres:15-alpine`)
+-- `docker-compose.yml` pins `postgres:15-alpine`). Proven by actually
+-- applying this file on PostgreSQL 15.19 (Debian 15.19-1.pgdg13+2,
+-- aarch64) in an isolated Docker container on 127.0.0.1:5433 — see the PR
+-- body for the apply/rollback proof, not merely reasoned about below.
 -- -----------------------------------------------------------------------
 -- Every feature used here predates PG15 by a wide margin and none is
 -- PG16+-only:
@@ -140,14 +158,20 @@
 -- and nothing here is `MERGE`/`NULLS NOT DISTINCT`/any other PG15-or-later
 -- addition — this migration would apply unchanged on PG12+.
 --
+-- Additive only
+-- --------------
+-- This migration creates new objects only (one table, two indexes, one
+-- function, one trigger). It does not ALTER, DROP, or otherwise touch any
+-- pre-existing table, column, or constraint.
+--
 -- Rollback marker convention
 -- ----------------------------
 -- Per `backend/db/migration_base.py:29`, the `-- === ROLLBACK ===` marker
--- below is mandatory for migrations numbered > 111 (this one will be, once
--- bound) and the runner's `split_migration_sql()` executes ONLY the forward
--- portion above the marker — the rollback portion is stored separately and
--- replayed only via `MigrationManager.rollback_migration()`, never appended
--- to the same transaction as the forward DDL.
+-- below is mandatory for migrations numbered > 111 (this one is) and the
+-- runner's `split_migration_sql()` executes ONLY the forward portion above
+-- the marker — the rollback portion is stored separately and replayed only
+-- via `MigrationManager.rollback_migration()`, never appended to the same
+-- transaction as the forward DDL.
 
 CREATE TABLE public.research_os_objects (
     id BIGSERIAL PRIMARY KEY,
