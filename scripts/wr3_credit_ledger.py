@@ -37,12 +37,35 @@ module to record real spend, so this module must never import
 `wr3_flowkit_client` back (would be circular) and must not require anything
 outside the standard library to stay trivially importable from the hot path.
 
-KNOWN FINDING (not fixed here, by instruction — see PR description): this
-repo disagrees with itself about the true per-clip Veo cost —
-`wr3_flowkit_client.py:49` says `DEFAULT_CLIP_COST_CR = 20`,
-`wr3_gatekeeper_check.py` (~line 22) says `CR_PER_CLIP = 10`. The ledger
-records the client's actual `clip_cost_cr` on every real-mode record, which
-is what makes that disagreement measurable instead of assumed.
+FIXED 2026-08-23 (was a KNOWN FINDING): this repo used to disagree with
+itself about the per-clip Veo cost it PROJECTS — `wr3_flowkit_client.py`
+said `DEFAULT_CLIP_COST_CR = 20`, `wr3_gatekeeper_check.py` said
+`CR_PER_CLIP = 10`. `CLIP_COST_CR` (below) is now the single source of
+truth for that projection: `wr3_flowkit_client.DEFAULT_CLIP_COST_CR`
+derives from it instead of re-reading the env var, and
+`wr3_gatekeeper_check.py` imports it directly as `CR_PER_CLIP`, so the two
+numbers cannot drift apart from EACH OTHER again. The ledger still records
+the client's actual `clip_cost_cr` on every real-mode record, which is
+what makes any FUTURE disagreement (e.g. an override env var applied
+inconsistently) measurable instead of assumed.
+
+IMPORTANT — collapsing to one number is not the same as knowing the right
+number (measured 2026-08-23, live Pro gateway, ~/logs/flowkit.err.log over
+the process's whole life): `20` traces to a single empirical observation
+dated 2026-05-20 on SOME Flow paygate tier; it was never re-verified
+against the tier actually in live use. The gateway's own sync log shows
+1135 `PAYGATE_TIER_ONE` syncs vs 4976 `PAYGATE_TIER_TIER1P5` syncs (~81%
+of traffic) — `PAYGATE_TIER_ONE` is a MINORITY of what the live account
+actually talks to, and it is the tier `wr3_flowkit_client.py` requests. A
+third tier, `PAYGATE_TIER_TWO`, is referenced in
+`~/flowkit/extension/background.js`. Per-clip credit cost is tier-
+dependent, and no tier→credits table exists anywhere in this codebase (a
+live `GET /api/flow/credits` / SDK `/v1/credits` endpoint exists on the
+gateway but nothing here queries it — see `_generate_video`'s neighboring
+call sites). So: the true per-clip cost for the tier actually in use is
+UNMEASURED, not merely "unified". `WR3_FLOWKIT_CLIP_COST` is therefore not
+a tuning convenience — it is the escape hatch for a number this codebase
+does not actually know.
 
 HARDENING PASS 2026-08-23 (cross-family refuter, Kimi K3 — 12 confirmed
 defects against the packet's central "credits before == credits after"
@@ -116,12 +139,29 @@ logger = logging.getLogger(__name__)
 _LEDGER_ENV_VAR = "WR3_CREDIT_LEDGER"
 _DEFAULT_LEDGER_SUBPATH = Path(".cache") / "wr3" / "credit-ledger.jsonl"
 
+# SSOT for the per-clip Veo cost PROJECTION (2026-08-23 fix — see the
+# module docstring). This module is the credit-authority AND stays
+# stdlib-only, so it is the correct place to own this constant:
+# `wr3_flowkit_client.py`'s `DEFAULT_CLIP_COST_CR` and
+# `wr3_gatekeeper_check.py`'s `CR_PER_CLIP` both derive from THIS value now
+# (import, not re-declare), so the two can no longer silently disagree
+# with EACH OTHER the way they did before this fix.
+#
+# The default `20` is NOT a verified measurement of the true cost — it is
+# a single empirical observation from 2026-05-20 on some Flow paygate
+# tier, never re-checked against the tier the live account actually uses
+# (measured 2026-08-23: the live gateway syncs `PAYGATE_TIER_TIER1P5` in
+# ~81% of its traffic, not the `PAYGATE_TIER_ONE` this client requests —
+# see the module docstring). Per-clip cost is tier-dependent and no
+# tier→credits table exists in this codebase. `WR3_FLOWKIT_CLIP_COST` is
+# the escape hatch for a number that is, honestly, unmeasured for the tier
+# in use — not a tuning convenience.
+CLIP_COST_CR = int(os.environ.get("WR3_FLOWKIT_CLIP_COST", "20"))
+
 # Estimated per-clip cost used ONLY for backfilled (historical, no live
-# instrumentation) records — see the KNOWN FINDING in the module docstring.
-# Mirrors wr3_flowkit_client.DEFAULT_CLIP_COST_CR (the constant actually used
-# at the real spend call site); NOT imported from there to keep this module
-# dependency-free / avoid a circular import.
-BACKFILL_ESTIMATED_CLIP_COST_CR = 20
+# instrumentation) records — see the module docstring. Alias of CLIP_COST_CR
+# (kept as its own name for existing importers/tests); NOT a separate value.
+BACKFILL_ESTIMATED_CLIP_COST_CR = CLIP_COST_CR
 
 VALID_MODES = ("real", "placeholder", "backfill")
 
@@ -1112,9 +1152,9 @@ def _cmd_backfill(args: argparse.Namespace) -> int:
     print("#   clips_original_backup*, _probe_clips*, *_backup_* are walked ONLY for")
     print("#   shot keys absent from clips/ (or an earlier-scanned sibling) — retries/")
     print("#   copies are never double-counted. Assumed clip_cost_cr = "
-          f"{BACKFILL_ESTIMATED_CLIP_COST_CR} (mirrors wr3_flowkit_client."
-          "DEFAULT_CLIP_COST_CR; wr3_gatekeeper_check.py's CR_PER_CLIP=10 "
-          "disagrees — unresolved, see module docstring).")
+          f"{BACKFILL_ESTIMATED_CLIP_COST_CR} (this module's CLIP_COST_CR SSOT; "
+          "wr3_flowkit_client.DEFAULT_CLIP_COST_CR and wr3_gatekeeper_check.py's "
+          "CR_PER_CLIP both derive from it — see module docstring).")
     print("# Every row below is an ESTIMATED FLOOR (mode=backfill), never a")
     print("#   measurement: a re-render is a real charge that dedupe-by-shot-key")
     print("#   cannot tell apart from a harmless duplicate copy (e.g. shot 01 has")
