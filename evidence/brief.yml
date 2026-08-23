@@ -1,74 +1,99 @@
-task_id: ops-visaoracle-wrapper-header-0823
+task_id: ops-seat6-consumers
 gear: 3
-l_level: L1
+l_level: L2
 gate_class: opus
 objective: |
-  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
-  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
-  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
+  14 consumers of the Claude OAuth seat cascade enumerated slots 1-5 and stopped —
+  slot 6, the Claude Team seat (`zero@balizero.com`), was invisible to every one of
+  them. A cron job could die with "usage limit" even while the Team seat sat idle at
+  full quota, because nothing in the cascade ever tried it. Zero's ruling
+  (2026-08-23): the Team seat enters the cascade ONLY as a last resort, after all
+  five MAX x20 seats (1-5) have been tried and failed — MAX seats have no weekly cap,
+  the Team seat does, so trying it first would burn the scarcer resource on ordinary
+  load.
 
-  This PR is documentation-only, in the strict sense that it edits two comment lines in a
-  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
-  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
-  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
-  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
-  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
-  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
-  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
-  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
-  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
-  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
-  **Severity, stated precisely so a future reader does not over-read this**: because
-  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
-  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
-  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
-  do) — the two are different failure classes and this PR only ever claims to fix the former.
+  This diff adds slot 6 to all 14 consumers: 4 shell/Python enumerations with
+  independently-comparable slot-5/slot-6 markers (`infra/launchagents/wrappers/
+  cron-agent.sh`, `wr2-ig-metrics-analyst-run.sh`, `scripts/ai-dispatch.sh`,
+  `apps/mata-garuda/mata_garuda/runtime/cli_runtime.py`), 7 Python consumers that
+  share one `for i in (1, 2, 3, 4, 5, 6):` tuple-loop shape (`scripts/
+  dlq_autopilot.py`, `scripts/wr2_html_renderer/claude_vision.py`, `scripts/
+  zantara-gateway/claude_client.py`, `apps/backend-rag/scripts/auto_verifier.py`,
+  `apps/backend-rag/scripts/verified_generator.py`, `apps/bali-intel-scraper/
+  scripts/bz_image_style.py`, `apps/evaluator/nlm_deep_research/t4_monitor.py`), and
+  3 mata-garuda callers that only import the shared `claude_token_chain()` helper
+  and carry no ordering of their own (`daily_briefing_agent.py`,
+  `weekly_digest_agent.py`, `run_ai_digest.py`).
 
-  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
-  hot-zone by path, not by content. The evidence below is sized to match — it is not an
-  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
+  Additional fix folded into the same diff because it lives in the same file this
+  change already touches: `cli_runtime.py`'s `CLAUDE_TOKEN_VARS` comment map (slot
+  identity -> Gmail account) was measured stale on 2026-08-23 — wrong on every slot
+  but 1. It said slot 3 was "RITIRATO — slot libero" when slot 3 had been re-armed
+  the same day that comment was written, and it labelled slot 5 "zero@balizero.com
+  (Team, last-resort)" when slot 5 is actually kaiser198719871987@gmail.com, a MAX
+  seat — the Team seat is slot 6, not 5. Corrected against `claude auth status` +
+  the fleet remap transcript, not carried forward.
 constraints:
-  - "set -u and every executable line in the file are untouched — diff is exactly the two
-    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
-    reading the full post-diff file."
-  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
-    already carries the correct hyphen form on both sides and needs no change."
-  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
-    lower in the same file — those underscores are legitimate (organ id / log-dir naming
-    convention, not a file path claim) and match the live log directory verified on Pro this
-    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
+  - "Slot 6 is appended in TAIL position only, in every consumer — never inserted
+    mid-list, never reordered ahead of slots 1-5. The 'last resort' property comes
+    from list POSITION, not from any special-cased branch logic."
+  - "Where a consumer also has a legacy-token or keychain fallback (ai-dispatch.sh,
+    cron-agent.sh), slot 6 is inserted BEFORE those, not after — it is a numbered
+    seat, not a last-last-resort."
+  - "No behaviour change beyond adding the 6th slot: the equal-division attempt-
+    timeout logic in cron-agent.sh, the dedup-by-token-value logic, and the
+    keychain/legacy fallback chains are untouched and already scale by array
+    length, not a hardcoded '5'."
+  - "The renamed test file (slot5 -> slot6) must not silently drop any of the 14
+    consumer checks the old file had — verified below, not assumed."
 acceptance:
-  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    shows the Canon and Live lines using the hyphen form.'
-  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    == 0 (underscore form gone).'
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
-  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
-    declared; this PR only fixes the wrapper's self-description)."
-  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
-    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
-    needed or performed.'
+  - "scripts/tests/test_claude_oauth_slot6_coverage.py (ex slot5, renamed) passes:
+    26 tests green — 14 presence checks (one per consumer), 1 identity-map pin
+    (all 6 slots), 4 marker-order proofs (slot 6 textually after slot 5), 7
+    tuple-tail proofs (slot 6 is the last element of the shared literal)."
+  - "The ordering proof is MECHANICAL, not narrative: for every consumer whose
+    shape allows it, a test asserts slot 6's marker position is strictly greater
+    than slot 5's — so the 'last resort' ruling cannot silently regress on a
+    future edit without a test going red."
+  - "bash -n clean on every modified .sh wrapper."
+  - "No consumer present in the old SLOT5_CONSUMERS tuple is absent from the new
+    SLOT6_CONSUMERS tuple — checked by diffing the two tuples directly against
+    origin/main's pre-PR copy of the old test file, not inferred from the rename."
 consumer_map:
-  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
-    agent reading its header is the only consumer of the changed lines."
-  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
-    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
-    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
-    Confirmed by reading the line: it does not touch this already-born organ."
-  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
-  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
-    the header comment is repo-side documentation only, the live file's own header will match
-    once this lands and the deploy pattern for this pair (already-armed organ, header-only
-    change) next syncs it — no urgency, no functional drift in the meantime."
+  - "infra/launchagents/wrappers/cron-agent.sh — the shared cascade helper invoked
+    by every LaunchAgent-wrapped cron job on Pro/Mini (pro-healer, nb-curator-daily,
+    regulatory-watcher, competitor-monitor, wr2-ig-metrics-analyst, and others via
+    run_claude_account())."
+  - "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh — its own independent
+    run_claude_account() copy (does not call cron-agent.sh's version)."
+  - "scripts/ai-dispatch.sh — the federation-orchestrator dispatch CLI's run_claude()."
+  - "scripts/dlq_autopilot.py, scripts/wr2_html_renderer/claude_vision.py, scripts/
+    zantara-gateway/claude_client.py, apps/backend-rag/scripts/{auto_verifier,
+    verified_generator}.py, apps/bali-intel-scraper/scripts/bz_image_style.py,
+    apps/evaluator/nlm_deep_research/t4_monitor.py — 7 independent Python callers,
+    each with its own local token-chain loop."
+  - "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py::claude_token_chain() — the
+    single shared helper consumed by daily_briefing_agent.py, weekly_digest_agent.py
+    and run_ai_digest.py; those 3 files needed no edit of their own, only the
+    upstream helper."
 risks:
-  - "None identified to the running organ: the change is comment-only, `set -u` and all
-    executable lines are byte-identical before/after."
-  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
-    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
-    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
-    a lint-blocking drift."
+  - "cli_runtime.py's corrected identity-map comment now names 5 personal Gmail
+    addresses verbatim in a file (and a pinning test) on a PUBLIC repo. Checked
+    against origin/main's PRE-PR copy of the same file: all 5 addresses were
+    ALREADY present in that file's comments before this diff (the removed lines in
+    the diff show them). This PR corrects/completes an existing exposure, it does
+    not introduce a new one — not a regression to fix in this PR, noted for the
+    record."
+  - "None identified to running cron behaviour: the 6th slot is additive-only, and
+    the attempt-timeout/dedup logic in cron-agent.sh already derives from array
+    length rather than a hardcoded seat count, so it needs no companion change."
 grader:
-  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
-  review of this exact diff, dispatched fresh, not the author
-budget: 1 external review seat, no council (task does not warrant one)
-pii: none
+  session (nuzantara/Pro), independent of the diff's authorship — dispatched
+  to close the harness-floor Gear-3 evidence gap on an already-authored, already-
+  tested fix; verification performed by re-running the test suite and re-reading
+  the diff in this session, not by trusting the prior session's summary.
+budget: 1 session, no council (mechanical fallback-list extension, verified by a
+  pre-existing 26-test suite; not a shape that warrants cross-family dispatch)
+pii:
+  clean — the identities touched are the operator's own internal multi-account
+  routing config (pre-existing in the repo before this PR), not client PII/OSINT.
