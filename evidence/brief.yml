@@ -47,8 +47,15 @@ constraints:
   - "Larger paid runners: rejected (cost). Self-hosted runners: rejected outright — this is a
     public repository, so that means arbitrary PR code executing on our machines."
 acceptance:
-  - "`Backend Tests (Python)` still reports on every event type it reported on before
-    (pull_request, merge_group, push, schedule, workflow_dispatch) and never hangs unreported."
+  - "`Backend Tests (Python)` still reports on every event type it reported on before and never
+    hangs unreported. CORRECTED after a refuter (Codex GPT-5.6) checked the trigger list instead
+    of trusting it: those events are pull_request, merge_group, schedule and workflow_dispatch —
+    there is NO `push:` trigger on this workflow. The pre-existing comment at tests.yml:42 claims
+    `every main push now runs to completion`, and that claim has been false for as long as it has
+    been there. This PR does not fix that (out of scope, and the concurrency block is explicitly
+    off-limits per the constraints below) but it must not REPEAT it: an earlier draft of this very
+    acceptance criterion listed `push`, i.e. the diff was about to inherit a false premise from a
+    comment rather than from the code."
   - "All 27 required contexts report on the probe head SHA."
   - "Wall-clock for the required context on a full unscoped (merge-group) transit is <= 8 min."
   - "GUILT: a failing test makes the fan-in RED. GUILT: a corrupted chunk list makes the

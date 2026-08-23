@@ -64,10 +64,21 @@ DEFAULT_TARGETS = (
     "../../scripts/bot/test_wa_blind_bench.py",
 )
 
-# Mirrors pytest's own `--ignore=backend/tests/e2e` in tests.yml. Kept even
-# though the directory currently holds zero test files (measured 2026-08-23:
-# 1423 files with and without the exclusion) — an explicitly listed file is
-# not reliably suppressed by --ignore, so the enumerator must not emit them.
+# Mirrors pytest's own `--ignore=backend/tests/e2e` in tests.yml — an explicitly
+# listed file is not reliably suppressed by --ignore, so the enumerator must not
+# emit them in the first place. Deliberately NOT annotated with how many files
+# that currently excludes: a count in a comment is a claim with no test behind
+# it, and two sibling comments in this pair had already drifted to two different
+# numbers (1423 vs 1425) by the time a refuter noticed, while the true figure had
+# moved on to 1428.
+#
+# KNOWN AND NOT CLOSED BY THIS MODULE: because the exclusion is by PATH on the
+# tree being enumerated, moving a live test file INTO backend/tests/e2e/ removes
+# it from the corpus, and both guard passes stay green. That is the same class as
+# deleting the file outright — no design that runs tests from the working tree
+# catches it — and it predates sharding (the pre-split job carried the same
+# --ignore). Named here so the next reader does not mistake the guard for a
+# defence it never was.
 EXCLUDED_DIRS = ("backend/tests/e2e",)
 
 # IMPACT_SELECTED_TESTS is published repo-root-relative; the shards run from
@@ -84,11 +95,27 @@ def resolve_targets(env=None):
         if line.strip()
     ]
     if run_all == "false" and selected:
-        return [
-            s[len(IMPACT_PREFIX) :] if s.startswith(IMPACT_PREFIX) else s
-            for s in selected
-        ]
+        return [_to_pytest_cwd(s) for s in selected]
     return list(DEFAULT_TARGETS)
+
+
+def _to_pytest_cwd(repo_relative):
+    """Rewrite a repo-root-relative selection into the pytest cwd's frame.
+
+    Everything here is relative to apps/backend-rag, because that is where the
+    shards run pytest from. A path under that prefix loses it; ANY OTHER path
+    gets `../../`, exactly like the two scripts/bot entries in DEFAULT_TARGETS.
+
+    That second branch is not hypothetical tidiness — it was a refuter finding
+    (Kimi K3): the first cut passed a non-prefixed path through untouched, so the
+    first impact-map change that ever emitted one (a bot test, a packages/ test)
+    would make `enumerate_tests` abort and turn every shard red. Worse, this
+    module's own test suite ASSERTED the broken form, which is how a latent
+    false-red gets blessed as intended behaviour.
+    """
+    if repo_relative.startswith(IMPACT_PREFIX):
+        return repo_relative[len(IMPACT_PREFIX) :]
+    return "../../" + repo_relative.lstrip("/")
 
 
 def _is_test_file(path):
@@ -106,11 +133,19 @@ def _is_excluded(norm):
     return False
 
 
-def enumerate_tests(targets, root):
+def enumerate_tests(targets, root, tolerate_missing=False):
     """Every test module reachable from `targets`, canonically ordered.
 
     Ordering is a plain codepoint sort of the normalised relative paths, so it
     is identical on every runner regardless of filesystem iteration order.
+
+    `tolerate_missing` exists for exactly one caller: the fan-in's SECURITY pass,
+    which runs the BASE ref's copy of this module against the HEAD tree. A PR
+    that legitimately renames or removes a target directory would otherwise make
+    that pass abort forever — the base ref's DEFAULT_TARGETS naming a path the
+    head tree no longer has. Dropping it with a loud warning turns a permanent
+    red into a declared, visible degradation. The default stays fail-loud,
+    because for the shards a vanished target IS a defect.
     """
     found = set()
     for target in targets:
@@ -119,6 +154,15 @@ def enumerate_tests(targets, root):
             matches = [candidate]
         elif candidate.is_dir():
             matches = [p for p in candidate.rglob("*.py") if _is_test_file(p)]
+        elif tolerate_missing:
+            print(
+                "::warning::shard_tests: target %r does not exist in this tree — "
+                "dropped from the trusted corpus (renamed or removed since the base "
+                "ref); everything under it is UNVERIFIED by the security pass"
+                % target,
+                file=sys.stderr,
+            )
+            continue
         else:
             raise SystemExit("shard_tests: target does not exist: %s" % target)
         for match in matches:
@@ -246,7 +290,7 @@ def main(argv=None):
         print("\n".join(targets))
         return 0
 
-    all_tests = enumerate_tests(targets, root)
+    all_tests = enumerate_tests(targets, root, tolerate_missing=args.union)
 
     if args.command == "enumerate":
         print("\n".join(all_tests))

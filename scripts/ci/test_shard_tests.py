@@ -141,8 +141,58 @@ class TargetResolution(unittest.TestCase):
                     ),
                 }
             ),
-            ["backend/tests/test_a.py", "scripts/bot/test_bot.py"],
+            # The out-of-prefix path must come back in the pytest cwd's frame
+            # (`../../`), the same form DEFAULT_TARGETS uses. Passing it through
+            # repo-root-relative — which an earlier cut of this test asserted —
+            # makes enumerate_tests abort and every shard go red.
+            ["backend/tests/test_a.py", "../../scripts/bot/test_bot.py"],
         )
+
+    def test_an_out_of_prefix_selection_resolves_from_the_pytest_cwd(self):
+        # GUILT for the false-red: the repo-root-relative form does not exist
+        # from apps/backend-rag, so blessing it would bless an abort.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "apps" / "backend-rag"
+            root.mkdir(parents=True, exist_ok=True)
+            _tree(Path(tmp), ["scripts/bot/test_bot.py"])
+            targets = st.resolve_targets(
+                {
+                    "IMPACT_RUN_ALL": "false",
+                    "IMPACT_SELECTED_TESTS": "scripts/bot/test_bot.py",
+                }
+            )
+            self.assertEqual(targets, ["../../scripts/bot/test_bot.py"])
+            self.assertEqual(
+                st.enumerate_tests(targets, root), ["../../scripts/bot/test_bot.py"]
+            )
+            with self.assertRaises(SystemExit):
+                st.enumerate_tests(["scripts/bot/test_bot.py"], root)
+
+
+class VanishedTargets(unittest.TestCase):
+    """A target the base ref knew about and the head tree no longer has.
+
+    GUILT for the default: the shards must ABORT, because for them a missing
+    target is a real defect. INNOCENCE for the security pass: it must degrade
+    loudly instead of turning every future rename of backend/tests/ permanently
+    red.
+    """
+
+    def test_default_aborts_on_a_missing_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _tree(root, ["backend/tests/test_a.py"])
+            with self.assertRaises(SystemExit):
+                st.enumerate_tests(["backend/tests/", "gone/"], root)
+
+    def test_tolerant_mode_drops_it_and_keeps_the_rest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _tree(root, ["backend/tests/test_a.py"])
+            found = st.enumerate_tests(
+                ["backend/tests/", "gone/"], root, tolerate_missing=True
+            )
+            self.assertEqual(found, ["backend/tests/test_a.py"])
 
 
 class PartitionInnocence(unittest.TestCase):

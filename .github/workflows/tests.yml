@@ -83,6 +83,22 @@ concurrency:
   group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
   cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
+# S11: the coverage-collection decision lives HERE, once, and nowhere else.
+# It used to be a per-shard step that wrote its answer to a file the fan-in read
+# back. A refuter (Codex GPT-5.6) pointed out the hole: that file is written in
+# the same working directory pytest then runs PR code in, so a `pytest_sessionfinish`
+# in the diff could rewrite every shard's receipt to `false` and the fan-in would
+# skip the coverage combine and the --fail-under gate entirely. A workflow-level
+# `env:` is not writable by anything the job runs, and it is still ONE definition
+# read by both the shards and the fan-in — which was the whole reason the receipt
+# existed (superscar #9: two copies of one derivation is how they drift).
+# Coverage is collected on merge_group / schedule / workflow_dispatch, never on
+# pull_request: it adds wall-clock to every PR for a signal that only needs to be
+# current at the point a commit actually lands
+# (research/operations/2026-08-21-token-ceremony-ci-system-audit.md).
+env:
+  BACKEND_COLLECT_COVERAGE: ${{ github.event_name != 'pull_request' }}
+
 jobs:
   changes:
     name: Change map
@@ -742,7 +758,7 @@ jobs:
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
             -q -ra --no-header --tb=short --durations=10 -x \
-            "--junit-xml=test-results-core-${SHARD_INDEX}.xml"
+            "--junit-xml=$RUNNER_TEMP/shard-receipts/test-results-core-${SHARD_INDEX}.xml"
 
       - name: Bootstrap SQLModel tables
         # Router-level integration tests assume the full schema (e.g.
@@ -786,31 +802,6 @@ jobs:
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell python scripts/backend_stability_gate.py
 
-      - name: Decide coverage-collection scope
-        # cicatrix-superscar #9 discipline: this is a NEW decision, made once,
-        # read everywhere it applies below — not re-derived per-step (which
-        # is how two steps drift on the same question). Coverage is only
-        # collected on merge_group/push/schedule/workflow_dispatch, never on
-        # pull_request: the coverage.xml Codecov upload and the --fail-under
-        # gate both add wall-clock to every PR for a signal that only needs
-        # to be current at the point a commit actually lands (research/
-        # operations/2026-08-21-token-ceremony-ci-system-audit.md).
-        #
-        # S11: the decision is ALSO written to disk and uploaded, because the
-        # fan-in has to enforce the threshold and must not re-derive this
-        # predicate from `github.event_name` a second time. It reads what the
-        # shards actually decided.
-        id: test-scope
-        run: |
-          cd apps/backend-rag
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            COLLECT=false
-          else
-            COLLECT=true
-          fi
-          echo "collect_coverage=$COLLECT" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$COLLECT" > "collect-coverage-${SHARD_INDEX}.txt"
-
       - name: Compute this shard's chunk
         # scripts/ci/shard_tests.py is the SSOT for both "what is the corpus"
         # and "who owns each file" — the fan-in's partition guard calls the same
@@ -822,11 +813,20 @@ jobs:
           IMPACT_RUN_ALL: ${{ needs.changes.outputs.impact_run_all || 'true' }}
           IMPACT_SELECTED_TESTS: ${{ needs.changes.outputs.impact_selected_tests }}
         run: |
+          # RECEIPTS LIVE OUTSIDE THE PYTEST CWD. Same refuter finding as the
+          # coverage decision above: anything written into apps/backend-rag is
+          # inside the directory pytest then executes PR code in, so a conftest
+          # could rewrite this shard's chunk list to match a shrunken corpus
+          # after the fact. $RUNNER_TEMP is not somewhere test code has any
+          # reason to be. This narrows the surface; it does not seal it (PR code
+          # running in the job can write anywhere), which is precisely why the
+          # adjudicating LOGIC comes from the base ref rather than from here.
+          mkdir -p "$RUNNER_TEMP/shard-receipts"
           cd apps/backend-rag
           python3 ../../scripts/ci/shard_tests.py chunk \
             --shards "$SHARD_COUNT" --shard "$SHARD_INDEX" \
-            > "chunk-${SHARD_INDEX}.txt"
-          CHUNK_N=$(grep -c . "chunk-${SHARD_INDEX}.txt" || true)
+            > "$RUNNER_TEMP/shard-receipts/chunk-${SHARD_INDEX}.txt"
+          CHUNK_N=$(grep -c . "$RUNNER_TEMP/shard-receipts/chunk-${SHARD_INDEX}.txt" || true)
           TOTAL_N=$(python3 ../../scripts/ci/shard_tests.py enumerate | grep -c . || true)
           echo "shard ${SHARD_INDEX}/${SHARD_COUNT} owns ${CHUNK_N} of ${TOTAL_N} test modules"
           {
@@ -847,7 +847,7 @@ jobs:
           # their local-dev fallback (`nuzantara_dev`), which skipped 50 tests.
           INTAKE_TEST_DSN: postgresql://test:test@localhost:5432/nuzantara_test
           REDIS_URL: redis://localhost:6379
-          COLLECT_COVERAGE: ${{ steps.test-scope.outputs.collect_coverage }}
+          COLLECT_COVERAGE: ${{ env.BACKEND_COLLECT_COVERAGE }}
         run: |
           cd apps/backend-rag
           set -o pipefail
@@ -875,7 +875,7 @@ jobs:
             # a shard's coverage silently vanish and the combined total silently
             # under-report (superscar #2: the failure would look like a pass).
             COV_ARGS=(--cov=backend --cov-branch --cov-report=)
-            export COVERAGE_FILE="$PWD/coverage-data-shard${SHARD_INDEX}"
+            export COVERAGE_FILE="$RUNNER_TEMP/shard-receipts/coverage-data-shard${SHARD_INDEX}"
             # Record the version that is about to WRITE the data. coverage's
             # on-disk data file carries a schema version, so the fan-in has to
             # read it back with the same one — and it must learn that from what
@@ -883,7 +883,7 @@ jobs:
             # grepping requirements.lock.txt guesses at a closure this job
             # installs in two steps, the second of them unpinned).
             python -c 'import coverage; print(coverage.__version__)' \
-              > "coverage-version-${SHARD_INDEX}.txt"
+              > "$RUNNER_TEMP/shard-receipts/coverage-version-${SHARD_INDEX}.txt"
           fi
 
           # An empty chunk is legitimate: on the scoped PR lane the impact map
@@ -896,7 +896,7 @@ jobs:
           CHUNK=()
           while IFS= read -r test_module; do
             [ -n "$test_module" ] && CHUNK+=("$test_module")
-          done < "chunk-${SHARD_INDEX}.txt"
+          done < "$RUNNER_TEMP/shard-receipts/chunk-${SHARD_INDEX}.txt"
           if [ "${#CHUNK[@]}" -eq 0 ]; then
             echo "shard ${SHARD_INDEX} owns no test modules — nothing to run"
             exit 0
@@ -908,7 +908,7 @@ jobs:
             -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             "${COV_ARGS[@]}" \
-            "--junit-xml=test-results-unit-${SHARD_INDEX}.xml" \
+            "--junit-xml=$RUNNER_TEMP/shard-receipts/test-results-unit-${SHARD_INDEX}.xml" \
             --tb=short -x 2>&1 | tee pytest-output.log || PYTEST_RC=$?
           # errexit-immune capture (house W101 antidote): `run:` steps execute
           # under `bash -e`. A bare `PYTEST_RC=$?` on the line right after a
@@ -937,13 +937,11 @@ jobs:
           # written before pytest, so it is present even on a red shard.
           # if-no-files-found: error — a shard that uploads nothing at all would
           # otherwise reach the guard as a missing chunk list with no clue why.
-          path: |
-            apps/backend-rag/chunk-${{ matrix.shard }}.txt
-            apps/backend-rag/collect-coverage-${{ matrix.shard }}.txt
-            apps/backend-rag/coverage-version-${{ matrix.shard }}.txt
-            apps/backend-rag/coverage-data-shard${{ matrix.shard }}
-            apps/backend-rag/test-results-core-${{ matrix.shard }}.xml
-            apps/backend-rag/test-results-unit-${{ matrix.shard }}.xml
+          # NOTE (refuter, Codex): `error` fires only when NO listed path matches
+          # anything, not per-path, so it is not a per-file presence check. The
+          # per-file checks that matter are in the fan-in, which refuses on a
+          # missing chunk list, a missing coverage receipt, or a missing junit.
+          path: ${{ runner.temp }}/shard-receipts/
           if-no-files-found: error
 
   # ── THE REQUIRED CONTEXT ─────────────────────────────────────────────────────
@@ -1051,6 +1049,14 @@ jobs:
         # ref, DATA (the tree being enumerated) from this checkout. A PR that
         # legitimately ADDS test modules is unaffected — the trusted enumerator
         # walks the head tree and finds them, and the shards must own them.
+        #
+        # ABSENT IS NOT THE SAME AS FAILED, and conflating them was this step's
+        # own first bug (found by a refuter, Codex GPT-5.6): the first cut fell
+        # back to the head copy on ANY `git show` failure, so an unfetched base
+        # SHA, a shallow clone, or a transient git error silently downgraded a
+        # security gate to "trust the diff". The three states are now
+        # distinguished explicitly, and only ONE of them — the file genuinely not
+        # existing at a base commit we CAN read — is allowed to degrade.
         id: trusted
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
@@ -1059,20 +1065,33 @@ jobs:
           TRUSTED_DIR="$RUNNER_TEMP/trusted-partitioner"
           mkdir -p "$TRUSTED_DIR"
           if [ -z "${BASE_SHA:-}" ]; then
-            # push / schedule / workflow_dispatch: there is no PR to distrust,
-            # the checkout IS the trusted ref.
+            # schedule / workflow_dispatch: there is no PR to distrust, the
+            # checkout IS the trusted ref.
             echo "no base ref for this event — the checkout is the trusted copy"
             echo "path=scripts/ci/shard_tests.py" >> "$GITHUB_OUTPUT"
             echo "trusted=self" >> "$GITHUB_OUTPUT"
-          elif git show "${BASE_SHA}:scripts/ci/shard_tests.py" > "$TRUSTED_DIR/shard_tests.py" 2>/dev/null; then
+          elif ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            # We were handed a base SHA and cannot read it. We therefore cannot
+            # tell "the file is new" from "the history is missing" — and one of
+            # those two answers would hand adjudication to the diff itself.
+            # Refuse instead of guessing.
+            echo "::error::base commit $BASE_SHA is not readable in this checkout — cannot establish a trusted partitioner, and will not fall back to the diff's own copy"
+            exit 1
+          elif git cat-file -e "${BASE_SHA}:scripts/ci/shard_tests.py" 2>/dev/null; then
+            # It exists at base, so extraction MUST succeed. A failure here is an
+            # infrastructure fault, never a licence to use the head copy.
+            if ! git show "${BASE_SHA}:scripts/ci/shard_tests.py" > "$TRUSTED_DIR/shard_tests.py"; then
+              echo "::error::scripts/ci/shard_tests.py exists at $BASE_SHA but could not be extracted"
+              exit 1
+            fi
             echo "adjudicating with the base ref's partitioner ($BASE_SHA)"
             echo "path=$TRUSTED_DIR/shard_tests.py" >> "$GITHUB_OUTPUT"
             echo "trusted=base" >> "$GITHUB_OUTPUT"
           else
-            # Only reachable when the base ref has no such file at all — i.e.
-            # the PR that INTRODUCES it (this one). Declared loudly rather than
-            # silently downgraded: the file is CODEOWNERS-protected, so a later
-            # edit always has a base copy to be judged against.
+            # The one legitimate degradation: a readable base commit that genuinely
+            # has no such file — i.e. the PR that INTRODUCES it. Declared loudly
+            # rather than silently downgraded; the file is CODEOWNERS-protected, so
+            # every LATER edit always has a base copy to be judged against.
             echo "::warning::scripts/ci/shard_tests.py does not exist at $BASE_SHA — this PR introduces it; adjudicating with the head copy"
             echo "path=scripts/ci/shard_tests.py" >> "$GITHUB_OUTPUT"
             echo "trusted=introduced" >> "$GITHUB_OUTPUT"
@@ -1106,8 +1125,15 @@ jobs:
           # this design explicitly anticipates — permanently unmergeable. A guard
           # that blocks its own successor is a bug, not rigor.
           #
-          # SECURITY pass (trusted logic, head data): did every module in the
-          # BASE ref's corpus run somewhere, exactly once? Deliberately silent
+          # SECURITY pass. Say precisely what it is, because an imprecise
+          # version of this sentence was itself a refuter finding: it is the BASE
+          # ref's LOGIC applied to the HEAD tree — NOT "the base ref's corpus".
+          # It cannot see a test file the diff DELETED (no design that runs tests
+          # from the working tree can), and it is not trying to: what it
+          # establishes is that the enumeration rule deciding what runs did not
+          # come from the diff. Question asked: under the base ref's rules, did
+          # every module this tree contains run somewhere, exactly once?
+          # Deliberately silent
           # about who owns what and about modules the base ref never heard of —
           # running MORE than the trusted corpus is never a defect, running LESS
           # always is. This is the pass a malicious diff has to get past, and it
@@ -1125,13 +1151,22 @@ jobs:
             --shards "$SHARD_COUNT" \
             --chunk-dir "$GITHUB_WORKSPACE/shard-receipts"
 
-      - name: Prove each shard actually executed its chunk
-        # The partition guard proves the PLAN was complete. This proves the WORK
-        # happened: a shard could publish a correct chunk list and still collect
-        # zero tests (bad rootdir, an import error swallowed at collection, a
-        # conftest that skips everything) and its junit would be the only place
-        # that shows it. Empty chunks (scoped PR lane, selection smaller than the
-        # shard count) are legitimately exempt — and only those.
+      - name: Prove each shard reported executed tests
+        # NAMED FOR WHAT IT PROVES, after a refuter (Codex GPT-5.6) correctly
+        # objected that the previous name — "Prove each shard actually executed
+        # its chunk" — claimed a per-module guarantee this step does not deliver.
+        # It reads the shard's junit and refuses three states: no report at all,
+        # zero collected tests, and (added on that finding) a report whose tests
+        # are ALL skipped, which is what a conftest that blanket-skips looks like
+        # from here — pytest exits 0, `tests` is non-zero, and without this the
+        # required context would go green over a suite that ran nothing.
+        # What it does NOT prove, stated plainly so the next reader does not
+        # over-trust it: that every module in the chunk contributed a test. A
+        # module legitimately containing only fixtures contributes none, so a
+        # per-module assertion would false-red. The per-module guarantee lives in
+        # the partition guard above (the plan) plus the shard's own exit code.
+        # Empty chunks (scoped PR lane, selection smaller than the shard count)
+        # are legitimately exempt — and only those.
         run: |
           python3 - <<'PY'
           import os
@@ -1159,13 +1194,23 @@ jobs:
               suites = [root] if root.tag == "testsuite" else list(root)
               total = sum(int(s.get("tests", 0)) for s in suites)
               errors = sum(int(s.get("errors", 0)) for s in suites)
+              skipped = sum(int(s.get("skipped", 0)) for s in suites)
+              executed = total - skipped
               if total == 0:
                   problems.append(
                       f"shard {shard} owned {len(owned)} modules and collected 0 tests"
                   )
+              elif executed == 0:
+                  problems.append(
+                      f"shard {shard} owned {len(owned)} modules and collected {total} "
+                      f"tests, but ALL {skipped} were skipped — nothing actually ran"
+                  )
               if errors:
                   problems.append(f"shard {shard} reported {errors} collection error(s)")
-              print(f"shard {shard}: {len(owned)} modules -> {total} tests, {errors} errors")
+              print(
+                  f"shard {shard}: {len(owned)} modules -> {total} collected, "
+                  f"{executed} executed, {skipped} skipped, {errors} errors"
+              )
           if problems:
               for p in problems:
                   print(f"::error::{p}")
@@ -1185,13 +1230,7 @@ jobs:
         run: |
           set -euo pipefail
           RECEIPTS="$GITHUB_WORKSPACE/shard-receipts"
-          DECISIONS=$(cat "$RECEIPTS"/collect-coverage-*.txt | sort -u)
-          DECISION_COUNT=$(printf '%s\n' "$DECISIONS" | grep -c . || true)
-          if [ "$DECISION_COUNT" -ne 1 ]; then
-            echo "::error::shards published $DECISION_COUNT distinct coverage decisions ($DECISIONS) — expected exactly one"
-            exit 1
-          fi
-          if [ "$DECISIONS" != "true" ]; then
+          if [ "$BACKEND_COLLECT_COVERAGE" != "true" ]; then
             echo "coverage not collected on this lane (pull_request) — threshold not applicable"
             exit 0
           fi
