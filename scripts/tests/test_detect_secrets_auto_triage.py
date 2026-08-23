@@ -214,6 +214,41 @@ KBLI_GOLD_SENTENCE_SHA256_REAL_LINES = [
 ]
 
 
+def _find_content_keyed_rule(
+    reason_substring: str,
+) -> tuple[re.Pattern[str], re.Pattern[str], str]:
+    """Locate one CONTENT_KEYED_RULES entry by a substring unique to its
+    reason string, rather than by list position.
+
+    2026-08-23: three tests in this file indexed into CONTENT_KEYED_RULES
+    positionally (CONTENT_KEYED_RULES[1]/[13]/[14]) instead of by identity.
+    detect_secrets_auto_triage.py's own header comment above the list
+    documents why the list had become append-only-by-convention: "inserting
+    a rule mid-list shifts every later index and breaks the per-rule
+    registration tests (measured the hard way 2026-08-21: 8 red from one
+    mid-list insert)." That is the index-anchoring naming the symptom, not
+    a reason the list itself needs positional stability — nothing in
+    classify()'s matching loop depends on order for correctness (it returns
+    on first content+path match; two rules covering the same file+line
+    would only change WHICH reason string is reported, never whether the
+    line is approved). Looking a rule up by what makes it unique — a
+    substring of its own reason — removes the coupling instead of
+    documenting around it: a rule can be inserted anywhere in the list
+    without touching this file.
+
+    Fails loudly on zero or more than one match rather than silently
+    returning the wrong rule — a lookup that can return the wrong entry
+    without raising is not an improvement on the index it replaces.
+    """
+    matches = [rule for rule in CONTENT_KEYED_RULES if reason_substring in rule[2]]
+    assert len(matches) == 1, (
+        f"expected exactly 1 CONTENT_KEYED_RULES entry with reason containing "
+        f"{reason_substring!r}, found {len(matches)}: "
+        f"{[rule[2] for rule in matches] if matches else [rule[2] for rule in CONTENT_KEYED_RULES]}"
+    )
+    return matches[0]
+
+
 def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
@@ -244,13 +279,21 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     # +1: scripts/kbli_bench/results/p2b_score.json corpus_sha256 (2026-08-21, #4422 via main merge)
-    # +2: scripts/lint_google_oauth_credentials.py KNOWN_COMPROMISED fingerprints + selftest fragment (2026-08-21, appended last — this list is positionally indexed)
+    # +2: scripts/lint_google_oauth_credentials.py KNOWN_COMPROMISED fingerprints + selftest fragment (2026-08-21)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
     # +1: traffic-source fail-closed proof identity/integrity anchors (2026-08-15)
     # +1: fold_pack_seq10.py seq-9 chain anchor exact-value pin (2026-08-19)
     # +1: fold_pack_seq11.py seq-10 chain anchor exact-value pin (2026-08-20)
     # +1: fold_pack_seq12.py seq-11 chain anchor exact-value pin (2026-08-20)
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
+    #
+    # Note (2026-08-23): "appended last" is no longer a constraint. It was
+    # true only because this test and the two Google-OAuth tests below
+    # indexed into the list positionally; all three now look their rule up
+    # by content instead (see _find_content_keyed_rule above), so a new
+    # rule may be inserted anywhere in CONTENT_KEYED_RULES without breaking
+    # a registration test. The count assert immediately above is unaffected
+    # by this - it counts entries, not positions, and stays deliberate.
+    path_pat, _content_pat, reason = _find_content_keyed_rule("KBLI gold-set")
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
     assert not path_pat.search("data/kbli-filiera/some_manifest.json")
@@ -1250,10 +1293,15 @@ GOOGLE_OAUTH_LINT = "scripts/lint_google_oauth_credentials.py"
 
 
 def test_google_oauth_known_compromised_rule_registered() -> None:
-    """Appended-last rule (this list is positionally indexed): approves only
-    the 16-hex dict-key lines carrying the exact 2026-08-21 publication
-    marker, only in the OAuth guard's own file."""
-    path_pat, content_pat, reason = CONTENT_KEYED_RULES[13]
+    """Looks its rule up by content (a substring unique to its reason), not
+    by list position (2026-08-23 - previously CONTENT_KEYED_RULES[13], the
+    exact positional coupling s13-rules' mid-list insert broke elsewhere in
+    this file the same day). Approves only the 16-hex dict-key lines
+    carrying the exact 2026-08-21 publication marker, only in the OAuth
+    guard's own file."""
+    path_pat, content_pat, reason = _find_content_keyed_rule(
+        "Google OAuth gate: KNOWN_COMPROMISED"
+    )
     assert path_pat.search(GOOGLE_OAUTH_LINT)
     assert not path_pat.search("scripts/lint_telegram_tokens.py")
     assert "never key material" in reason
@@ -1265,7 +1313,10 @@ def test_google_oauth_known_compromised_rule_registered() -> None:
 
 
 def test_google_oauth_selftest_fragment_rule_registered() -> None:
-    path_pat, content_pat, _reason = CONTENT_KEYED_RULES[14]
+    """Same content-based lookup as the test above, not by list position."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "OAuth guard selftest fixture fragment"
+    )
     assert path_pat.search(GOOGLE_OAUTH_LINT)
     frag = '    ref_body = "0c" + "defghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcd"'
     assert content_pat.match(frag)
