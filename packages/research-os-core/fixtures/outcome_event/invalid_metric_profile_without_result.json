@@ -1,0 +1,51 @@
+{
+  "outcome_event_id": "b0000000-0000-4000-8000-000000000001",
+  "outcome_event_family_id": "com.example.outcome_event.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "subject_refs": {
+    "claim_refs": []
+  },
+  "outcome_type": "com.example.workflow_completed",
+  "value": {
+    "status": "ok"
+  },
+  "window": {
+    "started_at": "2026-04-15T00:00:00Z",
+    "ended_at": "2026-04-15T00:05:00Z"
+  },
+  "source_system": "workflow",
+  "quality": {
+    "attribution_strength": "deterministic",
+    "completeness": 1.0,
+    "caveats": [],
+    "collection_version": "1.0.0"
+  },
+  "cohort": {
+    "suppressed": false
+  },
+  "observed_at": "2026-04-15T00:05:00Z",
+  "recorded_at": "2026-04-15T00:05:01Z",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal",
+    "aggregation_level": "individual_run"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "idempotency_key": "synthetic-outcome-001",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "object_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "metric_profile_ref": {
+    "metric_profile_id": "c0000000-0000-4000-8000-000000000001",
+    "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  }
+}
