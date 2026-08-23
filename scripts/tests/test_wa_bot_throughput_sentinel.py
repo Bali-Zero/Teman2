@@ -489,6 +489,57 @@ def test_run_heartbeats_error_and_exits_2_on_uncaught_tick_exception(tmp_path, m
     assert hb and hb[-1][0] == "error"
 
 
+def test_run_PAGES_not_merely_heartbeats_when_the_tick_fails(tmp_path, monkeypatch):
+    """A heartbeat file is not an alarm — nothing pages off it. If a revoked
+    GRANT, a renamed column or an unreachable DB kills the tick, this organ must
+    say so out loud, or it goes mute in exactly the way the 24-day outage it was
+    built for went mute. Mutation-verified 2026-08-23: without the _tg_notify in
+    run()'s except branch, every other test in this file still passed."""
+    sent = []
+    monkeypatch.setattr(wbts, "_tg_notify", lambda t, k, x: (sent.append((t, k, x)) or True))
+    monkeypatch.setattr(wbts, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(wbts, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(wbts, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setenv("WA_BOT_THROUGHPUT_SENTINEL_ENABLED", "true")
+    monkeypatch.setenv("WA_BOT_INBOUND_STALE_MIN", "not-a-number")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _StubConn()
+
+    monkeypatch.setattr(wbts.asyncpg, "connect", _fake_connect)
+
+    rc = asyncio.run(wbts.run(dry_run=False))
+
+    assert rc == 2
+    assert len(sent) == 1, "a failed tick must page exactly once"
+    tier, key, text = sent[0]
+    assert tier == "p0"
+    assert key == wbts.WRONG_DB_KEY
+    # The text must say the WATCHER is down, not that the channel is — an
+    # operator reading it should go fix the sentinel, not go hunt WhatsApp.
+    assert "sentinel" in text.lower()
+    assert "ValueError" in text  # the real cause is named, not swallowed
+
+
+def test_run_stays_silent_on_a_failed_tick_when_dry_run(tmp_path, monkeypatch):
+    """Innocence half: --dry-run must never page, not even on failure."""
+    sent = []
+    monkeypatch.setattr(wbts, "_tg_notify", lambda t, k, x: (sent.append(k) or True))
+    monkeypatch.setattr(wbts, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(wbts, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(wbts, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setenv("WA_BOT_THROUGHPUT_SENTINEL_ENABLED", "true")
+    monkeypatch.setenv("WA_BOT_INBOUND_STALE_MIN", "not-a-number")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _StubConn()
+
+    monkeypatch.setattr(wbts.asyncpg, "connect", _fake_connect)
+
+    assert asyncio.run(wbts.run(dry_run=True)) == 2
+    assert sent == []
+
+
 def test_acquire_lock_hardens_a_pre_existing_loose_lock_file(tmp_path, monkeypatch):
     lock = tmp_path / "state" / "wa_bot_throughput_sentinel.lock"
     lock.parent.mkdir(parents=True)
@@ -505,6 +556,89 @@ def test_acquire_lock_hardens_a_pre_existing_loose_lock_file(tmp_path, monkeypat
             import os
 
             os.close(fd)
+
+
+# ------------------------------------------------- wrong-database short-circuit (guilt + innocence)
+
+
+class _HistConn:
+    """FakeConn that also answers HISTORY_SQL, so the wrong-database branch is
+    reachable. `rows` is the (outbox_rows, inbound_rows) pair that branch reads."""
+
+    def __init__(self, inbound, outbound, rows=(0, 0)):
+        self.inbound, self.outbound, self.rows = inbound, outbound, rows
+
+    async def fetchrow(self, sql, *a, **kw):
+        q = " ".join(sql.split()).lower()
+        if "count(*)" in q:
+            return {"outbox_rows": self.rows[0], "inbound_rows": self.rows[1]}
+        if "inbound_webhooks" in q:
+            return {"newest": self.inbound}
+        return {"newest": self.outbound}
+
+
+def _run_hist_tick(conn, now, monkeypatch, tmp_path):
+    sent = []
+    monkeypatch.setattr(wbts, "_tg_notify", lambda t, k, x: (sent.append((t, k)) or True))
+    monkeypatch.setattr(wbts, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(wbts, "_write_state", lambda s: None)
+    monkeypatch.setattr(wbts, "_read_state", lambda: None)
+    rc = asyncio.run(wbts._tick(conn, now, dry_run=False))
+    return rc, sent
+
+
+def test_guilt_both_tables_entirely_empty_reports_wrong_database_not_a_dead_channel(
+    tmp_path, monkeypatch
+):
+    """The local dev DB carries both tables with ZERO rows (measured 2026-08-23).
+    Run there, the organ must say "I am blind", never "the channel is dead" — a
+    p0 on every tick forever is an alarm nobody reads."""
+    now = datetime(2026, 8, 17, 14, 0, tzinfo=wbts.WITA)
+    rc, sent = _run_hist_tick(_HistConn(None, None, rows=(0, 0)), now, monkeypatch, tmp_path)
+    assert rc == 2
+    assert [k for _, k in sent] == [wbts.WRONG_DB_KEY]
+    assert wbts.DEAD_CHANNEL_KEY not in [k for _, k in sent]
+
+
+def test_innocence_null_signals_but_real_history_is_a_dead_channel_not_a_wrong_database(
+    tmp_path, monkeypatch
+):
+    """A truncated PROD table also reads NULL — but prod carried 325 wa_outbox
+    rows while the bot was dead, so history>0 must still reach dead_channel.
+    This is the pair that stops the new short-circuit from swallowing a real
+    outage."""
+    now = datetime(2026, 8, 17, 14, 0, tzinfo=wbts.WITA)
+    rc, sent = _run_hist_tick(_HistConn(None, None, rows=(325, 244)), now, monkeypatch, tmp_path)
+    assert rc == 0
+    assert [k for _, k in sent] == [wbts.DEAD_CHANNEL_KEY]
+
+
+def test_innocence_one_signal_present_never_consults_history_at_all(tmp_path, monkeypatch):
+    """The short-circuit requires BOTH signals NULL. With one present the organ
+    must classify normally — a conn that raises on HISTORY_SQL proves it is
+    never even queried."""
+
+    class NoHistory(_HistConn):
+        async def fetchrow(self, sql, *a, **kw):
+            if "count(*)" in " ".join(sql.split()).lower():
+                raise AssertionError("HISTORY_SQL must not run when a signal exists")
+            return await super().fetchrow(sql, *a, **kw)
+
+    now = datetime(2026, 8, 17, 14, 0, tzinfo=wbts.WITA)
+    fresh = now - timedelta(minutes=5)
+    rc, sent = _run_hist_tick(NoHistory(fresh, None), now, monkeypatch, tmp_path)
+    assert rc == 0
+    assert [k for _, k in sent] == [wbts.BOT_BROKEN_KEY]
+
+
+def test_wrong_db_text_blames_configuration_and_never_claims_the_channel_is_down():
+    """Wording is load-bearing: an operator reading this must go check a DSN, not
+    go restart WhatsApp."""
+    text = wbts.build_wrong_db_text()
+    assert "INTAKE_DATABASE_URL" in text
+    assert "CONFIGURATION" in text.upper()
+    for forbidden in ("channel is dead", "bot is dead", "no client"):
+        assert forbidden not in text.lower()
 
 
 if __name__ == "__main__":

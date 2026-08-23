@@ -93,6 +93,9 @@ WITA = ZoneInfo("Asia/Makassar")
 BOT_BROKEN_KEY = "wa-bot:throughput:bot-broken"
 DEAD_CHANNEL_KEY = "wa-bot:throughput:dead-channel"
 INBOUND_STALE_KEY = "wa-bot:throughput:inbound-stale"
+# Not a channel condition: the organ is reading a database that has no WA
+# history at all. Its own dedup key so it can never be mistaken for an outage.
+WRONG_DB_KEY = "wa-bot:throughput:wrong-database"
 
 _PY3_CANDIDATES: tuple[str, ...] = (
     "/usr/bin/python3",
@@ -107,6 +110,13 @@ _PY3_CANDIDATES: tuple[str, ...] = (
 # wa-mirror tables wa_mirror_freshness_liveness.py already watches.
 INBOUND_SQL = "SELECT max(received_at) AS newest FROM inbound_webhooks WHERE channel = 'whatsapp'"
 OUTBOUND_SQL = "SELECT max(created_at) AS newest FROM wa_outbox WHERE status = 'done'"
+# Discriminator, measured 2026-08-23: the LOCAL dev database carries both tables
+# with ZERO rows, so a run against the default DSN would read NULL on both signals
+# and classify a healthy world as dead_channel — a p0 on every tick, forever. An
+# alarm that always fires is an alarm nobody reads, which is worse than none. So
+# "this table has never held a row" is separated from "its newest row is old":
+# the first is a misconfiguration (wrong DSN / unprovisioned DB), never an outage.
+HISTORY_SQL = "SELECT (SELECT count(*) FROM wa_outbox) AS outbox_rows, (SELECT count(*) FROM inbound_webhooks WHERE channel = 'whatsapp') AS inbound_rows"
 
 
 # ---------------------------------------------------------------- side effects (module-level, monkeypatchable)
@@ -280,6 +290,17 @@ def recovered_dedup_key(now_wita: datetime) -> str:
     return f"wa-bot:throughput:recovered:{now_wita.strftime('%Y-%m-%d')}"
 
 
+def build_wrong_db_text() -> str:
+    """Deliberately does NOT say the channel is down — it says the organ cannot
+    see it. Naming the env var means the reader fixes config, not WhatsApp."""
+    return (
+        "🔴 WA throughput sentinel is BLIND — it is connected to a database where "
+        "wa_outbox and inbound_webhooks are both completely empty, so it cannot "
+        "tell a healthy bot from a dead one. This is a CONFIGURATION fault, not a "
+        "channel outage: check INTAKE_DATABASE_URL points at production."
+    )
+
+
 def _alert_payload(
     condition: str,
     inbound_business_age: float | None,
@@ -316,6 +337,24 @@ async def _tick(conn: Any, now_wita: datetime, *, dry_run: bool) -> int:
     outbound_row = await conn.fetchrow(OUTBOUND_SQL, timeout=30)
     inbound_newest = inbound_row["newest"]
     outbound_newest = outbound_row["newest"]
+
+    # Wrong-database short-circuit, evaluated BEFORE any staleness reasoning.
+    # Both signals NULL is ambiguous on its own: it is what a truncated prod
+    # table looks like AND what a dev database looks like. The row counts
+    # disambiguate — a product that has ever run leaves rows behind, even
+    # failed ones (prod carried 325 wa_outbox rows while dead). Zero of both
+    # means this organ is not looking at the product's database.
+    if inbound_newest is None and outbound_newest is None:
+        history = await conn.fetchrow(HISTORY_SQL, timeout=30)
+        if history["outbox_rows"] == 0 and history["inbound_rows"] == 0:
+            logger.error(
+                "[wa_bot_throughput] wrong database: wa_outbox and inbound_webhooks "
+                "are both entirely empty — check INTAKE_DATABASE_URL"
+            )
+            _heartbeat("error", "wrong database (both tables empty)")
+            if not dry_run:
+                _tg_notify("p0", WRONG_DB_KEY, build_wrong_db_text())
+            return 2
 
     business = in_business_hours(
         now_wita, start_hour=start_hour, end_hour=end_hour, business_days=business_days
@@ -433,6 +472,15 @@ async def run(*, dry_run: bool) -> int:
             # file, verbale #6): always heartbeat("error") and return 2.
             logger.error("[wa_bot_throughput] tick failed: %s", exc)
             _heartbeat("error", f"tick failed: {exc}")
+            # A heartbeat file is not an alarm: nothing pages off it, so a bad
+            # column, a revoked GRANT or an unreachable DB would leave this organ
+            # mute exactly like the outage it exists to catch. Page instead.
+            if not dry_run:
+                _tg_notify(
+                    "p0", WRONG_DB_KEY,
+                    f"🔴 WA throughput sentinel FAILED to run — it is not watching "
+                    f"anything right now. Cause: {type(exc).__name__}: {exc}",
+                )
             return 2
         finally:
             await conn.close()
