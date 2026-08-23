@@ -219,14 +219,59 @@ class TestPromptManagerFailLoudOnUnknownVersion:
     @staticmethod
     def _capture_module_errors(reload_target):
         """Capture ERROR records emitted DURING an import, independently of the
-        global logging config.
+        global logging config AND of any ambient suppression already in effect
+        when this runs.
 
         `caplog` reaches this logger only while propagation to the root handler
         is intact — and in a full-suite run an earlier import can leave
         propagation off or the root reconfigured, so the same assertion passed
         alone and failed in batch (order-dependent, i.e. it would fail in CI and
         pass locally). Attaching a handler to THIS logger removes the dependency
-        on anything global.
+        on propagation — but level/handlers/disabled alone are not enough: two
+        OTHER knobs are process-global (or at least logger-persistent) and are
+        not scoped to "this test":
+
+        * `logging.Logger.manager.disable` — the process-global mute set by
+          `logging.disable(N)`. `Logger.isEnabledFor()` checks it BEFORE this
+          logger's own level or handlers are ever consulted, so a suppressed
+          level never even constructs a record — no handler, including ours,
+          gets a chance to see it. pytest's own `caplog.set_level()`/
+          `at_level()` do touch this exact global under the hood
+          (`_pytest/logging.py::_force_enable_logging`) — but only ever to
+          LOOSEN it: that helper's two write paths either lower the
+          threshold (`logging.disable(max(level - 10, logging.NOTSET))`) or
+          clear it outright (`logging.disable(logging.NOTSET)`), and
+          `at_level()` restores the pre-existing value in a `finally`. So
+          pytest is not a suppression source for this knob — cited here for
+          the direction it moves it, not as a threat. No producer of an
+          elevated global mute exists in this repo today: across the whole
+          `backend/` tree, all 21 `conftest.py` included, the only site that
+          touches `manager.disable` at all is
+          `backend/tests/core/test_telegram_token_never_reaches_a_log.py`,
+          and it only ever *un*-mutes (`logging.disable(logging.NOTSET)`),
+          saving and restoring around it. This capture is therefore
+          hardening of the promise this docstring already makes —
+          "independently of the global logging config" — not the diagnosis
+          of the CI failure that motivated it.
+        * this logger's own `.filters` — `Logger.filter()` runs before
+          `callHandlers()`, so a drop-everything filter attached directly to
+          `backend.llm.prompt_manager` (by this test file or any other) would
+          silently eat the record before our sink ever sees it, exactly like
+          the propagation gap this helper already existed to close.
+
+        Both are saved and neutralised on entry, and both are restored in
+        `finally` — a failing assertion here must never leak either into the
+        next test, which is how one broken test becomes a shard-wide outbreak
+        (cicatrix-superscar #2, "esiste != armato").
+
+        `importlib.reload()` (not a plain `import`) is what makes the
+        module-scope `logger.error()` call happen HERE, inside the capture
+        window, regardless of whether some earlier test in this process
+        already imported/reloaded the module: reload always re-executes the
+        module body against the CURRENT env var, it never short-circuits on
+        `sys.modules` already having an entry — so a prior successful import
+        with a different (or valid) `ZANTARA_PROMPT_VERSION` cannot suppress a
+        later fail-loud capture.
         """
         records: list[logging.LogRecord] = []
 
@@ -236,7 +281,13 @@ class TestPromptManagerFailLoudOnUnknownVersion:
 
         logger = logging.getLogger("backend.llm.prompt_manager")
         sink = _Sink(level=logging.ERROR)
-        previous_level, previous_disabled = logger.level, logger.disabled
+        previous_level = logger.level
+        previous_disabled = logger.disabled
+        previous_filters = list(logger.filters)
+        previous_manager_disable = logging.root.manager.disable
+
+        logger.filters = []
+        logging.disable(logging.NOTSET)  # neutralise any ambient global mute
         logger.addHandler(sink)
         logger.setLevel(logging.ERROR)
         logger.disabled = False
@@ -246,6 +297,8 @@ class TestPromptManagerFailLoudOnUnknownVersion:
             logger.removeHandler(sink)
             logger.setLevel(previous_level)
             logger.disabled = previous_disabled
+            logger.filters = previous_filters
+            logging.root.manager.disable = previous_manager_disable
         return records
 
     def test_unrecognized_explicit_value_logs_error(self, monkeypatch):
@@ -274,6 +327,87 @@ class TestPromptManagerFailLoudOnUnknownVersion:
         )
         assert pm.ZANTARA_MASTER_TEMPLATE == pm._TEMPLATE_V1
         assert pm.PROMPT_VERSION_ACTIVE == "v1"
+
+    def test_capture_survives_a_pre_existing_global_logging_disable(self, monkeypatch):
+        """GUILT: a process-global mute — whatever calls `logging.disable(N)` —
+        must not blind the capture. pytest's own `caplog.set_level()`/
+        `at_level()` do touch this exact global (`_pytest/logging.py::
+        _force_enable_logging`), but only ever to LOOSEN it, never to raise
+        it — so this is not a reproduction of pytest's own behaviour. It is a
+        synthetic worst case: simulates a sibling test/module in the SAME
+        process (CI runs this suite under `pytest-xdist --dist loadfile`,
+        many files per worker) leaving `logging.Logger.manager.disable`
+        elevated by SOME OTHER means when this test starts, so the capture
+        stays defensive even though no such producer is known to exist in
+        this repo today.
+        """
+        import backend.llm.prompt_manager as pm
+
+        logging.disable(logging.CRITICAL)
+        try:
+            monkeypatch.setenv("ZANTARA_PROMPT_VERSION", "v9")
+            error_records = [
+                r for r in self._capture_module_errors(pm) if r.levelname == "ERROR"
+            ]
+        finally:
+            logging.disable(logging.NOTSET)
+        assert error_records, (
+            "a pre-existing logging.disable(CRITICAL) must not suppress the "
+            "fail-loud ERROR record — the capture must neutralise it"
+        )
+        assert any("v9" in r.getMessage() for r in error_records)
+
+    def test_capture_survives_a_drop_everything_filter_on_the_logger(self, monkeypatch):
+        """GUILT: a filter attached directly to `backend.llm.prompt_manager`
+        runs (via `Logger.filter()`) BEFORE any handler — including our own
+        sink — ever sees the record. A filter left behind by an unrelated test
+        (or a defensive "quiet this logger during tests" helper elsewhere)
+        must not make this capture read as silence.
+        """
+        import backend.llm.prompt_manager as pm
+
+        logger = logging.getLogger("backend.llm.prompt_manager")
+
+        class _DropEverything(logging.Filter):
+            def filter(self, record: logging.LogRecord) -> bool:
+                return False
+
+        drop_all = _DropEverything()
+        logger.addFilter(drop_all)
+        try:
+            monkeypatch.setenv("ZANTARA_PROMPT_VERSION", "v9")
+            error_records = [
+                r for r in self._capture_module_errors(pm) if r.levelname == "ERROR"
+            ]
+        finally:
+            logger.removeFilter(drop_all)
+        assert error_records, (
+            "a pre-existing drop-everything filter on the logger must not "
+            "suppress the fail-loud ERROR record — the capture must clear it"
+        )
+        assert any("v9" in r.getMessage() for r in error_records)
+
+    def test_capture_stays_silent_for_known_versions_under_a_prior_global_mute(
+        self, monkeypatch
+    ):
+        """INNOCENCE: neutralising ambient suppression must not manufacture a
+        false ERROR for a legitimate version — the cure only removes noise
+        that would otherwise hide a real record, it never adds one.
+        """
+        import backend.llm.prompt_manager as pm
+
+        logging.disable(logging.CRITICAL)
+        try:
+            monkeypatch.setenv("ZANTARA_PROMPT_VERSION", "v2")
+            error_records = [
+                r for r in self._capture_module_errors(pm) if r.levelname == "ERROR"
+            ]
+        finally:
+            logging.disable(logging.NOTSET)
+        assert error_records == [], (
+            "a valid version must never trip the fail-loud path, ambient mute "
+            "or not"
+        )
 
     def test_known_versions_never_log_the_unrecognised_error(self, monkeypatch, caplog):
         import backend.llm.prompt_manager as pm
