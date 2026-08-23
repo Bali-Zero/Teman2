@@ -263,8 +263,16 @@ PARENT`. No `sponsor_nationalities` conjunct, no `marriage_registered` conjunct.
     `Rp. 6.000.000,-` / `Rp. 8.500.000,-` (byte-stable vs #4383, proving the fetch mechanism
     works), while `E30E` ("Visa Pendidikan Kawasan Ekonomi Khusus") and `E30F` ("Visa Pertukaran
     Pelajar") both return **`Data Belum Tersedia`** with no duration options listed at all — a
-    genuine state-side absence, not a probe failure. Pricing them would require asserting a PNBP
-    the state has not published — a business decision (Legge 5), not a fact; do not attempt a
+    genuine state-side absence, not a probe failure. **Correction, same day: the first version of
+    this paragraph never actually fetched plain `E30` — its unpriced status was carried by
+    association with its two siblings, the identical inference-from-neighbours shape the E31C
+    correction above exists to warn against.** Fetched independently this session, two ways
+    (a summarized fetch + a raw `curl` with tag-stripped grep on the same response, HTTP 200):
+    `imigrasi.go.id/wna/daftar-visa-indonesia/E30` — title `E30 Visa Pendidikan` — ALSO returns
+    `Data Belum Tersedia` immediately after the title, with no duration options, same shape as
+    E30E/E30F. The paragraph's conclusion was correct; it is now measured for all three products,
+    not inferred for one of them. Pricing any of the three would require asserting a PNBP the
+    state has not published — a business decision (Legge 5), not a fact; do not attempt a
     workaround. **Correction to this entry's own first-pass framing here, found wrong the same
     day by adversarial review and independently re-verified against the running code, not just
     the payload: `public_catalog` is metadata with NO runtime consumer, and reading it as a

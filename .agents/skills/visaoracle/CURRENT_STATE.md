@@ -3,9 +3,10 @@
 > **SUPERSEDED (2026-08-23).** This is a 2026-08-15 snapshot, last touched by PR #4209. Four
 > RulePack activations have shipped since — seq-9 (2026-08-19), seq-10 (2026-08-19, cured
 > `el.c2.corporate-sponsor-type` / `el.e31c-mixed-marriage-parents`), seq-11 (2026-08-20,
-> E30A/E30B pricing_key), seq-12 (2026-08-20, source re-attestation, freshness sentinel armed on
-> Pro) — none of which this file records. **`.agents/skills/visaoracle/SKILL.md` § LIVE STATE is
-> the current record; read that first.** Body below kept as archaeology, not deleted.
+> E30A/E30B pricing_key), seq-12 (2026-08-20, source re-attestation, freshness sentinel loaded
+> and DB-reading on Pro — alert delivery unproven) — none of which this file records.
+> **`.agents/skills/visaoracle/SKILL.md` § LIVE STATE is the current record; read that first.**
+> Body below kept as archaeology, not deleted.
 
 Snapshot: 2026-08-15, Asia/Makassar (Pro takeover, finalization in progress)
 
