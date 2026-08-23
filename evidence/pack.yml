@@ -1,59 +1,84 @@
 brief_ref: evidence/brief.yml
-plan_ref: "pro-visa-freshness-sentinel.sh wrapper header self-reference fix, split out of PR #4592 (2026-08-23)"
+plan_ref: "S11 backend-test sharding — PR #4647, three commits (b54bddecf design, 0b298c253 trust boundary, 535b27784 coverage receipt)"
 diff:
-  net_lines: "+2/-2, 1 file, measured by `git show HEAD --numstat` at HEAD f27cb936f (this PR's only commit)."
-  behaviour_change: "none — two `#` comment lines only; `set -u` and every executable line byte-identical before/after"
+  net_lines: "+353 net on .github/workflows/tests.yml (526 insertions / 173 deletions), +2 new files under scripts/ci/ (partitioner 280 lines, its guilt+innocence corpus 380 lines), +11 lines on .github/CODEOWNERS. Measured by `git diff --numstat origin/main...HEAD`. Larger than the ~400-line PR guideline and DECLARED as such: a job cannot be split into three without restating the setup blocks each piece needs, and roughly half the tests.yml delta is load-bearing comments carried over verbatim from the pre-split job so the scar rationale is not lost."
+  behaviour_change: "One required status context keeps its exact name and semantics; the work behind it moves from 1 job to 5. Coverage, thresholds, the PR-lane impact scoping, the merge_group unscoped semantic, and the change-map skip predicate are all preserved. No application code is touched."
 receipts:
-  - claim: "The diff is exactly the two header comment lines; ORGAN_ID and LOG_DIR (legitimate underscores) are untouched"
-    cmd: "git show HEAD --numstat -- infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh"
+  - claim: "The step being cured really is the dominant cost, and it is not a one-night anomaly — it is 74.5-74.6% of the job on two different event types"
+    cmd: 'gh api repos/Bali-Zero/Teman2/actions/runs/32626973483/jobs --jq ''.jobs[]|select(.name=="Backend Tests (Python)")|.steps[]'' -> Run unit tests 797s of a 1068s job; same shape on schedule run 32624568684 -> 726s of 975s. Mypy 90s/76s, pip-audit 37s/35s, everything else 142s/138s.'
     exit: 0
-    ts: "2026-08-23T10:31:22Z"
-    seat: "session (m5)"
-  - claim: "The old header named a file that has never existed: repo history never has the underscore path; the live Pro copy resolves the hyphen path; the plist's ProgramArguments uses the hyphen path"
-    cmd: "grep -c pro-visa_freshness_sentinel.sh infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (post-fix, ->0); ssh pro 'ls ~/scripts/pro-visa-freshness-sentinel.sh' (exists) and 'ls ~/scripts/pro-visa_freshness_sentinel.sh' (No such file or directory); ssh pro 'launchctl print gui/501/com.nuzantara.visa-freshness-sentinel' shows program ~/scripts/pro-visa-freshness-sentinel.sh"
+    ts: "2026-08-23T16:25Z"
+    seat: "session (pro)"
+  - claim: "A naive whole-job matrix MISSES the <=8min target, which is why the static job exists. This is arithmetic on the measurement above, not a preference"
+    cmd: "269s of non-test work + 797/3 = 535s per shard, plus a fan-in ~= 10.5 min. Lifting mypy (90s) + pip-audit (37s) onto a concurrent job leaves ~= 388s per shard. MEASURED on the first PR transit: `Backend Static (Python)` completed in 170s (run 32629406562), i.e. below the 205s projection and never the critical path."
     exit: 0
-    ts: "2026-08-23T10:32Z"
-    seat: "session (m5)"
-  - claim: "infra/home-fork/declared-pairs.json pair[146] already declares the hyphen form on both live and repo sides for this organ -- scripts/lint_home_fork.py was never blind to the real pair, only the wrapper's own header comment was wrong"
-    cmd: 'python3 -c "import json; d=json.load(open(''infra/home-fork/declared-pairs.json'')); print(d[146])" -> {''live'': ''~/scripts/pro-visa-freshness-sentinel.sh'', ''repo'': ''infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh'', ''machines'': [''pro'']}'
+    ts: "2026-08-23T16:52Z"
+    seat: "session (pro)"
+  - claim: "`Backend Tests (Python)` is genuinely a required context, and there are exactly 27 of them — the fan-in's name is infrastructure, not a label"
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq '.contexts[]' | nl -> 27 lines, #4 is `Backend Tests (Python)`"
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: "No script in the repo parses the # Canon: / # Live: comment lines back out of an EXISTING wrapper to do anything functional. The only other hit for the literal 'Canon:' in scripts/*.py is scripts/organ_birth.py:80, and that line is inside wrapper_template() -- an f-string that GENERATES a new wrapper's header text at organ-birth time, never a reader of an existing file"
-    cmd: "grep -rl 'Canon:' scripts/*.py -> scripts/organ_birth.py only; sed -n '75,85p' scripts/organ_birth.py confirms it is inside an f-string head='''...''' template, not a file read"
+    ts: "2026-08-23T16:22Z"
+    seat: "session (pro)"
+  - claim: "The partitioner tiles the real corpus exactly, and its own guilt+innocence corpus passes on the COMMITTED bytes (not on a working tree being edited)"
+    cmd: "git archive 535b27784 <4 files> | tar -x -C <frozen snapshot>; cd snapshot && python3 scripts/ci/test_shard_tests.py -> Ran 28 tests, OK. In the worktree: shard_tests.py enumerate | wc -l -> 1425; chunk --shard 1|2|3 -> 475 / 475 / 475."
     exit: 0
-    ts: "2026-08-23T10:33Z"
-    seat: "session (m5)"
-  - claim: "python3 scripts/lint_home_fork.py passes (no regression) and bash -n is clean on the fixed file"
-    cmd: "python3 scripts/lint_home_fork.py -> '25 live copy/copies match their repo twin' + 'clean' on the 1 undeclared-payload discovery pass; bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> exit 0, no output"
+    ts: "2026-08-23T17:02Z"
+    seat: "session (pro)"
+  - claim: "The exact new pytest invocation shape works — this was smoke-tested for real, not reasoned about"
+    cmd: "cd apps/backend-rag && COVERAGE_FILE=$PWD/coverage-data-shardT1 pytest <2 explicit files> --cov=backend --cov-branch --cov-report= --junit-xml=... -> data file 450560 bytes + junit 4055 bytes written. Second file likewise. Then `coverage combine coverage-data-shardT1 coverage-data-shardT2` -> 'Combined 2 files'; `coverage xml` -> written; `coverage report` -> TOTAL printed. The fan-in's own junit parser read both: tests=27/time=0.473 and tests=25/time=3.704."
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: 'The organ stays ARMED and unaffected: Pro''s launchd job is loaded, last_seen is fresh, and today''s run already reports pack_source:"database" -- this comment edit needs no restart/redeploy'
-    cmd: 'ssh pro ''launchctl print gui/$(id -u)/com.nuzantara.visa-freshness-sentinel'' (loaded, program path correct); ssh pro ''cat ~/.organism/last_seen/pro.visa_freshness_sentinel.json'' -> {"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}; ssh pro ''tail -5 ~/logs/pro-visa_freshness_sentinel/run.log'' -> pack_sequence 12, pack_source "database"'
+    ts: "2026-08-23T16:38Z"
+    seat: "session (pro)"
+  - claim: "The empty-chunk guard and the chunk read loop behave under the runner's shell, including errexit — an empty chunk must never reach pytest, because pytest with no file arguments collects the ENTIRE rootdir, the exact opposite of what an empty chunk means"
+    cmd: "bash -euo pipefail -c '<while IFS= read -r ... [ -n ] && CHUNK+=()>' over a file containing a blank line -> 2 entries, exit 0 (the AND-list does not trip errexit); over an empty file -> the `[ ${#CHUNK[@]} -eq 0 ]` branch fires. `mapfile` was replaced with `while read` after `mapfile` proved unavailable in the session shell — a bash-version dependency this step does not need."
     exit: 0
-    ts: "2026-08-23T10:30Z"
-    seat: "session (m5)"
+    ts: "2026-08-23T16:45Z"
+    seat: "session (pro)"
+  - claim: "Static gates pass on the changed workflow"
+    cmd: "actionlint .github/workflows/tests.yml -> clean (the two SC2086 infos it first reported were fixed by quoting the --junit-xml args); python3 scripts/ci/lint_unreachable_workflow_conditions.py -> exit 0; python3 -c 'yaml.safe_load(...)' -> jobs parse, names are ['Change map','Backend Static (Python)','Backend Shard ${{ matrix.shard }}','Backend Tests (Python)', ...]"
+    exit: 0
+    ts: "2026-08-23T17:00Z"
+    seat: "session (pro)"
+  - claim: "The required context's downstream consumer is unaffected: the job ID `backend-tests` is preserved, so `test-summary`'s `needs.backend-tests.result` now reads the fan-in verdict"
+    cmd: 'python3 -c "yaml.safe_load(...)[''jobs''][''test-summary''][''needs'']" -> [''backend-tests'',''mcp-tests'',''evaluator-critical-tests'',''frontend-tests'',''packages-core-tests'',''e2e-tests'']. Four stale in-file cross-references (''see backend-tests comment above'') were repointed to backend-shard, which now carries the original long rationale.'
+    exit: 0
+    ts: "2026-08-23T16:47Z"
+    seat: "session (pro)"
+  - claim: "The lock file is a CLAIM about the environment, not an observation of it — which is why the coverage version is now a receipt written by the interpreter that produces the data"
+    cmd: "grep '^coverage==' apps/backend-rag/requirements.lock.txt -> coverage==7.15.4; apps/backend-rag/.venv/bin/python -c 'import coverage; print(coverage.__version__)' -> 7.14.3. Two different answers to the same question in the same tree."
+    exit: 0
+    ts: "2026-08-23T16:57Z"
+    seat: "session (pro)"
+  - claim: "`actions/download-artifact@v7` exists — the version matching this repo's upload-artifact@v7 house standard was verified against the real tag, not assumed"
+    cmd: "curl -o /dev/null -w '%{http_code}' https://api.github.com/repos/actions/download-artifact/git/ref/tags/v7 -> 200 (v4/v5/v6 also 200)"
+    exit: 0
+    ts: "2026-08-23T16:31Z"
+    seat: "session (pro)"
 tests:
-  - "No unit test exists or is warranted for a 2-line comment change with zero executable delta; bash -n (syntax) and lint_home_fork.py (the ONE guard whose job includes this file's identity) are the applicable checks and both pass, per receipts above."
+  - "scripts/ci/test_shard_tests.py — 28 cases, run on the frozen committed bytes. GUILT (each is a way a sharded suite can silently under-run and look green): a dropped module, a module running twice, a module outside the corpus, a shard that never ran, a shard running someone else's files, a stray chunk index, and the worst case of all — every shard publishing an empty list. INNOCENCE: a sound partition, a corpus smaller than the shard count (scoped PR lane, shard 3 legitimately empty), determinism across calls, the e2e exclusion, and the fail-open target resolution (narrowing requires BOTH the flag and a non-empty selection; 'banana' as IMPACT_RUN_ALL yields the full corpus)."
+  - "The union/security mode has its OWN guilt+innocence split, because it is the pass a malicious diff has to defeat: it must keep catching a dropped module, an overlap, an empty partition and a missing shard, while accepting a different assignment algorithm and a PR that adds test modules — and the full/drift mode must still reject both of those, which is what makes the two passes distinct rather than redundant."
 static:
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> clean"
-  - "scripts/lint_home_fork.py -> clean (25/25 checkable pairs on m5 match; this pair is pro-only so its LIVE side is not checkable from m5 -- see dissent #3 below for the post-merge consequence)"
+  - "actionlint .github/workflows/tests.yml -> clean"
+  - "scripts/ci/lint_unreachable_workflow_conditions.py -> exit 0"
+  - "pre-commit hook chain (lease-check, anti-reward-hacking test lint, secrets, python lint, off-limits) -> all passed on all three commits"
 runtime_proof:
-  - "Not applicable in the classic sense (no code path executes differently). The closest runtime proof is that the organ this wrapper launches is independently confirmed ARMED and HEALTHY on Pro before and after this diff (receipts above) -- the fix changes documentation the organ never reads."
+  - "PENDING at the time of writing, and deliberately not claimed: the >=8-minute wall-clock target and the guilt/innocence probes are being measured on this PR's own transit. See residual_risks — this pack does NOT assert the target is met, only that the arithmetic and the first data point (Backend Static 170s) are consistent with it."
 dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context, dispatched via `kimi -p ... -m kimi-code/k3`, independent of the diff's author)"
-    objection: "Tried to refute all 4 of the author's claims by re-running the underlying commands itself (git show --numstat, ssh pro ls/launchctl, python declared-pairs read, grep Canon: across scripts/*.py and .github/workflows/) rather than trusting the brief. All 4 confirmed true. Found 3 things beyond the claims, none blocking: (a) evidence/brief.yml existed in the worktree but was UNCOMMITTED at review time -- a real process gap, since the whole reason this fix was split out of #4592 was to carry a floor-3 evidence pack; (b) the root cause is unfixed and will recur: scripts/organ_birth.py:80's wrapper_template() does organ_id.replace('.', '-'), which only replaces the dot and leaves internal underscores alone, so ANY future organ_id containing '_' is born with the same wrong header; 3 sibling wrappers carry the identical live bug today (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh -- declared-pairs indices 32/68/151), correctly left untouched by this PR's tight scope but flagged so the pattern is not lost; (c) merging this diff will transiently desynchronize declared-pairs pair[146] -- the live copy on Pro still carries the pre-fix underscore header (confirmed by ssh), so lint_home_fork.py --check run FROM PRO will read the pair as sha256-divergent until the repo-authoritative content is synced to the live path; expected/self-healing under the existing repo-is-canon model, not a defect of this diff, but the sync should be confirmed rather than assumed."
-    status: PLAUSIBLE
+  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context, `kimi -p ... -m kimi-code/k3`, independent of the diff's author)"
+    objection: "Two CONFIRMED findings, both real, both fixed before this pack was written. (1) THE MONEY QUESTION: the shards and the fan-in both ran the PR's OWN copy of scripts/ci/shard_tests.py, so a diff appending one entry to EXCLUDED_DIRS made both agree perfectly on a shrunken corpus -- chunks tile it exactly, guard green, required context green, and the test catching the diff's regression never ran. It noted the author had built exactly this defense (BASE_SHA extraction) for change_map.py/impact_map.py and not for the new file, and that the change-map's own classification of the PR as run_all=true does not help, because forcing the jobs to RUN does not stop a modified enumerator from shrinking what they run. Cured in 0b298c253. (2) The fan-in derived its coverage pin from requirements.lock.txt while the shards install the lock closure and then an unpinned pytest-cov on top, so the comment claimed a same-version guarantee the code did not deliver; it also correctly flagged that if the lock had no coverage== the step would go red on every coverage lane and block the queue. Cured in 535b27784. It REFUTED: the ARG_MAX concern (~28KB of args vs a ~2MB limit), the stuck-required-context paths, and a pytest python_files mismatch (pyproject declares exactly ['test_*.py','*_test.py'], which is what _is_test_file implements). Its final 'CRITICAL FINDING' -- that test_shard_tests.py references a --union flag shard_tests.py does not have -- is an ARTEFACT OF THE AUTHOR'S OWN METHOD, not a defect: it was reading the live worktree while that worktree was being edited, so it got a torn read. Disproved by re-running the corpus against a frozen `git archive` of the committed SHA: 28/28 pass. The lesson is the author's, not the refuter's -- point a refuter at an immutable snapshot."
+    status: CONFIRMED
 residual_risks:
-  - "The organ_birth.py:80 template bug (dot-only replace, underscores in organ_id survive into the generated header) is NOT fixed here -- deliberately out of scope for a 2-line self-reference correction. 3 sibling wrappers (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh) carry the same wrong header today and any future organ with an underscore in its id will be born with it again. A follow-up PENDING-ARMS line is warranted; not opened in this PR to keep scope tight (constraints in brief.yml)."
-  - "Transient post-merge divergence: until the live copy on Pro (~/scripts/pro-visa-freshness-sentinel.sh) is synced from the repo-authoritative content, `scripts/lint_home_fork.py --check` run on Pro will report pair[146] as sha256-divergent (comment-only bytes differ). This is the normal repo-is-canon flow and self-heals on the next sync of this pair -- confirmed the sync mechanism exists (this repo has synced this exact pair before, per the pair's own presence in declared-pairs.json since the organ's birth) but did NOT independently re-verify a sync fires automatically post-merge; flagged rather than assumed."
+  - "THE WALL-CLOCK TARGET IS NOT YET PROVEN. The <=8min figure is arithmetic on a measured breakdown plus one measured data point (Backend Static 170s). The honest status is: projected, not demonstrated. If the measured shard wall-clock lands above target, the next lever is the duration-aware splitter this design already instruments for (see below) -- not a wider matrix."
+  - "SHARD BALANCE IS UNMEASURED BY CONSTRUCTION. Round-robin over the canonical path order balances FILE COUNT exactly (475/475/475) and says nothing about TIME. The fan-in emits a slowest/fastest ratio from junit's own `time` attribute precisely so the pytest-split decision is made on data; above ~2x, round-robin is the wrong splitter. Deferring that to v2 is a declared choice, and this PR's own transit is its first measurement."
+  - "RUNNER SLOT PRESSURE, DECLARED. This turns 1 job into 5 per run, and both the PR lane and the merge-group lane run. tests.yml's own concurrency comments identify runner slots as the binding constraint on main's velocity, so trading slots for wall-clock is a real trade, not a free win. Public repo => the minutes are free; the SLOTS are not. Not mitigated in this PR."
+  - "THE 'INTRODUCED' BRANCH OF THE TRUST BOUNDARY IS WIDE OPEN ON THIS PR AND ONLY THIS PR. `git show BASE_SHA:scripts/ci/shard_tests.py` fails because the base ref has no such file, so this PR's own guard adjudicates with its own head copy. That is unavoidable for the commit that introduces a trusted file; it is declared loudly (a ::warning:: in the run log) rather than silently downgraded, and the CODEOWNERS entries added here mean every LATER edit always has a base copy to be judged against."
+  - "A PR whose base predates this commit will have a base copy of shard_tests.py without the `--union` flag, and the security pass would fail on an argparse error. That fails CLOSED (red), not open, and the window closes as soon as this lands."
+  - "Codecov remains unarmed. There is no CODECOV_TOKEN secret in this repository, so the upload step has been skipping on every run since before this change (measured 0s). Carried over unchanged rather than deleted; arming it is a separate decision and is NOT part of this PR."
 sources:
-  - infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (this PR's only changed file)
-  - infra/home-fork/declared-pairs.json (pair[146], read-only reference)
-  - scripts/organ_birth.py:75-85 (read-only reference, root-cause template)
-  - Pro live state via ssh (launchctl, last_seen json, run.log) -- re-verified fresh this session, not recalled
+  - .github/workflows/tests.yml (the changed file)
+  - scripts/ci/shard_tests.py + scripts/ci/test_shard_tests.py (new)
+  - .github/CODEOWNERS (2 entries added)
+  - "GitHub Actions runs 32626973483 / 32624568684 (the baseline measurement) and 32629406562 / 32629697496 (this PR's transits)"
+  - "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks (the 27 contexts)"
 pii_scan: clean
-# ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
-# at write time = 7701 bytes -> ~1925 tokens, well inside the 30,000 hard cap.
-size_tokens: 1925
+size_tokens: 3177
