@@ -32,6 +32,20 @@ def mod():
     return load_module()
 
 
+@pytest.fixture(autouse=True)
+def isolate_report(mod, tmp_path, monkeypatch):
+    """Point the report at a path that does not exist, for EVERY test.
+
+    Cicatrix W96. Without this the fallback in main() reads the machine's real
+    ~/.claude/seat-quota.json: the suite was green before the first --publish and went red
+    straight after, because a production file had appeared. A test whose verdict depends on
+    whether an unrelated file exists in $HOME is not testing the code — it is testing the
+    machine. Isolation belongs in a fixture that no future test can forget to apply, not in
+    an argument each test must remember to pass.
+    """
+    monkeypatch.setattr(mod, "REPORT_PATH", tmp_path / "no-such-report.json")
+
+
 USAGE_OK = {
     "five_hour": {"utilization": 5.0, "resets_at": "2026-08-23T09:20:00+00:00"},
     "seven_day": {"utilization": 94.0, "resets_at": "2026-08-25T00:00:00+00:00"},
