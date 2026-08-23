@@ -5,6 +5,8 @@ from research_os.models.action_item import ActionItem
 from research_os.models.approval_receipt import ApprovalReceipt
 from research_os.models.conductor_handoff import ConductorHandoff
 from research_os.models.execution_attempt import ExecutionAttempt
+from research_os.models.metric_profile import MetricProfile
+from research_os.models.metric_result import MetricResult
 from research_os.models.operational_receipt import OperationalReceipt
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
@@ -17,6 +19,8 @@ __all__ = [
     "ApprovalReceipt",
     "ConductorHandoff",
     "ExecutionAttempt",
+    "MetricProfile",
+    "MetricResult",
     "ObjectSuccessorEdge",
     "OperationalReceipt",
     "RevocationReceipt",
