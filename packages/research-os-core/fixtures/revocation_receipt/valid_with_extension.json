@@ -1,0 +1,36 @@
+{
+  "revocation_receipt_id": "20000000-0000-4000-8000-000000000003",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "target_ref": {
+    "object_kind": "com.example.synthetic_record",
+    "object_id": "synthetic-target-003",
+    "object_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "reason_code": "com.example.policy_violation",
+  "authority": {
+    "role": "research.operator",
+    "scope": "research.canonical_objects",
+    "verified_at": "2026-02-03T00:00:00Z"
+  },
+  "actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "audit",
+    "pseudonym": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "required_propagation_targets": [],
+  "classification": { "risk_class": "red", "sensitivity": "restricted_osint" },
+  "issued_at": "2026-02-03T00:01:00Z",
+  "idempotency_key": "synthetic-revocation-003",
+  "producer": { "name": "com.example.fixture_builder", "version": "1.0.0" },
+  "lineage": { "input_hashes": [] },
+  "retention": { "retention_class": "restricted", "legal_hold": true },
+  "object_hash": "377cf63e1dab56bcb448b8dacfe0974beb562bd523b6399e0fb6f41943a28de1",
+  "extensions": {
+    "com.example.revocation-note": {
+      "extension_version": "1.1.0",
+      "payload": { "synthetic_case_code": "fixture-only" }
+    }
+  }
+}
