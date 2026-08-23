@@ -1,144 +1,94 @@
 brief_ref: evidence/brief.yml
-plan_ref: "S11 backend-test sharding — PR #4647, three commits (b54bddecf design, 0b298c253 trust boundary, 535b27784 coverage receipt)"
-diff:
-  net_lines: "+353 net on .github/workflows/tests.yml (526 insertions / 173 deletions), +2 new files under scripts/ci/ (partitioner 280 lines, its guilt+innocence corpus 380 lines), +11 lines on .github/CODEOWNERS. Measured by `git diff --numstat origin/main...HEAD`. Larger than the ~400-line PR guideline and DECLARED as such: a job cannot be split into three without restating the setup blocks each piece needs, and roughly half the tests.yml delta is load-bearing comments carried over verbatim from the pre-split job so the scar rationale is not lost."
-  behaviour_change: "One required status context keeps its exact name and semantics; the work behind it moves from 1 job to 5. Coverage, thresholds, the PR-lane impact scoping, the merge_group unscoped semantic, and the change-map skip predicate are all preserved. No application code is touched."
-receipts:
-  - claim: "The step being cured really is the dominant cost, and it is not a one-night anomaly — it is 74.5-74.6% of the job on two different event types"
-    cmd: 'gh api repos/Bali-Zero/Teman2/actions/runs/32626973483/jobs --jq ''.jobs[]|select(.name=="Backend Tests (Python)")|.steps[]'' -> Run unit tests 797s of a 1068s job; same shape on schedule run 32624568684 -> 726s of 975s. Mypy 90s/76s, pip-audit 37s/35s, everything else 142s/138s.'
-    exit: 0
-    ts: "2026-08-23T16:25Z"
-    seat: "session (pro)"
-  - claim: "A naive whole-job matrix MISSES the <=8min target, which is why the static job exists. This is arithmetic on the measurement above, not a preference"
-    cmd: "269s of non-test work + 797/3 = 535s per shard, plus a fan-in ~= 10.5 min. Lifting mypy (90s) + pip-audit (37s) onto a concurrent job leaves ~= 388s per shard. MEASURED on the first PR transit: `Backend Static (Python)` completed in 170s (run 32629406562), i.e. below the 205s projection and never the critical path."
-    exit: 0
-    ts: "2026-08-23T16:52Z"
-    seat: "session (pro)"
-  - claim: "`Backend Tests (Python)` is genuinely a required context, and there are exactly 27 of them — the fan-in's name is infrastructure, not a label"
-    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq '.contexts[]' | nl -> 27 lines, #4 is `Backend Tests (Python)`"
-    exit: 0
-    ts: "2026-08-23T16:22Z"
-    seat: "session (pro)"
-  - claim: "The partitioner tiles the real corpus exactly, and its own guilt+innocence corpus passes on the COMMITTED bytes (not on a working tree being edited)"
-    cmd: "git archive 535b27784 <4 files> | tar -x -C <frozen snapshot>; cd snapshot && python3 scripts/ci/test_shard_tests.py -> Ran 28 tests, OK. In the worktree: shard_tests.py enumerate | wc -l -> 1425; chunk --shard 1|2|3 -> 475 / 475 / 475."
-    exit: 0
-    ts: "2026-08-23T17:02Z"
-    seat: "session (pro)"
-  - claim: "The exact new pytest invocation shape works — this was smoke-tested for real, not reasoned about"
-    cmd: "cd apps/backend-rag && COVERAGE_FILE=$PWD/coverage-data-shardT1 pytest <2 explicit files> --cov=backend --cov-branch --cov-report= --junit-xml=... -> data file 450560 bytes + junit 4055 bytes written. Second file likewise. Then `coverage combine coverage-data-shardT1 coverage-data-shardT2` -> 'Combined 2 files'; `coverage xml` -> written; `coverage report` -> TOTAL printed. The fan-in's own junit parser read both: tests=27/time=0.473 and tests=25/time=3.704."
-    exit: 0
-    ts: "2026-08-23T16:38Z"
-    seat: "session (pro)"
-  - claim: "The empty-chunk guard and the chunk read loop behave under the runner's shell, including errexit — an empty chunk must never reach pytest, because pytest with no file arguments collects the ENTIRE rootdir, the exact opposite of what an empty chunk means"
-    cmd: "bash -euo pipefail -c '<while IFS= read -r ... [ -n ] && CHUNK+=()>' over a file containing a blank line -> 2 entries, exit 0 (the AND-list does not trip errexit); over an empty file -> the `[ ${#CHUNK[@]} -eq 0 ]` branch fires. `mapfile` was replaced with `while read` after `mapfile` proved unavailable in the session shell — a bash-version dependency this step does not need."
-    exit: 0
-    ts: "2026-08-23T16:45Z"
-    seat: "session (pro)"
-  - claim: "Static gates pass on the changed workflow"
-    cmd: "actionlint .github/workflows/tests.yml -> clean (the two SC2086 infos it first reported were fixed by quoting the --junit-xml args); python3 scripts/ci/lint_unreachable_workflow_conditions.py -> exit 0; python3 -c 'yaml.safe_load(...)' -> jobs parse, names are ['Change map','Backend Static (Python)','Backend Shard ${{ matrix.shard }}','Backend Tests (Python)', ...]"
-    exit: 0
-    ts: "2026-08-23T17:00Z"
-    seat: "session (pro)"
-  - claim: "The required context's downstream consumer is unaffected: the job ID `backend-tests` is preserved, so `test-summary`'s `needs.backend-tests.result` now reads the fan-in verdict"
-    cmd: 'python3 -c "yaml.safe_load(...)[''jobs''][''test-summary''][''needs'']" -> [''backend-tests'',''mcp-tests'',''evaluator-critical-tests'',''frontend-tests'',''packages-core-tests'',''e2e-tests'']. Four stale in-file cross-references (''see backend-tests comment above'') were repointed to backend-shard, which now carries the original long rationale.'
-    exit: 0
-    ts: "2026-08-23T16:47Z"
-    seat: "session (pro)"
-  - claim: "The lock file is a CLAIM about the environment, not an observation of it — which is why the coverage version is now a receipt written by the interpreter that produces the data"
-    cmd: "grep '^coverage==' apps/backend-rag/requirements.lock.txt -> coverage==7.15.4; apps/backend-rag/.venv/bin/python -c 'import coverage; print(coverage.__version__)' -> 7.14.3. Two different answers to the same question in the same tree."
-    exit: 0
-    ts: "2026-08-23T16:57Z"
-    seat: "session (pro)"
-  - claim: "`actions/download-artifact@v7` exists — the version matching this repo's upload-artifact@v7 house standard was verified against the real tag, not assumed"
-    cmd: "curl -o /dev/null -w '%{http_code}' https://api.github.com/repos/actions/download-artifact/git/ref/tags/v7 -> 200 (v4/v5/v6 also 200)"
-    exit: 0
-    ts: "2026-08-23T16:31Z"
-    seat: "session (pro)"
-  - claim: "The re-anchored test-deps guard sees SEVEN packages where the un-re-anchored one saw ONE — the split had moved the install line out of its field of view without tripping any of its assertions"
-    cmd: 'python3 -c "import test_test_deps_declared as g; print(sorted(g.inline_installed_packages()))" -> [''coverage'',''fakeredis'',''pytest'',''pytest-asyncio'',''pytest-cov'',''pytest-mock'',''pytest-xdist'']; with BACKEND_JOBS narrowed back to (''backend-tests'',) the new guilt test raises: "the scan no longer reaches the job that installs the test runtime — saw [''coverage'']"'
-    exit: 0
-    ts: "2026-08-23T17:30Z"
-    seat: "session (pro)"
-tests:
-  - "scripts/ci/test_shard_tests.py — 28 cases, run on the frozen committed bytes. GUILT (each is a way a sharded suite can silently under-run and look green): a dropped module, a module running twice, a module outside the corpus, a shard that never ran, a shard running someone else's files, a stray chunk index, and the worst case of all — every shard publishing an empty list. INNOCENCE: a sound partition, a corpus smaller than the shard count (scoped PR lane, shard 3 legitimately empty), determinism across calls, the e2e exclusion, and the fail-open target resolution (narrowing requires BOTH the flag and a non-empty selection; 'banana' as IMPACT_RUN_ALL yields the full corpus)."
-  - "The union/security mode has its OWN guilt+innocence split, because it is the pass a malicious diff has to defeat: it must keep catching a dropped module, an overlap, an empty partition and a missing shard, while accepting a different assignment algorithm and a PR that adds test modules — and the full/drift mode must still reject both of those, which is what makes the two passes distinct rather than redundant."
-static:
-  - "actionlint .github/workflows/tests.yml -> clean"
-  - "scripts/ci/lint_unreachable_workflow_conditions.py -> exit 0"
-  - "pre-commit hook chain (lease-check, anti-reward-hacking test lint, secrets, python lint, off-limits) -> all passed on all three commits"
-runtime_proof:
-  - "MEASURED on run 32629845135 (conclusion success, head 27b8dea23), and it is the FULL corpus,
-    not a scoped PR selection — each shard log reads `owns 476 of 1428 test modules`. Wall-clock:
-    Backend Shard 3 283s, Shard 2 259s, Shard 1 249s, Backend Static 195s (concurrent, never the
-    critical path), Backend Tests (Python) fan-in 66s. Critical path for the required context =
-    slowest shard + fan-in = 283 + 66 = 349s = 5.8 min, against a 1068s (17.8 min) baseline on
-    merge_group run 32626973483. That is a 67% reduction, and code PRs pay it twice."
-  - "Every fan-in gate actually ran and passed, read from the job step list rather than inferred
-    from the job conclusion: Assert every upstream job succeeded / Verify the partitioner own
-    guilt and innocence corpus / Extract trusted partitioner (base ref) / Partition guard / Prove
-    each shard reported executed tests / Combine shard coverage / Report shard balance. `Upload
-    coverage to Codecov` shows `skipped`, exactly as predicted from the absent token."
-  - "The partition guard printed BOTH passes on real data: `partition sound (union mode): 1428
-    test modules, 3 shards, disjoint and complete` and `partition sound (full mode): ...`. The
-    shards executed 8858 + 8695 + 8364 = 25,917 tests with 0 collection errors."
-  - "Shard balance MEASURED, not assumed: `slowest/fastest = 1.32x`, below the ~2x threshold at
-    which a duration-aware splitter would be worth adding. Round-robin over path order is
-    adequate for this corpus today; the instrument that would say otherwise is now in the job."
-  - "NOT PROVEN, stated because the run is green and could be over-read: the coverage combine +
-    --fail-under path did NOT execute. This was the pull_request lane, where BACKEND_COLLECT_COVERAGE
-    is false, so the step exited early on `threshold not applicable`. The combine, the version
-    agreement check and the 55% gate are exercised only on merge_group / schedule / dispatch — the
-    first real test of them is this PR's own queue transit."
-  - "ALSO NOT PROVEN: this measurement is of head 27b8dea23. The commits after it (receipts moved
-    out of the pytest cwd, the coverage decision moved to workflow env, the trusted-extraction
-    fail-closed, the deps-guard re-anchor) change the plumbing and need their own green run."
-
+plan_ref: "scripts/fleet_sessions.py — cross-machine session visibility + healer receptor 6 (mandate 2026-08-23)"
+gear: 2
 lanes:
-  # One build lane, declared honestly: the implementation was single-seat. The
-  # cross-family seats below were REFUTERS, not builders (generator != grader),
-  # so they are `review` and do not count toward the D3 build-diversity floor.
-  - lane: "S11-build"
+  - lane: B1
     role: build
-    seat: "opus-5"
-  - lane: "S11-refute-r1"
+    seat: "tp1-deepseek-v4-pro (Alibaba Token Plan, non-Anthropic)"
+    note: "authored scripts/fleet_sessions.py. Codex was the mandated builder but its seat is AUTH_DEAD on both Mini and Pro (refresh_token_invalidated / node-not-on-PATH, arsenal_probe measured live) and it exited 0 having written zero files — re-routed, declared, not silently substituted."
+  - lane: B2
+    role: build
+    seat: "tp1-deepseek-v4-pro"
+    note: "authored scripts/tests/test_fleet_sessions.py against the pinned JSON contract. A first attempt on tp1-qwen3.8-max returned empty."
+  - lane: R1
     role: review
-    seat: "kimi-code-k3"
-  - lane: "S11-refute-r2-codex"
+    seat: "kimi-code/k3 (Moonshot, cross-family, fresh context)"
+    note: "adversarial refutation of the full diff, asked specifically for false-green and for leak paths. Findings K1/K3/K4/K5 reproduced by the grader before any fix."
+  - lane: G1
     role: review
-    seat: "codex-gpt-5.6-sol"
-  - lane: "S11-refute-r2-kimi"
-    role: review
-    seat: "kimi-code-k3"
-  - lane: "S11-ci-red-triage"
-    role: review
-    seat: "claude-fleet-watch"
-
+    seat: "session (Opus 5, mini-pro2)"
+    note: "final on-disk gate: every defect re-measured live on the fleet, not accepted from a report."
+diff:
+  net_lines: "+1861 net across 4 files (2 new: scripts/fleet_sessions.py, scripts/tests/test_fleet_sessions.py; 2 edited: infra/healer/healer-run.sh +49, infra/healer/HEALER-MANDATE.md +11), measured by `git diff --numstat` against the merge-base."
+  behaviour_change: "New read-only reporting tool. The healer gains ONE receptor whose only ACTIONABLE conditions are coverage loss (a host UNREACHABLE) and blindness (exit 2). No existing receptor, cure path or perimeter is touched."
+receipts:
+  - claim: "The tool works across all three machines from Mini and isolates a downed host"
+    cmd: "python3 scripts/fleet_sessions.py --json -> exit 0, hosts_ok 3/3, 270 sessions, unreachable 0; python3 scripts/fleet_sessions.py --hosts local,nonexistent-host --json -> exit 1, hosts_unreachable 1, reason 'ssh exit 255: ssh: Could not resolve hostname nonexistent-host', other host still fully reported"
+    exit: 0
+    ts: "2026-08-23T08:30Z"
+    seat: "session (mini-pro2)"
+  - claim: "THE COMMISSIONED PREMISE IS FALSE: a healer session running minutes is CORRECT, not dead. All 10 DECLARED-SPAN-UNMET rows on the live fleet are healthy healer ticks"
+    cmd: "grep -A1 StartInterval infra/launchagents/com.nuzantara.healer.4h.plist -> 14400 (launchd relaunches every 4h); HEALER-MANDATE.md rule 6 -> 'max ~40 min di lavoro' per tick; tail ~/logs/healer/healer.log -> 'ACTIONABLE ... 15:12:12' then 'session exit=0' at '15:23:16' with a substantive result. 'loop 4h' in the mandate TITLE is the cron cadence, not the session runtime."
+    exit: 0
+    ts: "2026-08-23T08:05Z"
+    seat: "session (mini-pro2)"
+  - claim: "ps without -e is blind: it sees 25 processes of 693 and 2 of the 4 live subagents, which would have inverted the tool into a false-alarm machine"
+    cmd: "ps -o pid= -o args= | wc -l -> 25 ; ps -eo pid= -o args= | wc -l -> 693 ; same pipes grepping parent-session-id -> 2 vs 4"
+    exit: 0
+    ts: "2026-08-23T07:05Z"
+    seat: "session (mini-pro2)"
+  - claim: "lsof -c claude returns ZERO rows on Pro while four sessions run; asking lsof about the PIDs ps already classified works on both machines"
+    cmd: "ssh pro 'lsof -c claude -a -d cwd -Fpn | grep -c ^p' -> 0 ; ssh pro 'lsof -p <pidlist> -a -d cwd -Fpn' -> four p/fcwd/n triples. Consequence before the fix: every Pro row read NO-PROCESS, an absence never observed."
+    exit: 0
+    ts: "2026-08-23T07:20Z"
+    seat: "session (mini-pro2)"
+  - claim: "One transcript, two paths: ~/.claude/projects/-Users-nuzantara-nuzantara is a SYMLINK to the -Desktop- form, so the same session was reported twice and every finding double-counted (29 rows for 17 sessions)"
+    cmd: "readlink -- ./-Users-nuzantara-nuzantara -> .../-Users-nuzantara-Desktop-nuzantara ; stat -f inode on 733cf2de-....jsonl via both paths -> 53353008 both. Cured by deduping on (st_dev, st_ino)."
+    exit: 0
+    ts: "2026-08-23T07:45Z"
+    seat: "session (mini-pro2)"
+  - claim: "REFUTER K1 reproduced: a host that fails to probe ITSELF exits 0, so it counted as a successful probe and the healer stayed silent about an unobserved machine"
+    cmd: 'monkeypatched run_host_probe to return (0, ''{"status":"UNREACHABLE",...}'', '''') -> main() returned exit 0 with summary.hosts_unreachable == 1 and hosts_ok == 0. Cured by reading the payload''s status, not the transport''s exit code.'
+    exit: 0
+    ts: "2026-08-23T08:12Z"
+    seat: "session (mini-pro2)"
+  - claim: "REFUTER K4 reproduced in BOTH directions and cured, verified on a 16-case corpus built from real fleet text"
+    cmd: "before: declared_long('loop di 4 ore') -> (False, None) and declared_long('the daemon ran 48h nonstop before crashing') -> (True, 2880). after: 16/16 correct across true positives, the five phrasings the refuter named as missed, the reverse-order narrative, and the five originally-measured false accusations."
+    exit: 0
+    ts: "2026-08-23T08:22Z"
+    seat: "session (mini-pro2)"
+  - claim: "PROVE-LIVE: a REAL healer tick reported a fleet finding, reached the session prompt, and spooled its Telegram"
+    cmd: "bash infra/healer/healer-run.sh with the LLM stubbed and TG_DRY_RUN=1, one host deliberately down -> healer.log 'ACTIONABLE: ... fleet:1-host-unreachable'; the spawned prompt carries 'receptor scattati: ... fleet:1-host-unreachable'; tg spool holds key healer-mini:fleet-unreachable. Nothing was sent and no LLM window was spent."
+    exit: 0
+    ts: "2026-08-23T08:34Z"
+    seat: "session (mini-pro2)"
+tests:
+  - "36 tests in scripts/tests/test_fleet_sessions.py, /usr/bin/python3 -m pytest -q -> 36 passed in 0.08s. Fully hermetic: an earlier revision took 207s because two tests called main() without --hosts and ssh'd to pro/air for real; those are now host-explicit, and the 0.08s runtime is itself the proof that no test touches the network."
+  - "Guilt paired with innocence per classifier (superscar #3), built on the REAL argv strings and REAL mandate text measured on the fleet — including the four shapes a naive exclusion list misses because the path has a dot before `claude`, not a slash."
+  - 'python3 scripts/fleet_sessions.py --selftest -> ''selftest PASSED'', exit 0. It caught two real defects during the build (an exclusion written against a path form that does not exist, and `"claude" in cmd` matching `not-claude`).'
+static:
+  - "bash -n infra/healer/healer-run.sh -> clean"
+  - "pre-commit hooks (anti-reward-hacking lint, secret scan, python lint, off-limits guard) -> all passed on both commits"
+runtime_proof:
+  - "The live table from three machines is in the session transcript: 3 of 3 hosts probed, 270 sessions, 0 unreachable. Both exit paths were exercised against the real fleet, not simulated."
+  - "The healer receptor was executed as the wrapper executes it (not a transcription) and produced REASONS='fleet:1-host-unreachable'."
 dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context) — ROUND 1, against the live worktree"
-    objection: 'Two CONFIRMED findings, both real, both cured before this pack was written. (1) THE MONEY QUESTION: the shards and the fan-in both ran the PR OWN copy of scripts/ci/shard_tests.py, so a diff appending one entry to EXCLUDED_DIRS made both agree perfectly on a shrunken corpus — chunks tile it exactly, guard green, required context green, and the test catching the diff regression never ran. It noted the author had built exactly this defence (BASE_SHA extraction) for change_map.py/impact_map.py and not for the new file, and that the change-map classifying the PR as run_all=true does not help, because forcing the jobs to RUN does not stop a modified enumerator from shrinking what they run. Cured in 0b298c253. (2) The fan-in derived its coverage pin from requirements.lock.txt while the shards install the lock closure and then an unpinned pytest-cov on top, so the comment claimed a same-version guarantee the code did not deliver. Cured in 535b27784. It REFUTED the ARG_MAX concern (~28KB of args vs a ~2MB limit), the stuck-required-context paths, and a pytest python_files mismatch. Its FINAL "CRITICAL FINDING" — that test_shard_tests.py references a --union flag shard_tests.py does not have — is an ARTEFACT OF THE AUTHOR OWN METHOD: it was reading a worktree being edited in response to its own earlier finding, so it got a torn read. Disproved by re-running the corpus against a frozen `git archive` of the committed SHA: 28/28. Recorded in modus AMENDMENTS as the author lesson, not the refuter finding.'
+  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context — the diff's author was tp1-deepseek-v4-pro, so generator != grader holds)"
+    objection: "Attacked false-green and leak paths. CONFIRMED and fixed: K1 (remote self-failure exits 0 -> healer silent), K3 (lookback drops corpses exactly when the healer was itself down; and a declared span may exceed the window), K4 (declared_long both misses real Italian/English phrasings and still fires on narrative), K5 (ssh stderr unbounded in a field that reaches Telegram). PARTIALLY ACCEPTED: K2 — 'UNMAPPED is treated as dead-eligible, so a live session idle at a prompt gets accused'. The refuter's proposed cure (require NO-PROCESS) was REJECTED on measurement: the one Pro true-positive was itself UNMAPPED, so that fix would have destroyed detection. It is moot in the shipped state anyway, since the verdict no longer alarms. NOT ACCEPTED but recorded: a zombie subagent outliving its parent would mark a dead parent ALIVE — real, low-frequency, and unfixable from process data alone."
     status: CONFIRMED
-  - seat: "codex gpt-5.6-sol at xhigh (OpenAI, cross-family, fresh context, read-only sandbox) — ROUND 2, against an immutable `git archive` snapshot of 535b27784"
-    objection: 'Verdict DEFECTIVE, 7 numbered findings. CURED HERE: (a) the `trusted=introduced` branch treated ANY `git show` failure as "the file is new", so an unfetched base SHA or a transient git error silently downgraded the security gate to the diff own copy — now three explicit states, and only a READABLE base commit that genuinely lacks the file is allowed to degrade; anything else exits 1. (b) The junit gate checked only `tests > 0` and `errors == 0`, so a conftest that blanket-skips passes it — now also refuses when every collected test was skipped, and the step is RENAMED from "Prove each shard actually executed its chunk" to "Prove each shard reported executed tests", because the old name claimed a per-module guarantee it does not deliver. (c) The `collect-coverage-N.txt` receipt was written into the same directory pytest then runs PR code in, so a `pytest_sessionfinish` could rewrite every shard to `false` and the fan-in would skip the combine and the threshold entirely — the decision now lives in a workflow-level `env:` that nothing the job runs can write, still ONE definition read by both sides. (d) All remaining receipts moved out of the pytest cwd into $RUNNER_TEMP. (e) The comment claiming "the BASE ref corpus" was false and is corrected in place: it is BASE LOGIC over the HEAD tree. (f) The `push:` trigger it flagged as absent IS absent — verified independently against the parsed `on:` block — and the brief acceptance criterion that listed it has been corrected. ACCEPTED AND NOT CURED, because they are pre-existing and not sharding regressions: deleting a test file, relocating one into backend/tests/e2e/, the change-map skip path, and PR-lane impact scoping all remove tests from a run under ANY design that reads the working tree; the pre-split job had the same properties. It REFUTED the matrix-aggregate concern and found no current bash bypass.'
-    status: CONFIRMED
-  - seat: "kimi-code/k3 — ROUND 2, same frozen snapshot, dispatched independently of the Codex run"
-    objection: "Reached the same top two findings independently (unmergeable-on-target-removal, and the git-error/absent conflation), which is corroboration rather than novelty. Its distinct catch, CURED HERE: `resolve_targets` passed a selection NOT under `apps/backend-rag/` through repo-root-relative, and since the shards run from `apps/backend-rag` that path does not exist there — so the first impact-map change that ever emitted one (a bot test, a packages/ test) would abort enumeration and red every shard. Worse, this module OWN test suite ASSERTED the broken form, which is how a latent false-red gets blessed as intended behaviour; the test now asserts the `../../` form and carries a guilt case for the old one. Also cured: the SystemExit on a target that no longer exists made renaming `backend/tests/` permanently unmergeable — the security pass now drops a vanished target with a loud ::warning:: instead of aborting, while the shards keep failing loud, and both halves have tests. Also flagged and fixed: two sibling comments had drifted to two different corpus counts (1423 vs 1425) while the true figure was 1428 — the counts are removed rather than corrected, since a number in a comment is a claim with no test behind it."
-    status: CONFIRMED
-  - seat: "Nuzantara:fleet-watch (a sibling session on another machine, via the fleet mailbox) — CI-red triage"
-    objection: 'Reported two red required checks and diagnosed them. Both confirmed by direct inspection rather than taken on trust, and its diagnosis of the first was correct but INCOMPLETE in the way that mattered: it said "declare coverage in the backend test deps file". Declaring it was necessary; the real defect was that `scripts/tests/test_test_deps_declared.py` anchors on the single job id `backend-tests`, and the sharding split moved the test-runtime install (`pytest pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist`) out of it into `backend-shard`. The anchor still resolved, still found run: steps, still parsed a package — so no assertion fired — while the install line the guard exists to police had left its field of view entirely. That is this PR own thesis turned on the PR: a guard silently narrowed by a change that never touched it. Re-anchored to the whole backend test lane, with a guilt test that fails if the anchor is narrowed back (falsified locally: it then sees only [coverage]). Measured before/after: 1 package visible vs 7.'
-    status: CONFIRMED
-
 residual_risks:
-  - "THE WALL-CLOCK TARGET IS NOT YET PROVEN. The <=8min figure is arithmetic on a measured breakdown plus one measured data point (Backend Static 170s). The honest status is: projected, not demonstrated. If the measured shard wall-clock lands above target, the next lever is the duration-aware splitter this design already instruments for (see below) -- not a wider matrix."
-  - "SHARD BALANCE IS UNMEASURED BY CONSTRUCTION. Round-robin over the canonical path order balances FILE COUNT exactly (475/475/475) and says nothing about TIME. The fan-in emits a slowest/fastest ratio from junit's own `time` attribute precisely so the pytest-split decision is made on data; above ~2x, round-robin is the wrong splitter. Deferring that to v2 is a declared choice, and this PR's own transit is its first measurement."
-  - "RUNNER SLOT PRESSURE, DECLARED. This turns 1 job into 5 per run, and both the PR lane and the merge-group lane run. tests.yml's own concurrency comments identify runner slots as the binding constraint on main's velocity, so trading slots for wall-clock is a real trade, not a free win. Public repo => the minutes are free; the SLOTS are not. Not mitigated in this PR."
-  - "THE 'INTRODUCED' BRANCH OF THE TRUST BOUNDARY IS WIDE OPEN ON THIS PR AND ONLY THIS PR. `git show BASE_SHA:scripts/ci/shard_tests.py` fails because the base ref has no such file, so this PR's own guard adjudicates with its own head copy. That is unavoidable for the commit that introduces a trusted file; it is declared loudly (a ::warning:: in the run log) rather than silently downgraded, and the CODEOWNERS entries added here mean every LATER edit always has a base copy to be judged against."
-  - "A PR whose base predates this commit will have a base copy of shard_tests.py without the `--union` flag, and the security pass would fail on an argparse error. That fails CLOSED (red), not open, and the window closes as soon as this lands."
-  - "Codecov remains unarmed. There is no CODECOV_TOKEN secret in this repository, so the upload step has been skipping on every run since before this change (measured 0s). Carried over unchanged rather than deleted; arming it is a separate decision and is NOT part of this PR."
+  - "THE HEADLINE VERDICT IS UNCALIBRATED AND SHIPS THAT WAY, DECLARED. DECLARED-SPAN-UNMET matched 10 of 10 healthy healer ticks on the live fleet. It is reported, never alarmed on, and the healer reads only UNREACHABLE/BLIND. The mandate asked for this detector as the deliverable's centre; it is delivered as an INFORMATIONAL field instead, because shipping it as an alarm would wire an organ to a signal that is wrong every time it fires. This is the one place the delivered scope is narrower than the scope requested, and it is narrowed deliberately and visibly, not quietly."
+  - "The real fix is a design change, not a regex: the runner should write its own expected duration into a sidecar the way it already writes a heartbeat. Text cannot distinguish 'this document declares its runtime' from 'this document's title names a cron cadence' — three narrowings each traded one error direction for the other, which is the repo's three-rounds signal that the surface is under-specified."
+  - "HOME-fork (superscar #1) is OPEN until post-merge sync: the wrapper reads $HOME/scripts/HEALER-MANDATE.md FIRST, and that copy has 0 occurrences of fleet_sessions.py while the repo copy has 2. Proven this session — the stubbed tick's prompt did NOT carry the new mandate step. Both files are DECLARED pairs in infra/home-fork/declared-pairs.json, and the healer cannot sync them itself (its own files are outside its perimeter, by constitution). ALIGN-FLEET action, tracked."
+  - "The identity slice is PII-BOUNDED, not PII-free: the first 90 characters of a first message ARE emitted, by design, and a test pins the cap. Nothing past it ever leaves the host."
+  - "alive detection on Pro rests on UNMAPPED for most rows: many sessions share one project dir, so a cwd match cannot attribute a process to a session id. The tool says UNMAPPED rather than guessing — honest, but it means Pro liveness is weaker than Mini's."
 sources:
-  - .github/workflows/tests.yml (the changed file)
-  - scripts/ci/shard_tests.py + scripts/ci/test_shard_tests.py (new)
-  - .github/CODEOWNERS (2 entries added)
-  - "GitHub Actions runs 32626973483 / 32624568684 (the baseline measurement) and 32629406562 / 32629697496 (this PR's transits)"
-  - "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks (the 27 contexts)"
+  - scripts/fleet_sessions.py (new)
+  - scripts/tests/test_fleet_sessions.py (new)
+  - infra/healer/healer-run.sh (receptor 6)
+  - infra/healer/HEALER-MANDATE.md (step 1)
+  - infra/launchagents/com.nuzantara.healer.4h.plist (read-only — StartInterval 14400, the measurement that falsified the premise)
+  - ~/logs/healer/healer.log (read-only — tick 15:12:12 -> exit 0 15:23:16)
+  - live ssh probes of pro and air, re-run fresh this session
 pii_scan: clean
-size_tokens: 4945
+size_tokens: 2350
