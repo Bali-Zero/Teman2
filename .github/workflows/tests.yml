@@ -876,6 +876,14 @@ jobs:
             # under-report (superscar #2: the failure would look like a pass).
             COV_ARGS=(--cov=backend --cov-branch --cov-report=)
             export COVERAGE_FILE="$PWD/coverage-data-shard${SHARD_INDEX}"
+            # Record the version that is about to WRITE the data. coverage's
+            # on-disk data file carries a schema version, so the fan-in has to
+            # read it back with the same one — and it must learn that from what
+            # actually ran here, never re-derive it (a refuter pointed out that
+            # grepping requirements.lock.txt guesses at a closure this job
+            # installs in two steps, the second of them unpinned).
+            python -c 'import coverage; print(coverage.__version__)' \
+              > "coverage-version-${SHARD_INDEX}.txt"
           fi
 
           # An empty chunk is legitimate: on the scoped PR lane the impact map
@@ -932,6 +940,7 @@ jobs:
           path: |
             apps/backend-rag/chunk-${{ matrix.shard }}.txt
             apps/backend-rag/collect-coverage-${{ matrix.shard }}.txt
+            apps/backend-rag/coverage-version-${{ matrix.shard }}.txt
             apps/backend-rag/coverage-data-shard${{ matrix.shard }}
             apps/backend-rag/test-results-core-${{ matrix.shard }}.xml
             apps/backend-rag/test-results-unit-${{ matrix.shard }}.xml
@@ -1196,6 +1205,10 @@ jobs:
               echo "::error::shard ${shard} ran tests but produced no coverage data"
               MISSING=1
             fi
+            if [ ! -s "$RECEIPTS/coverage-version-${shard}.txt" ]; then
+              echo "::error::shard ${shard} published no coverage-version receipt"
+              MISSING=1
+            fi
           done
           [ "$MISSING" -eq 0 ] || exit 1
           if [ "$RAN_ANY" -eq 0 ]; then
@@ -1206,18 +1219,23 @@ jobs:
             echo "::error::coverage was requested but no shard owned any test module"
             exit 1
           fi
-          # Pin `coverage` to the SAME version the shards wrote the data with —
-          # its on-disk data format is version-coupled, and a drifting ad-hoc
-          # `pip install coverage` here would fail to combine (or worse, combine
-          # a subset). Read from the lock instead of hardcoding, so it cannot
-          # drift when the lock moves.
-          COV_PIN=$(grep -E '^coverage==' requirements.lock.txt | head -1 | sed -e 's/[[:space:]]*\\$//' -e 's/[[:space:]]*$//' || true)
-          if [ -z "$COV_PIN" ]; then
-            echo "::error::requirements.lock.txt pins no coverage== version — cannot guarantee the fan-in reads the data format the shards wrote"
+          # Install EXACTLY the coverage the shards wrote the data with. Its
+          # on-disk data file carries a schema version, so a drifting reader
+          # here fails to combine. This is read back from the shards' own
+          # receipts, not re-derived: an earlier cut grepped `^coverage==` out
+          # of requirements.lock.txt, and a refuter correctly pointed out that
+          # this GUESSES — the shards install the lock closure and then a
+          # second, unpinned `pytest pytest-cov ...` line on top of it, so the
+          # lock is a claim about the environment rather than an observation of
+          # it. Ask the thing that ran.
+          COV_VERSIONS=$(cat "$RECEIPTS"/coverage-version-*.txt | sort -u)
+          COV_VERSION_COUNT=$(printf '%s\n' "$COV_VERSIONS" | grep -c . || true)
+          if [ "$COV_VERSION_COUNT" -ne 1 ]; then
+            echo "::error::shards wrote coverage data with $COV_VERSION_COUNT different versions ($COV_VERSIONS) — refusing to combine across schema versions"
             exit 1
           fi
-          echo "pinning $COV_PIN (from requirements.lock.txt)"
-          pip install "$COV_PIN"
+          echo "installing coverage==$COV_VERSIONS (the version the shards wrote with)"
+          pip install "coverage==$COV_VERSIONS"
           cp "$RECEIPTS"/coverage-data-shard* .
           python -m coverage combine coverage-data-shard*
           python -m coverage xml -o coverage.xml
