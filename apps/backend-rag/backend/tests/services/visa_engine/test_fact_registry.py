@@ -814,6 +814,34 @@ class TestDeriveHasActiveStayPermit:
         snapshot = self._snapshot(self._known("NO_STAY_PERMIT"), self._unknown())
         assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
 
+    def test_no_stay_permit_sentinel_is_false_even_with_renewal_paid_true(self) -> None:
+        # The joint case team-lead's #4719 re-grade flagged (2026-08-24):
+        # merging PR #4727's sentinel with this PR's F4 rework produced two
+        # correct changes composed in the right order, but no single test
+        # named BOTH `NO_STAY_PERMIT` and `renewal_paid` — so
+        # `NO_STAY_PERMIT + renewal_paid=True -> False` held only by
+        # ordering (the sentinel check runs before `renewal_paid` is ever
+        # read), pinned by nothing. Unreachable through today's funnel
+        # (the sentinel only arises from `holds_stay_permit === "no"`, and
+        # the planned interview question only asks `renewal_paid` after
+        # `stay_permit_code`, which the sentinel branch never reaches) —
+        # but the engine accepts direct payloads, and a future edit that
+        # moved `renewal_paid` above the sentinel check would invert this
+        # silently: the existing renewal_paid tests would still show their
+        # three reds (they never touch NO_STAY_PERMIT), and this is the
+        # only test that would catch it. A person who told the interview
+        # directly "I hold no permit at all" must never be turned into an
+        # active-permit holder by an unrelated payment flag — that would
+        # admit a fabricated case (there is nothing here to renew) to
+        # exactly the outcome a NO_STAY_PERMIT applicant should never
+        # reach, real KITAS or not.
+        snapshot = self._snapshot(
+            self._known("NO_STAY_PERMIT"),
+            self._unknown(),
+            renewal_paid=self._known(True),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
     # -- grounding: an unclassifiable code is honestly UNKNOWN, never a guess --
 
     @pytest.mark.parametrize("code", ["XYZ", "other", "B211", "NONE_ISSUED"])
