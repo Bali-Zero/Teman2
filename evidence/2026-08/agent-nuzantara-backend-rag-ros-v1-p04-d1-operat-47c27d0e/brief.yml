@@ -23,27 +23,33 @@ objective: |
   DecisionPacket that CONTRACTS.md Rule 9 explicitly permits: "missing evidence is not
   negative evidence").
 
-  This branch has now been merged with origin/main TWICE. The first merge (recorded in an
-  earlier version of this evidence pair, superseded by this one) resolved against an
-  origin/main carrying 14 registered kinds, producing a verified-lossless 18-kind union. This
-  turn is a SECOND re-merge: between that first merge and now, origin/main advanced further
-  with a P04 sibling PR (#4643, landed) that itself registered two more kinds —
-  content_object and media_manifest — taking origin/main's own registered-kind count from 14
-  to 16. This turn's merge reconciles that newer origin/main against this branch's unchanged
-  own four kinds, hand-resolving real textual conflicts in the three shared registration
-  files (cli.py / models/__init__.py / schemas/__init__.py — both PRs inserted new entries at
-  the same alphabetical position, immediately after conductor_handoff) as a VERIFIED lossless
-  union: origin/main's 16 registered kinds are a strict subset of the merged 20, and the only
-  four additions are this PR's own creative_lock / decision_packet / requested_action_spec /
-  topic_lock, cross-checked against the .py files actually on disk under
-  research_os/models/ (20/20, zero mismatch either direction). And rewrote this evidence
-  pair — evidence/brief.yml and evidence/pack.yml at the repo root are fixed paths every
-  Gear>=2 PR rewrites in full, so on this branch they had most recently been inherited
-  verbatim from an unrelated sibling PR (wr3-spend-gate-enforce-0823) that landed on
-  origin/main between the two merges; this PR's own record now lives at the per-PR path
-  below (scripts/ci/evidence_paths.py, landed on main as #4678 specifically to end this
-  fixed-path collision class), while the repo-root evidence/{brief,pack}.yml are left as an
-  exact copy of origin/main's own current root files, untouched by this PR's content.
+  This branch has now been merged with origin/main THREE times, one per P04-D1 sibling PR
+  that landed on a shared conflict surface while this PR was in flight. Round 1 resolved
+  against an origin/main carrying 14 registered kinds -> verified-lossless 18-kind union.
+  Round 2 resolved against origin/main after sibling PR #4643 (content_object,
+  media_manifest) landed, taking main to 16 kinds -> verified-lossless 20-kind union; that
+  round also relocated this evidence pair off the fixed repo-root paths (evidence/brief.yml,
+  evidence/pack.yml — inherited verbatim on this branch from an unrelated sibling PR,
+  wr3-spend-gate-enforce-0823, because those are fixed paths every Gear>=2 PR rewrites in
+  full) to its own per-PR path via scripts/ci/evidence_paths.py (#4678), leaving the
+  repo-root files as an exact copy of origin/main's own current root files. Round 3 (this
+  one) resolved against origin/main after sibling PR #4653 (outcome_event) landed, taking
+  main to 17 kinds -> verified-lossless 21-kind union; #4653 itself was ejected from the
+  merge queue once on an unrelated pytest-xdist test-infra race in a `merge_group` run (a
+  nested pytest subprocess inheriting `PYTEST_XDIST_WORKER` and double-applying the worker
+  suffix to a `CREATE DATABASE ... TEMPLATE` clone — not a code defect), was re-armed by the
+  conductor, and landed clean on its second queue attempt; the root evidence files were
+  untouched this round since #4653 already used the per-PR scheme.
+
+  Every round hand-resolved the same real textual conflict shape in the three shared
+  registration files (cli.py / models/__init__.py / schemas/__init__.py): the landing
+  sibling PR and this PR each inserted a new entry at the same alphabetical slot, git's 3-way
+  merge correctly auto-merged every non-overlapping addition and only marked the single
+  overlapping insertion point as a conflict, and the resolution combined both in
+  alphabetical order. Each round's union was verified LOSSLESS by content — pattern hits
+  asserted non-zero on both sides before comparing sorted kind lists, not merely the absence
+  of conflict markers — and cross-checked against the .py files actually on disk under
+  research_os/models/ (21/21 as of round 3, zero mismatch either direction).
 
   No dedicated per-kind test files (test_creative_lock.py etc.) are added — coverage runs
   through the existing generic fixture-driven infrastructure that already parameterizes over

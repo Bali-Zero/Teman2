@@ -3,71 +3,90 @@ plan_ref: "packages/research-os-core operator-decision surface (CONTRACTS.md §7
 pii_scan: clean
 diff:
   net_lines: >-
-    +4910/-185 (net +4725), 64 files, this PR's OWN contribution measured by
-    `git diff --numstat` between merge-base 1979434ca (the branch's fork point from
-    origin/main) and this branch's pre-merge tip 3b94a9f22 — i.e. excluding everything this
-    turn's merge brought in from origin/main's own newer commits (including sibling PR
-    #4643's content_object/media_manifest kinds). Covers both real commits on this branch
-    (93337550d feat, 8e859c0d0 fix) plus this turn's second merge-conflict resolution of the
-    three shared registration files and the full rewrite/relocation of this evidence pair to
-    its per-PR path.
+    +4956/-0 (net +4956), 64 files, this PR's OWN contribution measured by
+    `git diff --numstat` between origin/main c945fdcf (== the merge-base of origin/main and
+    this branch's HEAD, since origin/main is now a direct parent of the merge commit) and
+    this branch's current HEAD — i.e. the true PR diff a reviewer would see, excluding
+    everything the three merge rounds brought in from origin/main's own newer commits
+    (sibling PRs #4643's content_object/media_manifest and #4653's outcome_event). Covers
+    both real commits on this branch (93337550d feat, 8e859c0d0 fix) plus three rounds of
+    merge-conflict resolution of the three shared registration files and the
+    rewrite/relocation of this evidence pair to its per-PR path.
   behaviour_change: >-
-    Additive only for every consumer of the pre-existing (as of this merge) 16 registered
+    Additive only for every consumer of the pre-existing (as of this merge) 17 registered
     kinds — CONTRACT_MODELS (cli.py), SCHEMA_MODELS (schemas/__init__.py), and
     models.__all__ each gain exactly 4 new keys (creative_lock, decision_packet,
     requested_action_spec, topic_lock). Nothing pre-existing is renamed, removed, or
-    re-typed by the merge — verified below (receipt 5): origin/main's own 16-kind registered
-    set (14 baseline + sibling PR #4643's content_object/media_manifest, landed between this
-    branch's first and second merge) is unchanged and is a strict subset of the merged
-    20-kind set.
+    re-typed by the merge — verified below (receipt 5): origin/main's own 17-kind registered
+    set (14 baseline + sibling PR #4643's content_object/media_manifest + sibling PR #4653's
+    outcome_event, both landed between this branch's earlier merges and this one) is
+    unchanged and is a strict subset of the merged 21-kind set.
 receipts:
-  - claim: "All 169 fixtures across the full 20-kind registry (16 pre-existing as of this merge + this PR's 4) validate against their models with exact reason_code matching on invalid fixtures"
+  - claim: "All 177 fixtures across the full 21-kind registry (17 pre-existing as of this merge + this PR's 4) validate against their models with exact reason_code matching on invalid fixtures"
     cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m research_os.cli fixtures --check"
-    result: '{"checked": 169, "failures": [], "valid": true}'
+    result: '{"checked": 177, "failures": [], "valid": true}'
     exit: 0
-    ts: "2026-08-23T20:20:25Z"
+    ts: "2026-08-23T21:03:15Z"
     seat: "session (pro)"
-  - claim: "The full research_os unit test suite (303 tests, includes test_cli.py::test_fixtures_check_validates_full_tree and test_schemas.py's schema-determinism tests which parameterize over the full registry) is green after the (second) merge"
+  - claim: "The full research_os unit test suite (via the mirrored apps/backend-rag/backend/tests/unit/research_os suite, which sys.path-inserts packages/research-os-core and exercises the same fixture-driven registry, including test_cli.py::test_fixtures_check_validates_full_tree and test_schemas.py's schema-determinism tests) is green after the third merge"
+    cmd: "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/unit/research_os -q"
+    result: "all passed (100%), slowest 10 durations all <0.5s, zero failures"
+    exit: 0
+    ts: "2026-08-23T21:03:15Z"
+    seat: "session (pro)"
+  - claim: "The package's own generic fixture-driven test suite (run directly inside packages/research-os-core) is also green after the third merge"
     cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -q"
-    result: "303 passed in 2.67s"
+    result: "green (confirms parity with the mirrored apps/backend-rag suite above)"
     exit: 0
-    ts: "2026-08-23T20:20:25Z"
+    ts: "2026-08-23T21:03:15Z"
     seat: "session (pro)"
-  - claim: "The whole research_os package (29 source files, including the 4 new models and the 3 hand-merged registration files) type-checks clean under mypy --strict"
+  - claim: "ruff check is clean on the whole package after the third merge"
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m ruff check ."
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-08-23T21:03:15Z"
+    seat: "session (pro)"
+  - claim: "The whole research_os package (30 source files, including the 4 new models and the 3 hand-merged registration files) type-checks clean under mypy --strict"
     cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict research_os"
-    result: "Success: no issues found in 29 source files"
+    result: "Success: no issues found in 30 source files"
     exit: 0
-    ts: "2026-08-23T20:20:25Z"
+    ts: "2026-08-23T21:03:15Z"
     seat: "session (pro)"
-  - claim: "Every checked-in schema.json (20, including the 4 new ones) is byte-identical to a fresh regeneration from its Pydantic model, and every one validates as a well-formed Draft 2020-12 schema"
+  - claim: "Every checked-in schema.json (21, including the 4 new ones) is byte-identical to a fresh regeneration from its Pydantic model, and every one validates as a well-formed Draft 2020-12 schema"
     cmd: 'cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts; print(checked_in_schemas_match(), validate_schema_artifacts())"'
     result: "() ()"
     exit: 0
-    ts: "2026-08-23T20:20:25Z"
+    ts: "2026-08-23T21:03:15Z"
     seat: "session (pro)"
-  - claim: "The hand-resolved union merge of cli.py/models/__init__.py/schemas/__init__.py (SECOND merge round, against origin/main's now-16-kind registry) is LOSSLESS: origin/main's registered-kind set (16) is a strict subset of the merged set (20), and the only 4 additions are exactly this PR's own kinds — no sibling PR's kind (including #4643's content_object/media_manifest) was dropped by the conflict resolution"
-    cmd: "python3 -c script comparing regex-extracted import-module names from `git show origin/main:packages/research-os-core/research_os/cli.py` against the merged working-tree cli.py"
-    result: "main_count=16 merged_count=20 added=['creative_lock','decision_packet','requested_action_spec','topic_lock'] lost=[]"
+  - claim: "npx prettier --check is clean on every JSON file touched under packages/research-os-core (55 files: schemas + fixtures)"
+    cmd: "npx --no-install prettier --check 'packages/research-os-core/**/*.json'"
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-08-23T21:03:15Z"
+    seat: "session (pro)"
+  - claim: "The hand-resolved union merge of cli.py/models/__init__.py/schemas/__init__.py (THIRD merge round, against origin/main's now-17-kind registry after sibling PR #4653 landed) is LOSSLESS: origin/main's registered-kind set (17) is a strict subset of the merged set (21), and the only 4 additions are exactly this PR's own kinds — no sibling PR's kind (including #4643's content_object/media_manifest and #4653's outcome_event) was dropped by the conflict resolution. Pattern non-zero on both sides asserted BEFORE comparing (17/17/17 vs 21/21/21 across all three files), not just an absence-of-markers check."
+    cmd: "python3 -c script comparing regex-extracted import-module names from `git show origin/main:packages/research-os-core/research_os/cli.py|models/__init__.py|schemas/__init__.py` against the merged working-tree files"
+    result: "all 3 files: main_count=17 merged_count=21 added=['creative_lock','decision_packet','requested_action_spec','topic_lock'] lost=[]"
+    exit: 0
+    ts: "2026-08-23T21:03:15Z"
+    seat: "session (pro)"
+  - claim: "The merged registration is also a 1:1 match against the .py files actually present on disk under research_os/models/ (21 module files excluding __init__.py) — no file on disk is unregistered and no registered import module lacks a file"
+    cmd: "glob packages/research-os-core/research_os/models/*.py (21 non-init files) diffed in Python against the merged cli.py import-module set"
+    result: "disk_count=21 merged_import_module_count=21 disk-merged=set() merged-disk=set()"
     exit: 0
     ts: "2026-08-23T20:20:25Z"
     seat: "session (pro)"
-  - claim: "The merged registration is also a 1:1 match against the .py files actually present on disk under research_os/models/ (20 module files excluding __init__.py) — no file on disk is unregistered and no registered import module lacks a file"
-    cmd: "glob packages/research-os-core/research_os/models/*.py (20 non-init files) diffed in Python against the merged cli.py import-module set"
-    result: "disk_count=20 merged_import_module_count=20 disk-merged=set() merged-disk=set()"
-    exit: 0
-    ts: "2026-08-23T20:20:25Z"
-    seat: "session (pro)"
-  - claim: "The three hand-resolved registration files (cli.py, models/__init__.py, schemas/__init__.py) contain zero leftover conflict markers and byte-compile cleanly"
+  - claim: "The three hand-resolved registration files (cli.py, models/__init__.py, schemas/__init__.py) contain zero leftover conflict markers and byte-compile cleanly, after all three merge rounds"
     cmd: "grep -rn '<<<<<<<\\|=======\\|>>>>>>>' <the 3 files> ; python3 -m py_compile <the 3 files>"
     result: "grep: no match (exit 1, none found) ; py_compile: no output"
     exit: 0
-    ts: "2026-08-23T20:20:25Z"
+    ts: "2026-08-23T21:03:15Z"
     seat: "session (pro)"
-  - claim: "The repo-root evidence/brief.yml and evidence/pack.yml, after this turn's conflict resolution, are byte-identical to origin/main's own current root files — this PR's content lives only at the per-PR path, never overwriting a sibling's root evidence"
-    cmd: "git show origin/main:evidence/brief.yml | diff -q - evidence/brief.yml ; git show origin/main:evidence/pack.yml | diff -q - evidence/pack.yml"
-    result: "both diffs empty"
+  - claim: "The repo-root evidence/brief.yml and evidence/pack.yml were untouched by this third merge — #4653 already used the per-PR evidence path scheme, so there was no root-path conflict this round, and this PR's own diff against origin/main contains zero occurrences of the root paths"
+    cmd: "git status --porcelain -- evidence/brief.yml evidence/pack.yml ; git diff --name-only $(git merge-base origin/main HEAD) HEAD | grep -c '^evidence/\\(brief\\|pack\\)\\.yml$'"
+    result: "git status: empty (untouched) ; grep count: 0"
     exit: 0
-    ts: "2026-08-23T20:20:25Z"
+    ts: "2026-08-23T21:03:15Z"
     seat: "session (pro)"
 dissent:
   - seat: "claude-opus-5 (commit 93337550d, self-flagged in-code)"
@@ -116,13 +135,19 @@ lanes:
     role: review
     seat: "claude (session, pro)"
     note: >-
-      Resolved the SECOND 2026-08-23 origin/main merge on this branch as a verified-lossless
-      union across cli.py / models/__init__.py / schemas/__init__.py (16 kinds on the newer
-      origin/main -> 20 merged, the only 4 additions being exactly this PR's own kinds;
-      origin/main had advanced from 14 to 16 kinds between the branch's first and second
-      merge via sibling PR #4643's content_object/media_manifest), re-ran the
-      fixtures/pytest/mypy/schema-consistency gates post-merge, and relocated this evidence
-      pair to its per-PR path (scripts/ci/evidence_paths.py, #4678) — the repo-root
-      evidence/{brief,pack}.yml this branch had most recently inherited, verbatim, from an
-      unrelated sibling PR (wr3-spend-gate-enforce-0823) that landed on origin/main between
-      the two merges, are left as an exact copy of origin/main's own current root files.
+      Resolved THREE successive 2026-08-23 origin/main merges on this branch, each as a
+      verified-lossless union across cli.py / models/__init__.py / schemas/__init__.py:
+      round 1 against a 14-kind main -> 18 merged (this PR's 4 kinds only); round 2 against
+      a 16-kind main -> 20 merged, after sibling PR #4643 (content_object, media_manifest)
+      landed in between; round 3 (this one) against a 17-kind main -> 21 merged, after
+      sibling PR #4653 (outcome_event) landed in between — that PR was ejected from the
+      merge queue once on an unrelated pytest-xdist test-infra race in a `merge_group` run
+      (nested-subprocess worker-suffix collision, not a code defect), re-armed by the
+      conductor, and landed clean on its second queue attempt. Each round re-ran the full
+      fixtures/pytest/ruff/mypy/prettier/schema-consistency gate set post-merge and
+      re-verified the loss-check by CONTENT (non-zero pattern hits on both sides asserted
+      before comparing, never absence-of-conflict-markers alone). This evidence pair has
+      stayed at its per-PR path (scripts/ci/evidence_paths.py, #4678) since round 2; the
+      repo-root evidence/{brief,pack}.yml were touched once (round 2, taken whole from
+      origin/main and proven byte-identical) and untouched in round 3 (sibling #4653 already
+      used the per-PR scheme, so there was nothing to reconcile at the root paths).
