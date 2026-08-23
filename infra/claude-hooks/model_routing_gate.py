@@ -275,17 +275,21 @@ def _is_anthropic_model(model: str) -> bool:
 def _discover_repo_evidence_lint_path(cwd: str):
     """Locate scripts/evidence_pack_lint.py without importing it. Walks up
     from `cwd` (bounded to 8 ancestors — a worktree or main-checkout root is
-    always within that), then falls back to the two HOME-relative repo
-    locations this fleet actually uses (Pro/Mini `~/nuzantara`, M5
-    `~/Desktop/nuzantara` — CLAUDE.md Machines table) for a cwd-less
-    subagent context."""
+    always within that), then falls back to the HOME-relative repo location
+    for a cwd-less subagent context: `~/nuzantara`, which resolves on all
+    three fleet machines (measured 2026-08-23, not the per-machine mapping
+    this docstring used to state — that mapping was itself wrong and would
+    only drift again). The old repo checkout under the TCC-protected
+    `~/Desktop` folder (superscar #1, the W84 variant) is deliberately NOT
+    a candidate: scripts/lint_tcc_desktop_paths.py bans that literal path
+    segment in tracked *.py/.sh/.plist payloads, and a fallback here would
+    reintroduce the exact dependency that lint exists to keep out."""
     candidates = []
     if cwd:
         start = Path(cwd)
         for anc in [start, *list(start.parents)[:8]]:
             candidates.append(anc / "scripts" / "evidence_pack_lint.py")
     candidates.append(Path.home() / "nuzantara" / "scripts" / "evidence_pack_lint.py")
-    candidates.append(Path.home() / "Desktop" / "nuzantara" / "scripts" / "evidence_pack_lint.py")
     for c in candidates:
         try:
             if c.is_file():
