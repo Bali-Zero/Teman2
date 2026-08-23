@@ -1,14 +1,24 @@
 brief_ref: evidence/brief.yml
-plan_ref: "P04-D1 canonical OutcomeEvent (CONTRACTS.md section 16), PR #4653, evidence-pack rewrite 2026-08-23"
+plan_ref: "P04-D1 canonical OutcomeEvent (CONTRACTS.md section 16), PR #4653; evidence pack
+  revision 3 of 3 (2026-08-23) — refreshes revision 1's numbers to HEAD ce82bb93e after the
+  adversarial-review-fix commit landed."
 diff:
-  net_lines: "+1665/-0, 19 files, measured by `git diff --numstat` between merge-base c4242cd444
-    (#4637) and HEAD 03af27444 in this turn (see receipts). All 19 files are new additions under
-    outcome_event (model, schema, 13 fixtures, test module) plus 2-line registration diffs in
-    cli.py / models/__init__.py / schemas/__init__.py."
+  net_lines: "+2170/-114, 21 files, measured fresh THIS turn by `git diff --numstat` between
+    merge-base c4242cd444e8396bb37e31fbd0c945c7b69c940a (#4637) and HEAD ce82bb93ebfdff8f71b2821ae585be0d82d4faef
+    (see receipts). Superset of revision 1's 19 files (+1665/-0 at HEAD 03af27444): the 2 extra
+    files are evidence/brief.yml and evidence/pack.yml themselves (revision 1's own diff, now
+    inside the measured range since it's a real commit on this branch), and the extra lines beyond
+    revision 1's are the adversarial-review-fix commit ce82bb93e's content (4 functional files:
+    the corrected fixture, the model's new json_schema_extra, the regenerated schema, and 2 new
+    tests + 2 glob assertions in the test file) plus this pack's own accumulating revisions."
   behaviour_change: "Adds one new contract kind end-to-end (model + schema + fixtures + tests +
-    registration). Zero lines changed in any of the 13 already-registered kinds; zero production
-    backend-rag service code touched (packages/research-os-core is a standalone library, not yet
-    imported by apps/backend-rag/backend/ service code)."
+    registration), PLUS as of ce82bb93e: (a) the model's metric_profile_ref/metric_result_ref
+    joint-presence invariant is now also expressed in the generated JSON Schema as a bidirectional
+    if/then (previously Python-only), and (b) the supersedes-chain fixture now actually resolves to
+    Current through the real graph.py resolver (previously would have quarantined). Zero lines
+    changed in any of the 13 already-registered kinds; zero production backend-rag service code
+    touched (packages/research-os-core is a standalone library, not yet imported by
+    apps/backend-rag/backend/ service code); primitives.py untouched throughout."
 lanes:
   - lane: "research-os-p04-d1-outcome-event"
     role: build
@@ -21,11 +31,20 @@ receipts:
     exit: 0
     ts: "2026-08-23T09:57Z"
     seat: claude
-  - claim: "The diff between merge-base and HEAD touches exactly 19 files, all under
-    outcome_event (model/schema/fixtures/test) plus the 3 registration files; net +1665/-0 lines."
+  - claim: "REVISION 1 measurement (superseded in file-count/line-count by the R2b receipt below,
+    kept for history): at HEAD 03af27444 the diff between merge-base and HEAD touched exactly 19
+    files, all under outcome_event (model/schema/fixtures/test) plus the 3 registration files; net
+    +1665/-0 lines."
     cmd: "git diff --numstat c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD"
     exit: 0
     ts: "2026-08-23T10:05:18Z"
+    seat: claude
+  - claim: "REVISION 3 (current) measurement: at HEAD ce82bb93e the diff between merge-base and HEAD
+    touches 21 files (revision 1's 19, PLUS evidence/brief.yml and evidence/pack.yml themselves,
+    which revision 1's own commit added to this branch's history); net +2170/-114 = +2056 lines."
+    cmd: "git diff --numstat c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD | awk '{a+=$1;d+=$2} END{print a\" \"d\" \"a-d}'"
+    exit: 0
+    ts: "2026-08-23T10:22:50Z"
     seat: claude
   - claim: "workflow_run.py (and the sibling verification_receipt.py/conductor_handoff.py files
     this branch's own local history at commit 8d5f6a057 also touched) is byte-identical between
@@ -49,19 +68,49 @@ receipts:
     exit: 0
     ts: "2026-08-23T09:59:03Z"
     seat: claude
-  - claim: "The full research_os unit test suite passes: 230 passed, 1 skipped (pre-existing,
-    unrelated to this PR — node/prettier unavailable in this environment for a schema-regen-parity
-    test), 0 failed."
+  - claim: "REVISION 3 (current, re-run fresh at HEAD ce82bb93e): the full research_os unit test
+    suite passes: 232 passed (was 230 at revision 1 -- +2 for the two adversarial-review-fix
+    tests), 1 skipped (pre-existing, unrelated to this PR -- node/prettier unavailable in this
+    environment for a schema-regen-parity test), 0 failed."
     cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os -q --no-header"
     exit: 0
-    ts: "2026-08-23T09:59:07Z"
+    ts: "2026-08-23T10:22:58Z"
     seat: claude
-  - claim: "test_outcome_event.py in isolation: 11/11 tests pass (fixture round-trip, exact-reason
-    rejection, unknown-field rejection, object_hash-mismatch cannot bypass validation, frozen
-    immutability, metric_profile/metric_result joint-presence invariant)."
+  - claim: "REVISION 3 (current): test_outcome_event.py in isolation: 13/13 tests pass (was 11/11 --
+    +2 for test_supersedes_fixture_is_current_in_the_real_graph_resolver and
+    test_metric_profile_and_result_schema_and_model_agree_on_all_nine_cases)."
     cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py -q --no-header"
     exit: 0
-    ts: "2026-08-23T10:05:17Z"
+    ts: "2026-08-23T10:23:04Z"
+    seat: claude
+  - claim: "Fix 1 (graph resolver), both arms driven through the REAL select_current_member --
+    ARM 1 (fixed fixture, strictly-later recorded_at) returns
+    Current(member=GraphMember(object_kind='outcome_event', object_id='b0000000-0000-4000-8000-000000000003',
+    object_hash='88076246fd48090e64d637b957dcde91c605c0d4195d9a3d2f19500a3b28b32b', tenant='bali-zero',
+    family_id='com.example.outcome_event.family_001', recorded_at=2026-04-15 00:05:02+00:00));
+    ARM 2 (reproduced original defect -- tied recorded_at) returns exactly
+    Quarantined(reason_codes=('successor_recorded_at_not_later',)). Both printed directly, not
+    inferred from the test's pass/fail alone."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py::test_supersedes_fixture_is_current_in_the_real_graph_resolver -q --no-header"
+    exit: 0
+    ts: "2026-08-23T10:23:16Z"
+    seat: claude
+  - claim: "Fix 2 (schema if/then), all 9 combinations of {absent, explicit null,
+    present-with-value} x 2 fields (metric_profile_ref, metric_result_ref) -- schema verdict, model
+    verdict, and an independently-derived expected verdict AGREE on all 9: absent/absent=ACCEPT,
+    absent/null=ACCEPT, absent/value=REJECT, null/absent=ACCEPT, null/null=ACCEPT,
+    null/value=REJECT, value/absent=REJECT, value/null=REJECT, value/value=ACCEPT. Run both as a
+    standalone script (printed table) and as the permanent test below."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py::test_metric_profile_and_result_schema_and_model_agree_on_all_nine_cases -q --no-header"
+    exit: 0
+    ts: "2026-08-23T10:23:17Z"
+    seat: claude
+  - claim: "test_schemas.py, including test_checked_in_schemas_are_byte_identical_to_fresh_regeneration
+    (the regenerated schema carrying the new if/then matches the checked-in file byte-for-byte, via
+    the real schema_bytes() generator -- not hand-edited): 5 passed, 1 pre-existing skip."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os/test_schemas.py -q --no-header"
+    exit: 0
+    ts: "2026-08-23T10:23:05Z"
     seat: claude
   - claim: "test_schemas.py (the schema self-consistency module: generated-schema Draft 2020-12
     validity, ECMA-262 pattern compilation, checked-in-vs-regenerated byte parity) passes: 5
@@ -70,18 +119,23 @@ receipts:
     exit: 0
     ts: "2026-08-23T10:01:37Z"
     seat: claude
-  - claim: "mypy --strict on the 4 touched non-test Python files (outcome_event.py, cli.py,
-    models/__init__.py, schemas/__init__.py) is clean: 'Success: no issues found in 4 source
-    files'."
+  - claim: "REVISION 3 (current, re-run at HEAD ce82bb93e, after outcome_event.py's new
+    ConfigDict(json_schema_extra=...)): mypy --strict on the 4 touched non-test Python files
+    (outcome_event.py, cli.py, models/__init__.py, schemas/__init__.py) is STILL clean: 'Success:
+    no issues found in 4 source files'."
     cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict research_os/models/outcome_event.py research_os/cli.py research_os/models/__init__.py research_os/schemas/__init__.py --explicit-package-bases"
     exit: 0
-    ts: "2026-08-23T10:00:07Z"
+    ts: "2026-08-23T10:23:11Z"
     seat: claude
-  - claim: "mypy --strict on the touched TEST file (test_outcome_event.py) is RED: 1 error --
-    'Unused \"type: ignore\" comment [unused-ignore]' at line 62. TRUE rc recorded, not swept."
+  - claim: "REVISION 3 (current, re-run at HEAD ce82bb93e): mypy --strict on the touched TEST file
+    (test_outcome_event.py) is STILL RED: 1 error -- 'Unused \"type: ignore\" comment
+    [unused-ignore]' -- now at line 73 (was line 62 at revision 1, shifted down by the fix-3 glob
+    assertions and new imports; unchanged in substance/root-cause). Left unfixed deliberately, per
+    both the evidence-rewrite's and the adversarial-review-fix's stated scope. TRUE rc recorded,
+    not swept."
     cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py --explicit-package-bases"
     exit: 1
-    ts: "2026-08-23T10:00:11Z"
+    ts: "2026-08-23T10:23:11Z"
     seat: claude
   - claim: "Control check, same invocation style, on an ALREADY-ON-MAIN sibling file
     (test_workflow_run.py) with the analogous frozen-field-reassignment test at the same line
@@ -101,23 +155,55 @@ receipts:
     exit: 0
     ts: "2026-08-23T10:03Z"
     seat: claude
+  - claim: "checked_in_schemas_match() and validate_schema_artifacts() both return the empty tuple
+    at HEAD ce82bb93e -- the regenerated schema (carrying the new if/then) matches the checked-in
+    file byte-for-byte and is valid Draft 2020-12, called directly (not via pytest)."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c \"import sys; sys.path.insert(0,'.'); from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts; print(checked_in_schemas_match()); print(validate_schema_artifacts())\""
+    exit: 0
+    ts: "2026-08-23T10:24:31Z"
+    seat: claude
 tests:
-  - "apps/backend-rag/backend/tests/unit/research_os (full suite, 230 passed/1 pre-existing skip)
-    and the outcome_event/schemas subsets in isolation — all green per receipts above. This IS the
-    applicable test surface for a contracts-package addition; there is no separate integration
-    surface because packages/research-os-core is not yet wired into any backend-rag service."
+  - "apps/backend-rag/backend/tests/unit/research_os (full suite, 232 passed as of ce82bb93e --
+    was 230 -- /1 pre-existing skip) and the outcome_event/schemas subsets in isolation — all green
+    per receipts above. This IS the applicable test surface for a contracts-package addition; there
+    is no separate integration surface because packages/research-os-core is not yet wired into any
+    backend-rag service."
+  - "The 2 adversarial-review-fix tests specifically both drive REAL production code paths, not
+    reimplementations: test_supersedes_fixture_is_current_in_the_real_graph_resolver calls the
+    actual graph.py::select_current_member; test_metric_profile_and_result_schema_and_model_agree_on_all_nine_cases
+    validates against the actual regenerated outcome_event.schema.json via jsonschema's
+    Draft202012Validator AND the actual OutcomeEvent.model_validate, comparing both to an
+    independently-derived expected verdict (not schema==model, which would be an identity check on
+    two things built from the same source, not a guard)."
 static:
   - "python -m research_os.cli fixtures --check -> {\"checked\": 102, \"failures\": [], \"valid\": true}"
-  - "mypy --strict on outcome_event.py/cli.py/models/__init__.py/schemas/__init__.py -> clean"
-  - "mypy --strict on test_outcome_event.py -> 1 unused-ignore finding (line 62), reported honestly
-    in risks: above, verified not CI-blocking, left unfixed (out of this rewrite's edit scope)"
+  - "mypy --strict on outcome_event.py/cli.py/models/__init__.py/schemas/__init__.py -> clean
+    (re-verified at ce82bb93e, after the ConfigDict(json_schema_extra=...) addition)"
+  - "mypy --strict on test_outcome_event.py -> 1 unused-ignore finding (line 73 as of ce82bb93e, was
+    line 62), reported honestly in risks: above, verified not CI-blocking, left unfixed across both
+    the evidence-rewrite AND the adversarial-review-fix commit"
+  - "checked_in_schemas_match() and validate_schema_artifacts() both -> () at ce82bb93e (the
+    regenerated schema, carrying the new if/then, matches the checked-in file byte-for-byte and is
+    valid Draft 2020-12)"
 runtime_proof:
   - "Not applicable in the classic sense — this is a schema/contract library addition with no
     service runtime to exercise. The closest runtime proof is the full green test suite (receipts
     above), which exercises every validator branch the model defines (round-trip, each of the 5
     named invalid-fixture rejection reasons, immutability, object_hash tamper-detection, and the
     joint-presence invariant) against real Pydantic validation, not mocked."
-dissent: []
+dissent:
+  - seat: "independent adversarial review (dispatched by the requesting session, cross-family
+    corroborated, re-verified on disk by the requesting session before dispatch AND by this
+    session before implementing each fix -- not accepted on report alone)"
+    objection: "Returned DEFECTIVE against ce82bb93e's predecessor state, with 2 real findings
+    against this PR's substance: (1) valid_with_supersedes_and_extension.json would be quarantined
+    by the real graph.py resolver (byte-identical recorded_at to its predecessor); (2) the checked-
+    in schema expressed zero if/then/allOf/oneOf/dependentRequired for the metric_profile_ref/
+    metric_result_ref joint-presence invariant the model enforces in Python. Also flagged 1 test-
+    hardening gap (empty-glob hole in test_outcome_event.py) and reconfirmed 1 already-ledgered
+    out-of-scope finding (primitives.py extension-jail omission, PENDING-ARMS, not fixed here per
+    the Agent PR Contract's depth-1 fix-of-a-fix limit)."
+    status: CONFIRMED
 residual_risks:
   - "The 7 spec-interpretation judgment calls documented in outcome_event.py's own module
     docstring (revocation_receipt_ref gap vs section 3.2/13.5, value:Any, aggregation_level
@@ -125,26 +211,39 @@ residual_risks:
     window-ordering-by-analogy, 2 invariants deliberately unenforced) are open and flagged for
     Packet 04 to rule on. Not a defect of this PR; a defect of leaving them silently resolved would
     have been worse, per the model's own docstring stance."
-  - "mypy --strict finds 1 unused-ignore in test_outcome_event.py:62 (`[misc]` where no plugin-
-    aware invocation of this package exists to make it needed). Verified NOT CI-blocking (CI never
-    mypy-checks this package). Left unfixed — out of this evidence-rewrite's edit scope
-    (evidence/brief.yml + evidence/pack.yml only, per the dispatching lane's hard limits)."
-  - "This evidence pack itself was, until this rewrite, describing foreign work (PR #4592) --
+  - "mypy --strict finds 1 unused-ignore in test_outcome_event.py, now line 73 (was line 62 before
+    ce82bb93e's fix-3 assertions shifted it) -- `[misc]` where no plugin-aware invocation of this
+    package exists to make it needed. Verified NOT CI-blocking (CI never mypy-checks this package).
+    Left unfixed across every revision of this branch so far -- out of scope for the
+    evidence-rewrite AND for the adversarial-review fixes."
+  - "The ledgered primitives.py extension-jail finding (V1_RESERVED_EXTENSION_FIELD_NAMES omits
+    ~16 of OutcomeEvent's own field names, repo-wide, subject_refs missing too on already-shipped
+    kinds) remains open and deliberately unfixed here -- PENDING-ARMS carries its proof-of-armed
+    and the reason the obvious cure (adding the nested names) is wrong (jails ~23 bare common
+    words, over-match). primitives.py is untouched by every commit on this branch."
+  - "This evidence pack itself was, until revision 1, describing foreign work (PR #4592) --
     inherited unchanged from origin/main's evidence/*.yml at this branch's merge-base. This is a
     fleet-wide pattern (cicatrix-superscar family #9: evidence/brief.yml and evidence/pack.yml are
-    fixed root-relative paths every Gear>=2 PR rewrites, so any branch that never touches them
-    silently carries whatever PR last wrote them on main) actively being tracked and mitigated
-    across multiple concurrent P04-D1 lanes as of this timestamp, not unique to this PR."
+    fixed root-relative paths every Gear>=2 PR rewrites) actively tracked and mitigated across
+    multiple concurrent P04-D1 lanes as of this timestamp, not unique to this PR. This revision
+    (3) exists because revision 1's numbers drifted stale the moment revision 2 (ce82bb93e) landed
+    real code changes without a corresponding evidence update -- the same class of risk, caught and
+    corrected within the same branch rather than left for a future reader."
 sources:
-  - packages/research-os-core/research_os/models/outcome_event.py (this PR's primary file)
-  - packages/research-os-core/research_os/schemas/outcome_event.schema.json (generated, this PR)
-  - packages/research-os-core/fixtures/outcome_event/*.json (13 fixtures, this PR)
-  - apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py (this PR)
+  - packages/research-os-core/research_os/models/outcome_event.py (this PR's primary file, updated ce82bb93e)
+  - packages/research-os-core/research_os/schemas/outcome_event.schema.json (generated, this PR, regenerated ce82bb93e)
+  - packages/research-os-core/fixtures/outcome_event/*.json (13 fixtures, this PR; valid_with_supersedes_and_extension.json corrected ce82bb93e)
+  - apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py (this PR, +2 tests and 2 glob-assertions ce82bb93e)
   - packages/research-os-core/research_os/cli.py, models/__init__.py, schemas/__init__.py
-    (registration diffs, this PR)
+    (registration diffs, this PR, untouched by ce82bb93e)
+  - packages/research-os-core/research_os/models/metric_result.py (read-only reference — the
+    json_schema_extra/ConfigDict precedent this PR's fix 2 follows)
+  - packages/research-os-core/research_os/graph.py, research_os/models/successor_edge.py
+    (read-only reference — the real resolver this PR's fix 1 test drives)
   - .github/workflows/tests.yml:635 (read-only reference — confirms CI's mypy scope)
   - apps/backend-rag/pyproject.toml [tool.mypy] (read-only reference — confirms no pydantic plugin)
 pii_scan: clean
 # approx_tokens() per scripts/evidence_pack_lint.py: len(raw bytes) // 4.
-# Measured `wc -c evidence/pack.yml` at write time = ~10500 bytes -> ~2630 tokens (cap 30000).
-size_tokens: 2630
+# Measured `wc -c evidence/pack.yml` at write time (revision 3) = ~19010 bytes -> ~4752 tokens
+# (cap 30000).
+size_tokens: 4752

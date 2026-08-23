@@ -12,24 +12,71 @@ objective: |
   ("The fourth kind, OutcomeEvent, ships separately... because splitting keeps this PR under
   review-sized bounds").
 
-  Adds, verified from `git diff c4242cd44..HEAD` (merge-base = #4637, MetricProfile/MetricResult):
-  - `research_os/models/outcome_event.py` (256 lines): a Pydantic v2 `FrozenCoreModel` with 12
-    nested sub-models (`SubjectRefs`, `OutcomeWindow`, `OutcomeQuality`, `OutcomeCohort`,
+  Adds, verified from `git diff c4242cd44..HEAD` (merge-base = #4637, MetricProfile/MetricResult),
+  across the three commits this branch now carries (the original contract commits, the evidence-
+  pack truthfulness fix `ffe3e9aa5`, and the adversarial-review-fix commit `ce82bb93e` below):
+  - `research_os/models/outcome_event.py`: a Pydantic v2 `FrozenCoreModel` with 12 nested
+    sub-models (`SubjectRefs`, `OutcomeWindow`, `OutcomeQuality`, `OutcomeCohort`,
     `OutcomeClassification`, `OutcomeEventLineage`, plus 8 typed ref models), an
-    `object_hash` round-trip validator, a `window.ended_at > window.started_at` ordering check, and
-    a joint-presence validator on `metric_profile_ref`/`metric_result_ref` (both or neither) — those
-    two fields bind to the `MetricProfileRef`/`MetricResultRef` kinds that landed on main in #4637.
-  - `research_os/schemas/outcome_event.schema.json` (816 lines): the generated Draft 2020-12 JSON
-    Schema for the model above.
+    `object_hash` round-trip validator, a `window.ended_at > window.started_at` ordering check, a
+    joint-presence validator on `metric_profile_ref`/`metric_result_ref` (both or neither) — those
+    two fields bind to the `MetricProfileRef`/`MetricResultRef` kinds that landed on main in #4637
+    — and, as of `ce82bb93e`, a `model_config = ConfigDict(json_schema_extra=...)` mirroring that
+    same joint-presence rule into the generated JSON Schema as a bidirectional `if`/`then` (see
+    "ADVERSARIAL-REVIEW FIXES" below).
+  - `research_os/schemas/outcome_event.schema.json`: the generated Draft 2020-12 JSON Schema for
+    the model above, regenerated via the real `schema_bytes()` generator after the model change.
   - 13 fixture files under `fixtures/outcome_event/` (3 valid, 5 invalid pairs — each invalid
     fixture paired with an `.expect.json` naming its exact rejection reason code).
-  - `apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py` (130 lines, 11 test
-    functions): fixture round-trip, exact-reason-code rejection, unknown-field rejection,
-    object_hash-mismatch-cannot-bypass, frozen-immutability, and the joint-presence invariant.
+    `valid_with_supersedes_and_extension.json`'s `recorded_at` was corrected in `ce82bb93e` (was
+    byte-identical to its predecessor's, which the real graph resolver quarantines — see below).
+  - `apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py` (13 test functions as
+    of `ce82bb93e`, was 11): fixture round-trip, exact-reason-code rejection, unknown-field
+    rejection, object_hash-mismatch-cannot-bypass, frozen-immutability, the joint-presence
+    invariant, plus the two adversarial-review-fix tests below.
   - Registration of `OutcomeEvent` in `cli.py::CONTRACT_MODELS`, `models/__init__.py::__all__`,
     and `schemas/__init__.py::SCHEMA_MODELS` (2-line additions each, alongside existing entries —
     the 13 other already-registered kinds, including `workflow_run`/`verification_receipt`, were
     NOT touched by this diff; confirmed byte-identical between merge-base and HEAD, see receipts).
+
+  ADVERSARIAL-REVIEW FIXES (2026-08-23, commit `ce82bb93e`), from an independent review that
+  returned DEFECTIVE with cross-family corroboration, re-verified on disk by the requesting session
+  before dispatch and independently re-verified again by this session before each fix:
+  1. `valid_with_supersedes_and_extension.json` supersedes `valid_minimal.json` but both carried
+     the byte-identical `recorded_at: "2026-04-15T00:05:01Z"` — `graph.py`'s `select_current_member`
+     quarantines exactly this (`successor.recorded_at <= predecessor.recorded_at` ->
+     `successor_recorded_at_not_later`; CONTRACTS.md:863 requires a strictly later `recorded_at` for
+     a correction). The one fixture demonstrating a working supersedes chain was rejected by the
+     resolver it exists to exercise. Fixed: `recorded_at` -> `"2026-04-15T00:05:02Z"`, `object_hash`
+     recomputed via the real `object_hash()`. New test drives the REAL resolver
+     (`GraphMember`/`ObjectSuccessorEdge`/`select_current_member`, not a re-implementation) and
+     proves BOTH arms: fixed fixture -> `Current`; reproduced tied-timestamp shape -> exactly
+     `Quarantined(('successor_recorded_at_not_later',))`.
+  2. The checked-in schema had zero `if`/`then`/`allOf`/`oneOf`/`dependentRequired` — the
+     `metric_profile_ref`/`metric_result_ref` joint-presence rule lived only in Python
+     (`validate_event()`). A consumer validating against the published schema alone would accept a
+     document the model rejects. Fixed by mirroring `metric_result.py`'s precedent: a bidirectional
+     `if`/`then` (A implies B and B implies A) inside `model_config`'s `json_schema_extra`, each
+     `if` testing BOTH `required: [field]` AND `properties: {field: {not: {type: null}}}` — value,
+     not just key presence, because this contract's presence-preserving null semantics
+     (`hashing.py`) mean a bare `dependentRequired` would accept a document with both keys present
+     but one explicitly `null`, which the model still rejects. Verified by enumerating all 9
+     combinations of {absent, explicit null, present-with-value} across both fields and asserting
+     schema verdict == model verdict == an independently-derived expected verdict on every one (not
+     schema==model alone, which would be an identity check, not a guard). `ConfigDict` merge
+     confirmed (twice — this session directly, and an independently dispatched subagent) to keep
+     `FrozenCoreModel`'s `extra="forbid"`/`frozen=True` alongside the new `json_schema_extra`.
+  3. `test_outcome_event.py`'s two fixture-glob loops had no assertion the glob matched anything —
+     a renamed/emptied fixtures directory would have passed having validated zero fixtures. Added
+     non-empty assertions, pattern-matched to `test_decision_chain.py`'s convention. Only this PR's
+     own test file touched; the same hole in sibling test files is ledgered separately.
+
+  Explicitly NOT fixed, per the Agent PR Contract's depth-1 fix-of-a-fix limit and an already-ledgered
+  PENDING-ARMS finding: `V1_RESERVED_EXTENSION_FIELD_NAMES` in `primitives.py` omits ~16 of
+  OutcomeEvent's own field names, so an extension payload can smuggle them. Real, repo-wide
+  (`subject_refs` is missing too, affecting already-shipped kinds), and the obvious cure (adding the
+  nested names) is already documented as wrong in the ledger (jails ~23 bare common words —
+  cicatrix-superscar #3, over-match). `primitives.py` is untouched by this branch.
 
   The model's own module docstring flags SEVEN open interpretive judgment calls against the frozen
   spec prose (no invented `revocation_receipt_ref` field on `subject_refs`; `value` typed as `Any`
@@ -42,20 +89,26 @@ objective: |
   those calls; it reports that they exist and are already on record in the source file a future
   reader will open.
 
-  SCOPE OF THIS SPECIFIC REWRITE (2026-08-23): `evidence/brief.yml` and `evidence/pack.yml` are
-  fixed root-relative paths that every Gear>=2 PR in this repo rewrites (cicatrix-superscar family
-  #9, state-schema mutation drift — a fixed-path collision class actively being observed fleet-wide
-  today). On this branch, both files were found to still describe foreign work — PR #4592
-  (`ops-visaoracle-wrapper-header-0823`, a 2-line LaunchAgent wrapper comment fix), inherited
-  unchanged from whatever content was on `origin/main` at this branch's merge-base and never
-  overwritten by either commit in this branch's own history. This rewrite replaces that inherited
-  content with a truthful description of PR #4653 and adds the `lanes:` block (D3 lane-declaration
-  rule, `scripts/evidence_pack_lint.py::check_lanes_build_seat_diversity`), verified against
-  `origin/main`'s current lint. No functional code changes accompany this rewrite — evidence files
-  only.
+  SCOPE HISTORY OF THIS EVIDENCE PACK, so a future reader isn't confused by 3 revisions on one
+  file: `evidence/brief.yml`/`evidence/pack.yml` are fixed root-relative paths every Gear>=2 PR in
+  this repo rewrites (cicatrix-superscar family #9, state-schema mutation drift — a fixed-path
+  collision class actively observed fleet-wide as of this timestamp). REVISION 1 (`ffe3e9aa5`,
+  evidence files only): found both files still describing foreign work — PR #4592
+  (`ops-visaoracle-wrapper-header-0823`), inherited unchanged from `origin/main` at this branch's
+  merge-base — and rewrote them to truthfully describe PR #4653, adding the `lanes:` block. NO
+  functional code changed in that commit. REVISION 2 is not a pack edit at all: `ce82bb93e` fixed 2
+  real defects (+ 1 test hardening) found by an independent adversarial review, touching 4
+  functional files (fixture, model, schema, test) — see the "ADVERSARIAL-REVIEW FIXES" block below
+  for exactly what changed. REVISION 3 (this one, evidence files only again) refreshes this pack's
+  narrative and receipts to match `ce82bb93e` — net_lines, file count, and test counts had drifted
+  stale after revision 2 landed. Verified against `origin/main`'s current lint at each revision.
 constraints:
-  - "Edit scope for this rewrite is evidence/brief.yml and evidence/pack.yml ONLY — no functional
-    file in the diff was touched to produce this evidence pack."
+  - "Per-commit edit scope, not per-PR: `ffe3e9aa5` touched evidence/brief.yml + evidence/pack.yml
+    ONLY; `ce82bb93e` touched exactly 4 functional files (the fixture, outcome_event.py,
+    outcome_event.schema.json, test_outcome_event.py) and explicitly did NOT touch primitives.py
+    or evidence/*.yml; this current revision touches evidence/brief.yml + evidence/pack.yml ONLY
+    again, to refresh their numbers against ce82bb93e — verified via `git diff --stat` at each
+    commit, not assumed."
   - "Do NOT arm, enqueue, un-draft, or merge this PR. It stays DRAFT (fleet-wide HOLD ARMS pending
     PR #4647, and this branch is additionally held under the P04-D1 serialization order set
     2026-08-23 — #4653 queues immediately after #4643)."
@@ -67,11 +120,15 @@ constraints:
 acceptance:
   - "`python -m research_os.cli fixtures --check` (run from packages/research-os-core) exits 0
     over the full fixture tree (all 13 kinds, 102 fixtures), not just outcome_event's 13."
-  - "`pytest apps/backend-rag/backend/tests/unit/research_os` exits 0 (230 passed, 1 pre-existing
-    unrelated skip — node/prettier unavailable in this environment, see receipts)."
-  - "`pytest .../test_outcome_event.py` exits 0, 11/11 passed."
+  - "`pytest apps/backend-rag/backend/tests/unit/research_os` exits 0 (232 passed as of `ce82bb93e`
+    — was 230, +2 for the adversarial-review-fix tests — 1 pre-existing unrelated skip —
+    node/prettier unavailable in this environment, see receipts)."
+  - "`pytest .../test_outcome_event.py` exits 0, 13/13 passed (was 11/11)."
   - "`mypy --strict` on the touched non-test Python files (outcome_event.py, cli.py,
     models/__init__.py, schemas/__init__.py) exits 0, zero issues."
+  - "`pytest .../test_schemas.py` exits 0 including
+    `test_checked_in_schemas_are_byte_identical_to_fresh_regeneration` — the regenerated schema
+    (with the new `if`/`then`) matches the checked-in file byte-for-byte."
   - "`scripts/evidence_pack_lint.py` (taken from origin/main) exits 0 against the rewritten pack,
     with `net_lines` measured from `git diff --numstat`, and no NOTICE mentioning `lanes:`."
 consumer_map:
@@ -94,27 +151,35 @@ risks:
     reader should not mistake the model's current shape (e.g. `source_system` as a local Literal
     with no section-3 registry row) for a settled decision."
   - "mypy --strict on test_outcome_event.py (not the model file) reports 1 issue in this
-    environment: `# type: ignore[misc]` on line 62 is flagged as an unused ignore. Root cause
-    (verified): this repo's actual mypy invocations (CI's `apps/backend-rag` job, and this
+    environment: `# type: ignore[misc]` — now at line 73 (was line 62 before the fix-3 glob
+    assertions shifted it down; unchanged in substance) — is flagged as an unused ignore. Root
+    cause (verified): this repo's actual mypy invocations (CI's `apps/backend-rag` job, and this
     package's own pyproject.toml) never load the pydantic mypy plugin, so the frozen-field
     reassignment diagnostic that `[misc]` was written for never fires under any known real
     invocation of this package — while sibling files (e.g. test_workflow_run.py:62) use
     `[assignment]` on the analogous line because THEIR field is a `Literal`, so a plain
     vanilla-mypy literal-mismatch error fires there with no plugin needed. This is a genuine,
-    verified, pre-existing-pattern discrepancy in the new test file; it is NOT CI-blocking (CI's
+    verified, pre-existing-pattern discrepancy in the test file; it is NOT CI-blocking (CI's
     mypy job strictly checks only `backend/core` and `backend/app/models`, never
-    `packages/research-os-core` — confirmed via `.github/workflows/tests.yml:635`). Left unfixed:
-    out of this evidence-rewrite's edit scope (evidence/*.yml only), reported here rather than
-    silently swept."
+    `packages/research-os-core` — confirmed via `.github/workflows/tests.yml:635`). Left unfixed
+    deliberately across both the evidence-rewrite AND the adversarial-review-fix commits — not in
+    scope for either — reported here rather than silently swept."
   - "This evidence pack was reconstructed to describe a PR whose real substance (the OutcomeEvent
     model, schema, fixtures, and test module) was authored earlier in this branch's history, not in
-    this rewrite turn. All receipts below were re-run fresh in this turn against that already-
-    committed code, per anti-hallucination discipline — none are transcribed from memory."
+    the evidence-rewrite turn. All receipts below were re-run fresh against the code as it actually
+    stands at HEAD, per anti-hallucination discipline — none are transcribed from memory. This
+    third revision (refreshing net_lines/receipts to `ce82bb93e`) was likewise re-measured fresh,
+    not carried forward from the prior revision's numbers."
 grader:
   Opus 5 (final on-disk gate, effort xhigh per the 2026-08-20 ruling superseding the Fable-5
-  carve-out) is the doctrinally-designated final gate for this pack's gear. No independent
-  adversarial review was dispatched as PART OF THIS evidence-rewrite task — the task scope was
-  narrowly to make brief.yml/pack.yml truthful and add `lanes:`, not to re-review the OutcomeEvent
-  contract's substance. `dissent:` below is therefore honestly empty rather than fabricated.
-budget: 1 build lane (this session), no council convened for this narrow evidence-pack rewrite.
+  carve-out) is the doctrinally-designated final gate for this pack's gear. An independent
+  adversarial review WAS since dispatched (outside this session, on the requesting side) and
+  returned DEFECTIVE with 2 real findings against this PR's substance (both fixed in `ce82bb93e`,
+  see objective above) plus 1 test-hardening finding (also fixed) and 1 already-ledgered
+  out-of-scope finding (`primitives.py` extension jail, not fixed here, PENDING-ARMS). The two
+  substantive findings were independently re-verified by BOTH the requesting session (on disk,
+  before dispatch) and this session (before implementing each fix) — not accepted on report alone.
+budget: 1 build lane (this session), no council convened for the evidence-pack work itself; the
+  adversarial review above was a separate, already-completed independent gate, not a council this
+  session convened.
 pii: none — schema/contract/test code only, zero client data touched.
