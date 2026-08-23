@@ -198,8 +198,9 @@ def _spec(
 #: (2026-07-23, bank-route owner scope), plus ``sponsor.type`` added so the
 #: interview can ask who the sponsor is (2026-08-10), plus the two
 #: ``family.stepchild_*`` evidence paths, ``family.sponsor_permit_basis``
-#: and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings)
-#: — 48 entries total.
+#: and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
+#: plus ``immigration.renewal_paid`` (2026-08-24, F4, owner ruling)
+#: — 49 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
@@ -260,6 +261,17 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         allowed_values=frozenset(
             {"OVERSTAY", "DEPORTATION", "BLACKLIST", "IMMIGRATION_INVESTIGATION", "OTHER"}
         ),
+    ),
+    # immigration.renewal_paid — F4, 2026-08-24 (owner ruling: payment, not
+    # filing, is what continues the permit; see FactPath's own docstring for
+    # the verbatim ruling). Plain BOOLEAN, SENSITIVE tier like every other
+    # immigration.* fact above — no allowed_values (a boolean's only legal
+    # literals are true/false).
+    _spec(
+        FactPath.IMMIGRATION_RENEWAL_PAID,
+        FactValueKind.BOOLEAN,
+        "boolean",
+        pii_class=PiiClass.SENSITIVE,
     ),
     _spec(
         FactPath.INTENT_PURPOSES,
@@ -508,7 +520,11 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         "boolean",
         derived=True,
         dependencies=frozenset(
-            {FactPath.IMMIGRATION_CURRENT_STATUS_CODE, FactPath.IMMIGRATION_CURRENT_STATUS_EXPIRY}
+            {
+                FactPath.IMMIGRATION_CURRENT_STATUS_CODE,
+                FactPath.IMMIGRATION_CURRENT_STATUS_EXPIRY,
+                FactPath.IMMIGRATION_RENEWAL_PAID,
+            }
         ),
         pii_class=PiiClass.NONE,
     ),
@@ -683,24 +699,72 @@ class FactRegistry:
         own reference-date comparison (a permit expiring exactly on
         ``effective_at``'s date is still active that day).
 
-        CORRECTED 2026-08-24 (Kimi refuter finding F4 on the D12 fold
-        candidate): an earlier revision of this docstring claimed "the owner
-        explicitly ruled that person CAN apply" for the expired-permit case.
-        No supplied owner ruling says that — the 2026-08-23 ruling above only
-        excludes an ACTIVE KITAS; "expired therefore admits" is this
-        function's own inference from the exclusion's negation, inherited
-        from #4650's engine-wide date-boundary convention, not a separate
-        ruling. Known gap this leaves OPEN, not silently resolved: a
-        renewal-in-process applicant (printed KITAS expired, renewal filed,
-        legally resident — commonly on ``ITK_PERALIHAN``, which
-        ``_VISIT_CLASS_STATUS_CODES`` below classifies as no-permit
-        regardless of the ruling's evident intent) resolves ``False`` here
-        and is admitted to D12 by this function, though they may still hold
-        a live residence basis. Whether that divergence should change this
-        function's behavior is a business-policy call for the owner, not an
-        inference this docstring should keep making on the owner's behalf —
-        tracked as open, not fixed, pending that ruling.
+        F4 CLOSED (2026-08-24, owner ruling, verbatim: "chi ha un kitas
+        scaduto e il pagamento del rinnovo e' avvenuto prima della scadenza,
+        se verra accettato non ci sono penali. se lo ha pagato dopo la
+        scadenza, si conteranno i giorni tra scadenza e pagamento. In ogni
+        caso resta sul visa che ha esteso, non va su un altro" — clarified
+        further, verbatim: "esatto il rinno si considera depositato se ce
+        stato pagamento"). This REVERSES the gap the previous revision of
+        this docstring left open: a renewal-in-process applicant now
+        resolves to an ACTIVE permit (``True``), checked FIRST and
+        unconditionally, before either the code-shape or expiry logic below
+        is even consulted.
+
+        Two things this short-circuit is deliberately built to survive,
+        both load-bearing per the owner's own phrasing:
+
+        - **Payment, not filing, is the determinant.** A lodged-but-unpaid
+          renewal is NOT what the ruling describes ("depositato" only once
+          paid) — that is why the fact is ``immigration.renewal_paid``, a
+          payment fact, not a filing/submission fact, and why the interview
+          question that asks it (mouth ``flow.ts``) must name payment
+          explicitly. A generic "have you applied for a renewal?" wording
+          would let a truthful applicant who filed but has not paid answer
+          "yes", and this short-circuit would then wrongly continue their
+          expired permit — the exact failure this ruling exists to prevent
+          in the OTHER direction.
+        - **"In ogni caso" — timing is irrelevant to THIS fact.** The
+          ruling's before/after-expiry distinction governs whether overstay
+          PENALTIES apply (``immigration.overstay_days``, a different fact,
+          a different rule, not this one) — it does not gate whether the
+          permit continues. Both timings keep the applicant "sul visa che ha
+          esteso". So ``renewal_paid`` is a plain boolean, not an
+          enum/date — there is deliberately no earlier/later-than-expiry
+          branch here. This is an interpretation of "in ogni caso" spanning
+          both payment-timing branches the ruling describes immediately
+          before it, not a separately confirmed sentence — worth re-checking
+          against Zero directly if a future reader doubts it.
+        - **"se verra accettato" — acceptance is unknowable at evaluation
+          time.** The ruling's own phrasing is conditional/future-tense. This
+          function does not and cannot know whether a paid renewal will be
+          ACCEPTED — it treats a paid, in-flight renewal as continuity
+          regardless, by declared assumption, not by omission. A later
+          rejection is out of scope for this fact (and for this function).
+        - **Overrides the code-based buckets entirely, on purpose** —
+          including a code that would otherwise land in
+          ``_VISIT_CLASS_STATUS_CODES`` (e.g. a mis-recorded
+          ``ITK_PERALIHAN``) or fail the shape check. Payment is the
+          strongest available signal for this population; the printed code
+          on an expired card is exactly what the ruling says does not matter
+          once payment has occurred. See
+          ``test_fact_registry.py``'s F4 reachability tests for the two
+          cases this claim is checked against.
+
+        BRIDGING is NOT affected by this change (team-lead sibling-rule
+        audit, 2026-08-24): none of the 5 live ``hf.bridging.*``/
+        ``el.bridging.*`` rules in the signed pack read
+        ``derived.has_active_stay_permit`` — they read
+        ``immigration.current_status_code``/``current_status_expiry``
+        directly, which this short-circuit does not alter.
         """
+
+        renewal_paid = values[FactPath.IMMIGRATION_RENEWAL_PAID]
+        if isinstance(renewal_paid, KnownFact) and renewal_paid.value is True:
+            # Payment confirmed — the applicant stays on the permit they
+            # extended, full stop, regardless of what the printed code/expiry
+            # say. See the docstring above for why this is checked first.
+            return KnownFact(value=True)
 
         code = values[FactPath.IMMIGRATION_CURRENT_STATUS_CODE]
         if isinstance(code, UnknownFact):

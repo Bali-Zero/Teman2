@@ -95,7 +95,7 @@ def _validate_wire_keys(persona_id: str, raw_facts: dict[str, Any]) -> None:
     extra = got - APPLICANT_FACT_WIRE_KEYS
     if missing or extra:
         raise ValueError(
-            f"persona {persona_id!r}: facts do not match the closed 44-path "
+            f"persona {persona_id!r}: facts do not match the closed 45-path "
             f"FactPath vocabulary -- missing={sorted(missing)} extra={sorted(extra)}"
         )
 
