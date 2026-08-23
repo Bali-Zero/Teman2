@@ -57,6 +57,46 @@ receipts:
     exit: 0
     ts: "2026-08-23T08:45Z"
     seat: "session (pro)"
+pii_scan: clean
+dissent:
+  - seat: "independent adversarial review of PR #4639 (read-only, fresh context, not the author)"
+    objection: >-
+      "The tests are a real gate" is REFUTED at the CI-wiring level: no pull_request-triggered
+      workflow names scripts/tests/test_wr3_gatekeeper_cost.py, so a regression breaking every
+      test in that file would not block the PR introducing it, and "CI is clean" on #4639 did
+      not mean what it appeared to mean.
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted: `grep -rln test_wr3_gatekeeper_cost
+      .github/workflows/` returns nothing, the branch-protection required_status_checks list
+      contains no check that runs it, and scripts-tests-sweep.yml states the same thing in its
+      own header. This PR exists BECAUSE of this objection.
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      This PR was opened declaring Gear 2 while its diff touches .github/workflows/, which is
+      hot-zone and floors at Gear 3 by path regardless of size — a Gear-3-floor diff cannot
+      pass as "not a harness task".
+    status: CONFIRMED
+    note: >-
+      The floor is not the author's to choose, which is the point of computing it from the diff.
+      Answered by supplying brief+pack, never by touching the check.
+  - seat: "scripts/check_watcher_coverage.py (CI)"
+    objection: >-
+      The new workflow was absent from main-push-failure-watch.yml's census, so a failure of it
+      on main would have alerted nobody.
+    status: CONFIRMED
+    note: >-
+      A workflow nobody watches is the same exists-!=-armed shape this PR exists to close.
+      Coverage 99 -> 100; being caught by this checker on the way in is the system working.
+  - seat: "session (author, against its own earlier claim)"
+    objection: >-
+      An earlier message from this session asserted that the dispatched subagent channel was
+      broken because no grader had reported. That was wrong — three verdicts arrived, late —
+      and one of them is dissent entry #1 above.
+    status: RETRACTED
+    note: >-
+      Recorded because a pack that shows only objections from others, and none the author had
+      to withdraw, is the "consenso sospetto" this field exists to prevent.
 tests:
   - "The workflow's own subject IS the test corpus: 22 tests (15 spend-gate + 7 ledger-isolation), run together on 3.11 and 3.14, receipts above. No new test is warranted for a workflow file; the applicable checks are actionlint, the watcher-coverage checker, and the workflow's own two legs concluding on this PR — all three are green and all three are cited above."
 static:
