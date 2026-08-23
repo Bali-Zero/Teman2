@@ -115,16 +115,28 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         contract. Skipped, same as rule 6, whenever
                         --changed-files-file is not supplied.
 
-  8. lanes seat diversity (D3) — a Gear >= 2 pack with >= 2 build lanes must
-                        include at least one non-Anthropic builder seat.
-                        Exemptions: Gear 1, fewer than 2 build lanes,
-                        `lanes:` absent. Shape violations (lanes not a list,
-                        entry not a mapping, missing/empty lane/role/seat,
-                        invalid role) fail immediately. The diversity floor
-                        itself is time-phased: before 2026-09-05 it emits a
-                        NOTICE and does not fail; on/after 2026-09-05 it is
-                        a violation. The flip date lives in code (not a
-                        ledger) so the gate enforces it mechanically.
+  8. lanes seat diversity (D3) — every Gear >= 2 pack must declare `lanes:`
+                        as a non-empty list. If it declares >= 2 build
+                        lanes, at least one must use a non-Anthropic
+                        builder seat. Gear 1 is exempt from both
+                        requirements; fewer than 2 build lanes exempts only
+                        the seat-diversity floor, not the `lanes:`
+                        declaration. Missing `lanes:`, an empty `lanes: []`,
+                        and a declared multi-build set with zero non-
+                        Anthropic builders all share the same phased
+                        rollout: before 2026-09-05 each emits a NOTICE and
+                        does not fail; on/after 2026-09-05 each is a
+                        violation. Shape violations (lanes not a list, entry
+                        not a mapping, missing/empty lane/role/seat, invalid
+                        role) fail immediately whenever `lanes:` is a
+                        non-empty list. The flip date lives in code (not a
+                        ledger) so the gate enforces it mechanically. Note
+                        the asymmetry with rule 7: the ceiling check only
+                        NOTICEs a self-declared gear that exceeds the
+                        computed floor, but this rule treats that same
+                        self-declared gear as binding — a builder who
+                        cautiously over-declares `gear: 2` on a Gear-1-
+                        shaped diff owes a `lanes:` block post-flip.
 
 Floor check is SKIPPED (not silently passed — an explicit NOTICE on stderr)
 when --changed-files-file is not supplied: not every invocation of this linter
@@ -219,12 +231,12 @@ RECEIPT_REQUIRED_FIELDS = ("claim", "cmd", "exit", "ts", "seat")
 SIZE_TOKEN_CAP = 30_000
 VALID_GEARS = (1, 2, 3)
 
-# D3 seat-diversity rule (fleet-order program): a Gear >= 2 pack with >= 2
-# build lanes must include at least one non-Anthropic builder seat. The flip
-# date lives IN THE LINT because a ledger line nobody reads cannot gate a
-# merge — the code itself must enforce the grace window. Before 2026-09-05 the
-# linter NOTICES; on/after 2026-09-05 it FAILS. (14-day grace: rule ratified
-# 2026-08-22.)
+# D3 seat-diversity rule (fleet-order program): a Gear >= 2 pack must declare
+# lanes; when it declares >= 2 build lanes, at least one builder seat must be
+# non-Anthropic. The flip date lives IN THE LINT because a ledger line nobody
+# reads cannot gate a merge — the code itself must enforce the grace window.
+# Before 2026-09-05 either breach NOTICES; on/after 2026-09-05 it FAILS.
+# (14-day grace: rule ratified 2026-08-22.)
 LANES_NON_ANTHROPIC_ENFORCEMENT_DATE = datetime.date(2026, 9, 5)
 VALID_LANE_ROLES = ("build", "review", "read")
 
@@ -605,21 +617,38 @@ def check_lanes_build_seat_diversity(
     gear: int | None = None,
     today: datetime.date | None = None,
 ) -> tuple[list[str], str | None]:
-    """D3 seat-diversity rule. GUILT/NOTICE: a Gear >= 2 pack with >= 2 build
-    lanes must include at least one non-Anthropic builder seat. Exemptions:
-    Gear 1, fewer than 2 build lanes, or `lanes:` absent. Shape violations
-    (lanes not a list, entry not a mapping, missing/empty lane/role/seat,
-    invalid role) are always failures regardless of the date.
+    """D3 lane-declaration and seat-diversity rule. GUILT/NOTICE: a Gear >= 2
+    pack must declare `lanes:` as a non-empty list; when it has >= 2 build
+    lanes, at least one must use a non-Anthropic builder seat. Gear 1 is
+    exempt from both requirements. Fewer than 2 build lanes exempts only
+    seat diversity, not the declaration. `lanes: []` (present but empty) is
+    treated the same as `lanes:` absent — an empty list satisfies the shape
+    checks trivially and produces zero build lanes, so without this it would
+    silently exempt itself from D3 entirely. Shape violations (lanes not a
+    list, entry not a mapping, missing/empty lane/role/seat, invalid role)
+    are always failures whenever `lanes:` is a non-empty list, regardless of
+    gear or date.
 
     Returns (violations, notice). `notice` is set only during the pre-
     enforcement grace period (before LANES_NON_ANTHROPIC_ENFORCEMENT_DATE)
-    when the diversity rule would otherwise fail; violations is empty in that
-    window. On/after the enforcement date the same shape becomes a violation.
+    when either phased requirement would otherwise fail; violations is empty
+    in that window. On/after the enforcement date the same shape becomes a
+    violation.
 
     The `today` parameter makes the date overridable for tests without
     monkeypatching date.today() or env vars."""
     if "lanes" not in pack:
-        return [], None
+        if gear is None or gear < 2:
+            return [], None
+        message = (
+            f"lanes: field is missing — mandatory on Gear-{gear} packs "
+            "(D3 lane-declaration rule)"
+        )
+        if today is None:
+            today = datetime.datetime.now(datetime.timezone.utc).date()
+        if today < LANES_NON_ANTHROPIC_ENFORCEMENT_DATE:
+            return [], message
+        return [message], None
 
     lanes = pack["lanes"]
     if not isinstance(lanes, list):
@@ -653,6 +682,18 @@ def check_lanes_build_seat_diversity(
 
     if gear is None or gear < 2:
         return [], None
+
+    if not lanes:
+        message = (
+            f"lanes: field is empty — mandatory on Gear-{gear} packs "
+            "(D3 lane-declaration rule)"
+        )
+        if today is None:
+            today = datetime.datetime.now(datetime.timezone.utc).date()
+        if today < LANES_NON_ANTHROPIC_ENFORCEMENT_DATE:
+            return [], message
+        return [message], None
+
     if len(build_lanes) < 2:
         return [], None
     if not all(_is_anthropic_seat(entry.get("seat")) for _idx, entry in build_lanes):
