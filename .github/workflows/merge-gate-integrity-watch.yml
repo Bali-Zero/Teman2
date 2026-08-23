@@ -94,13 +94,28 @@ jobs:
           python3 scripts/probe_merge_gate_integrity.py \
             --sha "$TARGET_SHA" --json > /tmp/verdict.json || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          # A hard crash can leave the file empty; the alert step json.load()s
-          # it, so give it something valid to read rather than a second,
-          # more confusing failure on top of the first.
-          if [ ! -s /tmp/verdict.json ]; then
-            printf '{"verdict":"CANNOT-VERIFY","subject":"%s","error":"probe produced no output (rc=%s)"}\n' \
-              "$TARGET_SHA" "$rc" > /tmp/verdict.json
-          fi
+          # The alert step json.load()s this file, so guarantee it PARSES —
+          # not merely that it is non-empty. An adversarial review of this
+          # very step found two ways a size-only test lets a broken file
+          # through: (a) the 10-minute timeout, or any SIGKILL, can stop the
+          # probe MID-PRINT, leaving valid-looking but truncated JSON; (b) a
+          # `"` in a workflow_dispatch `sha` input would break a printf-built
+          # fallback. Either one makes the alert step raise under `-e`, which
+          # SKIPS the CANNOT-VERIFY step below via its implicit success() —
+          # a red run with no Telegram at all, the exact opposite of intent.
+          # json.dump also escapes the SHA for free, so (b) cannot recur.
+          python3 -c '
+          import json, sys
+          path, sha, rc = "/tmp/verdict.json", sys.argv[1], sys.argv[2]
+          try:
+              with open(path) as fh:
+                  json.load(fh)
+          except Exception as exc:
+              with open(path, "w") as fh:
+                  json.dump({"verdict": "CANNOT-VERIFY", "subject": sha,
+                             "error": "probe produced no parseable output "
+                                      "(rc=" + rc + "): " + str(exc)}, fh)
+          ' "$TARGET_SHA" "$rc"
           cat /tmp/verdict.json
 
       # Machine-readable rc, never re-derived from prose (W88 — judge by
@@ -138,6 +153,19 @@ jobs:
               lines += [f'  - {f}' for f in findings[:10]]
               if len(findings) > 10:
                   lines.append(f'  (+{len(findings) - 10} more)')
+              # Carry the skipped list whenever a message is already being
+              # sent. An adversarial review called the skipped reporting
+              # 'decoration' because it lived only in the run log of a GREEN
+              # run nobody opens — half true, and this is the half that can
+              # be fixed without inventing new alarm traffic: a human already
+              # reading a VIOLATION page now sees which contexts were waved
+              # through as skipped on the same commit. It deliberately does
+              # NOT create an alert of its own; a skipped context is not a
+              # finding, and a page per docs-only merge is the fatigue this
+              # whole PR exists to remove.
+              skipped = d.get('skipped_contexts', [])
+              if skipped:
+                  lines.append(f'  (also skipped, satisfied by GitHub, not a finding: {", ".join(skipped)})')
               print(chr(10).join(lines))
           ")
           MSG="[merge-gate-integrity-watch] ${BODY}

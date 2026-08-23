@@ -1,133 +1,219 @@
 brief_ref: evidence/brief.yml
-plan_ref: "wire scripts/tests/test_wr3_gatekeeper_cost.py into a pull_request-triggered check (PR #4649, 2026-08-23), after an adversarial review of #4639 found the corpus was named by no workflow at all"
+plan_ref: "S12/C1 — silence merge-gate-integrity-watch's 26 CANNOT-VERIFY reds/day (mandate ~/sessioni-2026-08-23/S12-mini-ship-accelerators.md, Mini, 2026-08-23)"
+lanes:
+  - lane: s12-c1
+    role: build
+    seat: "claude-opus-5 (session, Mini)"
+  - lane: s12-c1-refute
+    role: review
+    seat: "kimi-code/k3 (Moonshot, non-Anthropic)"
 diff:
   net_lines: >-
-    3 files, +156/-62 measured by `git diff --stat origin/main`. Of the 62 deletions, 60 are
-    evidence/brief.yml being replaced (it is a per-PR file, rewritten by each harness-gated PR
-    — see `git log --oneline -- evidence/brief.yml`). The substantive change is ONE new
-    workflow file plus ONE entry and its comment in the watcher census.
+    5 files. Three substantive (scripts/probe_merge_gate_integrity.py,
+    scripts/tests/test_probe_merge_gate_integrity.py,
+    .github/workflows/merge-gate-integrity-watch.yml) plus evidence/brief.yml
+    and evidence/pack.yml, which are per-PR scratch rewritten by every
+    harness-gated PR.
   behaviour_change: >-
-    No executable code changes. Runtime behaviour of every script is byte-identical. What
-    changes is that a corpus which previously ran nowhere on pull requests now runs, on two
-    interpreters.
+    The probe's verdict changes on two inputs and only two: a required context
+    concluding "skipped" is no longer a finding, and the required-context list
+    can now come from the checked-in snapshot when the live API is denied. The
+    workflow's classification changes on ALL non-zero outcomes, because it
+    previously captured no exit code at all. Nothing about what the workflow
+    DOES with a verdict changes: still not required, still non-blocking,
+    still signal-only.
 receipts:
-  - claim: "The corpus this workflow executes is green on the interpreter CI pins (3.11) — all THREE files, after the third was added in response to the review finding below"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py -q"
-    result: "64 passed in 0.89s (was 22 before test_wr3_credit_ledger.py was wired in; that file is 898 lines / 42 tests and was green BEFORE being added — a red one would have broken the workflow on arrival)"
+  - claim: "The watcher fails on every push to main — this is 100%, not 'often'"
+    cmd: "gh run list --workflow=merge-gate-integrity-watch.yml --limit 12 --json conclusion"
+    result: "12 of 12 runs: failure. Sampled 2026-08-23 07:46Z-09:50Z."
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "...and on 3.14, the version `#!/usr/bin/env python3` resolves to on the render hosts — measured locally in a 3.14.6 venv, not inferred from the workflow file"
-    cmd: "PYTHONPATH=. <scratch 3.14.6 venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py -q"
-    result: "22 passed in 0.81s"
+    ts: "2026-08-23T10:05Z"
+    seat: "session (mini)"
+  - claim: "The mandate's stated cause (squash produces a SHA with no pre-merge runs) is WRONG — the probe resolves the squashed SHA to its PR correctly and finds 51 merge_group jobs"
+    cmd: "gh api repos/Bali-Zero/Teman2/commits/b72f1885f44b155b379fc7601665dc9dd40ce76b/pulls --jq '.[] | \"\\(.number) \\(.merged_at)\"'"
+    result: "4654 2026-08-23T09:50:02Z — resolves cleanly; the probe then finds 51 merge_group jobs on that SHA. The squash hypothesis is not the cause."
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "Both matrix legs actually RAN and concluded SUCCESS on this PR — the runner can provide 3.14, which was the one thing about this file that could not be settled locally"
-    cmd: "gh pr view 4649 --json statusCheckRollup, filtered to checks matching 'WR3 spend gate'"
-    result: "WR3 spend gate tests (py3.11) -> SUCCESS; WR3 spend gate tests (py3.14) -> SUCCESS"
+    ts: "2026-08-23T10:07Z"
+    seat: "session (mini)"
+  - claim: "DEFECT 1 — the old idiom captures NOTHING under the runner's real shell, the new one captures the exit code"
+    cmd: 'bash -e -o pipefail -c ''set -uo pipefail; python3 -c "import sys; sys.exit(3)" > /tmp/v.json; rc=$?; echo OLD_CAPTURED_rc=$rc''  ;  same with ''rc=0; ... || rc=$?'''
+    result: "OLD: prints nothing at all (step aborted by -e before rc=$? ran). NEW: prints NEW_CAPTURED_rc=3. Independently re-verified by the refuter, which also measured rc=143 captured on SIGTERM."
     exit: 0
-    ts: "2026-08-23T08:59Z"
-    seat: "session (pro)"
-  - claim: "actionlint accepts the new workflow"
-    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
-    result: "no output"
+    ts: "2026-08-23T10:29Z"
+    seat: "session (mini) + kimi-code/k3"
+  - claim: "DEFECT 2 — the snapshot is a sound substitute: content-identical to live branch protection, both directions"
+    cmd: "python3 — compare [c['name'] for c in infra/required.d/contexts.json] against gh api repos/Bali-Zero/Teman2/branches/main/protection --jq .required_status_checks.contexts"
+    result: "snap 27, live 27, identical: True, only_snap: [], only_live: []"
     exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "Every path named in the workflow's paths: filter exists at this head — a workflow naming a file that is not there is a gate that runs nothing and reports success"
-    cmd: "for each quoted .py/.yml path in the workflow file: test -f"
-    result: "0 missing"
-    exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "The watcher census now names this workflow, so a failure of it on main alerts like every other"
-    cmd: "python3 scripts/check_watcher_coverage.py"
-    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (was 99 before this PR; the missing entry is what turned the `check` job red on this PR's first run)"
-    exit: 0
-    ts: "2026-08-23T09:02:08Z"
-    seat: "session (pro)"
-  - claim: "The gap this PR closes is real and is stated by the repo itself, not only by me"
-    cmd: "grep -rln test_wr3_gatekeeper_cost .github/workflows/  ; and read scripts-tests-sweep.yml's header"
+    ts: "2026-08-23T10:14Z"
+    seat: "session (mini)"
+  - claim: "DEFECT 3 — 'skipped' really does satisfy branch protection: the proof is a MERGE, not a doc"
+    cmd: "probe --sha b72f1885f... (PR #4654, docs-only, touching only .claude/skills/modus/PENDING-ARMS.md)"
     result: >-
-      grep returns NOTHING. scripts-tests-sweep.yml states in its own header: THIS WORKFLOW DOES
-      NOT GATE ANYTHING, continue-on-error true, not in branch-protection required checks,
-      TRIGGER schedule + workflow_dispatch deliberately NOT pull_request, and that 61 of 235
-      files under scripts/tests/ are named by a workflow while 174 are named by nothing.
+      That commit is ON main, and four of its 27 required contexts concluded
+      "skipped" in its merge_group run: E2E Tests (Playwright), MCP Server
+      Tests, Backend Tests (Python), Bandit Python Security. Branch protection
+      was active and listed all four. Independently corroborated the same
+      morning by the S11 lane, which observed `Backend Tests (Python)` SKIPPED
+      on pr-4658's merge_group and identified it as the pre-existing path
+      classifier, not a regression.
+    exit: 1
+    ts: "2026-08-23T10:12Z"
+    seat: "session (mini)"
+  - claim: "ACCEPTANCE (a) — zero CANNOT-VERIFY on the 10 most recent first-parent pushes to main"
+    cmd: "for sha in $(git log --first-parent -10 --format=%H origin/main); do probe --sha $sha --json; done"
+    result: "10/10 CLEAN, rc=0 each, CANNOT-VERIFY count = 0. Was 100% CANNOT-VERIFY. skipped counts per commit: 4,4,4,0,4,1,0,4,0,0."
     exit: 0
-    ts: "2026-08-23T08:45Z"
-    seat: "session (pro)"
+    ts: "2026-08-23T10:32Z"
+    seat: "session (mini)"
+  - claim: "ACCEPTANCE (b) — guilt preserved: a fabricated SHA still returns CANNOT-VERIFY"
+    cmd: "probe --sha b72f1885f7f9b8b0e17c1c9f0ba7e1a9a3f6d3ef --json   (real prefix, invented tail)"
+    result: '{"verdict": "CANNOT-VERIFY", "error": "... No commit found for SHA ... (HTTP 422)"} — this was run BEFORE the real-SHA run, by accident, and is kept because an accidental guilt case is still a guilt case.'
+    exit: 3
+    ts: "2026-08-23T10:10Z"
+    seat: "session (mini)"
+  - claim: "ACCEPTANCE (c) — the #3227 guilt fixture still returns VIOLATION, and every other guilt case is pinned"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_probe_merge_gate_integrity.py -q"
+    result: "28 passed (was 13). Includes: absent job, failure/cancelled/timed_out/action_required/neutral/None conclusions, zero merge_group runs, empty required list, both-sources-failing."
+    exit: 0
+    ts: "2026-08-23T10:41Z"
+    seat: "session (mini)"
+  - claim: "The real shape of a skipped job is stranger than the obvious guess, and the test now pins the real one"
+    cmd: 'gh api repos/.../actions/runs/<merge_group runs of b72f1885f>/jobs --jq ''.jobs[] | select(.conclusion=="skipped")'''
+    result: >-
+      started_at 09:42:22Z, completed_at 09:42:21Z — completed ONE SECOND
+      BEFORE started. Duration -1s, not 0. The first draft of the test
+      fabricated started_at == completed_at, which would have passed while
+      pinning a shape production never emits and leaving the negative-duration
+      path unexercised on the only input that reaches it. Corrected before
+      commit.
+    exit: 0
+    ts: "2026-08-23T10:36Z"
+    seat: "session (mini)"
+  - claim: "The three refuter-named crash inputs are closed, tested individually"
+    cmd: "ran the guard fragment under `bash -e -o pipefail` on: valid JSON / truncated-but-non-empty JSON / a SHA containing a double quote"
+    result: >-
+      valid JSON left byte-untouched; truncated JSON ({\"subject\":\"abc\",\"clean\":tr)
+      replaced with a parseable CANNOT-VERIFY naming rc=137 — the size-only
+      guard had waved this through; a quoted SHA round-trips (subject reads
+      back as ab\"cd) because json.dump escapes it.
+    exit: 0
+    ts: "2026-08-23T10:47Z"
+    seat: "session (mini)"
 pii_scan: clean
 dissent:
-  - seat: "independent adversarial review of PR #4639 (read-only, fresh context, not the author)"
+  - seat: "kimi-code/k3 (independent adversarial refuter, non-Anthropic, fresh context, not the author)"
     objection: >-
-      "The tests are a real gate" is REFUTED at the CI-wiring level: no pull_request-triggered
-      workflow names scripts/tests/test_wr3_gatekeeper_cost.py, so a regression breaking every
-      test in that file would not block the PR introducing it, and "CI is clean" on #4639 did
-      not mean what it appeared to mean.
+      MAJOR — the skipped allowance opens a real hole and its mitigation is
+      decoration as wired. Concrete scenario given: an over-narrow paths filter
+      lets a PR that changes an imported package skip `Backend Tests (Python)`;
+      GitHub's gate is satisfied, the probe returns clean:true, and a merge
+      lands with zero backend-test compute — which by the probe's own mission
+      statement IS the #3227 class, now blessed. And `skipped_contexts` never
+      reaches Telegram: on rc=0 the classify step emits tier=none so no alert
+      fires at all, and even on a VIOLATION the alert body interpolated only
+      `findings`.
     status: CONFIRMED
     note: >-
-      Verified independently rather than accepted: `grep -rln test_wr3_gatekeeper_cost
-      .github/workflows/` returns nothing, the branch-protection required_status_checks list
-      contains no check that runs it, and scripts-tests-sweep.yml states the same thing in its
-      own header. This PR exists BECAUSE of this objection.
-  - seat: "Harness floor recompute (CI, deterministic)"
+      The half that could be fixed without manufacturing new alarm traffic was
+      fixed in this PR: the alert body now carries the skipped list whenever a
+      message is already being sent, so a human reading a VIOLATION page sees
+      what else was waved through on that commit. The other half is REFUSED on
+      purpose and the refusal is the point of the PR — a skipped context is
+      not a finding, and alerting on one would page on every docs-only merge,
+      which is precisely the fatigue being removed. Detecting an over-broad
+      paths filter is a different detector and is not claimed here; it is in
+      the brief's risks and in PENDING-ARMS, not smuggled into this diff.
+  - seat: "kimi-code/k3 (same)"
     objection: >-
-      This PR was opened declaring Gear 2 while its diff touches .github/workflows/, which is
-      hot-zone and floors at Gear 3 by path regardless of size — a Gear-3-floor diff cannot
-      pass as "not a harness task".
+      MAJOR — the snapshot fallback is fail-open on drift and the code does
+      nothing about it. Add a 28th required context in GitHub Settings without
+      re-running snapshot_required_contexts.py and the probe verifies 27 of 28
+      and reports CLEAN; `generated_at: 2026-08-11` is never read; there is no
+      staleness tripwire. Reverse drift (a rename in Settings) produces false
+      p0s instead.
     status: CONFIRMED
     note: >-
-      The floor is not the author's to choose, which is the point of computing it from the diff.
-      Answered by supplying brief+pack, never by touching the check.
-  - seat: "scripts/check_watcher_coverage.py (CI)"
+      Correct, and it was already named in the brief's risks before the
+      refutation arrived — recorded here as CONFIRMED-BY-A-SECOND-PARTY rather
+      than discovered. Partially mitigated after the review: the verdict's
+      `required_source` now carries the snapshot's own generation date
+      (`snapshot:infra/required.d/contexts.json@2026-08-11`), so a suspicious
+      CLEAN says out loud how old the list it trusted was. The real cure is a
+      scheduled freshness check that regenerates and diffs — a new workflow,
+      i.e. a separate PR, and it is going to PENDING-ARMS rather than being
+      bundled here. Weighed honestly: this trades a TOTAL blind spot that
+      screams 26 times a day for a PARTIAL blind spot that is quiet. That is
+      an improvement, not a fix, and it is not being sold as one.
+  - seat: "kimi-code/k3 (same)"
     objection: >-
-      The new workflow was absent from main-push-failure-watch.yml's census, so a failure of it
-      on main would have alerted nobody.
+      MINOR ×2 — a timeout- or SIGKILL-killed probe leaves truncated but
+      NON-EMPTY JSON, which the size-only `[ ! -s ]` guard waved through; the
+      alert step's json.load then raised under `-e`, and the CANNOT-VERIFY
+      step below was skipped by its implicit success() — a red run with no
+      Telegram at all, the opposite of the stated intent. Separately, a `"` in
+      a workflow_dispatch sha input broke the printf-built fallback JSON into
+      the same silent path.
     status: CONFIRMED
     note: >-
-      A workflow nobody watches is the same exists-!=-armed shape this PR exists to close.
-      Coverage 99 -> 100; being caught by this checker on the way in is the system working.
-  - seat: "independent adversarial review of THIS PR (read-only, fresh context, not the author)"
+      Both closed by one change: the guard now validates that the file PARSES
+      (json.load) instead of merely being non-empty, and rebuilds it with
+      json.dump, which escapes the SHA for free. All three cases tested
+      individually under `bash -e -o pipefail` — receipt above.
+  - seat: "kimi-code/k3 (same)"
     objection: >-
-      The workflow lists scripts/wr3_credit_ledger.py in `paths:` but its pytest step did not
-      execute scripts/tests/test_wr3_credit_ledger.py — the only file exercising
-      dedupe_against_ledger, discover_backfill_records, read_integrity, spend_by_episode,
-      total_spend and the backfill CLI. A PR breaking any of them would MATCH the filter, run
-      the workflow, pass both legs (the two executed files import only record_spend /
-      read_records), pass py_compile (a logic bug, not syntax) and ship under a green check.
-      The evidence also called that module "under test" while naming only the other two files
-      as executed.
+      MINOR, latent, pre-existing — the per-run jobs fetch used no per_page, so
+      GitHub's default of 30 would silently truncate a run with more jobs and
+      every context that fell off the page would report "never evaluated
+      pre-merge": a false VIOLATION p0 manufactured by pagination. Measured max
+      on the real corpus: 10 jobs per run, so not live today.
+    status: CONFIRMED
+    note: "One query parameter (per_page=100). Pre-existing, but closed on sight — the failure direction is a false page to a human at night."
+  - seat: "session (author, against the mandate that dispatched it)"
+    objection: >-
+      The mandate stated the cause as structural squash-SHA behaviour
+      ("the pushed main SHA is a brand-new commit that NEVER had pre-merge
+      check runs of its own") and proposed resolving the SHA to its PR as the
+      cure. Reading the script first showed the probe ALREADY does exactly
+      that, correctly, and had done so since it was written.
     status: CONFIRMED
     note: >-
-      Verified independently rather than accepted: the file is 898 lines with 42 test functions
-      (the reviewer said 38 — a small miscount that does not touch the finding, recorded because
-      a number that matches for the wrong reason is worse than one that differs), `grep -rn
-      test_wr3_credit_ledger .github/workflows/` returns zero hits repo-wide, and the two
-      executed files import exactly `record_spend` and `read_records, record_spend`. Fixed in
-      this PR by adding the file to both `paths:` blocks AND the pytest command — 64 tests now
-      run. A path that triggers a job which cannot see it is worse than an absent path, because
-      it reads as coverage.
-  - seat: "session (author, against its own earlier claim)"
+      Recorded because building the ordered cure would have produced a PR that
+      changed working code, shipped green, and left all 26 reds in place. The
+      mandate's INSTRUCTION to "confirm by reading the called script first" is
+      what saved it — the instruction was right even though the hypothesis
+      attached to it was wrong.
+  - seat: "session (author, against its own first draft)"
     objection: >-
-      An earlier message from this session asserted that the dispatched subagent channel was
-      broken because no grader had reported. That was wrong — three verdicts arrived, late —
-      and one of them is dissent entry #1 above.
-    status: RETRACTED
+      The first draft of the new tests fabricated `started_at == completed_at`
+      for a skipped job. Real GitHub data has completed_at one second BEFORE
+      started_at.
+    status: CONFIRMED
     note: >-
-      Recorded because a pack that shows only objections from others, and none the author had
-      to withdraw, is the "consenso sospetto" this field exists to prevent.
+      A test that passes while pinning a shape production never emits is the
+      "green for the wrong reason" class. Caught by measuring the live API
+      instead of reasoning about it. Recorded because a dissent list showing
+      only other people's findings, and none the author had to withdraw, is
+      the suspicious-consensus shape this field exists to prevent.
 tests:
-  - "The workflow's own subject IS the test corpus: 22 tests (15 spend-gate + 7 ledger-isolation), run together on 3.11 and 3.14, receipts above. No new test is warranted for a workflow file; the applicable checks are actionlint, the watcher-coverage checker, and the workflow's own two legs concluding on this PR — all three are green and all three are cited above."
+  - "scripts/tests/test_probe_merge_gate_integrity.py: 13 -> 28 tests, all passing. New coverage is deliberately two-directional: 3 innocence tests (skipped is not a finding; skipped survives the negative-duration rule; the measured 4-skipped docs-merge shape is clean) and 6 guilt tests (a parametrized case per non-passing conclusion — failure, cancelled, timed_out, action_required, neutral, None — plus 'skipped does not substitute for a missing job'), then 5 on the required-context source (snapshot present and dated; API preferred; snapshot used when API denied; empty API list falls through rather than passing vacuously; both sources failing raises)."
+  - "`neutral` is in the GUILT list on purpose. It is commonly said to satisfy required checks, was NOT measured on this repo, and therefore stays a finding — the test's own docstring says a future lane may move it by adding evidence, never by assuming symmetry."
 static:
-  - "actionlint -> clean"
-  - "python3 -c yaml.safe_load on the new workflow -> parses"
-  - "scripts/check_watcher_coverage.py -> exit 0"
+  - "yaml.safe_load on the modified workflow -> parses; permissions read back as {contents: read, actions: read, pull-requests: read}"
+  - "the embedded python's indentation verified by extracting the post-YAML `run` scalar and reading it, not by eyeballing the file (a block-scalar indent error would only surface in CI)"
+  - "actionlint NOT run locally — not installed on this machine. Stated rather than omitted; CI runs it."
 notes:
   - >-
-    Two checks correctly rejected the first version of this PR and both were answered by
-    complying, never by editing the check: `Harness floor recompute` (a .github/workflows/ diff
-    floors at Gear 3 by PATH — this PR had been opened declaring Gear 2, and the floor is not
-    the author's to choose) and `check` / check_watcher_coverage.py (a new workflow nobody
-    watches is the same exists-!=-armed shape this PR exists to close). Being caught by the
-    second one on the way in is the system working.
+    Seat diversity is DEGRADED and declared, not silent. Non-Anthropic seats
+    were live-probed this session rather than trusted from the 3h-old
+    SessionStart report: kimi PONG (alive); codex `401 Unauthorized ... refresh
+    token was revoked` (AUTH_DEAD, needs an interactive `codex login` — an
+    operator gesture); glm CRED_UNAVAILABLE; agy TIMEOUT. One non-Anthropic
+    family available, not the two a full quorum wants. The refutation happened;
+    the diversity did not.
+  - >-
+    Three defects, one PR, deliberately not split. They are not independent:
+    fixing 1 and 2 without 3 would have converted 26 ignorable digest reds per
+    day into 26 p0 Telegram pages per day, one per docs-only merge. Shipping
+    them separately would have made the alarm strictly worse in the window
+    between the two PRs.

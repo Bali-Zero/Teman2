@@ -25,6 +25,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,12 @@ import pytest
 _SCRIPTS = Path(__file__).resolve().parents[1]
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "merge_gate_integrity"
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _shift_iso(ts: str, seconds: int) -> str:
+    """Return `ts` moved FORWARD by `seconds`, in the same Z-suffixed form."""
+    dt = datetime.fromisoformat(ts.replace("Z", "+00:00")) + timedelta(seconds=seconds)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _load_module():
@@ -255,13 +262,27 @@ def test_in_progress_duplicate_never_masks_a_missing_completed_result():
 
 
 def _set_conclusion(fx: dict[str, Any], ctx: str, conclusion: str) -> None:
-    """Set every job carrying this context name to `conclusion`, and blank the
-    timing the way GitHub really does for a job that never ran."""
+    """Set every job carrying this context name to `conclusion`, reproducing
+    the timestamps GitHub really emits for that conclusion.
+
+    The skipped shape is MEASURED, not invented, and it is stranger than the
+    obvious guess. Live jobs on merge commit b72f1885f (2026-08-23):
+
+        {"name": "Bandit Python Security", "conclusion": "skipped",
+         "started_at": "2026-08-23T09:42:22Z",
+         "completed_at": "2026-08-23T09:42:21Z"}
+
+    completed_at is ONE SECOND BEFORE started_at — duration -1s, not 0. A test
+    that used started_at == completed_at would pass while pinning a shape
+    production never produces; worse, it would leave the negative-duration
+    path (the "phantom result" finding) unexercised on exactly the input that
+    reaches it in the real world."""
     for job in fx["merge_group_jobs"]:
         if job["name"] == ctx:
             job["conclusion"] = conclusion
             if conclusion == "skipped":
-                job["started_at"] = job["completed_at"]
+                completed = job["completed_at"]
+                job["started_at"] = _shift_iso(completed, seconds=1)
 
 
 def test_skipped_required_context_is_not_a_finding():
@@ -273,18 +294,25 @@ def test_skipped_required_context_is_not_a_finding():
     assert victim in result["skipped_contexts"], "a skipped context must still be REPORTED, just not as a finding"
 
 
-def test_skipped_context_survives_the_zero_duration_rule():
-    """A skipped job has started_at == completed_at (duration 0). The phantom-
-    result rule must not fire on it — otherwise the cure moves the false
-    positive one line down instead of removing it."""
+def test_skipped_context_survives_the_negative_duration_rule():
+    """A real skipped job completes BEFORE it starts (measured: -1s). The
+    phantom-result rule must not fire on it — otherwise the cure just moves
+    the false positive one line down instead of removing it. This is the
+    single most load-bearing test of the three C1 defects, because a naive
+    'skipped passes' that still ran the duration check would have kept ~26
+    reds a day while looking fixed."""
     fx = _clean_fixture()
     victim = fx["required_contexts"][0]
     _set_conclusion(fx, victim, "skipped")
     for job in fx["merge_group_jobs"]:
         if job["name"] == victim:
-            assert job["started_at"] == job["completed_at"], "fixture no longer exercises the zero-duration shape"
+            assert job["started_at"] > job["completed_at"], (
+                "fixture no longer reproduces the measured skipped shape "
+                "(completed_at before started_at)"
+            )
     result = probe.evaluate(fx["merge_group_jobs"], fx["required_contexts"], fx["merged_at"])
-    assert not any("phantom" in f for f in result["findings"])
+    assert not any("phantom" in f for f in result["findings"]), result["findings"]
+    assert result["clean"] is True, result["findings"]
 
 
 def test_docs_only_merge_shape_four_skipped_contexts_is_clean():
@@ -332,9 +360,13 @@ def test_skipped_does_not_substitute_for_a_missing_job():
 def test_snapshot_file_is_present_and_non_empty():
     """The fallback is only a fallback if it exists. Pins the file this probe
     now depends on in CI."""
-    names = probe._required_contexts_from_snapshot(str(REPO_ROOT))
+    names, generated_at = probe._required_contexts_from_snapshot(str(REPO_ROOT))
     assert len(names) >= 20, f"snapshot looks truncated: {len(names)} contexts"
     assert all(isinstance(n, str) and n for n in names)
+    assert generated_at and generated_at != "unknown", (
+        "the snapshot must carry its own generation date — it is what makes the "
+        "declared drift risk visible in a run log instead of invisible"
+    )
 
 
 def test_api_is_preferred_when_it_answers(monkeypatch):

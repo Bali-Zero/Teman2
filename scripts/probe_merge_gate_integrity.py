@@ -269,7 +269,7 @@ def _gh_api_paginated_stream(path: str, jq_filter: str) -> list[Any]:
     return out
 
 
-def _required_contexts_from_snapshot(repo_root: str) -> list[str]:
+def _required_contexts_from_snapshot(repo_root: str) -> tuple[list[str], str]:
     """Read the checked-in snapshot. Raises if it is absent or malformed —
     an unreadable fallback must surface as CANNOT-VERIFY, never as an empty
     required list (an empty list would make EVERY commit vacuously clean,
@@ -281,7 +281,15 @@ def _required_contexts_from_snapshot(repo_root: str) -> list[str]:
     contexts = [c["name"] for c in snapshot["contexts"]]
     if not contexts:
         raise RuntimeError(f"{SNAPSHOT_CONTEXTS_PATH} lists zero required contexts")
-    return contexts
+    # Stamp the snapshot's own generation date onto the source label. The
+    # declared residual risk of this fallback is DRIFT — a context added in
+    # GitHub Settings that nobody regenerated the file for would be verified
+    # by nobody while the verdict still said CLEAN. This does not close that
+    # hole, but it stops it being invisible: every verdict that used the
+    # snapshot carries the date it was taken, in the run log, where a human
+    # reading a suspicious CLEAN can see "…generated 2026-08-11" and know
+    # what to distrust.
+    return contexts, snapshot.get("generated_at", "unknown")
 
 
 def fetch_required_contexts(repo: str, repo_root: str) -> tuple[list[str], str]:
@@ -305,7 +313,8 @@ def fetch_required_contexts(repo: str, repo_root: str) -> tuple[list[str], str]:
         api_error = str(exc)
 
     try:
-        return _required_contexts_from_snapshot(repo_root), f"snapshot:{SNAPSHOT_CONTEXTS_PATH}"
+        contexts, generated_at = _required_contexts_from_snapshot(repo_root)
+        return contexts, f"snapshot:{SNAPSHOT_CONTEXTS_PATH}@{generated_at}"
     except Exception as snap_exc:  # noqa: BLE001
         raise RuntimeError(
             f"could not determine required contexts — live API: {api_error}; "
@@ -325,7 +334,14 @@ def fetch_live(
     jobs: list[dict[str, Any]] = []
     for run in runs:
         run_id = run["id"]
-        run_jobs = _gh_api_json(f"repos/{repo}/actions/runs/{run_id}/jobs")
+        # per_page=100, not GitHub's default of 30. Latent before this change
+        # (max observed is 10 jobs on a real run) but the failure mode is bad
+        # enough to close on sight: a run with >30 jobs would silently
+        # truncate, and every required context that fell off the page would
+        # be reported as "never evaluated pre-merge" — a false VIOLATION p0
+        # manufactured by pagination. Found by an adversarial review of this
+        # PR; pre-existing, fixed here because it is one query parameter.
+        run_jobs = _gh_api_json(f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100")
         for job in run_jobs.get("jobs", []):
             jobs.append(
                 {
