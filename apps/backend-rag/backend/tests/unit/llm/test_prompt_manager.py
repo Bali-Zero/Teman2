@@ -251,8 +251,11 @@ class TestPromptManagerFailLoudOnUnknownVersion:
           and it only ever *un*-mutes (`logging.disable(logging.NOTSET)`),
           saving and restoring around it. This capture is therefore
           hardening of the promise this docstring already makes —
-          "independently of the global logging config" — not the diagnosis
-          of whatever CI failure motivated it, which remains unreproduced.
+          "independently of the global logging config" — not a claimed cure
+          for the CI failure that motivated it: that failure has since been
+          reproduced deterministically (3/3 runs, real `pytest-xdist -n auto
+          --dist loadfile` against the failing corpus) but is not yet
+          root-caused.
         * this logger's own `.filters` — `Logger.filter()` runs before
           `callHandlers()`, so a drop-everything filter attached directly to
           `backend.llm.prompt_manager` (by this test file or any other) would
