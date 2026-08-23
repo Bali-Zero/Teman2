@@ -316,12 +316,23 @@ null`. **General form, because it is the reusable lesson: reading a metadata fla
     status bridging, expected `HUMAN_REVIEW_REQUIRED`), persona 16 (investor capital 1 IDR below
     minimum, expected `NO_SUPPORTED_PATH`). Recurring review codes on the abstention side:
     `CITIZENSHIP_LIST_DIVERGENCE` ×2, `MINOR_GUARDIAN_PRIVACY_REVIEW` ×2,
-    `E33G_INCOME_EVIDENCE_REVIEW` ×2. (A cross-family review of this same replay counted 6
-    wrong-direction personas rather than 4 — re-run this session under the narrower "lands at
-    full `SUPPORTED_CANDIDATES` against a stricter expectation" definition above finds exactly 4;
-    the broader count likely also credits personas whose actual state is only partially more
-    permissive within the same review-required tier. Flagging the discrepancy rather than
-    silently picking one number — both readings agree on the qualitative point below.)
+    `E33G_INCOME_EVIDENCE_REVIEW` ×2.
+
+    **The 4-vs-6 count, RESOLVED as definitional, not factual (2026-08-23, same-day
+    reconciliation).** **4** is measured this session by running the driver under the narrow
+    axis stated above — "lands at full `SUPPORTED_CANDIDATES` against a stricter expectation":
+    personas 8, 9, 10, 16. **6** was relayed from a cross-family review and never independently
+    re-measured at the time it was first written into this entry. Re-checked this session under
+    the WIDER axis the cross-family review implied — any persona whose `actual` state is
+    strictly MORE permissive than `expected` under the ranking `NO_SUPPORTED_PATH <
+NEEDS_INPUT < HUMAN_REVIEW_REQUIRED < SUPPORTED_CANDIDATES` (i.e. treating a review
+    triggered further into evaluation as more open than a request for more facts) — reproduces
+    **exactly 6**: personas 1, 8, 9, 10, 16, 20 (persona 1: `NO_SUPPORTED_PATH` →
+    `HUMAN_REVIEW_REQUIRED`; persona 20: `NEEDS_INPUT` → `HUMAN_REVIEW_REQUIRED`, both newly
+    included under this axis). **Both numbers are correct under their own definition; the
+    discrepancy is resolved, not open.** The qualitative point is unaffected by which axis is
+    used: personas exist — at minimum 4, as many as 6 depending on definition — that land MORE
+    permissive than the fixture expects, the same direction as the E31C nationality gap above.
 
     **Named pattern, not three separate incidents — this is the finding of the session.**
     Personas 9 and 16 above and the E31C nationality-leg correction earlier in this entry are the
