@@ -1,219 +1,77 @@
 brief_ref: evidence/brief.yml
-plan_ref: "S12/C1 — silence merge-gate-integrity-watch's 26 CANNOT-VERIFY reds/day (mandate ~/sessioni-2026-08-23/S12-mini-ship-accelerators.md, Mini, 2026-08-23)"
-lanes:
-  - lane: s12-c1
-    role: build
-    seat: "claude-opus-5 (session, Mini)"
-  - lane: s12-c1-refute
-    role: review
-    seat: "kimi-code/k3 (Moonshot, non-Anthropic)"
+plan_ref: "Fast gate off the critical path — follow-up to S11 (#4647), single commit 245bfbe33 moving one step from backend-shard to backend-static"
 diff:
-  net_lines: >-
-    5 files. Three substantive (scripts/probe_merge_gate_integrity.py,
-    scripts/tests/test_probe_merge_gate_integrity.py,
-    .github/workflows/merge-gate-integrity-watch.yml) plus evidence/brief.yml
-    and evidence/pack.yml, which are per-PR scratch rewritten by every
-    harness-gated PR.
-  behaviour_change: >-
-    The probe's verdict changes on two inputs and only two: a required context
-    concluding "skipped" is no longer a finding, and the required-context list
-    can now come from the checked-in snapshot when the live API is denied. The
-    workflow's classification changes on ALL non-zero outcomes, because it
-    previously captured no exit code at all. Nothing about what the workflow
-    DOES with a verdict changes: still not required, still non-blocking,
-    still signal-only.
+  net_lines: "One file, .github/workflows/tests.yml. The step block moves from backend-shard to backend-static and grows a comment header explaining WHY it moved and what would break if the fan-in stopped reading needs.backend-static.result; one 12-line upload step is added so the core junit does not silently vanish from the artifacts. Roughly +45 / -10 net. Small by construction: this is a relocation, not a redesign."
+  behaviour_change: "The fast gate executes ONCE per run instead of three times, in a job that is off the critical path. What does NOT change: the gate's command, the module it runs, the circumstances under which it runs (both jobs carry a byte-identical classifier `if:`), the fan-in's name, the required-context set, the merge_group unscoped semantic, and the fact that a red core test reddens `Backend Tests (Python)`."
 receipts:
-  - claim: "The watcher fails on every push to main — this is 100%, not 'often'"
-    cmd: "gh run list --workflow=merge-gate-integrity-watch.yml --limit 12 --json conclusion"
-    result: "12 of 12 runs: failure. Sampled 2026-08-23 07:46Z-09:50Z."
+  - claim: "The step really did run three times, and the cost really is on the critical path — this is measurement, not inference from the YAML"
+    cmd: "gh api repos/Bali-Zero/Teman2/actions/runs/32632670541/jobs --jq per-shard steps matching 'fast gate' -> Backend Shard 1 7s, Shard 2 8s, Shard 3 8s. Same run's main step: 'Run unit tests (sharded)' 244s / 213s / 253s. Critical path = slowest shard (381s) + fan-in (111s)."
     exit: 0
-    ts: "2026-08-23T10:05Z"
-    seat: "session (mini)"
-  - claim: "The mandate's stated cause (squash produces a SHA with no pre-merge runs) is WRONG — the probe resolves the squashed SHA to its PR correctly and finds 51 merge_group jobs"
-    cmd: "gh api repos/Bali-Zero/Teman2/commits/b72f1885f44b155b379fc7601665dc9dd40ce76b/pulls --jq '.[] | \"\\(.number) \\(.merged_at)\"'"
-    result: "4654 2026-08-23T09:50:02Z — resolves cleanly; the probe then finds 51 merge_group jobs on that SHA. The squash hypothesis is not the cause."
+    ts: "2026-08-23T18:30Z"
+    seat: "session (pro)"
+  - claim: "The guilt chain survives the move — the fan-in's assert reads backend-static in the SAME loop as backend-shard, so this job being a non-required context does not make a red core test invisible"
+    cmd: 'sed -n ''954,1010p'' .github/workflows/tests.yml -> the fan-in''s `Assert every upstream job succeeded` iterates `for pair in "backend-static:$STATIC_RESULT" "backend-shard:$SHARD_RESULT"` and exits non-zero if EITHER is not ''success''. The shard half of that same loop was proven live on dispatch run 32634126661 (one red leg of three -> fan-in red at exactly this step).'
     exit: 0
-    ts: "2026-08-23T10:07Z"
-    seat: "session (mini)"
-  - claim: "DEFECT 1 — the old idiom captures NOTHING under the runner's real shell, the new one captures the exit code"
-    cmd: 'bash -e -o pipefail -c ''set -uo pipefail; python3 -c "import sys; sys.exit(3)" > /tmp/v.json; rc=$?; echo OLD_CAPTURED_rc=$rc''  ;  same with ''rc=0; ... || rc=$?'''
-    result: "OLD: prints nothing at all (step aborted by -e before rc=$? ran). NEW: prints NEW_CAPTURED_rc=3. Independently re-verified by the refuter, which also measured rc=143 captured on SIGTERM."
+    ts: "2026-08-23T19:05Z"
+    seat: "session (pro)"
+  - claim: "The gate will run in exactly the same circumstances as before — the two jobs' classifier predicates are identical, so the move cannot silently change coverage"
+    cmd: "Compared the `if:` blocks of backend-static (line 510) and backend-shard (line 629): both are `!cancelled() && ((github.event_name != 'pull_request' && github.event_name != 'merge_group') || needs.changes.result != 'success' || needs.changes.outputs.run_backend_tests != 'false')` — byte-identical."
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (mini) + kimi-code/k3"
-  - claim: "DEFECT 2 — the snapshot is a sound substitute: content-identical to live branch protection, both directions"
-    cmd: "python3 — compare [c['name'] for c in infra/required.d/contexts.json] against gh api repos/Bali-Zero/Teman2/branches/main/protection --jq .required_status_checks.contexts"
-    result: "snap 27, live 27, identical: True, only_snap: [], only_live: []"
+    ts: "2026-08-23T19:08Z"
+    seat: "session (pro)"
+  - claim: "The module genuinely needs no postgres/redis, so dropping the inherited DATABASE_URL/REDIS_URL into a job with no `services:` is safe — proven by execution against DEAD endpoints, not by reading imports"
+    cmd: "pg_isready -> postgres DOWN locally. Then: `env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py` -> 24 passed, rc=0. Then the stronger form, forcing a failure if the services were secretly used: the same command with DATABASE_URL pointed at a CLOSED port on loopback (127.0.0.1, port 59999, throwaway user and password) and REDIS_URL at 127.0.0.1 port 59998 — written in prose rather than as a DSN because a DSN-shaped string trips detect-secrets on FORM, not provenance -> 24 passed, rc=0."
     exit: 0
-    ts: "2026-08-23T10:14Z"
-    seat: "session (mini)"
-  - claim: "DEFECT 3 — 'skipped' really does satisfy branch protection: the proof is a MERGE, not a doc"
-    cmd: "probe --sha b72f1885f... (PR #4654, docs-only, touching only .claude/skills/modus/PENDING-ARMS.md)"
-    result: >-
-      That commit is ON main, and four of its 27 required contexts concluded
-      "skipped" in its merge_group run: E2E Tests (Playwright), MCP Server
-      Tests, Backend Tests (Python), Bandit Python Security. Branch protection
-      was active and listed all four. Independently corroborated the same
-      morning by the S11 lane, which observed `Backend Tests (Python)` SKIPPED
-      on pr-4658's merge_group and identified it as the pre-existing path
-      classifier, not a regression.
-    exit: 1
-    ts: "2026-08-23T10:12Z"
-    seat: "session (mini)"
-  - claim: "ACCEPTANCE (a) — zero CANNOT-VERIFY on the 10 most recent first-parent pushes to main"
-    cmd: "for sha in $(git log --first-parent -10 --format=%H origin/main); do probe --sha $sha --json; done"
-    result: "10/10 CLEAN, rc=0 each, CANNOT-VERIFY count = 0. Was 100% CANNOT-VERIFY. skipped counts per commit: 4,4,4,0,4,1,0,4,0,0."
+    ts: "2026-08-23T19:02Z"
+    seat: "session (pro)"
+  - claim: "backend-static already has the runner it now needs — no new install step, so the move does not just relocate the cost"
+    cmd: "grep -icE '^(pytest|pytest-asyncio|pytest-cov)==' apps/backend-rag/requirements.lock.txt -> 1 each (present); pytest-mock / fakeredis / pytest-xdist -> 0 (absent). The module uses only @pytest.fixture, and the single conftest on its collection path (backend/tests/conftest.py) imports only stdlib, pydantic and pytest. pyproject `addopts` requires no plugins."
     exit: 0
-    ts: "2026-08-23T10:32Z"
-    seat: "session (mini)"
-  - claim: "ACCEPTANCE (b) — guilt preserved: a fabricated SHA still returns CANNOT-VERIFY"
-    cmd: "probe --sha b72f1885f7f9b8b0e17c1c9f0ba7e1a9a3f6d3ef --json   (real prefix, invented tail)"
-    result: '{"verdict": "CANNOT-VERIFY", "error": "... No commit found for SHA ... (HTTP 422)"} — this was run BEFORE the real-SHA run, by accident, and is kept because an accidental guilt case is still a guilt case.'
-    exit: 3
-    ts: "2026-08-23T10:10Z"
-    seat: "session (mini)"
-  - claim: "ACCEPTANCE (c) — the #3227 guilt fixture still returns VIOLATION, and every other guilt case is pinned"
-    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_probe_merge_gate_integrity.py -q"
-    result: "28 passed (was 13). Includes: absent job, failure/cancelled/timed_out/action_required/neutral/None conclusions, zero merge_group runs, empty required list, both-sources-failing."
+    ts: "2026-08-23T19:10Z"
+    seat: "session (pro)"
+  - claim: "Nothing gates on the core junit, and it does not vanish silently either"
+    cmd: "The fan-in's 'Prove each shard reported executed tests' reads only `test-results-unit-<shard>.xml`. The core junit reached the `backend-test-results` artifact through the glob `shard-receipts/test-results-*.xml`, which the move removes it from — hence a dedicated `backend-core-gate-results` upload with `if: always()`. `grep -n 'test-results-core-' tests.yml` after the change -> no matches (no orphan reference to the old shard-indexed path)."
     exit: 0
-    ts: "2026-08-23T10:41Z"
-    seat: "session (mini)"
-  - claim: "The real shape of a skipped job is stranger than the obvious guess, and the test now pins the real one"
-    cmd: 'gh api repos/.../actions/runs/<merge_group runs of b72f1885f>/jobs --jq ''.jobs[] | select(.conclusion=="skipped")'''
-    result: >-
-      started_at 09:42:22Z, completed_at 09:42:21Z — completed ONE SECOND
-      BEFORE started. Duration -1s, not 0. The first draft of the test
-      fabricated started_at == completed_at, which would have passed while
-      pinning a shape production never emits and leaving the negative-duration
-      path unexercised on the only input that reaches it. Corrected before
-      commit.
+    ts: "2026-08-23T19:12Z"
+    seat: "session (pro)"
+  - claim: "The change is mechanically sound and did not narrow the guard that S11 itself re-anchored"
+    cmd: "python3 -c 'yaml.safe_load(...)' -> 11 jobs, backend-static 10 steps, backend-shard 11 steps. actionlint tests.yml -> rc=0. pytest scripts/tests/test_test_deps_declared.py -> 7 passed. python3 scripts/ci/test_shard_tests.py -> Ran 31 tests, OK."
     exit: 0
-    ts: "2026-08-23T10:36Z"
-    seat: "session (mini)"
-  - claim: "The three refuter-named crash inputs are closed, tested individually"
-    cmd: "ran the guard fragment under `bash -e -o pipefail` on: valid JSON / truncated-but-non-empty JSON / a SHA containing a double quote"
-    result: >-
-      valid JSON left byte-untouched; truncated JSON ({\"subject\":\"abc\",\"clean\":tr)
-      replaced with a parseable CANNOT-VERIFY naming rc=137 — the size-only
-      guard had waved this through; a quoted SHA round-trips (subject reads
-      back as ab\"cd) because json.dump escapes it.
+    ts: "2026-08-23T19:14Z"
+    seat: "session (pro)"
+  - claim: "The exact command the moved step will run works in the conditions backend-static provides, and produces the receipt the upload expects"
+    cmd: "env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py -q -ra --no-header --tb=short --durations=10 -x --junit-xml=/tmp/core-gate-smoke.xml -> rc=0; parsing that junit -> tests=24 errors=0."
     exit: 0
-    ts: "2026-08-23T10:47Z"
-    seat: "session (mini)"
-pii_scan: clean
-dissent:
-  - seat: "kimi-code/k3 (independent adversarial refuter, non-Anthropic, fresh context, not the author)"
-    objection: >-
-      MAJOR — the skipped allowance opens a real hole and its mitigation is
-      decoration as wired. Concrete scenario given: an over-narrow paths filter
-      lets a PR that changes an imported package skip `Backend Tests (Python)`;
-      GitHub's gate is satisfied, the probe returns clean:true, and a merge
-      lands with zero backend-test compute — which by the probe's own mission
-      statement IS the #3227 class, now blessed. And `skipped_contexts` never
-      reaches Telegram: on rc=0 the classify step emits tier=none so no alert
-      fires at all, and even on a VIOLATION the alert body interpolated only
-      `findings`.
-    status: CONFIRMED
-    note: >-
-      The half that could be fixed without manufacturing new alarm traffic was
-      fixed in this PR: the alert body now carries the skipped list whenever a
-      message is already being sent, so a human reading a VIOLATION page sees
-      what else was waved through on that commit. The other half is REFUSED on
-      purpose and the refusal is the point of the PR — a skipped context is
-      not a finding, and alerting on one would page on every docs-only merge,
-      which is precisely the fatigue being removed. Detecting an over-broad
-      paths filter is a different detector and is not claimed here; it is in
-      the brief's risks and in PENDING-ARMS, not smuggled into this diff.
-  - seat: "kimi-code/k3 (same)"
-    objection: >-
-      MAJOR — the snapshot fallback is fail-open on drift and the code does
-      nothing about it. Add a 28th required context in GitHub Settings without
-      re-running snapshot_required_contexts.py and the probe verifies 27 of 28
-      and reports CLEAN; `generated_at: 2026-08-11` is never read; there is no
-      staleness tripwire. Reverse drift (a rename in Settings) produces false
-      p0s instead.
-    status: CONFIRMED
-    note: >-
-      Correct, and it was already named in the brief's risks before the
-      refutation arrived — recorded here as CONFIRMED-BY-A-SECOND-PARTY rather
-      than discovered. Partially mitigated after the review: the verdict's
-      `required_source` now carries the snapshot's own generation date
-      (`snapshot:infra/required.d/contexts.json@2026-08-11`), so a suspicious
-      CLEAN says out loud how old the list it trusted was. The real cure is a
-      scheduled freshness check that regenerates and diffs — a new workflow,
-      i.e. a separate PR, and it is going to PENDING-ARMS rather than being
-      bundled here. Weighed honestly: this trades a TOTAL blind spot that
-      screams 26 times a day for a PARTIAL blind spot that is quiet. That is
-      an improvement, not a fix, and it is not being sold as one.
-  - seat: "kimi-code/k3 (same)"
-    objection: >-
-      MINOR ×2 — a timeout- or SIGKILL-killed probe leaves truncated but
-      NON-EMPTY JSON, which the size-only `[ ! -s ]` guard waved through; the
-      alert step's json.load then raised under `-e`, and the CANNOT-VERIFY
-      step below was skipped by its implicit success() — a red run with no
-      Telegram at all, the opposite of the stated intent. Separately, a `"` in
-      a workflow_dispatch sha input broke the printf-built fallback JSON into
-      the same silent path.
-    status: CONFIRMED
-    note: >-
-      Both closed by one change: the guard now validates that the file PARSES
-      (json.load) instead of merely being non-empty, and rebuilds it with
-      json.dump, which escapes the SHA for free. All three cases tested
-      individually under `bash -e -o pipefail` — receipt above.
-  - seat: "kimi-code/k3 (same)"
-    objection: >-
-      MINOR, latent, pre-existing — the per-run jobs fetch used no per_page, so
-      GitHub's default of 30 would silently truncate a run with more jobs and
-      every context that fell off the page would report "never evaluated
-      pre-merge": a false VIOLATION p0 manufactured by pagination. Measured max
-      on the real corpus: 10 jobs per run, so not live today.
-    status: CONFIRMED
-    note: "One query parameter (per_page=100). Pre-existing, but closed on sight — the failure direction is a false page to a human at night."
-  - seat: "session (author, against the mandate that dispatched it)"
-    objection: >-
-      The mandate stated the cause as structural squash-SHA behaviour
-      ("the pushed main SHA is a brand-new commit that NEVER had pre-merge
-      check runs of its own") and proposed resolving the SHA to its PR as the
-      cure. Reading the script first showed the probe ALREADY does exactly
-      that, correctly, and had done so since it was written.
-    status: CONFIRMED
-    note: >-
-      Recorded because building the ordered cure would have produced a PR that
-      changed working code, shipped green, and left all 26 reds in place. The
-      mandate's INSTRUCTION to "confirm by reading the called script first" is
-      what saved it — the instruction was right even though the hypothesis
-      attached to it was wrong.
-  - seat: "session (author, against its own first draft)"
-    objection: >-
-      The first draft of the new tests fabricated `started_at == completed_at`
-      for a skipped job. Real GitHub data has completed_at one second BEFORE
-      started_at.
-    status: CONFIRMED
-    note: >-
-      A test that passes while pinning a shape production never emits is the
-      "green for the wrong reason" class. Caught by measuring the live API
-      instead of reasoning about it. Recorded because a dissent list showing
-      only other people's findings, and none the author had to withdraw, is
-      the suspicious-consensus shape this field exists to prevent.
+    ts: "2026-08-23T19:15Z"
+    seat: "session (pro)"
 tests:
-  - "scripts/tests/test_probe_merge_gate_integrity.py: 13 -> 28 tests, all passing. New coverage is deliberately two-directional: 3 innocence tests (skipped is not a finding; skipped survives the negative-duration rule; the measured 4-skipped docs-merge shape is clean) and 6 guilt tests (a parametrized case per non-passing conclusion — failure, cancelled, timed_out, action_required, neutral, None — plus 'skipped does not substitute for a missing job'), then 5 on the required-context source (snapshot present and dated; API preferred; snapshot used when API denied; empty API list falls through rather than passing vacuously; both sources failing raises)."
-  - "`neutral` is in the GUILT list on purpose. It is commonly said to satisfy required checks, was NOT measured on this repo, and therefore stays a finding — the test's own docstring says a future lane may move it by adding evidence, never by assuming symmetry."
+  - "scripts/tests/test_test_deps_declared.py — 7 passed (the S11 re-anchored guard across backend-static/backend-shard/backend-tests)"
+  - "scripts/ci/test_shard_tests.py — 31 passed (partitioner guilt+innocence corpus, untouched by this change and proven still green)"
 static:
-  - "yaml.safe_load on the modified workflow -> parses; permissions read back as {contents: read, actions: read, pull-requests: read}"
-  - "the embedded python's indentation verified by extracting the post-YAML `run` scalar and reading it, not by eyeballing the file (a block-scalar indent error would only surface in CI)"
-  - "actionlint NOT run locally — not installed on this machine. Stated rather than omitted; CI runs it."
-notes:
-  - >-
-    Seat diversity is DEGRADED and declared, not silent. Non-Anthropic seats
-    were live-probed this session rather than trusted from the 3h-old
-    SessionStart report: kimi PONG (alive); codex `401 Unauthorized ... refresh
-    token was revoked` (AUTH_DEAD, needs an interactive `codex login` — an
-    operator gesture); glm CRED_UNAVAILABLE; agy TIMEOUT. One non-Anthropic
-    family available, not the two a full quorum wants. The refutation happened;
-    the diversity did not.
-  - >-
-    Three defects, one PR, deliberately not split. They are not independent:
-    fixing 1 and 2 without 3 would have converted 26 ignorable digest reds per
-    day into 26 p0 Telegram pages per day, one per docs-only merge. Shipping
-    them separately would have made the alarm strictly worse in the window
-    between the two PRs.
+  - "actionlint .github/workflows/tests.yml — rc=0"
+  - "yaml.safe_load on tests.yml — 11 jobs parse"
+lanes:
+  # One build lane: this is a single-seat relocation. The cross-family seat below
+  # is a REFUTER, not a builder (generator != grader), so it is `review` and does
+  # not count toward the D3 build-diversity floor.
+  - lane: "fastgate-build"
+    role: build
+    seat: "opus-5"
+  - lane: "fastgate-refute"
+    role: review
+    seat: "codex-gpt-5.6-sol"
+dissent:
+  - seat: "codex gpt-5.6-sol at xhigh (OpenAI, cross-family, fresh context, read-only sandbox) — round 1, against a frozen snapshot of 245bfbe33"
+    objection: 'Verdict REQUEST CHANGES, three findings. It explicitly did NOT find a guilt-chain fail-open: it enumerated pull_request, merge_group, workflow_dispatch, schedule, a failed/skipped `changes` job and whole-workflow cancellation, and in every case a red core test still reaches the fan-in as a non-success upstream. It also independently confirmed `push` is not a trigger of this workflow and that comments mentioning it are stale. CURED HERE: (1) HIGH — the new `Upload core-gate test results` step carried a comment saying nothing gates on its file, while the step itself had no `continue-on-error`; a transient artifact-service error concludes backend-static `failure`, the fan-in asserts on `needs.backend-static.result`, and the required context goes red with every real gate green. `if-no-files-found: warn` covers only a MISSING file and does not make the upload best-effort. Fixed with `continue-on-error: true`. (2) MEDIUM — the gate had been placed BEFORE pip-audit, so a broken core test would skip the rest of the job and MASK four independent gates (pip-audit, mypy, import-chain, LLM cost coverage) that reported unconditionally before the move, backend-static being independent of the shards. Moved to LAST, which costs no latency because the fan-in waits on all three shards either way. (3) LOW — "parity with the pre-move state" was an overclaim: the junit now lands in a DIFFERENT artifact under a DIFFERENT name, so an external consumer of `backend-test-results` looking for `test-results-core-*.xml` finds nothing; no in-repo consumer exists, external ones are not visible from a diff. Comment corrected rather than the behaviour, since a dedicated artifact is the intended design. ACCEPTED AND NOT CURED, moved to residual_risks instead: its observation that the RED path is now much slower (a core regression went red in ~10s inside the shards, versus ~350s now that the fan-in waits on them) is correct and inherent to the move; its suggested remedy — a separate `backend-core` job wired into the fan-in — would restore fail-fast at the cost of a fifth concurrent job, against runner-slot pressure this workflow already names as the binding constraint. It also corrected the authors arithmetic: the module executes twice per full run, not once, since the shard that owns it in the corpus still runs it — down from four, not to one.'
+    status: CONFIRMED
+residual_risks:
+  - "THE RED PATH IS NOW MUCH SLOWER, AND THIS IS A DELIBERATE TRADE (refuter finding 2b, accepted not cured). Inside `backend-shard` a core regression turned the required context red in ~10s — each leg exited at ~8s via `-x`. Now the fan-in still waits on all three shards, so the same regression goes red in ~350s. That is a real loss, taken for an ~8s gain on the GREEN path, which is every run rather than the rare one. The named alternative that would keep both — a separate `backend-core` job wired into the fan-in's needs — adds a fifth concurrent job, and tests.yml's own concurrency comments call runner slots the binding constraint on main's velocity, so it is declined here rather than overlooked."
+  - "THE SAVING IS PROJECTED, NOT YET MEASURED LIVE. ~8s off the critical path is arithmetic on a measured per-shard step duration (7-8s). The PR's own transit is the first measurement, and 8s is close enough to run-to-run variance (shards measured 239-385s across runs) that a single run cannot confirm it — the honest read will need the step to be visibly absent from the shard job and present once in the static job, plus a critical path that does not regress."
+  - "THIS DOES NOT CLOSE THE MISSED TARGET. merge_group/schedule runs measured 489s / 492s / 496s against a <=8 min (480s) target. Removing 8s lands at roughly 481-488s — still at or just above the line. The dominant open question, ledgered separately in #4668, is why merge_group shards run ~35% slower than pull_request shards on the same corpus; this PR deliberately does not touch it."
+  - "THE FAST GATE IS NOW ARGUABLY REDUNDANT, AND THIS PR DOES NOT DECIDE THAT. `test_confidence.py` is already in the sharded corpus (shard 2 owns it), so the gate is a duplicate execution whose only value is failing ~8s in rather than ~250s in. Deleting it outright would save the remaining ~8s of runner time too. That is a judgement about a gate somebody added deliberately, so it is left alone here and named rather than silently taken."
+  - "RUNNER SLOT PRESSURE IS UNCHANGED. This moves work between existing jobs; it does not reduce the 5-jobs-per-run count S11 introduced, which tests.yml's own concurrency comments identify as the binding constraint on main's velocity."
+sources:
+  - "merge_group run 32632670541 (the S11 merge commit's own run) — per-shard fast-gate durations and the 381s+111s critical path"
+  - "dispatch run 32634126661 — the live guilt proof of the fan-in's assert step with one red matrix leg of three"
+  - ".claude/skills/modus/PENDING-ARMS.md — the two S11 rows landed by #4668; this PR closes the second"
+pii_scan: clean
