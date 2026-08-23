@@ -1,166 +1,138 @@
 brief_ref: evidence/brief.yml
-plan_ref:
-  "resolve PR #4610's CONFLICTING state (git fetch + local 3-way merge, never gh pr
-  update-branch — measured to refuse this repo's exact conflict shape) and replace the
-  evidence/brief.yml + evidence/pack.yml this branch was carrying (inherited from an unrelated
-  sibling PR #4592, a 2-line wrapper-comment fix) with a truthful pair describing this PR's
-  actual contents, per team-lead mandate 2026-08-23"
+plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
+lanes:
+  - lane: wr3-spend-gate-enforce
+    role: build
+    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
+  - lane: wr3-spend-gate-enforce-evidence
+    role: review
+    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
+  one non-Anthropic) does not fire. Both lanes present here are Anthropic
+  seats by construction (this is a narrow evidence-authoring task, not a
+  cross-family council dispatch); declared rather than left to read as
+  satisfied.
 diff:
   net_lines: >-
-    81 files, +5538/-0, measured `git diff --numstat "$(git merge-base HEAD origin/main)" HEAD`
-    (merge-base-anchored, W102-safe — origin/main IS the merge-base after this session's merge
-    commit, so this isolates ONLY this PR's own contribution, none of the three sibling PRs that
-    landed on origin/main while this PR sat open). Breakdown: 4 model modules + 4 generated
-    .schema.json artifacts + 69 fixture files (13 valid .json, 28 invalid .json, 28 matching
-    .expect.json — 13+28+28=69) across the four kinds + 1 test file + 3 registration-file diffs
-    (import + dict entries only, verified as a lossless union below) = 81.
+    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
+    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
+    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
+    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
+    the runtime gate itself is pre-existing, unmodified production code.
   behaviour_change: >-
-    Additive only. Four new canonical object kinds (IntelEvent, Evidence, Claim, StoryCluster)
-    become validatable/hashable/schema-exportable via research_os.cli and research_os.schemas;
-    no existing kind's validation behaviour changes. No runtime consumer wires these kinds in
-    yet (Intel Lake P05 / NAGA P06 are downstream, blocked on this Wave landing in full — D1
-    closes at four sibling PRs per the fleet lane-owner's own count, this one included).
+    No runtime behaviour change to any shipped code path. The workflow now also runs
+    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
+    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
+    `_generate_video` helpers the pre-existing tests already covered.
 receipts:
-  - claim: "Fixtures CLI check validates every registered kind post-merge with zero failures — 152 fixtures total (this PR's 41 + 111 from the three origin/main siblings merged in)"
-    cmd: "PYTHONPATH=packages/research-os-core /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m research_os.cli fixtures --check"
-    result: '{"checked": 152, "failures": [], "valid": true}'
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
+    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
     exit: 0
-    ts: "2026-08-23T09:55:00Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "The full research_os unit-test suite (models, schemas, cli, hashing, graph, decision-chain, governance receipts — this PR's tests plus the three origin/main siblings') is green post-merge"
-    cmd: "cd apps/backend-rag && PYTHONPATH=.:../../packages/research-os-core /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/research_os/ -q"
-    result: "270 passed in 2.52s"
+    ts: "2026-08-23T23:05Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
     exit: 0
-    ts: "2026-08-23T09:57:00Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "mypy --strict is clean on the full merged research_os package, this PR's 4 new model modules included"
-    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict research_os"
-    result: "Success: no issues found in 27 source files"
+    ts: "2026-08-23T23:07Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
+    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
     exit: 0
-    ts: "2026-08-23T09:58:30Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "The 4 checked-in JSON Schema artifacts this PR adds are byte-identical to a fresh regeneration from their pydantic models and are themselves valid Draft 2020-12 schemas"
-    cmd: 'PYTHONPATH=packages/research-os-core /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts; print(checked_in_schemas_match()); print(validate_schema_artifacts())"'
-    result: "mismatches: () invalid: ()"
-    exit: 0
-    ts: "2026-08-23T09:59:10Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "The union merge of the three registration files (cli.py CONTRACT_MODELS, models/__init__.py __all__, schemas/__init__.py SCHEMA_MODELS) lost NOTHING from origin/main: origin/main's 14 registered kinds are a strict subset of the merged 18 in all three files, identically, and the difference is exactly this PR's own 4 kinds"
-    cmd: "python3 introspection of __all__/SCHEMA_MODELS/CONTRACT_MODELS keys, this branch HEAD vs `git show origin/main:<file>`, for all three registration files, cross-checked against `ls packages/research-os-core/research_os/models/*.py` and `*.schema.json` on disk"
-    result: "origin/main=14 keys (all 3 files agree) | merged HEAD=18 keys (all 3 files agree) | diff={claim, evidence, intel_event, story_cluster} | 18 models on disk == 18 schema.json on disk == 18 registered keys, in all three files"
-    exit: 0
-    ts: "2026-08-23T09:50:00Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "No conflict markers survive anywhere in the tree after resolution"
-    cmd: "grep -rn '<<<<<<<\\|=======\\|>>>>>>>' --include='*.py' packages/research-os-core/ ; git diff --name-only --diff-filter=U"
-    result: "grep: no output, exit 1 (no matches, expected) | diff --diff-filter=U: no output (zero unmerged paths)"
+    ts: "2026-08-23T23:09Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
+    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
+    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
     exit: 1
-    ts: "2026-08-23T09:48:00Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "ruff check (this PR's own canonical invocation, per commit 59cdb8b81's own message: --config apps/backend-rag/pyproject.toml) is RED post-merge, but every one of the 7 findings is in apps/backend-rag/backend/tests/unit/research_os/test_decision_chain.py — a file this PR never authored and never touches (confirmed absent from the merge-base-anchored diff above; it was added by an origin/main sibling PR, part of D1 but not this one)"
-    cmd: "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m ruff check --config apps/backend-rag/pyproject.toml packages/research-os-core/research_os/ apps/backend-rag/backend/tests/unit/research_os/"
-    result: "Found 7 errors (5x RUF059 unused-unpacked-variable, 2x RUF043 unescaped regex metachar in pytest.raises(match=...)), all --> test_decision_chain.py"
-    exit: 1
-    ts: "2026-08-23T09:53:00Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "ruff format --check is RED on 3 files post-merge. Two (cli.py, risk_reclassification_receipt.py) are confirmed byte-identical to their pre-merge content on THIS branch (git diff against this branch's pre-merge tip is empty for both) -- the drift entered via origin/main's own auto-merged (non-conflicting) hunks, not from this PR or this session's conflict resolution. The third, models/intel_event.py, IS this PR's own file (does not exist on origin/main at all) and IS a genuine pre-existing formatting drift under this PR's own declared canonical config -- present before this session started, left UNFIXED because this session's mandate restricts edits to the merge resolution plus the two evidence files only"
-    cmd: "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m ruff format --config apps/backend-rag/pyproject.toml --check packages/research-os-core/research_os/ apps/backend-rag/backend/tests/unit/research_os/  ;  git diff 59cdb8b81 HEAD -- packages/research-os-core/research_os/cli.py packages/research-os-core/research_os/models/intel_event.py packages/research-os-core/research_os/models/risk_reclassification_receipt.py"
-    result: "Would reformat: cli.py, models/intel_event.py, models/risk_reclassification_receipt.py (3 of 46 files). git diff vs pre-merge tip: cli.py and risk_reclassification_receipt.py both EMPTY diffs (untouched by this session, drift is origin/main's); intel_event.py also an EMPTY diff (untouched by the merge -- the file doesn't exist on origin/main, so this confirms the drift predates this session, in this PR's own pre-existing commit)"
-    exit: 1
-    ts: "2026-08-23T10:01:00Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-  - claim: "The 41 fixture files this PR adds carry no email-shaped strings, and their only 16+-digit runs are synthetic all-zero-prefixed placeholder sha256 hex hashes (test fixture object_hash values), not real identifiers -- consistent with pii_scan: clean"
-    cmd: "per-file /usr/bin/grep -Eq for email-shape and (16+ digit run, excluding all-zero) across the 41 fixture files listed in this PR's diff"
-    result: "email-shaped matches: 0. Non-zero 16+-digit-run matches: all are 64-hex-char sha256 fixture placeholders (e.g. '000...0087', '000...012') -- inspected by hand, none resembles a NIK/phone/real identifier in non-hash context"
+    ts: "2026-08-23T23:11Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
+    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
     exit: 0
-    ts: "2026-08-23T10:05:00Z"
-    seat: "claude-sonnet-5 (subagent, backend-rag lane)"
-lanes:
-  - lane: "research-os-p04d1-evidence-spine"
-    role: build
-    seat: "claude-opus-5"
-  - lane: "cross-family adversarial review (§4-§6, §11)"
-    role: review
-    seat: "kimi-k3"
+    ts: "2026-08-23T23:13Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "actionlint accepts the modified workflow"
+    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
+    result: "no output (clean)"
+    exit: 0
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
+    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
+    result: "exit 0, no output"
+    exit: 0
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
+    exit: 0
+    ts: "2026-08-23T23:15Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
+    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
+    result: >-
+      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
+      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
+      same position relative to its own HTTP call. Both call sites precede any network code in
+      their respective functions.
+    exit: 0
+    ts: "2026-08-23T23:16Z"
+    seat: "session (M5, evidence-pack task)"
 pii_scan: clean
 dissent:
-  - seat: "cross-family adversarial review (Kimi K3, independently reproduced by a Claude reviewer)"
+  - seat: "Harness floor recompute (CI, deterministic)"
     objection: >-
-      9 findings against the original IntelEvent/Evidence/Claim/StoryCluster draft. HIGH:
-      DurablePayloadReference.uri was an unconstrained string, so a data:/blob:/javascript: URI
-      could pass as a "reference" while actually being the payload, inline. Also: the
-      inline/reference sensitivity gate on IntelEvent.payload_ref was narrower than section 4's
-      wire text; InlinePublicPayload.content_hash was decorative and unchecked;
-      StoryClusterDecision.layers_run ordering over-specified one fixed total order across five
-      layers where section 11 only requires deterministic-before-semantic; StoryCluster's
-      independent_source_groups attestation counted a syndicated-only source group as
-      corroboration (the exact mistake section 11's purpose clause names); invalid fixtures were
-      not built mutate-then-hash, risking multi-cause fixtures.
+      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
+      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
+      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
+      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
+      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
     status: CONFIRMED
     note: >-
-      All fixed in commit 4da3c6cb1 on this branch (verified: mypy --strict clean on 15 source
-      files, 120 passed at that commit, checked-in schemas byte-identical to regeneration). One
-      HIGH item (object_hash wire-parity) was out of this diff's scope and was cured separately
-      in sibling PR #4615/#4635's freeze-change-proposal-001, not here.
-  - seat: "follow-up adversarial finding on commit 4da3c6cb1's own StoryCluster docstring"
+      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
+      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
+      matching the check. Answered here by supplying both files, never by editing the check
+      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
+      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
+      complied-with).
+  - seat: "session (this evidence-authoring task), against its own first instinct"
     objection: >-
-      The attested_groups comprehension excludes only relationship=="syndicated" from
-      independent corroboration; the members[].relationship enum has six values, so the other
-      five (including translation/update) silently count as attestation with no stated
-      rationale in the docstring, unlike the module's other three declared §11 gaps. A fixture
-      (valid_with_extension.json) also smuggled a contested case (a source group attested only
-      by a single "translation" member) as a side effect of an unrelated extensions fixture.
-    status: CONFIRMED
+      The mandate offered the PR body's own self-reported mutation-test result (comment out
+      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
+      verbatim without re-running it would have been citing a tool output this turn never
+      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
+      prevent, applied to a prior session's claim rather than to memory.
+    status: RETRACTED
     note: >-
-      Fixed in commit 59cdb8b81: docstring now declares the exclusion scope explicitly and
-      states translation/update are counted DELIBERATELY; the smuggled fixture was corrected to
-      an uncontested case and a dedicated
-      valid_translation_and_update_attestation.json fixture was added to state the permitted
-      case as a deliberate assertion, not incidental coverage.
-  - seat: "this session, independent re-verification of the merge (fresh context, not the PR's original author)"
-    objection: >-
-      A 3-way merge across three shared registration files (cli.py, models/__init__.py,
-      schemas/__init__.py) that every P04-D1 sibling PR rewrites is exactly the shape where a
-      union resolution silently drops one side's entries — the task brief itself named this as
-      the risk to check for, not to trust.
-    status: CONFIRMED
-    note: >-
-      Independently computed origin/main's registered-kind set (14) and this branch's merged set
-      (18) from the actual __all__/SCHEMA_MODELS/CONTRACT_MODELS dict contents in all three
-      files (not from diff hunks or visual inspection), cross-checked against the .py and
-      .schema.json files that actually exist on disk. All three files agree exactly: 14 subset
-      of 18, difference = this PR's own 4 kinds. No loss.
-  - seat: "this session, independent gate re-run beyond what the receipts above required"
-    objection: >-
-      Commit 4908da40a's own message claims "ruff format --check 0" for this PR's original
-      contents; that claim does not hold today under this PR's own declared canonical config
-      (--config apps/backend-rag/pyproject.toml, per 59cdb8b81's own commit message) — 1 file
-      genuinely needs reformatting.
-    status: CONFIRMED
-    note: >-
-      Verified the drift is real (ruff format --diff on models/intel_event.py shows one line
-      wanting to collapse) and that it predates this session (git diff against this branch's
-      pre-merge tip is empty for that file — this session never touched it). NOT fixed: this
-      session's mandate is the merge resolution plus the two evidence files only. Left as an
-      open, honestly-reported gap rather than silently fixed outside scope or silently omitted.
+      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
+      receipt above) rather than trusting the PR body's report. Result matched: both tests went
+      red with the identical `AssertionError: network path reached`, file restored clean.
+      Retracted because the concern was real but the independent re-run resolved it — the
+      PR body's claim held up under a fresh execution, it was not merely repeated.
 tests:
-  - "270 passed / 0 failed, full backend/tests/unit/research_os/ suite post-merge (receipts above). No new test infrastructure added beyond this PR's own test_models_and_fixtures.py coverage of the four new kinds; the fixtures --check gate (152 total) is the primary evidence of per-kind correctness."
+  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
+  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
 static:
-  - "mypy --strict -> clean, 27 source files"
-  - "research_os.schemas self-consistency (checked_in_schemas_match + validate_schema_artifacts) -> both empty"
-  - "ruff check --config apps/backend-rag/pyproject.toml -> RED, 7/7 findings outside this PR's own diff (test_decision_chain.py, origin/main content)"
-  - "ruff format --check --config apps/backend-rag/pyproject.toml -> RED, 3 files; 2/3 outside this PR's diff (origin/main content merged in unchanged), 1/3 (models/intel_event.py) is this PR's own pre-existing drift, reported not fixed (scope)"
+  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
+  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
+  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
 notes:
   - >-
-    This branch's evidence/brief.yml and evidence/pack.yml were, before this session, an
-    unmodified inheritance from an UNRELATED sibling PR (#4592, a 2-line LaunchAgent wrapper
-    comment fix, task_id ops-visaoracle-wrapper-header-0823) — the pack lint's own `clean`
-    verdict on that content described #4592's work, not this PR's, because `diff.net_lines` is
-    free prose never checked against the actual diff. This rewrite is the fix for that specific
-    failure mode, not merely a routine refresh.
+    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
+    was already committed and pushed by a prior session/task. No production code, no test
+    content, and no workflow logic was authored or edited as part of writing this pack — every
+    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
+    a first-time authoring of the underlying fix.
   - >-
-    Fleet-wide P04-D1 serialization order (M5, 2026-08-23) places this PR (#4610) last of four
-    siblings (#4643 -> #4621 -> #4610, with #4653 slotted after #4643) because it is the largest
-    of the four by file count. This session did not close or reopen the PR, did not un-draft it,
-    and made no arm/merge/enqueue call — per the team-lead mandate, this PR stays DRAFT pending
-    its turn in that queue.
+    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
+    same `Harness floor recompute` shape first and its own evidence pack documents the identical
+    resolution — supply brief+pack, never edit the gate. That pack (`git show
+    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
+    content is specific to this PR's diff.
