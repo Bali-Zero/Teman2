@@ -342,6 +342,47 @@ class TestClientFacingBoundary:
         assert d7 == verdict.published_filing_deadline
 
 
+class TestNationalityEligibility:
+    """End-to-end wiring of the nationality-eligibility dataset (2026-08-23)
+    through `build_verdict`. `test_nationality_eligibility.py` pins the
+    dataset and the pure lookup function in isolation; this class pins the
+    full request -> verdict path, including the decline reason/code.
+
+    Before this dataset existed, `nationality_entry_eligible` was hardcoded
+    `True`, so `AFG` (not VOA-eligible) silently ACCEPTed — this class's
+    guilt tests are the ones that were RED against that old code and are
+    GREEN against the fix.
+    """
+
+    def test_afg_declines_with_the_nationality_reason(self) -> None:
+        verdict = build_verdict(_issuance(nationality="AFG"), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "NATIONALITY_NOT_ELIGIBLE" in verdict.decline_codes
+        assert any("nationality" in r and "not eligible" in r for r in verdict.decline_reasons)
+
+    def test_prk_also_declines_with_the_nationality_reason(self) -> None:
+        # A second non-listed nationality so the guilt case isn't a
+        # single-fixture coincidence.
+        verdict = build_verdict(_issuance(nationality="PRK"), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "NATIONALITY_NOT_ELIGIBLE" in verdict.decline_codes
+
+    def test_usa_default_fixture_still_accepts(self) -> None:
+        # `_issuance()`'s default nationality is "USA" — every other test in
+        # this file already exercises this implicitly; this test makes the
+        # nationality dependency explicit and named.
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.accepted is True
+
+    def test_lowercase_nationality_is_not_case_sensitive_end_to_end(self) -> None:
+        # `internal_preview_cli.InternalPreviewRequest` normalises to upper
+        # case before `VoaIntakeRequest` is ever built in production, but a
+        # direct caller of `build_verdict` must not silently mis-decline a
+        # perfectly eligible lower-case nationality.
+        verdict = build_verdict(_issuance(nationality="usa"), today=_TODAY)
+        assert verdict.accepted is True
+
+
 class TestPurity:
     def test_intake_request_is_frozen(self) -> None:
         req = _issuance()

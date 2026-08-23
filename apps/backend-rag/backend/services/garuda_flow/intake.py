@@ -17,13 +17,24 @@ only) · ``extension_already_used`` (bool) · ``purpose`` (enum) ·
 field that could carry a name.
 
 Some of ``EligibilityInput``'s SOP §1 criteria have no matching field in
-this 9-field wizard (no nationality-eligibility dataset shipped yet, no
-interview-only signals like "clean ordinary passport" or "prior
-overstay/blacklist" — those are things a human staff member reads off a
-document or a conversation, not something this synthetic preview can ask).
-This engine therefore gives a PRELIMINARY verdict built only from what it
-mechanically can derive; see ``_build_eligibility_input`` for the exact
+this 9-field wizard (interview-only signals like "clean ordinary passport"
+or "prior overstay/blacklist" — those are things a human staff member reads
+off a document or a conversation, not something this synthetic preview can
+ask). This engine therefore gives a PRELIMINARY verdict built only from what
+it mechanically can derive; see ``_build_eligibility_input`` for the exact
 mapping and the documented defaults for the rest.
+
+Nationality eligibility (closed 2026-08-23): ``nationality_entry_eligible``
+is now DERIVED from ``request.nationality`` via
+``nationality_eligibility.is_voa_eligible_nationality`` — a decree-sourced,
+independently-verified dataset (see that module's docstring for provenance
+and its fail-closed "unknown-code" decision). This used to be an
+unconditional ``True`` because no dataset existed; a nationality absent
+from the verified list now DECLINEs via the existing
+``DeclineCode.NATIONALITY_NOT_ELIGIBLE``, same as any other SOP §1
+criterion — a DECLINE here always still routes to WhatsApp (SOP amendment,
+never a bare no), and an ACCEPT still goes through the human pilot intake
+before travel.
 
 Serialization boundary (spec §6, charter — non-negotiable): D-14 is never
 serialized. D-10/D-3/D-1 may be serialized only by the authenticated
@@ -67,6 +78,7 @@ from backend.services.garuda_flow.eligibility import (
     EligibilityInput,
     screen,
 )
+from backend.services.garuda_flow.nationality_eligibility import is_voa_eligible_nationality
 from backend.services.garuda_flow.safe_clock import (
     SafeCheckpoint,
     StayWindow,
@@ -225,11 +237,13 @@ def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> Eligi
       extension-only (``screen()`` itself already declines a missing value
       on an extension case — see eligibility.py).
 
-    Criteria this wizard cannot mechanically ask (no nationality-eligibility
-    dataset yet; "clean ordinary passport" / "prior overstay" are
-    interview-only signals) get the ACCEPT-compatible default — a DECLINE
-    here always still routes to WhatsApp (SOP amendment, never a bare no),
-    and an ACCEPT still goes through the human pilot intake before travel.
+    Criteria this wizard still cannot mechanically ask ("clean ordinary
+    passport" / "prior overstay" are interview-only signals) get the
+    ACCEPT-compatible default — a DECLINE here always still routes to
+    WhatsApp (SOP amendment, never a bare no), and an ACCEPT still goes
+    through the human pilot intake before travel. Nationality eligibility is
+    NO LONGER one of these defaults (closed 2026-08-23) — it is derived
+    below from the verified dataset.
     """
     days_left: int | None = None
     if request.case_type is CaseType.EXTENSION and request.voa_expiry_date is not None:
@@ -240,7 +254,7 @@ def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> Eligi
     ).days >= MIN_PASSPORT_VALIDITY_DAYS
 
     return EligibilityInput(
-        nationality_entry_eligible=True,
+        nationality_entry_eligible=is_voa_eligible_nationality(request.nationality),
         simple_tourism=request.purpose is Purpose.TOURISM,
         single_adult_traveler=request.travellers == 1,
         clean_ordinary_passport=True,
