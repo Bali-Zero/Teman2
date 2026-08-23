@@ -18,6 +18,11 @@ objective: |
   correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
   comment goes hunting for a file that isn't there — cicatrix-superscar family #1
   ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
+  **Severity, stated precisely so a future reader does not over-read this**: because
+  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
+  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
+  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
+  do) — the two are different failure classes and this PR only ever claims to fix the former.
 
   BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
   hot-zone by path, not by content. The evidence below is sized to match — it is not an
