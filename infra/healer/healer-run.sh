@@ -259,8 +259,14 @@ except Exception:
         FLEET_UNREACH=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f1)
         FLEET_HOSTS=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f2)
         if [ "${FLEET_UNREACH:-0}" -gt 0 ] 2>/dev/null; then
-            ACTIONABLE=1; REASONS="${REASONS}fleet:${FLEET_UNREACH}-host-unreachable "
-            telegram digest "healer-mini:fleet-unreachable" "🛰 FLOTTA (Mini): ${FLEET_UNREACH} host non raggiungibile (${FLEET_HOSTS}) - sessioni non osservabili la. Dettaglio: python3 scripts/fleet_sessions.py --table"
+            # No second routine alert line here, deliberately. This wrapper is
+            # allowed exactly ONE routine summary message, and that summary
+            # already carries REASONS verbatim: proven live, it read
+            # "run completato su ... fleet:1-host-unreachable". A duplicate
+            # would spam Zero AND trip the anti-regrowth gateway lint, which
+            # counts routine senders per wrapper. The host names are folded
+            # into REASONS instead, so the one message says everything.
+            ACTIONABLE=1; REASONS="${REASONS}fleet:${FLEET_UNREACH}-host-unreachable(${FLEET_HOSTS}) "
         fi
     fi
 fi
