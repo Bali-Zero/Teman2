@@ -221,7 +221,22 @@ _EXPECTED_SEQ12_PAYLOAD_SHA256 = (
 # Fixed (not datetime.now()) so re-running this script is byte-identical,
 # and so the freshness half's "not in the future" guard has a fixed
 # reference rather than depending on wall-clock at run time.
-_SEQ13_CREATED_AT = "2026-08-23T20:00:00Z"
+#
+# 2026-08-23, corrected: the original value here (20:00:00Z) was picked
+# when this module was first written, at ~10:29 UTC that day — already
+# ~9.5h in the future at write-time, with no comment justifying the choice.
+# It was carried unchanged through every later revision (the NOTE-trend
+# fix, the edit-pair schema adopt, the post-merge rebase re-run) because
+# it's a hardcoded literal, not a computed value — the two-consecutive-run
+# determinism proof this fold reports cannot see this class of defect,
+# since a hardcoded wrong value is exactly as deterministic as a hardcoded
+# right one. Caught by a reviewer comparing this field to real measured
+# UTC, not by anything in this module. Fixed to the most recently-elapsed
+# round hour as of actually finalizing this pack (13:54:25Z measured,
+# 13:00:00Z chosen so it is unambiguously in the past by the time this
+# commits) — matching seq-12's own convention (a nominal round-hour stamp,
+# not a measured instant) without repeating the "guessed forward" mistake.
+_SEQ13_CREATED_AT = "2026-08-23T13:00:00Z"
 _SEQ13_CREATED_BY = "agent.air-m5.backend-rag.visa-seq13-source-join.fold-2026-08-23"
 
 # Drift tripwire on the restamp batch size — same convention as seq-12's
