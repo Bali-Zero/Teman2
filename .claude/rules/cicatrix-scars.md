@@ -1286,3 +1286,42 @@ _Scoperto 2026-08-23 su M5, lane visa-oracle fact-vocabulary, su PR #4650, dopo 
 **GOTCHA.** Non fidarti nemmeno del `check-suite` "completato": un `completed`/`success` prematuro su un sottoinsieme striminzito (qui: 3-4 check contro i ~40 attesi) è esso stesso il segnale che qualcosa non è partito, non la prova che tutto sia a posto — va incrociato col CONTEGGIO atteso (`branch protection required_status_checks`), non letto da solo.
 
 **Famiglia: superscar #2 (Esiste ≠ Armato / cron theater).** Variante "check-suite theater": il gate non mente sul proprio esito, mente per omissione — dichiara fatto ciò che non ha nemmeno tentato.
+
+### 🐛 W125 (2026-08-23): risolvere i marker A MANO non è `--ours` — git fonde in silenzio le righe non contese dentro un file conflittuale, e la resa «tengo il mio» se le porta dietro
+
+_Scoperto 2026-08-23 su Mini, lane S12 (ship-accelerators), sull'evidence pack di cinque PR che si sono contese gli stessi due path fissi. Severity: **P2** (nessun dato perso — la contaminazione è stata vista prima del commit; ma è invisibile per costruzione, e il file contaminato è quello che il gate legge per decidere la marcia di una PR)._
+
+**Famiglia: superscar #9 (state-schema drift / stato letto via PROXY).** Il proxy, qui, è _«ci sono marker di conflitto?»_: si legge la presenza dei marker come se fosse la mappa di ciò che il merge ha toccato. Non lo è. I marker mappano solo ciò che git **non ha saputo** decidere; ciò che ha deciso da solo non lascia traccia.
+
+**TRAUMA.** `evidence/brief.yml` e `evidence/pack.yml` vivono a due path FISSI nella radice, quindi due PR Gear≥2 qualsiasi collidono per costruzione. Su cinque PR S12, in una sessione, ho contato **11 commit `Merge remote-tracking branch 'origin/main'`** (verificabile: `gh pr view <n> --json commits`) — undici passaggi dentro la finestra. In uno di questi il pack della C1 è arrivato in working tree con `l_level: L2` in testa al file, **fuori da qualsiasi marker**, mentre i marker stavano dieci righe più sotto attorno a `objective:`. `L2` non era mai stato un valore della C1 (che dichiara `l_level: L1`): apparteneva al brief della C6, «De-serialize the Evidence Pack», il cui gear è davvero 2. Nessun marker, nessun avviso, nessun check rosso — e `l_level` è precisamente il campo su cui il gate decide quanta cerimonia pretendere da quella PR.
+
+**MECCANISMO — riprodotto, non dedotto.** Un conflitto è per HUNK, non per FILE. Se «loro» toccano due regioni separate da ≥3 righe di contesto e io ne ho toccata una sola, git mette i marker sulla regione contesa e applica l'altra **in silenzio**. Riproduzione minima, 9 righe con sei filler a separare le due regioni:
+
+```text
+PRE-MERGE HEAD:   l_level: L1 · objective: MINE
+DOPO IL MERGE:    1  l_level: L2          <- nessun marker
+                  9  <<<<<<< HEAD
+                 10  objective: MINE
+                 11  =======
+                 12  objective: THEIRS
+                 13  >>>>>>> theirs
+```
+
+Le due rese **non sono equivalenti**, misurato sullo stesso working tree:
+
+| gesto di resa                             | `l_level` risultante | identico all'HEAD pre-merge? |
+| ----------------------------------------- | -------------------- | ---------------------------- |
+| risolvo i marker a mano, «tengo il mio»   | **`L2`**             | **NO — contaminato**         |
+| `git checkout --ours -- <path>`           | `L1`                 | SÌ                           |
+
+`--ours` ripristina lo _stage 2_, cioè il file INTERO come stava in HEAD, e quindi annulla anche le fusioni pulite. Editare i marker no: tocca soltanto ciò che i marker delimitano. La differenza è tutta qui, ed è invisibile finché non la si misura.
+
+**CURA.** Per un file di cui la mia PR è l'UNICA proprietaria — l'evidence pack lo è: la versione su `main` appartiene a un'altra PR e lì dentro non c'è nulla che io voglia — la resa corretta è `git checkout --ours -- <path>`, mai l'editing a mano dei marker. E comunque, **prima di `git add`**:
+
+```bash
+git show "HEAD:evidence/pack.yml" | diff -q - evidence/pack.yml   # deve essere VUOTO
+```
+
+Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di servizio, e adesso lo vedo.
+
+**GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) ma non ancora adottato dai produttori dei pack, e finché non lo è la finestra si riapre a ogni PR Gear≥2.
