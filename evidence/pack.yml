@@ -1,59 +1,201 @@
 brief_ref: evidence/brief.yml
-plan_ref: "pro-visa-freshness-sentinel.sh wrapper header self-reference fix, split out of PR #4592 (2026-08-23)"
+plan_ref: "P04-D1 canonical ContentObject/MediaManifest (CONTRACTS.md sections 9-10), PR #4643 (2026-08-23)"
 diff:
-  net_lines: "+2/-2, 1 file, measured by `git show HEAD --numstat` at HEAD f27cb936f (this PR's only commit)."
-  behaviour_change: "none — two `#` comment lines only; `set -u` and every executable line byte-identical before/after"
+  net_lines: >-
+    +4264/-0, 53 files, measured this session via `git diff --numstat <merge-base> HEAD` against
+    merge-base bc323dde9 (origin/main) -> HEAD f36ba58e6. The PR's two content commits are
+    126f7a000 (original build) and cf34c8ad7 (independent-review fix, see dissent below).
+  behaviour_change: >-
+    New library package surface only (packages/research-os-core): two new frozen Pydantic models
+    (ContentObject, MediaManifest), their generated JSON Schemas, fixtures, tests, and
+    registration in cli.py/models/__init__.py/schemas/__init__.py. No existing code path is
+    modified; nothing is deployed as a running service.
 receipts:
-  - claim: "The diff is exactly the two header comment lines; ORGAN_ID and LOG_DIR (legitimate underscores) are untouched"
-    cmd: "git show HEAD --numstat -- infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh"
+  - claim: >-
+      The committed (pre-edit) evidence/brief.yml and evidence/pack.yml at HEAD describe foreign
+      PR #4592 (task_id ops-visaoracle-wrapper-header-0823, a wrapper-header comment fix), not
+      this PR -- confirming the premise before acting on it, not trusting it on say-so
+    cmd: >-
+      git show HEAD:evidence/pack.yml | head -3 ; git show HEAD:evidence/brief.yml | grep -m1
+      task_id:
     exit: 0
-    ts: "2026-08-23T10:31:22Z"
-    seat: "session (m5)"
-  - claim: "The old header named a file that has never existed: repo history never has the underscore path; the live Pro copy resolves the hyphen path; the plist's ProgramArguments uses the hyphen path"
-    cmd: "grep -c pro-visa_freshness_sentinel.sh infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (post-fix, ->0); ssh pro 'ls ~/scripts/pro-visa-freshness-sentinel.sh' (exists) and 'ls ~/scripts/pro-visa_freshness_sentinel.sh' (No such file or directory); ssh pro 'launchctl print gui/501/com.nuzantara.visa-freshness-sentinel' shows program ~/scripts/pro-visa-freshness-sentinel.sh"
+    ts: "2026-08-23T10:02:51Z"
+    seat: "session (pro)"
+  - claim: "This PR's real diff is 53 files, +4264/-0 net lines, merge-base bc323dde9 vs HEAD f36ba58e6"
+    cmd: >-
+      MB=$(git merge-base HEAD origin/main); git diff --name-only "$MB" HEAD | wc -l; git diff
+      --numstat "$MB" HEAD | awk '{a+=$1;d+=$2} END{print a"-"d"="a-d}'
     exit: 0
-    ts: "2026-08-23T10:32Z"
-    seat: "session (m5)"
-  - claim: "infra/home-fork/declared-pairs.json pair[146] already declares the hyphen form on both live and repo sides for this organ -- scripts/lint_home_fork.py was never blind to the real pair, only the wrapper's own header comment was wrong"
-    cmd: 'python3 -c "import json; d=json.load(open(''infra/home-fork/declared-pairs.json'')); print(d[146])" -> {''live'': ''~/scripts/pro-visa-freshness-sentinel.sh'', ''repo'': ''infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh'', ''machines'': [''pro'']}'
+    ts: "2026-08-23T09:58:10Z"
+    seat: "session (pro)"
+  - claim: >-
+      research_os.cli fixtures --check passes clean on the full fixture tree (137 fixtures, 0
+      failures) -- covers every kind registered in CONTRACT_MODELS, ContentObject/MediaManifest
+      included
+    cmd: "cd packages/research-os-core && PYTHONPATH=. <venv>/python -m research_os.cli fixtures --check"
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: "No script in the repo parses the # Canon: / # Live: comment lines back out of an EXISTING wrapper to do anything functional. The only other hit for the literal 'Canon:' in scripts/*.py is scripts/organ_birth.py:80, and that line is inside wrapper_template() -- an f-string that GENERATES a new wrapper's header text at organ-birth time, never a reader of an existing file"
-    cmd: "grep -rl 'Canon:' scripts/*.py -> scripts/organ_birth.py only; sed -n '75,85p' scripts/organ_birth.py confirms it is inside an f-string head='''...''' template, not a file read"
+    ts: "2026-08-23T09:58:40Z"
+    seat: "session (pro)"
+  - claim: >-
+      The full research_os unit-test suite (backend/tests/unit/research_os, includes
+      test_content_object.py and test_media_manifest.py) passes clean
+    cmd: "cd apps/backend-rag && PYTHONPATH=. <venv>/python -m pytest backend/tests/unit/research_os -q"
     exit: 0
-    ts: "2026-08-23T10:33Z"
-    seat: "session (m5)"
-  - claim: "python3 scripts/lint_home_fork.py passes (no regression) and bash -n is clean on the fixed file"
-    cmd: "python3 scripts/lint_home_fork.py -> '25 live copy/copies match their repo twin' + 'clean' on the 1 undeclared-payload discovery pass; bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> exit 0, no output"
+    ts: "2026-08-23T09:59:15Z"
+    seat: "session (pro)"
+  - claim: >-
+      mypy --strict is clean on all 7 touched Python files (2 model files, cli.py, 2 __init__.py
+      registration files, 2 test files)
+    cmd: >-
+      <venv>/python -m mypy --strict
+      apps/backend-rag/backend/tests/unit/research_os/test_content_object.py
+      apps/backend-rag/backend/tests/unit/research_os/test_media_manifest.py
+      packages/research-os-core/research_os/cli.py
+      packages/research-os-core/research_os/models/__init__.py
+      packages/research-os-core/research_os/models/content_object.py
+      packages/research-os-core/research_os/models/media_manifest.py
+      packages/research-os-core/research_os/schemas/__init__.py
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: 'The organ stays ARMED and unaffected: Pro''s launchd job is loaded, last_seen is fresh, and today''s run already reports pack_source:"database" -- this comment edit needs no restart/redeploy'
-    cmd: 'ssh pro ''launchctl print gui/$(id -u)/com.nuzantara.visa-freshness-sentinel'' (loaded, program path correct); ssh pro ''cat ~/.organism/last_seen/pro.visa_freshness_sentinel.json'' -> {"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}; ssh pro ''tail -5 ~/logs/pro-visa_freshness_sentinel/run.log'' -> pack_sequence 12, pack_source "database"'
+    ts: "2026-08-23T09:59:50Z"
+    seat: "session (pro)"
+  - claim: "ruff check is clean on the same 7 touched files"
+    cmd: "<venv>/python -m ruff check <the same 7 files>"
     exit: 0
-    ts: "2026-08-23T10:30Z"
-    seat: "session (m5)"
+    ts: "2026-08-23T10:00:05Z"
+    seat: "session (pro)"
+  - claim: >-
+      ruff format --check is RED on 1 of the 7 files (content_object.py) -- NOT hiding this. `ruff
+      format --diff` shows it wants to wrap the supersedes_ref_is_self comparison onto 3 lines.
+      Independently verified (not transcribed from the prior review commit's claim) that this
+      exact line was already present, unchanged, in 126f7a000 -- the ORIGINAL build commit, before
+      the independent-review fix commit cf34c8ad7 ever touched the file -- so it predates and is
+      untouched by both content commits of this PR; content_object.py itself does not exist at all
+      on the merge-base with origin/main (it is a wholly new file to this PR), so "pre-existing"
+      here means predating the review-fix, not predating the PR
+    cmd: >-
+      <venv>/python -m ruff format --check <the same 7 files> ; <venv>/python -m ruff format
+      --diff packages/research-os-core/research_os/models/content_object.py ; git show
+      126f7a000:packages/research-os-core/research_os/models/content_object.py | grep -n
+      'supersedes_content_object_ref.content_object_id == self.content_object_id'
+    exit: 1
+    ts: "2026-08-23T10:00:20Z"
+    seat: "session (pro)"
+  - claim: >-
+      The package's own schema self-consistency helpers both report zero drift:
+      checked_in_schemas_match() and validate_schema_artifacts() each return an empty tuple
+    cmd: >-
+      cd packages/research-os-core && PYTHONPATH=. <venv>/python -c "from research_os.schemas
+      import checked_in_schemas_match, validate_schema_artifacts; a=checked_in_schemas_match();
+      b=validate_schema_artifacts(); print(a,b,a==() and b==())"
+    exit: 0
+    ts: "2026-08-23T10:01:10Z"
+    seat: "session (pro)"
+  - claim: >-
+      No sibling-race: the remote branch tip (cf34c8ad7, an independent code-review-fix commit
+      from another lane, pushed concurrently) is already an ancestor of local HEAD -- "git merge"
+      against origin's branch reports Already up to date, confirmed by an independent is-ancestor
+      check both directions before trusting that
+    cmd: >-
+      git fetch origin agent/nuzantara/backend-rag/ros-v1-p04-d1-content && git merge
+      origin/agent/nuzantara/backend-rag/ros-v1-p04-d1-content -m '...' ; git merge-base
+      --is-ancestor cf34c8ad7 HEAD
+    exit: 0
+    ts: "2026-08-23T09:57:20Z"
+    seat: "session (pro)"
 tests:
-  - "No unit test exists or is warranted for a 2-line comment change with zero executable delta; bash -n (syntax) and lint_home_fork.py (the ONE guard whose job includes this file's identity) are the applicable checks and both pass, per receipts above."
+  - >-
+    backend/tests/unit/research_os/test_content_object.py and test_media_manifest.py -- exercised
+    by the pytest receipt above, both pass; content coverage (frozen/extra=forbid enforcement,
+    object_hash stability, revision<->supersedes conditional, QualityCheck immutability) is the
+    subject of the independent-review commit cf34c8ad7, not re-litigated here.
+  - >-
+    research_os.cli fixtures --check is this package's own fixture-corpus gate (>=3 valid + >=3
+    invalid per kind, per the §9/§10 spec) -- 137/137 clean, per receipts above.
 static:
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> clean"
-  - "scripts/lint_home_fork.py -> clean (25/25 checkable pairs on m5 match; this pair is pro-only so its LIVE side is not checkable from m5 -- see dissent #3 below for the post-merge consequence)"
+  - "mypy --strict: clean (7/7 touched files)"
+  - "ruff check: clean (7/7 touched files)"
+  - >-
+    ruff format --check: 1 file would reformat (content_object.py) -- pre-existing wrap on a line
+    untouched by either content commit of this PR, per receipts above. Not fixed in this
+    evidence-only revision (out of the stated scope: evidence/*.yml only); flagged as residual
+    risk.
+  - >-
+    checked_in_schemas_match() / validate_schema_artifacts(): both empty -- the checked-in
+    content_object.schema.json and media_manifest.schema.json byte-match a fresh regeneration.
 runtime_proof:
-  - "Not applicable in the classic sense (no code path executes differently). The closest runtime proof is that the organ this wrapper launches is independently confirmed ARMED and HEALTHY on Pro before and after this diff (receipts above) -- the fix changes documentation the organ never reads."
+  - >-
+    Not applicable in the classic sense: packages/research-os-core is a library with no deployed
+    service of its own. The closest runtime proof is the CLI validator (research_os.cli fixtures
+    --check) actually loading and validating both new models against real fixture JSON through the
+    full Pydantic v2 validation path -- not a mock, not a schema-only check -- confirmed green per
+    receipts above.
 dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context, dispatched via `kimi -p ... -m kimi-code/k3`, independent of the diff's author)"
-    objection: "Tried to refute all 4 of the author's claims by re-running the underlying commands itself (git show --numstat, ssh pro ls/launchctl, python declared-pairs read, grep Canon: across scripts/*.py and .github/workflows/) rather than trusting the brief. All 4 confirmed true. Found 3 things beyond the claims, none blocking: (a) evidence/brief.yml existed in the worktree but was UNCOMMITTED at review time -- a real process gap, since the whole reason this fix was split out of #4592 was to carry a floor-3 evidence pack; (b) the root cause is unfixed and will recur: scripts/organ_birth.py:80's wrapper_template() does organ_id.replace('.', '-'), which only replaces the dot and leaves internal underscores alone, so ANY future organ_id containing '_' is born with the same wrong header; 3 sibling wrappers carry the identical live bug today (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh -- declared-pairs indices 32/68/151), correctly left untouched by this PR's tight scope but flagged so the pattern is not lost; (c) merging this diff will transiently desynchronize declared-pairs pair[146] -- the live copy on Pro still carries the pre-fix underscore header (confirmed by ssh), so lint_home_fork.py --check run FROM PRO will read the pair as sha256-divergent until the repo-authoritative content is synced to the live path; expected/self-healing under the existing repo-is-canon model, not a defect of this diff, but the sync should be confirmed rather than assumed."
+  - seat: >-
+      claude-opus-5 (independent review lane, different Claude session from the original builder,
+      commit cf34c8ad7, 2026-08-23T17:13:02+08:00 -- verified via `git show cf34c8ad7`, not
+      transcribed from an unread claim)
+    objection: >-
+      Adversarially reviewed the original build (commit 126f7a000, authored by a separate
+      claude-sonnet-5 session per its Co-Authored-By trailer -- generator != grader) and confirmed
+      4 real defects: (1) Quality.checks entries were bare mutable dicts inside a frozen tuple, so
+      a MediaManifest's object_hash could go stale after a post-validation mutation the outer
+      frozen=True never blocked -- fixed by making each checks[] entry its own FrozenCoreModel;
+      (2) content_object.schema.json didn't enforce the revision<->supersedes conditional the
+      Python model already enforced -- fixed via a json_schema_extra allOf/if-then pair, verified
+      extra=forbid/frozen=True survive the ConfigDict merge; (3) the happy-path media_manifest
+      fixture silently exercised an undocumented classification-lowering escape -- fixed by
+      raising it to an ordinary specimen and adding a dedicated labeled fixture for the escape
+      case; (4) two test-shape gaps (an assertion against the fixture dict instead of
+      model_fields; missing invalid-fixture coverage for AudioMetadata/IdentityMetadata internals)
+      -- both closed with new tests/fixtures. Also EXPLICITLY reported, not fixed, out of that
+      review's stated scope: ExtensionValue.payload's extension-jail top-level-only coverage,
+      _UTC_OFFSET_PATTERN's missing regex anchor, cli.py's _hash() field-ordering, and
+      cli.py::_check_fixtures() reporting checked:0 (not an error) on an empty tree -- carried
+      forward here as residual risk, not silently dropped.
+    status: CONFIRMED
+  - seat: "session (this lane, evidence-only revision, 2026-08-23)"
+    objection: >-
+      Checked whether declaring 2 Anthropic build lanes (the original builder, claude-sonnet-5,
+      plus the reviewer-who-also-fixed, claude-opus-5) would be the honest lanes: shape -- and
+      concluded it is not: cf34c8ad7's role in this PR's lifecycle was adversarial review that
+      then applied its own confirmed fix, which is the intended generator!=grader pattern
+      (CLAUDE.md ship-lifecycle rule), not a second independent build lane. Declared 1 build + 1
+      review below. Flagging this judgment call rather than asserting it silently, since a
+      different reasonable reader could classify cf34c8ad7 as build; either way there is
+      truthfully only 1 build lane, so the D3 seat-diversity floor (which needs >=2 build lanes to
+      even apply) does not engage regardless of which classification is right.
     status: PLAUSIBLE
+lanes:
+  - lane: "content-object-media-manifest-build"
+    role: build
+    seat: "claude-sonnet-5"
+  - lane: "pr-4643-adversarial-review-and-fix"
+    role: review
+    seat: "claude-opus-5"
 residual_risks:
-  - "The organ_birth.py:80 template bug (dot-only replace, underscores in organ_id survive into the generated header) is NOT fixed here -- deliberately out of scope for a 2-line self-reference correction. 3 sibling wrappers (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh) carry the same wrong header today and any future organ with an underscore in its id will be born with it again. A follow-up PENDING-ARMS line is warranted; not opened in this PR to keep scope tight (constraints in brief.yml)."
-  - "Transient post-merge divergence: until the live copy on Pro (~/scripts/pro-visa-freshness-sentinel.sh) is synced from the repo-authoritative content, `scripts/lint_home_fork.py --check` run on Pro will report pair[146] as sha256-divergent (comment-only bytes differ). This is the normal repo-is-canon flow and self-heals on the next sync of this pair -- confirmed the sync mechanism exists (this repo has synced this exact pair before, per the pair's own presence in declared-pairs.json since the organ's birth) but did NOT independently re-verify a sync fires automatically post-merge; flagged rather than assumed."
+  - >-
+    ruff format --check remains red on content_object.py (pre-existing wrap, not introduced by
+    either content commit) -- out of scope for this evidence-only revision; a trivial follow-up
+    for whichever lane next touches that file.
+  - >-
+    4 items reported by the independent review (cf34c8ad7) and deliberately left unfixed by that
+    same commit remain open: ExtensionValue.payload extension-jail scope, _UTC_OFFSET_PATTERN
+    missing anchor, cli.py _hash() ordering, cli.py::_check_fixtures() empty-tree reporting. None
+    are evidence-pack concerns; tracked here for visibility, not actioned by this revision.
+  - >-
+    Fleet-observed (2026-08-23, cross-machine broadcast from the sibling lane H1/P04, NOT
+    independently re-verified by this revision since it is outside this revision's scope):
+    CONTRACTS.md's approval_subject_kind enum admits
+    media_script_lock/media_shot_lock/content_revision as approvable subjects, but no spec section
+    defines them as first-class objects -- a spec gap unrelated to ContentObject/MediaManifest,
+    for the P04 conductor, not this PR. Flagged for traceability, not verified firsthand.
 sources:
-  - infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (this PR's only changed file)
-  - infra/home-fork/declared-pairs.json (pair[146], read-only reference)
-  - scripts/organ_birth.py:75-85 (read-only reference, root-cause template)
-  - Pro live state via ssh (launchctl, last_seen json, run.log) -- re-verified fresh this session, not recalled
+  - "packages/research-os-core/research_os/models/content_object.py (this PR, commit 126f7a000)"
+  - "packages/research-os-core/research_os/models/media_manifest.py (this PR, commit 126f7a000)"
+  - "commit cf34c8ad7 (independent review + fix, this PR, re-read fresh this session via git show)"
+  - "packages/research-os-core/research_os/schemas/__init__.py (schema self-consistency helpers)"
+  - "Fresh gate runs in this worktree this session (receipts above) -- not recalled from memory"
 pii_scan: clean
 # ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
-# at write time = 7701 bytes -> ~1925 tokens, well inside the 30,000 hard cap.
-size_tokens: 1925
+# at write time = 12130 bytes -> ~3032 tokens, well inside the 30,000 hard cap.
+size_tokens: 3032
