@@ -136,8 +136,13 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     all_paths = {str(p.value) for p in DEFAULT_FACT_REGISTRY.all_paths()}
     assert set(seq7_report.unused_fact_paths) == all_paths - set(seq7_report.used_fact_paths)
     assert seq7_report.total_fact_paths == len(all_paths)
-    # The exact 8-path headline the task brief names.
-    assert len(seq7_report.unused_fact_paths) == 8
+    # The exact 12-path headline (was 8; 2026-08-23 vocabulary extension —
+    # PR #4650 — added 4 new registry paths that no rule in
+    # rulepack-prod-007.source.json references yet, which is exactly what
+    # "vocabulary-only, no rulepack change" means: `derived.has_active_stay_permit`,
+    # `family.sponsor_permit_basis`, `family.stepchild_marriage_certificate_confirmed`,
+    # `family.stepchild_birth_certificate_confirmed`).
+    assert len(seq7_report.unused_fact_paths) == 12
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:

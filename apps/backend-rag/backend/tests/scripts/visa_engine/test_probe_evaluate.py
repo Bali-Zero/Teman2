@@ -149,6 +149,157 @@ def test_synthetic_probe_constructs_authenticated_request_and_reports_pack(
     assert token not in caplog.text
 
 
+def test_full_body_prints_candidate_detail_the_small_summary_cannot(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``--full-body`` must print detail the default summary structurally
+    cannot -- assert on a candidate/reason field, never on ``mode``/``state``
+    which both paths print (a test that passes either way proves nothing).
+    """
+
+    token = _write_token(tmp_path / "driver-token")
+    payload_path = tmp_path / "facts.json"
+    _write_payload(payload_path)
+
+    async def fake_post(**_kwargs: object) -> _Response:
+        return _Response(
+            {
+                "mode": "CURATED",
+                "decision": {
+                    "state": "SUPPORTED_CANDIDATES",
+                    "candidates": [
+                        {
+                            "product_code": "C1-VISIT-SINGLE",
+                            "reason_codes": ["ELIGIBLE_STANDARD_PATH"],
+                        }
+                    ],
+                    "rule_pack": {
+                        "rule_pack_id": "00000000-0000-0000-0000-000000000007",
+                        "sequence": 7,
+                        "version": "2026.8.11",
+                    },
+                },
+            }
+        )
+
+    monkeypatch.setattr(probe_evaluate, "_post_evaluate", fake_post)
+    args = probe_evaluate._parse_args(
+        [
+            "--payload",
+            str(payload_path),
+            "--driver-token-file",
+            str(tmp_path / "driver-token"),
+            "--full-body",
+        ]
+    )
+
+    assert probe_evaluate.run(args) == 0
+
+    output = capsys.readouterr().out
+    assert "C1-VISIT-SINGLE" in output
+    assert "ELIGIBLE_STANDARD_PATH" in output
+    assert token not in output
+
+
+def test_full_body_redacts_driver_token_reflected_in_body(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The defense-in-depth redaction (misbehaving proxy reflects the
+    driver-token header back in the response) must survive ``--full-body``
+    exactly as it does for the small summary -- this is the test that
+    matters most for this flag: it FAILS if a future change moves the
+    redaction to only run on ``_summarize_response``'s output.
+    """
+
+    token = _write_token(tmp_path / "driver-token")
+    payload_path = tmp_path / "facts.json"
+    _write_payload(payload_path)
+
+    async def reflecting_proxy(**_kwargs: object) -> _Response:
+        return _Response(
+            {
+                "mode": "CURATED",
+                "decision": {"state": "SUPPORTED_CANDIDATES", "rule_pack": None},
+                # A misbehaving proxy reflecting the request headers back
+                # into the body -- exactly the shape the module docstring's
+                # "defense in depth" comment guards against.
+                "echoed_headers": {"X-Visa-Driver-Token": token},
+            }
+        )
+
+    monkeypatch.setattr(probe_evaluate, "_post_evaluate", reflecting_proxy)
+    args = probe_evaluate._parse_args(
+        [
+            "--payload",
+            str(payload_path),
+            "--driver-token-file",
+            str(tmp_path / "driver-token"),
+            "--full-body",
+        ]
+    )
+
+    assert probe_evaluate.run(args) == 0
+
+    output = capsys.readouterr().out
+    assert token not in output
+    assert "[REDACTED]" in output
+
+
+def test_default_behaviour_unchanged_without_the_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """No ``--full-body`` (and no env override): output stays the small
+    summary -- the candidate/reason detail from the full body must NOT
+    appear.
+    """
+
+    monkeypatch.delenv(probe_evaluate.FULL_BODY_ENV, raising=False)
+    token = _write_token(tmp_path / "driver-token")
+    payload_path = tmp_path / "facts.json"
+    _write_payload(payload_path)
+
+    async def fake_post(**_kwargs: object) -> _Response:
+        return _Response(
+            {
+                "mode": "CURATED",
+                "decision": {
+                    "state": "SUPPORTED_CANDIDATES",
+                    "candidates": [{"product_code": "C1-VISIT-SINGLE"}],
+                    "rule_pack": {
+                        "rule_pack_id": "00000000-0000-0000-0000-000000000007",
+                        "sequence": 7,
+                        "version": "2026.8.11",
+                    },
+                },
+            }
+        )
+
+    monkeypatch.setattr(probe_evaluate, "_post_evaluate", fake_post)
+    args = probe_evaluate._parse_args(
+        [
+            "--payload",
+            str(payload_path),
+            "--driver-token-file",
+            str(tmp_path / "driver-token"),
+        ]
+    )
+    assert args.full_body is False
+
+    assert probe_evaluate.run(args) == 0
+
+    output = capsys.readouterr().out
+    assert "state='SUPPORTED_CANDIDATES'" in output
+    assert "sequence=7" in output
+    assert "C1-VISIT-SINGLE" not in output
+    assert token not in output
+
+
 def test_transport_error_never_logs_driver_token(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
