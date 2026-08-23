@@ -217,6 +217,46 @@ PY
     fi
 fi
 
+# Receptor 6: fleet session visibility (scripts/fleet_sessions.py) — until
+# 2026-08-23 no organ could see the Claude Code sessions running on the OTHER
+# machines, so a lane that DECLARED a long autonomous run and died minutes in
+# stayed green everywhere. Canonical miss: session f9dd23da on this very Mini —
+# its first message was THIS healer's mandate ("loop 4h"), its transcript spans
+# 6m31s, launchd exited 0, and nothing anywhere raised a hand (superscar #2).
+# Exit 1 = findings; exit 2 = BLIND, no host probed at all.
+# ACTIONABLE fires on a DEAD-BUT-DECLARED-LONG (a genuinely dead organ) or on
+# BLIND (the receptor itself lost coverage — same semantics as receptor 4's
+# exit 2). A PARTIALLY unreachable fleet is usually a sleeping laptop, so it
+# takes the deduped Telegram ladder instead of spawning an LLM session every
+# 4h; the mandate's step 1 still reports it in the ledger on any tick that runs.
+if [ -f "scripts/fleet_sessions.py" ]; then
+    FLEET_JSON=$(python3 scripts/fleet_sessions.py --json 2>/dev/null)
+    FLEET_EXIT=$?
+    if [ "$FLEET_EXIT" -eq 2 ]; then
+        ACTIONABLE=1; REASONS="${REASONS}fleet-sessions-blind "
+    elif [ "$FLEET_EXIT" -eq 1 ]; then
+        FLEET_SUM=$(printf '%s' "$FLEET_JSON" | python3 -c "
+import json, sys
+try:
+    s = json.load(sys.stdin).get('summary', {})
+    print('%d %d %s' % (s.get('dead_but_declared_long', 0),
+                        s.get('hosts_unreachable', 0),
+                        ','.join(s.get('unreachable_hosts', [])) or '-'))
+except Exception:
+    print('0 0 -')
+" 2>/dev/null)
+        FLEET_DEAD=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f1)
+        FLEET_UNREACH=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f2)
+        FLEET_HOSTS=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f3)
+        if [ "${FLEET_DEAD:-0}" -gt 0 ] 2>/dev/null; then
+            ACTIONABLE=1; REASONS="${REASONS}fleet:${FLEET_DEAD}-dead-but-declared-long "
+        fi
+        if [ "${FLEET_UNREACH:-0}" -gt 0 ] 2>/dev/null; then
+            telegram digest "healer-mini:fleet-unreachable" "🛰 FLOTTA (Mini): ${FLEET_UNREACH} host non raggiungibile (${FLEET_HOSTS}) — sessioni non osservabili su quelle macchine. Dettaglio: python3 scripts/fleet_sessions.py --table"
+        fi
+    fi
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
     # ---- CONVERGENCE mission (DNA/GENOME §CONVERGENCE v2, panel-hardened) ----
     # Receptors all quiet: instead of sleeping, bring ONE grandfathered organ

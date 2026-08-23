@@ -20,6 +20,18 @@ Skill `modus` governa (di norma Gear 1-2; mai Gear 3 senza operatore).
    `python3 scripts/arsenal_probe.py --read-last --json` (receptor 5, seat AI vivi? —
    MAI ri-lanciare probe live in sessione: il wrapper le fa; AUTH/BALANCE/MODEL dead =
    quasi sempre operator-gated → Telegram con la cura precisa, es. "codex login su Pro").
+   `python3 scripts/fleet_sessions.py --json` (receptor 6, sessioni VIVE sulla flotta —
+   nessun altro organo vede le sessioni delle ALTRE macchine). Ogni riga
+   `verdict: DEAD-BUT-DECLARED-LONG` e ogni host `status: UNREACHABLE` è un FINDING da
+   riportare nel tick del ledger. `DEAD-BUT-DECLARED-LONG` = la sessione DICHIARAVA una
+   corsa lunga (loop/autonomous/H24/una durata) e invece non ha processo vivo e il
+   transcript è fermo da più del suo span dichiarato: è un organo morto con tutte le spie
+   verdi (superscar #2 — precedente: `f9dd23da` su questo stesso Mini, mandato "loop 4h",
+   fermo dopo 6m31s, launchd exit 0, nessun allarme). NON è curabile da te — una sessione
+   morta non si resuscita: riportala nel ledger con host+session_id+identity e, se è una
+   lane di lavoro persa, 1 riga Telegram. `UNREACHABLE` = copertura persa su quella
+   macchina, non silenzio sano. Exit 2 = il receptor stesso è cieco (nessun host sondato):
+   quello SÌ è nel tuo perimetro (`scripts/fleet_sessions.py` è sotto `scripts/`).
 2. **TRIAGE** ogni finding in 3 ceste:
    - **CURABILE** (dentro perimetro, sotto): cura ADESSO.
    - **OPERATOR-GATED**: 1 riga Telegram a Zero (chiara, con la prossima azione sua) — MAI provarci.
