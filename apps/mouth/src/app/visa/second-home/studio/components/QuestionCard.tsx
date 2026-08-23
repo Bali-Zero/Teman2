@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode, type Ref } from "react";
+import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 
 export interface QuestionCardProps {
@@ -168,6 +169,9 @@ export interface OptionButtonProps {
    *  a future enhancement — Tab-order navigation between options still
    *  works today; only the announced role/state changed here. */
   variant?: "radio" | "toggle";
+  /** Optional leading icon for route-style options. Rendered `aria-hidden`
+   *  because the textual label already carries the meaning. */
+  icon?: LucideIcon;
 }
 
 /** Decorative leading affordance for a radio-variant option: an empty ring
@@ -246,6 +250,7 @@ export function OptionButton({
   selected,
   onSelect,
   variant = "toggle",
+  icon: Icon,
 }: OptionButtonProps) {
   const isRadio = variant === "radio";
   return (
@@ -276,6 +281,17 @@ export function OptionButton({
       ) : (
         <CheckAffordance selected={selected} />
       )}
+      {Icon ? (
+        <Icon
+          size={18}
+          strokeWidth={1.5}
+          aria-hidden
+          style={{
+            flexShrink: 0,
+            color: "var(--color-text-muted)",
+          }}
+        />
+      ) : null}
       <span>{label}</span>
     </button>
   );

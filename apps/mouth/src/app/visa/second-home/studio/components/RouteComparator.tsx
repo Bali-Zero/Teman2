@@ -1,8 +1,15 @@
 "use client";
 
+import { Home, Landmark, Scale } from "lucide-react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 
 const COLUMNS = ["deposit", "property", "senior"] as const;
+
+const COLUMN_ICONS = {
+  deposit: Landmark,
+  property: Home,
+  senior: Scale,
+} as const;
 const ROWS = [
   "capital",
   "liquidity",
@@ -48,20 +55,40 @@ export function RouteComparator({ highlight = false }: RouteComparatorProps) {
           <thead>
             <tr>
               <th scope="col" style={{ padding: "var(--space-2, 0.5rem)" }} />
-              {COLUMNS.map((c) => (
-                <th
-                  key={c}
-                  scope="col"
-                  style={{
-                    textAlign: "left",
-                    padding: "var(--space-2, 0.5rem)",
-                    color: "var(--text-primary)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {getCopy(`routeComparator.columns.${c}.title`)}
-                </th>
-              ))}
+              {COLUMNS.map((c) => {
+                const ColumnIcon = COLUMN_ICONS[c];
+                return (
+                  <th
+                    key={c}
+                    scope="col"
+                    style={{
+                      textAlign: "left",
+                      padding: "var(--space-2, 0.5rem)",
+                      color: "var(--text-primary)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "var(--space-2, 0.5rem)",
+                      }}
+                    >
+                      <ColumnIcon
+                        size={18}
+                        strokeWidth={1.5}
+                        aria-hidden
+                        style={{
+                          flexShrink: 0,
+                          color: "var(--color-text-muted)",
+                        }}
+                      />
+                      {getCopy(`routeComparator.columns.${c}.title`)}
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>

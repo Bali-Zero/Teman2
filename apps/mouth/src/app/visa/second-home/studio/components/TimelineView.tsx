@@ -1,5 +1,6 @@
 "use client";
 
+import { Building2, Landmark, User } from "lucide-react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import { buildTimeline } from "@/lib/secondhome-studio/timeline";
 import type {
@@ -8,6 +9,12 @@ import type {
   TimelineHorizon,
   Verdict,
 } from "@/lib/secondhome-studio/types";
+
+const OWNER_ICONS = {
+  you: User,
+  balizero: Building2,
+  imigrasi: Landmark,
+} as const;
 
 export interface TimelineViewProps {
   horizon: TimelineHorizon;
@@ -84,6 +91,9 @@ export function TimelineView({
               </strong>
               <span
                 style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "var(--space-1, 0.3rem)",
                   fontSize: "0.68rem",
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
@@ -94,6 +104,17 @@ export function TimelineView({
                   whiteSpace: "nowrap",
                 }}
               >
+                {(() => {
+                  const OwnerIcon = OWNER_ICONS[step.ownerKey];
+                  return OwnerIcon ? (
+                    <OwnerIcon
+                      size={12}
+                      strokeWidth={1.5}
+                      aria-hidden
+                      style={{ flexShrink: 0 }}
+                    />
+                  ) : null;
+                })()}
                 {getCopy(`timeline.ownerLabels.${step.ownerKey}`)}
               </span>
             </div>
