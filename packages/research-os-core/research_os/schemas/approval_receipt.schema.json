@@ -1,0 +1,486 @@
+{
+  "$defs": {
+    "ActionItemRef": {
+      "additionalProperties": false,
+      "description": "``{action_item_id, object_hash}`` -- the typed pointer used everywhere\nthe chain names one exact ``ActionItem`` revision (never a bare family\nID, per primitive ``exact_object_ref``'s rule generalized to this kind).",
+      "properties": {
+        "action_item_id": {
+          "format": "uuid",
+          "title": "Action Item Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["action_item_id", "object_hash"],
+      "title": "ActionItemRef",
+      "type": "object"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ApprovalContext": {
+      "additionalProperties": false,
+      "properties": {
+        "action_item_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionItemRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "workflow_run_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowRunRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ApprovalContext",
+      "type": "object"
+    },
+    "ApprovalDecision": {
+      "enum": [
+        "select",
+        "approve",
+        "reject",
+        "request_changes",
+        "request_evidence",
+        "defer"
+      ],
+      "title": "ApprovalDecision",
+      "type": "string"
+    },
+    "ApprovalSubject": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ApprovalSubjectKind"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "object_id", "object_hash"],
+      "title": "ApprovalSubject",
+      "type": "object"
+    },
+    "ApprovalSubjectKind": {
+      "enum": [
+        "decision_packet",
+        "topic_lock",
+        "creative_lock",
+        "media_script_lock",
+        "media_shot_lock",
+        "content_revision",
+        "action_intent"
+      ],
+      "title": "ApprovalSubjectKind",
+      "type": "string"
+    },
+    "Authority": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "scope": {
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Verified At",
+          "type": "string"
+        }
+      },
+      "required": ["role", "scope", "verified_at"],
+      "title": "Authority",
+      "type": "object"
+    },
+    "Bindings": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arguments Hash"
+        },
+        "input_revision_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Input Revision Hash",
+          "type": "string"
+        }
+      },
+      "required": ["input_revision_hash"],
+      "title": "Bindings",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Lineage": {
+      "additionalProperties": false,
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowRunRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["input_hashes"],
+      "title": "Lineage",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actor_ref": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "after_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "After Hash"
+    },
+    "approval_receipt_id": {
+      "format": "uuid",
+      "title": "Approval Receipt Id",
+      "type": "string"
+    },
+    "authority": {
+      "$ref": "#/$defs/Authority"
+    },
+    "authorized_effects": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+        "type": "string"
+      },
+      "title": "Authorized Effects",
+      "type": "array"
+    },
+    "before_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Before Hash"
+    },
+    "bindings": {
+      "$ref": "#/$defs/Bindings"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "context": {
+      "$ref": "#/$defs/ApprovalContext"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/ApprovalDecision"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "idempotency_key": {
+      "minLength": 1,
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "lineage": {
+      "$ref": "#/$defs/Lineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "rationale_code": {
+      "minLength": 1,
+      "title": "Rationale Code",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "subject": {
+      "$ref": "#/$defs/ApprovalSubject"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    }
+  },
+  "required": [
+    "approval_receipt_id",
+    "contract_version",
+    "tenant",
+    "subject",
+    "context",
+    "decision",
+    "actor_ref",
+    "authority",
+    "bindings",
+    "authorized_effects",
+    "rationale_code",
+    "classification",
+    "issued_at",
+    "expires_at",
+    "idempotency_key",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "ApprovalReceipt",
+  "type": "object"
+}

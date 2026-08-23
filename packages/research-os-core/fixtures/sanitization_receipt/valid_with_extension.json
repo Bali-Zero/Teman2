@@ -1,0 +1,62 @@
+{
+  "sanitization_receipt_id": "30000000-0000-4000-8000-000000000003",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_objects": [],
+  "output_object": {
+    "object_kind": "com.example.synthetic_projection",
+    "object_id": "synthetic-output-003",
+    "object_hash": "89fc4f391f95a26e3805b004365973beb5943347a5db49f61c46185fe8d0a946",
+    "classification": {
+      "risk_class": "green",
+      "sensitivity": "internal"
+    }
+  },
+  "policy": {
+    "name": "com.example.sanitize_policy",
+    "version": "1.0.0"
+  },
+  "transformations": [],
+  "residual_risk": {
+    "rating": "n/a",
+    "findings": []
+  },
+  "reviewer_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "audit",
+    "pseudonym": "0da6e141e83594276ca4da67a8f8f94d435cbb97e1225dbaa7332caa7ba698ad"
+  },
+  "permitted_use": {
+    "purpose": "editorial_review_copy",
+    "destination": "com.example.editorial_queue",
+    "consumer": "com.example.editorial_team",
+    "expires_at": "2026-05-01T00:00:00Z"
+  },
+  "issued_at": "2026-02-05T00:01:00Z",
+  "propagation_scope": [],
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "30000000-0000-4000-8000-000000000103",
+      "object_hash": "847bcf8bb952c55e31eeed03709d8a6d42db21552cdf2067bf1e0f9866691ff0"
+    },
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "restricted",
+    "legal_hold": true
+  },
+  "extensions": {
+    "com.example.sanitization-note": {
+      "extension_version": "1.1.0",
+      "payload": {
+        "synthetic_case_code": "fixture-only"
+      }
+    }
+  },
+  "object_hash": "5b42661235ae2d84b0ca6cbb5a99e2d42969fad2f14422ccc834045f135126dc"
+}

@@ -1,0 +1,98 @@
+{
+  "risk_reclassification_receipt_id": "40000000-0000-4000-8000-000000000003",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_object": {
+    "object_kind": "com.example.synthetic_claim",
+    "object_id": "synthetic-claim-source-003",
+    "object_hash": "a7b92ac55411d70fccc697e188175669dd6f884824db94b3af439150c7c11612",
+    "risk_class": "amber",
+    "sensitivity": "confidential"
+  },
+  "output_object": {
+    "object_kind": "com.example.synthetic_claim",
+    "object_id": "synthetic-claim-output-003",
+    "object_hash": "f82266818951a649a905d3ec8565b0c9aff05108de03cc8dbb8c4ac1cef99c8e",
+    "risk_class": "amber",
+    "sensitivity": "confidential"
+  },
+  "supersession_ref": {
+    "object_successor_edge_id": "40000000-0000-4000-8000-000000000203",
+    "object_hash": "f7acc568c88187f16930ef7b7752496e30e96ecabf4a3fa1e22710f52502827d"
+  },
+  "remediation": {
+    "type": "classification_error_corrected",
+    "reason_codes": ["com.example.reviewer_miscategorized_initial_pass"],
+    "changed_field_paths": ["$.classification.risk_class"]
+  },
+  "claim_refs": [
+    {
+      "claim_id": "40000000-0000-4000-8000-000000000302",
+      "object_hash": "20826b5542851c1910a3c2cf01bbc7df0b8a68fb2bc2a6895a24fe28decfd3a0"
+    },
+    {
+      "claim_id": "40000000-0000-4000-8000-000000000303",
+      "object_hash": "d757fca5df1fdec75e1f6f92bd34e738f4d9546526598612961abee0d51bb37c"
+    }
+  ],
+  "evidence_refs": [
+    {
+      "evidence_id": "40000000-0000-4000-8000-000000000402",
+      "object_hash": "ee091c944f61907882662f2fe50ebbba56bed1117b4fe720c7a3c1a0d1641c81"
+    }
+  ],
+  "verification_receipt_refs": [
+    {
+      "verification_receipt_id": "40000000-0000-4000-8000-000000000502",
+      "object_hash": "bc7bef57c8ab79db94fd6f701ab10795f75ca21f33ef8d0cfe442383fae23942"
+    }
+  ],
+  "policy": {
+    "name": "com.example.risk_reclassification_policy",
+    "version": "1.2.0"
+  },
+  "reviewer": {
+    "actor_ref": {
+      "scheme": "hmac-sha256",
+      "key_version": "synthetic-key-v1",
+      "purpose": "audit",
+      "pseudonym": "c9c17fd8907f1a40a09c1bf9625b304aecee4b09a807d7b8d8ffd1897f150dca"
+    },
+    "independence_class": "independent_reviewer"
+  },
+  "residual_risk": {
+    "risk_class": "amber",
+    "findings": ["residual_ambiguity_in_jurisdiction_scope"]
+  },
+  "permitted_use": {
+    "purpose": "internal_review_copy",
+    "destination": "com.example.internal_review_queue",
+    "consumer": "com.example.compliance_team",
+    "expires_at": "2026-07-01T00:00:00Z"
+  },
+  "issued_at": "2026-02-06T00:01:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "40000000-0000-4000-8000-000000000603",
+      "object_hash": "fbc7bf7af43b0009d3edaddb1d261a33539ec66c990a8cf95c38d44323ab786c"
+    },
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "restricted",
+    "legal_hold": true
+  },
+  "extensions": {
+    "com.example.risk-reclassification-note": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "synthetic_case_code": "fixture-only"
+      }
+    }
+  },
+  "object_hash": "a58ddb21b64fe406d21ad1b6edb9e1a17c4b5aa9519d163258f2c2fb61a52c2d"
+}

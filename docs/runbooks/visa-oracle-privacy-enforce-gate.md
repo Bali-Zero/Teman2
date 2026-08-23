@@ -26,18 +26,18 @@ These are latent while mode is SHADOW, but are hard ENFORCE blockers.
 
 ## Approved values
 
-| Control            | Value                                                     | Operational owner       |
-| ------------------ | --------------------------------------------------------- | ----------------------- |
-| Decision retention | 30 days from `evaluated_at`                               | Privacy owner           |
-| Idempotency        | 24 hours                                                  | Backend owner           |
-| PII-free telemetry | 90 days                                                   | Product analytics owner |
-| Retention cadence  | Every 15 minutes                                          | Infra/on-call           |
-| Purge-lag alert    | Any backlog remaining after a run, or lag over 60 minutes | Infra/on-call           |
-| DSR SLA            | 3 x 24 hours                                              | Privacy owner           |
-| Legal-hold review  | Every 30 days                                             | Legal/privacy owner     |
-| CRM / WhatsApp     | Separate explicit opt-ins                                 | Product owner           |
-| Minor              | Parent/guardian confirmation; otherwise human review      | Privacy/product owner   |
-| DPIA               | Approved before ENFORCE                                   | Zero + privacy owner    |
+| Control            | Value                                                                    | Operational owner       |
+| ------------------ | ------------------------------------------------------------------------ | ----------------------- |
+| Decision retention | 30 days from `evaluated_at`                                              | Privacy owner           |
+| Idempotency        | 24 hours                                                                 | Backend owner           |
+| PII-free telemetry | 365 days (12 months, DPIA V2 §A ruling 2026-08-20, signed §8 2026-08-23) | Product analytics owner |
+| Retention cadence  | Every 15 minutes                                                         | Infra/on-call           |
+| Purge-lag alert    | Any backlog remaining after a run, or lag over 60 minutes                | Infra/on-call           |
+| DSR SLA            | 3 x 24 hours                                                             | Privacy owner           |
+| Legal-hold review  | Every 30 days                                                            | Legal/privacy owner     |
+| CRM / WhatsApp     | Separate explicit opt-ins                                                | Product owner           |
+| Minor              | Parent/guardian confirmation; otherwise human review                     | Privacy/product owner   |
+| DPIA               | Approved before ENFORCE                                                  | Zero + privacy owner    |
 
 ## Change order
 
@@ -165,14 +165,17 @@ and uninstalled. It intentionally performs zero immediate retries: backlog or
 lag exit `2` must page rather than being retried until the evidence disappears;
 the next bounded attempt is the next 15-minute tick.
 
-### 5. Enforce the 90-day analytics deletion
+### 5. Enforce the 365-day (12-month) analytics deletion
 
 The frontend now omits generic user/session identifiers and sends only the Visa
 Oracle field allowlist. Before enabling its analytics endpoint, configure the
-destination dataset with a 90-day TTL/deletion job and prove deletion with a
-synthetic event older than 90 days. If the destination cannot enforce a
-Visa-specific TTL, keep `NEXT_PUBLIC_ANALYTICS_ENDPOINT` unset for this surface;
-no telemetry is safer than over-retention.
+destination dataset with a 365-day TTL/deletion job and prove deletion with a
+synthetic event older than 365 days (corrected 2026-08-23: supersedes the old
+90-day provisional per Zero's 2026-08-20 retention ruling, DPIA V2 §A,
+`docs/audits/2026-08-20-visa-oracle-dpia-v2.md`, signed §8 2026-08-23). If the
+destination cannot enforce a Visa-specific TTL, keep
+`NEXT_PUBLIC_ANALYTICS_ENDPOINT` unset for this surface; no telemetry is safer
+than over-retention.
 
 ### 6. Operate DSR and legal hold
 
@@ -217,8 +220,17 @@ carry a future review deadline.
 
 ### 7. Complete and approve the DPIA
 
-Use `docs/audits/2026-08-06-visa-oracle-dpia-v1.md` as the evidence packet.
-It intentionally remains `DRAFT / NO-GO` while any high residual risk is open.
+Use `docs/audits/2026-08-20-visa-oracle-dpia-v2.md` as the evidence packet
+(corrected 2026-08-23: supersedes `docs/audits/2026-08-06-visa-oracle-dpia-v1.md`,
+which stays on disk as the incorporated baseline record — V2 references its
+processing description, data-flow table and rights/deletion model rather than
+restating them). Its §8 is signed: Product owner (Zero) in person, 2026-08-23;
+the Privacy/DPO and Security/Infra owner lines are recorded as adopted on Zero's
+instruction, not personally executed (§8 provenance note). Signing approved the
+assessment — it does not authorize ENFORCE. Two High residual risks stay open
+per §8/§D and keep mode in SHADOW: the analytics destination behind
+`NEXT_PUBLIC_ANALYTICS_ENDPOINT` is still unidentified, and the cross-border
+processor/subprocessor register (Annex 1) is still `OPEN`/`UNKNOWN`.
 The signed DPIA must name:
 
 - controller, processors, storage regions and cross-border safeguards;
@@ -229,7 +241,8 @@ The signed DPIA must name:
 - minors and guardian-consent path;
 - threat model for signed RulePacks, HMACs, replay, rollback, DB failure,
   unauthorized activation and DSR abuse;
-- 30-day/24-hour/90-day deletion evidence and legal-hold exceptions;
+- 30-day/24-hour/365-day deletion evidence and legal-hold exceptions (the
+  telemetry figure is 365 days, not 90 — DPIA V2 §A, signed §8 2026-08-23);
 - residual risks, owners, due dates and Zero's approval.
 
 Any open high risk keeps mode in SHADOW. Store the signed PDF immutably with

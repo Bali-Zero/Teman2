@@ -436,7 +436,7 @@
             "test_lanes_innocence_mixed_builders_clean_both_sides",
             "test_lanes_innocence_one_build_plus_reviews",
             "test_lanes_innocence_gear1_exempt",
-            "test_lanes_innocence_absent",
+            "test_lanes_missing_gear1_stays_clean_both_sides",
             "test_lanes_innocence_overmatch_guard_opusculum_claude_ish",
             "test_lanes_end_to_end_notice_pre_flip_does_not_fail",
             "test_is_anthropic_seat_innocence_non_anthropic_token_matches",

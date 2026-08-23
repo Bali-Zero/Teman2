@@ -1,0 +1,54 @@
+{
+  "workflow_run_id": "30000000-0000-4000-8000-000000000001",
+  "workflow_run_family_id": "com.example.workflow_run.family_001",
+  "run_revision": 1,
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "workflow": {
+    "name": "com.example.ingest_pipeline",
+    "version": "1.0.0"
+  },
+  "state": "running",
+  "inputs": [
+    {
+      "object_kind": "com.example.intel_event",
+      "object_id": "synthetic-event-001",
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "fetch",
+      "attempt_ids": [],
+      "state": "running",
+      "input_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "idempotency_key": "synthetic-step-fetch-001",
+      "lease": {},
+      "tools_models": []
+    }
+  ],
+  "cost": {
+    "unit": "usd",
+    "estimated": 0.01,
+    "ceiling": 1.0
+  },
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "started_at": "2026-03-01T00:00:00Z",
+  "recorded_at": "2026-03-01T00:00:11Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": [],
+    "code_version": "1.0.0"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "3f729a1d1b050689186a3629a42df780e93e0ae582440cb9780b89c64e47ee7d"
+}

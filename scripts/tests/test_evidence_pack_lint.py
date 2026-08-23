@@ -825,9 +825,92 @@ def test_lanes_innocence_gear1_exempt():
     assert notice is None
 
 
-def test_lanes_innocence_absent():
-    """INNOCENCE: `lanes` key absent entirely -> clean."""
-    violations, notice = check_lanes_build_seat_diversity({}, gear=2)
+def test_lanes_missing_gear2_notices_today_and_fails_post_flip():
+    """Gear 2 must declare `lanes`: omission NOTICEs during the grace
+    period and becomes a violation on the existing enforcement date."""
+    today = datetime.date(2026, 8, 23)
+    assert today < LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+
+    violations, notice = check_lanes_build_seat_diversity({}, gear=2, today=today)
+    assert violations == []
+    assert notice is not None
+    assert "mandatory" in notice
+
+    violations, notice = check_lanes_build_seat_diversity(
+        {}, gear=2, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations
+    assert "mandatory" in violations[0]
+    assert notice is None
+
+
+def test_lanes_missing_gear1_stays_clean_both_sides():
+    """INNOCENCE: Gear 1 remains exempt from the `lanes` declaration on
+    both sides of the enforcement date."""
+    before = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+    after = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE + datetime.timedelta(days=1)
+    for today in (before, after):
+        violations, notice = check_lanes_build_seat_diversity({}, gear=1, today=today)
+        assert violations == []
+        assert notice is None
+
+
+def test_lanes_existing_valid_pack_keeps_passing():
+    """INNOCENCE: a valid declared lane set remains clean after the flip."""
+    pack = _lane_pack(LANE_BUILD_ANTHRO, LANE_BUILD_CODEX)
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=2, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations == []
+    assert notice is None
+
+
+def test_lanes_empty_list_gear2_notices_today_and_fails_post_flip():
+    """GUILT: `lanes: []` (present but empty) defeats the shape check
+    trivially and produces zero build lanes -> without the empty-list guard
+    it would silently exempt itself from D3. It must take the same phased
+    path as a missing `lanes:` key: NOTICE before the flip date, violation
+    on/after it."""
+    today = datetime.date(2026, 8, 23)
+    assert today < LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+
+    violations, notice = check_lanes_build_seat_diversity(
+        {"lanes": []}, gear=2, today=today
+    )
+    assert violations == []
+    assert notice is not None
+    assert "empty" in notice
+
+    violations, notice = check_lanes_build_seat_diversity(
+        {"lanes": []}, gear=2, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
+    assert violations
+    assert "empty" in violations[0]
+    assert notice is None
+
+
+def test_lanes_empty_list_gear1_stays_clean_both_sides():
+    """INNOCENCE: `lanes: []` at Gear 1 remains exempt on both sides of the
+    enforcement date."""
+    before = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+    after = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE + datetime.timedelta(days=1)
+    for today in (before, after):
+        violations, notice = check_lanes_build_seat_diversity(
+            {"lanes": []}, gear=1, today=today
+        )
+        assert violations == []
+        assert notice is None
+
+
+def test_lanes_innocence_single_build_lane_anthropic_seat_post_flip():
+    """INNOCENCE: exactly ONE build lane using an Anthropic seat stays clean
+    post-flip — fewer than 2 build lanes exempts only the diversity floor,
+    not the `lanes:` declaration itself, and this must keep working
+    alongside the new empty-list guard."""
+    pack = _lane_pack(LANE_BUILD_ANTHRO)
+    violations, notice = check_lanes_build_seat_diversity(
+        pack, gear=2, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE
+    )
     assert violations == []
     assert notice is None
 
@@ -848,17 +931,25 @@ def test_lanes_innocence_overmatch_guard_opusculum_claude_ish():
 
 def test_lanes_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
     """Wired through lint(): a Gear-2 pack with two Anthropic build lanes
-    before the flip date prints a NOTICE to stderr but returns exit 0."""
+    NOTICEs (exit 0) before LANES_NON_ANTHROPIC_ENFORCEMENT_DATE and fails
+    (exit 1) on/after it. lint() has no `today` override, so this exercises
+    the real wall clock — assert conditionally on the actual date rather
+    than assuming which side of the flip "today" falls on (the flip date
+    turns this test red by the calendar otherwise, which is exactly the
+    failure mode this conditional exists to avoid)."""
     root, write_brief, write_pack = tmp_repo
     write_brief(gear=2)
     pack_path = write_pack(lanes=[
         {"lane": "D1", "role": "build", "seat": "sonnet"},
         {"lane": "D2", "role": "build", "seat": "opus"},
     ])
-    # lint() uses the real clock; today is before 2026-09-05, so it must notice
     rc, violations = lint(pack_path, root, None)
-    assert rc == 0
-    assert violations == []
+    if datetime.date.today() < LANES_NON_ANTHROPIC_ENFORCEMENT_DATE:
+        assert rc == 0
+        assert violations == []
+    else:
+        assert rc == 1
+        assert violations and "D3" in violations[0]
 
 
 @pytest.mark.parametrize(

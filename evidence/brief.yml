@@ -1,74 +1,65 @@
-task_id: ops-visaoracle-wrapper-header-0823
+task_id: ci-backend-test-sharding-0823
 gear: 3
-l_level: L1
+l_level: L2
 gate_class: opus
 objective: |
-  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
-  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
-  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
+  Shard `Backend Tests (Python)` three ways. It is the single largest fixed cost in every
+  merge-queue transit and every code PR pays it TWICE (PR lane + merge-group lane). Measured
+  on this workflow, not estimated: merge_group run 32626973483 spent 797s of a 1068s job in
+  "Run unit tests" (74.6%); schedule run 32624568684 spent 726s of 975s (74.5%). Every other
+  required gate on the same PR finishes in under 2 minutes.
 
-  This PR is documentation-only, in the strict sense that it edits two comment lines in a
-  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
-  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
-  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
-  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
-  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
-  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
-  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
-  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
-  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
-  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
-  **Severity, stated precisely so a future reader does not over-read this**: because
-  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
-  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
-  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
-  do) — the two are different failure classes and this PR only ever claims to fix the former.
+  Intra-job parallelism is already saturated — `-n auto --dist loadfile` was re-added
+  2026-08-21 with per-xdist-worker Postgres isolation and a 2-core `ubuntu-latest` runner has
+  nothing left to give. The only remaining lever is CROSS-JOB sharding: 3 x 2 cores instead of
+  1 x 2.
 
-  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
-  hot-zone by path, not by content. The evidence below is sized to match — it is not an
-  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
+  Gear 3 is the DETERMINISTIC FLOOR here, not a choice: the diff touches
+  `.github/workflows/`, which floors at 3 regardless of size (fleet-order-spec.md §4).
+
+  THE ONE THING THIS PR IS REALLY ABOUT, and the reason the evidence below is sized the way it
+  is: `Backend Tests (Python)` is one of the 27 REQUIRED status contexts in classic branch
+  protection on main. A `strategy.matrix` renames its check runs to "... (1)", "... (2)" — the
+  bare required context then never reports again, every merge-queue entry waits out
+  `checkResponseTimeout` (5400s) and fails with nothing red to fix. That is cicatrix-superscar
+  #2 / W69 (required checks silently disarmed), and it would be self-inflicted by a change whose
+  whole purpose is to make the queue faster. The cure is structural: a fan-in job keeps the exact
+  name and the shards get new, non-required names.
+
+  The second failure mode this design has to defeat is worse because it is INVISIBLE: if the
+  three chunks stop tiling the corpus, tests silently stop running and the required context stays
+  green. A sharded suite that under-runs looks exactly like a healthy one. Four independent
+  refusals in the fan-in close it (upstream results, partition guard against the shards' OWN
+  uploaded chunk lists, junit proof-of-work, coverage combine before threshold).
 constraints:
-  - "set -u and every executable line in the file are untouched — diff is exactly the two
-    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
-    reading the full post-diff file."
-  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
-    already carries the correct hyphen form on both sides and needs no change."
-  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
-    lower in the same file — those underscores are legitimate (organ id / log-dir naming
-    convention, not a file path claim) and match the live log directory verified on Pro this
-    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
+  - "The `name:` of the fan-in job must remain the byte-exact string `Backend Tests (Python)`,
+    and its job id must remain `backend-tests` — `test-summary` consumes
+    `needs.backend-tests.result`, and branch protection consumes the name."
+  - "Do NOT change the merge_group scoping semantic: the PR lane runs impact-scoped selection,
+    merge_group DELIBERATELY runs unscoped (impact_map.py docstring, 'SCOPE, DECLARED'). The
+    partitioner reads the same IMPACT_* env with the same fail-open convention and never narrows
+    the corpus on its own initiative."
+  - "Do NOT touch the workflow-level `concurrency:` block. It is scar tissue encoding three
+    asymmetries (merge_group / schedule / push-to-main) that look like bugs at a glance; the new
+    jobs inherit it unchanged."
+  - "No new dependencies. pytest-split was considered and deliberately deferred to v2, gated on a
+    MEASURED shard imbalance > ~2x — which this PR instruments rather than assumes."
+  - "Larger paid runners: rejected (cost). Self-hosted runners: rejected outright — this is a
+    public repository, so that means arbitrary PR code executing on our machines."
 acceptance:
-  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    shows the Canon and Live lines using the hyphen form.'
-  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    == 0 (underscore form gone).'
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
-  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
-    declared; this PR only fixes the wrapper's self-description)."
-  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
-    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
-    needed or performed.'
-consumer_map:
-  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
-    agent reading its header is the only consumer of the changed lines."
-  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
-    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
-    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
-    Confirmed by reading the line: it does not touch this already-born organ."
-  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
-  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
-    the header comment is repo-side documentation only, the live file's own header will match
-    once this lands and the deploy pattern for this pair (already-armed organ, header-only
-    change) next syncs it — no urgency, no functional drift in the meantime."
-risks:
-  - "None identified to the running organ: the change is comment-only, `set -u` and all
-    executable lines are byte-identical before/after."
-  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
-    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
-    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
-    a lint-blocking drift."
-grader:
-  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
-  review of this exact diff, dispatched fresh, not the author
-budget: 1 external review seat, no council (task does not warrant one)
-pii: none
+  - "`Backend Tests (Python)` still reports on every event type it reported on before and never
+    hangs unreported. CORRECTED after a refuter (Codex GPT-5.6) checked the trigger list instead
+    of trusting it: those events are pull_request, merge_group, schedule and workflow_dispatch —
+    there is NO `push:` trigger on this workflow. The pre-existing comment at tests.yml:42 claims
+    `every main push now runs to completion`, and that claim has been false for as long as it has
+    been there. This PR does not fix that (out of scope, and the concurrency block is explicitly
+    off-limits per the constraints below) but it must not REPEAT it: an earlier draft of this very
+    acceptance criterion listed `push`, i.e. the diff was about to inherit a false premise from a
+    comment rather than from the code."
+  - "All 27 required contexts report on the probe head SHA."
+  - "Wall-clock for the required context on a full unscoped (merge-group) transit is <= 8 min."
+  - "GUILT: a failing test makes the fan-in RED. GUILT: a corrupted chunk list makes the
+    partition guard RED. INNOCENCE: a clean transit is green."
+  - "Coverage `--fail-under=55` is still enforced on the lane that collects it (merge_group /
+    push / schedule / dispatch — NOT pull_request), over the COMBINED shard data."
+  - "PR-lane scoped selection is unchanged: the same modules are selected, only distributed."

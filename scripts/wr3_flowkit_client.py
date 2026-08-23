@@ -42,15 +42,26 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
-from wr3_credit_ledger import record_spend
+from wr3_credit_ledger import CLIP_COST_CR, record_spend
 from wr3_placeholder_clip import render_placeholder_clip
 from wr3_spend_authority import assert_spend_authorized, zero_spend_enabled
 
 DEFAULT_ENDPOINT = os.environ.get("WR3_FLOWKIT_ENDPOINT", "http://127.0.0.1:8100")
 DEFAULT_PAYGATE = os.environ.get("WR3_FLOWKIT_PAYGATE", "PAYGATE_TIER_ONE")
 PER_CLIP_TIMEOUT_S = int(os.environ.get("WR3_FLOWKIT_TIMEOUT_S", "300"))
-# Tier 1 fast portrait: 20 credits/clip (empirical 2026-05-20).
-DEFAULT_CLIP_COST_CR = int(os.environ.get("WR3_FLOWKIT_CLIP_COST", "20"))
+# SSOT is wr3_credit_ledger.CLIP_COST_CR (2026-08-23 fix) — this derives
+# from it rather than re-reading WR3_FLOWKIT_CLIP_COST itself, so this
+# constant and wr3_gatekeeper_check.py's CR_PER_CLIP can never disagree
+# with EACH OTHER again. Same env var, same default — runtime behaviour is
+# unchanged. The default (20) is a single empirical observation from
+# 2026-05-20 on some paygate tier, NOT a verified cost for the tier this
+# client actually requests below (`PAYGATE_TIER_ONE`) — the live gateway's
+# traffic is ~81% a DIFFERENT tier (`PAYGATE_TIER_TIER1P5`, measured
+# 2026-08-23), and per-clip cost is tier-dependent with no tier→credits
+# table anywhere in this codebase. See wr3_credit_ledger.py's module
+# docstring for the full measurement. Treat 20 as an unverified default,
+# not a known truth.
+DEFAULT_CLIP_COST_CR = CLIP_COST_CR
 # UNMEASURED PLACEHOLDER — deliberately 0, deliberately an under-count, NOT a
 # measurement. We do not yet know how many Flow credits
 # /api/flow/generate-image actually consumes per call. Every real-mode ledger
