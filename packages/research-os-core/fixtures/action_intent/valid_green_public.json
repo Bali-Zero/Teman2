@@ -1,0 +1,47 @@
+{
+  "action_intent_id": "a2000000-0000-4000-8000-000000000003",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "action_item_ref": {
+    "action_item_id": "a1000000-0000-4000-8000-000000000002",
+    "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "requested_action_spec_ref": {
+    "requested_action_spec_id": "d2000000-0000-4000-8000-000000000001",
+    "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "action_type": "com.example.action.notify_client",
+  "target": {
+    "system": "com.example.crm",
+    "object_ref": {
+      "object_kind": "com.example.client_record",
+      "object_id": "synthetic-client-001",
+      "object_hash": "6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  },
+  "arguments_ref": "com.example.arguments/synthetic-001",
+  "arguments_hash": "7777777777777777777777777777777777777777777777777777777777777777",
+  "input_revision_hash": "8888888888888888888888888888888888888888888888888888888888888888",
+  "risk_class": "green",
+  "sensitivity": "public",
+  "authority_required": {
+    "role": "research.operator",
+    "scope": "research.action_intents",
+    "expires_after_seconds": 3600
+  },
+  "idempotency_key": "synthetic-action-intent-003",
+  "expected_outcome_types": [],
+  "created_at": "2026-03-01T00:05:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": true
+  },
+  "object_hash": "c5ef10e4cf4272632054810d86fc470d009e22b10d8663c309426157cdd2d643"
+}

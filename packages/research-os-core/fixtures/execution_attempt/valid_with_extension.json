@@ -1,0 +1,41 @@
+{
+  "execution_attempt_id": "a4000000-0000-4000-8000-000000000003",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "action_intent_ref": {
+    "action_intent_id": "a2000000-0000-4000-8000-000000000001",
+    "object_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "approval_receipt_ref": {
+    "approval_receipt_id": "a3000000-0000-4000-8000-000000000001",
+    "object_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "attempt_number": 1,
+  "state": "started",
+  "idempotency_key": "synthetic-attempt-003",
+  "executor": {
+    "name": "com.example.executor.worker",
+    "version": "1.0.0"
+  },
+  "started_at": "2026-03-01T00:15:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "extensions": {
+    "com.example.execution-attempt-note": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "synthetic_case_code": "fixture-only"
+      }
+    }
+  },
+  "object_hash": "b9d2e40cdb85a8eeea81bc9432063d6326a15d71df8040e0076697b571bf7d81"
+}

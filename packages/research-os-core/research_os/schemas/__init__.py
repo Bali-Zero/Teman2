@@ -9,12 +9,22 @@ from typing import Any
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
+from research_os.models.action_intent import ActionIntent
+from research_os.models.action_item import ActionItem
+from research_os.models.approval_receipt import ApprovalReceipt
+from research_os.models.execution_attempt import ExecutionAttempt
+from research_os.models.operational_receipt import OperationalReceipt
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
+    "action_intent": ActionIntent,
+    "action_item": ActionItem,
+    "approval_receipt": ApprovalReceipt,
+    "execution_attempt": ExecutionAttempt,
     "object_successor_edge": ObjectSuccessorEdge,
+    "operational_receipt": OperationalReceipt,
     "revocation_receipt": RevocationReceipt,
 }
 
