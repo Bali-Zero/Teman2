@@ -460,6 +460,38 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 1
+          }
+        },
+        "required": ["revision"]
+      },
+      "then": {
+        "not": {
+          "required": ["supersedes_content_object_ref"]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "not": {
+              "const": 1
+            }
+          }
+        },
+        "required": ["revision"]
+      },
+      "then": {
+        "required": ["supersedes_content_object_ref"]
+      }
+    }
+  ],
   "properties": {
     "availability": {
       "$ref": "#/$defs/Availability"

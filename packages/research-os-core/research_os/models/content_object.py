@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from research_os.enums import AvailabilityState, PublicationState, VerificationState
@@ -186,6 +186,39 @@ class Availability(FrozenCoreModel):
 
 
 class ContentObject(FrozenCoreModel):
+    # Section 9's revision<->supersedes_content_object_ref conditional
+    # presence (enforced below in ``validate_content_object``) is expressible
+    # as a JSON Schema if/then -- unlike hash-binding or cross-field-equality
+    # invariants elsewhere in this contract family, both sides here are a
+    # closed shape (``revision``'s own literal value vs. a field's mere
+    # presence/absence), so the schema does not have to fall back to leaving
+    # the gap open. ``ConfigDict`` merges with (does not replace)
+    # ``FrozenCoreModel.model_config`` -- verified: pydantic's
+    # ``ConfigWrapper.for_model`` builds the child's config by starting from
+    # each base's ``model_config`` and then updating it key-by-key with the
+    # subclass's own dict, so ``extra="forbid"``/``frozen=True`` are
+    # unaffected by adding ``json_schema_extra`` here.
+    model_config = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"revision": {"const": 1}},
+                        "required": ["revision"],
+                    },
+                    "then": {"not": {"required": ["supersedes_content_object_ref"]}},
+                },
+                {
+                    "if": {
+                        "properties": {"revision": {"not": {"const": 1}}},
+                        "required": ["revision"],
+                    },
+                    "then": {"required": ["supersedes_content_object_ref"]},
+                },
+            ]
+        }
+    )
+
     content_object_id: UUID
     content_object_family_id: RegisteredName
     contract_version: Literal["research-os/v1.0.0"]

@@ -64,7 +64,7 @@
   "identity": {
     "anchor_ref": {
       "asset_id": "zantara-anchor-v3",
-      "content_hash": "ac7ba245f3ce9996741e4d2e00bbf70e2f9c344dd687fd3f5934fee8981eb422"
+      "content_hash": "AC7BA245F3CE9996741E4D2E00BBF70E2F9C344DD687FD3F5934FEE8981EB422"
     },
     "verification_result": "wr3.identity.match"
   },

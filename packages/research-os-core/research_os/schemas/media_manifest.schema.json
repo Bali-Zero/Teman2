@@ -369,12 +369,11 @@
     },
     "Quality": {
       "additionalProperties": false,
-      "description": "``quality: {checks: [], critic_target_hash: sha256?}``.\n\nINTERPRETATION: ``checks`` is bare ``[]`` with no inner key names at\nall -- the same shape the sibling operator-decision lane found for\n``DecisionPacket.alternatives``/``downstream_candidates`` (section 7),\nwhich it modeled as free-form JSON objects rather than invent a\nstructure. Mirrored here rather than reinvented.",
+      "description": "``quality: {checks: [], critic_target_hash: sha256?}``.\n\nINTERPRETATION: ``checks`` is bare ``[]`` with no inner key names at\nall -- the same shape the sibling operator-decision lane found for\n``DecisionPacket.alternatives``/``downstream_candidates`` (section 7),\nwhich it modeled as free-form JSON objects rather than invent a\nstructure. Mirrored here (as ``QualityCheck``, not a bare dict -- see\nits docstring) rather than reinvented.",
       "properties": {
         "checks": {
           "items": {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/$defs/QualityCheck"
           },
           "title": "Checks",
           "type": "array"
@@ -395,6 +394,13 @@
       },
       "required": ["checks"],
       "title": "Quality",
+      "type": "object"
+    },
+    "QualityCheck": {
+      "additionalProperties": true,
+      "description": "One ``quality.checks[]`` entry -- section 10 gives ``checks: []`` bare,\nwith no inner key names at all (see ``Quality`` below). ``extra=\"allow\"``\ndeliberately overrides ``FrozenCoreModel``'s own ``extra=\"forbid\"`` (the\none open-vocabulary override in this module) rather than falling back to\na bare ``dict[str, Any]`` element: a plain dict's own entries stay\nmutable after the outer tuple/model validates, so a live ``Quality``\ncould be mutated post-validation while still reporting its original,\nnow-stale ``object_hash`` -- contradicting section 2's \"``object_hash``\nalways means the hash of the complete canonical object\" and Rule 4.\nMaking each entry its own ``FrozenCoreModel`` subclass gives it the same\n``frozen=True`` protection every other object in this package already\ngets (pydantic's per-model ``ConfigDict`` merge -- verified: a child's\npartial ``ConfigDict`` updates the parent's key-by-key, so ``frozen=True``\nsurvives here without being re-stated), closing the gap with the\npackage's existing idiom instead of inventing a bespoke immutable-dict\ntype.",
+      "properties": {},
+      "title": "QualityCheck",
       "type": "object"
     },
     "Retention": {

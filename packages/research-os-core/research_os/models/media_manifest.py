@@ -17,10 +17,10 @@ invented here.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from research_os.enums import RiskClass, Sensitivity
@@ -93,6 +93,28 @@ class TimelineOrSlidesRef(FrozenCoreModel):
     sha256: Sha256Hex
 
 
+class QualityCheck(FrozenCoreModel):
+    """One ``quality.checks[]`` entry -- section 10 gives ``checks: []`` bare,
+    with no inner key names at all (see ``Quality`` below). ``extra="allow"``
+    deliberately overrides ``FrozenCoreModel``'s own ``extra="forbid"`` (the
+    one open-vocabulary override in this module) rather than falling back to
+    a bare ``dict[str, Any]`` element: a plain dict's own entries stay
+    mutable after the outer tuple/model validates, so a live ``Quality``
+    could be mutated post-validation while still reporting its original,
+    now-stale ``object_hash`` -- contradicting section 2's "``object_hash``
+    always means the hash of the complete canonical object" and Rule 4.
+    Making each entry its own ``FrozenCoreModel`` subclass gives it the same
+    ``frozen=True`` protection every other object in this package already
+    gets (pydantic's per-model ``ConfigDict`` merge -- verified: a child's
+    partial ``ConfigDict`` updates the parent's key-by-key, so ``frozen=True``
+    survives here without being re-stated), closing the gap with the
+    package's existing idiom instead of inventing a bespoke immutable-dict
+    type.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+
 class Quality(FrozenCoreModel):
     """``quality: {checks: [], critic_target_hash: sha256?}``.
 
@@ -100,10 +122,11 @@ class Quality(FrozenCoreModel):
     all -- the same shape the sibling operator-decision lane found for
     ``DecisionPacket.alternatives``/``downstream_candidates`` (section 7),
     which it modeled as free-form JSON objects rather than invent a
-    structure. Mirrored here rather than reinvented.
+    structure. Mirrored here (as ``QualityCheck``, not a bare dict -- see
+    its docstring) rather than reinvented.
     """
 
-    checks: tuple[dict[str, Any], ...]
+    checks: tuple[QualityCheck, ...]
     critic_target_hash: Sha256Hex | None = None
 
 

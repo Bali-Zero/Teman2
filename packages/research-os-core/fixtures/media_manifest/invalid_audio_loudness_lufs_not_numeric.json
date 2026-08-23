@@ -58,7 +58,7 @@
   "audio": {
     "transcript_hash": "3a70781b969c2597171753c5b69ce76e5ddf15d50fbd22ee1be455349dc5870e",
     "subtitle_hash": "c60feffd64b0fca5e04f3e1d56132bac152f478f830cb055a99a89f15e8dc625",
-    "loudness_lufs": -14.2,
+    "loudness_lufs": "not-a-number",
     "sync_result": "wr3.sync-result.pass"
   },
   "identity": {
