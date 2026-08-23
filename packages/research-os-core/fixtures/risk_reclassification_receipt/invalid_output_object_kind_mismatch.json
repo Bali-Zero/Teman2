@@ -1,0 +1,85 @@
+{
+  "risk_reclassification_receipt_id": "40000000-0000-4000-8000-000000000001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_object": {
+    "object_kind": "com.example.synthetic_claim",
+    "object_id": "synthetic-claim-source-001",
+    "object_hash": "806f9836c4657a46e8c8c876974e336bb6a092a2089402f4628a7dfc7be2b57d",
+    "risk_class": "red",
+    "sensitivity": "internal"
+  },
+  "output_object": {
+    "object_kind": "com.example.different_kind",
+    "object_id": "synthetic-claim-output-001",
+    "object_hash": "ca0dfb501d413bd1d5600bbcb8e678c3549fe502ead624f03fc6d25479a1b1b7",
+    "risk_class": "amber",
+    "sensitivity": "internal"
+  },
+  "supersession_ref": {
+    "object_successor_edge_id": "40000000-0000-4000-8000-000000000201",
+    "object_hash": "846d65bb3ad123896c8e862aa9f1531df966a7a32a9d3ab4561aff6bbd470849"
+  },
+  "remediation": {
+    "type": "authoritative_source_added",
+    "reason_codes": ["com.example.new_source_confirmed"],
+    "changed_field_paths": ["$.claims[0].evidence_refs"]
+  },
+  "claim_refs": [
+    {
+      "claim_id": "40000000-0000-4000-8000-000000000301",
+      "object_hash": "ef4408ee3ee70cc15a2957a51d2ca9c2e62f1e027ce178a1348e9a7b5f350b45"
+    }
+  ],
+  "evidence_refs": [
+    {
+      "evidence_id": "40000000-0000-4000-8000-000000000401",
+      "object_hash": "f68488c8d7fd03df11f0b9fef08503b111ac56a736c93ceefb7d9d79e5b2932d"
+    }
+  ],
+  "verification_receipt_refs": [
+    {
+      "verification_receipt_id": "40000000-0000-4000-8000-000000000501",
+      "object_hash": "50f008b0350315699f2165046425a796cd624ecbb5b457384b96c742ae872fbb"
+    }
+  ],
+  "policy": {
+    "name": "com.example.risk_reclassification_policy",
+    "version": "1.0.0"
+  },
+  "reviewer": {
+    "actor_ref": {
+      "scheme": "hmac-sha256",
+      "key_version": "synthetic-key-v1",
+      "purpose": "audit",
+      "pseudonym": "6b4590383ee1738e16e4630967f2b3b40295ce90f582226e90b0d217eb786436"
+    },
+    "independence_class": "independent_reviewer"
+  },
+  "residual_risk": {
+    "risk_class": "amber",
+    "findings": []
+  },
+  "permitted_use": {
+    "purpose": "internal_publication",
+    "destination": "com.example.publication_queue",
+    "consumer": "com.example.editorial_team"
+  },
+  "issued_at": "2026-02-01T00:01:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "40000000-0000-4000-8000-000000000601",
+      "object_hash": "ede8d1568d0b5f492a08eaf587ca513723f22668f71d1d4c4cb888aff37436ba"
+    },
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "object_hash": "ce7f3d57908f2576c2e63aa6a9bfce8e46bebe436be6b5c5c0d799fb631f1b17"
+}

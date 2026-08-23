@@ -10,12 +10,16 @@ from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
 from research_os.models.revocation_receipt import RevocationReceipt
+from research_os.models.risk_reclassification_receipt import RiskReclassificationReceipt
+from research_os.models.sanitization_receipt import SanitizationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "object_successor_edge": ObjectSuccessorEdge,
     "revocation_receipt": RevocationReceipt,
+    "risk_reclassification_receipt": RiskReclassificationReceipt,
+    "sanitization_receipt": SanitizationReceipt,
 }
 
 
