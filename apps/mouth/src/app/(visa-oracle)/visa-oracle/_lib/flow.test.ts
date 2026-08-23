@@ -40,6 +40,13 @@ function startOffshore(category?: string): FlowState {
   let state = initialFlowState("en");
   state = reduce(state, { type: "ADVANCE" });
   state = answer(state, "in_indonesia", "no");
+  // Offshore now enters the same permit-status chain as onshore (fixed
+  // 2026-08-24, D12 offshore-reachability P0) — answered "no" here to
+  // preserve every downstream test's original intent (none of them are
+  // about permit status).
+  state = answer(state, "permit_expiry", "2026-09-01");
+  state = answer(state, "holds_stay_permit", "no");
+  state = answer(state, "current_status_code", "C1");
   state = answer(state, "overstay_days", "0");
   state = answer(state, "nationalities", "IT");
   state = answer(state, "birth_date", "1990-02-03");
@@ -319,14 +326,26 @@ describe("onshore/offshore canonical fact collection", () => {
     });
   });
 
-  it("asks active overstay offshore but skips onshore-only status fields", () => {
+  it("asks the permit-status chain offshore too, then converges on overstay_days and skips the onshore-conversion-only fields", () => {
+    // Fixed 2026-08-24 (D12 offshore-reachability P0): before this fix, "no"
+    // skipped straight to overstay_days, so an offshore applicant's
+    // current-status/permit facts could never be collected — including the
+    // exact person the D12 owner ruling names (someone abroad holding an
+    // unlapsed KITAS). wants_onshore_conversion/application_channel remain
+    // onshore-only, unchanged by this fix.
     let state = initialFlowState("en");
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "no");
+    expectQuestion(state, "permit_expiry");
+    state = answer(state, "permit_expiry", "2026-09-01");
+    expectQuestion(state, "holds_stay_permit");
+    state = answer(state, "holds_stay_permit", "yes");
+    expectQuestion(state, "stay_permit_code");
+    state = answer(state, "stay_permit_code", "E28A");
     expectQuestion(state, "overstay_days");
     state = answer(state, "overstay_days", "0");
     expectQuestion(state, "nationalities");
-    expect(state.facts.current_status_code).toBeUndefined();
+    expect(state.facts.stay_permit_code).toBe("E28A");
     expect(state.facts.application_channel).toBeUndefined();
   });
 
@@ -638,7 +657,14 @@ describe("editing, pruning and branch projection", () => {
     expectQuestion(state, "trip_scope");
   });
 
-  it("editing in_indonesia prunes every onshore descendant", () => {
+  it("editing in_indonesia prunes stale answers and re-enters the (now shared) permit-status chain", () => {
+    // Renamed and updated 2026-08-24 (D12 offshore-reachability P0 fix):
+    // permit_expiry/current_status_code are no longer onshore-only — both
+    // branches ask them now, so switching to "no" re-enters that same
+    // chain instead of skipping to overstay_days. application_channel
+    // remains genuinely onshore-only (only reachable after
+    // wants_onshore_conversion, which stays gated on in_indonesia==="yes"),
+    // so it is still correctly pruned and unreachable here.
     let state = initialFlowState("en");
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "yes");
@@ -654,7 +680,15 @@ describe("editing, pruning and branch projection", () => {
     expect(state.facts.permit_expiry).toBeUndefined();
     expect(state.facts.current_status_code).toBeUndefined();
     expect(state.facts.application_channel).toBeUndefined();
+    expectQuestion(state, "permit_expiry");
+
+    // Prove the chain is genuinely reachable now, not just present in
+    // history — answer it through to convergence.
+    state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "holds_stay_permit", "no");
+    state = answer(state, "current_status_code", "C1");
     expectQuestion(state, "overstay_days");
+    expect(state.facts.application_channel).toBeUndefined();
   });
 
   it("back is a real history step and prunes the removed answer", () => {

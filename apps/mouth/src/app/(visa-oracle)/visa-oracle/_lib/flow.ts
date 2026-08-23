@@ -418,10 +418,20 @@ export function computeNextNode(
 
   switch (current.questionId) {
     case "in_indonesia": {
-      if (facts.in_indonesia === "yes") {
-        return { kind: "question", questionId: "permit_expiry" };
-      }
-      return { kind: "question", questionId: "overstay_days" };
+      // BOTH branches now enter the same permit-status chain (fixed
+      // 2026-08-24, Kimi refuter P0 finding on the D12 offshore-reachability
+      // gap): before this fix, `"no"` skipped straight to `overstay_days`,
+      // so `permit_expiry`/`holds_stay_permit`/`stay_permit_code`/
+      // `current_status_code` were structurally unreachable for every
+      // offshore applicant — D12's own target population, including the
+      // exact person the owner's D12 ruling names (someone abroad holding
+      // an unlapsed KITAS). #4695 fixed the codes on offer but never the
+      // reachability of the gate itself; this closes the other half. The
+      // chain converges back to `overstay_days` exactly as it always did
+      // (see the `stay_permit_code`/`current_status_code` cases below), so
+      // nothing downstream of that convergence point changes for either
+      // branch.
+      return { kind: "question", questionId: "permit_expiry" };
     }
     case "permit_expiry":
       return { kind: "question", questionId: "holds_stay_permit" };
@@ -914,7 +924,11 @@ export function getTreeSteps(
   const order = [
     { id: "framing", labelI18nKey: "tree.framing" },
     { id: "in_indonesia", labelI18nKey: "tree.in_indonesia" },
-    ...(facts.in_indonesia === "yes"
+    // Both "yes" and "no" now enter the permit-status chain (fixed
+    // 2026-08-24, matching the `computeNextNode` fix above) — gated on
+    // "answered at all", not on the "yes" value specifically, so the tree
+    // doesn't show these steps before `in_indonesia` itself has a value.
+    ...(facts.in_indonesia !== undefined
       ? [
           { id: "permit_expiry", labelI18nKey: "tree.permit_expiry" },
           {

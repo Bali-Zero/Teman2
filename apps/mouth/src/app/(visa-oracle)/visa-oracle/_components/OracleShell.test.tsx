@@ -30,6 +30,12 @@ import { OracleShell } from "./OracleShell";
 
 const ANSWERS = [
   ["in_indonesia", "no"],
+  // Offshore now enters the same permit-status chain as onshore (fixed
+  // 2026-08-24, D12 offshore-reachability P0) — answered "no" to preserve
+  // this fixture's original downstream intent.
+  ["permit_expiry", "2026-09-01"],
+  ["holds_stay_permit", "no"],
+  ["current_status_code", "C1"],
   ["overstay_days", "0"],
   ["nationalities", "US"],
   ["birth_date", "1990-01-01"],
@@ -92,6 +98,17 @@ async function completeFreshInterview(): Promise<void> {
   fireEvent.click(
     await screen.findByRole("button", { name: /planning ahead/i }),
   );
+
+  // Offshore now enters the same permit-status chain as onshore (fixed
+  // 2026-08-24, D12 offshore-reachability P0) before reaching overstay_days.
+  await screen.findByRole("heading", { name: /current stay permit expire/i });
+  const permitExpiryDate =
+    document.querySelector<HTMLInputElement>('input[type="date"]');
+  expect(permitExpiryDate).not.toBeNull();
+  fireEvent.change(permitExpiryDate!, { target: { value: "2026-09-01" } });
+  fireEvent.click(screen.getByRole("button", { name: /see my options/i }));
+  fireEvent.click(await screen.findByRole("button", { name: /^no$/i }));
+  fireEvent.click(await screen.findByRole("button", { name: /^c1$/i }));
 
   fireEvent.change(await screen.findByRole("spinbutton"), {
     target: { value: "0" },
