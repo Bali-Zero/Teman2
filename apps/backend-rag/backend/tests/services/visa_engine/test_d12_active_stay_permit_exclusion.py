@@ -77,7 +77,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.scripts.visa_engine.compile_pack import wrap_as_unsigned_pack
-from backend.services.visa_engine import compiler, evaluator
+from backend.services.visa_engine import compiler, evaluate_path, evaluator
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine.enums import FactPath
 from backend.services.visa_engine.evaluator import ProductProof, ProductProofStatus
@@ -136,6 +136,31 @@ def test_draft_source_record_and_rule_are_schema_valid() -> None:
     assert rule.effect.type == "EXCLUDE"
     assert rule.on_unknown == "NEEDS_INPUT"
 
+    # Internal consistency between the two staged halves: the rule must name
+    # exactly the source_record drafted alongside it in this same file. The
+    # two checks above (each half parses on its own) would miss a copy-paste
+    # drift where the rule's source_refs pointed at a stale or mistyped id.
+    assert [str(ref) for ref in rule.source_refs] == [draft["source_record"]["source_record_id"]]
+
+
+def test_draft_source_record_freshness_is_unknown_not_defined() -> None:
+    """Kimi refuter finding F8: the draft's schema-level acceptance of
+    ``freshness_policy: null`` was already verified by the parse test above;
+    what was NOT verified is the downstream behavior that null actually
+    produces. Build the real evaluator DTO from the draft's own source
+    fields and assert it directly, rather than merely trusting that null
+    "must" mean UNKNOWN.
+    """
+
+    draft = json.loads(_DRAFT_JSON.read_text())
+    source_kwargs = {k: v for k, v in draft["source_record"].items() if not k.startswith("_")}
+    record = M.SourceRecord(**source_kwargs)
+    assert record.freshness_policy is None
+
+    freshness = evaluate_path._evaluate_source_freshness(record, evaluated_at=AT)
+    assert freshness.status.value == "UNKNOWN"
+    assert freshness.reason_code == "FRESHNESS_POLICY_NOT_DEFINED"
+
 
 def test_draft_source_record_content_sha256_matches_the_actual_policy_doc() -> None:
     """The one guarantee a BALI_ZERO_POLICY source pointed at a repo file can
@@ -160,20 +185,28 @@ def test_draft_source_record_content_sha256_matches_the_actual_policy_doc() -> N
 _PRODUCT_VERSION_ID = uuid.uuid4()
 _SOURCE_RECORD_ID = uuid.uuid4()
 
+_DRAFT = json.loads(_DRAFT_JSON.read_text())
+_DRAFT_RULE_KWARGS = {k: v for k, v in _DRAFT["rule_insertion"].items() if not k.startswith("_")}
+
+# Built FROM the actual staged draft, not hand-retyped (Kimi refuter finding
+# F2, 2026-08-24: the original literal here proved mutation-bite only
+# against its own copy, never against the artifact that actually gets
+# folded -- flipping `when.value`, dropping `source_refs`, blanking
+# `product_version_ids`, or flipping `safety_critical` IN THE DRAFT left the
+# whole suite green). `product_version_ids`/`source_refs` are overridden to
+# this test's own isolated UUIDs -- those two fields are legitimately
+# reassigned at real-fold/pack-assembly time, and this test's compiled pack
+# is self-contained, unrelated to any real product/source id. Every OTHER
+# field (rule_id, stage, scope, priority, valid_period, when, effect,
+# on_unknown, required_facts, explanation_key, safety_critical) is exactly
+# what is staged for the fold -- a mutation to any of them now changes this
+# test's behavior, not just the parse-only check above.
 _EXCLUSION_RULE = M.Rule(
-    rule_id="hf.d12-active-stay-permit-excluded",
-    stage="HARD_FILTER",
-    scope="PRODUCTS",
-    product_version_ids=[_PRODUCT_VERSION_ID],
-    priority=100,
-    valid_period={"from": AT - timedelta(days=1), "to": None},
-    when={"fact": "derived.has_active_stay_permit", "op": "eq", "value": True},
-    effect={"type": "EXCLUDE", "reason_code": "D12_ACTIVE_STAY_PERMIT_EXCLUDED"},
-    on_unknown="NEEDS_INPUT",
-    required_facts=["derived.has_active_stay_permit"],
-    source_refs=[_SOURCE_RECORD_ID],
-    explanation_key="explain.hf.d12-active-stay-permit-excluded",
-    safety_critical=False,
+    **{
+        **_DRAFT_RULE_KWARGS,
+        "product_version_ids": [_PRODUCT_VERSION_ID],
+        "source_refs": [_SOURCE_RECORD_ID],
+    }
 )
 
 
@@ -280,11 +313,20 @@ def test_visit_class_status_code_does_not_exclude_and_d12_still_supports() -> No
 
 
 def test_expired_e_series_permit_does_not_exclude() -> None:
-    """Innocence case, the specific nuance the owner ruling and the
-    derivation's own docstring both call out explicitly: an EXPIRED permit
-    is a real, tested POSITIVE False, not an exclusion — the owner ruled
-    that person CAN apply. A cure that collapsed "has an E-series code" into
+    """Innocence case: an EXPIRED permit is a real, tested POSITIVE False,
+    not an exclusion. A cure that collapsed "has an E-series code" into
     "excluded" without checking expiry would fail exactly this case.
+
+    CORRECTED 2026-08-24 (Kimi refuter finding F4): this docstring
+    previously said "the owner ruled that person CAN apply" — no supplied
+    ruling says that. The False here is `_derive_has_active_stay_permit`'s
+    own inference (an EXPIRED permit is not an ACTIVE one), inherited from
+    #4650, not a separate owner ruling on the expired case specifically.
+    See that function's own corrected docstring (`fact_registry.py`) for the
+    open renewal-in-process gap this inference leaves unresolved — a
+    printed-expired-but-renewal-filed applicant also resolves False here,
+    and whether that should change is a business call pending the owner,
+    not something this test asserts either way.
     """
 
     proof = _proof(

@@ -678,11 +678,28 @@ class FactRegistry:
         ``False``. A guessed ``False`` here would read as "definitely has no
         active permit" and would wrongly ADMIT such an applicant to D12,
         which is exactly the failure mode a fail-closed engine must not
-        produce. An EXPIRED permit is a real, tested, POSITIVE ``False`` —
-        the owner explicitly ruled that person CAN apply — computed the same
-        inclusive-boundary way as ``_derive_age_years``'s own reference-date
-        comparison (a permit expiring exactly on ``effective_at``'s date is
-        still active that day).
+        produce. An EXPIRED permit is a real, tested, POSITIVE ``False``,
+        computed the same inclusive-boundary way as ``_derive_age_years``'s
+        own reference-date comparison (a permit expiring exactly on
+        ``effective_at``'s date is still active that day).
+
+        CORRECTED 2026-08-24 (Kimi refuter finding F4 on the D12 fold
+        candidate): an earlier revision of this docstring claimed "the owner
+        explicitly ruled that person CAN apply" for the expired-permit case.
+        No supplied owner ruling says that — the 2026-08-23 ruling above only
+        excludes an ACTIVE KITAS; "expired therefore admits" is this
+        function's own inference from the exclusion's negation, inherited
+        from #4650's engine-wide date-boundary convention, not a separate
+        ruling. Known gap this leaves OPEN, not silently resolved: a
+        renewal-in-process applicant (printed KITAS expired, renewal filed,
+        legally resident — commonly on ``ITK_PERALIHAN``, which
+        ``_VISIT_CLASS_STATUS_CODES`` below classifies as no-permit
+        regardless of the ruling's evident intent) resolves ``False`` here
+        and is admitted to D12 by this function, though they may still hold
+        a live residence basis. Whether that divergence should change this
+        function's behavior is a business-policy call for the owner, not an
+        inference this docstring should keep making on the owner's behalf —
+        tracked as open, not fixed, pending that ruling.
         """
 
         code = values[FactPath.IMMIGRATION_CURRENT_STATUS_CODE]

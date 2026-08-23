@@ -1,9 +1,21 @@
 # D12 active-stay-permit exclusion — BALI_ZERO_POLICY source, drafted 2026-08-23
 
-E5 increment 8 (targets seq-14 — chains off seq-13's SIGNED payload, not yet available as of
-this draft). This rule ships LIVE, not dormant — PR #4695 (merged 2026-08-23) closed the
-interview-side gap the `.claude/skills/modus/PENDING-ARMS.md` "v2-d12, D12 rework mandate" row
-tracked; see "Live from activation, not dormant" below. Author: v2-d12.
+E5 increment 8 (targets seq-14, chaining off seq-13's SIGNED payload). This rule ships LIVE, not
+dormant — PR #4695 (merged 2026-08-23) closed the interview-side gap the
+`.claude/skills/modus/PENDING-ARMS.md` "v2-d12, D12 rework mandate" row tracked; see "Live from
+activation, not dormant" below. Author: v2-d12.
+
+**UPDATED 2026-08-24 (Kimi refuter finding F7): the line above originally said seq-13's SIGNED
+payload was "not yet available as of this draft" — stale as of this correction.** Seq-13 signed,
+activated, and went LIVE in production at `2026-08-23T16:27:06.707408Z`
+(`rulepack-prod-013.signed.json`, `payload_sha256 b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8`,
+independently re-verified against `origin/main`). D12's `product_version_id`
+(`63f64a7e-2bff-5a48-8c3b-7ad5349e8c91`) is confirmed unchanged in seq-13's real source file — the
+pin below survives. **Do NOT fold this rule into seq-14 yet regardless of seq-13's availability**:
+a separate, independently-confirmed defect (offshore applicants can never reach the questions this
+rule's fact depends on — see PENDING-ARMS) blocks the fold until fixed, and the KITAP-widening /
+renewal-pending questions above are open with Zero. Seq-13 being ready removes one blocker, not
+all of them.
 
 ## What is VERIFIED
 
@@ -17,14 +29,28 @@ The ruling exists and its text is fixed by two independent, already-committed ar
    attributes the ruling to Zero in the original Italian: **"chi ha kitas attivo va escluso da
    D12"** — sourced there to a "D12 rework mandate" dispatch.
 
-Both artifacts agree on content (an applicant who currently holds an active KITAS/ITAS/ITAP-class
-stay permit does not qualify for D12) and on date. Neither is a regulatory citation — this is
-recorded as a **business/eligibility policy decision** (`SourceAuthorityType.BALI_ZERO_POLICY`,
+Both artifacts agree on content (an applicant who currently holds an active **KITAS** — the
+verbatim word in both quotes above — does not qualify for D12) and on date. Neither is a
+regulatory citation — this is recorded as a **business/eligibility policy decision**
+(`SourceAuthorityType.BALI_ZERO_POLICY`,
 `apps/backend-rag/backend/services/visa_engine/enums.py:409`), not a `PRIMARY_LAW`/
 `IMPLEMENTING_REGULATION`/`OFFICIAL_PORTAL` fact. No Ditjen Imigrasi page or statute is cited for
 it anywhere in the codebase as of this draft, and this document does not manufacture one.
 
 ## What is NOT independently verified here (interpretive only, not cited doctrine)
+
+**CORRECTED 2026-08-24 (Kimi refuter finding F3): the rule's actual scope is wider than the
+ruling, and an earlier revision of this document mis-filed that widening as VERIFIED.** The
+ruling names only "kitas attivo". The rule's condition (`derived.has_active_stay_permit`, via
+`_STAY_PERMIT_STATUS_CODE_SHAPE`, `^E\d+[A-Z]?$`) fires on every E-shaped permit code in the
+current catalogue, which includes KITAP-class codes too (the E33-family; see
+`fact_registry.py`'s own `_STAY_PERMIT_STATUS_CODE_SHAPE` comment, which names the catalogue "ITAS
+/ ITAP-class"). Concrete applicant this widening reaches beyond the ruling's verbatim text: a
+KITAP permanent resident (e.g. the spouse of an Indonesian citizen) would be excluded from D12
+under a ruling that only named KITAS. Extending the exclusion to KITAP is plausibly correct as
+business intent — a permanent resident is at least as settled as a KITAS holder — but that is
+this author's inference, not a fact Zero has confirmed. **This is now an open question surfaced to
+Zero, not a verified fact; the rule's condition is unchanged pending that answer (do not guess).**
 
 The evident rationale — D12 is a *pre-investment exploration* instrument (survey/feasibility
 scouting ahead of incorporation, per `research/visa/doctrine-factory/cards/D12.md` §3.1-3.2), so
@@ -47,11 +73,25 @@ That matters for one specific, previously-documented failure mode: `content_sha2
 `OFFICIAL_PORTAL` source is **unverifiable by construction** when the underlying page embeds a
 per-request CSRF token (two fetches of the same live page hash differently — measured directly on
 this pack's own portal sources). A `BALI_ZERO_POLICY` source pointing at a repo-tracked file does
-not have that problem: this very markdown file's bytes are fixed the moment it is committed, so its
-`content_sha256` is exactly the git blob's SHA-256 and is reproducible by any future verifier
-forever, the same way a claim's provenance file is. The companion `SourceRecord` JSON in this
-directory therefore points its `canonical_url` at this file's own repo path rather than at any
-external URL.
+not have that problem to the same degree: this file's bytes are fixed the moment it is committed,
+so `content_sha256` (`hashlib.sha256` over the file's own raw bytes — see
+`test_draft_source_record_content_sha256_matches_the_actual_policy_doc`) is reproducible by any
+future verifier who reads the same commit. The companion `SourceRecord` JSON in this directory
+therefore points its `canonical_url` at this file's own repo path rather than at any external URL.
+
+**CORRECTED 2026-08-24 (Kimi refuter finding F6) — two overstatements in the paragraph above,
+now removed.** (i) "exactly the git blob's SHA-256" was false: a git blob id hashes the
+`"blob <len>\0"` framing plus the content (and, in any case, this repo's git objects are SHA-1,
+not SHA-256) — what the test actually computes is `sha256` over the file's raw bytes, which is a
+real and useful guarantee, just not the one that sentence named. (ii) "reproducible forever" only
+holds while the file never changes. This file was revised multiple times on its first day and is
+explicitly the living home for this rule's ongoing documentation — the next edit invalidates the
+hash. With `freshness_policy: null` and `safety_critical: false` on the source_record, nothing in
+the pack itself detects that staleness; the ONE thing that will is
+`test_draft_source_record_content_sha256_matches_the_actual_policy_doc` going red — for what will
+look like an unrelated documentation typo fix, not a content-integrity failure. That is a virtue
+(a stale hash cannot silently ship) but also a maintenance cost worth naming rather than leaving
+implicit.
 
 ## The rule this source backs
 
@@ -204,3 +244,22 @@ checked against the already-passing `test_safety_source_hold_applies_when_safety
 in `test_evaluate_endpoint.py`, which proves the pack-wide HRR-override
 mechanism generically. No code change was needed — the draft's value was
 already right — only the reasoning attached to it.
+
+## Pack-level design gap (Kimi refuter finding F5, 2026-08-24) — recorded, not fixed here
+
+`BALI_ZERO_POLICY` is the right authority type for this source — typing a business ruling as
+`OFFICIAL_PORTAL` to buy the safety hold's coverage would be fabrication, not honesty. But pressed
+from the other side: `_apply_safety_critical_source_hold` polices source *provenance class*
+(authority type + official-host URL + freshness policy), never rule *effect class* (whether the
+rule can EXCLUDE a real applicant). The one authority type that can never pass that check —
+`BALI_ZERO_POLICY`, by construction, since it is not in `_PRIMARY_AUTHORITY_TYPES` and typically
+has no external URL to pin — is exactly the type this rule uses to carry a LIVE, day-one,
+applicant-facing EXCLUDE. That EXCLUDE is therefore permanently exempt from every staleness/
+authority check the pack's safety machinery has, and its one source is self-attested (`verified_by`
+is the same agent that wrote the cited file). `safety_critical: false` is the correct value for
+THIS rule (see the near-miss note above — `true` would be a pack-wide outage, not extra safety),
+but that correctness is a workaround, not a solution: **the pack has no compensating control for
+policy-backed exclusion rules in general** — no owner-sign-off artifact, no policy-source
+freshness semantics, nothing that lets a future `BALI_ZERO_POLICY` rule opt INTO oversight instead
+of being structurally unable to. Recorded here as a design gap for whoever next adds a
+policy-backed rule to this engine; not a blocker for this one, and not fixed in this PR.
