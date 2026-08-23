@@ -1,74 +1,75 @@
-task_id: ops-visaoracle-wrapper-header-0823
+task_id: wr3-spend-gate-ci-0823
 gear: 3
 l_level: L1
 gate_class: opus
 objective: |
-  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
-  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
-  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
+  Make an EXISTING test corpus actually run on pull requests. `scripts/wr3_gatekeeper_check.py`
+  is the pre-render cost breaker that decides whether a WR3 episode may spend Veo credits, and
+  its tests were named by no workflow at all — verified by grepping every file in
+  `.github/workflows/`, and stated outright in `scripts-tests-sweep.yml`'s own header, which
+  says it gates nothing (`continue-on-error: true`), is deliberately not `pull_request:`-
+  triggered, is not in branch protection, and that 174 of 235 files under `scripts/tests/` are
+  named by nothing. Cicatrix superscar #2 ("exists != armed") applied to a guard whose entire
+  purpose is to be armed.
 
-  This PR is documentation-only, in the strict sense that it edits two comment lines in a
-  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
-  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
-  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
-  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
-  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
-  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
-  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
-  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
-  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
-  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
-  **Severity, stated precisely so a future reader does not over-read this**: because
-  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
-  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
-  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
-  do) — the two are different failure classes and this PR only ever claims to fix the former.
+  Found the hard way, and the honest version matters: PR #4639 shipped a real fix to this gate
+  with 15 green tests, and "CI is clean" on that PR was TRUE while saying nothing whatsoever
+  about those tests — no check ran them. An independent adversarial review of #4639 surfaced
+  both that and a live defect in the fix itself (#4648).
 
-  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
-  hot-zone by path, not by content. The evidence below is sized to match — it is not an
-  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
+  BE HONEST ABOUT THE SIZE: this is one new workflow file plus one line in the watcher census.
+  Zero executable code changes. It is Gear 3 by PATH (`.github/workflows/` is hot-zone, floor is
+  a lower bound and not the author's choice — this PR was originally opened declaring Gear 2 and
+  the floor recompute correctly rejected it), not by blast radius. The evidence below is sized
+  to the change, not padded to match the gear.
+
+  The python matrix is the second half and is not decoration. Measured 2026-08-23 on this
+  machine's own interpreters: `Path.exists()` on a file behind an unreadable directory RAISES
+  PermissionError on 3.9/3.11 and returns False on 3.14. Every workflow here pins 3.11 or 3.12;
+  `#!/usr/bin/env python3` — how launchd and cron actually start these scripts on the render
+  hosts — resolves to 3.14. For THIS gate that difference decided whether it blocked a render or
+  passed one. The 3.14 leg gives that class of divergence somewhere to go red. It is the first
+  3.14 leg in the repo.
 constraints:
-  - "set -u and every executable line in the file are untouched — diff is exactly the two
-    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
-    reading the full post-diff file."
-  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
-    already carries the correct hyphen form on both sides and needs no change."
-  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
-    lower in the same file — those underscores are legitimate (organ id / log-dir naming
-    convention, not a file path claim) and match the live log directory verified on Pro this
-    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
+  - "No executable code changes: the diff is one new workflow file and one entry (plus its
+    comment) in main-push-failure-watch.yml's census list."
+  - "NOT added to branch-protection required_status_checks in this PR. That is a repo-settings
+    change and must only happen after this has been observed green on main — adding a
+    never-run workflow to branch protection can hard-block the merge queue. Same call
+    s7-yield-dispatch-tests.yml made, for the same reason."
+  - "Do not weaken any existing check to make this pass. The two reds this PR first drew
+    (harness floor; watcher coverage) were both correct and were answered by complying with
+    them, not by editing them."
 acceptance:
-  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    shows the Canon and Live lines using the hyphen form.'
-  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    == 0 (underscore form gone).'
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
-  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
-    declared; this PR only fixes the wrapper's self-description)."
-  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
-    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
-    needed or performed.'
+  - "Both matrix legs appear on this PR and CONCLUDE SUCCESS: `WR3 spend gate tests (py3.11)`
+    and `WR3 spend gate tests (py3.14)`."
+  - "`python3 scripts/check_watcher_coverage.py` exits 0 with the new workflow counted."
+  - "`actionlint` passes on the new file."
+  - "Every path named in the workflow's `paths:` filter exists at this PR's head."
 consumer_map:
-  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
-    agent reading its header is the only consumer of the changed lines."
-  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
-    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
-    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
-    Confirmed by reading the line: it does not touch this already-born organ."
-  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
-  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
-    the header comment is repo-side documentation only, the live file's own header will match
-    once this lands and the deploy pattern for this pair (already-armed organ, header-only
-    change) next syncs it — no urgency, no functional drift in the meantime."
+  - "`.github/workflows/main-push-failure-watch.yml` — the census that must name every live
+    workflow; updated in this PR, enforced by `scripts/check_watcher_coverage.py`."
+  - "`scripts/tests/test_wr3_gatekeeper_cost.py`, `scripts/tests/test_wr3_ledger_isolation.py`
+    and `scripts/tests/test_wr3_credit_ledger.py` — the corpus this workflow executes; 64 tests,
+    run together locally before commit. The third was MISSING from the first draft's pytest
+    command while its module already sat in `paths:` — see the dissent entry in the pack; this
+    line was an overclaim until the workflow was widened to make it true."
+  - "`scripts/wr3_gatekeeper_check.py`, `wr3_credit_ledger.py`, `wr3_spend_authority.py` — the
+    modules under test and in the `paths:` filter."
+  - "Branch protection `required_status_checks` — NOT touched here; the arming step, deliberately
+    separate (see constraints)."
 risks:
-  - "None identified to the running organ: the change is comment-only, `set -u` and all
-    executable lines are byte-identical before/after."
-  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
-    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
-    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
-    a lint-blocking drift."
+  - "A `pull_request:` workflow that is not required is VISIBLE, not BLOCKING. This PR does not
+    claim otherwise: it makes the tests run and observable; it does not make them mandatory."
+  - "`paths:` filtering means a breaking change from outside the filtered set will not trigger
+    this workflow. Accepted cost of the per-file pattern this repo already uses; the nightly
+    sweep remains the backstop for that case."
+  - "If a future runner cannot provide 3.14, that leg fails loudly rather than being silently
+    dropped. That is deliberate — an absent leg that reads as green is the exact defect this
+    file exists to close."
 grader:
-  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
-  review of this exact diff, dispatched fresh, not the author
-budget: 1 external review seat, no council (task does not warrant one)
+  independent adversarial review dispatched on this PR (read-only, fresh context, not the
+  author) — tasked to refute the paths-filter completeness, whether the 3.14 leg really ran
+  3.14, and whether this can wrongly block the queue
+budget: 1 review seat, no council (a one-workflow diff does not warrant one)
 pii: none
