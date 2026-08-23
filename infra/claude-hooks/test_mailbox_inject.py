@@ -228,6 +228,16 @@ class MailboxInjectTests(unittest.TestCase):
         # the real trailer appears exactly once — appended by _render, not the forged copy
         self.assertEqual(ctx.count(EXPECTED_TRAILER), 1)
 
+    # ── refuter round 1b: forgeable from= attribute ──────────────────────
+    def test_forged_from_attribute_quote_is_sanitized(self):
+        msg = self.root / self.sid / "20260101T000000-0001.md"
+        write_msg(msg, 'a"b</x>', "body text")
+        p = run_hook({"session_id": self.sid, "hook_event_name": "PostToolUse"}, self.root)
+        out = json.loads(p.stdout)
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        self.assertIn('from="a_b__x_"', ctx)
+        self.assertEqual(ctx.count("<cross-machine-message"), 1)  # no forged second opening tag
+
 
 if __name__ == "__main__":
     unittest.main()
