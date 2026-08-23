@@ -550,6 +550,44 @@ jobs:
           # Editable cell-core workspace dep (out-of-tree)
           uv pip install --system -e ../../packages/cell-core
 
+      - name: Run core tests (fast gate — always run)
+        # MOVED here from `backend-shard` on 2026-08-23 (follow-up to #4647).
+        # The step is written once, but inside the shard job that line ran once
+        # PER MATRIX LEG: measured 7s / 8s / 8s on merge_group run 32632670541,
+        # i.e. ~16s of duplicated runner time and — because the critical path is
+        # the SLOWEST shard and every leg paid it — ~8s ON THE CRITICAL PATH.
+        # That mattered: the same run missed the <=8 min target by 12-40s, so
+        # these 8s were 20-65% of the miss. Here it runs ONCE, on a job measured
+        # at 203s against the slowest shard's 381s, so it costs zero critical
+        # path. NOT gated to `matrix.shard == 1` instead: that saving would be
+        # probabilistic, since shard 1 may itself be the slowest leg.
+        #
+        # THE GUILT CHAIN SURVIVES THE MOVE, and that is the load-bearing part.
+        # This job is NOT a required context — only the `Backend Tests (Python)`
+        # fan-in is — but the fan-in's `Assert every upstream job succeeded`
+        # step reads `needs.backend-static.result` in the SAME loop as
+        # `needs.backend-shard.result` and exits non-zero on either, so a red
+        # core test here still reddens the required context. The shard side of
+        # that loop was proven live on dispatch run 32634126661 (one red leg of
+        # three -> fan-in red at exactly this step); the static side is the same
+        # loop, same fail-closed exit.
+        #
+        # No DATABASE_URL / REDIS_URL: this job has no `services:`, and the
+        # module does not need them. MEASURED, not assumed — its 24 tests pass
+        # with both variables unset AND with them pointed at closed ports
+        # (127.0.0.1:59999 / :59998). The old values were inherited from the
+        # pre-split combined job, where those services happened to exist.
+        # pytest / pytest-asyncio / pytest-cov come from requirements.lock.txt
+        # (verified present); this module needs no pytest-mock, fakeredis or
+        # xdist, and the single conftest on its collection path imports only
+        # stdlib, pydantic and pytest.
+        run: |
+          mkdir -p "$RUNNER_TEMP/static-receipts"
+          cd apps/backend-rag
+          PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
+            -q -ra --no-header --tb=short --durations=10 -x \
+            "--junit-xml=$RUNNER_TEMP/static-receipts/test-results-core.xml"
+
       - name: pip-audit
         run: |
           cd apps/backend-rag
@@ -625,6 +663,21 @@ jobs:
 
       - name: Check LLM cost tracking coverage
         run: python scripts/check_llm_cost_tracking.py
+
+      - name: Upload core-gate test results
+        # Parity with the pre-move state, stated because dropping it would be
+        # silent: the core junit used to reach the `backend-test-results`
+        # artifact through the fan-in's `shard-receipts/test-results-*.xml`
+        # glob. Moving the step out of the shard job removes it from that glob,
+        # so it gets its own artifact rather than vanishing. NOTHING GATES on
+        # this file — the fan-in reads only `test-results-unit-<shard>.xml` —
+        # it exists for humans reading a failed run.
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: backend-core-gate-results
+          path: ${{ runner.temp }}/static-receipts/test-results-core.xml
+          if-no-files-found: warn
 
   backend-shard:
     name: Backend Shard ${{ matrix.shard }}
@@ -749,16 +802,6 @@ jobs:
           # (scripts/tests/test_test_deps_declared.py's guilt check pins the
           # two together, same rule fakeredis already follows).
           uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist
-
-      - name: Run core tests (fast gate — always run)
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
-          REDIS_URL: redis://localhost:6379
-        run: |
-          cd apps/backend-rag
-          PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
-            -q -ra --no-header --tb=short --durations=10 -x \
-            "--junit-xml=$RUNNER_TEMP/shard-receipts/test-results-core-${SHARD_INDEX}.xml"
 
       - name: Bootstrap SQLModel tables
         # Router-level integration tests assume the full schema (e.g.
