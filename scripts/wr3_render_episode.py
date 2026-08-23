@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import wr3_flowkit_client as fk  # noqa: E402
+from wr3_spend_authority import zero_spend_enabled  # noqa: E402
 
 EP = Path(sys.argv[1])
 ENDPOINT = os.environ.get("WR3_FLOWKIT_ENDPOINT", "http://127.0.0.1:8100")
@@ -29,18 +30,34 @@ async def main() -> int:
     shot_pack = json.loads((EP / "shot-pack.json").read_text())
     shots = shot_pack["shots"]
 
-    # Pre-flight health gate (commit 4c98e00 returns 503 if extension dropped)
-    h = _health()
-    if not h.get("extension_connected"):
-        print(json.dumps({"status": "HALT", "reason": "extension_not_connected", "health": h}))
-        return 2
-    print(f"[render] health OK: {h}", file=sys.stderr)
+    # Zero-spend mode short-circuits BOTH network preflights. Without this the
+    # placeholder path is unreachable from the production entry point: _health()
+    # and setup_episode_context() each dial the gateway and abort long before
+    # submit_clip() ever reads WR3_ZERO_SPEND. That was finding F11 of P03 —
+    # the zero-spend mode existed in the library and could not be run from the
+    # command anyone actually types.
+    zero_spend = zero_spend_enabled()
+    ctx = None
+    if zero_spend:
+        print("[render] WR3_ZERO_SPEND set — health gate and episode context skipped; "
+              "every clip is a local placeholder, 0 credits", file=sys.stderr)
+    else:
+        # Pre-flight health gate (commit 4c98e00 returns 503 if extension dropped)
+        h = _health()
+        if not h.get("extension_connected"):
+            print(json.dumps({"status": "HALT", "reason": "extension_not_connected", "health": h}))
+            return 2
+        print(f"[render] health OK: {h}", file=sys.stderr)
 
-    ctx = await fk.setup_episode_context(name=EP.name, endpoint=ENDPOINT)
-    (EP / "_flowkit_context.json").write_text(json.dumps(ctx.to_dict(), indent=2))
-    print(f"[render] episode context project={ctx.project_id} video={ctx.video_id}", file=sys.stderr)
+        ctx = await fk.setup_episode_context(name=EP.name, endpoint=ENDPOINT)
+        (EP / "_flowkit_context.json").write_text(json.dumps(ctx.to_dict(), indent=2))
+        print(f"[render] episode context project={ctx.project_id} video={ctx.video_id}", file=sys.stderr)
 
-    report = {"rendered": [], "failed": [], "extension_drop": False, "total_cost_cr": 0}
+    # `mode` is load-bearing for whoever reads this report later: a placeholder
+    # run and a real run otherwise emit the same shape, and total_cost_cr is 0
+    # in both whenever a real run fails before its first charge.
+    report = {"rendered": [], "failed": [], "extension_drop": False, "total_cost_cr": 0,
+              "mode": "placeholder" if zero_spend else "real"}
 
     for shot in shots:
         idx = int(shot["shot_id"].lstrip("s"))  # s001 -> 1
@@ -88,7 +105,8 @@ async def main() -> int:
     (EP / "render-report.json").write_text(json.dumps(report, indent=2))
     status = "OK" if not report["failed"] else "PARTIAL"
     print(json.dumps({"status": status, "rendered": len(report["rendered"]),
-                      "failed": len(report["failed"]), "total_cost_cr": report["total_cost_cr"]}))
+                      "failed": len(report["failed"]), "total_cost_cr": report["total_cost_cr"],
+                      "mode": report["mode"]}))
     return 0 if not report["failed"] else 1
 
 
