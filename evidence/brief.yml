@@ -1,46 +1,47 @@
-task_id: organism-session-declarations
+task_id: garuda-maxstay-shared-engine
 gear: 2
 l_level: L2
-gate_class: opus
+gate_class: sonnet
 objective: |
-  Build the REAL detector for "an autonomous run started, died, and every gauge stayed green"
-  (superscar #2), replacing the prose-parsing verdict that PR #4646 was forced to ship as
-  informational-only.
+  Promote the B1 max-total-stay boundary guard into the shared GARUDA engine
+  (`services.garuda_flow.intake.build_verdict`), not just the owner-local
+  preview CLI.
 
-  WHY THE PREVIOUS ONE FAILED, because it constrains this design. That detector read a
-  session's own prose and asked "did it run as long as it declared?". Against the live fleet it
-  returned ten rows and all ten were HEALTHY healer ticks: "loop 4h" in a mandate's TITLE is the
-  cron cadence (com.nuzantara.healer.4h.plist carries StartInterval 14400), not the session's
-  runtime, and no regex separates "this document declares its own runtime" from "this document's
-  title names a schedule" — three narrowing passes each traded one error direction for the other.
+  PR #4685 added `constants.b1_max_total_stay_exceeded(day_difference,
+  max_total_stay_days)` — the inclusive (`>=`) day-counting guard that
+  rejects a B1 extension whose printed expiry is one day past the legal
+  60-day maximum (B1 counts the arrival day AS day 1, so a 60-day
+  *difference* is already 61 inclusive days). Verified by grep this session:
+  that guard was wired into exactly ONE caller —
+  `internal_preview_cli.py:27` (import) / `:136` (the only call site).
+  `grep -rn "max_total_stay" apps/backend-rag/backend/services/garuda_flow/`
+  returned nothing in `intake.py` or `eligibility.py` — the shared engine
+  had no notion of a maximum total stay at all.
 
-  THE SECOND TRAP, found while designing this one and worth recording because it is the obvious
-  design: measuring real duration against the wrapper's own number would have rebuilt the same
-  false positive. MAX_WALL_S=3300 is a CAP, not an expectation. A tick that finishes its work in
-  11 minutes against a 55-minute cap is CORRECT.
-
-  So this measures neither prose nor duration. It measures whether the runner came BACK: a
-  two-phase commit. open() before the work (pid + process start-time, the wrapper's own cap, and
-  the cron cadence in a SEPARATE field so the two numbers can never again collapse into one),
-  close() stamped on the way out. A declaration still OPEN past its own cap whose recorded
-  process is gone from the OS process table means the runner never returned — an OBSERVATION,
-  not an inference, which is precisely why the healer is permitted to alarm on this and was not
-  permitted to alarm on its predecessor. It cannot fire on a healthy short tick, because a
-  healthy tick closes its own declaration.
+  Today the CLI-only guard has no production impact (the live Fly router
+  never calls that path). But a future public-VOA-funnel restore built on
+  `build_verdict()` would silently reintroduce the exact 61-day ACCEPT bug
+  #4685 just fixed — on the client-facing surface, where it actually
+  matters. Design requirement: the CLI raises `PreviewInputError` (correct
+  for a local operator tool); the shared engine must instead surface this
+  as a DECLINE with a new neutral `DeclineCode`, matching how every other
+  SOP criterion already declines in `eligibility.py` — a public surface
+  must never bare-error on a legitimately-shaped submission, and this
+  product's SOP always routes a DECLINE to WhatsApp, never a bare no.
 
 scope:
   in:
-    - "scripts/session_declaration.py — the protocol (open/close/scan/prune) + selftest"
-    - "scripts/tests/test_session_declaration.py — 33 hermetic guilt+innocence tests"
-    - "infra/healer/healer-run.sh — first producer (open before spawn, stamp after wait) and first consumer (receptor 7 + a HUNG check at the anti-overlap lock)"
-    - "infra/healer/HEALER-MANDATE.md — receptor 7 documented for the spawned session"
+    - "backend/services/garuda_flow/eligibility.py — new DeclineCode.EXTENSION_EXCEEDS_MAX_STAY member (neutral, prose-free, unique)"
+    - "backend/services/garuda_flow/intake.py — build_verdict() layers the guard on top of screen() (same pattern as EXTENSION_ALREADY_USED / the issuance submission-window gate), reusing constants.b1_max_total_stay_exceeded() and StayWindow.max_total_days (no re-derivation, no hardcoded 60)"
+    - "backend/tests/services/garuda_flow/test_intake.py — TestB1MaxTotalStayBoundary (guilt @ ==60, innocence @ ==59, issuance no-op) + one pre-existing fixture (test_extension_past_coverage_end_entry_date_is_still_unaffected) corrected: its 2020-01-01 entry_date implied a >2000-day stay that the new (correct) guard now also catches, masking what that test actually checks"
+    - "backend/tests/app/routers/test_garuda_voa_no_internal_leak.py — TestMaxTotalStayDeclineIsCleanOnTheWire, symmetric with the existing EXTENSION_ALREADY_USED wire-safety proof"
   out:
-    - "Retiring DECLARED-SPAN-UNMET from scripts/fleet_sessions.py — 18 sites in the module and 26 references in its tests. Its own concern, its own PR. Harmless meanwhile: it is already informational-only and no organ routes on it."
-    - "Escalating the healer watchdog from SIGTERM to SIGKILL. The adversarial review surfaced it as a real gap while analysing hangs; it changes the healer's kill semantics and is a separate concern. This PR DETECTS the hang instead."
-    - "Passing --session-id to join a declaration to a transcript. Measured: claude-cascade.sh collects EXTRA_ARGS after `--` and replays them on every seat attempt, so a caller-supplied session id would collide across retries. session_id stays an optional, non-load-bearing field."
-    - "Wiring the other ~20 spawners in the fleet. One producer proves the protocol; a sweep is a migration."
+    - "internal_preview_cli.py itself — unchanged. It already raises PreviewInputError before ever reaching build_verdict(), so the new engine-level branch is unreachable for it; the CLI's behaviour is untouched by construction, not by a compatibility shim."
+    - "apps/mouth/, apps/admin-dashboard-local/, safe_clock.py, the passport 6-month rule — not touched, out of scope per the mandate."
+    - "Wiring the new DeclineCode into a public router — garuda_voa.py's only route is the owner-only historical archive GET; there is no live POST/public path today for this decline to reach (S14/garuda-voa's declared subtree owns any future funnel rebuild)."
 
 risks:
-  - "The detector alarms, unlike its predecessor. A false positive here costs a paid LLM session every 4h, so the innocence half of the suite is pinned with the real measured numbers written out literally rather than read back from the module — a test that derives its expectation from its subject agrees by construction."
-  - "The store is per-host and unreplicated. A machine whose declarations nobody scans is not covered; this PR wires the Mini healer only."
-  - "prune() deletes records. It never touches OPEN ones at any age (that is the finding itself), only CLOSED past 7d and abandoned past 30d, and it runs at open() rather than on the read path."
+  - "None of this is reachable in production today (verified: the CLI's own PreviewInputError fires first, and the public VOA funnel is retired per PR #4344). The change is behaviour-affecting on a path the live Fly router does not currently reach — stated explicitly per the mandate, not left implicit."
+  - "Reordering compute_stay() earlier in build_verdict() (to reuse stay_window.max_total_days instead of re-deriving VISA_META arithmetic) is safe because compute_stay is a pure function of (entry_date, visa_type, printed_expiry) with no dependency on decision/codes — verified by reading safe_clock.py before moving the call."
+
+receipts_summary: "RED captured on unmodified source (guilt test failed as expected: ACCEPT instead of DECLINE), then GREEN after the fix. Baseline 164 -> 168 passed (4 new tests: 3 guilt/innocence/no-op + 1 wire-safety), 0 failed, on the full required suite (garuda_flow/ + test_garuda_voa.py + test_garuda_voa_no_internal_leak.py). Broader sweep (routers/ + visa_engine/) also green: 2152 passed, 2 skipped (pre-existing unrelated asyncio-mark warnings)."

@@ -1,100 +1,56 @@
 brief_ref: evidence/brief.yml
 pii_scan: clean
-plan_ref: "organism-session-declarations — the real detector for 'an autonomous run started, died, and every gauge stayed green' (superscar #2), replacing the prose-parsing verdict PR #4646 had to ship as informational-only after it accused 10 healthy healer ticks out of 10"
+plan_ref: "garuda-maxstay-shared-engine — promote the B1 max-total-stay boundary guard (constants.b1_max_total_stay_exceeded, PR #4685) from the owner-local internal_preview_cli (its sole caller) into the shared services.garuda_flow.intake.build_verdict() engine, as a DECLINE + new neutral DeclineCode rather than a bare error, so a future public-funnel restore cannot silently reintroduce the 61-day-ACCEPT bug on the client-facing surface"
 gear: 2
 lanes:
   - lane: B1
     role: build
-    seat: "opus-5 (session, mini-pro2)"
-    note: "authored scripts/session_declaration.py (protocol + selftest), scripts/tests/test_session_declaration.py (38 hermetic guilt+innocence tests), the healer wiring (open before spawn, stamp after wait, receptor 7, lock-scoped state check) and the mandate step."
-  - lane: R1
-    role: review
-    seat: "sonnet-5 subagent (Anthropic) — adversarial, did not write the code"
-    note: "8 findings, 6 real. Confirmed sound the five surfaces it was asked to attack first (ssh-trampoline pid, $$ in command substitution, set -u, $REPO scope in the trap, explicit-close vs trap-close ordering). Found the two HIGH ones: a hang was invisible AND blinded the whole healer via the pidfile; one abandonment kept the healer permanently non-idle forever."
-  - lane: R2
-    role: review
-    seat: "kimi-code/k3 (Moonshot, NON-Anthropic) — adversarial, fresh context, same diff"
-    note: "Six MORE real defects on the ALREADY-CURED diff, including two R1 had explicitly cleared. Decisive: the lock's new p0 fired BEFORE secrets were sourced (mute alarm, W108 rebuilt inside its own cure); prune() deleted exactly what its docstring promised it never would; the lock check counted every spawner's hangs then named the healer's own run. Cross-family lens found what a second same-family lens did not."
-  - lane: G1
-    role: review
-    seat: "opus-5 (session, mini-pro2) — final on-disk gate"
-    note: "Reproduced EVERY finding before acting on it, including the two factual premises new code was built on (the watchdog sends one SIGTERM and never escalates: verified by grep of the watchdog body; liveness was resolved eagerly: verified at the call site). Declined two R1 findings with stated reasons. Re-proved live end-to-end after each round of fixes."
+    seat: "sonnet-5 (session, mini-pro2)"
+    note: "Re-verified the single-caller grep, read intake.py/eligibility.py/safe_clock.py/internal_preview_cli.py to confirm the promotion pattern already used for EXTENSION_ALREADY_USED and the issuance submission-window gate, wrote the GUILT test first and captured it RED against unmodified source, then added DeclineCode.EXTENSION_EXCEEDS_MAX_STAY (eligibility.py), layered the guard into build_verdict() reusing StayWindow.max_total_days (intake.py), fixed one pre-existing test fixture the new (correct) guard incidentally caught, and added a wire-safety proof mirroring the file's existing pattern."
 seat_diversity: satisfied
-seat_diversity_note: "One build lane, so the >=2-build-lane rule does not fire — but the review side is genuinely cross-family (R2 = kimi-code/k3, non-Anthropic), and it was NOT ceremonial: it produced six real defects on a diff that had already passed a same-family adversarial pass, two of which that pass had explicitly cleared. Recorded because it is the measurement that justifies the doctrine, not because a field demanded it."
+seat_diversity_note: "Single build lane (fewer than 2), so the >=2-build-lane non-Anthropic-seat rule does not fire on this pack. No separate review lane was dispatched by this BUILD lane itself — verification is the RED/GREEN test discipline (receipts below) plus the repo's automated required CI gates (Gear floor, actionlint, RAG data-invariant tripwires, test suite) that gate the merge queue independent of this pack."
 diff:
-  net_lines: "+1163 / -2 across 4 files: scripts/session_declaration.py (+560, new), scripts/tests/test_session_declaration.py (+408, new), infra/healer/healer-run.sh (+184/-2), infra/healer/HEALER-MANDATE.md (+11). Measured with `git diff --numstat` against merge-base 3f41c6b0294f04576fdd33480361aaba911454bb. Above the ~400-line guidance: the protocol, its first producer and its first consumer are one concern — shipping the detector without a producer would be an unarmed organ, which is the disease."
-  behaviour_change: "New module with no prior callers. The healer gains: a state check scoped to the lock-holding pid at the anti-overlap early exit (new p0 paths healer-mini:run-hung / :stale-lock / :declarations-blind), a declaration opened before the cascade spawn and stamped after `wait`, and receptor 7 folding ABANDONED+HUNG counts into REASONS. Secrets sourcing moved above the lock (order only, no semantic change). The single routine digest is unchanged at 1 — the anti-regrowth gateway lint invariant. No existing check's PASS/FAIL logic changes."
+  net_lines: "+141 / -9 across 4 files (eligibility.py +11/-0, intake.py +48/-8, test_garuda_voa_no_internal_leak.py +27/-0, test_intake.py +55/-1). Measured with `git diff --numstat` against merge-base 1c647c020e5bc1bab0aba8df482a1d3fd0e66a16."
+  behaviour_change: "New DeclineCode.EXTENSION_EXCEEDS_MAX_STAY member (additive to the enum). build_verdict() now DECLINEs an EXTENSION case whose printed voa_expiry_date implies a day-difference >= the B1 legal max (60), where before it silently ACCEPTed. Unreachable in production today: the only caller close enough to reach this path (internal_preview_cli) already raises PreviewInputError earlier in its own validation and never calls build_verdict() with such an input, and the public VOA funnel that would call build_verdict() directly is retired (PR #4344). compute_stay() was reordered earlier inside build_verdict() (pure function, no behavioural effect) so the new guard can reuse StayWindow.max_total_days instead of re-deriving the VISA_META arithmetic a second time."
 receipts:
-  - claim: "38 hermetic tests pass (no ssh, no network, no real spawns, no wall-clock waits). Five of them each pin a defect the cross-family refuter found that the first suite had passed over."
-    cmd: "python3.11 -m pytest scripts/tests/test_session_declaration.py -q"
-    exit: 0
-    ts: "2026-08-23T14:55Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "The module's own in-process selftest passes: guilt (abandoned, hung, opened-but-never-stamped) AND innocence (the exact 11-minute/3300s-cap/14400s-cadence shape that produced the 10 false positives)"
-    cmd: "python3 scripts/session_declaration.py --selftest"
-    exit: 0
-    ts: "2026-08-23T14:52Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "LIVE INNOCENCE — a real healer tick (LLM stubbed, Telegram dry-run) opens a declaration and stamps it completed/exit 0, with cap_sec=3300 and cadence_sec=14400 as SEPARATE fields, the cadence read from com.nuzantara.healer.4h.plist's StartInterval rather than hardcoded; scan then reports it CLOSED, exit 0"
-    cmd: "HEALER_REPO=$PWD HEALER_TRAMPOLINED=1 HEALER_CASCADE_BIN=<stub> TG_DRY_RUN=1 SESSION_DECLARATION_DIR=<tmp> bash infra/healer/healer-run.sh; python3 scripts/session_declaration.py scan"
+  - claim: "Re-verified PR #4685's guard has exactly ONE caller before building anything on that premise"
+    cmd: "grep -rn 'b1_max_total_stay_exceeded|max_total_stay' apps/backend-rag/backend/services/garuda_flow/ apps/backend-rag/backend/tools/internal_preview_cli.py"
     exit: 0
     ts: "2026-08-23T15:00Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "LIVE GUILT — a wrapper killed with -9 mid-run leaves its declaration OPEN with no outcome; `ps` confirms the recorded pid is gone (empty output, read directly and not through a pipe whose exit code belongs to head); scan then reports ABANDONED and exits 1"
-    cmd: "bash infra/healer/healer-run.sh & ; kill -9 $WRAPPER ; ps -p <pid> ; python3 scripts/session_declaration.py scan"
+    seat: "sonnet-5 (session, mini-pro2)"
+  - claim: "Baseline suite is 164 passed, 0 failed on unmodified source (matches the mandate's stated baseline exactly)"
+    cmd: 'PYTHONPATH=. python -m pytest backend/tests/services/garuda_flow/ backend/tests/app/routers/test_garuda_voa.py backend/tests/app/routers/test_garuda_voa_no_internal_leak.py -o addopts="" -v --no-header'
+    exit: 0
+    ts: "2026-08-23T15:18Z"
+    seat: "sonnet-5 (session, mini-pro2)"
+  - claim: "RED — the GUILT test (build_verdict on an EXTENSION with day-difference==60) fails against UNMODIFIED source: verdict.decision is ACCEPT, expected DECLINE. Captured before any fix was written, proving the test is not vacuous."
+    cmd: 'PYTHONPATH=. python -m pytest backend/tests/services/garuda_flow/test_intake.py::TestB1MaxTotalStayBoundary -o addopts="" -v --no-header'
     exit: 1
-    ts: "2026-08-23T14:10Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "LIVE STALE-LOCK — with a declaration whose pid_start no longer matches (a recycled pid) and a pidfile holding that pid, the wrapper's lock check names it instead of skipping green: log reads 'STALE LOCK: pid N is recycled; the run that took this lock is ABANDONED' and the gateway is reached WITH credentials ('tg_notify: sent'), which is the live proof of the secrets-ordering fix — before it, telegram() would have logged 'alert NOT sent'"
-    cmd: "SESSION_DECLARATION_DIR=<tmp> bash infra/healer/healer-run.sh (pidfile primed, pid_start forged to 1990); tail ~/logs/healer/healer.log"
+    ts: "2026-08-23T15:35Z"
+    seat: "sonnet-5 (session, mini-pro2)"
+  - claim: "GREEN — same 3 tests (guilt @ ==60 DECLINE, innocence @ ==59 ACCEPT, issuance no-op) pass after adding DeclineCode.EXTENSION_EXCEEDS_MAX_STAY + the layered guard in build_verdict()"
+    cmd: 'PYTHONPATH=. python -m pytest backend/tests/services/garuda_flow/test_intake.py::TestB1MaxTotalStayBoundary -o addopts="" -v --no-header'
     exit: 0
-    ts: "2026-08-23T15:02Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "No real Telegram was sent by any of these proofs — verified by reading the gateway, not by trusting the flag: tg_notify.py's send path is `if DRY_RUN: _append(spool, 'sent-dry.jsonl', ...); return True`, so 'sent' under TG_DRY_RUN=1 is a spool write with no network call"
-    cmd: "grep -n DRY_RUN scripts/tg_notify.py; sed -n '388,394p' scripts/tg_notify.py"
+    ts: "2026-08-23T15:47Z"
+    seat: "sonnet-5 (session, mini-pro2)"
+  - claim: "Full required suite: 168 passed (baseline 164 + 4 new), 0 failed, after also correcting one pre-existing test fixture (2020-01-01 entry_date) the new guard correctly-but-incidentally caught"
+    cmd: 'PYTHONPATH=. python -m pytest backend/tests/services/garuda_flow/ backend/tests/app/routers/test_garuda_voa.py backend/tests/app/routers/test_garuda_voa_no_internal_leak.py -o addopts="" -v --no-header'
     exit: 0
-    ts: "2026-08-23T15:05Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "The wrapper parses under bash and the anti-regrowth gateway invariant still holds at exactly one routine digest per wrapper"
-    cmd: "bash -n infra/healer/healer-run.sh && grep -c 'telegram digest ' infra/healer/healer-run.sh"
+    ts: "2026-08-23T15:58Z"
+    seat: "sonnet-5 (session, mini-pro2)"
+  - claim: "Broader sweep for collateral breakage (routers/, visa_engine/) is clean"
+    cmd: 'PYTHONPATH=. python -m pytest backend/tests/services/garuda_flow/ backend/tests/app/routers/ backend/tests/services/visa_engine/ -o addopts="" -q --no-header'
     exit: 0
-    ts: "2026-08-23T15:01Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "The two factual premises that new code was built on were re-measured here rather than taken on a refuter's word: the healer watchdog sends one SIGTERM and never escalates to SIGKILL (so a hang really is possible), and liveness really was resolved eagerly for every record"
-    cmd: "grep -nE 'SIGTERM|SIGKILL|os.kill' infra/healer/healer-run.sh; grep -n 'alive=liveness(d)' scripts/session_declaration.py"
+    ts: "2026-08-23T16:05Z"
+    seat: "sonnet-5 (session, mini-pro2)"
+  - claim: "Import chain smoke test (dependencies.py is imported by every router) still clean"
+    cmd: 'python -c "from backend.app.dependencies import get_current_user; print(''OK'')"'
     exit: 0
-    ts: "2026-08-23T14:40Z"
-    seat: "opus-5 (session, mini-pro2)"
-  - claim: "All three commits passed the repo's real husky pre-commit chain (anti-reward-hacking test lint, secret scanners, hot-zone lease check, Python linting, off-limits guard) — never bypassed with --no-verify"
-    cmd: "git commit (x3); each printed 'All pre-commit checks passed!' before the commit object was created"
+    ts: "2026-08-23T16:06Z"
+    seat: "sonnet-5 (session, mini-pro2)"
+  - claim: "ruff clean on every changed file"
+    cmd: "ruff check backend/services/garuda_flow/ backend/tests/services/garuda_flow/ backend/tests/app/routers/test_garuda_voa_no_internal_leak.py"
     exit: 0
-    ts: "2026-08-23T15:10Z"
-    seat: "opus-5 (session, mini-pro2)"
-dissent:
-  - seat: "sonnet-5 subagent (R1)"
-    objection: "FINDING 1 — record the cascade child's pid ($CPID) instead of the wrapper's ($$), and escalate the watchdog from SIGTERM to SIGKILL."
-    status: "CONFIRMED"
-    resolution: "The CONSEQUENCE was accepted and is now detected: a HUNG state, checked at the lock itself. The two proposed cures were declined with reasons. The declaration is about the RUN, whose owner is the wrapper — swapping to the child's pid would make a wrapper that outlives its child unobservable. SIGKILL escalation is a real gap but changes the healer's kill semantics: its own concern, declared out of scope in the brief."
-  - seat: "sonnet-5 subagent (R1)"
-    objection: "FINDING 7 — the wrapper invokes `python3` by bare name; if PATH lost it, declaration coverage silently drops to zero."
-    status: "CONFIRMED"
-    resolution: "The objection is real; the cure is declined here. A pre-existing whole-script pattern the refuter itself flagged as 'not a new regression'. Changing every invocation is a separate sweep. The new code does log a WARN when the open fails."
-  - seat: "sonnet-5 subagent (R1)"
-    objection: "FINDING 8 (SPECULATIVE) — locale-dependent `ps -o lstart=` formatting could make an unchanged process read as a different one."
-    status: "PLAUSIBLE"
-    resolution: "The refuter could not construct a trigger and said so. BSD lstart is ctime()-style and both calls run in the same context. Recorded rather than acted on."
-  - seat: "kimi-code/k3 (R2, non-Anthropic)"
-    objection: "Six defects on the already-cured diff: mute alarm (secrets sourced after the lock's p0), prune() deleting live OPEN records against its own docstring, the lock check counting every spawner's hangs then naming the healer's own run, a recycled pid making the healer permanently green-and-dead through the lock, an unparseable declaration reported in a field nothing consumed, and the trap able to signal a recycled pid."
-    status: "CONFIRMED"
-    resolution: "All six fixed and pinned by five new tests plus a live stale-lock proof. Two of them (the lock ordering and the trap) sat inside code R1 had explicitly cleared — which is the measurement that justifies a cross-family second lens rather than a second pass of the same one."
-  - seat: "kimi-code/k3 (R2)"
-    objection: "A forward NTP step inflates apparent age past the hung margin, so a healthy run could read HUNG."
-    status: "PLAUSIBLE"
-    resolution: "The mechanism is real but I did NOT reproduce an NTP step here, so it is recorded as plausible rather than claimed as measured. Unfixed. A declaration must survive process death, so elapsed time cannot be held in memory and monotonic clocks do not persist. Declared as residual risk rather than silently carried."
-residual_risks:
-  - "NTP forward steps can produce a false HUNG on a healthy run (above). Bounded: the alarm names the pid, and the next scan after the step is correct."
-  - "Coverage is one producer. The healer declares its runs; the other ~20 fleet spawners do not, so an abandonment there is still invisible. Wiring them is a migration, deliberately not bundled."
-  - "The store is per-host and unreplicated: a machine nobody scans is not covered."
-  - "A stale pidfile is ALERTED on but not auto-cleared, so a healer left in that state stays skipped until someone acts. Chosen over weakening the anti-overlap invariant inside this PR."
-  - "The retired DECLARED-SPAN-UNMET verdict still exists in fleet_sessions.py. Harmless (informational-only, no organ routes on it) but two verdicts about one question is a documentation hazard until the follow-up lands."
-  - "prune() now calls classify() for old unclosed records, which spawns `ps` per record. Bounded by how few such records exist, but it is real work on the open() path."
+    ts: "2026-08-23T16:07Z"
+    seat: "sonnet-5 (session, mini-pro2)"
+dissent: []
