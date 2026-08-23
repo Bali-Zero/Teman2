@@ -77,7 +77,7 @@ def test_rule_registered_and_scoped_to_exactly_two_files() -> None:
     to the two worker-plane review files — not a blanket match on
     scripts/*.py. (A second, unrelated content-keyed rule for KBLI
     gold-set data is added below — this test stays scoped to rule 0.)"""
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[0]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("worker-plane review panel")
     assert path_pat.search(CHECK_WORKER_PLANE_REVIEW)
     assert path_pat.search(LAUNCH_WORKER_PLANE_REVIEW_PANEL)
     assert not path_pat.search("scripts/some_other_review_script.py")
@@ -132,7 +132,7 @@ def test_innocence_synthetic_secret_on_unrelated_key_in_same_file() -> None:
     files (e.g. a leaked API key added on a future PR) must still be
     caught — proves the rule is keyed on the assignment target, never on
     hex/secret shape alone."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[0]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("worker-plane review panel")
     fake_secret_line = '        api_key="sk-FAKESECRETVALUE1234567890ABCDEF",\n'
     assert content_pat.search(fake_secret_line) is None
 
@@ -154,7 +154,7 @@ def test_innocence_pin_key_with_non_hex_value_not_approved() -> None:
     be approved on the key name alone — the value has to actually be a
     64/40-char lowercase-hex digest. `ghp_...` is GitHub's real token
     prefix shape: alnum, not hex, wrong length."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[0]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("worker-plane review panel")
     fake_token_line = (
         '        sha256="ghp_1234567890abcdefghijklmnopqrstuvwxyzABCD",\n'
     )
@@ -167,7 +167,7 @@ def test_innocence_pin_followed_by_second_statement_not_approved() -> None:
     line must not ride along under the pin's approval. The end-anchor
     (optional trailing comma, then end-of-line) breaks on anything after
     the pin's closing quote."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[0]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("worker-plane review panel")
     compound_line = (
         '        sha256="d01b49210d72ecbe277a2665d104bacccddf2d22185be99446d2929e0edfc48d"'
         '; api_key="sk-realsecretvalue1234567890ABCDEF"\n'
@@ -221,20 +221,28 @@ def _find_content_keyed_rule(
     reason string, rather than by list position.
 
     2026-08-23: three tests in this file indexed into CONTENT_KEYED_RULES
-    positionally (CONTENT_KEYED_RULES[1]/[13]/[14]) instead of by identity.
-    detect_secrets_auto_triage.py's own header comment above the list
-    documents why the list had become append-only-by-convention: "inserting
-    a rule mid-list shifts every later index and breaks the per-rule
-    registration tests (measured the hard way 2026-08-21: 8 red from one
-    mid-list insert)." That is the index-anchoring naming the symptom, not
-    a reason the list itself needs positional stability — nothing in
-    classify()'s matching loop depends on order for correctness (it returns
-    on first content+path match; two rules covering the same file+line
-    would only change WHICH reason string is reported, never whether the
-    line is approved). Looking a rule up by what makes it unique — a
-    substring of its own reason — removes the coupling instead of
-    documenting around it: a rule can be inserted anywhere in the list
-    without touching this file.
+    positionally (what were CONTENT_KEYED_RULES[1]/[13]/[14]) instead of by
+    identity, fixed first (PR #4663). detect_secrets_auto_triage.py's own
+    header comment above the list documents why the list had become
+    append-only-by-convention: "inserting a rule mid-list shifts every
+    later index and breaks the per-rule registration tests (measured the
+    hard way 2026-08-21: 8 red from one mid-list insert)." That is the
+    index-anchoring naming the symptom, not a reason the list itself needs
+    positional stability — nothing in classify()'s matching loop depends on
+    order for correctness (it returns on first content+path match; two
+    rules covering the same file+line would only change WHICH reason
+    string is reported, never whether the line is approved). Looking a
+    rule up by what makes it unique — a substring of its own reason —
+    removes the coupling instead of documenting around it: a rule can be
+    inserted anywhere in the list without touching this file.
+
+    A follow-up mid-list-insert check (same PR that added this docstring
+    paragraph) found the SAME three tests were not the whole story: every
+    remaining "_rule_registered_and_scoped..." test plus its guilt/
+    innocence siblings indexed too (what were indices 0/1/2/4/5/6/9/10/11 —
+    every CONTENT_KEYED_RULES entry that has index-based tests at all).
+    All now go through this helper; a dummy rule inserted at every position
+    in the list (front, middle, and end) breaks none of them.
 
     Fails loudly on zero or more than one match rather than silently
     returning the wrong rule — a lookup that can return the wrong entry
@@ -343,7 +351,7 @@ def test_content_keyed_rules_are_well_formed_and_anchored() -> None:
 def test_guilt_kbli_gold_real_pr3181_findings_approved() -> None:
     """The 3 real findings Detect Secrets flagged on PR #3181's head must be
     approved by this rule's content pattern."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     for line in KBLI_GOLD_SENTENCE_SHA256_REAL_LINES:
         assert content_pat.match(line), f"should be approved: {line!r}"
 
@@ -353,7 +361,7 @@ def test_guilt_kbli_gold_trailing_comma_variant_approved() -> None:
     object (no trailing comma), but the pattern allows an optional trailing
     comma too — a future cure that reorders fields must not silently stop
     matching."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     assert content_pat.match('  "sentence_sha256":"0123456789abcdef",')
 
 
@@ -361,7 +369,7 @@ def test_innocence_kbli_gold_wrong_key_name_not_approved() -> None:
     """A real secret assigned to a DIFFERENT key in the same file — even one
     with the exact 16-hex shape — must still be flagged. Proves the rule is
     keyed on the field NAME, not merely on hex shape."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     fake_line = '      "api_key": "398e623b02c49ba5"'
     assert content_pat.match(fake_line) is None
 
@@ -370,7 +378,7 @@ def test_innocence_kbli_gold_wrong_value_shape_not_approved() -> None:
     """A real credential assigned to `sentence_sha256` must not be approved
     on the key name alone — the value has to actually be 16 lowercase hex
     chars. `ghp_...` is GitHub's real token prefix shape."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     fake_line = '      "sentence_sha256": "ghp_realtoken1234567"'
     assert content_pat.match(fake_line) is None
 
@@ -378,7 +386,7 @@ def test_innocence_kbli_gold_wrong_value_shape_not_approved() -> None:
 def test_innocence_kbli_gold_wrong_length_not_approved() -> None:
     """15 or 17 hex chars must not match — the shape is exactly 16, not
     'roughly hex-shaped'."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     assert content_pat.match('      "sentence_sha256": "398e623b02c49ba"') is None  # 15
     assert content_pat.match('      "sentence_sha256": "398e623b02c49ba5a"') is None  # 17
 
@@ -388,7 +396,7 @@ def test_innocence_kbli_gold_uppercase_hex_not_approved() -> None:
     (verified against all 39 occurrences on PR #3181's head); an uppercase
     variant is a shape a real pasted credential could take that a lowercase-
     only cure output never would."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     assert content_pat.match('      "sentence_sha256": "398E623B02C49BA5"') is None
 
 
@@ -396,7 +404,7 @@ def test_innocence_kbli_gold_ride_along_statement_not_approved() -> None:
     """A legitimate sentence_sha256 line followed by an unrelated assignment
     must not approve the ride-along, mirroring the worker-plane rule's own
     end-anchor discipline."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     compound_line = (
         '      "sentence_sha256": "398e623b02c49ba5"; "api_key": "realsecret123456"'
     )
@@ -417,7 +425,7 @@ def test_innocence_kbli_gold_other_file_with_same_shape_not_approved() -> None:
     silently approved by the UNRELATED `test_*/_test` fixture rule instead
     of exercising this rule's path scope at all), monkeypatched to return
     the gold-set line's text so only the PATH differs from the guilt case."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[1]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("KBLI gold-set")
     line = KBLI_GOLD_SENTENCE_SHA256_REAL_LINES[0]
     assert content_pat.match(line)  # content shape alone: matches
 
@@ -464,7 +472,7 @@ ARTICLE_STAMP_REAL_LINES = [
 
 
 def test_article_stamp_rule_registered_and_scoped_to_translations_only() -> None:
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[2]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("article translation freshness stamp")
     assert path_pat.search(ARTICLE_IT)
     for loc in ("id", "ru", "fr"):
         assert path_pat.search(f"apps/mouth/src/content/articles/business/x.{loc}.mdx")
@@ -474,25 +482,25 @@ def test_article_stamp_rule_registered_and_scoped_to_translations_only() -> None
 def test_innocence_english_source_is_out_of_scope() -> None:
     """The stamp only ever lands in a translation. An English source .mdx that
     grows a 64-hex line is NOT covered by this rule and stays unaudited."""
-    path_pat, _content_pat, _reason = CONTENT_KEYED_RULES[2]
+    path_pat, _content_pat, _reason = _find_content_keyed_rule("article translation freshness stamp")
     assert not path_pat.search("apps/mouth/src/content/articles/business/x.mdx")
 
 
 def test_innocence_other_content_paths_are_out_of_scope() -> None:
-    path_pat, _content_pat, _reason = CONTENT_KEYED_RULES[2]
+    path_pat, _content_pat, _reason = _find_content_keyed_rule("article translation freshness stamp")
     assert not path_pat.search("apps/mouth/src/content/homepage-layout.json")
     assert not path_pat.search("apps/backend-rag/backend/config.it.mdx")
 
 
 def test_guilt_real_stamp_lines_are_approved() -> None:
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[2]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("article translation freshness stamp")
     for line in ARTICLE_STAMP_REAL_LINES:
         assert content_pat.match(line), f"should be approved: {line!r}"
 
 
 def test_innocence_a_credential_on_another_frontmatter_key_is_not_approved() -> None:
     """The whole point of content-keying: only THIS key, in THIS shape."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[2]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("article translation freshness stamp")
     for line in (
         'api_key: "5f0aed5d76a50a055ab3f3d636b7a18fd7d98e791d12b8711086b19ee414786d"',
         'token: "ghp_reallivetokenvaluethatmustneverbeapproved0001"',
@@ -504,7 +512,7 @@ def test_innocence_a_credential_on_another_frontmatter_key_is_not_approved() -> 
 def test_innocence_wrong_shape_is_not_approved() -> None:
     """Uppercase hex, wrong length, unquoted, or a second value riding along on
     the same line all fail — the pattern is end-anchored."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[2]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("article translation freshness stamp")
     for line in (
         'source_sha256: "5F0AED5D76A50A055AB3F3D636B7A18FD7D98E791D12B8711086B19EE414786D"',
         'source_sha256: "5f0aed5d"',
@@ -560,7 +568,7 @@ LLM_CREDENTIALS_DECLARED = "infra/llm-credentials/declared.json"
 
 
 def test_llm_credentials_rule_registered_and_scoped_to_exactly_one_file() -> None:
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[4]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("LLM credential registry")
     assert path_pat.search(LLM_CREDENTIALS_DECLARED)
     assert not path_pat.search("infra/llm-credentials/declared.json.bak")
     assert not path_pat.search("infra/other/declared.json")
@@ -590,7 +598,7 @@ def test_innocence_the_label_line_in_the_same_file_is_not_approved() -> None:
 def test_innocence_llm_credentials_wrong_key_name_not_approved() -> None:
     """Keyed on the field NAME, not on hex shape: the same 16-hex value under
     `api_key` must still be flagged."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("LLM credential registry")
     assert content_pat.match('      "api_key": "ddea903c496cd26c"') is None
 
 
@@ -598,7 +606,7 @@ def test_innocence_llm_credentials_real_credential_shape_not_approved() -> None:
     """A real credential assigned to `sha256_16` must not ride in on the key
     name. `AIza...` is Google's own API-key prefix — the exact shape this
     file exists to avoid ever holding."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("LLM credential registry")
     assert content_pat.match('      "sha256_16": "AIzaSyD-1234567890abcdefg"') is None
 
 
@@ -606,7 +614,7 @@ def test_innocence_llm_credentials_wrong_length_not_approved() -> None:
     """Exactly 16, not 'roughly hex-shaped'. A full 64-hex sha256 is also
     rejected: this field is defined as the truncation, and a full digest here
     would mean some other writer produced it."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("LLM credential registry")
     assert content_pat.match('      "sha256_16": "ddea903c496cd26"') is None  # 15
     assert content_pat.match('      "sha256_16": "ddea903c496cd26ca"') is None  # 17
     assert content_pat.match('      "sha256_16": "%s"' % ("a" * 64)) is None  # full digest
@@ -616,14 +624,14 @@ def test_innocence_llm_credentials_uppercase_hex_not_approved() -> None:
     """`credential_fingerprint()` emits lowercase (hashlib.hexdigest always
     does), so uppercase can only come from another writer — a shape a real
     pasted credential could take and this cure's output never would."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("LLM credential registry")
     assert content_pat.match('      "sha256_16": "DDEA903C496CD26C"') is None
 
 
 def test_innocence_llm_credentials_ride_along_statement_not_approved() -> None:
     """End-anchored: a legitimate fingerprint followed by anything else on the
     same line must not launder the ride-along."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("LLM credential registry")
     compound = '      "sha256_16": "ddea903c496cd26c", "api_key": "AIzaSyD-1234567890abcd"'
     assert content_pat.match(compound) is None
 
@@ -654,7 +662,7 @@ GOLD_REPLAY_DRIVER = "apps/backend-rag/backend/scripts/visa_engine/gold_replay_d
 
 
 def test_gold_replay_driver_rule_registered_and_scoped_to_exactly_one_file() -> None:
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[5]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("Ed25519 PUBLIC verification key")
     assert path_pat.search(GOLD_REPLAY_DRIVER)
     assert not path_pat.search(
         "apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py.bak"
@@ -666,7 +674,7 @@ def test_gold_replay_driver_rule_registered_and_scoped_to_exactly_one_file() -> 
 def test_guilt_gold_replay_driver_public_key_line_is_approved() -> None:
     """The exact finding shape that made `Detect Secrets` red: a 32-byte
     Ed25519 public key, unpadded base64url-encoded (43 chars)."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("Ed25519 PUBLIC verification key")
     for line in (
         '    "public_key": "ab3De9FghijKLM12no3PqrstUVwxyz45ABCdefGHI9X"',
         '        "public_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",',
@@ -677,7 +685,7 @@ def test_guilt_gold_replay_driver_public_key_line_is_approved() -> None:
 def test_innocence_gold_replay_driver_wrong_key_name_not_approved() -> None:
     """Keyed on the field NAME, not on base64 shape: the same 43-char value
     under a different assignment target must still be flagged."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("Ed25519 PUBLIC verification key")
     assert (
         content_pat.match('    "private_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"')
         is None
@@ -687,7 +695,7 @@ def test_innocence_gold_replay_driver_wrong_key_name_not_approved() -> None:
 def test_innocence_gold_replay_driver_wrong_length_not_approved() -> None:
     """Exactly 43 chars (32-byte Ed25519 key, unpadded base64url) — a shorter
     or longer value cannot be this key and stays unaudited."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("Ed25519 PUBLIC verification key")
     assert content_pat.match('    "public_key": "AAAAAAAAAAAAAAAAAAAAAAAA"') is None  # too short
     assert (
         content_pat.match(
@@ -700,7 +708,7 @@ def test_innocence_gold_replay_driver_wrong_length_not_approved() -> None:
 def test_innocence_gold_replay_driver_ride_along_statement_not_approved() -> None:
     """End-anchored: a legitimate public_key line followed by anything else
     must not launder the ride-along."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("Ed25519 PUBLIC verification key")
     compound = (
         '    "public_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", '
         '"api_key": "ghp_reallivetoken"'
@@ -731,7 +739,7 @@ def test_innocence_gold_replay_driver_ride_along_statement_not_approved() -> Non
 # position; see the reordering above and cicatrix-superscar #9). The second
 # collision, with main's gold_replay_driver.py rule landing at the same
 # index via PR #4130, is resolved the same way: both rules kept, this one
-# moved to CONTENT_KEYED_RULES[6].
+# moved to _find_content_keyed_rule("gold replay driver live-run report").
 
 GOLD_REPLAY_LIVE_REPORT = "research/visa/2026-08-12-gold-replay-live-report.json"
 GOLD_REPLAY_POST_NOTICE_REPORT = (
@@ -742,7 +750,7 @@ GOLD_REPLAY_POST_NOTICE_REPORT = (
 def test_gold_replay_live_report_rule_registered_and_scoped_to_reviewed_files() -> (
     None
 ):
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[6]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("gold replay driver live-run report")
     assert path_pat.search(GOLD_REPLAY_LIVE_REPORT)
     assert path_pat.search(GOLD_REPLAY_POST_NOTICE_REPORT)
     assert not path_pat.search(
@@ -787,7 +795,7 @@ def test_innocence_gold_replay_live_report_wrong_key_name_same_hex_shape_not_app
 ):
     """Keyed on the field NAME, not on hex shape: the same 64-hex value under
     a different assignment target must still be flagged."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("gold replay driver live-run report")
     fake_line = (
         '    "rulepack_signature": '
         '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82"'
@@ -798,7 +806,7 @@ def test_innocence_gold_replay_live_report_wrong_key_name_same_hex_shape_not_app
 def test_innocence_gold_replay_live_report_wrong_length_not_approved() -> None:
     """63 or 65 hex chars must not match — the shape is exactly 64, a real
     sha256, not 'roughly hex-shaped'."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("gold replay driver live-run report")
     assert (
         content_pat.match(
             '    "payload_sha256": '
@@ -819,7 +827,7 @@ def test_innocence_gold_replay_live_report_uppercase_hex_not_approved() -> None:
     """Uppercase hex must not match — the driver only ever emits lowercase
     (hashlib.hexdigest always does); an uppercase variant is a shape a real
     pasted credential could take that this rule's own output never would."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("gold replay driver live-run report")
     fake_line = (
         '    "payload_sha256": '
         '"3D068AEF2DCA40F1EFB74BDD3F8859E767C000282AB8299AC7F277B0B9719F82"'
@@ -830,7 +838,7 @@ def test_innocence_gold_replay_live_report_uppercase_hex_not_approved() -> None:
 def test_innocence_gold_replay_live_report_ride_along_statement_not_approved() -> None:
     """End-anchored: a legitimate payload_sha256 line followed by anything
     else on the same line must not launder the ride-along."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("gold replay driver live-run report")
     compound = (
         '    "payload_sha256": '
         '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82", '
@@ -1068,7 +1076,7 @@ FOLD_PACK_SEQ10_ANCHOR = (
 
 
 def test_fold_seq10_rule_registered_and_scoped_to_exactly_one_file() -> None:
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[9]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("fold_pack_seq10.py: seq-9 chain anchor")
     assert path_pat.search(FOLD_PACK_SEQ10)
     assert not path_pat.search(
         "apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py"
@@ -1084,7 +1092,7 @@ def test_guilt_fold_seq10_real_finding_approved() -> None:
     """The exact real line 99 in the fold script must be approved — read live
     off disk, so this fails if the file and rule ever drift, not merely if
     someone edits a string literal in this test."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq10.py: seq-9 chain anchor")
     lines = Path(FOLD_PACK_SEQ10).read_text(encoding="utf-8").splitlines()
     real_line = lines[98]  # line 99, 1-indexed
     assert real_line == f'    "{FOLD_PACK_SEQ10_ANCHOR}"'
@@ -1094,7 +1102,7 @@ def test_guilt_fold_seq10_real_finding_approved() -> None:
 def test_innocence_fold_seq10_other_hex_value_not_approved() -> None:
     """A DIFFERENT 64-hex bare string line must not be approved — proves the
     rule is pinned to the exact anchor value, not merely to the shape."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq10.py: seq-9 chain anchor")
     other_hex_line = '    "' + "a" * 64 + '"'
     assert content_pat.match(other_hex_line) is None
 
@@ -1102,7 +1110,7 @@ def test_innocence_fold_seq10_other_hex_value_not_approved() -> None:
 def test_innocence_fold_seq10_uppercase_not_approved() -> None:
     """The same value uppercased must not be approved — the anchor is
     lowercase hex, matching hashlib.hexdigest's own output."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq10.py: seq-9 chain anchor")
     uppercase_line = f'    "{FOLD_PACK_SEQ10_ANCHOR.upper()}"'
     assert content_pat.match(uppercase_line) is None
 
@@ -1111,7 +1119,7 @@ def test_innocence_fold_seq10_ride_along_statement_not_approved() -> None:
     """The value followed by a second statement or token on the same line
     must not launder the ride-along — end-anchored, same discipline as every
     other rule in this list."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq10.py: seq-9 chain anchor")
     for compound in (
         f'    "{FOLD_PACK_SEQ10_ANCHOR}"; import os',
         f'    "{FOLD_PACK_SEQ10_ANCHOR}" "second_token"',
@@ -1123,7 +1131,7 @@ def test_innocence_fold_seq10_keyed_assignment_not_approved() -> None:
     """A JSON-style keyed line carrying the same value must not be approved —
     the rule approves only the bare continuation-string shape of the
     parenthesized assignment, never a `"key": "value"` shape."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq10.py: seq-9 chain anchor")
     keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ10_ANCHOR}",'
     assert content_pat.match(keyed_line) is None
 
@@ -1149,7 +1157,7 @@ FOLD_PACK_SEQ11_ANCHOR = (
 
 
 def test_fold_seq11_rule_registered_and_scoped_to_exactly_one_file() -> None:
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[10]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("fold_pack_seq11.py: seq-10 chain anchor")
     assert path_pat.search(FOLD_PACK_SEQ11)
     assert not path_pat.search(FOLD_PACK_SEQ10)
     assert not path_pat.search(
@@ -1163,7 +1171,7 @@ def test_guilt_fold_seq11_real_finding_approved() -> None:
     """The exact real line 93 in the fold script must be approved — read live
     off disk, so this fails if the file and rule ever drift, not merely if
     someone edits a string literal in this test."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[10]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq11.py: seq-10 chain anchor")
     lines = Path(FOLD_PACK_SEQ11).read_text(encoding="utf-8").splitlines()
     real_line = lines[92]  # line 93, 1-indexed
     assert real_line == f'    "{FOLD_PACK_SEQ11_ANCHOR}"'
@@ -1175,7 +1183,7 @@ def test_innocence_fold_seq11_other_hex_value_not_approved() -> None:
     rule is pinned to the exact anchor value, not merely to the shape.
     The seq-9 anchor (rule 10's value) doubles as the nearest-neighbour
     innocent: a REAL sibling anchor must still not launder through THIS rule."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[10]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq11.py: seq-10 chain anchor")
     other_hex_line = '    "' + "a" * 64 + '"'
     assert content_pat.match(other_hex_line) is None
     sibling_anchor_line = f'    "{FOLD_PACK_SEQ10_ANCHOR}"'
@@ -1185,7 +1193,7 @@ def test_innocence_fold_seq11_other_hex_value_not_approved() -> None:
 def test_innocence_fold_seq11_uppercase_not_approved() -> None:
     """The same value uppercased must not be approved — the anchor is
     lowercase hex, matching hashlib.hexdigest's own output."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[10]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq11.py: seq-10 chain anchor")
     uppercase_line = f'    "{FOLD_PACK_SEQ11_ANCHOR.upper()}"'
     assert content_pat.match(uppercase_line) is None
 
@@ -1194,7 +1202,7 @@ def test_innocence_fold_seq11_ride_along_statement_not_approved() -> None:
     """The value followed by a second statement or token on the same line
     must not launder the ride-along — end-anchored, same discipline as every
     other rule in this list."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[10]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq11.py: seq-10 chain anchor")
     for compound in (
         f'    "{FOLD_PACK_SEQ11_ANCHOR}"; import os',
         f'    "{FOLD_PACK_SEQ11_ANCHOR}" "second_token"',
@@ -1206,13 +1214,13 @@ def test_innocence_fold_seq11_keyed_assignment_not_approved() -> None:
     """A JSON-style keyed line carrying the same value must not be approved —
     the rule approves only the bare continuation-string shape of the
     parenthesized assignment, never a `"key": "value"` shape."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[10]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq11.py: seq-10 chain anchor")
     keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ11_ANCHOR}",'
     assert content_pat.match(keyed_line) is None
 
 
 # ---------------------------------------------------------------------------
-# fold_pack_seq12.py — seq-11 chain anchor exact-value pin (CONTENT_KEYED_RULES[11])
+# fold_pack_seq12.py — seq-11 chain anchor exact-value pin (_find_content_keyed_rule("fold_pack_seq12.py: seq-11 chain anchor"))
 # ---------------------------------------------------------------------------
 # Same class and discipline as the seq-10/seq-11 fold rules directly above:
 # the pinned value is the sha256 of the PUBLIC signed seq-11 RulePack payload,
@@ -1226,7 +1234,7 @@ FOLD_PACK_SEQ12_ANCHOR = (
 
 
 def test_fold_seq12_rule_registered_and_scoped_to_exactly_one_file() -> None:
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[11]
+    path_pat, _content_pat, reason = _find_content_keyed_rule("fold_pack_seq12.py: seq-11 chain anchor")
     assert path_pat.search(FOLD_PACK_SEQ12)
     assert not path_pat.search(FOLD_PACK_SEQ11)
     assert not path_pat.search(FOLD_PACK_SEQ10)
@@ -1241,7 +1249,7 @@ def test_guilt_fold_seq12_real_finding_approved() -> None:
     """The exact real line 89 in the fold script must be approved — read live
     off disk, so this fails if the file and rule ever drift, not merely if
     someone edits a string literal in this test."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[11]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq12.py: seq-11 chain anchor")
     lines = Path(FOLD_PACK_SEQ12).read_text(encoding="utf-8").splitlines()
     real_line = lines[88]  # line 89, 1-indexed
     assert real_line == f'    "{FOLD_PACK_SEQ12_ANCHOR}"'
@@ -1253,7 +1261,7 @@ def test_innocence_fold_seq12_other_hex_value_not_approved() -> None:
     rule is pinned to the exact anchor value, not merely to the shape.
     The seq-10 anchor (rule 11's value) doubles as the nearest-neighbour
     innocent: a REAL sibling anchor must still not launder through THIS rule."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[11]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq12.py: seq-11 chain anchor")
     other_hex_line = '    "' + "a" * 64 + '"'
     assert content_pat.match(other_hex_line) is None
     sibling_anchor_line = f'    "{FOLD_PACK_SEQ11_ANCHOR}"'
@@ -1263,7 +1271,7 @@ def test_innocence_fold_seq12_other_hex_value_not_approved() -> None:
 def test_innocence_fold_seq12_uppercase_not_approved() -> None:
     """The same value uppercased must not be approved — the anchor is
     lowercase hex, matching hashlib.hexdigest's own output."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[11]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq12.py: seq-11 chain anchor")
     uppercase_line = f'    "{FOLD_PACK_SEQ12_ANCHOR.upper()}"'
     assert content_pat.match(uppercase_line) is None
 
@@ -1272,7 +1280,7 @@ def test_innocence_fold_seq12_ride_along_statement_not_approved() -> None:
     """The value followed by a second statement or token on the same line
     must not launder the ride-along — end-anchored, same discipline as every
     other rule in this list."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[11]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq12.py: seq-11 chain anchor")
     for compound in (
         f'    "{FOLD_PACK_SEQ12_ANCHOR}"; import os',
         f'    "{FOLD_PACK_SEQ12_ANCHOR}" "second_token"',
@@ -1284,7 +1292,7 @@ def test_innocence_fold_seq12_keyed_assignment_not_approved() -> None:
     """A JSON-style keyed line carrying the same value must not be approved —
     the rule approves only the bare continuation-string shape of the
     parenthesized assignment, never a `"key": "value"` shape."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[11]
+    _path_pat, content_pat, _reason = _find_content_keyed_rule("fold_pack_seq12.py: seq-11 chain anchor")
     keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ12_ANCHOR}",'
     assert content_pat.match(keyed_line) is None
 
