@@ -507,18 +507,33 @@ class TestGuardsFireOnMutation:
 
 class TestIdenticalTimestampNote:
     """The identical-timestamp shape is FLAGGED, not rejected (see the
-    fold module's docstring for the reasoning). These prove the flag is
-    reachable (fires on the real, current batch of 18 identical stamps)
-    and precise (does NOT fire once every stamp in the batch is made
-    distinct) — a guard never exercised in both directions is not
-    verified."""
+    fold module's docstring for the reasoning — and its correction: the
+    reference point for "what good looks like" is seq-10's 7 distinct
+    second-precision values, not seq-12's already-degraded 2, because the
+    fold family's resolution has been a DESCENDING staircase, not a
+    stable convention). These prove the flag is reachable (fires on the
+    real, current batch of 18 identical stamps, with the real 1<-2<-7
+    trend), precise (does NOT fire once every stamp in the batch is made
+    distinct), and degrades gracefully when its purely-informational
+    third data point is unavailable — a guard never exercised in every
+    direction is not verified."""
 
-    def test_note_fires_on_the_real_identical_batch(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_note_fires_on_the_real_identical_batch_with_the_real_trend(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         from backend.scripts.visa_engine import fold_pack_seq13_source as m
 
         m.assemble_payload()
         captured = capsys.readouterr()
         assert "distinct verified_at value(s)" in captured.err
+        assert "DESCENDING resolution trend" in captured.err
+        # The actual, independently-verified trend (read directly from
+        # source-restamp-edits.json in this same test module — see
+        # TestHistoricalTrendHelper below): 1 now <- 2 (seq-12's own
+        # restamp) <- 7 (what seq-12 itself replaced).
+        assert "1 now" in captured.err
+        assert "2 in the batch this replaces" in captured.err
+        assert "7 in the batch seq-12 itself replaced" in captured.err
 
     def test_note_does_not_fire_once_every_stamp_is_distinct(
         self,
@@ -543,3 +558,83 @@ class TestIdenticalTimestampNote:
         m.assemble_payload()
         captured = capsys.readouterr()
         assert "distinct verified_at value(s)" not in captured.err
+
+    def test_note_degrades_gracefully_when_historical_file_absent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The third, purely-informational trend point is best-effort: its
+        absence must never crash the fold or silently swallow the rest of
+        the note — only that one clause is omitted."""
+
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        monkeypatch.setattr(m, "_SEQ12_RESTAMP_HISTORY", tmp_path / "does-not-exist.json")
+        m.assemble_payload()  # must not raise
+        captured = capsys.readouterr()
+        assert "distinct verified_at value(s)" in captured.err
+        assert "DESCENDING resolution trend" in captured.err
+        assert "1 now" in captured.err
+        assert "2 in the batch this replaces" in captured.err
+        assert "in the batch seq-12 itself replaced" not in captured.err
+
+    def test_note_degrades_gracefully_on_malformed_historical_file(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        bad_path = tmp_path / "malformed.json"
+        bad_path.write_text("{not valid json", encoding="utf-8")
+        monkeypatch.setattr(m, "_SEQ12_RESTAMP_HISTORY", bad_path)
+        m.assemble_payload()  # must not raise
+        captured = capsys.readouterr()
+        assert "in the batch seq-12 itself replaced" not in captured.err
+
+
+class TestHistoricalTrendHelper:
+    """Independently re-derives the historical-distinct-count figure the
+    NOTE reports, straight from source-restamp-edits.json's own bytes —
+    never by importing the fold's helper — so a bug in
+    ``_historical_restamp_distinct_count`` itself would show up as a
+    mismatch here, not just as an internally-consistent wrong number."""
+
+    def test_seq12_restamp_history_carries_seven_distinct_prior_stamps(
+        self, seq12_source: dict[str, Any]
+    ) -> None:
+        history_path = (
+            _REPO_ROOT
+            / "research"
+            / "visa"
+            / "doctrine-factory"
+            / "e5"
+            / "inc5-pack-edits"
+            / "source-restamp-edits.json"
+        )
+        data = _read_json(history_path)
+        portal_ids = {
+            r["source_record_id"]
+            for r in seq12_source["source_records"]
+            if r.get("authority_type") == _PORTAL_AUTHORITY_TYPE
+        }
+        restamps = [e for e in data["restamps"] if e["source_record_id"] in portal_ids]
+        assert len(restamps) == _EXPECTED_RESTAMP_COUNT
+        distinct_current = {e["current_verified_at"] for e in restamps}
+        distinct_new = {e["new_verified_at"] for e in restamps}
+        # The exact staircase the team-lead's correction is grounded on:
+        # 7 real second-precision values inherited from seq-10/seq-11,
+        # rounded down to 2 by seq-12's own fold.
+        assert len(distinct_current) == 7
+        assert len(distinct_new) == 2
+
+    def test_helper_matches_this_independent_recomputation(
+        self, seq12_source: dict[str, Any], seq13_source: dict[str, Any]
+    ) -> None:
+        from backend.scripts.visa_engine.fold_pack_seq13_source import (
+            _historical_restamp_distinct_count,
+        )
+
+        portal_ids = {
+            r["source_record_id"]
+            for r in seq13_source["source_records"]
+            if r.get("authority_type") == _PORTAL_AUTHORITY_TYPE
+        }
+        assert _historical_restamp_distinct_count(portal_ids) == 7

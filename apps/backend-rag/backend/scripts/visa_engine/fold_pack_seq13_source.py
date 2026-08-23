@@ -26,27 +26,44 @@ Every other top-level key must equal seq-12 canonically. If either half
 smuggled a change outside its own lane, this fold aborts rather than
 silently carrying it forward.
 
-**On the freshness half's identical-timestamp shape.** All 18 restamps in
-the freshness input currently carry the SAME ``verified_at`` value — a
-disclosed pass-level proxy timestamp (see that file's own
-``verified_at_caveat``), not 18 independently observed per-source fetch
-times (none were logged). This fold does **not** reject that shape: it is
-the same pattern seq-12's own restamp batch already used (2 groups of
-4/14 identical-second stamps in ``source-restamp-edits.json`` — see
-``test_seq12_pack.py``'s restamp-parity gate, which asserts monotonic
-advance per record, never distinctness across records). The per-source
-evidentiary backing for "this page is still what it says" lives in the
-QW-5 verbatim-quote report, not in how many distinct clock values the
-batch happens to carry — a script cannot manufacture 18 honest
-independent timestamps out of one that were never captured, and inventing
-artificial jitter would be *less* honest, not more. What this fold DOES
-enforce mechanically, per record: the new ``verified_at`` strictly
-advances past the value it replaces (a real ledger-drift guard, checked
-against the freshness file's own declared prior value AND cross-checked
-against seq-12's actual bytes), and is not later than this pack's own
-``created_at`` (no fabricated future attestation). Batching is FLAGGED —
-a non-fatal note on stdout, mechanically testable — never silently
-absorbed and never blocked.
+**On the freshness half's identical-timestamp shape — and the trend behind
+it.** All 18 restamps in the freshness input currently carry the SAME
+``verified_at`` value — a disclosed pass-level proxy timestamp (see that
+file's own ``verified_at_caveat``), not 18 independently observed
+per-source fetch times (none were logged). This fold does **not** reject
+that shape: a script cannot manufacture 18 honest independent timestamps
+out of one that were never captured, and inventing artificial jitter
+would be *less* honest, not more.
+
+But "seq-12 did the same thing" — this module's own first-draft framing,
+corrected by the team-lead reading the actual bytes rather than trusting
+that claim — is the wrong reference point. ``source-restamp-edits.json``
+(seq-12's own restamp ledger) shows a DESCENDING staircase, not a stable
+convention: the batch seq-12 itself replaced (inherited from seq-10/
+seq-11) carried **7 distinct, second-precision values** — real per-fetch
+times (``2026-08-18T21:41:23Z`` through ``2026-08-19T04:31:03Z``, verified
+by reading the file directly). seq-12's own fold then rounded that down to
+**2** (4 records at ``06:14:00Z``, 14 at ``06:15:00Z``). This freshness
+input proposes **1**. Each restamp has been coarser than the last, and
+nothing in this fold family has ever noticed, because every gate asserts
+*advance*, never *resolution*. "What good looks like" is seq-10's 7
+distinct values, not seq-12's 2 — citing seq-12 as the bar would enshrine
+one step of degradation as acceptable practice.
+
+What this fold DOES enforce mechanically, per record: the new
+``verified_at`` strictly advances past the value it replaces (a real
+ledger-drift guard, checked against the freshness file's own declared
+prior value AND cross-checked against seq-12's actual bytes), and is not
+later than this pack's own ``created_at`` (no fabricated future
+attestation). Those are real teeth; distinctness-across-records is not,
+and a guard that pretended otherwise would be worse engineering than
+naming the gap plainly. So the shape is FLAGGED, never rejected and never
+silently absorbed: a non-fatal note on stderr, mechanically testable,
+that reports the actual three-point resolution trend (this pass vs. the
+batch it replaces vs. the batch seq-12 itself replaced, the last read
+best-effort from ``source-restamp-edits.json`` — informational only,
+never a hard dependency of this fold; its absence degrades the note, not
+the join).
 
 **``content_sha256`` is never touched, never recomputed, never
 "verified" here.** Ditjen pages embed a per-request CSRF token, so two
@@ -111,6 +128,21 @@ _SEQ13_SOURCE_OUT = _PACKS_DIR / "rulepack-prod-013.source.json"
 # not yet committed as of this module's authoring.
 _FRESHNESS_INPUT = _REPO_ROOT / "research" / "visa" / "2026-08-23-seq13-restamp-source-records.json"
 
+# Informational only, never a hard dependency: seq-12's OWN restamp ledger,
+# read purely to report the resolution-trend NOTE (see module docstring).
+# Its absence degrades the note (that segment is simply omitted), never the
+# join — this path is deliberately not run through `_load_json`'s
+# raise-on-missing behavior.
+_SEQ12_RESTAMP_HISTORY = (
+    _REPO_ROOT
+    / "research"
+    / "visa"
+    / "doctrine-factory"
+    / "e5"
+    / "inc5-pack-edits"
+    / "source-restamp-edits.json"
+)
+
 _PRETTIER_BIN = _REPO_ROOT / "node_modules" / ".bin" / "prettier"
 
 # ---------------------------------------------------------------------------
@@ -168,6 +200,29 @@ def _load_json(path: Path, *, what: str) -> Any:
 
 def _canon(obj: Any) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+
+
+def _historical_restamp_distinct_count(record_ids: set[str]) -> int | None:
+    """Best-effort, informational only: how many distinct ``verified_at``
+    values the batch seq-12 ITSELF replaced (``source-restamp-edits.json``'s
+    own ``current_verified_at`` — inherited from seq-10/seq-11) carried,
+    restricted to ``record_ids``. Returns ``None`` on anything short of a
+    clean read (missing file, unexpected shape, empty overlap) — this feeds
+    the resolution-trend NOTE only, never a guard, and must never become a
+    third hard dependency of this fold."""
+
+    try:
+        if not _SEQ12_RESTAMP_HISTORY.exists():
+            return None
+        data = json.loads(_SEQ12_RESTAMP_HISTORY.read_text(encoding="utf-8"))
+        values = {
+            e["current_verified_at"]
+            for e in data["restamps"]
+            if e.get("source_record_id") in record_ids
+        }
+        return len(values) if values else None
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+        return None
 
 
 def _parse_utc(value: str) -> datetime:
@@ -320,6 +375,7 @@ def _apply_freshness(payload: dict[str, Any], seq12_source: dict[str, Any]) -> s
 
     created_at_dt = _parse_utc(_SEQ13_CREATED_AT)
     new_stamps: list[str] = []
+    replaced_stamps: list[str] = []
 
     for fresh_record_raw in records:
         sid = fresh_record_raw["source_record_id"]
@@ -381,21 +437,40 @@ def _apply_freshness(payload: dict[str, Any], seq12_source: dict[str, Any]) -> s
         baseline["verified_at"] = new_verified_at
         baseline["verified_by"] = new_verified_by
         new_stamps.append(new_verified_at)
+        replaced_stamps.append(prior_verified_at)
 
     # FLAGGED, not rejected — see module docstring for the reasoning. A
     # batch of identical-to-the-second stamps is a disclosed pass-level
-    # proxy, the same pattern seq-12's own restamp already used; the
-    # per-record guards above (advance + not-future + ledger-drift) are
-    # the actual evidentiary teeth, not timestamp cardinality.
-    distinct = set(new_stamps)
-    if len(distinct) < len(new_stamps):
+    # proxy, not per-source observation; the per-record guards above
+    # (advance + not-future + ledger-drift) are the actual evidentiary
+    # teeth, not timestamp cardinality. But this fold family's resolution
+    # has been getting COARSER, not holding steady — report the trend, not
+    # just the current number, so a reader sees the coarsening rather than
+    # mistaking a prior degradation for an established convention.
+    current_distinct = len(set(new_stamps))
+    if current_distinct < len(new_stamps):
+        replaced_distinct = len(set(replaced_stamps))
+        historical_distinct = _historical_restamp_distinct_count(restamp_ids)
+
+        trend = [f"{current_distinct} now"]
+        trend.append(f"{replaced_distinct} in the batch this replaces (seq-12's own restamp)")
+        if historical_distinct is not None:
+            trend.append(
+                f"{historical_distinct} in the batch seq-12 itself replaced "
+                "(inherited from seq-10/seq-11, real second-precision per-fetch times)"
+            )
+
         print(
-            f"NOTE: {len(new_stamps)} freshness restamps carry only {len(distinct)} "
+            f"NOTE: {len(new_stamps)} freshness restamps carry only {current_distinct} "
             "distinct verified_at value(s) — a disclosed pass-level proxy timestamp, "
-            "not independently observed per-source fetch times. Flagged, not "
-            "rejected: seq-12's own restamp batch used the same pattern. Evidentiary "
-            "backing for each source is the QW-5 verbatim-quote report, not "
-            "timestamp cardinality.",
+            "not independently observed per-source fetch times. Flagged, not rejected: "
+            "a script cannot manufacture per-source fetch times that were never "
+            "captured. But this is a DESCENDING resolution trend, not a stable "
+            f"convention — distinct-verified_at-count, newest first: {' <- '.join(trend)}. "
+            "What good looks like is the oldest figure in that chain, not the most "
+            "recent one. Evidentiary backing for each source is the QW-5 "
+            "verbatim-quote report, not timestamp cardinality — but the coarsening "
+            "itself is worth naming, not just excusing.",
             file=sys.stderr,
         )
 
