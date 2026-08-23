@@ -82,9 +82,31 @@ async def test_submit_clip_timeout_raises(tmp_path: Path, fake_request, fake_ctx
             )
 
 
+def _authorize_spend(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, episode_id: str) -> None:
+    """Give the spend-authority gate a valid token for `episode_id`, dated
+    today, and route its decision log to a tmp_path file — never the real
+    ~/.cache/wr3/spend-decisions.jsonl. Added 2026-08-23: these tests exercise
+    the REAL _generate_start_image/_generate_video (only their inner HTTP call
+    is mocked), and both now call assert_spend_authorized() before doing
+    anything else — without this they raise SpendNotAuthorizedError instead
+    of the FlowkitQuotaError/FlowkitError this test is actually checking."""
+    import datetime as _dt
+
+    monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
+    monkeypatch.setenv(
+        "WR3_SPEND_DECISION",
+        f"{episode_id}:pytest:{_dt.date.today().isoformat()}",
+    )
+    monkeypatch.setenv("WR3_SPEND_DECISION_LOG", str(tmp_path / "spend-decisions.jsonl"))
+
+
 @pytest.mark.asyncio
-async def test_submit_clip_quota_error(tmp_path: Path, fake_request, fake_ctx) -> None:
+async def test_submit_clip_quota_error(
+    tmp_path: Path, fake_request, fake_ctx, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Gateway returning QUOTA_EXCEEDED → FlowkitQuotaError."""
+    _authorize_spend(monkeypatch, tmp_path, fake_ctx.project_name)
+
     async def _quota_image(*_args, **_kwargs):
         # _check_quota inside _generate_start_image fires.
         # Note: dict input — _check_quota inspects only the {"error": ...} envelope.
@@ -104,8 +126,12 @@ async def test_submit_clip_quota_error(tmp_path: Path, fake_request, fake_ctx) -
 
 
 @pytest.mark.asyncio
-async def test_submit_clip_malformed_response(tmp_path: Path, fake_request, fake_ctx) -> None:
+async def test_submit_clip_malformed_response(
+    tmp_path: Path, fake_request, fake_ctx, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """generate-image response missing media → FlowkitError."""
+    _authorize_spend(monkeypatch, tmp_path, fake_ctx.project_name)
+
     async def _ok_scene(ctx, shot_index, positive_prompt, timeout_s=30):
         ctx.scene_ids[shot_index] = "scene-id-xyz"
         return "scene-id-xyz"
@@ -129,10 +155,12 @@ async def test_submit_clip_happy_path(tmp_path: Path, fake_request, fake_ctx) ->
         ctx.scene_ids[shot_index] = "scene-id-xyz"
         return "scene-id-xyz"
 
-    async def _ok_image(ctx, prompt, timeout_s=90):
+    async def _ok_image(ctx, prompt, timeout_s=90, **_kwargs):
+        # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return "img-media-aaa"
 
-    async def _ok_video(ctx, start_image_media_id, scene_id, prompt, timeout_s=180):
+    async def _ok_video(ctx, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+        # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return ("workflow-bbb", "video-media-ccc")
 
     async def _ok_download(ctx, media_id, dest, timeout_s=120):
@@ -161,10 +189,12 @@ async def test_download_timeout_raises(tmp_path: Path, fake_request, fake_ctx) -
         ctx.scene_ids[shot_index] = "scene-id-xyz"
         return "scene-id-xyz"
 
-    async def _ok_image(ctx, prompt, timeout_s=90):
+    async def _ok_image(ctx, prompt, timeout_s=90, **_kwargs):
+        # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return "img-media-aaa"
 
-    async def _ok_video(ctx, start_image_media_id, scene_id, prompt, timeout_s=180):
+    async def _ok_video(ctx, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+        # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return ("workflow-bbb", "video-media-ccc")
 
     async def _hang_download(ctx, media_id, dest, timeout_s=120):

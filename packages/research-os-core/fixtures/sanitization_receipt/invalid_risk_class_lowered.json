@@ -1,0 +1,70 @@
+{
+  "sanitization_receipt_id": "30000000-0000-4000-8000-000000000001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_objects": [
+    {
+      "object_kind": "com.example.synthetic_record",
+      "object_id": "synthetic-source-001",
+      "object_hash": "f1f88c680708587c73ba759f35791990def8c8a226d8d1018ed35975ed4b40dc",
+      "classification": {
+        "risk_class": "amber",
+        "sensitivity": "confidential"
+      }
+    }
+  ],
+  "output_object": {
+    "object_kind": "com.example.synthetic_projection",
+    "object_id": "synthetic-output-001",
+    "object_hash": "855c2b1c1c058b894a78eede88994a15a1d55a77ce83b660a3153da4f76de342",
+    "classification": {
+      "risk_class": "green",
+      "sensitivity": "internal"
+    }
+  },
+  "policy": {
+    "name": "com.example.sanitize_policy",
+    "version": "1.0.0"
+  },
+  "transformations": [
+    {
+      "field_path": "$.client.name",
+      "operation": "pseudonymize",
+      "result_sensitivity": "internal"
+    }
+  ],
+  "residual_risk": {
+    "rating": "low",
+    "findings": []
+  },
+  "reviewer_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "audit",
+    "pseudonym": "1f77f9714c808a6cf6268617d5072ddd0ddfface72a5fd149c4e89a6d2f8beb5"
+  },
+  "permitted_use": {
+    "purpose": "internal_dashboard_projection",
+    "destination": "com.example.internal_dashboard",
+    "consumer": "com.example.ops_team",
+    "expires_at": "2026-03-01T00:00:00Z"
+  },
+  "issued_at": "2026-02-01T00:01:00Z",
+  "propagation_scope": [],
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "workflow_run_ref": {
+      "workflow_run_id": "30000000-0000-4000-8000-000000000101",
+      "object_hash": "75bb9d37bed40741b42c393cdb3254062f3b954942bbbb48001019419372ec84"
+    },
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "88f0e908af21fa4ca469f0b5beb430faaaaa70e897be9e76954da0045f0fb043"
+}

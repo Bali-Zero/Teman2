@@ -19,6 +19,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.internal_email import send_internal_email
+from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.portal import InviteService
@@ -159,6 +160,20 @@ async def send_portal_invite_email(
     )
 
 
+def _invitation_public_view(result: dict[str, Any]) -> dict[str, Any]:
+    """Strip the raw invite credential from a service result before it goes in a response.
+
+    `token` and any URL that embeds it (`invite_url`) are the credential that
+    completes registration and takes over — or reactivates — a client's portal
+    account (`POST /api/portal/invite/complete` is public, unauthenticated).
+    The only legitimate channel for either value is the Brevo email built by
+    `send_portal_invite_email`. This view is applied at the ROUTER boundary,
+    never inside `InviteService`, because `send_invitation` still needs the
+    raw token/URL to build that email before stripping the HTTP response.
+    """
+    return {key: value for key, value in result.items() if key not in {"token", "invite_url"}}
+
+
 # ================================================
 # TEAM-SIDE ENDPOINTS (Require team auth)
 # ================================================
@@ -182,6 +197,17 @@ async def send_invitation(
         raise HTTPException(
             status_code=403,
             detail="Clients cannot send invitations",
+        )
+
+    # Client-level access check: a human team role alone is not enough — the
+    # caller must be assigned to (or admin over) THIS client. write=True also
+    # denies machine principals by construction (a service-account email
+    # matches neither assigned_to nor created_by). Runs before the try block
+    # below so verify_client_access's HTTPException(403/404) is never
+    # swallowed by the generic `except Exception` inside it.
+    async with db_pool.acquire() as conn:
+        await verify_client_access(
+            request.client_id, current_user, conn, allow_assigned=True, write=True
         )
 
     try:
@@ -222,10 +248,10 @@ async def send_invitation(
             + (" and email sent" if email_sent else " (email not sent - check email service)"),
             "email_sent": email_sent,
             "email_error": email_error if not email_sent else None,
-            "data": {
-                **result,
-                "full_invite_url": full_invite_url,
-            },
+            # `full_invite_url` (built above, purely for the Brevo email) is
+            # deliberately NOT included here — it embeds the same raw token as
+            # `invite_url` and would defeat the point of stripping it.
+            "data": _invitation_public_view(result),
         }
 
     except ValueError as e:
@@ -243,6 +269,7 @@ async def get_client_invitations(
     client_id: int,
     current_user: dict = Depends(get_current_user),
     invite_service: InviteService = Depends(get_invite_service),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Get all invitations for a client (team member action).
@@ -254,6 +281,11 @@ async def get_client_invitations(
             status_code=403,
             detail="Clients cannot view invitation history",
         )
+
+    # See send_invitation for the rationale — same client-level gate, run
+    # before the try block so its HTTPException is never rewritten to a 500.
+    async with db_pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
 
     try:
         invitations = await invite_service.get_client_invitations(client_id)
@@ -274,6 +306,7 @@ async def resend_invitation(
     client_id: int,
     current_user: dict = Depends(get_current_user),
     invite_service: InviteService = Depends(get_invite_service),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Resend invitation to a client (creates new token).
@@ -283,6 +316,11 @@ async def resend_invitation(
             status_code=403,
             detail="Clients cannot resend invitations",
         )
+
+    # See send_invitation for the rationale — same client-level gate, run
+    # before the try block so its HTTPException is never rewritten to a 500.
+    async with db_pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
 
     try:
         result = await invite_service.resend_invitation(
@@ -295,7 +333,7 @@ async def resend_invitation(
         return {
             "success": True,
             "message": "Invitation resent successfully",
-            "data": result,
+            "data": _invitation_public_view(result),
         }
 
     except ValueError as e:

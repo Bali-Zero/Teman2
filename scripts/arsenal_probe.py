@@ -53,6 +53,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -79,9 +80,38 @@ STRICT_FAIL = {AUTH_DEAD, BALANCE_DEAD, MODEL_ERR, UNKNOWN_ERR}
 # A host limitation, not a seat death — never strict-fails regardless of required-ness.
 CONTEXT_LIMITED = {CONTEXT_AUTH, CRED_UNAVAILABLE, NOT_INSTALLED}
 
-# deepseek RETIRED 2026-07-19 (owner order, pre-auth revoked — never top up) —
-# replacement seat kimi already present.
-ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "codex-spark", "ollama", "nlm", "qwen-cloud-code", "jules"]
+# The OLD standalone per-token DeepSeek door was RETIRED 2026-07-19 (owner
+# order, pre-auth revoked — never top up). DeepSeek remains live through the
+# Alibaba Token Plan (TP1) door below; that subscription-backed door is distinct
+# from the retired balance-metered endpoint.
+#
+# Honest design boundary: these are seven independently probeable seats pinned
+# to the live text roster verified from TP1's /models door on 2026-08-23. This
+# probe does NOT claim to enumerate the door dynamically. One model failure must
+# remain one row and must never suppress the other six probes.
+TP1_SEAT_MODELS = {
+    "tp1-deepseek-v4-pro": "deepseek-v4-pro",
+    "tp1-deepseek-v4-flash-0731": "deepseek-v4-flash-0731",
+    "tp1-glm-5.2": "glm-5.2",
+    "tp1-qwen3.8-max": "qwen3.8-max",
+    "tp1-qwen3.7-max": "qwen3.7-max",
+    "tp1-qwen3.7-plus": "qwen3.7-plus",
+    "tp1-qwen3.6-flash": "qwen3.6-flash",
+}
+
+ALL_SEATS = [
+    "claude",
+    "glm",
+    "kimi",
+    "agy",
+    "codex",
+    "codex-spark",
+    "ollama",
+    "nlm",
+    "qwen-cloud-code",
+    "jules",
+    *TP1_SEAT_MODELS,
+]
 
 REQUIRED_SEATS = {
     # kimi PONG-proven on all three machines 2026-07-19 (mini device-code
@@ -116,8 +146,25 @@ DEFAULT_TIMEOUTS = {
     "ollama": 15,
     "nlm": 15,
     "qwen-cloud-code": 15,
+    **{seat: 15 for seat in TP1_SEAT_MODELS},
 }
 OLLAMA_LIVE_GEN_TIMEOUT = 120
+
+TP1_BASE_URL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+TP1_CHAT_COMPLETIONS_URL = f"{TP1_BASE_URL}/chat/completions"
+
+# NOT 8. Three of the seven TP1 models (deepseek-v4-pro, deepseek-v4-flash-0731,
+# glm-5.2) are THINKING models: max_tokens caps reasoning + answer TOGETHER
+# (same trap as the Opus-5 note in CLAUDE.md Sec.5, on another vendor). Measured
+# live 2026-08-23: at max_tokens=8 all three spent the whole budget on
+# reasoning (usage.completion_tokens_details.reasoning_tokens == 8),
+# choices[0].message.content came back empty, and the probe misreported three
+# LIVE seats as UNKNOWN_ERR (superscar #2, inverted — a board that marks live
+# models dead is worse than no board). Measured again with more room: reasoning
+# ran as long as 171 tokens on qwen3.7-max before it answered "PONG". 256
+# leaves headroom above that observed high-water mark. Do not "optimise" this
+# back toward 8 without re-measuring reasoning_tokens on all seven models.
+TP1_PROBE_MAX_TOKENS = 256
 
 PONG_PROMPT = "Reply with exactly: PONG"
 
@@ -391,6 +438,40 @@ def load_env_master_key(var_name: str, path: str = "~/.openclaw/workspace/.env.m
             if value:
                 return value, None
     return None, f"{var_name} not set in {p}"
+
+
+def load_tp1_settings_key(
+    path: str = "~/.qwen/settings.json",
+) -> tuple[Optional[str], Optional[str]]:
+    """Load only env.BAILIAN_TOKEN_PLAN_API_KEY from Qwen's local settings.
+
+    The credential value is returned only to the probe caller. Diagnostics name
+    the missing field or file but never include settings content or a value.
+    """
+    p = Path(os.path.expanduser(path))
+    if not p.exists():
+        return None, f"{p} not found"
+    try:
+        parsed = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        # ValueError covers json.JSONDecodeError AND UnicodeDecodeError (a stray
+        # non-UTF-8 byte in the settings file raises the latter from read_text
+        # itself, before json.loads ever runs) — Kimi round-2 finding #1: an
+        # undecodable file must degrade this one credential lookup to
+        # CRED_UNAVAILABLE (context-limited, non-strict-fail), never propagate
+        # as a raw exception that would otherwise only be caught by the
+        # generic Exception handler in probe_seat() and mis-tagged UNKNOWN_ERR
+        # (strict-fail) for all seven TP1 seats at once.
+        return None, f"{p} unreadable: {type(e).__name__}"
+    if not isinstance(parsed, dict):
+        return None, f"env.BAILIAN_TOKEN_PLAN_API_KEY not set in {p}"
+    env = parsed.get("env")
+    if not isinstance(env, dict):
+        return None, f"env.BAILIAN_TOKEN_PLAN_API_KEY not set in {p}"
+    value = env.get("BAILIAN_TOKEN_PLAN_API_KEY")
+    if not isinstance(value, str) or not value.strip():
+        return None, f"env.BAILIAN_TOKEN_PLAN_API_KEY not set in {p}"
+    return value.strip(), None
 
 
 # ---------------------------------------------------------------- HTTP helper
@@ -773,6 +854,114 @@ def probe_qwen_cloud_code(timeout: float) -> tuple[str, str, int]:
     return status, ev, latency_ms
 
 
+def _tp1_has_live_answer(status_code: Optional[int], full_body: str) -> tuple[bool, Optional[str]]:
+    """Positive proof for the OpenAI-compatible TP1 chat-completions door.
+
+    Returns (is_live, note). Thinking models (deepseek-v4-pro,
+    deepseek-v4-flash-0731, glm-5.2) can return HTTP 200 with an empty
+    `message.content` while `message.reasoning_content` is populated — that is
+    the model spending its whole token budget on reasoning, not a dead seat
+    (see TP1_PROBE_MAX_TOKENS comment above). That shape is LIVE only when the
+    choice's `finish_reason` is NOT "length" — Kimi round-2 finding #2: a
+    length-truncated reasoning-only reply (a throttled/degraded model that
+    burns the WHOLE 256-token budget on reasoning and never reaches an
+    answer) produced nothing usable for a real caller and must not be
+    reported LIVE forever just because reasoning_content is non-empty. A
+    content-bearing answer is unaffected by finish_reason — it already proved
+    the model answered. An HTTP 200 with both content and reasoning_content
+    empty has no positive proof and is not live.
+    """
+    if status_code != 200:
+        return False, None
+    try:
+        parsed = json.loads(full_body)
+        choices = parsed.get("choices")
+        if not isinstance(choices, list) or not choices:
+            return False, None
+        first = choices[0]
+        if not isinstance(first, dict):
+            return False, None
+        message = first.get("message")
+        if not isinstance(message, dict):
+            return False, None
+        content = message.get("content")
+        if isinstance(content, str) and content.strip():
+            return True, None
+        reasoning_content = message.get("reasoning_content")
+        if isinstance(reasoning_content, str) and reasoning_content.strip():
+            if first.get("finish_reason") == "length":
+                return False, "reasoning-only response truncated by finish_reason=length (thinking budget exhausted, no answer reached)"
+            return True, "reasoning-only response, no final content (thinking budget exhausted before answer)"
+        return False, None
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return False, None
+
+
+def _tp1_model_mismatch_note(requested_model: str, full_body: str) -> Optional[str]:
+    """Kimi round-2 finding #4: a gateway that silently reroutes the requested
+    slug to a fallback still returns HTTP 200 + non-empty content, so
+    _tp1_has_live_answer alone reports LIVE for the SEAT WE THINK WE ASKED FOR.
+    This adds a non-fatal note when the response's own echoed `model` field
+    disagrees with what we requested — informational only, never changes the
+    LIVE/dead verdict (a gateway is free to omit or normalize the field)."""
+    try:
+        parsed = json.loads(full_body)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    echoed = parsed.get("model")
+    if isinstance(echoed, str) and echoed and echoed != requested_model:
+        return f"requested {requested_model} but response echoed model={echoed}"
+    return None
+
+
+def probe_tp1_model(model: str, timeout: float) -> tuple[str, str, int]:
+    """Probe one TP1 text model; credentials and failures are model-local."""
+    t0 = time.monotonic()
+    token, cred_note = load_tp1_settings_key()
+    if token is None:
+        return (
+            CRED_UNAVAILABLE,
+            cred_note or "TP1 credential unavailable",
+            int((time.monotonic() - t0) * 1000),
+        )
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": model,
+        "max_tokens": TP1_PROBE_MAX_TOKENS,
+        "messages": [{"role": "user", "content": PONG_PROMPT}],
+    }
+    status_code, full_body, ev = http_post_json(
+        TP1_CHAT_COMPLETIONS_URL,
+        headers,
+        body,
+        timeout,
+        [token],
+    )
+    latency_ms = int((time.monotonic() - t0) * 1000)
+    if status_code is None:
+        status = TIMEOUT if "timed out" in ev else UNKNOWN_ERR
+        return status, f"{model}: {ev}", latency_ms
+    live, note = _tp1_has_live_answer(status_code, full_body)
+    status = classify_generic(
+        f"HTTP {status_code} {full_body}",
+        live,
+        "tp1",
+        is_ssh_context(),
+    )
+    evidence = f"{model}: HTTP {status_code} {ev}"
+    if note:
+        evidence = f"{evidence} ({note})"
+    mismatch_note = _tp1_model_mismatch_note(model, full_body)
+    if mismatch_note:
+        evidence = f"{evidence} ({mismatch_note})"
+    return status, evidence, latency_ms
+
+
 PROBE_FUNCS: dict[str, Callable[..., tuple[str, str, int]]] = {
     "claude": probe_claude,
     "glm": probe_glm,
@@ -784,6 +973,10 @@ PROBE_FUNCS: dict[str, Callable[..., tuple[str, str, int]]] = {
     "ollama": probe_ollama,
     "nlm": probe_nlm,
     "qwen-cloud-code": probe_qwen_cloud_code,
+    **{
+        seat: partial(probe_tp1_model, model)
+        for seat, model in TP1_SEAT_MODELS.items()
+    },
 }
 
 

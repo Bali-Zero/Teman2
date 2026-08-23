@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed preflight for the Visa Oracle analytics 90-day TTL attestation.
+"""Fail-closed preflight for the Visa Oracle analytics 365-day (12-month) TTL attestation.
 
 The frontend destination is intentionally opaque in this repository.  This
 tool therefore does not guess a vendor or mutate a dataset. It validates the
@@ -22,7 +22,16 @@ from typing import Any
 
 logger = logging.getLogger("visa_oracle.analytics_retention_preflight")
 
-EXPECTED_TTL_DAYS = 90
+# 12 months, per Zero's 2026-08-20 retention ruling (DPIA V2 §A, signed at
+# DPIA V2 §8 — docs/audits/2026-08-20-visa-oracle-dpia-v2.md). Expressed as a
+# day count (365, not a separate months field) because the attestation schema
+# below is day-granular throughout (`retention.ttl_days`, `MAX_EVIDENCE_AGE`
+# in days) and the destination's automatic-TTL setting is itself configured
+# in days by every provider this repo has surveyed — introducing a parallel
+# months unit would need its own conversion and its own bug class for zero
+# benefit. Supersedes the old provisional 90-day placeholder this constant
+# held before the ruling.
+EXPECTED_TTL_DAYS = 365
 MAX_EVIDENCE_AGE = timedelta(days=7)
 MAX_ATTESTATION_BYTES = 16_384
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
@@ -138,7 +147,7 @@ def load_attestation(
     retention = _require_mapping(root.get("retention"), "retention")
     _require_exact_keys(retention, RETENTION_KEYS, "retention")
     if type(retention.get("ttl_days")) is not int or retention["ttl_days"] != EXPECTED_TTL_DAYS:
-        raise PreflightError("analytics TTL must equal 90 days")
+        raise PreflightError("analytics TTL must equal 365 days (12 months, DPIA V2 §A)")
     if retention.get("mode") != "AUTOMATIC_TTL":
         raise PreflightError("analytics retention must be enforced by automatic TTL")
 

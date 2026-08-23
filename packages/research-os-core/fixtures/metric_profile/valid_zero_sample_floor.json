@@ -1,0 +1,78 @@
+{
+  "metric_profile_id": "a0000000-0000-4000-8000-000000000003",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "metric_name": "com.example.retention_rate",
+  "question": "Does the loyalty program raise 90-day retention?",
+  "unit": "ratio",
+  "numerator": {
+    "event": "com.example.retained_90d"
+  },
+  "denominator": {
+    "event": "com.example.loyalty_joined"
+  },
+  "window": {
+    "type": "rolling",
+    "duration": "P90D",
+    "timezone": "UTC",
+    "late_arrival_policy": "com.example.no_late_arrivals"
+  },
+  "baseline": {
+    "source": "com.example.no_loyalty_cohort",
+    "window": "com.example.trailing_90d",
+    "frozen_at": "2026-01-15T00:00:00Z"
+  },
+  "evaluation_data": {
+    "dataset_ref": {
+      "dataset_id": "com.example.retention_events",
+      "version": "1",
+      "object_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "split": {
+      "strategy": "com.example.random",
+      "assignment_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "exclusion_rules": []
+  },
+  "minimum_sample": {
+    "overall": 0
+  },
+  "estimator": {
+    "method": "kaplan_meier",
+    "version": "1.0.0",
+    "confidence_interval_or_bootstrap": {
+      "method_note": "full_curve"
+    }
+  },
+  "subgroups": [],
+  "guardrails": [],
+  "decision_rule": "value >= 0.6",
+  "missing_data_policy": "impute_registered",
+  "owner_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "verification",
+    "pseudonym": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "validity": {
+    "valid_from": "2026-01-15T00:00:00Z",
+    "expires_at": "2026-02-15T00:00:00Z"
+  },
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "created_at": "2026-01-15T00:00:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "public_record",
+    "legal_hold": false
+  },
+  "object_hash": "d1d27846442f21e3d7fdc5fbb4aa50a1981a7b6a6cce599d7e7bdc0955775bb1"
+}

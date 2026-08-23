@@ -60,8 +60,11 @@ async def _ok_scene(ctx, *, shot_index, positive_prompt, timeout_s=30):
     return f"scene-{shot_index}"
 
 
-async def _ok_video(ctx, *, start_image_media_id, scene_id, prompt, timeout_s=180):
+async def _ok_video(ctx, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
     # echo the start image id back so the test can assert which id Veo received
+    # (**_kwargs swallows shot_index, added 2026-08-23 for the credit-ledger fix —
+    # these fakes replace _generate_video's real spend-recording body entirely,
+    # they don't need to assert on the value)
     return (f"wf-{start_image_media_id}", f"vmedia-{start_image_media_id}")
 
 
@@ -77,7 +80,8 @@ async def test_anchor_uploaded_and_used_as_start_image(tmp_path: Path) -> None:
     gen_img = AsyncMock(return_value="should-not-be-used")
     captured = {}
 
-    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180):
+    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+        # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         captured["start"] = start_image_media_id
         return ("wf", "vmedia")
 
@@ -115,7 +119,8 @@ async def test_explicit_start_image_wins_over_anchor(tmp_path: Path) -> None:
     upload = AsyncMock(return_value="anchor-media")
     captured = {}
 
-    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180):
+    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+        # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         captured["start"] = start_image_media_id
         return ("wf", "vmedia")
 
@@ -137,7 +142,8 @@ async def test_no_anchor_falls_back_to_text_prompt(tmp_path: Path) -> None:
     upload = AsyncMock(return_value="should-not-upload")
     captured = {}
 
-    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180):
+    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+        # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         captured["start"] = start_image_media_id
         return ("wf", "vmedia")
 

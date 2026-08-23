@@ -8,9 +8,9 @@ Status: **DRAFT FOR SIGNATURE / STILL NO-GO FOR ENFORCE**
   owner's retention ruling)
 - Privacy authority: `docs/policies/visa-oracle-privacy-policy-v1.json`
 - Product owner: Zero
-- Controller legal entity: **OPEN — Zero must record the exact entity (business fact,
-  Legge 5; nothing in the repository can substitute for it)**
-- Privacy/DPO owner: **OPEN — Zero must name the person before approval**
+- Controller legal entity: **PT Bali Nol Impresariat** (Zero ruling, 2026-08-23, Legge 5)
+- Privacy/DPO owner: **Zainal Abidin** (Zero ruling, 2026-08-23, Legge 5)
+- Incident contacts: **OPEN — Zero must name them before approval**
 
 V1's processing description (§1), data-flow table (§2), affected-people analysis (§3),
 automated-triage safeguards (§4) and rights/deletion model (§5) remain accurate and are
@@ -58,7 +58,7 @@ V1 §7 listed 8 mandatory attachments. State as of 2026-08-20, each with its rec
 
 | #   | V1 requirement                                                                                                 | State                                                                   | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | --- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Controller entity, privacy owner, incident contacts                                                            | **OPEN — Zero**                                                         | Business facts only Zero can record; slots in the header above.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 1   | Controller entity, privacy owner, incident contacts                                                            | **CLOSED for entity+DPO (2026-08-23); incident contacts OPEN — Zero**   | Business facts only Zero can record; slots in the header above.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2   | Processor/subprocessor register                                                                                | **DRAFTED (Annex 1 below), two rows still UNKNOWN**                     | Annex 1; the analytics destination row is the same Blocker the retention runbook names in its blocker table (`docs/runbooks/visa-oracle-retention-operations.md`, "Analytics destination                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | UNKNOWN" row). |
 | 3   | Migrations 264–266 applied + Privacy Policy V1 registration                                                    | **CLOSED**                                                              | Migrations 264–267 applied in production, 268 hand-cured then codified (`.agents/skills/visaoracle/CURRENT_STATE.md:754-757`); policy registered via `register_privacy_policy.py` ceremony with retention-gate query `count=1` for `environment=PRODUCTION` (`CURRENT_STATE.md:619-624`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | 4   | Privilege preflight, no combined pack-write/activation login                                                   | **CLOSED**                                                              | `operational_preflight.py:301-320` (`membership:no-pack-writer-activation-combination`), enforced at activation by `activate_pack.py:166-193` (`session_user`-bound, refuses combined or superuser logins in PRODUCTION); production preflight green (`CURRENT_STATE.md:616-618`); every activation since (seq-3, 10, 11) ran with distinct ephemeral roles minted and dropped inside the ceremony.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -110,7 +110,8 @@ Referencing V1 §6 rows verbatim:
 
 ## E. What remains before §8 can be signed (the honest short list)
 
-1. **Zero**: controller legal entity + DPO/privacy owner + incident contacts (header).
+1. **Zero**: controller legal entity + DPO/privacy owner — **DONE 2026-08-23** (header
+   above). Incident contacts remain **OPEN — Zero must name them before approval**.
 2. **Zero + session**: identify the real analytics destination behind
    `NEXT_PUBLIC_ANALYTICS_ENDPOINT`; then the session produces the 12-month deletion
    attestation per the runbook contract. Until then the telemetry row stays High.
@@ -120,17 +121,67 @@ Referencing V1 §6 rows verbatim:
    way; produce the two V1 §7.7 sub-requirements this V2's first draft dropped and the
    adversarial review restored — a PII-free-logs production smoke record and a
    desktop/mobile accessibility evidence record.
-4. **Session, gated on §8 signature**: amend the analytics-TTL attestation vehicle to
-   the ruled 12 months — `docs/runbooks/visa-oracle-retention-operations.md` §"Evidence
-   contract" ("exactly 90 days") and `scripts/visa_oracle_analytics_retention_preflight.py`
-   (`EXPECTED_TTL_DAYS = 90`) — in one PR, citing this DPIA §A as the authority. Until
-   amended, no 12-month attestation can pass the gate (§A conflict, disclosed).
-5. **Session**: ledger the 2026-08-20 TTL ruling in the modus PENDING-ARMS ledger (the
-   other two same-day rulings are ledgered; this one was recorded only here until this
-   PR, which adds the ledger row).
-6. **Signatures** (§8 of V1, unchanged): Privacy/DPO owner, Security/Infra owner,
-   Product owner (Zero). Approval closes the privacy-impact gate ONLY — the ENFORCE flip
-   remains a separate authorization behind the objective G-a/G-b/G-c/G-d gate.
+4. **Session, gated on §8 signature — PREPARED, NOT MERGED (PR #4593)**: amends the
+   analytics-TTL attestation vehicle to the ruled 12 months —
+   `docs/runbooks/visa-oracle-retention-operations.md` §"Evidence contract" (was "exactly
+   90 days", now 365) and `scripts/visa_oracle_analytics_retention_preflight.py`
+   (`EXPECTED_TTL_DAYS` was 90, now 365), citing this DPIA §A as the authority, with
+   guilt+innocence tests proving a 12-month attestation now passes and a 90-day one is
+   now rejected. The PR is deliberately held unarmed (no auto-merge) and merges only
+   after §8 below is signed — amending the gate's diff before the signature is fine to
+   prepare, but flipping it live ahead of the ruling's own signature would be the gate
+   drifting ahead of its authority, so the merge itself is the gated step, not the diff.
+5. **Session — DONE (this PR)**: ledgered the 2026-08-20 TTL ruling in the modus
+   PENDING-ARMS ledger (the other two same-day rulings were already ledgered; this row
+   references PR #4593 as the prepared-but-gated amendment and stays OPEN until §8 is
+   signed and the PR merges).
+6. **Signatures (§8 below, this file)** — **DONE 2026-08-23**: Product owner (Zero)
+   signed in person; Privacy/DPO owner and Security/Infra owner lines are recorded as
+   adopted on Zero's instruction (Legge 5), not personally executed — see §8's
+   provenance note. Approval closes the privacy-impact gate ONLY — the ENFORCE flip
+   remains a separate authorization behind the objective G-a/G-b/G-c/G-d gate. This
+   section supersedes V1 §8 as the operative signing block; V1 §8 stays on disk
+   unchanged, as the historical record it always was. A personally-executed DPO
+   signature, if required for regulatory purposes, is a separate act still outstanding.
+
+## 8. Decision and signatures
+
+Current decision: **DO NOT ENFORCE — open high residual risks remain** (Annex 1's
+analytics-destination row and the cross-border processor register are both still
+`OPEN`/`UNKNOWN`; see §D).
+
+Signing this section approves the DPIA V2 privacy-impact assessment as of 2026-08-20/23
+and its §A retention ruling. It does **not** authorize `VISA_ENGINE_EVALUATE_MODE=ENFORCE`
+— that stays a separate, later authorization gated on the objective G-a/G-b/G-c/G-d
+volumes (§7 item 8 / independent review), evaluated on its own evidence when it comes up.
+
+By signing, the Privacy/DPO owner and Product owner are accepting the residual risks
+recorded in §D as of this assessment, in particular the two rows still scored **High —
+UNCHANGED**: raw facts leaking through logs/analytics until the destination is proven
+(§D row 1), and the cross-border processor/subprocessor register being incomplete until
+Annex 1's `OPEN` contract/safeguard cells are filled (§D row 8) — plus the Medium rows
+still open (child-case handoff sourcing defect, DSR rehearsal record missing, structural
+bound on unsupported-recommendation harm).
+
+- Controller legal entity: PT Bali Nol Impresariat
+- Privacy/DPO owner: Zainal Abidin
+- Privacy/DPO owner signature: **not personally executed** — recorded as adopted on
+  the product owner's instruction (Zero, 2026-08-23, Legge 5, verbatim: "metti data
+  oggi alla DPIA con firma fatta"). Zainal Abidin has not personally signed this
+  document. Date: 2026-08-23 · Decision: APPROVED (adopted on instruction, not
+  personally signed)
+- Security/Infra owner signature: **not personally executed** — no individual has
+  been named Security/Infra owner on this DPIA; recorded as adopted on the product
+  owner's instruction (Zero, 2026-08-23, Legge 5), same basis as above. Date:
+  2026-08-23 · Decision: APPROVED (adopted on instruction, not personally signed)
+- Product owner (Zero) signature: **Zero** — signed in person, this is the owner's
+  own signature on his own instruction. Date: 2026-08-23 · Decision: APPROVED
+
+**Provenance note:** the Privacy/DPO and Security/Infra lines above record that Zero
+instructed this document be marked signed and dated; they are not a report that
+Zainal Abidin or any named Security/Infra owner personally executed a signature. If a
+personally-executed DPO signature is required for regulatory purposes (e.g., a filing
+that names the DPO as attestor), that signature is a separate act still outstanding.
 
 ## Annex 1 — Processor / subprocessor register (draft)
 

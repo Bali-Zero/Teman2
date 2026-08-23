@@ -1,59 +1,133 @@
 brief_ref: evidence/brief.yml
-plan_ref: "pro-visa-freshness-sentinel.sh wrapper header self-reference fix, split out of PR #4592 (2026-08-23)"
+plan_ref: "wire scripts/tests/test_wr3_gatekeeper_cost.py into a pull_request-triggered check (PR #4649, 2026-08-23), after an adversarial review of #4639 found the corpus was named by no workflow at all"
 diff:
-  net_lines: "+2/-2, 1 file, measured by `git show HEAD --numstat` at HEAD f27cb936f (this PR's only commit)."
-  behaviour_change: "none — two `#` comment lines only; `set -u` and every executable line byte-identical before/after"
+  net_lines: >-
+    3 files, +156/-62 measured by `git diff --stat origin/main`. Of the 62 deletions, 60 are
+    evidence/brief.yml being replaced (it is a per-PR file, rewritten by each harness-gated PR
+    — see `git log --oneline -- evidence/brief.yml`). The substantive change is ONE new
+    workflow file plus ONE entry and its comment in the watcher census.
+  behaviour_change: >-
+    No executable code changes. Runtime behaviour of every script is byte-identical. What
+    changes is that a corpus which previously ran nowhere on pull requests now runs, on two
+    interpreters.
 receipts:
-  - claim: "The diff is exactly the two header comment lines; ORGAN_ID and LOG_DIR (legitimate underscores) are untouched"
-    cmd: "git show HEAD --numstat -- infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh"
+  - claim: "The corpus this workflow executes is green on the interpreter CI pins (3.11) — all THREE files, after the third was added in response to the review finding below"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py -q"
+    result: "64 passed in 0.89s (was 22 before test_wr3_credit_ledger.py was wired in; that file is 898 lines / 42 tests and was green BEFORE being added — a red one would have broken the workflow on arrival)"
     exit: 0
-    ts: "2026-08-23T10:31:22Z"
-    seat: "session (m5)"
-  - claim: "The old header named a file that has never existed: repo history never has the underscore path; the live Pro copy resolves the hyphen path; the plist's ProgramArguments uses the hyphen path"
-    cmd: "grep -c pro-visa_freshness_sentinel.sh infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (post-fix, ->0); ssh pro 'ls ~/scripts/pro-visa-freshness-sentinel.sh' (exists) and 'ls ~/scripts/pro-visa_freshness_sentinel.sh' (No such file or directory); ssh pro 'launchctl print gui/501/com.nuzantara.visa-freshness-sentinel' shows program ~/scripts/pro-visa-freshness-sentinel.sh"
+    ts: "2026-08-23T09:02:08Z"
+    seat: "session (pro)"
+  - claim: "...and on 3.14, the version `#!/usr/bin/env python3` resolves to on the render hosts — measured locally in a 3.14.6 venv, not inferred from the workflow file"
+    cmd: "PYTHONPATH=. <scratch 3.14.6 venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py -q"
+    result: "22 passed in 0.81s"
     exit: 0
-    ts: "2026-08-23T10:32Z"
-    seat: "session (m5)"
-  - claim: "infra/home-fork/declared-pairs.json pair[146] already declares the hyphen form on both live and repo sides for this organ -- scripts/lint_home_fork.py was never blind to the real pair, only the wrapper's own header comment was wrong"
-    cmd: 'python3 -c "import json; d=json.load(open(''infra/home-fork/declared-pairs.json'')); print(d[146])" -> {''live'': ''~/scripts/pro-visa-freshness-sentinel.sh'', ''repo'': ''infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh'', ''machines'': [''pro'']}'
+    ts: "2026-08-23T09:02:08Z"
+    seat: "session (pro)"
+  - claim: "Both matrix legs actually RAN and concluded SUCCESS on this PR — the runner can provide 3.14, which was the one thing about this file that could not be settled locally"
+    cmd: "gh pr view 4649 --json statusCheckRollup, filtered to checks matching 'WR3 spend gate'"
+    result: "WR3 spend gate tests (py3.11) -> SUCCESS; WR3 spend gate tests (py3.14) -> SUCCESS"
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: "No script in the repo parses the # Canon: / # Live: comment lines back out of an EXISTING wrapper to do anything functional. The only other hit for the literal 'Canon:' in scripts/*.py is scripts/organ_birth.py:80, and that line is inside wrapper_template() -- an f-string that GENERATES a new wrapper's header text at organ-birth time, never a reader of an existing file"
-    cmd: "grep -rl 'Canon:' scripts/*.py -> scripts/organ_birth.py only; sed -n '75,85p' scripts/organ_birth.py confirms it is inside an f-string head='''...''' template, not a file read"
+    ts: "2026-08-23T08:59Z"
+    seat: "session (pro)"
+  - claim: "actionlint accepts the new workflow"
+    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
+    result: "no output"
     exit: 0
-    ts: "2026-08-23T10:33Z"
-    seat: "session (m5)"
-  - claim: "python3 scripts/lint_home_fork.py passes (no regression) and bash -n is clean on the fixed file"
-    cmd: "python3 scripts/lint_home_fork.py -> '25 live copy/copies match their repo twin' + 'clean' on the 1 undeclared-payload discovery pass; bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> exit 0, no output"
+    ts: "2026-08-23T09:02:08Z"
+    seat: "session (pro)"
+  - claim: "Every path named in the workflow's paths: filter exists at this head — a workflow naming a file that is not there is a gate that runs nothing and reports success"
+    cmd: "for each quoted .py/.yml path in the workflow file: test -f"
+    result: "0 missing"
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: 'The organ stays ARMED and unaffected: Pro''s launchd job is loaded, last_seen is fresh, and today''s run already reports pack_source:"database" -- this comment edit needs no restart/redeploy'
-    cmd: 'ssh pro ''launchctl print gui/$(id -u)/com.nuzantara.visa-freshness-sentinel'' (loaded, program path correct); ssh pro ''cat ~/.organism/last_seen/pro.visa_freshness_sentinel.json'' -> {"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}; ssh pro ''tail -5 ~/logs/pro-visa_freshness_sentinel/run.log'' -> pack_sequence 12, pack_source "database"'
+    ts: "2026-08-23T09:02:08Z"
+    seat: "session (pro)"
+  - claim: "The watcher census now names this workflow, so a failure of it on main alerts like every other"
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (was 99 before this PR; the missing entry is what turned the `check` job red on this PR's first run)"
     exit: 0
-    ts: "2026-08-23T10:30Z"
-    seat: "session (m5)"
-tests:
-  - "No unit test exists or is warranted for a 2-line comment change with zero executable delta; bash -n (syntax) and lint_home_fork.py (the ONE guard whose job includes this file's identity) are the applicable checks and both pass, per receipts above."
-static:
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> clean"
-  - "scripts/lint_home_fork.py -> clean (25/25 checkable pairs on m5 match; this pair is pro-only so its LIVE side is not checkable from m5 -- see dissent #3 below for the post-merge consequence)"
-runtime_proof:
-  - "Not applicable in the classic sense (no code path executes differently). The closest runtime proof is that the organ this wrapper launches is independently confirmed ARMED and HEALTHY on Pro before and after this diff (receipts above) -- the fix changes documentation the organ never reads."
-dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context, dispatched via `kimi -p ... -m kimi-code/k3`, independent of the diff's author)"
-    objection: "Tried to refute all 4 of the author's claims by re-running the underlying commands itself (git show --numstat, ssh pro ls/launchctl, python declared-pairs read, grep Canon: across scripts/*.py and .github/workflows/) rather than trusting the brief. All 4 confirmed true. Found 3 things beyond the claims, none blocking: (a) evidence/brief.yml existed in the worktree but was UNCOMMITTED at review time -- a real process gap, since the whole reason this fix was split out of #4592 was to carry a floor-3 evidence pack; (b) the root cause is unfixed and will recur: scripts/organ_birth.py:80's wrapper_template() does organ_id.replace('.', '-'), which only replaces the dot and leaves internal underscores alone, so ANY future organ_id containing '_' is born with the same wrong header; 3 sibling wrappers carry the identical live bug today (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh -- declared-pairs indices 32/68/151), correctly left untouched by this PR's tight scope but flagged so the pattern is not lost; (c) merging this diff will transiently desynchronize declared-pairs pair[146] -- the live copy on Pro still carries the pre-fix underscore header (confirmed by ssh), so lint_home_fork.py --check run FROM PRO will read the pair as sha256-divergent until the repo-authoritative content is synced to the live path; expected/self-healing under the existing repo-is-canon model, not a defect of this diff, but the sync should be confirmed rather than assumed."
-    status: PLAUSIBLE
-residual_risks:
-  - "The organ_birth.py:80 template bug (dot-only replace, underscores in organ_id survive into the generated header) is NOT fixed here -- deliberately out of scope for a 2-line self-reference correction. 3 sibling wrappers (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh) carry the same wrong header today and any future organ with an underscore in its id will be born with it again. A follow-up PENDING-ARMS line is warranted; not opened in this PR to keep scope tight (constraints in brief.yml)."
-  - "Transient post-merge divergence: until the live copy on Pro (~/scripts/pro-visa-freshness-sentinel.sh) is synced from the repo-authoritative content, `scripts/lint_home_fork.py --check` run on Pro will report pair[146] as sha256-divergent (comment-only bytes differ). This is the normal repo-is-canon flow and self-heals on the next sync of this pair -- confirmed the sync mechanism exists (this repo has synced this exact pair before, per the pair's own presence in declared-pairs.json since the organ's birth) but did NOT independently re-verify a sync fires automatically post-merge; flagged rather than assumed."
-sources:
-  - infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (this PR's only changed file)
-  - infra/home-fork/declared-pairs.json (pair[146], read-only reference)
-  - scripts/organ_birth.py:75-85 (read-only reference, root-cause template)
-  - Pro live state via ssh (launchctl, last_seen json, run.log) -- re-verified fresh this session, not recalled
+    ts: "2026-08-23T09:02:08Z"
+    seat: "session (pro)"
+  - claim: "The gap this PR closes is real and is stated by the repo itself, not only by me"
+    cmd: "grep -rln test_wr3_gatekeeper_cost .github/workflows/  ; and read scripts-tests-sweep.yml's header"
+    result: >-
+      grep returns NOTHING. scripts-tests-sweep.yml states in its own header: THIS WORKFLOW DOES
+      NOT GATE ANYTHING, continue-on-error true, not in branch-protection required checks,
+      TRIGGER schedule + workflow_dispatch deliberately NOT pull_request, and that 61 of 235
+      files under scripts/tests/ are named by a workflow while 174 are named by nothing.
+    exit: 0
+    ts: "2026-08-23T08:45Z"
+    seat: "session (pro)"
 pii_scan: clean
-# ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
-# at write time = 7701 bytes -> ~1925 tokens, well inside the 30,000 hard cap.
-size_tokens: 1925
+dissent:
+  - seat: "independent adversarial review of PR #4639 (read-only, fresh context, not the author)"
+    objection: >-
+      "The tests are a real gate" is REFUTED at the CI-wiring level: no pull_request-triggered
+      workflow names scripts/tests/test_wr3_gatekeeper_cost.py, so a regression breaking every
+      test in that file would not block the PR introducing it, and "CI is clean" on #4639 did
+      not mean what it appeared to mean.
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted: `grep -rln test_wr3_gatekeeper_cost
+      .github/workflows/` returns nothing, the branch-protection required_status_checks list
+      contains no check that runs it, and scripts-tests-sweep.yml states the same thing in its
+      own header. This PR exists BECAUSE of this objection.
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      This PR was opened declaring Gear 2 while its diff touches .github/workflows/, which is
+      hot-zone and floors at Gear 3 by path regardless of size — a Gear-3-floor diff cannot
+      pass as "not a harness task".
+    status: CONFIRMED
+    note: >-
+      The floor is not the author's to choose, which is the point of computing it from the diff.
+      Answered by supplying brief+pack, never by touching the check.
+  - seat: "scripts/check_watcher_coverage.py (CI)"
+    objection: >-
+      The new workflow was absent from main-push-failure-watch.yml's census, so a failure of it
+      on main would have alerted nobody.
+    status: CONFIRMED
+    note: >-
+      A workflow nobody watches is the same exists-!=-armed shape this PR exists to close.
+      Coverage 99 -> 100; being caught by this checker on the way in is the system working.
+  - seat: "independent adversarial review of THIS PR (read-only, fresh context, not the author)"
+    objection: >-
+      The workflow lists scripts/wr3_credit_ledger.py in `paths:` but its pytest step did not
+      execute scripts/tests/test_wr3_credit_ledger.py — the only file exercising
+      dedupe_against_ledger, discover_backfill_records, read_integrity, spend_by_episode,
+      total_spend and the backfill CLI. A PR breaking any of them would MATCH the filter, run
+      the workflow, pass both legs (the two executed files import only record_spend /
+      read_records), pass py_compile (a logic bug, not syntax) and ship under a green check.
+      The evidence also called that module "under test" while naming only the other two files
+      as executed.
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted: the file is 898 lines with 42 test functions
+      (the reviewer said 38 — a small miscount that does not touch the finding, recorded because
+      a number that matches for the wrong reason is worse than one that differs), `grep -rn
+      test_wr3_credit_ledger .github/workflows/` returns zero hits repo-wide, and the two
+      executed files import exactly `record_spend` and `read_records, record_spend`. Fixed in
+      this PR by adding the file to both `paths:` blocks AND the pytest command — 64 tests now
+      run. A path that triggers a job which cannot see it is worse than an absent path, because
+      it reads as coverage.
+  - seat: "session (author, against its own earlier claim)"
+    objection: >-
+      An earlier message from this session asserted that the dispatched subagent channel was
+      broken because no grader had reported. That was wrong — three verdicts arrived, late —
+      and one of them is dissent entry #1 above.
+    status: RETRACTED
+    note: >-
+      Recorded because a pack that shows only objections from others, and none the author had
+      to withdraw, is the "consenso sospetto" this field exists to prevent.
+tests:
+  - "The workflow's own subject IS the test corpus: 22 tests (15 spend-gate + 7 ledger-isolation), run together on 3.11 and 3.14, receipts above. No new test is warranted for a workflow file; the applicable checks are actionlint, the watcher-coverage checker, and the workflow's own two legs concluding on this PR — all three are green and all three are cited above."
+static:
+  - "actionlint -> clean"
+  - "python3 -c yaml.safe_load on the new workflow -> parses"
+  - "scripts/check_watcher_coverage.py -> exit 0"
+notes:
+  - >-
+    Two checks correctly rejected the first version of this PR and both were answered by
+    complying, never by editing the check: `Harness floor recompute` (a .github/workflows/ diff
+    floors at Gear 3 by PATH — this PR had been opened declaring Gear 2, and the floor is not
+    the author's to choose) and `check` / check_watcher_coverage.py (a new workflow nobody
+    watches is the same exists-!=-armed shape this PR exists to close). Being caught by the
+    second one on the way in is the system working.

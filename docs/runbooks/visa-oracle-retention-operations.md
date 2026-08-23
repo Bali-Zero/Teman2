@@ -12,15 +12,15 @@ being retried until it disappears; the next bounded attempt is the next
 
 ## Current gate
 
-| Control                                  | Repository state                                                                         | Production state     |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------- |
-| Policy-bound decision/idempotency worker | DONE in Linea A; dry-run default                                                         | Not yet armed        |
-| 15-minute one-shot manifest              | DONE as `.plist.example`                                                                 | Not installed/loaded |
-| Non-overlap                              | DONE via existing PID lock in `cron-wrapper.sh`                                          | Not yet observed     |
-| Nonzero/backlog/lag alert                | DONE: worker exit `2` flows to existing `tg_notify.py` P0 path                           | Not yet observed     |
-| Missed-run evidence                      | DONE: Cell watches the wrapper heartbeat at 30m warning / 60m critical                   | Not yet observed     |
-| Analytics destination                    | UNKNOWN: `NEXT_PUBLIC_ANALYTICS_ENDPOINT` does not identify a provider/dataset           | Blocker              |
-| PII-free telemetry TTL                   | Separate fail-closed preflight requires a fresh operator attestation for exactly 90 days | Blocker              |
+| Control                                  | Repository state                                                                                                                    | Production state     |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Policy-bound decision/idempotency worker | DONE in Linea A; dry-run default                                                                                                    | Not yet armed        |
+| 15-minute one-shot manifest              | DONE as `.plist.example`                                                                                                            | Not installed/loaded |
+| Non-overlap                              | DONE via existing PID lock in `cron-wrapper.sh`                                                                                     | Not yet observed     |
+| Nonzero/backlog/lag alert                | DONE: worker exit `2` flows to existing `tg_notify.py` P0 path                                                                      | Not yet observed     |
+| Missed-run evidence                      | DONE: Cell watches the wrapper heartbeat at 30m warning / 60m critical                                                              | Not yet observed     |
+| Analytics destination                    | UNKNOWN: `NEXT_PUBLIC_ANALYTICS_ENDPOINT` does not identify a provider/dataset                                                      | Blocker              |
+| PII-free telemetry TTL                   | Separate fail-closed preflight requires a fresh operator attestation for exactly 365 days (12 months, DPIA V2 §A ruling 2026-08-20) | Blocker              |
 
 The scheduler manifest remains dry-run because it has not been staged or
 approved. Analytics TTL is a separate product ENFORCE gate: it must never
@@ -60,7 +60,7 @@ Required proof:
 
 - the destination identifier is SHA-256 hashed;
 - event scope is exactly `visa_oracle_v2_*`;
-- automatic TTL is exactly 90 days;
+- automatic TTL is exactly 365 days (12 months, DPIA V2 §A ruling 2026-08-20);
 - a hashed ingestion receipt proves the expired synthetic event was present;
 - that same synthetic event is absent after the TTL;
 - an unexpired synthetic control remains present;

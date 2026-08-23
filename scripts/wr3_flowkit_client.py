@@ -42,11 +42,34 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
+from wr3_credit_ledger import CLIP_COST_CR, record_spend
+from wr3_placeholder_clip import render_placeholder_clip
+from wr3_spend_authority import assert_spend_authorized, zero_spend_enabled
+
 DEFAULT_ENDPOINT = os.environ.get("WR3_FLOWKIT_ENDPOINT", "http://127.0.0.1:8100")
 DEFAULT_PAYGATE = os.environ.get("WR3_FLOWKIT_PAYGATE", "PAYGATE_TIER_ONE")
 PER_CLIP_TIMEOUT_S = int(os.environ.get("WR3_FLOWKIT_TIMEOUT_S", "300"))
-# Tier 1 fast portrait: 20 credits/clip (empirical 2026-05-20).
-DEFAULT_CLIP_COST_CR = int(os.environ.get("WR3_FLOWKIT_CLIP_COST", "20"))
+# SSOT is wr3_credit_ledger.CLIP_COST_CR (2026-08-23 fix) — this derives
+# from it rather than re-reading WR3_FLOWKIT_CLIP_COST itself, so this
+# constant and wr3_gatekeeper_check.py's CR_PER_CLIP can never disagree
+# with EACH OTHER again. Same env var, same default — runtime behaviour is
+# unchanged. The default (20) is a single empirical observation from
+# 2026-05-20 on some paygate tier, NOT a verified cost for the tier this
+# client actually requests below (`PAYGATE_TIER_ONE`) — the live gateway's
+# traffic is ~81% a DIFFERENT tier (`PAYGATE_TIER_TIER1P5`, measured
+# 2026-08-23), and per-clip cost is tier-dependent with no tier→credits
+# table anywhere in this codebase. See wr3_credit_ledger.py's module
+# docstring for the full measurement. Treat 20 as an unverified default,
+# not a known truth.
+DEFAULT_CLIP_COST_CR = CLIP_COST_CR
+# UNMEASURED PLACEHOLDER — deliberately 0, deliberately an under-count, NOT a
+# measurement. We do not yet know how many Flow credits
+# /api/flow/generate-image actually consumes per call. Every real-mode ledger
+# row for the image charge (source="_generate_start_image") is tagged with
+# this constant so the gap stays visible in `wr3_credit_ledger.py report`
+# instead of being silently absorbed into DEFAULT_CLIP_COST_CR. Override via
+# WR3_FLOWKIT_IMAGE_COST_CR once the real per-call cost is measured.
+DEFAULT_IMAGE_COST_CR = int(os.environ.get("WR3_FLOWKIT_IMAGE_COST_CR", "0"))
 
 # Backwards-compat alias — older callers passed plan="pro".
 DEFAULT_PLAN = DEFAULT_PAYGATE
@@ -322,8 +345,24 @@ async def _generate_start_image(
     *,
     prompt: str,
     timeout_s: int = 90,
+    shot_index: int | None = None,
 ) -> str:
-    """POST /api/flow/generate-image — returns media_id (synchronous response)."""
+    """POST /api/flow/generate-image — returns media_id (synchronous response).
+
+    Charging call site (Veo credit-consuming, exact per-call cost unmeasured
+    — see DEFAULT_IMAGE_COST_CR). `assert_spend_authorized` is the FIRST
+    thing this function does — before any socket is opened — so a caller
+    that reaches this function without a valid spend decision (including
+    `scripts/wr3_probe_single_clip.py`, which calls this directly and
+    bypasses `submit_clip`) fails closed with no HTTP attempted.
+
+    `shot_index` is optional because some direct callers (the probe script)
+    don't know it; when absent the ledger row records shot_index=-1 (the
+    same "unknown shot" sentinel `wr3_credit_ledger.py`'s backfill CLI
+    uses) rather than skip logging a real charge.
+    """
+    assert_spend_authorized(episode_id=ctx.project_name)
+
     url = urljoin(ctx.endpoint + "/", "api/flow/generate-image")
     body = {
         "prompt": prompt,
@@ -344,7 +383,18 @@ async def _generate_start_image(
     media = resp.get("media") or []
     if not media or not media[0].get("name"):
         raise FlowkitError(f"generate-image returned no media: {str(resp)[:200]}")
-    return media[0]["name"]
+    media_id = media[0]["name"]
+
+    record_spend(
+        episode_id=ctx.project_name,
+        shot_index=shot_index if shot_index is not None else -1,
+        credits=DEFAULT_IMAGE_COST_CR,
+        mode="real",
+        veo_job_id=media_id,
+        source="_generate_start_image",
+        clip_cost_cr=DEFAULT_IMAGE_COST_CR,
+    )
+    return media_id
 
 
 async def _upload_image_asset(
@@ -388,12 +438,32 @@ async def _generate_video(
     scene_id: str,
     prompt: str,
     timeout_s: int = 180,
+    shot_index: int | None = None,
 ) -> tuple[str, str]:
     """POST /api/flow/generate-video — returns (workflow_id, video_media_id).
 
     Veo 3.1 Fast Tier_ONE portrait is synchronous → media is ready
     immediately upon HTTP 200. No polling required for this tier.
+
+    THE charging call site (2026-08-23 fix): the Veo credit spend happens
+    HERE, on this POST — not when the mp4 is later downloaded. The ledger
+    write below fires immediately once workflow_id/video_media_id are
+    parsed, so a subsequent `_download_video_media` failure (timeout,
+    transient 500, whatever) can never leave a real charge unlogged. Before
+    this fix `record_spend` lived in `submit_clip` AFTER the download
+    succeeded — `wr3_render_episode.py` retries a failed shot up to 3x, so
+    one shot could be charged 3x and logged 0x. `assert_spend_authorized` is
+    the FIRST thing this function does, before any socket opens, so this
+    also fails closed for `scripts/wr3_probe_single_clip.py`, which calls
+    this function directly and bypasses `submit_clip` entirely.
+
+    `shot_index` is optional (some direct callers don't know it); when
+    absent the ledger row uses shot_index=-1, the same "unknown shot"
+    sentinel `wr3_credit_ledger.py`'s backfill CLI uses, rather than skip
+    logging a real charge.
     """
+    assert_spend_authorized(episode_id=ctx.project_name)
+
     url = urljoin(ctx.endpoint + "/", "api/flow/generate-video")
     body = {
         "start_image_media_id": start_image_media_id,
@@ -421,6 +491,19 @@ async def _generate_video(
     video_media_id = media[0].get("name") or ""
     if not video_media_id:
         raise FlowkitError(f"generate-video no media_id: {str(resp)[:200]}")
+
+    # Spend-truth ledger insert — fires here, at the actual charge, not at
+    # download (see docstring). This is the one call site that actually
+    # causes a Veo video charge.
+    record_spend(
+        episode_id=ctx.project_name,
+        shot_index=shot_index if shot_index is not None else -1,
+        credits=DEFAULT_CLIP_COST_CR,
+        mode="real",
+        veo_job_id=workflow_id,
+        source="_generate_video",
+        clip_cost_cr=DEFAULT_CLIP_COST_CR,
+    )
     return workflow_id, video_media_id
 
 
@@ -532,6 +615,39 @@ async def submit_clip(
     project — but in production wr3-clip-renderer creates the context once
     upstream and threads it through.
     """
+    if zero_spend_enabled():
+        # Zero-spend short-circuit — checked FIRST, before episode_context is
+        # touched in any way, so this path NEVER calls _create_scene,
+        # _generate_start_image, _generate_video, _download_video_media, or
+        # setup_episode_context. episode_context may legitimately be None
+        # here (render_shot_pack skips creating one under zero-spend) and
+        # that must stay harmless — nothing below reads it.
+        started = asyncio.get_event_loop().time()
+        mp4_path = episode_dir / "clips" / f"{request.shot_index:02d}.mp4"
+        await asyncio.to_thread(
+            render_placeholder_clip,
+            episode_id=episode_dir.name,
+            shot_index=request.shot_index,
+            dest=mp4_path,
+        )
+        duration_ms = int((asyncio.get_event_loop().time() - started) * 1000)
+        record_spend(
+            episode_id=episode_dir.name,
+            shot_index=request.shot_index,
+            credits=0,
+            mode="placeholder",
+            veo_job_id=None,
+            source="submit_clip:zero_spend",
+            clip_cost_cr=0,
+        )
+        return ClipResult(
+            shot_index=request.shot_index,
+            mp4_path=mp4_path,
+            duration_ms=duration_ms,
+            cost_credits=0,
+            veo_job_id=f"placeholder:{episode_dir.name}:{request.shot_index:02d}",
+        )
+
     if plan is not None and paygate == DEFAULT_PAYGATE:
         # legacy plan="pro" → Tier 1
         paygate = DEFAULT_PAYGATE
@@ -576,15 +692,22 @@ async def submit_clip(
         img_prompt = request.image_prompt or request.positive_prompt
         start_image_id = await _generate_start_image(
             episode_context, prompt=img_prompt, timeout_s=90,
+            shot_index=request.shot_index,
         )
 
-    # 2c. Video generation (synchronous on portrait fast Tier 1)
+    # 2c. Video generation (synchronous on portrait fast Tier 1).
+    # The Veo charge — and its ledger record — happen INSIDE _generate_video,
+    # not here and not after the download below. See that function's
+    # docstring for why: charging on download success let a shot be billed
+    # up to 3x (wr3_render_episode.py retries) and logged 0x whenever the
+    # download step itself failed.
     workflow_id, video_media_id = await _generate_video(
         episode_context,
         start_image_media_id=start_image_id,
         scene_id=scene_id,
         prompt=request.positive_prompt,
         timeout_s=min(timeout_s - 30, 180),
+        shot_index=request.shot_index,
     )
 
     # 2d-e. Download base64 → MP4
@@ -597,6 +720,7 @@ async def submit_clip(
     )
 
     duration_ms = int((asyncio.get_event_loop().time() - started) * 1000)
+
     return ClipResult(
         shot_index=request.shot_index,
         mp4_path=mp4_path,
@@ -624,12 +748,19 @@ async def render_shot_pack(
 
     Creates a per-episode FlowKit project+video if episode_context is None
     (derives name from shot-pack JSON or path stem).
+
+    Under WR3_ZERO_SPEND, setup_episode_context is skipped entirely (it
+    opens sockets to create the Flow project/video shell) — every shot goes
+    straight through submit_clip's own zero-spend placeholder path with
+    episode_context left as whatever was passed in (typically None).
     """
     shot_pack = json.loads(shot_pack_path.read_text())
     shots = shot_pack.get("shots") or []
     results: list[ClipResult] = []
 
-    if episode_context is None:
+    zero_spend = zero_spend_enabled()
+
+    if not zero_spend and episode_context is None:
         episode_name = (
             shot_pack.get("episode_id")
             or shot_pack.get("topic", "")[:60]
@@ -645,8 +776,14 @@ async def render_shot_pack(
         ctx_path.write_text(json.dumps(episode_context.to_dict(), indent=2))
 
     # Identity anchor (root-level shot-pack field) → drives i2v start image so
-    # every shot preserves the A007 face. Only set if not already on the context.
-    if episode_context.anchor_image_path is None:
+    # every shot preserves the A007 face. Only set if not already on the
+    # context — and only when there IS a context (zero-spend never creates
+    # one and submit_clip's placeholder path never reads it).
+    if (
+        not zero_spend
+        and episode_context is not None
+        and episode_context.anchor_image_path is None
+    ):
         anchor_path = shot_pack.get("anchor_image_path")
         if anchor_path:
             episode_context.anchor_image_path = anchor_path

@@ -21,34 +21,47 @@
         "A1": {
           "email": "antonellosiano@gmail.com",
           "plan": "Claude Max 20x",
-          "lane": "interactive/architect daily driver"
+          "lane": "interactive/architect daily driver",
+          "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_1",
+          "config_dir": "~/.claude-antonellosiano"
         },
         "A2": {
           "email": "kaiser198719871987@gmail.com",
           "plan": "Claude Max 20x",
-          "lane": "subagents/build + Cowork cloud sessions (this session observed here)"
+          "lane": "subagents/build + Cowork cloud sessions (this session observed here)",
+          "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_5",
+          "config_dir": "~/.claude-kaiser"
         },
         "A3": {
           "email": "applevisionpro1987@gmail.com",
           "plan": "Claude Max 20x",
-          "lane": "cron/batch — designated DONOR: auto-pause to free its window for the gate"
+          "lane": "cron/batch — designated DONOR: auto-pause to free its window for the gate",
+          "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_3",
+          "config_dir": "~/.claude-acct3"
         },
         "A4": {
-          "email": "antozero1987@… (exact address unverified — account named by Zero 2026-08-19; confirm at first CLI login)",
+          "email": "antozero1987@gmail.com",
           "plan": "Claude Max 20x",
-          "lane": "cloud routines (afternoon PR-babysit + weekly PENDING-ARMS triage) — CLI login pending (M5 spare CLAUDE_CONFIG_DIR)"
+          "lane": "cloud routines (afternoon PR-babysit + weekly PENDING-ARMS triage) — CLI login pending (M5 spare CLAUDE_CONFIG_DIR)",
+          "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_4",
+          "config_dir": "~/.claude-antozero"
         },
         "A5": {
           "email": "sianoantonello@gmail.com",
           "plan": "Claude Max 20x",
-          "lane": "Mini ~/.claude machine login (verified live 2026-08-19) + cloud routines (ssot-contradiction-hunter, secret-pattern-sweep)"
+          "lane": "Mini ~/.claude machine login (verified live 2026-08-19) + cloud routines (ssot-contradiction-hunter, secret-pattern-sweep)",
+          "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_2",
+          "config_dir": "~/.claude-acct2"
         },
         "AZ": {
           "email": "zero@balizero.com",
           "plan": "Claude Team seat Premium",
-          "lane": "GATE PRIMARY (dedicated allowance for the final on-disk gate lives here — Opus 5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) + escalations"
+          "lane": "GATE PRIMARY (dedicated allowance for the final on-disk gate lives here — Opus 5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) + escalations",
+          "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_6",
+          "config_dir": "~/.claude-zero-team"
         }
-      }
+      },
+      "oauth_slot_note": "Slot->account VERIFIED 2026-08-23 via `claude auth status` per config-dir plus the setup-token transcript (each token preceded by the command that minted it). An OAuth token carries NO identity - `auth status` on one returns only authMethod:oauth_token, no email - so this mapping and the comment beside each slot in ~/.nuzantara-secrets.env are the ONLY registry; it must be written AT setup-token time, never reconstructed afterwards. Measured the same day: `claude setup-token` does NOT revoke the account's previous token, so every superseded token stays valid ~1y and is revocable only from the web console."
     },
     "openai": {
       "mechanism": "CODEX_HOME per-account dirs (~/.codex = O1, ~/.codex-o2 = O2). --profile switches models, NOT identity; only auth.json controls identity. No native auto-failover: the conductor rotates explicitly.",

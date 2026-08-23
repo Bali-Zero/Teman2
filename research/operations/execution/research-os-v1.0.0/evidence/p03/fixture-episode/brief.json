@@ -1,0 +1,11 @@
+{
+  "simulated": true,
+  "episode_id": "p03-zerospend-fixture-2026-08-23",
+  "note": "SYNTHETIC FIXTURE — no NotebookLM query produced this, it carries no regulatory claim and must never reach a client-facing surface.",
+  "target_duration_s": 24,
+  "audience_segment": "internal-test",
+  "key_facts": [],
+  "key_numbers": [],
+  "regulatory_citations": [],
+  "claim_ids": []
+}
