@@ -73,5 +73,15 @@ R="$(run_pick "${COMMON[@]}" CLAUDE_SEAT_BIN="$BIN" \
         CLAUDE_CODE_OAUTH_TOKEN_1=same CLAUDE_CODE_OAUTH_TOKEN_2=same CLAUDE_CODE_OAUTH_TOKEN_3=LIVE3)"
 [ "$R" = "0|token_3" ] && ok "dedup dead dupes, reach live t3 → 'token_3'" || bad "dedup: got '$R' (want 0|token_3)"
 
+# ── 6. slot 6 (the Team seat) is reachable ───────────────────────────────────
+#    Regression guard for 2026-08-23: the range said `1 2 3 4 5` in three places,
+#    so slot 6 was armed in the secrets file and NEVER selected by any cron. A
+#    seat the picker cannot see is not a seat. Keep this test slot-6 specific:
+#    it is the one the hardcoded range excluded.
+BIN="$SANDBOX/claude_t6_live"; make_fake "$BIN" "LIVE6"
+R="$(run_pick "${COMMON[@]}" CLAUDE_SEAT_TRY_DEFAULT=0 CLAUDE_SEAT_BIN="$BIN" \
+        CLAUDE_CODE_OAUTH_TOKEN_1=dead1 CLAUDE_CODE_OAUTH_TOKEN_6=LIVE6)"
+[ "$R" = "0|token_6" ] && ok "slot 6 (Team seat) reachable → 'token_6'" || bad "slot 6 unreachable: got '$R' (want 0|token_6)"
+
 echo
 [ "$FAILED" -eq 0 ] && { echo "PASS — claude_seat_pick"; exit 0; } || { echo "FAIL — claude_seat_pick"; exit 1; }

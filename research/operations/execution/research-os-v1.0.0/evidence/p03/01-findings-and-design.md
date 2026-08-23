@@ -13,7 +13,7 @@ no scheduler/service/LaunchAgent load-unload-install. `service_control: none`.
 | # | Finding | Evidence |
 |---|---|---|
 | F1 | **No credit ledger exists.** The cost circuit breaker reads `~/.cache/wr3/flow-quota.json`; **nothing in the repo ever writes it.** Hand-seeded `as_of: 2026-05-29`, `daily_spent_cr: 0`, `balance_remaining_cr: 2400` — while real clips were rendered (see F1b for the corrected count). | only reader: `scripts/wr3_gatekeeper_check.py:15`; zero writers (repo-wide grep) |
-| F2 | **Per-clip cost disagrees 2×.** Client charges 20 cr/clip; gate projects 10 cr/clip. A 19-shot episode: gate computes 190 cr (== its own `expected_cr`, PASSES) while reality is 380 cr. **The breaker passes an episode costing 2× its ceiling.** | `wr3_flowkit_client.py:48-49` = 20 · `wr3_gatekeeper_check.py:24` `CR_PER_CLIP = 10` · `wr3_probe_single_clip.py:4` "~10 Veo cr" |
+| F2 | **Per-clip cost: two files disagree, and NEITHER is verified.** Client uses 20 cr/clip; gate projects 10. A 19-shot episode: the gate computes 190 cr — *exactly its own `expected_cr`*, so it PASSES — against a client-side projection of 380. **CORRECTED 2026-08-23** (this row first read as though 20 were the true cost and 380 the reality): per-clip cost is **tier-dependent and unmeasured for the tier actually in use**. The live gateway's own sync log counts `PAYGATE_TIER_TIER1P5` 4976× against `PAYGATE_TIER_ONE` 1135× — and `wr3_flowkit_client.py:50` requests TIER_ONE, the ~19% minority. A third tier is hardcoded at `~/flowkit/extension/background.js:707`. No tier→credits table exists in this repo or in `~/flowkit/agent/**`. `20` traces to one observation dated 2026-05-20 on an unspecified tier. So the defensible claim is that the two projections cannot both be right, not that either is. | `wr3_flowkit_client.py:48-49` = 20 · `wr3_gatekeeper_check.py:24` `CR_PER_CLIP = 10` · `wr3_probe_single_clip.py:4` "~10 Veo cr" |
 | F3 | **The gatekeeper is advisory, not enforcing.** `wr3_render_episode.py` — the actual render driver — never reads `gate-verdict.json` and never calls the gatekeeper. It checks `/health.extension_connected`, then goes straight to `submit_clip`. | `wr3_render_episode.py:28-70` |
 | F4 | **`wr3_probe_single_clip.py` bypasses `submit_clip` entirely**, calling `fk._generate_start_image` + `fk._generate_video` directly. A guard in `submit_clip` alone is bypassable. | `wr3_probe_single_clip.py:38-45` |
 | F5 | **Fail-open by configuration.** `flow-quota.json` is an unvalidated user-writable HOME cache; a large seeded `balance_remaining_cr` silently disables the breaker. Missing file = uncaught exception, not a named refusal. | `wr3_gatekeeper_check.py:15` (no try/except) |
@@ -82,8 +82,20 @@ Verified this session: the fixture **PASSES the real gatekeeper** — `verdict: 
 `projected_cr: 30`.
 
 That gatekeeper run also **measured F2**: it projected `30 cr` for 3 shots (3 × 10) while the
-client charges 20/clip → true cost 60 cr. The breaker under-reports by exactly 2×, on real output,
+client would have projected 60 (3 × 20). The two projections differ by exactly 2× on real output,
 not by argument.
+
+> **CORRECTED 2026-08-23, in place rather than appended.** The sentence above originally read
+> "→ true cost 60 cr", which asserted the client's 20 as the truth. It is not. Per-clip credit
+> cost is **tier-dependent**, and the tier this codebase requests (`PAYGATE_TIER_ONE`,
+> `wr3_flowkit_client.py:50`) is not the tier the live account mostly syncs: the gateway's own log
+> over the whole life of pid 1062 counts `PAYGATE_TIER_TIER1P5` **4976×** against
+> `PAYGATE_TIER_ONE` **1135×**, and the extension hardcodes a third (`PAYGATE_TIER_TWO`,
+> `~/flowkit/extension/background.js:707`). No tier→credits table exists anywhere. `20` is a single
+> 2026-05-20 observation on an unspecified tier. What was measured here is a **disagreement**;
+> what was NOT measured is which side is right, and PR #4628 collapses the two into one SSOT
+> without claiming to settle that — see the open ledger row, which blocks the real measurement
+> behind reconnecting the Chrome extension (the credits endpoint proxies through it).
 
 ## F8 — THE PACKET'S BIGGEST FINDING: five doors, one credit pool, one gate
 

@@ -386,6 +386,49 @@ def test_env_master_key_absent_from_present_file(tmp_path):
     assert "not set" in (note or "")
 
 
+def test_tp1_settings_loader_reads_only_named_env_key(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "env": {
+                    "UNRELATED_SETTING": "leave-alone",
+                    "BAILIAN_TOKEN_PLAN_API_KEY": "test-only-placeholder",
+                },
+                "other": {"nested": "ignored"},
+            }
+        )
+    )
+    key, note = ap.load_tp1_settings_key(path=str(settings))
+    assert key == "test-only-placeholder"
+    assert note is None
+
+
+def test_tp1_settings_loader_missing_named_key_is_cred_unavailable(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"env": {"UNRELATED_SETTING": "leave-alone"}}))
+    key, note = ap.load_tp1_settings_key(path=str(settings))
+    assert key is None
+    assert "BAILIAN_TOKEN_PLAN_API_KEY" in (note or "")
+
+
+def test_tp1_settings_loader_undecodable_bytes_is_cred_unavailable_not_raised(tmp_path):
+    """GUILT (Kimi round-2 finding #1): a stray non-UTF-8 byte in
+    ~/.qwen/settings.json raises UnicodeDecodeError from read_text() itself,
+    BEFORE json.loads ever runs. The old except clause only caught
+    (OSError, json.JSONDecodeError) — UnicodeDecodeError is neither, so it
+    propagated uncaught out of load_tp1_settings_key. Since all seven TP1
+    seats read this SAME file independently, that would mis-tag all seven
+    UNKNOWN_ERR (strict-fail) instead of the honest CRED_UNAVAILABLE
+    (context-limited, non-strict). Must not raise."""
+    settings = tmp_path / "settings.json"
+    settings.write_bytes(b'{"env": {"BAILIAN_TOKEN_PLAN_API_KEY": "\xff\xfe not valid utf-8"}}')
+    key, note = ap.load_tp1_settings_key(path=str(settings))
+    assert key is None
+    assert note is not None
+    assert "UnicodeDecodeError" in note
+
+
 # ---------------------------------------------------------------------------
 # HTTP layer — monkeypatched urlopen, exceptions never leak Authorization header
 # ---------------------------------------------------------------------------
@@ -679,6 +722,279 @@ def test_probe_glm_never_leaks_token_in_evidence(monkeypatch):
     assert token not in ev
 
 
+def _tp1_live_body(model: str, content: str = "PONG") -> str:
+    return json.dumps(
+        {
+            "model": model,
+            "choices": [{"message": {"role": "assistant", "content": content}}],
+        }
+    )
+
+
+def test_probe_tp1_missing_credential_is_cred_unavailable(monkeypatch):
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: (None, "env.BAILIAN_TOKEN_PLAN_API_KEY not set"),
+    )
+    status, ev, latency = ap.probe_tp1_model("qwen3.8-max", timeout=5)
+    assert status == ap.CRED_UNAVAILABLE
+    assert status != ap.UNKNOWN_ERR
+    assert ap.is_strict_fail(status) is False
+
+
+def test_probe_tp1_http_error_does_not_abort_remaining_models(monkeypatch):
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    called = []
+
+    def fake_http(url, headers, body, timeout, secret_values):
+        model = body["model"]
+        called.append(model)
+        if model == "deepseek-v4-pro":
+            error = '{"error":{"message":"provider failure"}}'
+            return 500, error, error
+        live = _tp1_live_body(model)
+        return 200, live, live
+
+    monkeypatch.setattr(ap, "http_post_json", fake_http)
+    monkeypatch.setattr(ap, "load_last_report", lambda: None)
+    seats = ["tp1-deepseek-v4-pro", "tp1-qwen3.8-max"]
+    report = ap.run(seats, timeout_mult=1.0, live_gen=False, machine="m5")
+    statuses = {row["seat"]: row["status"] for row in report["seats"]}
+    assert statuses["tp1-deepseek-v4-pro"] == ap.UNKNOWN_ERR
+    assert statuses["tp1-qwen3.8-max"] == ap.LIVE
+    assert set(called) == {"deepseek-v4-pro", "qwen3.8-max"}
+
+
+def test_probe_tp1_401_is_auth_dead(monkeypatch):
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = '{"error":{"message":"unauthorized"}}'
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (401, body, body))
+    status, ev, latency = ap.probe_tp1_model("glm-5.2", timeout=5)
+    assert status == ap.AUTH_DEAD
+
+
+def test_probe_tp1_429_quota_wording_is_quota_dead_not_unknown_err(monkeypatch):
+    """Kimi round-2 finding #5: quota classification for TP1 was unpinned —
+    only 401 had a test. This is the exact failure mode that killed the OLD
+    per-token DeepSeek door (silent balance/quota exhaustion misreported as a
+    generic error): pin it so a regression here is caught the same way."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = '{"error":{"message":"Requests rate limit exceeded, please try again later.","code":"Throttling.RateQuota"}}'
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (429, body, body))
+    status, ev, latency = ap.probe_tp1_model("qwen3.6-flash", timeout=5)
+    assert status == ap.QUOTA_DEAD
+    assert status != ap.UNKNOWN_ERR
+
+
+def test_probe_tp1_402_insufficient_balance_is_balance_dead(monkeypatch):
+    """Companion to the 429 pin — the 402/insufficient-balance wording (the
+    exact shape of the retired old DeepSeek per-token door) must classify
+    BALANCE_DEAD through the same "tp1" classify_generic path."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = '{"error":{"message":"insufficient balance","code":"402"}}'
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (402, body, body))
+    status, ev, latency = ap.probe_tp1_model("deepseek-v4-flash-0731", timeout=5)
+    assert status == ap.BALANCE_DEAD
+
+
+def test_probe_tp1_model_mismatch_is_noted_but_not_fatal(monkeypatch):
+    """Kimi round-2 finding #4: a gateway silently rerouting to a fallback
+    model must not be invisible — note the mismatch, but a mismatch alone is
+    NOT grounds to call the seat dead (the gateway may legitimately omit or
+    normalize the echoed model field)."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = _tp1_live_body("qwen3.8-max-fallback-v2", "PONG")
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("qwen3.8-max", timeout=5)
+    assert status == ap.LIVE
+    assert "qwen3.8-max-fallback-v2" in ev
+    assert "requested qwen3.8-max" in ev
+
+
+def test_probe_tp1_content_mentioning_api_key_phrase_stays_live(monkeypatch):
+    """The PHRASE 'api key' inside a model's own answer must not be misread as
+    an auth-dead signal (guard-over-match, scar family #3) — this is about the
+    classifier's word-boundary discipline, NOT about leak-safety of the real
+    credential (see test_probe_tp1_never_leaks_token_in_evidence for that)."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = _tp1_live_body("qwen3.7-plus", "PONG — api key hygiene is enabled")
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("qwen3.7-plus", timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_tp1_never_leaks_token_in_evidence(monkeypatch):
+    """Kimi round-2 finding #3: every other TP1 test mocks http_post_json
+    entirely, so the real scrub()/redaction path for THIS door was never
+    exercised — in the shape of test_probe_glm_never_leaks_token_in_evidence."""
+    token = "tp1-leaktoken1234567890123456"
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: (token, None),
+    )
+
+    def fake_http(url, headers, body, timeout, secret_values):
+        assert token in secret_values  # the probe must pass its own secret for scrubbing
+        scrubbed = ap.evidence_tail(f"unauthorized, saw {token}", secret_values)
+        return 401, scrubbed, scrubbed
+
+    monkeypatch.setattr(ap, "http_post_json", fake_http)
+    status, ev, latency = ap.probe_tp1_model("glm-5.2", timeout=5)
+    assert token not in ev
+
+
+def _tp1_reasoning_only_body(model: str, reasoning_tokens: int = 8, finish_reason=None) -> str:
+    choice: dict = {
+        "message": {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": "thinking about the reply...",
+        }
+    }
+    if finish_reason is not None:
+        choice["finish_reason"] = finish_reason
+    return json.dumps(
+        {
+            "model": model,
+            "choices": [choice],
+            "usage": {
+                "completion_tokens_details": {"reasoning_tokens": reasoning_tokens}
+            },
+        }
+    )
+
+
+def test_probe_tp1_thinking_model_empty_content_with_reasoning_is_live(monkeypatch):
+    """GUILT: the exact 2026-08-23 live regression.
+
+    HTTP 200, message.content == "", message.reasoning_content non-empty,
+    reasoning_tokens == 8 (the whole old max_tokens=8 budget spent on
+    reasoning). This is a live, answering model — the empty content is a
+    budget artifact, not a dead seat. Must NOT be UNKNOWN_ERR.
+    """
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = _tp1_reasoning_only_body("deepseek-v4-pro", reasoning_tokens=8)
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("deepseek-v4-pro", timeout=5)
+    assert status == ap.LIVE
+    assert status != ap.UNKNOWN_ERR
+
+
+def test_probe_tp1_empty_content_no_reasoning_stays_unknown_err(monkeypatch):
+    """INNOCENCE: HTTP 200 with nothing in content AND nothing in
+    reasoning_content has no positive proof of life — stays UNKNOWN_ERR."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = json.dumps(
+        {
+            "model": "glm-5.2",
+            "choices": [{"message": {"role": "assistant", "content": ""}}],
+        }
+    )
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("glm-5.2", timeout=5)
+    assert status == ap.UNKNOWN_ERR
+
+
+def test_probe_tp1_reasoning_only_truncated_by_length_is_not_live(monkeypatch):
+    """GUILT (Kimi round-2 finding #2): my own round-1 fix reintroduced a
+    false-GREEN on the same axis. A degraded/throttled thinking model that
+    burns the WHOLE 256-token budget on reasoning returns content: "",
+    truncated reasoning_content, and finish_reason: "length" — this produced
+    NOTHING usable for a real caller and must not be LIVE forever just
+    because reasoning_content happened to be non-empty."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = _tp1_reasoning_only_body(
+        "deepseek-v4-pro", reasoning_tokens=256, finish_reason="length"
+    )
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("deepseek-v4-pro", timeout=5)
+    assert status != ap.LIVE
+    assert status == ap.UNKNOWN_ERR
+
+
+def test_probe_tp1_reasoning_only_with_finish_reason_stop_stays_live(monkeypatch):
+    """INNOCENCE: same reasoning-only shape, but finish_reason: "stop" means
+    the model genuinely finished its turn without ever writing to `content`
+    (some thinking models do this) — that is still a live, working seat."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = _tp1_reasoning_only_body(
+        "deepseek-v4-pro", reasoning_tokens=40, finish_reason="stop"
+    )
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("deepseek-v4-pro", timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_tp1_pong_content_stays_live_already_covered(monkeypatch):
+    """INNOCENCE (already covered by test_probe_tp1_content_mentioning_api_key_phrase_stays_live
+    above, checked here explicitly for the plain PONG case)."""
+    monkeypatch.setattr(
+        ap,
+        "load_tp1_settings_key",
+        lambda: ("test-only-placeholder", None),
+    )
+    body = _tp1_live_body("qwen3.8-max", "PONG")
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("qwen3.8-max", timeout=5)
+    assert status == ap.LIVE
+
+
+def test_tp1_probe_max_tokens_budget_is_at_least_256():
+    """Pin the budget constant.
+
+    Measured live 2026-08-23: at max_tokens=8, three thinking models
+    (deepseek-v4-pro, deepseek-v4-flash-0731, glm-5.2) spent the whole
+    budget on reasoning_tokens and returned empty content — three live
+    seats misreported UNKNOWN_ERR. Reasoning ran as long as 171 tokens on
+    qwen3.7-max before it answered. If this test goes red because someone
+    lowered TP1_PROBE_MAX_TOKENS back toward 8, re-measure reasoning_tokens
+    on all seven TP1 models before touching it again.
+    """
+    assert ap.TP1_PROBE_MAX_TOKENS >= 256
+
+
 def test_probe_agy_pong_is_live(monkeypatch):
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
@@ -865,15 +1181,40 @@ def test_probe_jules_live_output_mentioning_api_key_stays_live(monkeypatch):
     assert status == ap.LIVE
 
 
-def test_deepseek_retired_not_in_all_seats_or_probe_funcs():
-    # DeepSeek V4 Pro API retired 2026-07-19 (owner order, pre-auth revoked —
-    # never top up). Guilt-style: it must not resurface as a probeable seat.
+def test_retired_standalone_deepseek_door_does_not_return_as_own_seat():
+    """Pin the owner ruling without banning TP1's subscription models.
+
+    Zero's 2026-07-19 ruling retired the old standalone per-token DeepSeek door
+    (pre-auth revoked; never top up). Zero's 2026-08-22 ruling explicitly allows
+    DeepSeek through the Alibaba plan, so only the bare legacy `deepseek` seat is
+    forbidden; the namespaced TP1 seats are valid and must remain probeable.
+    """
     assert "deepseek" not in ap.ALL_SEATS
     assert "deepseek" not in ap.PROBE_FUNCS
     assert "deepseek" not in ap.DEFAULT_TIMEOUTS
     assert not hasattr(ap, "probe_deepseek")
     for machine, seats in ap.REQUIRED_SEATS.items():
         assert "deepseek" not in seats, f"deepseek still required on {machine}"
+    assert "tp1-deepseek-v4-pro" in ap.ALL_SEATS
+    assert "tp1-deepseek-v4-flash-0731" in ap.ALL_SEATS
+
+
+def test_tp1_verified_text_roster_is_wired_but_not_required():
+    expected = {
+        "tp1-deepseek-v4-pro": "deepseek-v4-pro",
+        "tp1-deepseek-v4-flash-0731": "deepseek-v4-flash-0731",
+        "tp1-glm-5.2": "glm-5.2",
+        "tp1-qwen3.8-max": "qwen3.8-max",
+        "tp1-qwen3.7-max": "qwen3.7-max",
+        "tp1-qwen3.7-plus": "qwen3.7-plus",
+        "tp1-qwen3.6-flash": "qwen3.6-flash",
+    }
+    assert ap.TP1_SEAT_MODELS == expected
+    for seat in expected:
+        assert seat in ap.ALL_SEATS
+        assert seat in ap.PROBE_FUNCS
+        assert ap.DEFAULT_TIMEOUTS[seat] == 15
+        assert all(seat not in seats for seats in ap.REQUIRED_SEATS.values())
 
 
 def test_probe_ollama_qwen_listed_is_live(monkeypatch):
