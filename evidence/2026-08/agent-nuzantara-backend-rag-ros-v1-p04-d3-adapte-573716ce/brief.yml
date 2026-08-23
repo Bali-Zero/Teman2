@@ -1,0 +1,61 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-slice3a-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D3. Slice 3a of 3 (the final split
+  further divides slice 3 into 3a/3b to stay near the ~400-net-line target): `OperationalReceipt`
+  adapter (CONTRACTS.md §13.5), mapping a Magazine `ops_receipts` row + its parent `ops_intents`
+  row (joined 1:1 -- `ops_receipts.intent_id` is a `UNIQUE FK`, schema.ts:927-930, so this is a
+  lossless join, never a fan-out) to the canonical kind.
+
+  `execution_attempt_ref` is SYNTHESIZED_UNBACKED, same disclosed-placeholder pattern as slices
+  1/2 -- but NOT the same class of decision slice 2 already refused (fabricating a materialized
+  ExecutionAttempt/ApprovalReceipt chain, which would assert an authorization event that never
+  happened). This is a null bookkeeping pointer only, same as every other unbacked ref in this
+  package, machine-checkable via `extensions`.
+constraints:
+  - "Additive only, one new file + one new test file. No dependency on slice 1
+    (action_item_adapter.py) or slice 2 (action_intent_adapter.py) at the IMPORT level -- this
+    adapter only needs legacy_magazine/loss_report/synthesis, which slice 1 already introduced.
+    Stacked on slice 2's branch tip for git-history/serialization reasons only, not because of a
+    real code dependency."
+  - "receipt_json is OMITTED (matrix item 8): an opaque blob whose shape varies per intent_kind
+    with no per-kind parser written in this slice -- effects[]/artifact_refs/evidence_refs stay
+    empty rather than guess a shape."
+  - "No PII: synthetic fixtures only, reused from slice 1's conftest.py (make_ops_receipt_row
+    fixture added there)."
+  - "Branch stays unopened as a PR until slice 2 (this branch's parent) itself opens, which is
+    gated on slice 1 (#4749) merging first -- same 'one PR per lane at a time' serialization."
+acceptance:
+  - "Every one of ops_receipts' 10 legacy columns has a loss-report entry with a fate in
+    {mapped, approximated, synthesized_unbacked, omitted, rejected} and a reason -- enforced by
+    assert_every_legacy_field_accounted_for, same pattern as slices 1/2."
+  - "A receipt row whose parent_intent_row does not match its own intent_id is REJECTED, never
+    silently adapted against the wrong parent (test_mismatched_parent_row_is_rejected)."
+  - "A non-terminal receipt status (e.g. 'running') is REJECTED -- OperationalReceipt models a
+    terminal outcome only, never an in-flight one."
+  - "execution_attempt_ref's SYNTHESIZED_UNBACKED status is disclosed in loss_report.warnings AND
+    machine-checkably in extensions (same two-channel pattern as slices 1/2)."
+consumer_map:
+  - "Slice 3b (shadow.py + parity.py, staged, not yet a branch): shadow.py imports this adapter
+    directly alongside slices 1/2's -- this is the last of the three adapters shadow.py needs."
+  - "Same GitHub Harness floor recompute check as slices 1/2 -- floor 1 (no hot-zone path
+    touched)."
+risks:
+  - "Same disclosed judgment call as slices 1/2 on SYNTHESIZED_UNBACKED refs -- not re-litigated
+    here (Kimi K3 adversarial review already ran once against this exact design pattern in
+    slice 1; a third repetition against the same pattern applied to a third kind adds no new
+    finding)."
+  - "outcome_code is derived from receipt.status, not parsed from receipt_json's candidate 'code'
+    field, since that field lives inside the OMITTED opaque blob above -- disclosed in warnings,
+    not a silent approximation."
+grader: |
+  session (this lane) wrote the adapter and tests. Reuses slice 1's already-completed adversarial
+  review (Kimi K3) rather than re-running an identical review on the same SYNTHESIZED_UNBACKED
+  pattern applied to a third kind -- no new design surface introduced here beyond what slice 1's
+  dissent already covers.
+budget: |
+  1 build lane, no new council -- same reasoning as slices 1/2 (Gear-2, additive, zero live
+  consumers).
+pii: none

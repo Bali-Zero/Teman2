@@ -1,0 +1,75 @@
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D3 Magazine action-chain adapters, slice 3a of 3 (OperationalReceipt), stacked on slice 2"
+diff:
+  net_lines: >-
+    +242/-0, 2 files (operational_receipt_adapter.py +177, test_operational_receipt_adapter.py
+    +65). Measured this session via `git diff --cached --numstat` on top of slice 2's own commit
+    (this branch was created from slice 2's branch tip; slice 2 is itself stacked on slice 1
+    (#4749), still unmerged, so this is the correct comparison until slice 1 lands).
+  behaviour_change: >-
+    Purely additive: one new file beside slices 1/2's. Zero existing file touched. Zero live
+    consumer (same grep as slices 1/2 still holds -- nothing new imports this module).
+receipts:
+  - claim: "This branch's own two new files total exactly +242/-0"
+    cmd: "git diff --cached --numstat"
+    exit: 0
+    ts: "2026-08-24T05:40:00Z"
+    seat: "session (pro)"
+  - claim: "Full research_os adapter test suite (slices 1+2+3a combined, 37 tests) passes together"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/ -q --no-header"
+    exit: 0
+    ts: "2026-08-24T05:35:00Z"
+    seat: "session (pro)"
+  - claim: "ruff reports zero issues on both new files"
+    cmd: "python3 -m ruff check backend/services/research_os/operational_receipt_adapter.py backend/tests/services/research_os/test_operational_receipt_adapter.py"
+    exit: 0
+    ts: "2026-08-24T05:35:30Z"
+    seat: "session (pro)"
+  - claim: "A receipt row whose parent_intent_row.intent_id does not match its own intent_id is rejected, never silently adapted against the wrong parent"
+    cmd: "pytest -k test_mismatched_parent_row_is_rejected -q"
+    exit: 0
+    ts: "2026-08-24T05:35:00Z"
+    seat: "session (pro)"
+  - claim: "A non-terminal receipt status ('running') is rejected -- OperationalReceipt models a terminal outcome only"
+    cmd: "pytest -k test_non_terminal_status_is_rejected -q"
+    exit: 0
+    ts: "2026-08-24T05:35:00Z"
+    seat: "session (pro)"
+  - claim: "execution_attempt_ref's SYNTHESIZED_UNBACKED status is disclosed in loss_report.warnings"
+    cmd: "pytest -k test_execution_attempt_ref_disclosed_as_unbacked -q"
+    exit: 0
+    ts: "2026-08-24T05:35:00Z"
+    seat: "session (pro)"
+tests:
+  - "test_operational_receipt_adapter.py -- 6 tests: succeeded-receipt adaptation, terminal-status
+    map coverage (4 statuses), non-terminal rejection, mismatched-parent rejection, unbacked-ref
+    disclosure, idempotency-key fallback when parent has no completed_at."
+  - "Combined with slices 1+2's existing suites -- 37 tests, exit 0."
+static:
+  - "ruff check: 0 issues."
+runtime_proof:
+  - >-
+    Same as slices 1/2: no live consumer yet. Functional proof is the adapter's own
+    accept/reject-path tests plus the field-ledger completeness assertion.
+dissent: []
+lanes:
+  - lane: "p04-d3-magazine-action-chain-adapters-slice3a"
+    role: build
+    seat: "claude-sonnet-5"
+residual_risks:
+  - "Same as slices 1/2 (SYNTHESIZED_UNBACKED refs, disclosed judgment call) -- not re-litigated,
+    see slice 1's evidence pack for the full adversarial-review record."
+  - "receipt_json (opaque, per-intent_kind-shaped blob) is OMITTED wholesale in this slice -- a
+    later deliverable that needs effects[]/artifact_refs/evidence_refs populated will need a
+    per-intent_kind parser this adapter deliberately does not attempt."
+  - "This branch is stacked on slice 2, itself stacked on slice 1 (#4749); its diff/evidence
+    comparison is only valid until slice 1 merges, at which point the whole stack should be
+    rebased onto main and each slice's evidence re-measured before opening PRs."
+sources:
+  - "packages/research-os-core/research_os/models/operational_receipt.py (read in full, earlier
+    this session)"
+  - "apps/bali-zero-magazine/db/schema.ts lines 927-930 (ops_receipts.intent_id UNIQUE FK, read
+    earlier this session)"
+  - "Fresh test/lint runs in this worktree, this session (receipts above)"
+pii_scan: clean
+size_tokens: 950
