@@ -71,21 +71,6 @@ _MINOR_AGE_THRESHOLD = 18
 #: describes an EXTERNAL taxonomy fact about these specific strings, not a
 #: FactPath-level closed vocabulary.
 #:
-#: ``NO_STAY_PERMIT`` (added 2026-08-24, P0 offshore-reachability fix,
-#: team-lead funnel-cost review) is NOT one of the 8 real option keys above
-#: and is never offered as a UI choice — it is a synthesized sentinel
-#: ``apps/mouth``'s ``fact-mapper.ts`` emits directly when an OFFSHORE
-#: applicant answers the (already-existing) ``holds_stay_permit`` question
-#: "no", instead of asking the granular ``current_status_code`` question a
-#: second time for a fact its own answer already fully determines. This is
-#: not a guess: it is the literal, honest translation of what the applicant
-#: told us, distinct from every real document-derived code, and it belongs
-#: in this frozenset (not `_STAY_PERMIT_STATUS_CODE_SHAPE`) for the exact
-#: same reason a real visit-class code does — it is definitively NOT a
-#: residence permit, so no need to consult expiry either. See
-#: ``flow.ts::computeNextNode``'s offshore branch for the frontend routing
-#: that produces it, and the funnel-cost measurement in PR #4727 for why
-#: this exists instead of unconditionally asking the full onshore chain.
 _VISIT_CLASS_STATUS_CODES: frozenset[str] = frozenset(
     {
         "A1",
@@ -96,9 +81,31 @@ _VISIT_CLASS_STATUS_CODES: frozenset[str] = frozenset(
         "ITK_FROM_VISIT_C",
         "ITK_FROM_VISIT_D",
         "ITK_PERALIHAN",
-        "NO_STAY_PERMIT",
     }
 )
+
+#: Synthesized sentinel (added 2026-08-24, P0 offshore-reachability fix,
+#: PR #4727) — NOT one of the 8 real ``current_status_code`` option keys and
+#: never offered as a UI choice. ``apps/mouth``'s ``fact-mapper.ts`` emits it
+#: directly when an OFFSHORE applicant answers the (already-existing)
+#: ``holds_stay_permit`` question "no", instead of asking the granular
+#: ``current_status_code`` question a second time for a fact its own answer
+#: already fully determines. This is not a guess: it is the literal, honest
+#: translation of what the applicant told us.
+#:
+#: Deliberately kept OUT of ``_VISIT_CLASS_STATUS_CODES`` (team-lead review,
+#: 2026-08-24): that set is a two-sided grounding of REAL document-derived
+#: codes — every member appears on an actual permit/visa document. A synthetic
+#: "holds nothing at all" sentinel is not a visit-class code, it is the
+#: ABSENCE of one, and folding it in would corrupt what the set's name says
+#: it means — especially now that F4 (ruling 2, renewal-in-process) is about
+#: to re-examine ``ITK_PERALIHAN``'s membership in this exact set. Checked
+#: explicitly and early in ``_derive_has_active_stay_permit`` instead, so the
+#: sentinel's semantics never couple to whatever F4 does to the real-code set.
+#: See ``flow.ts::computeNextNode``'s offshore branch for the frontend
+#: routing that produces it, and the funnel-cost measurement in PR #4727 for
+#: why this exists instead of unconditionally asking the full onshore chain.
+NO_STAY_PERMIT = "NO_STAY_PERMIT"
 
 #: ``derived.has_active_stay_permit`` grounding, side 2 of 2: the SHAPE of a
 #: LIMITED_STAY/PERMANENT_STAY (ITAS/ITAP-class) product code in the current
@@ -708,6 +715,12 @@ class FactRegistry:
             return UnknownFact(reason=code.reason)
 
         code_value = str(code.value)
+        if code_value == NO_STAY_PERMIT:
+            # The applicant told us directly they hold nothing at all
+            # (offshore P0 fix, PR #4727) — checked first and explicitly,
+            # never folded into _VISIT_CLASS_STATUS_CODES (see that
+            # constant's docstring for why).
+            return KnownFact(value=False)
         if code_value in _VISIT_CLASS_STATUS_CODES:
             # A visit-class code is definitively not a residence permit,
             # regardless of its own expiry — no need to consult
