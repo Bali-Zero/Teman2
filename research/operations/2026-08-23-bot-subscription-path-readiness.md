@@ -19,28 +19,53 @@ what stands between here and S4, in order, and who owns each step.*
 
 **Measurement stamp.** Every claim in §1 was probed on **2026-08-23 between 01:00Z and 01:40Z**,
 from Pro, against repo SHA **`148f0bfca`**. A claim with no probe named beside it is not in this
-document.
+document. The §0 UPDATE, the daemon-resolution content in §1.2, and the "Post-review resolution"
+note under Adversarial review carry their own later stamp (**2026-08-23T05:17Z–05:23Z**) and
+supersede the specific claims they name — everything else in §1 stands as originally probed.
 
 ---
 
 ## 0. The headline, before the list
 
-**The premise this memo was commissioned on — "daemon live on Pro" — is false as of today.**
+**UPDATE (2026-08-23T05:23Z, after this memo's original draft and its adversarial review): the
+premise this memo was commissioned on — "daemon live on Pro" — was false when §1's measurement
+was taken. It is RESOLVED as of this update, and the root cause is now fully identified rather
+than half.**
 
-The Pro-side broker daemon has not claimed a single job since **2026-08-20T03:45:11Z** —
-**69.6 hours** before this measurement. It is not stopped: it is **crash-looping roughly every 30
-seconds** and has done so **7,514 times** since the machine last rebooted.
+The Pro-side broker daemon did not claim a single job for **73.5 hours**, from
+**2026-08-20T03:45:11Z** to the cure landing at **~2026-08-23T05:17Z**. It was not stopped: it was
+**crash-looping roughly every 30 seconds** — 7,514 times as of the original ~01:20Z measurement,
+**8,018** by the time it stopped (confirmed live, this update, independently: `launchctl print`
+reports `state = running`, `pid = 23872`, `runs = 8018`, no longer climbing).
 
-**The cause is only half identified, and the memo says which half.** A version-pin mismatch
-(`codex-cli` auto-updated 0.147.0 → 0.149.0 while the pin did not) is real and is certainly
-blocking the daemon *now* — but the arithmetic in §1.2 proves the crash-loop began **at least 10
-hours before that upgrade**, so it is a second cause, not the first. **What killed it on 08-20 is
-still unknown, and the answer is in a root-only log.**
+**The cause is now fully identified: ONE mechanism, two versions, not two causes.** `codex-cli`
+auto-updated **twice** during the outage while `WA_CODEX_CLI_VERSION_PIN` stayed at `0.147.0`:
+first to **0.148.0** around `2026-08-20T03:45Z` — the exact moment the gauge froze — then to
+**0.149.0** at `2026-08-21T15:59:23Z`, which silently overwrote the 0.148.0 install on disk (npm
+rewrites the symlink target in place, so only the latest install's mtime survives — why earlier
+drafts of this memo could see only 0.149.0 and called the initiating cause unknown). The
+operator read the daemon's own log on Pro and counted every restart's version-check failure:
+**3,579** on `'0.148.0' does not match pin '0.147.0'`, **4,437** on `'0.149.0' does not match pin
+'0.147.0'` — **8,016** mismatch errors, the ONLY error anywhere in the file, plus the 2 healthy
+starts (before 0.148.0 landed, and after the pin bump below) that account for the remaining 2 of
+`runs = 8018`. The §1.2 arithmetic (33.35 h / 4,002-restart cap against the observed 7,514) did
+not just flag the earlier draft's wrong stamp — it correctly sized the ~29 h gap that 0.148.0's
+3,579 restarts then fill (predicted ~3,512, measured 3,579 — same order, two independent methods).
 
-What is fully established is the part that matters most: **nobody was listening.** Every health
-indicator read green for the whole outage.
+**Cure applied and proven live, twice independently.** The operator bumped the pin to `0.149.0`
+(the version actually installed) and kicked the daemon. Proof by this memo's own bar — two
+consecutive `broker_last_seen_at` reads that ADVANCE: the operator measured
+`05:17:08.881Z → 05:17:29.650Z`; this update re-measured it independently, minutes later, live
+from this session: **`05:22:42.868769Z → 05:22:51.989576Z`**, `breaker_state closed`,
+`consecutive_failures 0`.
 
-So the ordered list below starts at step 0, and step 0 is not on the ladder.
+What is fully established, and remains the more important finding regardless of root cause:
+**nobody was listening for 73.5 hours.** Every health indicator read green throughout, because
+`breaker_state`/exit-code proxies cannot distinguish "never even tried" from "healthy" — that gap
+is what step 0b below (the seat sentinel, still unarmed) leaves open.
+
+So the ordered list below starts at step 0 (now DONE) — 0b (the seat sentinel) is still open and
+is still not on the ladder.
 
 ---
 
@@ -57,7 +82,7 @@ So the ordered list below starts at step 0, and step 0 is not on the ladder.
 
 The S2 server-side build is fine. It is the only half of this lane that is.
 
-### 1.2 Pro side — INSTALLED, THEN DIED 2.5 HOURS LATER, SILENTLY, FOR 72 HOURS
+### 1.2 Pro side — ARMED, THEN DIED 2.5 HOURS LATER, SILENT FOR 73.5H — CAUSE FOUND, CURE LIVE
 
 | What | Probe run today | Result |
 |---|---|---|
@@ -87,18 +112,24 @@ Two consequences, both arithmetic:
 1. **launchd's `runs` counter resets at boot**, so the 7,514 restarts span the window since
    **09:49:54Z on 08-20**, not since the gauge froze: 63.50 h, an implied spacing of **30.42 s**
    against a 30 s floor.
-2. The window since the CLI updated is only 33.35 h, which at a strict 30 s floor caps the
-   restarts at **4,002**. We observe **7,514**. **Therefore ~3,512 restarts (~29 hours) predate
-   the 0.149.0 upgrade — the version-pin mismatch cannot be the original cause.**
+2. The window since the CLI updated to 0.149.0 is only 33.35 h, which at a strict 30 s floor caps
+   the restarts attributable to THAT upgrade at **4,002**. We observe **7,514** at that same
+   measurement. **Therefore ~3,512 restarts (~29 hours) predate the 0.149.0 upgrade — the 0.149.0
+   upgrade specifically cannot be the original trigger.** (Resolved below: an earlier 0.148.0
+   auto-update fills that exact window — the pin mechanism itself is both causes, just not the
+   version this memo's first draft blamed.)
 
-**What is actually established:**
+**What is now established (RESOLVED, see §0 UPDATE):**
 
 - The daemon stopped claiming at 03:45:11Z on 08-20, **6.08 h before the reboot** — so it was
-  already failing under the pre-reboot launchd session. **That first cause is unknown.**
-- Since 15:59:23Z on 08-21 the pin mismatch is real and, given the code path, would by itself be
-  sufficient to keep the daemon down. So it is a genuine **second** cause, layered on the first.
-- **Consequence for the cure: bumping the pin alone may not revive the daemon.** It removes a
-  blocker that certainly exists now; it does not address whatever killed it on 08-20.
+  already failing under the pre-reboot launchd session. **That first cause is `codex-cli`
+  auto-updating to 0.148.0 at almost exactly that moment**, confirmed by 3,579 matching
+  version-check failures in the daemon's own log.
+- Since 15:59:23Z on 08-21 the pin mismatch against `0.149.0` is a real, independently-sufficient
+  **second** instance of the identical mechanism, layered on the first (4,437 matching log lines).
+- **The cure was a single pin bump — to `0.149.0`, matching the version actually on disk today —
+  and it worked**: `broker_last_seen_at` now advances between consecutive reads (§0 UPDATE).
+  Bumping to `0.148.0` instead would not have; that version is no longer installed.
 
 **A corroboration the first draft claimed, now withdrawn.** That draft read the implied spacing as
 "throttle floor + ~3.3 s of real work per cycle" and offered it as evidence the process was
@@ -107,37 +138,53 @@ reaching the `codex --version` call. It is not evidence of anything: `ThrottleIn
 figure is uninformative about which early-exit path fires, and the 0.42 s excess is scheduling
 jitter. It was also computed from the wrong start time.
 
-**Still not measured, and it is the thing that would settle this:** the daemon's own log
-(`/Users/zantara-codex/logs/wa-codex-broker.err`) — root-only, and Pro has no passwordless sudo
-(probed: `sudo -n true` → password required). The pin's current on-disk value is unread for the
-same reason; the `0.147.0` figure comes from the ledger row of 08-20, not from the file. Ruled out
-by the wrapper's own exit codes: missing env file, unfilled placeholders, missing venv python (all
-exit **78**) and the kill switch (exit **0**). Everything else that can exit **1** remains open.
+**Now measured — the thing that settles this.** The operator read
+`/Users/zantara-codex/logs/wa-codex-broker.err` (still root-only; this session re-confirmed no
+passwordless sudo — `sudo -n true` → password required — so the read below is attributed to the
+operator, not independently reproduced from this session). The tail shows the daemon's FIRST run
+was healthy: `2026-08-20 09:09:11 [local, WITA] CLI version 0.147.0 matches pin — claiming
+enabled` (that is `01:09:11Z` — log timestamps are LOCAL, the exact trap this PR's own timestamp
+correction hit once already), with successful claims roughly every 2 s until the gauge froze at
+`03:45:11Z`, ~2.6 h later. Counting every distinct version pair in the whole file: **3,579** lines
+on `CLI version '0.148.0' does not match pin '0.147.0'`, **4,437** on `'0.149.0' does not match
+pin '0.147.0'` — and no other error anywhere in the log. Ruled out by the wrapper's own exit codes
+(unaffected by this finding, kept for completeness): missing env file, unfilled placeholders,
+missing venv python (all exit **78**) and the kill switch (exit **0**) — none of those fired; the
+sidecar `/Users/zantara-codex/.organism/last_seen/pro.wa_codex_broker.json` reading
+`{"status":"starting","note":"exec daemon"}` throughout confirms the wrapper reached `exec` every
+time.
 
-**The daemon's two version-check paths are ASYMMETRIC, and that asymmetry proves a separate
-termination event.** (Found by the same adversarial pass; confirmed by reading the code.) The
-STARTUP check raises and exits 1. The MID-RUN recheck does the opposite — `if not
-self._version_ok: await self._sleep(self._config.poll_s); continue` — it **stops claiming and
-keeps the process alive**. So if the CLI had auto-updated under a healthy daemon, the designed
-end-state would be *process alive, gauge frozen, `runs` flat*. What we observe is *no process,
-`runs` climbing, exit 1*. **Therefore something terminated the daemon at ~03:45Z on 08-20, and
-only afterwards did every respawn hit the startup refusal.** The pin story explains the outage's
-*persistence*; it cannot explain its *initiation*.
+**The daemon's two version-check paths are ASYMMETRIC — and that is exactly why the CLI's silent
+in-place update was invisible until the process next restarted.** (Found by the same adversarial
+pass; confirmed by reading the code.) The STARTUP check raises and exits 1. The MID-RUN recheck
+does the opposite — `if not self._version_ok: await self._sleep(self._config.poll_s); continue`
+— it **stops claiming and keeps the process alive**. So a version drift discovered MID-RUN alone
+would leave *process alive, gauge frozen, `runs` flat* — not what launchd showed. What the log now
+confirms: the process was healthy through `03:45:11Z`, then that run ended (the version check does
+not fire mid-run, so this was some other termination), and **every respawn from then on hit the
+STARTUP refusal** — first against the newly-auto-updated `0.148.0`, later against `0.149.0`. **The
+pin story now explains both halves: 0.148.0 explains initiation, 0.149.0 explains persistence —
+the same mechanism, twice, not two separate causes.**
 
-**Named candidates for the initiation event, so the log read in §3 is targeted rather than
-open-ended.** All of them exit **1** and are indistinguishable from outside:
+**Named candidates for the initiation event, as drafted before the log was read — all now
+REFUTED by direct textual evidence in the log itself, kept here so nobody re-derives them:**
 
-- **The `codex` binary not resolvable on the daemon's PATH.** `_read_cli_version` resolves
-  `self._config.codex_bin or shutil.which("codex")`, and the plist gives the job only
-  `/opt/homebrew/bin:/usr/bin:/bin`. `/opt/homebrew/bin/codex` is an npm symlink whose mtime is
-  **2026-08-21T15:59Z** — i.e. it was last rewritten *during* the outage. `shutil.which` returning
-  `None`, an `OSError`, a non-zero `codex --version`, or output with no semver token all collapse
-  into the same "mismatch" refusal. **If this is the cause, bumping the pin changes nothing.**
-- **`DaemonConfig.from_env` raising `ValueError`** — it validates every knob and refuses to start
-  half-configured: blank `WA_BROKER_KEY`, blank base URL, non-numeric `WA_BROKER_POLL_S` /
-  `WA_BROKER_NET_MARGIN_S`, or a `WA_CODEX_MODEL` outside the allowlist
-  (`gpt-5.6-sol|terra|luna`; the template sets `gpt-5.6-terra`).
-- Any import-time failure in the runtime tree.
+- ~~The `codex` binary not resolvable on the daemon's PATH (`shutil.which` miss, `OSError`, or a
+  version string that fails to parse)~~ — REFUTED: every one of the 8,016 failing lines names a
+  successfully-parsed semver (`'0.148.0'`, then `'0.149.0'`), which `_read_cli_version` can only
+  produce after `codex --version` ran and returned cleanly.
+- ~~`DaemonConfig.from_env` raising `ValueError`~~ — REFUTED: that failure mode raises before the
+  version check ever runs and would produce a different exception type and a single-line
+  traceback, not 8,016 repeated occurrences of the SAME `RuntimeError` version-mismatch text.
+- ~~Any import-time failure in the runtime tree~~ — REFUTED: an import failure would prevent the
+  version-check code path from executing at all, and would fail identically regardless of which
+  codex-cli version was installed; the log instead shows the failure text CHANGE in lockstep with
+  the two real auto-updates (`0.148.0`, then `0.149.0`).
+
+The `/opt/homebrew/bin/codex` npm symlink mtime of **2026-08-21T15:59:28Z** (§ above) records only
+the LATER of the two auto-updates — npm overwrites the symlink target in place, so the earlier
+0.148.0 install left no on-disk trace once 0.149.0 landed. File-mtime evidence alone could only
+ever show the second cause; the log's version-check TEXT is what recovers the first.
 
 **What the pin bump IS good for, verified today rather than assumed.** `codex --version` prints
 `codex-cli 0.149.0`, and the daemon's own `_SEMVER_RE` (`(\d+\.\d+\.\d+)`) parses that to
@@ -151,20 +198,6 @@ its expected token, rc 0.
 — `--sandbox`, `--skip-git-repo-check`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules` —
 are all still accepted by 0.149.0 (`codex exec --help`), and a live `codex exec --sandbox
 read-only` probe returned normally today. Nothing in the adapter's call shape depends on 0.147.0.
-
-**The log has now been read, and it confirms the CURRENT crash cause — not the initiating one.**
-The operator read `/Users/zantara-codex/logs/wa-codex-broker.err` (the root-only blocker noted
-above is cleared). The tail shows exactly the pin-mismatch startup refusal: `RuntimeError:
-wa-codex-daemon: startup refused — CLI version does not match
-WA_CODEX_CLI_VERSION_PIN='0.147.0'`, with the daemon separately logging `CLI version '0.149.0'
-does not match pin '0.147.0'`. The wrapper sidecar
-`/Users/zantara-codex/.organism/last_seen/pro.wa_codex_broker.json` reads `{"status":"starting",
-"note":"exec daemon"}`, confirming the wrapper reached `exec` (its own guards would have exited
-78, not 1, had it failed earlier). **This settles the CURRENT cause and NOT the initiating one**:
-the log tail shows today's crashes, and the ~29 h window before the upgrade (arithmetic above) is
-still unexplained. The leading untested hypothesis: an intermediate codex version (0.148.x)
-auto-installed around `2026-08-20T03:45Z` — the exact moment the gauge froze — which npm would
-have overwritten invisibly, since only the latest install's mtime survives on disk.
 
 ### 1.3 The seat sentinel — never armed, and the reason is a timing accident worth recording
 
@@ -181,7 +214,7 @@ performed could not have installed a section that did not yet exist.
 
 This is not an operator error and not a failed step: **it is a run that predates its own feature.**
 
-### 1.4 The meta-pattern — why 72 hours passed with nothing red
+### 1.4 The meta-pattern — why 73.5 hours passed with nothing red
 
 Three organs each did the right thing individually, and the chain still went dark:
 
@@ -189,10 +222,10 @@ Three organs each did the right thing individually, and the chain still went dar
 2. The wrapper writes a heartbeat sidecar — but the registry entry deliberately carries
    `expected_hb_seconds=0`, because the wrapper's own comment names the **server-side claim gauge**
    as the running daemon's liveness ground truth, not the sidecar. So the sidecar is not watched.
-3. The server-side gauge went stale at 03:45:11Z on 08-20 and **has been stale ever since** — while
-   `breaker_state` reads `closed` and `consecutive_failures` reads `0`, i.e. **perfectly green**,
-   because the daemon never connects far enough to fail. A dashboard reading the breaker would
-   report health throughout the entire outage.
+3. The server-side gauge went stale at 03:45:11Z on 08-20 and **stayed stale for 73.5 hours**, until
+   the cure in §0 UPDATE — while `breaker_state` read `closed` and `consecutive_failures` read `0`
+   throughout, i.e. **perfectly green**, because the daemon never connected far enough to fail. A
+   dashboard reading the breaker would have reported health throughout the entire outage.
 
 The organ that closes this loop is precisely the **seat sentinel** — the one thing §1.3 shows was
 never armed. This is superscar family #2 in its purest form: not a component that lies, but a
@@ -211,8 +244,8 @@ Steps are ordered by dependency: each is blocked by the one above it.
 
 | # | Step | Owner | Why it sits here |
 |---|---|---|---|
-| **0** | **Diagnose, THEN revive the Pro daemon.** Read `/Users/zantara-codex/logs/wa-codex-broker.err` — that is the one artifact that names the original cause, and it is root-only. Then bump `WA_CODEX_CLI_VERSION_PIN` to `0.149.0` and kickstart. Proof = `broker_last_seen_at` ADVANCES between two reads. | **`operator[secret]`** — both the log and the env file are root/other-user-owned, and Pro has no passwordless sudo (probed: `sudo -n true` → password required). One paste, exact text in §3. | Nothing on the ladder can be measured while the executor is dead. **Do not skip the log:** §1.2 proves the pin mismatch is not the original cause, so the bump alone may leave the daemon down. Re-running the provisioning script does **not** touch the pin either — it skips an existing env file by design ("never overwritten"). |
-| **0b** | **Arm the seat sentinel** — the organ that would have caught step 0 within the hour instead of after 72. Re-run the provisioning (idempotent; installs the §1.3 section the 08-20 run predated), then arm the crontab from the **GUI terminal**. | **`operator[secret]`** for the provisioning, **`operator[tcc]`** for the crontab: writing the crontab on Pro is TCC-blocked from every non-GUI context (measured 2026-08-20 via both sshd and a live tmux server). | Without it, the next silent death also lasts days. Highest value-per-minute item on this list. |
+| **0** | ~~Diagnose, THEN revive the Pro daemon.~~ **DONE 2026-08-23 (see §0 UPDATE).** The operator read `/Users/zantara-codex/logs/wa-codex-broker.err`, confirmed the cause (codex-cli auto-updated to 0.148.0, then 0.149.0, while the pin stayed at 0.147.0), bumped `WA_CODEX_CLI_VERSION_PIN` to `0.149.0`, and kickstarted. Proof met — `broker_last_seen_at` ADVANCES between two reads, re-confirmed independently by this session. | **`operator[secret]`** — executed. | Was: nothing on the ladder can be measured while the executor is dead. Now: the executor is live; steps 1+ can proceed. |
+| **0b** | **Arm the seat sentinel** — the organ that would have caught step 0 within the hour instead of after 73.5. STILL OPEN. Re-run the provisioning (idempotent; installs the §1.3 section the 08-20 run predated), then arm the crontab from the **GUI terminal**. | **`operator[secret]`** for the provisioning, **`operator[tcc]`** for the crontab: writing the crontab on Pro is TCC-blocked from every non-GUI context (measured 2026-08-20 via both sshd and a live tmux server). | Without it, the next silent death also lasts days — the mechanism (an auto-updating CLI vs a pinned version) can and will recur. Highest value-per-minute item on this list. |
 | **0c** | **Cure the class, not the instance:** make version-pin drift *detectable* — the sentinel's RED must name "pin mismatch", and the pin bump belongs to whatever updates codex-cli. | session | codex-cli auto-updates. This will recur, and next time it should be a 5-minute alert rather than an archaeology exercise. |
 | **1** | **G-P1** — live verification of the ChatGPT **and Codex-specific** data-control settings on the seat, dated, re-checked at S4. | **`operator[gui]`** + session record | Account-level toggles are visible only in the web UI. The 2026-08-19 owner attestation covered the ChatGPT-level toggle; the spec (§6, G-P1) leaves the Codex-specific controls explicitly open. |
 | **2** | **G-P3** — the named DLP policy with a **measured recall floor**. | session | **In flight today.** The redaction module is built and tested; the round-2 cure batch (NIK-vs-date over-match plus four smaller findings) is the PR this session is shipping. What remains after that PR is the *registered recall number* on the synthetic corpus — a figure Zero should see, not a claim. |
@@ -258,6 +291,10 @@ nobody has measured.
 Both are single pastes into Pro's **GUI terminal** — not ssh, not tmux: the crontab leg is
 TCC-blocked from every non-GUI context.
 
+**Steps 0a–0c below have been EXECUTED and worked (§0 UPDATE) — kept verbatim as the historical
+record and because 0b (seat-probe provisioning, at the bottom of the block) is idempotent and
+still needed for the still-open seat-sentinel item.**
+
 ```sh
 # Step 0a — READ THE LOG FIRST. This is the only artifact that names the ORIGINAL cause, and
 # §1.2 shows the pin story does not explain it. Paste the last lines back rather than acting
@@ -293,7 +330,8 @@ asyncio.run(m())\""
 
 `broker_last_seen_at` must be within seconds of now, and must **change** between two consecutive
 runs. A single fresh-looking timestamp is not proof; two advancing ones are. `breaker_state` reading
-`closed` proves nothing on its own — it read `closed` throughout the entire 72-hour outage.
+`closed` proves nothing on its own — it read `closed` throughout the entire 73.5-hour outage. **This
+ran and passed — see §0 UPDATE for the actual advancing timestamps.**
 
 ---
 
@@ -346,3 +384,19 @@ argued away.
 7. **This memo cannot prove its own §3 paste works.** The cure is written from source, not from a
    successful execution — nobody has run it. Its proof-of-armed is therefore stated as a *future*
    observation (two advancing reads of `broker_last_seen_at`), never as a result.
+
+### Post-review resolution (2026-08-23T05:23Z — after Kimi's pass, not part of it)
+
+Findings 1, 5 and 7 above are now closed by further measurement, recorded in §0's UPDATE and not
+retrofitted into Kimi's own text above so this stays an accurate record of what the adversarial
+pass actually found and when:
+
+- **Findings 1 / 5 (initiating cause unknown):** RESOLVED. The operator read the root-only log
+  Kimi's finding pointed at. It shows `codex-cli` auto-updated to an intermediate **0.148.0**
+  around `2026-08-20T03:45Z`, invisibly overwritten on disk by the later 0.149.0 install — 3,579
+  matching restarts on `0.148.0`, 4,437 on `0.149.0`, no other error in the file. All three named
+  candidates are refuted by that same log text (§1.2). One mechanism, two versions, not a second
+  unknown cause.
+- **Finding 7 (cure unproven):** RESOLVED. The §3 paste ran. `broker_last_seen_at` advances
+  between consecutive reads — measured by the operator and independently re-measured by this
+  session (§0 UPDATE) — so the proof-of-armed is now a result, not a future observation.
