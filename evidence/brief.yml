@@ -192,7 +192,8 @@ grader:
   out-of-scope finding (`primitives.py` extension jail, not fixed here, PENDING-ARMS). The two
   substantive findings were independently re-verified by BOTH the requesting session (on disk,
   before dispatch) and this session (before implementing each fix) — not accepted on report alone.
-budget: 1 build lane (this session), no council convened for the evidence-pack work itself; the
+budget:
+  1 build lane (this session), no council convened for the evidence-pack work itself; the
   adversarial review above was a separate, already-completed independent gate, not a council this
   session convened.
 pii: none — schema/contract/test code only, zero client data touched.
