@@ -453,11 +453,34 @@ export function mapDisclosedReviewFlags(
 // to NOT_ASKED because the gate field was never populated. Both branches go
 // through `enumFact`, so an unrecognized or "unsure" value resolves UNKNOWN
 // either way — never a guessed KNOWN.
+//
+// A THIRD case (added 2026-08-24, P0 offshore-reachability fix): an
+// OFFSHORE applicant (`in_indonesia === "no"`) who answers
+// `holds_stay_permit === "no"` is never asked `current_status_code` at all
+// — `flow.ts::computeNextNode`'s offshore branch converges straight to
+// `overstay_days` instead, specifically to avoid paying a redundant
+// question for a fact `holds_stay_permit`'s own answer already fully
+// determines (measured funnel-cost review, PR #4727: asking it anyway
+// would cost every offshore applicant of every product 3 questions to
+// serve one product's rule). When neither raw field is populated but
+// `holds_stay_permit` is explicitly "no", emit the synthesized
+// `NO_STAY_PERMIT` sentinel directly (see `fact_registry.py`'s
+// `_VISIT_CLASS_STATUS_CODES` docstring for why this is honest, not a
+// guess) rather than falling through to NOT_ASKED. This branch can never
+// fire for onshore: onshore always asks the real `current_status_code`
+// question on "no" (unchanged), so that raw field is already populated by
+// the time this mapper runs and the second branch above wins first.
 function mapCurrentStatusCode(facts: OracleFacts): FactValue<string> {
   if (facts.stay_permit_code !== undefined) {
     return enumFact(facts.stay_permit_code, STAY_PERMIT_CODES);
   }
-  return enumFact(facts.current_status_code, CURRENT_STATUS_CODES);
+  if (facts.current_status_code !== undefined) {
+    return enumFact(facts.current_status_code, CURRENT_STATUS_CODES);
+  }
+  if (facts.holds_stay_permit === "no") {
+    return known("NO_STAY_PERMIT");
+  }
+  return unknownFact(NOT_ASKED);
 }
 
 /**

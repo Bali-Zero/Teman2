@@ -276,6 +276,53 @@ describe("mapCurrentStatusExpiry — permit_expiry -> immigration.current_status
   });
 });
 
+describe("mapCurrentStatusCode — the synthesized NO_STAY_PERMIT sentinel (2026-08-24 P0 fix)", () => {
+  // mapCurrentStatusCode is not exported (internal to mapOracleFactsToApplicantFacts);
+  // reached here through the same `immigration.current_status_code` wire key
+  // every other test in this file uses for the exported facts, mapper.ts's
+  // own convention.
+  it("stay_permit_code answered -> KNOWN with the E-code, unaffected by holds_stay_permit", () => {
+    expect(
+      mapFacts({
+        stay_permit_code: "E28A",
+        holds_stay_permit: "yes",
+      }).facts["immigration.current_status_code"],
+    ).toEqual({ status: "KNOWN", value: "E28A" });
+  });
+
+  it("current_status_code answered (onshore 'no' path) -> KNOWN with the real visit-class code, never the sentinel", () => {
+    expect(
+      mapFacts({
+        current_status_code: "C1",
+        holds_stay_permit: "no",
+      }).facts["immigration.current_status_code"],
+    ).toEqual({ status: "KNOWN", value: "C1" });
+  });
+
+  it("neither raw field answered, holds_stay_permit='no' (offshore convergence) -> KNOWN NO_STAY_PERMIT, no question asked", () => {
+    expect(
+      mapFacts({ holds_stay_permit: "no" }).facts[
+        "immigration.current_status_code"
+      ],
+    ).toEqual({ status: "KNOWN", value: "NO_STAY_PERMIT" });
+  });
+
+  it("neither raw field answered, holds_stay_permit='yes' -> UNKNOWN NOT_ASKED (still waiting on stay_permit_code)", () => {
+    expect(
+      mapFacts({ holds_stay_permit: "yes" }).facts[
+        "immigration.current_status_code"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_ASKED" });
+  });
+
+  it("nothing answered at all -> UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["immigration.current_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+});
+
 describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   it("never asked -> UNKNOWN NOT_ASKED (the pre-existing default value)", () => {
     expect(mapSponsorType({})).toEqual({
