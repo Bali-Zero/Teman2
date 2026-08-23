@@ -587,6 +587,71 @@ def _apply_freshness(payload: dict[str, Any], seq12_source: dict[str, Any]) -> s
 # ---------------------------------------------------------------------------
 
 
+def _real_now_utc() -> datetime:
+    """The actual wall clock, read once per fold run — deliberately NOT
+    baked into the payload (``_SEQ13_CREATED_AT`` stays fixed for
+    determinism; see that constant's own comment). This is a VALIDATION
+    reference only, isolated into its own function so a test can
+    monkeypatch it without touching the stdlib.
+
+    A separate seam matters here specifically: ``_apply_freshness``'s
+    guard above checks every restamp against ``_SEQ13_CREATED_AT`` — but
+    both that guard's subject (the restamp) and its reference
+    (``_SEQ13_CREATED_AT``) live in files this fold's own author controls.
+    2026-08-23 (team-lead, after finding ``_SEQ13_CREATED_AT`` was
+    hardcoded 6h into the future and had sat that way through every
+    revision including a determinism-proved rebase re-run): "a check
+    whose reference is derived from its subject ... goes green by
+    construction, and the green is indistinguishable from the real
+    thing." Real wall-clock is a reference the author cannot pre-arrange
+    to agree with a wrong ``_SEQ13_CREATED_AT`` — which is the whole
+    point of adding it.
+    """
+    return datetime.now(timezone.utc)
+
+
+def _assert_wall_clock_sanity(payload: dict[str, Any]) -> None:
+    """Independent of the `_apply_freshness` restamp-vs-`_SEQ13_CREATED_AT`
+    guard: that guard proves a restamp doesn't outrun this pack's own
+    declared clock, but cannot catch `_SEQ13_CREATED_AT` itself being
+    wrong, since both live in this one file. This function's reference —
+    real wall-clock via `_real_now_utc()` — is not something the fold's
+    author can get wrong in the same way a hardcoded constant can: it is
+    read fresh every run, not carried forward from whatever it was set to
+    when someone last edited this file.
+
+    Deliberately checks ALL 28 `source_records`' `verified_at`, not only
+    the 18 just-restamped ones — a non-restamped record's stamp is
+    inherited from seq-12 and already known-good, but "known-good" is
+    exactly the kind of claim this function exists to stop trusting
+    without checking.
+    """
+    real_now = _real_now_utc()
+
+    created_at_dt = _parse_utc(_SEQ13_CREATED_AT)
+    if created_at_dt > real_now:
+        raise FoldPackError(
+            f"this pack's own created_at {_SEQ13_CREATED_AT!r} is in the future "
+            f"relative to real wall-clock ({real_now.strftime(_UTC_FORMAT)}) — a "
+            "pack cannot declare it was created after it actually was. Fix "
+            "_SEQ13_CREATED_AT; do not silence this check."
+        )
+
+    for record in payload.get("source_records", []):
+        verified_at = record.get("verified_at")
+        if verified_at is None:
+            continue
+        verified_dt = _parse_utc(verified_at)
+        if verified_dt > real_now:
+            raise FoldPackError(
+                f"source_record {record.get('source_record_id')!r}: verified_at "
+                f"{verified_at!r} is in the future relative to real wall-clock "
+                f"({real_now.strftime(_UTC_FORMAT)}) — independent of the "
+                "_SEQ13_CREATED_AT-relative check in _apply_freshness, which "
+                "cannot catch _SEQ13_CREATED_AT itself being wrong"
+            )
+
+
 def _assert_untouched(
     payload: dict[str, Any], seq12: dict[str, Any], restamped_ids: set[str]
 ) -> None:
@@ -673,6 +738,7 @@ def assemble_payload() -> dict[str, Any]:
     _apply_identity(payload, seq12_original)
     _apply_rules(payload, seq12_original)
     restamped_ids = _apply_freshness(payload, seq12_original)
+    _assert_wall_clock_sanity(payload)
     _assert_untouched(payload, seq12_original, restamped_ids)
 
     try:

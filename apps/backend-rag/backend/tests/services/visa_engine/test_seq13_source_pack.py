@@ -544,6 +544,86 @@ class TestGuardsFireOnMutation:
         with pytest.raises(m.FoldPackError, match="is after this pack's own created_at"):
             m.assemble_payload()
 
+    def test_wall_clock_sanity_created_at_future_relative_to_real_now_guard_fires(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The guard the future-stamp test above CANNOT exercise: a wrong
+        _SEQ13_CREATED_AT itself, caught against a reference (real
+        wall-clock, via _real_now_utc) the fold's own author does not
+        control — as opposed to the _apply_freshness guard, whose
+        reference IS _SEQ13_CREATED_AT, so it cannot see this class of
+        defect. No freshness-input mutation here at all — this fires purely
+        because the mocked "now" is before the pack's own created_at,
+        proving the two guards are independent."""
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        created_at_dt = m._parse_utc(m._SEQ13_CREATED_AT)
+        before_created_at = created_at_dt.replace(
+            year=created_at_dt.year - 1
+        )  # unambiguously earlier, no DST/leap edge cases
+        monkeypatch.setattr(m, "_real_now_utc", lambda: before_created_at)
+        with pytest.raises(m.FoldPackError, match="is in the future relative to real wall-clock"):
+            m.assemble_payload()
+
+    def test_wall_clock_sanity_verified_at_future_relative_to_real_now_guard_fires(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Direct unit test of _assert_wall_clock_sanity, bypassing
+        assemble_payload() entirely — end-to-end this check is unreachable
+        on ITS OWN failure mode: _SEQ13_CREATED_AT is, by construction, the
+        latest timestamp anywhere in the payload (it's stamped after every
+        input), so whenever real-now is early enough to make some
+        source_record's verified_at look future, real-now is ALSO before
+        created_at, and the created_at check above fires first (algebra:
+        verified_at <= created_at, so created_at <= now implies
+        verified_at <= now too — the per-record check can only ever add
+        value once created_at itself is untrustworthy in some way THIS
+        payload's construction doesn't allow, or for the 10 of 28
+        source_records _apply_freshness never touches at all, which this
+        payload's ordering also always covers). A direct unit test proves
+        the per-record check is real and independently reachable, not
+        dead code kept only for its comment."""
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        payload = {
+            "created_at": "2026-08-23T13:00:00Z",  # passes the created_at check
+            "source_records": [
+                {"source_record_id": "sr-1", "verified_at": "2026-08-23T12:00:00Z"},
+                {"source_record_id": "sr-2", "verified_at": "2099-01-01T00:00:00Z"},  # the violator
+            ],
+        }
+        mocked_now = m._parse_utc("2026-08-23T13:30:00Z")  # after created_at, before sr-2
+        monkeypatch.setattr(m, "_real_now_utc", lambda: mocked_now)
+        monkeypatch.setattr(m, "_SEQ13_CREATED_AT", payload["created_at"])
+        with pytest.raises(
+            m.FoldPackError,
+            match=r"source_record 'sr-2': verified_at .* is in the future relative to real wall-clock",
+        ):
+            m._assert_wall_clock_sanity(payload)
+
+    def test_wall_clock_sanity_passes_when_real_now_is_after_everything(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The positive direction team-lead asked for explicitly: a past
+        stamp (relative to the mocked clock) must NOT raise. Mocks "now"
+        to something safely after created_at and every real restamp,
+        proving the new guard doesn't fire on the actual, correct data —
+        this is effectively re-proven by every other passing test in this
+        file (they all run with the real, unmocked wall-clock, which is
+        already after everything here), but this test pins the exact
+        boundary explicitly rather than leaving it implicit."""
+        from backend.scripts.visa_engine import fold_pack_seq13_source as m
+
+        safely_after_everything = m._parse_utc("2026-08-24T00:00:00Z")
+        monkeypatch.setattr(m, "_real_now_utc", lambda: safely_after_everything)
+        payload = m.assemble_payload()
+        assert payload["created_at"] == m._SEQ13_CREATED_AT, (
+            "assemble_payload() must complete and return the real assembled "
+            "payload, not merely avoid raising — proves the guard ran (it's "
+            "unconditionally called from assemble_payload()) and cleared, "
+            "rather than the test accidentally not exercising it at all"
+        )
+
     def test_freshness_entity_mismatch_guard_fires(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freshness_input: dict[str, Any]
     ) -> None:
