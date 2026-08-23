@@ -440,6 +440,10 @@ def test_explicit_order_reaches_team_then_legacy_then_keychain(
         "token3",
         "token4",
         "token5",
+        # Team seat moved to slot 6 in the 2026-08-23 remap. CLAUDE_CODE_OAUTH_TOKEN_6
+        # is never set by _fake_fleet, so the numbered slot-6 attempt is skipped and
+        # the compatibility "team-wrapper" fallback fires here, before legacy/keychain.
+        "team-wrapper",
         "legacy",
         "keychain",
     ]
@@ -452,7 +456,13 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
     bodies = _default_bodies()
     bodies["team-wrapper"] = 'printf "protected-team-success\\n"\nexit 0'
     call_log, _, env = _fake_fleet(tmp_path, bodies)
-    env.pop("CLAUDE_CODE_OAUTH_TOKEN_5")
+    # The Team seat's own explicit slot is 6 since the 2026-08-23 remap (it used
+    # to be 5). _fake_fleet never sets CLAUDE_CODE_OAUTH_TOKEN_6 in the first
+    # place, so this is already the "explicit team token absent" case by
+    # construction — the pop documents that intent rather than changing it.
+    # Slot 5 (kaiser, a plain MAX seat since the remap) is left in place and is
+    # still tried on the way to the team-wrapper compat fallback.
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN_6", None)
 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
@@ -463,9 +473,10 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
         "token2",
         "token3",
         "token4",
+        "token5",
         "team-wrapper",
     ]
-    assert "used: claude-token-5-team-wrapper" in result.stderr
+    assert "used: claude-token-6-team-wrapper" in result.stderr
 
 
 def test_claude_only_never_crosses_provider_boundary_when_all_seats_fail(
