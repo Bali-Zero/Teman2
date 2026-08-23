@@ -61,10 +61,26 @@ if [[ ! -r "$SECRETS" ]]; then
   exit 78  # EX_CONFIG
 fi
 
+# `source` under `set -e` is ITSELF a silent-exit path, and it sat one block
+# above the interpreter guard below — same defect, cured later. A malformed
+# secrets file aborts the script mid-source with NO heartbeat, and bash echoes
+# the OFFENDING LINE to stderr, which in this file is likely a credential
+# fragment landing in the organ's .err.log (superscar #4). So: errexit off
+# across the source, bash's stderr discarded deliberately, and the failure
+# reported by NAME and return code only. Found by the cross-family gate seat,
+# not by the author.
 set -a
+set +e
 # shellcheck disable=SC1090
-source "$SECRETS"
+source "$SECRETS" 2>/dev/null
+_src_rc=$?
+set -e
 set +a
+if [[ "$_src_rc" -ne 0 ]]; then
+  organism_heartbeat "$ORGAN_ID" "error" "secrets file failed to parse (rc=$_src_rc): $SECRETS"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) FATAL: $SECRETS failed to parse (rc=$_src_rc) — bash stderr suppressed on purpose, it quotes the offending line" >&2
+  exit 78
+fi
 
 if [[ -z "${DATABASE_URL_LOCAL:-}" ]]; then
   organism_heartbeat "$ORGAN_ID" "error" "DATABASE_URL_LOCAL unset in $SECRETS"
@@ -81,15 +97,30 @@ if ! nc -z "$TUNNEL_HOST" "$TUNNEL_PORT" >/dev/null 2>&1; then
   exit 75  # EX_TEMPFAIL — transient by nature, the proxy LaunchAgent restarts itself
 fi
 
-# The script's own resolution order is INTAKE_DATABASE_URL, LOCAL_DATABASE_URL,
-# DATABASE_URL_LOCAL, then the dev default — so either of the first two, if the
-# sourced secrets file ever defines one, SILENTLY OUTRANKS the export below.
-# This wrapper cannot prove they are unset (reading that file is guarded, and
-# rightly — superscar #4), so the property is verified by EFFECT instead: a live
-# run returns real production row ages, whereas the dev database holds zero rows
-# in both tables and would trip the payload's wrong-database branch. If this
-# organ ever starts reporting wrong-database on a healthy tunnel, look here
-# first. Exported rather than passed on argv so the DSN never appears in `ps`.
+# The payload resolves INTAKE_DATABASE_URL, then LOCAL_DATABASE_URL, then
+# DATABASE_URL_LOCAL, then a dev default — so either of the first two, arriving
+# from the sourced secrets file, would SILENTLY outrank the export below and
+# repoint this organ at the wrong database.
+#
+# An earlier version of this comment said the wrapper "cannot prove they are
+# unset" and settled for verifying the property BY EFFECT. That was wrong, and
+# the cross-family gate seat said so: the file has just been sourced into THIS
+# process, so testing the names costs one line and reads nothing. Detection by
+# effect would also have routed the config fault through the payload's
+# wrong-database p0 — exactly the paging storm §2 of this header says the
+# wrapper exists to prevent.
+#
+# They are UNSET rather than treated as fatal, deliberately: this wrapper's
+# intent is unambiguous, and turning an unrelated addition to a shared secrets
+# file into an outage of the outage-detector is the wrong trade. The override is
+# logged so it is visible rather than silent.
+for _override in INTAKE_DATABASE_URL LOCAL_DATABASE_URL; do
+  if [[ -n "${!_override:-}" ]]; then
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) WARN: $_override is set and outranks DATABASE_URL_LOCAL — unsetting it for this run" >&2
+    unset "$_override"
+  fi
+done
+# Exported rather than passed on argv so the DSN never appears in `ps`.
 export DATABASE_URL_LOCAL
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 PYBIN="$REPO_ROOT/apps/backend-rag/.venv/bin/python"

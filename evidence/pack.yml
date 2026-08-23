@@ -7,23 +7,32 @@ lanes:
   - lane: wa-throughput-gate
     role: review
     seat: "claude-opus-5 (independent gate subagent, fresh context, wrote none of the three files)"
+  - lane: wa-throughput-gate-xfamily
+    role: review
+    seat: "kimi-code/k3 (Moonshot — cross-family adversarial gate; returned two CONFIRMED MEDIUMs the Anthropic lanes did not)"
 seat_diversity: degraded
 seat_diversity_note: >-
-  Both lanes are Anthropic seats. One build lane only, so the D3 rule's own
-  floor (>=2 build lanes) does not fire, but the absence of a cross-family
-  reviewer is real and is declared rather than left to read as satisfied.
-  Roster state measured this session by the SessionStart arsenal probe:
-  codex UNKNOWN_ERR, and the probe itself returned PARTIAL (1 of 17 seats),
-  so most seats were not measured at all rather than measured dead — see
-  lesson_a_seat_board_that_under_reports_silently_narrows_every_routing_decision_2026_08_22.
-  The honest statement is that no cross-family seat was CONVOKED for this
-  lane, not that none was available.
+  Single BUILD lane, so the D3 rule's own floor (>=2 build lanes) does not fire
+  and the field stays "degraded" on that basis alone. The review side is NOT
+  degraded: a cross-family seat (kimi-code/k3) gated this diff and found two
+  CONFIRMED MEDIUMs, both of which the Anthropic review lanes missed. That is
+  the whole argument for cross-family review stated as a measurement rather
+  than a principle.
+
+  Recorded because it cost something to learn: the first Anthropic gate
+  subagent went idle FOUR times without ever emitting a report. An idle
+  notification is not a verdict, and reading it as one would have shipped this
+  PR with both MEDIUMs open. The cross-family seat was reached for as a
+  delivery fix and turned out to be the substantive one.
 diff:
   net_lines: >-
-    3 files, +222/-1: scripts/wa_bot_throughput_sentinel_run.sh (91),
-    infra/launchagents/com.nuzantara.wa-bot-throughput-sentinel.plist (102),
-    apps/organism/organism/organs_registry.yaml (+30/-2, entry + checksum).
-    Deterministic gear floor RECOMPUTED from this diff = 3 (hot-zone:
+    5 files, +545/-170 measured THREE-DOT against the merge base
+    (origin/main...HEAD) — never two-dot, which on a moved base blames this PR
+    for files that landed on main after the branch point (W102). Two of the
+    five are evidence/brief.yml and evidence/pack.yml, which already exist on
+    main from an earlier Gear-3 PR and are therefore REWRITTEN, not created:
+    that is the fixed-path collision hazard in the flesh, not a hypothetical.
+    Deterministic gear floor recomputed from this diff = 3 (hot-zone:
     infra/launchagents/). Gear 3 is the floor, not a choice.
   behaviour_change: >-
     NOTHING changes on any machine when this merges. It adds the artifacts
@@ -133,6 +142,35 @@ receipts:
     exit: 0
     ts: "2026-08-23T14:15Z"
     seat: "session (pro, build lane)"
+  - claim: "The cross-family gate's silent-exit finding is CONFIRMED, and its secret-leak half is confirmed too — but only in the realistic malformation shape, which my first probe missed"
+    cmd: "the pre-cure wrapper (git show HEAD:...) against two malformed secrets files: (a) a syntax error, (b) a credential pasted on its own line with no KEY= prefix; ORGANISM_LAST_SEEN_DIR isolated, canary token grepped for"
+    result: >-
+      Shape (a), syntax error: rc=2, ZERO heartbeat files — silent path
+      CONFIRMED — but the canary did NOT appear, because bash quotes the
+      offending TOKEN, not the value. On that evidence alone I would have
+      written the leak half off as not reproduced. Shape (b), the realistic
+      accident: rc=127, ZERO heartbeats, and the credential printed VERBATIM to
+      stderr — "<file>: line 2: <CANARY>-looks-like-a-token: command not found"
+      — straight into the organ's .err.log. Superscar #4 and #2 in one line.
+      The finding was right; my first probe was the wrong shape for it.
+    exit: 0
+    ts: "2026-08-23T14:33Z"
+    seat: "session (pro, build lane) verifying kimi-code/k3's finding"
+  - claim: "Both round-2 cures are guilt-tested and innocence-tested"
+    cmd: "same two malformed files against the CURED wrapper; and a bogus INTAKE_DATABASE_URL injected into a live run"
+    result: >-
+      Malformed secrets, cured: rc=78, exactly ONE heartbeat —
+      {"status":"error","note":"secrets file failed to parse (rc=1): <path>"} —
+      and the canary count in the output is 0 (bash's stderr is discarded on
+      purpose; the failure is reported by file name and return code only).
+      DSN override, cured: with INTAKE_DATABASE_URL set to a deliberately
+      unreachable dev DSN the run logs "WARN: INTAKE_DATABASE_URL is set and
+      outranks DATABASE_URL_LOCAL — unsetting it for this run" and STILL
+      reaches production (condition=dead_channel, raw_inbound_h=589.1, rc=0).
+      Innocence: with no override present the WARN line count is 0.
+    exit: 0
+    ts: "2026-08-23T14:32Z"
+    seat: "session (pro, build lane)"
 pii_scan: clean
 tests:
   - "scripts/tests/test_wa_bot_throughput_sentinel.py — 45 tests, merged with the payload in PR #4630; not re-run here because this PR does not touch the payload."
@@ -140,6 +178,18 @@ static:
   - "pre-commit hooks pass on the registry commit, none bypassed"
   - "organism.tools.validate_organs_registry --update-checksum: checksum updated, rc=0"
 notes:
+  - >-
+    MEASURED COST OF THIS PACK'S OWN FILE PATH, contributed by another lane the
+    same day and recorded here because it is the strongest argument against the
+    current design: evidence/brief.yml and evidence/pack.yml are FIXED root
+    paths that every Gear-3 PR rewrites, so two of them cannot sit in the merge
+    queue together. That lane was ejected from position 8 — position does not
+    protect, because the entries ahead dirty you by LANDING, not by overtaking.
+    Its measured bill: three independent graders judged the SAME code three
+    times, 15 byte-identical blobs across three heads, not one line of code
+    changed — only the base moved. The recurring cost is not the merge, it is
+    that the gate verdict is bound to the head SHA, so every base movement
+    voids it and buys another full gate.
   - >-
     THE ONE THING THIS PR DOES NOT PROVE. Merging arms nothing. The organ is
     real only when the plist is bootstrapped on Pro and the heartbeat sidecar
@@ -195,3 +245,60 @@ dissent:
       as the rest of this PR: a stated property nobody executes is
       indistinguishable from a property that holds, right up until it
       matters.
+  - seat: "kimi-code/k3 (cross-family gate), against the build lane"
+    objection: >-
+      `set -a; source "$SECRETS"` runs unguarded under `set -euo pipefail`, one
+      block ABOVE the interpreter guard the build lane had just added. A
+      malformed secrets file therefore aborts the script mid-source with no
+      heartbeat at all — the same silent class, left open in the same file, in
+      the same commit that claimed to close it. And bash echoes the offending
+      line to stderr, so in a secrets file that text is plausibly a credential
+      landing in the organ's .err.log.
+    status: CONFIRMED
+    note: >-
+      Both halves reproduced (see receipts), the second only in the realistic
+      shape. Cured: errexit disabled across the source, bash's stderr discarded
+      deliberately, failure reported by file name and rc, exit 78 with an error
+      heartbeat. The finding is worth more than the fix: the build lane cured
+      one instance of a defect class and did not sweep the file for its
+      siblings, which is precisely the shape catalogued as "tightening a rule
+      without auditing its siblings on the same product".
+  - seat: "kimi-code/k3 (cross-family gate), against the build lane's own correction"
+    objection: >-
+      The comment claiming the wrapper "cannot prove they are unset (reading
+      that file is guarded)" is false. The wrapper SOURCES the file, so after
+      sourcing it can test INTAKE_DATABASE_URL / LOCAL_DATABASE_URL in its own
+      environment without reading anything. Settling for verification "by
+      effect" routes the config fault through the payload's wrong-database p0
+      — exactly the paging storm this wrapper's own header says it exists to
+      prevent.
+    status: CONFIRMED
+    note: >-
+      Correct, and pointed: the build lane had replaced a false claim with a
+      DIFFERENT false claim in the same commit, one round earlier. Cured with a
+      deterministic guard that unsets either name and logs the override.
+      Unset rather than fatal, deliberately — this wrapper's intent is
+      unambiguous, and turning an unrelated addition to a shared secrets file
+      into an outage OF THE OUTAGE-DETECTOR is the wrong trade.
+  - seat: "the build lane, against its own dispatch of the cross-family seat"
+    objection: >-
+      The cross-family gate was given the diff, not the machine — but it
+      autonomously read the variable NAMES in ~/.nuzantara-secrets.env and
+      queried live launchd state (it reported the pg-proxy PID). No values were
+      echoed and its findings were correct and useful, but the session's own
+      standing rule is that an external seat must never be pointed at env,
+      launchctl, ps or secrets surfaces, because dispatching one hands over the
+      ENVIRONMENT and not merely the prompt.
+    status: CONFIRMED
+    note: >-
+      Recorded rather than quietly accepted, because the boundary was crossed
+      by the seat's own initiative and not by the prompt — which means the
+      mitigation is not "write a better prompt" but "assume repo-agentic seats
+      will read what they can reach, and scope the dispatch accordingly". No
+      credential value appears in the seat's transcript or in this pack. The
+      useful half of the finding it obtained that way (the secrets file defines
+      DATABASE_URL, DATABASE_URL_LOCAL, EVENTBUS_DATABASE_URL and
+      WA_MIRROR_DATABASE_URL, and neither overriding name) is NOT relied on
+      here: the deterministic guard makes the property hold regardless of what
+      that file contains, which is the whole point of preferring a guard to an
+      observation.

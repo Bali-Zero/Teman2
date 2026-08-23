@@ -64,15 +64,23 @@ risks:
     interval apart. A green exit code and the presence of a plist line are
     NOT proof — that is precisely the superscar-#2 error this whole sentinel
     was built to catch, and it would be ironic to commit it here."
-  - "The wrapper does `set -a; source ~/.nuzantara-secrets.env`. If that file
-    ever defines INTAKE_DATABASE_URL or LOCAL_DATABASE_URL, either would WIN
-    over the exported DATABASE_URL_LOCAL in the payload's resolution order and
-    silently repoint the sentinel. Reading that file to check is blocked by a
-    guard (correctly — superscar #4), so this was verified by EFFECT instead:
-    a live run returns real production ages, and the dev database has zero
-    rows in both tables, which would have triggered the wrong-database branch
-    instead. The hazard is real but currently not live; it is named here so
-    the next person does not have to rediscover it."
+  - "RESOLVED IN THIS PR, kept because the reasoning is the lesson. The wrapper
+    sources ~/.nuzantara-secrets.env, and the payload prefers
+    INTAKE_DATABASE_URL and LOCAL_DATABASE_URL over the exported
+    DATABASE_URL_LOCAL — so either name arriving from that file would silently
+    repoint the sentinel. The first attempt at this settled for verifying the
+    property BY EFFECT, on the grounds that reading the file is guarded. The
+    cross-family gate refuted that: the wrapper has just sourced the file into
+    its own process, so testing the names costs one line and reads nothing.
+    Now a deterministic guard unsets either name and logs the override. The
+    same seat found that the unguarded `source` itself was a silent-exit path
+    that also echoed the offending line — a credential fragment — to the
+    organ.s error log; both are cured and both are guilt-tested."
+  - "The gate is bound to the head SHA, and this pack lives at a FIXED root
+    path every Gear-3 PR rewrites. So a base movement does not merely require
+    a rebase: it voids the verdict and buys another full gate. Another lane
+    measured that bill the same day — three graders, three times, on
+    byte-identical code."
   - "scripts/lint_home_fork.py exits 2 repo-wide (123 undeclared pairs). NONE
     of them is this organ — grep for it in that output returns 0, and the
     payload path is the canonical checkout, so no declared pair applies. This
