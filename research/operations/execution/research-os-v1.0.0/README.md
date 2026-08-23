@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # Research OS v1.0.0 — Execution Control Room
 
 **Program state:** `prepared_not_dispatched`
@@ -79,24 +83,26 @@ Two operator rulings amend how this control room executes. Neither rewrites the 
 
 The S00-only bootstrap exception defined below is not exercised. Session S00 as specified there — a Pro-authoritative run registry, immutable `campaign_root_sha` lineage, fail-closed branch-bound scope sidecars, a hash-bound `INTEGRATION-MANIFEST.schema.json`, and campaign lease-backend fingerprinting — was never finished: it exists only as an unfinished checkpoint on a Pro branch, `scripts/research_os_campaign.py`, roughly 8.5k lines, last commit `3cdd1ae90` ("checkpoint unfinished wave zero control primitive"). The operator has ruled that this program runs on the control plane this repository already operates in production, instead of waiting for S00 to complete.
 
-The S00 controls are replaced as follows:
+What actually happens instead of each S00 control — stated as what the existing mechanism does, and what it does not do. An independent refuter (Codex, read-only, 2026-08-23) attacked an earlier draft of this table for overclaiming; the "does not cover" column is the result, verified against the named files at `origin/main` = `03998cf90`.
 
-| S00 control | Replacement in force |
-|---|---|
-| Pro-authoritative run registry + placement | `scripts/agent_start.py` (Agent Worktree Broker, SOTA L1 2026-05-24) — one dedicated worktree per session under `.worktrees/<lane>-<task-id>/` |
-| Campaign lease universe + backend fingerprint | the existing Redis lease registry (`agent_lock:<resource>`) and its `pre-commit lease-check` hook (`docs/runbooks/redis-lease-registry.md`) |
-| Serial integrator `I1` + hash-bound integration manifest | the GitHub merge queue, `CODEOWNERS`, and the required CI gates |
-| Per-packet dispatch discipline | `CLAUDE.md` "Agent PR Contract" rules 1-8, notably rule 8 (three reds on the same cause ⇒ the packet SUSPENDS) |
-| Evidence/receipt discipline | the existing evidence packs, `scripts/evidence_pack_lint.py`, and `.github/workflows/harness-floor.yml` |
+| S00 control | What runs instead | What that does NOT cover |
+|---|---|---|
+| Pro-authoritative single-writer run registry + placement | `scripts/agent_start.py` (Agent Worktree Broker, SOTA L1 2026-05-24): creates one branch, one worktree under `.worktrees/<lane>-<task-id>/`, and per-worktree metadata (task, lane, branch, host, time, TTL, PID, base branch, path) | packet state, campaign identity, four-field lineage, dependency graph, builder-cap accounting, and the append-only integration-checkpoint chain. It is a worktree broker, not a campaign registry. |
+| Campaign lease universe + backend fingerprint, fail-closed | the existing Redis lease registry (`agent_lock:<resource>`) and its `pre-commit lease-check` hook | **fail-closed behaviour.** `docs/runbooks/redis-lease-registry.md` §"Redis is down → commits pass through silently with WARN" makes this deliberately fail-OPEN: with Redis unreachable the hook exits 0 and the commit proceeds. There is also no campaign keyspace and no backend fingerprint — the client defaults to `127.0.0.1:6379` from the environment. A dead Redis is indistinguishable from an uncontended lane. |
+| Serial integrator `I1` + hash-bound, single-use integration manifest | the GitHub merge queue, `CODEOWNERS`, and the required CI gates | the per-merge authorization contract: leases bound to the merge, a review receipt, an expiry, expected merge-tree/result hashes, a destination checkpoint, and an isolated program integration branch. The queue serializes merges; it does not authorize one specific merge once. |
+| Per-packet dispatch discipline | `CLAUDE.md` "Agent PR Contract" rules 1-8, notably rule 8 (three reds on the same cause ⇒ the packet SUSPENDS) | machine enforcement. These are rules a session follows, checked by a reviewer. |
+| Evidence/receipt discipline | the existing evidence packs, `scripts/evidence_pack_lint.py`, `.github/workflows/harness-floor.yml` | campaign-scoped receipts. The floor/ceiling is computed per PR diff, with no notion of a packet or a wave. |
 
-This is a substitution of mechanism, not an equivalence of guarantee. The existing control plane does not provide, and this campaign therefore runs without:
+This is a substitution of mechanism and an explicit reduction in guarantees. Concretely, this campaign runs without:
 
-- the four-field immutable lineage binding (`campaign_root_sha` / `dispatch_base_sha` / `source_repository` / `source_base_sha`) — lanes are cut from a fresh `origin/main` tip, which §2 below calls "never an identity";
-- fail-closed branch-bound scope sidecars — file scope is declared in the dispatch prompt and enforced at review, not by tooling;
-- the atomic collision-check-plus-worktree-creation the normal packet protocol requires of the reviewed S00 planner;
-- a hash-bound, single-use integration manifest per merge.
+- **the four-field immutable lineage binding** (`campaign_root_sha` / `dispatch_base_sha` / `source_repository` / `source_base_sha`). Its replacement is a hand-written `base: <sha>` line in the claim commit and every PR body. **Read the fresh-base caveat**: `scripts/agent_start.py` branches from `origin/<base>` after a fetch, but on fetch failure it deliberately falls back to the LOCAL ref with a warning (Law 6 — disconnection is a normal state, not a fault). A lane can therefore start from a stale base while believing it started from the tip, and on a machine whose checkout is held deliberately behind, it will. The dispatching session must read the broker's warning, and the recorded `base:` SHA must be compared against `git rev-parse origin/main` before the lane is trusted as current.
+- **fail-closed branch-bound scope sidecars.** File scope is declared in the dispatch prompt and checked by the reviewer. That is post-hoc rejection after the edit exists, not prevention before mutation — an out-of-scope change is caught at review or not at all.
+- **atomic collision-check-plus-worktree-creation.** The check and the create are separate steps and a concurrent lane can land between them.
+- **a hash-bound, single-use integration manifest per merge.**
+- **control-plane enforcement of the builder cap.** Amendment A2's cap of two is Conductor and operator convention: nothing counts active builders, and nothing refuses a third. It holds only as long as the humans and sessions dispatching lanes honour it.
+- **any sanctioned dispatch path for the external-repository lanes P01 and P07.** `agent_start.py` takes `--lane` and `--task-id` and operates on the monorepo that owns the script; it has no repository argument, and §H2 accordingly carries no `Lane:` value. Those two packets are therefore dispatched by hand: take a recoverable immutable snapshot of `/Users/nuzantara/Desktop/OSINT-Nexus`, record its id alongside the monorepo `base:` SHA, and never `reset`, `stash`, `clean`, or overwrite the live checkout. This is the weakest seam in the substitution and it sits on the packet with the highest consequence.
 
-The Conductor's review gate and the CI required-checks carry this weight instead. This is an accepted, recorded risk, re-evaluated when Packet 04 lands.
+The Conductor's independent review gate and the CI required-checks are what stand in for these — they detect after the fact what the S00 controls would have prevented before it, and they cannot supply atomic admission, lease-backend identity, or single-use merge authorization at all. This is an accepted, recorded risk, re-evaluated when Packet 04 lands.
 
 This amendment overrides `SESSION-BOARD.md` line 73 ("No packet is dispatched through a dry-run/direct-broker workaround"): under this amendment, the agent-worktree broker is the sanctioned dispatch path. It overrides `WAVE-0-DISPATCH.md` line 39 ("Until S00 passes, Wave 0 remains blocked"): Wave 0 dispatch does not wait for S00.
 
@@ -122,7 +128,7 @@ During this exception, the pre-S00 generic fleet command is diagnostic only and 
 
 ## Normal packet session start protocol
 
-After reviewed S00 has terminated the bootstrap exception, before any child session edits a file:
+After reviewed S00 has terminated the bootstrap exception, before any child session edits a file: (Superseded by the 2026-08-23 execution amendment in `README.md` — Amendment A1: S00 was never built, so this is not exercised.) What a lane does today is Amendment A1's short sequence: broker worktree, recorded `base:` SHA, existing path leases, merge queue.
 
 1. refresh the authoritative Pro head, the Pro/Air participating topology, and baseline; do not probe Mini-Pro2 as a campaign dependency;
 2. confirm the single-writer Pro run registry, the campaign lease, and the exact Pro Redis/backend fingerprint; Air-M5 and Mini-local registries or lease universes are invalid;
@@ -197,7 +203,7 @@ The serial integrator rejects:
 - tests that label fixture success as live readiness;
 - any undocumented outward side effect.
 
-The integrator is a distinct interactive Claude/operator-controlled role with its own hash-bound integration manifest; no external builder or reviewer seat may act as I1. Reviewed S00 must create and validate the dedicated `INTEGRATION-MANIFEST.schema.json` successor contract before I1 exists. The ordinary frozen Dispatch Manifest remains merge-forbidden. One integration manifest authorizes only one exact conflict-free merge of one reviewed source SHA into one named isolated integration branch in the same `source_repository`; it binds the control-plane checkpoint, repository-specific destination checkpoint, leases, review receipt, expected tree/result hashes, expiry, tests, and prohibitions on `main`, rewriting, conflict repair, deployment, production migration, service control, publication, paid use, and all live effects. I1 preserves the reviewed source identity and emits a separate repository result SHA plus a monorepo control-plane integration receipt/checkpoint. If integration requires a rebase, conflict edit, or any rewritten source commit, the candidate returns through a successor repair dispatch and independent review before integration.
+The integrator is a distinct interactive Claude/operator-controlled role with its own hash-bound integration manifest; no external builder or reviewer seat may act as I1. Reviewed S00 must create and validate the dedicated `INTEGRATION-MANIFEST.schema.json` successor contract before I1 exists. (Superseded by the 2026-08-23 execution amendment in `README.md` — Amendment A1: S00 was never built, so this is not exercised.) There is no `INTEGRATION-MANIFEST.schema.json` and no I1 session: integration is the merge queue, and the whole per-merge authorization contract described in the rest of this paragraph is one of the four guarantees Amendment A1 records as NOT replaced. The ordinary frozen Dispatch Manifest remains merge-forbidden. One integration manifest authorizes only one exact conflict-free merge of one reviewed source SHA into one named isolated integration branch in the same `source_repository`; it binds the control-plane checkpoint, repository-specific destination checkpoint, leases, review receipt, expected tree/result hashes, expiry, tests, and prohibitions on `main`, rewriting, conflict repair, deployment, production migration, service control, publication, paid use, and all live effects. I1 preserves the reviewed source identity and emits a separate repository result SHA plus a monorepo control-plane integration receipt/checkpoint. If integration requires a rebase, conflict edit, or any rewritten source commit, the candidate returns through a successor repair dispatch and independent review before integration.
 
 ## Immediate launch boundary
 
@@ -206,7 +212,22 @@ The first executable queue is defined in [`WAVE-0-DISPATCH.md`](./WAVE-0-DISPATC
 1. Packet 04 canonical contracts;
 2. Packet 01 NEXUS containment Tasks 1–6;
 3. Packet 03 WR3/FlowKit zero-spend readiness;
-4. Packet 05 and 06 preparation lanes on Pro, with at most one preparation lane active beside the three hot-path lanes;
+4. Packet 05 and 06 preparation lanes on Pro, with at most one preparation lane active beside the hot-path lanes — note this line described four concurrent builders under the original cap; under Amendment A2 (2026-08-23) the total across hot-path plus preparation is two;
 5. Packet 02, 07, 08, 12, 14, 17, and 18 preparation in the overflow queue.
 
 Nothing in this directory authorizes execution of those entries. Dispatch begins only after this control-room branch receives independent review and the Conductor records a current capacity/baseline receipt.
+
+## Adversarial review
+
+Seat: **Codex** (`codex exec --sandbox read-only`, `model_reasoning_effort=high`), 2026-08-23. Generator ≠ grader: the amendment was drafted by a Sonnet 5 implementer and gated by the Opus 5 Conductor, both Anthropic-family; the refuter is a different family and was given the diff plus read access, with the instruction to default to "defective" and to answer NOTHING FOUND rather than invent findings. A first attempt on Kimi K3 exceeded seven minutes under contention and was abandoned rather than reported as clean.
+
+**Verdict returned: DEFECTIVE, 15 findings.** All 15 were disposed of before this landed; none was waved through. The four load-bearing ones were re-verified by the Conductor against the actual files, not accepted on the refuter's word:
+
+| Finding | Verified how | Disposition |
+|---|---|---|
+| The Redis lease registry is **fail-open**, so it cannot replace a fail-closed campaign lease universe | `docs/runbooks/redis-lease-registry.md:121` — "Redis is down → commits pass through silently with WARN", hook exits 0 | CONFIRMED. The substitution table now states it, and the "does not cover" column says a dead Redis is indistinguishable from an uncontended lane. |
+| `agent_start.py` falls back to the **local** base branch when `git fetch` fails, so "cut from a fresh `origin/main` tip" can be false | `scripts/agent_start.py:909-923` — deliberate offline fallback with a warning (Law 6) | CONFIRMED. A1 now carries the caveat and requires the recorded `base:` SHA to be compared against `git rev-parse origin/main`. |
+| The broker cannot dispatch the **external-repository** lanes P01/P07 — it has no repository argument | `grep add_argument scripts/agent_start.py` — only `--lane`, `--task-id`, and lifecycle flags; §H2 carries no `Lane:` value | CONFIRMED. A1 now names this as the weakest seam and specifies the hand dispatch: recoverable immutable snapshot first, never touch the live checkout. |
+| The launch boundary still described **four** concurrent builders after A2 cut the cap to two | `README.md:209` — "one preparation lane active beside the three hot-path lanes" | CONFIRMED and corrected. |
+
+The remaining eleven were unsuperseded S00 sentences (five), overclaims in the substitution table (three), understated loss of enforcement — including the fact that the two-builder cap is convention with nothing counting builders (three). Each is either corrected or now carries an inline supersession marker. The refuter's central charge was that the table asserted replacements the named mechanisms cannot provide; that table was rewritten around a "what that does NOT cover" column as a direct result.

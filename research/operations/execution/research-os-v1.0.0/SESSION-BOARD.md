@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # Research OS v1.0.0 — Session Board
 
 **Board revision:** `execution-board/1.0.1-pro-air-only`
@@ -72,7 +76,7 @@ Every eligible packet still enters the single serial I1 queue; the table does no
 
 ## 2. Logical fleet slots
 
-After S00, live placement is decided immediately before dispatch by the reviewed campaign planner. The existing generic fleet command may supply diagnostics, but it is neither the S00 bootstrap authority nor an admission receipt. The following are admission ceilings, not promises that the nodes are free.
+After S00, live placement is decided immediately before dispatch by the reviewed campaign planner. (Superseded by the 2026-08-23 execution amendment in `README.md` — Amendment A1: S00 was never built, so this is not exercised.) Placement today is `scripts/agent_start.py`; the ceilings in the table below are Conductor-enforced convention, not planner-enforced admission. The existing generic fleet command may supply diagnostics, but it is neither the S00 bootstrap authority nor an admission receipt. The following are admission ceilings, not promises that the nodes are free.
 
 | Slot | Default node | Role | Concurrent ceiling | Boundary |
 |---|---|---|---:|---|
@@ -80,7 +84,7 @@ After S00, live placement is decided immediately before dispatch by the reviewed
 | `H1–H3` | Pro | Hot-path implementation lanes | 2 host-local (Amendment A2, 2026-08-23 — see `README.md`; label retains three logical slot names, ceiling reduced from three) | Authoritative DB, Qdrant, NEXUS, FlowKit, daemons, render and integration truth |
 | `B1–B2` | Pro | Logical batch/preparation/evaluation queue | 1 active across both slots | Public/synthetic fixtures, replay and non-conflicting batch work; the other logical slot remains queued |
 | `V1` | Pro or Air-M5 within data boundary | Independent refuter/reviewer | 1 on demand | Different session; Gear-2/refuter family differs from the main builder and reruns critical checks from disk |
-| `I1` | Pro | Interactive Claude/operator-controlled serial integrator | 1, exclusive | S00-produced dedicated integration manifest; one reviewed SHA at a time; never an external builder/reviewer seat |
+| `I1` | Pro | Interactive Claude/operator-controlled serial integrator | 1, exclusive | **Under Amendment A1 (2026-08-23) this role is the GitHub merge queue, not a session**: there is no S00-produced integration manifest. The frozen boundary read "S00-produced dedicated integration manifest; one reviewed SHA at a time; never an external builder/reviewer seat" |
 | `X0` | Mini-Pro2 | Excluded node | 0 | No campaign probe dependency, ref, worktree, lease, execution, review, inference, integration, or effect |
 
 Rules:
@@ -297,3 +301,7 @@ Recompute the launch queue whenever:
 - an operator rejects or narrows a proposed effect.
 
 Replanning changes the coordinator board or creates a successor Dispatch Manifest. It never edits an accepted immutable manifest in place.
+
+## Adversarial review
+
+Seat: **Codex** (`codex exec --sandbox read-only`, high effort), 2026-08-23 — generator ≠ grader, a different model family from the Sonnet 5 drafter and the Opus 5 Conductor. Verdict: DEFECTIVE, 15 findings, all disposed of before landing. Findings against this file specifically were unsuperseded S00 sentences and a builder-count arithmetic error, all corrected here. The full review record, including the four findings re-verified against the source files, is in [`README.md`](README.md#adversarial-review).

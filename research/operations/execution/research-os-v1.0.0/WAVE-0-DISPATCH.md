@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # Research OS v1.0.0 — Wave 0 Dispatch Queue
 
 **Dispatch state:** `prepared_not_dispatched`
@@ -6,7 +10,7 @@
 **Semantic source:** [`research-os/v1.0.0`](../../specs/evidence-to-action-freeze-2026-08-15/README.md)
 **Campaign topology:** Pro execution + Air-M5 control; Mini-Pro2 `OUT_OF_CAMPAIGN`
 
-Wave 0 registers three bounded implementation lanes and two preparation lanes. At most two builders run concurrently (Amendment A2, 2026-08-23 — reduced from four; see `README.md`); the third lane remains ready and enters when a slot clears. The wave creates evidence and reviewed branches; it changes no live service. Every lane receives its own immutable Dispatch Manifest, exact worktree, file scope, leases, builder, reviewer, and completion receipt.
+Wave 0 registers three bounded implementation lanes and two preparation lanes. At most two builders run concurrently (Amendment A2, 2026-08-23 — reduced from four; see `README.md`); the remaining three lanes stay ready and enter one at a time as slots clear. The wave creates evidence and reviewed branches; it changes no live service. Every lane receives its own immutable Dispatch Manifest, exact worktree, file scope, leases, builder, reviewer, and completion receipt.
 
 ## 1. Launch objective
 
@@ -57,6 +61,8 @@ pending → reserved → worktree_ready → running → built
 `failed`, `blocked`, and `cancelled` are terminal. A stale heartbeat becomes `needs_reconcile`, never automatically `pending`. Every review binds the exact current branch SHA; a later commit invalidates it.
 
 ## 3. Admission sequence
+
+> **Superseded as a whole by the 2026-08-23 execution amendment in `README.md`.** Steps 4 and 6 below instruct a lane to be resolved and created "through the reviewed S00 planner / operation", which does not exist under Amendment A1. Nothing in this sequence is executable as written. What a lane actually does: `python scripts/agent_start.py --lane <lane> --task-id <task-id>`, record `git -C <worktree> rev-parse HEAD` as `base: <sha>` (checking the caveat in A1 that this can be a stale LOCAL base), acquire the existing path leases, dispatch, then hand the reviewed SHA to the merge queue. Kept below as the specification a future S00 would have to satisfy.
 
 The Conductor performs these steps once, immediately before launch. A stale result is not reusable.
 
@@ -364,7 +370,7 @@ Only I1 integrates reviewed implementation branches. Initial order:
 3. P02/migration 271, P05/migration 272, and P06/migration 273 only after their later implementation branches pass;
 4. P03 may integrate independently of the schema train only if the exact diff has no shared-contract collision and its P04 compatibility review passes.
 
-I1 is a distinct interactive Claude/operator-controlled role with a dedicated integration manifest instantiated from the S00-produced `INTEGRATION-MANIFEST.schema.json`; it is never the external builder or reviewer. The ordinary frozen Dispatch Manifest remains merge-forbidden. The integration manifest binds the exact source/destination repository, reviewed source SHA and review receipt, current monorepo control checkpoint, repository-specific destination checkpoint, worktree/branch, leases, expected merge-tree/result hashes, expiry, and tests, and permits only one conflict-free merge into the named isolated program integration branch. It forbids `main`, rewriting, conflict repair, deploy, production migration, service control, publication, paid use, and every live effect. I1 reruns affected tests, verifies the migration ledger where applicable, and emits the repository result SHA plus a new immutable control-plane checkpoint and receipt. If a conflict, rebase, source edit, absent/stale manifest, or hash mismatch occurs, I1 stops and issues a successor repair dispatch whose new SHA must be independently reviewed.
+I1 is a distinct interactive Claude/operator-controlled role with a dedicated integration manifest instantiated from the S00-produced `INTEGRATION-MANIFEST.schema.json`; it is never the external builder or reviewer. (Superseded by the 2026-08-23 execution amendment in `README.md` — Amendment A1: S00 was never built, so this is not exercised.) Integration is the GitHub merge queue; none of the manifest binding, expiry, or hash-matching described in the rest of this paragraph happens today. The ordinary frozen Dispatch Manifest remains merge-forbidden. The integration manifest binds the exact source/destination repository, reviewed source SHA and review receipt, current monorepo control checkpoint, repository-specific destination checkpoint, worktree/branch, leases, expected merge-tree/result hashes, expiry, and tests, and permits only one conflict-free merge into the named isolated program integration branch. It forbids `main`, rewriting, conflict repair, deploy, production migration, service control, publication, paid use, and every live effect. I1 reruns affected tests, verifies the migration ledger where applicable, and emits the repository result SHA plus a new immutable control-plane checkpoint and receipt. If a conflict, rebase, source edit, absent/stale manifest, or hash mismatch occurs, I1 stops and issues a successor repair dispatch whose new SHA must be independently reviewed.
 
 ## 8. Wave 0 completion
 
@@ -379,3 +385,7 @@ Wave 0 is complete only when:
 - the Conductor recomputes the next eligible cohort from current receipts rather than launching all of Cohort B by assumption.
 
 The next launch is event-driven: P01-final, P02, P05, and P06 become candidates independently as their exact entry gates pass.
+
+## Adversarial review
+
+Seat: **Codex** (`codex exec --sandbox read-only`, high effort), 2026-08-23 — generator ≠ grader, a different model family from the Sonnet 5 drafter and the Opus 5 Conductor. Verdict: DEFECTIVE, 15 findings, all disposed of before landing. Findings against this file specifically were unsuperseded S00 sentences and a builder-count arithmetic error, all corrected here. The full review record, including the four findings re-verified against the source files, is in [`README.md`](README.md#adversarial-review).
