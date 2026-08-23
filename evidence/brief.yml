@@ -1,74 +1,55 @@
-task_id: ops-visaoracle-wrapper-header-0823
+task_id: research-os-p04-d1-operator-decision-surface-0823
 gear: 3
 l_level: L1
 gate_class: opus
 objective: |
-  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
-  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
-  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
+  Ship the canonical Research OS "operator decision" producer family from frozen
+  CONTRACTS.md sections 7 and 8.1-8.3 — the four object kinds a Conductor session hands to a
+  human or downstream automation: DecisionPacket (§7), TopicLock (§8.1), CreativeLock (§8.2),
+  RequestedActionSpec (§8.3). Each kind ships as: a Pydantic v2 FrozenCoreModel with a
+  model_validator(mode="after") enforcing the family_id + revision(/lock_version) +
+  supersedes_ref triple where the spec calls for it (revision==1 <=> no supersedes ref,
+  checked both directions, plus a self-reference guard), an object_hash check last; a
+  generated Draft 2020-12 JSON Schema (research_os.schemas.write_schema_artifacts, byte-
+  identical regeneration proven by checked_in_schemas_match); >=3 valid + >=3 invalid
+  fixtures per kind (each invalid fixture pinned to exactly one reason_code); and
+  registration in the three shared files every sibling P04 kind also touches
+  (research_os/cli.py CONTRACT_MODELS, research_os/models/__init__.py,
+  research_os/schemas/__init__.py).
 
-  This PR is documentation-only, in the strict sense that it edits two comment lines in a
-  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
-  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
-  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
-  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
-  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
-  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
-  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
-  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
-  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
-  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
-  **Severity, stated precisely so a future reader does not over-read this**: because
-  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
-  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
-  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
-  do) — the two are different failure classes and this PR only ever claims to fix the former.
+  Two real commits on this branch: 93337550d (feat, Claude Opus 5 — the four models +
+  schemas + 31 fixtures + registration, 104 tests green at commit time) and 8e859c0d0 (fix,
+  Claude Sonnet 5 — relaxing EvidenceSummary.citations after finding it rejected a
+  DecisionPacket that CONTRACTS.md Rule 9 explicitly permits: "missing evidence is not
+  negative evidence").
 
-  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
-  hot-zone by path, not by content. The evidence below is sized to match — it is not an
-  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
-constraints:
-  - "set -u and every executable line in the file are untouched — diff is exactly the two
-    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
-    reading the full post-diff file."
-  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
-    already carries the correct hyphen form on both sides and needs no change."
-  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
-    lower in the same file — those underscores are legitimate (organ id / log-dir naming
-    convention, not a file path claim) and match the live log directory verified on Pro this
-    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
-acceptance:
-  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    shows the Canon and Live lines using the hyphen form.'
-  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    == 0 (underscore form gone).'
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
-  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
-    declared; this PR only fixes the wrapper's self-description)."
-  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
-    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
-    needed or performed.'
-consumer_map:
-  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
-    agent reading its header is the only consumer of the changed lines."
-  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
-    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
-    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
-    Confirmed by reading the line: it does not touch this already-born organ."
-  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
-  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
-    the header comment is repo-side documentation only, the live file's own header will match
-    once this lands and the deploy pattern for this pair (already-armed organ, header-only
-    change) next syncs it — no urgency, no functional drift in the meantime."
-risks:
-  - "None identified to the running organ: the change is comment-only, `set -u` and all
-    executable lines are byte-identical before/after."
-  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
-    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
-    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
-    a lint-blocking drift."
-grader:
-  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
-  review of this exact diff, dispatched fresh, not the author
-budget: 1 external review seat, no council (task does not warrant one)
-pii: none
+  This turn additionally: merged origin/main (2026-08-23; six P04-sibling landings since the
+  branch's last sync, three of them touching the same cli.py / models/__init__.py /
+  schemas/__init__.py registration files this PR also touches, because they are fixed
+  aggregator paths every Gear>=2 P04 kind rewrites) as a VERIFIED lossless union —
+  origin/main's 14 registered kinds are a strict subset of the merged 18, and the only four
+  additions are this PR's own creative_lock / decision_packet / requested_action_spec /
+  topic_lock, cross-checked against the .py files actually on disk under
+  research_os/models/. And rewrote this evidence pair, which on this branch had been
+  inherited verbatim from an unrelated PR (#4592, a 2-line LaunchAgent wrapper comment fix)
+  because evidence/brief.yml and evidence/pack.yml are fixed repo-root paths every Gear>=2 PR
+  rewrites in full.
+
+  No dedicated per-kind test files (test_creative_lock.py etc.) are added — coverage runs
+  through the existing generic fixture-driven infrastructure that already parameterizes over
+  the FULL CONTRACT_MODELS / SCHEMA_MODELS registries: `research_os.cli fixtures --check`
+  (exercised by test_cli.py::test_fixtures_check_validates_full_tree) validates every
+  fixture against its model with exact reason_code matching, and test_schemas.py's
+  checked_in_schemas_match() / validate_schema_artifacts() cover schema determinism and
+  Draft 2020-12 validity for every registered kind, these four included.
+
+  DECLARED INTERPRETATIONS carried over from the feature commit (spec silent or thin on
+  shape — flagged in-code for owner ratification, not presented as spec-derived; see
+  `dissent:` below): six free-form-JSON fields across the four kinds where the frozen prose
+  gives zero or near-zero key-name guidance; RequestedActionSpec.arguments_ref modeled as an
+  opaque locator string rather than a discriminated protected|public union; CreativeLock's
+  reference_assets[].rights_state modeled as an open RegisteredName because section 3's
+  closed enum registry has no entry for it; and the lock_version<=>supersedes_ref coupling
+  on TopicLock/CreativeLock applied by analogy to the revision pattern spelled out literally
+  elsewhere in the freeze (DecisionPacket §7, ActionItem §13.1), not by direct textual
+  instruction in sections 8.1/8.2.
