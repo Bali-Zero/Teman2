@@ -13,6 +13,8 @@ from typing import Any, NoReturn
 from pydantic import BaseModel, ValidationError
 
 from research_os.hashing import HASH_OMISSION_FIELDS, object_hash
+from research_os.models.metric_profile import MetricProfile
+from research_os.models.metric_result import MetricResult
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 from research_os.version import check_compatibility
@@ -21,6 +23,8 @@ LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES_ROOT = PACKAGE_ROOT / "fixtures"
 CONTRACT_MODELS: dict[str, type[BaseModel]] = {
+    "metric_profile": MetricProfile,
+    "metric_result": MetricResult,
     "object_successor_edge": ObjectSuccessorEdge,
     "revocation_receipt": RevocationReceipt,
 }

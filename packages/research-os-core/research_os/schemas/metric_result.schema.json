@@ -1,0 +1,553 @@
+{
+  "$defs": {
+    "DecisionRuleEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "result": {
+          "enum": ["pass", "fail", "insufficient_evidence"],
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": ["result", "reason_codes"],
+      "title": "DecisionRuleEvaluation",
+      "type": "object"
+    },
+    "ExactObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        }
+      },
+      "required": ["object_kind", "object_id", "object_hash"],
+      "title": "ExactObjectRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "GateDisposition": {
+      "enum": ["pass", "fail", "insufficient_evidence", "not_applicable"],
+      "title": "GateDisposition",
+      "type": "string"
+    },
+    "GuardrailResult": {
+      "additionalProperties": false,
+      "properties": {
+        "metric_name": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "observed_value": {
+          "default": null,
+          "title": "Observed Value"
+        },
+        "result": {
+          "enum": ["pass", "fail", "insufficient_evidence"],
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": ["metric_name", "result"],
+      "title": "GuardrailResult",
+      "type": "object"
+    },
+    "Lineage": {
+      "additionalProperties": false,
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkflowRunRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["input_hashes"],
+      "title": "Lineage",
+      "type": "object"
+    },
+    "Measurement": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "default": null,
+          "title": "Denominator"
+        },
+        "numerator": {
+          "default": null,
+          "title": "Numerator"
+        },
+        "uncertainty": {
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": ["unit"],
+      "title": "Measurement",
+      "type": "object"
+    },
+    "MetricProfileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "metric_profile_id": {
+          "format": "uuid",
+          "title": "Metric Profile Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["metric_profile_id", "object_hash"],
+      "title": "MetricProfileRef",
+      "type": "object"
+    },
+    "MetricResultClassification": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation_level": {
+          "minLength": 1,
+          "title": "Aggregation Level",
+          "type": "string"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity", "aggregation_level"],
+      "title": "MetricResultClassification",
+      "type": "object"
+    },
+    "MetricResultRef": {
+      "additionalProperties": false,
+      "properties": {
+        "metric_result_id": {
+          "format": "uuid",
+          "title": "Metric Result Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["metric_result_id", "object_hash"],
+      "title": "MetricResultRef",
+      "type": "object"
+    },
+    "MetricResultSample": {
+      "additionalProperties": false,
+      "properties": {
+        "exclusions": {
+          "items": {
+            "$ref": "#/$defs/SampleExclusion"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "overall": {
+          "minimum": 0,
+          "title": "Overall",
+          "type": "integer"
+        },
+        "subgroups": {
+          "items": {
+            "$ref": "#/$defs/SampleSubgroup"
+          },
+          "title": "Subgroups",
+          "type": "array"
+        }
+      },
+      "required": ["overall", "subgroups", "exclusions"],
+      "title": "MetricResultSample",
+      "type": "object"
+    },
+    "MetricResultState": {
+      "enum": ["measured", "insufficient_evidence", "invalidated"],
+      "title": "MetricResultState",
+      "type": "string"
+    },
+    "MetricResultWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "data_cutoff_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Data Cutoff At",
+          "type": "string"
+        },
+        "ended_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Ended At",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Started At",
+          "type": "string"
+        }
+      },
+      "required": ["started_at", "ended_at", "data_cutoff_at"],
+      "title": "MetricResultWindow",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "SampleExclusion": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "reason_code": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": ["reason_code", "count"],
+      "title": "SampleExclusion",
+      "type": "object"
+    },
+    "SampleSubgroup": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": ["name", "size"],
+      "title": "SampleSubgroup",
+      "type": "object"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "classification": {
+      "$ref": "#/$defs/MetricResultClassification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decision_rule_evaluation": {
+      "$ref": "#/$defs/DecisionRuleEvaluation"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "gate_disposition": {
+      "$ref": "#/$defs/GateDisposition"
+    },
+    "guardrail_results": {
+      "items": {
+        "$ref": "#/$defs/GuardrailResult"
+      },
+      "title": "Guardrail Results",
+      "type": "array"
+    },
+    "idempotency_key": {
+      "minLength": 1,
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "lineage": {
+      "$ref": "#/$defs/Lineage"
+    },
+    "measurement": {
+      "$ref": "#/$defs/Measurement"
+    },
+    "metric_profile_ref": {
+      "$ref": "#/$defs/MetricProfileRef"
+    },
+    "metric_result_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Metric Result Family Id",
+      "type": "string"
+    },
+    "metric_result_id": {
+      "format": "uuid",
+      "title": "Metric Result Id",
+      "type": "string"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "result_state": {
+      "$ref": "#/$defs/MetricResultState"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "sample": {
+      "$ref": "#/$defs/MetricResultSample"
+    },
+    "source_observation_refs": {
+      "items": {
+        "$ref": "#/$defs/ExactObjectRef"
+      },
+      "title": "Source Observation Refs",
+      "type": "array"
+    },
+    "subject_refs": {
+      "items": {
+        "$ref": "#/$defs/ExactObjectRef"
+      },
+      "title": "Subject Refs",
+      "type": "array"
+    },
+    "supersedes_metric_result_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MetricResultRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "window": {
+      "$ref": "#/$defs/MetricResultWindow"
+    }
+  },
+  "required": [
+    "metric_result_id",
+    "metric_result_family_id",
+    "contract_version",
+    "tenant",
+    "metric_profile_ref",
+    "subject_refs",
+    "source_observation_refs",
+    "window",
+    "sample",
+    "measurement",
+    "guardrail_results",
+    "decision_rule_evaluation",
+    "gate_disposition",
+    "result_state",
+    "reason_codes",
+    "classification",
+    "observed_at",
+    "recorded_at",
+    "idempotency_key",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "MetricResult",
+  "type": "object"
+}

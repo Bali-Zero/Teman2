@@ -9,11 +9,15 @@ from typing import Any
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
+from research_os.models.metric_profile import MetricProfile
+from research_os.models.metric_result import MetricResult
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
 
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
+    "metric_profile": MetricProfile,
+    "metric_result": MetricResult,
     "object_successor_edge": ObjectSuccessorEdge,
     "revocation_receipt": RevocationReceipt,
 }
