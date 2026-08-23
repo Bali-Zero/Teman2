@@ -41,7 +41,10 @@ until all of the following are true:
   the observed outcomes;
 - the current gold-persona replay has zero unexplained divergences;
 - current decisions carry valid, in-force citations and no ungrounded claims;
-- the kill switch has a current, independently reproducible rollback proof;
+- the kill switch has a current, independently reproducible rollback proof —
+  **SATISFIED 2026-08-23**, see LIVE STATE below and
+  `research/visa/2026-08-23-killswitch-rollback-proof.md` (this bullet alone; the other six are
+  untouched and this does not authorize ENFORCE);
 - the DPIA is complete, signed and its residual privacy risks are accepted;
 - the real analytics destination/provider is identified and a fresh,
   closed-schema 90-day TTL proof has been independently reproduced; and
@@ -113,6 +116,79 @@ hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5)
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-08-23 (M5, dedicated verification lane — kill-switch rollback proof): **THE ENFORCE-GATE'S
+  "kill switch has a current, independently reproducible rollback proof" PRECONDITION IS NOW
+  SATISFIED.** This closes ONLY that one precondition — it does not touch, weaken, or move any of
+  the gate's other six preconditions (DPIA, analytics-TTL, gold-persona divergence, source
+  currency, Bali Zero manual SHADOW sign-off, Zero's explicit authorization), and it does **not**
+  authorize ENFORCE or change the posture: `VISA_ENGINE_EVALUATE_MODE` remains `SHADOW` in
+  production, untouched throughout this work. **A future session must not read this entry as
+  momentum toward the flip.**
+
+  Full artifact: `research/visa/2026-08-23-killswitch-rollback-proof.md` (+ two re-runnable
+  companion scripts in the same directory: `2026-08-23-killswitch-mode-proof.py`,
+  `2026-08-23-killswitch-pack-rollback-proof-test.py`). Two genuinely distinct kill switches were
+  identified, read, and driven end-to-end through the real code path — never against production —
+  in a dedicated worktree.
+
+  **(1) The MODE switch** (`VISA_ENGINE_EVALUATE_MODE`, `evaluate_path.py:212-243`): unset/invalid
+  fails closed to `OFF` (never `ENFORCE` — the only fallback path in `resolve_evaluate_mode()`),
+  read fresh from `os.environ` on every call (no import-time cache, no redeploy required by the
+  code itself). Reproduced locally by driving `run_evaluation()` directly with identical
+  applicant facts and the identical gold TEST pack across all three values in one process:
+  `SHADOW` reaches a real, non-abstaining `decision_state` (`HUMAN_REVIEW_REQUIRED`) but the
+  response carries `"mode":"CURATED"` (non-authoritative); `ENFORCE` reaches the IDENTICAL
+  `decision_state` but `"mode":"ENGINE"` (authoritative) — proving the switch changes AUTHORITY,
+  not the answer; `OFF`/unset/`BOGUS` all collapse to `decision.state="TEMPORARILY_UNAVAILABLE"`,
+  `outage.code="EVALUATE_SURFACE_DISABLED"`, zero DB writes (proven with a pool sentinel that
+  raises on any attribute access — the OFF path never reaches I/O). Mechanism verified unchanged
+  since the 2026-08-08 live drill recorded above (only 1 commit has touched `evaluate_path.py`
+  since then, and it does not touch the mode resolver — checked via `git log`/`git show`, not
+  assumed).
+
+  **(2) The PACK rollback** (`activate_pack.py` / `replace_activation_set.py` +
+  `visa_activate_rule_pack` / `visa_replace_activation_set`, migrations 250/251/267): **no
+  mechanism at any layer can reactivate a pack at sequence ≤ the current head** — enforced
+  independently by (a) the Python `validate_activation` pre-gate, (b) a SQL trigger
+  (`reject_visa_activation_insert`) that re-derives the TRUE current head live from the table
+  rather than trusting the caller's `--current-sequence`/`--current-payload-sha256` arguments, and
+  (c) for the multi-segment path, `visa_replace_activation_set`'s own explicit chain-walk. The
+  system's actual rollback mechanism is therefore: **re-sign the desired content as a NEW pack at
+  the next sequence, chained via `previous_payload_sha256` from the true current head, and
+  activate that** — exactly the pattern already used live for the 2026-08-08 Cameroon/Guinea
+  Calling Visa fix above. Proved three ways, all today, all local, no production DB touched: (i)
+  the existing reviewed integration suites re-run fresh against an ephemeral pytest-xdist-cloned
+  throwaway Postgres database (`test_activation_writer.py` 44 passed/1 skipped,
+  `test_replace_activation_set.py` 11 passed, `test_activate_pack.py` 18 passed — never the shared
+  `nuzantara_test`/`nuzantara_dev` DB their own docstrings warn against); (ii) a custom end-to-end
+  ceremony test (activate pack A seq1 → activate pack B seq2 → naive reactivation of A REJECTED,
+  B verified untouched → re-sign A's content as pack C seq3 chained from B → activates cleanly →
+  exactly ONE open activation, B/C `system_period` adjacent with zero temporal gap, the real
+  `load_active_rule_pack()` read path resolves to C's content — byte-identical to A's original —
+  at sequence 3, never backward); (iii) the actual `activate_pack.py` CLI run as a real subprocess
+  (dry-run, zero DB access by construction) against the repo's checked-in signed TEST pack with
+  real Ed25519 verification — bootstrap accepted, naive same-sequence reactivation rejected with
+  `"candidate sequence 1 is not greater than the current sequence 1"`, exit 1.
+
+  **Environment disclosed, per the "reproducible" requirement — do not silently re-run on a
+  different one and compare results without accounting for this**: local Postgres was **17.10**
+  (M5's existing Homebrew instance), while CI's visa_engine integration jobs run
+  **`postgres:15`** (`.github/workflows/tests.yml:501,1385`,
+  `scripts-tests-sweep.yml:97`, `intel-router-tests.yml:30`) — no Docker was available in this
+  environment to match exactly. Judged low-risk (the code is explicitly PG17-aware exactly where
+  it matters — `_supported_table_privileges()` branches on `server_version_num >= 170000` for the
+  PG17-only `MAINTAIN` privilege — and no PG16/17-only syntax was found in migrations
+  250/251/253/254/267), but NOT independently confirmed on 15; exact re-run command is in the
+  report §3 (`TEST_DATABASE_URL` pointed at a `postgres:15` Docker container, same `pytest -n 1`
+  invocations). Also used local role `test` in place of CI's `nuzantara` (absent on this machine)
+  — benign (both local superusers on a throwaway DB) but disclosed rather than silent.
+
+  Safe, exact, never-executed operator commands for a REAL production drill of each switch (for
+  whoever eventually runs one) are preserved in the report §1.4 (MODE: `fly secrets set
+VISA_ENGINE_EVALUATE_MODE=OFF`/`SHADOW`, expected outage-code/verdict transitions) and §2.4 (PACK:
+  the exact `activate_pack.py --yes` invocation shape against the real two-role prod DSNs,
+  `operator[secret]`/`operator[credential]` — not executed, not required to close this precondition).
 
 - 2026-08-23 (M5, truth-first ledger backfill — D1): **SEQ-12 IS LIVE IN PRODUCTION SHADOW; this
   corner's ledger had never recorded it.** `grep -c "seq-12" SKILL.md` returned 0 on both this
