@@ -1,0 +1,650 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "format": "uuid",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["claim_id", "object_hash"],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "DecisionPacketLineage": {
+      "additionalProperties": false,
+      "description": "Section 7's own lineage: the same mandatory ``workflow_run_ref`` as\n``RequiredWorkflowLineage``, plus three fields no other kind in this\nslice carries (``code_version?``, ``model_version?``, ``prompt_version?``).",
+      "properties": {
+        "code_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code Version"
+        },
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "DecisionPacketLineage",
+      "type": "object"
+    },
+    "DecisionPacketRef": {
+      "additionalProperties": false,
+      "description": "``{decision_packet_id, object_hash}`` -- the typed pointer every\noperator-decision kind in this producer family (TopicLock, CreativeLock\nvia TopicLock, RequestedActionSpec) binds back to its originating packet.",
+      "properties": {
+        "decision_packet_id": {
+          "format": "uuid",
+          "title": "Decision Packet Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["decision_packet_id", "object_hash"],
+      "title": "DecisionPacketRef",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": {
+          "format": "uuid",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["evidence_id", "object_hash"],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "EvidenceSummary": {
+      "additionalProperties": false,
+      "description": "``evidence_summary: structured citation-bearing summary``.\n\nINTERPRETATION (spec silent on shape -- flagging per mandate, not\npresenting this as spec-derived): four words of prose give no key\nnames, so this shape is invented. ``citations`` reuses the generic\n``ExactObjectRef`` (rather than a new type) because a citation may point\nat either a ``Claim`` or an ``Evidence`` object, and only the generic\nprimitive carries ``object_kind`` to disambiguate which. Required\nnon-empty because a summary claiming to be \"citation-bearing\" with zero\ncitations contradicts its own name.",
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/ExactObjectRef"
+          },
+          "minItems": 1,
+          "title": "Citations",
+          "type": "array"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": ["text", "citations"],
+      "title": "EvidenceSummary",
+      "type": "object"
+    },
+    "ExactObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        }
+      },
+      "required": ["object_kind", "object_id", "object_hash"],
+      "title": "ExactObjectRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Novelty": {
+      "additionalProperties": false,
+      "description": "``novelty: {score, basis, compared_window}``.\n\nINTERPRETATION: no numeric range is given anywhere in the frozen\ncontracts for ANY ``*score`` field (this one, or ``Claim.confidence.score``\non the sibling evidence-spine lane) -- no bound is invented here, unlike\ne.g. ``Sha256Hex``'s explicit wire-level regex. ``compared_window``\nborrows the ``{started_at, ended_at}`` idiom already established for\n``OutcomeEvent.window`` / ``MetricResult.window`` in this same contract\nfamily, rather than inventing a new one.",
+      "properties": {
+        "basis": {
+          "minLength": 1,
+          "title": "Basis",
+          "type": "string"
+        },
+        "compared_window": {
+          "$ref": "#/$defs/NoveltyWindow"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": ["score", "basis", "compared_window"],
+      "title": "Novelty",
+      "type": "object"
+    },
+    "NoveltyWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "ended_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Ended At",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Started At",
+          "type": "string"
+        }
+      },
+      "required": ["started_at", "ended_at"],
+      "title": "NoveltyWindow",
+      "type": "object"
+    },
+    "OutcomeFamily": {
+      "enum": [
+        "compliance_protection",
+        "client_journey",
+        "revenue_partnerships",
+        "product_self_service",
+        "decision_intelligence",
+        "authority_demand",
+        "team_enablement",
+        "memory_learning",
+        "platform_governance"
+      ],
+      "title": "OutcomeFamily",
+      "type": "string"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "RecommendedAction": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Due At"
+        },
+        "expected_outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Outcome"
+        },
+        "owner_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "target_surface": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Target Surface",
+          "type": "string"
+        }
+      },
+      "required": ["action_type", "target_surface"],
+      "title": "RecommendedAction",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskAnalysis": {
+      "additionalProperties": false,
+      "properties": {
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "unresolved_questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved Questions",
+          "type": "array"
+        }
+      },
+      "required": ["reasons", "unresolved_questions"],
+      "title": "RiskAnalysis",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "SourceDocumentRef": {
+      "additionalProperties": false,
+      "properties": {
+        "document_content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Document Content Hash",
+          "type": "string"
+        },
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_version_id": {
+          "minLength": 1,
+          "title": "Document Version Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "document_version_id",
+        "document_content_hash"
+      ],
+      "title": "SourceDocumentRef",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "alternatives": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Alternatives",
+      "type": "array"
+    },
+    "claim_refs": {
+      "items": {
+        "$ref": "#/$defs/ClaimRef"
+      },
+      "title": "Claim Refs",
+      "type": "array"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decision_packet_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Decision Packet Family Id",
+      "type": "string"
+    },
+    "decision_packet_id": {
+      "format": "uuid",
+      "title": "Decision Packet Id",
+      "type": "string"
+    },
+    "downstream_candidates": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Downstream Candidates",
+      "type": "array"
+    },
+    "evidence_refs": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "evidence_summary": {
+      "$ref": "#/$defs/EvidenceSummary"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "lineage": {
+      "$ref": "#/$defs/DecisionPacketLineage"
+    },
+    "novelty": {
+      "$ref": "#/$defs/Novelty"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "outcome_family": {
+      "$ref": "#/$defs/OutcomeFamily"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "recommended_action": {
+      "$ref": "#/$defs/RecommendedAction"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "revision": {
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "risk_analysis": {
+      "$ref": "#/$defs/RiskAnalysis"
+    },
+    "source_document_refs": {
+      "items": {
+        "$ref": "#/$defs/SourceDocumentRef"
+      },
+      "title": "Source Document Refs",
+      "type": "array"
+    },
+    "supersedes_decision_packet_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DecisionPacketRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "why_now": {
+      "minLength": 1,
+      "title": "Why Now",
+      "type": "string"
+    }
+  },
+  "required": [
+    "decision_packet_id",
+    "decision_packet_family_id",
+    "revision",
+    "contract_version",
+    "tenant",
+    "title",
+    "why_now",
+    "outcome_family",
+    "claim_refs",
+    "evidence_refs",
+    "source_document_refs",
+    "evidence_summary",
+    "novelty",
+    "risk_analysis",
+    "recommended_action",
+    "alternatives",
+    "downstream_candidates",
+    "classification",
+    "recorded_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "DecisionPacket",
+  "type": "object"
+}

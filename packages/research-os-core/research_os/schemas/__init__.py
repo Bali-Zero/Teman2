@@ -9,13 +9,21 @@ from typing import Any
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
+from research_os.models.creative_lock import CreativeLock
+from research_os.models.decision_packet import DecisionPacket
+from research_os.models.requested_action_spec import RequestedActionSpec
 from research_os.models.revocation_receipt import RevocationReceipt
 from research_os.models.successor_edge import ObjectSuccessorEdge
+from research_os.models.topic_lock import TopicLock
 
 SCHEMA_DIRECTORY = Path(__file__).resolve().parent
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
+    "creative_lock": CreativeLock,
+    "decision_packet": DecisionPacket,
     "object_successor_edge": ObjectSuccessorEdge,
+    "requested_action_spec": RequestedActionSpec,
     "revocation_receipt": RevocationReceipt,
+    "topic_lock": TopicLock,
 }
 
 
