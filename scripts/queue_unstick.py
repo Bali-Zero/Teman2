@@ -19,6 +19,22 @@ measured or scarred by another lane today:
            mergeQueueEntry{state position}}}}' -f o=Bali-Zero -f r=Teman2 -F n=4662
      → {"mergeQueueEntry": null} for a non-queued PR. Field exists, shape
      confirmed (no GraphQL error), used as the sole queue-membership check.
+     SCOPE NOTE (cicatrix W111, `.claude/rules/cicatrix-scars.md` ~line 160,
+     read directly — not a paraphrase): W111's GOTCHA is that neither
+     `autoMergeRequest` nor `mergeQueueEntry`/`isInMergeQueue` ALONE answers
+     "is this PR armed for auto-merge" — a PR mid-queue often has
+     `autoMergeRequest: null` (the request is consumed on entry) while one
+     armed-but-not-yet-queued has `mergeQueueEntry: null` with
+     `autoMergeRequest.enabledAt` set. That ambiguity is real but does NOT
+     apply here: this script asks a narrower question — "is this PR
+     currently occupying a queue slot that update-branch would evict" —
+     and `mergeQueueEntry` alone answers exactly that, correctly, in both
+     of W111's cases (non-null in the mid-queue case, null in the
+     armed-but-unqueued case, where an update-branch push is harmless to
+     queue position because there IS no queue position yet). This script
+     never reads `autoMergeRequest` and never asserts an "armed/disarmed"
+     verdict about any PR — do not extend it to do so on this one field
+     alone without re-reading W111 first.
   2. Last commit younger than QUEUE_UNSTICK_RECENT_SECONDS (default 300s) —
      a lane is actively working; a branch update under its feet is a
      second-writer race (superscar #5).
