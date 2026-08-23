@@ -1325,3 +1325,38 @@ git show "HEAD:evidence/pack.yml" | diff -q - evidence/pack.yml   # deve essere 
 Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di servizio, e adesso lo vedo.
 
 **GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) ma non ancora adottato dai produttori dei pack, e finché non lo è la finestra si riapre a ogni PR Gear≥2.
+
+### 🐛 W126 (2026-08-23): un `Formatter` mutava `record.levelname` IN PLACE — il test confrontava la stringa RESA (ANSI-colorata), non l'IDENTITÀ stabile del livello
+
+_Scoperto 2026-08-23, lane P04, diagnosticando la CI flake `test_prompt_manager.py::TestPromptManagerFailLoudOnUnknownVersion::test_unrecognized_explicit_value_logs_error`, che aveva espulso PR #4643 dalla merge queue due volte e sospeso PR #4653. La premessa "non riproducibile in locale" (5 tentativi) era falsa per assenza di corpus, non per assenza del difetto: riproducibile deterministicamente non appena il file giusto condivideva la sessione pytest._
+
+**TRAUMA.** Il test cattura i propri log con un sink (`_Sink(logging.Handler)`) attaccato al logger di `backend.llm.prompt_manager`, chiama `logger.error(...)`, e filtra `error_records = [r for r in captured if r.levelname == "ERROR"]`. `assert error_records` falliva con `assert []` — nonostante "Captured stdout call" e "Captured log call" mostrassero entrambi una riga ERROR pulita, e nonostante il sink avesse davvero ricevuto il record giusto.
+
+**MECCANISMO, riprodotto non dedotto.** `apps/backend-rag/backend/app/core/logging_config.py:68-77`:
+
+```python
+def format(self, record):
+    if ENVIRONMENT == "development":
+        color = self.COLORS.get(record.levelname, self.COLORS["RESET"])
+        record.levelname = f"{color}{record.levelname}{self.COLORS['RESET']}"  # MUTA IN PLACE
+    ...
+    return super().format(record)
+```
+
+Questo formatter si installa su ROOT come *side effect a import-time* (`setup_logging()`, riga 219, chiamata a livello di modulo) non appena qualcosa nel processo importa `backend.app.core.logging_config` — per questa coppia di test, transitivamente: `test_monitoring_rag.py` → `backend.app.routers.monitoring_rag` → il PACKAGE INIT di `evaluation` (`evaluation/__init__.py`) → `evaluation/benchmark.py:23` (`from backend.app.core.logging_config import get_performance_logger`).
+
+`Logger.callHandlers()` chiama prima gli handler del logger ORIGINANTE — il sink del test, che salva il `LogRecord` PER RIFERIMENTO, non per valore — poi risale a ROOT e chiama i suoi handler, incluso lo `StreamHandler` col `ColoredFormatter`, SINCRONAMENTE, prima che `logger.error()` ritorni. L'handler di root muta lo STESSO oggetto che il sink ha già salvato. Quando il test legge `r.levelname`, è `'\x1b[31mERROR\x1b[0m'`, non `"ERROR"` — mentre `r.levelno` (l'identità stabile, non-resa) resta `40`, intatto. Misurato direttamente, dentro il path dell'assert che fallisce:
+
+```
+record detail: levelno=40 levelname='\x1b[31mERROR\x1b[0m' getLevelName(levelno)='ERROR'
+```
+
+`ENVIRONMENT` (riga 23, `getattr(__import__("os").environ, "ENVIRONMENT", "development")`) risolve SEMPRE a `"development"` a prescindere dalla env var reale — `getattr` su `os.environ` cerca un'ATTRIBUTO letteralmente chiamato `ENVIRONMENT` sull'oggetto mapping, che `os._Environ` non ha mai, quindi cade sempre sul default. Il ramo di mutazione è quindi incondizionatamente vivo in ogni processo, produzione inclusa — non un artefatto solo-test.
+
+**Confermato NON un artefatto xdist/timing.** Sequenziale (`pytest test_monitoring_rag.py test_prompt_manager.py`, niente `-n`, niente `--dist`) fallisce lo stesso, rc=1; ordine dei file invertito, fallisce identico. pytest COLLEZIONA (importa) ogni modulo specificato per costruire l'albero degli item PRIMA di eseguire qualunque test in quella sessione — quindi qualunque file la cui catena di import raggiunga `logging_config.py` avvelena root prima che un qualunque test di ENTRAMBI i file giri, indipendentemente da ordine argv, worker o shard.
+
+**GOTCHA — il display ha mascherato il difetto durante il debug.** `_pytest.logging.LogCaptureFixture.text` (e il renderer del report di fallimento) chiama `_remove_ansi_escape_sequences()` prima di stampare, quindi "Captured log call" mostrava sempre un `ERROR` pulito anche mentre l'attributo `record.levelname` sottostante portava i codici escape grezzi. L'attributo confrontato e il testo mostrato non sono la stessa stringa — fidarsi del report leggibile invece dell'input reale dell'assert è costato tempo di debug qui.
+
+**CURA.** La cura strutturale è a livello di classe — far sì che `ColoredFormatter.format()` operi su una COPIA del record (come fa `uvicorn.logging.ColourizedFormatter` per lo stesso motivo: non deve mai mutare ciò che vedono gli altri handler) — non una patch sul singolo sink: patchare solo il consumer che se n'è accorto cura questo test e lascia la trappola armata per il prossimo lettore per-riferimento dello stesso record.
+
+**Famiglia: superscar #3 (guard-over-match / gemello under-match).** Forma nuova per la famiglia: la guardia non ha sovra/sotto-matchato una substring — ha confrontato una STRINGA RESA (`levelname`, mutabile, di proprietà del formatter) dove l'IDENTITÀ STABILE (`levelno`, o `logging.getLevelName(levelno)` ricalcolato) era il confronto corretto. Ogni codice che confronta `record.levelname == "QUALCOSA"` dopo che un formatter colorante/decorante ha toccato il record nello stesso processo è esposto alla stessa classe di guasto.
