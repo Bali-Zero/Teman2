@@ -27,10 +27,18 @@ document.
 
 **The premise this memo was commissioned on — "daemon live on Pro" — is false as of today.**
 
-The Pro-side broker daemon has not claimed a single job since **2026-08-20T03:45:11Z**, roughly
-**72 hours ago**. It is not stopped: it is **crash-looping every 30 seconds** and has done so
-**7,514 times**. The cause is identified, and it is not a defect in the daemon — the daemon is
-fail-closing exactly as designed. What failed is that **nobody was listening**.
+The Pro-side broker daemon has not claimed a single job since **2026-08-20T03:45:11Z** —
+**69.6 hours** before this measurement. It is not stopped: it is **crash-looping roughly every 30
+seconds** and has done so **7,514 times** since the machine last rebooted.
+
+**The cause is only half identified, and the memo says which half.** A version-pin mismatch
+(`codex-cli` auto-updated 0.147.0 → 0.149.0 while the pin did not) is real and is certainly
+blocking the daemon *now* — but the arithmetic in §1.2 proves the crash-loop began **at least 10
+hours before that upgrade**, so it is a second cause, not the first. **What killed it on 08-20 is
+still unknown, and the answer is in a root-only log.**
+
+What is fully established is the part that matters most: **nobody was listening.** Every health
+indicator read green for the whole outage.
 
 So the ordered list below starts at step 0, and step 0 is not on the ladder.
 
@@ -59,18 +67,60 @@ The S2 server-side build is fine. It is the only half of this lane that is.
 | Installed payload vs repo | `cmp -s /usr/local/libexec/wa-codex-broker-wrapper.sh infra/launchagents/wrappers/…` | **IDENTICAL** — no HOME-fork (superscar #1 clean) |
 | Runtime tree | `ls -la /usr/local/lib/wa-codex-broker/` | present, root-owned, installed `2026-08-20 08:39` local |
 
-**Root cause, established by reading the code rather than inferred from the symptom.**
-`wa_codex_daemon.run_forever()` calls `_recheck_version()` and, on mismatch, raises `RuntimeError`
-*before the loop starts* — with the comment *"a daemon that cannot legally exec must not sit green
-(scar family #2)"*. An uncaught `RuntimeError` exits Python with status **1**; the plist is
-`KeepAlive{SuccessfulExit:false}` with `ThrottleInterval 30`, so launchd restarts it every 30
-seconds, forever. 7,514 restarts × 30 s ≈ **62 hours**, consistent with a death shortly after
-03:45Z on 2026-08-20.
+**Cause — and this section was WRONG in the first draft of this memo; an adversarial pass
+(Kimi K3, on the frozen diff) forced the correction. The corrected version is the one that
+matters, so it is stated in full rather than patched.**
 
-The mismatch itself: `WA_CODEX_CLI_VERSION_PIN` was filled by the operator on 2026-08-20, when Pro
-carried **codex-cli 0.147.0** (recorded in the corner's own S3 entry). Pro today reports
-**`codex-cli 0.149.0`** — the CLI auto-updated, the pin did not. The pin is exact-match and
-fail-closed by design (spec chaos row 8).
+The tempting story was: the pin says `0.147.0`, Pro now runs `codex-cli 0.149.0`, the daemon
+fail-closes on the mismatch, done. **The timeline refuses that story as the ORIGINAL cause.**
+
+| Event | When (UTC) | How it was measured |
+|---|---|---|
+| Gauge advancing, daemon healthy | 2026-08-20 01:11→01:12Z | ledger row, 08-20 |
+| **Gauge freezes — daemon stops claiming** | **2026-08-20 03:45:11Z** | `wa_broker_gauge` today |
+| **Pro reboots** | **2026-08-20 09:49:54Z** | `sysctl -n kern.boottime` |
+| **codex-cli 0.149.0 installed** | **2026-08-20 20:45:25Z** | `stat` on the resolved binary |
+| Measurement | 2026-08-23 ~01:20Z | this document |
+
+Two consequences, both arithmetic:
+
+1. **launchd's `runs` counter resets at boot**, so the 7,514 restarts span the window since
+   **09:49:54Z on 08-20**, not since the gauge froze: 63.50 h, an implied spacing of **30.42 s**
+   against a 30 s floor.
+2. The window since the CLI updated is only 52.58 h, which at a strict 30 s floor caps the
+   restarts at **6,309**. We observe **7,514**. **Therefore the crash-loop began at least 10 hours
+   BEFORE codex-cli was upgraded — the version-pin mismatch cannot be the original cause.**
+
+**What is actually established:**
+
+- The daemon stopped claiming at 03:45:11Z on 08-20, **6.08 h before the reboot** — so it was
+  already failing under the pre-reboot launchd session. **That first cause is unknown.**
+- Since 20:45:25Z on 08-20 the pin mismatch is real and, given the code path, would by itself be
+  sufficient to keep the daemon down. So it is a genuine **second** cause, layered on the first.
+- **Consequence for the cure: bumping the pin alone may not revive the daemon.** It removes a
+  blocker that certainly exists now; it does not address whatever killed it on 08-20.
+
+**A corroboration the first draft claimed, now withdrawn.** That draft read the implied spacing as
+"throttle floor + ~3.3 s of real work per cycle" and offered it as evidence the process was
+reaching the `codex --version` call. It is not evidence of anything: `ThrottleInterval` is measured
+**from launch, not from exit**, so any runtime under 30 s produces the same ~30 s spacing. The
+figure is uninformative about which early-exit path fires, and the 0.42 s excess is scheduling
+jitter. It was also computed from the wrong start time.
+
+**Still not measured, and it is the thing that would settle this:** the daemon's own log
+(`/Users/zantara-codex/logs/wa-codex-broker.err`) — root-only, and Pro has no passwordless sudo
+(probed: `sudo -n true` → password required). The pin's current on-disk value is unread for the
+same reason; the `0.147.0` figure comes from the ledger row of 08-20, not from the file. Ruled out
+by the wrapper's own exit codes: missing env file, unfilled placeholders, missing venv python (all
+exit **78**) and the kill switch (exit **0**). Everything else that can exit **1** remains open.
+
+**What the pin bump IS good for, verified today rather than assumed.** `codex --version` prints
+`codex-cli 0.149.0`, and the daemon's own `_SEMVER_RE` (`(\d+\.\d+\.\d+)`) parses that to
+`0.149.0` — so a pin of `0.149.0` will match. And the adapter's exact call shape —
+`_FIXED_ARGV_PREFIX` = `exec --sandbox read-only --skip-git-repo-check --ephemeral
+--ignore-user-config --ignore-rules` plus the `-` stdin sentinel, **all five flags together**, not
+one flag as the first draft's probe used — was executed live against 0.149.0 today and returned
+its expected token, rc 0.
 
 **The bump is safe, and this was verified rather than assumed.** The five flags the adapter passes
 — `--sandbox`, `--skip-git-repo-check`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules` —
@@ -122,7 +172,7 @@ Steps are ordered by dependency: each is blocked by the one above it.
 
 | # | Step | Owner | Why it sits here |
 |---|---|---|---|
-| **0** | **Revive the Pro daemon.** Set `WA_CODEX_CLI_VERSION_PIN=0.149.0` in `/Users/zantara-codex/.wa-codex-broker.env`, then kickstart the job. Proof = the gauge's `broker_last_seen_at` advances. | **`operator[credential]`** — the file is `0600` in another user's home and Pro has no passwordless sudo (probed: `sudo -n true` → password required). One paste, exact text in §3. | Nothing on the ladder can be measured while the executor is dead. Re-running the provisioning script does **not** fix this: it skips an existing env file by design ("never overwritten"). |
+| **0** | **Diagnose, THEN revive the Pro daemon.** Read `/Users/zantara-codex/logs/wa-codex-broker.err` — that is the one artifact that names the original cause, and it is root-only. Then bump `WA_CODEX_CLI_VERSION_PIN` to `0.149.0` and kickstart. Proof = `broker_last_seen_at` ADVANCES between two reads. | **`operator[credential]`** — both the log and the env file are root/other-user-owned, and Pro has no passwordless sudo (probed: `sudo -n true` → password required). One paste, exact text in §3. | Nothing on the ladder can be measured while the executor is dead. **Do not skip the log:** §1.2 proves the pin mismatch is not the original cause, so the bump alone may leave the daemon down. Re-running the provisioning script does **not** touch the pin either — it skips an existing env file by design ("never overwritten"). |
 | **0b** | **Arm the seat sentinel** — the organ that would have caught step 0 within the hour instead of after 72. Re-run the provisioning (idempotent; installs the §1.3 section the 08-20 run predated), then arm the crontab from the **GUI terminal**. | **`operator[credential]`** for the provisioning, **`operator[tcc-gui]`** for the crontab: writing the crontab on Pro is TCC-blocked from every non-GUI context (measured 2026-08-20 via both sshd and a live tmux server). | Without it, the next silent death also lasts days. Highest value-per-minute item on this list. |
 | **0c** | **Cure the class, not the instance:** make version-pin drift *detectable* — the sentinel's RED must name "pin mismatch", and the pin bump belongs to whatever updates codex-cli. | session | codex-cli auto-updates. This will recur, and next time it should be a 5-minute alert rather than an archaeology exercise. |
 | **1** | **G-P1** — live verification of the ChatGPT **and Codex-specific** data-control settings on the seat, dated, re-checked at S4. | **`operator[gui]`** + session record | Account-level toggles are visible only in the web UI. The 2026-08-19 owner attestation covered the ChatGPT-level toggle; the spec (§6, G-P1) leaves the Codex-specific controls explicitly open. |
@@ -170,7 +220,17 @@ Both are single pastes into Pro's **GUI terminal** — not ssh, not tmux: the cr
 TCC-blocked from every non-GUI context.
 
 ```sh
-# Step 0 — revive the daemon (pin bump; flag-compatibility with 0.149.0 verified today)
+# Step 0a — READ THE LOG FIRST. This is the only artifact that names the ORIGINAL cause, and
+# §1.2 shows the pin story does not explain it. Paste the last lines back rather than acting
+# on the assumption below.
+sudo /usr/bin/tail -40 /Users/zantara-codex/logs/wa-codex-broker.err
+
+# Step 0b — confirm the pin's actual value. Prints ONLY that line: never `cat` the whole file,
+# it carries WA_BROKER_KEY (superscar #4).
+sudo /usr/bin/grep '^WA_CODEX_CLI_VERSION_PIN=' /Users/zantara-codex/.wa-codex-broker.env
+
+# Step 0c — bump the pin (parse + all five adapter flags verified against 0.149.0 today).
+# This clears a blocker that certainly exists NOW; whether it is SUFFICIENT depends on 0a.
 sudo /usr/bin/sed -i '' 's/^WA_CODEX_CLI_VERSION_PIN=.*/WA_CODEX_CLI_VERSION_PIN=0.149.0/' \
   /Users/zantara-codex/.wa-codex-broker.env
 sudo launchctl kickstart -k system/com.balizero.wa-codex-broker
