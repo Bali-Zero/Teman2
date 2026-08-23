@@ -315,11 +315,26 @@ PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_activation
 PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_replace_activation_set.py -n 1 -q
 PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_activate_pack.py -n 1 -q
 ```
-**Results**: `test_activation_writer.py` — **44 passed, 1 skipped** (the skip is
+**Results**: `test_activation_writer.py` — **43 passed, 1 skipped** (the skip is
 `visa_activation_executor role absent — operator provisioning not yet run`, an expected/documented
 scaffold skip on a machine with no operator-provisioned executor role, not a failure of anything
-under test). `test_replace_activation_set.py` — **11 passed**. `test_activate_pack.py` — **18
-passed**. Among these, already covering guilt+innocence for BOTH kill-switch mechanisms with real
+under test). `test_replace_activation_set.py` — **10 passed**. `test_activate_pack.py` — **17
+passed**.
+
+**Correction (2026-08-23, third pass, count fix)**: the first two versions of this report stated
+these as 44/11/18 passed — each inflated by exactly +1 against `pytest --collect-only`'s own
+item counts for these files (44/10/17 total). The cause: pytest's own summary line reads "N
+collected (1 skipped)", and the collected total (N) was transcribed as the PASSED count without
+subtracting the skip — arithmetically impossible on its face (44 passed + 1 skipped cannot come
+from a 44-item file). Independently re-measured against the exact merge commit
+`292795a26364dbf47ac31e142c3ca41597537d49` with `PYTHONPATH=. python -m pytest <file> -n 1 -q`
+against a local ephemeral Postgres 17.10: 43 passed/1 skipped, 10 passed, 17 passed — zero
+failures in any of the three suites, both before and after this correction. The substantive claim
+below (guilt+innocence proven for both kill-switch mechanisms, real Postgres roles, no mocks)
+was and remains true; only the transcribed digits were wrong. Re-derive with the command above on
+that commit (or any later one where these files are unchanged) rather than trusting this number.
+
+Among these, already covering guilt+innocence for BOTH kill-switch mechanisms with real
 Postgres roles (not mocks):
 
 - `test_activate_sequence_rollback_via_function_raises` — activates pack seq 1, then seq 2, then
@@ -369,12 +384,26 @@ on identical facts — not that a ledger row landed.
 Two things are deliberately mocked, both orthogonal to pack correctness and disclosed in the
 script's own module docstring rather than silently patched: `active_retention_policy_available`
 (stubbed `True` — the real gate lives behind a Zero retention-policy record this proof's migration
-set does not provision; it decides whether to PERSIST a decision, never what the decision IS), and
-`_save_evaluate_decision` (stubbed no-op — its target table, `visa_decisions`, is created by a
-migration outside this proof's applied set 250/251/253/254/267; the function only writes an audit
-row of an already-computed decision, it never reads or influences one). Pricing-catalog acquisition
-is untouched: `run_evaluation` already catches any exception from `get_pricing_service()` and
-degrades to `UnavailablePricingCatalog()` — that real degrade path runs here, not a test double.
+set does not provision) and `_save_evaluate_decision` (stubbed no-op — its target table,
+`visa_decisions`, is created by a migration outside this proof's applied set 250/251/253/254/267;
+the function only writes an audit row of an already-computed decision, it never reads or
+influences one). Pricing-catalog acquisition is untouched: `run_evaluation` already catches any
+exception from `get_pricing_service()` and degrades to `UnavailablePricingCatalog()` — that real
+degrade path runs here, not a test double.
+
+**Correction (2026-08-23, third pass, count fix — same pass as above)**: the module docstring's
+own characterization of `active_retention_policy_available` ("it decides whether to PERSIST a
+decision, never what the decision IS") undersells what it actually gates. Read against
+`evaluate_path.py`: it is called inside `_retention_gate_allows_persistence`
+(`evaluate_path.py:270-296`), which `run_evaluation` checks at `evaluate_path.py:1466` — **before**
+`_resolve_active_pack_binding`, i.e. before any pack is even looked up. If it returns `False`, the
+whole call short-circuits to `build_temp_unavailable_body(code="RETENTION_POLICY_UNAVAILABLE")` and
+no decision is computed at all. So it is not a downstream persistence toggle; it is a pre-check
+gate on entry to the entire evaluate path. Stubbing it `True` is still legitimate and non-hollowing
+for this proof's purpose — it does not decide or influence WHAT the decision is once the real
+evaluator runs, it only decides WHETHER the real evaluator runs at all, and the proof needs it to
+run. But "decides whether to persist" is the wrong description of what it gates; "gates entry to
+`run_evaluation` before pack resolution" is the accurate one.
 
 The scenario:
 

@@ -1,0 +1,80 @@
+{
+  "conductor_handoff_id": "60000000-0000-4000-8000-000000000003",
+  "conductor_handoff_family_id": "com.example.conductor_handoff.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "session_ref": {
+    "scheme": "claude-code-session",
+    "purpose": "editorial_drafting",
+    "opaque_id": "synthetic-session-001",
+    "record_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "protected_transcript_ref": "synthetic-transcript-ref-001"
+  },
+  "operator_actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "approval",
+    "pseudonym": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "assistant_producer": {
+    "provider": "com.example.anthropic",
+    "model": "com.example.claude-opus",
+    "model_version": "5.0.0",
+    "prompt_version": "1.0.0"
+  },
+  "operator_inputs": [
+    {
+      "input_id": "synthetic-input-001",
+      "content_hash": "7777777777777777777777777777777777777777777777777777777777777777",
+      "sensitivity": "internal"
+    }
+  ],
+  "decision_packet_refs": [],
+  "verification_receipt_refs": [],
+  "considered_options": [],
+  "requested_action_spec_refs": [
+    {
+      "requested_action_spec_id": "a0000000-0000-4000-8000-000000000001",
+      "object_hash": "8888888888888888888888888888888888888888888888888888888888888888"
+    }
+  ],
+  "decision": {
+    "outcome": "defer",
+    "rationale_codes": []
+  },
+  "unresolved_questions": ["com.example.needs_legal_review"],
+  "handoff_summary": "Synthetic minimal handoff awaiting more evidence.",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "workflow_run_ref": {
+    "workflow_run_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "state": "superseded",
+  "created_at": "2026-04-10T00:00:00Z",
+  "recorded_at": "2026-04-10T00:00:01Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "expires_at": "2026-05-10T00:00:00Z",
+  "extensions": {
+    "com.example.session": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "channel": "synthetic-channel"
+      }
+    }
+  },
+  "supersedes_conductor_handoff_ref": {
+    "conductor_handoff_id": "60000000-0000-4000-8000-000000000001",
+    "object_hash": "9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "object_hash": "a8c3c707183560312eeb71e95ae9235ed09400c9f6a8436e6d38d444f615fa98"
+}

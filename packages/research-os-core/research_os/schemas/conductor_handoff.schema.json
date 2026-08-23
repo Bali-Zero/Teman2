@@ -1,0 +1,626 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "AssistantProducer": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Model",
+          "type": "string"
+        },
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "prompt_version": {
+          "minLength": 1,
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "provider": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "required": ["provider", "model", "model_version", "prompt_version"],
+      "title": "AssistantProducer",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "ConductorHandoffRef": {
+      "additionalProperties": false,
+      "properties": {
+        "conductor_handoff_id": {
+          "format": "uuid",
+          "title": "Conductor Handoff Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["conductor_handoff_id", "object_hash"],
+      "title": "ConductorHandoffRef",
+      "type": "object"
+    },
+    "ConsideredOption": {
+      "additionalProperties": false,
+      "properties": {
+        "disposition": {
+          "enum": ["selected", "rejected", "deferred"],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "option_id": {
+          "minLength": 1,
+          "title": "Option Id",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": ["option_id", "disposition", "reason_code"],
+      "title": "ConsideredOption",
+      "type": "object"
+    },
+    "CreativeLockRef": {
+      "additionalProperties": false,
+      "properties": {
+        "creative_lock_id": {
+          "format": "uuid",
+          "title": "Creative Lock Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["creative_lock_id", "object_hash"],
+      "title": "CreativeLockRef",
+      "type": "object"
+    },
+    "DecisionPacketRef": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_packet_id": {
+          "format": "uuid",
+          "title": "Decision Packet Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["decision_packet_id", "object_hash"],
+      "title": "DecisionPacketRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "HandoffDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/HandoffOutcome"
+        },
+        "rationale_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rationale Codes",
+          "type": "array"
+        }
+      },
+      "required": ["outcome", "rationale_codes"],
+      "title": "HandoffDecision",
+      "type": "object"
+    },
+    "HandoffOutcome": {
+      "enum": ["content", "action", "request_evidence", "defer", "reject"],
+      "title": "HandoffOutcome",
+      "type": "string"
+    },
+    "HandoffState": {
+      "enum": [
+        "draft",
+        "operator_confirmed",
+        "stale",
+        "superseded",
+        "rejected"
+      ],
+      "title": "HandoffState",
+      "type": "string"
+    },
+    "OperatorInput": {
+      "additionalProperties": false,
+      "properties": {
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "input_id": {
+          "minLength": 1,
+          "title": "Input Id",
+          "type": "string"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["input_id", "content_hash", "sensitivity"],
+      "title": "OperatorInput",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "RequestedActionSpecRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "requested_action_spec_id": {
+          "format": "uuid",
+          "title": "Requested Action Spec Id",
+          "type": "string"
+        }
+      },
+      "required": ["requested_action_spec_id", "object_hash"],
+      "title": "RequestedActionSpecRef",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "SessionRef": {
+      "additionalProperties": false,
+      "properties": {
+        "opaque_id": {
+          "minLength": 1,
+          "title": "Opaque Id",
+          "type": "string"
+        },
+        "protected_transcript_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Protected Transcript Ref"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "record_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Record Hash",
+          "type": "string"
+        },
+        "scheme": {
+          "minLength": 1,
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "purpose", "opaque_id", "record_hash"],
+      "title": "SessionRef",
+      "type": "object"
+    },
+    "TopicLockRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "topic_lock_id": {
+          "format": "uuid",
+          "title": "Topic Lock Id",
+          "type": "string"
+        }
+      },
+      "required": ["topic_lock_id", "object_hash"],
+      "title": "TopicLockRef",
+      "type": "object"
+    },
+    "VerificationReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "verification_receipt_id": {
+          "format": "uuid",
+          "title": "Verification Receipt Id",
+          "type": "string"
+        }
+      },
+      "required": ["verification_receipt_id", "object_hash"],
+      "title": "VerificationReceiptRef",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "assistant_producer": {
+      "$ref": "#/$defs/AssistantProducer"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "conductor_handoff_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Conductor Handoff Family Id",
+      "type": "string"
+    },
+    "conductor_handoff_id": {
+      "format": "uuid",
+      "title": "Conductor Handoff Id",
+      "type": "string"
+    },
+    "considered_options": {
+      "items": {
+        "$ref": "#/$defs/ConsideredOption"
+      },
+      "title": "Considered Options",
+      "type": "array"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Created At",
+      "type": "string"
+    },
+    "creative_lock_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CreativeLockRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "decision": {
+      "$ref": "#/$defs/HandoffDecision"
+    },
+    "decision_packet_refs": {
+      "items": {
+        "$ref": "#/$defs/DecisionPacketRef"
+      },
+      "title": "Decision Packet Refs",
+      "type": "array"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "handoff_summary": {
+      "minLength": 1,
+      "title": "Handoff Summary",
+      "type": "string"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "operator_actor_ref": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "operator_inputs": {
+      "items": {
+        "$ref": "#/$defs/OperatorInput"
+      },
+      "title": "Operator Inputs",
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "requested_action_spec_refs": {
+      "items": {
+        "$ref": "#/$defs/RequestedActionSpecRef"
+      },
+      "title": "Requested Action Spec Refs",
+      "type": "array"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "session_ref": {
+      "$ref": "#/$defs/SessionRef"
+    },
+    "state": {
+      "$ref": "#/$defs/HandoffState"
+    },
+    "supersedes_conductor_handoff_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConductorHandoffRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "topic_lock_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopicLockRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "unresolved_questions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved Questions",
+      "type": "array"
+    },
+    "verification_receipt_refs": {
+      "items": {
+        "$ref": "#/$defs/VerificationReceiptRef"
+      },
+      "title": "Verification Receipt Refs",
+      "type": "array"
+    },
+    "workflow_run_ref": {
+      "$ref": "#/$defs/WorkflowRunRef"
+    }
+  },
+  "required": [
+    "conductor_handoff_id",
+    "conductor_handoff_family_id",
+    "contract_version",
+    "tenant",
+    "session_ref",
+    "operator_actor_ref",
+    "assistant_producer",
+    "operator_inputs",
+    "decision_packet_refs",
+    "verification_receipt_refs",
+    "considered_options",
+    "requested_action_spec_refs",
+    "decision",
+    "unresolved_questions",
+    "handoff_summary",
+    "classification",
+    "workflow_run_ref",
+    "state",
+    "created_at",
+    "recorded_at",
+    "producer",
+    "retention",
+    "object_hash"
+  ],
+  "title": "ConductorHandoff",
+  "type": "object"
+}
