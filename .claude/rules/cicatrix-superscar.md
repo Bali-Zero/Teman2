@@ -235,6 +235,7 @@ feeder split-brain.
   tick; mutation ha trovato di peggio (test asseriva un CONTEGGIO, verde con la dedup cancellata).
 - **W33** — kill-switch operatore su auto-remediation
 - **W40** — collisione numerazione migrazioni
+- **W128** — collisione numero cicatrice (sibling W40) — antidoto `lint_scar_number_collision.py`
 - **W39** — Dependabot bump (routine)
 - **Atlas migrate-lint paywall** — costo terze-parti, non bug
 - **Deploy crash / Dockerfile cell-core** — ordering promozione monorepo CI
