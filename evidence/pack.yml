@@ -1,521 +1,138 @@
 brief_ref: evidence/brief.yml
-plan_ref: >-
-  P04-D1 canonical OutcomeEvent (CONTRACTS.md section 16), PR #4653; evidence pack revision 5 of 5 (2026-08-23)
-  — refreshes revision 4's numbers after merging origin/main (3f41c6b0294f04576fdd33480361aaba911454bb,
-  which landed several more PRs concurrently, none touching this PR's outcome_event surface) into this
-  branch a third time. The evidence-file collision (cicatrix-superscar family #9) recurred for the same
-  structural reason as revisions 1 and 4; this revision resolves it the same way (--ours on evidence/pack.yml
-  — evidence/brief.yml did not conflict this round) and re-proves the 3 shared registration files (cli.py,
-  models/__init__.py, schemas/__init__.py) lost nothing of origin/main's concurrent additions. Also corrects
-  a phantom commit SHA that revision 4's own text introduced: the merge commit it described was written
-  as `8f98e5de3` (never existed in this branch's history — not found by `git log --all`); the real commit
-  git actually produced for that merge is `77a3ad6f3`, parents `b9e777a64` + `14332eb3e`, confirmed via
-  `git show --no-patch --format='%H %P' 77a3ad6f3`. Corrected here rather than left, per cicatrix-superscar
-  family #6 (anti-hallucination blindness) — a pack actively being edited for accuracy should not carry
-  a known-false SHA forward.
+plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
+lanes:
+  - lane: wr3-spend-gate-enforce
+    role: build
+    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
+  - lane: wr3-spend-gate-enforce-evidence
+    role: review
+    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
+  one non-Anthropic) does not fire. Both lanes present here are Anthropic
+  seats by construction (this is a narrow evidence-authoring task, not a
+  cross-family council dispatch); declared rather than left to read as
+  satisfied.
 diff:
   net_lines: >-
-    +2561/-139, 21 files, net +2422 -- measured fresh THIS turn by `git diff --numstat
-    3f41c6b0294f04576fdd33480361aaba911454bb` against the post-merge working tree (post-resolution,
-    pre-commit; see receipts). Same 21-file set as revisions 3 and 4 (this PR never touched a
-    governance-receipt file). Of the total, evidence/pack.yml and evidence/brief.yml themselves account
-    for +451/-82 and +191/-57 respectively (self-referential — the pack describes its own diff); the
-    other 19 files (this PR's actual work: outcome_event model/schema/fixtures/test + the 3 registration
-    files' +2/+2/+2 lines each) total +1919/-0, unchanged in substance from revision 4 since this round's
-    merge touched none of them — the net_lines growth since revision 4's +2334/-190 is entirely the
-    evidence files' own accumulated revision history plus origin/main moving further ahead (a wider base
-    diff on the same two self-describing files), not new work by this PR.
+    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
+    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
+    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
+    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
+    the runtime gate itself is pre-existing, unmodified production code.
   behaviour_change: >-
-    Adds one new contract kind end-to-end (model + schema + fixtures + tests + registration), PLUS as
-    of ce82bb93e: (a) the model's metric_profile_ref/metric_result_ref joint-presence invariant is now
-    also expressed in the generated JSON Schema as a bidirectional if/then (previously Python-only), and
-    (b) the supersedes-chain fixture now actually resolves to Current through the real graph.py resolver
-    (previously would have quarantined). Zero lines changed in any of the 13 already-registered kinds;
-    zero production backend-rag service code touched (packages/research-os-core is a standalone library,
-    not yet imported by apps/backend-rag/backend/ service code); primitives.py untouched throughout.
-lanes:
-  - lane: research-os-p04-d1-outcome-event
-    role: build
-    seat: claude
+    No runtime behaviour change to any shipped code path. The workflow now also runs
+    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
+    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
+    `_generate_video` helpers the pre-existing tests already covered.
 receipts:
-  - claim: >-
-      Merge-base of this branch against origin/main is c4242cd444e8396bb37e31fbd0c945c7b69c940a (#4637,
-      MetricProfile/MetricResult) — confirmed this is the commit both evidence/brief.yml and the diff scope
-      are measured against.
-    cmd: git merge-base HEAD origin/main
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
+    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
     exit: 0
-    ts: 2026-08-23T09:57Z
-    seat: claude
-  - claim: >-
-      REVISION 1 measurement (superseded in file-count/line-count by the R2b receipt below, kept for history):
-      at HEAD 03af27444 the diff between merge-base and HEAD touched exactly 19 files, all under outcome_event
-      (model/schema/fixtures/test) plus the 3 registration files; net +1665/-0 lines.
-    cmd: git diff --numstat c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD
+    ts: "2026-08-23T23:05Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
     exit: 0
-    ts: "2026-08-23T10:05:18Z"
-    seat: claude
-  - claim: >-
-      REVISION 3 (current) measurement: at HEAD ce82bb93e the diff between merge-base and HEAD touches 21
-      files (revision 1's 19, PLUS evidence/brief.yml and evidence/pack.yml themselves, which revision 1's
-      own commit added to this branch's history); net +2170/-114 = +2056 lines.
-    cmd: >-
-      git diff --numstat c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD | awk '{a+=$1;d+=$2} END{print a"
-      "d" "a-d}'
+    ts: "2026-08-23T23:07Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
+    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
     exit: 0
-    ts: "2026-08-23T10:22:50Z"
-    seat: claude
-  - claim: >-
-      workflow_run.py (and the sibling verification_receipt.py/conductor_handoff.py files this branch's
-      own local history at commit 8d5f6a057 also touched) is byte-identical between the merge-base and HEAD
-      — that commit's content landed on main separately, so those files are correctly excluded from this
-      PR's real net diff.
-    cmd: >-
-      git diff c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD -- packages/research-os-core/research_os/models/workflow_run.py
-    exit: 0
-    ts: 2026-08-23T09:58Z
-    seat: claude
-  - claim: >-
-      cli.py, models/__init__.py, and schemas/__init__.py each gained exactly one import line and one dict/tuple
-      entry for OutcomeEvent; no existing entry (including workflow_run, verification_receipt, metric_profile,
-      metric_result) was removed or altered.
-    cmd: >-
-      git diff c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD -- packages/research-os-core/research_os/cli.py
-      packages/research-os-core/research_os/models/__init__.py packages/research-os-core/research_os/schemas/__init__.py
-    exit: 0
-    ts: 2026-08-23T09:56Z
-    seat: claude
-  - claim: >-
-      `python -m research_os.cli fixtures --check` passes over the FULL fixture tree (all 13 registered
-      kinds, 102 fixtures total, including outcome_event's 13): {"checked": 102, "failures": [], "valid":
-      true}.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m research_os.cli
-      fixtures --check
-    exit: 0
-    ts: "2026-08-23T09:59:03Z"
-    seat: claude
-  - claim: >-
-      REVISION 3 (current, re-run fresh at HEAD ce82bb93e): the full research_os unit test suite passes:
-      232 passed (was 230 at revision 1 -- +2 for the two adversarial-review-fix tests), 1 skipped (pre-existing,
-      unrelated to this PR -- node/prettier unavailable in this environment for a schema-regen-parity test),
-      0 failed.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os -q --no-header
-    exit: 0
-    ts: "2026-08-23T10:22:58Z"
-    seat: claude
-  - claim: >-
-      REVISION 3 (current): test_outcome_event.py in isolation: 13/13 tests pass (was 11/11 -- +2 for test_supersedes_fixture_is_current_in_the_real_graph_resolver
-      and test_metric_profile_and_result_schema_and_model_agree_on_all_nine_cases).
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py -q --no-header
-    exit: 0
-    ts: "2026-08-23T10:23:04Z"
-    seat: claude
-  - claim: >-
-      Fix 1 (graph resolver), both arms driven through the REAL select_current_member -- ARM 1 (fixed fixture,
-      strictly-later recorded_at) returns Current(member=GraphMember(object_kind='outcome_event', object_id='b0000000-0000-4000-8000-000000000003',
-      object_hash='88076246fd48090e64d637b957dcde91c605c0d4195d9a3d2f19500a3b28b32b', tenant='bali-zero',
-      family_id='com.example.outcome_event.family_001', recorded_at=2026-04-15 00:05:02+00:00)); ARM 2 (reproduced
-      original defect -- tied recorded_at) returns exactly Quarantined(reason_codes=('successor_recorded_at_not_later',)).
-      Both printed directly, not inferred from the test's pass/fail alone.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py::test_supersedes_fixture_is_current_in_the_real_graph_resolver
-      -q --no-header
-    exit: 0
-    ts: "2026-08-23T10:23:16Z"
-    seat: claude
-  - claim: >-
-      Fix 2 (schema if/then), all 9 combinations of {absent, explicit null, present-with-value} x 2 fields
-      (metric_profile_ref, metric_result_ref) -- schema verdict, model verdict, and an independently-derived
-      expected verdict AGREE on all 9: absent/absent=ACCEPT, absent/null=ACCEPT, absent/value=REJECT, null/absent=ACCEPT,
-      null/null=ACCEPT, null/value=REJECT, value/absent=REJECT, value/null=REJECT, value/value=ACCEPT. Run
-      both as a standalone script (printed table) and as the permanent test below.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py::test_metric_profile_and_result_schema_and_model_agree_on_all_nine_cases
-      -q --no-header
-    exit: 0
-    ts: "2026-08-23T10:23:17Z"
-    seat: claude
-  - claim: >-
-      test_schemas.py, including test_checked_in_schemas_are_byte_identical_to_fresh_regeneration (the regenerated
-      schema carrying the new if/then matches the checked-in file byte-for-byte, via the real schema_bytes()
-      generator -- not hand-edited): 5 passed, 1 pre-existing skip.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os/test_schemas.py -q --no-header
-    exit: 0
-    ts: "2026-08-23T10:23:05Z"
-    seat: claude
-  - claim: >-
-      test_schemas.py (the schema self-consistency module: generated-schema Draft 2020-12 validity, ECMA-262
-      pattern compilation, checked-in-vs-regenerated byte parity) passes: 5 passed, 1 skipped (same pre-existing
-      node/prettier-unavailable skip).
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os/test_schemas.py -v
-    exit: 0
-    ts: "2026-08-23T10:01:37Z"
-    seat: claude
-  - claim: >-
-      REVISION 3 (current, re-run at HEAD ce82bb93e, after outcome_event.py's new ConfigDict(json_schema_extra=...)):
-      mypy --strict on the 4 touched non-test Python files (outcome_event.py, cli.py, models/__init__.py,
-      schemas/__init__.py) is STILL clean: 'Success: no issues found in 4 source files'.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy
-      --strict research_os/models/outcome_event.py research_os/cli.py research_os/models/__init__.py research_os/schemas/__init__.py
-      --explicit-package-bases
-    exit: 0
-    ts: "2026-08-23T10:23:11Z"
-    seat: claude
-  - claim: >-
-      REVISION 3 (current, re-run at HEAD ce82bb93e): mypy --strict on the touched TEST file (test_outcome_event.py)
-      is STILL RED: 1 error -- 'Unused "type: ignore" comment [unused-ignore]' -- now at line 73 (was line
-      62 at revision 1, shifted down by the fix-3 glob assertions and new imports; unchanged in substance/root-cause).
-      Left unfixed deliberately, per both the evidence-rewrite's and the adversarial-review-fix's stated
-      scope. TRUE rc recorded, not swept.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy
-      --strict ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py --explicit-package-bases
+    ts: "2026-08-23T23:09Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
+    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
+    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
     exit: 1
-    ts: "2026-08-23T10:23:11Z"
-    seat: claude
-  - claim: >-
-      Control check, same invocation style, on an ALREADY-ON-MAIN sibling file (test_workflow_run.py) with
-      the analogous frozen-field-reassignment test at the same line number: clean, 0 issues. Confirms the
-      line-62 finding above is a genuine `[misc]` vs `[assignment]` discrepancy specific to outcome_type's
-      non-Literal type, not a config/ environment artifact of how I invoked mypy (the same invocation correctly
-      consumes the ignore comment on the sibling file).
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy
-      --strict ../../apps/backend-rag/backend/tests/unit/research_os/test_workflow_run.py --explicit-package-bases
+    ts: "2026-08-23T23:11Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
+    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
     exit: 0
-    ts: "2026-08-23T10:05:18Z"
-    seat: claude
-  - claim: >-
-      Neither the repo-root backend-rag mypy config (apps/backend-rag/pyproject.toml [tool.mypy]) nor CI's
-      actual mypy invocation load the pydantic mypy plugin, and CI's mypy job never checks packages/research-os-core
-      at all — it strictly checks only backend/core and backend/app/models. The line-62 finding above is
-      therefore NOT CI-blocking.
-    cmd: grep -n 'mypy' .github/workflows/tests.yml
+    ts: "2026-08-23T23:13Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "actionlint accepts the modified workflow"
+    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
+    result: "no output (clean)"
     exit: 0
-    ts: 2026-08-23T10:03Z
-    seat: claude
-  - claim: >-
-      checked_in_schemas_match() and validate_schema_artifacts() both return the empty tuple at HEAD ce82bb93e
-      -- the regenerated schema (carrying the new if/then) matches the checked-in file byte-for-byte and
-      is valid Draft 2020-12, called directly (not via pytest).
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "import
-      sys; sys.path.insert(0,'.'); from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts;
-      print(checked_in_schemas_match()); print(validate_schema_artifacts())"
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
+    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
+    result: "exit 0, no output"
     exit: 0
-    ts: "2026-08-23T10:24:31Z"
-    seat: claude
-  - claim: >-
-      REVISION 4: origin/main moved to 14332eb3e (PR #4635's risk_reclassification_receipt/ sanitization_receipt,
-      plus unrelated PRs) since revision 3's merge-base. `git fetch origin main` then `git merge origin/main
-      --no-edit` conflicted on exactly 2 files -- evidence/brief.yml and evidence/pack.yml (the same fixed-path
-      collision as revision 1, cicatrix-superscar family #9) -- with the 3 shared registration files (cli.py,
-      models/__init__.py, schemas/__init__.py) auto-merging cleanly, no conflict markers.
-    cmd: git fetch origin main && git merge origin/main --no-edit
-    exit: 1
-    ts: >-
-      2026-08-23T10:36Z (single bracketing capture for this whole revision-4 batch, per-command date not
-      separately shelled; merge attempt itself intentionally exits 1 on conflict, resolved below)
-    seat: claude
-  - claim: >-
-      Both evidence files resolved --ours (this branch's version wins, matching revision 1's established
-      resolution pattern for this exact collision class); 0 conflict markers remain anywhere in the tree
-      after resolution.
-    cmd: >-
-      git checkout --ours evidence/brief.yml evidence/pack.yml && git add evidence/brief.yml evidence/pack.yml
-      && git status --porcelain=v1 | grep -E '^UU|^AA|^DD' | wc -l
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
     exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      LOSS-CHECK, non-zero hit counts, not a visual 'looks fine': origin/main BEFORE this merge had exactly
-      14 kinds registered in each of the 3 shared files (action_intent, action_item, approval_receipt, conductor_handoff,
-      execution_attempt, metric_profile, metric_result, object_successor_edge, operational_receipt, revocation_receipt,
-      risk_reclassification_receipt, sanitization_receipt, verification_receipt, workflow_run) -- outcome_event
-      present in NONE of them (0 hits, correctly, since it is this PR's own addition). Measured directly
-      via `git show origin/main:<path>` (read-only, working tree untouched) AND independently corroborated
-      by a dispatched subagent doing the same measurement blind -- both agree exactly: 14/14/14 kinds, 0/0/0
-      outcome_event hits.
-    cmd: >-
-      git show origin/main:packages/research-os-core/research_os/cli.py | sed -n '/^CONTRACT_MODELS/,/^}/p'
-      | grep -c '": '
+    ts: "2026-08-23T23:15Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
+    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
+    result: >-
+      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
+      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
+      same position relative to its own HTTP call. Both call sites precede any network code in
+      their respective functions.
     exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      LOSS-CHECK continued: the MERGED tree (post-resolution, pre-commit at that point) has exactly 15 entries
-      in each of the 3 files -- origin/main's 14 PLUS outcome_event, nothing dropped. Non-zero grep hit-count
-      grid proving the pattern is alive (not a broken 0-vs-0 false-green): cli.py outcome_event=2/risk_reclassification_receipt=2/sanitization_receipt=2;
-      models/__init__.py outcome_event=1/risk_reclassification_receipt=1/sanitization_receipt=1 (CamelCase
-      __all__ entries don't match the lowercase snake_case substring, so only the import-path line hits);
-      schemas/__init__.py outcome_event=2/risk_reclassification_receipt=2/ sanitization_receipt=2. Every
-      cell non-zero.
-    cmd: >-
-      for f in cli.py models/__init__.py schemas/__init__.py; do grep -c outcome_event $f; grep -c risk_reclassification_receipt
-      $f; grep -c sanitization_receipt $f; done
-    exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      Merge finalized (`git commit --no-edit`, merge commit 77a3ad6f3 [corrected in revision 5 -- this
-      receipt originally named a phantom SHA 8f98e5de3 that never existed; see plan_ref], parents b9e777a64
-      and origin/main's 14332eb3e). origin/main is now a strict ancestor of HEAD, confirmed via `git
-      merge-base --is-ancestor origin/main HEAD` (exit 0).
-    cmd: git commit --no-edit && git merge-base --is-ancestor origin/main HEAD
-    exit: 0
-    ts: "2026-08-23T10:36:37Z"
-    seat: claude
-  - claim: >-
-      REVISION 4, re-run fresh on the merged+committed tree: `python -m research_os.cli fixtures --check`
-      now covers 119 fixtures (was 102 pre-merge): {"checked": 119, "failures": [], "valid": true}. The
-      +17 delta is fully reconciled in `static:` below via the tool's real counting unit (one valid_*/invalid_*.json
-      per fixture, .expect.json siblings never counted) -- not a naive raw-file-count sum, which would have
-      overshot to 127.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m research_os.cli
-      fixtures --check
-    exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      REVISION 4: the full research_os unit test suite on the merged tree passes: 266 passed (was 232 pre-merge,
-      +34 for origin/main's own test_governance_receipts.py and related additions), 1 skipped (same pre-existing
-      node/prettier-unavailable skip), 0 failed.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os -q --no-header
-    exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      REVISION 4: test_outcome_event.py in isolation, unaffected by the merge (this branch's own file, no
-      conflict): still 13/13 passed.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
-      ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py -q --no-header
-    exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      REVISION 4: mypy --strict on the 4 functional files, re-verified post-merge, still clean -- 'Success:
-      no issues found in 4 source files'. mypy --strict on test_outcome_event.py still red at the same finding,
-      same line 73, unchanged in substance (merge did not touch this file) -- reported honestly again, not
-      swept.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy
-      --strict research_os/models/outcome_event.py research_os/cli.py research_os/models/__init__.py research_os/schemas/__init__.py
-      --explicit-package-bases
-    exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      REVISION 4: checked_in_schemas_match() and validate_schema_artifacts() both still -> () on the merged
-      tree -- outcome_event.schema.json unaffected by origin/main's concurrent schema additions for the
-      2 other kinds.
-    cmd: >-
-      cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "import
-      sys; sys.path.insert(0,'.'); from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts;
-      print(checked_in_schemas_match()); print(validate_schema_artifacts())"
-    exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      scripts/evidence_pack_lint.py itself was modified by this merge (origin/main's own edit, unrelated
-      to this PR); confirmed the working-tree copy is byte-identical to origin/main:scripts/evidence_pack_lint.py
-      (diff empty, rc 0) before using it -- no stale /tmp copy reused.
-    cmd: >-
-      diff <(git show origin/main:scripts/evidence_pack_lint.py) scripts/evidence_pack_lint.py
-    exit: 0
-    ts: 2026-08-23T10:36Z
-    seat: claude
-  - claim: >-
-      HONEST DISCLOSURE, not a defect: the `origin/main` label is a moving ref and it moved a second time
-      DURING this same revision's work -- from 14332eb3e (what was actually fetched and merged into this
-      commit) to 8d2ed25f3 (one further commit, #4658, landed independently mid- session). A bare `git diff
-      origin/main HEAD` re-run AFTER that second move momentarily appeared to show HEAD missing 2 lines
-      of .claude/skills/modus/PENDING-ARMS.md that origin/ main's NEW tip has -- investigated fully rather
-      than assumed benign: `git diff 14332eb3e HEAD -- .claude/skills/modus/PENDING-ARMS.md` is EMPTY (0
-      lines, byte-identical) -- this branch never touched that file and the merge correctly reproduced 14332eb3e's
-      content for it exactly. The 2 'missing' lines are the PENDING-ARMS row that #4658 itself closed/removed
-      on origin/main AFTER 14332eb3e -- work this PR was never asked to (and did not) merge in. Every number
-      in this pack's diff/receipts is pinned to 14332eb3e, the SHA actually fetched and merged, not to the
-      live `origin/main` label -- re-running the bare-label commands today will correctly show a further
-      1-commit delta that is out of this PR's scope.
-    cmd: >-
-      git diff 14332eb3e5a2b8ce45479ee66a8f77dd4313e56d HEAD -- .claude/skills/modus/PENDING-ARMS.md | wc
-      -l
-    exit: 0
-    ts: "2026-08-23T10:43:26Z"
-    seat: claude
-  - claim: >-
-      REVISION 5: origin/main moved to 3f41c6b0294f04576fdd33480361aaba911454bb (several more PRs landed
-      concurrently since revision 4's 14332eb3e/8d2ed25f3) since revision 4's merge. `git fetch origin
-      main` then `git merge origin/main --no-edit` conflicted on exactly 1 file this round -- evidence/pack.yml
-      (the same fixed-path collision as revisions 1 and 4, cicatrix-superscar family #9) -- evidence/brief.yml
-      auto-merged cleanly this time (origin/main's commits in this range did not touch it), and the 3 shared
-      registration files again auto-merged cleanly, no conflict markers.
-    cmd: git fetch origin main && git merge origin/main --no-edit
-    exit: 1
-    ts: "2026-08-23T18:53Z"
-    seat: claude
-  - claim: >-
-      evidence/pack.yml resolved --ours (this branch's version wins, matching revisions 1 and 4's established
-      resolution pattern for this exact collision class); 0 conflict markers remain anywhere in the tree
-      after resolution.
-    cmd: git checkout --ours evidence/pack.yml && git add evidence/pack.yml && git diff --check
-    exit: 0
-    ts: "2026-08-23T18:53Z"
-    seat: claude
-  - claim: >-
-      LOSS-CHECK, non-zero hit counts on both sides, not a visual "looks fine": origin/main
-      (3f41c6b0294f04576fdd33480361aaba911454bb) BEFORE this merge had exactly 14 kinds registered in
-      each of the 3 shared files' import-line count (action_intent, action_item, approval_receipt,
-      conductor_handoff, execution_attempt, metric_profile, metric_result, object_successor_edge,
-      operational_receipt, revocation_receipt, risk_reclassification_receipt, sanitization_receipt,
-      verification_receipt, workflow_run) and 14 CONTRACT_MODELS/__all__/SCHEMA_MODELS entries each --
-      outcome_event present in NONE of them (0 hits, correctly, since it is this PR's own addition). The
-      merged tree (post-resolution, pre-commit) has exactly 15 in each -- origin/main's 14 PLUS
-      outcome_event, nothing dropped; strict-subset check passed on every one of the 3 files.
-    cmd: >-
-      git show 3f41c6b0294f04576fdd33480361aaba911454bb:packages/research-os-core/research_os/cli.py |
-      grep -cE '^from research_os\.models\.'; grep -cE '^from research_os\.models\.'
-      packages/research-os-core/research_os/cli.py (repeated per-file for models/__init__.py and
-      schemas/__init__.py, both import-line count and __all__/dict-block entry count)
-    exit: 0
-    ts: "2026-08-23T18:54Z"
-    seat: claude
-  - claim: >-
-      diff.net_lines refreshed against the fresh merge-tree measurement: 21 files (same set as revisions
-      3 and 4), +2561/-139, net +2422 -- of which evidence/pack.yml and evidence/brief.yml themselves are
-      +451/-82 and +191/-57 (self-referential); the other 19 files (this PR's real work) are unchanged
-      from revision 4 in substance at +1919/-0, since this round's merge touched none of the outcome_event
-      surface. See diff: block above for the full breakdown.
-    cmd: >-
-      git diff --numstat 3f41c6b0294f04576fdd33480361aaba911454bb -- . | awk '{a+=$1; d+=$2; n++}
-      END{print "files="n, "added="a, "deleted="d, "net="a-d}'
-    exit: 0
-    ts: "2026-08-23T18:55Z"
-    seat: claude
-tests:
-  - >-
-    apps/backend-rag/backend/tests/unit/research_os (full suite, 266 passed as of the revision-4 merge commit
-    77a3ad6f3 [corrected in revision 5 from a phantom SHA 8f98e5de3; see plan_ref] -- was 232 pre-merge,
-    +34 from origin/main's own concurrent test_governance_receipts.py and
-    related additions, none of it this PR's work -- /1 pre-existing skip) and the outcome_event/schemas
-    subsets in isolation — all green per receipts above. This IS the applicable test surface for a contracts-package
-    addition; there is no separate integration surface because packages/research-os-core is not yet wired
-    into any backend-rag service.
-  - >-
-    The 2 adversarial-review-fix tests specifically both drive REAL production code paths, not reimplementations:
-    test_supersedes_fixture_is_current_in_the_real_graph_resolver calls the actual graph.py::select_current_member;
-    test_metric_profile_and_result_schema_and_model_agree_on_all_nine_cases validates against the actual
-    regenerated outcome_event.schema.json via jsonschema's Draft202012Validator AND the actual OutcomeEvent.model_validate,
-    comparing both to an independently-derived expected verdict (not schema==model, which would be an identity
-    check on two things built from the same source, not a guard).
-static:
-  - >-
-    python -m research_os.cli fixtures --check -> {"checked": 119, "failures": [], "valid": true} on the
-    merged tree (was 102 pre-merge). Reconciled exactly, not left as an unexplained gap: the CLI's counting
-    unit is one valid_*.json or invalid_*.json fixture file -- an invalid fixture's paired *.expect.json
-    sibling is opened only to read its reason_code and is NEVER separately counted (read directly from _fixture_paths()/_check_fixtures()
-    in cli.py, not inferred). risk_reclassification_receipt contributes 3 valid + 7 invalid = 10 checked
-    units (from 17 files on disk, 7 of them .expect.json and correctly excluded); sanitization_receipt contributes
-    3 valid + 4 invalid = 7 checked units (from 11 files on disk, 4 excluded). 10 + 7 = 17, and 102 + 17
-    = 119 exactly -- no residual gap. A naive 102+13+12=127 (raw fixture-directory file counts including
-    .expect.json) does not match the tool's real counting unit and was never the right arithmetic to check
-    against.
-  - >-
-    mypy --strict on outcome_event.py/cli.py/models/__init__.py/schemas/__init__.py -> clean (re-verified
-    at ce82bb93e, after the ConfigDict(json_schema_extra=...) addition)
-  - >-
-    mypy --strict on test_outcome_event.py -> 1 unused-ignore finding (line 73 as of ce82bb93e, was line
-    62), reported honestly in risks: above, verified not CI-blocking, left unfixed across both the evidence-rewrite
-    AND the adversarial-review-fix commit
-  - >-
-    checked_in_schemas_match() and validate_schema_artifacts() both -> () at ce82bb93e (the regenerated
-    schema, carrying the new if/then, matches the checked-in file byte-for-byte and is valid Draft 2020-12)
-runtime_proof:
-  - >-
-    Not applicable in the classic sense — this is a schema/contract library addition with no service runtime
-    to exercise. The closest runtime proof is the full green test suite (receipts above), which exercises
-    every validator branch the model defines (round-trip, each of the 5 named invalid-fixture rejection
-    reasons, immutability, object_hash tamper-detection, and the joint-presence invariant) against real
-    Pydantic validation, not mocked.
-dissent:
-  - seat: >-
-      independent adversarial review (dispatched by the requesting session, cross-family corroborated, re-verified
-      on disk by the requesting session before dispatch AND by this session before implementing each fix
-      -- not accepted on report alone)
-    objection: >-
-      Returned DEFECTIVE against ce82bb93e's predecessor state, with 2 real findings against this PR's substance:
-      (1) valid_with_supersedes_and_extension.json would be quarantined by the real graph.py resolver (byte-identical
-      recorded_at to its predecessor); (2) the checked- in schema expressed zero if/then/allOf/oneOf/dependentRequired
-      for the metric_profile_ref/ metric_result_ref joint-presence invariant the model enforces in Python.
-      Also flagged 1 test- hardening gap (empty-glob hole in test_outcome_event.py) and reconfirmed 1 already-ledgered
-      out-of-scope finding (primitives.py extension-jail omission, PENDING-ARMS, not fixed here per the
-      Agent PR Contract's depth-1 fix-of-a-fix limit).
-    status: CONFIRMED
-residual_risks:
-  - >-
-    The 7 spec-interpretation judgment calls documented in outcome_event.py's own module docstring (revocation_receipt_ref
-    gap vs section 3.2/13.5, value:Any, aggregation_level unconstrained, completeness unconstrained float,
-    source_system registry-row gap, window-ordering-by-analogy, 2 invariants deliberately unenforced) are
-    open and flagged for Packet 04 to rule on. Not a defect of this PR; a defect of leaving them silently
-    resolved would have been worse, per the model's own docstring stance.
-  - >-
-    mypy --strict finds 1 unused-ignore in test_outcome_event.py, now line 73 (was line 62 before ce82bb93e's
-    fix-3 assertions shifted it) -- `[misc]` where no plugin-aware invocation of this package exists to
-    make it needed. Verified NOT CI-blocking (CI never mypy-checks this package). Left unfixed across every
-    revision of this branch so far -- out of scope for the evidence-rewrite AND for the adversarial-review
-    fixes.
-  - >-
-    The ledgered primitives.py extension-jail finding (V1_RESERVED_EXTENSION_FIELD_NAMES omits ~16 of OutcomeEvent's
-    own field names, repo-wide, subject_refs missing too on already-shipped kinds) remains open and deliberately
-    unfixed here -- PENDING-ARMS carries its proof-of-armed and the reason the obvious cure (adding the
-    nested names) is wrong (jails ~23 bare common words, over-match). primitives.py is untouched by every
-    commit on this branch.
-  - >-
-    This evidence pack itself was, until revision 1, describing foreign work (PR #4592) -- inherited unchanged
-    from origin/main's evidence/*.yml at this branch's merge-base. This is a fleet-wide pattern (cicatrix-superscar
-    family #9: evidence/brief.yml and evidence/pack.yml are fixed root-relative paths every Gear>=2 PR rewrites)
-    actively tracked and mitigated across multiple concurrent P04-D1 lanes as of this timestamp, not unique
-    to this PR. This revision (3) exists because revision 1's numbers drifted stale the moment revision
-    2 (ce82bb93e) landed real code changes without a corresponding evidence update -- the same class of
-    risk, caught and corrected within the same branch rather than left for a future reader.
-sources:
-  - >-
-    packages/research-os-core/research_os/models/outcome_event.py (this PR's primary file, updated ce82bb93e)
-  - >-
-    packages/research-os-core/research_os/schemas/outcome_event.schema.json (generated, this PR, regenerated
-    ce82bb93e)
-  - >-
-    packages/research-os-core/fixtures/outcome_event/*.json (13 fixtures, this PR; valid_with_supersedes_and_extension.json
-    corrected ce82bb93e)
-  - >-
-    apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py (this PR, +2 tests and 2 glob-assertions
-    ce82bb93e)
-  - >-
-    packages/research-os-core/research_os/cli.py, models/__init__.py, schemas/__init__.py (registration
-    diffs, this PR, untouched by ce82bb93e)
-  - >-
-    packages/research-os-core/research_os/models/metric_result.py (read-only reference — the json_schema_extra/ConfigDict
-    precedent this PR's fix 2 follows)
-  - >-
-    packages/research-os-core/research_os/graph.py, research_os/models/successor_edge.py (read-only reference
-    — the real resolver this PR's fix 1 test drives)
-  - .github/workflows/tests.yml:635 (read-only reference — confirms CI's mypy scope)
-  - >-
-    apps/backend-rag/pyproject.toml [tool.mypy] (read-only reference — confirms no pydantic plugin)
+    ts: "2026-08-23T23:16Z"
+    seat: "session (M5, evidence-pack task)"
 pii_scan: clean
-size_tokens: 7279
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
+      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
+      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
+      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
+      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
+    status: CONFIRMED
+    note: >-
+      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
+      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
+      matching the check. Answered here by supplying both files, never by editing the check
+      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
+      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
+      complied-with).
+  - seat: "session (this evidence-authoring task), against its own first instinct"
+    objection: >-
+      The mandate offered the PR body's own self-reported mutation-test result (comment out
+      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
+      verbatim without re-running it would have been citing a tool output this turn never
+      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
+      prevent, applied to a prior session's claim rather than to memory.
+    status: RETRACTED
+    note: >-
+      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
+      receipt above) rather than trusting the PR body's report. Result matched: both tests went
+      red with the identical `AssertionError: network path reached`, file restored clean.
+      Retracted because the concern was real but the independent re-run resolved it — the
+      PR body's claim held up under a fresh execution, it was not merely repeated.
+tests:
+  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
+  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
+static:
+  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
+  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
+  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
+notes:
+  - >-
+    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
+    was already committed and pushed by a prior session/task. No production code, no test
+    content, and no workflow logic was authored or edited as part of writing this pack — every
+    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
+    a first-time authoring of the underlying fix.
+  - >-
+    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
+    same `Harness floor recompute` shape first and its own evidence pack documents the identical
+    resolution — supply brief+pack, never edit the gate. That pack (`git show
+    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
+    content is specific to this PR's diff.

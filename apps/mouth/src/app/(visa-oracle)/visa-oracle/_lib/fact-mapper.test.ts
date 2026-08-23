@@ -180,6 +180,7 @@ describe("question registry -> wire coverage", () => {
     ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
     ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
     ["family_sponsor_status_code", "FOO", "AMBIGUOUS_SPONSOR"],
+    ["family_sponsor_permit_basis", "EXPERT", "AMBIGUOUS_SPONSOR"],
     ["diaspora_connection", "former_citizen", "ACTIVITY_BOUNDARY"],
     ["diaspora_documents", "passport", "ACTIVITY_BOUNDARY"],
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
@@ -613,6 +614,50 @@ describe("family sponsor status — unverified human context", () => {
       reason: "UNVERIFIED",
     });
     expect(result.disclosed_review_flags).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  // 2026-08-23: `family.sponsor_permit_basis` shipped in PR #4650 wired to
+  // `enumFact()` directly — a self-declared choice resolved straight to
+  // KNOWN, missing the parallel to the sibling test immediately above.
+  // Corrected to mirror it exactly: collected, flagged, never trusted.
+  it("never turns a self-declared permit-basis category into a KNOWN signed fact", () => {
+    const result = mapFacts({
+      family_sponsor_confirmed: "yes",
+      family_sponsor_permit_basis: "EXPERT",
+    });
+    expect(result.facts["family.sponsor_permit_basis"]).toEqual({
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
+    });
+    expect(result.disclosed_review_flags).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("resolves NOT_APPLICABLE for both sponsor facts when no sponsor is confirmed", () => {
+    const result = mapFacts({
+      family_sponsor_confirmed: "no",
+      family_sponsor_status_code: "E28B",
+      family_sponsor_permit_basis: "EXPERT",
+    });
+    expect(result.facts["family.sponsor_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
+    expect(result.facts["family.sponsor_permit_basis"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
+  });
+
+  it("resolves NOT_ASKED for both sponsor facts on an empty interview", () => {
+    const result = mapFacts({});
+    expect(result.facts["family.sponsor_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+    expect(result.facts["family.sponsor_permit_basis"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
   });
 });
 
