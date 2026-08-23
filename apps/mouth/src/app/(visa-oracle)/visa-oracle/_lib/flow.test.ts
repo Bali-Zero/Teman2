@@ -560,6 +560,60 @@ describe("seq-10 companion: the marriage question fires for PARENT-relation fami
   });
 });
 
+describe("2026-08-23 owner ruling: family_sponsor_permit_basis rides the same condition as family_sponsor_status_code", () => {
+  it("guilt: asks it when the sponsor's nationalities exclude ID", () => {
+    const ids = getCategoryQuestionIds({
+      category: "family",
+      family_sponsor_nationalities: "US",
+    } as OracleFacts);
+    expect(ids).toContain("family_sponsor_status_code");
+    expect(ids).toContain("family_sponsor_permit_basis");
+  });
+
+  it("innocence: does not ask it when the sponsor is Indonesian", () => {
+    const ids = getCategoryQuestionIds({
+      category: "family",
+      family_sponsor_nationalities: "ID",
+    } as OracleFacts);
+    expect(ids).not.toContain("family_sponsor_status_code");
+    expect(ids).not.toContain("family_sponsor_permit_basis");
+  });
+
+  it("innocence: does not ask it before the nationalities question is answered", () => {
+    const ids = getCategoryQuestionIds({
+      category: "family",
+    } as OracleFacts);
+    expect(ids).not.toContain("family_sponsor_permit_basis");
+  });
+});
+
+describe("2026-08-23 owner ruling: stepchild evidence questions fire only for family_relation=STEPCHILD", () => {
+  // research/visa/2026-08-15-gold-family-refuter.md diagnosed E31D's rules
+  // as reducible to bare `intent.purposes ∩ FAMILY` — the interview never
+  // had a way to collect either evidence fact this ruling names.
+  it("guilt: asks both evidence questions for STEPCHILD", () => {
+    const ids = getCategoryQuestionIds({
+      category: "family",
+      family_relation: "STEPCHILD",
+    } as OracleFacts);
+    expect(ids).toContain("family_stepchild_marriage_certificate_confirmed");
+    expect(ids).toContain("family_stepchild_birth_certificate_confirmed");
+  });
+
+  it("innocence: asks neither for SPOUSE, PARENT or CHILD", () => {
+    for (const relation of ["SPOUSE", "PARENT", "CHILD"] as const) {
+      const ids = getCategoryQuestionIds({
+        category: "family",
+        family_relation: relation,
+      } as OracleFacts);
+      expect(ids).not.toContain(
+        "family_stepchild_marriage_certificate_confirmed",
+      );
+      expect(ids).not.toContain("family_stepchild_birth_certificate_confirmed");
+    }
+  });
+});
+
 describe("editing, pruning and branch projection", () => {
   it("editing category removes stale descendants from the abandoned branch", () => {
     let state = startOffshore("work");

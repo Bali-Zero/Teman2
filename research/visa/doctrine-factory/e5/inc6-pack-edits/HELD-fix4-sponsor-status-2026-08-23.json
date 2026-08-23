@@ -1,0 +1,1586 @@
+{
+  "_comment": "FIX 4 (sponsor-status value check, family.sponsor_status_code op:known -> op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], 9 rules across E31B/E31E/E31H/E31J) -- HELD HARD as of 2026-08-23 (superseding an earlier, softer \"pending\" note in this same file: team-lead's independent read landed and the real defect is NOT the Pasal 116/180 pending-renewal worry that first triggered the hold -- that citation does not hold up, and CL-E31B-REFUTER, e2a-claim-ledger.md:258-274, already considered and rejected a pending-sponsor exception via Pasal 119's 2-working-day cure-then-reject rule. The real defect is a VOCABULARY/DOMAIN MISMATCH: fact_registry.py:297 declares family.sponsor_status_code as FactValueKind.STRING, value_type=\"product_code\", no allowed_values; the corpus actually populates it with product codes (\"E23\", \"NONE\") and even a raw human name in one Unicode fixture -- not one value matches the proposed ITAS_ACTIVE/ITAP_ACTIVE/VITAS_APPROVED enum, including the legitimate E23 work-KITAS sponsor CL-E31B-PRINCIPAL names as guaranteed-eligible. Full grounding, both mechanisms (KNOWN-out-of-enum -> silent FALSE -> zero reason codes; UNKNOWN -> NEEDS_INPUT dead-end once the frontend mapFamilySponsorStatus() guard, which can only ever emit UNKNOWN, meets op:in instead of op:known), and full file:line citations (independently re-verified by s13-rules this session, not taken on report) are in inc6-sponsor-status-claim-ledger.md \"Known scope gap #2\" section -- read that before re-arming. Re-arming this fix as-written (paste rule_edits/manifest_entries back in) would re-introduce BOTH mechanisms; do not re-arm without first resolving what family.sponsor_status_code is actually FOR (product code vs immigration status) -- a data-modelling decision, tracked in .claude/skills/modus/PENDING-ARMS.md, owner team-lead, not something this fold can settle by picking a different literal list. To re-arm ONCE that question is resolved: paste `rule_edits` back into cure-seq13-rule-tightenings.json's own rule_edits array, paste `manifest_entries` back into inc6-rule-manifest.json's rules array, restore TestSponsorStatusValueCheckWitnesses (see test_seq13_rules_pack.py.HELD-fix4-tests-2026-08-23.py.txt sidecar in apps/backend-rag/backend/tests/services/visa_engine/) into test_seq13_rules_pack.py, then re-fold and re-run the full suite -- but expect the rule bodies themselves to need revision first, not just a paste, since the underlying enum was wrong.",
+  "rule_edits": [
+    {
+      "rule_id": "el.e31b-spouse-itas-support",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "SPOUSE"
+          },
+          {
+            "fact": "family.marriage_registered",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "known"
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "SPOUSE"
+          },
+          {
+            "fact": "family.marriage_registered",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "in",
+            "values": [
+              "ITAS_ACTIVE",
+              "ITAP_ACTIVE",
+              "VITAS_APPROVED"
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31B: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31b-sponsor-itas-itap",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SPOUSE"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SPOUSE"
+              },
+              {
+                "fact": "family.marriage_registered",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "known"
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SPOUSE"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SPOUSE"
+              },
+              {
+                "fact": "family.marriage_registered",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "in",
+                "values": [
+                  "ITAS_ACTIVE",
+                  "ITAP_ACTIVE",
+                  "VITAS_APPROVED"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31B: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31e-child-itas-support",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "PARENT"
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "known"
+          },
+          {
+            "fact": "derived.age_years",
+            "op": "lt",
+            "value": 18
+          },
+          {
+            "fact": "person.marital_status",
+            "op": "eq",
+            "value": "SINGLE"
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "PARENT"
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "in",
+            "values": [
+              "ITAS_ACTIVE",
+              "ITAP_ACTIVE",
+              "VITAS_APPROVED"
+            ]
+          },
+          {
+            "fact": "derived.age_years",
+            "op": "lt",
+            "value": 18
+          },
+          {
+            "fact": "person.marital_status",
+            "op": "eq",
+            "value": "SINGLE"
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31E: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31e-sponsor-itas-itap",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "PARENT"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "PARENT"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "known"
+              },
+              {
+                "fact": "derived.age_years",
+                "op": "lt",
+                "value": 18
+              },
+              {
+                "fact": "person.marital_status",
+                "op": "eq",
+                "value": "SINGLE"
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "PARENT"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "PARENT"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "in",
+                "values": [
+                  "ITAS_ACTIVE",
+                  "ITAP_ACTIVE",
+                  "VITAS_APPROVED"
+                ]
+              },
+              {
+                "fact": "derived.age_years",
+                "op": "lt",
+                "value": 18
+              },
+              {
+                "fact": "person.marital_status",
+                "op": "eq",
+                "value": "SINGLE"
+              }
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31E: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31h-parent-itas-child-support",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "CHILD"
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "known"
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "CHILD"
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "in",
+            "values": [
+              "ITAS_ACTIVE",
+              "ITAP_ACTIVE",
+              "VITAS_APPROVED"
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31H: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31h-sponsor-itas-itap",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "CHILD"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "CHILD"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "known"
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "CHILD"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "CHILD"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "in",
+                "values": [
+                  "ITAS_ACTIVE",
+                  "ITAP_ACTIVE",
+                  "VITAS_APPROVED"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31H: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31j-sibling-itas-support",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "SIBLING"
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "known"
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "SIBLING"
+          },
+          {
+            "fact": "family.sponsor_status_code",
+            "op": "in",
+            "values": [
+              "ITAS_ACTIVE",
+              "ITAP_ACTIVE",
+              "VITAS_APPROVED"
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31J: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31j-sponsor-itas-itap",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "known"
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "in",
+                "values": [
+                  "ITAS_ACTIVE",
+                  "ITAP_ACTIVE",
+                  "VITAS_APPROVED"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31J: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31j-dependency-age",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              },
+              {
+                "fact": "derived.age_years",
+                "op": "gte",
+                "value": 18
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "known"
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              },
+              {
+                "fact": "derived.age_years",
+                "op": "gte",
+                "value": 18
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "SIBLING"
+              },
+              {
+                "fact": "family.sponsor_status_code",
+                "op": "in",
+                "values": [
+                  "ITAS_ACTIVE",
+                  "ITAP_ACTIVE",
+                  "VITAS_APPROVED"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "rationale": "CL-SPONSOR-E31J: family.sponsor_status_code op:known tested presence only -- any non-empty string (a visit-visa code, an expired permit) passed a rule literally named *-sponsor-itas-itap. Replaced with op:in [ITAS_ACTIVE, ITAP_ACTIVE, VITAS_APPROVED], the exhaustive three-state enum the product's own article establishes (ITAS/ITAP 'yang masih berlaku', VITAS as the explicit statutory fallback when neither is yet issued). rule_id, stage, scope, priority, valid_period, effect, on_unknown, required_facts, source_refs, explanation_key, safety_critical, product_version_ids all preserved verbatim from seq-12 -- required_facts is unchanged because the SAME fact path is still referenced, only the operator changed."
+    },
+    {
+      "rule_id": "el.e31b-spouse-itas-support",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "family.relation_to_sponsor",
+        "family.marriage_registered",
+        "family.sponsor_status_code"
+      ],
+      "new_value": [
+        "family.marriage_registered",
+        "family.relation_to_sponsor",
+        "family.sponsor_status_code",
+        "intent.purposes"
+      ],
+      "rationale": "Re-derived (alphabetical, matching the compiler's convention) — the fact SET is unchanged (family.sponsor_status_code is still referenced, only its operator changed from known to in), but compile_claims always re-derives required_facts sorted, and this rule's seq-12 array happened not to be. LATENT DRIFT, INDEPENDENT OF THIS FIX (team-lead asked this be named explicitly, 2026-08-23): recompiling this rule's existing seq-12 when-tree today, with ZERO behavioral change, already produces this same sorted array — seq-12's stored required_facts disagreed with what the compiler emits for the SAME rule body even before this fold touched the sponsor-status operator. Not caused by, and not scoped to, the op:known->op:in edit; it predates this session and is being surfaced here rather than absorbed silently because this fold happens to be the one editing these rules anyway."
+    },
+    {
+      "rule_id": "el.e31e-child-itas-support",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "family.relation_to_sponsor",
+        "family.sponsor_status_code",
+        "derived.age_years",
+        "person.marital_status"
+      ],
+      "new_value": [
+        "derived.age_years",
+        "family.relation_to_sponsor",
+        "family.sponsor_status_code",
+        "intent.purposes",
+        "person.marital_status"
+      ],
+      "rationale": "Re-derived (alphabetical, matching the compiler's convention) — the fact SET is unchanged (family.sponsor_status_code is still referenced, only its operator changed from known to in), but compile_claims always re-derives required_facts sorted, and this rule's seq-12 array happened not to be. LATENT DRIFT, INDEPENDENT OF THIS FIX (team-lead asked this be named explicitly, 2026-08-23): recompiling this rule's existing seq-12 when-tree today, with ZERO behavioral change, already produces this same sorted array — seq-12's stored required_facts disagreed with what the compiler emits for the SAME rule body even before this fold touched the sponsor-status operator. Not caused by, and not scoped to, the op:known->op:in edit; it predates this session and is being surfaced here rather than absorbed silently because this fold happens to be the one editing these rules anyway."
+    },
+    {
+      "rule_id": "el.e31h-parent-itas-child-support",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "family.relation_to_sponsor",
+        "family.sponsor_status_code"
+      ],
+      "new_value": [
+        "family.relation_to_sponsor",
+        "family.sponsor_status_code",
+        "intent.purposes"
+      ],
+      "rationale": "Re-derived (alphabetical, matching the compiler's convention) — the fact SET is unchanged (family.sponsor_status_code is still referenced, only its operator changed from known to in), but compile_claims always re-derives required_facts sorted, and this rule's seq-12 array happened not to be. LATENT DRIFT, INDEPENDENT OF THIS FIX (team-lead asked this be named explicitly, 2026-08-23): recompiling this rule's existing seq-12 when-tree today, with ZERO behavioral change, already produces this same sorted array — seq-12's stored required_facts disagreed with what the compiler emits for the SAME rule body even before this fold touched the sponsor-status operator. Not caused by, and not scoped to, the op:known->op:in edit; it predates this session and is being surfaced here rather than absorbed silently because this fold happens to be the one editing these rules anyway."
+    },
+    {
+      "rule_id": "el.e31j-sibling-itas-support",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "family.relation_to_sponsor",
+        "family.sponsor_status_code"
+      ],
+      "new_value": [
+        "family.relation_to_sponsor",
+        "family.sponsor_status_code",
+        "intent.purposes"
+      ],
+      "rationale": "Re-derived (alphabetical, matching the compiler's convention) — the fact SET is unchanged (family.sponsor_status_code is still referenced, only its operator changed from known to in), but compile_claims always re-derives required_facts sorted, and this rule's seq-12 array happened not to be. LATENT DRIFT, INDEPENDENT OF THIS FIX (team-lead asked this be named explicitly, 2026-08-23): recompiling this rule's existing seq-12 when-tree today, with ZERO behavioral change, already produces this same sorted array — seq-12's stored required_facts disagreed with what the compiler emits for the SAME rule body even before this fold touched the sponsor-status operator. Not caused by, and not scoped to, the op:known->op:in edit; it predates this session and is being surfaced here rather than absorbed silently because this fold happens to be the one editing these rules anyway."
+    }
+  ],
+  "manifest_entries": [
+    {
+      "rule": {
+        "rule_id": "el.e31b-spouse-itas-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "SPOUSE"
+            },
+            {
+              "fact": "family.marriage_registered",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "family.sponsor_status_code",
+              "op": "in",
+              "values": [
+                "ITAS_ACTIVE",
+                "ITAP_ACTIVE",
+                "VITAS_APPROVED"
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "family.relation_to_sponsor",
+          "family.marriage_registered",
+          "family.sponsor_status_code"
+        ],
+        "source_refs": [
+          "570f2bc4-5120-561f-90ba-58fcd9507514",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31b-spouse-itas-support",
+        "safety_critical": false,
+        "product_version_ids": [
+          "5d5f9bd4-349b-54d7-841a-784c0afba068"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31B"
+      ],
+      "product_code": "E31B",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31b-sponsor-itas-itap",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SPOUSE"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SPOUSE"
+                },
+                {
+                  "fact": "family.marriage_registered",
+                  "op": "eq",
+                  "value": true
+                },
+                {
+                  "fact": "family.sponsor_status_code",
+                  "op": "in",
+                  "values": [
+                    "ITAS_ACTIVE",
+                    "ITAP_ACTIVE",
+                    "VITAS_APPROVED"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_SPONSOR_ITAS_ITAP",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "family.marriage_registered",
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "570f2bc4-5120-561f-90ba-58fcd9507514",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31b-sponsor-itas-itap",
+        "safety_critical": false,
+        "product_version_ids": [
+          "5d5f9bd4-349b-54d7-841a-784c0afba068"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31B"
+      ],
+      "product_code": "E31B",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31e-child-itas-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "PARENT"
+            },
+            {
+              "fact": "family.sponsor_status_code",
+              "op": "in",
+              "values": [
+                "ITAS_ACTIVE",
+                "ITAP_ACTIVE",
+                "VITAS_APPROVED"
+              ]
+            },
+            {
+              "fact": "derived.age_years",
+              "op": "lt",
+              "value": 18
+            },
+            {
+              "fact": "person.marital_status",
+              "op": "eq",
+              "value": "SINGLE"
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code",
+          "derived.age_years",
+          "person.marital_status"
+        ],
+        "source_refs": [
+          "ecd22722-3e42-5808-be18-45fbb7d8e9c5",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31e-child-itas-support",
+        "safety_critical": false,
+        "product_version_ids": [
+          "1266d5cb-84a3-51f7-b82d-c6b756254074"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31E"
+      ],
+      "product_code": "E31E",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31e-sponsor-itas-itap",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "PARENT"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "PARENT"
+                },
+                {
+                  "fact": "family.sponsor_status_code",
+                  "op": "in",
+                  "values": [
+                    "ITAS_ACTIVE",
+                    "ITAP_ACTIVE",
+                    "VITAS_APPROVED"
+                  ]
+                },
+                {
+                  "fact": "derived.age_years",
+                  "op": "lt",
+                  "value": 18
+                },
+                {
+                  "fact": "person.marital_status",
+                  "op": "eq",
+                  "value": "SINGLE"
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_SPONSOR_ITAS_ITAP",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "derived.age_years",
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code",
+          "intent.purposes",
+          "person.marital_status"
+        ],
+        "source_refs": [
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ecd22722-3e42-5808-be18-45fbb7d8e9c5"
+        ],
+        "explanation_key": "explain.el.e31e-sponsor-itas-itap",
+        "safety_critical": false,
+        "product_version_ids": [
+          "1266d5cb-84a3-51f7-b82d-c6b756254074"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31E"
+      ],
+      "product_code": "E31E",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31h-parent-itas-child-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "CHILD"
+            },
+            {
+              "fact": "family.sponsor_status_code",
+              "op": "in",
+              "values": [
+                "ITAS_ACTIVE",
+                "ITAP_ACTIVE",
+                "VITAS_APPROVED"
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code"
+        ],
+        "source_refs": [
+          "153beca1-a24b-5440-bac0-b46c3d19da6f",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31h-parent-itas-child-support",
+        "safety_critical": false,
+        "product_version_ids": [
+          "1185c36d-833c-5e41-8e0d-6e4f7c8f7378"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31H"
+      ],
+      "product_code": "E31H",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31h-sponsor-itas-itap",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "CHILD"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "CHILD"
+                },
+                {
+                  "fact": "family.sponsor_status_code",
+                  "op": "in",
+                  "values": [
+                    "ITAS_ACTIVE",
+                    "ITAP_ACTIVE",
+                    "VITAS_APPROVED"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_SPONSOR_ITAS_ITAP",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "153beca1-a24b-5440-bac0-b46c3d19da6f",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31h-sponsor-itas-itap",
+        "safety_critical": false,
+        "product_version_ids": [
+          "1185c36d-833c-5e41-8e0d-6e4f7c8f7378"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31H"
+      ],
+      "product_code": "E31H",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31j-sibling-itas-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "SIBLING"
+            },
+            {
+              "fact": "family.sponsor_status_code",
+              "op": "in",
+              "values": [
+                "ITAS_ACTIVE",
+                "ITAP_ACTIVE",
+                "VITAS_APPROVED"
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "intent.purposes",
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code"
+        ],
+        "source_refs": [
+          "2d090f3a-5a93-5181-b3d1-253d87a1a17c",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31j-sibling-itas-support",
+        "safety_critical": false,
+        "product_version_ids": [
+          "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31J"
+      ],
+      "product_code": "E31J",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31j-sponsor-itas-itap",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SIBLING"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SIBLING"
+                },
+                {
+                  "fact": "family.sponsor_status_code",
+                  "op": "in",
+                  "values": [
+                    "ITAS_ACTIVE",
+                    "ITAP_ACTIVE",
+                    "VITAS_APPROVED"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_SPONSOR_ITAS_ITAP",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "2d090f3a-5a93-5181-b3d1-253d87a1a17c",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31j-sponsor-itas-itap",
+        "safety_critical": false,
+        "product_version_ids": [
+          "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31J"
+      ],
+      "product_code": "E31J",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "el.e31j-dependency-age",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SIBLING"
+                },
+                {
+                  "fact": "derived.age_years",
+                  "op": "gte",
+                  "value": 18
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SIBLING"
+                },
+                {
+                  "fact": "family.sponsor_status_code",
+                  "op": "in",
+                  "values": [
+                    "ITAS_ACTIVE",
+                    "ITAP_ACTIVE",
+                    "VITAS_APPROVED"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "E31J_DEPENDENCY_AGE_ADVISOR_CHECK",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NO_EFFECT",
+        "required_facts": [
+          "derived.age_years",
+          "family.relation_to_sponsor",
+          "family.sponsor_status_code",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "2d090f3a-5a93-5181-b3d1-253d87a1a17c",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31j-dependency-age",
+        "safety_critical": false,
+        "product_version_ids": [
+          "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
+        ]
+      },
+      "claim_ids": [
+        "CL-SPONSOR-E31J"
+      ],
+      "product_code": "E31J",
+      "must_reference_facts": [
+        "family.sponsor_status_code"
+      ]
+    }
+  ]
+}

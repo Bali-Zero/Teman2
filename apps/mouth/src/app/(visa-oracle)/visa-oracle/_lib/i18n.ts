@@ -261,6 +261,7 @@ const en = {
   "q.family_relation.opt.PARENT": "Parent",
   "q.family_relation.opt.SIBLING": "Sibling",
   "q.family_relation.opt.DEPENDENT": "Other dependent",
+  "q.family_relation.opt.STEPCHILD": "Stepchild",
   "q.family_relation.opt.OTHER": "Another relationship",
   "why.family_relation":
     "The selected closed-enum relationship is sent unchanged to the engine.",
@@ -287,11 +288,45 @@ const en = {
   "q.family_sponsor_status_code.label": "Sponsor permit code",
   "why.family_sponsor_status_code":
     "The code is sent exactly as typed. The interface does not translate a description into a permit code.",
+  "q.family_sponsor_permit_basis":
+    "What is the basis of your sponsor's own stay permit?",
+  "q.family_sponsor_permit_basis.hint":
+    "Choose the closest match to what your sponsor's Indonesian stay permit is for.",
+  "q.family_sponsor_permit_basis.opt.EXPERT": "Expert",
+  "q.family_sponsor_permit_basis.opt.WORKER": "Sponsored worker",
+  "q.family_sponsor_permit_basis.opt.MARITIME_CREW": "Maritime crew",
+  "q.family_sponsor_permit_basis.opt.CLERGY": "Religious worker (clergy)",
+  "q.family_sponsor_permit_basis.opt.FOREIGN_INVESTMENT": "Foreign investor",
+  "q.family_sponsor_permit_basis.opt.SCIENTIFIC_RESEARCH":
+    "Scientific researcher",
+  "q.family_sponsor_permit_basis.opt.EDUCATION": "Student",
+  "q.family_sponsor_permit_basis.opt.FAMILY_REUNIFICATION":
+    "Family reunification",
+  "q.family_sponsor_permit_basis.opt.REPATRIATION":
+    "Repatriation (former Indonesian citizen)",
+  "q.family_sponsor_permit_basis.opt.SECOND_HOME": "Second Home visa holder",
+  "q.family_sponsor_permit_basis.opt.MEDICAL_TREATMENT": "Medical treatment",
+  "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
+  "q.family_sponsor_permit_basis.opt.OTHER": "Another basis",
+  "why.family_sponsor_permit_basis":
+    "Some permit bases block a family-reunification permit from being layered on top of them; the engine checks this directly.",
   "q.family_marriage_registered": "Is the marriage officially registered?",
   "q.family_marriage_registered.hint":
     "If your sponsor is your parent, this asks about your parents' marriage. Choose Not applicable if the family relationship involves no marriage.",
   "why.family_marriage_registered":
     "The engine receives yes, no, or UNKNOWN; no registration status is inferred.",
+  "q.family_stepchild_marriage_certificate_confirmed":
+    "Can you provide the marriage certificate of your Indonesian parent and their foreign spouse?",
+  "q.family_stepchild_marriage_certificate_confirmed.hint":
+    "This is the marriage certificate for the mixed Indonesian–foreign marriage the stepchild relationship comes from.",
+  "why.family_stepchild_marriage_certificate_confirmed":
+    "The engine checks this evidence fact directly; it is not inferred from the marriage-registered answer above.",
+  "q.family_stepchild_birth_certificate_confirmed":
+    "Can you provide the stepchild's birth certificate?",
+  "q.family_stepchild_birth_certificate_confirmed.hint":
+    "The birth certificate should show the biological parent who is part of the mixed marriage.",
+  "why.family_stepchild_birth_certificate_confirmed":
+    "Birth-certificate evidence is sent as its own boolean decision fact.",
   "q.family_sponsor_confirmed":
     "Has the family sponsor confirmed they will support the process?",
   "q.family_sponsor_confirmed.hint":
@@ -512,7 +547,11 @@ const en = {
   "tree.marital_status": "Marital status",
   "tree.family_sponsor_nationalities": "Sponsor passports",
   "tree.family_sponsor_status_code": "Sponsor status",
+  "tree.family_sponsor_permit_basis": "Sponsor permit basis",
   "tree.family_marriage_registered": "Marriage record",
+  "tree.family_stepchild_marriage_certificate_confirmed":
+    "Parents' marriage certificate",
+  "tree.family_stepchild_birth_certificate_confirmed": "Birth certificate",
   "tree.family_sponsor_confirmed": "Family sponsor",
   "tree.retirement_basis": "Long-stay basis",
   "tree.secondhome_deposit_usd": "Bank deposit",
@@ -976,6 +1015,7 @@ const id: Record<Keys, string> = {
   "q.family_relation.opt.PARENT": "Orang tua",
   "q.family_relation.opt.SIBLING": "Saudara kandung",
   "q.family_relation.opt.DEPENDENT": "Tanggungan lain",
+  "q.family_relation.opt.STEPCHILD": "Anak tiri",
   "q.family_relation.opt.OTHER": "Hubungan lain",
   "why.family_relation":
     "Hubungan enum tertutup yang dipilih dikirim tanpa perubahan ke mesin.",
@@ -1002,11 +1042,44 @@ const id: Record<Keys, string> = {
   "q.family_sponsor_status_code.label": "Kode izin sponsor",
   "why.family_sponsor_status_code":
     "Kode dikirim persis seperti yang diketik. Antarmuka tidak menerjemahkan deskripsi menjadi kode izin.",
+  "q.family_sponsor_permit_basis":
+    "Apa dasar izin tinggal sponsor Anda sendiri?",
+  "q.family_sponsor_permit_basis.hint":
+    "Pilih yang paling sesuai dengan tujuan izin tinggal sponsor Anda di Indonesia.",
+  "q.family_sponsor_permit_basis.opt.EXPERT": "Tenaga ahli",
+  "q.family_sponsor_permit_basis.opt.WORKER": "Pekerja (disponsori)",
+  "q.family_sponsor_permit_basis.opt.MARITIME_CREW": "Awak kapal",
+  "q.family_sponsor_permit_basis.opt.CLERGY": "Rohaniwan",
+  "q.family_sponsor_permit_basis.opt.FOREIGN_INVESTMENT": "Investor asing",
+  "q.family_sponsor_permit_basis.opt.SCIENTIFIC_RESEARCH": "Peneliti",
+  "q.family_sponsor_permit_basis.opt.EDUCATION": "Pelajar",
+  "q.family_sponsor_permit_basis.opt.FAMILY_REUNIFICATION":
+    "Penyatuan keluarga",
+  "q.family_sponsor_permit_basis.opt.REPATRIATION":
+    "Repatriasi (eks warga negara Indonesia)",
+  "q.family_sponsor_permit_basis.opt.SECOND_HOME": "Pemegang visa Second Home",
+  "q.family_sponsor_permit_basis.opt.MEDICAL_TREATMENT": "Pengobatan medis",
+  "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
+  "q.family_sponsor_permit_basis.opt.OTHER": "Dasar lain",
+  "why.family_sponsor_permit_basis":
+    "Beberapa dasar izin dapat menghalangi penerbitan izin penyatuan keluarga di atasnya; mesin memeriksa ini secara langsung.",
   "q.family_marriage_registered": "Apakah pernikahan tercatat secara resmi?",
   "q.family_marriage_registered.hint":
     "Jika sponsor Anda adalah orang tua, pertanyaan ini mengenai pernikahan orang tua Anda. Pilih Tidak berlaku jika hubungan keluarga tidak melibatkan pernikahan.",
   "why.family_marriage_registered":
     "Mesin menerima ya, tidak, atau UNKNOWN; status pencatatan tidak disimpulkan.",
+  "q.family_stepchild_marriage_certificate_confirmed":
+    "Dapatkah Anda memberikan akta nikah orang tua WNI Anda dan pasangan WNA-nya?",
+  "q.family_stepchild_marriage_certificate_confirmed.hint":
+    "Ini adalah akta nikah untuk pernikahan campuran WNI-WNA yang menjadi dasar hubungan anak tiri.",
+  "why.family_stepchild_marriage_certificate_confirmed":
+    "Mesin memeriksa fakta bukti ini secara langsung; tidak disimpulkan dari jawaban pernikahan tercatat di atas.",
+  "q.family_stepchild_birth_certificate_confirmed":
+    "Dapatkah Anda memberikan akta lahir anak tiri?",
+  "q.family_stepchild_birth_certificate_confirmed.hint":
+    "Akta lahir sebaiknya menunjukkan orang tua kandung yang merupakan bagian dari pernikahan campuran.",
+  "why.family_stepchild_birth_certificate_confirmed":
+    "Bukti akta lahir dikirim sebagai fakta keputusan boolean tersendiri.",
   "q.family_sponsor_confirmed":
     "Apakah sponsor keluarga sudah mengonfirmasi dukungan proses?",
   "q.family_sponsor_confirmed.hint":
@@ -1221,7 +1294,11 @@ const id: Record<Keys, string> = {
   "tree.marital_status": "Status perkawinan",
   "tree.family_sponsor_nationalities": "Paspor sponsor",
   "tree.family_sponsor_status_code": "Status sponsor",
+  "tree.family_sponsor_permit_basis": "Dasar izin sponsor",
   "tree.family_marriage_registered": "Catatan pernikahan",
+  "tree.family_stepchild_marriage_certificate_confirmed":
+    "Akta nikah orang tua",
+  "tree.family_stepchild_birth_certificate_confirmed": "Akta lahir",
   "tree.family_sponsor_confirmed": "Sponsor keluarga",
   "tree.retirement_basis": "Dasar tinggal panjang",
   "tree.secondhome_deposit_usd": "Deposito bank",

@@ -40,6 +40,7 @@ type ProposedRole = KnownValue<"investment.proposed_role">;
 type FamilyRelation = KnownValue<"family.relation_to_sponsor">;
 type StudyLevel = KnownValue<"study.level">;
 type SponsorTypeValue = KnownValue<"sponsor.type">;
+type SponsorPermitBasisValue = KnownValue<"family.sponsor_permit_basis">;
 
 const NOT_ASKED: UnknownReasonWire = "NOT_ASKED";
 const UNVERIFIED: UnknownReasonWire = "UNVERIFIED";
@@ -180,6 +181,9 @@ const FAMILY_RELATIONS = [
   "PARENT",
   "SIBLING",
   "DEPENDENT",
+  // STEPCHILD added 2026-08-23 (owner ruling — E31D vocabulary extension,
+  // `research/visa/2026-08-15-gold-family-refuter.md`).
+  "STEPCHILD",
   "OTHER",
 ] as const satisfies readonly FamilyRelation[];
 const STUDY_LEVELS = [
@@ -209,6 +213,23 @@ const SPONSOR_TYPES = [
   "INVESTMENT",
   "GOVERNMENT",
 ] as const satisfies readonly SponsorTypeValue[];
+// Mirrors the closed `SponsorPermitBasis` enum 1:1 (2026-08-23 owner
+// ruling — Permenkumham 11/2024 Pasal 33 ayat (2) huruf a-l).
+const SPONSOR_PERMIT_BASES = [
+  "EXPERT",
+  "WORKER",
+  "MARITIME_CREW",
+  "CLERGY",
+  "FOREIGN_INVESTMENT",
+  "SCIENTIFIC_RESEARCH",
+  "EDUCATION",
+  "FAMILY_REUNIFICATION",
+  "REPATRIATION",
+  "SECOND_HOME",
+  "MEDICAL_TREATMENT",
+  "WORKING_HOLIDAY",
+  "OTHER",
+] as const satisfies readonly SponsorPermitBasisValue[];
 
 export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   tourism: "TOURISM",
@@ -504,6 +525,16 @@ export function mapOracleFactsToApplicantFacts(
     ),
     "family.sponsor_status_code": mapFamilySponsorStatus(facts),
     "family.marriage_registered": mapMarriageRegistered(facts),
+    "family.stepchild_marriage_certificate_confirmed": booleanFact(
+      facts.family_stepchild_marriage_certificate_confirmed,
+    ),
+    "family.stepchild_birth_certificate_confirmed": booleanFact(
+      facts.family_stepchild_birth_certificate_confirmed,
+    ),
+    "family.sponsor_permit_basis": enumFact(
+      facts.family_sponsor_permit_basis,
+      SPONSOR_PERMIT_BASES,
+    ),
     "family.sponsor_confirmed": booleanFact(facts.family_sponsor_confirmed),
     "study.level": enumFact(facts.study_level, STUDY_LEVELS),
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),

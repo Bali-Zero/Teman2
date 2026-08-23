@@ -115,6 +115,18 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "family.stepchild_marriage_certificate_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.stepchild_birth_certificate_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_permit_basis": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "study.level": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
