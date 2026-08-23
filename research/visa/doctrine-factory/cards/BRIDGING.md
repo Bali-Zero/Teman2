@@ -117,7 +117,56 @@ the residual thin spots are named explicitly in §3, matching this task's bindin
 
 ## 5. Open conflicts
 
-None specific to BRIDGING. Neither conflict report carries a BRIDGING-tagged CF entry.
+None specific to BRIDGING from the original E3 batch. **New, 2026-08-24 (owner ruling, D12/F4
+investigation lane — see `research/visa/doctrine-factory/e5/inc8-pack-edits/`):** Zero drew BRIDGING's
+scope precisely, verbatim, in response to a question about whether a renewal-in-process KITAS holder
+could be a BRIDGING candidate —
+
+> **"ASSOLUTAMENTE NO. BRIDGING VISA FA DA PONTE TRA UN KITAS E UN ALTRO, TRA VISA KUNJUNGAN E UN
+> KITAS. MAI TRA UN KITAS E IL KITAS CON STESSO SPONSOR O TRA UN KITAS E UN VISA KUNJUNGAN"**
+
+Four boundaries, precise:
+
+| transition | BRIDGING? |
+|---|---|
+| KITAS → a DIFFERENT KITAS | valid |
+| visa kunjungan → KITAS | valid |
+| KITAS → the SAME KITAS, same sponsor (a renewal) | never |
+| KITAS → visa kunjungan (a downgrade) | never |
+
+**This directly contradicts §3.1/§6's own prior reasoning**, which is now the record's own citation
+trail catching itself: `hf.bridging.from-visit-itk`'s row above was already marked SUPPORTED-but-
+**thin** — "a visit-visa-origin applicant cannot bridge — consistent with §3.1's 'bridge between
+VITAS/ITAS/ITAP transitions,' not visit-visa transitions; no dedicated claim states this exclusion
+explicitly." Zero's ruling says the OPPOSITE: visa kunjungan → KITAS IS a valid bridge. The doctrine
+author's own "thin" flag was the right instinct — the assumption it flagged as unconfirmed is the one
+that turned out wrong.
+
+Read-only rule-audit findings against this ruling (reported to team-lead 2026-08-24, not fixed here —
+different product, different lane; routing to Zero is team-lead's call):
+1. **`hf.bridging.from-visit-itk`'s live `when` clause** (`rulepack-prod-013.source.json`) EXCLUDES
+   `immigration.current_status_code ∈ {A1, C1, C2, C6, ITK_FROM_BVK, ITK_FROM_VISIT_C,
+   ITK_FROM_VISIT_D}` — A1/C1/C2/C6 are the raw visa-kunjungan/short-stay codes, so this filter, as
+   coded, blocks the exact "visa kunjungan → KITAS" path Zero just confirmed is valid. Concrete
+   applicant: a tourist currently on a C1 visit visa requesting BRIDGING to convert to a KITAS is
+   HARD-EXCLUDED today, reason `BRIDGING_FROM_VISIT_ITK_PROHIBITED`.
+2. **No fact anywhere expresses sponsor identity** (current permit's sponsor vs. the intended one) —
+   checked the full 45-fact vocabulary; the 8 `sponsor`-named facts (`sponsor.type`,
+   `family.sponsor_*`, `work.indonesian_work_sponsor_confirmed`, `study.sponsor_confirmed`) each
+   describe A sponsor for THIS application, none compares two. Boundary "same-sponsor renewal never
+   bridges" cannot be tested by any existing rule — not currently violated in a provable sense, but
+   structurally unguarded.
+3. **No fact records the bridge's intended destination status** either — `el.bridging.destination-
+   stated`'s `when` clause (reason code `BRIDGING_DESTINATION_STATED`) tests only `purposes intersects
+   OTHER` + `requested_product_code != BRIDGING`, the same shape as the other 3 advisory SUPPORT rules
+   — it does not verify any destination was actually stated. So "KITAS → visa kunjungan (downgrade)"
+   is equally unguarded: nothing distinguishes a legitimate KITAS→different-KITAS bridge from an
+   illegitimate downgrade attempt once `hf.bridging.from-visit-itk`/`hf.bridging.to-bridging` are
+   passed.
+
+None of this is fixed by this card update — it is the domain fact plus the audit trail, so the next
+reader does not re-derive the same doctrinally-flagged-but-unconfirmed assumption from the vague
+"Visitor Stay Permit in the framework of Transition of Immigration Stay Permit" phrasing in §1.
 
 ## 6. Rule coverage matrix (seq-7, verified live against `rulepack-prod-007.source.json`)
 
