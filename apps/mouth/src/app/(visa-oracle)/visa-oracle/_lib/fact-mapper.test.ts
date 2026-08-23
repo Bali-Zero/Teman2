@@ -657,6 +657,96 @@ describe("mapOracleFactsToApplicantFacts — envelope shape (acceptance test 4)"
   });
 });
 
+/**
+ * `flow.ts` now refuses to record a self-contradictory
+ * wants_onshore_conversion/application_channel pair before it is ever
+ * handed to this mapper (see `channelConflictsWithOnshoreIntent`). These
+ * tests are the innocence half of that fix, verified at the wire: this
+ * mapper itself is UNCHANGED — a coherent pair, or "unsure" on either
+ * side, arrives byte-unchanged (no derivation, no coercion), exactly as
+ * it did before the guard existed.
+ */
+describe("process.wants_onshore_conversion / process.application_channel — arrive byte-unchanged (2026-08-23)", () => {
+  it.each([
+    ["no", "OFFSHORE"],
+    ["yes", "ONSHORE_CONVERSION"],
+    ["yes", "STATUS_BRIDGING"],
+  ] as const)(
+    "wants_onshore_conversion=%s + application_channel=%s reach the wire exactly as answered",
+    (wants, channel) => {
+      const result = mapFacts({
+        wants_onshore_conversion: wants,
+        application_channel: channel,
+      });
+      expect(result.facts["process.wants_onshore_conversion"]).toEqual({
+        status: "KNOWN",
+        value: wants === "yes",
+      });
+      expect(result.facts["process.application_channel"]).toEqual({
+        status: "KNOWN",
+        value: channel,
+      });
+    },
+  );
+
+  it('"unsure" on wants_onshore_conversion never becomes CONFLICTING, and does not touch application_channel', () => {
+    const result = mapFacts({
+      wants_onshore_conversion: "unsure",
+      application_channel: "ONSHORE_CONVERSION",
+    });
+    expect(result.facts["process.wants_onshore_conversion"]).toEqual({
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
+    });
+    expect(result.facts["process.application_channel"]).toEqual({
+      status: "KNOWN",
+      value: "ONSHORE_CONVERSION",
+    });
+  });
+
+  it('"unsure" on application_channel never becomes CONFLICTING, and does not touch wants_onshore_conversion', () => {
+    const result = mapFacts({
+      wants_onshore_conversion: "no",
+      application_channel: "unsure",
+    });
+    expect(result.facts["process.wants_onshore_conversion"]).toEqual({
+      status: "KNOWN",
+      value: false,
+    });
+    expect(result.facts["process.application_channel"]).toEqual({
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
+    });
+  });
+
+  it("neither fact ever emits CONFLICTING — this mapper has no cross-question check to remove", () => {
+    // Documents the design choice in the PR: the contradiction is caught
+    // upstream (flow.ts refuses the ANSWER), so this mapper — unlike
+    // pairedBooleanFact's same-FactPath merges — never needs to know the
+    // two questions are related at all.
+    for (const wants of ["yes", "no", "unsure", undefined]) {
+      for (const channel of [
+        "OFFSHORE",
+        "ONSHORE_CONVERSION",
+        "STATUS_BRIDGING",
+        "unsure",
+        undefined,
+      ]) {
+        const result = mapFacts({
+          ...(wants !== undefined ? { wants_onshore_conversion: wants } : {}),
+          ...(channel !== undefined ? { application_channel: channel } : {}),
+        });
+        expect(result.facts["process.wants_onshore_conversion"]).not.toEqual(
+          expect.objectContaining({ reason: "CONFLICTING" }),
+        );
+        expect(result.facts["process.application_channel"]).not.toEqual(
+          expect.objectContaining({ reason: "CONFLICTING" }),
+        );
+      }
+    }
+  });
+});
+
 describe("mapOracleFactsToApplicantFacts — determinism", () => {
   it("identical facts + options always produce an identical (deep-equal) result", () => {
     const facts: OracleFacts = {

@@ -67,6 +67,8 @@ const en = {
   "q.application_channel.opt.STATUS_BRIDGING": "Status bridging process",
   "why.application_channel":
     "The selected closed-enum channel is sent unchanged. The interface never assigns a channel from your dates.",
+  "q.application_channel.conflict":
+    "That channel doesn’t match your earlier answer about changing status without leaving Indonesia. Go back and correct one of the two answers — we won’t guess which one is right.",
 
   "q.nationalities": "Which nationalities appear on your passports?",
   "q.nationalities.hint":
@@ -774,6 +776,8 @@ const id: Record<Keys, string> = {
   "q.application_channel.opt.STATUS_BRIDGING": "Proses status bridging",
   "why.application_channel":
     "Kanal enum tertutup yang dipilih dikirim tanpa perubahan. Antarmuka tidak menetapkan kanal dari tanggal Anda.",
+  "q.application_channel.conflict":
+    "Kanal ini tidak sesuai dengan jawaban Anda sebelumnya tentang mengubah status tanpa meninggalkan Indonesia. Kembali dan perbaiki salah satu dari kedua jawaban — kami tidak akan menebak mana yang benar.",
 
   "q.nationalities": "Kewarganegaraan apa yang tercantum di paspor Anda?",
   "q.nationalities.hint":

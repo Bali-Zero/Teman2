@@ -367,6 +367,143 @@ describe("onshore/offshore canonical fact collection", () => {
   });
 });
 
+/**
+ * `wants_onshore_conversion` and `application_channel` describe the SAME
+ * real-world fact from two angles. Left uncross-checked, `false` +
+ * `ONSHORE_CONVERSION` disarms the safety-critical hard filter
+ * `hf.d12-onshore-conversion-excluded` (which reads only
+ * `process.wants_onshore_conversion`) while the channel that actually
+ * describes the applicant's real intent sits unread by every rule in the
+ * pack — D12 got recommended as if the applicant were applying from
+ * offshore. `channelConflictsWithOnshoreIntent` in flow.ts is the fix:
+ * the reducer refuses to record a contradictory `application_channel`
+ * answer at all, rather than deriving or silently overwriting either fact.
+ */
+describe("wants_onshore_conversion / application_channel cross-validation (2026-08-23)", () => {
+  function reachApplicationChannel(wantsOnshoreConversion: string): FlowState {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "current_status_code", "C1");
+    state = answer(state, "overstay_days", "0");
+    state = answer(state, "wants_onshore_conversion", wantsOnshoreConversion);
+    expectQuestion(state, "application_channel");
+    return state;
+  }
+
+  describe("guilt: every contradictory pair is blocked", () => {
+    it.each([
+      ["no", "ONSHORE_CONVERSION"],
+      ["no", "STATUS_BRIDGING"],
+      ["yes", "OFFSHORE"],
+    ] as const)(
+      "refuses application_channel=%s when wants_onshore_conversion=%s disagrees",
+      (wants, channel) => {
+        const before = reachApplicationChannel(wants);
+        const after = reduce(before, {
+          type: "ANSWER",
+          questionId: "application_channel",
+          value: channel,
+        });
+        // Blocked: still parked on the same question, the fact never
+        // recorded, neither answer touched or overwritten.
+        expectQuestion(after, "application_channel");
+        expect(after.facts.application_channel).toBeUndefined();
+        expect(after.facts.wants_onshore_conversion).toBe(wants);
+        expect(after.blockedAnswer).toEqual({
+          questionId: "application_channel",
+          conflictsWithQuestionId: "wants_onshore_conversion",
+        });
+      },
+    );
+
+    it("the exact measured production leak never reaches facts: false + ONSHORE_CONVERSION", () => {
+      const before = reachApplicationChannel("no");
+      const after = reduce(before, {
+        type: "ANSWER",
+        questionId: "application_channel",
+        value: "ONSHORE_CONVERSION",
+      });
+      expect(after.facts.application_channel).toBeUndefined();
+      expect(after.facts.wants_onshore_conversion).toBe("no");
+      expectQuestion(after, "application_channel");
+    });
+
+    it("picking a different, coherent channel after a blocked attempt clears the block and advances", () => {
+      const blocked = reduce(reachApplicationChannel("no"), {
+        type: "ANSWER",
+        questionId: "application_channel",
+        value: "ONSHORE_CONVERSION",
+      });
+      expect(blocked.blockedAnswer).not.toBeNull();
+
+      const recovered = answer(blocked, "application_channel", "OFFSHORE");
+      expect(recovered.blockedAnswer).toBeNull();
+      expect(recovered.facts.application_channel).toBe("OFFSHORE");
+      expectQuestion(recovered, "nationalities");
+    });
+
+    it("going Back to correct wants_onshore_conversion instead also clears the block", () => {
+      const blocked = reduce(reachApplicationChannel("no"), {
+        type: "ANSWER",
+        questionId: "application_channel",
+        value: "ONSHORE_CONVERSION",
+      });
+      const backed = reduce(blocked, { type: "BACK" });
+      expect(backed.blockedAnswer).toBeNull();
+      expectQuestion(backed, "wants_onshore_conversion");
+    });
+  });
+
+  describe("innocence: coherent pairs pass untouched", () => {
+    it.each([
+      ["no", "OFFSHORE"],
+      ["yes", "ONSHORE_CONVERSION"],
+      ["yes", "STATUS_BRIDGING"],
+    ] as const)(
+      "accepts wants_onshore_conversion=%s + application_channel=%s",
+      (wants, channel) => {
+        const before = reachApplicationChannel(wants);
+        const after = answer(before, "application_channel", channel);
+        expectQuestion(after, "nationalities");
+        expect(after.facts.wants_onshore_conversion).toBe(wants);
+        expect(after.facts.application_channel).toBe(channel);
+        expect(after.blockedAnswer).toBeNull();
+      },
+    );
+  });
+
+  describe("innocence: 'unsure' on either side is never treated as a conflict", () => {
+    it("an unsure wants_onshore_conversion accepts any application_channel", () => {
+      const before = reachApplicationChannel("unsure");
+      const after = answer(before, "application_channel", "ONSHORE_CONVERSION");
+      expectQuestion(after, "nationalities");
+      expect(after.facts.wants_onshore_conversion).toBe("unsure");
+      expect(after.facts.application_channel).toBe("ONSHORE_CONVERSION");
+      expect(after.blockedAnswer).toBeNull();
+    });
+
+    it("skipping application_channel (unsure) is accepted regardless of wants_onshore_conversion", () => {
+      const before = reachApplicationChannel("no");
+      const after = reduce(before, {
+        type: "SKIP",
+        questionId: "application_channel",
+      });
+      expectQuestion(after, "nationalities");
+      expect(after.facts.application_channel).toBe("unsure");
+      expect(after.blockedAnswer).toBeNull();
+    });
+  });
+
+  it("innocence: in_indonesia=no skips both questions entirely — no false trigger", () => {
+    const state = startOffshore();
+    expect(state.facts.wants_onshore_conversion).toBeUndefined();
+    expect(state.facts.application_channel).toBeUndefined();
+    expect(state.blockedAnswer).toBeNull();
+  });
+});
+
 describe("seq-10 companion: the marriage question fires for PARENT-relation family interviews", () => {
   // Kimi refuter finding 1 (2026-08-19): E31C's engine rules require the
   // PARENTS' registered marriage, but this question only fired for SPOUSE —
