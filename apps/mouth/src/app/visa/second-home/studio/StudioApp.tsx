@@ -11,7 +11,7 @@ import {
 } from "@/lib/secondhome-studio/sequence";
 import {
   E33_LIVE_PRICE_CATEGORY,
-  E33_LIVE_PRICE_KEY,
+  resolveSecondHomePriceKey,
 } from "@/lib/secondhome-studio/pricing-key";
 import {
   clearPlan,
@@ -464,7 +464,16 @@ export function StudioApp() {
   const [plan, setPlan] = useState<PlanState>(emptyPlan);
   const [stepIndex, setStepIndex] = useState(0);
   const hydratedOnce = useRef(false);
-  const { price } = usePricingData(E33_LIVE_PRICE_KEY, E33_LIVE_PRICE_CATEGORY);
+
+  const sequence = computeSequence(plan);
+  const isVerdictStage = stepIndex >= sequence.length;
+  const currentQuestion = isVerdictStage ? null : sequence[stepIndex];
+  const verdict = isVerdictStage ? evaluatePlan(plan) : null;
+  const priceKey = resolveSecondHomePriceKey(
+    verdict?.product ?? null,
+    plan.location,
+  );
+  const { price } = usePricingData(priceKey, E33_LIVE_PRICE_CATEGORY);
 
   // P2-3: the stage heading (QuestionCard's <h2> or VerdictPanel's <h1> —
   // only one is ever mounted at a time) is focused on a user-driven step
@@ -536,10 +545,6 @@ export function StudioApp() {
     setStepIndex(0);
   }
 
-  const sequence = computeSequence(plan);
-  const isVerdictStage = stepIndex >= sequence.length;
-  const currentQuestion = isVerdictStage ? null : sequence[stepIndex];
-  const verdict = isVerdictStage ? evaluatePlan(plan) : null;
   // P1-C9: CustodyMap only makes sense for deposit-holding routes — a
   // property or E33F (income-only, no deposit) verdict never shows it.
   const showCustodyMap =
