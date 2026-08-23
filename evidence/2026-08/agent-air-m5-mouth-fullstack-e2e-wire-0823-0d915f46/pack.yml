@@ -1,0 +1,175 @@
+# STAGING PATH, NOT THE REAL ONE — harness-floor.yml copies both files into
+# a synthetic tree at /tmp/evidence-check/evidence/{brief,pack}.yml under
+# their CANONICAL names, so this field must always read the literal
+# evidence/brief.yml even though the real files live at
+# evidence/2026-08/agent-air-m5-mouth-fullstack-e2e-wire-0823-0d915f46/.
+brief_ref: evidence/brief.yml
+plan_ref: "PR #4709 — follow-up to PR #4706 per team-lead ruling (2026-08-23): fix the stale fullstack E2E assertion and wire the switch on as advisory CI"
+lanes:
+  - lane: fullstack-e2e-wire
+    role: build
+    seat: "claude-sonnet-5 (this session, t1-tests — authored the assertion fix, the sys.executable fix, and the new CI job)"
+seat_diversity: degraded
+seat_diversity_note: >-
+  Single build lane, so the D3 rule's own floor (>=2 build lanes) does not
+  fire and this field stays "degraded" on that basis alone — same as the
+  precedent PR (evidence/2026-08/agent-nuzantara-ops-wa-throughput-arm-1454a982/pack.yml).
+  No independent review lane has run yet at pack-authorship time; that is the
+  gate this PR is waiting on, requested from the team-lead in brief.yml's
+  `grader` field, not something this pack can self-certify.
+diff:
+  net_lines: >-
+    AS OF 06a0974a0 (pinned deliberately — a fixed-path collision on
+    evidence/brief.yml + evidence/pack.yml bit the precedent PR the same
+    day, per that pack's own notes): 3 files changed in the code commit
+    (.github/workflows/tests.yml, apps/backend-rag/backend/scripts/
+    visa_engine/fullstack_smoke.py, apps/mouth/e2e/visa-oracle-fullstack.spec.ts),
+    105 insertions(+), 2 deletions(-), measured from `git show --stat` on
+    that commit. This evidence pack (brief.yml + pack.yml) is added on top,
+    a fourth and fifth file, authored together in this same diff per the
+    workflow's Step 7b requirement. Deterministic gear floor recomputed from
+    the changed-files list = 3 (hot-zone: .github/workflows/tests.yml).
+    Gear 3 is the floor, not a choice.
+  behaviour_change: >-
+    One E2E spec's assertion changes from asserting UI text the product does
+    not render to asserting the text it actually renders (no product code
+    touched — only the test). One subprocess-spawn call in a smoke-test
+    runner script changes from a hardcoded local-venv path to
+    sys.executable (behaviourally identical on any machine that already ran
+    it via .venv/bin/python; newly WORKING on a machine that doesn't have a
+    .venv, e.g. CI). One new, separate, advisory (continue-on-error) CI job
+    is added — it can run and fail without blocking anything, and is not yet
+    wired into any required-check surface.
+receipts:
+  - claim: "The disposable-DB fullstack smoke passes for real, after both the assertion fix and the sys.executable fix, from a clean local run"
+    cmd: "cd apps/backend-rag && source .venv/bin/activate && VISA_ORACLE_FULLSTACK=1 VISA_ORACLE_SMOKE_ADMIN_DSN=postgresql://test@127.0.0.1:5432/postgres PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.fullstack_smoke"
+    result: >-
+      Migrations 250-268 applied, TEST RulePack 8a57d996-c7f2-5abc-9c31-4128a29ed848
+      activated (sequence=1), backend health/ready 200, frontend /visa-oracle
+      200, "[1/1] ... 1 passed (4.7s)", "full-stack smoke passed with signed
+      TEST RulePack ...", disposable database dropped in the finally block.
+    exit: 0
+    ts: "2026-08-23T16:00Z"
+    seat: "session (M5, build lane)"
+  - claim: "Before the assertion fix, the same real run failed on exactly the UI text named in PR #4706's finding — reproduced, not assumed"
+    cmd: "same command as above, run against the pre-fix spec (git stash of the e2e/visa-oracle-fullstack.spec.ts edit)"
+    result: >-
+      "Error: expect(locator).toBeVisible() failed — Locator: getByText('Verified
+      reason: DECISIVE_SOURCE_FRESHNESS_UNKNOWN') — element(s) not found", while
+      the backend log in the same run showed the real API response carrying
+      "verdict=HUMAN_REVIEW_REQUIRED" and review_reasons[0].code=
+      DECISIVE_SOURCE_FRESHNESS_UNKNOWN — confirming the engine/backend side
+      was already correct and only the UI assertion was stale.
+    exit: 1
+    ts: "2026-08-23T15:29Z"
+    seat: "session (M5, build lane) — run for PR #4706"
+  - claim: "DECISIVE_SOURCE_FRESHNESS_UNKNOWN is a deliberately, currently unmapped review-reason code — the generic fallback is real product behaviour, not a bug"
+    cmd: "grep -n DECISIVE_SOURCE_FRESHNESS_UNKNOWN apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+    result: >-
+      Found inside KNOWN_UNMAPPED_REVIEW_REASON_CODES (pack-independent code
+      from evaluate_path.py), which that test file's own exhaustiveness test
+      uses to assert every code the current pack can emit is accounted for
+      either in REVIEW_REASON_COPY or in that known-gap list — i.e. this is a
+      tracked, intentional gap (QW-4b), not an oversight this PR should
+      "fix" by inventing copy.
+    exit: 0
+    ts: "2026-08-23T15:35Z"
+    seat: "session (M5, build lane)"
+  - claim: "The fullstack_smoke.py unit-test suite has zero regressions from the sys.executable change"
+    cmd: "cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. pytest backend/tests/scripts/visa_engine/test_fullstack_smoke.py -q"
+    result: "10 passed."
+    exit: 0
+    ts: "2026-08-23T16:02Z"
+    seat: "session (M5, build lane)"
+  - claim: "The deterministic gear floor for this diff is 3, recomputed from the diff, not taken from the brief"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/changed-files.txt; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt"
+    result: "3 (.github/workflows/tests.yml is the hot-zone hit)."
+    exit: 0
+    ts: "2026-08-23T16:10Z"
+    seat: "session (M5, build lane)"
+  - claim: "The modified workflow file is actionlint-clean"
+    cmd: "actionlint .github/workflows/tests.yml"
+    result: "no output — zero findings."
+    exit: 0
+    ts: "2026-08-23T16:05Z"
+    seat: "session (M5, build lane)"
+  - claim: "The commit itself passed every local pre-commit hook, including the apps/mouth TypeScript typecheck the changed spec file triggers"
+    cmd: "git commit (pre-commit hook chain, incl. `npm run typecheck -w apps/mouth` -> tsc --noEmit)"
+    result: '"All checks passed!" — lease-check, anti-reward-hacking lint, print()/console.log scans, Golden Rule secret scan, lint, tsc --noEmit, off-limits-file check, FastAPI import-chain smoke.'
+    exit: 0
+    ts: "2026-08-23T16:00Z"
+    seat: "session (M5, build lane)"
+  - claim: "CI's own build+start (the OTHER visa-oracle E2E path, playwright.config.ts's webServer) already fits well inside the 180s per-step budget on GitHub-hosted runners — the local M5 slowness observed while investigating this PR does not carry over to CI"
+    cmd: 'gh run view <most recent successful tests.yml run on main> --json jobs -q ''.jobs[] | select(.name|contains("E2E")) | .steps[] | select(.name=="Run E2E tests") | {startedAt,completedAt}'''
+    result: >-
+      3m51s total for the entire step (build + start + running the filtered
+      test subset), well inside the 180s-per-step webServer timeout. Not
+      directly load-bearing for this PR's own new job (which uses `next dev`,
+      never `next build`, so it does not touch this timeout class at all) —
+      recorded because the team-lead asked the question directly and it is
+      the receipt that answers it.
+    exit: 0
+    ts: "2026-08-23T16:08Z"
+    seat: "session (M5, build lane)"
+pii_scan: clean
+tests:
+  - "backend/tests/scripts/visa_engine/test_fullstack_smoke.py — 10 passed, no regression from the sys.executable change (receipt above)."
+  - "The new visa-oracle-fullstack-smoke CI job itself has not yet completed a run at pack-authorship time — its own first CI run is the acceptance proof for the workflow wiring (postgres service, apt install, env passthrough), separate from the Python script's local proof above."
+static:
+  - "actionlint .github/workflows/tests.yml: clean (receipt above)."
+  - "pre-commit hook chain on the commit: clean, including apps/mouth tsc --noEmit (receipt above)."
+notes:
+  - >-
+    Same fixed-path collision hazard the precedent pack (wa-throughput-arm,
+    same day) already measured: evidence/brief.yml and evidence/pack.yml at
+    a bare root path collide the moment two Gear-3 PRs are open together.
+    This PR uses the per-PR evidence/<YYYY-MM>/<slug>/ layout
+    scripts/ci/evidence_paths.py now resolves, specifically to avoid adding
+    a third collision to that day's count.
+dissent:
+  - seat: "the build lane, against its own new CI job"
+    objection: >-
+      continue-on-error: true at the job level means this job can go
+      silently, permanently broken — a future runner-image change that drops
+      postgresql-client, a Postgres service image change, a Playwright
+      version bump that breaks chromium install — and nothing anywhere would
+      turn red. This is precisely the "esiste != armato" shape (cicatrix
+      family #2) applied to the one job whose entire purpose is proving a
+      real chain still works. No dashboard, alert, or periodic health-check
+      exists for an advisory job's own pass/fail trend.
+    status: CONFIRMED
+    note: >-
+      Not cured in this PR — recorded as a real, open gap rather than
+      papered over with a false "handled" claim. Left for the promotion
+      follow-up (brief.yml's consumer_map): once this job has run green a
+      few times and is promoted to required, branch protection turns its own
+      red into a blocking signal, which is the natural cure. Until then, the
+      honest mitigation is that this PR's own first CI run is a manual,
+      one-time observation of whether the job even starts correctly — not a
+      standing safeguard.
+  - seat: "the build lane, against its own claim about the assertion fix"
+    objection: >-
+      The fix replaces one hardcoded string assertion with another hardcoded
+      string assertion (GENERIC_REVIEW_REASON's literal English text, copied
+      by hand into the E2E spec rather than imported from a shared source).
+      GENERIC_REVIEW_REASON is a module-private const in engine-adapter.ts,
+      not exported — so there is no compiler/typecheck tie between the two
+      copies. If that string is edited in engine-adapter.ts without a
+      matching edit here, this test would go back to failing on a STALE
+      assertion again, the same class of defect this PR exists to fix, one
+      release later.
+    status: CONFIRMED
+    note: >-
+      Not cured in this PR — exporting GENERIC_REVIEW_REASON (or restructuring
+      reviewReason()'s fallback path to be independently testable) is a small,
+      separate, product-code change, out of this PR's one concern (a stale
+      test + a broken CI wiring path), and doing it here would mean touching
+      product code inside what the team-lead explicitly scoped as a
+      test/infra fix. Recorded as residual risk rather than silently
+      accepted: the comment left in the spec next to the new assertion names
+      QW-4b as the place this gets revisited, which is the same seam where a
+      real fix for this dissent point would land too.
+residual_risks:
+  - "Advisory job health is unmonitored (dissent #1 above)."
+  - "The E2E assertion's string duplication with engine-adapter.ts's private constant (dissent #2 above)."
+  - "This PR's own new CI job has not yet been observed passing in CI at pack-authorship time — only the underlying Python script's local run is proven; the job's first real CI run is itself part of what this PR needs to demonstrate before promotion is even considered."
