@@ -212,8 +212,17 @@ test.describe("Visa Oracle real full-stack smoke", () => {
         name: translate("en", "verdict.headline.HUMAN_REVIEW_REQUIRED"),
       }),
     ).toBeVisible({ timeout: 30_000 });
+    // DECISIVE_SOURCE_FRESHNESS_UNKNOWN has no curated copy yet (QW-4b): it is
+    // listed in engine-adapter.test.ts's own KNOWN_UNMAPPED_REVIEW_REASON_CODES,
+    // so reviewReason() deliberately renders GENERIC_REVIEW_REASON for it, never
+    // a raw "Verified reason: <code>" dump (that fallback belongs to a different
+    // function, reasonMessage(), for candidate-eligibility reasons — review
+    // reasons never go through it). Assert the real current copy. When QW-4b
+    // lands curated text for this code, tighten this assertion to that text.
     await expect(
-      page.getByText("Verified reason: DECISIVE_SOURCE_FRESHNESS_UNKNOWN"),
+      page.getByText(
+        "Some of your answers need a person's judgment before we can confirm a path.",
+      ),
     ).toBeVisible({ timeout: 30_000 });
     const initialRequest = {
       body: evaluateRequest.postData() ?? "",
