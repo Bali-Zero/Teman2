@@ -68,15 +68,34 @@ for ratification -- see the P04-D1 report):
   rather than collapsed or cross-imported.
 - ``source_object.object_hash != output_object.object_hash`` and
   ``.object_kind ==`` are enforced (verbatim: "distinct immutable
-  successor"). ``source_object.object_id != output_object.object_id`` is
-  ALSO enforced but is NOT a literal transcribed clause of section 18's own
-  prose -- it is read through section 1 rule 4 ("canonical objects are
-  never overwritten ... a correction always appends a successor object"),
-  which this contract family applies elsewhere as "a successor is a new
-  object identity, never the same object_id under a new hash"
-  (``ObjectSuccessorEdge.validate_edge``'s ``predecessor_ref != successor_ref``
-  check is the one-layer-up sibling of this same rule). Flagged as an
-  INTERPRETATION at the code site.
+  successor"). CORRECTED (P04-D1 defect, see the P04-D1 report): an earlier
+  draft of this module additionally forced
+  ``source_object.object_id != output_object.object_id`` unconditionally,
+  citing ``ObjectSuccessorEdge.validate_edge``'s
+  ``predecessor_ref != successor_ref`` check as "the one-layer-up sibling of
+  this same rule". That citation was false: ``validate_edge`` compares the
+  full ``{object_kind, object_id, object_hash}`` triple for equality (see
+  ``successor_edge.py``) -- it imposes no constraint that ``object_id``
+  differ on its own, and is satisfied the instant the hash differs even
+  when the id is unchanged. Section 1 rule 4 ("canonical objects are never
+  overwritten ... append a successor object") does not require a new
+  object_id either: ``ContentObject`` (CONTRACTS.md section 9) is the
+  worked example -- ``content_object_id`` is STABLE across revisions
+  (``revision`` is the field that increments; contrast section 6 ``Claim``,
+  which mints a fresh ``claim_id`` per version because its own prose says
+  "``claim_id`` identifies one immutable claim version"). Sections 9 and 10
+  state, verbatim, "a distinct output revision may lower sensitivity only
+  with a valid ``SanitizationReceipt``, lower risk only with a valid
+  ``RiskReclassificationReceipt``" -- a *revision*, not a distinct object;
+  the removed guard rejected exactly the workflow those sections authorize.
+  The check now enforces what ``validate_edge`` actually enforces: the
+  source and output must not be equal across their WHOLE identity
+  (``object_kind`` AND ``object_id`` AND ``object_hash`` all matching,
+  mirroring ``predecessor_ref == successor_ref``) -- reason code
+  ``output_object_same_as_source``. It runs first in this validator (as
+  ``validate_edge``'s equivalent check runs first in its own validator) so
+  a fully-identical source/output pair reports that specific reason
+  instead of the more generic ``output_same_as_source_hash``.
 - "Sensitivity cannot decrease under this receipt" IS enforced --
   verbatim, unconditional (the one hard constraint this receipt carries on
   the dimension it does NOT own). Whether risk_class must actually DECREASE
@@ -240,6 +259,26 @@ class RiskReclassificationReceipt(FrozenCoreModel):
 
     @model_validator(mode="after")
     def validate_risk_reclassification_receipt(self) -> RiskReclassificationReceipt:
+        # Mirrors ObjectSuccessorEdge.validate_edge's
+        # ``predecessor_ref == successor_ref`` check -- reject only when
+        # source and output are equal across their WHOLE identity
+        # (object_kind AND object_id AND object_hash). Runs first, exactly
+        # as validate_edge's equivalent check runs first, so a
+        # fully-identical pair reports this specific reason rather than the
+        # more generic hash-only reason below. See module docstring --
+        # object_id is deliberately NOT required to differ on its own: a
+        # revision that keeps object_id stable and changes only
+        # object_hash (CONTRACTS.md:453/:485 "a distinct output revision")
+        # is a valid instance of this receipt, not a violation.
+        if (
+            self.source_object.object_kind == self.output_object.object_kind
+            and self.source_object.object_id == self.output_object.object_id
+            and self.source_object.object_hash == self.output_object.object_hash
+        ):
+            raise PydanticCustomError(
+                "output_object_same_as_source",
+                "output_object must differ from source_object on object_id or object_hash",
+            )
         # "The output is a distinct immutable successor of the exact
         # source object; the receipt never rewrites or relabels the
         # predecessor." -- verbatim.
@@ -253,18 +292,13 @@ class RiskReclassificationReceipt(FrozenCoreModel):
                 "output_object_kind_mismatch",
                 "output_object.object_kind must equal source_object.object_kind",
             )
-        # INTERPRETATION: not a literal clause of section 18's own prose --
-        # read through rule 4 (section 1). See module docstring.
-        if self.source_object.object_id == self.output_object.object_id:
-            raise PydanticCustomError(
-                "output_object_id_same_as_source",
-                "output_object.object_id must differ from source_object.object_id",
-            )
         # "Sensitivity cannot decrease under this receipt." -- verbatim,
         # unconditional. Checked as: output sensitivity is already the
         # greater of {output, source} -- i.e. not lower than the source.
         if (
-            max_sensitivity(self.output_object.sensitivity, self.source_object.sensitivity)
+            max_sensitivity(
+                self.output_object.sensitivity, self.source_object.sensitivity
+            )
             != self.output_object.sensitivity
         ):
             raise PydanticCustomError(
@@ -314,5 +348,10 @@ def risk_reclassification_authorizes_output(
         raise ValueError(
             "receipt.output_object.object_hash does not pin this exact output revision"
         )
-    if receipt.permitted_use.expires_at is not None and at >= receipt.permitted_use.expires_at:
-        raise ValueError("risk reclassification receipt is expired at the relied-on instant")
+    if (
+        receipt.permitted_use.expires_at is not None
+        and at >= receipt.permitted_use.expires_at
+    ):
+        raise ValueError(
+            "risk reclassification receipt is expired at the relied-on instant"
+        )

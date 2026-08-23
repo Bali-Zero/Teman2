@@ -303,15 +303,44 @@ def test_risk_reclassification_rejects_output_kind_mismatch(load_json: Any) -> N
     assert "output_object_kind_mismatch" in _reason_codes(caught.value)
 
 
-def test_risk_reclassification_rejects_output_id_equal_to_source(load_json: Any) -> None:
+def test_risk_reclassification_accepts_output_id_equal_to_source_when_hash_differs(
+    load_json: Any,
+) -> None:
+    # The §9/§10 "distinct output revision" case (CONTRACTS.md:453/:485):
+    # ContentObject/MediaManifest keep object_id STABLE across revisions
+    # (CONTRACTS.md:417 -- the field that changes is `revision`, not the
+    # id) while object_hash changes. This must be ACCEPTED, not rejected
+    # -- it was the P04-D1 defect fixed here: an earlier draft cited
+    # ObjectSuccessorEdge.validate_edge as requiring object_id to differ
+    # on its own, but that sibling check is full
+    # {object_kind, object_id, object_hash} identity equality, satisfied
+    # the instant the hash differs even when the id is unchanged.
     payload = load_json(FIXTURES_ROOT / "risk_reclassification_receipt" / "valid_minimal.json")
     same_id_output = {
         **payload["output_object"],
         "object_id": payload["source_object"]["object_id"],
     }
+    instance = _revalidated(RiskReclassificationReceipt, payload, output_object=same_id_output)
+    assert instance.source_object.object_id == instance.output_object.object_id
+    assert instance.source_object.object_hash != instance.output_object.object_hash
+
+
+def test_risk_reclassification_rejects_output_same_as_source_on_full_identity(
+    load_json: Any,
+) -> None:
+    # Guilt arm: source and output equal across their WHOLE identity
+    # (object_kind AND object_id AND object_hash) -- mirrors
+    # ObjectSuccessorEdge.validate_edge's
+    # predecessor_ref == successor_ref check.
+    payload = load_json(FIXTURES_ROOT / "risk_reclassification_receipt" / "valid_minimal.json")
+    identical_output = {
+        **payload["output_object"],
+        "object_id": payload["source_object"]["object_id"],
+        "object_hash": payload["source_object"]["object_hash"],
+    }
     with pytest.raises(ValidationError) as caught:
-        _revalidated(RiskReclassificationReceipt, payload, output_object=same_id_output)
-    assert "output_object_id_same_as_source" in _reason_codes(caught.value)
+        _revalidated(RiskReclassificationReceipt, payload, output_object=identical_output)
+    assert "output_object_same_as_source" in _reason_codes(caught.value)
 
 
 # ---------------------------------------------------------------------------
