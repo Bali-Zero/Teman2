@@ -278,6 +278,21 @@ export const COPY = {
     },
   },
 
+  scenarioToggle: {
+    controlLabel: "What if I took the other route?",
+    banner:
+      "You are comparing a different route. Your saved plan has not changed.",
+    back: "Back to your result",
+    previewEyebrow: "Route preview",
+    missingAnswer: {
+      heading:
+        "To give an honest fit-check result for this route, we would need to know:",
+      capital: "how much capital you could place in the required deposit",
+      property: "what property position you hold",
+      seniorFunding: "which senior funding profile matches you",
+    },
+  },
+
   timeline: {
     ownerLabels: {
       you: "You",

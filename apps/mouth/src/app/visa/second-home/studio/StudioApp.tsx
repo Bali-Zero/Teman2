@@ -41,6 +41,7 @@ import { TimelineView } from "./components/TimelineView";
 import { ReadinessChecklist } from "./components/ReadinessChecklist";
 import { WhatsAppHandoff } from "./components/WhatsAppHandoff";
 import { SavePlanBar } from "./components/SavePlanBar";
+import { ScenarioToggle } from "./components/ScenarioToggle";
 
 /**
  * Second Home Studio — the wizard state machine (spec §4).
@@ -604,6 +605,7 @@ export function StudioApp() {
           <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
           {showCustodyMap ? <CustodyMap /> : null}
           <RouteComparator highlight={plan.route === "unsure"} />
+          <ScenarioToggle plan={plan} />
           <TimelineView
             horizon={plan.horizon ?? "exploring"}
             location={plan.location ?? "in_indonesia"}
