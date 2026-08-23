@@ -1,59 +1,150 @@
 brief_ref: evidence/brief.yml
-plan_ref: "pro-visa-freshness-sentinel.sh wrapper header self-reference fix, split out of PR #4592 (2026-08-23)"
+plan_ref: "P04-D1 canonical OutcomeEvent (CONTRACTS.md section 16), PR #4653, evidence-pack rewrite 2026-08-23"
 diff:
-  net_lines: "+2/-2, 1 file, measured by `git show HEAD --numstat` at HEAD f27cb936f (this PR's only commit)."
-  behaviour_change: "none — two `#` comment lines only; `set -u` and every executable line byte-identical before/after"
+  net_lines: "+1665/-0, 19 files, measured by `git diff --numstat` between merge-base c4242cd444
+    (#4637) and HEAD 03af27444 in this turn (see receipts). All 19 files are new additions under
+    outcome_event (model, schema, 13 fixtures, test module) plus 2-line registration diffs in
+    cli.py / models/__init__.py / schemas/__init__.py."
+  behaviour_change: "Adds one new contract kind end-to-end (model + schema + fixtures + tests +
+    registration). Zero lines changed in any of the 13 already-registered kinds; zero production
+    backend-rag service code touched (packages/research-os-core is a standalone library, not yet
+    imported by apps/backend-rag/backend/ service code)."
+lanes:
+  - lane: "research-os-p04-d1-outcome-event"
+    role: build
+    seat: claude
 receipts:
-  - claim: "The diff is exactly the two header comment lines; ORGAN_ID and LOG_DIR (legitimate underscores) are untouched"
-    cmd: "git show HEAD --numstat -- infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh"
+  - claim: "Merge-base of this branch against origin/main is c4242cd444e8396bb37e31fbd0c945c7b69c940a
+    (#4637, MetricProfile/MetricResult) — confirmed this is the commit both evidence/brief.yml and
+    the diff scope are measured against."
+    cmd: "git merge-base HEAD origin/main"
     exit: 0
-    ts: "2026-08-23T10:31:22Z"
-    seat: "session (m5)"
-  - claim: "The old header named a file that has never existed: repo history never has the underscore path; the live Pro copy resolves the hyphen path; the plist's ProgramArguments uses the hyphen path"
-    cmd: "grep -c pro-visa_freshness_sentinel.sh infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (post-fix, ->0); ssh pro 'ls ~/scripts/pro-visa-freshness-sentinel.sh' (exists) and 'ls ~/scripts/pro-visa_freshness_sentinel.sh' (No such file or directory); ssh pro 'launchctl print gui/501/com.nuzantara.visa-freshness-sentinel' shows program ~/scripts/pro-visa-freshness-sentinel.sh"
+    ts: "2026-08-23T09:57Z"
+    seat: claude
+  - claim: "The diff between merge-base and HEAD touches exactly 19 files, all under
+    outcome_event (model/schema/fixtures/test) plus the 3 registration files; net +1665/-0 lines."
+    cmd: "git diff --numstat c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD"
     exit: 0
-    ts: "2026-08-23T10:32Z"
-    seat: "session (m5)"
-  - claim: "infra/home-fork/declared-pairs.json pair[146] already declares the hyphen form on both live and repo sides for this organ -- scripts/lint_home_fork.py was never blind to the real pair, only the wrapper's own header comment was wrong"
-    cmd: 'python3 -c "import json; d=json.load(open(''infra/home-fork/declared-pairs.json'')); print(d[146])" -> {''live'': ''~/scripts/pro-visa-freshness-sentinel.sh'', ''repo'': ''infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh'', ''machines'': [''pro'']}'
+    ts: "2026-08-23T10:05:18Z"
+    seat: claude
+  - claim: "workflow_run.py (and the sibling verification_receipt.py/conductor_handoff.py files
+    this branch's own local history at commit 8d5f6a057 also touched) is byte-identical between
+    the merge-base and HEAD — that commit's content landed on main separately, so those files are
+    correctly excluded from this PR's real net diff."
+    cmd: "git diff c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD -- packages/research-os-core/research_os/models/workflow_run.py"
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: "No script in the repo parses the # Canon: / # Live: comment lines back out of an EXISTING wrapper to do anything functional. The only other hit for the literal 'Canon:' in scripts/*.py is scripts/organ_birth.py:80, and that line is inside wrapper_template() -- an f-string that GENERATES a new wrapper's header text at organ-birth time, never a reader of an existing file"
-    cmd: "grep -rl 'Canon:' scripts/*.py -> scripts/organ_birth.py only; sed -n '75,85p' scripts/organ_birth.py confirms it is inside an f-string head='''...''' template, not a file read"
+    ts: "2026-08-23T09:58Z"
+    seat: claude
+  - claim: "cli.py, models/__init__.py, and schemas/__init__.py each gained exactly one import
+    line and one dict/tuple entry for OutcomeEvent; no existing entry (including workflow_run,
+    verification_receipt, metric_profile, metric_result) was removed or altered."
+    cmd: "git diff c4242cd444e8396bb37e31fbd0c945c7b69c940a HEAD -- packages/research-os-core/research_os/cli.py packages/research-os-core/research_os/models/__init__.py packages/research-os-core/research_os/schemas/__init__.py"
     exit: 0
-    ts: "2026-08-23T10:33Z"
-    seat: "session (m5)"
-  - claim: "python3 scripts/lint_home_fork.py passes (no regression) and bash -n is clean on the fixed file"
-    cmd: "python3 scripts/lint_home_fork.py -> '25 live copy/copies match their repo twin' + 'clean' on the 1 undeclared-payload discovery pass; bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> exit 0, no output"
+    ts: "2026-08-23T09:56Z"
+    seat: claude
+  - claim: "`python -m research_os.cli fixtures --check` passes over the FULL fixture tree (all 13
+    registered kinds, 102 fixtures total, including outcome_event's 13): {\"checked\": 102,
+    \"failures\": [], \"valid\": true}."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m research_os.cli fixtures --check"
     exit: 0
-    ts: "2026-08-23T10:29Z"
-    seat: "session (m5)"
-  - claim: 'The organ stays ARMED and unaffected: Pro''s launchd job is loaded, last_seen is fresh, and today''s run already reports pack_source:"database" -- this comment edit needs no restart/redeploy'
-    cmd: 'ssh pro ''launchctl print gui/$(id -u)/com.nuzantara.visa-freshness-sentinel'' (loaded, program path correct); ssh pro ''cat ~/.organism/last_seen/pro.visa_freshness_sentinel.json'' -> {"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}; ssh pro ''tail -5 ~/logs/pro-visa_freshness_sentinel/run.log'' -> pack_sequence 12, pack_source "database"'
+    ts: "2026-08-23T09:59:03Z"
+    seat: claude
+  - claim: "The full research_os unit test suite passes: 230 passed, 1 skipped (pre-existing,
+    unrelated to this PR — node/prettier unavailable in this environment for a schema-regen-parity
+    test), 0 failed."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os -q --no-header"
     exit: 0
-    ts: "2026-08-23T10:30Z"
-    seat: "session (m5)"
+    ts: "2026-08-23T09:59:07Z"
+    seat: claude
+  - claim: "test_outcome_event.py in isolation: 11/11 tests pass (fixture round-trip, exact-reason
+    rejection, unknown-field rejection, object_hash-mismatch cannot bypass validation, frozen
+    immutability, metric_profile/metric_result joint-presence invariant)."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py -q --no-header"
+    exit: 0
+    ts: "2026-08-23T10:05:17Z"
+    seat: claude
+  - claim: "test_schemas.py (the schema self-consistency module: generated-schema Draft 2020-12
+    validity, ECMA-262 pattern compilation, checked-in-vs-regenerated byte parity) passes: 5
+    passed, 1 skipped (same pre-existing node/prettier-unavailable skip)."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest ../../apps/backend-rag/backend/tests/unit/research_os/test_schemas.py -v"
+    exit: 0
+    ts: "2026-08-23T10:01:37Z"
+    seat: claude
+  - claim: "mypy --strict on the 4 touched non-test Python files (outcome_event.py, cli.py,
+    models/__init__.py, schemas/__init__.py) is clean: 'Success: no issues found in 4 source
+    files'."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict research_os/models/outcome_event.py research_os/cli.py research_os/models/__init__.py research_os/schemas/__init__.py --explicit-package-bases"
+    exit: 0
+    ts: "2026-08-23T10:00:07Z"
+    seat: claude
+  - claim: "mypy --strict on the touched TEST file (test_outcome_event.py) is RED: 1 error --
+    'Unused \"type: ignore\" comment [unused-ignore]' at line 62. TRUE rc recorded, not swept."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict ../../apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py --explicit-package-bases"
+    exit: 1
+    ts: "2026-08-23T10:00:11Z"
+    seat: claude
+  - claim: "Control check, same invocation style, on an ALREADY-ON-MAIN sibling file
+    (test_workflow_run.py) with the analogous frozen-field-reassignment test at the same line
+    number: clean, 0 issues. Confirms the line-62 finding above is a genuine `[misc]` vs
+    `[assignment]` discrepancy specific to outcome_type's non-Literal type, not a config/
+    environment artifact of how I invoked mypy (the same invocation correctly consumes the
+    ignore comment on the sibling file)."
+    cmd: "cd packages/research-os-core && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m mypy --strict ../../apps/backend-rag/backend/tests/unit/research_os/test_workflow_run.py --explicit-package-bases"
+    exit: 0
+    ts: "2026-08-23T10:05:18Z"
+    seat: claude
+  - claim: "Neither the repo-root backend-rag mypy config (apps/backend-rag/pyproject.toml
+    [tool.mypy]) nor CI's actual mypy invocation load the pydantic mypy plugin, and CI's mypy job
+    never checks packages/research-os-core at all — it strictly checks only backend/core and
+    backend/app/models. The line-62 finding above is therefore NOT CI-blocking."
+    cmd: "grep -n 'mypy' .github/workflows/tests.yml"
+    exit: 0
+    ts: "2026-08-23T10:03Z"
+    seat: claude
 tests:
-  - "No unit test exists or is warranted for a 2-line comment change with zero executable delta; bash -n (syntax) and lint_home_fork.py (the ONE guard whose job includes this file's identity) are the applicable checks and both pass, per receipts above."
+  - "apps/backend-rag/backend/tests/unit/research_os (full suite, 230 passed/1 pre-existing skip)
+    and the outcome_event/schemas subsets in isolation — all green per receipts above. This IS the
+    applicable test surface for a contracts-package addition; there is no separate integration
+    surface because packages/research-os-core is not yet wired into any backend-rag service."
 static:
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> clean"
-  - "scripts/lint_home_fork.py -> clean (25/25 checkable pairs on m5 match; this pair is pro-only so its LIVE side is not checkable from m5 -- see dissent #3 below for the post-merge consequence)"
+  - "python -m research_os.cli fixtures --check -> {\"checked\": 102, \"failures\": [], \"valid\": true}"
+  - "mypy --strict on outcome_event.py/cli.py/models/__init__.py/schemas/__init__.py -> clean"
+  - "mypy --strict on test_outcome_event.py -> 1 unused-ignore finding (line 62), reported honestly
+    in risks: above, verified not CI-blocking, left unfixed (out of this rewrite's edit scope)"
 runtime_proof:
-  - "Not applicable in the classic sense (no code path executes differently). The closest runtime proof is that the organ this wrapper launches is independently confirmed ARMED and HEALTHY on Pro before and after this diff (receipts above) -- the fix changes documentation the organ never reads."
-dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context, dispatched via `kimi -p ... -m kimi-code/k3`, independent of the diff's author)"
-    objection: "Tried to refute all 4 of the author's claims by re-running the underlying commands itself (git show --numstat, ssh pro ls/launchctl, python declared-pairs read, grep Canon: across scripts/*.py and .github/workflows/) rather than trusting the brief. All 4 confirmed true. Found 3 things beyond the claims, none blocking: (a) evidence/brief.yml existed in the worktree but was UNCOMMITTED at review time -- a real process gap, since the whole reason this fix was split out of #4592 was to carry a floor-3 evidence pack; (b) the root cause is unfixed and will recur: scripts/organ_birth.py:80's wrapper_template() does organ_id.replace('.', '-'), which only replaces the dot and leaves internal underscores alone, so ANY future organ_id containing '_' is born with the same wrong header; 3 sibling wrappers carry the identical live bug today (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh -- declared-pairs indices 32/68/151), correctly left untouched by this PR's tight scope but flagged so the pattern is not lost; (c) merging this diff will transiently desynchronize declared-pairs pair[146] -- the live copy on Pro still carries the pre-fix underscore header (confirmed by ssh), so lint_home_fork.py --check run FROM PRO will read the pair as sha256-divergent until the repo-authoritative content is synced to the live path; expected/self-healing under the existing repo-is-canon model, not a defect of this diff, but the sync should be confirmed rather than assumed."
-    status: PLAUSIBLE
+  - "Not applicable in the classic sense — this is a schema/contract library addition with no
+    service runtime to exercise. The closest runtime proof is the full green test suite (receipts
+    above), which exercises every validator branch the model defines (round-trip, each of the 5
+    named invalid-fixture rejection reasons, immutability, object_hash tamper-detection, and the
+    joint-presence invariant) against real Pydantic validation, not mocked."
+dissent: []
 residual_risks:
-  - "The organ_birth.py:80 template bug (dot-only replace, underscores in organ_id survive into the generated header) is NOT fixed here -- deliberately out of scope for a 2-line self-reference correction. 3 sibling wrappers (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh) carry the same wrong header today and any future organ with an underscore in its id will be born with it again. A follow-up PENDING-ARMS line is warranted; not opened in this PR to keep scope tight (constraints in brief.yml)."
-  - "Transient post-merge divergence: until the live copy on Pro (~/scripts/pro-visa-freshness-sentinel.sh) is synced from the repo-authoritative content, `scripts/lint_home_fork.py --check` run on Pro will report pair[146] as sha256-divergent (comment-only bytes differ). This is the normal repo-is-canon flow and self-heals on the next sync of this pair -- confirmed the sync mechanism exists (this repo has synced this exact pair before, per the pair's own presence in declared-pairs.json since the organ's birth) but did NOT independently re-verify a sync fires automatically post-merge; flagged rather than assumed."
+  - "The 7 spec-interpretation judgment calls documented in outcome_event.py's own module
+    docstring (revocation_receipt_ref gap vs section 3.2/13.5, value:Any, aggregation_level
+    unconstrained, completeness unconstrained float, source_system registry-row gap,
+    window-ordering-by-analogy, 2 invariants deliberately unenforced) are open and flagged for
+    Packet 04 to rule on. Not a defect of this PR; a defect of leaving them silently resolved would
+    have been worse, per the model's own docstring stance."
+  - "mypy --strict finds 1 unused-ignore in test_outcome_event.py:62 (`[misc]` where no plugin-
+    aware invocation of this package exists to make it needed). Verified NOT CI-blocking (CI never
+    mypy-checks this package). Left unfixed — out of this evidence-rewrite's edit scope
+    (evidence/brief.yml + evidence/pack.yml only, per the dispatching lane's hard limits)."
+  - "This evidence pack itself was, until this rewrite, describing foreign work (PR #4592) --
+    inherited unchanged from origin/main's evidence/*.yml at this branch's merge-base. This is a
+    fleet-wide pattern (cicatrix-superscar family #9: evidence/brief.yml and evidence/pack.yml are
+    fixed root-relative paths every Gear>=2 PR rewrites, so any branch that never touches them
+    silently carries whatever PR last wrote them on main) actively being tracked and mitigated
+    across multiple concurrent P04-D1 lanes as of this timestamp, not unique to this PR."
 sources:
-  - infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (this PR's only changed file)
-  - infra/home-fork/declared-pairs.json (pair[146], read-only reference)
-  - scripts/organ_birth.py:75-85 (read-only reference, root-cause template)
-  - Pro live state via ssh (launchctl, last_seen json, run.log) -- re-verified fresh this session, not recalled
+  - packages/research-os-core/research_os/models/outcome_event.py (this PR's primary file)
+  - packages/research-os-core/research_os/schemas/outcome_event.schema.json (generated, this PR)
+  - packages/research-os-core/fixtures/outcome_event/*.json (13 fixtures, this PR)
+  - apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py (this PR)
+  - packages/research-os-core/research_os/cli.py, models/__init__.py, schemas/__init__.py
+    (registration diffs, this PR)
+  - .github/workflows/tests.yml:635 (read-only reference — confirms CI's mypy scope)
+  - apps/backend-rag/pyproject.toml [tool.mypy] (read-only reference — confirms no pydantic plugin)
 pii_scan: clean
-# ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
-# at write time = 7701 bytes -> ~1925 tokens, well inside the 30,000 hard cap.
-size_tokens: 1925
+# approx_tokens() per scripts/evidence_pack_lint.py: len(raw bytes) // 4.
+# Measured `wc -c evidence/pack.yml` at write time = ~10500 bytes -> ~2630 tokens (cap 30000).
+size_tokens: 2630

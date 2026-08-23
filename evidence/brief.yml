@@ -1,74 +1,120 @@
-task_id: ops-visaoracle-wrapper-header-0823
-gear: 3
+task_id: ros-v1-p04-d1-outcome-event
+gear: 2
 l_level: L1
 gate_class: opus
 objective: |
-  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
-  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
-  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
+  PR #4653 (branch `agent/nuzantara/backend-rag/ros-v1-p04-d1-outcome-event`, DRAFT). Ships the
+  canonical `OutcomeEvent` contract from the frozen CONTRACTS.md section 16 as part of Research OS
+  Packet 04 / D1 (governance receipts + canonical objects). This is one of four kinds in the D1
+  family (OutcomeEvent here; WorkflowRun/VerificationReceipt/ConductorHandoff landed separately,
+  MetricProfile/MetricResult landed as #4637) — the split exists to keep each PR review-sized, per
+  the commit message on the sibling WorkflowRun/VerificationReceipt/ConductorHandoff work
+  ("The fourth kind, OutcomeEvent, ships separately... because splitting keeps this PR under
+  review-sized bounds").
 
-  This PR is documentation-only, in the strict sense that it edits two comment lines in a
-  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
-  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
-  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
-  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
-  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
-  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
-  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
-  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
-  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
-  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
-  **Severity, stated precisely so a future reader does not over-read this**: because
-  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
-  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
-  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
-  do) — the two are different failure classes and this PR only ever claims to fix the former.
+  Adds, verified from `git diff c4242cd44..HEAD` (merge-base = #4637, MetricProfile/MetricResult):
+  - `research_os/models/outcome_event.py` (256 lines): a Pydantic v2 `FrozenCoreModel` with 12
+    nested sub-models (`SubjectRefs`, `OutcomeWindow`, `OutcomeQuality`, `OutcomeCohort`,
+    `OutcomeClassification`, `OutcomeEventLineage`, plus 8 typed ref models), an
+    `object_hash` round-trip validator, a `window.ended_at > window.started_at` ordering check, and
+    a joint-presence validator on `metric_profile_ref`/`metric_result_ref` (both or neither) — those
+    two fields bind to the `MetricProfileRef`/`MetricResultRef` kinds that landed on main in #4637.
+  - `research_os/schemas/outcome_event.schema.json` (816 lines): the generated Draft 2020-12 JSON
+    Schema for the model above.
+  - 13 fixture files under `fixtures/outcome_event/` (3 valid, 5 invalid pairs — each invalid
+    fixture paired with an `.expect.json` naming its exact rejection reason code).
+  - `apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py` (130 lines, 11 test
+    functions): fixture round-trip, exact-reason-code rejection, unknown-field rejection,
+    object_hash-mismatch-cannot-bypass, frozen-immutability, and the joint-presence invariant.
+  - Registration of `OutcomeEvent` in `cli.py::CONTRACT_MODELS`, `models/__init__.py::__all__`,
+    and `schemas/__init__.py::SCHEMA_MODELS` (2-line additions each, alongside existing entries —
+    the 13 other already-registered kinds, including `workflow_run`/`verification_receipt`, were
+    NOT touched by this diff; confirmed byte-identical between merge-base and HEAD, see receipts).
 
-  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
-  hot-zone by path, not by content. The evidence below is sized to match — it is not an
-  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
+  The model's own module docstring flags SEVEN open interpretive judgment calls against the frozen
+  spec prose (no invented `revocation_receipt_ref` field on `subject_refs`; `value` typed as `Any`
+  with no shape hint in the spec; `classification.aggregation_level` as an unconstrained
+  non-empty string; `quality.completeness` as an unconstrained float, not clamped 0..1;
+  `source_system` as a local closed `Literal` with no matching section-3 registry row;
+  `window` ordering enforced by analogy, not verbatim-stated; the "suppress cohorts <10" and
+  "side-effect binding" invariants deliberately NOT enforced as single-object validators) —
+  flagged for Packet 04 to rule on, not silently resolved here. This brief does not re-litigate
+  those calls; it reports that they exist and are already on record in the source file a future
+  reader will open.
+
+  SCOPE OF THIS SPECIFIC REWRITE (2026-08-23): `evidence/brief.yml` and `evidence/pack.yml` are
+  fixed root-relative paths that every Gear>=2 PR in this repo rewrites (cicatrix-superscar family
+  #9, state-schema mutation drift — a fixed-path collision class actively being observed fleet-wide
+  today). On this branch, both files were found to still describe foreign work — PR #4592
+  (`ops-visaoracle-wrapper-header-0823`, a 2-line LaunchAgent wrapper comment fix), inherited
+  unchanged from whatever content was on `origin/main` at this branch's merge-base and never
+  overwritten by either commit in this branch's own history. This rewrite replaces that inherited
+  content with a truthful description of PR #4653 and adds the `lanes:` block (D3 lane-declaration
+  rule, `scripts/evidence_pack_lint.py::check_lanes_build_seat_diversity`), verified against
+  `origin/main`'s current lint. No functional code changes accompany this rewrite — evidence files
+  only.
 constraints:
-  - "set -u and every executable line in the file are untouched — diff is exactly the two
-    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
-    reading the full post-diff file."
-  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
-    already carries the correct hyphen form on both sides and needs no change."
-  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
-    lower in the same file — those underscores are legitimate (organ id / log-dir naming
-    convention, not a file path claim) and match the live log directory verified on Pro this
-    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
+  - "Edit scope for this rewrite is evidence/brief.yml and evidence/pack.yml ONLY — no functional
+    file in the diff was touched to produce this evidence pack."
+  - "Do NOT arm, enqueue, un-draft, or merge this PR. It stays DRAFT (fleet-wide HOLD ARMS pending
+    PR #4647, and this branch is additionally held under the P04-D1 serialization order set
+    2026-08-23 — #4653 queues immediately after #4643)."
+  - "Do NOT touch scripts/wr3_* or docs/wr3/contracts/ (H3/P03 holds that lease)."
+  - "workflow_run.py / verification_receipt.py / conductor_handoff.py and their fixtures/schemas
+    exist in this branch's git history (commit 8d5f6a057) but are BYTE-IDENTICAL between the
+    merge-base and HEAD — they landed on main separately and are correctly excluded from this PR's
+    net diff. Do not re-touch them here."
 acceptance:
-  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    shows the Canon and Live lines using the hyphen form.'
-  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    == 0 (underscore form gone).'
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
-  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
-    declared; this PR only fixes the wrapper's self-description)."
-  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
-    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
-    needed or performed.'
+  - "`python -m research_os.cli fixtures --check` (run from packages/research-os-core) exits 0
+    over the full fixture tree (all 13 kinds, 102 fixtures), not just outcome_event's 13."
+  - "`pytest apps/backend-rag/backend/tests/unit/research_os` exits 0 (230 passed, 1 pre-existing
+    unrelated skip — node/prettier unavailable in this environment, see receipts)."
+  - "`pytest .../test_outcome_event.py` exits 0, 11/11 passed."
+  - "`mypy --strict` on the touched non-test Python files (outcome_event.py, cli.py,
+    models/__init__.py, schemas/__init__.py) exits 0, zero issues."
+  - "`scripts/evidence_pack_lint.py` (taken from origin/main) exits 0 against the rewritten pack,
+    with `net_lines` measured from `git diff --numstat`, and no NOTICE mentioning `lanes:`."
 consumer_map:
-  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
-    agent reading its header is the only consumer of the changed lines."
-  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
-    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
-    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
-    Confirmed by reading the line: it does not touch this already-born organ."
-  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
-  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
-    the header comment is repo-side documentation only, the live file's own header will match
-    once this lands and the deploy pattern for this pair (already-armed organ, header-only
-    change) next syncs it — no urgency, no functional drift in the meantime."
+  - "`research_os/cli.py::CONTRACT_MODELS` and `validate`/`fixtures --check` — the CLI validates
+    `outcome_event` fixtures against the new model by kind name."
+  - "`research_os/models/__init__.py::__all__` and `schemas/__init__.py::SCHEMA_MODELS` — re-export
+    surface any downstream research_os consumer imports from."
+  - "`apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py` — the only consumer of
+    the new fixtures and the sole direct importer of `OutcomeEvent` outside the package itself."
+  - "`research_os/schemas/outcome_event.schema.json` — consumed by `test_schemas.py`'s generated-
+    schema validity/regeneration-parity checks (ran clean, see receipts) and by any external system
+    validating an OutcomeEvent payload against Draft 2020-12."
+  - "No production backend-rag service imports `research_os` yet (verified: this is a standalone
+    `packages/research-os-core` library with its own pyproject.toml, not wired into
+    `apps/backend-rag/backend/` service code as of this diff) — blast radius is confined to the
+    Research OS contract package and its own test suite."
 risks:
-  - "None identified to the running organ: the change is comment-only, `set -u` and all
-    executable lines are byte-identical before/after."
-  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
-    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
-    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
-    a lint-blocking drift."
+  - "The seven spec-interpretation judgment calls flagged in outcome_event.py's own docstring are
+    real and unresolved — they are Packet 04's to rule on, not a defect of this PR, but a future
+    reader should not mistake the model's current shape (e.g. `source_system` as a local Literal
+    with no section-3 registry row) for a settled decision."
+  - "mypy --strict on test_outcome_event.py (not the model file) reports 1 issue in this
+    environment: `# type: ignore[misc]` on line 62 is flagged as an unused ignore. Root cause
+    (verified): this repo's actual mypy invocations (CI's `apps/backend-rag` job, and this
+    package's own pyproject.toml) never load the pydantic mypy plugin, so the frozen-field
+    reassignment diagnostic that `[misc]` was written for never fires under any known real
+    invocation of this package — while sibling files (e.g. test_workflow_run.py:62) use
+    `[assignment]` on the analogous line because THEIR field is a `Literal`, so a plain
+    vanilla-mypy literal-mismatch error fires there with no plugin needed. This is a genuine,
+    verified, pre-existing-pattern discrepancy in the new test file; it is NOT CI-blocking (CI's
+    mypy job strictly checks only `backend/core` and `backend/app/models`, never
+    `packages/research-os-core` — confirmed via `.github/workflows/tests.yml:635`). Left unfixed:
+    out of this evidence-rewrite's edit scope (evidence/*.yml only), reported here rather than
+    silently swept."
+  - "This evidence pack was reconstructed to describe a PR whose real substance (the OutcomeEvent
+    model, schema, fixtures, and test module) was authored earlier in this branch's history, not in
+    this rewrite turn. All receipts below were re-run fresh in this turn against that already-
+    committed code, per anti-hallucination discipline — none are transcribed from memory."
 grader:
-  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
-  review of this exact diff, dispatched fresh, not the author
-budget: 1 external review seat, no council (task does not warrant one)
-pii: none
+  Opus 5 (final on-disk gate, effort xhigh per the 2026-08-20 ruling superseding the Fable-5
+  carve-out) is the doctrinally-designated final gate for this pack's gear. No independent
+  adversarial review was dispatched as PART OF THIS evidence-rewrite task — the task scope was
+  narrowly to make brief.yml/pack.yml truthful and add `lanes:`, not to re-review the OutcomeEvent
+  contract's substance. `dissent:` below is therefore honestly empty rather than fabricated.
+budget: 1 build lane (this session), no council convened for this narrow evidence-pack rewrite.
+pii: none — schema/contract/test code only, zero client data touched.
