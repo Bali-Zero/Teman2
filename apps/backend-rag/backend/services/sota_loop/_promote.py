@@ -40,12 +40,97 @@ logger = logging.getLogger("sota.m13.promote")
 _GIT_TIMEOUT = 30
 _GH_TIMEOUT = 30
 _BROKER_TIMEOUT = 60
+_ADVERSARIAL_TIMEOUT = 200
+_ADVERSARIAL_SEAT = "kimi-k3"
 
 
 def _run(cmd: list[str], *, cwd: Path, timeout: int) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd, cwd=str(cwd), capture_output=True, text=True, timeout=timeout, check=False
     )
+
+
+def _run_adversarial_review(content: str, rel: str) -> str | None:
+    """Best-effort dispatch of a REAL refuter (Kimi K3 — cross-family, never
+    the author of these reports) over one promoted research/**/*.md file.
+
+    Returns the refuter's raw findings, or None if the seat could not be
+    reached/returned nothing usable within the timeout. Callers MUST treat
+    None as "no review happened" and fall back to an honest `exempt-` R1
+    marker — never fabricate a `adversarial_review: kimi-k3` claim for a
+    review that never ran (that would be exactly the generator==grader
+    failure R1 exists to catch, just laundered through a fake seat name).
+    """
+    prompt = (
+        f"Adversarial review of this auto-generated Bali Zero SOTA growth-loop "
+        f"report ({rel}). Which claims, numbers, or status labels are "
+        f"unsupported by the data shown, internally inconsistent, or "
+        f"overreach — including if the underlying data itself looks broken "
+        f"or stubbed (e.g. suspiciously flat/zero values). Say NONE if clean. "
+        f"Terse, max 5 findings.\n\n---\n{content}\n---"
+    )
+    try:
+        result = subprocess.run(
+            ["kimi", "-p", prompt, "-m", "kimi-code/k3"],
+            capture_output=True,
+            text=True,
+            timeout=_ADVERSARIAL_TIMEOUT,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+        logger.warning("promote: adversarial review dispatch failed for %s: %s", rel, exc)
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        logger.warning(
+            "promote: adversarial review unusable for %s (rc=%s, empty=%s)",
+            rel,
+            result.returncode,
+            not result.stdout.strip(),
+        )
+        return None
+    return result.stdout.strip()
+
+
+def _ensure_r1_compliance(path: Path, rel: str) -> None:
+    """Inject the R1 generator!=grader frontmatter + section (CLAUDE.md §Agent
+    PR Contract / scripts/check_adversarial_review.py) into a promoter-written
+    research/**/*.md file, so the PR this module opens is never born red on
+    the R1 gate.
+
+    Idempotent: a no-op if the file already opens with '---' frontmatter — a
+    future hand-authored report must never be silently overwritten. Runs a
+    real refuter when reachable; falls back to a truthfully-labeled
+    `exempt-refuter-unreachable` marker (never a fake seat name) when it is
+    not — see _run_adversarial_review.
+    """
+    if path.suffix != ".md" or "research" not in path.parts:
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    if text.splitlines()[:1] == ["---"]:
+        return  # already carries frontmatter — never clobber
+
+    review = _run_adversarial_review(text, rel)
+    if review is not None:
+        seat = _ADVERSARIAL_SEAT
+        section = (
+            "\n\n## Adversarial review\n\n"
+            f"Seat: `kimi -m kimi-code/k3` (automated, dispatched by "
+            f"_promote.py over {rel} at promotion time).\n\n"
+            f"{review}\n"
+        )
+    else:
+        seat = "exempt-refuter-unreachable"
+        section = ""
+        logger.warning(
+            "promote: %s promoted with exempt-refuter-unreachable — no real "
+            "adversarial review ran (kimi seat unavailable)",
+            rel,
+        )
+
+    path.write_text(f"---\nadversarial_review: {seat}\n---\n\n{text}{section}", encoding="utf-8")
 
 
 def promote_research_output(
@@ -106,6 +191,7 @@ def promote_research_output(
             dst = wt_path / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes(src.read_bytes())
+            _ensure_r1_compliance(dst, rel)
             status = _run(["git", "status", "--porcelain", "--", rel], cwd=wt_path, timeout=_GIT_TIMEOUT)
             if status.stdout.strip():
                 changed.append(rel)
