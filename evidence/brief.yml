@@ -1,164 +1,69 @@
-task_id: ops-spalla-hook-secret-leak
+task_id: ops-visaoracle-wrapper-header-0823
 gear: 3
-l_level: L3
+l_level: L1
 gate_class: opus
 objective: |
-  `.claude/hooks/codex-spalla-trigger.sh` logs `tool_input.command` — the full Bash command string,
-  truncated to 200 chars — to `~/logs/codex-spalla-trigger.jsonl`, and never chmods it. A Bash tool
-  call can carry a credential in argv, so that log is secret-bearing BY CONSTRUCTION.
+  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
+  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
+  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
 
-  Found live while hunting a different leak. Mode 0644 (world-readable), 83 MB, still being appended
-  to. MAGNITUDE, stated as the conclusion that survives re-measurement rather than as a count:
-  3 runs in the file carry secret material — 1 whole token plus 2 truncation-clipped partials,
-  measured by END POSITION inside the 200-char logged field (the whole one ends at char 151, well
-  short of the field; the other two end EXACTLY at char 200, the truncation boundary itself, which is
-  what a value cut off mid-token looks like). Counted, never printed.
+  This PR is documentation-only, in the strict sense that it edits two comment lines in a
+  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
+  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
+  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
+  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
+  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
+  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
+  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
+  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
+  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
+  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
 
-  The raw line counts are NOT stable and are therefore no longer quoted as facts: this hook logs the
-  very greps that measure it, so at 2026-08-21T15:56Z the literal matched 14 lines and at
-  2026-08-21T20:28Z it matched 24 (histogram 20x10/5x13/1x46/1x87/1x108). The 3 secret-bearing runs
-  did not move. Two earlier drafts of this brief inflated the magnitude — "11 real values, 108 chars
-  each" (a LINE count restated as a VALUE count, the maximum restated as "each") and then "2 whole
-  tokens" (a truncation artifact restated as two more complete secrets). Both caught by the Gear-3
-  gate, recorded rather than quietly corrected, because the rotation decision hangs on this number.
-
-  Fix: two independent defenses (mode + redaction), a matcher that closes both the over-match and the
-  under-match direction and whose RULE ORDER is itself pinned, a guilt/innocence/mode corpus in which
-  an ENUMERATED set of constructs is each killed by at least one case — deliberately not the universal
-  "every rule and every alternation" claim earlier rounds made, which the Gear-3 gate answered with
-  five counterexamples — and registration so the proof actually runs.
+  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
+  hot-zone by path, not by content. The evidence below is sized to match — it is not an
+  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
 constraints:
-  - "The live file was chmod-ed 0600 immediately, outside this diff. That is containment, not the
-    fix — a future rotation or copy recreates the exposure."
-  - "Redaction must happen BEFORE truncation: a 200-char window can slice a token and leave a
-    usable prefix."
-  - 'The matcher must close BOTH directions at once, which is the whole difficulty. Three attempts
-    on this branch (none of them ever on main — see receipts) failed in alternating directions:
-    v1 matched the keyword as a bare substring and ate ordinary commands; v2 anchored it to a
-    delimited SEGMENT and then leaked twelve undelimited forms (`APIKEY=`, `AUTHTOKEN=`,
-    `SECRETKEY=`, `accesskey=`, `mytoken=`, `TOKENS=`, `pass=`, `auth=`, a JSON `"api_key"` body and
-    a `postgres://user:pw@host` URL) in full; a vocabulary-bounded v3 closed those and still leaked
-    `PGPASSWORD=` 99 times in the live log because nobody lists `PG` as a prefix. The shipped design
-    splits by WORD: TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL take ANY prefix, `KEY` takes only a
-    bounded vocabulary — because `KEY` is the one credential word that routinely ends an innocent
-    identifier (`monkey`, `pubkey`, `nkeys`, `topkey`).'
-  - "CORRECTION (Gear-3 gate, 2026-08-22). An earlier draft of this constraint said the substring
-    version redacted `8 of 20 ordinary commands (0.56%) in a 333k-line log corpus`. That welded TWO
-    measurements with TWO different denominators into one parenthetical, receipted neither, and
-    called 8/20 = 40% `0.56%`. Split and receipted, both against named corpora: (i) ON HAND-PICKED
-    ORDINARY COMMANDS the substring version over-matches 7 of the 9 innocence-corpus commands and 6
-    of 35 ordinary-command probes, against 0/9 and 1/35 for the shipped matcher (2026-08-21T21:10Z);
-    (ii) ON THE REAL 333,603-line log it rewrites 1875 lines = 0.562%, against 1253 = 0.376% for the
-    segment-only version and 2290 = 0.686% for the round-3 one (2026-08-21T21:08Z; the shipped
-    round-4 matcher re-measures at 2291 = 0.686% of 333,832, byte-identical output). The same draft
-    also called the substring version `the previous version of this hook`: it never existed on main.
-    It was an earlier DRAFT on this branch, superseded before merge — no released version of this
-    hook ever over-matched, because no released version redacted at all."
-  - "`Authorization: Bearer <value>` and `scheme://user:<secret>@host` carry no credential-ish NAME
-    at all and each need their own rule."
-  - "NO RULE MAY CONSUME ANOTHER RULE'S MARKER — and ORDER ALONE DOES NOT ACHIEVE THAT. This
-    constraint replaces an earlier one that said 'rule 2 is the destructive one, so it runs LAST'.
-    That was false and a second Gear-3 gate falsified it ON the ordering fix: rule 4 eats an 8+ char
-    [A-Za-z0-9._-] run after `Bearer`, and a credential NAME is exactly such a run, so
-    `Bearer refresh_token=<v>` logged as `Bearer <REDACTED>=<v>` — marker on the NAME, value in the
-    clear, output READING as if redaction fired. The mirror of the very defect the reorder removed.
-    Rule 1 does it too when a token prefix starts a NAME (`echo ghp_MYTOKENS=<v>`). The binding
-    constraint is therefore structural, not positional: EVERY marker-anchored rule carries
-    ASSIGN_TAIL (an optional `[=:]` plus a full quoted-or-bare VALUE) so that consuming a marker
-    also consumes the assignment hanging off it. Order 1 -> 3 -> 4 -> 2 is KEPT — rule 4 before
-    rule 3 still leaks a URL password, which the tail does not address — but it is no longer
-    load-bearing for the Bearer adjacencies. AND THE TAIL ALONE WAS NOT ENOUGH EITHER: a third gate
-    found that a tail whose bare branch runs to the next whitespace can CROSS a later rule's marker
-    (`github_pat_<8+>=bearer <v>` — rule 1, which runs first, eats the word `bearer`), so the bare
-    branch is TEMPERED: it may not cross a position where any later marker starts, and the
-    URL-scheme marker is length-bounded so a value glued to a URL is not mistaken for one. The five
-    permutation mutants still fail the suite; that proves the suite constrains the order, not that
-    the order is safe — the mirror leak survived all five and shipped anyway, because no case in the
-    corpus had its shape, and the third direction then survived the mirror's own cases."
-  - "An alternation nothing can fail on is deleted, not kept for readability. The
-    `Authorization\\s*:\\s*Bearer|` alternation was mutually redundant with the bare `Bearer` one;
-    replayed over the whole live log, keeping only the bare one is byte-identical (0 differing
-    lines) while keeping only the header one is not (3). Deleted, on the same measurement that
-    already removed the left wildcard and the leading `(?:--?)?`."
-  - "No behaviour change to the hook's trigger logic: same rules, same stderr nudge, same fail-open
-    posture. Only the log's mode and the logged value change."
+  - "set -u and every executable line in the file are untouched — diff is exactly the two
+    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
+    reading the full post-diff file."
+  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
+    already carries the correct hyphen form on both sides and needs no change."
+  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
+    lower in the same file — those underscores are legitimate (organ id / log-dir naming
+    convention, not a file path claim) and match the live log directory verified on Pro this
+    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
 acceptance:
-  - "69 guilt cases (prefix-shaped tokens incl. both GitHub PAT families and a non-`ghp_` member of
-    the `gh[pousr]_` class, bare and suffixed and
-    undelimited credential names, one per prefix-vocabulary entry and one per wide word, plural
-    forms, bare generics, quoted values in both quote styles, a JSON body, a URL userinfo password,
-    a secret straddling the 200-char truncation boundary, a URL password containing a colon, the
-    three RULE-ORDER shapes that leaked at round 4 (`X-Auth: Bearer <v>`, `--auth=Bearer <v>`,
-    `auth: bearer <v>`) and the reverse-ordering shape (`Bearer postgresql://u:<v>@h`), and Bearer)
-    leave no secret in the log."
-  - "15 innocence cases are logged intact with no spurious REDACTED marker: the 8 measured casualties
-    of the substring version (`monkey=patch`, `--keyfile=`, `jq '.key = 1'`, `StrictHostKeyChecking=no`,
-    `KEYSPACE=prod`, `--publicKeyPath=`, `sed s/keyword=old/keyword=new/`, `redis-cli KEYS '*'`),
-    three NON-KEY keyword substrings (`PasswordAuthentication=no`, `TOKENIZER=fast`,
-    `-k 'secret_scanning'`) and an ordinary command. Note the SCOPE of the `jq '.key = 1'` case: the
-    lookbehind's `.` exclusion makes a SINGLE-SEGMENT attribute access innocent and nothing wider —
-    `jq '.api_key = 1'` and `cfg.api_key = 'x'` ARE redacted, because the match starts at `key` after
-    the `_`, not at the `.`. An earlier draft stated this as a general 'attribute access is innocent'
-    rule; it never was. Three of the fifteen were added 2026-08-22 for rules 3 and 4, which had
-    NONE: no case in the corpus contained `Bearer` or `://` at all, so every over-match and boundary
-    mutant in those two rules was unkillable. They pin the URL rule's userinfo user class (a query
-    string `?to=ops:admin@example.test`), the Bearer rule's `\\b` (`flagbearer`) and its `{8,}`
-    length floor (a `Bearer v2` PR title)."
-  - "Both mode defenses are separately provable: a freshly created log is 0600 (umask), and a
-    PRE-EXISTING log at 0644 is repaired to 0600 (explicit chmod — `>>` never changes a mode)."
-  - "The mutation claim is SCOPED to an enumerated set, not to `every alternation` — the round-3
-    wording was universal and the Gear-3 gate answered it with five counterexamples. The set now
-    covers the 6 rules, the wide words, the vocabulary prefixes, the bare generics, the value
-    alternations, the optional quantifiers, the lookbehind, both case flags, the colon separator,
-    the Bearer word-boundary and length floor, the URL userinfo user AND password classes, the
-    `gh[pousr]_` class, the re-added dead alternation, 2 over-match wideners, all 5 non-current
-    permutations of rules 2/3/4, redact-before-truncate and both mode defenses:
-    63 mutants, 62 killed, 1 equivalent (excluded from the score -- proven unkillable, not an unkilled hole)."
-  - "The test is actually EXECUTED by a workflow, not merely referenced."
+  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
+    shows the Canon and Live lines using the hyphen form.'
+  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
+    == 0 (underscore form gone).'
+  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
+  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
+    declared; this PR only fixes the wrapper's self-description)."
+  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
+    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
+    needed or performed.'
 consumer_map:
-  - "`.claude/hooks/codex-spalla-trigger.sh` — runs on every PostToolUse event in this repo, via
-    `${CLAUDE_PROJECT_DIR}/.claude/hooks/` in settings.json. No HOME fork exists (checked)."
-  - "`~/logs/codex-spalla-trigger.jsonl` — the leak surface; already contained at 0600."
-  - "`.codex/hooks/codex-spalla-trigger.sh` — an identical UNTRACKED copy exists in the main
-    checkout only. Not in this diff because git does not track it; flagged in residual_risks."
+  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
+    agent reading its header is the only consumer of the changed lines."
+  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
+    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
+    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
+    Confirmed by reading the line: it does not touch this already-born organ."
+  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
+  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
+    the header comment is repo-side documentation only, the live file's own header will match
+    once this lands and the deploy pattern for this pair (already-armed organ, header-only
+    change) next syncs it — no urgency, no functional drift in the meantime."
 risks:
-  - "The already-leaked material is NOT invalidated by this diff: 1 whole-token-length run plus 2
-    truncation-clipped partials. Rotation is a credential action only the owner can perform;
-    containment (0600) is done, rotation is not."
-  - "hook-innocence-gate.yml's path filter does not cover `.claude/hooks/` at all. Widening it is a
-    behaviour change with its own blast radius and is deliberately NOT done here."
-  - 'SURVIVING UNDER-MATCH, named because a redactor that claims a closed class is worse than one
-    that names its holes: (a) `<any-prefix>KEY=` outside the vocabulary — `PUBKEY=`, `M5KEY=`,
-    `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak in full, the deliberate price of keeping
-    `monkey=patch` innocent; measured on the live log, 40 distinct names / 136 occurrences that the
-    substring version caught and this one does not, most of them that version''s own over-match;
-    (b) credential words outside the six — `--pin=`, `--otp=`, `--salt=`, `--cookie=`;
-    (c) `Authorization:` with anything but `Bearer` (`Basic <b64>`, opaque token);
-    (d) RE-LABELLED 2026-08-22 — the old title `a POSITIONAL secret with no name` was contradicted
-    by its own example. The class is a secret NOT JOINED TO A CREDENTIAL-ISH NAME BY `=` OR `:`, and
-    it includes every `--flag <value>` form, because rule 2 needs the separator between name and
-    value and a SPACE there defeats it: `gh auth login --token <v>`, `mytool --api-key <v>`,
-    `mysql --password <v>`, `echo <v> | gh secret set FOO`, plus the genuinely nameless
-    `mytool deploy <v>` / `mysql -p<v>`, plus `curl -u admin:<v>` and `curl --user admin:<v>`
-    (which carry a `:` but hang it off a USERNAME);
-    (e) an UNQUOTED value containing a space (first word only);
-    (f) NEW — the UNDER-MATCH half of the dot-lookbehind, which every artifact had described only as
-    over-match protection: a SINGLE-SEGMENT attribute assignment leaks in full (`c.token = "<v>"`,
-    `jq ''.password = "<v>"''`), while multi-segment names are still caught (`cfg.api_key`);
-    (g) NEW — an INDEX between name and separator (`SECRETS[0]=<v>`, `TOKEN[0]=<v>`).
-    Each of these was driven through the real hook, not reasoned about.'
-  - "OVER-MATCH (cicatrix #3): the match has no notion of whether a value is actually secret, and the
-    damage is not confined to the value — it also swallows the rest of an unquoted value and rewrites
-    the separator to `=`. Measured on the live log: this matcher rewrites 2291 lines
-    (0.686% of 333,832 at 2026-08-21T22:49:57Z), MORE than the 1875 (0.562%) of the substring version
-    it replaces, along different axes. Accepted deliberately: over-redacting a non-secret beats
-    under-redacting a real one. TWO SHAPES BELONGING TO RULES 3 AND 4 were undisclosed until the
-    round-4 gate: the bare `Bearer` alternation eats the next >=8-char run in ANY prose (a PR title
-    or a commit message containing the word `bearer` is mangled — and `gh pr create` is trigger rule
-    1 of this very hook), and rule 3 redacts a PORT sitting in the userinfo PASSWORD position. Both
-    DISCLOSED, not fixed; the port carve-out was rejected on a number (0 of 367 live URL-userinfo
-    matches have an all-digit password, so it would fix nothing real and open an under-match on any
-    numeric credential)."
-grader: independent-review-session (fresh context, not the author) + a full 63-mutant re-run
-budget: ~2 subagents, no council
+  - "None identified to the running organ: the change is comment-only, `set -u` and all
+    executable lines are byte-identical before/after."
+  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
+    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
+    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
+    a lint-blocking drift."
+grader:
+  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
+  review of this exact diff, dispatched fresh, not the author
+budget: 1 external review seat, no council (task does not warrant one)
 pii: none
