@@ -1,0 +1,148 @@
+# HELD 2026-08-23 -- FIX 4 (sponsor-status value check) test class, removed from
+# test_seq13_rules_pack.py in step with the cure/manifest entries being pulled into
+# HELD-fix4-sponsor-status-2026-08-23.json (same directory tree, one level up in
+# doctrine-factory/e5/inc6-pack-edits/). Reason: team-lead found the FOLDED ARTIFACT
+# still contained Fix 4 despite two chat-only "holding" messages -- a hold that lives
+# only in a message is not a hold; the artifact and the test suite have to say so too.
+# This file is NOT collected by pytest (.py.txt extension, not .py) -- it is verbatim
+# preserved source, paste back into test_seq13_rules_pack.py (restoring imports/module-
+# level context already present there) once Fix 4 is re-armed. See the HELD json's own
+# _comment for the three open questions that gate re-arming.
+
+# ---------------------------------------------------------------------------
+# (f) evaluator witnesses — sponsor-status value check, 4 products (Fix 4)
+# ---------------------------------------------------------------------------
+
+#: rule_id pairs (plus E31J's advisory third rule) per product, and the base
+#: facts each product's rules need BESIDES `family.sponsor_status_code` to
+#: reach their support rules at all.
+_SPONSOR_STATUS_PRODUCTS: dict[str, dict[str, Any]] = {
+    "E31B": {
+        "base": {
+            "intent.purposes": _known(["FAMILY"]),
+            "family.relation_to_sponsor": _known("SPOUSE"),
+            "family.marriage_registered": _known(True),
+        },
+        "support_rule_ids": {"el.e31b-spouse-itas-support", "el.e31b-sponsor-itas-itap"},
+    },
+    "E31E": {
+        "base": {
+            "intent.purposes": _known(["FAMILY"]),
+            "family.relation_to_sponsor": _known("PARENT"),
+            # baseline person.birth_date is 1990-01-01 (adult) — E31E's rules
+            # require derived.age_years < 18, so a minor birth_date is a
+            # required override, not incidental. A minor applicant also
+            # trips the GLOBAL_PREPASS minor-guardian review gate unless
+            # family.sponsor_confirmed is explicitly true (house pattern,
+            # test_evaluator_gold.py persona 6) — required here too, or
+            # every E31E case resolves REVIEW/MINOR_WITHOUT_CONFIRMED_
+            # GUARDIAN before the product-level rules are even consulted.
+            "person.birth_date": _known("2015-01-01"),
+            "person.marital_status": _known("SINGLE"),
+            "family.sponsor_confirmed": _known(True),
+        },
+        "support_rule_ids": {"el.e31e-child-itas-support", "el.e31e-sponsor-itas-itap"},
+    },
+    "E31H": {
+        "base": {
+            "intent.purposes": _known(["FAMILY"]),
+            "family.relation_to_sponsor": _known("CHILD"),
+        },
+        "support_rule_ids": {"el.e31h-parent-itas-child-support", "el.e31h-sponsor-itas-itap"},
+    },
+    "E31J": {
+        "base": {
+            "intent.purposes": _known(["FAMILY"]),
+            "family.relation_to_sponsor": _known("SIBLING"),
+            # baseline person.birth_date (1990-01-01, adult) already
+            # satisfies el.e31j-dependency-age's derived.age_years >= 18
+            # leg, so that advisory rule fires alongside the other two.
+        },
+        "support_rule_ids": {
+            "el.e31j-sibling-itas-support",
+            "el.e31j-sponsor-itas-itap",
+            "el.e31j-dependency-age",
+        },
+    },
+}
+
+#: A real, in-catalog visit-visa code — exactly the "any non-empty string
+#: passes" shape team-lead named: a legitimate status code, just not one of
+#: the three that mean "sponsor holds ITAS/ITAP/approved-VITAS".
+_NON_ENUM_SPONSOR_STATUS = "C1"
+_VALID_SPONSOR_STATUSES = ("ITAS_ACTIVE", "ITAP_ACTIVE", "VITAS_APPROVED")
+
+
+class TestSponsorStatusValueCheckWitnesses:
+    """Grading standard is stricter here (team-lead, explicit): guilt per
+    product (4) AND innocence per product PER enum value (12) — a
+    tightening that also excludes a legitimate ITAS/ITAP/VITAS sponsor is a
+    worse defect than the one it cures, so every one of the three values
+    gets its own witness, never a single representative."""
+
+    @pytest.mark.parametrize("product_code", sorted(_SPONSOR_STATUS_PRODUCTS))
+    def test_guilt_non_enum_status_code_is_unsupported(
+        self, seq13: compiler.CompiledRulePack, product_code: str
+    ) -> None:
+        spec = _SPONSOR_STATUS_PRODUCTS[product_code]
+        proof = _proof(
+            seq13,
+            product_code,
+            {**spec["base"], "family.sponsor_status_code": _known(_NON_ENUM_SPONSOR_STATUS)},
+        )
+        assert proof.status is ProductProofStatus.UNSUPPORTED, product_code
+        assert proof.support_rules == (), product_code
+
+    @pytest.mark.parametrize("product_code", sorted(_SPONSOR_STATUS_PRODUCTS))
+    def test_pinned_seq12_defect_non_enum_status_code_was_supported(
+        self, seq12: compiler.CompiledRulePack, product_code: str
+    ) -> None:
+        """Pinned so the fix is measurable — if this ever starts failing,
+        seq-12's bytes changed. Reproduces team-lead's own finding: `op:
+        known` accepts ANY non-empty string, so a visit-visa code like `C1`
+        (not ITAS/ITAP/VITAS) reached SUPPORTED on seq-12."""
+        spec = _SPONSOR_STATUS_PRODUCTS[product_code]
+        proof = _proof(
+            seq12,
+            product_code,
+            {**spec["base"], "family.sponsor_status_code": _known(_NON_ENUM_SPONSOR_STATUS)},
+        )
+        assert proof.status is ProductProofStatus.SUPPORTED, product_code
+        assert {r.rule_id for r in proof.support_rules} == spec["support_rule_ids"], product_code
+
+    @pytest.mark.parametrize("product_code", sorted(_SPONSOR_STATUS_PRODUCTS))
+    @pytest.mark.parametrize("status_value", _VALID_SPONSOR_STATUSES)
+    def test_innocence_each_valid_status_still_supported(
+        self, seq13: compiler.CompiledRulePack, product_code: str, status_value: str
+    ) -> None:
+        """12 cases (4 products x 3 statuses), written explicitly per the
+        team-lead's grading standard — the VITAS fallback is an explicit
+        statutory exception in all four source articles (Pasal 44(3)/47(3)/
+        50(3)/50A(3)); dropping it would exclude applicants the law
+        admits, which is a worse defect than the one being cured."""
+        spec = _SPONSOR_STATUS_PRODUCTS[product_code]
+        proof = _proof(
+            seq13,
+            product_code,
+            {**spec["base"], "family.sponsor_status_code": _known(status_value)},
+        )
+        assert proof.status is ProductProofStatus.SUPPORTED, (product_code, status_value)
+        assert {r.rule_id for r in proof.support_rules} == spec["support_rule_ids"], (
+            product_code,
+            status_value,
+        )
+
+    @pytest.mark.parametrize("product_code", sorted(_SPONSOR_STATUS_PRODUCTS))
+    def test_tristate_unknown_status_blocks_never_grants(
+        self, seq13: compiler.CompiledRulePack, product_code: str
+    ) -> None:
+        spec = _SPONSOR_STATUS_PRODUCTS[product_code]
+        proof = _proof(
+            seq13,
+            product_code,
+            {**spec["base"], "family.sponsor_status_code": gf.unknown("NOT_ASKED")},
+        )
+        assert proof.status is ProductProofStatus.BLOCKED_UNKNOWN, product_code
+        assert proof.status is not ProductProofStatus.SUPPORTED, product_code
+
+
