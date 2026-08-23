@@ -286,7 +286,7 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         processing_days=30,
         lead_time_days=120,
         recommended_start_days=150,
-        renewal_pricing_key="E33E Second Home Senior (5 Years, Altus/Onshore)",
+        renewal_pricing_key="E33E Second Home Senior (5 Years)",
         required_docs=(
             "valid_passport",
             "current_itas_card",
