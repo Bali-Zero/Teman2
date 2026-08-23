@@ -1,0 +1,499 @@
+{
+  "_comment": "E5 increment 6 (seq-13), rules-only half. TWO fixes SHIP in this cure file as of 2026-08-23; a third (FIX 4) was built, then HELD OUT after team-lead found the folded artifact still contained it despite chat-only hold messages -- its cure entries live in HELD-fix4-sponsor-status-2026-08-23.json (same directory), not here, so the artifact and the message agree. Compiled through inc6-rule-manifest.json against the SAME claim ledgers (e2a-claim-ledger.md for CL-D12-02, inc4-c2-e31c-claim-ledger.md for CL-E31C-03/CL-E31C-04). Applied by fold_pack_seq13_rules.py with ledger-drift checks on every current_value, against the seq-12 SOURCE bytes. FIX 1 (E31C nationality leg): 1 rule_edit + 1 insertion (hf.e31c-sponsor-not-indonesian). FIX 3 (D12, REVERSED 2026-08-23 per owner ruling and v2-d12 handoff (d12-removal-handoff.md) -- the original direction in this fold ADDED the ungrounded investment.pt_pma_committed conjunct to el.d12-multi-entry-support, which was backwards; the correction REMOVES that same conjunct from the 5 siblings that carried it (el.d12-passport-validity/funds-usd-5000/cv-required/itinerary-required/support-letter), leaving el.d12-multi-entry-support untouched exactly as seq-12 had it): 10 rule_edits (when + required_facts x5). FIX 4 (sponsor-status value check, E31B/E31E/E31H/E31J, 9 rules) is HELD -- see HELD-fix4-sponsor-status-2026-08-23.json for the full grounding, the KNOWN SCOPE GAP disclosure it already carried (Pasal 33(7) permit-basis axis), and the NEW open question that triggered the hold (Pasal 116(2)-(3)/180 pending-ITAS-renewal protection -- the closed 3-value enum may have no slot for that applicant). inc6-sponsor-status-claim-ledger.md (CL-SPONSOR-*, Pasal 44/47/50/50A validity requirement, all VERIFIED) stays in _LEDGER_FILES and is unaffected by the hold -- the requirement it grounds is not in question, only whether the 3-value enum is the right expression of it.",
+  "rule_edits": [
+    {
+      "rule_id": "el.e31c-child-mixed-marriage-support",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "PARENT"
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "PARENT"
+          },
+          {
+            "fact": "family.sponsor_nationalities",
+            "op": "intersects",
+            "values": [
+              "ID"
+            ]
+          }
+        ]
+      },
+      "rationale": "This rule alone carries E31C to SUPPORTED for a child of two foreign parents whose marriage happens to be registered (SKILL.md 2026-08-23 LIVE STATE: hit_policy.eligibility is OR-like, so ONE firing SUPPORT rule suffices regardless of the tightened sibling el.e31c-mixed-marriage-parents — proven live against the real evaluator with a positive control that excludes this rule alone). Adds the identical family.sponsor_nationalities ∩ {ID} conjunct the sibling rule already carries (seq-10) — the E31C page requires the application letter from the ayah/ibu Warga Negara Indonesia and the WNI parent's Kartu Keluarga (CL-E31C-03). This rule was simply never touched when CL-E31C-03 was first compiled against the sibling in seq-10; the claim itself is a product-level fact, not scoped to one rule. rule_id, priority, valid_period, effect, on_unknown, source_refs, explanation_key, product_version_ids all preserved verbatim from seq-12."
+    },
+    {
+      "rule_id": "el.e31c-child-mixed-marriage-support",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "family.relation_to_sponsor"
+      ],
+      "new_value": [
+        "family.relation_to_sponsor",
+        "family.sponsor_nationalities",
+        "intent.purposes"
+      ],
+      "rationale": "Re-derived from the new when-clause (alphabetical, matching the compiler's convention — see the identical seq-10 precedent on el.e31c-mixed-marriage-parents)."
+    },
+    {
+      "rule_id": "el.d12-passport-validity",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "op": "neq",
+                "fact": "investment.pt_pma_committed",
+                "value": true
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "fact": "intent.stay_days",
+                "op": "lte",
+                "value": 180
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "INVESTMENT"
+            ]
+          },
+          {
+            "fact": "intent.stay_days",
+            "op": "lte",
+            "value": 180
+          }
+        ]
+      },
+      "rationale": "REVERSAL of this fold's original Fix 3 (2026-08-23, team-lead ruling after v2-d12's independently-verified handoff `d12-removal-handoff.md`): the conjunct removed here was never grounded and was on the WRONG rule family-wide. Doctrine card `research/visa/doctrine-factory/cards/D12.md` §3.15, verbatim: \"Investment requirements. None as an eligibility precondition — D12 is itself the pre-investment-exploration instrument (no capital-commitment fact gates it).\" Coverage matrix `e2a-coverage-matrix.md:66-75` maps every one of these 5 siblings to CL-D12-02 only (the document-requirement claim) — no claim anywhere grounds `pt_pma_committed` on any D12 rule. D1/D2, the same \"docs rule\" family from the same authoring pass, carry this conjunct on ZERO of their 12 combined rules — across all three product families it is the anomaly, 5 rules out of 18, not a convention with one gap. Provenance: entered at seq-6 (PR #3940, commit ac9cc431c, \"a requirement is a condition, not a proof\"), which justifies converting HUMAN_REVIEW rules into ELIGIBILITY/SUPPORT but never justifies this specific fact for D12 — reads as a copy-paste artifact from `el.e28a.investment` (E28A, genuinely capital-gated) carried over during that conversion pass, not a deliberate design choice. Owner ruling (verbatim, team-lead→v2-d12, 2026-08-23): \"se non hai un kitas attivo, certo che puoi\" (no active permit ⇒ CAN apply, regardless of capital status) and \"si, chi ha kitas attivo va escluso da D12\" (the exclusion axis is an ACTIVE STAY PERMIT, tracked separately — PR #4650, not this fold). This fold's own earlier direction (adding the conjunct to `el.d12-multi-entry-support` instead) would have excluded exactly the applicant the first half of that ruling protects — confirmed on the real evaluator by v2-d12's reproducible probe (`d12-removal-handoff.md` §5): union coverage means `el.d12-multi-entry-support` alone already decides SUPPORTED/EXCLUDED unconditionally on `purposes intersects INVESTMENT` ∩ `stay_days<=180`; the 5 siblings' `pt_pma_committed` conjunct never changed that eligibility outcome for anyone — it only starved the reason-code checklist for a PMA-committed applicant (SUPPORTED with zero attached document requirements, the actual defect this reversal fixes). `when` restructured to drop the `investment.pt_pma_committed`-gated outer `all` entirely, leaving the surviving `intent.purposes intersects INVESTMENT` ∧ `intent.stay_days<=180` gate byte-identical in shape to `el.d12-multi-entry-support`'s own (untouched) `when`. rule_id, priority, valid_period, effect, on_unknown, source_refs, explanation_key, product_version_ids all preserved verbatim from seq-12."
+    },
+    {
+      "rule_id": "el.d12-passport-validity",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "intent.stay_days",
+        "investment.pt_pma_committed"
+      ],
+      "new_value": [
+        "intent.purposes",
+        "intent.stay_days"
+      ],
+      "rationale": "Re-derived from the pruned when-clause (alphabetical, matching the compiler's convention) — `investment.pt_pma_committed` dropped because the fact is no longer referenced anywhere in this rule's `when` tree after the reversal above."
+    },
+    {
+      "rule_id": "el.d12-funds-usd-5000",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "op": "neq",
+                "fact": "investment.pt_pma_committed",
+                "value": true
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "fact": "intent.stay_days",
+                "op": "lte",
+                "value": 180
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "INVESTMENT"
+            ]
+          },
+          {
+            "fact": "intent.stay_days",
+            "op": "lte",
+            "value": 180
+          }
+        ]
+      },
+      "rationale": "REVERSAL of this fold's original Fix 3 (2026-08-23, team-lead ruling after v2-d12's independently-verified handoff `d12-removal-handoff.md`): the conjunct removed here was never grounded and was on the WRONG rule family-wide. Doctrine card `research/visa/doctrine-factory/cards/D12.md` §3.15, verbatim: \"Investment requirements. None as an eligibility precondition — D12 is itself the pre-investment-exploration instrument (no capital-commitment fact gates it).\" Coverage matrix `e2a-coverage-matrix.md:66-75` maps every one of these 5 siblings to CL-D12-02 only (the document-requirement claim) — no claim anywhere grounds `pt_pma_committed` on any D12 rule. D1/D2, the same \"docs rule\" family from the same authoring pass, carry this conjunct on ZERO of their 12 combined rules — across all three product families it is the anomaly, 5 rules out of 18, not a convention with one gap. Provenance: entered at seq-6 (PR #3940, commit ac9cc431c, \"a requirement is a condition, not a proof\"), which justifies converting HUMAN_REVIEW rules into ELIGIBILITY/SUPPORT but never justifies this specific fact for D12 — reads as a copy-paste artifact from `el.e28a.investment` (E28A, genuinely capital-gated) carried over during that conversion pass, not a deliberate design choice. Owner ruling (verbatim, team-lead→v2-d12, 2026-08-23): \"se non hai un kitas attivo, certo che puoi\" (no active permit ⇒ CAN apply, regardless of capital status) and \"si, chi ha kitas attivo va escluso da D12\" (the exclusion axis is an ACTIVE STAY PERMIT, tracked separately — PR #4650, not this fold). This fold's own earlier direction (adding the conjunct to `el.d12-multi-entry-support` instead) would have excluded exactly the applicant the first half of that ruling protects — confirmed on the real evaluator by v2-d12's reproducible probe (`d12-removal-handoff.md` §5): union coverage means `el.d12-multi-entry-support` alone already decides SUPPORTED/EXCLUDED unconditionally on `purposes intersects INVESTMENT` ∩ `stay_days<=180`; the 5 siblings' `pt_pma_committed` conjunct never changed that eligibility outcome for anyone — it only starved the reason-code checklist for a PMA-committed applicant (SUPPORTED with zero attached document requirements, the actual defect this reversal fixes). `when` restructured to drop the `investment.pt_pma_committed`-gated outer `all` entirely, leaving the surviving `intent.purposes intersects INVESTMENT` ∧ `intent.stay_days<=180` gate byte-identical in shape to `el.d12-multi-entry-support`'s own (untouched) `when`. rule_id, priority, valid_period, effect, on_unknown, source_refs, explanation_key, product_version_ids all preserved verbatim from seq-12."
+    },
+    {
+      "rule_id": "el.d12-funds-usd-5000",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "intent.stay_days",
+        "investment.pt_pma_committed"
+      ],
+      "new_value": [
+        "intent.purposes",
+        "intent.stay_days"
+      ],
+      "rationale": "Re-derived from the pruned when-clause (alphabetical, matching the compiler's convention) — `investment.pt_pma_committed` dropped because the fact is no longer referenced anywhere in this rule's `when` tree after the reversal above."
+    },
+    {
+      "rule_id": "el.d12-cv-required",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "op": "neq",
+                "fact": "investment.pt_pma_committed",
+                "value": true
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "fact": "intent.stay_days",
+                "op": "lte",
+                "value": 180
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "INVESTMENT"
+            ]
+          },
+          {
+            "fact": "intent.stay_days",
+            "op": "lte",
+            "value": 180
+          }
+        ]
+      },
+      "rationale": "REVERSAL of this fold's original Fix 3 (2026-08-23, team-lead ruling after v2-d12's independently-verified handoff `d12-removal-handoff.md`): the conjunct removed here was never grounded and was on the WRONG rule family-wide. Doctrine card `research/visa/doctrine-factory/cards/D12.md` §3.15, verbatim: \"Investment requirements. None as an eligibility precondition — D12 is itself the pre-investment-exploration instrument (no capital-commitment fact gates it).\" Coverage matrix `e2a-coverage-matrix.md:66-75` maps every one of these 5 siblings to CL-D12-02 only (the document-requirement claim) — no claim anywhere grounds `pt_pma_committed` on any D12 rule. D1/D2, the same \"docs rule\" family from the same authoring pass, carry this conjunct on ZERO of their 12 combined rules — across all three product families it is the anomaly, 5 rules out of 18, not a convention with one gap. Provenance: entered at seq-6 (PR #3940, commit ac9cc431c, \"a requirement is a condition, not a proof\"), which justifies converting HUMAN_REVIEW rules into ELIGIBILITY/SUPPORT but never justifies this specific fact for D12 — reads as a copy-paste artifact from `el.e28a.investment` (E28A, genuinely capital-gated) carried over during that conversion pass, not a deliberate design choice. Owner ruling (verbatim, team-lead→v2-d12, 2026-08-23): \"se non hai un kitas attivo, certo che puoi\" (no active permit ⇒ CAN apply, regardless of capital status) and \"si, chi ha kitas attivo va escluso da D12\" (the exclusion axis is an ACTIVE STAY PERMIT, tracked separately — PR #4650, not this fold). This fold's own earlier direction (adding the conjunct to `el.d12-multi-entry-support` instead) would have excluded exactly the applicant the first half of that ruling protects — confirmed on the real evaluator by v2-d12's reproducible probe (`d12-removal-handoff.md` §5): union coverage means `el.d12-multi-entry-support` alone already decides SUPPORTED/EXCLUDED unconditionally on `purposes intersects INVESTMENT` ∩ `stay_days<=180`; the 5 siblings' `pt_pma_committed` conjunct never changed that eligibility outcome for anyone — it only starved the reason-code checklist for a PMA-committed applicant (SUPPORTED with zero attached document requirements, the actual defect this reversal fixes). `when` restructured to drop the `investment.pt_pma_committed`-gated outer `all` entirely, leaving the surviving `intent.purposes intersects INVESTMENT` ∧ `intent.stay_days<=180` gate byte-identical in shape to `el.d12-multi-entry-support`'s own (untouched) `when`. rule_id, priority, valid_period, effect, on_unknown, source_refs, explanation_key, product_version_ids all preserved verbatim from seq-12."
+    },
+    {
+      "rule_id": "el.d12-cv-required",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "intent.stay_days",
+        "investment.pt_pma_committed"
+      ],
+      "new_value": [
+        "intent.purposes",
+        "intent.stay_days"
+      ],
+      "rationale": "Re-derived from the pruned when-clause (alphabetical, matching the compiler's convention) — `investment.pt_pma_committed` dropped because the fact is no longer referenced anywhere in this rule's `when` tree after the reversal above."
+    },
+    {
+      "rule_id": "el.d12-itinerary-required",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "op": "neq",
+                "fact": "investment.pt_pma_committed",
+                "value": true
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "fact": "intent.stay_days",
+                "op": "lte",
+                "value": 180
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "INVESTMENT"
+            ]
+          },
+          {
+            "fact": "intent.stay_days",
+            "op": "lte",
+            "value": 180
+          }
+        ]
+      },
+      "rationale": "REVERSAL of this fold's original Fix 3 (2026-08-23, team-lead ruling after v2-d12's independently-verified handoff `d12-removal-handoff.md`): the conjunct removed here was never grounded and was on the WRONG rule family-wide. Doctrine card `research/visa/doctrine-factory/cards/D12.md` §3.15, verbatim: \"Investment requirements. None as an eligibility precondition — D12 is itself the pre-investment-exploration instrument (no capital-commitment fact gates it).\" Coverage matrix `e2a-coverage-matrix.md:66-75` maps every one of these 5 siblings to CL-D12-02 only (the document-requirement claim) — no claim anywhere grounds `pt_pma_committed` on any D12 rule. D1/D2, the same \"docs rule\" family from the same authoring pass, carry this conjunct on ZERO of their 12 combined rules — across all three product families it is the anomaly, 5 rules out of 18, not a convention with one gap. Provenance: entered at seq-6 (PR #3940, commit ac9cc431c, \"a requirement is a condition, not a proof\"), which justifies converting HUMAN_REVIEW rules into ELIGIBILITY/SUPPORT but never justifies this specific fact for D12 — reads as a copy-paste artifact from `el.e28a.investment` (E28A, genuinely capital-gated) carried over during that conversion pass, not a deliberate design choice. Owner ruling (verbatim, team-lead→v2-d12, 2026-08-23): \"se non hai un kitas attivo, certo che puoi\" (no active permit ⇒ CAN apply, regardless of capital status) and \"si, chi ha kitas attivo va escluso da D12\" (the exclusion axis is an ACTIVE STAY PERMIT, tracked separately — PR #4650, not this fold). This fold's own earlier direction (adding the conjunct to `el.d12-multi-entry-support` instead) would have excluded exactly the applicant the first half of that ruling protects — confirmed on the real evaluator by v2-d12's reproducible probe (`d12-removal-handoff.md` §5): union coverage means `el.d12-multi-entry-support` alone already decides SUPPORTED/EXCLUDED unconditionally on `purposes intersects INVESTMENT` ∩ `stay_days<=180`; the 5 siblings' `pt_pma_committed` conjunct never changed that eligibility outcome for anyone — it only starved the reason-code checklist for a PMA-committed applicant (SUPPORTED with zero attached document requirements, the actual defect this reversal fixes). `when` restructured to drop the `investment.pt_pma_committed`-gated outer `all` entirely, leaving the surviving `intent.purposes intersects INVESTMENT` ∧ `intent.stay_days<=180` gate byte-identical in shape to `el.d12-multi-entry-support`'s own (untouched) `when`. rule_id, priority, valid_period, effect, on_unknown, source_refs, explanation_key, product_version_ids all preserved verbatim from seq-12."
+    },
+    {
+      "rule_id": "el.d12-itinerary-required",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "intent.stay_days",
+        "investment.pt_pma_committed"
+      ],
+      "new_value": [
+        "intent.purposes",
+        "intent.stay_days"
+      ],
+      "rationale": "Re-derived from the pruned when-clause (alphabetical, matching the compiler's convention) — `investment.pt_pma_committed` dropped because the fact is no longer referenced anywhere in this rule's `when` tree after the reversal above."
+    },
+    {
+      "rule_id": "el.d12-support-letter",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "op": "neq",
+                "fact": "investment.pt_pma_committed",
+                "value": true
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "INVESTMENT"
+                ]
+              },
+              {
+                "fact": "intent.stay_days",
+                "op": "lte",
+                "value": 180
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "INVESTMENT"
+            ]
+          },
+          {
+            "fact": "intent.stay_days",
+            "op": "lte",
+            "value": 180
+          }
+        ]
+      },
+      "rationale": "REVERSAL of this fold's original Fix 3 (2026-08-23, team-lead ruling after v2-d12's independently-verified handoff `d12-removal-handoff.md`): the conjunct removed here was never grounded and was on the WRONG rule family-wide. Doctrine card `research/visa/doctrine-factory/cards/D12.md` §3.15, verbatim: \"Investment requirements. None as an eligibility precondition — D12 is itself the pre-investment-exploration instrument (no capital-commitment fact gates it).\" Coverage matrix `e2a-coverage-matrix.md:66-75` maps every one of these 5 siblings to CL-D12-02 only (the document-requirement claim) — no claim anywhere grounds `pt_pma_committed` on any D12 rule. D1/D2, the same \"docs rule\" family from the same authoring pass, carry this conjunct on ZERO of their 12 combined rules — across all three product families it is the anomaly, 5 rules out of 18, not a convention with one gap. Provenance: entered at seq-6 (PR #3940, commit ac9cc431c, \"a requirement is a condition, not a proof\"), which justifies converting HUMAN_REVIEW rules into ELIGIBILITY/SUPPORT but never justifies this specific fact for D12 — reads as a copy-paste artifact from `el.e28a.investment` (E28A, genuinely capital-gated) carried over during that conversion pass, not a deliberate design choice. Owner ruling (verbatim, team-lead→v2-d12, 2026-08-23): \"se non hai un kitas attivo, certo che puoi\" (no active permit ⇒ CAN apply, regardless of capital status) and \"si, chi ha kitas attivo va escluso da D12\" (the exclusion axis is an ACTIVE STAY PERMIT, tracked separately — PR #4650, not this fold). This fold's own earlier direction (adding the conjunct to `el.d12-multi-entry-support` instead) would have excluded exactly the applicant the first half of that ruling protects — confirmed on the real evaluator by v2-d12's reproducible probe (`d12-removal-handoff.md` §5): union coverage means `el.d12-multi-entry-support` alone already decides SUPPORTED/EXCLUDED unconditionally on `purposes intersects INVESTMENT` ∩ `stay_days<=180`; the 5 siblings' `pt_pma_committed` conjunct never changed that eligibility outcome for anyone — it only starved the reason-code checklist for a PMA-committed applicant (SUPPORTED with zero attached document requirements, the actual defect this reversal fixes). `when` restructured to drop the `investment.pt_pma_committed`-gated outer `all` entirely, leaving the surviving `intent.purposes intersects INVESTMENT` ∧ `intent.stay_days<=180` gate byte-identical in shape to `el.d12-multi-entry-support`'s own (untouched) `when`. rule_id, priority, valid_period, effect, on_unknown, source_refs, explanation_key, product_version_ids all preserved verbatim from seq-12."
+    },
+    {
+      "rule_id": "el.d12-support-letter",
+      "field": "required_facts",
+      "current_value": [
+        "intent.purposes",
+        "intent.stay_days",
+        "investment.pt_pma_committed"
+      ],
+      "new_value": [
+        "intent.purposes",
+        "intent.stay_days"
+      ],
+      "rationale": "Re-derived from the pruned when-clause (alphabetical, matching the compiler's convention) — `investment.pt_pma_committed` dropped because the fact is no longer referenced anywhere in this rule's `when` tree after the reversal above."
+    }
+  ],
+  "insertions": [
+    {
+      "rule_id": "hf.e31c-sponsor-not-indonesian",
+      "stage": "HARD_FILTER",
+      "scope": "PRODUCTS",
+      "priority": 100,
+      "valid_period": {
+        "from": "2026-08-23T00:00:00Z",
+        "to": null
+      },
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "PARENT"
+          },
+          {
+            "op": "not",
+            "arg": {
+              "fact": "family.sponsor_nationalities",
+              "op": "intersects",
+              "values": [
+                "ID"
+              ]
+            }
+          }
+        ]
+      },
+      "effect": {
+        "type": "EXCLUDE",
+        "reason_code": "REQ_PARENT_SPONSOR_INDONESIAN"
+      },
+      "on_unknown": "NEEDS_INPUT",
+      "required_facts": [
+        "family.relation_to_sponsor",
+        "family.sponsor_nationalities",
+        "intent.purposes"
+      ],
+      "source_refs": [
+        "40523028-431b-5ae0-a937-277882f0f243",
+        "e3572ad2-08a9-55bd-b818-353b3e9db715"
+      ],
+      "explanation_key": "explain.hf.e31c-sponsor-not-indonesian",
+      "safety_critical": true,
+      "product_version_ids": [
+        "62ab2d13-1d7e-5048-9cf7-9622c0098439"
+      ],
+      "_new_rule_rationale": "The tightened el.e31c-child-mixed-marriage-support alone changes nothing observable if a FUTURE untouched sibling SUPPORT rule is ever added to E31C without the nationality conjunct — exactly the class of gap this whole audit exists to close (SKILL.md: 'audit the class', not 'patch one rule'). This HARD_FILTER mirrors hf.e31c-marriage-not-registered's exact shape (seq-10): EXCLUDE + safety_critical:true + NEEDS_INPUT on unknown, so the tri-state ASKS rather than assumes. HARD_FILTER stage runs before any SUPPORT rule is even consulted (engine precedence, confirmed live by SKILL.md's 2026-08-23 positive-control run), so this filter protects the product regardless of which SUPPORT rule tries to grant it. Scoped to purposes∩FAMILY + relation==PARENT (not a bare nationality leaf) for the identical reason hf.e31c-marriage-not-registered is so scoped: an unscoped leaf would contaminate non-E31C-shaped applicants whose sponsor_nationalities happens to be known-non-ID for an unrelated reason. valid_period.from is this fold's own creation date (2026-08-23), matching the standing convention for corrective rules inserted after the pack's original 2026-07-24 baseline (same convention hf.e31c-marriage-not-registered used with its own 2026-08-19 insertion date)."
+    }
+  ]
+}

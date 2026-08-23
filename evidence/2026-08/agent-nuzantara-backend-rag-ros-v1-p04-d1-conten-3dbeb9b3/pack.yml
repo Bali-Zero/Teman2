@@ -1,0 +1,273 @@
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D1 canonical ContentObject/MediaManifest (CONTRACTS.md sections 9-10), PR #4643 (2026-08-23)"
+diff:
+  net_lines: >-
+    +4264/-0, 53 files -- the PR's actual product diff, unchanged by the merge below (main's new
+    commits never touched packages/research-os-core, per the loss-check receipts). The PR's two
+    content commits are 126f7a000 (original build) and cf34c8ad7 (independent-review fix, see
+    dissent below). HEAD is now a merge commit that additionally resolves a real conflict against
+    origin/main (which had advanced to b72f1885f, PR #4654 -- also a fixed-root-path evidence
+    writer) on evidence/brief.yml and evidence/pack.yml only; this PR's own content won via git
+    checkout --ours, per the merge-resolution receipts below.
+  behaviour_change: >-
+    New library package surface only (packages/research-os-core): two new frozen Pydantic models
+    (ContentObject, MediaManifest), their generated JSON Schemas, fixtures, tests, and
+    registration in cli.py/models/__init__.py/schemas/__init__.py. No existing code path is
+    modified; nothing is deployed as a running service.
+receipts:
+  - claim: >-
+      The committed (pre-edit) evidence/brief.yml and evidence/pack.yml at HEAD describe foreign
+      PR #4592 (task_id ops-visaoracle-wrapper-header-0823, a wrapper-header comment fix), not
+      this PR -- confirming the premise before acting on it, not trusting it on say-so
+    cmd: >-
+      git show HEAD:evidence/pack.yml | head -3 ; git show HEAD:evidence/brief.yml | grep -m1
+      task_id:
+    exit: 0
+    ts: "2026-08-23T10:02:51Z"
+    seat: "session (pro)"
+  - claim: "This PR's real diff is 53 files, +4264/-0 net lines, merge-base bc323dde9 vs HEAD f36ba58e6"
+    cmd: >-
+      MB=$(git merge-base HEAD origin/main); git diff --name-only "$MB" HEAD | wc -l; git diff
+      --numstat "$MB" HEAD | awk '{a+=$1;d+=$2} END{print a"-"d"="a-d}'
+    exit: 0
+    ts: "2026-08-23T09:58:10Z"
+    seat: "session (pro)"
+  - claim: >-
+      research_os.cli fixtures --check passes clean on the full fixture tree (137 fixtures, 0
+      failures) -- covers every kind registered in CONTRACT_MODELS, ContentObject/MediaManifest
+      included
+    cmd: "cd packages/research-os-core && PYTHONPATH=. <venv>/python -m research_os.cli fixtures --check"
+    exit: 0
+    ts: "2026-08-23T09:58:40Z"
+    seat: "session (pro)"
+  - claim: >-
+      The full research_os unit-test suite (backend/tests/unit/research_os, includes
+      test_content_object.py and test_media_manifest.py) passes clean
+    cmd: "cd apps/backend-rag && PYTHONPATH=. <venv>/python -m pytest backend/tests/unit/research_os -q"
+    exit: 0
+    ts: "2026-08-23T09:59:15Z"
+    seat: "session (pro)"
+  - claim: >-
+      mypy --strict is clean on all 7 touched Python files (2 model files, cli.py, 2 __init__.py
+      registration files, 2 test files)
+    cmd: >-
+      <venv>/python -m mypy --strict
+      apps/backend-rag/backend/tests/unit/research_os/test_content_object.py
+      apps/backend-rag/backend/tests/unit/research_os/test_media_manifest.py
+      packages/research-os-core/research_os/cli.py
+      packages/research-os-core/research_os/models/__init__.py
+      packages/research-os-core/research_os/models/content_object.py
+      packages/research-os-core/research_os/models/media_manifest.py
+      packages/research-os-core/research_os/schemas/__init__.py
+    exit: 0
+    ts: "2026-08-23T09:59:50Z"
+    seat: "session (pro)"
+  - claim: "ruff check is clean on the same 7 touched files"
+    cmd: "<venv>/python -m ruff check <the same 7 files>"
+    exit: 0
+    ts: "2026-08-23T10:00:05Z"
+    seat: "session (pro)"
+  - claim: >-
+      ruff format --check is RED on 1 of the 7 files (content_object.py) -- NOT hiding this. `ruff
+      format --diff` shows it wants to wrap the supersedes_ref_is_self comparison onto 3 lines.
+      Independently verified (not transcribed from the prior review commit's claim) that this
+      exact line was already present, unchanged, in 126f7a000 -- the ORIGINAL build commit, before
+      the independent-review fix commit cf34c8ad7 ever touched the file -- so it predates and is
+      untouched by both content commits of this PR; content_object.py itself does not exist at all
+      on the merge-base with origin/main (it is a wholly new file to this PR), so "pre-existing"
+      here means predating the review-fix, not predating the PR
+    cmd: >-
+      <venv>/python -m ruff format --check <the same 7 files> ; <venv>/python -m ruff format
+      --diff packages/research-os-core/research_os/models/content_object.py ; git show
+      126f7a000:packages/research-os-core/research_os/models/content_object.py | grep -n
+      'supersedes_content_object_ref.content_object_id == self.content_object_id'
+    exit: 1
+    ts: "2026-08-23T10:00:20Z"
+    seat: "session (pro)"
+  - claim: >-
+      The package's own schema self-consistency helpers both report zero drift:
+      checked_in_schemas_match() and validate_schema_artifacts() each return an empty tuple
+    cmd: >-
+      cd packages/research-os-core && PYTHONPATH=. <venv>/python -c "from research_os.schemas
+      import checked_in_schemas_match, validate_schema_artifacts; a=checked_in_schemas_match();
+      b=validate_schema_artifacts(); print(a,b,a==() and b==())"
+    exit: 0
+    ts: "2026-08-23T10:01:10Z"
+    seat: "session (pro)"
+  - claim: >-
+      No sibling-race: the remote branch tip (cf34c8ad7, an independent code-review-fix commit
+      from another lane, pushed concurrently) is already an ancestor of local HEAD -- "git merge"
+      against origin's branch reports Already up to date, confirmed by an independent is-ancestor
+      check both directions before trusting that
+    cmd: >-
+      git fetch origin agent/nuzantara/backend-rag/ros-v1-p04-d1-content && git merge
+      origin/agent/nuzantara/backend-rag/ros-v1-p04-d1-content -m '...' ; git merge-base
+      --is-ancestor cf34c8ad7 HEAD
+    exit: 0
+    ts: "2026-08-23T09:57:20Z"
+    seat: "session (pro)"
+  - claim: >-
+      Confirmed the CONFLICTING mergeability GitHub reported was REAL (main had since absorbed
+      PR #4654, which also touched evidence/brief.yml + evidence/pack.yml at their fixed root
+      paths) -- verified with a real local dry-run merge before believing GitHub's flag, then
+      cleanly aborted it with zero residual changes
+    cmd: >-
+      git fetch origin main ; git merge --no-commit --no-ff origin/main ; git status
+      --porcelain=v1 ; git merge --abort ; git status --porcelain=v1
+    exit: 0
+    ts: "2026-08-23T10:04:30Z"
+    seat: "session (pro)"
+  - claim: >-
+      Resolved the real conflict: merged origin/main (moved further to b72f1885f, PR #4654) into
+      this branch. Only evidence/brief.yml and evidence/pack.yml conflicted; all other files
+      (PENDING-ARMS.md, main-push-failure-watch.yml, wr3-spend-gate-tests.yml,
+      MODEL_ROSTER.md, guard-conformance/registry.json, evidence_pack_lint.py,
+      test_evidence_pack_lint.py) auto-merged clean with zero manual resolution. The two evidence
+      files were resolved with git checkout --ours (this PR's own truthful content wins over
+      #4654's evidence, per instruction)
+    cmd: >-
+      git fetch origin main && git merge origin/main -m '...' ; git status --porcelain=v1 | grep
+      '^UU' ; git checkout --ours evidence/brief.yml evidence/pack.yml && git add
+      evidence/brief.yml evidence/pack.yml
+    exit: 1
+    ts: "2026-08-23T10:09:15Z"
+    seat: "session (pro)"
+  - claim: >-
+      Loss-check on the three registration files after the merge: probe proven ALIVE (non-zero
+      hit counts everywhere, not the "0 kinds on both sides" trap a sibling lane hit earlier
+      today with a from-. pattern against this package's absolute imports). CONTRACT_MODELS
+      (cli.py) = 16 entries, SCHEMA_MODELS (schemas/__init__.py) = 16 entries, __all__
+      (models/__init__.py) = 16 entries -- all three consistent with each other and with the 14
+      pre-existing kinds + content_object + media_manifest = 16. content_object and
+      media_manifest each hit exactly 2 times per file (import line + registry entry) in all
+      three files. No registration file showed a merge conflict at all -- main's new commits
+      (#4654) never touched packages/research-os-core; the auto-merge was clean. NOTHING LOST.
+    cmd: >-
+      awk '/^CONTRACT_MODELS: dict/,/^}/' cli.py | grep -c '": ' ; awk '/^SCHEMA_MODELS:
+      dict/,/^}/' schemas/__init__.py | grep -c '": ' ; awk '/^__all__ = /,/^\]/'
+      models/__init__.py | grep -c '^\s*"' ; grep -c 'content_object\|ContentObject' <each file>
+      ; grep -c 'media_manifest\|MediaManifest' <each file>
+    exit: 0
+    ts: "2026-08-23T10:12:40Z"
+    seat: "session (pro)"
+  - claim: >-
+      Post-merge, on the merged tree: research_os.cli fixtures --check still passes clean (same
+      137/0 as before the merge -- the merge touched zero fixture files)
+    cmd: "cd packages/research-os-core && PYTHONPATH=. <venv>/python -m research_os.cli fixtures --check"
+    exit: 0
+    ts: "2026-08-23T10:13:10Z"
+    seat: "session (pro)"
+  - claim: >-
+      Post-merge, on the merged tree: the full research_os pytest suite still passes clean (the
+      merge touched zero test files)
+    cmd: "cd apps/backend-rag && PYTHONPATH=. <venv>/python -m pytest backend/tests/unit/research_os -q"
+    exit: 0
+    ts: "2026-08-23T10:13:45Z"
+    seat: "session (pro)"
+  - claim: >-
+      scripts/evidence_pack_lint.py changed on origin/main between the two fetches (auto-merged
+      clean into this branch) -- diffed the merged worktree copy against the earlier
+      origin/main-sourced copy this session had already used and confirmed they are
+      byte-identical, so every earlier lint run in this pack remains valid against the current
+      script
+    cmd: "diff /tmp/lint_main.py scripts/evidence_pack_lint.py | wc -l"
+    exit: 0
+    ts: "2026-08-23T10:14:05Z"
+    seat: "session (pro)"
+tests:
+  - >-
+    backend/tests/unit/research_os/test_content_object.py and test_media_manifest.py -- exercised
+    by the pytest receipt above, both pass; content coverage (frozen/extra=forbid enforcement,
+    object_hash stability, revision<->supersedes conditional, QualityCheck immutability) is the
+    subject of the independent-review commit cf34c8ad7, not re-litigated here.
+  - >-
+    research_os.cli fixtures --check is this package's own fixture-corpus gate (>=3 valid + >=3
+    invalid per kind, per the §9/§10 spec) -- 137/137 clean, per receipts above.
+static:
+  - "mypy --strict: clean (7/7 touched files)"
+  - "ruff check: clean (7/7 touched files)"
+  - >-
+    ruff format --check: 1 file would reformat (content_object.py) -- pre-existing wrap on a line
+    untouched by either content commit of this PR, per receipts above. Not fixed in this
+    evidence-only revision (out of the stated scope: evidence/*.yml only); flagged as residual
+    risk.
+  - >-
+    checked_in_schemas_match() / validate_schema_artifacts(): both empty -- the checked-in
+    content_object.schema.json and media_manifest.schema.json byte-match a fresh regeneration.
+runtime_proof:
+  - >-
+    Not applicable in the classic sense: packages/research-os-core is a library with no deployed
+    service of its own. The closest runtime proof is the CLI validator (research_os.cli fixtures
+    --check) actually loading and validating both new models against real fixture JSON through the
+    full Pydantic v2 validation path -- not a mock, not a schema-only check -- confirmed green per
+    receipts above.
+dissent:
+  - seat: >-
+      claude-opus-5 (independent review lane, different Claude session from the original builder,
+      commit cf34c8ad7, 2026-08-23T17:13:02+08:00 -- verified via `git show cf34c8ad7`, not
+      transcribed from an unread claim)
+    objection: >-
+      Adversarially reviewed the original build (commit 126f7a000, authored by a separate
+      claude-sonnet-5 session per its Co-Authored-By trailer -- generator != grader) and confirmed
+      4 real defects: (1) Quality.checks entries were bare mutable dicts inside a frozen tuple, so
+      a MediaManifest's object_hash could go stale after a post-validation mutation the outer
+      frozen=True never blocked -- fixed by making each checks[] entry its own FrozenCoreModel;
+      (2) content_object.schema.json didn't enforce the revision<->supersedes conditional the
+      Python model already enforced -- fixed via a json_schema_extra allOf/if-then pair, verified
+      extra=forbid/frozen=True survive the ConfigDict merge; (3) the happy-path media_manifest
+      fixture silently exercised an undocumented classification-lowering escape -- fixed by
+      raising it to an ordinary specimen and adding a dedicated labeled fixture for the escape
+      case; (4) two test-shape gaps (an assertion against the fixture dict instead of
+      model_fields; missing invalid-fixture coverage for AudioMetadata/IdentityMetadata internals)
+      -- both closed with new tests/fixtures. Also EXPLICITLY reported, not fixed, out of that
+      review's stated scope: ExtensionValue.payload's extension-jail top-level-only coverage,
+      _UTC_OFFSET_PATTERN's missing regex anchor, cli.py's _hash() field-ordering, and
+      cli.py::_check_fixtures() reporting checked:0 (not an error) on an empty tree -- carried
+      forward here as residual risk, not silently dropped.
+    status: CONFIRMED
+  - seat: "session (this lane, evidence-only revision, 2026-08-23)"
+    objection: >-
+      Checked whether declaring 2 Anthropic build lanes (the original builder, claude-sonnet-5,
+      plus the reviewer-who-also-fixed, claude-opus-5) would be the honest lanes: shape -- and
+      concluded it is not: cf34c8ad7's role in this PR's lifecycle was adversarial review that
+      then applied its own confirmed fix, which is the intended generator!=grader pattern
+      (CLAUDE.md ship-lifecycle rule), not a second independent build lane. Declared 1 build + 1
+      review below. Flagging this judgment call rather than asserting it silently, since a
+      different reasonable reader could classify cf34c8ad7 as build; either way there is
+      truthfully only 1 build lane, so the D3 seat-diversity floor (which needs >=2 build lanes to
+      even apply) does not engage regardless of which classification is right.
+    status: PLAUSIBLE
+lanes:
+  - lane: "content-object-media-manifest-build"
+    role: build
+    seat: "claude-sonnet-5"
+  - lane: "pr-4643-adversarial-review-and-fix"
+    role: review
+    seat: "claude-opus-5"
+residual_risks:
+  - >-
+    ruff format --check remains red on content_object.py (pre-existing wrap, not introduced by
+    either content commit) -- out of scope for this evidence-only revision; a trivial follow-up
+    for whichever lane next touches that file.
+  - >-
+    4 items reported by the independent review (cf34c8ad7) and deliberately left unfixed by that
+    same commit remain open: ExtensionValue.payload extension-jail scope, _UTC_OFFSET_PATTERN
+    missing anchor, cli.py _hash() ordering, cli.py::_check_fixtures() empty-tree reporting. None
+    are evidence-pack concerns; tracked here for visibility, not actioned by this revision.
+  - >-
+    Fleet-observed (2026-08-23, cross-machine broadcast from the sibling lane H1/P04, NOT
+    independently re-verified by this revision since it is outside this revision's scope):
+    CONTRACTS.md's approval_subject_kind enum admits
+    media_script_lock/media_shot_lock/content_revision as approvable subjects, but no spec section
+    defines them as first-class objects -- a spec gap unrelated to ContentObject/MediaManifest,
+    for the P04 conductor, not this PR. Flagged for traceability, not verified firsthand.
+sources:
+  - "packages/research-os-core/research_os/models/content_object.py (this PR, commit 126f7a000)"
+  - "packages/research-os-core/research_os/models/media_manifest.py (this PR, commit 126f7a000)"
+  - "commit cf34c8ad7 (independent review + fix, this PR, re-read fresh this session via git show)"
+  - "packages/research-os-core/research_os/schemas/__init__.py (schema self-consistency helpers)"
+  - "Fresh gate runs in this worktree this session (receipts above) -- not recalled from memory"
+pii_scan: clean
+# ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
+# at write time = 16428 bytes -> ~4107 tokens, well inside the 30,000 hard cap.
+size_tokens: 4107

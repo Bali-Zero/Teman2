@@ -1,0 +1,167 @@
+{
+  "_comment": "seq-13 freshness half (E5 increment 7). 18 verified_at/verified_by re-stamps, each backed by a live QW-5-method single-session re-verification recorded in freshness-restamp-2026-08-23.md (verbatim quotes per record). 18/18 UNCHANGED, 0 CHANGED, 0 UNREACHABLE, zero drops, content_sha256 untouched everywhere. PRE-EXPIRY re-stamp: the seq-12 stamps this batch replaces were due 2026-08-27T06:14/06:15Z. Honest timestamp accounting: new_verified_at is a SINGLE PASS-LEVEL STAMP applied at write time, taken via `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment of writing this ledger — NOT 18 individually observed per-source fetch times (no per-source date command was run during the QW-5 verification pass itself). Command and raw output are pasted verbatim in the evidence report \"Timestamp method note\" section. current_* values verified live against the actual bytes of rulepack-prod-012.source.json (not assumed) before this edit. Consumed by the seq-13 combining fold (lane s13-join, PR #4667), which asserts every current_* value against seq-12 bytes before applying.",
+  "restamps": [
+    {
+      "source_record_id": "bc309fa9-d14e-5625-b914-72fe4a68c19d",
+      "source_key": "imigrasi-calling-visa-country-list",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:14:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-1.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "3da72c7b-783e-51e3-9168-6c54bce709ed",
+      "source_key": "imigrasi-press-2024-04-24-izin-tinggal-peralihan",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:14:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-1.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "dcf08e19-fbc3-5f96-93fa-0325b1ffe91d",
+      "source_key": "imigrasi-alih-status-itk-itas-service-page",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:14:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-1.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "950a9f63-0b78-5a9e-ba12-9454e4b7dfb2",
+      "source_key": "imigrasi.go.id.e31a.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "570f2bc4-5120-561f-90ba-58fcd9507514",
+      "source_key": "imigrasi.go.id.e31b.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "40523028-431b-5ae0-a937-277882f0f243",
+      "source_key": "imigrasi.go.id.e31c.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "50457cd0-b67f-5b88-bf66-33bcf62f3d9b",
+      "source_key": "imigrasi.go.id.e31d.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "ecd22722-3e42-5808-be18-45fbb7d8e9c5",
+      "source_key": "imigrasi.go.id.e31e.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "f9306203-0bdc-5dd8-9603-554e7eefedc8",
+      "source_key": "imigrasi.go.id.e31f.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "86880290-68c2-5220-8f9e-2350678e5f09",
+      "source_key": "imigrasi.go.id.e31g.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "153beca1-a24b-5440-bac0-b46c3d19da6f",
+      "source_key": "imigrasi.go.id.e31h.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "2d090f3a-5a93-5181-b3d1-253d87a1a17c",
+      "source_key": "imigrasi.go.id.e31j.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-2.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
+      "source_key": "imigrasi.go.id.d1.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-3.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
+      "source_key": "imigrasi.go.id.d2.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-3.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+      "source_key": "imigrasi.go.id.d12.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-3.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "38242587-f4da-5c31-b0ea-662f7fdc475c",
+      "source_key": "imigrasi.go.id.e30a.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-3.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "cb1b7182-1e29-58df-9aec-4e9bf66e10de",
+      "source_key": "imigrasi.go.id.e30b.daftar-visa-indonesia",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:15:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-3.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    },
+    {
+      "source_record_id": "38a6cb08-041f-51e4-86e4-9e73243acd3a",
+      "source_key": "imigrasi-voa-country-list",
+      "field": "verified_at+verified_by",
+      "current_verified_at": "2026-08-20T06:14:00Z",
+      "current_verified_by": "agent.air-m5.backend-rag.visa-seq12-reader-1.qw5-recheck-2026-08-20",
+      "new_verified_at": "2026-08-23T10:44:48Z",
+      "new_verified_by": "agent.s13-fresh.backend-rag.visa-freshness-reader.qw5-recheck-2026-08-23"
+    }
+  ]
+}

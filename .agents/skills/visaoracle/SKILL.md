@@ -47,7 +47,12 @@ until all of the following are true:
   untouched and this does not authorize ENFORCE);
 - the DPIA is complete, signed and its residual privacy risks are accepted;
 - the real analytics destination/provider is identified and a fresh,
-  closed-schema 90-day TTL proof has been independently reproduced; and
+  closed-schema **365-day (12-month)** TTL proof has been independently
+  reproduced (corrected 2026-08-23 — Zero's 2026-08-20 retention ruling,
+  DPIA V2 §A, superseded the old 90-day provisional; §8 signed 2026-08-23,
+  `docs/audits/2026-08-20-visa-oracle-dpia-v2.md`; still unsatisfiable
+  today — the destination itself remains unidentified, see LIVE STATE
+  below); and
 - Zero explicitly authorizes the ENFORCE flip after the preceding blockers
   close.
 
@@ -348,6 +353,14 @@ PARENT`. No `sponsor_nationalities` conjunct, no `marriage_registered` conjunct.
     pending — the retention preflight (`scripts/visa_oracle_analytics_retention_preflight.py`,
     `EXPECTED_TTL_DAYS = 90`) stays hard-locked at 90 days until §8 is actually signed
     (PENDING-ARMS row, unchanged by this entry — a separate PR).
+    **Overtaken later the same day (correction, 2026-08-23):** §8 WAS signed — Zero, in person,
+    same date, recorded in `docs/audits/2026-08-20-visa-oracle-dpia-v2.md` §8. PR #4593 merged
+    (`adf37ca99e5`) carrying the signature and the runbook+preflight 90→365 amendment in one
+    atomic commit — `EXPECTED_TTL_DAYS` is now `365`, not `90`. This does not close the
+    ENFORCE-GATE analytics-TTL precondition: the destination behind
+    `NEXT_PUBLIC_ANALYTICS_ENDPOINT` remains unidentified, and no real attestation (only the
+    schema contract + tests against fabricated fixtures) exists yet. Independently verified via
+    gate-review audit, 2026-08-23.
   - **noindex on `/visa-oracle`: RESTORE now, RATIFY at ENFORCE.** The `index: false` directive
     removed in the G0–G6 rebuild (`63234a12a`, PR #3732, 2026-08-07 — see the POSTURE FINDING
     below) is to be put back immediately; indexability itself is ratified only once ALL of:

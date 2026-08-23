@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -78,7 +78,11 @@ def test_all_canonical_personas_map_to_the_real_wire_model() -> None:
 
         assert validated.assessment_id == driver._persona_assessment_id(persona.id)
         assert set(payload["facts"]) == expected_fact_aliases
-        assert len(payload["facts"]) == 41
+        # 44, not 41 (2026-08-23 vocabulary extension, PR #4650): the count
+        # is derived structurally above from `ApplicantFactsData.model_fields`
+        # aliases, so this literal is a redundant pin, not the source of
+        # truth — bump it in lockstep whenever that model gains a field.
+        assert len(payload["facts"]) == 44
         assert payload["disclosed_review_flags"] == []
 
 

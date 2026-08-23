@@ -1,67 +1,91 @@
-task_id: research-os-p04-d1-content-object-media-manifest-0823
+task_id: s12-c6-evidence-per-pr
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  P04-D1 of the Research OS foundation-contracts program: ship the canonical, machine-checkable
-  definitions of CONTRACTS.md §9 `ContentObject` and §10 `MediaManifest` — the two governance
-  objects that every downstream WR2/WR3/NAGA/Intel Lake surface anchors its content lineage and
-  media-asset receipts to. Concretely: two frozen Pydantic models (`extra="forbid"`,
-  `frozen=True`), their generated Draft 2020-12 JSON Schemas, a fixture corpus (valid + invalid
-  per the package's `_check_fixtures` idiom — the §9/§10 spec's own >=3-valid/>=3-invalid-per-kind
-  rule), unit tests, and registration in the three package entry points (`cli.py`
-  `CONTRACT_MODELS`, `models/__init__.py`, `schemas/__init__.py`).
+  De-serialize the Evidence Pack: `evidence/pack.yml` and `evidence/brief.yml` are FIXED paths
+  at the repo root, and every Gear>=2 PR rewrites them entirely. Measured on origin/main
+  (S12 mandate, 2026-08-23): those two files were rewritten 4 times in 8 hours (#4599, #4649,
+  #4647, #4646). Each rewrite dirties EVERY other open Gear>=2 PR's evidence pack
+  simultaneously, so two such PRs cannot coexist cleanly in the merge queue — by construction,
+  not bad luck. One sibling lane (S11, PR #4647) paid two full re-gate rounds on a PR whose
+  code never changed, purely from this collision.
 
-  THIS IS PR #4643 (branch `agent/nuzantara/backend-rag/ros-v1-p04-d1-content`). Its
-  `evidence/brief.yml` and `evidence/pack.yml` — fixed root paths every Gear>=2 PR overwrites —
-  were inherited unchanged from an ancestor commit and described unrelated foreign work (PR
-  #4592, task_id `ops-visaoracle-wrapper-header-0823`, a 2-line wrapper-header comment fix). This
-  revision replaces both files with the truthful account of what #4643 actually ships, verified
-  fresh against the real diff and the real gates in this worktree — not transcribed from the prior
-  (wrong) pack, not from memory of an earlier turn.
+  This PR is the migration itself: `scripts/ci/evidence_paths.py`, a small, pure,
+  dependency-free module + CLI that is the single source of truth for mapping a branch ref to
+  a per-PR evidence directory (`evidence/<YYYY-MM>/<slug>/`) at WRITE time, and for
+  DISCOVERING which `evidence/<kind>.yml` a PR's own diff touches at CI READ time — these are
+  deliberately two different operations (see the module docstring's "CI must not compute the
+  slug" section): a `merge_group` ref is `gh-readonly-queue/main/pr-NNNN-<sha>`, not the PR's
+  branch, so computing a slug from it at CI time would look for the wrong directory.
 
-  BE HONEST ABOUT THE SIZE: this is a real 53-file / +4264/-0-line PR (measured this session via
-  `git diff --numstat` against the merge-base with `origin/main`), the first and smallest of four
-  serialized P04-D1 PRs (#4643 -> #4653 -> #4610 -> #4621 per the fleet's ordering, 2026-08-23).
-  Most of the 53 files are the fixture corpus the spec itself mandates per object kind (>=3 valid
-  + >=3 invalid), not narrative padding.
+  Gear 3 is the deterministic floor here, not a choice: the diff touches
+  `.github/workflows/harness-floor.yml`, which floors at 3 regardless of size
+  (fleet-order-spec.md §4, `HOTZONE_PATTERNS` in evidence_pack_lint.py).
+
+  This PR itself uses the OLD (root-path) scheme — it is the migration, so it cannot use the
+  scheme it is introducing; `resolve_evidence_path()`'s zero-matches fallback to the literal
+  root path is exactly what makes that consistent rather than a special case.
 constraints:
-  - "Scope of THIS revision is evidence-only: `evidence/brief.yml` and `evidence/pack.yml`.
-    No product code, model, fixture, schema, or test file is touched by this commit."
-  - "The two touched files are unrelated to `scripts/wr3_*` / `docs/wr3/contracts/` (another
-    lane's lease) and to the ContentObject/MediaManifest model code itself (already shipped and
-    already reviewed by an independent lane, see dissent below) — neither is re-opened here."
-  - "PR stays DRAFT. Nothing here arms, enqueues, un-drafts, or merges #4643."
+  - "Collision-safety is non-negotiable, not cosmetic: the slug must be injective even when a
+    naive sanitize-only scheme (lowercase, collapse non-alnum runs to '-') would collapse two
+    distinct branches to the same string — this repo's `agent/<host>/<lane>/<task>` branches
+    are full of hyphens, so `agent/mini-pro2/infra/foo-bar` and `agent/mini-pro2/infra-foo/bar`
+    both naively sanitize to the identical `agent-mini-pro2-infra-foo-bar`. Cure: hash the FULL
+    ORIGINAL ref (never the sanitized/truncated form) and append the digest — the
+    sanitized/truncated prefix is for human readability only."
+  - "The month directory (`evidence/<YYYY-MM>/<slug>/`) must never be recomputed from a clock
+    at CI read time — a PR opened on the last day of a month and merged the next would have its
+    files under the OLD month while a clock-derived validator looked under the NEW one and
+    found nothing. `evidence_glob()` returns a glob (`evidence/*/<slug>`); the CLI's
+    'suggested write path for today' is the only place a date is generated, at write time,
+    for a human — never fed back into validation."
+  - "CI must never compute a slug from a ref to DISCOVER an existing PR's evidence path — only
+    `--resolve {brief,pack} --changed-files-file` (a pure discovery over the already-enumerated
+    changed-files list) may be used for that, per the design correction from gate review. This
+    is the load-bearing correction of the CI-wiring round: the first draft of this PR wired
+    `slug_for_ref` into CI directly, which would have deadlocked every Gear-3 PR in the merge
+    queue on its very first `merge_group` run."
+  - "A PR whose diff ambiguously touches two `evidence/<kind>.yml` candidates must fail closed
+    (exit 1, nothing on stdout), never silently pick one — guard-over-match discipline
+    (cicatrix-superscar.md #3)."
+  - "A PR that writes NEITHER evidence path must not pass by inheriting the root
+    `evidence/pack.yml` left by a prior Gear-3 PR — this invariant is NOT re-implemented here;
+    it survives by construction because the resolver's zero-matches fallback returns the
+    concrete root path, which `tracked_file_present_in_diff.sh` then reports `inherited` (not
+    `present`) for a diff that didn't touch it, and the existing Step 5b hot-zone-FAIL catches
+    that. `resolve_evidence_path()` must never special-case this away."
+  - "Do not touch `tracked_file_present_in_diff.sh`, Step 5b, or `evidence_pack_lint.py`'s own
+    internal `brief_ref`-resolution contract — this PR changes WHICH path is handed to those,
+    never their own logic. Verified generic-on-path-argument by reading
+    `tracked_file_present_in_diff.sh`'s source before rewiring its call sites."
+  - "A per-PR pack must still declare `brief_ref: evidence/brief.yml` (the canonical STAGING
+    name), never its own real per-PR-looking path — `evidence_pack_lint.py` never lints a pack
+    in place; CI stages both resolved files under canonical names in a synthetic
+    `/tmp/evidence-check` tree and lints that. Documented at the staging call site and in the
+    module docstring after a gate finding flagged it as an undocumented trap of exactly the
+    shape this PR exists to remove."
+  - "Standard library only in `evidence_paths.py` — no yaml, no external deps — CI calls this
+    before installing anything. Must run on Python 3.11 and 3.12."
 acceptance:
-  - "`evidence/pack.yml` describes PR #4643 by task_id, diff shape, and content — not PR #4592."
-  - "`scripts/evidence_pack_lint.py evidence/pack.yml --repo-root . --changed-files-file <cf>
-    --net-lines 4264` exits 0 with no NOTICE mentioning `lanes:`."
-  - "Every `receipts:` entry is a command actually run in this worktree in this turn, with its
-    true exit code — including the one gate that came back red (`ruff format --check`), reported
-    red rather than adjusted to look green."
-consumer_map:
-  - "GitHub PR #4643 check suite / any Gear-3 gate that reads `evidence/pack.yml` as its sole
-    input (harness-v2 §5 doctrine: the pack IS the gate's input, not a report about one)."
-  - "The next lane in the P04-D1 serialization order (#4653) inherits whatever this branch merges
-    to main as ITS ancestor's evidence-pack content, exactly the defect this revision is fixing —
-    so getting this right here also protects that lane from re-inheriting the wrong pack."
-risks:
-  - "None to running systems: `packages/research-os-core` is a library package with no deployed
-    runtime surface of its own; the models it defines are consumed by CLI/schema tooling only,
-    already shipped in commit 126f7a000 and already independently reviewed (commit cf34c8ad7).
-    This revision changes zero lines of that code."
-  - "Residual, out of scope for this evidence-only revision: `cf34c8ad7`'s own review left four
-    items explicitly unfixed and reported rather than fixed — see dissent below for the two most
-    load-bearing (schema self-consistency exemption + ApprovalReceipt fixture-coverage gap) and
-    the fix commit's own message for the full list (ExtensionValue.payload jail scope,
-    `_UTC_OFFSET_PATTERN` anchor, `cli.py::_hash()` ordering, `_check_fixtures()` empty-tree
-    reporting). None of these are evidence-pack concerns; they belong to a future code PR."
-grader:
-  session (this lane, Pro, worktree backend-rag-ros-v1-p04-d1-content) — independent
-  evidence-only revision, dispatched fresh to verify the foreign-content claim itself before
-  acting on it (confirmed true) and to re-run the gates fresh rather than transcribe the prior
-  review commit's claims.
-budget:
-  1 lane, no council (evidence-pack correction does not warrant one; the code itself was
-  already gated by an independent Claude Opus 5 review lane per dissent below)
-pii: none
+  - "`slug_for_ref()` is injective: two branch refs that sanitize identically under a naive
+    scheme still produce distinct slugs, proven for at least two independently-devised
+    colliding pairs, plus a case where a 60+ character shared prefix (past the 48-char
+    truncation limit) is the ONLY thing that would defeat injectivity if the hash were computed
+    over the truncated form instead of the original ref."
+  - "`resolve_evidence_path()` returns the concrete root path (never '', never an exception) for
+    a changed-files list touching neither evidence file — the exact invariant three independent
+    lanes (S11, H1/P04, this session's gate reviewer) flagged as non-negotiable."
+  - "`resolve_evidence_path()` fails closed (raises `AmbiguousEvidencePathError`, CLI prints
+    nothing to stdout / an error to stderr / exits 1) on two or more candidates in one diff."
+  - "`harness-floor.yml`'s new 'Resolve this PR's evidence paths' step sits between the
+    changed-files enumeration and the floor computation, degrades to the two literal root paths
+    (unconditionally, no PR-number sentinel) when `evidence_paths.py` is absent from the base
+    checkout, and every functional git/grep call site in Step 4 and Step 7b reads the resolved
+    path instead of a hardcoded literal."
+  - "actionlint (the exact CI-pinned version, 1.7.12) is clean on `harness-floor.yml` and
+    repo-wide; every `run:` block is extracted via a YAML parser (never eyeballed) and passes
+    `bash -n`."
+  - "GUILT: an ambiguous diff, a substring-trap near-miss ('pack.yml.bak', 'not-pack.yml'), or a
+    missing leading `evidence/` segment must NOT resolve to a real evidence path. INNOCENCE: a
+    single well-formed nested match, or the true zero-match case, must resolve cleanly."

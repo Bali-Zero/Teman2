@@ -217,6 +217,60 @@ PY
     fi
 fi
 
+# Receptor 6: fleet session VISIBILITY (scripts/fleet_sessions.py). Until
+# 2026-08-23 no organ could see the Claude Code sessions running on the OTHER
+# machines - the healer that is supposed to notice dead organs was blind to
+# three quarters of them, and a fleet audit had to be done by hand.
+#
+# WHAT THIS RECEPTOR FIRES ON, and deliberately what it does NOT:
+#   exit 2  = BLIND, no host answered at all -> the receptor itself lost its
+#             senses, same semantics as receptor 4's exit 2. ACTIONABLE.
+#   UNREACHABLE host = coverage lost on that machine. Deduped Telegram: a
+#             sleeping laptop must not spawn an LLM session every 4h, but it
+#             must not read as silence either.
+#   DECLARED-SPAN-UNMET rows are REPORTED by the tool, never alerted on here.
+#             Measured 2026-08-23: the detector returned 10 such rows and all
+#             10 were HEALTHY healer ticks - this plist's own StartInterval is
+#             14400s, so "loop 4h" in a mandate TITLE is the cron cadence, not
+#             the session's runtime. Wiring an alarm to a signal with a
+#             measured 10/10 false-positive rate is how an alarm gets muted.
+if [ -f "scripts/fleet_sessions.py" ]; then
+    # FLEET_HOSTS_OVERRIDE is a TEST SEAM, same family as HEALER_REPO /
+    # HEALER_CASCADE_BIN above: it lets a session exercise this receptor's
+    # coverage-loss path (and its Telegram ladder) without taking a real machine
+    # down. Unset in production, where the tool's own default local,pro,air wins.
+    FLEET_JSON=$(python3 scripts/fleet_sessions.py --json ${FLEET_HOSTS_OVERRIDE:+--hosts "$FLEET_HOSTS_OVERRIDE"} 2>/dev/null)
+    FLEET_EXIT=$?
+    if [ "$FLEET_EXIT" -eq 2 ]; then
+        ACTIONABLE=1; REASONS="${REASONS}fleet-sessions-blind "
+        telegram p0 "healer-mini:fleet-blind" "🛰 FLOTTA (Mini): fleet_sessions non ha sondato NESSUN host - visibilita cross-macchina persa. Dettaglio: python3 scripts/fleet_sessions.py --table"
+    elif [ "$FLEET_EXIT" -eq 1 ]; then
+        # Read the SAME keys the tool emits (W120: a probe that reads a key the
+        # reporter never writes zeroes its own alarm, silently).
+        FLEET_SUM=$(printf '%s' "$FLEET_JSON" | python3 -c "
+import json, sys
+try:
+    s = json.load(sys.stdin).get('summary', {})
+    print('%d %s' % (s.get('hosts_unreachable', 0),
+                     ','.join(s.get('unreachable_hosts', [])) or '-'))
+except Exception:
+    print('0 -')
+" 2>/dev/null)
+        FLEET_UNREACH=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f1)
+        FLEET_HOSTS=$(printf '%s' "$FLEET_SUM" | cut -d' ' -f2)
+        if [ "${FLEET_UNREACH:-0}" -gt 0 ] 2>/dev/null; then
+            # No second routine alert line here, deliberately. This wrapper is
+            # allowed exactly ONE routine summary message, and that summary
+            # already carries REASONS verbatim: proven live, it read
+            # "run completato su ... fleet:1-host-unreachable". A duplicate
+            # would spam Zero AND trip the anti-regrowth gateway lint, which
+            # counts routine senders per wrapper. The host names are folded
+            # into REASONS instead, so the one message says everything.
+            ACTIONABLE=1; REASONS="${REASONS}fleet:${FLEET_UNREACH}-host-unreachable(${FLEET_HOSTS}) "
+        fi
+    fi
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
     # ---- CONVERGENCE mission (DNA/GENOME §CONVERGENCE v2, panel-hardened) ----
     # Receptors all quiet: instead of sleeping, bring ONE grandfathered organ
