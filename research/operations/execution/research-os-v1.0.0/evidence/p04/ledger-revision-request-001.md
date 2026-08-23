@@ -1,10 +1,15 @@
+---
+adversarial_review: codex
+---
+
 # Migration-ledger revision request 001
 
 - **From**: builder H1, work packet P04 (Research OS v1.0.0, Wave 0)
 - **To**: S9-C0 (Conductor)
 - **Date**: 2026-08-23
 - **State**: `awaiting_conductor_decision`
-- **Measured at**: `main` HEAD `148f0bfcad95e6ebb32c20b300b80ce8c2436b1d` (2026-08-22T23:10:08Z), worktree `docs-ros-v1-p04-ledger-revision`
+- **Measured at**: 2026-08-23T01:37Z, `main` HEAD `03998cf902ebbdbdb9bae11dab4cccc56546f03e`
+  (commit timestamp 2026-08-23T00:47:05Z), worktree `docs-ros-v1-p04-ledger-revision`
 
 ## 1. The finding
 
@@ -35,7 +40,7 @@ packets (P04, P02, P05, P06, P09, P12, P13) can safely apply a migration at its 
 `ls apps/backend-rag/backend/db/migrations_v2/ | tail -30` confirms `278` is the current head and
 `279` upward is free (no file matches `^279` or `^28`).
 
-### Prior collision — this is scar W40's failure mode recurring
+### Prior claim on the same number — same TOCTOU root as W40, different outcome
 
 The same number, `270`, has already been claimed twice by unrelated work on two different refs:
 
@@ -46,22 +51,36 @@ b08efe3e7  270_wa_outbox_abstained_at.sql  (fix(whatsapp): deliver safe localize
 ```
 
 `b08efe3e7` is **not** an ancestor of current `main` HEAD (`git merge-base --is-ancestor b08efe3e7
-HEAD` returns false) — it lived on a branch that either never merged or merged after being
-renumbered, and the number collision was resolved off-ledger, by chance, not by process. This is
-the identical defect class documented in repo scar **W40** (migration numbering collision): a
-sequential integer reservation with no enforcement mechanism decays the moment more than one lane
-touches the same file concurrently.
+main` returns false). `git branch -a --contains b08efe3e7` returns only
+`remotes/origin/agent/nuzantara/backend-rag/wa-abstain-terminal-p0`, while
+`git log main -S'abstained_at' --oneline -- apps/backend-rag/backend/db/migrations_v2` returns
+nothing. No second `270` claim ever landed on `main`, and nothing was resolved: an unmerged remote
+branch also claims `270`.
 
-### No open PR is about to make this worse
+Scar **W40** had a different realized failure: two `194_*` files both reached `main` minutes apart,
+creating a real duplicate that then had to be renamed. The shared root is the TOCTOU read-then-claim
+pattern — multiple lanes can observe the same ledger head and claim its successor without atomic
+coordination — but the outcome here is an unmerged competing claim. This is the **same root,
+different realized failure**, not an identical defect class. In fact, had the `b08efe3e7` branch
+tried to land alongside `270_wa_broker_jobs.sql`, the W41 pre-commit hook
+(`.husky/pre-commit:192-202`) and the PR-time lint
+(`.github/workflows/lint-migration-numbers.yml:20-28`) would both have caught the duplicate prefix.
+That is the strongest available evidence that the duplicate axis is genuinely defended today and
+further undercuts any reading of this episode as a near-miss that escaped only by luck.
+
+### No migration PR was open at the measurement instant
 
 ```
 gh pr list --state open --limit 60 --json number,title,files \
   --jq '.[] | select(.files[]?.path | test("migrations_v2/")) | "\(.number) \(.title)"'
 ```
 
-Result: **none.** Of the two currently open PRs (`#4581`, `#4569`), neither touches
-`migrations_v2/`. The `279`+ block is free as of this measurement with no in-flight contender —
-see the freshness caveat in §5.
+Result at the measurement instant recorded in the header — 2026-08-23T01:37Z, at `main` HEAD
+`03998cf902ebbdbdb9bae11dab4cccc56546f03e`: **none.** Of the five PRs open at that instant
+(`#4586`, `#4585`, `#4584`, `#4581`, `#4569`), none touched `migrations_v2/`. This is a time-bounded network measurement,
+not a standing fact. A local clone can prove only what it has fetched: an unfetched remote ref is
+invisible to it, as is any PR opened after this measurement. The `279`+ block was free with no
+visible in-flight contender at the stated instant; see the broader freshness caveat in §5.
 
 ## 3. Why this is a stop, not a renumber
 
@@ -110,8 +129,8 @@ contiguous block as measured in §2:
 | `284` | P12 | Action Inbox queue, intent, approval, and execution projections |
 | `285` | P13 | Domain outcome collector cursors and materialized aggregates |
 
-**Freshness caveat**: this block is free as measured at `main` HEAD `148f0bfcad9` /
-2026-08-23T01:07Z (§2). A migration merged by any other lane between this measurement and Conductor
+**Freshness caveat**: this block is free as measured at `main` HEAD `03998cf902eb` /
+2026-08-23T01:37Z (§2). A migration merged by any other lane between this measurement and Conductor
 ratification voids it again, the same way the original `270`–`276` block was voided in eight days.
 Whichever session integrates first under this ledger must re-run the `ls .../migrations_v2/ | tail`
 + open-PR check in §2 immediately before applying, not trust this document's numbers as still
@@ -119,25 +138,87 @@ current.
 
 ## 6. Second-order recommendation
 
-The real defect is not that this particular block decayed — it is that **any contiguous integer
-block frozen at time T decays monotonically**, because the reservation lives in a spec document
-(`DEPENDENCY-DAG.md`) that no other part of the repository reads, references, or enforces. Nothing
-stops an unrelated lane (BOT-V4, WR2, GARUDA VOA, CRM cleanup — all four appear in §2's occupier
-list, none aware a reservation existed) from claiming the next sequential number, because from that
-lane's point of view there is no reservation: there is only "what is the current head, add one."
-Migration numbering here is a single global mutable counter with seven long-lived claims against
-future values of it, checked by convention rather than by mechanism. The eight-day decay measured
-in this request is not a one-off: it is the same defect class as repo scar **W40** (migration
-numbering collision), reproduced structurally rather than incidentally.
+The old phrasing in this request said no other part of the repository reads, references, or
+enforces `DEPENDENCY-DAG.md`. That was false on both the reference and enforcement axes: four
+documents reference the dependency authority, and three working mechanisms enforce migration-number
+uniqueness. But none of those mechanisms can enforce the prose-only reservation. That distinction
+— not an absence of repository rigour — is the point of this section. At commit `0c7f91c11`, the
+four references are:
 
-**Recommendation**: stop reserving integers early. Reserve a **symbolic name** per packet instead
-(e.g. `research_os_contract_core` for P04, `research_os_publication_truth` for P02, and so on), and
-bind the integer **late** — at integration time, assigned by the serial integrator (I1, per the
-Wave 0 role split), who is the only role positioned to see the true current head at the moment a
-migration is actually about to be applied. This converts a prediction that can be falsified by any
-unrelated merge into a fact recorded at the one moment it can't be wrong. It also removes the need
-for this class of ledger-revision request going forward: there is nothing to void if nothing was
-predicted.
+- `docs/superpowers/plans/2026-08-15-research-os-parallel-execution.md:15`;
+- `research/operations/execution/research-os-v1.0.0/README.md:27`;
+- `research/operations/execution/research-os-v1.0.0/SESSION-BOARD.md:6`, which names it the
+  "Dependency authority";
+- `research/operations/specs/evidence-to-action-freeze-2026-08-15/README.md:203`.
+
+The reservation also carries a named lease. `SESSION-BOARD.md:162` records:
+
+> | `migration-ledger-270-276` | I1 only | Design parallel; integrate/apply serial |
+
+The same lease name appears in `WAVE-0-DISPATCH.md:98`.
+
+But all four references and both lease declarations are **prose**, read by humans and sessions, not
+mechanisms. A lane that never opens those documents cannot collide with the reservation as an
+enforced object; it can only discover the collision later in the migration ledger.
+
+The repository does have real enforcement against duplicates, just not against reservations. Three
+mechanisms enforce migration-number **uniqueness**, verified on disk:
+
+- `.husky/pre-commit:192-202` — the W41 (2026-05-23) pre-commit hook, which runs
+  `scripts/lint_migration_numbers.py` on staged migration files;
+- `.github/workflows/lint-migration-numbers.yml:20-28` — triggered on `pull_request` and on push to
+  `main`; W41 added the push trigger specifically because L2 autonomous-ops policy permits direct
+  pushes to `main`, closing the bypass found in W40
+  (`.github/workflows/lint-migration-numbers.yml:11-18`);
+- `apps/backend-rag/backend/db/migration_manager.py:34-62,280-285` — the runtime
+  `_assert_unique_migration_numbers` assert. The lint script is its deliberately inlined twin
+  (`scripts/lint_migration_numbers.py:21-26,39-44`).
+
+These three mechanisms are real, but they enforce uniqueness, not reservation. They fire when two
+files share a prefix. A lane that takes `270` while `270` is reserved-but-empty passes all three
+cleanly and stays green, because a reservation is an **absence** and the lint can only see
+**presence**. Therefore the repository is well defended against the duplicate and completely
+undefended against the reservation. The gap is not missing rigour; it is that the thing being
+protected was never expressible to the tools that do the protecting.
+
+This request measured one instance of a narrower shape: a contiguous block reserved against one
+shared monotonically increasing counter, concurrent lanes allocating from that counter, no atomic
+allocator, and enough elapsed time for the counter to reach the reserved block. Under those
+preconditions, the reservation loses usable numbers as the shared counter advances. One block over
+eight days (`n=1`) does not establish a universal law that every contiguous block "decays
+monotonically." It establishes that this repository's prose-only reservation did so once under the
+stated conditions. Measurably, none of the occupying commits or their PR titles references the
+reservation, the freeze, or any Wave 0 packet; this request makes no claim about what their authors
+knew.
+
+Migration numbering here is a single global mutable counter with seven long-lived claims against
+future values of it. Duplicate values are checked by mechanism, but empty reserved values are
+checked only by convention. The shared root is the same TOCTOU read-then-claim pattern recorded in
+scar **W40**, but, as §2 distinguishes, the realized failure is different.
+
+**Recommendation — Conductor choice between two options**:
+
+1. **Symbolic name with late binding.** Stop reserving integers early. Reserve a symbolic name per
+   packet instead (e.g. `research_os_contract_core` for P04, `research_os_publication_truth` for
+   P02, and so on), and bind the integer at integration time through the serial integrator (I1,
+   per the Wave 0 role split). Late binding narrows the prediction window from days to the
+   integration interval; it does not close it. Reading the head, committing, reviewing, and
+   merging or applying remain separate moments, and `I1 only` remains a prose lease rather than an
+   atomic allocator. Two integrators — or one integrator and an unrelated lane — can still read
+   the same head and claim the same successor.
+2. **Placeholder file at reservation time.** Commit an empty or comment-only file such as
+   `279_research_os_contract_core.sql` (or an equivalent placeholder) when the number is reserved.
+   This turns the reservation from absence into presence. The uniqueness lint already exercised
+   by the pre-commit hook, every migration-touching PR, every migration-touching push to `main`,
+   and runtime discovery then defends the reservation without a new mechanism, a new document for
+   other lanes to remember to read, or a change to their workflow. The trade-off is real: the
+   placeholder occupies the integer early and reintroduces some of the rigidity that late binding
+   is intended to remove.
+
+These are alternatives for the Conductor, not one combined answer. The first minimizes early
+rigidity but leaves a narrowed TOCTOU window; the second makes the existing uniqueness enforcement
+protect the reservation for free but commits the ledger number early. Fully closing the allocation
+race would require allocation atomic with merge or apply.
 
 ## 7. What H1 does meanwhile
 
@@ -147,7 +228,10 @@ core, plus their tests. The migration SQL itself is **not yet authored.** When i
 proven applied and rolled back against an isolated local database (local Postgres 17.8 on
 `127.0.0.1:5432`, never the `flyctl proxy` route to production on `127.0.0.1:15432`) before its PR
 is opened; that PR will then be left **unarmed** (no auto-merge, no `mq arm`) pending the
-Conductor's decision on §5.
+Conductor's decision on §5. This is H1's **commitment**, not evidence of a completed proof or an
+already-opened PR. What is measured today is narrower: the H1/P04 branch contains no change under
+`apps/backend-rag/backend/db/migrations_v2`, and no `279_*` file exists in the authoritative
+checkout.
 
 The ratified migration must also be **PostgreSQL 15 compatible**, not merely compatible with the
 production engine (17.x). CI runs `public.ecr.aws/docker/library/postgres:15` in four workflows —
@@ -155,3 +239,29 @@ production engine (17.x). CI runs `public.ecr.aws/docker/library/postgres:15` in
 and `scripts-tests-sweep.yml` — and local `docker-compose.yml` (line 34) uses `postgres:15-alpine`.
 A migration that relies on a PG16+-only feature will pass a local apply/rollback proof against
 Postgres 17.8 and then fail in CI.
+
+## Adversarial review
+
+The Claude-authored document received two cross-family reviews, preserving generator != grader on
+both passes.
+
+- **Codex, read-only sandbox — verdict: DEFECTIVE.** It reported seven findings, all applied: the
+  false repository-reference claim; an unsupported universal decay claim; mind-reading about what
+  other authors knew; an incorrect prior-collision and W40 comparison; an unbounded open-PR claim;
+  a late-binding overclaim; and a future commitment presented as completed evidence. Codex finding
+  5 was a limitation of that reviewer's sandbox, not a document defect: the attempted network check
+  returned `error connecting to api.github.com`. The orchestrator ran it successfully, and §2 now
+  records the result as a time-bounded measurement rather than a standing fact.
+- **Kimi K3 — verdict: SOUND.** It independently reproduced every load-bearing measurement: both
+  verbatim quotations; all nine migration-table rows; head `278` and the freeness of `279` upward;
+  the non-ancestor status of `b08efe3e7`; the PostgreSQL 15 inventory; and the seven-packet blast
+  radius. It flagged two overstatements overlapping Codex findings 2 and 4, then discovered the
+  enforcement-mechanism distinction now incorporated into §2 and §6. Neither the author nor the
+  first reviewer had found it, and it changed the document's central argument from "mechanical
+  enforcement is absent" to the sharper and accurate claim that uniqueness is strongly enforced
+  while prose-only reservation is not representable to those mechanisms.
+
+This document is itself evidence for the review lesson: two reviewers from different model
+families produced findings that barely overlapped. The second reviewer's single most valuable
+finding was invisible to the first, and the author had been wrong in the same direction as the
+first reviewer.
