@@ -5,10 +5,11 @@ description: "Corner for Visa Oracle v2 — the immigration Decision Tree rebuil
 
 # VISA ORACLE v2 — Decision Tree (corner /visaoracle)
 
-> **CURRENT HANDOFF (read first):** `CURRENT_STATE.md` contains the canonical
-> 2026-08-07 repository/production state, reviewed SHAs, gate matrix, evidence,
-> open operational blockers and safe resume sequence. Its production verdict is
-> **NO-GO / SHADOW** even though repository G0–G6 passed on the frozen baseline.
+> **CURRENT HANDOFF (read first):** read **LIVE STATE** below FIRST — it is the current record,
+> updated on every state change. `CURRENT_STATE.md` is a SUPERSEDED 2026-08-15 snapshot (reviewed
+> SHAs, gate matrix, evidence, safe resume sequence as of that date) kept as archaeology; four pack
+> activations (seq-9 through seq-12) have shipped since it was last touched. Production verdict is
+> unchanged from that snapshot: **NO-GO / SHADOW**, repository G0–G6 passed on the frozen baseline.
 
 ## Mission
 
@@ -112,6 +113,72 @@ hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5)
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-08-23 (M5, truth-first ledger backfill — D1): **SEQ-12 IS LIVE IN PRODUCTION SHADOW; this
+  corner's ledger had never recorded it.** `grep -c "seq-12" SKILL.md` returned 0 on both this
+  checkout and `origin/main` before this entry, despite the pack chain having closed three days
+  earlier: fold+source-restamp PR #4409 merged `2026-08-20T07:43:45Z` ("RulePack seq-12 — weekly
+  re-attestation of all 18 portal sources") → signed on M5 (`kid prod-2026-07-1`, protected header
+  `signed_at 2026-08-20T07:45:28.449722Z`, `payload_sha256
+ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d`) → signed bundle PR #4413
+  merged `2026-08-20T08:45:32Z`. Independently verified against the signed pack bytes on disk
+  (`apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-012.signed.json`):
+  `payload.sequence 12`, `payload.version "2026.8.20"`, 110 rules, 28 source_records, of which 18
+  carry `authority_type "OFFICIAL_PORTAL"` re-stamped `verified_at` `2026-08-20T06:14:00Z` /
+  `06:15:00Z` with `freshness_policy.max_age_seconds 604800` (7 days) → **expires
+  2026-08-27T06:14Z**.
+
+  **Sentinel (`pro.visa_freshness_sentinel`, PR #4410) is ARMED AND HEALTHY on Pro — NOT
+  "built but not armed" as PENDING-ARMS still claimed** (row closed by this same PR). Re-verified
+  live this session, not recalled from context: `launchctl print gui/501/com.nuzantara.visa-freshness-sentinel`
+  shows the job loaded (`program /Users/nuzantara/scripts/pro-visa-freshness-sentinel.sh`);
+  `~/.organism/last_seen/pro.visa_freshness_sentinel.json` → `{"ts":"2026-08-22T21:58:09Z",
+"status":"ok","note":"run done"}`; `~/logs/pro-visa_freshness_sentinel/run.log` tail shows a
+  run TODAY (`2026-08-23 05:58:09`, `rc=0`) reporting `"pack_sequence": 12, "pack_version":
+"2026.8.20", "pack_source": "database"` — both halves of the row's own proof-of-armed clause
+  (fresh `last_seen` timestamp AND `pack_source: "database"`, never `"repository-fallback"`) are
+  satisfied. The 48h-ahead warn window lands ~2026-08-25T06:14Z.
+
+  **CORRECTION — the two "residual doctrine gaps" this backfill's own originating mandate still
+  named as open are ALREADY CURED and LIVE, since seq-10 (2026-08-19).** Verified against the
+  signed seq-12 payload bytes, not against any narrative: `el.c2.corporate-sponsor-type` is
+  **ABSENT** from `rules[]` (retired behavior-preservingly in seq-10 — its promised tightening
+  was refuted by the live C2 page, CF-17). `el.e31c-mixed-marriage-parents` is **PRESENT**,
+  tightened to 4 conjuncts (`intent.purposes intersects [FAMILY]`, `family.relation_to_sponsor eq
+PARENT`, `family.sponsor_nationalities intersects [ID]`, `family.marriage_registered eq true`).
+  NEW `hf.e31c-marriage-not-registered` is **PRESENT** (`stage HARD_FILTER`, `effect.type
+EXCLUDE`, `safety_critical: true`), scoped to 3 conjuncts (drops the nationality conjunct so
+  non-FAMILY paths stay uncontaminated). The cure shipped in seq-10 (PR #4350, 2-family refuter
+  quorum — Codex GPT-5.6-sol xhigh REJECT→cured, Kimi K3 MAJOR→cured; see the 2026-08-19 third
+  LIVE STATE entry below for the full chain); rationale on main at
+  `research/visa/doctrine-factory/e5/inc4-pack-edits/cure-c2-e31c.md`.
+  `apps/backend-rag/backend/tests/services/visa_engine/test_seq10_pack.py` already asserts this
+  cure structure. `test_pack_chain_and_pricing.py:370`'s `_KNOWN_PRE_EXISTING_LINT_RESIDUALS`
+  still names both rule ids — that is CORRECT and deliberate: it is scoped to the `seq9_source`
+  fixture and pins seq-9's true historical state, and this entry does not touch it.
+
+  **Zero's rulings, 2026-08-23 (Legge 5):**
+  - **DPIA V2 §8** (`docs/audits/2026-08-20-visa-oracle-dpia-v2.md`) signatory fields: controller
+    entity = **PT Bali Nol Impresariat**, DPO = **Zainal Abidin**. Signature itself still
+    pending — the retention preflight (`scripts/visa_oracle_analytics_retention_preflight.py`,
+    `EXPECTED_TTL_DAYS = 90`) stays hard-locked at 90 days until §8 is actually signed
+    (PENDING-ARMS row, unchanged by this entry — a separate PR).
+  - **noindex on `/visa-oracle`: RESTORE now, RATIFY at ENFORCE.** The `index: false` directive
+    removed in the G0–G6 rebuild (`63234a12a`, PR #3732, 2026-08-07 — see the POSTURE FINDING
+    below) is to be put back immediately; indexability itself is ratified only once ALL of:
+    (a) DPIA §8 signed; (b) seq-13 active with the two doctrine gaps cured; (c) the
+    SHADOW→ENFORCE decision taken (or at minimum the accuracy gate passed); (d) E30 prices
+    defined. **Flagging honestly rather than silently reinterpreting Zero's words: condition (b)
+    as stated names seq-13, but per the correction above the two gaps were cured in seq-10 and
+    are live in seq-12 — no seq-13 activation is actually required to satisfy (b).** The restore
+    action itself (an `index: false` code change in `apps/mouth`) is a separate PR, not this
+    docs/ledger one, and is NOT yet shipped as of this entry.
+  - **E30/E30E/E30F pricing formula RULED**: client-facing price = PNBP + IDR 3,000,000, exposed
+    as one all-inclusive number (extends standing ruling R1 2026-07-17 — never a PNBP-vs-fee
+    split shown to the client). The INPUT is still missing: the Ditjen pages for E30/E30E/E30F
+    read "Data Belum Tersedia", so the PNBP figure is not yet established; a separate research
+    lane is hunting it. Does not change the E30-family LIVE STATE below (2026-08-20 entry) — the
+    three products remain deliberately unpriced pending that number.
 
 - 2026-08-20 (M5, fourth entry — seq-11 SHIPPED end-to-end): **SEQ-11 IS LIVE IN PRODUCTION
   SHADOW — E30A/E30B now carry a resolvable `pricing_key`.** The executed half of Zero's
@@ -1166,7 +1233,9 @@ visa_decisions` — the retention worker operates through `SECURITY DEFINER` fun
   E31B/E31D refuter claims — PR #4245) and E2b prep (fused query bank
   A∪B∪C, 247 unique queries, coverage matrix skeleton, zero holes on the 27
   reachable products — PR #4241) dispatched same day. The noindex ruling
-  remains OPEN.
+  was RULED by Zero 2026-08-23 — restore `index: false` now, ratify indexability at ENFORCE
+  under a 4-condition checklist — see the 2026-08-23 LIVE STATE entry above. The restore code
+  change is a separate `apps/mouth` PR, not yet shipped as of that entry.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

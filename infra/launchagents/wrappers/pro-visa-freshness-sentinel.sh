@@ -1,8 +1,8 @@
 #!/bin/bash
 # pro.visa_freshness_sentinel — Alerts Telegram BEFORE the active Visa Oracle RulePack OFFICIAL_PORTAL sources cross their freshness_policy window (7-day), so DECISIVE_SOURCE_STALE never trips silently
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
-# Canon: infra/launchagents/wrappers/pro-visa_freshness_sentinel.sh
-# Live:  ~/scripts/pro-visa_freshness_sentinel.sh (declared pair, node=pro)
+# Canon: infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
+# Live:  ~/scripts/pro-visa-freshness-sentinel.sh (declared pair, node=pro)
 
 set -u   # G9_fail_visible: unset vars crash, they do not expand empty
 
