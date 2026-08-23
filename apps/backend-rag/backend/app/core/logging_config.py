@@ -12,6 +12,7 @@ Provides configurable logging with:
 import logging
 import sys
 import time
+from copy import copy
 from datetime import datetime, timezone
 from typing import Any
 
@@ -66,6 +67,8 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def format(self, record: Any) -> Any:
+        record = copy(record)
+
         if ENVIRONMENT == "development":
             color = self.COLORS.get(record.levelname, self.COLORS["RESET"])
             record.levelname = f"{color}{record.levelname}{self.COLORS['RESET']}"

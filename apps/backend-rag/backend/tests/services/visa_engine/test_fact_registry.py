@@ -791,6 +791,29 @@ class TestDeriveHasActiveStayPermit:
         snapshot = self._snapshot(self._known("C1"), self._unknown())
         assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
 
+    # -- grounding: NO_STAY_PERMIT, the offshore convergence sentinel ------
+
+    def test_no_stay_permit_sentinel_is_a_definite_false_the_reachability_proof_for_pr_4727(
+        self,
+    ) -> None:
+        # This is the backend half of the P0 offshore-reachability fix's
+        # own reachability proof (team-lead review, PR #4727): NOT one of
+        # tree.ts's 8 real current_status_code options — it is a value
+        # apps/mouth's fact-mapper.ts synthesizes directly, without asking
+        # a question, when an OFFSHORE applicant answers the existing
+        # `holds_stay_permit` gate "no" (flow.test.ts and
+        # fact-mapper.test.ts on that PR prove the frontend reaches this
+        # value with zero further questions). This test proves the OTHER
+        # half: the wire value the frontend actually sends resolves the
+        # fact DEFINITELY on the real derivation, not to UNKNOWN — the
+        # exact failure mode the original P0 exposed at the flow-graph
+        # level with no backend fact ever reachable at all. Expiry is
+        # irrelevant here for the same reason as every other visit-class
+        # code: a NO_STAY_PERMIT applicant was never a residence-permit
+        # holder in the first place.
+        snapshot = self._snapshot(self._known("NO_STAY_PERMIT"), self._unknown())
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
     # -- grounding: an unclassifiable code is honestly UNKNOWN, never a guess --
 
     @pytest.mark.parametrize("code", ["XYZ", "other", "B211", "NONE_ISSUED"])

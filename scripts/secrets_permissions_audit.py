@@ -71,7 +71,6 @@ PRUNE_DIR_NAMES = frozenset(
 _DEFAULT_ROOT_RELATIVE_PATHS: Tuple[str, ...] = (
     "~/.ssh",
     "~/.claude",
-    "~/.claude-glm",
     "~/.claude-acct2",
     "~/.kimi-code",
     "~/.qwen",

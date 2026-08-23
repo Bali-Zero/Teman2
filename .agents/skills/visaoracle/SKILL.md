@@ -106,7 +106,7 @@ not an automated ENFORCE threshold.
   `agy --print-timeout 15m --model "Gemini 3.1 Pro (High)" -p "<prompt>"`; the old
   `agy -p --print-timeout 5m` feeds the FLAGS as prompt (RC=0, garbage out).
 - Codex GPT-5.6-sol ultra — ARMED (PONG).
-- GLM 5.2 via `claude-glm` — ARMED (PONG).
+- GLM 5.2 via TP1 seat `tp1-glm-5.2` (OpenAI-compatible base `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`, key loaded by `load_tp1_settings_key()` from `~/.qwen/settings.json`) — ARMED (PONG). TP1 seats are roster lines, not CLIs.
 - DeepSeek V4 — **DEAD** (balance -0.04 USD, is_available:false). Operator-only top-up. Declared
   substitute: house Sonnet web-grounded lane (live WebSearch, URL-verified).
 - Harness scar (2026-07-17): Agent spawns WITH `name:` can be born dead (mailbox never delivered) —

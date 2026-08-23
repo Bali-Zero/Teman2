@@ -54,7 +54,8 @@ JsonValue: TypeAlias = None | bool | int | float | str | list["JsonValue"] | dic
 _INDONESIA_COUNTRY_CODE = "ID"
 _MINOR_AGE_THRESHOLD = 18
 
-#: ``derived.has_active_stay_permit`` grounding, side 1 of 2 (2026-08-23):
+#: ``derived.has_active_stay_permit`` grounding, side 1 of 2 (2026-08-23,
+#: extended 2026-08-24 with a 9th, synthesized value — see below):
 #: the exact 8 option keys ``apps/mouth``'s ``current_status_code`` question
 #: offers today (the only values the live frontend can ever send as KNOWN —
 #: an "other" answer is filtered to UNKNOWN client-side, see that question's
@@ -69,6 +70,7 @@ _MINOR_AGE_THRESHOLD = 18
 #: kept a separate frozenset (not derived from the enum registry) because it
 #: describes an EXTERNAL taxonomy fact about these specific strings, not a
 #: FactPath-level closed vocabulary.
+#:
 _VISIT_CLASS_STATUS_CODES: frozenset[str] = frozenset(
     {
         "A1",
@@ -81,6 +83,29 @@ _VISIT_CLASS_STATUS_CODES: frozenset[str] = frozenset(
         "ITK_PERALIHAN",
     }
 )
+
+#: Synthesized sentinel (added 2026-08-24, P0 offshore-reachability fix,
+#: PR #4727) — NOT one of the 8 real ``current_status_code`` option keys and
+#: never offered as a UI choice. ``apps/mouth``'s ``fact-mapper.ts`` emits it
+#: directly when an OFFSHORE applicant answers the (already-existing)
+#: ``holds_stay_permit`` question "no", instead of asking the granular
+#: ``current_status_code`` question a second time for a fact its own answer
+#: already fully determines. This is not a guess: it is the literal, honest
+#: translation of what the applicant told us.
+#:
+#: Deliberately kept OUT of ``_VISIT_CLASS_STATUS_CODES`` (team-lead review,
+#: 2026-08-24): that set is a two-sided grounding of REAL document-derived
+#: codes — every member appears on an actual permit/visa document. A synthetic
+#: "holds nothing at all" sentinel is not a visit-class code, it is the
+#: ABSENCE of one, and folding it in would corrupt what the set's name says
+#: it means — especially now that F4 (ruling 2, renewal-in-process) is about
+#: to re-examine ``ITK_PERALIHAN``'s membership in this exact set. Checked
+#: explicitly and early in ``_derive_has_active_stay_permit`` instead, so the
+#: sentinel's semantics never couple to whatever F4 does to the real-code set.
+#: See ``flow.ts::computeNextNode``'s offshore branch for the frontend
+#: routing that produces it, and the funnel-cost measurement in PR #4727 for
+#: why this exists instead of unconditionally asking the full onshore chain.
+NO_STAY_PERMIT = "NO_STAY_PERMIT"
 
 #: ``derived.has_active_stay_permit`` grounding, side 2 of 2: the SHAPE of a
 #: LIMITED_STAY/PERMANENT_STAY (ITAS/ITAP-class) product code in the current
@@ -802,6 +827,12 @@ class FactRegistry:
             return UnknownFact(reason=code.reason)
 
         code_value = str(code.value)
+        if code_value == NO_STAY_PERMIT:
+            # The applicant told us directly they hold nothing at all
+            # (offshore P0 fix, PR #4727) — checked first and explicitly,
+            # never folded into _VISIT_CLASS_STATUS_CODES (see that
+            # constant's docstring for why).
+            return KnownFact(value=False)
         if code_value in _VISIT_CLASS_STATUS_CODES:
             # A visit-class code is definitively not a residence permit,
             # regardless of its own expiry OR of a paid renewal on some

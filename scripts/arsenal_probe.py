@@ -3,9 +3,9 @@
 
 THE DISEASE IT KILLS (scar #2 "Esiste != Armato" — cron theater / blind autopilot):
 the multi-LLM cascade recommended since 2026-05-24 was never armed. Tier order was
-assumed rather than measured — Codex 401-silent, agy keychain-bound-under-ssh, GLM
-529/401, DeepSeek 402 all degrade a 4-deep cascade to effectively 2-deep with no
-alarm. This tool makes every seat's liveness EMPIRICAL: fire a real 1-shot probe,
+assumed rather than measured — Codex 401-silent, agy keychain-bound-under-ssh, and
+DeepSeek 402 all degraded multi-seat cascades with no alarm. This tool makes every
+seat's liveness EMPIRICAL: fire a real 1-shot probe,
 classify the OUTPUT CONTENT (never exit code alone — an exit-0 wrapper can still
 carry a dead payload, W84), and write a report the healer/proprioception/humans can
 all read without re-deriving the taxonomy themselves.
@@ -28,7 +28,7 @@ probed.
 
 Usage:
     python3 scripts/arsenal_probe.py                       # probe all seats, write report
-    python3 scripts/arsenal_probe.py --seats claude,glm     # subset
+    python3 scripts/arsenal_probe.py --seats claude,codex   # subset
     python3 scripts/arsenal_probe.py --json                 # full report to stdout
     python3 scripts/arsenal_probe.py --quiet                # one summary line
     python3 scripts/arsenal_probe.py --strict                # exit 1 on required-seat strict-fail
@@ -101,7 +101,6 @@ TP1_SEAT_MODELS = {
 
 ALL_SEATS = [
     "claude",
-    "glm",
     "kimi",
     "agy",
     "codex",
@@ -116,9 +115,9 @@ ALL_SEATS = [
 REQUIRED_SEATS = {
     # kimi PONG-proven on all three machines 2026-07-19 (mini device-code
     # authorized by the operator same day).
-    "mini": ["claude", "glm", "codex", "kimi", "ollama"],
+    "mini": ["claude", "codex", "kimi", "ollama"],
     "pro": ["claude", "codex", "kimi", "ollama", "nlm"],
-    "m5": ["claude", "glm", "agy", "codex", "kimi"],
+    "m5": ["claude", "agy", "codex", "kimi"],
 }
 
 # 2026-08-07 incident: these used to run 30-180s. agy in particular ALWAYS consumed its
@@ -130,14 +129,13 @@ REQUIRED_SEATS = {
 # anything, agy's old 120s timeout alone explained "0 bytes for 60s" under any outer
 # `timeout 60` wrapper — the process was still inside as_completed(), not hung, but
 # indistinguishable from hung to anything watching stdout. ~15s per seat (mandate) is
-# empirically safe for the fast path (claude/codex/kimi/glm/ollama/nlm all replied in
+# empirically safe for the fast path (claude/codex/kimi/ollama/nlm all replied in
 # 0.03-15s live on Pro 2026-08-07) AND for the agy-style pipe-leak case, because every
 # probe now judges the REPLY in partial stdout before accepting TIMEOUT (see the
 # `live` computed before `res.timed_out` check in each probe_* function below) — a
 # seat that already said PONG is LIVE even if its process never cleanly exits.
 DEFAULT_TIMEOUTS = {
     "claude": 15,
-    "glm": 15,
     "kimi": 15,
     "agy": 15,
     "codex": 15,
@@ -243,8 +241,8 @@ def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: i
 # taxonomy priority (auth class before generic-error class).
 # Numeric codes are word-bounded: classification runs on RAW provider output
 # (scrub happens only at evidence_tail), and provider request-ids are long digit
-# runs that would otherwise contain 401/429/1211 by accident — e.g. a z.ai
-# request id minted at 12:11 (`...0706**1211**...`). \b between digits does not
+# runs that would otherwise contain 401/429/1211 by accident — e.g. a request id
+# minted at 12:11 (`...0706**1211**...`). \b between digits does not
 # split a digit run, so ids stay innocent while bracketed/spaced codes still match
 # (scar #3: match the entity, not the substring).
 # The bare phrase "oauth token" (no failure word) is the same over-match risk one
@@ -484,14 +482,14 @@ def http_post_json(
     either returned string even on error (scar #4 — errors are the #1 leak vector).
 
     full_body: the ENTIRE response/error text, scrubbed but NOT truncated. A
-    positive-proof marker (e.g. glm's `"model"` field) can sit near the START of a
+    positive-proof marker (for example a `"model"` field) can sit near the START of a
     long JSON body and fall outside a tail window — a live-check that inspects only
     evidence_tail can misclassify a genuinely LIVE seat as dead (worst direction for
     a dispatch panel: it silently diverts work away from an available seat instead of
     failing loud). Callers whose positive-proof check needs to find a marker
     ANYWHERE in the body must inspect full_body, never the tail alone (see
-    probe_glm — found live on M5 2026-08-21, a real HTTP 200 with `"model"` early in
-    the body was misread UNKNOWN_ERR by a tail-only check).
+    probe_tp1_model, where an HTTP 200 with an early `"model"` field can otherwise be
+    misread UNKNOWN_ERR by a tail-only check).
 
     evidence_tail: the same text truncated to the tail (errors live at the tail — see
     evidence_tail()'s own docstring) — kept for compact logging/display; existing
@@ -540,8 +538,9 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
         return NOT_INSTALLED, "claude binary not found (checked $PATH + common install dirs)", 0
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)  # scar-load-bearing: never let the paid key leak in
-    # A stray GLM-session env (AUTH_TOKEN + base URL) would silently probe z.ai
-    # while reporting it as the MAX seat — strip both for a clean MAX-context probe.
+    # A stray custom Anthropic-session env (AUTH_TOKEN + base URL) would silently
+    # probe the wrong endpoint while reporting it as the MAX seat — strip both for a
+    # clean MAX-context probe.
     env.pop("ANTHROPIC_AUTH_TOKEN", None)
     env.pop("ANTHROPIC_BASE_URL", None)
     # Strip a bare, AMBIENT CLAUDE_CODE_OAUTH_TOKEN before applying the slot-1
@@ -552,7 +551,7 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     # resolves by default was perfectly LIVE; unsetting the env var and
     # re-probing flipped AUTH_DEAD -> LIVE instantly. Same class the
     # ANTHROPIC_AUTH_TOKEN/BASE_URL strip above already guards against for
-    # GLM: a probe must test the SEAT's own credential, not whatever the
+    # A probe must test the SEAT's own credential, not whatever the
     # calling shell happens to be carrying. A deliberate caller that wants to
     # test one SPECIFIC token still can, via env_overrides below — that path
     # is unaffected and remains the only sanctioned way to inject one.
@@ -591,32 +590,6 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
         return AUTH_DEAD, ev or "claude not logged in", latency_ms
     status = classify_generic(combined, live, "claude", is_ssh_context())
     return status, ev, latency_ms
-
-
-def probe_glm(timeout: float) -> tuple[str, str, int]:
-    t0 = time.monotonic()
-    token, cred_note = load_keychain_token("glm-coding-plan-token")
-    if token is None:
-        return CRED_UNAVAILABLE, cred_note or "credential unavailable", int((time.monotonic() - t0) * 1000)
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-    }
-    body = {"model": "glm-5.2", "max_tokens": 8, "messages": [{"role": "user", "content": PONG_PROMPT}]}
-    status_code, full_body, ev = http_post_json(
-        "https://api.z.ai/api/anthropic/v1/messages", headers, body, timeout, [token]
-    )
-    latency_ms = int((time.monotonic() - t0) * 1000)
-    if status_code is None:
-        return TIMEOUT if "timed out" in ev else UNKNOWN_ERR, ev, latency_ms
-    # live-check runs on full_body (untruncated), never on the tail alone — see
-    # http_post_json's docstring: the "model" field can sit before the last 160
-    # chars of a long body, and a tail-only check misreads a genuinely LIVE seat
-    # as dead (worst direction for a dispatch panel).
-    live = status_code == 200 and '"model"' in full_body
-    status = classify_generic(f"HTTP {status_code} {ev}", live, "glm", is_ssh_context())
-    return status, f"HTTP {status_code} {ev}", latency_ms
 
 
 def probe_agy(timeout: float) -> tuple[str, str, int]:
@@ -733,8 +706,8 @@ def probe_jules(timeout: float) -> tuple[str, str, int]:
     # genuinely found nothing (`security find-generic-password -s
     # jules-api-key` -> item not found, verified on this host) is a
     # provisioning gap, not an ambiguous failure — CRED_UNAVAILABLE names it
-    # precisely and puts it in CONTEXT_LIMITED, matching how glm's identical
-    # "credential missing" shape is already classified. Matched before
+    # precisely and puts it in CONTEXT_LIMITED, matching the other explicit
+    # "credential missing" classifiers. Matched before
     # classify_generic (mirrors probe_nlm's AUTH_DEAD special-case) so the
     # existing UNKNOWN_ERR guilt case (empty stdout, rc=0, no error text —
     # test_probe_jules_no_sources_is_unknown_err) stays untouched: that shape
@@ -964,7 +937,6 @@ def probe_tp1_model(model: str, timeout: float) -> tuple[str, str, int]:
 
 PROBE_FUNCS: dict[str, Callable[..., tuple[str, str, int]]] = {
     "claude": probe_claude,
-    "glm": probe_glm,
     "kimi": probe_kimi,
     "agy": probe_agy,
     "codex": probe_codex,
@@ -1159,14 +1131,6 @@ _SELFTEST_CANNED = [
     # (seat, evidence_text_lower_ok, expected_status, description)
     ("claude", "PONG", LIVE, "claude PONG"),
     ("qwen-cloud-code", "PONG", LIVE, "qwen-cloud-code PONG"),
-    ("glm", 'HTTP 200 {"model": "glm-5.2", "id": "x"}', LIVE, "glm 200+model"),
-    (
-        "glm",
-        'HTTP 400 {"error": {"code": 1211, "message": "Unknown Model"}}',
-        MODEL_ERR,
-        "glm 1211 config drift",
-    ),
-    ("glm", "HTTP 529 overloaded, please retry", SHED, "glm 529 shed"),
     (
         "codex",
         "Error: 401 token_revoked: refresh_token_reused",
@@ -1182,14 +1146,6 @@ _SELFTEST_CANNED = [
     ("deepseek", "HTTP 402 Insufficient Balance", BALANCE_DEAD, "deepseek 402"),
     ("claude", "out of extra usage for this session", QUOTA_DEAD, "claude quota string"),
     ("codex", "rate limit exceeded, 429", QUOTA_DEAD, "codex 429 quota"),
-    # innocence (scar #3): a request-id minted at 12:11 contains "1211" as a digit-run —
-    # must NOT classify MODEL_ERR; the real signal here is the 529 shed.
-    (
-        "glm",
-        "API Error: 529 overloaded [20260706121155c8877b89100e44a6]",
-        SHED,
-        "request-id digit-run stays innocent",
-    ),
 ]
 
 
