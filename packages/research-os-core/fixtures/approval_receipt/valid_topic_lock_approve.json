@@ -1,0 +1,52 @@
+{
+  "approval_receipt_id": "a3000000-0000-4000-8000-000000000002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "subject": {
+    "kind": "topic_lock",
+    "object_id": "synthetic-topic-lock-002",
+    "object_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "context": {
+    "workflow_run_ref": {
+      "workflow_run_id": "a6000000-0000-4000-8000-000000000001",
+      "object_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  },
+  "decision": "approve",
+  "actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "approval",
+    "pseudonym": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "authority": {
+    "role": "research.operator",
+    "scope": "research.approvals",
+    "verified_at": "2026-03-01T00:10:00Z"
+  },
+  "bindings": {
+    "input_revision_hash": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "authorized_effects": [],
+  "rationale_code": "synthetic-topic-lock-approved",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "issued_at": "2026-03-01T00:10:00Z",
+  "expires_at": "2026-03-01T01:10:00Z",
+  "idempotency_key": "synthetic-approval-002",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": true
+  },
+  "object_hash": "b340ff043c5c756c2fb4232c9c41814f1ea27e8fb8bb6ad18cef10b53d20a2d8"
+}
