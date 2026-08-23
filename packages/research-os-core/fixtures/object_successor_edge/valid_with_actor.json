@@ -1,0 +1,40 @@
+{
+  "object_successor_edge_id": "10000000-0000-4000-8000-000000000002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "object_kind": "com.example.synthetic_record",
+  "family_id": "com.example.family_002",
+  "predecessor_ref": {
+    "object_kind": "com.example.synthetic_record",
+    "object_id": "synthetic-record-101",
+    "object_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "successor_ref": {
+    "object_kind": "com.example.synthetic_record",
+    "object_id": "synthetic-record-102",
+    "object_hash": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "reason_code": "com.example.review_state_changed",
+  "recorded_at": "2026-01-02T00:01:00Z",
+  "actor_ref": {
+    "scheme": "hmac-sha256",
+    "key_version": "synthetic-key-v1",
+    "purpose": "audit",
+    "pseudonym": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": [
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    ]
+  },
+  "retention": {
+    "retention_class": "restricted",
+    "retain_until": "2027-01-02T00:00:00Z",
+    "legal_hold": true
+  },
+  "object_hash": "3553e138c390007c467976779ef523ea956024fea4b03f892bff262e7110c315"
+}
