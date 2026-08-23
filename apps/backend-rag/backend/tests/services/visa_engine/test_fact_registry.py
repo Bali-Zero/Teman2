@@ -804,25 +804,32 @@ class TestDeriveHasActiveStayPermit:
         assert isinstance(fact, UnknownFact)
         assert fact.reason.value == "UNVERIFIED"
 
-    # -- F4 (2026-08-24): renewal_paid short-circuits to an ACTIVE permit --
+    # -- F4 (2026-08-24): renewal_paid can turn a stay-permit-shaped code's --
+    # -- expired verdict into True — nothing else -----------------------
     #
     # Owner ruling, verbatim: "chi ha un kitas scaduto e il pagamento del
     # rinnovo e' avvenuto prima della scadenza, se verra accettato non ci
     # sono penali. se lo ha pagato dopo la scadenza, si conteranno i giorni
     # tra scadenza e pagamento. In ogni caso resta sul visa che ha esteso,
     # non va su un altro" — clarified further, verbatim: "esatto il rinno si
-    # considera depositato se ce stato pagamento". team-lead demanded two
-    # SEPARATE reachability cases for "the applicant the ruling names": one
-    # where the printed code is an expired ITAS-shaped code, one where it is
-    # ITK_PERALIHAN specifically (the code that would otherwise short-circuit
-    # to False in _VISIT_CLASS_STATUS_CODES without ever consulting expiry).
-    # Both must resolve to True once payment is confirmed.
+    # considera depositato se ce stato pagamento".
+    #
+    # REWORKED 2026-08-24 (team-lead review, second pass): the first version
+    # checked renewal_paid before code was even read, so it overrode EVERY
+    # code unconditionally — including a real, correctly-recorded
+    # visit-class code (a C1 tourist with renewal_paid=True would have
+    # wrongly resolved True). Corrected: renewal_paid is now consulted only
+    # once the code is confirmed KNOWN and stay-permit-SHAPED — see the
+    # derivation's own 2026-08-24 REWORKED docstring note for the full
+    # reasoning, including why code-UNKNOWN + renewal_paid=True resolves
+    # UNKNOWN, not True.
 
-    def test_renewal_paid_true_overrides_an_expired_itas_shaped_code(self) -> None:
+    def test_renewal_paid_true_turns_an_expired_stay_permit_shaped_code_active(
+        self,
+    ) -> None:
         # "the applicant the ruling names": an expired KITAS with a paid,
         # in-flight renewal — today's pre-F4 behaviour was a wrongly-admitting
-        # False (see the corrected 2026-08-24 docstring history above this
-        # class). This is the case F4 exists to reverse.
+        # False. This is the case F4 exists to reverse.
         snapshot = self._snapshot(
             self._known("E23"),
             self._known("2020-01-01"),  # expired years ago on the printed card
@@ -831,29 +838,64 @@ class TestDeriveHasActiveStayPermit:
         )
         assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=True)
 
-    def test_renewal_paid_true_overrides_itk_peralihan_specifically(self) -> None:
-        # The stronger claim: even a code that is a REAL, grounded member of
-        # _VISIT_CLASS_STATUS_CODES (ITK_PERALIHAN) must not out-rank a
-        # confirmed payment. Payment is the strongest signal available for
-        # this population per the ruling's own "in ogni caso" phrasing.
+    def test_renewal_paid_true_does_not_rescue_a_real_visit_class_code(self) -> None:
+        # The corrected claim (was the opposite pre-rework): a REAL,
+        # grounded member of _VISIT_CLASS_STATUS_CODES (ITK_PERALIHAN) is
+        # NOT a KITAS being renewed — it is a different permit class
+        # entirely, and the ruling presupposes "chi ha un kitas", not
+        # "anyone who has paid something". Payment must never rescue a code
+        # this registry has positively classified as non-residence.
         snapshot = self._snapshot(
             self._known("ITK_PERALIHAN"),
             self._known("2020-01-01"),
             renewal_paid=self._known(True),
             effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
         )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    def test_renewal_paid_true_with_stay_permit_shaped_code_and_unknown_expiry_is_still_true(
+        self,
+    ) -> None:
+        # The placement claim: renewal_paid is checked BEFORE the expiry
+        # comparison, not after, because "in ogni caso" makes the expiry
+        # date irrelevant once the code is confirmed stay-permit-shaped —
+        # the applicant stays on the extended visa whether or not this
+        # snapshot happens to also know its old printed expiry date.
+        snapshot = self._snapshot(
+            self._known("E23"),
+            self._unknown(),
+            renewal_paid=self._known(True),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
         assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=True)
 
-    def test_renewal_paid_true_overrides_even_an_unknown_code(self) -> None:
-        # Payment is checked FIRST, before the code is even read — proves
-        # the short-circuit does not secretly depend on the code being
-        # classifiable at all.
+    def test_renewal_paid_true_with_unknown_code_is_unknown_not_true(self) -> None:
+        # The case the reviewer explicitly could not settle in advance,
+        # resolved by the rework's placement: with no code at all, the
+        # ruling's own premise ("chi ha un kitas") cannot be confirmed — we
+        # would not know WHAT permit class was extended. Guessing True here
+        # would repeat, one layer up, the exact defect this rework fixes.
         snapshot = self._snapshot(
             self._unknown(),
             self._unknown(),
             renewal_paid=self._known(True),
         )
-        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=True)
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+
+    def test_renewal_paid_true_with_unclassifiable_code_is_unknown_not_true(self) -> None:
+        # Same reasoning, the unclassifiable-shape case: we have a code, but
+        # cannot confirm it is a real stay-permit code, so renewal_paid is
+        # never consulted for it either.
+        snapshot = self._snapshot(
+            self._known("XYZ"),
+            self._known("2020-01-01"),
+            renewal_paid=self._known(True),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+        assert fact.reason.value == "UNVERIFIED"
 
     def test_renewal_paid_false_does_not_change_pre_f4_behaviour(self) -> None:
         # A KNOWN False (unpaid, or no renewal at all) is a real answer, but

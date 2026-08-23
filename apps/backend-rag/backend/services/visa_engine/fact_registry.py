@@ -707,12 +707,60 @@ class FactRegistry:
         further, verbatim: "esatto il rinno si considera depositato se ce
         stato pagamento"). This REVERSES the gap the previous revision of
         this docstring left open: a renewal-in-process applicant now
-        resolves to an ACTIVE permit (``True``), checked FIRST and
-        unconditionally, before either the code-shape or expiry logic below
-        is even consulted.
+        resolves to an ACTIVE permit (``True``) instead of the ``False`` an
+        expired code alone would produce.
 
-        Two things this short-circuit is deliberately built to survive,
-        both load-bearing per the owner's own phrasing:
+        REWORKED 2026-08-24 (team-lead review, second pass): the first
+        version checked ``renewal_paid`` before ``code`` was even read, so
+        it overrode EVERY code unconditionally — including a real,
+        correctly-recorded visit-class code. A C1 tourist who somehow has
+        ``renewal_paid == True`` would have resolved ``True`` ("has an
+        active stay permit"), directly contradicting this fact's own
+        two-sided grounding that a visit-class code is definitively not a
+        residence permit. That is wider than both the ruling (which
+        presupposes an existing KITAS being renewed — "chi ha un kitas
+        scaduto e IL PAGAMENTO DEL RINNOVO", not a first-time visit-visa
+        holder) and the docstring's own stated justification ("a mis-
+        recorded ``ITK_PERALIHAN``" — a data-quality problem the derivation
+        cannot actually distinguish from a correctly-recorded one, since the
+        old placement never inspected the code at all). Do not re-introduce
+        that framing: a mis-recorded code is a data-entry problem to fix at
+        the source, not something this derivation should paper over.
+
+        The corrected scoping: ``renewal_paid`` is now checked ONLY after
+        the code is confirmed KNOWN and stay-permit-SHAPED — i.e. it can
+        only ever turn a stay-permit-shaped code's answer into ``True``; it
+        can never rescue a visit-class code (``_VISIT_CLASS_STATUS_CODES``
+        still resolves ``False`` unconditionally, checked first, same as
+        before) and it never fires when the code is UNKNOWN or
+        unclassifiable. This is exactly the ruling's own fact pattern:
+        someone who ALREADY holds a KITAS-class permit and is renewing it,
+        not "anyone who has paid something".
+
+        Checked BEFORE the expiry comparison, not after — deliberately, per
+        "in ogni caso": once the code is confirmed stay-permit-shaped, a
+        confirmed payment settles eligibility regardless of the printed
+        expiry date, and regardless of whether that expiry date is even
+        KNOWN. A stay-permit-shaped code with ``renewal_paid == True`` and
+        an UNKNOWN expiry still resolves ``True`` — the ruling's "resta sul
+        visa che ha esteso" does not depend on knowing the old card's exact
+        expiry date, only on knowing which PERMIT CLASS was extended, which
+        the code-shape check has already confirmed.
+
+        This placement also settles the one case the reviewer could not
+        settle in advance: **code UNKNOWN + ``renewal_paid == True``**.
+        Answer: UNKNOWN, not ``True`` — the code-UNKNOWN branch returns
+        immediately, before ``renewal_paid`` is ever read. Reasoning: with
+        no code at all, the ruling's own premise ("chi ha un kitas") cannot
+        be confirmed — we would not know WHAT permit class was extended,
+        and "in ogni caso resta sul visa che ha esteso" is silent about
+        WHICH visa that is if we never learn what it was. Guessing ``True``
+        here would repeat the exact defect this rework fixes, one layer up:
+        overriding a stay-permit judgment on a signal (payment alone) that
+        does not by itself confirm the fact being judged (permit class).
+
+        Two things this short-circuit is still built to survive, both
+        load-bearing per the owner's own phrasing:
 
         - **Payment, not filing, is the determinant.** A lodged-but-unpaid
           renewal is NOT what the ruling describes ("depositato" only once
@@ -724,47 +772,30 @@ class FactRegistry:
           "yes", and this short-circuit would then wrongly continue their
           expired permit — the exact failure this ruling exists to prevent
           in the OTHER direction.
-        - **"In ogni caso" — timing is irrelevant to THIS fact.** The
-          ruling's before/after-expiry distinction governs whether overstay
-          PENALTIES apply (``immigration.overstay_days``, a different fact,
-          a different rule, not this one) — it does not gate whether the
-          permit continues. Both timings keep the applicant "sul visa che ha
-          esteso". So ``renewal_paid`` is a plain boolean, not an
-          enum/date — there is deliberately no earlier/later-than-expiry
-          branch here. This is an interpretation of "in ogni caso" spanning
-          both payment-timing branches the ruling describes immediately
-          before it, not a separately confirmed sentence — worth re-checking
-          against Zero directly if a future reader doubts it.
         - **"se verra accettato" — acceptance is unknowable at evaluation
           time.** The ruling's own phrasing is conditional/future-tense. This
           function does not and cannot know whether a paid renewal will be
           ACCEPTED — it treats a paid, in-flight renewal as continuity
           regardless, by declared assumption, not by omission. A later
           rejection is out of scope for this fact (and for this function).
-        - **Overrides the code-based buckets entirely, on purpose** —
-          including a code that would otherwise land in
-          ``_VISIT_CLASS_STATUS_CODES`` (e.g. a mis-recorded
-          ``ITK_PERALIHAN``) or fail the shape check. Payment is the
-          strongest available signal for this population; the printed code
-          on an expired card is exactly what the ruling says does not matter
-          once payment has occurred. See
-          ``test_fact_registry.py``'s F4 reachability tests for the two
-          cases this claim is checked against.
+        - **"In ogni caso" is read as spanning both payment-timing
+          branches** the ruling describes immediately before it — this is
+          an interpretation of phrasing, not a separately confirmed
+          sentence, worth re-checking against Zero directly if a future
+          reader doubts it. It is why ``renewal_paid`` is a plain boolean,
+          not an enum/date — the before/after-expiry distinction governs
+          overstay PENALTIES (``immigration.overstay_days``, a different
+          fact, a different rule, not this one), not whether the permit
+          continues.
 
         BRIDGING is NOT affected by this change (team-lead sibling-rule
-        audit, 2026-08-24): none of the 5 live ``hf.bridging.*``/
-        ``el.bridging.*`` rules in the signed pack read
-        ``derived.has_active_stay_permit`` — they read
-        ``immigration.current_status_code``/``current_status_expiry``
-        directly, which this short-circuit does not alter.
+        audit, 2026-08-24): the live signed pack has zero rule consumers of
+        ``derived.has_active_stay_permit`` at all today — the 5 live
+        ``hf.bridging.*``/``el.bridging.*`` rules that read stay-permit
+        facts read ``immigration.current_status_code``/
+        ``current_status_expiry`` directly, which this short-circuit does
+        not alter.
         """
-
-        renewal_paid = values[FactPath.IMMIGRATION_RENEWAL_PAID]
-        if isinstance(renewal_paid, KnownFact) and renewal_paid.value is True:
-            # Payment confirmed — the applicant stays on the permit they
-            # extended, full stop, regardless of what the printed code/expiry
-            # say. See the docstring above for why this is checked first.
-            return KnownFact(value=True)
 
         code = values[FactPath.IMMIGRATION_CURRENT_STATUS_CODE]
         if isinstance(code, UnknownFact):
@@ -773,16 +804,28 @@ class FactRegistry:
         code_value = str(code.value)
         if code_value in _VISIT_CLASS_STATUS_CODES:
             # A visit-class code is definitively not a residence permit,
-            # regardless of its own expiry — no need to consult
-            # IMMIGRATION_CURRENT_STATUS_EXPIRY at all.
+            # regardless of its own expiry OR of a paid renewal on some
+            # OTHER permit — no need to consult IMMIGRATION_CURRENT_STATUS_
+            # EXPIRY or IMMIGRATION_RENEWAL_PAID at all. See the docstring's
+            # 2026-08-24 REWORKED note for why this must never be
+            # overridden.
             return KnownFact(value=False)
         if not _STAY_PERMIT_STATUS_CODE_SHAPE.match(code_value):
             # Neither a recognized visit-class code nor shaped like a
             # LIMITED_STAY/PERMANENT_STAY product code — genuinely
             # ungrounded (could be a typo, a legacy code, or a real permit
             # class this registry does not yet recognize). Surface that as
-            # UNKNOWN rather than guessing either direction.
+            # UNKNOWN rather than guessing either direction. renewal_paid is
+            # NOT consulted here either — we have not confirmed this is a
+            # real stay-permit code to have a renewal of.
             return UnknownFact(reason=UnknownReason.UNVERIFIED)
+
+        # F4: the code is confirmed KNOWN and stay-permit-shaped. A
+        # confirmed payment settles eligibility regardless of the expiry
+        # comparison below — see the docstring's "in ogni caso" note.
+        renewal_paid = values[FactPath.IMMIGRATION_RENEWAL_PAID]
+        if isinstance(renewal_paid, KnownFact) and renewal_paid.value is True:
+            return KnownFact(value=True)
 
         expiry = values[FactPath.IMMIGRATION_CURRENT_STATUS_EXPIRY]
         if isinstance(expiry, UnknownFact):
