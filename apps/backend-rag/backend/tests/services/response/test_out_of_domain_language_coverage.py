@@ -33,9 +33,10 @@ from backend.services.response.cleaner import (
 #: Languages the detector emits that these refusals knowingly serve in English.
 #: Kept identical in spirit to the stub table's declaration: a new detector
 #: language must be translated or declared here on purpose.
-DECLARED_ENGLISH_FALLBACK: frozenset[str] = frozenset(
-    {"CHINESE", "ARABIC", "FRENCH", "SPANISH", "GERMAN"}
-)
+#:
+#: GERMAN and SPANISH moved OUT of this set on 2026-08-23, in lockstep with
+#: _reasoning_stubs.PROTOCOL_LANGUAGES — see that module's docstring.
+DECLARED_ENGLISH_FALLBACK: frozenset[str] = frozenset({"CHINESE", "ARABIC", "FRENCH"})
 
 
 def _languages_the_detector_can_emit() -> set[str]:

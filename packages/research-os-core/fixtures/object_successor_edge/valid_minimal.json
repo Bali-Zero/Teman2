@@ -1,0 +1,31 @@
+{
+  "object_successor_edge_id": "10000000-0000-4000-8000-000000000001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "object_kind": "com.example.synthetic_record",
+  "family_id": "com.example.family_001",
+  "predecessor_ref": {
+    "object_kind": "com.example.synthetic_record",
+    "object_id": "synthetic-record-001",
+    "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "successor_ref": {
+    "object_kind": "com.example.synthetic_record",
+    "object_id": "synthetic-record-002",
+    "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "reason_code": "com.example.correction",
+  "recorded_at": "2026-01-01T00:01:00Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "object_hash": "2ac7bb06ee8ab4a511527d2d5353a0ea1d77950b0eaa76b3e5080a56a6507ee6"
+}

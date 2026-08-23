@@ -45,6 +45,10 @@ import { GET as getVoaResultTombstone } from "./visa/voa/[hash]/route";
 
 const APP_DIR = path.dirname(fileURLToPath(import.meta.url));
 const VISA_DIR = path.join(APP_DIR, "visa");
+// `(visa-oracle)` is a Next.js route GROUP — it contributes nothing to the
+// URL, unlike `/visa` above, so walks starting here must anchor the URL
+// prefix at "/visa-oracle" directly, not at the group's directory name.
+const VISA_ORACLE_DIR = path.join(APP_DIR, "(visa-oracle)", "visa-oracle");
 const PUBLIC_API_SCHEMA = path.join(APP_DIR, "..", "lib", "api", "schema.d.ts");
 const LOCALES_DIR = path.join(APP_DIR, "..", "i18n", "locales");
 const BASE = "https://balizero.com";
@@ -61,25 +65,51 @@ const INTENTIONALLY_UNLISTED: Record<string, string> = {
     "retired public route; GARUDA VOA is an internal-only admin tool",
 };
 
-/** Static (non-dynamic) route paths under /visa, derived from the tree. */
-function staticVisaRoutes(): string[] {
+/**
+ * Every static route under /visa-oracle is deliberately unlisted: the engine
+ * is SHADOW (verdicts are not authoritative) and DPIA §8 is unsigned (#4591,
+ * 2026-08-23) — the layout's `robots: { index: false, follow: false }` is
+ * what keeps it out of search, and a sitemap entry would fight that directly.
+ * Ratification conditions are recorded in apps/mouth/src/app/(visa-oracle)/
+ * visa-oracle/layout.tsx; when they are met, both that noindex AND this
+ * exclusion need to move together, not just one of them.
+ */
+const INTENTIONALLY_UNLISTED_VISA_ORACLE: Record<string, string> = {
+  "/visa-oracle": "SHADOW engine, DPIA §8 unsigned — see #4591",
+  "/visa-oracle/privacy": "policy for a SHADOW/unratified tool — see #4591",
+  "/visa-oracle/unlock":
+    "internal team-only PIN gate, reached by URL, never linked publicly",
+};
+
+/** Static (non-dynamic) route paths under `dir`, URL-rooted at `urlPrefix`. */
+function staticRoutesUnder(dir: string, urlPrefix: string): string[] {
   const out: string[] = [];
-  const walk = (dir: string, urlPath: string) => {
+  const walk = (currentDir: string, urlPath: string) => {
     if (
-      fs.existsSync(path.join(dir, "page.tsx")) ||
-      fs.existsSync(path.join(dir, "route.ts"))
+      fs.existsSync(path.join(currentDir, "page.tsx")) ||
+      fs.existsSync(path.join(currentDir, "route.ts"))
     ) {
       out.push(urlPath);
     }
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       // `[hash]` / `[...slug]` — dynamic, never enumerable in a sitemap
       if (entry.name.startsWith("[")) continue;
-      walk(path.join(dir, entry.name), `${urlPath}/${entry.name}`);
+      walk(path.join(currentDir, entry.name), `${urlPath}/${entry.name}`);
     }
   };
-  walk(VISA_DIR, "/visa");
+  walk(dir, urlPrefix);
   return out.sort();
+}
+
+/** Static (non-dynamic) route paths under /visa, derived from the tree. */
+function staticVisaRoutes(): string[] {
+  return staticRoutesUnder(VISA_DIR, "/visa");
+}
+
+/** Static (non-dynamic) route paths under /visa-oracle, derived from the tree. */
+function staticVisaOracleRoutes(): string[] {
+  return staticRoutesUnder(VISA_ORACLE_DIR, "/visa-oracle");
 }
 
 describe("sitemap — visa funnel findability", () => {
@@ -200,6 +230,32 @@ describe("sitemap — visa funnel findability", () => {
   it("does not list a route that was deliberately excluded (innocence)", async () => {
     const urls = new Set((await sitemap()).map((e) => e.url));
     for (const excluded of Object.keys(INTENTIONALLY_UNLISTED)) {
+      expect(urls.has(`${BASE}${excluded}`)).toBe(false);
+    }
+  });
+});
+
+describe("sitemap — visa-oracle stays out of the sitemap while noindex (#4591)", () => {
+  it("has a route tree to check (the probe can produce a positive)", () => {
+    // Guard against the empty-set failure mode: a walk that finds nothing
+    // would make every assertion below vacuously true.
+    const routes = staticVisaOracleRoutes();
+    expect(routes.length).toBeGreaterThanOrEqual(1);
+    expect(routes).toContain("/visa-oracle");
+  });
+
+  it("lists every static visa-oracle route, or names it as deliberately unlisted", async () => {
+    const urls = new Set((await sitemap()).map((e) => e.url));
+    const missing = staticVisaOracleRoutes().filter(
+      (r) =>
+        !urls.has(`${BASE}${r}`) && !(r in INTENTIONALLY_UNLISTED_VISA_ORACLE),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it("does not list any visa-oracle route (innocence — a future accidental add fails here)", async () => {
+    const urls = new Set((await sitemap()).map((e) => e.url));
+    for (const excluded of Object.keys(INTENTIONALLY_UNLISTED_VISA_ORACLE)) {
       expect(urls.has(`${BASE}${excluded}`)).toBe(false);
     }
   });

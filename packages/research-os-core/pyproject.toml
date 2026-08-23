@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "research-os-core"
+version = "1.0.0"
+description = "Canonical Research OS contracts and validators"
+requires-python = ">=3.11"
+dependencies = [
+    "jsonschema>=4.26.0",
+    "pydantic>=2.12.5",
+    "rfc8785==0.1.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["research_os*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["../../apps/backend-rag/backend/tests/unit/research_os"]
+pythonpath = ["."]

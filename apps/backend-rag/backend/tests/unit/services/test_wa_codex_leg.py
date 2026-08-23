@@ -932,3 +932,120 @@ async def test_consume_failure_fails_closed(
     assert result.fail == "post_completion:RuntimeError"
     assert result.text is None
     stubs.record_breaker_result.assert_not_awaited()
+
+
+# ── G-P3 DLP wiring: the two load-bearing wires nothing else exercises ─────
+#
+# Final-gate finding (2026-08-20): 153 DLP tests existed, none through THIS
+# module — a correct wa_dlp.py protects nothing if the leg that calls it
+# never restores placeholders or never asks for redaction (scar family #2,
+# "a correct function nothing exercises protects nothing"). These three
+# tests pin BOTH wires through the real `_attempt` code path, using the
+# harness above (no parallel harness).
+#
+# The default `_wire_stubs` finalize fake returns a FIXED FinalizeResult
+# built from the `consume` kwarg at setup time — it never looks at what the
+# leg actually passed as `data["answer"]`, so it cannot prove restore_text
+# ran. These tests instead install an ECHO fake (`side_effect` reading
+# `kwargs["data"]["answer"]`) so `result.text` reflects the REAL text the
+# leg computed after restore_text — the closest thing to "prefer the real
+# path" the mocked finalize boundary allows.
+
+
+def _echo_finalize() -> AsyncMock:
+    """Fake finalize that returns exactly what the leg passed as the
+    answer — unlike `_wire_stubs`'s fixed-value default, this proves
+    `restore_text`'s OUTPUT (not the harness's canned text) reaches
+    `CodexLegResult.text`."""
+    return AsyncMock(
+        side_effect=lambda **kwargs: FinalizeResult(
+            outcome=FinalizeOutcome.SEND, text=kwargs["data"]["answer"]
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_leg_restores_placeholders_before_the_customer_sees_them(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Guilt (restore): the build response carries a reversal_map and the
+    consumed completion echoes a placeholder the generator saw in its
+    redacted prompt — the leg must substitute it back BEFORE finalize/send.
+    Mutation pin: deleting `text = restore_text(text, reversal_map)` in
+    `wa_codex_leg._attempt` leaves the literal `[PII-PHONE-1]` token in
+    `CodexLegResult.text` and this test goes red.
+
+    The placeholder is embedded in an otherwise-normal sentence (not a bare
+    token) so a real finalize's text-defect checks would not eat it —
+    matching the coordinator's harness note.
+
+    G-P3 r2 F6 (ORDER pin): asserting on `result.text` alone only proves
+    restore happened SOMEWHERE in the pipeline — it cannot tell "restore
+    before finalize" apart from "finalize first, then restore the
+    RETURNED text", because `_echo_finalize` simply forwards whatever it
+    is given straight back out, and either ordering would still leave
+    `result.text` fully restored. The assertion on
+    `echo_finalize.await_args.kwargs["data"]["answer"]` below closes that
+    gap: it inspects the value the finalize call ITSELF received, which
+    can only be the restored text if `restore_text` ran BEFORE that call.
+    Mutation pin: moving the `restore_text` call to run on `result.text`
+    AFTER `finalize_wa_answer` returns would leave this kwarg holding the
+    raw `[PII-PHONE-1]` placeholder and this assertion goes red, even
+    though the old `result.text`-only assertions below would still pass."""
+    build = {**_GOOD_BUILD, "reversal_map": {"[PII-PHONE-1]": "+628111234567"}}
+    stubs = _wire_stubs(
+        monkeypatch,
+        build=build,
+        consume="Please call [PII-PHONE-1] to confirm your appointment.",
+    )
+    echo_finalize = _echo_finalize()
+    monkeypatch.setattr(wa_codex_leg, "finalize_wa_answer", echo_finalize)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text is not None
+    assert "+628111234567" in result.text
+    assert "[PII-" not in result.text
+    stubs.rag_client.post.assert_awaited_once()  # sanity: build actually ran
+
+    received_answer = echo_finalize.await_args.kwargs["data"]["answer"]
+    assert "+628111234567" in received_answer
+    assert "[PII-" not in received_answer
+
+
+@pytest.mark.asyncio
+async def test_build_request_always_carries_dlp_true(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Guilt (flag): the leg is the ONLY caller of /api/wa-package/build
+    that hands customer text to an external generator (module docstring,
+    wa_codex_leg.py:240-243) — every build request must ask for redaction.
+    Mutation pin: dropping `"dlp": True` from the POST body ships the
+    UNREDACTED package to codex and this test goes red."""
+    stubs = _wire_stubs(monkeypatch)
+    await _run()
+    kwargs = stubs.rag_client.post.await_args.kwargs
+    captured = kwargs["json"]
+    assert captured["dlp"] is True
+
+
+@pytest.mark.asyncio
+async def test_absent_reversal_map_passes_completion_through_byte_identical(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence: a build response with NO reversal_map (a dlp=False build,
+    or a redaction that found nothing to redact) must leave the consumed
+    completion untouched — no strip, no crash, no placeholder-shaped noise
+    introduced. `_GOOD_BUILD` carries no `reversal_map` key, so
+    `built.get("reversal_map") or {}` resolves to `{}` here — the ordinary
+    default every other test in this file already relies on implicitly;
+    this test makes it an explicit, named guarantee."""
+    original = "The office is open Monday to Friday, 9am-5pm."
+    _wire_stubs(monkeypatch, consume=original)
+    monkeypatch.setattr(wa_codex_leg, "finalize_wa_answer", _echo_finalize())
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text == original

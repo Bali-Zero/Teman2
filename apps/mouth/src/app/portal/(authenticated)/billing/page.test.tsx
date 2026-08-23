@@ -69,7 +69,7 @@ const BILLING = {
       practice_id: 12,
       practice_name: "PT PMA Setup",
       practice_category: "Company",
-      payment_status: "overdue",
+      payment_status: "unpaid",
     },
   ],
 };
@@ -119,7 +119,12 @@ describe("BillingPage", () => {
     expect(outstandingAmount?.style.color).toBe("var(--state-warning)");
 
     // Invoice rows: token surfaces, invoice numbers, status badges reading
-    // the semantic --state-* tokens (paid → success, overdue → danger).
+    // the semantic --state-* tokens (paid → success, unpaid → warning).
+    // `overdue` is never a real payment_status here: the backend's payment
+    // vocabulary is a closed set {unpaid, partial, paid} (crm_practices.py
+    // PAYMENT_STATUS_VALUES) and no invoice due-date data exists to derive
+    // an "overdue" state from — `overdue` is only ever emitted for deadline
+    // states elsewhere in the portal (dashboard mixin), not billing.
     expect(screen.getByText("INV-2026-001")).toBeInTheDocument();
     expect(screen.getByText("INV-2026-002")).toBeInTheDocument();
     // ("Paid" also appears as a summary-card label, so pick the badge by
@@ -129,8 +134,8 @@ describe("BillingPage", () => {
       .map((el) => el.closest("div"))
       .find((el) => el?.style.background.includes("color-mix"));
     expect(paidBadge?.style.color).toBe("var(--state-success)");
-    const overdueBadge = screen.getByText("Overdue").closest("div");
-    expect(overdueBadge?.style.color).toBe("var(--state-danger)");
+    const unpaidBadge = screen.getByText("Unpaid").closest("div");
+    expect(unpaidBadge?.style.color).toBe("var(--state-warning)");
 
     // Card surfaces read theme tokens, not the old dark rgba glass.
     expect(container.innerHTML).toContain("var(--bz-card)");
