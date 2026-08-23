@@ -26,7 +26,11 @@ def _rehash(payload: dict[str, Any]) -> dict[str, Any]:
 
 def test_valid_fixtures_round_trip(load_json: Any) -> None:
     schema = load_json(SCHEMA_DIRECTORY / f"{CONTRACT_KIND}.schema.json")
-    for fixture_path in sorted((FIXTURES_ROOT / CONTRACT_KIND).glob("valid_*.json")):
+    fixture_paths = sorted((FIXTURES_ROOT / CONTRACT_KIND).glob("valid_*.json"))
+    # Lower bound, not merely non-empty: a silently emptied/renamed fixture
+    # directory would otherwise make this loop pass having asserted nothing.
+    assert len(fixture_paths) >= 3, "expected at least the 3 known valid metric_result fixtures"
+    for fixture_path in fixture_paths:
         payload = load_json(fixture_path)
         Draft202012Validator(schema).validate(payload)
         instance = MetricResult.model_validate(payload)
@@ -34,12 +38,14 @@ def test_valid_fixtures_round_trip(load_json: Any) -> None:
 
 
 def test_invalid_fixtures_reject_with_exact_expected_reason(load_json: Any) -> None:
-    fixture_paths = (
+    fixture_paths = sorted(
         path
         for path in (FIXTURES_ROOT / CONTRACT_KIND).glob("invalid_*.json")
         if not path.name.endswith(".expect.json")
     )
-    for fixture_path in sorted(fixture_paths):
+    # Lower bound, not merely non-empty -- see test_valid_fixtures_round_trip above.
+    assert len(fixture_paths) >= 6, "expected at least the 6 known invalid metric_result fixtures"
+    for fixture_path in fixture_paths:
         expected = load_json(fixture_path.with_suffix(".expect.json"))["reason_code"]
         with pytest.raises(ValidationError) as caught:
             MetricResult.model_validate(load_json(fixture_path))
@@ -65,6 +71,10 @@ def test_fixing_the_declared_defect_makes_invalid_fixtures_valid(load_json: Any)
         "invalid_sample_overall_negative.json": lambda p: {
             **p,
             "sample": {**p["sample"], "overall": 0},
+        },
+        "invalid_gate_pass_with_failed_guardrail.json": lambda p: {
+            **p,
+            "gate_disposition": "fail",
         },
     }
     for filename, fix in fixes.items():
@@ -213,6 +223,13 @@ def test_guardrail_result_verdict_is_closed_to_exactly_three_values(load_json: A
         candidate["guardrail_results"] = [
             {"metric_name": "com.example.refund_rate", "result": closed_value}
         ]
+        # Pin gate_disposition away from "pass" for the non-"pass" closed
+        # values -- this test is about GuardrailResultVerdict's literal
+        # closedness, not the separate failed-guardrail-vs-gate-pass rule
+        # (see test_gate_disposition_pass_rejected_when_any_guardrail_failed
+        # below), so it must not collide with that rule.
+        if closed_value != "pass":
+            candidate["gate_disposition"] = "insufficient_evidence"
         MetricResult.model_validate(_rehash(candidate))  # innocence
 
     candidate = deepcopy(payload)
@@ -303,6 +320,46 @@ def test_supersedes_ref_is_optional_and_binds_a_prior_result(load_json: Any) -> 
         str(result.supersedes_metric_result_ref.metric_result_id)
         == "c0000000-0000-4000-8000-000000000002"
     )
+
+
+def test_gate_disposition_pass_rejected_when_any_guardrail_failed(load_json: Any) -> None:
+    """Section 20 invariant (CONTRACTS.md:1024 + section 19's own guardrail
+    invariant): "failed mandatory guardrails ... cannot be encoded as a
+    passing measurement." Section 19's ``guardrails`` shape
+    (``[{metric_name, direction, threshold}]``) carries no mandatory/
+    optional flag and this clause carries no qualifier either -- every
+    guardrail counts. Both arms proven: a guard checked on only one arm is
+    not proven."""
+    payload = load_json(FIXTURES_ROOT / CONTRACT_KIND / "valid_measured_with_extension.json")
+
+    # GUILT: the checked-in invalid fixture (correct object_hash, singleton
+    # reason code) is exercised via the glob-driven tests above; reproduced
+    # directly here too so this test is self-contained.
+    guilty = deepcopy(payload)
+    guilty["guardrail_results"] = [
+        {"metric_name": "com.example.refund_rate", "result": "fail", "observed_value": 0.5}
+    ]
+    guilty["gate_disposition"] = "pass"
+    with pytest.raises(ValidationError) as caught:
+        MetricResult.model_validate(_rehash(guilty))
+    assert "failed_guardrail_blocks_gate_pass" in _reason_codes(caught.value)
+
+    # INNOCENCE arm 1: a failed guardrail is fine as long as the gate is not
+    # "pass" (the document is honest about the failure).
+    innocent_failed_gate = deepcopy(payload)
+    innocent_failed_gate["guardrail_results"] = [
+        {"metric_name": "com.example.refund_rate", "result": "fail", "observed_value": 0.5}
+    ]
+    innocent_failed_gate["gate_disposition"] = "fail"
+    result = MetricResult.model_validate(_rehash(innocent_failed_gate))
+    assert result.gate_disposition.value == "fail"
+
+    # INNOCENCE arm 2: passing guardrails with a passing gate is fine (the
+    # unmodified fixture already carries guardrail_results=[pass] +
+    # gate_disposition="pass").
+    result = MetricResult.model_validate(payload)
+    assert result.gate_disposition.value == "pass"
+    assert all(g.result == "pass" for g in result.guardrail_results)
 
 
 def test_extensions_reject_a_shadowed_core_field(load_json: Any) -> None:

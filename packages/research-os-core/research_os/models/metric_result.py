@@ -62,6 +62,48 @@ not forbid):
   ``data_cutoff_at`` is plausibly ``>= ended_at`` in most real pipelines but
   that is a domain guess, not spec text, so it is left unconstrained.
 
+Section 20's own invariants enumerate five things that block a passing
+measurement, verbatim: "Unmet sample floors, unavailable denominators,
+failed mandatory guardrails, expired profiles, or invalidated inputs cannot
+be encoded as a passing measurement." Of the five, exactly ONE is checkable
+from a single ``MetricResult`` document on its own, and it is NOW ENFORCED
+by ``validate_result`` below -- plus a matching JSON Schema ``if``/``then``
+on ``model_config['json_schema_extra']``, expressible here because both
+``guardrail_results[].result`` and ``gate_disposition`` are closed enums:
+
+- Failed mandatory guardrails: rejected when any
+  ``guardrail_results[].result == "fail"`` AND ``gate_disposition ==
+  "pass"``. Section 19's own ``guardrails: [{metric_name, direction,
+  threshold}]`` shape carries no mandatory/optional flag anywhere, and this
+  clause's text carries no qualifier either -- "mandatory" does not name a
+  subset here, every guardrail counts.
+
+The other four of section 20's five stay UNENFORCED at this layer,
+deliberately (repository/service-layer invariants, not single-object shape
+constraints -- narrowing here would reject documents section 20's own text
+permits):
+
+- Unmet sample floors: the floor (``minimum_sample.overall``) lives on the
+  *referenced* ``MetricProfile``, not on this document -- checking it needs
+  a repository lookup by ``metric_profile_ref``, which a single-object
+  validator cannot perform.
+- Expired profiles: same shape of problem as sample floors --
+  ``validity.expires_at`` lives on the referenced ``MetricProfile``, and
+  "expired" additionally needs wall-clock "now", neither of which this
+  document carries.
+- Invalidated inputs: needs the CURRENT state of the referenced
+  ``subject_refs``/``source_observation_refs`` objects, not anything
+  present in this document.
+- Unavailable denominators: unlike the three above, ``measurement
+  .denominator`` IS a field on this very document -- but whether a given
+  metric even *needs* one is not stated anywhere, so a missing denominator
+  cannot be told apart from "a metric that legitimately never had one"
+  without producer-side knowledge this kind does not carry. Same class of
+  problem as the already-pinned
+  ``test_measured_pass_with_no_value_is_currently_accepted`` above --
+  inventing that rule here would be exactly the self-inflicted narrowing
+  the P04-D1 mandate warns against.
+
 Other judgment calls (spec silent, flagged for ratification; matching
 INTERPRETATION comments sit at each code site below):
 
@@ -133,7 +175,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from research_os.enums import GateDisposition, MetricResultState, RiskClass, Sensitivity
@@ -226,6 +268,28 @@ class MetricResultClassification(FrozenCoreModel):
 
 
 class MetricResult(FrozenCoreModel):
+    # Section 20 invariant enforcement (see module docstring): a failed
+    # guardrail cannot coexist with a passing gate. Both fields are closed
+    # enums, so the same rule is expressible as a JSON Schema if/then --
+    # merges with (does not replace) FrozenCoreModel.model_config, per
+    # pydantic's ConfigWrapper.for_model base-then-namespace update order.
+    model_config = ConfigDict(
+        json_schema_extra={
+            "if": {
+                "properties": {
+                    "guardrail_results": {
+                        "contains": {
+                            "properties": {"result": {"const": "fail"}},
+                            "required": ["result"],
+                        }
+                    }
+                },
+                "required": ["guardrail_results"],
+            },
+            "then": {"properties": {"gate_disposition": {"not": {"const": "pass"}}}},
+        }
+    )
+
     metric_result_id: UUID
     metric_result_family_id: RegisteredName
     supersedes_metric_result_ref: MetricResultRef | None = None
@@ -256,6 +320,13 @@ class MetricResult(FrozenCoreModel):
     @model_validator(mode="after")
     def validate_result(self) -> MetricResult:
         validate_extensions(self.extensions)
+        if self.gate_disposition == GateDisposition.PASS and any(
+            guardrail.result == "fail" for guardrail in self.guardrail_results
+        ):
+            raise PydanticCustomError(
+                "failed_guardrail_blocks_gate_pass",
+                "gate_disposition cannot be 'pass' when any guardrail_results[].result is 'fail'",
+            )
         expected = object_hash(self)
         if self.object_hash != expected:
             raise PydanticCustomError(

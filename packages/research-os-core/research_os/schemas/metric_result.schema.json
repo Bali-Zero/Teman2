@@ -392,6 +392,21 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "if": {
+    "properties": {
+      "guardrail_results": {
+        "contains": {
+          "properties": {
+            "result": {
+              "const": "fail"
+            }
+          },
+          "required": ["result"]
+        }
+      }
+    },
+    "required": ["guardrail_results"]
+  },
   "properties": {
     "classification": {
       "$ref": "#/$defs/MetricResultClassification"
@@ -548,6 +563,15 @@
     "retention",
     "object_hash"
   ],
+  "then": {
+    "properties": {
+      "gate_disposition": {
+        "not": {
+          "const": "pass"
+        }
+      }
+    }
+  },
   "title": "MetricResult",
   "type": "object"
 }
