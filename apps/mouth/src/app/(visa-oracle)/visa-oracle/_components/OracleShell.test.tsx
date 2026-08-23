@@ -30,12 +30,11 @@ import { OracleShell } from "./OracleShell";
 
 const ANSWERS = [
   ["in_indonesia", "no"],
-  // Offshore now enters the same permit-status chain as onshore (fixed
-  // 2026-08-24, D12 offshore-reachability P0) — answered "no" to preserve
-  // this fixture's original downstream intent.
-  ["permit_expiry", "2026-09-01"],
+  // Offshore now asks a single permit-status gate question, converging
+  // immediately on "no" (fixed 2026-08-24, D12 offshore-reachability P0,
+  // then re-fixed same day after a funnel-cost review) — answered "no"
+  // to preserve this fixture's original downstream intent.
   ["holds_stay_permit", "no"],
-  ["current_status_code", "C1"],
   ["overstay_days", "0"],
   ["nationalities", "US"],
   ["birth_date", "1990-01-01"],
@@ -99,16 +98,17 @@ async function completeFreshInterview(): Promise<void> {
     await screen.findByRole("button", { name: /planning ahead/i }),
   );
 
-  // Offshore now enters the same permit-status chain as onshore (fixed
-  // 2026-08-24, D12 offshore-reachability P0) before reaching overstay_days.
-  await screen.findByRole("heading", { name: /current stay permit expire/i });
-  const permitExpiryDate =
-    document.querySelector<HTMLInputElement>('input[type="date"]');
-  expect(permitExpiryDate).not.toBeNull();
-  fireEvent.change(permitExpiryDate!, { target: { value: "2026-09-01" } });
-  fireEvent.click(screen.getByRole("button", { name: /see my options/i }));
+  // Offshore now asks a single permit-status gate question before
+  // converging (fixed 2026-08-24, D12 offshore-reachability P0, then
+  // re-fixed same day after a funnel-cost review — see flow.ts's
+  // `in_indonesia`/`holds_stay_permit` cases). "no" here converges
+  // straight to overstay_days with no further permit questions — the
+  // fact resolves from this answer alone via fact-mapper.ts's
+  // synthesized NO_STAY_PERMIT (see fact-mapper.test.ts for that proof).
+  await screen.findByRole("heading", {
+    name: /do you currently hold a limited or permanent stay permit/i,
+  });
   fireEvent.click(await screen.findByRole("button", { name: /^no$/i }));
-  fireEvent.click(await screen.findByRole("button", { name: /^c1$/i }));
 
   fireEvent.change(await screen.findByRole("spinbutton"), {
     target: { value: "0" },

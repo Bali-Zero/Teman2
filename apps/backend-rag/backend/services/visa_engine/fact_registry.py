@@ -54,7 +54,8 @@ JsonValue: TypeAlias = None | bool | int | float | str | list["JsonValue"] | dic
 _INDONESIA_COUNTRY_CODE = "ID"
 _MINOR_AGE_THRESHOLD = 18
 
-#: ``derived.has_active_stay_permit`` grounding, side 1 of 2 (2026-08-23):
+#: ``derived.has_active_stay_permit`` grounding, side 1 of 2 (2026-08-23,
+#: extended 2026-08-24 with a 9th, synthesized value — see below):
 #: the exact 8 option keys ``apps/mouth``'s ``current_status_code`` question
 #: offers today (the only values the live frontend can ever send as KNOWN —
 #: an "other" answer is filtered to UNKNOWN client-side, see that question's
@@ -69,6 +70,22 @@ _MINOR_AGE_THRESHOLD = 18
 #: kept a separate frozenset (not derived from the enum registry) because it
 #: describes an EXTERNAL taxonomy fact about these specific strings, not a
 #: FactPath-level closed vocabulary.
+#:
+#: ``NO_STAY_PERMIT`` (added 2026-08-24, P0 offshore-reachability fix,
+#: team-lead funnel-cost review) is NOT one of the 8 real option keys above
+#: and is never offered as a UI choice — it is a synthesized sentinel
+#: ``apps/mouth``'s ``fact-mapper.ts`` emits directly when an OFFSHORE
+#: applicant answers the (already-existing) ``holds_stay_permit`` question
+#: "no", instead of asking the granular ``current_status_code`` question a
+#: second time for a fact its own answer already fully determines. This is
+#: not a guess: it is the literal, honest translation of what the applicant
+#: told us, distinct from every real document-derived code, and it belongs
+#: in this frozenset (not `_STAY_PERMIT_STATUS_CODE_SHAPE`) for the exact
+#: same reason a real visit-class code does — it is definitively NOT a
+#: residence permit, so no need to consult expiry either. See
+#: ``flow.ts::computeNextNode``'s offshore branch for the frontend routing
+#: that produces it, and the funnel-cost measurement in PR #4727 for why
+#: this exists instead of unconditionally asking the full onshore chain.
 _VISIT_CLASS_STATUS_CODES: frozenset[str] = frozenset(
     {
         "A1",
@@ -79,6 +96,7 @@ _VISIT_CLASS_STATUS_CODES: frozenset[str] = frozenset(
         "ITK_FROM_VISIT_C",
         "ITK_FROM_VISIT_D",
         "ITK_PERALIHAN",
+        "NO_STAY_PERMIT",
     }
 )
 
