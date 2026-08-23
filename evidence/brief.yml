@@ -1,65 +1,28 @@
-task_id: ci-backend-test-sharding-0823
+task_id: ci-fastgate-off-critical-path-0823
 gear: 3
 l_level: L2
 gate_class: opus
-objective: |
-  Shard `Backend Tests (Python)` three ways. It is the single largest fixed cost in every
-  merge-queue transit and every code PR pays it TWICE (PR lane + merge-group lane). Measured
-  on this workflow, not estimated: merge_group run 32626973483 spent 797s of a 1068s job in
-  "Run unit tests" (74.6%); schedule run 32624568684 spent 726s of 975s (74.5%). Every other
-  required gate on the same PR finishes in under 2 minutes.
-
-  Intra-job parallelism is already saturated — `-n auto --dist loadfile` was re-added
-  2026-08-21 with per-xdist-worker Postgres isolation and a 2-core `ubuntu-latest` runner has
-  nothing left to give. The only remaining lever is CROSS-JOB sharding: 3 x 2 cores instead of
-  1 x 2.
-
-  Gear 3 is the DETERMINISTIC FLOOR here, not a choice: the diff touches
-  `.github/workflows/`, which floors at 3 regardless of size (fleet-order-spec.md §4).
-
-  THE ONE THING THIS PR IS REALLY ABOUT, and the reason the evidence below is sized the way it
-  is: `Backend Tests (Python)` is one of the 27 REQUIRED status contexts in classic branch
-  protection on main. A `strategy.matrix` renames its check runs to "... (1)", "... (2)" — the
-  bare required context then never reports again, every merge-queue entry waits out
-  `checkResponseTimeout` (5400s) and fails with nothing red to fix. That is cicatrix-superscar
-  #2 / W69 (required checks silently disarmed), and it would be self-inflicted by a change whose
-  whole purpose is to make the queue faster. The cure is structural: a fan-in job keeps the exact
-  name and the shards get new, non-required names.
-
-  The second failure mode this design has to defeat is worse because it is INVISIBLE: if the
-  three chunks stop tiling the corpus, tests silently stop running and the required context stays
-  green. A sharded suite that under-runs looks exactly like a healthy one. Four independent
-  refusals in the fan-in close it (upstream results, partition guard against the shards' OWN
-  uploaded chunk lists, junit proof-of-work, coverage combine before threshold).
+objective: >-
+  The `Run core tests (fast gate)` step is written once but lives inside the
+  `backend-shard` matrix job, so S11 (#4647) silently multiplied it by three.
+  Move it to `backend-static` so it runs once and off the critical path,
+  WITHOUT weakening the chain that makes a red core test redden the one
+  required context, `Backend Tests (Python)`.
+why_now: >-
+  Measured on merge_group run 32632670541: 7s / 8s / 8s per shard, i.e. ~16s of
+  duplicated runner time and ~8s on the critical path (critical path = slowest
+  shard + fan-in). The same run missed the mandate's <=8 min per-run target by
+  12-40s, so this single step is 20-65% of that miss. Ledgered in #4668.
 constraints:
-  - "The `name:` of the fan-in job must remain the byte-exact string `Backend Tests (Python)`,
-    and its job id must remain `backend-tests` — `test-summary` consumes
-    `needs.backend-tests.result`, and branch protection consumes the name."
-  - "Do NOT change the merge_group scoping semantic: the PR lane runs impact-scoped selection,
-    merge_group DELIBERATELY runs unscoped (impact_map.py docstring, 'SCOPE, DECLARED'). The
-    partitioner reads the same IMPACT_* env with the same fail-open convention and never narrows
-    the corpus on its own initiative."
-  - "Do NOT touch the workflow-level `concurrency:` block. It is scar tissue encoding three
-    asymmetries (merge_group / schedule / push-to-main) that look like bugs at a glance; the new
-    jobs inherit it unchanged."
-  - "No new dependencies. pytest-split was considered and deliberately deferred to v2, gated on a
-    MEASURED shard imbalance > ~2x — which this PR instruments rather than assumes."
-  - "Larger paid runners: rejected (cost). Self-hosted runners: rejected outright — this is a
-    public repository, so that means arbitrary PR code executing on our machines."
+  - "The required context name `Backend Tests (Python)` must stay byte-exact — it is one of 27 required contexts in classic branch protection. Renaming it strands every queue entry (superscar #2 / W69)."
+  - "The guilt chain must survive: `backend-static` is NOT a required context. If the fan-in's assert did not read `needs.backend-static.result`, moving the gate there would make a broken core test invisible — reproducing the exact defect S11 was built to avoid."
+  - "Do not touch the concurrency block (scar tissue) and do not change the merge_group unscoped-selection semantic."
+  - "No new dependencies, no paid runners, no self-hosted runners (public repo)."
+  - "One PR, one concern: this moves a step. It does not delete the gate, and it does not attempt the separate open question of why merge_group shards run ~35% slower than PR-lane shards."
 acceptance:
-  - "`Backend Tests (Python)` still reports on every event type it reported on before and never
-    hangs unreported. CORRECTED after a refuter (Codex GPT-5.6) checked the trigger list instead
-    of trusting it: those events are pull_request, merge_group, schedule and workflow_dispatch —
-    there is NO `push:` trigger on this workflow. The pre-existing comment at tests.yml:42 claims
-    `every main push now runs to completion`, and that claim has been false for as long as it has
-    been there. This PR does not fix that (out of scope, and the concurrency block is explicitly
-    off-limits per the constraints below) but it must not REPEAT it: an earlier draft of this very
-    acceptance criterion listed `push`, i.e. the diff was about to inherit a false premise from a
-    comment rather than from the code."
-  - "All 27 required contexts report on the probe head SHA."
-  - "Wall-clock for the required context on a full unscoped (merge-group) transit is <= 8 min."
-  - "GUILT: a failing test makes the fan-in RED. GUILT: a corrupted chunk list makes the
-    partition guard RED. INNOCENCE: a clean transit is green."
-  - "Coverage `--fail-under=55` is still enforced on the lane that collects it (merge_group /
-    push / schedule / dispatch — NOT pull_request), over the COMBINED shard data."
-  - "PR-lane scoped selection is unchanged: the same modules are selected, only distributed."
+  - "actionlint clean on tests.yml, and the file still parses as YAML with all 11 jobs present."
+  - "`scripts/tests/test_test_deps_declared.py` still passes — the guard S11 re-anchored across all three backend jobs must not be narrowed again by this move."
+  - "`scripts/ci/test_shard_tests.py` (31 cases) still passes — the partitioner is untouched and must stay so."
+  - "The fast gate runs green in a job with NO postgres/redis services and with DATABASE_URL/REDIS_URL unset, proven by execution rather than by reading the code."
+  - "No orphan reference remains to the old receipt path `shard-receipts/test-results-core-<n>.xml`, and the core junit still reaches an artifact rather than vanishing."
+  - "A live run shows the fast gate executing exactly ONCE, inside `Backend Static (Python)`, and the measured critical path (slowest shard + fan-in) is ~8s lower than the 381+111 baseline."

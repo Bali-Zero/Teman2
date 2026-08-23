@@ -1,94 +1,77 @@
 brief_ref: evidence/brief.yml
-plan_ref: "scripts/fleet_sessions.py — cross-machine session visibility + healer receptor 6 (mandate 2026-08-23)"
-gear: 2
-lanes:
-  - lane: B1
-    role: build
-    seat: "tp1-deepseek-v4-pro (Alibaba Token Plan, non-Anthropic)"
-    note: "authored scripts/fleet_sessions.py. Codex was the mandated builder but its seat is AUTH_DEAD on both Mini and Pro (refresh_token_invalidated / node-not-on-PATH, arsenal_probe measured live) and it exited 0 having written zero files — re-routed, declared, not silently substituted."
-  - lane: B2
-    role: build
-    seat: "tp1-deepseek-v4-pro"
-    note: "authored scripts/tests/test_fleet_sessions.py against the pinned JSON contract. A first attempt on tp1-qwen3.8-max returned empty."
-  - lane: R1
-    role: review
-    seat: "kimi-code/k3 (Moonshot, cross-family, fresh context)"
-    note: "adversarial refutation of the full diff, asked specifically for false-green and for leak paths. Findings K1/K3/K4/K5 reproduced by the grader before any fix."
-  - lane: G1
-    role: review
-    seat: "session (Opus 5, mini-pro2)"
-    note: "final on-disk gate: every defect re-measured live on the fleet, not accepted from a report."
+plan_ref: "Fast gate off the critical path — follow-up to S11 (#4647), single commit 245bfbe33 moving one step from backend-shard to backend-static"
 diff:
-  net_lines: "+1861 net across 4 files (2 new: scripts/fleet_sessions.py, scripts/tests/test_fleet_sessions.py; 2 edited: infra/healer/healer-run.sh +49, infra/healer/HEALER-MANDATE.md +11), measured by `git diff --numstat` against the merge-base."
-  behaviour_change: "New read-only reporting tool. The healer gains ONE receptor whose only ACTIONABLE conditions are coverage loss (a host UNREACHABLE) and blindness (exit 2). No existing receptor, cure path or perimeter is touched."
+  net_lines: "One file, .github/workflows/tests.yml. The step block moves from backend-shard to backend-static and grows a comment header explaining WHY it moved and what would break if the fan-in stopped reading needs.backend-static.result; one 12-line upload step is added so the core junit does not silently vanish from the artifacts. Roughly +45 / -10 net. Small by construction: this is a relocation, not a redesign."
+  behaviour_change: "The fast gate executes ONCE per run instead of three times, in a job that is off the critical path. What does NOT change: the gate's command, the module it runs, the circumstances under which it runs (both jobs carry a byte-identical classifier `if:`), the fan-in's name, the required-context set, the merge_group unscoped semantic, and the fact that a red core test reddens `Backend Tests (Python)`."
 receipts:
-  - claim: "The tool works across all three machines from Mini and isolates a downed host"
-    cmd: "python3 scripts/fleet_sessions.py --json -> exit 0, hosts_ok 3/3, 270 sessions, unreachable 0; python3 scripts/fleet_sessions.py --hosts local,nonexistent-host --json -> exit 1, hosts_unreachable 1, reason 'ssh exit 255: ssh: Could not resolve hostname nonexistent-host', other host still fully reported"
+  - claim: "The step really did run three times, and the cost really is on the critical path — this is measurement, not inference from the YAML"
+    cmd: "gh api repos/Bali-Zero/Teman2/actions/runs/32632670541/jobs --jq per-shard steps matching 'fast gate' -> Backend Shard 1 7s, Shard 2 8s, Shard 3 8s. Same run's main step: 'Run unit tests (sharded)' 244s / 213s / 253s. Critical path = slowest shard (381s) + fan-in (111s)."
     exit: 0
-    ts: "2026-08-23T08:30Z"
-    seat: "session (mini-pro2)"
-  - claim: "THE COMMISSIONED PREMISE IS FALSE: a healer session running minutes is CORRECT, not dead. All 10 DECLARED-SPAN-UNMET rows on the live fleet are healthy healer ticks"
-    cmd: "grep -A1 StartInterval infra/launchagents/com.nuzantara.healer.4h.plist -> 14400 (launchd relaunches every 4h); HEALER-MANDATE.md rule 6 -> 'max ~40 min di lavoro' per tick; tail ~/logs/healer/healer.log -> 'ACTIONABLE ... 15:12:12' then 'session exit=0' at '15:23:16' with a substantive result. 'loop 4h' in the mandate TITLE is the cron cadence, not the session runtime."
+    ts: "2026-08-23T18:30Z"
+    seat: "session (pro)"
+  - claim: "The guilt chain survives the move — the fan-in's assert reads backend-static in the SAME loop as backend-shard, so this job being a non-required context does not make a red core test invisible"
+    cmd: 'sed -n ''954,1010p'' .github/workflows/tests.yml -> the fan-in''s `Assert every upstream job succeeded` iterates `for pair in "backend-static:$STATIC_RESULT" "backend-shard:$SHARD_RESULT"` and exits non-zero if EITHER is not ''success''. The shard half of that same loop was proven live on dispatch run 32634126661 (one red leg of three -> fan-in red at exactly this step).'
     exit: 0
-    ts: "2026-08-23T08:05Z"
-    seat: "session (mini-pro2)"
-  - claim: "ps without -e is blind: it sees 25 processes of 693 and 2 of the 4 live subagents, which would have inverted the tool into a false-alarm machine"
-    cmd: "ps -o pid= -o args= | wc -l -> 25 ; ps -eo pid= -o args= | wc -l -> 693 ; same pipes grepping parent-session-id -> 2 vs 4"
+    ts: "2026-08-23T19:05Z"
+    seat: "session (pro)"
+  - claim: "The gate will run in exactly the same circumstances as before — the two jobs' classifier predicates are identical, so the move cannot silently change coverage"
+    cmd: "Compared the `if:` blocks of backend-static (line 510) and backend-shard (line 629): both are `!cancelled() && ((github.event_name != 'pull_request' && github.event_name != 'merge_group') || needs.changes.result != 'success' || needs.changes.outputs.run_backend_tests != 'false')` — byte-identical."
     exit: 0
-    ts: "2026-08-23T07:05Z"
-    seat: "session (mini-pro2)"
-  - claim: "lsof -c claude returns ZERO rows on Pro while four sessions run; asking lsof about the PIDs ps already classified works on both machines"
-    cmd: "ssh pro 'lsof -c claude -a -d cwd -Fpn | grep -c ^p' -> 0 ; ssh pro 'lsof -p <pidlist> -a -d cwd -Fpn' -> four p/fcwd/n triples. Consequence before the fix: every Pro row read NO-PROCESS, an absence never observed."
+    ts: "2026-08-23T19:08Z"
+    seat: "session (pro)"
+  - claim: "The module genuinely needs no postgres/redis, so dropping the inherited DATABASE_URL/REDIS_URL into a job with no `services:` is safe — proven by execution against DEAD endpoints, not by reading imports"
+    cmd: "pg_isready -> postgres DOWN locally. Then: `env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py` -> 24 passed, rc=0. Then the stronger form, forcing a failure if the services were secretly used: `DATABASE_URL=postgresql://nobody:nobody@127.0.0.1:59999/nodb REDIS_URL=redis://127.0.0.1:59998 pytest <same>` -> 24 passed, rc=0."
     exit: 0
-    ts: "2026-08-23T07:20Z"
-    seat: "session (mini-pro2)"
-  - claim: "One transcript, two paths: ~/.claude/projects/-Users-nuzantara-nuzantara is a SYMLINK to the -Desktop- form, so the same session was reported twice and every finding double-counted (29 rows for 17 sessions)"
-    cmd: "readlink -- ./-Users-nuzantara-nuzantara -> .../-Users-nuzantara-Desktop-nuzantara ; stat -f inode on 733cf2de-....jsonl via both paths -> 53353008 both. Cured by deduping on (st_dev, st_ino)."
+    ts: "2026-08-23T19:02Z"
+    seat: "session (pro)"
+  - claim: "backend-static already has the runner it now needs — no new install step, so the move does not just relocate the cost"
+    cmd: "grep -icE '^(pytest|pytest-asyncio|pytest-cov)==' apps/backend-rag/requirements.lock.txt -> 1 each (present); pytest-mock / fakeredis / pytest-xdist -> 0 (absent). The module uses only @pytest.fixture, and the single conftest on its collection path (backend/tests/conftest.py) imports only stdlib, pydantic and pytest. pyproject `addopts` requires no plugins."
     exit: 0
-    ts: "2026-08-23T07:45Z"
-    seat: "session (mini-pro2)"
-  - claim: "REFUTER K1 reproduced: a host that fails to probe ITSELF exits 0, so it counted as a successful probe and the healer stayed silent about an unobserved machine"
-    cmd: 'monkeypatched run_host_probe to return (0, ''{"status":"UNREACHABLE",...}'', '''') -> main() returned exit 0 with summary.hosts_unreachable == 1 and hosts_ok == 0. Cured by reading the payload''s status, not the transport''s exit code.'
+    ts: "2026-08-23T19:10Z"
+    seat: "session (pro)"
+  - claim: "Nothing gates on the core junit, and it does not vanish silently either"
+    cmd: "The fan-in's 'Prove each shard reported executed tests' reads only `test-results-unit-<shard>.xml`. The core junit reached the `backend-test-results` artifact through the glob `shard-receipts/test-results-*.xml`, which the move removes it from — hence a dedicated `backend-core-gate-results` upload with `if: always()`. `grep -n 'test-results-core-' tests.yml` after the change -> no matches (no orphan reference to the old shard-indexed path)."
     exit: 0
-    ts: "2026-08-23T08:12Z"
-    seat: "session (mini-pro2)"
-  - claim: "REFUTER K4 reproduced in BOTH directions and cured, verified on a 16-case corpus built from real fleet text"
-    cmd: "before: declared_long('loop di 4 ore') -> (False, None) and declared_long('the daemon ran 48h nonstop before crashing') -> (True, 2880). after: 16/16 correct across true positives, the five phrasings the refuter named as missed, the reverse-order narrative, and the five originally-measured false accusations."
+    ts: "2026-08-23T19:12Z"
+    seat: "session (pro)"
+  - claim: "The change is mechanically sound and did not narrow the guard that S11 itself re-anchored"
+    cmd: "python3 -c 'yaml.safe_load(...)' -> 11 jobs, backend-static 10 steps, backend-shard 11 steps. actionlint tests.yml -> rc=0. pytest scripts/tests/test_test_deps_declared.py -> 7 passed. python3 scripts/ci/test_shard_tests.py -> Ran 31 tests, OK."
     exit: 0
-    ts: "2026-08-23T08:22Z"
-    seat: "session (mini-pro2)"
-  - claim: "PROVE-LIVE: a REAL healer tick reported a fleet finding, reached the session prompt, and spooled its Telegram"
-    cmd: "bash infra/healer/healer-run.sh with the LLM stubbed and TG_DRY_RUN=1, one host deliberately down -> healer.log 'ACTIONABLE: ... fleet:1-host-unreachable'; the spawned prompt carries 'receptor scattati: ... fleet:1-host-unreachable'; tg spool holds key healer-mini:fleet-unreachable. Nothing was sent and no LLM window was spent."
+    ts: "2026-08-23T19:14Z"
+    seat: "session (pro)"
+  - claim: "The exact command the moved step will run works in the conditions backend-static provides, and produces the receipt the upload expects"
+    cmd: "env -u DATABASE_URL -u REDIS_URL pytest backend/tests/services/rag/test_confidence.py -q -ra --no-header --tb=short --durations=10 -x --junit-xml=/tmp/core-gate-smoke.xml -> rc=0; parsing that junit -> tests=24 errors=0."
     exit: 0
-    ts: "2026-08-23T08:34Z"
-    seat: "session (mini-pro2)"
+    ts: "2026-08-23T19:15Z"
+    seat: "session (pro)"
 tests:
-  - "36 tests in scripts/tests/test_fleet_sessions.py, /usr/bin/python3 -m pytest -q -> 36 passed in 0.08s. Fully hermetic: an earlier revision took 207s because two tests called main() without --hosts and ssh'd to pro/air for real; those are now host-explicit, and the 0.08s runtime is itself the proof that no test touches the network."
-  - "Guilt paired with innocence per classifier (superscar #3), built on the REAL argv strings and REAL mandate text measured on the fleet — including the four shapes a naive exclusion list misses because the path has a dot before `claude`, not a slash."
-  - 'python3 scripts/fleet_sessions.py --selftest -> ''selftest PASSED'', exit 0. It caught two real defects during the build (an exclusion written against a path form that does not exist, and `"claude" in cmd` matching `not-claude`).'
+  - "scripts/tests/test_test_deps_declared.py — 7 passed (the S11 re-anchored guard across backend-static/backend-shard/backend-tests)"
+  - "scripts/ci/test_shard_tests.py — 31 passed (partitioner guilt+innocence corpus, untouched by this change and proven still green)"
 static:
-  - "bash -n infra/healer/healer-run.sh -> clean"
-  - "pre-commit hooks (anti-reward-hacking lint, secret scan, python lint, off-limits guard) -> all passed on both commits"
-runtime_proof:
-  - "The live table from three machines is in the session transcript: 3 of 3 hosts probed, 270 sessions, 0 unreachable. Both exit paths were exercised against the real fleet, not simulated."
-  - "The healer receptor was executed as the wrapper executes it (not a transcription) and produced REASONS='fleet:1-host-unreachable'."
+  - "actionlint .github/workflows/tests.yml — rc=0"
+  - "yaml.safe_load on tests.yml — 11 jobs parse"
+lanes:
+  # One build lane: this is a single-seat relocation. The cross-family seat below
+  # is a REFUTER, not a builder (generator != grader), so it is `review` and does
+  # not count toward the D3 build-diversity floor.
+  - lane: "fastgate-build"
+    role: build
+    seat: "opus-5"
+  - lane: "fastgate-refute"
+    role: review
+    seat: "codex-gpt-5.6-sol"
 dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context — the diff's author was tp1-deepseek-v4-pro, so generator != grader holds)"
-    objection: "Attacked false-green and leak paths. CONFIRMED and fixed: K1 (remote self-failure exits 0 -> healer silent), K3 (lookback drops corpses exactly when the healer was itself down; and a declared span may exceed the window), K4 (declared_long both misses real Italian/English phrasings and still fires on narrative), K5 (ssh stderr unbounded in a field that reaches Telegram). PARTIALLY ACCEPTED: K2 — 'UNMAPPED is treated as dead-eligible, so a live session idle at a prompt gets accused'. The refuter's proposed cure (require NO-PROCESS) was REJECTED on measurement: the one Pro true-positive was itself UNMAPPED, so that fix would have destroyed detection. It is moot in the shipped state anyway, since the verdict no longer alarms. NOT ACCEPTED but recorded: a zombie subagent outliving its parent would mark a dead parent ALIVE — real, low-frequency, and unfixable from process data alone."
+  - seat: "codex gpt-5.6-sol at xhigh (OpenAI, cross-family, fresh context, read-only sandbox) — round 1, against a frozen snapshot of 245bfbe33"
+    objection: 'Verdict REQUEST CHANGES, three findings. It explicitly did NOT find a guilt-chain fail-open: it enumerated pull_request, merge_group, workflow_dispatch, schedule, a failed/skipped `changes` job and whole-workflow cancellation, and in every case a red core test still reaches the fan-in as a non-success upstream. It also independently confirmed `push` is not a trigger of this workflow and that comments mentioning it are stale. CURED HERE: (1) HIGH — the new `Upload core-gate test results` step carried a comment saying nothing gates on its file, while the step itself had no `continue-on-error`; a transient artifact-service error concludes backend-static `failure`, the fan-in asserts on `needs.backend-static.result`, and the required context goes red with every real gate green. `if-no-files-found: warn` covers only a MISSING file and does not make the upload best-effort. Fixed with `continue-on-error: true`. (2) MEDIUM — the gate had been placed BEFORE pip-audit, so a broken core test would skip the rest of the job and MASK four independent gates (pip-audit, mypy, import-chain, LLM cost coverage) that reported unconditionally before the move, backend-static being independent of the shards. Moved to LAST, which costs no latency because the fan-in waits on all three shards either way. (3) LOW — "parity with the pre-move state" was an overclaim: the junit now lands in a DIFFERENT artifact under a DIFFERENT name, so an external consumer of `backend-test-results` looking for `test-results-core-*.xml` finds nothing; no in-repo consumer exists, external ones are not visible from a diff. Comment corrected rather than the behaviour, since a dedicated artifact is the intended design. ACCEPTED AND NOT CURED, moved to residual_risks instead: its observation that the RED path is now much slower (a core regression went red in ~10s inside the shards, versus ~350s now that the fan-in waits on them) is correct and inherent to the move; its suggested remedy — a separate `backend-core` job wired into the fan-in — would restore fail-fast at the cost of a fifth concurrent job, against runner-slot pressure this workflow already names as the binding constraint. It also corrected the authors arithmetic: the module executes twice per full run, not once, since the shard that owns it in the corpus still runs it — down from four, not to one.'
     status: CONFIRMED
 residual_risks:
-  - "THE HEADLINE VERDICT IS UNCALIBRATED AND SHIPS THAT WAY, DECLARED. DECLARED-SPAN-UNMET matched 10 of 10 healthy healer ticks on the live fleet. It is reported, never alarmed on, and the healer reads only UNREACHABLE/BLIND. The mandate asked for this detector as the deliverable's centre; it is delivered as an INFORMATIONAL field instead, because shipping it as an alarm would wire an organ to a signal that is wrong every time it fires. This is the one place the delivered scope is narrower than the scope requested, and it is narrowed deliberately and visibly, not quietly."
-  - "The real fix is a design change, not a regex: the runner should write its own expected duration into a sidecar the way it already writes a heartbeat. Text cannot distinguish 'this document declares its runtime' from 'this document's title names a cron cadence' — three narrowings each traded one error direction for the other, which is the repo's three-rounds signal that the surface is under-specified."
-  - "HOME-fork (superscar #1) is OPEN until post-merge sync: the wrapper reads $HOME/scripts/HEALER-MANDATE.md FIRST, and that copy has 0 occurrences of fleet_sessions.py while the repo copy has 2. Proven this session — the stubbed tick's prompt did NOT carry the new mandate step. Both files are DECLARED pairs in infra/home-fork/declared-pairs.json, and the healer cannot sync them itself (its own files are outside its perimeter, by constitution). ALIGN-FLEET action, tracked."
-  - "The identity slice is PII-BOUNDED, not PII-free: the first 90 characters of a first message ARE emitted, by design, and a test pins the cap. Nothing past it ever leaves the host."
-  - "alive detection on Pro rests on UNMAPPED for most rows: many sessions share one project dir, so a cwd match cannot attribute a process to a session id. The tool says UNMAPPED rather than guessing — honest, but it means Pro liveness is weaker than Mini's."
+  - "THE RED PATH IS NOW MUCH SLOWER, AND THIS IS A DELIBERATE TRADE (refuter finding 2b, accepted not cured). Inside `backend-shard` a core regression turned the required context red in ~10s — each leg exited at ~8s via `-x`. Now the fan-in still waits on all three shards, so the same regression goes red in ~350s. That is a real loss, taken for an ~8s gain on the GREEN path, which is every run rather than the rare one. The named alternative that would keep both — a separate `backend-core` job wired into the fan-in's needs — adds a fifth concurrent job, and tests.yml's own concurrency comments call runner slots the binding constraint on main's velocity, so it is declined here rather than overlooked."
+  - "THE SAVING IS PROJECTED, NOT YET MEASURED LIVE. ~8s off the critical path is arithmetic on a measured per-shard step duration (7-8s). The PR's own transit is the first measurement, and 8s is close enough to run-to-run variance (shards measured 239-385s across runs) that a single run cannot confirm it — the honest read will need the step to be visibly absent from the shard job and present once in the static job, plus a critical path that does not regress."
+  - "THIS DOES NOT CLOSE THE MISSED TARGET. merge_group/schedule runs measured 489s / 492s / 496s against a <=8 min (480s) target. Removing 8s lands at roughly 481-488s — still at or just above the line. The dominant open question, ledgered separately in #4668, is why merge_group shards run ~35% slower than pull_request shards on the same corpus; this PR deliberately does not touch it."
+  - "THE FAST GATE IS NOW ARGUABLY REDUNDANT, AND THIS PR DOES NOT DECIDE THAT. `test_confidence.py` is already in the sharded corpus (shard 2 owns it), so the gate is a duplicate execution whose only value is failing ~8s in rather than ~250s in. Deleting it outright would save the remaining ~8s of runner time too. That is a judgement about a gate somebody added deliberately, so it is left alone here and named rather than silently taken."
+  - "RUNNER SLOT PRESSURE IS UNCHANGED. This moves work between existing jobs; it does not reduce the 5-jobs-per-run count S11 introduced, which tests.yml's own concurrency comments identify as the binding constraint on main's velocity."
 sources:
-  - scripts/fleet_sessions.py (new)
-  - scripts/tests/test_fleet_sessions.py (new)
-  - infra/healer/healer-run.sh (receptor 6)
-  - infra/healer/HEALER-MANDATE.md (step 1)
-  - infra/launchagents/com.nuzantara.healer.4h.plist (read-only — StartInterval 14400, the measurement that falsified the premise)
-  - ~/logs/healer/healer.log (read-only — tick 15:12:12 -> exit 0 15:23:16)
-  - live ssh probes of pro and air, re-run fresh this session
+  - "merge_group run 32632670541 (the S11 merge commit's own run) — per-shard fast-gate durations and the 381s+111s critical path"
+  - "dispatch run 32634126661 — the live guilt proof of the fan-in's assert step with one red matrix leg of three"
+  - ".claude/skills/modus/PENDING-ARMS.md — the two S11 rows landed by #4668; this PR closes the second"
 pii_scan: clean
-size_tokens: 2350
