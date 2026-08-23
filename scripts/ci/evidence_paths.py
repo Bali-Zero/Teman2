@@ -67,6 +67,23 @@ later to find that directory again. For that, CI reads its own
 anchored, per ``hotzone_changed_files.sh`` — never re-derived from a ref)
 and asks "which ``evidence/<kind>.yml`` did THIS diff actually touch" —
 see ``resolve_evidence_path`` below.
+
+THE ``brief_ref:`` CONTRACT — READ THIS BEFORE WRITING A NEW PACK. A
+per-PR pack living at e.g. ``evidence/2026-08/<slug>/pack.yml`` must
+still declare ``brief_ref: evidence/brief.yml`` — NEVER
+``brief_ref: evidence/2026-08/<slug>/brief.yml``, even though the latter
+looks like the "obviously correct" value once the files have moved out
+of the repo root. Why: ``scripts/evidence_pack_lint.py`` never validates
+a pack in place. CI (``harness-floor.yml``'s Step 7b) stages both the
+resolved pack and the resolved brief into a synthetic tree under
+``/tmp/evidence-check/evidence/{pack,brief}.yml`` (canonical names,
+always) and lints THAT tree via ``--repo-root /tmp/evidence-check`` — so
+``brief_ref`` is resolved against the STAGING layout, not the real repo
+layout. A pack that "correctly" points at its own real per-PR brief path
+fails that resolution (``brief_ref: '...' does not resolve to a file on
+disk``) with a message that says nothing about staging vs. real layout —
+exactly the shape of trap this module exists to remove. Always write the
+literal ``evidence/brief.yml``.
 """
 
 from __future__ import annotations

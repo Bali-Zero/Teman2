@@ -727,6 +727,22 @@ jobs:
                 ;;
             esac
           fi
+          # THE brief_ref CONTRACT (S12/C6, 2026-08-23 gate finding): both
+          # files are staged here under the CANONICAL evidence/{pack,brief}.yml
+          # names, regardless of where PACK_PATH/BRIEF_PATH actually live in
+          # the real repo (a fixed root pair, or a per-PR
+          # evidence/<YYYY-MM>/<slug>/ directory). evidence_pack_lint.py
+          # resolves the pack's own `brief_ref:` field against --repo-root
+          # (/tmp/evidence-check, this synthetic tree) — so `brief_ref:` MUST
+          # name a path in the STAGING layout, i.e. always the literal
+          # "evidence/brief.yml", NEVER the real per-PR path
+          # ("evidence/2026-08/<slug>/brief.yml"). Writing the "obviously
+          # correct" per-PR-looking value here is exactly the trap this
+          # migration exists to remove: the lint failure it produces
+          # ("brief_ref: ... does not resolve to a file on disk") says
+          # nothing about staging vs. real layout. See the same sentence in
+          # scripts/ci/evidence_paths.py's module docstring, where an author
+          # writing a new pack will actually be looking.
           git show "$HEAD_SHA:${PACK_PATH}" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
           EXTRA_ARGS=()
