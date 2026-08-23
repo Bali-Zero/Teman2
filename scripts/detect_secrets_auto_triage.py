@@ -375,6 +375,15 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
     # from the seq-12 source bytes). Content-keyed and pinned to the EXACT
     # anchor value, not a hex shape, for the same reason as the seq12 rule:
     # this is production code with an open surface for future edits.
+    #
+    # 2026-08-23: this reason string ends in the same "...chain anchor —
+    # content-derived sha256 ..." shape as the seq10/11/12 rules above, on
+    # purpose (four consecutive-sequence anchors reading in order). A test
+    # that looks a rule up via test_detect_secrets_auto_triage.py's
+    # _find_content_keyed_rule("chain anchor") would now match FOUR entries
+    # and fail loudly (it asserts exactly one) — that is correct behavior,
+    # not a bug in the lookup. Any future test targeting THIS rule must key
+    # on "seq-12 chain anchor", the substring unique to it.
     (
         re.compile(
             r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules\.py$"
