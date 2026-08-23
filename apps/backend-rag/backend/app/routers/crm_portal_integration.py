@@ -100,6 +100,19 @@ class UnreadCountResponse(BaseModel):
 # ================================================
 
 
+def _invitation_public_view(result: dict[str, Any]) -> dict[str, Any]:
+    """Strip the raw invitation secret before it reaches an HTTP response.
+
+    ``InviteService.create_invitation`` returns ``token``/``invite_url``
+    because the legitimate delivery channel (Brevo email in
+    ``portal_invite.send_invitation``) needs them to build the invite link.
+    This router has no email-sending step of its own (a separate defect,
+    not fixed here — see SPEC-p0-invite.md PR B / B1) and must never let
+    the raw, unsent token leak back to the calling team member's browser.
+    """
+    return {k: v for k, v in result.items() if k not in ("token", "invite_url")}
+
+
 def require_team_auth(current_user: dict = Depends(get_current_user)) -> dict:
     """Ensure user is a real team member — neither a client nor a service account.
 
@@ -233,9 +246,14 @@ async def send_portal_invite(
     Send portal invitation to a client from CRM.
 
     If email not provided, uses client's email from the clients table.
+
+    B1 (SPEC-p0-invite.md, 2026-08-23): this is a fourth invitation-minting
+    path — `write=True` requires the caller's email to match the client's
+    `assigned_to`/`created_by` or be an admin, and the response never
+    carries the raw `token`/`invite_url`.
     """
     async with db_pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
 
     try:
         # Get client email if not provided
@@ -265,7 +283,7 @@ async def send_portal_invite(
         return {
             "success": True,
             "message": f"Invitation sent to {email}",
-            "data": result,
+            "data": _invitation_public_view(result),
         }
 
     except ValueError as e:
@@ -332,27 +350,41 @@ async def get_portal_preview(
 @router.get("/messages/unread-count")
 async def get_unread_messages_count(
     _current_user: dict = Depends(require_team_auth),
+    assigned_filter: str | None = Depends(get_crm_user_filter),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Get count of unread messages from all clients.
 
     For header notification badge.
+
+    B3 (SPEC-p0-invite.md, 2026-08-23): scoped to the caller's assignment,
+    same pattern as `get_recent_portal_activity` below — `assigned_filter`
+    is None for admins (no filter, full book) and the caller's lowercased
+    email otherwise. Applied to BOTH queries: a total count that ignored
+    the filter would still leak the volume of a client the caller cannot
+    otherwise see.
     """
     async with db_pool.acquire() as conn:
-        # Total unread
-        total = await conn.fetchval(
-            """
+        # Total unread (joined to clients so the assignment filter can apply)
+        total_query = """
             SELECT COUNT(*)
-            FROM portal_messages
-            WHERE direction = 'client_to_team'
-              AND read_at IS NULL
-            """,
-        )
+            FROM portal_messages pm
+            JOIN clients c ON c.id = pm.client_id
+            WHERE pm.direction = 'client_to_team'
+              AND pm.read_at IS NULL
+              AND c.deleted_at IS NULL
+        """
+        total_params: list[str] = []
+
+        if assigned_filter is not None:
+            total_query += " AND LOWER(c.assigned_to) = $1"
+            total_params.append(assigned_filter)
+
+        total = await conn.fetchval(total_query, *total_params)
 
         # By client
-        by_client = await conn.fetch(
-            """
+        by_client_query = """
             SELECT
                 pm.client_id,
                 c.full_name as client_name,
@@ -361,11 +393,21 @@ async def get_unread_messages_count(
             JOIN clients c ON c.id = pm.client_id
             WHERE pm.direction = 'client_to_team'
               AND pm.read_at IS NULL
+              AND c.deleted_at IS NULL
+        """
+        by_client_params: list[str] = []
+
+        if assigned_filter is not None:
+            by_client_query += " AND LOWER(c.assigned_to) = $1"
+            by_client_params.append(assigned_filter)
+
+        by_client_query += """
             GROUP BY pm.client_id, c.full_name
             ORDER BY unread_count DESC
             LIMIT 10
-            """,
-        )
+        """
+
+        by_client = await conn.fetch(by_client_query, *by_client_params)
 
         return {
             "success": True,
@@ -429,11 +471,19 @@ async def send_message_to_client(
 ) -> dict[str, Any]:
     """
     Send a message to a client (team → client).
+
+    B2 (SPEC-p0-invite.md, 2026-08-23 — owner ruling): restricted to
+    `write=True` — only the client's assigned team member (or `created_by`)
+    or a CRM admin may send. Behaviour change for staff: a colleague who is
+    not assigned to the client now gets 403 instead of being able to send a
+    client-visible message.
     """
     try:
         async with db_pool.acquire() as conn:
-            # S03-S3: BOLA fix — verify caller has access to this client
-            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+            # S03-S3 / B2: BOLA fix — verify caller has write access to this client
+            await verify_client_access(
+                client_id, current_user, conn, allow_assigned=True, write=True
+            )
 
             message = await conn.fetchrow(
                 """
