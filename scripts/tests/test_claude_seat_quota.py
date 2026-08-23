@@ -205,3 +205,71 @@ def test_named_seat_that_cannot_be_read_does_flip_the_exit_code(mod, monkeypatch
     with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
         # every row unreadable -> rc 2 (nothing at all could be read)
         assert mod.main() == 2
+
+
+def test_stale_report_is_refused_never_printed(mod, tmp_path):
+    """The central guarantee of PUBLISH/READ: a report that has aged past --max-age
+    must be refused with a message that says so, never handed back as if current. This
+    is the same disease the predecessor watcher had, one layer further out."""
+    report_path = tmp_path / "seat-quota.json"
+    five_hours_ago = int(mod.time.time()) - 5 * 3600
+    report_path.write_text(json.dumps({
+        "generated_at": "2026-08-23T00:00:00+0000",
+        "generated_at_epoch": five_hours_ago,
+        "generated_on": "Nuzantara",
+        "seats": [{"account": "someone@example.com", "weekly_pct": 42.0}],
+    }))
+
+    rows, note = mod.read_report(report_path, max_age_min=90)
+    assert rows is None, "a 5h-old report must be refused at a 90min limit"
+    assert "stale" in note, f"refusal message must say why: {note!r}"
+
+    rows, note = mod.read_report(report_path, max_age_min=400)
+    assert rows is not None, "the same report must be accepted under a wide enough limit"
+    assert rows[0]["account"] == "someone@example.com"
+
+
+def test_report_without_timestamp_is_refused(mod, tmp_path):
+    """No generated_at_epoch means the age of the report cannot be judged at all —
+    refusing it is the only safe move, not defaulting to fresh."""
+    report_path = tmp_path / "seat-quota.json"
+    report_path.write_text(json.dumps({
+        "generated_on": "Nuzantara",
+        "seats": [{"account": "someone@example.com", "weekly_pct": 42.0}],
+    }))
+
+    rows, note = mod.read_report(report_path, max_age_min=90)
+    assert rows is None, "a report with no timestamp cannot be trusted at any age"
+    assert "generated_at_epoch" in note
+
+
+def test_publish_refuses_to_republish_a_report(mod, monkeypatch, tmp_path):
+    """--publish must only ever run from the machine that MEASURES. If keychain probing
+    finds nothing measurable here, the automatic report fallback kicks in for reading —
+    but --publish must refuse to re-publish that borrowed data, and must not touch disk."""
+    report_path = tmp_path / "seat-quota.json"
+    report_path.write_text(json.dumps({
+        "generated_at": "2026-08-23T00:00:00+0000",
+        "generated_at_epoch": int(mod.time.time()),
+        "generated_on": "Nuzantara",
+        "seats": [{"account": "someone@example.com", "weekly_pct": 42.0}],
+    }))
+
+    wrote = {"called": False}
+
+    def fake_write_report(rows, path):
+        wrote["called"] = True
+        return {}
+
+    monkeypatch.setattr(mod, "keychain_services", lambda: [])
+    monkeypatch.setattr(mod, "warm_profiles", lambda deep: None)
+    monkeypatch.setattr(mod, "write_report", fake_write_report)
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(sys, "argv", [
+        "claude_seat_quota.py", "--publish", "--report-path", str(report_path),
+    ])
+    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as err:
+        rc = mod.main()
+    assert rc == 2, "publishing a report built from another report must fail loudly"
+    assert not wrote["called"], "write_report must never run when the source isn't live"
+    assert "publish" in err.getvalue().lower()
