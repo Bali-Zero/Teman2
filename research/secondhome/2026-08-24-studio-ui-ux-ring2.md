@@ -9,6 +9,8 @@ sources:
   - production probe of https://balizero.com/visa/second-home and /studio, headless Chromium, 2026-08-24
   - live PricingTool via search_service_pricing, 2026-08-24
   - Kimi K3 cross-family refutation of the ring-2 spec, 2026-08-24
+  - gh pr view (title/state ground-truth for #4743/4745/4747/4748/4751/4752/4753/4755), 2026-08-24
+  - prove-live walk on promoted production (post-#4751), full-page screenshot + direct fetch of the served JS chunk, 2026-08-24
 ---
 
 # Second Home Studio — Ring-2 UI/UX research capture
@@ -86,11 +88,22 @@ Verified live with `gh pr view` on 2026-08-24:
 |---|---|---|---|
 | #4743 | docs(secondhome): align base E33 price in §4 with live 35M rate | merged | Fixed a self-contradiction in `.agents/skills/secondhome/SKILL.md`: §4 still listed `base 39M` while §3 and §4bis already had 35M. |
 | #4745 | feat(mouth): animate MemoPreview rows and add growing receipt spine | merged | `MemoPreview.tsx` rows fade/rise in (180ms) when they first become known; unanswered rows render as lighter placeholders; a left spine grows as rows populate. |
-| #4747 | feat(mouth): resolve price key per Second Home product branch | merged | The pricing-key fix: `resolveSecondHomePriceKey(product, location)` maps each verdict product to the correct PricingTool row. |
+| #4747 | fix(mouth): the Studio quoted one price for three different products | merged | The pricing-key fix: `resolveSecondHomePriceKey(product, location)` maps each verdict product to the correct PricingTool row. |
 | #4748 | feat(mouth): differentiate VerdictPanel by fit band | merged | `VerdictPanel.tsx` renders a distinct border/icon/color treatment per band (`strong_fit` green, `likely_fit` blue, `edge_case` amber, `not_eligible` grey). |
-| #4751 | feat(mouth): add Print / Save as PDF to Second Home Studio | merged | `window.print()` action in the save bar; `@media print` redefines tokens to a light document; hides nav/buttons; keeps verdict, custody, route comparison, timeline, checklist, price, and WhatsApp href. |
-| #4752 | feat(mouth): add minimal stroke-icon vocabulary to Second Home Studio | open | Adds `lucide-react` stroke icons to TimelineView owner chips, RouteComparator column headers, and an optional icon prop on `OptionButton`. |
-| #4753 | feat(mouth): custody flow diagram for Second Home Studio | open | Rewrites `CustodyMap.tsx` as an interactive node diagram: your money → your own BUMN bank account → Imigrasi evidence, with Bali Zero outside the chain. |
+| #4751 | feat(mouth): let the plan leave the screen — print / save as PDF | merged | `window.print()` action in the save bar; `@media print` redefines tokens to a light document; hides nav/buttons; keeps verdict, custody, route comparison, timeline, checklist, price, and WhatsApp href. |
+| #4752 | feat(mouth): add minimal stroke-icon vocabulary to Second Home Studio | merged | Adds `lucide-react` stroke icons to TimelineView owner chips, RouteComparator column headers, and an optional icon prop on `OptionButton`. |
+| #4753 | feat(mouth): draw the money's path instead of describing it | merged | Rewrites `CustodyMap.tsx` as an interactive node diagram: your money → your own BUMN bank account → Imigrasi evidence, with Bali Zero outside the chain. |
+| #4755 | docs(pending-arms): SHS ledger maintenance — retire, close, extend, open | merged | Ledger maintenance in `.claude/skills/modus/PENDING-ARMS.md`: retires the radiogroup-accessible-name finding (refuted), closes the E33E/E33F pricing-parity item (Zero's ruling), extends the `E33_CLAIM_GUARD_ENFORCE` item with a cache-bypass finding, and opens a new item for the not-yet-proven-live Studio price fix from PR #4747. |
+
+## 4bis. Prove-live on promoted production (2026-08-24)
+
+Production has since been promoted and independently re-verified this session — this is new information the pass above did not have when it was written.
+
+1. **The price defect (§2) is cured on the served page.** A browser walk on promoted production — path: age 55–59 → deposit route → USD 50k deposit + USD 3k/month income → no family → ASAP → in Indonesia — renders, under the label "YOUR ALL-INCLUSIVE FIGURE", the figure **45.000.000 IDR** for the `E33E` match, the correct E33E price. Before PR #4747 the same walk rendered 35.000.000 IDR, understating the real product price by 10.000.000 IDR. Verified directly this turn, not from a report: a full-page screenshot (`after-E33E-verdict-desktop.png`, confirmed 2880×6958) shows "Matching product: **E33E**" and "YOUR ALL-INCLUSIVE FIGURE / 45.000.000 IDR".
+2. **Bundle-level proof, independent of the browser.** Re-fetched the served chunk directly this turn — `curl https://balizero.com/_next/static/chunks/app/visa/second-home/studio/page-8450b87e629710e7.js` → HTTP 200 — and confirmed it contains the strings `E33E Second Home Senior`, `custody-outside`, and `Save as PDF`.
+3. **The other four visual changes are live in the same capture, confirmed directly**: the verdict panel carries an amber border + warning-triangle icon for the `edge_case` band (visible in the same screenshot and in `bands/band1.png`) — no longer the one undifferentiated accent border across all four bands that §1 flagged at `VerdictPanel.tsx:30`; the custody section renders as a 3-node money-path diagram — "Open an account in your own name" → "Use the bank evidence for your application" → "Maintain the qualifying position" — captioned "The deposit is evidence of your financial capacity. It is not a payment to Bali Zero," i.e. Bali Zero drawn outside the money chain; the timeline attributes each step to `YOU` / `BALI ZERO` / `IMIGRASI`; the save bar offers `Print / Save as PDF` alongside `Save on this device` / `Copy plan link` / `Clear saved plan`.
+
+**Caveat, stated plainly, not omitted.** The base-E33 half of the prove-live pass — a walk that must land on product `E33` (not `E33E`) and show 35.000.000 IDR — has not completed as of this correction. No screenshot in the working scratchpad shows that path; only the E33E path (`edge_case` band, 45.000.000 IDR) has been captured. This half is **pending**, not done. PR #4755 already opened a PENDING-ARMS ledger item for exactly this gap ("the Studio per-product price defect cured by PR #4747 but not yet proven live").
 
 ## 5. What remains open and why
 
