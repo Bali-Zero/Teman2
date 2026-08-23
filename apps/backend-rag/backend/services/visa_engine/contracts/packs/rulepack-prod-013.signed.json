@@ -24,9 +24,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "INVESTMENT"
-        ],
+        "covered_purposes": ["INVESTMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -37,9 +35,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "B211"
-        ],
+        "legacy_codes": ["B211"],
         "legacy_slugs": [],
         "names": {
           "en": "Investor Visa (E28A)",
@@ -55,12 +51,8 @@
           "operational_work_beyond_management_and_ownership"
         ],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "INVESTMENT"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["INVESTMENT"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -79,9 +71,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "INVESTMENT"
-        ],
+        "covered_purposes": ["INVESTMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -101,16 +91,10 @@
         "pricing_key": null,
         "product_code": "E28B",
         "product_version_id": "ca8c1177-ad94-5261-82a6-68bc912d31bb",
-        "prohibited_activities": [
-          "operational_work"
-        ],
+        "prohibited_activities": ["operational_work"],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "INVESTMENT"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["INVESTMENT"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -129,9 +113,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "INVESTMENT"
-        ],
+        "covered_purposes": ["INVESTMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -160,9 +142,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -181,9 +161,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "INVESTMENT"
-        ],
+        "covered_purposes": ["INVESTMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -207,12 +185,8 @@
           "operational_work_outside_managing_subsidiary"
         ],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "INVESTMENT"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["INVESTMENT"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -231,9 +205,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "INVESTMENT"
-        ],
+        "covered_purposes": ["INVESTMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -253,16 +225,10 @@
         "pricing_key": null,
         "product_code": "E28F",
         "product_version_id": "2df6f723-7fc3-585a-b26f-0e8c060a2d8d",
-        "prohibited_activities": [
-          "operational_work"
-        ],
+        "prohibited_activities": ["operational_work"],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "INVESTMENT"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["INVESTMENT"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -281,10 +247,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "SECOND_HOME",
-          "TOURISM"
-        ],
+        "covered_purposes": ["SECOND_HOME", "TOURISM"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -318,9 +281,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -339,11 +300,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "EMPLOYMENT",
-          "TOURISM",
-          "FAMILY"
-        ],
+        "covered_purposes": ["EMPLOYMENT", "TOURISM", "FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -373,9 +330,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "GOVERNMENT"
-        ],
+        "sponsor_types": ["GOVERNMENT"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -430,9 +385,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -486,9 +439,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "GOVERNMENT"
-        ],
+        "sponsor_types": ["GOVERNMENT"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -507,12 +458,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "RETIREMENT",
-          "SECOND_HOME",
-          "TOURISM",
-          "FAMILY"
-        ],
+        "covered_purposes": ["RETIREMENT", "SECOND_HOME", "TOURISM", "FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -523,9 +469,7 @@
           "reason_code": "EXTENSION_POLICY_NOT_VERIFIED",
           "status": "UNKNOWN"
         },
-        "legacy_codes": [
-          "E311A"
-        ],
+        "legacy_codes": ["E311A"],
         "legacy_slugs": [],
         "names": {
           "en": "Second Home Golden Visa \u2014 Elderly 5-Year (E33E)",
@@ -548,9 +492,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -585,9 +527,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "E311A"
-        ],
+        "legacy_codes": ["E311A"],
         "legacy_slugs": [],
         "names": {
           "en": "Second Home Visa \u2014 Elderly 1-Year (E33F)",
@@ -609,9 +549,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -630,11 +568,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "REMOTE_WORK",
-          "TOURISM",
-          "FAMILY"
-        ],
+        "covered_purposes": ["REMOTE_WORK", "TOURISM", "FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -668,9 +602,7 @@
           "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
           "9248b1d7-9172-54d9-ad61-251e83a2285b"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -689,10 +621,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "TOURISM",
-          "TRANSIT"
-        ],
+        "covered_purposes": ["TOURISM", "TRANSIT"],
         "entry_policy": {
           "entry_count": "SINGLE"
         },
@@ -722,12 +651,8 @@
           "journalism"
         ],
         "public_catalog": true,
-        "source_refs": [
-          "808d691c-374e-5581-8186-9eb54d0ca7ab"
-        ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "source_refs": ["808d691c-374e-5581-8186-9eb54d0ca7ab"],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -746,9 +671,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "TOURISM"
-        ],
+        "covered_purposes": ["TOURISM"],
         "entry_policy": {
           "entry_count": "SINGLE"
         },
@@ -759,9 +682,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "B213"
-        ],
+        "legacy_codes": ["B213"],
         "legacy_slugs": [],
         "names": {
           "en": "Visa on Arrival \u2014 Tourism (B1)",
@@ -780,12 +701,8 @@
           "journalism"
         ],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -804,10 +721,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "TOURISM",
-          "FAMILY"
-        ],
+        "covered_purposes": ["TOURISM", "FAMILY"],
         "entry_policy": {
           "entry_count": "SINGLE"
         },
@@ -818,9 +732,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "B211A"
-        ],
+        "legacy_codes": ["B211A"],
         "legacy_slugs": [],
         "names": {
           "en": "Tourist Visit Visa (C1)",
@@ -838,14 +750,8 @@
           "journalism"
         ],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "NONE",
-          "INDIVIDUAL",
-          "EMPLOYER"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["NONE", "INDIVIDUAL", "EMPLOYER"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -864,10 +770,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "BUSINESS_MEETINGS",
-          "INVESTMENT"
-        ],
+        "covered_purposes": ["BUSINESS_MEETINGS", "INVESTMENT"],
         "entry_policy": {
           "entry_count": "SINGLE"
         },
@@ -878,10 +781,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "B211B",
-          "B211A"
-        ],
+        "legacy_codes": ["B211B", "B211A"],
         "legacy_slugs": [],
         "names": {
           "en": "Business Visit Visa (C2)",
@@ -893,16 +793,10 @@
         },
         "product_code": "C2",
         "product_version_id": "de433757-f7af-5762-ad65-41bc16bc2ae1",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "EMPLOYER"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["EMPLOYER"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -921,9 +815,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "OTHER"
-        ],
+        "covered_purposes": ["OTHER"],
         "entry_policy": {
           "entry_count": "SINGLE"
         },
@@ -934,9 +826,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "B211A"
-        ],
+        "legacy_codes": ["B211A"],
         "legacy_slugs": [],
         "names": {
           "en": "Social Activity Visit Visa (C6)",
@@ -948,18 +838,10 @@
         },
         "product_code": "C6",
         "product_version_id": "8cf5e09b-6e02-536f-aeca-4aaecaca09c7",
-        "prohibited_activities": [
-          "paid_employment",
-          "business_meetings"
-        ],
+        "prohibited_activities": ["paid_employment", "business_meetings"],
         "public_catalog": true,
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
-        "sponsor_types": [
-          "INDIVIDUAL",
-          "EMPLOYER"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+        "sponsor_types": ["INDIVIDUAL", "EMPLOYER"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -978,9 +860,7 @@
           "available": false,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "OTHER"
-        ],
+        "covered_purposes": ["OTHER"],
         "entry_policy": {
           "entry_count": "NOT_APPLICABLE"
         },
@@ -1013,9 +893,7 @@
           "3da72c7b-783e-51e3-9168-6c54bce709ed",
           "2eabe49e-b71b-575a-b2e8-2be3f8e5b718"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1034,9 +912,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "EMPLOYMENT"
-        ],
+        "covered_purposes": ["EMPLOYMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1065,12 +941,8 @@
           "passive_investment_management"
         ],
         "public_catalog": true,
-        "source_refs": [
-          "e3572ad2-08a9-55bd-b818-353b3e9db715"
-        ],
-        "sponsor_types": [
-          "EMPLOYER"
-        ],
+        "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
+        "sponsor_types": ["EMPLOYER"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1089,9 +961,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "EMPLOYMENT"
-        ],
+        "covered_purposes": ["EMPLOYMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1111,16 +981,10 @@
         "pricing_key": null,
         "product_code": "E23U",
         "product_version_id": "fa143e97-b444-5ae4-9b05-6365f15e3ec7",
-        "prohibited_activities": [
-          "work_for_non_diplomat_employer"
-        ],
+        "prohibited_activities": ["work_for_non_diplomat_employer"],
         "public_catalog": true,
-        "source_refs": [
-          "e3572ad2-08a9-55bd-b818-353b3e9db715"
-        ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1139,9 +1003,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "EMPLOYMENT"
-        ],
+        "covered_purposes": ["EMPLOYMENT"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1161,16 +1023,10 @@
         "pricing_key": null,
         "product_code": "E23V",
         "product_version_id": "e8a1d738-daa7-5c99-a0c6-800b25579129",
-        "prohibited_activities": [
-          "work_for_standard_corporate_employers"
-        ],
+        "prohibited_activities": ["work_for_standard_corporate_employers"],
         "public_catalog": true,
-        "source_refs": [
-          "e3572ad2-08a9-55bd-b818-353b3e9db715"
-        ],
-        "sponsor_types": [
-          "GOVERNMENT"
-        ],
+        "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
+        "sponsor_types": ["GOVERNMENT"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1189,9 +1045,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1202,9 +1056,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "C317"
-        ],
+        "legacy_codes": ["C317"],
         "legacy_slugs": [],
         "names": {
           "en": "Family Visa \u2014 Spouse of Indonesian Citizen (E31A)",
@@ -1223,9 +1075,7 @@
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1244,9 +1094,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1257,9 +1105,7 @@
           "reason_code": null,
           "status": "VERIFIED"
         },
-        "legacy_codes": [
-          "C318"
-        ],
+        "legacy_codes": ["C318"],
         "legacy_slugs": [],
         "names": {
           "en": "Family Visa \u2014 Spouse of ITAS/ITAP Holder (E31B)",
@@ -1271,18 +1117,14 @@
         },
         "product_code": "E31B",
         "product_version_id": "5d5f9bd4-349b-54d7-841a-784c0afba068",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "570f2bc4-5120-561f-90ba-58fcd9507514",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1301,9 +1143,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1326,18 +1166,14 @@
         },
         "product_code": "E31C",
         "product_version_id": "62ab2d13-1d7e-5048-9cf7-9622c0098439",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "40523028-431b-5ae0-a937-277882f0f243",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1356,9 +1192,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1381,18 +1215,14 @@
         },
         "product_code": "E31D",
         "product_version_id": "3204e973-59da-5da1-bad0-06a7172e5b2c",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "50457cd0-b67f-5b88-bf66-33bcf62f3d9b",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1411,9 +1241,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1436,18 +1264,14 @@
         },
         "product_code": "E31E",
         "product_version_id": "1266d5cb-84a3-51f7-b82d-c6b756254074",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "ecd22722-3e42-5808-be18-45fbb7d8e9c5",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1466,9 +1290,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1491,18 +1313,14 @@
         },
         "product_code": "E31F",
         "product_version_id": "3f7f6a94-32c8-54d7-b1d4-4d89082edbcc",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "f9306203-0bdc-5dd8-9603-554e7eefedc8",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1521,9 +1339,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1546,18 +1362,14 @@
         },
         "product_code": "E31G",
         "product_version_id": "fbc980d5-47b6-5f16-974d-25158dfffc06",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "86880290-68c2-5220-8f9e-2350678e5f09",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1576,9 +1388,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1601,18 +1411,14 @@
         },
         "product_code": "E31H",
         "product_version_id": "1185c36d-833c-5e41-8e0d-6e4f7c8f7378",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "153beca1-a24b-5440-bac0-b46c3d19da6f",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1631,9 +1437,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "FAMILY"
-        ],
+        "covered_purposes": ["FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1656,18 +1460,14 @@
         },
         "product_code": "E31J",
         "product_version_id": "4a4a0f7c-a6a0-5835-acd6-8a096342ef68",
-        "prohibited_activities": [
-          "paid_employment"
-        ],
+        "prohibited_activities": ["paid_employment"],
         "public_catalog": true,
         "source_refs": [
           "2d090f3a-5a93-5181-b3d1-253d87a1a17c",
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1723,9 +1523,7 @@
           "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
           "e3572ad2-08a9-55bd-b818-353b3e9db715"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1744,11 +1542,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "BUSINESS_MEETINGS",
-          "TOURISM",
-          "FAMILY"
-        ],
+        "covered_purposes": ["BUSINESS_MEETINGS", "TOURISM", "FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1781,9 +1575,7 @@
           "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
           "e3572ad2-08a9-55bd-b818-353b3e9db715"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1802,11 +1594,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "INVESTMENT",
-          "TOURISM",
-          "FAMILY"
-        ],
+        "covered_purposes": ["INVESTMENT", "TOURISM", "FAMILY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1838,9 +1626,7 @@
           "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
           "e3572ad2-08a9-55bd-b818-353b3e9db715"
         ],
-        "sponsor_types": [
-          "NONE"
-        ],
+        "sponsor_types": ["NONE"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1859,9 +1645,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "STUDY"
-        ],
+        "covered_purposes": ["STUDY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1892,10 +1676,7 @@
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "EDUCATION",
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["EDUCATION", "INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "VARIABLE_BY_GRANT",
@@ -1914,9 +1695,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "STUDY"
-        ],
+        "covered_purposes": ["STUDY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -1951,10 +1730,7 @@
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "EDUCATION",
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["EDUCATION", "INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -1973,9 +1749,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "STUDY"
-        ],
+        "covered_purposes": ["STUDY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -2011,10 +1785,7 @@
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24",
           "31850f85-8d19-58df-bb66-b04968c9aff0"
         ],
-        "sponsor_types": [
-          "EDUCATION",
-          "INDIVIDUAL"
-        ],
+        "sponsor_types": ["EDUCATION", "INDIVIDUAL"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "FIXED_DAYS",
@@ -2033,9 +1804,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "STUDY"
-        ],
+        "covered_purposes": ["STUDY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -2066,9 +1835,7 @@
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "EDUCATION"
-        ],
+        "sponsor_types": ["EDUCATION"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "VARIABLE_BY_GRANT",
@@ -2087,9 +1854,7 @@
           "available": true,
           "checkpoints": []
         },
-        "covered_purposes": [
-          "STUDY"
-        ],
+        "covered_purposes": ["STUDY"],
         "entry_policy": {
           "entry_count": "MULTIPLE"
         },
@@ -2120,9 +1885,7 @@
           "e3572ad2-08a9-55bd-b818-353b3e9db715",
           "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
         ],
-        "sponsor_types": [
-          "EDUCATION"
-        ],
+        "sponsor_types": ["EDUCATION"],
         "status": "ACTIVE",
         "stay_policy": {
           "kind": "VARIABLE_BY_GRANT",
@@ -2147,15 +1910,11 @@
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
         "product_version_ids": null,
-        "required_facts": [
-          "derived.has_indonesian_citizenship"
-        ],
+        "required_facts": ["derived.has_indonesian_citizenship"],
         "rule_id": "hf.citizen",
         "safety_critical": true,
         "scope": "GLOBAL",
-        "source_refs": [
-          "e76bf823-2b36-522f-b2f7-e51eb7715e44"
-        ],
+        "source_refs": ["e76bf823-2b36-522f-b2f7-e51eb7715e44"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2176,15 +1935,11 @@
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
         "product_version_ids": null,
-        "required_facts": [
-          "immigration.overstay_days"
-        ],
+        "required_facts": ["immigration.overstay_days"],
         "rule_id": "hf.overstay-exceeds-60-days",
         "safety_critical": true,
         "scope": "GLOBAL",
-        "source_refs": [
-          "e76bf823-2b36-522f-b2f7-e51eb7715e44"
-        ],
+        "source_refs": ["e76bf823-2b36-522f-b2f7-e51eb7715e44"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2205,15 +1960,11 @@
         "on_unknown": "HUMAN_REVIEW",
         "priority": 100,
         "product_version_ids": null,
-        "required_facts": [
-          "person.nationalities"
-        ],
+        "required_facts": ["person.nationalities"],
         "rule_id": "review.calling-visa",
         "safety_critical": true,
         "scope": "GLOBAL",
-        "source_refs": [
-          "bc309fa9-d14e-5625-b914-72fe4a68c19d"
-        ],
+        "source_refs": ["bc309fa9-d14e-5625-b914-72fe4a68c19d"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2222,14 +1973,7 @@
         "when": {
           "fact": "person.nationalities",
           "op": "intersects",
-          "values": [
-            "AF",
-            "IL",
-            "KP",
-            "LR",
-            "NG",
-            "SO"
-          ]
+          "values": ["AF", "IL", "KP", "LR", "NG", "SO"]
         }
       },
       {
@@ -2241,15 +1985,11 @@
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
         "product_version_ids": null,
-        "required_facts": [
-          "immigration.overstay_days"
-        ],
+        "required_facts": ["immigration.overstay_days"],
         "rule_id": "review.active-overstay",
         "safety_critical": true,
         "scope": "GLOBAL",
-        "source_refs": [
-          "e76bf823-2b36-522f-b2f7-e51eb7715e44"
-        ],
+        "source_refs": ["e76bf823-2b36-522f-b2f7-e51eb7715e44"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2269,18 +2009,12 @@
         "explanation_key": "explain.hf.a1.not-bvk-nationality",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "aee1a12d-3285-526e-8a6f-3d8467fe5d72"
-        ],
-        "required_facts": [
-          "person.nationalities"
-        ],
+        "product_version_ids": ["aee1a12d-3285-526e-8a6f-3d8467fe5d72"],
+        "required_facts": ["person.nationalities"],
         "rule_id": "hf.a1.not-bvk-nationality",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "808d691c-374e-5581-8186-9eb54d0ca7ab"
-        ],
+        "source_refs": ["808d691c-374e-5581-8186-9eb54d0ca7ab"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2317,19 +2051,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "TOURISM",
-            "TRANSIT"
-          ],
+          "covered_purposes": ["TOURISM", "TRANSIT"],
           "reason_code": "A1_BVK_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.a1.tourism",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "aee1a12d-3285-526e-8a6f-3d8467fe5d72"
-        ],
+        "product_version_ids": ["aee1a12d-3285-526e-8a6f-3d8467fe5d72"],
         "required_facts": [
           "intent.purposes",
           "intent.stay_days",
@@ -2338,9 +2067,7 @@
         "rule_id": "el.a1.tourism",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "808d691c-374e-5581-8186-9eb54d0ca7ab"
-        ],
+        "source_refs": ["808d691c-374e-5581-8186-9eb54d0ca7ab"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2351,10 +2078,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "TOURISM",
-                "TRANSIT"
-              ]
+              "values": ["TOURISM", "TRANSIT"]
             },
             {
               "fact": "person.nationalities",
@@ -2392,18 +2116,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "TOURISM"
-          ],
+          "covered_purposes": ["TOURISM"],
           "reason_code": "B1_VOA_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.b1.tourism",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "4e30cbe0-c4bf-59be-9bf8-513e66946e44"
-        ],
+        "product_version_ids": ["4e30cbe0-c4bf-59be-9bf8-513e66946e44"],
         "required_facts": [
           "intent.purposes",
           "intent.stay_days",
@@ -2426,9 +2146,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "TOURISM"
-              ]
+              "values": ["TOURISM"]
             },
             {
               "fact": "intent.stay_days",
@@ -2544,29 +2262,19 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "TOURISM",
-            "FAMILY"
-          ],
+          "covered_purposes": ["TOURISM", "FAMILY"],
           "reason_code": "C1_VISIT_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.c1.tourism-family",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "7a07cbb0-564f-5c3f-9720-6ad62c4789cd"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["7a07cbb0-564f-5c3f-9720-6ad62c4789cd"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.c1.tourism-family",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2577,10 +2285,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "TOURISM",
-                "FAMILY"
-              ]
+              "values": ["TOURISM", "FAMILY"]
             },
             {
               "fact": "intent.stay_days",
@@ -2593,19 +2298,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "BUSINESS_MEETINGS",
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["BUSINESS_MEETINGS", "INVESTMENT"],
           "reason_code": "C2_BUSINESS_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.c2.business",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "de433757-f7af-5762-ad65-41bc16bc2ae1"
-        ],
+        "product_version_ids": ["de433757-f7af-5762-ad65-41bc16bc2ae1"],
         "required_facts": [
           "family.sponsor_confirmed",
           "intent.purposes",
@@ -2614,9 +2314,7 @@
         "rule_id": "el.c2.business",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2627,10 +2325,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "BUSINESS_MEETINGS",
-                "INVESTMENT"
-              ]
+              "values": ["BUSINESS_MEETINGS", "INVESTMENT"]
             },
             {
               "fact": "family.sponsor_confirmed",
@@ -2648,18 +2343,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "OTHER"
-          ],
+          "covered_purposes": ["OTHER"],
           "reason_code": "C6_SOCIAL_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.c6.social",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "8cf5e09b-6e02-536f-aeca-4aaecaca09c7"
-        ],
+        "product_version_ids": ["8cf5e09b-6e02-536f-aeca-4aaecaca09c7"],
         "required_facts": [
           "family.sponsor_confirmed",
           "intent.purposes",
@@ -2668,9 +2359,7 @@
         "rule_id": "el.c6.social",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2681,9 +2370,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "OTHER"
-              ]
+              "values": ["OTHER"]
             },
             {
               "fact": "family.sponsor_confirmed",
@@ -2707,18 +2394,12 @@
         "explanation_key": "explain.hf.e28a.paid-capital-below-min",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "c8277316-c29d-5fde-bf9f-2611099a0029"
-        ],
-        "required_facts": [
-          "investment.paid_up_capital_idr"
-        ],
+        "product_version_ids": ["c8277316-c29d-5fde-bf9f-2611099a0029"],
+        "required_facts": ["investment.paid_up_capital_idr"],
         "rule_id": "hf.e28a.paid-capital-below-min",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2738,18 +2419,12 @@
         "explanation_key": "explain.hf.e28a.total-investment-below-min",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "c8277316-c29d-5fde-bf9f-2611099a0029"
-        ],
-        "required_facts": [
-          "investment.investment_capital_idr"
-        ],
+        "product_version_ids": ["c8277316-c29d-5fde-bf9f-2611099a0029"],
+        "required_facts": ["investment.investment_capital_idr"],
         "rule_id": "hf.e28a.total-investment-below-min",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2763,18 +2438,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["INVESTMENT"],
           "reason_code": "E28A_INVESTMENT_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e28a.investment",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "c8277316-c29d-5fde-bf9f-2611099a0029"
-        ],
+        "product_version_ids": ["c8277316-c29d-5fde-bf9f-2611099a0029"],
         "required_facts": [
           "intent.purposes",
           "investment.investment_capital_idr",
@@ -2785,9 +2456,7 @@
         "rule_id": "el.e28a.investment",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2798,9 +2467,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "investment.pt_pma_committed",
@@ -2810,10 +2477,7 @@
             {
               "fact": "investment.proposed_role",
               "op": "in",
-              "values": [
-                "SHAREHOLDER_DIRECTOR",
-                "SHAREHOLDER_COMMISSIONER"
-              ]
+              "values": ["SHAREHOLDER_DIRECTOR", "SHAREHOLDER_COMMISSIONER"]
             },
             {
               "fact": "investment.paid_up_capital_idr",
@@ -2837,19 +2501,12 @@
         "explanation_key": "explain.review.e28b.usd-threshold-manual",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "ca8c1177-ad94-5261-82a6-68bc912d31bb"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["ca8c1177-ad94-5261-82a6-68bc912d31bb"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e28b.usd-threshold-manual",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2860,9 +2517,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -2881,19 +2536,12 @@
         "explanation_key": "explain.review.e28c.usd-threshold-manual",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "b074270f-fa7c-598b-a728-81ca89432364"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["b074270f-fa7c-598b-a728-81ca89432364"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e28c.usd-threshold-manual",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2904,9 +2552,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -2925,19 +2571,12 @@
         "explanation_key": "explain.review.e28d.usd-threshold-turnover-manual",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "ee4fef98-3497-507c-8486-225932364e26"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["ee4fef98-3497-507c-8486-225932364e26"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e28d.usd-threshold-turnover-manual",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2948,9 +2587,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -2969,19 +2606,12 @@
         "explanation_key": "explain.review.e28f.ikn-threshold-manual",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "2df6f723-7fc3-585a-b26f-0e8c060a2d8d"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["2df6f723-7fc3-585a-b26f-0e8c060a2d8d"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e28f.ikn-threshold-manual",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -2992,9 +2622,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -3007,19 +2635,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "SECOND_HOME",
-            "TOURISM"
-          ],
+          "covered_purposes": ["SECOND_HOME", "TOURISM"],
           "reason_code": "E33_DEPOSIT_BASIS_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e33.deposit-basis",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-        ],
+        "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"],
         "required_facts": [
           "intent.purposes",
           "secondhome.bank_deposit_at_state_bank",
@@ -3043,9 +2666,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "SECOND_HOME"
-              ]
+              "values": ["SECOND_HOME"]
             },
             {
               "fact": "secondhome.bank_deposit_usd",
@@ -3068,19 +2689,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "SECOND_HOME",
-            "TOURISM"
-          ],
+          "covered_purposes": ["SECOND_HOME", "TOURISM"],
           "reason_code": "E33_PROPERTY_BASIS_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e33.property-basis",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-        ],
+        "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"],
         "required_facts": [
           "intent.purposes",
           "secondhome.qualifying_property_value_usd"
@@ -3102,9 +2718,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "SECOND_HOME"
-              ]
+              "values": ["SECOND_HOME"]
             },
             {
               "fact": "secondhome.qualifying_property_value_usd",
@@ -3117,19 +2731,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "SECOND_HOME",
-            "TOURISM"
-          ],
+          "covered_purposes": ["SECOND_HOME", "TOURISM"],
           "reason_code": "E33_PROPERTY_QUALIFICATION_ADVISOR_CHECK",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e33.property-qualification",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-        ],
+        "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"],
         "required_facts": [
           "intent.purposes",
           "secondhome.bank_deposit_at_state_bank",
@@ -3156,9 +2765,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "SECOND_HOME"
-                  ]
+                  "values": ["SECOND_HOME"]
                 },
                 {
                   "fact": "secondhome.qualifying_property_value_usd",
@@ -3175,9 +2782,7 @@
                     {
                       "fact": "intent.purposes",
                       "op": "intersects",
-                      "values": [
-                        "SECOND_HOME"
-                      ]
+                      "values": ["SECOND_HOME"]
                     },
                     {
                       "fact": "secondhome.bank_deposit_usd",
@@ -3202,9 +2807,7 @@
                     {
                       "fact": "intent.purposes",
                       "op": "intersects",
-                      "values": [
-                        "SECOND_HOME"
-                      ]
+                      "values": ["SECOND_HOME"]
                     },
                     {
                       "fact": "secondhome.qualifying_property_value_usd",
@@ -3223,19 +2826,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "SECOND_HOME",
-            "TOURISM"
-          ],
+          "covered_purposes": ["SECOND_HOME", "TOURISM"],
           "reason_code": "GUARANTEE_VALUE_MUST_BE_MAINTAINED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e33.guarantee-maintenance",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-        ],
+        "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"],
         "required_facts": [
           "intent.purposes",
           "secondhome.bank_deposit_at_state_bank",
@@ -3262,9 +2860,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "SECOND_HOME"
-                  ]
+                  "values": ["SECOND_HOME"]
                 },
                 {
                   "args": [
@@ -3291,9 +2887,7 @@
                     {
                       "fact": "intent.purposes",
                       "op": "intersects",
-                      "values": [
-                        "SECOND_HOME"
-                      ]
+                      "values": ["SECOND_HOME"]
                     },
                     {
                       "fact": "secondhome.bank_deposit_usd",
@@ -3318,9 +2912,7 @@
                     {
                       "fact": "intent.purposes",
                       "op": "intersects",
-                      "values": [
-                        "SECOND_HOME"
-                      ]
+                      "values": ["SECOND_HOME"]
                     },
                     {
                       "fact": "secondhome.qualifying_property_value_usd",
@@ -3345,18 +2937,12 @@
         "explanation_key": "explain.review.e33.work-rangkap-kegiatan",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-        ],
-        "required_facts": [
-          "intent.purposes"
-        ],
+        "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"],
+        "required_facts": ["intent.purposes"],
         "rule_id": "review.e33.work-rangkap-kegiatan",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3367,16 +2953,12 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "SECOND_HOME"
-              ]
+              "values": ["SECOND_HOME"]
             },
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "EMPLOYMENT"
-              ]
+              "values": ["EMPLOYMENT"]
             }
           ],
           "op": "all"
@@ -3390,19 +2972,12 @@
         "explanation_key": "explain.review.e33a.central-government-invitation",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "5c18e265-ddb2-5010-8d24-a2f19df89850"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["5c18e265-ddb2-5010-8d24-a2f19df89850"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e33a.central-government-invitation",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3413,9 +2988,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "EMPLOYMENT"
-              ]
+              "values": ["EMPLOYMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -3434,19 +3007,12 @@
         "explanation_key": "explain.review.e33b.expertise-qualification",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "32b6fb5f-5a24-5763-95f9-0b77be18353c"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["32b6fb5f-5a24-5763-95f9-0b77be18353c"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e33b.expertise-qualification",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3457,9 +3023,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "EMPLOYMENT"
-              ]
+              "values": ["EMPLOYMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -3478,19 +3042,12 @@
         "explanation_key": "explain.review.e33c.central-government-invitation",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e33c.central-government-invitation",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3501,9 +3058,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -3522,18 +3077,12 @@
         "explanation_key": "explain.hf.e33e.age-below-55",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"
-        ],
-        "required_facts": [
-          "derived.age_years"
-        ],
+        "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"],
+        "required_facts": ["derived.age_years"],
         "rule_id": "hf.e33e.age-below-55",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3559,9 +3108,7 @@
         "explanation_key": "explain.el.e33e.age-55-59-disputed-band",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"
-        ],
+        "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"],
         "required_facts": [
           "derived.age_years",
           "intent.purposes",
@@ -3589,9 +3136,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "RETIREMENT"
-                  ]
+                  "values": ["RETIREMENT"]
                 },
                 {
                   "fact": "derived.age_years",
@@ -3607,9 +3152,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "RETIREMENT"
-                  ]
+                  "values": ["RETIREMENT"]
                 },
                 {
                   "fact": "derived.age_years",
@@ -3662,9 +3205,7 @@
         "explanation_key": "explain.el.e33e.retirement",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"
-        ],
+        "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"],
         "required_facts": [
           "derived.age_years",
           "intent.purposes",
@@ -3690,9 +3231,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "RETIREMENT"
-              ]
+              "values": ["RETIREMENT"]
             },
             {
               "fact": "derived.age_years",
@@ -3736,18 +3275,12 @@
         "explanation_key": "explain.hf.e33f.sponsor-required",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "7c1da88f-f7cd-571a-95c2-7da32463d3e6"
-        ],
-        "required_facts": [
-          "family.sponsor_confirmed"
-        ],
+        "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"],
+        "required_facts": ["family.sponsor_confirmed"],
         "rule_id": "hf.e33f.sponsor-required",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3773,9 +3306,7 @@
         "explanation_key": "explain.el.e33f.retirement",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "7c1da88f-f7cd-571a-95c2-7da32463d3e6"
-        ],
+        "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"],
         "required_facts": [
           "family.sponsor_confirmed",
           "intent.purposes",
@@ -3798,9 +3329,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "RETIREMENT"
-              ]
+              "values": ["RETIREMENT"]
             },
             {
               "fact": "secondhome.passive_monthly_income_usd",
@@ -3824,18 +3353,12 @@
         "explanation_key": "explain.hf.e33g.indonesian-employer",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "51e023ea-3229-5233-b88f-cb204b5df713"
-        ],
-        "required_facts": [
-          "work.employer_is_indonesian_entity"
-        ],
+        "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
+        "required_facts": ["work.employer_is_indonesian_entity"],
         "rule_id": "hf.e33g.indonesian-employer",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3855,18 +3378,12 @@
         "explanation_key": "explain.hf.e33g.indonesian-source-compensation",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "51e023ea-3229-5233-b88f-cb204b5df713"
-        ],
-        "required_facts": [
-          "work.indonesia_source_compensation"
-        ],
+        "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
+        "required_facts": ["work.indonesia_source_compensation"],
         "rule_id": "hf.e33g.indonesian-source-compensation",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3886,19 +3403,12 @@
         "explanation_key": "explain.review.e33g.local-market",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "51e023ea-3229-5233-b88f-cb204b5df713"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "work.serves_indonesian_clients"
-        ],
+        "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
+        "required_facts": ["intent.purposes", "work.serves_indonesian_clients"],
         "rule_id": "review.e33g.local-market",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3909,9 +3419,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "REMOTE_WORK"
-              ]
+              "values": ["REMOTE_WORK"]
             },
             {
               "fact": "work.serves_indonesian_clients",
@@ -3930,19 +3438,12 @@
         "explanation_key": "explain.review.e33g.local-company-ownership",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "51e023ea-3229-5233-b88f-cb204b5df713"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "investment.pt_pma_committed"
-        ],
+        "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
+        "required_facts": ["intent.purposes", "investment.pt_pma_committed"],
         "rule_id": "review.e33g.local-company-ownership",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -3953,9 +3454,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "REMOTE_WORK"
-              ]
+              "values": ["REMOTE_WORK"]
             },
             {
               "fact": "investment.pt_pma_committed",
@@ -3968,20 +3467,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "REMOTE_WORK",
-            "TOURISM",
-            "FAMILY"
-          ],
+          "covered_purposes": ["REMOTE_WORK", "TOURISM", "FAMILY"],
           "reason_code": "REMOTE_WORK_ELIGIBLE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e33g.remote-work",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "51e023ea-3229-5233-b88f-cb204b5df713"
-        ],
+        "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
         "required_facts": [
           "intent.purposes",
           "work.employer_is_indonesian_entity",
@@ -3991,9 +3484,7 @@
         "rule_id": "el.e33g.remote-work",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4004,9 +3495,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "REMOTE_WORK"
-              ]
+              "values": ["REMOTE_WORK"]
             },
             {
               "fact": "work.employer_is_indonesian_entity",
@@ -4035,18 +3524,12 @@
         "explanation_key": "explain.hf.bridging.offshore",
         "on_unknown": "HUMAN_REVIEW",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
-        "required_facts": [
-          "immigration.currently_in_indonesia"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
+        "required_facts": ["immigration.currently_in_indonesia"],
         "rule_id": "hf.bridging.offshore",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4066,12 +3549,8 @@
         "explanation_key": "explain.hf.bridging.from-visit-itk",
         "on_unknown": "HUMAN_REVIEW",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
-        "required_facts": [
-          "immigration.current_status_code"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
+        "required_facts": ["immigration.current_status_code"],
         "rule_id": "hf.bridging.from-visit-itk",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -4106,18 +3585,12 @@
         "explanation_key": "explain.hf.bridging.to-bridging",
         "on_unknown": "HUMAN_REVIEW",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
-        "required_facts": [
-          "immigration.current_status_code"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
+        "required_facts": ["immigration.current_status_code"],
         "rule_id": "hf.bridging.to-bridging",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4131,18 +3604,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "OTHER"
-          ],
+          "covered_purposes": ["OTHER"],
           "reason_code": "BRIDGING_T3_WINDOW_ADVISOR_CHECK",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.bridging.t3-window-manual",
         "on_unknown": "NO_EFFECT",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
         "required_facts": [
           "immigration.current_status_expiry",
           "immigration.currently_in_indonesia",
@@ -4152,9 +3621,7 @@
         "rule_id": "el.bridging.t3-window-manual",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4181,9 +3648,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "OTHER"
-                  ]
+                  "values": ["OTHER"]
                 },
                 {
                   "fact": "intent.requested_product_code",
@@ -4199,18 +3664,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "OTHER"
-          ],
+          "covered_purposes": ["OTHER"],
           "reason_code": "BRIDGING_OVERSTAY_SHIELD_PAYMENT_CHECK",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.bridging.overstay-shield-payment",
         "on_unknown": "NO_EFFECT",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
         "required_facts": [
           "immigration.current_status_expiry",
           "immigration.currently_in_indonesia",
@@ -4220,9 +3681,7 @@
         "rule_id": "el.bridging.overstay-shield-payment",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4249,9 +3708,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "OTHER"
-                  ]
+                  "values": ["OTHER"]
                 },
                 {
                   "fact": "intent.requested_product_code",
@@ -4267,18 +3724,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "OTHER"
-          ],
+          "covered_purposes": ["OTHER"],
           "reason_code": "BRIDGING_SOURCE_STATUS_VERIFY",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.bridging.source-status-verify",
         "on_unknown": "NO_EFFECT",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
         "required_facts": [
           "immigration.current_status_code",
           "immigration.currently_in_indonesia",
@@ -4288,9 +3741,7 @@
         "rule_id": "el.bridging.source-status-verify",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4317,9 +3768,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "OTHER"
-                  ]
+                  "values": ["OTHER"]
                 },
                 {
                   "fact": "intent.requested_product_code",
@@ -4341,9 +3790,7 @@
         "explanation_key": "explain.review.bridging.adverse-history",
         "on_unknown": "HUMAN_REVIEW",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
         "required_facts": [
           "immigration.currently_in_indonesia",
           "immigration.violation_history"
@@ -4351,9 +3798,7 @@
         "rule_id": "review.bridging.adverse-history",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4382,28 +3827,19 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "OTHER"
-          ],
+          "covered_purposes": ["OTHER"],
           "reason_code": "BRIDGING_DESTINATION_STATED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.bridging.destination-stated",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "760025cf-d51d-5687-9e98-b921010b9018"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "el.bridging.destination-stated",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "9248b1d7-9172-54d9-ad61-251e83a2285b"
-        ],
+        "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4414,9 +3850,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "OTHER"
-              ]
+              "values": ["OTHER"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -4429,18 +3863,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "EMPLOYMENT"
-          ],
+          "covered_purposes": ["EMPLOYMENT"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e23-employment-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "e1d761e9-56c5-57c3-9c01-986d3c333157"
-        ],
+        "product_version_ids": ["e1d761e9-56c5-57c3-9c01-986d3c333157"],
         "required_facts": [
           "intent.purposes",
           "work.employer_is_indonesian_entity",
@@ -4449,9 +3879,7 @@
         "rule_id": "el.e23-employment-support",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "e3572ad2-08a9-55bd-b818-353b3e9db715"
-        ],
+        "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4462,9 +3890,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "EMPLOYMENT"
-              ]
+              "values": ["EMPLOYMENT"]
             },
             {
               "fact": "work.employer_is_indonesian_entity",
@@ -4482,18 +3908,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "EMPLOYMENT"
-          ],
+          "covered_purposes": ["EMPLOYMENT"],
           "reason_code": "E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e23-operational-work-boundary",
         "on_unknown": "NO_EFFECT",
         "priority": 100,
-        "product_version_ids": [
-          "e1d761e9-56c5-57c3-9c01-986d3c333157"
-        ],
+        "product_version_ids": ["e1d761e9-56c5-57c3-9c01-986d3c333157"],
         "required_facts": [
           "intent.purposes",
           "investment.proposed_role",
@@ -4503,9 +3925,7 @@
         "rule_id": "el.e23-operational-work-boundary",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "e3572ad2-08a9-55bd-b818-353b3e9db715"
-        ],
+        "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4518,17 +3938,12 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "EMPLOYMENT"
-                  ]
+                  "values": ["EMPLOYMENT"]
                 },
                 {
                   "fact": "investment.proposed_role",
                   "op": "in",
-                  "values": [
-                    "SHAREHOLDER_DIRECTOR",
-                    "SHAREHOLDER_COMMISSIONER"
-                  ]
+                  "values": ["SHAREHOLDER_DIRECTOR", "SHAREHOLDER_COMMISSIONER"]
                 }
               ],
               "op": "all"
@@ -4538,9 +3953,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "EMPLOYMENT"
-                  ]
+                  "values": ["EMPLOYMENT"]
                 },
                 {
                   "fact": "work.employer_is_indonesian_entity",
@@ -4561,18 +3974,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31a-spouse-wni-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-        ],
+        "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"],
         "required_facts": [
           "intent.purposes",
           "family.relation_to_sponsor",
@@ -4596,9 +4005,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -4608,9 +4015,7 @@
             {
               "fact": "family.sponsor_nationalities",
               "op": "intersects",
-              "values": [
-                "ID"
-              ]
+              "values": ["ID"]
             },
             {
               "fact": "family.marriage_registered",
@@ -4623,18 +4028,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_FUNDS_2000",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31a-funds-2000",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-        ],
+        "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"],
         "required_facts": [
           "family.marriage_registered",
           "family.relation_to_sponsor",
@@ -4660,9 +4061,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -4672,9 +4071,7 @@
                 {
                   "fact": "family.sponsor_nationalities",
                   "op": "intersects",
-                  "values": [
-                    "ID"
-                  ]
+                  "values": ["ID"]
                 }
               ],
               "op": "all"
@@ -4684,9 +4081,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -4696,9 +4091,7 @@
                 {
                   "fact": "family.sponsor_nationalities",
                   "op": "intersects",
-                  "values": [
-                    "ID"
-                  ]
+                  "values": ["ID"]
                 },
                 {
                   "fact": "family.marriage_registered",
@@ -4714,18 +4107,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "SPOUSAL_WORK_ARTICLE_61_CONTEXT",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31a-spousal-work-article-61",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-        ],
+        "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"],
         "required_facts": [
           "family.marriage_registered",
           "family.relation_to_sponsor",
@@ -4735,9 +4124,7 @@
         "rule_id": "el.e31a-spousal-work-article-61",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "5a0d367b-bf64-535d-83e4-f40c45de2008"
-        ],
+        "source_refs": ["5a0d367b-bf64-535d-83e4-f40c45de2008"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4750,9 +4137,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -4762,9 +4147,7 @@
                 {
                   "fact": "family.sponsor_nationalities",
                   "op": "intersects",
-                  "values": [
-                    "ID"
-                  ]
+                  "values": ["ID"]
                 }
               ],
               "op": "all"
@@ -4774,9 +4157,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -4786,9 +4167,7 @@
                 {
                   "fact": "family.sponsor_nationalities",
                   "op": "intersects",
-                  "values": [
-                    "ID"
-                  ]
+                  "values": ["ID"]
                 },
                 {
                   "fact": "family.marriage_registered",
@@ -4804,18 +4183,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_NOT_VERIFIED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31a-kitap-prerequisites",
         "on_unknown": "NO_EFFECT",
         "priority": 100,
-        "product_version_ids": [
-          "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-        ],
+        "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"],
         "required_facts": [
           "family.marriage_registered",
           "family.relation_to_sponsor",
@@ -4826,9 +4201,7 @@
         "rule_id": "el.e31a-kitap-prerequisites",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "5a0d367b-bf64-535d-83e4-f40c45de2008"
-        ],
+        "source_refs": ["5a0d367b-bf64-535d-83e4-f40c45de2008"],
         "stage": "ELIGIBILITY",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -4846,9 +4219,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -4858,9 +4229,7 @@
                 {
                   "fact": "family.sponsor_nationalities",
                   "op": "intersects",
-                  "values": [
-                    "ID"
-                  ]
+                  "values": ["ID"]
                 },
                 {
                   "fact": "family.marriage_registered",
@@ -4876,18 +4245,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31b-spouse-itas-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "5d5f9bd4-349b-54d7-841a-784c0afba068"
-        ],
+        "product_version_ids": ["5d5f9bd4-349b-54d7-841a-784c0afba068"],
         "required_facts": [
           "intent.purposes",
           "family.relation_to_sponsor",
@@ -4911,9 +4276,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -4935,18 +4298,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_SPONSOR_ITAS_ITAP",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31b-sponsor-itas-itap",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "5d5f9bd4-349b-54d7-841a-784c0afba068"
-        ],
+        "product_version_ids": ["5d5f9bd4-349b-54d7-841a-784c0afba068"],
         "required_facts": [
           "family.marriage_registered",
           "family.relation_to_sponsor",
@@ -4972,9 +4331,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -4989,9 +4346,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5016,18 +4371,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31c-child-mixed-marriage-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-        ],
+        "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"],
         "required_facts": [
           "family.relation_to_sponsor",
           "family.sponsor_nationalities",
@@ -5050,9 +4401,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -5062,9 +4411,7 @@
             {
               "fact": "family.sponsor_nationalities",
               "op": "intersects",
-              "values": [
-                "ID"
-              ]
+              "values": ["ID"]
             }
           ],
           "op": "all"
@@ -5072,18 +4419,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_MIXED_MARRIAGE_PARENTS",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31c-mixed-marriage-parents",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-        ],
+        "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"],
         "required_facts": [
           "family.marriage_registered",
           "family.relation_to_sponsor",
@@ -5107,9 +4450,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -5119,9 +4460,7 @@
             {
               "fact": "family.sponsor_nationalities",
               "op": "intersects",
-              "values": [
-                "ID"
-              ]
+              "values": ["ID"]
             },
             {
               "fact": "family.marriage_registered",
@@ -5134,21 +4473,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31d-stepchild-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "3204e973-59da-5da1-bad0-06a7172e5b2c"
-        ],
-        "required_facts": [
-          "intent.purposes"
-        ],
+        "product_version_ids": ["3204e973-59da-5da1-bad0-06a7172e5b2c"],
+        "required_facts": ["intent.purposes"],
         "rule_id": "el.e31d-stepchild-support",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -5166,9 +4499,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             }
           ],
           "op": "all"
@@ -5176,21 +4507,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_STEP_PARENT_RELATION",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31d-step-parent-relation",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "3204e973-59da-5da1-bad0-06a7172e5b2c"
-        ],
-        "required_facts": [
-          "intent.purposes"
-        ],
+        "product_version_ids": ["3204e973-59da-5da1-bad0-06a7172e5b2c"],
+        "required_facts": ["intent.purposes"],
         "rule_id": "el.e31d-step-parent-relation",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -5208,18 +4533,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 }
               ],
               "op": "all"
@@ -5230,21 +4551,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_SPONSOR_MIXED_MARRIAGE",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31d-sponsor-mixed-marriage",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "3204e973-59da-5da1-bad0-06a7172e5b2c"
-        ],
-        "required_facts": [
-          "intent.purposes"
-        ],
+        "product_version_ids": ["3204e973-59da-5da1-bad0-06a7172e5b2c"],
+        "required_facts": ["intent.purposes"],
         "rule_id": "el.e31d-sponsor-mixed-marriage",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -5262,18 +4577,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 }
               ],
               "op": "all"
@@ -5290,18 +4601,12 @@
         "explanation_key": "explain.hf.e31e-adult-excluded",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "1266d5cb-84a3-51f7-b82d-c6b756254074"
-        ],
-        "required_facts": [
-          "derived.age_years"
-        ],
+        "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"],
+        "required_facts": ["derived.age_years"],
         "rule_id": "hf.e31e-adult-excluded",
         "safety_critical": true,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
-        ],
+        "source_refs": ["c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -5321,18 +4626,12 @@
         "explanation_key": "explain.hf.e31e-married-excluded",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "1266d5cb-84a3-51f7-b82d-c6b756254074"
-        ],
-        "required_facts": [
-          "person.marital_status"
-        ],
+        "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"],
+        "required_facts": ["person.marital_status"],
         "rule_id": "hf.e31e-married-excluded",
         "safety_critical": true,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
-        ],
+        "source_refs": ["c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -5346,18 +4645,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31e-child-itas-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "1266d5cb-84a3-51f7-b82d-c6b756254074"
-        ],
+        "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"],
         "required_facts": [
           "intent.purposes",
           "family.relation_to_sponsor",
@@ -5382,9 +4677,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -5411,18 +4704,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_SPONSOR_ITAS_ITAP",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31e-sponsor-itas-itap",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "1266d5cb-84a3-51f7-b82d-c6b756254074"
-        ],
+        "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"],
         "required_facts": [
           "derived.age_years",
           "family.relation_to_sponsor",
@@ -5449,9 +4738,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5466,9 +4753,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5498,18 +4783,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31f-child-wni-parent-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"
-        ],
+        "product_version_ids": ["3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"],
         "required_facts": [
           "intent.purposes",
           "family.relation_to_sponsor",
@@ -5532,9 +4813,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -5544,9 +4823,7 @@
             {
               "fact": "family.sponsor_nationalities",
               "op": "intersects",
-              "values": [
-                "ID"
-              ]
+              "values": ["ID"]
             }
           ],
           "op": "all"
@@ -5554,18 +4831,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "E31F_ADULT_AGE_ADVISOR_CHECK",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31f-adult-age-review",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"
-        ],
+        "product_version_ids": ["3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"],
         "required_facts": [
           "derived.age_years",
           "family.relation_to_sponsor",
@@ -5591,9 +4864,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5603,9 +4874,7 @@
                 {
                   "fact": "family.sponsor_nationalities",
                   "op": "intersects",
-                  "values": [
-                    "ID"
-                  ]
+                  "values": ["ID"]
                 },
                 {
                   "fact": "derived.age_years",
@@ -5620,9 +4889,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5632,9 +4899,7 @@
                 {
                   "fact": "family.sponsor_nationalities",
                   "op": "intersects",
-                  "values": [
-                    "ID"
-                  ]
+                  "values": ["ID"]
                 }
               ],
               "op": "all"
@@ -5645,18 +4910,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31g-parent-wni-child-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "fbc980d5-47b6-5f16-974d-25158dfffc06"
-        ],
+        "product_version_ids": ["fbc980d5-47b6-5f16-974d-25158dfffc06"],
         "required_facts": [
           "intent.purposes",
           "family.relation_to_sponsor",
@@ -5679,9 +4940,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -5691,9 +4950,7 @@
             {
               "fact": "family.sponsor_nationalities",
               "op": "intersects",
-              "values": [
-                "ID"
-              ]
+              "values": ["ID"]
             }
           ],
           "op": "all"
@@ -5701,18 +4958,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31h-parent-itas-child-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "1185c36d-833c-5e41-8e0d-6e4f7c8f7378"
-        ],
+        "product_version_ids": ["1185c36d-833c-5e41-8e0d-6e4f7c8f7378"],
         "required_facts": [
           "intent.purposes",
           "family.relation_to_sponsor",
@@ -5735,9 +4988,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -5754,18 +5005,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_SPONSOR_ITAS_ITAP",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31h-sponsor-itas-itap",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "1185c36d-833c-5e41-8e0d-6e4f7c8f7378"
-        ],
+        "product_version_ids": ["1185c36d-833c-5e41-8e0d-6e4f7c8f7378"],
         "required_facts": [
           "family.relation_to_sponsor",
           "family.sponsor_status_code",
@@ -5790,9 +5037,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5807,9 +5052,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5829,18 +5072,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31j-sibling-itas-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
-        ],
+        "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"],
         "required_facts": [
           "intent.purposes",
           "family.relation_to_sponsor",
@@ -5863,9 +5102,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -5882,18 +5119,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "REQ_SPONSOR_ITAS_ITAP",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31j-sponsor-itas-itap",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
-        ],
+        "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"],
         "required_facts": [
           "family.relation_to_sponsor",
           "family.sponsor_status_code",
@@ -5918,9 +5151,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5935,9 +5166,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -5957,18 +5186,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "FAMILY"
-          ],
+          "covered_purposes": ["FAMILY"],
           "reason_code": "E31J_DEPENDENCY_AGE_ADVISOR_CHECK",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e31j-dependency-age",
         "on_unknown": "NO_EFFECT",
         "priority": 100,
-        "product_version_ids": [
-          "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
-        ],
+        "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"],
         "required_facts": [
           "derived.age_years",
           "family.relation_to_sponsor",
@@ -5994,9 +5219,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -6016,9 +5239,7 @@
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "FAMILY"
-                  ]
+                  "values": ["FAMILY"]
                 },
                 {
                   "fact": "family.relation_to_sponsor",
@@ -6050,9 +5271,7 @@
         "explanation_key": "explain.el.d1-multi-entry-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "374e79e0-f0bf-5291-8cba-974e794e210a"
-        ],
+        "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"],
         "required_facts": [
           "intent.purposes",
           "intent.stay_days",
@@ -6115,9 +5334,7 @@
         "explanation_key": "explain.el.d1-passport-validity",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "374e79e0-f0bf-5291-8cba-974e794e210a"
-        ],
+        "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"],
         "required_facts": [
           "intent.entry_pattern",
           "intent.purposes",
@@ -6205,9 +5422,7 @@
         "explanation_key": "explain.el.d1-funds-usd-2000",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "374e79e0-f0bf-5291-8cba-974e794e210a"
-        ],
+        "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"],
         "required_facts": [
           "intent.entry_pattern",
           "intent.purposes",
@@ -6295,9 +5510,7 @@
         "explanation_key": "explain.el.d1-cv-required",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "374e79e0-f0bf-5291-8cba-974e794e210a"
-        ],
+        "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"],
         "required_facts": [
           "intent.entry_pattern",
           "intent.purposes",
@@ -6385,9 +5598,7 @@
         "explanation_key": "explain.el.d1-itinerary-required",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "374e79e0-f0bf-5291-8cba-974e794e210a"
-        ],
+        "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"],
         "required_facts": [
           "intent.entry_pattern",
           "intent.purposes",
@@ -6475,9 +5686,7 @@
         "explanation_key": "explain.el.d1-support-letter",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "374e79e0-f0bf-5291-8cba-974e794e210a"
-        ],
+        "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"],
         "required_facts": [
           "intent.entry_pattern",
           "intent.purposes",
@@ -6553,22 +5762,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "BUSINESS_MEETINGS"
-          ],
+          "covered_purposes": ["BUSINESS_MEETINGS"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d2-multi-entry-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "306725c1-7269-5c45-a4b8-188265fcf4d8"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d2-multi-entry-support",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6586,9 +5788,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "BUSINESS_MEETINGS"
-              ]
+              "values": ["BUSINESS_MEETINGS"]
             },
             {
               "fact": "intent.stay_days",
@@ -6601,22 +5801,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "BUSINESS_MEETINGS"
-          ],
+          "covered_purposes": ["BUSINESS_MEETINGS"],
           "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d2-passport-validity",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "306725c1-7269-5c45-a4b8-188265fcf4d8"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d2-passport-validity",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6634,18 +5827,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "BUSINESS_MEETINGS"
-              ]
+              "values": ["BUSINESS_MEETINGS"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "BUSINESS_MEETINGS"
-                  ]
+                  "values": ["BUSINESS_MEETINGS"]
                 },
                 {
                   "fact": "intent.stay_days",
@@ -6661,22 +5850,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "BUSINESS_MEETINGS"
-          ],
+          "covered_purposes": ["BUSINESS_MEETINGS"],
           "reason_code": "PROOF_OF_FUNDS_D2",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d2-funds-usd-2000",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "306725c1-7269-5c45-a4b8-188265fcf4d8"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d2-funds-usd-2000",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6694,18 +5876,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "BUSINESS_MEETINGS"
-              ]
+              "values": ["BUSINESS_MEETINGS"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "BUSINESS_MEETINGS"
-                  ]
+                  "values": ["BUSINESS_MEETINGS"]
                 },
                 {
                   "fact": "intent.stay_days",
@@ -6721,22 +5899,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "BUSINESS_MEETINGS"
-          ],
+          "covered_purposes": ["BUSINESS_MEETINGS"],
           "reason_code": "CV_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d2-cv-required",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "306725c1-7269-5c45-a4b8-188265fcf4d8"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d2-cv-required",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6754,18 +5925,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "BUSINESS_MEETINGS"
-              ]
+              "values": ["BUSINESS_MEETINGS"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "BUSINESS_MEETINGS"
-                  ]
+                  "values": ["BUSINESS_MEETINGS"]
                 },
                 {
                   "fact": "intent.stay_days",
@@ -6781,22 +5948,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "BUSINESS_MEETINGS"
-          ],
+          "covered_purposes": ["BUSINESS_MEETINGS"],
           "reason_code": "ITINERARY_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d2-itinerary-required",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "306725c1-7269-5c45-a4b8-188265fcf4d8"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d2-itinerary-required",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6814,18 +5974,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "BUSINESS_MEETINGS"
-              ]
+              "values": ["BUSINESS_MEETINGS"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "BUSINESS_MEETINGS"
-                  ]
+                  "values": ["BUSINESS_MEETINGS"]
                 },
                 {
                   "fact": "intent.stay_days",
@@ -6841,22 +5997,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "BUSINESS_MEETINGS"
-          ],
+          "covered_purposes": ["BUSINESS_MEETINGS"],
           "reason_code": "SUPPORT_LETTER_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d2-support-letter",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "306725c1-7269-5c45-a4b8-188265fcf4d8"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d2-support-letter",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6874,18 +6023,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "BUSINESS_MEETINGS"
-              ]
+              "values": ["BUSINESS_MEETINGS"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "BUSINESS_MEETINGS"
-                  ]
+                  "values": ["BUSINESS_MEETINGS"]
                 },
                 {
                   "fact": "intent.stay_days",
@@ -6901,22 +6046,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["INVESTMENT"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d12-multi-entry-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d12-multi-entry-support",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6934,9 +6072,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.stay_days",
@@ -6949,22 +6085,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["INVESTMENT"],
           "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d12-passport-validity",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d12-passport-validity",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -6982,9 +6111,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.stay_days",
@@ -6997,22 +6124,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["INVESTMENT"],
           "reason_code": "PROOF_OF_FUNDS_D12",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d12-funds-usd-5000",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d12-funds-usd-5000",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -7030,9 +6150,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.stay_days",
@@ -7045,22 +6163,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["INVESTMENT"],
           "reason_code": "CV_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d12-cv-required",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d12-cv-required",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -7078,9 +6189,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.stay_days",
@@ -7093,22 +6202,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["INVESTMENT"],
           "reason_code": "ITINERARY_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d12-itinerary-required",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d12-itinerary-required",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -7126,9 +6228,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.stay_days",
@@ -7141,22 +6241,15 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "INVESTMENT"
-          ],
+          "covered_purposes": ["INVESTMENT"],
           "reason_code": "SUPPORT_LETTER_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.d12-support-letter",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.stay_days"
-        ],
+        "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"],
+        "required_facts": ["intent.purposes", "intent.stay_days"],
         "rule_id": "el.d12-support-letter",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -7174,9 +6267,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "INVESTMENT"
-              ]
+              "values": ["INVESTMENT"]
             },
             {
               "fact": "intent.stay_days",
@@ -7195,18 +6286,12 @@
         "explanation_key": "explain.hf.d12-onshore-conversion-excluded",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-        ],
-        "required_facts": [
-          "process.wants_onshore_conversion"
-        ],
+        "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"],
+        "required_facts": ["process.wants_onshore_conversion"],
         "rule_id": "hf.d12-onshore-conversion-excluded",
         "safety_critical": true,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29"
-        ],
+        "source_refs": ["5e64ec6b-8fcc-5518-b70f-87bf22aa5e29"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -7220,9 +6305,7 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
@@ -7256,9 +6339,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "fact": "study.admission_confirmed",
@@ -7276,18 +6357,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "LIVING_COST_USD2000",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30-living-cost-2000.e30",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "94d26bed-b3ba-5b9a-9c6c-9c137854293c"
-        ],
+        "product_version_ids": ["94d26bed-b3ba-5b9a-9c6c-9c137854293c"],
         "required_facts": [
           "intent.purposes",
           "study.admission_confirmed",
@@ -7312,18 +6389,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "STUDY"
-                  ]
+                  "values": ["STUDY"]
                 },
                 {
                   "fact": "study.admission_confirmed",
@@ -7344,18 +6417,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "LIVING_COST_USD2000",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30-living-cost-2000.e30a",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "5028908f-25be-5ef1-91b9-0d6bccfc0e1f"
-        ],
+        "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"],
         "required_facts": [
           "intent.purposes",
           "study.admission_confirmed",
@@ -7380,18 +6449,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "STUDY"
-                  ]
+                  "values": ["STUDY"]
                 },
                 {
                   "fact": "study.admission_confirmed",
@@ -7412,18 +6477,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "LIVING_COST_USD2000",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30-living-cost-2000.e30b",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-        ],
+        "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"],
         "required_facts": [
           "intent.purposes",
           "study.admission_confirmed",
@@ -7448,18 +6509,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "STUDY"
-                  ]
+                  "values": ["STUDY"]
                 },
                 {
                   "fact": "study.admission_confirmed",
@@ -7480,18 +6537,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30-passport-validity.e30",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "94d26bed-b3ba-5b9a-9c6c-9c137854293c"
-        ],
+        "product_version_ids": ["94d26bed-b3ba-5b9a-9c6c-9c137854293c"],
         "required_facts": [
           "intent.purposes",
           "study.admission_confirmed",
@@ -7516,18 +6569,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "STUDY"
-                  ]
+                  "values": ["STUDY"]
                 },
                 {
                   "fact": "study.admission_confirmed",
@@ -7548,18 +6597,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30-passport-validity.e30a",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "5028908f-25be-5ef1-91b9-0d6bccfc0e1f"
-        ],
+        "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"],
         "required_facts": [
           "intent.purposes",
           "study.admission_confirmed",
@@ -7584,18 +6629,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "STUDY"
-                  ]
+                  "values": ["STUDY"]
                 },
                 {
                   "fact": "study.admission_confirmed",
@@ -7616,18 +6657,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30-passport-validity.e30b",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-        ],
+        "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"],
         "required_facts": [
           "intent.purposes",
           "study.admission_confirmed",
@@ -7652,18 +6689,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "STUDY"
-                  ]
+                  "values": ["STUDY"]
                 },
                 {
                   "fact": "study.admission_confirmed",
@@ -7690,19 +6723,12 @@
         "explanation_key": "explain.hf.e30a-level-band",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "5028908f-25be-5ef1-91b9-0d6bccfc0e1f"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "study.level"
-        ],
+        "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"],
+        "required_facts": ["intent.purposes", "study.level"],
         "rule_id": "hf.e30a-level-band",
         "safety_critical": true,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "e3572ad2-08a9-55bd-b818-353b3e9db715"
-        ],
+        "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -7713,17 +6739,12 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "fact": "study.level",
               "op": "not_in",
-              "values": [
-                "PRIMARY",
-                "SECONDARY"
-              ]
+              "values": ["PRIMARY", "SECONDARY"]
             }
           ],
           "op": "all"
@@ -7737,19 +6758,12 @@
         "explanation_key": "explain.hf.e30b-level-band",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "study.level"
-        ],
+        "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"],
+        "required_facts": ["intent.purposes", "study.level"],
         "rule_id": "hf.e30b-level-band",
         "safety_critical": true,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "e3572ad2-08a9-55bd-b818-353b3e9db715"
-        ],
+        "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -7760,18 +6774,12 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "fact": "study.level",
               "op": "not_in",
-              "values": [
-                "VOCATIONAL",
-                "UNDERGRADUATE",
-                "POSTGRADUATE"
-              ]
+              "values": ["VOCATIONAL", "UNDERGRADUATE", "POSTGRADUATE"]
             }
           ],
           "op": "all"
@@ -7779,18 +6787,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "STUDY_PERMIT_KEMDIKBUD",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30b-izin-belajar",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-        ],
+        "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"],
         "required_facts": [
           "intent.purposes",
           "study.admission_confirmed",
@@ -7814,18 +6818,14 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "args": [
                 {
                   "fact": "intent.purposes",
                   "op": "intersects",
-                  "values": [
-                    "STUDY"
-                  ]
+                  "values": ["STUDY"]
                 },
                 {
                   "fact": "study.admission_confirmed",
@@ -7852,18 +6852,12 @@
         "explanation_key": "explain.hf.b1.not-voa-nationality",
         "on_unknown": "HUMAN_REVIEW",
         "priority": 100,
-        "product_version_ids": [
-          "4e30cbe0-c4bf-59be-9bf8-513e66946e44"
-        ],
-        "required_facts": [
-          "person.nationalities"
-        ],
+        "product_version_ids": ["4e30cbe0-c4bf-59be-9bf8-513e66946e44"],
+        "required_facts": ["person.nationalities"],
         "rule_id": "hf.b1.not-voa-nationality",
         "safety_critical": true,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "38a6cb08-041f-51e4-86e4-9e73243acd3a"
-        ],
+        "source_refs": ["38a6cb08-041f-51e4-86e4-9e73243acd3a"],
         "stage": "HARD_FILTER",
         "valid_period": {
           "from": "2026-07-24T00:00:00Z",
@@ -7985,9 +6979,7 @@
         "on_unknown": "HUMAN_REVIEW",
         "priority": 100,
         "product_version_ids": null,
-        "required_facts": [
-          "person.nationalities"
-        ],
+        "required_facts": ["person.nationalities"],
         "rule_id": "review.citizenship-conflict",
         "safety_critical": true,
         "scope": "GLOBAL",
@@ -8273,14 +7265,7 @@
                 {
                   "fact": "person.nationalities",
                   "op": "intersects",
-                  "values": [
-                    "AF",
-                    "IL",
-                    "KP",
-                    "LR",
-                    "NG",
-                    "SO"
-                  ]
+                  "values": ["AF", "IL", "KP", "LR", "NG", "SO"]
                 },
                 {
                   "fact": "person.nationalities",
@@ -8547,16 +7532,11 @@
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
         "product_version_ids": null,
-        "required_facts": [
-          "derived.is_minor",
-          "family.sponsor_confirmed"
-        ],
+        "required_facts": ["derived.is_minor", "family.sponsor_confirmed"],
         "rule_id": "review.minor-without-guardian",
         "safety_critical": true,
         "scope": "GLOBAL",
-        "source_refs": [
-          "38242587-f4da-5c31-b0ea-662f7fdc475c"
-        ],
+        "source_refs": ["38242587-f4da-5c31-b0ea-662f7fdc475c"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-08-09T00:00:00Z",
@@ -8586,12 +7566,8 @@
         "explanation_key": "explain.hf.e33f.age-below-55",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "7c1da88f-f7cd-571a-95c2-7da32463d3e6"
-        ],
-        "required_facts": [
-          "derived.age_years"
-        ],
+        "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"],
+        "required_facts": ["derived.age_years"],
         "rule_id": "hf.e33f.age-below-55",
         "safety_critical": false,
         "scope": "PRODUCTS",
@@ -8618,9 +7594,7 @@
         "explanation_key": "explain.review.e33g.income-evidence",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "51e023ea-3229-5233-b88f-cb204b5df713"
-        ],
+        "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
         "required_facts": [
           "intent.purposes",
           "work.employer_is_indonesian_entity",
@@ -8644,9 +7618,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "REMOTE_WORK"
-              ]
+              "values": ["REMOTE_WORK"]
             },
             {
               "fact": "work.employer_is_indonesian_entity",
@@ -8669,18 +7641,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30e-student-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "19e3ea6c-95c6-5998-b9d7-efc77f583589"
-        ],
+        "product_version_ids": ["19e3ea6c-95c6-5998-b9d7-efc77f583589"],
         "required_facts": [
           "intent.purposes",
           "sponsor.type",
@@ -8705,9 +7673,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "fact": "study.admission_confirmed",
@@ -8722,10 +7688,7 @@
             {
               "fact": "sponsor.type",
               "op": "in",
-              "values": [
-                "EDUCATION",
-                "INDIVIDUAL"
-              ]
+              "values": ["EDUCATION", "INDIVIDUAL"]
             }
           ],
           "op": "all"
@@ -8733,18 +7696,14 @@
       },
       {
         "effect": {
-          "covered_purposes": [
-            "STUDY"
-          ],
+          "covered_purposes": ["STUDY"],
           "reason_code": "PURPOSE_PRODUCT_MATCH",
           "type": "SUPPORT"
         },
         "explanation_key": "explain.el.e30f-student-support",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "235f5dfc-2feb-5d5b-ab09-0f4e4122819e"
-        ],
+        "product_version_ids": ["235f5dfc-2feb-5d5b-ab09-0f4e4122819e"],
         "required_facts": [
           "intent.purposes",
           "sponsor.type",
@@ -8768,9 +7727,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "STUDY"
-              ]
+              "values": ["STUDY"]
             },
             {
               "fact": "study.admission_confirmed",
@@ -8799,12 +7756,8 @@
         "explanation_key": "explain.hf.e33a.sponsor-not-government",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "5c18e265-ddb2-5010-8d24-a2f19df89850"
-        ],
-        "required_facts": [
-          "sponsor.type"
-        ],
+        "product_version_ids": ["5c18e265-ddb2-5010-8d24-a2f19df89850"],
+        "required_facts": ["sponsor.type"],
         "rule_id": "hf.e33a.sponsor-not-government",
         "safety_critical": true,
         "scope": "PRODUCTS",
@@ -8831,12 +7784,8 @@
         "explanation_key": "explain.hf.e33b.sponsor-not-government-or-none",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "32b6fb5f-5a24-5763-95f9-0b77be18353c"
-        ],
-        "required_facts": [
-          "sponsor.type"
-        ],
+        "product_version_ids": ["32b6fb5f-5a24-5763-95f9-0b77be18353c"],
+        "required_facts": ["sponsor.type"],
         "rule_id": "hf.e33b.sponsor-not-government-or-none",
         "safety_critical": true,
         "scope": "PRODUCTS",
@@ -8852,10 +7801,7 @@
         "when": {
           "fact": "sponsor.type",
           "op": "not_in",
-          "values": [
-            "GOVERNMENT",
-            "NONE"
-          ]
+          "values": ["GOVERNMENT", "NONE"]
         }
       },
       {
@@ -8866,12 +7812,8 @@
         "explanation_key": "explain.hf.e33c.sponsor-not-government-or-none",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"
-        ],
-        "required_facts": [
-          "sponsor.type"
-        ],
+        "product_version_ids": ["9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"],
+        "required_facts": ["sponsor.type"],
         "rule_id": "hf.e33c.sponsor-not-government-or-none",
         "safety_critical": true,
         "scope": "PRODUCTS",
@@ -8887,10 +7829,7 @@
         "when": {
           "fact": "sponsor.type",
           "op": "not_in",
-          "values": [
-            "GOVERNMENT",
-            "NONE"
-          ]
+          "values": ["GOVERNMENT", "NONE"]
         }
       },
       {
@@ -8901,19 +7840,12 @@
         "explanation_key": "explain.review.e23u.requested-product",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "fa143e97-b444-5ae4-9b05-6365f15e3ec7"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["fa143e97-b444-5ae4-9b05-6365f15e3ec7"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e23u.requested-product",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-08-19T00:00:00Z",
@@ -8924,9 +7856,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "EMPLOYMENT"
-              ]
+              "values": ["EMPLOYMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -8945,19 +7875,12 @@
         "explanation_key": "explain.review.e23v.requested-product",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "e8a1d738-daa7-5c99-a0c6-800b25579129"
-        ],
-        "required_facts": [
-          "intent.purposes",
-          "intent.requested_product_code"
-        ],
+        "product_version_ids": ["e8a1d738-daa7-5c99-a0c6-800b25579129"],
+        "required_facts": ["intent.purposes", "intent.requested_product_code"],
         "rule_id": "review.e23v.requested-product",
         "safety_critical": false,
         "scope": "PRODUCTS",
-        "source_refs": [
-          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-        ],
+        "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
         "stage": "HUMAN_REVIEW",
         "valid_period": {
           "from": "2026-08-19T00:00:00Z",
@@ -8968,9 +7891,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "EMPLOYMENT"
-              ]
+              "values": ["EMPLOYMENT"]
             },
             {
               "fact": "intent.requested_product_code",
@@ -8989,9 +7910,7 @@
         "explanation_key": "explain.hf.e31c-marriage-not-registered",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-        ],
+        "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"],
         "required_facts": [
           "family.marriage_registered",
           "family.relation_to_sponsor",
@@ -9014,9 +7933,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -9040,9 +7957,7 @@
         "explanation_key": "explain.hf.e31c-sponsor-not-indonesian",
         "on_unknown": "NEEDS_INPUT",
         "priority": 100,
-        "product_version_ids": [
-          "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-        ],
+        "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"],
         "required_facts": [
           "family.relation_to_sponsor",
           "family.sponsor_nationalities",
@@ -9065,9 +7980,7 @@
             {
               "fact": "intent.purposes",
               "op": "intersects",
-              "values": [
-                "FAMILY"
-              ]
+              "values": ["FAMILY"]
             },
             {
               "fact": "family.relation_to_sponsor",
@@ -9078,9 +7991,7 @@
               "arg": {
                 "fact": "family.sponsor_nationalities",
                 "op": "intersects",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               },
               "op": "not"
             }
