@@ -244,7 +244,10 @@ class TestGuardPatternConsistency:
 # sentence/file".
 
 _SECOND_HOME_DURATION_RE = re.compile(
-    r"5[ ]?[-–][ ]?10[ ]?(years?|year|anni|anno|ans|an|tahun|лет|года|год)",
+    r"5[ ]?(?:"
+    r"[-–][ ]?10[ ]?"
+    r"|(?:or|atau|o|ou|à|или)[ ]?10(?:[ ]?[-–])?[ ]?"
+    r")(years?|year|anni|anno|ans|an|tahun|лет|года|год)",
     re.IGNORECASE,
 )
 _GOLDEN_VISA_RE = re.compile(
@@ -335,6 +338,121 @@ class TestMouthContentSecondHomeDuration:
         text = 'answer: "Second Home Visa (5-10 years with IDR 2B savings)."'
         offenders = _find_second_home_predicated_5_10_offenders(text)
         assert offenders, "guard must flag a Second-Home-predicated 5-10 year range"
+
+    def test_guilt_real_second_home_conjunction_is_flagged(self) -> None:
+        """The real pre-fix e-visa sentence must exercise the conjunction branch."""
+        text = (
+            "The Second Home Visa (E33), introduced in 2022, remains one of the most "
+            "significant long-stay options, granting 5 or 10-year residency rights to "
+            "qualifying foreign nationals meeting fund placement thresholds."
+        )
+        assert _SECOND_HOME_DURATION_RE.search(text), (
+            "guilt fixture must exercise the widened duration matcher"
+        )
+        offenders = _find_second_home_predicated_5_10_offenders(text)
+        assert offenders, "guard must flag the real Second-Home conjunction claim"
+
+    @pytest.mark.parametrize(
+        ("relative_path", "text"),
+        [
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.mdx",
+                "Indonesia's Golden Visa program (officially called ITAP - Izin Tinggal "
+                "Tetap untuk Investor) offers **5 or 10-year residence permits** to "
+                "foreign investors without the traditional 5-year KITAS waiting period "
+                "required for KITAP.",
+                id="golden-visa-en",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.it.mdx",
+                "Il programma Golden Visa dell'Indonesia (ufficialmente chiamato ITAP - "
+                "Izin Tinggal Tetap per Investitore) offre **permessi di residenza da 5 o "
+                "10 anni** agli investitori stranieri senza il tradizionale periodo di "
+                "attesa di 5 anni richiesto per il KITAS necessario per ottenere il KITAP.",
+                id="golden-visa-it",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.id.mdx",
+                "Program Visa Emas Indonesia (secara resmi disebut ITAP - Izin Tinggal "
+                "Tetap untuk Investor) menawarkan **izin tinggal 5 atau 10 tahun** bagi "
+                "investor asing tanpa periode tunggu KITAS 5 tahun tradisional yang "
+                "diperlukan untuk KITAP.",
+                id="golden-visa-id",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.fr.mdx",
+                "Le programme Golden Visa de l'Indonésie (officiellement appelé ITAP - "
+                "Izin Tinggal Tetap pour Investor) offre des **permis de séjour de 5 ou "
+                "10 ans** aux investisseurs étrangers sans la période d'attente "
+                "traditionnelle de 5 ans du KITAS requise pour le KITAP.",
+                id="golden-visa-fr",
+            ),
+            pytest.param(
+                "articles/immigration/golden-visa-indonesia-complete-guide.ru.mdx",
+                "Программа Золотой Визы Индонезии (официально называемая ITAP - Izin Tinggal "
+                "Tetap untuk Investor) предлагает **разрешения на проживание на 5 или "
+                "10 лет** для иностранных инвесторов без традиционного 5-летнего периода "
+                "ожидания KITAS, необходимого для KITAP.",
+                id="golden-visa-ru",
+            ),
+            pytest.param(
+                "articles/business/kbli-2025-agriculture-agritourism.fr.mdx",
+                "\\*Les secteurs prioritaires (café, cacao, caoutchouc) en vertu du "
+                "Règlement présidentiel 10/2021 (Tax Holiday) exigent un investissement "
+                "total de 100 milliards d'IDR pour être éligibles à l'exonération d'impôt "
+                "sur les sociétés (0 % pendant 5 à 10 ans).",
+                id="tax-holiday-fr",
+            ),
+            pytest.param(
+                "articles/business/kbli-2025-location-restrictions-bali.fr.mdx",
+                '**Important :** Les "droits acquis" ne signifient pas "pour toujours" '
+                "– certaines réglementations imposent une élimination progressive sur 5 à "
+                "10 ans.",
+                id="regulatory-phase-out-fr",
+            ),
+        ],
+    )
+    def test_innocence_real_conjunction_sentences_stay_clean(
+        self, relative_path: str, text: str
+    ) -> None:
+        """Real Golden-Visa and unrelated conjunction sentences must stay green."""
+        source = MOUTH_CONTENT_DIR / relative_path
+        assert text in source.read_text(), f"innocence sentence drifted from {source}"
+        assert _SECOND_HOME_DURATION_RE.search(text), (
+            "innocence fixture must exercise the widened duration matcher"
+        )
+        offenders = _find_second_home_predicated_5_10_offenders(text)
+        assert not offenders, "guard must not flag a real legitimate conjunction sentence"
+
+    @pytest.mark.parametrize(
+        ("relative_path", "text"),
+        [
+            pytest.param(
+                "articles/property/title-insurance-indonesia.mdx",
+                "**Cost:** IDR 5-10 million",
+                id="idr-money-range",
+            ),
+            pytest.param(
+                "articles/immigration/visa-agent-vs-diy-indonesia.id.mdx",
+                "| E33G Pekerja Jarak Jauh | Rp 5.000.000-10.000.000  | "
+                "Rp 13.000.000-20.000.000 | Rp 5-10 jt      |",
+                id="rupiah-money-range",
+            ),
+            pytest.param(
+                "articles/business/bpjs-ketenagakerjaan-employer-guide.it.mdx",
+                "4. Elaborazione: 5-10 giorni lavorativi",
+                id="italian-working-days",
+            ),
+        ],
+    )
+    def test_innocence_real_non_duration_ranges_stay_out(
+        self, relative_path: str, text: str
+    ) -> None:
+        """Real money and working-day ranges must never enter the duration scan."""
+        source = MOUTH_CONTENT_DIR / relative_path
+        assert text in source.read_text(), f"innocence sentence drifted from {source}"
+        assert not _SECOND_HOME_DURATION_RE.search(text)
+        assert not _find_second_home_predicated_5_10_offenders(text)
 
     def test_innocence_golden_visa_range_stays_clean(self) -> None:
         """The real second-home-visa-indonesia.mdx sentence (canonical guide,
