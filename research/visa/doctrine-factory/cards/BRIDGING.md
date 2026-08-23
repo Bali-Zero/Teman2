@@ -151,11 +151,13 @@ different product, different lane; routing to Zero is team-lead's call):
    applicant: a tourist currently on a C1 visit visa requesting BRIDGING to convert to a KITAS is
    HARD-EXCLUDED today, reason `BRIDGING_FROM_VISIT_ITK_PROHIBITED`.
 2. **No fact anywhere expresses sponsor identity** (current permit's sponsor vs. the intended one) —
-   checked the full 45-fact vocabulary; the 8 `sponsor`-named facts (`sponsor.type`,
-   `family.sponsor_*`, `work.indonesian_work_sponsor_confirmed`, `study.sponsor_confirmed`) each
-   describe A sponsor for THIS application, none compares two. Boundary "same-sponsor renewal never
+   checked the full fact vocabulary in `enums.py`; every `sponsor`-named fact (`sponsor.type`,
+   `family.sponsor_*`, `work.indonesian_work_sponsor_confirmed`, `study.sponsor_confirmed`) describes
+   A sponsor for THIS application, none compares two. Boundary "same-sponsor renewal never
    bridges" cannot be tested by any existing rule — not currently violated in a provable sense, but
-   structurally unguarded.
+   structurally unguarded. (Deliberately no raw count here: the vocabulary is actively growing —
+   `enums.py` had 44/7 two days before this card was written and 45/8 by the time it was — so a
+   numeral would go stale silently. The glob `family.sponsor_*` is self-verifying instead.)
 3. **No fact records the bridge's intended destination status** either — `el.bridging.destination-
    stated`'s `when` clause (reason code `BRIDGING_DESTINATION_STATED`) tests only `purposes intersects
    OTHER` + `requested_product_code != BRIDGING`, the same shape as the other 3 advisory SUPPORT rules
