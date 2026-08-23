@@ -49,6 +49,23 @@ export interface FlowState {
    * longer fired-and-forgotten.
    */
   attempt: number;
+  /**
+   * Set when `flowReducer` refused to record an ANSWER because it
+   * contradicts an already-known fact (see
+   * `channelConflictsWithOnshoreIntent` below) — never derived from the
+   * conflicting facts, never silently dropped. The UI reads this to show a
+   * "these two answers disagree" message and lets the user correct either
+   * one themselves; the interface never guesses which side is right.
+   * Cleared by every action except the conflicting ANSWER itself, so it can
+   * never outlive the screen that produced it.
+   */
+  blockedAnswer: BlockedAnswer | null;
+}
+
+/** See `FlowState.blockedAnswer`. */
+export interface BlockedAnswer {
+  questionId: string;
+  conflictsWithQuestionId: string;
 }
 
 export const INTERVIEW_SNAPSHOT_SCHEMA_VERSION = 1 as const;
@@ -102,7 +119,13 @@ export function initialFlowState(
   language: Language = "en",
   attempt = 0,
 ): FlowState {
-  return { history: [{ kind: "framing" }], facts: {}, language, attempt };
+  return {
+    history: [{ kind: "framing" }],
+    facts: {},
+    language,
+    attempt,
+    blockedAnswer: null,
+  };
 }
 
 export function createInterviewSnapshot(
@@ -241,6 +264,20 @@ export function restoreInterviewSnapshot(
       ) {
         break;
       }
+      // Defense-in-depth: a snapshot saved before this guard existed (or
+      // tampered with in storage) could hold a self-contradictory
+      // wants_onshore_conversion/application_channel pair. Treat it exactly
+      // like any other impossible answer — truncate at this frontier rather
+      // than resume into a state the live interview could never produce.
+      if (
+        current.questionId === "application_channel" &&
+        channelConflictsWithOnshoreIntent(
+          facts.wants_onshore_conversion,
+          answer,
+        )
+      ) {
+        break;
+      }
       facts = { ...facts, [current.questionId]: answer };
     }
     const expected = computeNextNode(current, facts, today);
@@ -254,6 +291,7 @@ export function restoreInterviewSnapshot(
     facts: pruneFacts(facts, history),
     language,
     attempt: value.attempt,
+    blockedAnswer: null,
   };
 }
 
@@ -278,6 +316,83 @@ function sameNode(a: OracleNode, b: OracleNode): boolean {
   if (a.kind === "question" && b.kind === "question")
     return a.questionId === b.questionId;
   return true;
+}
+
+/** `application_channel` values that only exist while the applicant stays
+ * in Indonesia through the whole process — a status-bridging permit exists
+ * solely to cover someone already onshore whose conversion is pending
+ * (created by Permenkumham 11/2024, inserting Ps. 80(3)(f), 80(4)(d), 86A,
+ * 94A, 94B into Permenkumham 22/2023 — the bridging articles are
+ * unaffected by the later Permen Imipas 3/2025 partial revocation, which
+ * touches only Ps. 43/45/52/53/54/55; see
+ * `research/visa/2026-07-24-w2-factbase-bridging.md:21,37`); an onshore
+ * conversion is, by definition, done without leaving. `OFFSHORE` is the
+ * only channel that requires leaving. */
+const ONSHORE_APPLICATION_CHANNELS = new Set([
+  "ONSHORE_CONVERSION",
+  "STATUS_BRIDGING",
+]);
+
+/**
+ * `wants_onshore_conversion` and `application_channel` ask the SAME
+ * real-world question — will this proceed while the applicant stays in
+ * Indonesia? — from two different angles: a plain yes/no, and a
+ * closed-enum channel pick. Neither is ever derived from the other here:
+ * `why.wants_onshore_conversion` (i18n.ts) promises the boolean is "sent
+ * without choosing a conversion path", and `why.application_channel`
+ * promises the channel is "sent unchanged ... the interface never assigns
+ * a channel from your dates". This only recognizes when the two answers
+ * can never both be true, so `flowReducer` can refuse to record the second
+ * one instead of sending a self-contradictory pair.
+ *
+ * This is the exact pairing that, left unchecked, let a `false` answer
+ * here disarm the safety-critical hard filter
+ * `hf.d12-onshore-conversion-excluded` (which reads only
+ * `process.wants_onshore_conversion`) while `ONSHORE_CONVERSION` sat
+ * unread by every rule in the pack — D12 ("Visit Visa Pre-Investment —
+ * Multiple Entry", `names.en` in rulepack-prod-012.source.json:1583-1586;
+ * NOT the pricing-catalog `item_key` "D12 Business Investigation (1
+ * Year)" at line 1622, a price-list label, not the product's regulatory
+ * identity) got recommended as if the applicant were applying from
+ * offshore.
+ *
+ * "unsure" on either side is never a disagreement — it is the tri-state
+ * safety net the engine already relies on (NEEDS_INPUT) — so it is
+ * deliberately excluded here, as is an as-yet-unanswered
+ * `wantsOnshoreConversion`.
+ *
+ * LIMITATION — this is a browser-side courtesy, not an API boundary.
+ * `ApplicantFactsData` in `models.py` has no cross-field validator between
+ * `process.application_channel` and `process.wants_onshore_conversion`
+ * (verified by reading the model: no `model_validator` sits on that
+ * class), so a request built outside this interview can still POST the
+ * exact contradictory pair straight to `/api/visa-oracle/evaluate` and
+ * have it accepted. This guard improves the honest interview user's
+ * experience; it closes nothing at the API.
+ *
+ * The rulepack-side gap — `hf.d12-onshore-conversion-excluded` reads only
+ * `process.wants_onshore_conversion` — is real, but the correct fix for
+ * it is NOT yet determined (as of 2026-08-23; under adjudication whether
+ * D12's affected eligibility rule is missing a conjunct its siblings
+ * correctly carry, or its siblings wrongly carry one D12 was never
+ * supposed to gate on). Do not read this guard's existence as evidence
+ * that gap is closed, and do not assume any specific rulepack edit is
+ * already agreed — the mechanism is undetermined, not merely unlanded.
+ * Any such fix is out of this PR's scope (apps/mouth only) regardless.
+ */
+export function channelConflictsWithOnshoreIntent(
+  wantsOnshoreConversion: string | undefined,
+  applicationChannel: string,
+): boolean {
+  if (
+    wantsOnshoreConversion === undefined ||
+    wantsOnshoreConversion === "unsure" ||
+    applicationChannel === "unsure"
+  ) {
+    return false;
+  }
+  const channelIsOnshore = ONSHORE_APPLICATION_CHANNELS.has(applicationChannel);
+  return (wantsOnshoreConversion === "yes") !== channelIsOnshore;
 }
 
 /**
@@ -510,13 +625,39 @@ function pruneFacts(facts: OracleFacts, history: OracleNode[]): OracleFacts {
 export function flowReducer(state: FlowState, action: FlowAction): FlowState {
   switch (action.type) {
     case "ANSWER": {
+      if (
+        action.questionId === "application_channel" &&
+        channelConflictsWithOnshoreIntent(
+          state.facts.wants_onshore_conversion,
+          action.value,
+        )
+      ) {
+        // Refuse to record it: neither fact is derived from the other or
+        // silently overwritten (see `channelConflictsWithOnshoreIntent`).
+        // History/facts stay exactly where they were — the user is still
+        // on `application_channel` and can pick a different, coherent
+        // channel, or use Back to correct `wants_onshore_conversion`
+        // instead. The UI reads `blockedAnswer` to explain why.
+        return {
+          ...state,
+          blockedAnswer: {
+            questionId: "application_channel",
+            conflictsWithQuestionId: "wants_onshore_conversion",
+          },
+        };
+      }
       const facts = pruneFacts(
         { ...state.facts, [action.questionId]: action.value },
         state.history,
       );
       const current = state.history[state.history.length - 1];
       const next = computeNextNode(current, facts, action.today);
-      return { ...state, facts, history: [...state.history, next] };
+      return {
+        ...state,
+        facts,
+        history: [...state.history, next],
+        blockedAnswer: null,
+      };
     }
     case "SKIP": {
       const facts = pruneFacts(
@@ -525,19 +666,33 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
       );
       const current = state.history[state.history.length - 1];
       const next = computeNextNode(current, facts, action.today);
-      return { ...state, facts, history: [...state.history, next] };
+      return {
+        ...state,
+        facts,
+        history: [...state.history, next],
+        blockedAnswer: null,
+      };
     }
     case "ADVANCE": {
       const current = state.history[state.history.length - 1];
       if (current.kind !== "framing" && current.kind !== "confirmation")
         return state;
       const next = computeNextNode(current, state.facts);
-      return { ...state, history: [...state.history, next] };
+      return {
+        ...state,
+        history: [...state.history, next],
+        blockedAnswer: null,
+      };
     }
     case "BACK": {
       if (state.history.length <= 1) return state;
       const history = state.history.slice(0, -1);
-      return { ...state, history, facts: pruneFacts(state.facts, history) };
+      return {
+        ...state,
+        history,
+        facts: pruneFacts(state.facts, history),
+        blockedAnswer: null,
+      };
     }
     case "EDIT": {
       const target: OracleNode = {
@@ -545,7 +700,12 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         questionId: action.questionId,
       };
       const history = truncateToNode(state.history, target);
-      return { ...state, history, facts: pruneFacts(state.facts, history) };
+      return {
+        ...state,
+        history,
+        facts: pruneFacts(state.facts, history),
+        blockedAnswer: null,
+      };
     }
     case "SELECT_CATEGORY": {
       // Finding #15: NO_SUPPORTED_PATH's "what instead" alternatives are
@@ -566,14 +726,24 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
       const prunedFacts = pruneFacts(state.facts, truncated);
       const facts = { ...prunedFacts, category: action.category };
       const next = computeNextNode(target, facts, action.today);
-      return { ...state, facts, history: [...truncated, next] };
+      return {
+        ...state,
+        facts,
+        history: [...truncated, next],
+        blockedAnswer: null,
+      };
     }
     case "REVIEW_ANSWERS": {
       // Verdict screen's "Edit answers" link — jump back to the
       // confirmation screen without discarding any facts ahead of it.
       const target: OracleNode = { kind: "confirmation" };
       const history = truncateToNode(state.history, target);
-      return { ...state, history, facts: pruneFacts(state.facts, history) };
+      return {
+        ...state,
+        history,
+        facts: pruneFacts(state.facts, history),
+        blockedAnswer: null,
+      };
     }
     case "RESTART":
       return resetFlow(state);

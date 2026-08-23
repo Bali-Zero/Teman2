@@ -7,6 +7,7 @@ import { useReducedMotion } from "framer-motion";
 import {
   restoreInterviewSnapshot,
   useOracleFlow,
+  type BlockedAnswer,
   type InterviewSnapshot,
 } from "../_lib/flow";
 import { QUESTIONS, getLane } from "../_lib/tree";
@@ -832,6 +833,10 @@ function OracleShellRuntime({
                 onBack={back}
                 canGoBack={canGoBack}
                 noticeI18nKey={noticeFor(current.questionId, lane)}
+                conflictI18nKey={conflictNoticeFor(
+                  current.questionId,
+                  state.blockedAnswer,
+                )}
                 currentAnswer={state.facts[current.questionId]}
               />
             )}
@@ -943,4 +948,15 @@ function noticeFor(
     return `lane.${lane}.notice` as I18nKey;
   }
   return undefined;
+}
+
+/** Surfaces `FlowState.blockedAnswer` on the exact question screen it
+ * blocked — `q.<questionId>.conflict` follows the same `q.<id>.hint` /
+ * `q.<id>.why` naming convention every other question-scoped key uses. */
+function conflictNoticeFor(
+  questionId: string,
+  blockedAnswer: BlockedAnswer | null,
+): I18nKey | undefined {
+  if (blockedAnswer?.questionId !== questionId) return undefined;
+  return `q.${questionId}.conflict` as I18nKey;
 }
