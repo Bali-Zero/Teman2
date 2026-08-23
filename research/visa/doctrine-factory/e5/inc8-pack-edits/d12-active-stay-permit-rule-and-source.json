@@ -1,0 +1,69 @@
+{
+  "_comment": "E5 increment 8 (drafted 2026-08-23, author v2-d12). Staged for a seq-14 fold that chains off seq-13's SIGNED payload -- NOT yet run (see the PENDING-ARMS row 'v2-d12, D12 rework mandate' for the reason this rule ships dormant, and companion .md in this directory for the source's provenance/rationale split). insertions: 1 new source_record (BALI_ZERO_POLICY, first use of this authority_type in the pack) + 1 new rule (hf.d12-active-stay-permit-excluded, HARD_FILTER/EXCLUDE). Zero other rule/product/source in the pack is touched by this increment -- D12's existing 7 rules (6 el.d12-* + hf.d12-onshore-conversion-excluded) are unaffected, this is a pure addition. product_version_ids below use D12's existing stable id (63f64a7e-2bff-5a48-8c3b-7ad5349e8c91, confirmed unchanged through seq-12) -- re-verify against whatever sequence the fold actually targets before applying, in case D12's product_version_id was ever rotated between seq-12 and seq-13/14. source_record_id below is uuid5(NAMESPACE_URL, 'https://balizero.com/visa-oracle/source/BALI_ZERO_POLICY/d12-active-stay-permit-exclusion-2026-08-23') -- a deterministic, URL-shaped naming convention chosen to mirror fold_pack_seq11.py's own rule_pack_id derivation (uuid5(NAMESPACE_URL, <url-shaped-name>)), NOT a claim that this URL is fetchable; the fold author may regenerate under a different convention if house style has moved since this draft, but should not silently pick a random uuid4 in its place without noting the departure.",
+  "source_record": {
+    "source_record_id": "ad24b643-7e69-5598-b924-7f93199f1e8d",
+    "source_key": "bali-zero-policy.d12.active-stay-permit-exclusion.2026-08-23",
+    "version": 1,
+    "authority_type": "BALI_ZERO_POLICY",
+    "status": "VERIFIED",
+    "jurisdiction": "ID",
+    "title": "Bali Zero owner ruling — D12 (Pre-Investment Multiple Entry) excludes applicants with an active stay permit",
+    "publisher": "Bali Zero",
+    "canonical_url": "research/visa/doctrine-factory/e5/inc8-pack-edits/d12-active-stay-permit-policy-2026-08-23.md",
+    "language": "en",
+    "document_number": null,
+    "locators": [
+      {
+        "kind": "SECTION",
+        "value": "What is VERIFIED"
+      }
+    ],
+    "content_sha256": "26e15992682b8fe7384da45094186e1911416864ebf623f0218dca237d0c21b0",
+    "legal_period": {
+      "from": "2026-08-23T00:00:00Z",
+      "to": null
+    },
+    "recorded_period": {
+      "from": "2026-08-23T00:00:00Z",
+      "to": null
+    },
+    "retrieved_at": "2026-08-23T00:00:00Z",
+    "verified_at": "2026-08-23T00:00:00Z",
+    "verified_by": "agent.m5.v2-d12",
+    "supersedes_source_record_id": null,
+    "freshness_policy": null,
+    "_note": "canonical_url is a repo-relative path, not an external URL -- deliberate, see the companion .md's 'First use of BALI_ZERO_POLICY' section: a repo-tracked file's content_sha256 is exactly the git blob hash and is reproducible forever, unlike an OFFICIAL_PORTAL page with a per-request CSRF token. freshness_policy is null because a repo file has no external re-verification clock to run against (MAX_AGE_SINCE_VERIFIED_AT would be meaningless here); if house convention requires a non-null freshness_policy on every source_record regardless of authority_type, the fold author should confirm that against the schema before applying, since this draft has not verified whether freshness_policy is truly optional at the schema level for non-portal sources specifically, only that the Pydantic field itself defaults to None."
+  },
+  "rule_insertion": {
+    "rule_id": "hf.d12-active-stay-permit-excluded",
+    "stage": "HARD_FILTER",
+    "scope": "PRODUCTS",
+    "priority": 100,
+    "valid_period": {
+      "from": "2026-08-23T00:00:00Z",
+      "to": null
+    },
+    "when": {
+      "fact": "derived.has_active_stay_permit",
+      "op": "eq",
+      "value": true
+    },
+    "effect": {
+      "type": "EXCLUDE",
+      "reason_code": "D12_ACTIVE_STAY_PERMIT_EXCLUDED"
+    },
+    "on_unknown": "NEEDS_INPUT",
+    "required_facts": [
+      "derived.has_active_stay_permit"
+    ],
+    "source_refs": [
+      "ad24b643-7e69-5598-b924-7f93199f1e8d"
+    ],
+    "explanation_key": "explain.hf.d12-active-stay-permit-excluded",
+    "safety_critical": false,
+    "product_version_ids": [
+      "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+    ],
+    "_note": "on_unknown=NEEDS_INPUT mirrors the sibling hf.d12-onshore-conversion-excluded and the fact's own derivation docstring (fact_registry.py: guessing False on an UNKNOWN input would wrongly ADMIT an applicant with an undisclosed active permit -- fail-closed by construction). safety_critical=false matches the sibling D12 HARD_FILTER, not a claim this shouldn't be reviewed -- it mirrors house convention for this product's existing filter rather than asserting a new judgment; the fold author should confirm this convention still holds at fold time rather than inherit it blindly."
+  }
+}
