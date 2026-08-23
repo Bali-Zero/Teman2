@@ -173,9 +173,9 @@ def make_rule_pack(payload: M.RulePackPayload, *, environment: str = "TEST") -> 
 
 
 def make_applicant_facts(*, assessment_id: uuid.UUID | None = None) -> M.ApplicantFacts:
-    """Every one of the 41 fact paths as an ``UnknownFact`` (the simplest
+    """Every one of the 44 fact paths as an ``UnknownFact`` (the simplest
     valid ``facts`` payload — proves the "all keys required, additionalProperties:
-    false" shape without needing 41 different ``Known*`` builders).
+    false" shape without needing 44 different ``Known*`` builders).
     """
     unknown = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
     facts = {
@@ -206,6 +206,9 @@ def make_applicant_facts(*, assessment_id: uuid.UUID | None = None) -> M.Applica
         "family.sponsor_nationalities": unknown,
         "family.sponsor_status_code": unknown,
         "family.marriage_registered": unknown,
+        "family.stepchild_marriage_certificate_confirmed": unknown,
+        "family.stepchild_birth_certificate_confirmed": unknown,
+        "family.sponsor_permit_basis": unknown,
         "family.sponsor_confirmed": unknown,
         "study.level": unknown,
         "study.admission_confirmed": unknown,

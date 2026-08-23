@@ -82,6 +82,34 @@ E31C.md §3.3).
 
 ---
 
+**CL-E31C-04 — E31C's own product name states the mixed-nationality basis
+directly: WNA-WNI (foreign parent x Indonesian parent).** The E31C listing on the
+live portal titles the product itself *"E31C Visa Keluarga Anak Hasil Perkawinan Sah
+WNA-WNI"* — child of a legally-registered WNA-WNI (foreign-citizen x
+Indonesian-citizen) marriage. This is definitional at the product-identity level,
+independent of which named individual signs as the formal penjamin (the open
+question CL-E31C-03's caveat carries): the product does not exist for a child of two
+co-national parents, of either citizenship. It corroborates, from an independent
+textual location on the same page, the same underlying fact CL-E31C-03 grounds from
+the checklist items — that the SET of parents must include at least one Indonesian
+citizen.
+
+- Source: same page as CL-E31C-02/03
+  (`https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E31C`), product-title
+  heading, verbatim: *"E31C Visa Keluarga Anak Hasil Perkawinan Sah WNA-WNI"*.
+- **State: VERIFIED.** Products: E31C. Provenance: this session (2026-08-23),
+  independent re-fetch via raw `curl` (not the earlier reader-2 fetch) — done
+  specifically to check a finding relayed by the team-lead from a separate blind
+  grader's own independent `curl` fetch of the same page; both fetches agree on
+  this text.
+- Backs: the `family.sponsor_nationalities` conjunct of
+  `el.e31c-child-mixed-marriage-support` (seq-13) and the paired
+  `hf.e31c-sponsor-not-indonesian` HARD_FILTER (seq-13) — an ADDITIONAL, independent
+  grounding alongside CL-E31C-03, not a replacement (CL-E31C-03's caveat about
+  penjamin identity remains open and is not resolved by the product title).
+
+---
+
 **CF-17 — CONFLICT (OPEN): C2 sponsor requirement, three-way.** The candidate claim
 "C2's sponsor is corporate (`sponsor.type == EMPLOYER`)" — the claim the CP3 package
 said seq-10 should attempt for `el.c2.corporate-sponsor-type` — cannot be authored:
