@@ -1,80 +1,33 @@
-task_id: s12-c4-quickcheck
+task_id: garuda-voa-nationality-dataset-0823
 gear: 2
-l_level: L1
+l_level: L2
 gate_class: opus
-objective: |
-  Kill mechanical red CI rounds before they reach CI. Measured the same day:
-  a red PR round whose cause is purely mechanical — a prepush-guards miss, a
-  Prettier diff, an adversarial-review gate missing its literal heading —
-  costs a lane roughly 30 minutes of wall-clock, and the diagnosis is
-  available locally in about a second.
-
-  `scripts/quickcheck.sh` runs four checks, each scoped to what actually
-  changed vs origin/main, and is wired ADVISORY-ONLY into `.husky/pre-push`.
-
-  The single hard constraint is that it must NEVER become a second blocking
-  gate. That is not a promise in a comment here — it is proven twice below,
-  by two independent mechanisms, because a pre-push hook that can block is a
-  hook that will one day block someone at the worst possible moment.
+objective: >-
+  `apps/backend-rag/backend/services/garuda_flow/intake.py` set
+  `nationality_entry_eligible=True` unconditionally for every VOA intake
+  request, and its own docstring said why: "no nationality-eligibility
+  dataset yet". Ship the dataset (decree-sourced, independently verified
+  ISO-3 country list) and wire `intake._build_eligibility_input` to derive
+  the field from `request.nationality` instead of hardcoding it — so a
+  nationality that is genuinely not eligible for a Visa on Arrival (e.g.
+  `AFG`) now DECLINEs instead of silently ACCEPTing.
+why_now: >-
+  Verified this session: a case with nationality `AFG` (Afghanistan, not
+  VOA-eligible) returned ACCEPT from `build_verdict` before this change. The
+  gate (`eligibility.py:147`) and the input field
+  (`intake.py:103`, validated `^[A-Za-z]{3}$` at `internal_preview_cli.py:61`)
+  both already existed — only the dataset was missing, so the gap was live
+  on every request, not theoretical.
 constraints:
-  - 'NEVER blocks a push. Guaranteed at two independent layers: the script
-    itself ends `main "$@"; exit 0` (its exit status is unconditional and
-    does not depend on what any check returned), and the call site in
-    `.husky/pre-push` invokes it as `bash ... || true`. Either layer alone
-    would suffice; both are present deliberately.'
-  - "Reuses the engines the PR lane already uses rather than inventing
-    parallel ones: `scripts/ci/impact_map.py` for test selection (never the
-    full 17k-test suite), `prettier --check` on changed files with the same
-    extension scope as package.json's own format:check, and actionlint with
-    the same auto-discovery scope as .github/workflows/actionlint.yml. A
-    local check that disagrees with CI is worse than no local check."
-  - "The R1 heading check matches the LITERAL line `## Adversarial review` —
-    exact, anchored, case-sensitive. NOT a substring match on `adversarial`:
-    superscar family #3 catalogues ~20 scars in this repo caused by exactly
-    that shortcut, and this check is guarded by guilt tests that reject the
-    bare substring and the wrong hash count."
-  - "Every check is skippable and every one degrades to a skip-with-reason,
-    never to a false pass or a hang. `QUICKCHECK_SKIP=1` disables the hook
-    entirely."
+  - "One PR, one concern: only `services/garuda_flow/nationality_eligibility.py` (new), `services/garuda_flow/intake.py` (wire + docstring correction), and their tests. Do not touch `safe_clock.py`, `operating_calendar.py`, `pricing.py`, the mouth app, or the admin dashboard."
+  - "The dataset's country list must be independently re-retrieved from the official source (not shipped on a research lead's authority alone) and diffed row-by-row against the lead; any disagreement must be resolved against a third source or left out and declared, never silently picked."
+  - "No new third-party dependency (e.g. pycountry) — the repo has none installed anywhere (confirmed by search) and the existing house style (`operating_calendar.py`) hand-maintains its own decree-sourced data with an explicit provenance docstring; this module matches that pattern."
+  - "Fail-closed, never-guess house style for the unknown-code case, matching `operating_calendar.py`'s `ARRIVAL_DATE_UNCONFIRMED` pattern in SPIRIT — but the module docstring explains explicitly why this dataset lands on a different concrete answer (a closed positive enumeration has no genuine data-gap state, unlike the operating calendar's real COVERAGE_END boundary)."
+  - "Existing tests must not regress: known-good baseline for `backend/tests/services/garuda_flow/` was 125 tests before this change (162 across garuda_flow/ + the two app/routers/test_garuda_voa* files) — both numbers must still be green after, with new tests additive, not replacing old ones."
 acceptance:
-  - "Exit code is 0 on a clean tree AND when checks find problems — measured,
-    not asserted."
-  - "A quickcheck that exits non-zero still lets the push proceed, including
-    under `sh -e` (the W101 decapitation shape)."
-  - "Runtime on the fast path is low enough to sit in front of every push."
-  - "The R1 guard rejects the substring and the wrong heading level."
-consumer_map:
-  - "`.husky/pre-push` — the call site. Advisory, existence-guarded,
-    kill-switched. This PR DOES wire it (see dissent: that deviates from the
-    gate's own instruction and was accepted on measured merit, not waved
-    through)."
-  - "`scripts/ci/impact_map.py` — reused, not reimplemented."
-  - "`.github/workflows/actionlint.yml` — scope mirrored, not duplicated."
-risks:
-  - "An advisory check that is always green teaches people to ignore it. The
-    mitigation here is scope, not severity: it only speaks when the diff
-    actually touches the surface each check covers, and says
-    `skipped — <reason>` otherwise, so a silent run means 'nothing to say',
-    not 'nothing checked'."
-  - "The R1 heading matcher is STRICTLY NARROWER than CI's: quickcheck wants
-    `^## Adversarial review` exactly and case-sensitively, while
-    `scripts/check_adversarial_review.py` accepts `^#{2,}\\s+Adversarial
-    review\\b` case-insensitively. So quickcheck can cry MISSING on a body CI
-    would pass. Kept deliberately — the direction is safe (a false alarm sends
-    you to the real gate; it can never produce a false all-clear) — but it is
-    a real divergence, not a duplicate, and it is named rather than left to be
-    rediscovered in anger."
-  - "`actionlint` is not installed on this host, so that branch of the script
-    was never exercised end-to-end here. Correct by inspection only. It was
-    deliberately NOT auto-downloaded into a hook: CI's pinned binary is
-    linux_amd64 and shipping an unpinned download inside a pre-push hook is a
-    supply-chain shortcut this repo does not take."
-grader: |
-  Independent verification by the S12 conductor (Opus 5), which did not write
-  any of the 497 lines: the diff scope was read, the deviation from the
-  no-install instruction was caught by reading `.husky/pre-push` rather than
-  taken from the implementer's report, both advisory guarantees were proven
-  by execution, the runtime was timed, the deterministic floor was recomputed
-  from the diff, and the test suite was re-run.
-budget: 1 implementer lane + conductor gate; no council (a local advisory script)
-pii: none
+  - "The dataset module's docstring states its decree, source URL, retrieval date, and count — matching `operating_calendar.py`'s provenance style, including how it states its own coverage boundary."
+  - "`AFG` (and a second non-listed nationality, `PRK`) DECLINE via `build_verdict` with `NATIONALITY_NOT_ELIGIBLE` in `decline_codes` — shown RED against the pre-fix code and GREEN against the fix, in the same PR."
+  - "A representative innocence sample (`USA`, `ITA`, `RUS`, `AUS`, plus special entities `HKG` Hong Kong and `TWN` Taiwan, both present in the verified list) still ACCEPT."
+  - "A non-vacuity test pins the dataset's verified count (97) so a future edit that silently empties or truncates it fails loudly."
+  - "Case-insensitivity (`usa` == `USA`) is tested at both the pure-function level and end-to-end through `build_verdict`."
+  - "`backend/tests/services/garuda_flow/` plus the two `app/routers/test_garuda_voa*.py` files are green: 162 -> 183 tests (21 net new: 4 in `test_intake.py`, 17 in the new `test_nationality_eligibility.py`), 0 regressions."

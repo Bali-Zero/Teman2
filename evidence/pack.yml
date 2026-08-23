@@ -1,198 +1,55 @@
 brief_ref: evidence/brief.yml
-plan_ref: "S12/C4 — advisory pre-push quickcheck (mandate ~/sessioni-2026-08-23/S12-mini-ship-accelerators.md, Mini, 2026-08-23)"
-lanes:
-  - lane: s12-c4
-    role: build
-    seat: "claude-sonnet-5 (implementer subagent, Mini)"
-  - lane: s12-c4-gate
-    role: review
-    seat: "claude-opus-5 (S12 conductor — generator != grader, wrote none of the 497 lines)"
-seat_diversity: degraded
-seat_diversity_note: >-
-  Both lanes are Anthropic seats. Only one build lane, so the D3 rule's own
-  floor (>=2 build lanes) does not fire, but the absence is real and is
-  declared rather than left to read as satisfied. Roster state measured this
-  session: codex AUTH_DEAD (401, refresh token revoked), glm CRED_UNAVAILABLE,
-  kimi LIVE but spent on S12/C1 (larger blast radius), and agy — contrary to
-  an earlier reading — was ALIVE and reachable from Pro the whole time. So
-  for this lane the missing cross-family review is a CHOICE made under time
-  pressure, not an unavailable-seat constraint.
+plan_ref: "S14 garuda-voa (Mini) — build lane B2, dataset for the nationality-eligibility gap in the GARUDA VOA intake engine"
 diff:
-  net_lines: >-
-    3 files, +497/-0: scripts/quickcheck.sh (358), scripts/tests/test_quickcheck.sh
-    (109), .husky/pre-push (+30). Deterministic gear floor RECOMPUTED from the
-    diff by the gate = 1 (.husky/pre-push is NOT a hot-zone path). Declared
-    Gear 2 because it is a new 358-line script that runs on every developer's
-    push, not because the floor demanded it.
-  behaviour_change: >-
-    Every `git push` in this repo now runs an advisory check first. Nothing
-    can newly fail: the hook cannot block (proven twice below), and
-    QUICKCHECK_SKIP=1 disables it.
+  net_lines: '3 files touched: new `nationality_eligibility.py` (~230 lines, mostly provenance docstring + a 97-entry frozenset), `intake.py` wired (~15 lines net, 2 docstrings corrected), new `test_nationality_eligibility.py` (~110 lines) + ~40 new lines appended to `test_intake.py`. Net additive; nothing deleted except the two words "no ... dataset yet" now that the dataset exists.'
+  behaviour_change: "`nationality_entry_eligible` was `True` unconditionally; it is now `is_voa_eligible_nationality(request.nationality)`. Any nationality not in the verified 97-country VOA-eligible set now DECLINEs via the existing `DeclineCode.NATIONALITY_NOT_ELIGIBLE` (same reason text as before this PR — no new decline code introduced, see brief `constraints`). Every other criterion, the runway gate, the issuance submission-window gate, and Safe Clock are untouched."
 receipts:
-  - claim: "Exit code is 0 and the fast path is ~1 second"
-    cmd: "time bash scripts/quickcheck.sh   (clean tree, 3 changed files vs origin/main)"
-    result: >-
-      EXIT=0; real 1.011s (0.09s user, 0.06s system). Output named each
-      skipped check with its reason (no backend .py in diff, no
-      ts/js/json/md/yml in diff, no open PR for the branch) rather than
-      printing a bare green.
+  - claim: "The gap was real and live: AFG returned ACCEPT before this fix (not a hypothetical)"
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/services/garuda_flow/test_intake.py -k TestNationalityEligibility -v, run against the ORIGINAL intake.py (nationality_eligibility.py + intake.py stashed) -> test_afg_declines_with_the_nationality_reason FAILED: AssertionError: assert <Decision.ACCEPT> is <Decision.DECLINE>; test_prk_also_declines_with_the_nationality_reason FAILED identically. 2 failed, 2 passed."
+    exit: 1
+    ts: "2026-08-23T13:05Z"
+    seat: "session (mini, opus-5)"
+  - claim: "The same two tests are GREEN against the fix, in the same session, same commands"
+    cmd: "git stash pop; PYTHONPATH=. python -m pytest backend/tests/services/garuda_flow/test_intake.py -k TestNationalityEligibility -v -> 4 passed, 33 deselected."
     exit: 0
-    ts: "2026-08-23T12:14Z"
-    seat: "session (mini, conductor/gate)"
-  - claim: "GUARANTEE 1 — the script's own exit status is unconditional, independent of what any check returned"
-    cmd: "tail -12 scripts/quickcheck.sh"
-    result: >-
-      The entrypoint is `main \"$@\"` followed by a bare `exit 0` on the next
-      line — main's return value is discarded by construction. Read from the
-      file, not from the header's claim about itself.
+    ts: "2026-08-23T13:07Z"
+    seat: "session (mini, opus-5)"
+  - claim: "The country-name list was independently re-retrieved from the official source (not shipped on the R4 research lead's authority alone) and matches it row-by-row"
+    cmd: "curl -s -L -A 'Mozilla/5.0 ...' https://www.imigrasi.go.id/wna/daftar-negara-voa-bvk-calling-visa/daftar-negara-subjek-visa-on-arrival -> HTTP 200, 48218 bytes. python3 regex-parsed the raw `<ol><li><span>...</span></li></ol>` block (NOT an LLM summary) -> 97 entries. Diffed programmatically against the R4 lead file (97 rows) by (number, name) pair -> MATCHES=97, MISMATCHES=0."
     exit: 0
-    ts: "2026-08-23T12:15Z"
-    seat: "session (mini, conductor/gate)"
-  - claim: "GUARANTEE 2 — a quickcheck that exits 1 STILL lets the push proceed, including under `sh -e` (the W101 decapitation shape)"
-    cmd: 'sh -e -c ''bash <stub-that-prints-and-exits-1> || true; echo "PUSH PROCEEDS (rc=$?)"'''
-    result: >-
-      'SIMULATED FAILURE' then 'PUSH PROCEEDS (rc=0)', outer rc=0. Exercised
-      against a stub that hard-exits 1, because the real script cannot be made
-      to exit non-zero — which is exactly why the call site needed testing
-      SEPARATELY from the script. Two independent layers, either sufficient.
+    ts: "2026-08-23T12:40Z"
+    seat: "session (mini, opus-5)"
+  - claim: "Every ISO-3 alpha-3 code in the dataset is a real, correctly-mapped code — cross-checked against a standard third-party reference, not asserted from memory"
+    cmd: "curl -s -L https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv -> HTTP 200, 250 rows (249 countries + header). python3 resolved each of the 97 candidate alpha-3 codes back to its English short name via this CSV and printed the (Indonesian name, code, English name) triple for manual semantic verification -> 97/97 resolved, 0 codes absent from the reference, 0 semantic mismatches (spot-checked the ambiguous ones by name: GBR->'United Kingdom of Great Britain and Northern Ireland' for 'Inggris', VAT->'Holy See' for 'Vatikan', HKG->'Hong Kong' for 'Hongkong', TWN->'Taiwan, Province of China' for 'Taiwan', CHN->'China' for 'Tiongkok')."
     exit: 0
-    ts: "2026-08-23T12:15Z"
-    seat: "session (mini, conductor/gate)"
-  - claim: "The R1 heading guard has real guilt tests — it is not a substring match on 'adversarial'"
-    cmd: "bash scripts/tests/test_quickcheck.sh"
-    result: >-
-      ALL PASS, including the three guilt cases: rejects 'Adversarial review'
-      with no hashes, rejects the bare substring 'adversarial' with no
-      heading, rejects '### Adversarial review' (wrong hash count).
+    ts: "2026-08-23T12:55Z"
+    seat: "session (mini, opus-5)"
+  - claim: "No existing dataset or installed library in the repo already provides ISO-3166 country codes suitable for reuse — building new was the correct call, not a reinvention"
+    cmd: "General-purpose search subagent (sonnet) grepped apps/backend-rag/backend/ for COUNTRY_CODES/ISO_3166/VALID_NATIONALITIES/country_codes.py and checked requirements*.txt + pyproject.toml + `pip show pycountry|babel|iso3166` in the venv -> only `visa_engine/shadow.py::_ALPHA3_TO_ALPHA2` found, self-documented 'Best-effort, deliberately NON-EXHAUSTIVE' (192/249 codes), scoped to a different subsystem's audit plumbing; zero third-party ISO library installed or declared anywhere, even transitively."
     exit: 0
-    ts: "2026-08-23T12:16Z"
-    seat: "session (mini, conductor/gate)"
-  - claim: "The deterministic gear floor is 1 — recomputed by the gate from the actual diff, not taken from the brief"
-    cmd: "git diff --name-only origin/main...HEAD > /tmp/c4-changed.txt; evidence_pack_lint.py --print-floor --changed-files-file /tmp/c4-changed.txt"
-    result: "1 (.husky/pre-push, scripts/quickcheck.sh, scripts/tests/test_quickcheck.sh — no hot-zone hit)"
+    ts: "2026-08-23T12:20Z"
+    seat: "sonnet-5 (search subagent)"
+  - claim: "The full baseline and post-fix garuda_flow + garuda_voa router test suites are green, with the exact before/after counts the brief declares"
+    cmd: "PYTHONPATH=. pytest backend/tests/services/garuda_flow/ backend/tests/app/routers/test_garuda_voa.py backend/tests/app/routers/test_garuda_voa_no_internal_leak.py --collect-only -q -> 183 tests (before this PR: 162, confirmed by re-running the same collect against the stashed pre-fix source). Full run -> 146 passed (garuda_flow/ subset alone) / 183 passed (full set incl. router tests), 0 failed."
     exit: 0
-    ts: "2026-08-23T12:16Z"
-    seat: "session (mini, conductor/gate)"
-  - claim: "SLOW path measured too — scoped pytest actually runs and names the broken test"
-    cmd: "time bash scripts/quickcheck.sh (deliberately-broken test committed, diff isolated via the script's own QUICKCHECK_BASE_REF override)"
-    result: >-
-      3.38s user 0.24s system 53% cpu, 6.811s total — names
-      test_quickcheck_probe_deliberately_broken with its AssertionError.
-      Measured by the IMPLEMENTER and reported to the gate; recorded here
-      attributed to it, not reproduced as if the gate ran it. The isolation is
-      necessary and self-cancelling: against real origin/main this PR's diff
-      is mixed, impact_map fails open on out-of-scope paths by its own
-      contract, and the fast path fires instead (0.87s) — an artifact of
-      testing the check inside the PR that introduces it, gone once merged.
+    ts: "2026-08-23T13:15Z"
+    seat: "session (mini, opus-5)"
+  - claim: "ruff (lint + format) is clean on every file this PR touches or adds"
+    cmd: "ruff check services/garuda_flow/nationality_eligibility.py services/garuda_flow/intake.py tests/services/garuda_flow/test_nationality_eligibility.py tests/services/garuda_flow/test_intake.py -> All checks passed! ruff format --check <same files> -> 3 already formatted; test_intake.py flagged, but `ruff format --diff` shows both hunks are PRE-EXISTING lines (77-85, 96-100) this PR's diff never touches — confirmed via `git diff` scope, left as-is (out of this PR's one concern)."
     exit: 0
-    ts: "2026-08-23T11:54Z"
-    seat: "s12-c4 implementer (claude-sonnet-5)"
-  - claim: "ADVISORY proven by a REAL `git push`, not only by a stub: a failing quickcheck does not block a push"
-    cmd: "git push /tmp/quickcheck-fake-remote-XXXXX.git HEAD:refs/heads/proof-isolated   (throwaway LOCAL bare repo, never origin, broken test committed)"
-    result: >-
-      quickcheck reported '[pytest] scoped suite reported failures (advisory,
-      rc=1)' and named the AssertionError; the push still completed —
-      '* [new branch] HEAD -> proof-isolated', EXIT_CODE=0 — and the object
-      was verified present in the bare repo. Same push in the unmodified state
-      also EXIT_CODE=0. Bare repo destroyed, probe reverted, `git remote -v`
-      back to origin/pro/m5 only. Measured by the IMPLEMENTER; this is a
-      stronger proof than the gate's own `sh -e` stub test, which is retained
-      above because the two exercise different layers.
-    exit: 0
-    ts: "2026-08-23T11:54Z"
-    seat: "s12-c4 implementer (claude-sonnet-5)"
-pii_scan: clean
-dissent:
-  - seat: "the implementer, against the gate — and the implementer was RIGHT"
-    objection: >-
-      An earlier draft of this pack recorded the `.husky/pre-push` wiring as a
-      CONFIRMED deviation from an explicit gate instruction, and stated that
-      the gate caught it by reading the diff "NOT from the implementer's
-      report". The implementer contested both claims. On re-checking the
-      primary sources rather than the gate's memory of them, BOTH gate claims
-      were false.
-    status: RETRACTED
-    note: >-
-      Retracted in full, and the retraction is kept in the record rather than
-      the entry being deleted. (1) The wiring was ORDERED, not deviated from —
-      the S12 mandate, line 38, verbatim: "Wire into `.husky/pre-push` as
-      **advisory** (WARN, never a second blocking gate ...)". The gate's later
-      question ("confirm you have NOT wired it into .git/hooks/pre-push or any
-      installed hook") was about a different layer, the machine-level
-      git-hooks mechanism, and the implementer answered it correctly and
-      completely: `.git/hooks/` untouched, `core.hooksPath=.husky/_`
-      pre-existing and not installed by it, no `husky install` run. (2) It was
-      disclosed UPFRONT — the first line of the implementer's first report
-      names ".husky/pre-push wired via `bash scripts/quickcheck.sh || true`"
-      as one of three headline deliverables. The gate did not discover it; it
-      was told, and later mis-remembered being told. (3) The gate also wrote
-      that the implementer "went quiet before sending the numbers" — also
-      false: the numbers were sent (fast/slow `time` output, two real pushes
-      with captured exit codes, a CI-overlap audit) and arrived while the gate
-      was already mid-gate. That is message ordering, not silence, and the
-      gate should have said so. This entry stays because a gate that
-      mis-states a teammate's conduct in a permanent record is a worse defect
-      than the one it thought it had found, and deleting the accusation would
-      hide the correction along with it.
-  - seat: "the implementer (named finding the gate had not caught), on R1 vs CI"
-    objection: >-
-      The R1 heading matcher DISAGREES with CI and is strictly narrower.
-      quickcheck matches `^## Adversarial review` (exact, case-sensitive); CI's
-      `scripts/check_adversarial_review.py` matches
-      `^#{2,}\s+Adversarial review\b` (case-INsensitive, 2+ hashes, flexible
-      whitespace). So quickcheck reports MISSING on bodies CI would PASS —
-      `### Adversarial review`, two spaces after the hashes, or lowercase.
-    status: CONFIRMED
-    note: >-
-      Verified by the gate by reading both regexes, not accepted on assertion.
-      Left as-is deliberately: the disagreement direction is the safe one (a
-      false alarm sends you to look at the real gate; it can never produce a
-      false all-clear), and this is an advisory check whose failure mode is
-      annoyance. But it IS a real divergence, not a duplicate of CI, and it is
-      named here rather than left for someone to rediscover when quickcheck
-      cries about a heading CI is perfectly happy with. Found and reported by
-      the implementer, not by the gate.
-  - seat: "S12 conductor (gate), on the slow-path measurement"
-    objection: >-
-      An earlier draft claimed only the FAST path had been timed. The
-      implementer had in fact measured both, and its caveat is more
-      interesting than the numbers.
-    status: RETRACTED
-    note: >-
-      Both paths are measured (see receipts). The caveat that matters, in the
-      implementer's own framing: to reach the slow path at all it had to
-      isolate the diff with `QUICKCHECK_BASE_REF`, because measured against
-      real origin/main this PR's diff is MIXED (it contains quickcheck's own
-      non-.py files), and `impact_map.py` fails open on any out-of-scope path
-      by its own declared contract — so pytest never runs and the fast path
-      fires instead (0.87s). That is a structural artifact of testing a check
-      inside the PR that introduces it, and it disappears once merged: a
-      normal single-concern PR will not carry `scripts/quickcheck.sh` in its
-      own diff. 6.811s is what a real future backend-touching PR sees.
+    ts: "2026-08-23T13:20Z"
+    seat: "session (mini, opus-5)"
 tests:
-  - "scripts/tests/test_quickcheck.sh — ALL PASS, re-run by the gate rather than trusted from the implementer's report. Guilt on the R1 guard: bare substring rejected, wrong hash count rejected, heading-without-hashes rejected."
+  - "backend/tests/services/garuda_flow/test_nationality_eligibility.py — 17 new (guilt AFG/PRK/ZZZ, innocence USA/ITA/RUS/AUS/HKG/TWN/GBR, case-insensitivity x4, non-vacuity x3)"
+  - "backend/tests/services/garuda_flow/test_intake.py::TestNationalityEligibility — 4 new (end-to-end build_verdict wiring, guilt shown RED pre-fix)"
+  - "backend/tests/services/garuda_flow/ full directory — 146 passed (was 125)"
+  - "backend/tests/services/garuda_flow/ + app/routers/test_garuda_voa*.py — 183 passed (was 162, the mandate's declared known-good baseline)"
 static:
-  - "bash -n scripts/quickcheck.sh -> clean"
-  - "pre-commit hooks pass, none bypassed"
-notes:
-  - >-
-    An earlier commit on this branch (a deliberately-broken test used to probe
-    the acceptance) was correctly reverted by the implementer before this pack
-    was written; the branch head carries only the feature commit. Verified by
-    the gate reading git log, not by asking.
-  - >-
-    PROCESS FINDING, more useful than anything else in this pack. The gate
-    wrote three false statements about the implementer's conduct into an
-    earlier draft — that it deviated from an instruction, that the gate caught
-    the deviation by reading the diff, and that it "went quiet". All three
-    came from the gate reasoning over its own recollection of the mandate and
-    of the message order, instead of re-reading the mandate file and its own
-    inbox. The implementer contested them with citations; every citation held.
-    The mechanism is exactly the anti-hallucination rule this repo already has
-    ("never cite a tool's output without having run it THIS turn") applied to
-    a surface it is usually not applied to: a claim about a COLLEAGUE'S
-    conduct is a claim about world-state and needs a primary source in the
-    same turn, at least as much as a file path does. Cheap to prevent
-    (`grep` the mandate, re-read the message), expensive to leave standing —
-    an evidence pack is permanent and this one would have libelled a
-    teammate's process on main forever.
+  - "ruff check — All checks passed! (0 lint violations on touched/new files)"
+  - "ruff format --check — 0 formatting issues in this PR's own diff (pre-existing drift in test_intake.py's untouched lines left alone, out of scope)"
+pii_scan: clean
+dissent: []
+lanes:
+  - lane: "garuda-voa-nationality-dataset"
+    role: build
+    seat: "opus-5"
