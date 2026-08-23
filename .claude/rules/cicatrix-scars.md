@@ -1326,6 +1326,42 @@ Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di
 
 **GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) ma non ancora adottato dai produttori dei pack, e finché non lo è la finestra si riapre a ogni PR Gear≥2.
 
+---
+
+### 🐛 W126 (2026-08-23): convertire una PR in DRAFT non la espelle dalla merge queue — il hold durevole di W123 vale solo PRIMA dell'ingresso
+
+_Scoperto 2026-08-23 su PR #4681, leggendo la timeline API di GitHub dopo che una review avversariale aveva appena fallito il research capture con 2 CRITICAL._
+
+**TRAUMA.** La PR era stata convertita in draft per fermarla, ma dieci minuti dopo è finita su `main`. La sequenza è misurata dalla timeline API, non ricostruita per inferenza:
+
+```
+13:10:47Z  auto_merge_enabled
+13:16:50Z  added_to_merge_queue
+13:21:24Z  convert_to_draft
+13:31:20Z  merged
+13:31:21Z  head_ref_deleted
+```
+
+Il draft era reale e il hold era stato applicato; non aveva però rimosso l'entry che la coda aveva già accettato. `gh pr ready --undo` cambia `isDraft` in `true` e non cambia la queued entry.
+
+**MECCANISMO.** `.github/workflows/auto-merge-whitelist.yml` controlla `draft == false` quando decide se armare una PR. La merge queue non riconsulta quel campo per un'entry già accettata. W123 dice quindi la verità solo prima dell'ingresso in coda: il draft impedisce al workflow di ri-armare una PR non ancora accodata, ma non è un eject della coda.
+
+**IL VERO ERRORE È TEMPORALE.** `isInMergeQueue` era stato letto verso le 13:05 e valeva `false`. Era il campo giusto e la misura era vera in quell'istante. Alle 13:16 è diventato `true`; nessuno l'ha riletto, e il draft delle 13:21 è stato applicato sulla forza di un dato vecchio di sedici minuti. Non il campo sbagliato: **il campo giusto al momento sbagliato** — gemello temporale dell'errore registrato la stessa mattina da wr3/P03, dove il dato giusto era in mano ma veniva letto l'altro campo.
+
+**Perché costa, realmente.** È atterrato su `main` un research capture che la review aveva appena bocciato e che descriveva IDR 790.000 come _service fee_ Bali Zero da tenere separata dal PNBP governativo. È falso: le righe PricingTool sono all-inclusive e contengono già il PNBP (`apps/mouth/e2e/book-pricing.spec.ts:126`, test `public visa service cards expose only exact all-inclusive PricingTool rows`; conferma diretta del proprietario). Un lettore che agisse su quella frase potrebbe addebitare due volte un cliente. Una PR correttiva è in volo.
+
+**CURA.** Su una PR già accodata, il hold che funziona è **DEQUEUING** via GraphQL `dequeuePullRequest`. Prima dell'ingresso funziona anche `gh pr merge --disable-auto`; il draft resta il freno durevole contro il riarmo automatico solo finché la PR non è nella coda. Dopo qualunque gesto, la prova è una lettura GraphQL NUOVA di `isInMergeQueue` / `mergeQueueEntry`: `isDraft: true` non è prova di hold.
+
+**COMPLEMENTO (2026-08-23, riscoperto su PR #4713 di questa stessa cicatrice, tentando di pushare un fix mentre la PR era in coda).** GitHub applica "armare è congelare" anche a livello di ref, non solo per disciplina di repo: `git push` su un branch accodato viene RIFIUTATO da GitHub stesso — `GH006: ... A pull request for this branch has been added to a merge queue. Branches that are queued for merging cannot be updated` — quindi l'unica via per correggere una PR già in coda è dequeue-poi-push, mai un push diretto sperando che aggiorni l'entry.
+
+**GOTCHA.** Stato e prova devono essere contemporanei. Una lettura corretta di `isInMergeQueue` non autorizza un'azione minuti dopo senza una rilettura immediatamente precedente e una verifica immediatamente successiva; in mezzo, la coda può cambiare il fatto senza cambiare il branch.
+
+**GOTCHA-NEL-GOTCHA.** Il numero di questa stessa cicatrice è caduto nel difetto che descrive. Mentre veniva scritta, un'altra PR (#4714, lane diversa) leggeva anch'essa `origin/main`, vedeva W125 come il numero più alto e reclamava W126 per un difetto scollegato (un `Formatter` che muta `record.levelname` in place) — una lettura del ledger vera nel momento in cui è stata presa, stale nel momento in cui è stata agita: la stessa forma esatta dell'`isInMergeQueue` vecchio di sedici minuti descritto sopra, applicata al contatore invece che alla coda. «Questo numero è libero?» non si risponde da `main`: un contatore monotono con più scrittori concorrenti non ha una lettura sicura del prossimo valore senza controllare anche le PR aperte (`gh pr list --search "W12"`, o un grep sui loro diff), non solo il registro già atterrato. Risolto per precedenza di rivendicazione, misurata non dedotta — primo commit di questa PR alle 16:02:56Z (scoperta al merge delle 13:31Z di #4681) contro il primo commit di #4714 alle 16:06:03Z: #4714 ha accettato e si è rinumerata a W127.
+
+**Famiglia: superscar #2 (Esiste ≠ Armato), continuazione e correzione di W123.** La PR sembra fermata perché porta la forma del draft, mentre l'organo che decide il merge — la queued entry — è ancora armato.
+
+---
+
 ### 🐛 W127 (2026-08-23): un `Formatter` mutava `record.levelname` IN PLACE — il test confrontava la stringa RESA (ANSI-colorata), non l'IDENTITÀ stabile del livello
 
 _Scoperto 2026-08-23, lane P04, diagnosticando la CI flake `test_prompt_manager.py::TestPromptManagerFailLoudOnUnknownVersion::test_unrecognized_explicit_value_logs_error`, che aveva espulso PR #4643 dalla merge queue due volte e sospeso PR #4653. La premessa "non riproducibile in locale" (5 tentativi) era falsa per assenza di corpus, non per assenza del difetto: riproducibile deterministicamente non appena il file giusto condivideva la sessione pytest._
