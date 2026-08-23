@@ -305,6 +305,7 @@ describe("onshore/offshore canonical fact collection", () => {
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "yes");
     state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "holds_stay_permit", "no");
     state = answer(state, "current_status_code", "C1");
     state = answer(state, "overstay_days", "0");
     state = answer(state, "wants_onshore_conversion", "yes");
@@ -334,6 +335,7 @@ describe("onshore/offshore canonical fact collection", () => {
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "yes");
     state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "holds_stay_permit", "no");
     expectQuestion(state, "current_status_code");
     state = reduce(state, { type: "SKIP", questionId: "current_status_code" });
     expect(state.facts.current_status_code).toBe("unsure");
@@ -360,9 +362,13 @@ describe("onshore/offshore canonical fact collection", () => {
       { kind: "question", questionId: "permit_expiry" },
       { in_indonesia: "yes", permit_expiry: "2020-01-01" },
     );
+    // permit_expiry always advances to the holds_stay_permit gate now
+    // (never straight to overstay_days) — an expired date does not
+    // short-circuit the interview into treating the applicant as already
+    // out of status without asking what they currently hold.
     expect(next).toEqual({
       kind: "question",
-      questionId: "current_status_code",
+      questionId: "holds_stay_permit",
     });
   });
 });
@@ -385,6 +391,7 @@ describe("wants_onshore_conversion / application_channel cross-validation (2026-
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "yes");
     state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "holds_stay_permit", "no");
     state = answer(state, "current_status_code", "C1");
     state = answer(state, "overstay_days", "0");
     state = answer(state, "wants_onshore_conversion", wantsOnshoreConversion);
@@ -636,6 +643,7 @@ describe("editing, pruning and branch projection", () => {
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "yes");
     state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "holds_stay_permit", "no");
     state = answer(state, "current_status_code", "C1");
     state = answer(state, "overstay_days", "0");
     state = answer(state, "wants_onshore_conversion", "yes");
@@ -790,12 +798,14 @@ describe("resume snapshot validation", () => {
         { kind: "framing" },
         { kind: "question", questionId: "in_indonesia" },
         { kind: "question", questionId: "permit_expiry" },
+        { kind: "question", questionId: "holds_stay_permit" },
         { kind: "question", questionId: "current_status_code" },
         { kind: "question", questionId: "overstay_days" },
       ],
       facts: {
         in_indonesia: "yes",
         permit_expiry: "2026-09-01",
+        holds_stay_permit: "no",
         current_status_code: "C22",
       },
     };
@@ -860,6 +870,7 @@ describe("resume snapshot validation", () => {
       { kind: "framing" as const },
       { kind: "question" as const, questionId: "in_indonesia" },
       { kind: "question" as const, questionId: "permit_expiry" },
+      { kind: "question" as const, questionId: "holds_stay_permit" },
       { kind: "question" as const, questionId: "current_status_code" },
       { kind: "question" as const, questionId: "overstay_days" },
       { kind: "question" as const, questionId: "wants_onshore_conversion" },
@@ -872,6 +883,7 @@ describe("resume snapshot validation", () => {
       facts: {
         in_indonesia: "yes",
         permit_expiry: "2026-09-01",
+        holds_stay_permit: "no",
         current_status_code: "C1",
         overstay_days: "36501",
       },

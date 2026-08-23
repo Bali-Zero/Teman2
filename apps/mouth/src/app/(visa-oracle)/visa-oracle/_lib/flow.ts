@@ -424,7 +424,13 @@ export function computeNextNode(
       return { kind: "question", questionId: "overstay_days" };
     }
     case "permit_expiry":
-      return { kind: "question", questionId: "current_status_code" };
+      return { kind: "question", questionId: "holds_stay_permit" };
+    case "holds_stay_permit":
+      return facts.holds_stay_permit === "yes"
+        ? { kind: "question", questionId: "stay_permit_code" }
+        : { kind: "question", questionId: "current_status_code" };
+    case "stay_permit_code":
+      return { kind: "question", questionId: "overstay_days" };
     case "current_status_code":
       return { kind: "question", questionId: "overstay_days" };
     case "overstay_days":
@@ -912,9 +918,22 @@ export function getTreeSteps(
       ? [
           { id: "permit_expiry", labelI18nKey: "tree.permit_expiry" },
           {
-            id: "current_status_code",
-            labelI18nKey: "tree.current_status_code",
+            id: "holds_stay_permit",
+            labelI18nKey: "tree.holds_stay_permit",
           },
+          ...(facts.holds_stay_permit === "yes"
+            ? [
+                {
+                  id: "stay_permit_code",
+                  labelI18nKey: "tree.stay_permit_code",
+                },
+              ]
+            : [
+                {
+                  id: "current_status_code",
+                  labelI18nKey: "tree.current_status_code",
+                },
+              ]),
         ]
       : []),
     { id: "overstay_days", labelI18nKey: "tree.overstay_days" },
