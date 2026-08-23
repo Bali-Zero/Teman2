@@ -1,74 +1,124 @@
-task_id: ops-visaoracle-wrapper-header-0823
+task_id: ops-seat6-reflexion
 gear: 3
-l_level: L1
+l_level: L2
 gate_class: opus
 objective: |
-  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
-  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
-  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
+  `scripts/wr3_reflexion_synthesis.py::_collect_claude_seats()` — the seat enumerator
+  for the weekly reflexion cron (`com.balizero.wr3.reflexion.weekly.plist`, LOADED and
+  live) — carried the same pre-remap assumption already fixed once in
+  `cli_runtime.py` (PR #4640) and again in `claude-cascade.sh` /
+  `wr3_dispatch_v2.py` (PR #4644): `range(1, 6)` (stops at slot 5, never reaches 6)
+  and `label = "slot5-team" if slot == 5`. Until the 2026-08-23 fleet re-map that was
+  correct — slot 5 WAS the Team seat. After the re-map, slot 5 became
+  kaiser198719871987@gmail.com (a plain MAX seat) and the Team seat moved to slot 6.
+  Since then this specific cron has been logging "slot5-team" against a MAX seat's
+  own token and has never once reached the real Team seat, which sits one slot past
+  where this loop stops looking.
 
-  This PR is documentation-only, in the strict sense that it edits two comment lines in a
-  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
-  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
-  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
-  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
-  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
-  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
-  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
-  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
-  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
-  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
-  **Severity, stated precisely so a future reader does not over-read this**: because
-  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
-  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
-  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
-  do) — the two are different failure classes and this PR only ever claims to fix the former.
+  This is the third and, per the diagnosis handed to this session, LAST consumer
+  carrying the stale map — deliberately fixed as its own small PR rather than folded
+  into #4644, per the "one PR, one concern" rule (CLAUDE.md Agent PR Contract #1).
 
-  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
-  hot-zone by path, not by content. The evidence below is sized to match — it is not an
-  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
+  Fix: `range(1, 6)` -> `range(1, 7)`; `"slot5-team" if slot == 5` ->
+  `"slot6-team" if slot == 6`. Slot order is preserved exactly (5 MAX seats first,
+  Team last, appended never inserted) — same invariant #4640/#4644 already
+  established, extended here to the third consumer.
+
+  ADDITIONAL FINDING (this session's own independent verification, not in the
+  diagnosis handed down): the SAME 2 tests in
+  `scripts/tests/test_claude_cascade_shell.py` that PR #4644 already fixed once
+  (per that PR's own evidence pack, commit cd01a1ffc) were RED AGAIN on this
+  branch — confirmed independently against this PR's own live CI run (the
+  "antidotes" required check, job "Codex seat corpus"), not merely inferred from
+  #4644's history. `agent/nuzantara/ops/seat6-reflexion` branches from
+  `agent/nuzantara/ops/seat6-cascade`'s commit `4d8050f45` — the fix commit
+  itself, NOT the later evidence-pack commit `6b405786f` that a separate session
+  pushed to that sibling branch afterward. Because a stacked branch inherits its
+  parent's history at the commit it forked from, not whatever the parent branch
+  grows into later, `test_claude_cascade_shell.py`'s fix (`cd01a1ffc`, pushed to
+  `agent/nuzantara/ops/seat6-cascade` AFTER `4d8050f45`) was never an ancestor of
+  this branch and its own diff against origin/main reintroduced the same 2
+  failures. This is not a new regression from this PR's own 2-file change (verified:
+  reverting only `scripts/wr3_reflexion_synthesis.py` in a scratch copy does not
+  touch these 2 tests at all) — it is a branch-topology gap between two sibling
+  PRs sharing one physical worktree, the same class of hazard
+  cicatrix-superscar.md family #5 names. Fixed in a separate commit (`b9e5bddb7`)
+  before this evidence commit, re-deriving the exact same fix #4644 already made
+  (insert the slot-6 "team-wrapper" step into the expected label chain; correct
+  the stale "claude-token-5-team-wrapper" stderr string to
+  "claude-token-6-team-wrapper"), verified against this PR's own CI failure log
+  byte-for-byte rather than copied blind.
 constraints:
-  - "set -u and every executable line in the file are untouched — diff is exactly the two
-    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
-    reading the full post-diff file."
-  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
-    already carries the correct hyphen form on both sides and needs no change."
-  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
-    lower in the same file — those underscores are legitimate (organ id / log-dir naming
-    convention, not a file path claim) and match the live log directory verified on Pro this
-    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
+  - "Slot 6 stays LAST in every enumeration this PR touches — never promoted ahead
+    of a MAX seat. Same invariant as PR #4640 (seat6-consumers) and PR #4644
+    (seat6-cascade)."
+  - "`_synthesis()`'s shared default note ('slot-five-success') is deliberately
+    left alone in the test file — an unrelated schema-rotation test depends on
+    the exact string — the note is passed explicitly ('slot-six-success') only
+    where the seat-6 behaviour is what's under test."
+  - "The `test_claude_cascade_shell.py` fix must not change behaviour for any of
+    the other 60 pre-existing tests in that file — verified by running the full
+    file, not just the 2 that were red."
 acceptance:
-  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    shows the Canon and Live lines using the hyphen form.'
-  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    == 0 (underscore form gone).'
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
-  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
-    declared; this PR only fixes the wrapper's self-description)."
-  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
-    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
-    needed or performed.'
+  - "scripts/tests/test_wr3_reflexion_oauth_fleet.py: 7 passed (the file's own,
+    dedicated coverage for `_collect_claude_seats()` and `_run_claude_fleet()`)."
+  - "Reverting `range(1, 7)` back to `range(1, 6)` (plus the matching label) in a
+    scratch copy turns exactly 2 of those 7 tests red — the claimed load-bearing
+    property, verified empirically, not asserted from the commit message alone."
+  - "scripts/tests/test_claude_oauth_slot6_coverage.py: 31 passed (the
+    cross-consumer coverage census; wr3_reflexion_synthesis.py is intentionally
+    NOT one of its 16 censused consumers — it has its own dedicated test file,
+    same as wr3_dispatch_v2.py)."
+  - "scripts/tests/test_claude_cascade_shell.py: 62 passed (60 pre-existing + 2
+    that were RED against this branch's own diff before this session's fix, now
+    green — see objective for why they were red again despite #4644 already
+    fixing the same 2 tests once)."
+  - "python3 -m py_compile scripts/wr3_reflexion_synthesis.py: exit 0."
 consumer_map:
-  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
-    agent reading its header is the only consumer of the changed lines."
-  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
-    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
-    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
-    Confirmed by reading the line: it does not touch this already-born organ."
-  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
-  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
-    the header comment is repo-side documentation only, the live file's own header will match
-    once this lands and the deploy pattern for this pair (already-armed organ, header-only
-    change) next syncs it — no urgency, no functional drift in the meantime."
+  - "scripts/wr3_reflexion_synthesis.py::_collect_claude_seats() — the weekly
+    reflexion cron's seat enumerator, invoked by `_run_claude_fleet()`, invoked
+    by `com.balizero.wr3.reflexion.weekly.plist` (LOADED, confirmed live per the
+    diagnosis handed to this session)."
+  - "scripts/tests/test_claude_cascade_shell.py — hermetic fake-fleet regression
+    suite for claude-cascade.sh; NOT this PR's own target file, but genuinely
+    broken by this PR's own diff for branch-topology reasons explained in
+    objective, and therefore in scope for this pack."
+  - "Everything already covered by PR #4640 (seat6-consumers) and PR #4644
+    (seat6-cascade) — this PR's diff is cumulative with both while all three are
+    open (unmerged), per GitHub's PR-diff semantics for a stacked branch."
 risks:
-  - "None identified to the running organ: the change is comment-only, `set -u` and all
-    executable lines are byte-identical before/after."
-  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
-    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
-    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
-    a lint-blocking drift."
+  - "This PR's diff, as computed against origin/main while #4640 and #4644 are
+    both still open and unmerged, includes their full changes too (GitHub PR-diff
+    semantics for a stacked branch) — the receipts and net-lines below describe
+    the diff CI actually evaluates today, not just this PR's own 2 commits, so a
+    reader comparing this pack's file list against the PR's own 'new commits'
+    view should expect the larger cumulative set."
+  - "3 pre-existing test failures in scripts/tests/test_claude_oauth_runtime_fallback.py
+    (test_wr2_metrics_wrapper_reaches_slot_five,
+    test_wr2_wrapper_accepts_valid_quota_prose_without_rotation,
+    test_wr2_timeout_kills_descendant_process_group) — all subprocess.TimeoutExpired
+    against infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh. Verified
+    NOT caused by this PR, #4640, or #4644: reverting #4640's 1-line change to
+    that wrapper in a scratch copy leaves all 3 still failing identically. Not
+    fixed here — out of scope (a pre-existing local-sandbox timeout, not a logic
+    defect this diff introduced) and left as a note rather than a 4th round on an
+    unrelated cause."
+  - "Once #4640 and #4644 merge, this branch's own diff against main will narrow
+    to just this PR's 2 substantive commits (the seat-6 fix + the
+    test_claude_cascade_shell.py repair) — not a defect, a reading note for
+    whoever reviews this pack before the siblings merge."
 grader:
-  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
-  review of this exact diff, dispatched fresh, not the author
-budget: 1 external review seat, no council (task does not warrant one)
-pii: none
+  session (nuzantara), independent of the diff's authorship — dispatched to
+  close the harness-floor Gear-3 evidence gap on an already-authored,
+  already-diagnosed fix; verification performed by re-running the full test
+  suite this diff touches (not just the file the diagnosis named), which
+  surfaced a real branch-topology gap (test_claude_cascade_shell.py reverting to
+  red on this specific branch) the handed-down diagnosis had not anticipated.
+budget: 1 session, no council (mechanical range/label extension on a third
+  consumer, plus one hermetic test-fixture repair already proven once on a
+  sibling PR and re-derived independently here, both verified empirically
+  against this PR's own live CI)
+pii:
+  "clean — the identities touched are the operator's own internal multi-account
+  routing config (pre-existing in the repo, same finding as PR 4640's and 4644's
+  packs), not client PII/OSINT."
