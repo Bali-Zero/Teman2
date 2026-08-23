@@ -2191,12 +2191,21 @@ jobs:
   # (`VISA_ORACLE_FULLSTACK=1`) and owns its own disposable database via
   # `backend/scripts/visa_engine/fullstack_smoke.py` — a separate job so it
   # never touches the e2e-tests job's shared Postgres/Redis services or its
-  # `--grep "page Page|@offline"` filter. `continue-on-error: true` at job
-  # level keeps it advisory even if a future branch-protection change adds
-  # its name by mistake. Promote to required only after it has demonstrably
-  # passed a few times in CI — see the PENDING-ARMS row opened alongside this
-  # job (`.claude/skills/modus/PENDING-ARMS.md`, 2026-08-23, mouth fullstack
-  # E2E lane).
+  # `--grep "page Page|@offline"` filter.
+  #
+  # `continue-on-error: true` at job level does NOT make this job's own
+  # check-run report success when a step fails — measured 2026-08-24 on its
+  # first real run (job 97222544510, PR #4709): the step failed and the
+  # check-run's `conclusion` on the commit was `failure`, same as any other
+  # red job, `gh pr checks` included. What continue-on-error actually buys:
+  # the overall WORKFLOW RUN conclusion is not dragged down by this job, and
+  # any future job that `needs:` this one still proceeds. The reason this
+  # job does not block merging TODAY is that its name is absent from
+  # `main`'s branch protection `required_status_checks` — that is the one
+  # thing standing between "advisory" and "blocking", so adding this job's
+  # name there is exactly the mistake this paragraph warns against; nothing
+  # in the job's own config stops it. Promote to required only after it has
+  # demonstrably passed a few times in CI.
   visa-oracle-fullstack-smoke:
     name: Visa Oracle fullstack smoke (advisory)
     needs: [changes]
@@ -2274,6 +2283,14 @@ jobs:
           VISA_ORACLE_FULLSTACK: "1"
           VISA_ORACLE_SMOKE_ADMIN_DSN: postgresql://test:test@127.0.0.1:5432/postgres
           PYTHONDONTWRITEBYTECODE: "1"
+          # Importing backend.app.core constructs Settings() at module scope
+          # (backend/app/core/config.py), which requires these two even for a
+          # test-only smoke that never serves real auth. Same throwaway,
+          # non-secret values used by every other job in this workflow that
+          # imports the backend package (see e.g. the "Run backend stability
+          # gate" step above) — not a new convention.
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
         run: |
           cd apps/backend-rag
           PYTHONPATH=. python -m backend.scripts.visa_engine.fullstack_smoke
