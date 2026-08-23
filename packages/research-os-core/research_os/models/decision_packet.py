@@ -92,13 +92,26 @@ class EvidenceSummary(FrozenCoreModel):
     names, so this shape is invented. ``citations`` reuses the generic
     ``ExactObjectRef`` (rather than a new type) because a citation may point
     at either a ``Claim`` or an ``Evidence`` object, and only the generic
-    primitive carries ``object_kind`` to disambiguate which. Required
-    non-empty because a summary claiming to be "citation-bearing" with zero
-    citations contradicts its own name.
+    primitive carries ``object_kind`` to disambiguate which.
+
+    CONTESTED GROUND: an earlier revision also required ``citations`` to be
+    non-empty, on the reasoning that a summary calling itself
+    "citation-bearing" with zero citations contradicts its own name. That
+    rule was removed -- it rejected a packet CONTRACTS.md Rule 9 (section 1)
+    explicitly permits: "Missing evidence is not negative evidence. `unknown`,
+    `inconclusive`, and `insufficient_evidence` are valid outcomes." A
+    DecisionPacket with empty ``claim_refs`` and empty ``evidence_refs`` is
+    already accepted by this model (neither field carries a ``min_length``);
+    demanding non-empty ``citations`` here rejected exactly that packet one
+    field later, for the same missing evidentiary support. Section 7 also
+    ranks ``evidence_summary`` as subordinate to those reference lists --
+    "explanatory and cannot substitute for those references" -- so making it
+    the one mandatory citation carrier inverted that ordering. See
+    ``fixtures/decision_packet/valid_no_evidentiary_support.json``.
     """
 
     text: str = Field(min_length=1)
-    citations: tuple[ExactObjectRef, ...] = Field(min_length=1)
+    citations: tuple[ExactObjectRef, ...]
 
 
 class NoveltyWindow(FrozenCoreModel):

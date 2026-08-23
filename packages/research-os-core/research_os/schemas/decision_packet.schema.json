@@ -162,13 +162,12 @@
     },
     "EvidenceSummary": {
       "additionalProperties": false,
-      "description": "``evidence_summary: structured citation-bearing summary``.\n\nINTERPRETATION (spec silent on shape -- flagging per mandate, not\npresenting this as spec-derived): four words of prose give no key\nnames, so this shape is invented. ``citations`` reuses the generic\n``ExactObjectRef`` (rather than a new type) because a citation may point\nat either a ``Claim`` or an ``Evidence`` object, and only the generic\nprimitive carries ``object_kind`` to disambiguate which. Required\nnon-empty because a summary claiming to be \"citation-bearing\" with zero\ncitations contradicts its own name.",
+      "description": "``evidence_summary: structured citation-bearing summary``.\n\nINTERPRETATION (spec silent on shape -- flagging per mandate, not\npresenting this as spec-derived): four words of prose give no key\nnames, so this shape is invented. ``citations`` reuses the generic\n``ExactObjectRef`` (rather than a new type) because a citation may point\nat either a ``Claim`` or an ``Evidence`` object, and only the generic\nprimitive carries ``object_kind`` to disambiguate which.\n\nCONTESTED GROUND: an earlier revision also required ``citations`` to be\nnon-empty, on the reasoning that a summary calling itself\n\"citation-bearing\" with zero citations contradicts its own name. That\nrule was removed -- it rejected a packet CONTRACTS.md Rule 9 (section 1)\nexplicitly permits: \"Missing evidence is not negative evidence. `unknown`,\n`inconclusive`, and `insufficient_evidence` are valid outcomes.\" A\nDecisionPacket with empty ``claim_refs`` and empty ``evidence_refs`` is\nalready accepted by this model (neither field carries a ``min_length``);\ndemanding non-empty ``citations`` here rejected exactly that packet one\nfield later, for the same missing evidentiary support. Section 7 also\nranks ``evidence_summary`` as subordinate to those reference lists --\n\"explanatory and cannot substitute for those references\" -- so making it\nthe one mandatory citation carrier inverted that ordering. See\n``fixtures/decision_packet/valid_no_evidentiary_support.json``.",
       "properties": {
         "citations": {
           "items": {
             "$ref": "#/$defs/ExactObjectRef"
           },
-          "minItems": 1,
           "title": "Citations",
           "type": "array"
         },
