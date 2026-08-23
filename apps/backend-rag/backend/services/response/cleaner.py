@@ -52,6 +52,16 @@ _OUT_OF_DOMAIN_BY_LANGUAGE: dict[str, dict[str, str]] = {
             "телефонів чи домашніх адрес. Можу допомогти з візами, відкриттям компанії "
             "або юридичними питаннями в Індонезії. Що вас цікавить?"
         ),
+        "GERMAN": (
+            "Ich habe keinen Zugriff auf personenbezogene Daten Dritter wie Steuernummern, "
+            "Telefonnummern oder Privatadressen. Kann ich Ihnen bei Visa, Firmengründung "
+            "oder rechtlichen Fragen in Indonesien helfen?"
+        ),
+        "SPANISH": (
+            "No tengo acceso a datos personales de terceros, como números de identificación "
+            "fiscal, teléfonos o direcciones privadas. ¿Puedo ayudarle con visados, "
+            "constitución de empresas o cuestiones legales en Indonesia?"
+        ),
     },
     "realtime_info": {
         "ITALIAN": (
@@ -78,6 +88,18 @@ _OUT_OF_DOMAIN_BY_LANGUAGE: dict[str, dict[str, str]] = {
             "Я не маю доступу до даних у реальному часі — котирувань чи курсів валют: "
             "я назвав би цифру, яку не можу перевірити. Для цього краще дивитися "
             "актуальне джерело. А з візами, KITAS чи бізнесом в Індонезії — допоможу."
+        ),
+        "GERMAN": (
+            "Ich habe keinen Zugriff auf Echtzeitdaten wie Marktpreise oder Wechselkurse — "
+            "ich würde eine Zahl nennen, die ich nicht überprüfen kann. Dafür schauen Sie "
+            "besser in eine aktuelle Quelle. Bei Visa, KITAS oder Geschäften in Indonesien "
+            "helfe ich stattdessen gerne."
+        ),
+        "SPANISH": (
+            "No tengo acceso a datos en tiempo real, como precios de mercado o tipos de "
+            "cambio — le daría una cifra que no puedo verificar. Para eso, consulte una "
+            "fuente actualizada. En cambio, puedo ayudarle con visados, KITAS o negocios "
+            "en Indonesia."
         ),
     },
     "off_topic": {
@@ -107,6 +129,16 @@ _OUT_OF_DOMAIN_BY_LANGUAGE: dict[str, dict[str, str]] = {
             "імміграція, реєстрація компанії (PT PMA) та юридичні питання для "
             "іноземців в Індонезії. Чи можу допомогти в цих темах?"
         ),
+        "GERMAN": (
+            "Das liegt außerhalb meines Fachgebiets. Ich bin Zantara, die KI-Assistentin "
+            "von {company}: Visa, Einwanderung, Firmengründung (PT PMA) und rechtliche "
+            "Angelegenheiten für Ausländer in Indonesien. Kann ich Ihnen dabei helfen?"
+        ),
+        "SPANISH": (
+            "Ese tema está fuera de mi área. Soy Zantara, la asistente de IA de {company}: "
+            "visados, inmigración, constitución de empresas (PT PMA) y asuntos legales para "
+            "extranjeros en Indonesia. ¿Puedo ayudarle en algo de eso?"
+        ),
     },
     "unknown": {
         "ITALIAN": (
@@ -130,6 +162,16 @@ _OUT_OF_DOMAIN_BY_LANGUAGE: dict[str, dict[str, str]] = {
             "З цієї теми в мене немає конкретної інформації. Можу допомогти з візами, "
             "KITAS, реєстрацією PT PMA чи локальної PT та іншими бізнес-питаннями в Індонезії."
         ),
+        "GERMAN": (
+            "Dazu habe ich keine konkreten Informationen. Ich kann Ihnen bei Visa, KITAS, "
+            "der Gründung einer PT PMA oder einer lokalen PT sowie anderen geschäftlichen "
+            "Fragen in Indonesien helfen."
+        ),
+        "SPANISH": (
+            "No tengo información específica sobre eso. Puedo ayudarle con visados, KITAS, "
+            "la constitución de una PT PMA o una PT local, y otros asuntos de negocios "
+            "en Indonesia."
+        ),
     },
 }
 
@@ -141,8 +183,21 @@ def get_out_of_domain_response(reason: str, language: str = "ITALIAN") -> str:
     the ``unknown`` refusal. An unmapped language degrading to ENGLISH is
     deliberate and declared; an unmapped language degrading to ITALIAN — which is
     what shipping the raw table did — is not.
+
+    Logs a warning on that fallback, same rationale as ``get_localized_stub``
+    (this table's own SSOT docstring above): a caller feeding the wrong
+    detector's vocabulary in here degraded silently before 2026-08-23.
     """
     by_language = _OUT_OF_DOMAIN_BY_LANGUAGE.get(reason) or _OUT_OF_DOMAIN_BY_LANGUAGE["unknown"]
+    if language not in by_language:
+        logger.warning(
+            "get_out_of_domain_response: no %r entry for reason=%r — falling back "
+            "to ENGLISH. If %r is a language detect_query_language can emit, "
+            "translate it here or add it to DECLARED_ENGLISH_FALLBACK on purpose.",
+            language,
+            reason,
+            language,
+        )
     text = by_language.get(language) or by_language["ENGLISH"]
     return text.format(company=settings.COMPANY_NAME)
 

@@ -42,9 +42,10 @@ from backend.services.rag.agentic._reasoning_stubs import (
 #: Languages ``detect_query_language`` can return that we knowingly serve in
 #: English. Adding a language to the detector without translating it forces a
 #: deliberate entry here — that is the point. "UNKNOWN" is not a language.
-DECLARED_ENGLISH_FALLBACK: frozenset[str] = frozenset(
-    {"CHINESE", "ARABIC", "FRENCH", "SPANISH", "GERMAN"}
-)
+#:
+#: GERMAN and SPANISH moved OUT of this set on 2026-08-23 (translated into
+#: PROTOCOL_LANGUAGES instead) — see _reasoning_stubs.py's module docstring.
+DECLARED_ENGLISH_FALLBACK: frozenset[str] = frozenset({"CHINESE", "ARABIC", "FRENCH"})
 
 
 def _languages_the_detector_can_emit() -> set[str]:

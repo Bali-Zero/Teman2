@@ -43,26 +43,43 @@ would be false on the others. Channel-specific hand-off belongs at the channel
 boundary (``wa_inbox_bot``), not in this table.
 
 Language coverage: ``query_helpers.detect_query_language`` can emit ten
-values; this table carries full translations for the five protocol languages
-(``PROTOCOL_LANGUAGES``) and lets the rest fall back to ENGLISH by design.
+values; this table carries full translations for the seven protocol languages
+(``PROTOCOL_LANGUAGES``) and lets the rest (CHINESE/ARABIC/FRENCH — see
+``DECLARED_ENGLISH_FALLBACK`` in ``test_reasoning_stubs_language_coverage.py``)
+fall back to ENGLISH by design.
 ``test_reasoning_stubs_language_coverage.py`` pins both halves of that claim,
 so a language added to the detector cannot silently start serving English.
+
+GERMAN and SPANISH joined the protocol set on 2026-08-23: ``detect_query_language``
+could already emit both (the ``_LATIN_MARKERS`` detector rows), but this table
+only had them in the silent-English-fallback set — a DE/ES client hit any
+abstain/error/confused branch in ``reasoning.py`` and read English. Promoted
+here, not left as a one-off patch, because the same table backs every call site
+(``reasoning.py``'s ReAct loop, ``wa_finalize.py``'s abstain-fairness path) —
+the fix has to live where the silent fallback did.
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 _FALLBACK_MESSAGE = "I'm sorry, I cannot fulfill this request."
 
 #: The languages ZANTARA's LANGUAGE_PROTOCOL commits to (zantara_core.py).
 #: Every key in STUB_MESSAGES must carry a real translation for each — a
 #: missing one degrades to English silently, which is how Russian and
-#: Ukrainian clients were reading English refusals until 2026-07-27.
+#: Ukrainian clients were reading English refusals until 2026-07-27, and how
+#: German and Spanish clients were reading it until 2026-08-23.
 PROTOCOL_LANGUAGES: tuple[str, ...] = (
     "ITALIAN",
     "ENGLISH",
     "INDONESIAN",
     "RUSSIAN",
     "UKRAINIAN",
+    "GERMAN",
+    "SPANISH",
 )
 
 STUB_MESSAGES: dict[str, dict[str, str]] = {
@@ -101,6 +118,20 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "Це має подивитися колега з Bali Zero. "
             "Якщо тим часом надішлете документ або дату, на яку спираєтесь, "
             "я спробую ще раз із ними."
+        ),
+        "GERMAN": (
+            "Dazu habe ich keine verlässliche Quelle, und ich möchte lieber nicht raten — "
+            "bei Genehmigungen und Fristen ist eine falsche Antwort teuer. "
+            "Das muss sich ein Kollege von Bali Zero ansehen. "
+            "Wenn Sie mir in der Zwischenzeit ein Dokument oder ein Bezugsdatum schicken, "
+            "versuche ich es damit noch einmal."
+        ),
+        "SPANISH": (
+            "Para esto no tengo una fuente fiable, y prefiero no adivinar — "
+            "con permisos y plazos, una respuesta equivocada sale cara. "
+            "Esto lo tiene que revisar un colega de Bali Zero. "
+            "Si mientras tanto me envía un documento o una fecha de referencia, "
+            "puedo intentarlo de nuevo con eso."
         ),
     },
     # Same refusal, for the one case where the promise is now backed: a human
@@ -151,6 +182,20 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "Якщо тим часом надішлете документ або дату, на яку спираєтесь, "
             "я спробую ще раз із ними."
         ),
+        "GERMAN": (
+            "Dazu habe ich keine verlässliche Quelle, und ich möchte lieber nicht raten — "
+            "bei Genehmigungen und Fristen ist eine falsche Antwort teuer. "
+            "Ich habe es an das Bali-Zero-Team weitergeleitet. "
+            "Wenn Sie mir in der Zwischenzeit ein Dokument oder ein Bezugsdatum schicken, "
+            "versuche ich es damit noch einmal."
+        ),
+        "SPANISH": (
+            "Para esto no tengo una fuente fiable, y prefiero no adivinar — "
+            "con permisos y plazos, una respuesta equivocada sale cara. "
+            "Se lo he pasado al equipo de Bali Zero. "
+            "Si mientras tanto me envía un documento o una fecha de referencia, "
+            "puedo intentarlo de nuevo con eso."
+        ),
     },
     # WHAT THE ``truncated_tail`` TEXT IS FOR (2026-08-11)
     # ----------------------------------------------------
@@ -188,6 +233,14 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "\n\n_(Я скоротив відповідь, щоб вона вмістилася в ліміт WhatsApp. "
             "Запитайте про конкретний пункт — розкажу докладніше.)_"
         ),
+        "GERMAN": (
+            "\n\n_(Ich habe die Antwort gekürzt, damit sie ins WhatsApp-Limit passt. "
+            "Fragen Sie mich nach einem bestimmten Punkt, und ich gehe genauer darauf ein.)_"
+        ),
+        "SPANISH": (
+            "\n\n_(He acortado la respuesta para que quepa en el límite de WhatsApp. "
+            "Pregúnteme por un punto concreto y se lo detallo.)_"
+        ),
     },
     # WHAT THE ``low_confidence_note`` TEXT IS FOR (2026-08-11)
     # --------------------------------------------------------
@@ -221,6 +274,14 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
         "UKRAINIAN": (
             "\n\n_(Ця відповідь спирається на джерела, які я не змогла повністю "
             "перевірити: колега з Bali Zero їх перевіряє.)_"
+        ),
+        "GERMAN": (
+            "\n\n_(Diese Antwort stützt sich auf Quellen, die ich nicht vollständig prüfen "
+            "konnte: ein Kollege von Bali Zero überprüft sie noch einmal.)_"
+        ),
+        "SPANISH": (
+            "\n\n_(Esta respuesta se basa en fuentes que no pude verificar del todo: "
+            "un colega de Bali Zero la está revisando.)_"
         ),
     },
     "abstain_detailed": {
@@ -279,6 +340,28 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "Якщо ваше питання про це — переформулюйте, і я спробую ще раз. "
             "Якщо ні — на нього має подивитися колега з Bali Zero."
         ),
+        "GERMAN": (
+            "Zu dieser konkreten Frage habe ich in den offiziellen Dokumenten nicht genug "
+            "verifizierte Informationen, und ich sage das lieber, statt mir etwas auszudenken.\n\n"
+            "Darin bin ich dagegen sicher:\n"
+            "• Visa und KITAS\n"
+            "• Firmengründung (PT PMA)\n"
+            "• Steuern und Meldungen\n"
+            "• Verfahren und Unterlagen\n\n"
+            "Wenn Ihre Frage dazu gehört, formulieren Sie sie gerne neu. "
+            "Andernfalls muss sich ein Kollege von Bali Zero das ansehen."
+        ),
+        "SPANISH": (
+            "Sobre esta pregunta concreta no tengo suficiente información verificada en los "
+            "documentos oficiales, y prefiero decírselo antes que inventar algo.\n\n"
+            "En esto sí estoy seguro:\n"
+            "• Visados y KITAS\n"
+            "• Constitución de empresa (PT PMA)\n"
+            "• Impuestos y trámites\n"
+            "• Procedimientos y documentos\n\n"
+            "Si su pregunta entra ahí, puede reformularla. "
+            "Si no, lo tiene que revisar un colega de Bali Zero."
+        ),
     },
     "error": {
         "ITALIAN": (
@@ -300,6 +383,14 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
         "UKRAINIAN": (
             "У мене технічний збій, і зараз я не можу виконати запит. "
             "Спробуйте, будь ласка, за кілька хвилин."
+        ),
+        "GERMAN": (
+            "Ich habe gerade ein technisches Problem und kann die Anfrage im Moment nicht "
+            "bearbeiten. Bitte versuchen Sie es in ein paar Minuten erneut."
+        ),
+        "SPANISH": (
+            "Tengo un problema técnico y no puedo completar la solicitud en este momento. "
+            "Por favor, inténtelo de nuevo en unos minutos."
         ),
     },
     "confused": {
@@ -323,6 +414,15 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "Вибачте, я не зовсім зрозумів ваш запит. Не могли б ви сформулювати інакше? "
             "Я допоможу з візами, компаніями та законами в Індонезії."
         ),
+        "GERMAN": (
+            "Entschuldigung, ich habe Ihre Anfrage nicht ganz verstanden. Könnten Sie sie "
+            "anders formulieren? Ich kann Ihnen bei Visa, Unternehmen und Gesetzen in "
+            "Indonesien helfen."
+        ),
+        "SPANISH": (
+            "Disculpe, no he entendido bien su solicitud. ¿Podría reformularla? "
+            "Puedo ayudarle con visados, empresas y leyes en Indonesia."
+        ),
     },
 }
 
@@ -332,6 +432,26 @@ def get_localized_stub(key: str, language: str) -> str:
 
     Fallback order: requested language → ENGLISH → generic hardcoded message.
     Returns the generic message if the key itself is unknown.
+
+    Logs a warning whenever the requested language is not a direct hit — this
+    covers BOTH the deliberately-undeclared-for-translation languages
+    (CHINESE/ARABIC/FRENCH — see ``DECLARED_ENGLISH_FALLBACK`` in
+    ``test_reasoning_stubs_language_coverage.py``) and a genuinely wrong value
+    (e.g. a caller feeding this the lowercase codes
+    ``backend.services.communication.language_detector.detect_language``
+    emits — 'de', 'es' — instead of the protocol names this table keys on).
+    Before 2026-08-23 that second case degraded to English with nothing to
+    grep for; a caller wiring the wrong detector into this function now at
+    least leaves a trace instead of a silent, undiagnosable language drift.
     """
     lang_stubs = STUB_MESSAGES.get(key, {})
+    if language not in lang_stubs:
+        logger.warning(
+            "get_localized_stub: no %r translation for key=%r — falling back to "
+            "ENGLISH. If %r is a language detect_query_language can emit, translate "
+            "it here or add it to DECLARED_ENGLISH_FALLBACK on purpose.",
+            language,
+            key,
+            language,
+        )
     return lang_stubs.get(language, lang_stubs.get("ENGLISH", _FALLBACK_MESSAGE))
