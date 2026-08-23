@@ -98,7 +98,7 @@
       "slots": {
         "TP1": {
           "label": "Token Plan (Model Studio, Singapore region) — \"Pro Plan\"",
-          "lane": "DashScope API key — Qwen 3.8 Max / Qwen 3.7 / GLM 5.2 / Wan. Key registered: ~/.qwen/settings.json env BAILIAN_TOKEN_PLAN_API_KEY (0600). PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md): burn-rate measured from 7 days of production use (2026-08-08→14, 1330 calls, 211.7M tokens locally / 217.06M per console, ~2.5% delta — reconciliation, not smoothed over, see doc §Console ground truth). Credits/usage endpoint NOT exposed via API (20 candidate paths probed, all 404) — CONSOLE-VERIFIED 2026-08-14 (Zero + team-lead, Model Studio dashboard): see console_verified_2026_08_14 below for the actual plan/quota/roster ground truth that supersedes the operator[gui] placeholder. PER-MODEL STATUS (2026-08-14): qwen3.8-max ARMED (459 calls / 74.1M tokens measured) · qwen3.7-plus ARMED (65 calls / 6.4M tokens measured) · deepseek-v4-flash-0731 ARMED (806 calls / 131.2M tokens measured) · deepseek-v4-pro STAYS PROBATION — zero measured calls in the same window, NOT the same model/tier as v4-flash, do not conflate · glm-5.2 STAYS PROBATION — zero measured TP1 calls (z.ai remains the active GLM door) · MiniMax-M2.5 and kimi-k2.x are NOT IN THIS PLAN AT ALL (console roster, 2026-08-14 — see console_verified_2026_08_14.roster; the 2026-08-10 \"15 models incl. MiniMax/kimi-k2.x\" census was wrong, PROBE-4 for MiniMax is moot, corrected below and in role_chains). Metered-equivalent cost ceiling (official Aug-2026 Alibaba list rates, cache-adjusted): ~$42/7d ≈ ~$181/30d-run-rate — kept as a reference number only; the REAL constraint is the rolling quota in console_verified_2026_08_14.quota (56.31% used, within plan). See research/operations/2026-08-14-probe1-tp1-burn-rate.md for full citations.",
+          "lane": "DashScope API key — Qwen 3.8 Max / Qwen 3.7 / GLM 5.2 / Wan. Key registered: ~/.qwen/settings.json env BAILIAN_TOKEN_PLAN_API_KEY (0600), loaded by load_tp1_settings_key(); OpenAI-compatible base https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1. PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md): burn-rate measured from 7 days of production use (2026-08-08→14, 1330 calls, 211.7M tokens locally / 217.06M per console, ~2.5% delta — reconciliation, not smoothed over, see doc §Console ground truth). Credits/usage endpoint NOT exposed via API (20 candidate paths probed, all 404) — CONSOLE-VERIFIED 2026-08-14 (Zero + team-lead, Model Studio dashboard): see console_verified_2026_08_14 below for the actual plan/quota/roster ground truth that supersedes the operator[gui] placeholder. PER-MODEL STATUS (2026-08-14): qwen3.8-max ARMED (459 calls / 74.1M tokens measured) · qwen3.7-plus ARMED (65 calls / 6.4M tokens measured) · deepseek-v4-flash-0731 ARMED (806 calls / 131.2M tokens measured) · deepseek-v4-pro STAYS PROBATION — zero measured calls in the same window, NOT the same model/tier as v4-flash, do not conflate · glm-5.2 had zero measured TP1 calls in that historical window; current live seat is tp1-glm-5.2 (probe LIVE 2026-08-23) · MiniMax-M2.5 and kimi-k2.x are NOT IN THIS PLAN AT ALL (console roster, 2026-08-14 — see console_verified_2026_08_14.roster; the 2026-08-10 \"15 models incl. MiniMax/kimi-k2.x\" census was wrong, PROBE-4 for MiniMax is moot, corrected below and in role_chains). Metered-equivalent cost ceiling (official Aug-2026 Alibaba list rates, cache-adjusted): ~$42/7d ≈ ~$181/30d-run-rate — kept as a reference number only; the REAL constraint is the rolling quota in console_verified_2026_08_14.quota (56.31% used, within plan). See research/operations/2026-08-14-probe1-tp1-burn-rate.md for full citations.",
           "console_verified_2026_08_14": {
             "_doc": "Ground truth read directly from the Model Studio console by Zero + team-lead 2026-08-14 (screenshots), superseding every operator[gui]-flagged placeholder above. Key stays masked in the console UI — never transcribed in clear anywhere in this repo.",
             "plan": {
@@ -146,7 +146,7 @@
               "api_models_endpoint_reconciliation": "GET /compatible-mode/v1/models returns 11 of these 14 (all except the 3 happyhorse-1.1-* video-gen models, which are console-listed but not exposed on the OpenAI-compatible-mode models endpoint). 11+3=14 matches the console count exactly — this explains the discrepancy with the stale 2026-08-10 '15 models' census, which had miscounted in MiniMax/kimi-k2.x that are not actually part of this plan."
             },
             "additional_doors_registered_not_new_seats": [
-              "Anthropic-protocol base: https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic — same class as the z.ai claude-glm door; usable with ANTHROPIC_AUTH_TOKEN (OAuth-style bearer), NEVER ANTHROPIC_API_KEY (CLAUDE.md §5 Anthropic-SDK ban applies identically here)."
+              "Anthropic-protocol base: https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic — optional TP1 protocol adapter; usable with ANTHROPIC_AUTH_TOKEN (OAuth-style bearer), NEVER ANTHROPIC_API_KEY (CLAUDE.md §5 Anthropic-SDK ban applies identically here)."
             ],
             "unexploited_capabilities": [
               "image-gen: wan2.7-image / wan2.7-image-pro",
@@ -262,7 +262,7 @@
       "on_exhaustion": "queue"
     },
     "builder_primary": {
-      "note": "Workhorse-first intensification (ruling Zero 2026-08-15, reconfirmed 2026-08-19; MODEL_ROSTER §Throughput doctrine): this chain serves harness-native/Anthropic-specific BUILD units. Batch/iterative/review-cycle work routes FIRST to the flat workhorse doors (TP1 deepseek-v4-flash/qwen3.7-plus ARMED, GLM z.ai, agy) before any seat here.",
+      "note": "Workhorse-first intensification (ruling Zero 2026-08-15, reconfirmed 2026-08-19; MODEL_ROSTER §Throughput doctrine): this chain serves harness-native/Anthropic-specific BUILD units. Batch/iterative/review-cycle work routes FIRST to the flat workhorse doors (TP1 deepseek-v4-flash/qwen3.7-plus/glm-5.2 ARMED, agy) before any seat here.",
       "chain": [
         {
           "model": "claude-sonnet-5",
@@ -275,7 +275,7 @@
         {
           "model": "glm-5.2",
           "accounts": ["TP1"],
-          "note": "PROBATION — PROBE-1-residual closed 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md) but GLM-via-TP1 specifically shows ZERO measured calls in that window; z.ai remains the active GLM door. Promotion pending real TP1 GLM mileage, not blocked on PROBE-1 anymore."
+          "note": "TP1 seat tp1-glm-5.2 — LIVE-probed 2026-08-23. PROBE-1-residual closed 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md); that earlier window had zero GLM calls, while the current Alibaba door is now exercised."
         }
       ],
       "on_exhaustion": "queue"
@@ -306,7 +306,7 @@
         {
           "model": "glm-5.2",
           "accounts": ["TP1"],
-          "note": "primary door today: z.ai claude-glm shim while quota alive; TP1 after (see accounts.alibaba.slots.TP1). Zero's first-call ruling 2026-07-19 for compact reviews"
+          "note": "only live door: Alibaba TP1 seat tp1-glm-5.2 (see accounts.alibaba.slots.TP1); OpenAI-compatible base https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1, key loaded by load_tp1_settings_key() from ~/.qwen/settings.json. Zero's first-call ruling 2026-07-19 for compact reviews"
         },
         {
           "model": "kimi-k3",
