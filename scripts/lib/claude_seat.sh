@@ -38,6 +38,15 @@
 #   EXTRACTS the live classifier rather than copying it. If the extraction
 #   fails, this file refuses to run instead of guessing.
 
+# How many CLAUDE_CODE_OAUTH_TOKEN_<n> slots to consider. It is a VARIABLE and not
+# a literal because on 2026-08-23 this range read `1 2 3 4 5` in three separate
+# places: the Team seat was armed in the secrets file as slot 6 and no cron could
+# ever select it — with only that seat alive the picker returned SUSPEND while a
+# valid seat sat in the environment. Raise this when a seat is added; the three
+# call sites and the error message follow automatically.
+: "${CLAUDE_SEAT_SLOTS:=6}"
+_claude_seat_slots() { seq 1 "${CLAUDE_SEAT_SLOTS:-6}"; }
+
 _claude_seat_wrapper_path() {
     # Where is the cron-agent wrapper whose refusal classifier we reuse?
     # This file is deployed in TWO shapes and both must work:
@@ -114,7 +123,7 @@ _claude_seat_load_secrets() {
     # Only if the caller has not already supplied a seat — never clobber an
     # environment that was set up deliberately.
     local i var
-    for i in 1 2 3 4 5; do
+    for i in $(_claude_seat_slots); do
         var="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         [ -n "${!var:-}" ] && return 0
     done
@@ -145,7 +154,7 @@ claude_seat_run() {
     }
 
     local tokens=() labels=() i var tok existing is_dup
-    for i in 1 2 3 4 5; do
+    for i in $(_claude_seat_slots); do
         var="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         tok="${!var:-}"
         [ -z "$tok" ] && continue
@@ -168,7 +177,7 @@ claude_seat_run() {
         # Deliberately NOT falling through to a bare invocation: that is the
         # keychain identity, proven 0-for-905 under cron. Failing loudly beats
         # a call that silently returns an auth error as if it were an answer.
-        echo "claude_seat: no OAuth seat configured (looked for CLAUDE_CODE_OAUTH_TOKEN_1..5 and the legacy var)" >&2
+        echo "claude_seat: no OAuth seat configured (looked for CLAUDE_CODE_OAUTH_TOKEN_1..${CLAUDE_SEAT_SLOTS:-6} and the legacy var)" >&2
         echo "claude_seat: the bare keychain identity is NOT used as a fallback — it cannot work in a non-GUI session" >&2
         return 2
     fi
@@ -247,7 +256,7 @@ claude_seat_pick() {
         echo "claude_seat: default seat refused — trying numbered seats" >&2
     fi
     local i var tok seen=() dup existing
-    for i in 1 2 3 4 5; do
+    for i in $(_claude_seat_slots); do
         var="CLAUDE_CODE_OAUTH_TOKEN_${i}"; tok="${!var:-}"
         [ -z "$tok" ] && continue
         dup=0

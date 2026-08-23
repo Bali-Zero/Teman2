@@ -64,7 +64,7 @@ access-wall, dev identity su proxy PROD) · W97 (display-cap `[:40]` letto come 
 W101-recidiva-fly-backup (PARTIAL: Fase 2 mai parte) · W104 (`redis-cli` esce 0 con NOAUTH su stdout) ·
 W107 (curato 1 wrapper su 5) · W108 (19/20 cron muti, 2 cause) · W110 (heartbeat sull'organo sbagliato)
 · W116 (allarme su esito giusto, cura codice morto) · W118 (11h fermo, nessun check rosso) · W120
-(sentinella della famiglia stessa disarmata) · W121 (mutation testing su bytecode avvelenato).
+(sentinella della famiglia stessa disarmata) · W121 (mutation testing su bytecode avvelenato) · W122 (rosso mente: lavoro fatto, SIGINT→130).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W34/W32/W64/W69/W71/W74/503)
 
 ---

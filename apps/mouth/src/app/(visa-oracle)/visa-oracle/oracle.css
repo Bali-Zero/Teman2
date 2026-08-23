@@ -661,6 +661,15 @@ button.oracle-tree__step--editable:hover {
   font-size: var(--text-sm);
   line-height: 1.5;
 }
+/* A blocked answer is not a lane-aware courtesy note — reuse the same
+ * shape, tinted with the same "likely not" tokens the input-validation
+ * error already uses (oracle-input-error), so it reads as a hold rather
+ * than as ambient reassurance. */
+.oracle-question__notice--conflict {
+  border-color: var(--oracle-state-likely-not);
+  background: var(--oracle-state-likely-not-bg);
+  font-weight: 600;
+}
 .oracle-decision-boundary {
   margin: 0;
   padding: var(--space-3) var(--space-4);

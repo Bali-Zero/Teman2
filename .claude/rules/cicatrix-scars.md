@@ -1195,6 +1195,30 @@ W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desk
 
 ---
 
+---
+
+### 🐛 W122 (2026-08-23): il release_command Fly ha FATTO il lavoro e poi è uscito 130 — il deploy sano è stato abortito da un SEGNALE, non da un difetto
+
+_Scoperto 2026-08-23 su Mini, deployando PR #4609 (catena inviti portale). Il run `fly-deploy.yml` su `8a8487db4` è andato `completed/failure` e la produzione è rimasta sul build precedente._
+
+**TRAUMA.** Il `release_command` è `python -m backend.db.migrate apply-all && python -m backend.db.schema_audit`. Nei log **entrambi i passi sono riusciti**: `No pending migrations`, poi `SCHEMA AUDIT ... Result: OK — no errors`. Un secondo dopo Fly manda `SIGINT` al processo figlio, che esce con **130** (128+2 = terminato da SIGINT). Fly legge il non-zero e aborta il deploy: `release command failed - aborting deployment`.
+
+```
+06:12:27  migration_manager - INFO - No pending migrations
+06:12:28  INFO Sending signal SIGINT to main child process w/ PID 651
+06:12:28  Result: OK — no errors
+06:12:29  INFO Main child exited with signal (with signal 'SIGINT')
+06:12:37  ✖ release_command failed ... exit code 130
+```
+
+**Perché costa.** La reazione istintiva a un deploy rosso su una PR di sicurezza è sospettare il DIFF, e si va a debuggare il codice giusto per ore. Il segnale d'allarme puntava sul commit sbagliato: il lavoro era già stato fatto e verificato dal comando stesso. La diagnosi corretta si legge in tre righe di log, ma solo se si guarda l'OUTPUT invece del colore.
+
+**Diagnosi prima del rimedio.** Il contratto PR §3 vieta di rilanciare un check senza sapere PERCHÉ è rosso, e qui è la regola che salva: stabilito che (a) i due passi riportano successo, (b) è un `push` run — nessun merge-ref stantio, quindi W111 non si applica — e (c) `main` non si era mosso oltre quello SHA, il rerun rigioca esattamente il commit voluto. È passato al primo colpo, e `build_sha` in produzione è diventato quello atteso. Frequenza misurata: **1 su 20** run recenti — transitorio, non sistemico; non merita un workaround nel workflow.
+
+**Verificare l'atterraggio sul BUILD, non sul colore del run.** Un run verde non prova che la macchina serva l'immagine nuova: la prova è `GET /health` → `build_sha`, confrontato per **discendenza git** (`git merge-base --is-ancestor <merge-commit> <build_sha>`) con ogni PR che si pretende viva. Timestamp e lista dei workflow sono proxy, e i proxy mentono (#9).
+
+Famiglia #2 letta al rovescio: là il verde nasconde un organo morto, qui il **rosso nasconde un organo sano**. Stesso antidoto, polarità opposta — l'esito è nell'OUTPUT, mai nel codice di uscita.
+
 ### ℹ️ W47 (no independent record)
 
 Citato solo per numero nella famiglia #8 (network flap / proxy fragility) come `W47.` accanto a W49/W55/W32 — nessun dettaglio verbale fu mai catturato separatamente nel ponte, e nessuna traccia esiste altrove nel corpus. Vedi W32/W49/W55 per la stessa famiglia con dettaglio pieno.
