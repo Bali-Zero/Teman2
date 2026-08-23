@@ -1,33 +1,46 @@
-task_id: garuda-voa-nationality-dataset-0823
+task_id: organism-session-declarations
 gear: 2
 l_level: L2
 gate_class: opus
-objective: >-
-  `apps/backend-rag/backend/services/garuda_flow/intake.py` set
-  `nationality_entry_eligible=True` unconditionally for every VOA intake
-  request, and its own docstring said why: "no nationality-eligibility
-  dataset yet". Ship the dataset (decree-sourced, independently verified
-  ISO-3 country list) and wire `intake._build_eligibility_input` to derive
-  the field from `request.nationality` instead of hardcoding it — so a
-  nationality that is genuinely not eligible for a Visa on Arrival (e.g.
-  `AFG`) now DECLINEs instead of silently ACCEPTing.
-why_now: >-
-  Verified this session: a case with nationality `AFG` (Afghanistan, not
-  VOA-eligible) returned ACCEPT from `build_verdict` before this change. The
-  gate (`eligibility.py:147`) and the input field
-  (`intake.py:103`, validated `^[A-Za-z]{3}$` at `internal_preview_cli.py:61`)
-  both already existed — only the dataset was missing, so the gap was live
-  on every request, not theoretical.
-constraints:
-  - "One PR, one concern: only `services/garuda_flow/nationality_eligibility.py` (new), `services/garuda_flow/intake.py` (wire + docstring correction), and their tests. Do not touch `safe_clock.py`, `operating_calendar.py`, `pricing.py`, the mouth app, or the admin dashboard."
-  - "The dataset's country list must be independently re-retrieved from the official source (not shipped on a research lead's authority alone) and diffed row-by-row against the lead; any disagreement must be resolved against a third source or left out and declared, never silently picked."
-  - "No new third-party dependency (e.g. pycountry) — the repo has none installed anywhere (confirmed by search) and the existing house style (`operating_calendar.py`) hand-maintains its own decree-sourced data with an explicit provenance docstring; this module matches that pattern."
-  - "Fail-closed, never-guess house style for the unknown-code case, matching `operating_calendar.py`'s `ARRIVAL_DATE_UNCONFIRMED` pattern in SPIRIT — but the module docstring explains explicitly why this dataset lands on a different concrete answer (a closed positive enumeration has no genuine data-gap state, unlike the operating calendar's real COVERAGE_END boundary)."
-  - "Existing tests must not regress: known-good baseline for `backend/tests/services/garuda_flow/` was 125 tests before this change (162 across garuda_flow/ + the two app/routers/test_garuda_voa* files) — both numbers must still be green after, with new tests additive, not replacing old ones."
-acceptance:
-  - "The dataset module's docstring states its decree, source URL, retrieval date, and count — matching `operating_calendar.py`'s provenance style, including how it states its own coverage boundary."
-  - "`AFG` (and a second non-listed nationality, `PRK`) DECLINE via `build_verdict` with `NATIONALITY_NOT_ELIGIBLE` in `decline_codes` — shown RED against the pre-fix code and GREEN against the fix, in the same PR."
-  - "A representative innocence sample (`USA`, `ITA`, `RUS`, `AUS`, plus special entities `HKG` Hong Kong and `TWN` Taiwan, both present in the verified list) still ACCEPT."
-  - "A non-vacuity test pins the dataset's verified count (97) so a future edit that silently empties or truncates it fails loudly."
-  - "Case-insensitivity (`usa` == `USA`) is tested at both the pure-function level and end-to-end through `build_verdict`."
-  - "`backend/tests/services/garuda_flow/` plus the two `app/routers/test_garuda_voa*.py` files are green: 162 -> 183 tests (21 net new: 4 in `test_intake.py`, 17 in the new `test_nationality_eligibility.py`), 0 regressions."
+objective: |
+  Build the REAL detector for "an autonomous run started, died, and every gauge stayed green"
+  (superscar #2), replacing the prose-parsing verdict that PR #4646 was forced to ship as
+  informational-only.
+
+  WHY THE PREVIOUS ONE FAILED, because it constrains this design. That detector read a
+  session's own prose and asked "did it run as long as it declared?". Against the live fleet it
+  returned ten rows and all ten were HEALTHY healer ticks: "loop 4h" in a mandate's TITLE is the
+  cron cadence (com.nuzantara.healer.4h.plist carries StartInterval 14400), not the session's
+  runtime, and no regex separates "this document declares its own runtime" from "this document's
+  title names a schedule" — three narrowing passes each traded one error direction for the other.
+
+  THE SECOND TRAP, found while designing this one and worth recording because it is the obvious
+  design: measuring real duration against the wrapper's own number would have rebuilt the same
+  false positive. MAX_WALL_S=3300 is a CAP, not an expectation. A tick that finishes its work in
+  11 minutes against a 55-minute cap is CORRECT.
+
+  So this measures neither prose nor duration. It measures whether the runner came BACK: a
+  two-phase commit. open() before the work (pid + process start-time, the wrapper's own cap, and
+  the cron cadence in a SEPARATE field so the two numbers can never again collapse into one),
+  close() stamped on the way out. A declaration still OPEN past its own cap whose recorded
+  process is gone from the OS process table means the runner never returned — an OBSERVATION,
+  not an inference, which is precisely why the healer is permitted to alarm on this and was not
+  permitted to alarm on its predecessor. It cannot fire on a healthy short tick, because a
+  healthy tick closes its own declaration.
+
+scope:
+  in:
+    - "scripts/session_declaration.py — the protocol (open/close/scan/prune) + selftest"
+    - "scripts/tests/test_session_declaration.py — 33 hermetic guilt+innocence tests"
+    - "infra/healer/healer-run.sh — first producer (open before spawn, stamp after wait) and first consumer (receptor 7 + a HUNG check at the anti-overlap lock)"
+    - "infra/healer/HEALER-MANDATE.md — receptor 7 documented for the spawned session"
+  out:
+    - "Retiring DECLARED-SPAN-UNMET from scripts/fleet_sessions.py — 18 sites in the module and 26 references in its tests. Its own concern, its own PR. Harmless meanwhile: it is already informational-only and no organ routes on it."
+    - "Escalating the healer watchdog from SIGTERM to SIGKILL. The adversarial review surfaced it as a real gap while analysing hangs; it changes the healer's kill semantics and is a separate concern. This PR DETECTS the hang instead."
+    - "Passing --session-id to join a declaration to a transcript. Measured: claude-cascade.sh collects EXTRA_ARGS after `--` and replays them on every seat attempt, so a caller-supplied session id would collide across retries. session_id stays an optional, non-load-bearing field."
+    - "Wiring the other ~20 spawners in the fleet. One producer proves the protocol; a sweep is a migration."
+
+risks:
+  - "The detector alarms, unlike its predecessor. A false positive here costs a paid LLM session every 4h, so the innocence half of the suite is pinned with the real measured numbers written out literally rather than read back from the module — a test that derives its expectation from its subject agrees by construction."
+  - "The store is per-host and unreplicated. A machine whose declarations nobody scans is not covered; this PR wires the Mini healer only."
+  - "prune() deletes records. It never touches OPEN ones at any age (that is the finding itself), only CLOSED past 7d and abandoned past 30d, and it runs at open() rather than on the read path."
