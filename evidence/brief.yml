@@ -1,91 +1,80 @@
-task_id: s12-c6-evidence-per-pr
-gear: 3
-l_level: L2
+task_id: s12-c4-quickcheck
+gear: 2
+l_level: L1
 gate_class: opus
 objective: |
-  De-serialize the Evidence Pack: `evidence/pack.yml` and `evidence/brief.yml` are FIXED paths
-  at the repo root, and every Gear>=2 PR rewrites them entirely. Measured on origin/main
-  (S12 mandate, 2026-08-23): those two files were rewritten 4 times in 8 hours (#4599, #4649,
-  #4647, #4646). Each rewrite dirties EVERY other open Gear>=2 PR's evidence pack
-  simultaneously, so two such PRs cannot coexist cleanly in the merge queue — by construction,
-  not bad luck. One sibling lane (S11, PR #4647) paid two full re-gate rounds on a PR whose
-  code never changed, purely from this collision.
+  Kill mechanical red CI rounds before they reach CI. Measured the same day:
+  a red PR round whose cause is purely mechanical — a prepush-guards miss, a
+  Prettier diff, an adversarial-review gate missing its literal heading —
+  costs a lane roughly 30 minutes of wall-clock, and the diagnosis is
+  available locally in about a second.
 
-  This PR is the migration itself: `scripts/ci/evidence_paths.py`, a small, pure,
-  dependency-free module + CLI that is the single source of truth for mapping a branch ref to
-  a per-PR evidence directory (`evidence/<YYYY-MM>/<slug>/`) at WRITE time, and for
-  DISCOVERING which `evidence/<kind>.yml` a PR's own diff touches at CI READ time — these are
-  deliberately two different operations (see the module docstring's "CI must not compute the
-  slug" section): a `merge_group` ref is `gh-readonly-queue/main/pr-NNNN-<sha>`, not the PR's
-  branch, so computing a slug from it at CI time would look for the wrong directory.
+  `scripts/quickcheck.sh` runs four checks, each scoped to what actually
+  changed vs origin/main, and is wired ADVISORY-ONLY into `.husky/pre-push`.
 
-  Gear 3 is the deterministic floor here, not a choice: the diff touches
-  `.github/workflows/harness-floor.yml`, which floors at 3 regardless of size
-  (fleet-order-spec.md §4, `HOTZONE_PATTERNS` in evidence_pack_lint.py).
-
-  This PR itself uses the OLD (root-path) scheme — it is the migration, so it cannot use the
-  scheme it is introducing; `resolve_evidence_path()`'s zero-matches fallback to the literal
-  root path is exactly what makes that consistent rather than a special case.
+  The single hard constraint is that it must NEVER become a second blocking
+  gate. That is not a promise in a comment here — it is proven twice below,
+  by two independent mechanisms, because a pre-push hook that can block is a
+  hook that will one day block someone at the worst possible moment.
 constraints:
-  - "Collision-safety is non-negotiable, not cosmetic: the slug must be injective even when a
-    naive sanitize-only scheme (lowercase, collapse non-alnum runs to '-') would collapse two
-    distinct branches to the same string — this repo's `agent/<host>/<lane>/<task>` branches
-    are full of hyphens, so `agent/mini-pro2/infra/foo-bar` and `agent/mini-pro2/infra-foo/bar`
-    both naively sanitize to the identical `agent-mini-pro2-infra-foo-bar`. Cure: hash the FULL
-    ORIGINAL ref (never the sanitized/truncated form) and append the digest — the
-    sanitized/truncated prefix is for human readability only."
-  - "The month directory (`evidence/<YYYY-MM>/<slug>/`) must never be recomputed from a clock
-    at CI read time — a PR opened on the last day of a month and merged the next would have its
-    files under the OLD month while a clock-derived validator looked under the NEW one and
-    found nothing. `evidence_glob()` returns a glob (`evidence/*/<slug>`); the CLI's
-    'suggested write path for today' is the only place a date is generated, at write time,
-    for a human — never fed back into validation."
-  - "CI must never compute a slug from a ref to DISCOVER an existing PR's evidence path — only
-    `--resolve {brief,pack} --changed-files-file` (a pure discovery over the already-enumerated
-    changed-files list) may be used for that, per the design correction from gate review. This
-    is the load-bearing correction of the CI-wiring round: the first draft of this PR wired
-    `slug_for_ref` into CI directly, which would have deadlocked every Gear-3 PR in the merge
-    queue on its very first `merge_group` run."
-  - "A PR whose diff ambiguously touches two `evidence/<kind>.yml` candidates must fail closed
-    (exit 1, nothing on stdout), never silently pick one — guard-over-match discipline
-    (cicatrix-superscar.md #3)."
-  - "A PR that writes NEITHER evidence path must not pass by inheriting the root
-    `evidence/pack.yml` left by a prior Gear-3 PR — this invariant is NOT re-implemented here;
-    it survives by construction because the resolver's zero-matches fallback returns the
-    concrete root path, which `tracked_file_present_in_diff.sh` then reports `inherited` (not
-    `present`) for a diff that didn't touch it, and the existing Step 5b hot-zone-FAIL catches
-    that. `resolve_evidence_path()` must never special-case this away."
-  - "Do not touch `tracked_file_present_in_diff.sh`, Step 5b, or `evidence_pack_lint.py`'s own
-    internal `brief_ref`-resolution contract — this PR changes WHICH path is handed to those,
-    never their own logic. Verified generic-on-path-argument by reading
-    `tracked_file_present_in_diff.sh`'s source before rewiring its call sites."
-  - "A per-PR pack must still declare `brief_ref: evidence/brief.yml` (the canonical STAGING
-    name), never its own real per-PR-looking path — `evidence_pack_lint.py` never lints a pack
-    in place; CI stages both resolved files under canonical names in a synthetic
-    `/tmp/evidence-check` tree and lints that. Documented at the staging call site and in the
-    module docstring after a gate finding flagged it as an undocumented trap of exactly the
-    shape this PR exists to remove."
-  - "Standard library only in `evidence_paths.py` — no yaml, no external deps — CI calls this
-    before installing anything. Must run on Python 3.11 and 3.12."
+  - 'NEVER blocks a push. Guaranteed at two independent layers: the script
+    itself ends `main "$@"; exit 0` (its exit status is unconditional and
+    does not depend on what any check returned), and the call site in
+    `.husky/pre-push` invokes it as `bash ... || true`. Either layer alone
+    would suffice; both are present deliberately.'
+  - "Reuses the engines the PR lane already uses rather than inventing
+    parallel ones: `scripts/ci/impact_map.py` for test selection (never the
+    full 17k-test suite), `prettier --check` on changed files with the same
+    extension scope as package.json's own format:check, and actionlint with
+    the same auto-discovery scope as .github/workflows/actionlint.yml. A
+    local check that disagrees with CI is worse than no local check."
+  - "The R1 heading check matches the LITERAL line `## Adversarial review` —
+    exact, anchored, case-sensitive. NOT a substring match on `adversarial`:
+    superscar family #3 catalogues ~20 scars in this repo caused by exactly
+    that shortcut, and this check is guarded by guilt tests that reject the
+    bare substring and the wrong hash count."
+  - "Every check is skippable and every one degrades to a skip-with-reason,
+    never to a false pass or a hang. `QUICKCHECK_SKIP=1` disables the hook
+    entirely."
 acceptance:
-  - "`slug_for_ref()` is injective: two branch refs that sanitize identically under a naive
-    scheme still produce distinct slugs, proven for at least two independently-devised
-    colliding pairs, plus a case where a 60+ character shared prefix (past the 48-char
-    truncation limit) is the ONLY thing that would defeat injectivity if the hash were computed
-    over the truncated form instead of the original ref."
-  - "`resolve_evidence_path()` returns the concrete root path (never '', never an exception) for
-    a changed-files list touching neither evidence file — the exact invariant three independent
-    lanes (S11, H1/P04, this session's gate reviewer) flagged as non-negotiable."
-  - "`resolve_evidence_path()` fails closed (raises `AmbiguousEvidencePathError`, CLI prints
-    nothing to stdout / an error to stderr / exits 1) on two or more candidates in one diff."
-  - "`harness-floor.yml`'s new 'Resolve this PR's evidence paths' step sits between the
-    changed-files enumeration and the floor computation, degrades to the two literal root paths
-    (unconditionally, no PR-number sentinel) when `evidence_paths.py` is absent from the base
-    checkout, and every functional git/grep call site in Step 4 and Step 7b reads the resolved
-    path instead of a hardcoded literal."
-  - "actionlint (the exact CI-pinned version, 1.7.12) is clean on `harness-floor.yml` and
-    repo-wide; every `run:` block is extracted via a YAML parser (never eyeballed) and passes
-    `bash -n`."
-  - "GUILT: an ambiguous diff, a substring-trap near-miss ('pack.yml.bak', 'not-pack.yml'), or a
-    missing leading `evidence/` segment must NOT resolve to a real evidence path. INNOCENCE: a
-    single well-formed nested match, or the true zero-match case, must resolve cleanly."
+  - "Exit code is 0 on a clean tree AND when checks find problems — measured,
+    not asserted."
+  - "A quickcheck that exits non-zero still lets the push proceed, including
+    under `sh -e` (the W101 decapitation shape)."
+  - "Runtime on the fast path is low enough to sit in front of every push."
+  - "The R1 guard rejects the substring and the wrong heading level."
+consumer_map:
+  - "`.husky/pre-push` — the call site. Advisory, existence-guarded,
+    kill-switched. This PR DOES wire it (see dissent: that deviates from the
+    gate's own instruction and was accepted on measured merit, not waved
+    through)."
+  - "`scripts/ci/impact_map.py` — reused, not reimplemented."
+  - "`.github/workflows/actionlint.yml` — scope mirrored, not duplicated."
+risks:
+  - "An advisory check that is always green teaches people to ignore it. The
+    mitigation here is scope, not severity: it only speaks when the diff
+    actually touches the surface each check covers, and says
+    `skipped — <reason>` otherwise, so a silent run means 'nothing to say',
+    not 'nothing checked'."
+  - "The R1 heading matcher is STRICTLY NARROWER than CI's: quickcheck wants
+    `^## Adversarial review` exactly and case-sensitively, while
+    `scripts/check_adversarial_review.py` accepts `^#{2,}\\s+Adversarial
+    review\\b` case-insensitively. So quickcheck can cry MISSING on a body CI
+    would pass. Kept deliberately — the direction is safe (a false alarm sends
+    you to the real gate; it can never produce a false all-clear) — but it is
+    a real divergence, not a duplicate, and it is named rather than left to be
+    rediscovered in anger."
+  - "`actionlint` is not installed on this host, so that branch of the script
+    was never exercised end-to-end here. Correct by inspection only. It was
+    deliberately NOT auto-downloaded into a hook: CI's pinned binary is
+    linux_amd64 and shipping an unpinned download inside a pre-push hook is a
+    supply-chain shortcut this repo does not take."
+grader: |
+  Independent verification by the S12 conductor (Opus 5), which did not write
+  any of the 497 lines: the diff scope was read, the deviation from the
+  no-install instruction was caught by reading `.husky/pre-push` rather than
+  taken from the implementer's report, both advisory guarantees were proven
+  by execution, the runtime was timed, the deterministic floor was recomputed
+  from the diff, and the test suite was re-run.
+budget: 1 implementer lane + conductor gate; no council (a local advisory script)
+pii: none
