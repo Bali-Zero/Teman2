@@ -1,75 +1,50 @@
-task_id: wr3-spend-gate-ci-0823
+task_id: ros-p04d1-evidence-spine-0823
 gear: 3
-l_level: L1
+l_level: L2
 gate_class: opus
 objective: |
-  Make an EXISTING test corpus actually run on pull requests. `scripts/wr3_gatekeeper_check.py`
-  is the pre-render cost breaker that decides whether a WR3 episode may spend Veo credits, and
-  its tests were named by no workflow at all — verified by grepping every file in
-  `.github/workflows/`, and stated outright in `scripts-tests-sweep.yml`'s own header, which
-  says it gates nothing (`continue-on-error: true`), is deliberately not `pull_request:`-
-  triggered, is not in branch protection, and that 174 of 235 files under `scripts/tests/` are
-  named by nothing. Cicatrix superscar #2 ("exists != armed") applied to a guard whose entire
-  purpose is to be armed.
-
-  Found the hard way, and the honest version matters: PR #4639 shipped a real fix to this gate
-  with 15 green tests, and "CI is clean" on that PR was TRUE while saying nothing whatsoever
-  about those tests — no check ran them. An independent adversarial review of #4639 surfaced
-  both that and a live defect in the fix itself (#4648).
-
-  BE HONEST ABOUT THE SIZE: this is one new workflow file plus one line in the watcher census.
-  Zero executable code changes. It is Gear 3 by PATH (`.github/workflows/` is hot-zone, floor is
-  a lower bound and not the author's choice — this PR was originally opened declaring Gear 2 and
-  the floor recompute correctly rejected it), not by blast radius. The evidence below is sized
-  to the change, not padded to match the gear.
-
-  The python matrix is the second half and is not decoration. Measured 2026-08-23 on this
-  machine's own interpreters: `Path.exists()` on a file behind an unreadable directory RAISES
-  PermissionError on 3.9/3.11 and returns False on 3.14. Every workflow here pins 3.11 or 3.12;
-  `#!/usr/bin/env python3` — how launchd and cron actually start these scripts on the render
-  hosts — resolves to 3.14. For THIS gate that difference decided whether it blocked a render or
-  passed one. The 3.14 leg gives that class of divergence somewhere to go red. It is the first
-  3.14 leg in the repo.
+  Research OS v1.0.0, Packet 04 (canonical contracts), Wave D1. This PR ships four of the
+  frozen CONTRACTS.md object kinds that make up the "evidence spine" the Intel Lake (P05) and
+  NAGA claim ledger (P06) build against: IntelEvent (§4), Evidence (§5), Claim (§6) and
+  StoryCluster (§11). Each is a pydantic v2 FrozenCoreModel (extra="forbid", frozen=True,
+  model_validator(mode="after") recomputing and comparing object_hash, validate_extensions(),
+  PydanticCustomError reason codes) matching the foundation idiom already on `origin/main`
+  (successor_edge, revocation_receipt) — no new primitive regex, no change to
+  primitives.py/hashing.py. EventRef is defined once (in intel_event.py) and reused by three
+  of the four kinds. Ships: 4 model modules, 4 generated Draft 2020-12 JSON Schema artifacts,
+  41 fixtures (13 valid / 28 invalid, above the >=3/>=3-per-kind contract), registration in
+  research_os/cli.py + models/__init__.py + schemas/__init__.py, and the corresponding unit
+  tests. Landed across three commits on this branch (4908da40a feat, 4da3c6cb1 fix answering a
+  Kimi K3 cross-family adversarial review, 59cdb8b81 docs/fixture correction), then merged with
+  origin/main in this session to pick up three sibling P04-D1 PRs (#4586 foundation, #4613/#4625
+  decision-authority-execution chain, #4635 governance receipts) that landed while this PR sat
+  CONFLICTING.
 constraints:
-  - "No executable code changes: the diff is one new workflow file and one entry (plus its
-    comment) in main-push-failure-watch.yml's census list."
-  - "NOT added to branch-protection required_status_checks in this PR. That is a repo-settings
-    change and must only happen after this has been observed green on main — adding a
-    never-run workflow to branch protection can hard-block the merge queue. Same call
-    s7-yield-dispatch-tests.yml made, for the same reason."
-  - "Do not weaken any existing check to make this pass. The two reds this PR first drew
-    (harness floor; watcher coverage) were both correct and were answered by complying with
-    them, not by editing them."
+  - "The three shared registration files (research_os/cli.py, research_os/models/__init__.py,
+    research_os/schemas/__init__.py) are touched by EVERY P04-D1 sibling PR because they are the
+    single point where all ~25 CONTRACTS.md object kinds get wired in — the merge resolution is a
+    UNION of this branch's 4 entries with origin/main's 14, never an override of either side."
+  - "evidence/brief.yml and evidence/pack.yml are fixed repo-root paths every Gear>=2 PR rewrites
+    wholesale; they are per-PR scratch, not part of the reviewable diff, and this session's edits
+    to them are the two files this session is authorized to touch beyond the merge resolution
+    itself (team-lead mandate, not a self-granted exception)."
+  - "No change to primitives.py, hashing.py, or the two name validators cured by #4596 (P04 D1
+    rule 8 depth-2 discipline — do not reopen a closed cure)."
+  - "PR stays DRAFT. This session does not arm, enqueue, un-draft, or merge — fleet-wide HOLD
+    ARMS pending #4647, and the P04-D1 serialization order (#4643 -> #4621 -> #4610) puts this
+    PR last in its own family's queue regardless."
 acceptance:
-  - "Both matrix legs appear on this PR and CONCLUDE SUCCESS: `WR3 spend gate tests (py3.11)`
-    and `WR3 spend gate tests (py3.14)`."
-  - "`python3 scripts/check_watcher_coverage.py` exits 0 with the new workflow counted."
-  - "`actionlint` passes on the new file."
-  - "Every path named in the workflow's `paths:` filter exists at this PR's head."
-consumer_map:
-  - "`.github/workflows/main-push-failure-watch.yml` — the census that must name every live
-    workflow; updated in this PR, enforced by `scripts/check_watcher_coverage.py`."
-  - "`scripts/tests/test_wr3_gatekeeper_cost.py`, `scripts/tests/test_wr3_ledger_isolation.py`
-    and `scripts/tests/test_wr3_credit_ledger.py` — the corpus this workflow executes; 64 tests,
-    run together locally before commit. The third was MISSING from the first draft's pytest
-    command while its module already sat in `paths:` — see the dissent entry in the pack; this
-    line was an overclaim until the workflow was widened to make it true."
-  - "`scripts/wr3_gatekeeper_check.py`, `wr3_credit_ledger.py`, `wr3_spend_authority.py` — the
-    modules under test and in the `paths:` filter."
-  - "Branch protection `required_status_checks` — NOT touched here; the arming step, deliberately
-    separate (see constraints)."
-risks:
-  - "A `pull_request:` workflow that is not required is VISIBLE, not BLOCKING. This PR does not
-    claim otherwise: it makes the tests run and observable; it does not make them mandatory."
-  - "`paths:` filtering means a breaking change from outside the filtered set will not trigger
-    this workflow. Accepted cost of the per-file pattern this repo already uses; the nightly
-    sweep remains the backstop for that case."
-  - "If a future runner cannot provide 3.14, that leg fails loudly rather than being silently
-    dropped. That is deliberate — an absent leg that reads as green is the exact defect this
-    file exists to close."
-grader:
-  independent adversarial review dispatched on this PR (read-only, fresh context, not the
-  author) — tasked to refute the paths-filter completeness, whether the 3.14 leg really ran
-  3.14, and whether this can wrongly block the queue
-budget: 1 review seat, no council (a one-workflow diff does not warrant one)
-pii: none
+  - "PYTHONPATH=packages/research-os-core <venv>/python -m research_os.cli fixtures --check exits
+    0 with zero failures across ALL registered kinds (not just this PR's four)."
+  - "PYTHONPATH=.:../../packages/research-os-core <venv>/python -m pytest
+    backend/tests/unit/research_os/ -q exits 0 (full research_os suite, this PR's tests
+    included, post-merge)."
+  - "<venv>/python -m mypy --strict research_os (cwd packages/research-os-core) exits 0."
+  - "research_os.schemas.checked_in_schemas_match() and validate_schema_artifacts() both return
+    an empty tuple — the 4 checked-in schema.json files for this PR's kinds are byte-identical to
+    a fresh regeneration and are themselves valid Draft 2020-12."
+  - "The merged models/__init__.py __all__, schemas/__init__.py SCHEMA_MODELS keys, and cli.py
+    CONTRACT_MODELS keys are IDENTICAL sets of 18 entries, and origin/main's 14-entry set is a
+    strict subset of that 18 whose difference is exactly {claim, evidence, intel_event,
+    story_cluster} — the merge union lost none of origin/main's D1 siblings' work."
+  - "No conflict markers remain anywhere in the tree after the merge commit."
