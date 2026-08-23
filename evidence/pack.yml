@@ -1,94 +1,138 @@
 brief_ref: evidence/brief.yml
-plan_ref: "scripts/fleet_sessions.py — cross-machine session visibility + healer receptor 6 (mandate 2026-08-23)"
-gear: 2
+plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
 lanes:
-  - lane: B1
+  - lane: wr3-spend-gate-enforce
     role: build
-    seat: "tp1-deepseek-v4-pro (Alibaba Token Plan, non-Anthropic)"
-    note: "authored scripts/fleet_sessions.py. Codex was the mandated builder but its seat is AUTH_DEAD on both Mini and Pro (refresh_token_invalidated / node-not-on-PATH, arsenal_probe measured live) and it exited 0 having written zero files — re-routed, declared, not silently substituted."
-  - lane: B2
-    role: build
-    seat: "tp1-deepseek-v4-pro"
-    note: "authored scripts/tests/test_fleet_sessions.py against the pinned JSON contract. A first attempt on tp1-qwen3.8-max returned empty."
-  - lane: R1
+    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
+  - lane: wr3-spend-gate-enforce-evidence
     role: review
-    seat: "kimi-code/k3 (Moonshot, cross-family, fresh context)"
-    note: "adversarial refutation of the full diff, asked specifically for false-green and for leak paths. Findings K1/K3/K4/K5 reproduced by the grader before any fix."
-  - lane: G1
-    role: review
-    seat: "session (Opus 5, mini-pro2)"
-    note: "final on-disk gate: every defect re-measured live on the fleet, not accepted from a report."
+    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
+  one non-Anthropic) does not fire. Both lanes present here are Anthropic
+  seats by construction (this is a narrow evidence-authoring task, not a
+  cross-family council dispatch); declared rather than left to read as
+  satisfied.
 diff:
-  net_lines: "+1861 net across 4 files (2 new: scripts/fleet_sessions.py, scripts/tests/test_fleet_sessions.py; 2 edited: infra/healer/healer-run.sh +49, infra/healer/HEALER-MANDATE.md +11), measured by `git diff --numstat` against the merge-base."
-  behaviour_change: "New read-only reporting tool. The healer gains ONE receptor whose only ACTIONABLE conditions are coverage loss (a host UNREACHABLE) and blindness (exit 2). No existing receptor, cure path or perimeter is touched."
+  net_lines: >-
+    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
+    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
+    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
+    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
+    the runtime gate itself is pre-existing, unmodified production code.
+  behaviour_change: >-
+    No runtime behaviour change to any shipped code path. The workflow now also runs
+    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
+    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
+    `_generate_video` helpers the pre-existing tests already covered.
 receipts:
-  - claim: "The tool works across all three machines from Mini and isolates a downed host"
-    cmd: "python3 scripts/fleet_sessions.py --json -> exit 0, hosts_ok 3/3, 270 sessions, unreachable 0; python3 scripts/fleet_sessions.py --hosts local,nonexistent-host --json -> exit 1, hosts_unreachable 1, reason 'ssh exit 255: ssh: Could not resolve hostname nonexistent-host', other host still fully reported"
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
+    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
     exit: 0
-    ts: "2026-08-23T08:30Z"
-    seat: "session (mini-pro2)"
-  - claim: "THE COMMISSIONED PREMISE IS FALSE: a healer session running minutes is CORRECT, not dead. All 10 DECLARED-SPAN-UNMET rows on the live fleet are healthy healer ticks"
-    cmd: "grep -A1 StartInterval infra/launchagents/com.nuzantara.healer.4h.plist -> 14400 (launchd relaunches every 4h); HEALER-MANDATE.md rule 6 -> 'max ~40 min di lavoro' per tick; tail ~/logs/healer/healer.log -> 'ACTIONABLE ... 15:12:12' then 'session exit=0' at '15:23:16' with a substantive result. 'loop 4h' in the mandate TITLE is the cron cadence, not the session runtime."
+    ts: "2026-08-23T23:05Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
     exit: 0
-    ts: "2026-08-23T08:05Z"
-    seat: "session (mini-pro2)"
-  - claim: "ps without -e is blind: it sees 25 processes of 693 and 2 of the 4 live subagents, which would have inverted the tool into a false-alarm machine"
-    cmd: "ps -o pid= -o args= | wc -l -> 25 ; ps -eo pid= -o args= | wc -l -> 693 ; same pipes grepping parent-session-id -> 2 vs 4"
+    ts: "2026-08-23T23:07Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
+    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
     exit: 0
-    ts: "2026-08-23T07:05Z"
-    seat: "session (mini-pro2)"
-  - claim: "lsof -c claude returns ZERO rows on Pro while four sessions run; asking lsof about the PIDs ps already classified works on both machines"
-    cmd: "ssh pro 'lsof -c claude -a -d cwd -Fpn | grep -c ^p' -> 0 ; ssh pro 'lsof -p <pidlist> -a -d cwd -Fpn' -> four p/fcwd/n triples. Consequence before the fix: every Pro row read NO-PROCESS, an absence never observed."
+    ts: "2026-08-23T23:09Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
+    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
+    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
+    exit: 1
+    ts: "2026-08-23T23:11Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
+    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
     exit: 0
-    ts: "2026-08-23T07:20Z"
-    seat: "session (mini-pro2)"
-  - claim: "One transcript, two paths: ~/.claude/projects/-Users-nuzantara-nuzantara is a SYMLINK to the -Desktop- form, so the same session was reported twice and every finding double-counted (29 rows for 17 sessions)"
-    cmd: "readlink -- ./-Users-nuzantara-nuzantara -> .../-Users-nuzantara-Desktop-nuzantara ; stat -f inode on 733cf2de-....jsonl via both paths -> 53353008 both. Cured by deduping on (st_dev, st_ino)."
+    ts: "2026-08-23T23:13Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "actionlint accepts the modified workflow"
+    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
+    result: "no output (clean)"
     exit: 0
-    ts: "2026-08-23T07:45Z"
-    seat: "session (mini-pro2)"
-  - claim: "REFUTER K1 reproduced: a host that fails to probe ITSELF exits 0, so it counted as a successful probe and the healer stayed silent about an unobserved machine"
-    cmd: 'monkeypatched run_host_probe to return (0, ''{"status":"UNREACHABLE",...}'', '''') -> main() returned exit 0 with summary.hosts_unreachable == 1 and hosts_ok == 0. Cured by reading the payload''s status, not the transport''s exit code.'
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
+    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
+    result: "exit 0, no output"
     exit: 0
-    ts: "2026-08-23T08:12Z"
-    seat: "session (mini-pro2)"
-  - claim: "REFUTER K4 reproduced in BOTH directions and cured, verified on a 16-case corpus built from real fleet text"
-    cmd: "before: declared_long('loop di 4 ore') -> (False, None) and declared_long('the daemon ran 48h nonstop before crashing') -> (True, 2880). after: 16/16 correct across true positives, the five phrasings the refuter named as missed, the reverse-order narrative, and the five originally-measured false accusations."
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
     exit: 0
-    ts: "2026-08-23T08:22Z"
-    seat: "session (mini-pro2)"
-  - claim: "PROVE-LIVE: a REAL healer tick reported a fleet finding, reached the session prompt, and spooled its Telegram"
-    cmd: "bash infra/healer/healer-run.sh with the LLM stubbed and TG_DRY_RUN=1, one host deliberately down -> healer.log 'ACTIONABLE: ... fleet:1-host-unreachable'; the spawned prompt carries 'receptor scattati: ... fleet:1-host-unreachable'; tg spool holds key healer-mini:fleet-unreachable. Nothing was sent and no LLM window was spent."
+    ts: "2026-08-23T23:15Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
+    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
+    result: >-
+      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
+      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
+      same position relative to its own HTTP call. Both call sites precede any network code in
+      their respective functions.
     exit: 0
-    ts: "2026-08-23T08:34Z"
-    seat: "session (mini-pro2)"
-tests:
-  - "36 tests in scripts/tests/test_fleet_sessions.py, /usr/bin/python3 -m pytest -q -> 36 passed in 0.08s. Fully hermetic: an earlier revision took 207s because two tests called main() without --hosts and ssh'd to pro/air for real; those are now host-explicit, and the 0.08s runtime is itself the proof that no test touches the network."
-  - "Guilt paired with innocence per classifier (superscar #3), built on the REAL argv strings and REAL mandate text measured on the fleet — including the four shapes a naive exclusion list misses because the path has a dot before `claude`, not a slash."
-  - 'python3 scripts/fleet_sessions.py --selftest -> ''selftest PASSED'', exit 0. It caught two real defects during the build (an exclusion written against a path form that does not exist, and `"claude" in cmd` matching `not-claude`).'
-static:
-  - "bash -n infra/healer/healer-run.sh -> clean"
-  - "pre-commit hooks (anti-reward-hacking lint, secret scan, python lint, off-limits guard) -> all passed on both commits"
-runtime_proof:
-  - "The live table from three machines is in the session transcript: 3 of 3 hosts probed, 270 sessions, 0 unreachable. Both exit paths were exercised against the real fleet, not simulated."
-  - "The healer receptor was executed as the wrapper executes it (not a transcription) and produced REASONS='fleet:1-host-unreachable'."
-dissent:
-  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context — the diff's author was tp1-deepseek-v4-pro, so generator != grader holds)"
-    objection: "Attacked false-green and leak paths. CONFIRMED and fixed: K1 (remote self-failure exits 0 -> healer silent), K3 (lookback drops corpses exactly when the healer was itself down; and a declared span may exceed the window), K4 (declared_long both misses real Italian/English phrasings and still fires on narrative), K5 (ssh stderr unbounded in a field that reaches Telegram). PARTIALLY ACCEPTED: K2 — 'UNMAPPED is treated as dead-eligible, so a live session idle at a prompt gets accused'. The refuter's proposed cure (require NO-PROCESS) was REJECTED on measurement: the one Pro true-positive was itself UNMAPPED, so that fix would have destroyed detection. It is moot in the shipped state anyway, since the verdict no longer alarms. NOT ACCEPTED but recorded: a zombie subagent outliving its parent would mark a dead parent ALIVE — real, low-frequency, and unfixable from process data alone."
-    status: CONFIRMED
-residual_risks:
-  - "THE HEADLINE VERDICT IS UNCALIBRATED AND SHIPS THAT WAY, DECLARED. DECLARED-SPAN-UNMET matched 10 of 10 healthy healer ticks on the live fleet. It is reported, never alarmed on, and the healer reads only UNREACHABLE/BLIND. The mandate asked for this detector as the deliverable's centre; it is delivered as an INFORMATIONAL field instead, because shipping it as an alarm would wire an organ to a signal that is wrong every time it fires. This is the one place the delivered scope is narrower than the scope requested, and it is narrowed deliberately and visibly, not quietly."
-  - "The real fix is a design change, not a regex: the runner should write its own expected duration into a sidecar the way it already writes a heartbeat. Text cannot distinguish 'this document declares its runtime' from 'this document's title names a cron cadence' — three narrowings each traded one error direction for the other, which is the repo's three-rounds signal that the surface is under-specified."
-  - "HOME-fork (superscar #1) is OPEN until post-merge sync: the wrapper reads $HOME/scripts/HEALER-MANDATE.md FIRST, and that copy has 0 occurrences of fleet_sessions.py while the repo copy has 2. Proven this session — the stubbed tick's prompt did NOT carry the new mandate step. Both files are DECLARED pairs in infra/home-fork/declared-pairs.json, and the healer cannot sync them itself (its own files are outside its perimeter, by constitution). ALIGN-FLEET action, tracked."
-  - "The identity slice is PII-BOUNDED, not PII-free: the first 90 characters of a first message ARE emitted, by design, and a test pins the cap. Nothing past it ever leaves the host."
-  - "alive detection on Pro rests on UNMAPPED for most rows: many sessions share one project dir, so a cwd match cannot attribute a process to a session id. The tool says UNMAPPED rather than guessing — honest, but it means Pro liveness is weaker than Mini's."
-sources:
-  - scripts/fleet_sessions.py (new)
-  - scripts/tests/test_fleet_sessions.py (new)
-  - infra/healer/healer-run.sh (receptor 6)
-  - infra/healer/HEALER-MANDATE.md (step 1)
-  - infra/launchagents/com.nuzantara.healer.4h.plist (read-only — StartInterval 14400, the measurement that falsified the premise)
-  - ~/logs/healer/healer.log (read-only — tick 15:12:12 -> exit 0 15:23:16)
-  - live ssh probes of pro and air, re-run fresh this session
+    ts: "2026-08-23T23:16Z"
+    seat: "session (M5, evidence-pack task)"
 pii_scan: clean
-size_tokens: 2350
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
+      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
+      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
+      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
+      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
+    status: CONFIRMED
+    note: >-
+      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
+      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
+      matching the check. Answered here by supplying both files, never by editing the check
+      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
+      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
+      complied-with).
+  - seat: "session (this evidence-authoring task), against its own first instinct"
+    objection: >-
+      The mandate offered the PR body's own self-reported mutation-test result (comment out
+      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
+      verbatim without re-running it would have been citing a tool output this turn never
+      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
+      prevent, applied to a prior session's claim rather than to memory.
+    status: RETRACTED
+    note: >-
+      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
+      receipt above) rather than trusting the PR body's report. Result matched: both tests went
+      red with the identical `AssertionError: network path reached`, file restored clean.
+      Retracted because the concern was real but the independent re-run resolved it — the
+      PR body's claim held up under a fresh execution, it was not merely repeated.
+tests:
+  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
+  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
+static:
+  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
+  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
+  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
+notes:
+  - >-
+    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
+    was already committed and pushed by a prior session/task. No production code, no test
+    content, and no workflow logic was authored or edited as part of writing this pack — every
+    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
+    a first-time authoring of the underlying fix.
+  - >-
+    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
+    same `Harness floor recompute` shape first and its own evidence pack documents the identical
+    resolution — supply brief+pack, never edit the gate. That pack (`git show
+    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
+    content is specific to this PR's diff.

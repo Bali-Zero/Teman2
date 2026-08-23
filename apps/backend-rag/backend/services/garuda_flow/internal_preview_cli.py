@@ -24,6 +24,7 @@ from backend.services.garuda_flow.constants import (
     FINAL_CHECK_DAYS,
     INTERNAL_ESCALATION_DAYS,
     PILOT_INTAKE_THRESHOLD_DAYS,
+    b1_max_total_stay_exceeded,
 )
 from backend.services.garuda_flow.intake import (
     CaseType,
@@ -132,7 +133,9 @@ def _validate_entry_window(request: InternalPreviewRequest, *, today: date) -> N
     meta = VISA_META[VisaType.B1]
     extension_count, extension_days = meta.extensions
     max_total_stay_days = meta.duration_days + extension_count * extension_days
-    if (printed_expiry - request.entry_date).days > max_total_stay_days:
+    if b1_max_total_stay_exceeded(
+        (printed_expiry - request.entry_date).days, max_total_stay_days
+    ):
         raise PreviewInputError("extension expiry exceeds B1 maximum stay")
 
 

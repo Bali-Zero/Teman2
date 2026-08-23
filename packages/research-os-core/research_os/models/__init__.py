@@ -4,7 +4,9 @@ from research_os.models.action_intent import ActionIntent
 from research_os.models.action_item import ActionItem
 from research_os.models.approval_receipt import ApprovalReceipt
 from research_os.models.conductor_handoff import ConductorHandoff
+from research_os.models.content_object import ContentObject
 from research_os.models.execution_attempt import ExecutionAttempt
+from research_os.models.media_manifest import MediaManifest
 from research_os.models.metric_profile import MetricProfile
 from research_os.models.metric_result import MetricResult
 from research_os.models.operational_receipt import OperationalReceipt
@@ -20,7 +22,9 @@ __all__ = [
     "ActionItem",
     "ApprovalReceipt",
     "ConductorHandoff",
+    "ContentObject",
     "ExecutionAttempt",
+    "MediaManifest",
     "MetricProfile",
     "MetricResult",
     "ObjectSuccessorEdge",

@@ -56,7 +56,7 @@ aiOptimization:
       sameAs: "https://www.dojobali.org"
 faq:
   - question: "Visa apa yang dibutuhkan digital nomad untuk Bali?"
-    answer: "Opsi: Visa Digital Nomad E33G (1 tahun, dapat diperpanjang hingga total 6 tahun; memerlukan bukti penghasilan USD 60.000/tahun), Visa Sosial B211A (60 hari dapat diperpanjang hingga 180), Visa Second Home (5-10 tahun dengan tabungan IDR 2M). Visa turis (30 hari) secara teknis tidak mengizinkan bekerja. E33G dibangun khusus untuk pekerja jarak jauh."
+    answer: "Opsi: Visa Digital Nomad E33G (1 tahun, dapat diperpanjang hingga total 6 tahun; memerlukan bukti penghasilan USD 60.000/tahun), Visa Sosial B211A (60 hari dapat diperpanjang hingga 180), Visa Second Home (pemberian pertama 5 tahun, dapat diperpanjang hingga maksimum kumulatif 10 tahun, dengan tabungan IDR 2M). Visa turis (30 hari) secara teknis tidak mengizinkan bekerja. E33G dibangun khusus untuk pekerja jarak jauh."
   - question: "Apa ruang coworking terbaik di Bali untuk digital nomad?"
     answer: "Pilihan teratas: Dojo Bali (Canggu, $150/bln), Outpost (Canggu/Ubud, $180/bln), Hubud (Ubud, $170/bln), BWork (Sanur, $120/bln). Sebagian besar menawarkan internet kecepatan tinggi, ruang rapat, acara komunitas, dan day pass ($10-20). Canggu memiliki konsentrasi tertinggi."
   - question: "Apakah internet di Bali cukup cepat untuk kerja jarak jauh?"
@@ -82,9 +82,1132 @@ canonicalUrl: "https://balizero.com/digital-nomad/bali-digital-nomad-complete-gu
 ogImage: "/static/insights/lifestyle/bali-digital-nomad.jpg"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "51ae3ec247c95cfbbdd913b499de413753b5eb41b61ca42568c6d0c6fb7f9f42"
+source_sha256: "b0520566f2fe548a79ce86f9fa6148dc9164dec040f1b050fa812cd127c8cfd6"
 ---
 
-Artikel ini diterjemahkan dari versi bahasa Inggris. Konten lengkap mencakup panduan lengkap tentang menjadi digital nomad di Bali, termasuk opsi visa, ruang coworking, kecepatan internet, biaya hidup, dan komunitas.
+# Bali untuk Digital Nomad: Panduan Lengkap 2026
 
-Untuk informasi lengkap, silakan lihat artikel asli atau tanyakan Zantara AI.
+Bali bukan sekadar surga tropis—ia telah menjadi salah satu destinasi paling populer bagi pekerja jarak jauh di dunia. Kombinasi biaya hidup terjangkau, internet yang kuat, infrastruktur coworking yang mapan, dan komunitas internasional menjadikannya basis yang menarik bagi digital nomad.
+
+Namun, bekerja secara remote dari Bali tidak sesederhana memesan penerbangan dan membuka laptop. Ada pertimbangan visa, area abu-abu hukum, tantangan praktis, dan faktor gaya hidup yang harus dilalui.
+
+Panduan ini mencakup semua yang perlu Anda ketahui untuk menjadikan Bali sebagai basis kerja remote Anda.
+
+<ConfidenceMeter
+  title="Tingkat Kepercayaan Informasi"
+  items={[
+    {
+      label: "Informasi Coworking",
+      confidence: 92,
+      source: "Penelitian langsung + ulasan pengguna 2024",
+    },
+    {
+      label: "Data Internet",
+      confidence: 88,
+      source: "Tes kecepatan + data penyedia",
+    },
+    {
+      label: "Informasi Visa",
+      confidence: 95,
+      source: "Regulasi imigrasi",
+    },
+    {
+      label: "Estimasi Biaya",
+      confidence: 85,
+      source: "Survei komunitas + riset pasar",
+    },
+    {
+      label: "Pembimbingan Hukum",
+      confidence: 80,
+      source: "Regulasi + masukan praktisi",
+    },
+  ]}
+/>
+
+---
+
+## Realitas Hukum: Apakah Anda Bekerja dari Bali?
+
+Mari kita bahas gajah di ruangan terlebih dahulu.
+
+<InfoCard variant="warning" title="Area Abu-Abu">
+**Secara teknis**, bekerja dengan visa turis di Indonesia adalah ilegal. Hukum mewajibkan izin kerja (IMTA) untuk pekerjaan apa pun yang dilakukan di Indonesia, terlepas dari siapa pemberi kerja Anda.
+
+**Dalam praktiknya**, Indonesia belum secara historis menegakkan aturan ini terhadap pekerja remote yang melayani klien di luar Indonesia. Ribuan digital nomad bekerja dari Bali dengan visa turis tanpa masalah.
+
+**Tapi**: Ini adalah area abu-abu, bukan jalur hukum. Risikonya nyata, meskipun penegakannya jarang terjadi. Panduan ini menyajikan fakta; Anda yang membuat penilaian risiko sendiri.
+
+</InfoCard>
+
+<DecisionTree
+  title="Temukan Jalur Hukum Anda"
+  description="Pahami pilihan Anda untuk bekerja remote dari Bali"
+  nodes={[
+    {
+      id: "start",
+      question: "Jenis pekerjaan remote apa yang Anda lakukan?",
+      options: [
+        {
+          label: "Karyawan (remote untuk perusahaan asing)",
+          nextNodeId: "employee-length",
+        },
+        { label: "Freelancer/kontrak", nextNodeId: "freelance-clients" },
+        { label: "Bisnis online sendiri", nextNodeId: "business-size" },
+        { label: "Content creator/influencer", nextNodeId: "creator-income" },
+      ],
+    },
+    {
+      id: "employee-length",
+      question: "Berapa lama Anda berencana tinggal di Bali?",
+      options: [
+        {
+          label: "Kunjungan singkat (1-2 bulan)",
+          nextNodeId: "result-short-tourist",
+        },
+        {
+          label: "Tinggal lama (3-6 bulan)",
+          nextNodeId: "result-extended-stay",
+        },
+        { label: "Jangka panjang (6+ bulan/tahun)", nextNodeId: "employee-assets" },
+      ],
+    },
+    {
+      id: "employee-assets",
+      question: "Apakah Anda memiliki simpanan/investasi >$130.000?",
+      options: [
+        { label: "Ya", nextNodeId: "result-second-home" },
+        { label: "Tidak", nextNodeId: "result-rotation-strategy" },
+      ],
+    },
+    {
+      id: "freelance-clients",
+      question: "Di mana klien Anda berbasis?",
+      options: [
+        { label: "100% di luar Indonesia", nextNodeId: "freelance-length" },
+        { label: "Beberapa klien Indonesia", nextNodeId: "result-need-pt" },
+        {
+          label: "Kebanyakan klien Indonesia",
+          nextNodeId: "result-need-pt-serious",
+        },
+      ],
+    },
+    {
+      id: "freelance-length",
+      question: "Berapa lama Anda berencana tinggal?",
+      options: [
+        {
+          label: "Tinggal singkat (visa run)",
+          nextNodeId: "result-freelance-tourist",
+        },
+        { label: "Basis jangka panjang", nextNodeId: "freelance-assets" },
+      ],
+    },
+    {
+      id: "freelance-assets",
+      question: "Apakah Anda memiliki simpanan/investasi >$130.000?",
+      options: [
+        { label: "Ya", nextNodeId: "result-second-home-freelance" },
+        {
+          label: "Tidak, tapi ingin status legal",
+          nextNodeId: "result-investor-kitas",
+        },
+        {
+          label: "Tidak, akan terima area abu-abu",
+          nextNodeId: "result-rotation-strategy",
+        },
+      ],
+    },
+    {
+      id: "business-size",
+      question: "Berapa pendapatan/skala bisnis Anda?",
+      options: [
+        { label: "Kecil (< $50k/tahun)", nextNodeId: "result-small-business" },
+        { label: "Sedang ($50k-200k/tahun)", nextNodeId: "result-consider-pt" },
+        { label: "Besar ($200k+/tahun)", nextNodeId: "result-pt-recommended" },
+      ],
+    },
+    {
+      id: "creator-income",
+      question: "Dari mana pendapatan Anda berasal?",
+      options: [
+        {
+          label: "Platform internasional (YouTube, dll)",
+          nextNodeId: "result-creator-international",
+        },
+        {
+          label: "Merek Indonesia/sponsor",
+          nextNodeId: "result-creator-local",
+        },
+        { label: "Kombinasi keduanya", nextNodeId: "result-creator-mixed" },
+      ],
+    },
+    {
+      id: "result-short-tourist",
+      isResult: true,
+      title: "VOA / C1 Tourism",
+      description: "Kerja remote jangka pendek",
+      recommendation:
+        "Untuk kunjungan singkat, sebagian besar digital nomad menggunakan VOA (30+30 hari) atau C1 Tourism (60 hari). Secara teknis area abu-abu tapi umum. Risiko rendah untuk kunjungan singkat.",
+      nextSteps: [
+        "VOA hingga 60 hari",
+        "C1 Tourism selama 60 hari",
+        "Jangan promosikan bekerja lokal",
+        "Simpan dokumentasi pendapatan untuk negara asal",
+      ],
+    },
+    {
+      id: "result-extended-stay",
+      isResult: true,
+      title: "D12 Business Investigation atau E33G",
+      description: "Pilihan tinggal lama",
+      recommendation:
+        "Visa D12 memungkinkan 180 hari per masuk untuk investigasi bisnis. Untuk jangka panjang, pertimbangkan E33G Digital Nomad KITAS (1 tahun, dapat diperbarui hingga 6 tahun total) jika Anda berpenghasilan USD 60.000+/tahun dari luar negeri.",
+      nextSteps: [
+        "D12 untuk tinggal bisnis 180 hari",
+        "E33G untuk KITAS digital nomad 1 tahun, dapat diperbarui hingga 6 tahun",
+        "Siapkan bukti pendapatan",
+        "Pertimbangkan agen visa untuk kenyamanan",
+      ],
+    },
+    {
+      id: "result-second-home",
+      isResult: true,
+      title: "Visa Second Home",
+      description: "Tinggal legal 5 tahun, dapat diperbarui hingga 10 tahun kumulatif",
+      recommendation:
+        "Jika Anda memiliki aset >$130k di bank/investasi, Visa Second Home menawarkan residensi legal 5 tahun pertama, dapat diperbarui hingga 10 tahun kumulatif. Tidak ada izin kerja tapi memungkinkan Anda mengurus urusan luar negeri.",
+      nextSteps: [
+        "Verifikasi persyaratan aset",
+        "Ajukan melalui Imigrasi",
+        "Hak tinggal jangka panjang",
+        "Jalur hukum paling jelas",
+      ],
+    },
+    {
+      id: "result-rotation-strategy",
+      isResult: true,
+      title: "Strategi Rotasi Visa",
+      description: "Umum tapi tidak ideal",
+      recommendation:
+        "Banyak nomad jangka panjang berputar antara VOA dengan keluar ke negara tetangga. Ini berfungsi tapi bukan solusi nyata—pertimbangkan E33G Digital Nomad KITAS untuk status legal.",
+      nextSteps: [
+        "Rencanakan keluar rutin",
+        "Tetapkan dana perjalanan",
+        "Pantau perubahan kebijakan",
+        "Pertimbangkan alternatif jangka panjang",
+      ],
+    },
+    {
+      id: "result-freelance-tourist",
+      isResult: true,
+      title: "Freelancer dengan Visa Turis",
+      description: "Praktik umum",
+      recommendation:
+        "Freelancer dengan klien 100% internasional umumnya bekerja dari Bali dengan visa turis. Area abu-abu tapi luas. Jangan buat aliran pendapatan Indonesia.",
+      nextSteps: [
+        "Gunakan visa yang sesuai untuk durasi",
+        "Semua klien di luar Indonesia",
+        "Kepatuhan pajak negara asal",
+        "Tetap rendah profil",
+      ],
+    },
+    {
+      id: "result-second-home-freelance",
+      isResult: true,
+      title: "Visa Second Home + Freelancing",
+      description: "Pilihan jangka panjang yang legitimate",
+      recommendation:
+        "Visa Second Home dengan pekerjaan freelance internasional adalah opsi paling bersih. Anda memiliki residensi legal; pekerjaan Anda tidak menyentuh Indonesia. Bayar pajak di negara asal.",
+      nextSteps: [
+        "Ajukan Visa Second Home",
+        "Pertahankan status pajak negara asal",
+        "Tetapkan pendapatan Indonesia di nol",
+        "Stabilitas jangka panjang",
+      ],
+    },
+    {
+      id: "result-investor-kitas",
+      isResult: true,
+      title: "Investor KITAS via PT PMA",
+      description: "Legalitas penuh, biaya lebih tinggi",
+      recommendation:
+        "Mendirikan PT PMA (investasi IDR 10B) memberi Anda hak kerja legal melalui Investor KITAS. Mahal tapi sepenuhnya legal. Masuk akal jika Anda berkomitmen jangka panjang.",
+      nextSteps: [
+        "Pendirian PT PMA",
+        "Komitmen investasi IDR 10B",
+        "Ajukan Investor KITAS",
+        "Hak kerja penuh di Indonesia",
+      ],
+    },
+    {
+      id: "result-need-pt",
+      isResult: true,
+      title: "PT PMA Direkomendasikan",
+      description: "Klien Indonesia memerlukan legalitas",
+      recommendation:
+        "Jika Anda memiliki klien Indonesia, Anda memerlukan PT PMA untuk memfakturalkan mereka secara legal. Bekerja tanpa ini menciptakan eksposur hukum bagi Anda dan klien Anda.",
+      nextSteps: [
+        "Dirikan PT PMA",
+        "Dapatkan kode KBLI yang tepat",
+        "Fakturalkan melalui perusahaan",
+        "Kepatuhan pajak penuh",
+      ],
+    },
+    {
+      id: "result-need-pt-serious",
+      isResult: true,
+      title: "PT PMA Diperlukan",
+      description: "Pasar Indonesia memerlukan struktur",
+      recommendation:
+        "Dengan klien Indonesia, Anda mutlak memerlukan PT PMA. Beroperasi tanpa ini adalah penggelapan pajak dan pekerjaan ilegal—risiko jauh lebih tinggi daripada kerja remote internasional.",
+      nextSteps: [
+        "Prioritas: dirikan PT PMA",
+        "Daftar pajak Indonesia",
+        "Setup fakturasi yang tepat",
+        "Konsultasi dengan profesional pajak",
+      ],
+    },
+    {
+      id: "result-small-business",
+      isResult: true,
+      title: "Bisnis Online Kecil",
+      description: "Mirip dengan freelancing",
+      recommendation:
+        "Bisnis online kecil yang melayani pasar internasional diperlakukan mirip freelancing. Area abu-abu pada visa turis, tapi risiko lebih rendah tanpa kehadiran Indonesia.",
+      nextSteps: [
+        "Visa turis atau sosial",
+        "Klien internasional saja",
+        "Pajak negara asal",
+        "Pertimbangkan jalur pertumbuhan",
+      ],
+    },
+    {
+      id: "result-consider-pt",
+      isResult: true,
+      title: "Pertimbangkan PT PMA",
+      description: "Bisnis berkembang memerlukan struktur",
+      recommendation:
+        "Dengan pendapatan $50k-200k, Anda sudah melampaui nomad santai. PT PMA memberi legalitas, kemampuan merekrut lokal, dan struktur bisnis yang tepat. Investasi masuk akal.",
+      nextSteps: [
+        "Evaluasi manfaat PT PMA",
+        "Pertimbangkan waktu",
+        "Rencanakan transisi",
+        "Nasihat profesional",
+      ],
+    },
+    {
+      id: "result-pt-recommended",
+      isResult: true,
+      title: "PT PMA Sangat Direkomendasikan",
+      description: "Bisnis serius memerlukan struktur serius",
+      recommendation:
+        "Dengan pendapatan >$200k, beroperasi informal menciptakan risiko tidak perlu. PT PMA memberi Anda posisi legal, kemampuan berkembang dengan tim lokal, dan akuntansi yang tepat.",
+      nextSteps: [
+        "Dirikan PT PMA",
+        "Rekrut dengan benar",
+        "Kepatuhan penuh",
+        "Infrastruktur pertumbuhan",
+      ],
+    },
+    {
+      id: "result-creator-international",
+      isResult: true,
+      title: "Creator Internasional",
+      description: "Pendapatan platform sederhana",
+      recommendation:
+        "Pendapatan dari YouTube, Patreon, dll ke akun internasional mirip freelancing. Bekerja dari Bali, dibayar internasional, bayar pajak di negara asal.",
+      nextSteps: [
+        "Visa yang sesuai untuk durasi tinggal",
+        "Akun bank internasional",
+        "Kepatuhan pajak negara asal",
+        "Jangan ambil sponsorship Indonesia",
+      ],
+    },
+    {
+      id: "result-creator-local",
+      isResult: true,
+      title: "Creator Merek Lokal",
+      description: "Pendapatan Indonesia memerlukan struktur",
+      recommendation:
+        "Jika merek Indonesia membayar Anda, Anda berpenghasilan Indonesia. Ini secara teknis memerlukan izin kerja dan pendaftaran pajak lokal. Pertimbangkan PT PMA.",
+      nextSteps: [
+        "Evaluasi PT PMA",
+        "Fakturasi yang tepat",
+        "Kepatuhan pajak",
+        "Pertimbangan izin kerja",
+      ],
+    },
+    {
+      id: "result-creator-mixed",
+      isResult: true,
+      title: "Creator Pendapatan Campuran",
+      description: "Pisahkan aliran dengan hati-hati",
+      recommendation:
+        "Pisahkan pendapatan internasional dan Indonesia. Pendapatan internasional = perlakuan freelancer. Pendapatan Indonesia = memerlukan struktur yang tepat.",
+      nextSteps: [
+        "Pisahkan aliran pendapatan",
+        "Internasional via pribadi",
+        "Indonesia via perusahaan",
+        "Nasihat pajak profesional",
+      ],
+    },
+  ]}
+/>
+
+---
+
+## Pilihan Visa untuk Digital Nomad
+
+<ComparisonTable
+  title="Perbandingan Visa untuk Pekerja Remote"
+  description="Bandingkan pilihan visa untuk bekerja remote dari Bali"
+  items={[
+    {
+      name: "VOA",
+      subtitle: "Visa on Arrival",
+      values: {
+        "Durasi Awal": "30 hari",
+        Extensions: "1x 30 hari",
+        "Maksimum Tinggal": "60 hari",
+        Cost: "~$70 total",
+        "Izin Kerja": "Tidak (area abu-abu)",
+        "Cocok Untuk": "Kunjungan singkat",
+        Usaha: "Paling mudah",
+      },
+    },
+    {
+      name: "D12",
+      subtitle: "Investigasi Bisnis",
+      values: {
+        "Durasi Awal": "180 hari",
+        Extensions: "Berbagai kali masuk",
+        "Maksimum Tinggal": "180 hari/masuk",
+        Cost: "~$400-600 total",
+        "Izin Kerja": "Aktivitas bisnis",
+        "Cocok Untuk": "Tinggal lama",
+        Usaha: "Sedang",
+      },
+      highlight: true,
+    },
+    {
+      name: "Second Home",
+      subtitle: "Residensi jangka panjang",
+      values: {
+        "Durasi Awal": "5 tahun",
+        Extensions: "Dapat diperbarui",
+        "Maksimum Tinggal": "10 tahun (kumulatif)",
+        Cost: "~$1.500 + persyaratan bank.",
+        "Izin Kerja": "Kerja luar negeri OK",
+        "Cocok Untuk": "Jangka panjang, kaya",
+        Usaha: "Sedang",
+      },
+    },
+    {
+      name: "Investor KITAS",
+      subtitle: "Via PT PMA",
+      values: {
+        "Durasi Awal": "1-2 tahun",
+        Extensions: "Dapat diperbarui",
+        "Maksimum Tinggal": "Tak terbatas",
+        Cost: "$50k+ (setup perusahaan)",
+        "Izin Kerja": "Ya (penuh)",
+        "Cocok Untuk": "Bisnis serius",
+        Usaha: "Signifikan",
+      },
+    },
+  ]}
+  categories={[
+    {
+      id: "duration",
+      label: "Durasi",
+      fields: ["Durasi Awal", "Extensions", "Maksimum Tinggal"],
+    },
+    {
+      id: "practical",
+      label: "Praktis",
+      fields: ["Cost", "Izin Kerja", "Usaha"],
+    },
+  ]}
+/>
+
+<InfoCard variant="tip" title="E33G: KITAS Digital Nomad">
+E33G Digital Nomad KITAS adalah opsi legal terbaik bagi pekerja remote:
+- Validitas 1 tahun dengan berbagai kali masuk, dapat diperbarui hingga 6 tahun total
+- Memerlukan pendapatan USD 60.000/tahun dari luar negeri
+- Tidak ada izin kerja lokal, tapi kerja remote sepenuhnya legal
+- Proses memakan waktu 2-3 minggu melalui agen
+
+Untuk tinggal lebih singkat, gunakan VOA (60 hari) atau D12 Investigasi Bisnis (180 hari).
+
+</InfoCard>
+
+---
+
+## Ruang Coworking
+
+Pemandangan coworking Bali sudah matang dan beragam. Berikut opsi terbaik:
+
+<ComparisonTable
+  title="Ruang Coworking Terbaik di Bali"
+  description="Bandingkan tempat terbaik untuk bekerja remote"
+  items={[
+    {
+      name: "Dojo Bali",
+      subtitle: "Canggu",
+      values: {
+        "Day Pass": "IDR 250.000",
+        Monthly: "IDR 3.500.000",
+        Internet: "100+ Mbps",
+        Vibe: "Sosial, energik",
+        "Cocok Untuk": "Networking, komunitas",
+        Extras: "Kolam renang, acara, restoran",
+      },
+      highlight: true,
+    },
+    {
+      name: "Outpost",
+      subtitle: "Canggu & Ubud",
+      values: {
+        "Day Pass": "IDR 300.000",
+        Monthly: "IDR 4.000.000",
+        Internet: "100+ Mbps",
+        Vibe: "Profesional, fokus",
+        "Cocok Untuk": "Pekerjaan serius",
+        Extras: "Ruang rapat, Skype booth",
+      },
+    },
+    {
+      name: "Hubud",
+      subtitle: "Ubud",
+      values: {
+        "Day Pass": "IDR 250.000",
+        Monthly: "IDR 3.200.000",
+        Internet: "50+ Mbps",
+        Vibe: "Bambu, sadar lingkungan",
+        "Cocok Untuk": "Kesehatan + kerja",
+        Extras: "Yoga, acara, kafe",
+      },
+    },
+    {
+      name: "Tropical Nomad",
+      subtitle: "Canggu",
+      values: {
+        "Day Pass": "IDR 200.000",
+        Monthly: "IDR 2.800.000",
+        Internet: "100+ Mbps",
+        Vibe: "Relaks, terjangkau",
+        "Cocok Untuk": "Hemat biaya",
+        Extras: "Akses 24/7, dapur",
+      },
+    },
+    {
+      name: "BWork",
+      subtitle: "Sanur",
+      values: {
+        "Day Pass": "IDR 180.000",
+        Monthly: "IDR 2.500.000",
+        Internet: "75+ Mbps",
+        Vibe: "Tenang, profesional",
+        "Cocok Untuk": "Pekerjaan fokus, keluarga",
+        Extras: "Ruang rapat, parkir",
+      },
+    },
+    {
+      name: "Livit",
+      subtitle: "Sanur",
+      values: {
+        "Day Pass": "IDR 200.000",
+        Monthly: "IDR 3.000.000",
+        Internet: "100+ Mbps",
+        Vibe: "Coliving + coworking",
+        "Cocok Untuk": "Hidup all-in-one",
+        Extras: "Paket akomodasi",
+      },
+    },
+  ]}
+  categories={[
+    { id: "pricing", label: "Harga", fields: ["Day Pass", "Monthly"] },
+    {
+      id: "features",
+      label: "Fitur",
+      fields: ["Internet", "Vibe", "Cocok Untuk", "Extras"],
+    },
+  ]}
+/>
+
+<InfoCard variant="note" title="Melampaui Coworking">
+Banyak digital nomad bekerja dari:
+- **Kafe**: Canggu dan Ubud memiliki kafe kerja yang luar biasa (Zin Cafe, Sensorium, Milk & Madu)
+- **Rumah/villa**: Dengan internet baik, banyak bekerja dari akomodasi mereka
+- **Beach club**: Beberapa memiliki WiFi (La Brisa, The Lawn) untuk kerja santai
+
+Coworking masuk akal untuk: internet andal, komunitas, ruang rapat, dan pemisahan kerja-hidup.
+
+</InfoCard>
+
+---
+
+## Realitas Internet
+
+<InfoCard variant="important" title="Internet Bagus (Biasanya)">
+Internet Bali telah meningkat drastis. Di area populer, Anda dapat mengharapkan:
+- **Koneksi fiber**: 50-200 Mbps tersedia di sebagian besar area berkembang
+- **4G/LTE**: Cakupan baik, berguna sebagai cadangan
+- **Coworking**: Umumnya 100+ Mbps, koneksi redundan
+
+Tapi tidak sempurna:
+
+- Gangguan terjadi (hujan, masalah infrastruktur)
+- Beberapa area masih memiliki cakupan buruk
+- Selalu miliki cadangan (hotspot ponsel)
+</InfoCard>
+
+### Pilihan Internet
+
+| Pilihan                         | Kecepatan       | Biaya/Bulan   | Keandalan | Catatan                           |
+| ------------------------------ | ----------- | ------------ | ----------- | ------------------------------- |
+| **Fiber (Biznet, MyRepublic)** | 50-200 Mbps | IDR 400-900k | Baik        | Memerlukan alamat, kontrak 1 tahun  |
+| **IndiHome**                   | 20-100 Mbps | IDR 300-600k | Berubah-ubah | Penyedia pemerintah, luas         |
+| **4G Hotspot**                 | 10-50 Mbps  | IDR 100-300k | Baik        | Telkomsel/XL, cadangan bagus       |
+| **Coworking**                  | 100+ Mbps   | Termasuk      | Sangat baik | Opsi paling andal                 |
+| **Starlink**                   | 50-150 Mbps | ~$120/bulan   | Sangat baik | Opsi baru, perlu pendaftaran       |
+
+### Tips Internet
+
+1. **Tes sebelum berkomitmen** pada akomodasi jangka panjang
+2. **Miliki cadangan seluler** (Telkomsel memiliki cakupan terbaik)
+3. **Gunakan VPN** untuk mengakses situs yang diblokir
+4. **Coworking** untuk panggilan/deadline penting
+5. **Starlink** jika Anda berada di area terpencil
+
+---
+
+## Kalkulator Anggaran Bulanan
+
+<Calculator
+  title="Anggaran Bulanan Digital Nomad"
+  description="Estimasi biaya Anda sebagai pekerja remote di Bali"
+  fields={[
+    {
+      id: "accommodation",
+      label: "Gaya Akomodasi",
+      type: "select",
+      options: [
+        { value: "room", label: "Kamar pribadi (rumah bersama)" },
+        { value: "studio", label: "Studio/apartemen 1BR" },
+        { value: "villa-shared", label: "Kamar villa (coliving)" },
+        { value: "villa-private", label: "Villa pribadi" }
+      ],
+      defaultValue: "studio"
+    },
+    {
+      id: "area",
+      label: "Area",
+      type: "select",
+      options: [
+        { value: "canggu", label: "Canggu" },
+        { value: "ubud", label: "Ubud" },
+        { value: "sanur", label: "Sanur" },
+        { value: "other", label: "Lainnya/Area hemat" }
+      ],
+      defaultValue: "canggu"
+    },
+    {
+      id: "coworking",
+      label: "Keanggotaan Coworking",
+      type: "select",
+      options: [
+        { value: "none", label: "Bekerja dari rumah/kafe" },
+        { value: "flex", label: "Fleksibel/day pass" },
+        { value: "monthly", label: "Keanggotaan bulanan" }
+      ],
+      defaultValue: "flex"
+    },
+    {
+      id: "food",
+      label: "Gaya Makanan",
+      type: "select",
+      options: [
+        { value: "local", label: "Kebanyakan lokal/masak" },
+        { value: "mixed", label: "Campuran lokal & Barat" },
+        { value: "western", label: "Kebanyakan kafe Barat" },
+        { value: "fancy", label: "Restoran & delivery" }
+      ],
+      defaultValue: "mixed"
+    },
+    {
+      id: "transport",
+      label: "Transportasi",
+      type: "select",
+      options: [
+        { value: "scooter", label: "Sewa skuter" },
+        { value: "gojek", label: "Gojek/Grab" },
+        { value: "both", label: "Skuter + sesekali Gojek" }
+      ],
+      defaultValue: "scooter"
+    },
+    {
+      id: "lifestyle",
+      label: "Gaya Hidup",
+      type: "select",
+      options: [
+        { value: "minimal", label: "Minimal (hidup tenang)" },
+        { value: "moderate", label: "Sedang (yoga, gym, keluar sesekali)" },
+        { value: "active", label: "Aktif (beach club, sosial)" }
+      ],
+      defaultValue: "moderate"
+    },
+    {
+      id: "health-insurance",
+      label: "Asuransi Kesehatan",
+      type: "checkbox",
+      defaultValue: true
+    }
+  ]}
+  calculateResult={(values) => {
+    let total = 0;
+    const breakdown = [];
+
+    // Akomodasi
+    const accCosts = {
+      room: { canggu: 4000000, ubud: 3000000, sanur: 3500000, other: 2500000 },
+      studio: { canggu: 7000000, ubud: 5000000, sanur: 6000000, other: 4000000 },
+      'villa-shared': { canggu: 5000000, ubud: 4000000, sanur: 4500000, other: 3500000 },
+      'villa-private': { canggu: 15000000, ubud: 10000000, sanur: 12000000, other: 8000000 }
+    };
+    const acc = accCosts[values.accommodation][values.area];
+    total += acc;
+    breakdown.push({ label: "Akomodasi", amount: acc });
+
+    // Coworking
+    const coworkCosts = { none: 0, flex: 1000000, monthly: 3000000 };
+    const cowork = coworkCosts[values.coworking];
+    if (cowork > 0) {
+      total += cowork;
+      breakdown.push({ label: "Coworking", amount: cowork });
+    }
+
+    // Makanan
+    const foodCosts = { local: 3000000, mixed: 5000000, western: 7000000, fancy: 10000000 };
+    const food = foodCosts[values.food];
+    total += food;
+    breakdown.push({ label: "Makanan & Minuman", amount: food });
+
+    // Transportasi
+    const transportCosts = { scooter: 1000000, gojek: 2000000, both: 1500000 };
+    const transport = transportCosts[values.transport];
+    total += transport;
+    breakdown.push({ label: "Transportasi", amount: transport });
+
+    // Internet/ponsel
+    const internet = 500000;
+    total += internet;
+    breakdown.push({ label: "Internet & Ponsel", amount: internet });
+
+    // Gaya hidup
+    const lifestyleCosts = { minimal: 1000000, moderate: 2500000, active: 5000000 };
+    const lifestyle = lifestyleCosts[values.lifestyle];
+    total += lifestyle;
+    breakdown.push({ label: "Gaya Hidup & Sosial", amount: lifestyle });
+
+    // Asuransi kesehatan
+    if (values['health-insurance']) {
+      const insurance = 2000000;
+      total += insurance;
+      breakdown.push({ label: "Asuransi Kesehatan", amount: insurance });
+    }
+
+    const usdTotal = Math.round(total / 16000);
+
+    return {
+      total,
+      breakdown,
+      currency: "IDR",
+      note: `Sekitar $${usdTotal} USD. Tidak termasuk biaya visa, penerbangan, dan tabungan.`
+    };
+
+}}
+/>
+
+---
+
+## Hari Tipikal: Digital Nomad di Bali
+
+<JourneyMap
+  title="Satu Hari dalam Kehidupan"
+  description="Apa yang mungkin terlihat seperti hari kerja di Bali"
+  estimatedTotal="Hari penuh"
+  steps={[
+    {
+      id: "morning",
+      title: "06:00 - Ritual Pagi",
+      description: "Mulai hari dengan benar",
+      duration: "1,5 jam",
+      status: "opsional",
+      tips: [
+        "Surf saat matahari terbit di Echo Beach",
+        "Kelas yoga di Ubud",
+        "Jogging pagi di sawah",
+        "Atau sekadar kopi di teras villa",
+      ],
+    },
+    {
+      id: "breakfast",
+      title: "07:30 - Sarapan",
+      description: "Bahan bakar untuk hari",
+      duration: "1 jam",
+      status: "wajib",
+      tips: [
+        "Smoothie bowl di kafe",
+        "Nasi lokal untuk hemat",
+        "Masak di rumah",
+        "Banyak kafe kerja menyajikan sarapan luar biasa",
+      ],
+    },
+    {
+      id: "deep-work",
+      title: "09:00 - Blok Kerja Mendalam",
+      description: "Jam paling produktif",
+      duration: "3-4 jam",
+      status: "wajib",
+      tips: [
+        "Pergi ke coworking atau kafe kerja",
+        "Mode fokus - tanpa rapat",
+        "Atasi tugas tersulit terlebih dahulu",
+        "Internet andal esensial",
+      ],
+    },
+    {
+      id: "lunch",
+      title: "13:00 - Istirahat Makan Siang",
+      description: "Isi ulang dan bersosialisasi",
+      duration: "1-1,5 jam",
+      status: "wajib",
+      tips: [
+        "Jelajahi warung berbeda",
+        "Jaringan dengan nomad lain",
+        "Ambil istirahat nyata dari layar",
+      ],
+    },
+    {
+      id: "afternoon",
+      title: "14:30 - Kerja Sore",
+      description: "Rapat dan kolaborasi",
+      duration: "2-3 jam",
+      status: "wajib",
+      tips: [
+        "Waktu bagus untuk panggilan Eropa",
+        "Kerja kolaboratif",
+        "Email dan administrasi",
+        "Selesaikan tugas kunci",
+      ],
+    },
+    {
+      id: "evening-activity",
+      title: "17:30 - Aktivity Malam",
+      description: "Waktu gaya hidup Bali",
+      duration: "2 jam",
+      status: "opsional",
+      tips: [
+        "Sesi surf saat matahari terbenam",
+        "Minuman beach club",
+        "Kelas yoga",
+        "Latihan gym",
+      ],
+    },
+    {
+      id: "dinner",
+      title: "19:30 - Makan Malam",
+      description: "Waktu sosial",
+      duration: "1,5 jam",
+      status: "wajib",
+      tips: [
+        "Makan malam dengan teman nomad",
+        "Jelajahi makanan Bali",
+        "Pasar malam untuk petualangan",
+        "Masak di rumah untuk hemat",
+      ],
+    },
+    {
+      id: "evening",
+      title: "21:00 - Malam Hari",
+      description: "Relaksasi atau panggilan AS",
+      duration: "Berubah-ubah",
+      status: "kondisional",
+      tips: [
+        "Pantai Barat AS mulai online",
+        "Kerja malam singkat jika perlu",
+        "Atau benar-benar putuskan",
+        "Acara sosial dan meetup",
+      ],
+      warnings: [
+        "Jangan biarkan jam AS menghabiskan hidup Anda",
+        "Komunikasi asinkron adalah teman Anda",
+      ],
+    },
+  ]}
+/>
+
+---
+
+## Komunitas dan Jaringan
+
+Salah satu aset terbesar Bali adalah komunitasnya.
+
+### Cara Berkoneksi
+
+- **Acara coworking**: Sebagian besar ruang menyelenggarakan meetup rutin
+- **Meetup.com**: Bali memiliki grup aktif untuk berbagai minat
+- **Grup Facebook**: "Digital Nomads Bali", grup area spesifik
+- **Olahraga**: Crew surfing, komunitas yoga, grup lari
+- **Berdasarkan keahlian**: Rapat pemasaran, hangout dev, kolaborasi creator
+
+### Grup Facebook Utama
+
+| Grup               | Fokus                | Anggota |
+| ------------------- | -------------------- | ------- |
+| Digital Nomads Bali | Komunitas DN umum    | 50k+    |
+| Canggu Community    | Spesifik Canggu      | 30k+    |
+| Ubud Community      | Spesifik Ubud        | 20k+    |
+| Bali Surfing        | Komunitas surfing    | 15k+    |
+| Bali Remote Workers | Fokus kerja          | 10k+    |
+
+<InfoCard variant="tip" title="Tips Pro Komunitas">
+  1. **Muncul secara konsisten** - Coworking yang sama, kafe yang sama, hubungan terbangun
+  2. **Bergabung dengan aktivitas** - Olahraga, lokakarya, sukarela 3. **Berikan nilai** -
+  Bantu orang lain, bagikan pengetahuan 4. **Hindari mentalitas fana** - Investasi pada
+  koneksi bahkan jika sementara 5. **Campur** - Jangan hanya bergaul dengan orang
+  dari negara Anda
+</InfoCard>
+
+---
+
+## Manajemen Zona Waktu
+
+<ComparisonTable
+  title="Bekerja dengan Zona Waktu Berbeda"
+  description="Bali adalah UTC+8 (WITA)"
+  items={[
+    {
+      name: "Asia/Australia",
+      subtitle: "Cocok ideal",
+      values: {
+        "Perbedaan Waktu": "0-3 jam",
+        "Tumpang Tindih Kerja": "Hari penuh",
+        "Dampak Gaya Hidup": "Tidak ada",
+        Strategi: "Jam normal",
+      },
+      highlight: true,
+    },
+    {
+      name: "Eropa",
+      subtitle: "Dapat dikelola",
+      values: {
+        "Perbedaan Waktu": "6-8 jam lebih depan",
+        "Tumpang Tindih Kerja": "Sore/malam",
+        "Dampak Gaya Hidup": "Sedang",
+        Strategi: "Kebebasan pagi, kerja sore",
+      },
+    },
+    {
+      name: "Pantai Timur AS",
+      subtitle: "Menantang",
+      values: {
+        "Perbedaan Waktu": "12-13 jam lebih depan",
+        "Tumpang Tindih Kerja": "Panggilan malam/malam",
+        "Dampak Gaya Hidup": "Signifikan",
+        Strategi: "Negosiasikan asink, batasi rapat langsung",
+      },
+    },
+    {
+      name: "Pantai Barat AS",
+      subtitle: "Paling sulit",
+      values: {
+        "Perbedaan Waktu": "15-16 jam lebih depan",
+        "Tumpang Tindih Kerja": "Panggilan larut malam",
+        "Dampak Gaya Hidup": "Tinggi",
+        Strategi: "Budaya asink kuat esensial",
+      },
+    },
+  ]}
+/>
+
+### Tips Bertahan Zona Waktu
+
+1. **Negosiasikan kerja asink** di mana mungkin
+2. **Kumpulkan rapat** ke hari/waktu tertentu
+3. **Lindungi pagi Anda** untuk kehidupan Bali
+4. **Gunakan rekaman** alih-alih rapat langsung
+5. **Jujur** dengan diri sendiri tentang keberlanjutan
+
+---
+
+## Checklist: Memulai
+
+<Checklist
+  title="Setup Digital Nomad Bali"
+  description="Semua yang Anda butuhkan untuk mulai bekerja remote dari Bali"
+  persistKey="dn-bali-checklist"
+  items={[
+    {
+      id: "visa",
+      label: "Visa diatur",
+      description: "VOA, D12, atau visa jangka panjang yang sesuai (E33G)",
+      required: true,
+      category: "legal",
+    },
+    {
+      id: "insurance",
+      label: "Asuransi perjalanan/kesehatan",
+      description: "Cakupan internasional termasuk Indonesia",
+      required: true,
+      category: "legal",
+    },
+    {
+      id: "bank-cards",
+      label: "Kartu internasional sudah siap",
+      description: "Wise, Revolut, atau kartu debit tanpa biaya",
+      required: true,
+      category: "money",
+    },
+    {
+      id: "vpn",
+      label: "VPN terpasang",
+      description: "Beberapa situs diblokir di Indonesia",
+      required: true,
+      category: "tech",
+    },
+    {
+      id: "phone",
+      label: "Ponsel yang dikunci terbuka",
+      description: "Untuk kartu SIM Indonesia",
+      required: true,
+      category: "tech",
+    },
+    {
+      id: "accommodation",
+      label: "Akomodasi minggu pertama",
+      description: "Pemesanan fleksibel untuk menjelajah",
+      required: true,
+      category: "setup",
+    },
+    {
+      id: "coworking",
+      label: "Coworking diteliti",
+      description: "Pahami pilihan Anda untuk hari 1",
+      required: false,
+      category: "work",
+    },
+    {
+      id: "backup-internet",
+      label: "Paket data seluler",
+      description: "Telkomsel atau XL untuk cadangan",
+      required: true,
+      category: "tech",
+    },
+    {
+      id: "time-management",
+      label: "Strategi zona waktu",
+      description: "Rencanakan bagaimana Anda mengelola jam kerja",
+      required: true,
+      category: "work",
+    },
+    {
+      id: "scooter",
+      label: "Skuter/transportasi sudah siap",
+      description: "Sewa atau strategi Gojek",
+      required: false,
+      category: "setup",
+    },
+    {
+      id: "community",
+      label: "Grup komunitas bergabung",
+      description: "Grup Facebook, saluran Slack",
+      required: false,
+      category: "social",
+    },
+    {
+      id: "routine",
+      label: "Rencana rutin",
+      description: "Blok kerja, olahraga, waktu sosial",
+      required: false,
+      category: "work",
+    },
+  ]}
+  categories={[
+    { id: "legal", label: "Legal/Admin", color: "blue" },
+    { id: "money", label: "Uang", color: "green" },
+    { id: "tech", label: "Teknologi", color: "purple" },
+    { id: "setup", label: "Setup", color: "amber" },
+    { id: "work", label: "Kerja", color: "red" },
+    { id: "social", label: "Sosial", color: "pink" },
+  ]}
+  showProgress={true}
+  allowExport={true}
+/>
+
+---
+
+## Kesalahan Umum yang Harus Dihindari
+
+<InfoCard variant="error" title="Jangan Lakukan Ini">
+**1. Meremehkan kompleksitas visa**
+Jangan berasumsi Anda bisa sekadar "menemukannya" saat tiba. Siapkan rencana visa.
+
+**2. Terlalu mengoptimalkan zona waktu**
+Bekerja malam AS akan menghancurkan Anda pada akhirnya. Prioritaskan setup yang berkelanjutan.
+
+**3. Tinggal di gelembung**
+Bali lebih dari Canggu. Jelajahi. Temui penduduk lokal. Pelajari sedikit bahasa Indonesia.
+
+**4. Tidak ada internet cadangan**
+Ketika WiFi mati sebelum panggilan penting, Anda memerlukan rencana.
+
+**5. Mengabaikan asuransi kesehatan**
+Kunjungan rumah sakit satu kali dapat menghapus bulan-bulan "tabungan."
+
+**6. Visa run sebagai strategi jangka panjang**
+Ini berfungsi sampai tidak. Bangun menuju sesuatu yang stabil.
+
+**7. Semua kerja, tidak ada bermain**
+Anda datang ke Bali. Rasakan. Laptop akan menunggu.
+
+</InfoCard>
+
+---
+
+## Punya Pertanyaan?
+
+Setiap situasi digital nomad unik. Jika Anda memiliki pertanyaan spesifik:
+
+<AskZantara
+  context="Digital nomad di Bali, kerja remote, coworking, visa, internet, biaya, pertimbangan hukum"
+  placeholder="Tanya tentang kerja remote dari Bali..."
+  suggestedQuestions={[
+    "Apa ruang coworking terbaik di Canggu?",
+    "Apakah saya bisa bekerja secara legal dengan visa turis?",
+    "Bagaimana cara mendapatkan visa E33G Digital Nomad?",
+    "Kecepatan internet apa yang bisa saya harapkan?",
+    "Bagaimana cara menangani zona waktu AS dari Bali?",
+  ]}
+/>
+
+---
+
+## Artikel Terkait
+
+- [Ruang Coworking Terbaik di Bali](/insights/lifestyle/best-coworking-bali)
+- [Visa Second Home Indonesia](/insights/immigration/second-home-visa)
+- [Freelancing Secara Legal di Indonesia](/insights/lifestyle/freelancing-legally-indonesia)
+- [Implikasi Pajak Kerja Remote](/insights/tax-legal/remote-work-tax)
+- [Hidup di Bali: Panduan Jujur](/insights/lifestyle/living-in-bali-honest-guide)
+
+---
+
+<InfoCard variant="note" title="Pernyataan Tidak Mengikat">
+
+  Panduan ini hanya untuk tujuan informasi. Regulasi visa dan kerja dapat
+  berubah. Status hukum kerja remote dengan visa turis adalah area abu-abu - panduan
+  ini menyajikan fakta, bukan nasihat hukum. Konsultasikan dengan profesional yang sesuai untuk
+  situasi Anda. Terakhir diperbarui: Januari 2026.
+</InfoCard>
