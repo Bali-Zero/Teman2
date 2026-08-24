@@ -27,10 +27,26 @@ promise: "Know in 10 seconds, buy in 5 minutes, follow it like a parcel."
 price:
   model: single-all-inclusive
   source: PricingTool
-  rule: "PNBP + 3jt (Zero's rule); the PNBP figure is the composed Ditjen index value"
-  # HARD: never split fee / PNBP in any customer-facing surface. The all-inclusive
-  # invariant is already test-owned at apps/mouth/e2e/book-pricing.spec.ts:126.
-  never: ["split fee from PNBP", "quote a fee 'plus government cost'"]
+  # CORRECTED 2026-08-24 by the orchestrator, against the mandate's own seed text.
+  # The mandate seeded `PNBP + 3jt`. That formula is NOT the VOA price and must not be
+  # applied here: `services/garuda_flow/pricing.py` resolves TWO exact catalogue keys and
+  # fails closed on any mismatch, and those rows are all-inclusive (PNBP included) —
+  # test-owned at `apps/mouth/e2e/book-pricing.spec.ts:126`. Applying PNBP+3jt would quote
+  # ~3.5jt against a real catalogue price of 790k: a 4.4x overcharge on a live funnel.
+  rule: >
+    The price is whatever PricingTool returns for the case's exact catalogue key.
+    It is never computed, never a formula, and never a literal in code.
+  keys:
+    issuance: "B1 Visa on Arrival (VOA)" # 790.000 IDR as of 2026-08-24
+    extension: "B1 Visa on Arrival Extension" # 850.000 IDR as of 2026-08-24
+  resolver: apps/backend-rag/backend/services/garuda_flow/pricing.py::price_for_case
+  fail_closed: >
+    A missing, malformed or key-mismatched row yields no price. The funnel must then decline
+    to sell and route to WhatsApp — it must never fall back to a remembered or computed number.
+  never:
+    - "split fee from PNBP in any customer-facing surface"
+    - "quote a fee 'plus government cost'"
+    - "derive the price from a formula (PNBP + margin) instead of the catalogue key"
 
 metrics:
   primary:
