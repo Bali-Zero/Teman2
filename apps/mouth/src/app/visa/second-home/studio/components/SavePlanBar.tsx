@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import {
   encodePlanFragment,
@@ -113,6 +114,80 @@ const PRINT_STYLES = `
   }
 `;
 
+type RestingClearButtonStyle = {
+  borderColor: "var(--text-secondary)";
+  color: "var(--text-secondary)";
+};
+
+// Compile-time regression guard: the rare destructive action stays neutral
+// until the user points to it or focuses it. Changing either value back to an
+// error token fails the mouth typecheck instead of silently restoring the red
+// clash with the all-inclusive price.
+//
+// These values are consumed ONLY by CLEAR_BUTTON_STYLES below — never spread
+// into the button's own `style` prop. An inline `color`/`border-color` on the
+// element itself would permanently out-rank the `:hover`/`:focus-visible`
+// class rule below, no matter how that selector is written: an inline style
+// attribute beats every stylesheet selector, pseudo-classes included. That
+// was the shape of a real bug here — measured live in Chromium, hover left
+// color/border-color/background completely unchanged, only the CSS
+// properties the inline style didn't also touch (text-decoration, the
+// currentColor-driven box-shadow ring's hue aside, outline) moved at all.
+const restingClearButtonStyle = {
+  borderColor: "var(--text-secondary)",
+  color: "var(--text-secondary)",
+} satisfies RestingClearButtonStyle;
+
+const CLEAR_BUTTON_STYLES = `
+  .bz-shs-clear-plan {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid ${restingClearButtonStyle.borderColor};
+    background: transparent;
+    color: ${restingClearButtonStyle.color};
+    transition:
+      border-color var(--motion-duration-fast, 150ms) ease,
+      color var(--motion-duration-fast, 150ms) ease,
+      background-color var(--motion-duration-fast, 150ms) ease,
+      box-shadow var(--motion-duration-fast, 150ms) ease;
+  }
+
+  .bz-shs-clear-plan:is(:hover, :focus-visible) {
+    /* The editorial gradient is darkest at the bottom and lightest at the
+       top. This mix keeps danger text at >= 4.81:1 even on the lightest
+       raised surface plus the active tint, while remaining visibly separate
+       from the price red. */
+    --bz-shs-clear-active: color-mix(
+      in srgb,
+      var(--color-error, #c0392b) 40%,
+      white
+    );
+    border-color: var(--bz-shs-clear-active);
+    background: color-mix(
+      in srgb,
+      var(--color-error, #c0392b) 16%,
+      transparent
+    );
+    box-shadow: inset 0 0 0 1px currentColor;
+    color: var(--bz-shs-clear-active);
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  .bz-shs-clear-plan:focus-visible {
+    outline: 3px solid var(--bz-shs-clear-active);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bz-shs-clear-plan {
+      transition: none;
+    }
+  }
+`;
+
 export interface SavePlanBarProps {
   plan: PlanState;
   /** Clears localStorage (plan-codec's clearPlan) and resets the wizard to
@@ -131,6 +206,20 @@ const buttonStyle: React.CSSProperties = {
   minHeight: 44,
   fontSize: "0.9rem",
   fontFamily: "inherit",
+};
+
+// Layout-only for the clear button: deliberately excludes border/background/
+// color (those come from buttonStyle for the other three buttons) so
+// CLEAR_BUTTON_STYLES above is the sole owner of this button's border,
+// background and text color — see the comment on restingClearButtonStyle for
+// why that ownership can't be shared with an inline `style` prop.
+const clearButtonLayoutStyle: React.CSSProperties = {
+  padding: buttonStyle.padding,
+  borderRadius: buttonStyle.borderRadius,
+  cursor: buttonStyle.cursor,
+  minHeight: buttonStyle.minHeight,
+  fontSize: buttonStyle.fontSize,
+  fontFamily: buttonStyle.fontFamily,
 };
 
 /** "Your plan stays on this device" bar (spec §5). Answers auto-save on
@@ -217,12 +306,10 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         <button
           type="button"
           onClick={onClear}
-          style={{
-            ...buttonStyle,
-            borderColor: "var(--color-error, #c0392b)",
-            color: "var(--color-error, #c0392b)",
-          }}
+          className="bz-shs-clear-plan"
+          style={clearButtonLayoutStyle}
         >
+          <Trash2 size={16} strokeWidth={1.75} aria-hidden />
           {getCopy("savePlanBar.clearButton")}
         </button>
       </div>
@@ -260,6 +347,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         {getCopy("savePlanBar.linkWarning")}
       </p>
       <style>{PRINT_STYLES}</style>
+      <style>{CLEAR_BUTTON_STYLES}</style>
     </section>
   );
 }
