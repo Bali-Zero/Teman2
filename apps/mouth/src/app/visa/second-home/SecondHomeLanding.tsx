@@ -246,7 +246,8 @@ export function SecondHomeLanding() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(150px, 100%), 1fr))",
               gap: "var(--space-3, 0.75rem)",
               marginTop: "var(--space-4, 1rem)",
               maxWidth: "42rem",
@@ -259,6 +260,7 @@ export function SecondHomeLanding() {
                   ...cardStyle,
                   padding: "var(--space-4, 1rem)",
                   gap: "var(--space-1, 0.25rem)",
+                  gridTemplateColumns: "minmax(0, 1fr)",
                 }}
               >
                 <div
@@ -311,7 +313,8 @@ export function SecondHomeLanding() {
           style={{
             display: "grid",
             gap: "var(--space-4, 1rem)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
           }}
         >
           {(["a", "b"] as const).map((route) => (
@@ -368,7 +371,8 @@ export function SecondHomeLanding() {
           style={{
             display: "grid",
             gap: "var(--space-3, 0.75rem)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(240px, 100%), 1fr))",
           }}
         >
           {(["base", "e33e", "e33f"] as const).map((track) => (
@@ -429,7 +433,8 @@ export function SecondHomeLanding() {
           style={{
             display: "grid",
             gap: "var(--space-4, 1rem)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(240px, 100%), 1fr))",
           }}
         >
           {[1, 2, 3].map((step) => (

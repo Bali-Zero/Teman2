@@ -29,6 +29,18 @@ function renderLanding() {
   );
 }
 
+function removeContainerBoundedPixelTracks(template: string): string {
+  let unresolved = template;
+  let previous: string;
+
+  do {
+    previous = unresolved;
+    unresolved = unresolved.replace(/\bmin(?:max)?\([^()]*%[^()]*\)/gi, "");
+  } while (unresolved !== previous);
+
+  return unresolved;
+}
+
 describe("SecondHomeLanding", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -57,6 +69,28 @@ describe("SecondHomeLanding", () => {
     );
     expect(expectedPrice).not.toBeNull();
     expect(screen.getByText(expectedPrice as string)).toBeInTheDocument();
+  });
+
+  it("keeps every pixel-based grid track bounded by its container", () => {
+    const { container } = renderLanding();
+    const gridTemplates = Array.from(
+      container.querySelectorAll<HTMLElement>("[style]"),
+    )
+      .map((element) => element.style.gridTemplateColumns)
+      .filter(Boolean);
+
+    expect(gridTemplates).not.toHaveLength(0);
+    gridTemplates.forEach((template) => {
+      const unresolved = removeContainerBoundedPixelTracks(template);
+      // Assert on a value that carries the offending template itself, so a
+      // failure prints "unsafe fixed pixel grid track: <template>" instead
+      // of an opaque boolean — `expect(actual, message)` is a Vitest-4
+      // runtime feature the project's `expect` types don't declare (TS2554).
+      const unsafeFixedPixelTrack = /\d+(?:\.\d+)?px/i.test(unresolved)
+        ? `unsafe fixed pixel grid track: ${template}`
+        : null;
+      expect(unsafeFixedPixelTrack).toBeNull();
+    });
   });
 
   it("covers the senior tracks, no-work-rights, and the 90-day duty", () => {
