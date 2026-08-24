@@ -87,6 +87,122 @@ LAWS_2026 = [
         "marketing_title_it": "UU 1/2023 - Nuovo Codice Penale Indonesia (KUHP)",
         "marketing_title_en": "UU 1/2023 - Indonesia New Criminal Code (KUHP)",
     },
+    # ── Immigration corpus, added 2026-08-24 ────────────────────────────────────
+    # Every title below was read off the PDF's own heading, not inferred from the
+    # file name — two files staged for this batch carried a WRONG name and were
+    # renamed only because that check was run (Perpres 76/2024 is land allocation
+    # for investment restructuring, NOT the Golden Visa; Permenkumham 34/2021 is a
+    # Covid-era measure). Same discipline as the NB-2 loader's identity gate.
+    #
+    # Deliberately NOT in this list: Kepmen M.IP-19.GR.01.01/2025. Its PDF is a
+    # SCAN with 0 extractable characters across 3 pages — ingesting it would add an
+    # empty document that looks present. Its verified manual transcription lives in
+    # NB-2; it belongs here only once it has passed OCR.
+    {
+        "filename": "UU_6_2011_Keimigrasian.pdf",
+        "title": "UU 6/2011 - Keimigrasian",
+        "category": "keimigrasian",
+        "marketing_title_it": "UU 6/2011 - Legge sull'Immigrazione (testo base)",
+        "marketing_title_en": "UU 6/2011 - Indonesian Immigration Law (base text)",
+    },
+    {
+        "filename": "UU_63_2024_Perubahan_Ketiga_UU_Keimigrasian.pdf",
+        "title": "UU 63/2024 - Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 2011 tentang Keimigrasian",
+        "category": "keimigrasian",
+        "marketing_title_it": "UU 63/2024 - Terza Modifica alla Legge sull'Immigrazione",
+        "marketing_title_en": "UU 63/2024 - Third Amendment to the Immigration Law",
+    },
+    {
+        "filename": "Perpres_157_2024_Kementerian_Imigrasi_dan_Pemasyarakatan.pdf",
+        "title": "Perpres 157/2024 - Kementerian Imigrasi dan Pemasyarakatan",
+        "category": "keimigrasian",
+        "marketing_title_it": "Perpres 157/2024 - Istituzione del Ministero Immigrazione e Penitenziari",
+        "marketing_title_en": "Perpres 157/2024 - Ministry of Immigration and Corrections",
+    },
+    {
+        "filename": "Perpres_76_2024_Perubahan_Perpres_70_2023_Pengalokasian_Lahan_Investasi.pdf",
+        "title": "Perpres 76/2024 - Perubahan atas Peraturan Presiden Nomor 70 Tahun 2023 tentang Pengalokasian Lahan bagi Penataan Investasi",
+        "category": "investasi",
+        "marketing_title_it": "Perpres 76/2024 - Assegnazione Terreni per il Riordino degli Investimenti",
+        "marketing_title_en": "Perpres 76/2024 - Land Allocation for Investment Restructuring",
+    },
+    {
+        "filename": "Permenkumham_22_2023_Visa_dan_Izin_Tinggal.pdf",
+        "title": "Permenkumham 22/2023 - Visa dan Izin Tinggal",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permenkumham 22/2023 - Visti e Permessi di Soggiorno",
+        "marketing_title_en": "Permenkumham 22/2023 - Visas and Stay Permits",
+    },
+    {
+        "filename": "Permenkumham_11_2024_Perubahan_Visa_dan_Izin_Tinggal.pdf",
+        "title": "Permenkumham 11/2024 - Perubahan atas Peraturan Menteri Hukum dan Hak Asasi Manusia Nomor 22 Tahun 2023 tentang Visa dan Izin Tinggal",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permenkumham 11/2024 - Modifica al 22/2023 su Visti e Soggiorni",
+        "marketing_title_en": "Permenkumham 11/2024 - Amendment to 22/2023 on Visas and Stay Permits",
+    },
+    {
+        "filename": "Permenkumham_34_2021_Visa_Izin_Tinggal_Masa_Covid19.pdf",
+        "title": "Permenkumham 34/2021 - Visa dan Izin Tinggal pada Masa Penanganan Penyebaran Corona Virus Disease 2019 dan Pemulihan Ekonomi Nasional",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permenkumham 34/2021 - Visti e Soggiorni nel Periodo Covid-19 (storico)",
+        "marketing_title_en": "Permenkumham 34/2021 - Visas and Stay Permits during Covid-19 (historical)",
+    },
+    {
+        "filename": "PermenImipas_2_2025_Pengawasan_Keimigrasian.pdf",
+        "title": "Permen Imipas 2/2025 - Pengawasan Keimigrasian dan Tindakan Administratif Keimigrasian",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 2/2025 - Vigilanza Migratoria e Provvedimenti Amministrativi",
+        "marketing_title_en": "Permen Imipas 2/2025 - Immigration Supervision and Administrative Action",
+    },
+    {
+        "filename": "PermenImipas_4_2025_Kartu_Perjalanan_Pebisnis_APEC.pdf",
+        "title": "Permen Imipas 4/2025 - Kartu Perjalanan Pebisnis Asia Pacific Economic Cooperation",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 4/2025 - Carta di Viaggio d'Affari APEC (ABTC)",
+        "marketing_title_en": "Permen Imipas 4/2025 - APEC Business Travel Card (ABTC)",
+    },
+    {
+        "filename": "PermenImipas_6_2025_Pencabutan_Permenkumham_35_2021.pdf",
+        "title": "Permen Imipas 6/2025 - Pencabutan Peraturan Menteri Hukum dan Hak Asasi Manusia Nomor 35 Tahun 2021 tentang Konsultan Keimigrasian",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 6/2025 - Abrogazione della Norma sui Consulenti per l'Immigrazione",
+        "marketing_title_en": "Permen Imipas 6/2025 - Repeal of the Immigration Consultants Regulation",
+    },
+    {
+        "filename": "PermenImipas_9_2025_Penambahan_Bebas_Visa_Kunjungan.pdf",
+        "title": "Permen Imipas 9/2025 - Penambahan Daftar Negara, Pemerintah Wilayah Administratif Khusus Suatu Negara, dan Entitas Tertentu yang Diberikan Bebas Visa Kunjungan",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 9/2025 - Ampliamento dei Paesi Esenti da Visto di Visita",
+        "marketing_title_en": "Permen Imipas 9/2025 - Expanded Visa-Free Visit Country List",
+    },
+    {
+        "filename": "PermenImipas_14_2025_Tarif_Nol_Rupiah.pdf",
+        "title": "Permen Imipas 14/2025 - Persyaratan dan Tata Cara Pengenaan Tarif Nol Rupiah terhadap Pelayanan Keimigrasian dan Biaya Beban",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 14/2025 - Tariffa Zero per i Servizi Migratori",
+        "marketing_title_en": "Permen Imipas 14/2025 - Zero-Rupiah Tariff for Immigration Services",
+    },
+    {
+        "filename": "PermenImipas_1_2026_Perubahan_Pencegahan_dan_Penangkalan.pdf",
+        "title": "Permen Imipas 1/2026 - Perubahan atas Peraturan Menteri Imigrasi dan Pemasyarakatan Nomor 13 Tahun 2025 tentang Pelaksanaan Pencegahan dan Penangkalan",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 1/2026 - Modifica su Divieti di Uscita e di Ingresso",
+        "marketing_title_en": "Permen Imipas 1/2026 - Amendment on Exit and Entry Bans",
+    },
+    {
+        "filename": "PermenImipas_7_2026_Intelijen_Keimigrasian.pdf",
+        "title": "Permen Imipas 7/2026 - Intelijen Keimigrasian",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 7/2026 - Intelligence Migratoria",
+        "marketing_title_en": "Permen Imipas 7/2026 - Immigration Intelligence",
+    },
+    {
+        "filename": "PermenImipas_10_2026_Daftar_Negara_Bebas_Visa_Kunjungan.pdf",
+        "title": "Permen Imipas 10/2026 - Penambahan Daftar Negara, Pemerintah Wilayah Administratif Khusus Suatu Negara, dan Entitas Tertentu yang Diberikan Bebas Visa Kunjungan",
+        "category": "keimigrasian",
+        "marketing_title_it": "Permen Imipas 10/2026 - Elenco Corrente dei Paesi Esenti da Visto di Visita",
+        "marketing_title_en": "Permen Imipas 10/2026 - Current Visa-Free Visit Country List",
+    },
 ]
 
 # "legal_unified_2026" was a dead end: absent from collection_registry.py's
@@ -142,7 +258,7 @@ async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
     for i, law in enumerate(laws):
         fp = SOURCE_DIR / law["filename"]
         size_mb = fp.stat().st_size / (1024 * 1024)
-        logger.info(f"  [{i+1}] {law['filename']} ({size_mb:.1f} MB)")
+        logger.info(f"  [{i + 1}] {law['filename']} ({size_mb:.1f} MB)")
         logger.info(f"      Title: {law['title'][:80]}...")
         logger.info(f"      Category: {law['category']}")
     logger.info("")
@@ -169,7 +285,7 @@ async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
     for i, law in enumerate(laws):
         file_path = SOURCE_DIR / law["filename"]
         logger.info("")
-        logger.info(f"━━━ [{i+1}/{len(laws)}] {law['filename']} ━━━")
+        logger.info(f"━━━ [{i + 1}/{len(laws)}] {law['filename']} ━━━")
         logger.info(f"Title: {law['title']}")
 
         try:
@@ -248,7 +364,9 @@ async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
                         query=query, documents=search_results["results"], top_k=1
                     )
                     top = reranked[0]["text"][:80] if reranked else "N/A"
-                    logger.info(f"  ✅ '{query[:40]}...' → {len(search_results['results'])} hits → Top: {top}...")
+                    logger.info(
+                        f"  ✅ '{query[:40]}...' → {len(search_results['results'])} hits → Top: {top}..."
+                    )
                 else:
                     logger.warning(f"  ⚠️ '{query[:40]}...' → 0 hits")
 
