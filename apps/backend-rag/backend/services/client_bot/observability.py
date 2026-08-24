@@ -192,7 +192,12 @@ client_bot_handoff_context_carryover_total = safe_register_counter(
     "Handoffs where the consultant-facing record carries the full prior "
     "conversation context. This IS the product bar the mandate names — "
     "read this against client_bot_handoff_context_missing_total, never "
-    "against raw handoff volume alone.",
+    "against raw handoff volume alone. The ratio of the two is undefined "
+    "when handoff volume is near zero — a quiet week must read as "
+    "INSUFFICIENT_DATA, never as '100% healthy' by default. See "
+    "tripwires.py's client.handoff_context_carryover_low, which floors "
+    "this at handoff_created_total>=5 before treating the ratio as a real "
+    "read.",
     (_SURFACE_LABEL,),
 )
 

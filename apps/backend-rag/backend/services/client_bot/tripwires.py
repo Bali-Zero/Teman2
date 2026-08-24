@@ -322,15 +322,24 @@ TRIPWIRES: tuple[Tripwire, ...] = (
         id="client.handoff_context_carryover_low",
         metric="client_bot_handoff_context_missing_total / "
         "client_bot_handoff_created_total",
-        threshold="> 20% over 7 days",
+        threshold="> 20% over 7 days, computed ONLY when "
+        "client_bot_handoff_created_total >= 5 in that window. Below that "
+        "floor (including exactly 0) the ratio is undefined and the week "
+        "reports INSUFFICIENT_DATA, never '100% healthy' — the family-#2 "
+        "failure ('green because nothing was measured') this row exists to "
+        "avoid, per the team lead's explicit review finding.",
         kind=TripwireKind.BUSINESS,
         metric_status=MetricStatus.WIRED,
         plane=None,
-        automatic_action="Weekly owner digest; 3 consecutive weeks over "
-        "threshold feeds the MANDATE.md kill-criterion review — this is the "
-        "mandate's own stated product bar failing, not a side metric.",
+        automatic_action="Weekly owner digest reporting one of: PASS (>=80% "
+        "carryover, n>=5), FAIL (<80%, n>=5), or INSUFFICIENT_DATA (n<5) — "
+        "never silently omitting a low-volume week. 3 consecutive PASS/FAIL-"
+        "eligible weeks under threshold feeds the MANDATE.md kill-criterion "
+        "review; an INSUFFICIENT_DATA week does not count toward, or reset, "
+        "that 3-week clock either way.",
         source="B7 addition — mandate's own text: 'context carry-over to the "
-        "consultant is the product bar'",
+        "consultant is the product bar'; the n>=5 floor and INSUFFICIENT_DATA "
+        "state per team-lead review finding on this row",
     ),
     Tripwire(
         id="client.synthetic_probe_silent",

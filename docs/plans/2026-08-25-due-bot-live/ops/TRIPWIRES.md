@@ -63,14 +63,21 @@ these two read is advisory, not yet armed for automatic action.
 
 ## Client bot — business invariants (B7 additions closing the gap above)
 
-| id                                     | metric                                          | threshold                   | automatic action                                                              |
-| -------------------------------------- | ----------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
-| `client.unsupported_claim_escape`      | `client_policy_unsupported_claim_escape_total`  | > 0 in golden/shadow        | Block promotion                                                               |
-| `client.price_not_in_pricingtool`      | `client_bot_price_not_in_pricingtool_total`     | > 0, or >=2/1h same surface | 1st: P0 page. 2nd in 1h: auto-flip that surface's send flag off               |
-| `client.citation_integrity_fail`       | `client_bot_citation_integrity_fail_total`      | > 0 in golden/shadow        | Block promotion                                                               |
-| `client.handoff_creation_failing`      | `client_bot_handoff_creation_failed_total`      | > 0                         | Page owner — ClientHandoffService itself is unhealthy                         |
-| `client.handoff_context_carryover_low` | `..._context_missing_total / ..._created_total` | > 20%/7d                    | Weekly digest; 3 consecutive weeks feeds the MANDATE.md kill-criterion review |
-| `client.synthetic_probe_silent`        | `client_bot_synthetic_probe_age_seconds`        | > 900s                      | Auto-flip that surface's send flag off; page owner (dead-man switch)          |
+| id                                       | metric                                          | threshold                   | automatic action                                                                                     |
+| ---------------------------------------- | ----------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `client.unsupported_claim_escape`        | `client_policy_unsupported_claim_escape_total`  | > 0 in golden/shadow        | Block promotion                                                                                      |
+| `client.price_not_in_pricingtool`        | `client_bot_price_not_in_pricingtool_total`     | > 0, or >=2/1h same surface | 1st: P0 page. 2nd in 1h: auto-flip that surface's send flag off                                      |
+| `client.citation_integrity_fail`         | `client_bot_citation_integrity_fail_total`      | > 0 in golden/shadow        | Block promotion                                                                                      |
+| `client.handoff_creation_failing`        | `client_bot_handoff_creation_failed_total`      | > 0                         | Page owner — ClientHandoffService itself is unhealthy                                                |
+| `client.handoff_context_carryover_low` ⓘ | `..._context_missing_total / ..._created_total` | > 20%/7d, n>=5              | Weekly digest (PASS/FAIL/INSUFFICIENT_DATA); 3 FAIL weeks feeds the MANDATE.md kill-criterion review |
+| `client.synthetic_probe_silent`          | `client_bot_synthetic_probe_age_seconds`        | > 900s                      | Auto-flip that surface's send flag off; page owner (dead-man switch)                                 |
+
+ⓘ **`client.handoff_context_carryover_low` can go quiet instead of red** — with fewer than 5
+handoffs in a week (including exactly 0), the ratio is undefined and the digest must report
+INSUFFICIENT_DATA, never "100% healthy." An INSUFFICIENT_DATA week neither counts toward nor
+resets the 3-week kill-criterion clock. Team-lead review finding (2026-08-25): this is the
+family-#2 failure ("green because nothing was measured") the repo's own cicatrix rules already
+name — silence must not read as a passing grade.
 
 ## Team bot (NAMING CONTRACT — `apps/team-bot/` doesn't exist yet, B3 implements)
 
