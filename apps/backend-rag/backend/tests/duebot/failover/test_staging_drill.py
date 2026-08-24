@@ -108,7 +108,15 @@ def _deps(
     mini_ready: bool,
     mini_unavailable: bool = True,
     self_health: SelfHealthReport = HEALTHY,
+    auto_enabled: bool = True,
 ) -> FailoverdDeps:
+    """``auto_enabled`` defaults True — this drill proves the ARMED
+    mechanics (what F9 requires before ``TEAM_BOT_FAILOVER_AUTO_ENABLED``
+    may ever be flipped for real). The kill switch's own OFF-by-default
+    behavior is proven separately in
+    ``test_failoverd.py::test_shadow_mode_takes_no_action_even_when_eligible_and_healthy``.
+    """
+
     async def check_mini_ready() -> bool:
         return mini_ready
 
@@ -129,6 +137,7 @@ def _deps(
         check_mini_ready=check_mini_ready,
         check_mini_tailscale_unavailable=check_mini_tailscale_unavailable,
         run_self_prechecks=run_self_prechecks,
+        auto_enabled=auto_enabled,
     )
 
 

@@ -39,17 +39,28 @@ suite.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import os
+import signal
+import subprocess
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
+import asyncpg
+import httpx
+
 from backend.services.team_bot_ingress.ingress_leader import (
+    DEFAULT_RECORD_ID,
     IngressLeaderStore,
     PromoteOutcome,
 )
+from backend.services.team_bot_ingress.ingress_state_repo import PostgresIngressLeaderStore
 from backend.services.team_bot_ingress.waba_override import (
+    DEFAULT_GRAPH_VERSION,
     WABAOverrideClient,
     WABAOverrideError,
 )
@@ -66,6 +77,7 @@ class ActionKind(StrEnum):
     NO_ACTION_NOT_YET_ELIGIBLE = "no_action_not_yet_eligible"
     REFUSED_SELF_UNHEALTHY = "refused_self_unhealthy"
     REFUSED_CAS_CONFLICT = "refused_cas_conflict"
+    SHADOW_WOULD_PROMOTE_BUT_DISABLED = "shadow_would_promote_but_disabled"
     PROMOTED_AND_CONFIRMED = "promoted_and_confirmed"
     PROMOTED_BUT_CALLBACK_UNCONFIRMED = "promoted_but_callback_unconfirmed"
     ALREADY_LEADER_CALLBACK_CONFIRMED = "already_leader_callback_confirmed"
@@ -166,6 +178,18 @@ class FailoverdDeps:
     check_mini_tailscale_unavailable: HealthProbe
     run_self_prechecks: SelfPrechecks
     lease_seconds: float = DEFAULT_LEASE_SECONDS
+    auto_enabled: bool = False
+    """``TEAM_BOT_FAILOVER_AUTO_ENABLED`` (KILL-SWITCHES.md, owned by
+    lane B7 — this field just reads the same name). Defaults False, same
+    as the documented kill switch default. When False, EVERY action past
+    the initial health/eligibility check — a brand-new promotion AND a
+    retry of an already-held leadership's callback confirmation — is
+    replaced by :data:`ActionKind.SHADOW_WOULD_PROMOTE_BUT_DISABLED`,
+    never a real store write or a real Meta call. This is what makes F9's
+    "shadow intent/tool selection" promotion rung (owner switchboard item
+    7) observable: the daemon can run continuously and prove what it
+    WOULD have done, with zero side effects, before the operator arms it.
+    """
 
 
 async def evaluate_and_act_once(
@@ -189,6 +213,12 @@ async def evaluate_and_act_once(
         )
 
     current = await deps.store.read()
+
+    if not deps.auto_enabled:
+        return FailoverAction(
+            kind=ActionKind.SHADOW_WOULD_PROMOTE_BUT_DISABLED,
+            detail=f"current_active_node={current.active_node_id} current_epoch={current.leader_epoch}",
+        )
 
     if current.active_node_id == deps.node_id:
         # Already the leader per the SSOT — never re-promote. Only retry
@@ -263,14 +293,274 @@ async def evaluate_and_act_once(
     )
 
 
+# =======================================================================
+# Real deployment wiring — everything above this line has zero I/O
+# dependencies of its own and is exercised entirely by the drill suite.
+# Everything below is the "operator step is a one-value flip" boundary:
+# a real process, real env vars, real (if narrow) network/subprocess
+# calls. None of this is exercised by backend/tests/duebot/ — it is the
+# thing the F9 staging-WABA drill (not a test file) validates for real.
+# =======================================================================
+
+
+def _find_tailscale_peer_online(hostname: str) -> bool | None:
+    """Real check via ``tailscale status --json`` (verified against the
+    installed CLI, v1.96.5, empirically — NOT copied from the research
+    capture, whose example commands use an older/different CLI syntax
+    that this installed version's ``--help`` output does not accept).
+
+    Returns ``None`` when the peer cannot be found in the tailnet map at
+    all — deliberately distinct from ``False`` ("definitely offline"),
+    since "we don't even know this node" and "we know it and it's down"
+    should not be silently conflated by a caller that treats both as
+    "unavailable" without at least being ABLE to tell them apart in logs.
+    """
+
+    try:
+        result = subprocess.run(
+            ["tailscale", "status", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        )
+        status = json.loads(result.stdout)
+    except (subprocess.SubprocessError, json.JSONDecodeError, OSError) as exc:
+        logger.warning("team-bot-failoverd: tailscale status check failed: %s", exc)
+        return None
+
+    for peer in status.get("Peer", {}).values():
+        if str(peer.get("HostName", "")).lower() == hostname.lower():
+            return bool(peer.get("Online"))
+    return None
+
+
+@dataclass(frozen=True, slots=True)
+class FailoverdConfig:
+    """Every setting read from the environment — Golden Rule #6, no
+    hardcoded secrets. ``from_env`` reads NAMES, never bundles a default
+    for anything secret (``waba_access_token``/``verify_token``/
+    ``database_url`` are required — a missing one is a startup failure,
+    never a silent empty string reaching a live Meta/Postgres call).
+    """
+
+    node_id: str
+    waba_id: str
+    callback_uri: str
+    callback_uri_sha256: str
+    verify_token: str
+    waba_access_token: str
+    database_url: str
+    mini_readyz_url: str
+    mini_tailscale_hostname: str
+    backend_health_url: str
+    funnel_local_url: str
+    poll_seconds: float
+    auto_enabled: bool
+
+    @classmethod
+    def from_env(cls) -> FailoverdConfig:
+        def _require(name: str) -> str:
+            value = os.environ.get(name)
+            if not value:
+                raise RuntimeError(f"team-bot-failoverd: required env var {name} is unset")
+            return value
+
+        return cls(
+            node_id=os.environ.get("TEAM_BOT_FAILOVER_NODE_ID", "pro"),
+            waba_id=_require("TEAM_BOT_WABA_ID"),
+            callback_uri=_require("TEAM_BOT_FAILOVER_CALLBACK_URI"),
+            callback_uri_sha256=_require("TEAM_BOT_FAILOVER_CALLBACK_URI_SHA256"),
+            verify_token=_require("TEAM_BOT_WABA_VERIFY_TOKEN"),
+            waba_access_token=_require("TEAM_BOT_WABA_ACCESS_TOKEN"),
+            database_url=_require("TEAM_BOT_FAILOVER_DATABASE_URL"),
+            mini_readyz_url=_require("TEAM_BOT_MINI_READYZ_URL"),
+            mini_tailscale_hostname=os.environ.get(
+                "TEAM_BOT_MINI_TAILSCALE_HOSTNAME", "Mini-Pro2"
+            ),
+            backend_health_url=_require("TEAM_BOT_BACKEND_HEALTH_URL"),
+            funnel_local_url=os.environ.get(
+                "TEAM_BOT_FUNNEL_LOCAL_URL", "http://127.0.0.1:8765/livez"
+            ),
+            poll_seconds=float(os.environ.get("TEAM_BOT_FAILOVER_POLL_SECONDS", "5.0")),
+            auto_enabled=os.environ.get("TEAM_BOT_FAILOVER_AUTO_ENABLED", "false").lower()
+            == "true",
+        )
+
+
+async def _run_self_prechecks_not_fully_wired(
+    *, http_client: httpx.AsyncClient, config: FailoverdConfig
+) -> SelfHealthReport:
+    """Two of F9 step 3's five prechecks are genuinely this lane's to
+    implement (``backend_crm_healthy``, ``funnel_reachable`` — both real
+    HTTP calls below). The other three are NOT: ``ollama_reachable`` is
+    B4's serving-plant substance, ``replication_lag_ok`` is B3's sqlite-
+    replication substance, ``identity_snapshot_valid`` is B3's F7
+    identity substance. They are hardcoded False here rather than
+    faked True, so this daemon can be run TODAY (even armed) and can
+    never actually promote until whichever lane owns each check replaces
+    this function's body — refusing to promote is the safe failure mode
+    for an unwired precheck, silently passing is not.
+    """
+
+    logger.warning(
+        "team-bot-failoverd: ollama_reachable/replication_lag_ok/"
+        "identity_snapshot_valid are NOT WIRED YET (B4/B3) — promotion "
+        "will always be REFUSED_SELF_UNHEALTHY until they are replaced"
+    )
+
+    async def _check(url: str) -> bool:
+        try:
+            response = await http_client.get(url, timeout=5.0)
+            return response.status_code == 200
+        except httpx.HTTPError:
+            return False
+
+    backend_crm_healthy = await _check(config.backend_health_url)
+    # "Reachable from an external probe" (F9 step 3) is NOT what this
+    # checks — it only proves the LOCAL service behind the Funnel is up,
+    # which is the part Pro can verify about itself without a third
+    # party. True external reachability needs a probe from OUTSIDE the
+    # tailnet, which is not something this process can do to itself.
+    funnel_reachable = await _check(config.funnel_local_url)
+
+    return SelfHealthReport(
+        ollama_reachable=False,
+        replication_lag_ok=False,
+        identity_snapshot_valid=False,
+        backend_crm_healthy=backend_crm_healthy,
+        funnel_reachable=funnel_reachable,
+    )
+
+
+def build_real_deps(
+    *, config: FailoverdConfig, http_client: httpx.AsyncClient, pg_pool: asyncpg.Pool
+) -> FailoverdDeps:
+    """Wires :class:`FailoverdDeps` to real network/subprocess calls.
+    Never constructs its own ``httpx.AsyncClient`` or pool (Golden Rule
+    #10 — both are owned and closed by :func:`main`'s lifespan).
+    """
+
+    async def check_mini_ready() -> bool:
+        try:
+            response = await http_client.get(config.mini_readyz_url, timeout=5.0)
+            return response.status_code == 200
+        except httpx.HTTPError:
+            return False
+
+    async def check_mini_tailscale_unavailable() -> bool:
+        online = await asyncio.to_thread(
+            _find_tailscale_peer_online, config.mini_tailscale_hostname
+        )
+        return online is not True  # None (unknown) or False both count as unavailable
+
+    async def run_self_prechecks() -> SelfHealthReport:
+        return await _run_self_prechecks_not_fully_wired(http_client=http_client, config=config)
+
+    return FailoverdDeps(
+        node_id=config.node_id,
+        store=PostgresIngressLeaderStore(pg_pool, record_id=DEFAULT_RECORD_ID),
+        waba_client=WABAOverrideClient(
+            http_client,
+            access_token=config.waba_access_token,
+            graph_version=DEFAULT_GRAPH_VERSION,
+        ),
+        waba_id=config.waba_id,
+        callback_uri=config.callback_uri,
+        callback_uri_sha256=config.callback_uri_sha256,
+        verify_token=config.verify_token,
+        check_mini_ready=check_mini_ready,
+        check_mini_tailscale_unavailable=check_mini_tailscale_unavailable,
+        run_self_prechecks=run_self_prechecks,
+        auto_enabled=config.auto_enabled,
+    )
+
+
+class FailoverdRunner:
+    """The real blocking loop (superscar family #7's antidote — a
+    genuine ``while`` loop under ``KeepAlive``, never a one-shot script
+    a LaunchDaemon would restart-storm on every exit). Mirrors
+    ``wa_codex_daemon.py``'s own shape: an interruptible sleep so a
+    SIGTERM/SIGINT wakes the loop immediately rather than waiting out a
+    poll interval, and every tick's exception is caught and logged —
+    one bad tick must never kill the daemon (that would BE the restart
+    storm this shape exists to avoid).
+    """
+
+    def __init__(self, *, deps: FailoverdDeps, poll_seconds: float) -> None:
+        self._deps = deps
+        self._poll_seconds = poll_seconds
+        self._tracker = MiniFailureTracker()
+        self._stop = asyncio.Event()
+
+    def request_stop(self) -> None:
+        self._stop.set()
+
+    async def run_forever(self) -> None:
+        logger.info(
+            "team-bot-failoverd: starting node=%s auto_enabled=%s poll_seconds=%.1f",
+            self._deps.node_id,
+            self._deps.auto_enabled,
+            self._poll_seconds,
+        )
+        while not self._stop.is_set():
+            try:
+                action = await evaluate_and_act_once(
+                    tracker=self._tracker, deps=self._deps, now=datetime.now(UTC)
+                )
+                if action.kind is not ActionKind.NO_ACTION_MINI_HEALTHY:
+                    logger.info("team-bot-failoverd: tick -> %s (%s)", action.kind, action.detail)
+            except Exception:
+                logger.exception("team-bot-failoverd: tick raised, continuing")
+            await self._sleep(self._poll_seconds)
+        logger.info("team-bot-failoverd: stopped")
+
+    async def _sleep(self, seconds: float) -> None:
+        try:
+            await asyncio.wait_for(self._stop.wait(), timeout=seconds)
+        except TimeoutError:
+            pass  # normal poll-interval wake; stop stays unset
+
+
+def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+    )
+    config = FailoverdConfig.from_env()
+
+    async def _run() -> None:
+        http_client = httpx.AsyncClient(base_url="https://graph.facebook.com")
+        pg_pool = await asyncpg.create_pool(config.database_url, min_size=1, max_size=2)
+        try:
+            deps = build_real_deps(config=config, http_client=http_client, pg_pool=pg_pool)
+            runner = FailoverdRunner(deps=deps, poll_seconds=config.poll_seconds)
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGTERM, signal.SIGINT):
+                loop.add_signal_handler(sig, runner.request_stop)
+            await runner.run_forever()
+        finally:
+            await http_client.aclose()
+            await pg_pool.close()
+
+    asyncio.run(_run())
+
+
+if __name__ == "__main__":
+    main()
+
+
 __all__ = [
     "DEFAULT_CONSECUTIVE_FAILURE_THRESHOLD",
     "DEFAULT_LEASE_SECONDS",
     "DEFAULT_SUSTAINED_FAILURE_SECONDS",
     "ActionKind",
     "FailoverAction",
+    "FailoverdConfig",
     "FailoverdDeps",
+    "FailoverdRunner",
     "MiniFailureTracker",
     "SelfHealthReport",
+    "build_real_deps",
     "evaluate_and_act_once",
+    "main",
 ]

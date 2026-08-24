@@ -115,7 +115,15 @@ def _deps(
     mini_ready: bool,
     mini_unavailable: bool = True,
     self_health: SelfHealthReport = HEALTHY,
+    auto_enabled: bool = True,
 ) -> FailoverdDeps:
+    """``auto_enabled`` defaults True here — these tests exercise the
+    ARMED decision logic. The disabled/shadow default itself is proven
+    separately by
+    ``test_shadow_mode_takes_no_action_even_when_eligible_and_healthy``
+    below, which passes ``auto_enabled=False`` explicitly.
+    """
+
     async def check_mini_ready() -> bool:
         return mini_ready
 
@@ -136,6 +144,7 @@ def _deps(
         check_mini_ready=check_mini_ready,
         check_mini_tailscale_unavailable=check_mini_tailscale_unavailable,
         run_self_prechecks=run_self_prechecks,
+        auto_enabled=auto_enabled,
     )
 
 
@@ -262,3 +271,34 @@ async def test_already_leader_retries_callback_without_repromoting() -> None:
     assert result.kind is ActionKind.ALREADY_LEADER_CALLBACK_CONFIRMED
     state = await store.read()
     assert state.leader_epoch == 2  # UNCHANGED — no re-promotion
+
+
+async def test_shadow_mode_takes_no_action_even_when_eligible_and_healthy() -> None:
+    """``TEAM_BOT_FAILOVER_AUTO_ENABLED=false`` (the default —
+    KILL-SWITCHES.md) — Mini is down, Pro is fully healthy, eligibility
+    threshold is met, and STILL zero store writes and zero WABA calls.
+    Only the observable ActionKind changes, so shadow-mode metrics can
+    tell "would have promoted" apart from "not eligible yet" and from
+    "refused, unhealthy" (F11 / owner switchboard item 7's first rung).
+    """
+    store = _bootstrap_store(active_node_id="mini-pro2", epoch=1)
+    fake = FakeGraphAPI()
+    tracker = MiniFailureTracker()
+    for i in range(3):
+        tracker.record_failure(T0 + timedelta(seconds=i))
+    async with fake.client() as httpx_client:
+        deps = _deps(
+            node_id="pro",
+            store=store,
+            waba=fake,
+            httpx_client=httpx_client,
+            mini_ready=False,
+            auto_enabled=False,
+        )
+        result = await evaluate_and_act_once(tracker=tracker, deps=deps, now=T0 + timedelta(seconds=3))
+    assert result.kind is ActionKind.SHADOW_WOULD_PROMOTE_BUT_DISABLED
+    assert len(fake.post_calls) == 0
+    assert len(fake.get_calls) == 0
+    final = await store.read()
+    assert final.active_node_id == "mini-pro2"
+    assert final.leader_epoch == 1
