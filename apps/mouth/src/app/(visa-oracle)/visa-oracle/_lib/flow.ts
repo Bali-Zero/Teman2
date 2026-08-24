@@ -92,7 +92,13 @@ export interface UseOracleFlowOptions {
   onSnapshot?: (snapshot: InterviewSnapshot) => void;
   /** Clock injection for deterministic tests and storage adapters. */
   snapshotNow?: () => Date;
-  /** Replays date-sensitive routing against this clock during hydration. */
+  /**
+   * Fed to `restoreInterviewSnapshot` as its `today` argument, which that
+   * function uses only as a defensive fallback (see its docstring) — NOT to
+   * replay date-sensitive routing, which is keyed on the snapshot's own
+   * save-time (`updatedAtIso`) instead. This is the resume-moment wall
+   * clock, not an "as-of" override for replay.
+   */
   restoreToday?: Date;
 }
 
@@ -206,9 +212,28 @@ function isValidFactValue(questionId: string, value: string): boolean {
 
 /**
  * Hydrate by replaying the saved path, not by trusting its history/facts.
- * Any impossible node, invalid answer or branch that changed with the current
- * assessment clock is truncated at the last valid frontier; descendants are
- * discarded by construction. Completely malformed payloads return `null`.
+ * Any impossible node, invalid answer, or branch whose real graph has since
+ * changed (e.g. a live deploy between save and resume) is truncated at the
+ * last valid frontier; descendants are discarded by construction. Completely
+ * malformed payloads return `null`.
+ *
+ * Date-sensitive routing during replay (`computeNextNode`'s `today` —
+ * currently only `shouldAskRenewalPaid`, F4 2026-08-24) is evaluated
+ * against the snapshot's OWN `updatedAtIso` — the moment it was SAVED —
+ * never against the `today` parameter below/the caller's resume-time clock.
+ * `updatedAtIso` is required and parse-validated earlier in this function,
+ * so it is always available by the time replay runs; `today` is kept only
+ * as an unreachable-in-practice defensive fallback for that parse. Replaying
+ * against wall-clock-at-resume instead would make a SAVED answer's routing
+ * depend on WHEN the browser tab happens to be reopened: a stay permit that
+ * was still current the moment `overstay_days` was answered and saved, but
+ * has since expired by the time the user resumes days later, would
+ * recompute `shouldAskRenewalPaid` as `true`, diverge from the saved next
+ * node, and TRUNCATE history right there — silently dropping every
+ * already-answered fact past that point (`overstay_days` included), even
+ * though nothing about the saved answers was ever invalid. `today` stays
+ * real wall-clock for every NEW answer recorded from here on — `ANSWER`/
+ * `SKIP` still default their own `today` to `new Date()` in `flowReducer`.
  */
 export function restoreInterviewSnapshot(
   value: unknown,
@@ -230,6 +255,13 @@ export function restoreInterviewSnapshot(
   ) {
     return null;
   }
+  // Date-sensitive routing replays against the moment this snapshot was
+  // SAVED, never against `today` (the resume-time clock) — see this
+  // function's docstring. The parse is guaranteed finite by the check just
+  // above; `today` is kept only as a defensive fallback for the
+  // unreachable case where it were not.
+  const savedAtMs = Date.parse(value.updatedAtIso);
+  const savedAt = Number.isFinite(savedAtMs) ? new Date(savedAtMs) : today;
   if (
     !Array.isArray(value.history) ||
     value.history.length === 0 ||
@@ -281,7 +313,7 @@ export function restoreInterviewSnapshot(
       }
       facts = { ...facts, [current.questionId]: answer };
     }
-    const expected = computeNextNode(current, facts, today);
+    const expected = computeNextNode(current, facts, savedAt);
     const savedNext = value.history[index];
     history.push(expected);
     if (!sameNode(expected, savedNext)) break;
