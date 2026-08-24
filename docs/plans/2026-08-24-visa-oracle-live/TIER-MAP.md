@@ -132,6 +132,18 @@ after purchase.
 - **Prices are not in this document on purpose.** They live in PricingTool and nowhere else
   (golden rule #11). `pricing_key` is the join, not the number. Switchboard #5 (prices and terms
   per tier) is a separate signature and a separate document.
+  > ⚠️ **A claim to the contrary reached this lane on 2026-08-25 and is FALSE — recorded here so it
+  > stops travelling.** Relayed second-hand from another lane: that `tree.ts` on this surface
+  > declares a `MOCK_CATALOG` with placeholder prices, VOA at 500.000 against PricingTool's real
+  > 790.000, and must be reconnected before production. Measured across all three refs
+  > (`origin/main`, `origin/feature/visa-oracle`, `origin/feature/garuda-voa`), the token
+  > `MOCK_CATALOG` appears in **exactly one file and nowhere else**:
+  > `_lib/tree.test.ts:13`, as `expect("MOCK_CATALOG" in treeRegistry).toBe(false)` — a guard
+  > asserting the thing is ABSENT. There is one `tree.ts` under `apps/mouth/src`, it is this one,
+  > and the whole `(visa-oracle)` tree contains no price literal at all (the only `500000000` is
+  > `investment_paid_up_capital_idr` in a flow test — investment capital, not a price). The likely
+  > origin is a grep whose hit was the guard test itself: the label matched, the thing was its
+  > negation. Anyone re-raising this must name a file:line that is not the guard.
 - **One open defect inside T2 that rules cannot fix.** E31D (stepchild) is not correctable at the
   rule level: `RelationType` has no `STEPCHILD` member, so the eligibility cannot be expressed
   without extending the fact vocabulary. That is an owner decision plus a vocabulary change, not a
