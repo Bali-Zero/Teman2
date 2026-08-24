@@ -585,16 +585,16 @@ BOTH_PROVIDERS_UNAVAILABLE = ClientGoldenFixture(
     expected_decision=make_final_decision(
         _CASE,
         verdict=GateVerdict.HANDOFF,
-        reason=GateReason.HUMAN_DECISION_REQUIRED,
+        reason=GateReason.PROVIDERS_EXHAUSTED,
         reason_detail="no_provider_available",
     ),
     notes=(
-        "OPEN ITEM for B1b/B2: GateReason has 40 members and none is named for "
-        "'every provider was exhausted before generation' — HUMAN_DECISION_REQUIRED (check 4) is "
-        "the closest existing member, used here with reason_detail='no_provider_available' to "
-        "carry the specific cause. If B2 wants this distinguishable from a genuine safety-triggered "
-        "human-decision case, a dedicated GateReason member (e.g. NO_PROVIDER_AVAILABLE) is a real "
-        "gap this fixture surfaces, not an oversight in this fixture."
+        "RESOLVED by B1b: this fixture originally stood the case in with "
+        "HUMAN_DECISION_REQUIRED (check 4) for lack of a dedicated GateReason member, and said "
+        "so in its own notes — a deliberate placeholder, not an oversight. GateReason now has a "
+        "dedicated PROVIDERS_EXHAUSTED member (41st) so a tripwire can distinguish 'we hand off "
+        "a lot because the questions are hard' from 'we hand off a lot because the brain is "
+        "down'. reason_detail='no_provider_available' still carries the specific cause."
     ),
 )
 

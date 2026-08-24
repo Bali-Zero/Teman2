@@ -107,6 +107,9 @@ _LEGAL_REASONS_BY_VERDICT: dict[GateVerdict, set[GateReason]] = {
         GateReason.PRICE_NOT_IN_SNAPSHOT,
         GateReason.PRICE_RECOMPUTED_BY_MODEL,
         GateReason.NO_PRICING_SNAPSHOT_AVAILABLE,
+        # Engine-level (B1b): no candidate exists, not one of the 11 checks —
+        # see policy/types.py's GateReason.PROVIDERS_EXHAUSTED docstring.
+        GateReason.PROVIDERS_EXHAUSTED,
     },
 }
 
