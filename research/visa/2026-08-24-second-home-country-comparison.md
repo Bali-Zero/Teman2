@@ -1,6 +1,7 @@
 ---
 date: 2026-08-24
 domain: visa
+adversarial_review: codex
 client_case: Second Home Studio — country comparator feature (E33 vs. MM2H / LTR / D7-GV / SRRV)
 sources:
   - https://ltr.boi.go.th/ (fetched live 2026-08-24, primary — confirmed)
@@ -37,10 +38,10 @@ Update: 10/02/2026"), the official gazette `diariodarepublica.pt` for Lei 23/200
 Portaria 1563/2007, and Decreto-Lei 29-A/2026, plus `pra.gov.ph/SRRVisa` live. Every tag below that
 changed from 🟡/🔴 to ✅ is upgraded on that new evidence — screenshots and full-text captures in
 `country-comparison-research/` (session scratchpad, referenced by filename below), not on a second
-guess at the same unreachable page. Two things did **not** upgrade and are called out explicitly in
-§2: SRRV Smile's discontinuation stays an inference from absence (no PRA statement exists to cite),
-and AIMA's silence on "golden visa" is recorded as a property of that source, not a gap in this
-research.
+guess at the same unreachable page. Three things did **not** upgrade and are called out explicitly
+in §2: SRRV Smile's discontinuation stays an inference from absence (no PRA statement exists to
+cite), the SRRV Courtesy table remains ambiguous, and the AIMA checks found no "golden visa" page
+through the search and paths tested.
 
 **Tagging key used throughout:**
 - ✅ **PRIMARY-CONFIRMED** — I fetched the government/authority URL myself this session and the
@@ -83,32 +84,31 @@ table and each footer-stamped "Last Update: 10/02/2026". `aima.gov.pt/en/immigra
 visa`'s TLS error turned out to describe a page that doesn't exist at all — AIMA's own site search
 for "golden visa" returns "0 Search results" (screenshotted), and direct probes of both a
 golden-visa-shaped and a D7-shaped URL path both return "Page not found." So the TLS error was
-incidental; the substantive finding is that **AIMA does not publish Golden Visa or D7 content
-under any reachable path** — the correct primary source for both programmes is the official
-gazette, `diariodarepublica.pt`, which the browser lane reached directly: the consolidated text of
+incidental; the substantive finding is that **this review found no AIMA Golden Visa or D7 content
+through its search or the paths tested** — the primary source used for both programmes is the
+official gazette, `diariodarepublica.pt`, which the browser lane reached directly: the consolidated text of
 Lei n.º 23/2007 (Art. 3.º governing Golden Visa investment routes, Art. 52.º governing the general
 subsistence-means requirement that D7 inherits), Portaria n.º 1563/2007 (the subsistence-means
 formula), and Decreto-Lei n.º 29-A/2026 (whose recital states the 2026 RMMG figure). `pra.gov.ph`'s
 homepage genuinely carries no tier table — but `pra.gov.ph/SRRVisa`, a different path the original
 sheet didn't cite, does, and it loaded live with the Philippine clock rendering the capture moment.
 
-The sheet's financial-figure claims for Malaysia, Portugal (both Golden Visa and D7), and the
-Philippines are now **primary-confirmed** against a government page or the gazette (Axis 5, below)
+The sheet's financial-figure claims for Malaysia, Portugal (both Golden Visa and D7), and SRRV
+Classic in the Philippines are now **primary-confirmed** against a government page or the gazette
+(Axis 5, below)
 — not merely corroborated by secondary consensus. The sheet's own "Confidence, Staleness & Verification Limits"
 section states flatly that "Federal 2024 tier metrics verified via MOTAC and Immigration
 Department circulars" and "AIMA procedures verified via official Portuguese legislation" — the
 first grading pass called that a stronger claim than it could reproduce; this pass reproduces it,
 though via `mm2h.gov.my` rather than the MOTAC checklist page, and via the gazette rather than
-AIMA (which, as established above, is simply not the right source for this content). Every
-financial figure below is retagged with the honest, now-primary, verification tier.
+AIMA. The financial figures upgraded below are retagged with the now-primary verification tier.
 
-One outright error surfaced during source-checking (see Axis 5, claim #4): the "Where the
+One outright error surfaced during source-checking (see Axis 5, claim #5): the "Where the
 Alternatives Beat Indonesia" section attributes a 17% flat personal-income-tax rate to the
 Thailand LTR programme generally, when in fact that rate is exclusive to the *Highly-Skilled
 Professional* category — the Wealthy Pensioner/Wealthy Global Citizen categories this sheet
-actually compares get foreign-source-income tax **exemption**, a different (and, for most retiree
-profiles, more valuable) benefit. This is a confident, specific, and wrong citation — the exact
-failure mode the mandate asked me to hunt for.
+actually compares get foreign-source-income tax **exemption**, a different benefit. This is a
+confident, specific, and wrong citation — the exact failure mode the mandate asked me to hunt for.
 
 ### Axis 2 — Recency: does it reflect current rules or a superseded regime?
 
@@ -128,18 +128,18 @@ Largely current, with one gap the sheet itself does not flag clearly enough:
 - **Portugal Golden Visa**: sheet correctly reflects Lei 56/2023 (Mais Habitação, effective 7
   October 2023) eliminating the real-estate and capital-transfer routes — this is the single
   biggest and most-reported change to any of these four programmes, and the sheet gets it right,
-  including the grandfathering caveat being *absent* from its own text (worth adding — see §3
-  below).
+  including the grandfathering caveat being *absent* from its own text (worth adding before
+  publication).
 - **Philippines SRRV**: the sheet's narrative ("late 2024/2025, PRA restored eligibility for ages
   40–49 at elevated deposit rates") undersells what actually happened. My search of ACCRALAW and
-  Chambers and Partners publications (law-firm sources, not blogs) found the change was **larger
-  and more recent than the sheet implies**: PRA issued revised guidelines **effective 1 September
-  2025** that (a) standardised the minimum age at 40 for *all* applicants regardless of pension
-  status (the sheet says this but buries the "effective Sept 2025" date), and (b) **discontinued
-  the SRRV Smile sub-category entirely** (the old USD 10,000–20,000 entry tier for ages 35–49).
+  Chambers and Partners publications (law-firm sources, not blogs) report that the change was
+  **larger and more recent than the sheet implies**: revised guidelines **effective 1 September
+  2025** (a) standardised the minimum age at 40 for *all* applicants regardless of pension status
+  (the sheet says this but buries the "effective Sept 2025" date), and (b) reportedly discontinued
+  the SRRV Smile sub-category entirely (the old USD 10,000–20,000 entry tier for ages 35–49).
   The sheet never mentions SRRV Smile existed or was killed — it simply never lists it, which
   produces a correct end-state table by omission rather than by explaining the change. For a page
-  aimed at readers who may have seen older SRRV marketing quoting "$10,000," this is a recency gap
+  aimed at readers who may have seen older SRRV marketing quoting "USD 10,000," this is a recency gap
   worth closing. **Upgrade:** `pra.gov.ph/SRRVisa`, fetched live 2026-08-24 (the page renders the
   Philippine clock at capture time), states plainly "Principal/s: 40 years old and above" as a
   blanket qualification and lists **exactly three** options — SRRV Classic, SRRV Courtesy (Foreign
@@ -150,7 +150,7 @@ Largely current, with one gap the sheet itself does not flag clearly enough:
   Smile's retirement — so "no longer on the authoritative tier page today" is as far as this
   session can honestly go; see §2 for why the stronger claim stays out.
 - **Thailand LTR**: launched September 2022, no material restructure since — the sheet's "Active"
-  framing is fine. 🟡
+  framing is fine. 🔴 **UNVERIFIED**
 - **Indonesia E33**: not re-graded per mandate (SSOT already governs it) — but for context, the
   sheet's age-55-vs-60 ambiguity note matches `e33-fact-registry.json`'s
   `age_55_59_ambiguity_e33e` entry exactly, so this column is at least internally consistent with
@@ -158,11 +158,10 @@ Largely current, with one gap the sheet itself does not flag clearly enough:
 
 ### Axis 3 — The custody field
 
-This is the sheet's strongest section, and it does not evade the question. Every one of the five
-programme families gets an explicit "Custody & Liquidity of Funds" paragraph, and the summary
-table has a dedicated "Capital Custody" row and a separate "Capital Locked?" row — this is exactly
-the load-bearing comparison the feature is built to answer, and the sheet does not go vague on it
-anywhere.
+This is the underlying generator sheet's strongest section, and it does not evade the question.
+Every one of the five programme families gets an explicit "Custody & Liquidity of Funds"
+paragraph, and its summary table has a dedicated "Capital Custody" row and a separate "Capital
+Locked?" row — this is exactly the load-bearing comparison the feature is built to answer.
 
 Content check: it claims **every** competitor deposit/investment sits in the applicant's own name
 (Malaysia FD, Sarawak FD, Thailand's Thai-registered investments, Portugal's fund units, Philippines'
@@ -196,7 +195,8 @@ safe to lead with on the public page.
 
 ### Axis 4 — Fairness ("Where the Alternatives Beat Indonesia")
 
-The section exists, is five numbered points, and is substantive — not a token paragraph. It
+The underlying generator sheet's section exists, is five numbered points, and is substantive —
+not a token paragraph. It
 names specific programmes for specific advantages (Portugal for citizenship/mobility, Portugal+
 Thailand for zero lockup, Philippines/Thailand/Malaysia for lifetime permanence vs. Indonesia's
 hard cap, Portugal/Thailand/Philippines for work rights, Philippines for lower entry capital) and
@@ -205,7 +205,7 @@ is a real attempt at "a sceptical reader should not be able to catch this flatte
 
 The one defect found under scrutiny is factual, not structural: point 4's "17% personal income tax
 caps" claim for Thailand LTR is wrong as applied to the Wealthy Pensioner category — see Axis 1
-and Axis 5 claim #4. I have corrected this in §3 below rather than dropping the point, because the
+and Axis 5 claim #5. I have corrected this in §3 below rather than dropping the point, because the
 underlying point (Thailand LTR gives real domestic work/tax benefits Indonesia does not) is true;
 only the specific mechanism named was wrong.
 
@@ -216,11 +216,12 @@ claim found during the sweep (Thailand's 17% tax figure).
 
 1. **Thailand LTR, Wealthy Pensioner passive-income floor.** Sheet claims USD 80,000/year (or
    USD 40,000–80,000/year + USD 250,000 Thai investment). Fetched `https://ltr.boi.go.th/`
-   directly: confirms **USD 80,000/year**, and the USD 40k–80k + USD 250,000-investment
+   directly: confirms **USD 80,000/year**, and the USD 40,000–80,000/year + USD 250,000-investment
    alternative, verbatim. Also confirms the "10 years total (5+5 renewable)" validity structure
-   and the health-insurance-or-bank-deposit alternative (USD 50,000 insurance / USD 100,000
-   deposit — sheet says "USD 100,000 in escrow," source just says bank account; immaterial
-   wording difference). **✅ PRIMARY-CONFIRMED, accurate.**
+   and the health-insurance-or-bank-deposit alternative (USD 50,000 minimum insurance coverage /
+   USD 100,000 bank-account alternative). The sheet says "USD 100,000 in escrow," while the source
+   described here says only bank account; escrow or lockup is therefore not confirmed. **✅
+   PRIMARY-CONFIRMED for the thresholds; custody condition not confirmed.**
 
 2. **Malaysia MM2H tier deposits (Silver USD 150,000 / Gold USD 500,000 / Platinum USD 1,000,000,
    with RM 600k / RM 1,000k / RM 2,000k mandatory property).** Both government URLs the sheet
@@ -236,12 +237,12 @@ claim found during the sweep (Thailand's 17% tax figure).
    for 10 years. Source: `mm2h.gov.my`, Ministry of Tourism, Arts and Culture, captured 2026-08-24.
 
 3. **Portugal Golden Visa — real-estate route eliminated 7 October 2023 (Lei 56/2023), remaining
-   routes capped at €500,000 (funds/research) and €250,000/€200,000 (cultural heritage).**
+   routes capped at €500,000 (funds/research) and €250,000 (cultural heritage).**
    Multiple independent legal/relocation sources (Bright!Tax, Bitizenship, Connaught Law, Belzuz —
    the last three specifically wrote "law 56/2023 real estate eliminated 2026" pieces) agree on
    the date, the mechanism (Mais Habitação), and the surviving routes and thresholds, matching the
    sheet's figures exactly. AIMA's own page could not be fetched (TLS error) — and, per the Axis 1
-   upgrade, AIMA does not publish this content under any path. **Upgrade: ✅ PRIMARY-CONFIRMED**
+   upgrade, this review found no AIMA page through the search and paths tested. **Upgrade: ✅ PRIMARY-CONFIRMED**
    against the actual primary source, the gazette itself: `diariodarepublica.pt`'s consolidated
    text of Lei n.º 23/2007, Art. 3.º(1)(d), browser-fetched live 2026-08-24. Three of the original
    five real-estate-linked subalíneas — i), iii), iv) — are marked "(Revogada.)" in the consolidated
@@ -286,18 +287,19 @@ claim found during the sweep (Thailand's 17% tax figure).
    Professional category only**, taxing employment income in BOI-targeted industries. The
    **Wealthy Pensioner** and **Wealthy Global Citizen** categories — the ones this entire sheet
    uses for the HNW/retiree comparison — instead get a **full exemption from Thai tax on
-   foreign-sourced income**, a different and, for a retiree living on foreign pension/investment
-   income, generally more valuable benefit than a 17% rate on Thai employment income they likely
-   don't have. The sheet's sentence conflates two different LTR sub-categories and states the
+   foreign-sourced income**, a different tax treatment from the 17% rate on Thai employment
+   income. The sheet's sentence conflates two different LTR sub-categories and states the
    wrong mechanism as if it applied to the category under comparison. **❌ CORRECTED** in §3.
 
-6. **Philippines SRRV age-40 standardisation, and the FULL deposit-tier table (40–49 AND 50+;
-   pension-income floor).** ACCRALAW and Chambers and Partners (regional law-firm/legal-publisher
-   sources, materially higher quality than a relocation blog) confirmed age standardised to 40 for
+6. **Philippines SRRV age-40 standardisation and the SRRV Classic deposit-tier table (40–49 AND
+   50+; pension-income floor), plus a Courtesy-table capture.** ACCRALAW and Chambers and Partners
+   (regional law-firm/legal-publisher sources, materially higher quality than a relocation blog)
+   confirmed age standardised to 40 for
    all applicants effective 1 September 2025, and the 40–49 deposit figures. **Upgrade: ✅
-   PRIMARY-CONFIRMED, and extended to the 50+ tier and the income floor the first pass could not
-   reach.** `pra.gov.ph/SRRVisa`, browser-fetched live 2026-08-24 (the page renders "Monday August
-   24, 2026" via a live Philippine clock at capture time, unlike the homepage the first pass
+   PRIMARY-CONFIRMED for SRRV Classic, including the 50+ tier and the income floor the first pass
+   could not reach; not confirmed for the Courtesy table.** `pra.gov.ph/SRRVisa`, browser-fetched
+   live 2026-08-24 (the page renders "Monday August 24, 2026" via a live Philippine clock at
+   capture time, unlike the homepage the first pass
    loaded): **SRRV Classic** — Pensioner USD 15,000 (age 50+) / USD 25,000 (age 40–49); Non-Pensioner
    USD 30,000 (50+) / USD 50,000 (40–49); pensioner applicants additionally require proof of a
    lifetime pension of ≥USD 800/month (single) or ≥USD 1,000/month (with dependents). **SRRV
@@ -317,16 +319,17 @@ claim found during the sweep (Thailand's 17% tax figure).
 government/gazette pages `WebFetch` could not, and the picture below supersedes §2 as it stood
 after the first pass. Four rows that were previously gated on a working primary-source fetch —
 Malaysia's full tier table, Portugal's Golden Visa legal basis, Portugal's D7 threshold mechanism,
-and the Philippines' 50+ SRRV tier — are now primary-confirmed. Two things stay gated, and stay
-gated for a structural reason, not a fetch failure: see "Still cannot publish" below.
+and the Philippines' 50+ SRRV Classic tier — are now primary-confirmed. Three things stay gated,
+and stay gated for a structural reason, not a fetch failure: see "Still cannot publish" below.
 
 ### Safe to publish now
 
 - **Indonesia E33's 100% capital lock, own-name custody, and hard 6/10-year cumulative cap** — SSOT
   facts, unchanged by this review, and the sharpest true differentiator against every competitor.
-- **Thailand LTR Wealthy Pensioner: USD 80,000/year passive income (or USD 40k–80k + USD 250,000
-  investment), 5+5 = 10-year validity, zero capital lockup for the passive-income route.**
-  Primary-source confirmed, `ltr.boi.go.th`.
+- **Thailand LTR Wealthy Pensioner: USD 80,000/year passive income (or USD
+  40,000–80,000/year + USD 250,000 investment), 5+5 = 10-year validity.** The income test itself
+  creates no investment requirement; the separate insurance-or-bank-account condition still
+  applies. Primary-source confirmed, `ltr.boi.go.th`.
 - **Malaysia MM2H — the full five-tier table, primary-confirmed against `mm2h.gov.my`** (each page
   footer-stamped "Last Update: 10/02/2026"): Platinum (USD 1,000,000 deposit, 20-year renewable,
   RM 2,000,000 compulsory property), Gold (USD 500,000 / 15 years / RM 1,000,000), Silver
@@ -347,14 +350,16 @@ gated for a structural reason, not a fetch failure: see "Still cannot publish" b
   `diariodarepublica.pt`, Lei n.º 23/2007 Art. 3.º(1)(d), consolidated to its last relevant
   amendment (Lei n.º 9/2025, 2025-02-13) — including the statutory ban's own wording (Art. 3.º n.º
   5: investment routes "não se podem destinar, direta ou indiretamente, ao investimento
-  imobiliário"). Cite the gazette, not AIMA — AIMA does not publish this content (see below).
+  imobiliário"). Cite the gazette; this review did not locate an AIMA page for this content (see
+  below).
 - **Portugal D7: zero capital lockup, full domestic work rights, and an income floor of ~€920/month
   for a single applicant** — but publish it as a **formula**, not a fixed figure: 100% of the RMMG
   (statutory minimum wage) for the principal, +50% per additional adult, +30% per dependent child,
   per Portaria n.º 1563/2007 Art. 2.º(2) (still in force), with the RMMG itself set annually
-  (€920.00/month for 2026, per Decreto-Lei n.º 139/2025). A page that states "€920/month" without
-  the formula will read as wrong the next time the RMMG changes; a page that states the formula
-  plus "€920/month for 2026" is accurate and durable. Primary-confirmed against the gazette.
+  (€920.00/month for 2026, confirmed by the recital of Decreto-Lei n.º 29-A/2026, which cites
+  Decreto-Lei n.º 139/2025 as the instrument setting the figure). A page that states "€920/month"
+  without the formula will read as wrong the next time the RMMG changes; a page that states the
+  formula plus "€920/month for 2026" is accurate and durable. Primary-confirmed against the gazette.
 - **The "Where the Alternatives Beat Indonesia" section, minus point 4's tax-rate sentence**, which
   must be rewritten to say Thailand LTR's Wealthy Pensioner/Wealthy Global Citizen categories get
   **exemption from tax on foreign-sourced income** (not a "17% cap") before this page goes live —
@@ -364,32 +369,31 @@ gated for a structural reason, not a fetch failure: see "Still cannot publish" b
   3,000/month senior-income requirement — publish both the "alternatives beat Indonesia" cases
   (mobility, work rights, zero/partial lockup, lower entry capital in some programmes) and the
   places Indonesia's structure is the outlier the other direction (Malaysia's compulsory property
-  purchase; the sheer entry-capital gap against Portugal D7 and Philippines Classic pensioner) —
+  purchase; the income-threshold gap against Portugal D7 and the entry-deposit gap against the
+  Philippines Classic pensioner tier) —
   see the strengthened analysis below.
-- **The core "Capital Custody" / "Capital Locked?" comparison framing** — the structural argument
-  (Indonesia locks 100% in the applicant's own name with no mandatory secondary purchase; Malaysia
-  offers partial withdrawal but requires a compulsory separate property purchase; Thailand and
-  Portugal offer no lockup at all) is sound and is the section that makes this page worth building.
-- **Philippines SRRV — the full deposit-tier table**, primary-confirmed against `pra.gov.ph/SRRVisa`
-  fetched live: SRRV Classic (Pensioner USD 15,000 age 50+ / USD 25,000 age 40–49; Non-Pensioner
-  USD 30,000 / USD 50,000; pensioner applicants also need a lifetime pension of ≥USD 800/month
-  single or ≥USD 1,000/month with dependents) and the two SRRV Courtesy variants (Foreign Nationals:
-  USD 1,500 at 50+, USD 3,000–6,000 at 40–49; Former Filipinos: USD 1,500 / USD 3,000). Age
+- **The core "Capital Locked?" comparison framing** — the structural argument (Indonesia locks
+  100% with no mandatory secondary purchase; Malaysia offers partial withdrawal but requires a
+  compulsory separate property purchase; Thailand and Portugal offer no lockup for the routes
+  described) is sound. The broader literal claim that every competitor asset is held in the
+  applicant's own name remains 🔴 **UNVERIFIED** under Axis 3 and must not be presented as verified.
+- **Philippines SRRV Classic — the full deposit-tier table**, primary-confirmed against
+  `pra.gov.ph/SRRVisa` fetched live: Pensioner USD 15,000 age 50+ / USD 25,000 age 40–49;
+  Non-Pensioner USD 30,000 / USD 50,000; pensioner applicants also need a lifetime pension of
+  ≥USD 800/month single or ≥USD 1,000/month with dependents. Age
   standardised to 40+ for all principal applicants. This is the sharpest low-end contrast against
   Indonesia in the entire comparator: Philippines' pensioner-with-pension entry point (USD 15,000 +
-  a modest monthly pension) sits at roughly **30% of Indonesia E33's USD 50,000 deposit alone**,
+  a modest monthly pension) sits at exactly **30% of Indonesia E33E's USD 50,000 deposit alone**,
   before Indonesia's separate USD 3,000/month senior-income requirement is even added.
 
-### A property of the source, not a gap in this research
+### What the checked AIMA paths showed
 
-- **AIMA (Portugal's immigration authority) publishes nothing on Golden Visa or D7.** This was
-  proven, not merely assumed: AIMA's own site search returns "0 Search results" for "golden visa"
+- **No AIMA Golden Visa or D7 page was located by the checks described here.** AIMA's own site
+  search returns "0 Search results" for "golden visa"
   (screenshotted, 2026-08-24), and direct URL probes for both a golden-visa-shaped and a
-  D7-shaped path return "Page not found." A reader of the public comparator page should be told
-  the national immigration authority does not publish these terms and that the correct primary
-  source — used above — is the official gazette, `diariodarepublica.pt`. This is a fact about the
-  Portuguese source landscape, not a hole in this research; do not soften it into "we couldn't
-  find the AIMA page."
+  D7-shaped path return "Page not found." The primary source used above is the official gazette,
+  `diariodarepublica.pt`; the finite checks made here do not prove that AIMA publishes nothing
+  anywhere on either programme.
 
 ### Still cannot publish as settled fact
 
@@ -406,12 +410,12 @@ gated for a structural reason, not a fetch failure: see "Still cannot publish" b
   sheet is unrelated to anything checked this session (visa mechanics, not citizenship policy) and
   remains unverified — do not publish it without a dedicated check.
 
-**Bottom line for the feature team:** every financial figure that matters for the comparator —
+**Bottom line for the feature team:** the principal entry thresholds cleared in this review —
 Indonesia's SSOT, Thailand's, Malaysia's full five-tier table, Portugal's Golden Visa legal basis
-and D7 formula, and the Philippines' full SRRV table — is now primary-source-confirmed and safe to
-carry a number a client will make a six-figure decision against. What remains gated is narrow and
-named: SRRV Smile's discontinuation stays inference-labelled, the Courtesy row needs a cleaner
-re-capture, and the Malaysia naturalisation claim is simply out of scope for what was checked.
+and D7 formula, and the Philippines' SRRV Classic table — are primary-source-confirmed. What
+remains gated is named: SRRV Smile's discontinuation stays inference-labelled, the Courtesy row
+needs a cleaner re-capture, and the Malaysia naturalisation claim is simply out of scope for what
+was checked.
 
 ---
 
@@ -436,13 +440,14 @@ permits domestic employment for SRRV holders who obtain a DOLE Alien Employment 
 ## 4. Notes for the country-comparator feature build
 
 - **Upgraded 2026-08-24**: most cells that were 🟡/🔴 after the first pass are now ✅
-  PRIMARY-CONFIRMED (Axis 5 items 2/3/4/6, and the Axis 3 Malaysia withdrawal clause) — the build
-  blocker list has shrunk to three named items: SRRV Smile's discontinuation (ship inference-
+  PRIMARY-CONFIRMED (Axis 5 items 2/3/4, the SRRV Classic portion of item 6, and the Axis 3
+  Malaysia withdrawal clause) — the build blocker list has shrunk to three named items: SRRV
+  Smile's discontinuation (ship inference-
   labelled, not as fact), the SRRV Courtesy deposit row (re-screenshot before quoting), and the
-  Malaysia naturalisation-pathway claim (out of scope, don't publish). Everything else in the
-  comparator can now carry a cited government/gazette URL and capture date.
-- Treat the three remaining named items as build blockers for those specific cells only — ship
-  everything else.
+  Malaysia naturalisation-pathway claim (out of scope, don't publish). This list is not exhaustive;
+  see the adversarial review for the additional open blockers.
+- Treat these three named items as existing cell-level blockers, and resolve the additional open
+  blockers in the adversarial review before publication.
 - The custody/lock comparison (Axis 3) is the page's actual differentiator; lead with it, and now
   state Malaysia's compulsory-property-purchase structure alongside it explicitly rather than
   folding it into a generic "partial liquidity" label.
@@ -453,3 +458,86 @@ permits domestic employment for SRRV holders who obtain a DOLE Alien Employment 
   overstates primary-source verification for Malaysia, Portugal, and the Philippines relative to
   what the first grading pass could reproduce, even though this upgrade pass has since closed most
   of that gap independently. Use this document's tagging instead, including its citations.
+
+## Adversarial review
+
+**Verdetto: NON PUBBLICABILE.** Revisione cross-family Codex del 2026-08-24, condotta senza web e
+senza nuove fonti. La colonna Indonesia E33 non è stata riaperta né modificata; l'attacco riguarda
+soltanto coerenza, aritmetica, qualità dell'evidenza e correttezza del confronto concorrenti.
+
+1. **Coerenza interna — non regge come documento autonomo.** Questo file è un memo di grading,
+   non il comparatore che descrive: la tabella “Capital Custody / Capital Locked?” è solo riferita
+   come parte dell'underlying generator sheet (L161–164), e lo stesso vale per la sezione completa
+   in cinque punti “Where the Alternatives Beat Indonesia” (L196–204). Non essendo presenti qui,
+   non è possibile verificare la coerenza tabella-dettaglio richiesta per la pubblicazione. Inoltre,
+   le catture su cui poggiano gli upgrade ✅ sono dichiarate in uno scratchpad di sessione
+   (L39–44), ma né quello scratchpad né `country-comparator-facts.md` risultano nel worktree: il
+   fascicolo probatorio non è riproducibile dal documento. Ho corretto le contraddizioni interne
+   risolvibili: SRRV Courtesy non è più contemporaneamente “safe” e “not publishable”; il conteggio
+   degli elementi rimasti gated è tre, non due; la custody “own name” dei concorrenti resta
+   esplicitamente 🔴 e separata dal confronto sul lock (L375–379).
+
+2. **Cifre orfane — restano rilievi aperti.** Le soglie principali MM2H, Golden Visa, D7 e SRRV
+   Classic hanno valuta, natura, fonte e data nel testo. Restano però: il vecchio SRRV Smile
+   USD 10.000–20.000 (L133–142), privo di una fonte puntuale con data di pubblicazione e descritto
+   solo come “entry tier”; il confronto storico D7 €870/mese nel 2025 (L261–264), attribuito a
+   “multiple sources” senza URL o data puntuale; il requisito LTR USD 100.000 in conto (L217–224),
+   la cui soglia e fonte sono indicate ma non la durata di mantenimento né il vincolo, quindi non è
+   classificabile come capitale libero o bloccato; il 17% fiscale e l'esenzione sul reddito estero
+   thailandese (L284–292, L430–435), senza fonte identificata e data per il claim fiscale; i numeri
+   SRRV Courtesy (L305–311), per i quali la mappatura categoria-valore è dichiaratamente illeggibile.
+
+3. **Aritmetica — regge.** Con RMMG 2026 pari a €920, la formula a L271–279 produce €920/mese per
+   il richiedente, €460/mese per ogni adulto aggiuntivo e €276/mese per ogni figlio; quindi
+   richiedente + adulto = €1.380/mese e richiedente + figlio = €1.196/mese. L'unico valore derivato
+   pubblicato, €920/mese, è corretto ed è ora dichiarato come derivato, non come soglia D7 fissata
+   in euro. Anche USD 15.000 / USD 50.000 = 30% esatto (L380–387), e 5+5 = 10 anni (L328–331).
+   Ho rimosso €200.000 dal riepilogo Golden Visa perché il passaggio primario riportato sosteneva
+   €250.000 ma non esplicitava né la formula né la condizione che avrebbe prodotto €200.000.
+
+4. **Onestà del confronto — i fatti ci sono, la sezione no.** Il testo dice chiaramente che il D7
+   richiede circa €920/mese contro USD 3.000/mese per il senior indonesiano e che SRRV Classic 50+
+   richiede USD 15.000 contro USD 50.000 per E33E (L363–369 e L380–387). Questi due svantaggi netti
+   non sono ammorbiditi e i numeri sono corretti. Sono però sepolti dentro “Safe to publish now”,
+   mentre Axis 4 commenta una sezione esterna non inclusa (L196–210). Per un documento pubblico
+   questo fallisce il requisito sostanziale: serve una vera sezione autonoma che esponga quei due
+   punti insieme agli altri vantaggi delle alternative. Posizionamento e riscrittura restano una
+   decisione editoriale aperta, quindi non li ho imposti.
+
+5. **Categorie — reggono in gran parte dopo le correzioni.** MM2H distingue deposito parzialmente
+   prelevabile, acquisto immobiliare obbligatorio e tassa una tantum; LTR distingue test di reddito,
+   investimento alternativo e requisito assicurazione/conto; il Golden Visa è trattato come
+   investimento e D7 come formula reddituale; SRRV separa deposito e pensione. Ho sostituito
+   “entry-capital gap against Portugal D7” con “income-threshold gap”, e ho chiarito che il test di
+   reddito LTR non crea di per sé un investimento ma non elimina il requisito separato
+   assicurazione/conto (L328–331). Il vantaggio fiscale thailandese è ora attribuito alla categoria
+   corretta, ma resta non pubblicabile finché manca la fonte puntuale indicata al punto 2.
+
+6. **Claim non sostenibili — confini rispettati, supporto ancora insufficiente.** Non ci sono dati
+   personali, promesse di approvazione, proiezioni di rendimento o consigli su dove investire. Ho
+   eliminato il giudizio secondo cui un regime fiscale sarebbe “più vantaggioso” per il pensionato
+   e ho ridotto le affermazioni universali su AIMA a ciò che i controlli finiti dimostrano
+   (L389–396). Restano senza fonte identificata nel documento i diritti di lavoro Portogallo/LTR/
+   Filippine e i claim fiscali del corrected excerpt (L430–436); la custody “own name” per tutti i
+   concorrenti è ammessa come 🔴 non verificata (L166–174). Questi claim non possono entrare in una
+   pagina decisionale finché non sono citati claim-per-claim.
+
+**Correzioni puntuali applicate:** aggiunto `adversarial_review: codex`; corretti i due rinvii Axis
+5 da claim #4 a #5; Thailand LTR “nessuna ristrutturazione” declassato da 🟡 a 🔴; rimossi i due
+giudizi “generally more valuable”; reso annuale il range LTR USD 40.000–80.000; distinto coverage
+assicurativo, conto bancario ed escrow; rimosso il Golden Visa €200.000 non dimostrato; ristretto
+l'upgrade SRRV a Classic, lasciando Courtesy gated; corretto “due” in “tre” blocchi; reso esplicito
+che il RMMG €920 è confermato indirettamente dal recital del Decreto-Lei 29-A/2026 che cita il
+139/2025; separato test di reddito da capitale d'ingresso; corretto E33 in E33E nel confronto
+pensionati e “roughly 30%” in “exactly 30%”; separato lock verificato da custody non verificata;
+ridotte le affermazioni assolute su AIMA; chiarito che tabella e sezione in cinque punti appartengono
+all'underlying sheet, non a questo file.
+
+**Rilievi aperti alla decisione:** incorporare la tabella effettiva e la sezione completa di
+fairness; rendere disponibili nel repo le catture probatorie; decidere se eliminare o documentare
+le cifre orfane; aggiungere fonti puntuali per tax/work/custody; aggiungere la caveat di
+grandfathering portoghese già segnalata a L128–132; mantenere esclusi SRRV Courtesy, la data di
+discontinuazione SRRV Smile e il claim sulla naturalizzazione malese finché non risolti.
+
+**Decisione di pubblicazione: no.** Il documento diventa pubblicabile solo dopo la chiusura dei
+rilievi aperti sopra; le soglie principali e l'aritmetica, da sole, hanno retto l'attacco.
