@@ -398,6 +398,49 @@ describe("V1/E28 (2026-08-24): investment_product_code -> intent.requested_produ
       reason: "NOT_ASKED",
     });
   });
+
+  // INNOCENCE test, per team-lead's 2026-08-25 PASS-grade finding: this
+  // fact is `required_facts` on 13 pack rules, not just the 4 E28 ones —
+  // among them `el.bridging.destination-stated` (SUPPORT,
+  // `intent.purposes intersects [OTHER] AND intent.requested_product_code
+  // != "BRIDGING"`), whose NEQ-against-one-sentinel `when` is the same
+  // shape as PR #4797's defect (a rule whose condition doesn't actually
+  // test what it claims). It stays unreachable ONLY because no real
+  // applicant can ever have BOTH `intent.purposes` include OTHER AND
+  // `intent.requested_product_code` KNOWN — `CATEGORY_TO_PURPOSE` maps
+  // every category to a distinct purpose (`invest` -> INVESTMENT,
+  // `other` -> OTHER, disjoint) and this question is only reachable when
+  // `category === "invest"` (see the "is never reachable through a
+  // non-invest category" property test in flow.test.ts, which already
+  // iterates every CATEGORY_KEYS entry). This test pins the FACT-level
+  // consequence directly, not just the question-reachability half: it
+  // goes RED the day this question is asked from a non-invest branch,
+  // which is exactly the change that would arm
+  // `el.bridging.destination-stated`.
+  it("OTHER purpose never co-occurs with a KNOWN requested_product_code (el.bridging.destination-stated's unreachability)", () => {
+    for (const category of CATEGORY_KEYS) {
+      const purpose = CATEGORY_TO_PURPOSE[category];
+      if (purpose !== "OTHER") continue;
+      // The real UI never populates `investment_product_code` outside the
+      // "invest" branch (flow.test.ts), so a real applicant on this
+      // category's path presents exactly this fact shape to the mapper.
+      const result = mapFacts({ category } as OracleFacts);
+      expect(result.facts["intent.purposes"]).toEqual({
+        status: "KNOWN",
+        value: ["OTHER"],
+      });
+      expect(result.facts["intent.requested_product_code"]).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_ASKED",
+      });
+      // And the structural guarantee itself: this question is not even
+      // reachable on this category's path, so there is no real state in
+      // which an "other"-purpose applicant could answer it.
+      expect(getCategoryQuestionIds({ category } as OracleFacts)).not.toContain(
+        "investment_product_code",
+      );
+    }
+  });
 });
 
 describe("mapSponsorType — sponsor_category -> sponsor.type", () => {

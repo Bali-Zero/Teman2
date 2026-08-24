@@ -175,13 +175,29 @@ const PROPOSED_ROLES = [
   "OTHER",
 ] as const satisfies readonly ProposedRole[];
 // V1/E28 (2026-08-24, mandate docs/plans/2026-08-24-visa-oracle-live/MANDATE.md):
-// the only four `intent.requested_product_code` values any live rule ever
-// checks (rulepack-prod-013.source.json — review.e28{b,c,d,f}.*-manual, each
-// `on_unknown: NEEDS_INPUT`). Deliberately NOT closed-enum-typed on the wire
+// the four E28 Golden Visa investor tiers this UI question offers (E28B/C/D/F
+// — E28A never gates on this fact at all, it's the ordinary no-code path).
+// NOT the complete set of values any rule in the pack checks against
+// `intent.requested_product_code`: 13 rules total list this fact among their
+// `required_facts` (verified live against rulepack-prod-013.source.json,
+// team-lead PASS-grade review 2026-08-25) — these 4
+// (review.e28{b,c,d,f}.*-manual) plus review.e33{a,b,c}.* (3),
+// review.e23{u,v}.requested-product (2, in removal under PR #4797), and
+// el.bridging.* (4). Deliberately NOT closed-enum-typed on the wire
 // (`intent.requested_product_code` is a free `KnownString`, 1-64 chars) —
 // this list only decides what `investment_product_code`'s UI answer maps to
 // KNOWN vs UNKNOWN(NOT_PROVIDED); the "STANDARD" option (no specific code)
 // and any other stray value fall through to NOT_PROVIDED via `enumFact`.
+//
+// E33A/E33B/E33C are DELIBERATELY EXCLUDED from this list, not an oversight:
+// per doctrine (research/visa/doctrine-factory/, team-lead 2026-08-25),
+// these three are not groundable through a self-declared UI answer at all —
+// the authenticity of a government invitation/nomination is not something an
+// applicant can self-certify by picking an option, unlike E28B/C/D/F where
+// naming the tier is itself the fact the rule needs. They stay `tier: T3`
+// for a reason this question cannot fix; the "V1 per-product method" for
+// E33A/B/C (when scheduled) needs a different mechanism, not a 3rd/4th/5th
+// entry appended here.
 const REQUESTED_PRODUCT_CODES = ["E28B", "E28C", "E28D", "E28F"] as const;
 const FAMILY_RELATIONS = [
   "SPOUSE",
@@ -617,6 +633,40 @@ export function mapOracleFactsToApplicantFacts(
     // NOT_PROVIDED (an ordinary E28A evaluation is unaffected either way);
     // never asked (question gated out, e.g. any non-"invest" category) ->
     // UNKNOWN NOT_ASKED, via `enumFact`'s own `value === undefined` branch.
+    //
+    // TEAM-LEAD VERIFICATION (2026-08-25, PASS grade on V1 unit 1): making
+    // this fact askable is NOT a local change scoped to E28B/C/D/F — 13
+    // rules in the signed pack list `intent.requested_product_code` among
+    // their `required_facts` (extracted live from rulepack-prod-013, not
+    // from memory): `review.e28{b,c,d,f}.*-manual` (these 4, REQUIRE_REVIEW
+    // / NEEDS_INPUT) · `review.e33{a,b,c}.*` (3, REQUIRE_REVIEW /
+    // NEEDS_INPUT) · `review.e23{u,v}.requested-product` (2, in removal
+    // under PR #4797) · `el.bridging.{t3-window,overstay-shield,
+    // source-status}` (3, SUPPORT / NO_EFFECT) ·
+    // `el.bridging.destination-stated` (1, SUPPORT / NEEDS_INPUT). All 9
+    // siblings were checked, not assumed innocent.
+    //
+    // `el.bridging.destination-stated`'s `when` is `intent.purposes
+    // intersects [OTHER] AND intent.requested_product_code != "BRIDGING"` —
+    // a NEQ against one sentinel value is satisfied by almost any other
+    // value, the exact shape of #4797's defect mirrored (a rule that
+    // doesn't actually test what it claims to). This fact reaching KNOWN
+    // does NOT arm it, for a structural reason, not a coincidence:
+    // `mapPurposes` (above) returns `known([purpose])` — always exactly ONE
+    // purpose, a pure function of `facts.category` via `CATEGORY_TO_PURPOSE`
+    // (flow.ts), a TOTAL, DISJOINT mapping (`invest` -> `INVESTMENT`,
+    // `other` -> `OTHER`, never both). `investment_product_code` is only
+    // inserted into the question sequence when `category === "invest"`
+    // (flow.ts's `getCategoryQuestionIds`, asserted by flow.test.ts:775 for
+    // every non-invest category). So this fact reaching KNOWN implies
+    // category === "invest" implies `intent.purposes === [INVESTMENT]` —
+    // never `OTHER`. `el.bridging.destination-stated`'s own `purposes
+    // intersects [OTHER]` half of its `when` can never be satisfied on any
+    // path where this fact is KNOWN: the rule stays unreachable BY
+    // CONSTRUCTION, not by luck of what values got asked. See the
+    // `investment_product_code -> intent.requested_product_code implies
+    // NOT OTHER purpose` innocence test in fact-mapper.test.ts — it goes
+    // red the day someone asks this question outside the "invest" branch.
     "intent.requested_product_code": enumFact(
       facts.investment_product_code,
       REQUESTED_PRODUCT_CODES,
