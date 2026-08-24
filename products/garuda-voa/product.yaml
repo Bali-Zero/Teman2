@@ -106,7 +106,8 @@ risk_tier_map: # ASSEMBLY-LINE verification economics: set once, here
 owner_decisions: # §3 switchboard — filled with prepared proposals, signed at the end
   - id: 1
     decision: payment_provider
-    state: proposal-pending
+    state: proposal-ready
+    packet: products/garuda-voa/ops/decision-packets/01-payment-provider.md
     gesture: "pick + sign up with his own credentials"
   - id: 2
     decision: terms_of_sale_and_refund
@@ -114,12 +115,19 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "read, approve"
   - id: 3
     decision: data_retention_days
-    state: proposal-pending
+    state: proposal-ready
     proposed_value_days: 90
+    packet: products/garuda-voa/ops/decision-packets/03-data-retention.md
     gesture: "approve or change the number"
   - id: 4
     decision: legacy_garuda_voa_checks_rows
-    state: measurement-pending
+    state: measured-proposal-ready
+    # Measured against production 2026-08-24, counts and dates only (no row contents):
+    # 25 rows, all between 2026-07-27T00:21Z and 2026-07-28T01:26Z, 14 ACCEPT / 11 DECLINE.
+    # Pilot traffic from the build day; nothing written since the 2026-08-21 withdrawal.
+    measured_rows: 25
+    measured_window: "2026-07-27 .. 2026-07-28"
+    proposal: "purge all 25 as the first act of the signed retention policy; keep the monthly count"
     gesture: "yes/no on the proposed disposition"
   - id: 5
     decision: visual_identity
