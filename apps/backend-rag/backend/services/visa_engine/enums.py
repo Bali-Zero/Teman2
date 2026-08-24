@@ -507,18 +507,19 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 48-path fact vocabulary (44 applicant + 4 derived; spec §2 ``FactPath``)
+# FactPath — the closed 49-path fact vocabulary (45 applicant + 4 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 44 applicant-collected
+    """Every fact path the engine may ever reference — 45 applicant-collected
     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
-    ``sponsor.type`` for the sponsor-category question, 2026-08-10, and by the
+    ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
-    and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings —
-    see each path's inline comment for its own grounding).
+    and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
+    and by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
+    comment for the grounding).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -539,6 +540,19 @@ class FactPath(str, Enum):
     IMMIGRATION_LAST_ENTRY_DATE = "immigration.last_entry_date"
     IMMIGRATION_OVERSTAY_DAYS = "immigration.overstay_days"
     IMMIGRATION_VIOLATION_HISTORY = "immigration.violation_history"
+    # immigration.renewal_paid — added 2026-08-24 (F4, owner ruling on a
+    # renewal-in-process KITAS holder — verbatim: "chi ha un kitas scaduto e
+    # il pagamento del rinnovo e' avvenuto prima della scadenza... resta sul
+    # visa che ha esteso, non va su un altro", clarified further: "il rinno
+    # si considera depositato se ce stato pagamento" — payment is what makes
+    # a renewal "filed" at all, not a separate, weaker signal). Tri-state
+    # boolean: KNOWN True only once the applicant confirms the renewal FEE
+    # was paid — a lodged-but-unpaid submission does not count, and the
+    # interview question wording must ask about payment explicitly for
+    # exactly this reason (see ``apps/mouth``'s question copy). Consumed by
+    # ``FactRegistry._derive_has_active_stay_permit`` as an early
+    # short-circuit — see that method's docstring.
+    IMMIGRATION_RENEWAL_PAID = "immigration.renewal_paid"
     # intent.*
     INTENT_PURPOSES = "intent.purposes"
     INTENT_STAY_DAYS = "intent.stay_days"
@@ -667,7 +681,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 44 applicant-collected paths (everything except ``derived.*``).
+#: The 45 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )

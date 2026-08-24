@@ -39,6 +39,10 @@
       "status": "KNOWN",
       "value": []
     },
+    "immigration.renewal_paid": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "intent.purposes": {
       "status": "KNOWN",
       "value": ["OTHER"]
