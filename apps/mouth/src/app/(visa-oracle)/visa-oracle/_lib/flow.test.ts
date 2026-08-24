@@ -106,7 +106,6 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["sponsor_category", "NONE"],
       ["remote_clients", "foreign"],
       ["remote_compensation", "no"],
-      ["remote_employer_country", "US"],
       ["remote_pt_pma", "no"],
       ["stay_days", "365"],
     ],

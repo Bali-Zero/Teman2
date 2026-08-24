@@ -100,28 +100,6 @@ function enumFact<T extends string>(
     : unknownFact(NOT_PROVIDED);
 }
 
-/**
- * A SINGLE country code — the wire type `KnownCountryCode`, whose `value` is a
- * bare string, not a one-element array.
- *
- * Kept separate from `countryCodesFact` on purpose. The two shapes look alike
- * and are not: `person.nationalities` / `family.sponsor_nationalities` are
- * `KnownCountrySet`, while `work.employer_country_code` is `KnownCountryCode`.
- * Sending the set shape for the singular field made the API reject the whole
- * request (422 `string_type`), which the interview surfaced as a "Client
- * safety hold" — so every remote-work interview that answered the employer's
- * country died before it ever reached the engine.
- */
-function countryCodeFact(value: string | undefined): FactValue<string> {
-  if (value === undefined) return unknownFact(NOT_ASKED);
-  if (value === "unsure") return unknownFact(UNVERIFIED);
-  const codes = value.split(",");
-  if (codes.length !== 1) return unknownFact(NOT_PROVIDED);
-  return canonicalCountryCodes(codes, false) === value
-    ? known(codes[0])
-    : unknownFact(NOT_PROVIDED);
-}
-
 function countryCodesFact(
   value: string | undefined,
   multiple: boolean,
@@ -639,6 +617,29 @@ export function mapOracleFactsToApplicantFacts(
     "immigration.currently_in_indonesia": mapCurrentlyInIndonesia(facts),
     "immigration.current_status_code": mapCurrentStatusCode(facts),
     "immigration.current_status_expiry": mapCurrentStatusExpiry(facts),
+    // V1 (2026-08-25, team-lead ruling — "the question follows the rule, not
+    // precedes it"): `immigration.last_entry_date` has NO question in
+    // tree.ts/flow.ts, deliberately, and stays `unknownFact(NOT_ASKED)`
+    // unconditionally. Verified this turn against the REAL active pack
+    // (`rulepack-prod-013.source.json`): ZERO rules reference this fact —
+    // not one HARD_FILTER/ELIGIBILITY/HUMAN_REVIEW condition needs it today.
+    // This is the EXACT INVERSE of the E28/E33 disease this same file's
+    // `intent.requested_product_code` comment (below) documents fixing:
+    // there, a rule existed and starved for a fact nothing could ever
+    // supply; here, asking the question would supply a fact no rule
+    // consumes. Both directions are defects, but this direction is the
+    // worse one to get wrong going forward, because the data collected is
+    // actually RETAINED (Legge 2 / UU PDP minimization: a fact that decides
+    // nothing is a fact collected for no purpose, not merely a wasted
+    // question) — see `SWITCHBOARD-2-RETENTION.md` (feature/visa-oracle)
+    // for a live example of exactly this mistake already made once on the
+    // legacy funnel. The rule: do NOT add a question for any of these four
+    // facts (this one, `intent.desired_entry_date`,
+    // `commercial.service_fee_budget_idr`, `commercial.wants_quote` below)
+    // until a real rule in the signed pack actually needs it — at which
+    // point the question ships in the SAME PR as the rule, never ahead of
+    // it. `commercial.*`'s case is additionally a compiler INVARIANT, not
+    // just an absent rule today — see that pair's own comment.
     "immigration.last_entry_date": unknownFact(NOT_ASKED),
     "immigration.overstay_days": integerFact(facts.overstay_days, 0, 36_500),
     "immigration.violation_history": mapViolationHistory(facts),
@@ -649,6 +650,23 @@ export function mapOracleFactsToApplicantFacts(
     // asked" (the question was gated out) and "answered unsure" both
     // resolve to an explicit UNKNOWN (NOT_ASKED / UNVERIFIED respectively),
     // never a guessed `false`.
+    //
+    // V1 (2026-08-25, team-lead ledger pass): this fact IS consumed today —
+    // `FactRegistry._derive_has_active_stay_permit` (fact_registry.py)
+    // reads it as an early short-circuit — but that DERIVED fact
+    // (`derived.has_active_stay_permit`) is itself referenced by ZERO
+    // rules in the currently-signed active pack (verified live against
+    // `rulepack-prod-013.source.json`; also confirmed in
+    // `reachability_report.py`'s own "referenced by zero rules" list). The
+    // consuming rule is the D12 ruling (owner ruling 2026-08-23: an
+    // applicant WITH an active KITAS is excluded from D12) — landed in the
+    // derivation layer, not yet in a signed pack. This question is
+    // therefore correctly "asked in advance of its rule," NOT the
+    // question-precedes-rule anti-pattern this file's `immigration.last_
+    // entry_date` comment (above) warns against — it is a KNOWN, NAMED,
+    // in-flight consumer, not an absent one. If D12's rule never lands in a
+    // future signed pack, this becomes exactly that anti-pattern
+    // retroactively; whoever next re-runs this sweep should re-check.
     "immigration.renewal_paid": booleanFact(facts.renewal_paid),
     "intent.purposes": mapPurposes(facts),
     "intent.stay_days": mapStayDays(facts),
@@ -725,9 +743,12 @@ export function mapOracleFactsToApplicantFacts(
         facts.employment_product_code_none,
       REQUESTED_PRODUCT_CODES,
     ),
-    "work.employer_country_code": countryCodeFact(
-      facts.remote_employer_country,
-    ),
+    // V1 (2026-08-25, team-lead ruling): the `remote_employer_country`
+    // question was REMOVED — see `immigration.last_entry_date`'s comment
+    // above for the general principle (zero rules in the signed pack
+    // consume this fact, and no planned rule names it; the cure is
+    // removing the question, not documenting it as unused).
+    "work.employer_country_code": unknownFact(NOT_ASKED),
     "work.employer_is_indonesian_entity": mapEmployerIsIndonesianEntity(facts),
     "work.serves_indonesian_clients": remoteClients.servesIndonesianClients,
     "work.indonesia_source_compensation": pairedBooleanFact(
@@ -762,6 +783,18 @@ export function mapOracleFactsToApplicantFacts(
     ),
     "family.sponsor_status_code": mapFamilySponsorStatus(facts),
     "family.marriage_registered": mapMarriageRegistered(facts),
+    // V1 (2026-08-25, team-lead ledger pass): both facts below are
+    // referenced by ZERO rules in the currently-signed active pack
+    // (verified live against `rulepack-prod-013.source.json`). Named,
+    // in-flight consumer, not an absent one: STEPCHILD support shipped
+    // 2026-08-23 (owner ruling, `E31D vocabulary extension` — see tree.ts's
+    // "Stepchild route" comment above `family_stepchild_marriage_
+    // certificate_confirmed`) specifically to feed E31D's rule authoring,
+    // which had not yet landed in a signed pack as of this note. If E31D's
+    // rule never lands in a future signed pack, this becomes the same
+    // question-precedes-rule anti-pattern `immigration.last_entry_date`'s
+    // comment (above) warns against; whoever next re-runs this sweep
+    // should re-check.
     "family.stepchild_marriage_certificate_confirmed": booleanFact(
       facts.family_stepchild_marriage_certificate_confirmed,
     ),

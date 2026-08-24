@@ -584,7 +584,6 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     "sponsor_category",
     "remote_clients",
     "remote_compensation",
-    "remote_employer_country",
     "remote_pt_pma",
     "stay_days",
   ],

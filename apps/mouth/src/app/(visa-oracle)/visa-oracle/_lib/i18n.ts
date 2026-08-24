@@ -280,13 +280,6 @@ const en = {
     "This asks where payment originates, not how much you earn.",
   "why.remote_compensation":
     "The answer maps directly to work.indonesia_source_compensation.",
-  "q.remote_employer_country":
-    "Where is your remote employer or main client registered?",
-  "q.remote_employer_country.hint":
-    "Enter one two-letter ISO country code, for example IT.",
-  "q.remote_employer_country.label": "Employer country code",
-  "why.remote_employer_country":
-    "The engine receives the country code exactly as entered; the interface does not classify it.",
   "q.remote_pt_pma":
     "Is this remote-work plan tied to a committed Indonesian PT PMA?",
   "q.remote_pt_pma.hint":
@@ -644,7 +637,6 @@ const en = {
   "tree.work_role": "Work context",
   "tree.remote_clients": "Where clients sit",
   "tree.remote_compensation": "Payment source",
-  "tree.remote_employer_country": "Employer country",
   "tree.remote_pt_pma": "PT PMA link",
   "tree.stay_days": "Length of stay",
   "tree.investment_vehicle": "Investment basis",
@@ -1138,13 +1130,6 @@ const id: Record<Keys, string> = {
     "Pertanyaan ini menanyakan asal pembayaran, bukan jumlah penghasilan.",
   "why.remote_compensation":
     "Jawaban dipetakan langsung ke work.indonesia_source_compensation.",
-  "q.remote_employer_country":
-    "Di negara mana pemberi kerja atau klien utama Anda terdaftar?",
-  "q.remote_employer_country.hint":
-    "Masukkan satu kode negara ISO dua huruf, misalnya IT.",
-  "q.remote_employer_country.label": "Kode negara pemberi kerja",
-  "why.remote_employer_country":
-    "Mesin menerima kode negara persis seperti yang dimasukkan; antarmuka tidak mengklasifikasikannya.",
   "q.remote_pt_pma":
     "Apakah rencana kerja remote ini terikat pada komitmen PT PMA Indonesia?",
   "q.remote_pt_pma.hint":
@@ -1497,7 +1482,6 @@ const id: Record<Keys, string> = {
   "tree.work_role": "Konteks kerja",
   "tree.remote_clients": "Lokasi klien",
   "tree.remote_compensation": "Sumber pembayaran",
-  "tree.remote_employer_country": "Negara pemberi kerja",
   "tree.remote_pt_pma": "Kaitan PT PMA",
   "tree.stay_days": "Lama tinggal",
   "tree.investment_vehicle": "Dasar investasi",
