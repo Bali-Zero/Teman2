@@ -461,83 +461,88 @@ permits domestic employment for SRRV holders who obtain a DOLE Alien Employment 
 
 ## Adversarial review
 
-**Verdetto: NON PUBBLICABILE.** Revisione cross-family Codex del 2026-08-24, condotta senza web e
-senza nuove fonti. La colonna Indonesia E33 non è stata riaperta né modificata; l'attacco riguarda
-soltanto coerenza, aritmetica, qualità dell'evidenza e correttezza del confronto concorrenti.
+**Verdict: NOT PUBLISHABLE.** Cross-family Codex review dated 2026-08-24, conducted without web
+access and without new sources. The Indonesia E33 column was neither reopened nor modified; the
+attack concerns only coherence, arithmetic, evidence quality, and the correctness of the
+competitor comparison.
 
-1. **Coerenza interna — non regge come documento autonomo.** Questo file è un memo di grading,
-   non il comparatore che descrive: la tabella “Capital Custody / Capital Locked?” è solo riferita
-   come parte dell'underlying generator sheet (L161–164), e lo stesso vale per la sezione completa
-   in cinque punti “Where the Alternatives Beat Indonesia” (L196–204). Non essendo presenti qui,
-   non è possibile verificare la coerenza tabella-dettaglio richiesta per la pubblicazione. Inoltre,
-   le catture su cui poggiano gli upgrade ✅ sono dichiarate in uno scratchpad di sessione
-   (L39–44), ma né quello scratchpad né `country-comparator-facts.md` risultano nel worktree: il
-   fascicolo probatorio non è riproducibile dal documento. Ho corretto le contraddizioni interne
-   risolvibili: SRRV Courtesy non è più contemporaneamente “safe” e “not publishable”; il conteggio
-   degli elementi rimasti gated è tre, non due; la custody “own name” dei concorrenti resta
-   esplicitamente 🔴 e separata dal confronto sul lock (L375–379).
+1. **Internal consistency — does not hold up as a standalone document.** This file is a grading
+   memo, not the comparator it describes: the “Capital Custody / Capital Locked?” table is only
+   referenced as part of the underlying generator sheet (L161–164), and the same applies to the
+   complete five-point “Where the Alternatives Beat Indonesia” section (L196–204). Since they are
+   not present here, it is not possible to verify the table-to-detail consistency required for
+   publication. Furthermore, the captures supporting the ✅ upgrades are declared in a session
+   scratchpad (L39–44), but neither that scratchpad nor `country-comparator-facts.md` is present in
+   the worktree: the evidence file cannot be reproduced from the document. I corrected the
+   resolvable internal contradictions: SRRV Courtesy is no longer simultaneously “safe” and “not
+   publishable”; the count of items still gated is three, not two; competitors’ “own name” custody
+   remains explicitly 🔴 and separate from the lock comparison (L375–379).
 
-2. **Cifre orfane — restano rilievi aperti.** Le soglie principali MM2H, Golden Visa, D7 e SRRV
-   Classic hanno valuta, natura, fonte e data nel testo. Restano però: il vecchio SRRV Smile
-   USD 10.000–20.000 (L133–142), privo di una fonte puntuale con data di pubblicazione e descritto
-   solo come “entry tier”; il confronto storico D7 €870/mese nel 2025 (L261–264), attribuito a
-   “multiple sources” senza URL o data puntuale; il requisito LTR USD 100.000 in conto (L217–224),
-   la cui soglia e fonte sono indicate ma non la durata di mantenimento né il vincolo, quindi non è
-   classificabile come capitale libero o bloccato; il 17% fiscale e l'esenzione sul reddito estero
-   thailandese (L284–292, L430–435), senza fonte identificata e data per il claim fiscale; i numeri
-   SRRV Courtesy (L305–311), per i quali la mappatura categoria-valore è dichiaratamente illeggibile.
+2. **Orphan figures — findings remain open.** The main MM2H, Golden Visa, D7, and SRRV Classic
+   thresholds have currency, nature, source, and date in the text. What remains, however, is: the
+   old SRRV Smile USD 10.000–20.000 (L133–142), which lacks a specific source with a publication
+   date and is described only as an “entry tier”; the historical D7 comparison of €870/month in
+   2025 (L261–264), attributed to “multiple sources” without a URL or specific date; the LTR
+   requirement of USD 100.000 in an account (L217–224), whose threshold and source are given but
+   not its maintenance duration or restriction, so it cannot be classified as free or locked
+   capital; the 17% tax rate and Thai foreign-income exemption (L284–292, L430–435), without an
+   identified source and date for the tax claim; the SRRV Courtesy figures (L305–311), for which
+   the category-to-value mapping is expressly declared illegible.
 
-3. **Aritmetica — regge.** Con RMMG 2026 pari a €920, la formula a L271–279 produce €920/mese per
-   il richiedente, €460/mese per ogni adulto aggiuntivo e €276/mese per ogni figlio; quindi
-   richiedente + adulto = €1.380/mese e richiedente + figlio = €1.196/mese. L'unico valore derivato
-   pubblicato, €920/mese, è corretto ed è ora dichiarato come derivato, non come soglia D7 fissata
-   in euro. Anche USD 15.000 / USD 50.000 = 30% esatto (L380–387), e 5+5 = 10 anni (L328–331).
-   Ho rimosso €200.000 dal riepilogo Golden Visa perché il passaggio primario riportato sosteneva
-   €250.000 ma non esplicitava né la formula né la condizione che avrebbe prodotto €200.000.
+3. **Arithmetic — holds up.** With the 2026 RMMG at €920, the formula at L271–279 produces
+   €920/month for the applicant, €460/month for each additional adult, and €276/month for each
+   child; therefore applicant + adult = €1.380/month and applicant + child = €1.196/month. The
+   only published derived value, €920/month, is correct and is now stated as derived, not as a D7
+   threshold fixed in euros. USD 15.000 / USD 50.000 = exactly 30% (L380–387), and 5+5 = 10 years
+   (L328–331), also hold. I removed €200.000 from the Golden Visa summary because the quoted
+   primary passage supported €250.000 but did not spell out either the formula or the condition
+   that would have produced €200.000.
 
-4. **Onestà del confronto — i fatti ci sono, la sezione no.** Il testo dice chiaramente che il D7
-   richiede circa €920/mese contro USD 3.000/mese per il senior indonesiano e che SRRV Classic 50+
-   richiede USD 15.000 contro USD 50.000 per E33E (L363–369 e L380–387). Questi due svantaggi netti
-   non sono ammorbiditi e i numeri sono corretti. Sono però sepolti dentro “Safe to publish now”,
-   mentre Axis 4 commenta una sezione esterna non inclusa (L196–210). Per un documento pubblico
-   questo fallisce il requisito sostanziale: serve una vera sezione autonoma che esponga quei due
-   punti insieme agli altri vantaggi delle alternative. Posizionamento e riscrittura restano una
-   decisione editoriale aperta, quindi non li ho imposti.
+4. **Fairness of the comparison — the facts are there; the section is not.** The text clearly says
+   that D7 requires about €920/month versus USD 3.000/month for the Indonesian senior and that
+   SRRV Classic 50+ requires USD 15.000 versus USD 50.000 for E33E (L363–369 and L380–387). These
+   two net disadvantages are not softened, and the numbers are correct. They are, however, buried
+   inside “Safe to publish now”, while Axis 4 comments on an external section that is not included
+   (L196–210). For a public document, this fails the substantive requirement: a true standalone
+   section is needed to present those two points together with the other advantages of the
+   alternatives. Placement and rewriting remain an open editorial decision, so I did not impose
+   them.
 
-5. **Categorie — reggono in gran parte dopo le correzioni.** MM2H distingue deposito parzialmente
-   prelevabile, acquisto immobiliare obbligatorio e tassa una tantum; LTR distingue test di reddito,
-   investimento alternativo e requisito assicurazione/conto; il Golden Visa è trattato come
-   investimento e D7 come formula reddituale; SRRV separa deposito e pensione. Ho sostituito
-   “entry-capital gap against Portugal D7” con “income-threshold gap”, e ho chiarito che il test di
-   reddito LTR non crea di per sé un investimento ma non elimina il requisito separato
-   assicurazione/conto (L328–331). Il vantaggio fiscale thailandese è ora attribuito alla categoria
-   corretta, ma resta non pubblicabile finché manca la fonte puntuale indicata al punto 2.
+5. **Categories — largely hold up after the corrections.** MM2H distinguishes a partially
+   withdrawable deposit, compulsory property purchase, and a one-time fee; LTR distinguishes an
+   income test, alternative investment, and insurance/account requirement; the Golden Visa is
+   treated as an investment and D7 as an income formula; SRRV separates deposit and pension. I
+   replaced “entry-capital gap against Portugal D7” with “income-threshold gap”, and clarified that
+   the LTR income test does not in itself create an investment but does not remove the separate
+   insurance/account requirement (L328–331). The Thai tax advantage is now attributed to the
+   correct category, but it remains not publishable until the specific source identified in point
+   2 is provided.
 
-6. **Claim non sostenibili — confini rispettati, supporto ancora insufficiente.** Non ci sono dati
-   personali, promesse di approvazione, proiezioni di rendimento o consigli su dove investire. Ho
-   eliminato il giudizio secondo cui un regime fiscale sarebbe “più vantaggioso” per il pensionato
-   e ho ridotto le affermazioni universali su AIMA a ciò che i controlli finiti dimostrano
-   (L389–396). Restano senza fonte identificata nel documento i diritti di lavoro Portogallo/LTR/
-   Filippine e i claim fiscali del corrected excerpt (L430–436); la custody “own name” per tutti i
-   concorrenti è ammessa come 🔴 non verificata (L166–174). Questi claim non possono entrare in una
-   pagina decisionale finché non sono citati claim-per-claim.
+6. **Unsupported claims — boundaries respected, support still insufficient.** There are no
+   personal data, approval promises, yield projections, or advice on where to invest. I removed
+   the judgment that one tax regime would be “more advantageous” for the pensioner and reduced the
+   universal statements about AIMA to what the finite checks demonstrate (L389–396). The document
+   still lacks identified sources for Portugal/LTR/Philippines work rights and the tax claims in
+   the corrected excerpt (L430–436); “own name” custody for all competitors is acknowledged as 🔴
+   unverified (L166–174). These claims cannot enter a decision page until they are cited claim by
+   claim.
 
-**Correzioni puntuali applicate:** aggiunto `adversarial_review: codex`; corretti i due rinvii Axis
-5 da claim #4 a #5; Thailand LTR “nessuna ristrutturazione” declassato da 🟡 a 🔴; rimossi i due
-giudizi “generally more valuable”; reso annuale il range LTR USD 40.000–80.000; distinto coverage
-assicurativo, conto bancario ed escrow; rimosso il Golden Visa €200.000 non dimostrato; ristretto
-l'upgrade SRRV a Classic, lasciando Courtesy gated; corretto “due” in “tre” blocchi; reso esplicito
-che il RMMG €920 è confermato indirettamente dal recital del Decreto-Lei 29-A/2026 che cita il
-139/2025; separato test di reddito da capitale d'ingresso; corretto E33 in E33E nel confronto
-pensionati e “roughly 30%” in “exactly 30%”; separato lock verificato da custody non verificata;
-ridotte le affermazioni assolute su AIMA; chiarito che tabella e sezione in cinque punti appartengono
-all'underlying sheet, non a questo file.
+**Specific corrections applied:** added `adversarial_review: codex`; corrected the two Axis 5
+references from claim #4 to #5; downgraded Thailand LTR “no restructuring” from 🟡 to 🔴; removed
+the two “generally more valuable” judgments; made the LTR USD 40.000–80.000 range annual;
+distinguished insurance coverage, bank account, and escrow; removed the unsupported Golden Visa
+€200.000; narrowed the SRRV upgrade to Classic, leaving Courtesy gated; corrected “two” to
+“three” blocks; made explicit that the RMMG €920 is indirectly confirmed by the recital of
+Decreto-Lei 29-A/2026, which cites 139/2025; separated the income test from entry capital;
+corrected E33 to E33E in the pensioner comparison and “roughly 30%” to “exactly 30%”; separated
+verified lock from unverified custody; reduced the absolute statements about AIMA; clarified that
+the table and five-point section belong to the underlying sheet, not to this file.
 
-**Rilievi aperti alla decisione:** incorporare la tabella effettiva e la sezione completa di
-fairness; rendere disponibili nel repo le catture probatorie; decidere se eliminare o documentare
-le cifre orfane; aggiungere fonti puntuali per tax/work/custody; aggiungere la caveat di
-grandfathering portoghese già segnalata a L128–132; mantenere esclusi SRRV Courtesy, la data di
-discontinuazione SRRV Smile e il claim sulla naturalizzazione malese finché non risolti.
+**Findings open for decision:** incorporate the actual table and the complete fairness section;
+make the evidentiary captures available in the repo; decide whether to remove or document the
+orphan figures; add specific sources for tax/work/custody; add the Portuguese grandfathering
+caveat already flagged at L128–132; keep SRRV Courtesy, the SRRV Smile discontinuation date, and
+the Malaysian naturalization claim excluded until resolved.
 
-**Decisione di pubblicazione: no.** Il documento diventa pubblicabile solo dopo la chiusura dei
-rilievi aperti sopra; le soglie principali e l'aritmetica, da sole, hanno retto l'attacco.
+**Publication decision: no.** The document becomes publishable only after the open findings above
+are closed; the main thresholds and arithmetic, by themselves, withstood the attack.
