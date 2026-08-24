@@ -975,6 +975,87 @@ class TestIdentityCollisionGuard:
         assert result["success"] is True
 
     @pytest.mark.asyncio
+    async def test_guilt_a_historical_ingest_may_not_delete_a_foreign_document(
+        self, service: MagicMock
+    ) -> None:
+        """The historical path DELETES, so it must be guarded on what it deletes.
+
+        A historical ingest writes to `X__historical` but quarantines and then
+        deletes every point under `X`. Guarding only the write target leaves `X`
+        uninspected: a historical ingest whose derived identity happens to match
+        a different ministry's current-law document would pass the guard and
+        then remove that document in full. That is strictly worse than the
+        incident the guard was written for — 50 chunks overwritten there, an
+        entire law deleted here, with the guard's blessing.
+        """
+        self._prime(service, existing=[])
+
+        # The write target `Permen_1_2026__historical` is free; the identity the
+        # delete will actually hit, `Permen_1_2026`, belongs to someone else.
+        def _scroll(metadata_filter: dict, **_kwargs: object) -> list:
+            if metadata_filter.get("document_id") == "Permen_1_2026":
+                return [
+                    {
+                        "id": "foreign-current-point",
+                        "payload": {
+                            "document_id": "Permen_1_2026",
+                            "source_basename": "PMK_1_2026_Coretax_System.pdf",
+                        },
+                    }
+                ]
+            return []
+
+        service.vector_db.scroll_strict = AsyncMock(side_effect=_scroll)
+        service.indexer._get_db_pool = AsyncMock(return_value=MagicMock())
+
+        # Historical ingestion demands a verified Drive archive BEFORE the
+        # identity is even known (STAGE 1.5 runs ahead of metadata extraction),
+        # so the archive has to succeed for this test to reach the guard at all.
+        drive = MagicMock()
+        drive.archive_file_idempotent = AsyncMock(
+            return_value=(
+                {
+                    "id": "drive_file_x",
+                    "webViewLink": "https://drive.example/x",
+                    "md5Checksum": hashlib.md5(b"unit-test-legal-source").hexdigest(),
+                },
+                "reused",
+            )
+        )
+        legal_settings = SimpleNamespace(
+            legal_drive_root_folder_id="legal_root",
+            legal_drive_impersonate_user="legal-archive@example.com",
+            google_drive_root_folder_id="generic_root",
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with (
+            p1,
+            p2 as mock_logger,
+            p3,
+            p4,
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.ServiceAccountDriveService",
+                return_value=drive,
+            ),
+            patch("backend.app.core.config.settings", legal_settings),
+        ):
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/SomeOtherMinistry_1_2026.pdf",
+                title="Some other ministry 1/2026",
+                category="01_immigrazione",
+                retrieval_scope="historical_only",
+            )
+
+        assert result["success"] is False
+        assert "identity collision" in str(result.get("error", "")).lower()
+        # The foreign document must be neither quarantined nor deleted.
+        service.vector_db.set_payload_by_filter.assert_not_awaited()
+        service.vector_db.delete_by_filter.assert_not_awaited()
+        service.indexer.index_legal_document.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_a_declared_identity_is_what_gets_stored(
         self, service: MagicMock
     ) -> None:

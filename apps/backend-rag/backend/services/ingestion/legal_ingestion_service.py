@@ -302,6 +302,26 @@ class LegalIngestionService:
 
         Re-ingesting the SAME source document is not a collision and must pass:
         that is how a corpus is refreshed.
+
+        TWO RESIDUAL HOLES, stated rather than papered over:
+
+        1. A point carrying NEITHER ``source_basename`` NOR ``file_path``
+           yields no claimant, so an identity held only by such points is
+           unguarded. Every point written by this service has always carried
+           ``file_path``, so this is about foreign or hand-written payloads.
+           Measurement: scroll the collection grouped by ``document_id`` and
+           count points where neither key resolves; any identity that is 100%
+           keyless is unprotected.
+        2. The ``/upload`` route names its temp file from the
+           uploader-supplied filename, so on that path the comparator is only
+           as unique as what the uploader typed. Two different laws uploaded
+           as ``UU_6_2023.pdf`` would still collide. Curated corpus ingests,
+           which is where the incident happened, use repo-controlled
+           filenames.
+
+        Neither hole is a reason to withhold the guard: it converts the common
+        case from silent loss into a loud refusal, and a partial guard that
+        says so is worth more than none.
         """
         existing = await vector_db.scroll_strict(
             metadata_filter={"document_id": document_id},
@@ -845,15 +865,36 @@ Return ONLY valid JSON, no markdown."""
             # Use HierarchicalIndexer
             indexing_start = time.time()
             quarantined_current_ids: list[str] = []
-            # Fail BEFORE the first mutation: the quarantine below already
-            # rewrites payloads, so a collision detected after it would leave
-            # the other document's points half-modified.
+            source_basename = Path(file_path).name
+            # Fail before the first mutation OF THE VECTOR STORE: the quarantine
+            # below already rewrites payloads, so a collision detected after it
+            # would leave the other document's points half-modified. (STAGE 1.5
+            # has already archived the file to Drive by this point -- that is an
+            # outward copy, not a mutation of the corpus, and a refused ingest
+            # therefore leaves an archived PDF behind. Deliberate: the archive is
+            # idempotent and a spare copy is harmless, whereas moving the guard
+            # earlier is impossible -- the identity is not known until metadata
+            # extraction, which runs after the archive step.)
             await self._assert_identity_unclaimed(
                 request_vector_db,
                 doc_id,
-                Path(file_path).name,
+                source_basename,
             )
             if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                # The historical path does not merely WRITE to `doc_id`
+                # (`X__historical`) -- it quarantines and then DELETES every
+                # point under `current_doc_id` (`X`). Guarding only `doc_id`
+                # leaves `X` uninspected, so a historical ingest whose derived
+                # identity happens to match a DIFFERENT ministry's current-law
+                # document would pass the guard and then delete that document in
+                # full. That is strictly worse than the incident this guard was
+                # written for: the incident overwrote 50 chunks, this would
+                # remove all of them, with the guard's blessing.
+                await self._assert_identity_unclaimed(
+                    request_vector_db,
+                    current_doc_id,
+                    source_basename,
+                )
                 reconciliation_state = "QUARANTINE_IN_PROGRESS"
                 quarantined_current_ids = await self._quarantine_current_points(
                     request_vector_db,
