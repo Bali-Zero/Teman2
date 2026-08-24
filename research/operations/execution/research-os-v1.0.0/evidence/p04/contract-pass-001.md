@@ -636,10 +636,34 @@ unconditional; each has an owner and a closure test.
    against `postgres:15` in CI. Declared, not hidden: neither the manual proof nor this future
    automated test composes against production's existing 278 migrations — both apply to an empty
    schema, which is what "isolated database" means, not a staging-parity claim.
-7. **The `TRUNCATE` gap on `research_os_objects` (§3, M1).** Owner: next P04 builder. Closes when:
-   a `BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger exists and a `TRUNCATE` attempt against the
-   table in a throwaway database is proven rejected — tracked in `PENDING-ARMS.md` alongside this
-   commit.
+7. **The `TRUNCATE` gap on `research_os_objects` (§3, M1). CLOSED — post-merge correction,
+   2026-08-24.** Owner: next P04 builder. Closes when: a `BEFORE TRUNCATE ... FOR EACH STATEMENT`
+   trigger exists and a `TRUNCATE` attempt against the table in a throwaway database is proven
+   rejected — tracked in `PENDING-ARMS.md` alongside this commit. **Both closure tests are now met.**
+   Migration `280_research_os_objects_truncate_guard.sql` (PR #4780, `45a298eb4`, merged 2026-08-24)
+   adds `CREATE TRIGGER research_os_objects_no_wipe BEFORE TRUNCATE ON public.research_os_objects
+   FOR EACH STATEMENT EXECUTE FUNCTION public.reject_research_os_objects_mutation()`.
+   `apps/backend-rag/backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py`
+   (8 test functions total — 6 static `def test_*` plus 2 live-DB `async def test_*`; a bare
+   `grep -cE '^def test_'` undercounts to 6 by missing the `async` ones — the two that decide this
+   condition) proves it both directions against a real connection:
+   `test_truncate_guard_blocks_truncate_but_not_insert` (guilt — `TRUNCATE` raises `append-only`,
+   `INSERT` still succeeds) and `test_truncate_guard_rollback_restores_truncate_then_reapply_reblocks`
+   (innocence — with the new trigger's own rollback applied, `TRUNCATE` succeeds again; re-applying
+   the forward SQL re-blocks it).
+   **Condition 6, immediately above, is a separate question and stays open — this closure does not
+   touch it.** `_apply_clean()` in that same test file applies migration 279's forward SQL only as
+   fixture setup, asserting nothing about the shape 279 itself produces, and 279's rollback is
+   exercised nowhere in this file or anywhere else in the repository; the permanent, automated PG15
+   apply/rollback test for migration 279 that condition 6 asks for still does not exist.
+   **Also unmoved by this closure: the migration is applied in NO environment.** Both live-DB tests
+   run inside the `db_tx` fixture's transaction (`apps/backend-rag/backend/tests/db/conftest.py:38-47`),
+   which is rolled back at teardown (`:46`) — nothing persists. That the guard runs and passes in CI
+   is itself real: `tests.yml` runs a `postgres:15` service with `TEST_DATABASE_URL` set, neither
+   `pyproject.toml`'s `addopts` nor the pytest invocation excludes the `integration` marker, and
+   `db_tx` calls `asyncpg.connect` directly with no skip-if-absent guard (a missing DB fails the test,
+   it does not skip it) — but "proven executed by a test" and "lives in a database" are different
+   questions, and this closure answers only the former.
 8. **D7 — freeze-change ratification, `CONTRACTS.md` §2 vs §3's UTC-spelling inconsistency.**
    Owner: **S9-C0**. **Post-merge correction, 2026-08-24: the second half of this condition is now
    DONE.** This condition originally required BOTH the freeze-change ratified AND PR #4615's fold
