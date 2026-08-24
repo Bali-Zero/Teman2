@@ -31,13 +31,19 @@ from backend.tests.duebot.webhook_signer import sign_payload, tamper
 APP_SECRET = "harness-test-app-secret-do-not-use-in-prod"
 
 
+IG_APP_SECRET = "harness-test-ig-app-secret-do-not-use-in-prod"
+
+
 @pytest.fixture(autouse=True)
 def _configured_app_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     """Same rationale as ``test_webhook_signer.py`` — arm the real
     signature check for every test in this file instead of running against
-    the "no secret configured" dev-mode bypass.
+    the "no secret configured" dev-mode bypass. Both surfaces get their
+    OWN secret so a test cannot pass by accidentally signing with the
+    other surface's value.
     """
     monkeypatch.setattr(settings, "whatsapp_app_secret", APP_SECRET)
+    monkeypatch.setattr(settings, "instagram_app_secret", IG_APP_SECRET)
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +197,13 @@ def test_instagram_dm_is_acked_persisted_and_routed(duebot: DuebotHarness) -> No
     raw_body = to_raw_body(instagram_dm_payload(mid="ig_mid_REPLAY_001"))
     replayer = instagram_replayer(duebot.client)
 
-    result = replayer.send_raw(raw_body)  # IG router does not verify a signature today
+    # Signed with the configured IG_APP_SECRET — since 2026-08-25 (igverify
+    # lane) the IG router verifies X-Hub-Signature-256 same as WhatsApp; an
+    # unsigned request here would now be a 401, not the ack this test
+    # proves. The "no secret configured -> skip" dev-mode path is covered
+    # separately in test_webhook_signer.py and
+    # test_meta_webhook_require_signature.py.
+    result = replayer.send_signed(raw_body, IG_APP_SECRET)
 
     assert result.status_code == 200
     assert ("instagram", "ig_mid_REPLAY_001") in duebot.seen_dedup_keys
@@ -211,7 +223,7 @@ def test_instagram_duplicate_mid_dedupes_the_persisted_row(duebot: DuebotHarness
     raw_body = to_raw_body(instagram_dm_payload(mid="ig_mid_REPLAY_DUP"))
     replayer = instagram_replayer(duebot.client)
 
-    results = [replayer.send_raw(raw_body) for _ in range(3)]
+    results = [replayer.send_signed(raw_body, IG_APP_SECRET) for _ in range(3)]
 
     assert all(r.status_code == 200 for r in results)
     assert ("instagram", "ig_mid_REPLAY_DUP") in duebot.seen_dedup_keys
@@ -223,6 +235,45 @@ def test_instagram_static_fixture_replays_successfully(duebot: DuebotHarness) ->
     raw_body = load_static_payload("instagram_dm.json")
     replayer = instagram_replayer(duebot.client)
 
-    result = replayer.send_raw(raw_body)
+    result = replayer.send_signed(raw_body, IG_APP_SECRET)
 
     assert result.status_code == 200
+
+
+def test_instagram_tampered_body_is_rejected_with_401_and_never_routed(
+    duebot: DuebotHarness,
+) -> None:
+    """Instagram's mirror of
+    ``test_tampered_body_is_rejected_with_401_and_never_persisted`` above —
+    the same tamper-by-one-byte RED case, now provable on this router for
+    the first time (igverify lane, 2026-08-25)."""
+    raw_body = to_raw_body(instagram_dm_payload(mid="ig_mid_REPLAY_TAMPER"))
+    valid_signature = sign_payload(raw_body, IG_APP_SECRET)
+    tampered_body = tamper(raw_body)
+    replayer = instagram_replayer(duebot.client)
+
+    result = replayer.send_raw(tampered_body, signature=valid_signature)
+
+    assert result.status_code == 401
+    assert ("instagram", "ig_mid_REPLAY_TAMPER") not in duebot.seen_dedup_keys
+    duebot.channel_router_mock.route_message.assert_not_awaited()
+
+
+def test_instagram_missing_signature_header_is_rejected(duebot: DuebotHarness) -> None:
+    raw_body = to_raw_body(instagram_dm_payload(mid="ig_mid_REPLAY_NOSIG"))
+    replayer = instagram_replayer(duebot.client)
+
+    result = replayer.send_raw(raw_body, signature=None)
+
+    assert result.status_code == 401
+    duebot.channel_router_mock.route_message.assert_not_awaited()
+
+
+def test_instagram_wrong_secret_signature_is_rejected(duebot: DuebotHarness) -> None:
+    raw_body = to_raw_body(instagram_dm_payload(mid="ig_mid_REPLAY_WRONGSECRET"))
+    replayer = instagram_replayer(duebot.client)
+
+    result = replayer.send_signed(raw_body, "not-the-configured-secret")
+
+    assert result.status_code == 401
+    duebot.channel_router_mock.route_message.assert_not_awaited()
