@@ -162,7 +162,7 @@ python-docx>=1.1.0
 # production since 2026-05-19 (uv migration pilot, PR #777) with no reported
 # issue, and current googleapis-common-protos/google-api-core releases require
 # protobuf>=6.33.5. Widen the dev lock to match prod instead of pinning below it.
-protobuf>=5.27.0,<7.0.0
+protobuf>=7.36.0,<8.0.0
 
 # XML/HTML Processing - UPGRADED
 lxml>=6.1.1  # Required by trafilatura, htmldate
