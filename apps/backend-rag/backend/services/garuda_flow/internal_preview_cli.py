@@ -163,7 +163,7 @@ def build_internal_preview(
         extension_already_used=request.extension_already_used,
     )
     verdict = build_verdict(intake, today=today)
-    price_idr, price_source = price_for_case(request.case_type)
+    price_idr, price_source = price_for_case(request.case_type, today=today)
     price_status: Literal["confirmed", "unavailable"] = (
         "confirmed"
         if price_idr is not None and price_source is not None
