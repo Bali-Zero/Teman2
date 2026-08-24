@@ -52,6 +52,15 @@ first hit. If two classes match one payload, that is a defined outcome — an
 `AMBIGUOUS` result carrying both — not a silent precedence. Precedence may exist
 only where a stated reason justifies it, and the reason belongs in the code.
 
+> **Amendment (orchestrator, after B2b asked).** `AMBIGUOUS` here is an INTERNAL
+> concept, not a proposed eighth member of F3's vocabulary. F3 is frozen at seven
+> and this spec does not reopen it. An ambiguous classification surfaces
+> externally as `INTERNAL` with a detail naming every candidate class, so nothing
+> is dropped and no silent pick occurs. A losing class must likewise survive in
+> the result (a `suppressed` field or equivalent) rather than being discarded as
+> an intermediate — otherwise a later reader of a QUOTA verdict cannot tell that
+> auth wording was also present, which is the whole point of P1.
+
 **P2 — Classify per record, never across the blob.** Split stderr into lines (or
 whatever record boundary the CLI actually emits) and classify each. A class must
 never be assembled from two records. This kills defect 2 by construction rather
