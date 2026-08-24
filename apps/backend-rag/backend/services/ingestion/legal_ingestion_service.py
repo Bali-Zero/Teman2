@@ -195,40 +195,15 @@ def build_content_bound_legal_doc_id(
     metadata: dict[str, Any],
     source_sha256: str,
 ) -> str:
-    """Build a legal identity that is UNCONDITIONALLY bound to the source bytes.
-
-    The extracted triple (type_abbrev, number, year) does NOT identify an
-    Indonesian instrument: every ministry numbers its regulations from 1 each
-    year, so PMK 1/2026 (Ministry of Finance, Coretax) and Permen Imipas 1/2026
-    (Ministry of Immigration, pencegahan/penangkalan) both reduce to
-    ``Permen_1_2026``. Chunk ids are ``{document_id}_Pasal_{n}`` and point ids
-    are ``uuid5(chunk_id)``, so a shared document_id makes one instrument
-    silently OVERWRITE the other's chunks.
-
-    Measured in production on 2026-08-25: ``Permen_1_2026`` held 544 points from
-    TWO unrelated laws (494 tax + 50 immigration). The tax regulation had
-    upserted 544 of its own; 50 of them were destroyed by the immigration
-    regulation's 50. A full scan of the 83,969-point ``legal_unified`` collection
-    found exactly this one collision across 28 document ids.
-
-    Until 2026-08-25 the source hash was appended ONLY when the extracted
-    metadata was visibly incomplete (``DOC``/``UNKNOWN``/``0``/``NONE``). That
-    covers the case where the extractor ADMITS it does not know, and misses the
-    case that actually cost data: a confident, complete, and non-unique answer.
-    Confidence was never evidence of uniqueness, so the hash is now
-    unconditional.
-
-    Idempotence is preserved: the same file re-ingested yields the same sha256
-    and therefore the same id, which is what makes a re-run overwrite rather
-    than duplicate.
-    """
+    """Build a stable legal identity, binding incomplete metadata to source bytes."""
     identity = [
         str(metadata.get("type_abbrev") or "DOC"),
         str(metadata.get("number") or "UNKNOWN"),
         str(metadata.get("year") or "UNKNOWN"),
     ]
     normalized = [part.replace(" ", "_").replace("/", "_") for part in identity]
-    normalized.append(source_sha256[:16])
+    if any(part.upper() in {"DOC", "UNKNOWN", "0", "NONE"} for part in normalized):
+        normalized.append(source_sha256[:16])
     return "_".join(normalized)
 
 
