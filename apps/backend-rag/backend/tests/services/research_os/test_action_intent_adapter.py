@@ -103,8 +103,9 @@ def test_pending_ruling_is_machine_checkable_not_only_prose(ops_intent_row):
         "target",
         "authority_required.scope",
         "authority_required.expires_after_seconds",
-        "arguments_hash",
         "input_revision_hash",
+        "risk_class",
+        "sensitivity",
     }
 
 
@@ -171,3 +172,72 @@ def test_authority_required_expires_after_seconds_is_derived_not_arbitrary(ops_i
 
     intent = adapt_ops_intent_to_action_intent(ops_intent_row).canonical
     assert intent.authority_required.expires_after_seconds == 2 * 60 * 60
+
+
+def test_target_derives_real_kind_and_id_from_params_json_when_available():
+    """The DEFAULT ops_intent_row fixture uses intent_kind='rerun_collector'
+    with params_json='{"collector": "regulatory-watcher"}' -- no
+    'failed_run_id' key, so it exercises the FALLBACK path (see the next
+    test). This test constructs a row whose params_json actually matches
+    what Magazine's own targetId()/targetKey() derivation
+    (operations-repository.ts:518-533) expects for each of the 5 known
+    intent_kind values, and confirms the adapter now ports that derivation
+    instead of fabricating an intent-scoped placeholder.
+    """
+
+    cases = [
+        ("rerun_collector", "failed_run_id", "run-xyz-1", "collector"),
+        ("rebuild_edition", "edition_id", "edition-2026-08", "edition"),
+        ("refresh_research_job", "research_job_id", "job-42", "research"),
+        ("quarantine_story", "story_id", "story-99", "story"),
+        ("release_story", "story_id", "story-100", "story"),
+    ]
+    for intent_kind, field_name, real_id, expected_target_kind in cases:
+        import json as _json
+
+        row = make_ops_intent_row(
+            intent_kind=intent_kind, params_json=_json.dumps({field_name: real_id})
+        )
+        intent = adapt_ops_intent_to_action_intent(row).canonical
+        assert intent is not None, f"{intent_kind} row should be adaptable"
+        assert intent.target.object_ref.object_kind == expected_target_kind, intent_kind
+        assert intent.target.object_ref.object_id == real_id, intent_kind
+        assert not intent.target.object_ref.object_id.startswith("unbacked:"), intent_kind
+
+
+def test_target_falls_back_to_unbacked_placeholder_when_params_json_lacks_expected_key(
+    ops_intent_row,
+):
+    """The DEFAULT fixture's params_json does not carry the 'failed_run_id'
+    key that intent_kind='rerun_collector' expects -- this must fall back
+    to the old intent-scoped unbacked pointer, not crash and not silently
+    use the wrong value.
+    """
+
+    intent = adapt_ops_intent_to_action_intent(ops_intent_row).canonical
+    assert intent is not None
+    assert intent.target.object_ref.object_kind == "rerun_collector"
+    assert intent.target.object_ref.object_id == f"unbacked:{ops_intent_row['intent_id']}"
+
+
+def test_target_falls_back_when_params_json_is_unparseable():
+    row = make_ops_intent_row(intent_kind="quarantine_story", params_json="not valid json{{{")
+    intent = adapt_ops_intent_to_action_intent(row).canonical
+    assert intent is not None
+    assert intent.target.object_ref.object_id == f"unbacked:{row['intent_id']}"
+
+
+def test_arguments_hash_is_a_real_recomputable_hash_of_params_json(ops_intent_row):
+    """arguments_hash must be a content hash of the actual arguments
+    (params_json), NOT the legacy request_hash -- a Kimi K3 review found
+    reusing request_hash would impersonate a verifiable integrity hash
+    while never actually verifying (request_hash hashes the whole request
+    envelope, not just the arguments).
+    """
+
+    from backend.services.research_os.synthesis import legacy_content_hash
+
+    intent = adapt_ops_intent_to_action_intent(ops_intent_row).canonical
+    assert intent is not None
+    assert intent.arguments_hash == legacy_content_hash(ops_intent_row["params_json"])
+    assert intent.arguments_hash != ops_intent_row["request_hash"]
