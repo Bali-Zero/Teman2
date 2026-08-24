@@ -71,12 +71,11 @@ train of reviewable PRs, everything behind flags.
 **V1 per-product method (owner ruling — THE anti-loop rule, verbatim intent):** for each visa,
 exactly three moves — **(1)** the visa index in question; **(2)** what it is and what it does;
 **(3)** interrogate **NB-2** to understand how to draw it on the decision tree and build all
-the questions that help. One product, one session, one verified result (rules + tree placement
-
-- questions + tests + NB-2-cited card), then the next. Three reds on the same cause → the lane
-  STOPS and hands off (assembly-line rule 8) — the infinite negative loops previous sessions
-  fell into are a banned failure mode, and a session that catches itself philosophizing instead
-  of shipping a product card must stop. Until a product passes, it stays T3.
+the questions that help. One product, one session, one verified result (rules, tree placement,
+questions, tests, NB-2-cited card), then the next. Three reds on the same cause → the lane
+STOPS and hands off (assembly-line rule 8) — the infinite negative loops previous sessions
+fell into are a banned failure mode, and a session that catches itself philosophizing instead
+of shipping a product card must stop. Until a product passes, it stays T3.
 
 Contracts to FREEZE before dispatch: wizard↔engine wire schema (the 5-outcome contract is the
 base — freeze the public projection) · verdict→checkout handoff event (consumes GARUDA's
