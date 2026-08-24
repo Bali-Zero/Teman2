@@ -102,6 +102,13 @@ const en = {
   "q.stay_permit_code.opt.E33G": "E33G — Second Home Visa — Remote Worker",
   "why.stay_permit_code":
     "The engine receives the printed code unchanged, the same as the code list above — the interface never guesses it from the permit name.",
+
+  "q.renewal_paid": "Have you paid for the renewal of this stay permit?",
+  "q.renewal_paid.hint":
+    "Answer about payment, not paperwork — this is separate from whether the renewal has been submitted.",
+  "why.renewal_paid":
+    "A renewal counts as filed once payment has been made, not once documents are submitted — a renewal-in-process holder stays on the permit they extended, the same as anyone else with an active permit.",
+
   "q.overstay_days": "How many overstay days are active right now?",
   "q.overstay_days.hint":
     "Enter 0 if there is no active overstay. Do not include past overstay history here.",
@@ -577,6 +584,7 @@ const en = {
   "tree.holds_stay_permit": "Stay permit",
   "tree.current_status_code": "Current status",
   "tree.stay_permit_code": "Permit code",
+  "tree.renewal_paid": "Renewal payment",
   "tree.overstay_days": "Active overstay",
   "tree.wants_onshore_conversion": "Conversion intent",
   "tree.application_channel": "Application channel",
@@ -904,6 +912,13 @@ const id: Record<Keys, string> = {
   "q.stay_permit_code.opt.E33G": "E33G — Visa Rumah Kedua Pekerja Jarak Jauh",
   "why.stay_permit_code":
     "Mesin menerima kode yang tercetak tanpa perubahan, sama seperti daftar kode di atas — antarmuka tidak pernah menebaknya dari nama izin.",
+
+  "q.renewal_paid": "Apakah Anda sudah membayar perpanjangan izin tinggal ini?",
+  "q.renewal_paid.hint":
+    "Jawab soal pembayaran, bukan berkas — ini terpisah dari apakah perpanjangan sudah diserahkan.",
+  "why.renewal_paid":
+    "Perpanjangan dianggap telah diserahkan begitu pembayaran dilakukan, bukan begitu dokumen diserahkan — pemegang izin yang sedang dalam proses perpanjangan tetap berada pada izin yang mereka perpanjang, sama seperti pemegang izin aktif lainnya.",
+
   "q.overstay_days": "Berapa hari overstay yang aktif saat ini?",
   "q.overstay_days.hint":
     "Masukkan 0 jika tidak ada overstay aktif. Jangan masukkan riwayat overstay lama di sini.",
@@ -1379,6 +1394,7 @@ const id: Record<Keys, string> = {
   "tree.holds_stay_permit": "Izin tinggal",
   "tree.current_status_code": "Status saat ini",
   "tree.stay_permit_code": "Kode izin",
+  "tree.renewal_paid": "Pembayaran perpanjangan",
   "tree.overstay_days": "Overstay aktif",
   "tree.wants_onshore_conversion": "Niat konversi",
   "tree.application_channel": "Kanal permohonan",
