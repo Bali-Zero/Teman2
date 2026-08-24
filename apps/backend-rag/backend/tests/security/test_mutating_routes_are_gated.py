@@ -327,6 +327,18 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "synthetic traffic_source classes rejected unless the server-side "
         "allowlist env arms them.",
     ),
+    # ── Visa Oracle consultant-assignment (V3/unit-2, routers/
+    #    visa_oracle_consultant.py): anonymous by design — C3 must be
+    #    emittable before a client identity exists (pre-account wizard/
+    #    verdict "Talk to a consultant" control). ──
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa-oracle/consultant-assignment",
+        "Visa Oracle consultant-assignment (C3) — anonymous consultant-request "
+        "signal. Controls: dedicated 20/min rate-limit bucket, body schema is "
+        "closed-type + extra=forbid, C3's own Law 2 PII-shaped-key guard on "
+        "reconstruction, requested_at server-stamped (never client-supplied).",
+    ),
     # ── Marketing: explicit registry rows, standard opt-in/opt-out shape ──
     IntentionalPublicMutation(
         "POST",

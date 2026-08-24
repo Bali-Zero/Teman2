@@ -566,6 +566,20 @@ _VISA_ORACLE = (
         "rate-limited 30/min, no PII persisted or logged (HMAC fingerprints only)",
         match="exact",
     ),
+    # Visa Oracle consultant-assignment (V3/unit-2, routers/visa_oracle_consultant.py).
+    # Anonymous by design: C3 (docs/plans/2026-08-24-visa-oracle-live/contracts/
+    # FROZEN.md) must be emittable before a client identity exists — the whole
+    # point of the "Talk to a consultant" control on the pre-account wizard/
+    # verdict screens. Body is a closed-type/extra-forbid schema plus C3's own
+    # Law 2 PII-shaped-key guard; server-stamped requested_at; dedicated 20/min
+    # rate-limit bucket.
+    PublicEndpoint(
+        "/api/visa-oracle/consultant-assignment",
+        Category.VISA_ORACLE,
+        "Visa Oracle consultant-assignment (C3) — anonymous consultant-request "
+        "signal, no PII accepted (closed types + extra=forbid + Law 2 key guard)",
+        match="exact",
+    ),
     # Visa Check v1 homepage funnel (routers/visa_check.py, mounted at /api/visa).
     # Anonymous, no PII (nationality/purpose/budget only), rate-limited per-IP
     # by RateLimitMiddleware via the "/api/" bucket (120 req/min). The hash IS

@@ -362,6 +362,8 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="visa_oracle", process_groups=_API, prefix="__API_V1__", tags=("visa",)),
     # ── Visa Oracle v2 evaluate read-path (W1 — public, exact path, rate-limited) ──
     RouterEntry(name="visa_oracle_evaluate", process_groups=_API, tags=("visa",)),
+    # ── Visa Oracle consultant-assignment event (C3 — public, exact path, rate-limited) ──
+    RouterEntry(name="visa_oracle_consultant", process_groups=_API, tags=("visa",)),
     # ── Voice ──
     RouterEntry(name="voice", process_groups=_RAG, tags=("media",)),
     # ── War Room Dashboard (Sprint 11 — metrics aggregate queries) ──
