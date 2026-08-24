@@ -146,6 +146,27 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
       If it can vary, the published deadline we show is unsourced for those buyers.
       Default until answered: display a deadline only when the office is known.
     gesture: "answer the question — it is an operations fact, not a design choice"
+  - id: 7
+    decision: price_catalogue_currency
+    state: measured-question-ready
+    # Measured 2026-08-24 by importing the loader, not by reading the file:
+    #   backend/data/bali_zero_official_prices_2026.json  metadata.last_updated = 2026-05-06
+    #   garuda_today() = 2026-08-24  ->  age 110 days,  Q9 price window = 90 days  ->  STALE
+    #   price_for_case(issuance)  = (790000, "B1 Visa on Arrival (VOA)")
+    #   price_for_case(extension) = (850000, "B1 Visa on Arrival Extension")
+    # These are the exact amounts the funnel would charge, from a file last touched in May.
+    measured_catalogue_age_days: 110
+    question: >
+      Are 790.000 and 850.000 IDR still the correct prices today? The catalogue that
+      supplies them has not been touched in 110 days, and Q9's own freshness window is 90.
+    consequence: >
+      The freshness guardrail now being built will, correctly, refuse to sell on the day it
+      ships — the catalogue is already past its window. There are only two honest exits:
+      re-verify and re-stamp the catalogue, or rule that 90 days is the wrong window for a
+      list Bali Zero republishes on its own schedule. Quietly widening the window to make the
+      guard green is the one move that is not available: that turns the guardrail back into
+      the sentence it has been all along.
+    gesture: "confirm the two amounts, or re-stamp the catalogue, or rule on the window"
   - id: 0
     decision: go_live
     state: blocked-on-all-above-and-on-the-parent-page
