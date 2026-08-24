@@ -131,6 +131,15 @@ deliverables and not others for the same true fact.
   pin and this one — re-run in full at the final SHA, not carried forward. That regression suite tests
   only real `UtcDateTime` fields; it is green and blind to the `idempotency_key`-class collision §4
   describes, so its passing is not evidence against that collision.
+  **This count is not stable going forward, and that is expected, not a defect in either number.**
+  PR #4781 (§4, §9 condition 8) reverts both the fold in `hashing.py` and, with it,
+  `test_hashing_timestamp_parity.py` in its entirety (`git diff --stat
+  origin/main...origin/agent/nuzantara/backend-rag/revert-4615-hash-fold`: the test file is a pure
+  deletion, 6 tests, 0 lines added) — it is deleted along with the code it was written to test, not
+  orphaned. So **349 tests across 23 files** is the correct, reproducible count at this document's
+  pin; once #4781 merges, the reproducible count reverts to **343 tests across 22 files**, the same
+  number cited above as "earlier in this session." A reader who reruns this suite after that merge and
+  gets 343/22 has reproduced this document correctly, not found it wrong.
   **Environment-conditional, stated precisely rather than as a single global fact**: the suite
   contains one skip-gated test, `test_prettier_json_matches_real_prettier_across_shape_table`
   (`test_schemas.py`), whose `pytest.mark.skipif` fires only when `node` is absent or this repo's own
