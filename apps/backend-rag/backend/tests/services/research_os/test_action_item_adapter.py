@@ -50,11 +50,17 @@ def test_unbacked_refs_are_machine_checkable_not_only_prose(ops_intent_row):
     """Per an adversarial review (Kimi K3): a loss report is documentation a
     consumer could skip. The same fact must also be branch-able in code,
     via the object's own `extensions` -- this is that check.
+
+    `extension_version` is 1.1.0, not 1.0.0: the payload SHAPE this function
+    can emit gained an optional `pending_ruling` key in a later correction
+    (see `synthesis.UNBACKED_REFS_EXTENSION_VERSION`'s own comment for why
+    the version tracks the producer's capability, not whether this
+    particular row happens to populate that key).
     """
 
     item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
     marker = item.extensions["com.balizero.research-os-adapters"]
-    assert marker.extension_version == "1.0.0"
+    assert marker.extension_version == "1.1.0"
     assert set(marker.payload["unbacked_refs"]) == {
         "decision_packet_ref",
         "requested_action_spec_ref",

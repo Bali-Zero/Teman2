@@ -2,28 +2,35 @@ brief_ref: evidence/brief.yml
 plan_ref: "P04-D3 correction: fix false matrix-approval citations after an independent REFUSE verdict (claims #10/#11/#12), 2026-08-24"
 diff:
   net_lines: >-
-    +290/-43, 4 files: action_item_adapter.py (+203/-39, docstring + 3 field
-    comments/warnings rewritten, extensions call site extended), synthesis.py
-    (+45/-2, unbacked_refs_extension() gains an optional pending_ruling parameter merged into
-    the same payload dict, plus a new module-docstring invariant paragraph on extensions
-    presence citing hashing.py:3-5/:28), test_action_item_adapter.py (+40/-2, two new tests:
-    pending_ruling disclosure and the extensions-presence guilt-arm), PENDING-ARMS.md (+2/-0,
-    one new ledger row). Measured this session via `git diff --numstat` against this branch's
-    own base (origin/main @ bf85e81b0acb09459bc9560d9deefc078ed09823, re-fetched fresh, zero
-    drift from merge-base).
+    +403/-45, 5 files (code+test+ledger only; evidence-pack files not counted here):
+    action_item_adapter.py (+203/-39, docstring + 3 field comments/warnings rewritten,
+    extensions call site extended), synthesis.py (+67/-3, unbacked_refs_extension() gains an
+    optional pending_ruling parameter merged into the same payload dict, a module-docstring
+    invariant paragraph on extensions presence citing hashing.py:3-5/:28, and a new
+    UNBACKED_REFS_EXTENSION_VERSION="1.1.0" constant replacing a hardcoded "1.0.0" literal --
+    the latter two added in a gate round after the conductor's own review), test_action_item_adapter.py
+    (+47/-3, two new tests plus one updated assertion), test_adapter_extensions_invariant.py
+    (+84/-0, NEW file, a package-wide AST-based structural test), PENDING-ARMS.md (+2/-0, one
+    new ledger row). Measured this session via `git diff --numstat` against this branch's own
+    merge-base with origin/main (bf85e81b0acb09459bc9560d9deefc078ed09823, re-fetched fresh
+    immediately before measuring, confirmed unchanged since branch creation).
   behaviour_change: >-
     Zero change to any adapted VALUE: priority="p2", sla.due_at from expires_at, and
-    current_intent_ref=None are byte-identical to what PR #4749 shipped. Two additive
-    behavioural deltas: (1) extensions['com.balizero.research-os-adapters'].payload gains a
-    second key, pending_ruling. This DOES change object_hash for every ActionItem this adapter
+    current_intent_ref=None are byte-identical to what PR #4749 shipped. Additive behavioural
+    deltas only: (1) extensions['com.balizero.research-os-adapters'].payload gains a second
+    key, pending_ruling. This DOES change object_hash for every ActionItem this adapter
     produces (measured: pre-correction 305489949ff73447eb4c5825ffd07c5b4708fb90cc609ee204a4714790a324ee
     vs post-correction dd7d5a2dcb869d8121793bf5ad01ee9d4ef5f54c3f6b8da4952646dfff510e22 on the
     identical fixture row) -- confirmed harmless today per brief.yml's risks section (no
     hardcoded hash literal anywhere, no parity probe compares object_hash, zero persistence of
-    this kind yet, still zero non-test consumers of this adapter package). (2) A new test
-    (`test_extensions_is_always_explicitly_set_never_omitted`) arms the pre-existing
-    always-pass-extensions convention as a gate rather than a habit -- purely additive, changes
-    no runtime behaviour, only adds a failure mode for a future regression.
+    this kind yet, still zero non-test consumers of this adapter package). (2) The behavioural
+    test (test_extensions_is_always_explicitly_set_never_omitted) and the new structural test
+    (test_adapter_extensions_invariant.py) arm the always-pass-extensions convention as a gate
+    -- purely additive, only adds failure modes for future regressions. (3) extension_version
+    on this namespace's ExtensionValue is now "1.1.0" instead of "1.0.0" (gate-round Gap 2 fix)
+    -- a real, intentional wire-visible change: any consumer that happened to assert the
+    literal "1.0.0" would need updating; grepped this session, the only such assertion in the
+    whole repo was this PR's own pre-existing test, which is updated in this same diff.
 receipts:
   - claim: "Base SHA re-measured fresh in this session, not copied from any document/prompt"
     cmd: "git fetch origin main && git rev-parse origin/main"
@@ -150,21 +157,77 @@ receipts:
     exit: 0
     ts: "2026-08-24T08:12:00Z"
     seat: "session (pro)"
+  - claim: >-
+      Gate-round Gap 1 (conductor's review): a NEW package-wide structural test
+      (test_adapter_extensions_invariant.py) AST-parses every .py file in
+      backend.services.research_os for build_with_object_hash(...) calls and asserts each
+      passes extensions= explicitly -- closes the gap that the per-adapter behavioural test
+      only protects THIS adapter, not a future sibling adapter that copies the same pattern
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/test_adapter_extensions_invariant.py -v --no-header"
+    exit: 0
+    ts: "2026-08-24T09:05:00Z"
+    seat: "session (pro)"
+  - claim: >-
+      Guilt-arm of the new structural test: removing extensions= from the real call site makes
+      it fail, naming the EXACT offending file:line in the assertion message (not just "some
+      test failed") -- confirmed on the real adapter source, then restored and full suite
+      re-verified green (11/11)
+    cmd: "sed removes the extensions=unbacked_refs_extension(...) block from action_item_adapter.py; pytest test_adapter_extensions_invariant.py -v; file restored from backup; full suite re-run"
+    exit: 0
+    ts: "2026-08-24T09:08:00Z"
+    seat: "session (pro)"
+    # the intentionally-red run failed with: "AssertionError: build_with_object_hash call(s)
+    # omit extensions=, changing this adapter's canonical object identity by accident:
+    # ['action_item_adapter.py:152']" -- exit 0 above refers to the overall guilt-arm procedure
+    # completing as designed, not to that intentionally-red pytest invocation itself.
+  - claim: >-
+      Gate-round Gap 2 (conductor's review): unbacked_refs_extension()'s payload shape changed
+      (gained the optional pending_ruling key) while extension_version stayed the hardcoded
+      literal "1.0.0" on both shapes -- two shapes claiming one version number. Fixed by
+      introducing UNBACKED_REFS_EXTENSION_VERSION = "1.1.0" (additive/minor bump) used in place
+      of the literal, and updating the one pre-existing test that asserted "1.0.0"
+    cmd: "grep -rn 'UNBACKED_REFS_EXTENSION\\|extension_version' backend/services/research_os/synthesis.py backend/tests/services/research_os/test_action_item_adapter.py"
+    exit: 0
+    ts: "2026-08-24T09:12:00Z"
+    seat: "session (pro)"
+  - claim: >-
+      No other file in the repo hardcodes "1.0.0" tied to the
+      com.balizero.research-os-adapters namespace or UNBACKED_REFS_EXTENSION -- the version
+      bump does not silently break an assertion this session failed to find, independently
+      re-verified via a dispatched read-only agent, not only this session's own earlier grep
+    cmd: 'grep -rn "com.balizero.research-os-adapters" --include="*.py" --include="*.md" --include="*.yml" . ; grep -rn "UNBACKED_REFS_EXTENSION" --include="*.py" .'
+    exit: 0
+    ts: "2026-08-24T09:15:00Z"
+    seat: "session (pro), cross-checked by a dispatched read-only sub-agent"
+  - claim: "Full test suite (now 11 tests, was 10) passes after both gate-round fixes; ruff check/format clean on every touched and new file"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/ -q --no-header && python3 -m ruff check backend/services/research_os/synthesis.py backend/tests/services/research_os/test_action_item_adapter.py backend/tests/services/research_os/test_adapter_extensions_invariant.py && python3 -m ruff format --check <same 3 files>"
+    exit: 0
+    ts: "2026-08-24T09:18:00Z"
+    seat: "session (pro)"
 tests:
-  - "backend/tests/services/research_os/test_action_item_adapter.py -- 8 pre-existing tests
-    unaffected + 2 new tests: test_pending_ruling_is_machine_checkable_not_only_prose (asserts
+  - "backend/tests/services/research_os/test_action_item_adapter.py -- 7 pre-existing tests
+    unaffected + 1 updated (test_unbacked_refs_are_machine_checkable_not_only_prose, now
+    expects extension_version=='1.1.0') + 2 new tests:
+    test_pending_ruling_is_machine_checkable_not_only_prose (asserts
     extensions['com.balizero.research-os-adapters'].payload['pending_ruling'] ==
     {'priority', 'sla.due_at', 'current_intent_ref'}) and
     test_extensions_is_always_explicitly_set_never_omitted (asserts 'extensions' in
     item.model_fields_set -- guilt-verified this session to fail red when the extensions= kwarg
     is removed from the real call site)."
-  - "backend/tests/services/research_os/ (full suite, 10 tests) -- exit 0."
+  - "backend/tests/services/research_os/test_adapter_extensions_invariant.py -- NEW, 1 test
+    (test_every_build_with_object_hash_call_passes_extensions_explicitly): AST-scans every .py
+    file in the package for build_with_object_hash(...) calls, asserts each passes extensions=
+    explicitly -- guilt-verified to name the exact offending file:line, not just 'a test
+    failed', when the kwarg is removed from the real call site."
+  - "backend/tests/services/research_os/ (full suite, 11 tests) -- exit 0."
   - "scripts/tests/test_pending_arms_report.py (100 tests) -- exit 0, confirms the ledger append
     does not break the report's own parser."
 static:
-  - "ruff check: 0 issues."
-  - "ruff format --check: 0 issues (2 files needed --fix after manual edits, re-verified clean
-    afterward, then re-ran pytest to confirm the reformat changed no behaviour)."
+  - "ruff check: 0 issues on every touched/new file (action_item_adapter.py, synthesis.py,
+    test_action_item_adapter.py, test_adapter_extensions_invariant.py)."
+  - "ruff format --check: 0 issues (some files needed --fix after manual edits, re-verified
+    clean afterward, then re-ran pytest each time to confirm the reformat changed no
+    behaviour)."
 runtime_proof:
   - >-
     Same as PR #4749 (no live consumer, by design -- zero non-test consumers of

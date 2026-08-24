@@ -76,6 +76,20 @@ _ADAPTER_NAMESPACE = uuid5(NAMESPACE_URL, "https://balizero.com/research-os/adap
 # (Kimi K3) asked for when it argued disclosure-in-prose alone is not enough.
 UNBACKED_REFS_EXTENSION_NAMESPACE = "com.balizero.research-os-adapters"
 
+# Versions the SHAPE this extension's payload can carry, not any one instance's
+# content: 1.0.0 could only ever hold `unbacked_refs`; 1.1.0 (this correction)
+# adds the optional `pending_ruling` key to the shape. Every call to
+# `unbacked_refs_extension()` from this version forward emits 1.1.0 --
+# including calls whose `pending_ruling` happens to be empty -- because the
+# version describes what the PRODUCER is capable of emitting, not what one
+# instance happens to contain (per Packet 04 Deliverable 3's own versioning
+# discipline: a consumer that requires `pending_ruling` support needs a way to
+# tell "producer capable of it" apart from "producer that simply had nothing
+# pending this time", and a per-instance version would not give it one). This
+# is an additive/backward-compatible change (a new optional key), hence a
+# MINOR bump, not a MAJOR one.
+UNBACKED_REFS_EXTENSION_VERSION = "1.1.0"
+
 
 def unbacked_refs_extension(
     *field_names: str, pending_ruling: tuple[str, ...] = ()
@@ -96,6 +110,13 @@ def unbacked_refs_extension(
     trust without checking; this lets a downstream consumer branch on the
     fact in code instead. `pending_ruling` is likewise not in
     `V1_RESERVED_EXTENSION_FIELD_NAMES`, verified this session.
+
+    `extension_version` is always `UNBACKED_REFS_EXTENSION_VERSION`
+    ("1.1.0"), regardless of whether `pending_ruling` is passed on THIS
+    call: the version describes the payload SHAPE this function is capable
+    of emitting, not what one instance contains (see the module-level
+    constant's own comment for why a per-instance version would be the
+    wrong thing to expose).
     """
 
     payload: dict[str, object] = {"unbacked_refs": list(field_names)}
@@ -103,7 +124,7 @@ def unbacked_refs_extension(
         payload["pending_ruling"] = list(pending_ruling)
     return {
         UNBACKED_REFS_EXTENSION_NAMESPACE: ExtensionValue(
-            extension_version="1.0.0", payload=payload
+            extension_version=UNBACKED_REFS_EXTENSION_VERSION, payload=payload
         )
     }
 

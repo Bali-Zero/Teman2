@@ -77,12 +77,39 @@ objective: |
   decide (that belongs with the `ContentObject` null-contract row already on the ledger, same
   family, opposite direction) -- this PR only makes ITS OWN adapter surface deterministic and
   says so out loud.
+
+  GATE ROUND: the conductor's own review of this PR found two gaps in the arming above, both
+  closed in a third commit, neither touching a value:
+
+    - Gap 1 -- the behavioural test (`test_extensions_is_always_explicitly_set_never_omitted`)
+      only checks THIS adapter's real output; it would stay green even if a brand-new sibling
+      adapter (e.g. the not-yet-opened ActionIntent slice) copied the
+      `build_with_object_hash(...)` pattern and forgot `extensions=`. Closed with a package-wide
+      STRUCTURAL test (`test_adapter_extensions_invariant.py`): AST-parses every `.py` file
+      under `backend.services.research_os` for `build_with_object_hash(...)` calls and asserts
+      each one passes `extensions=` explicitly -- catches the omission in ANY future adapter
+      file, not just today's one. Guilt-armed: removing `extensions=` from the real call site
+      made this test fail with the exact offending file:line named in the assertion message,
+      then the file was restored and the full suite re-verified green.
+    - Gap 2 -- `unbacked_refs_extension()`'s payload SHAPE changed (gained the optional
+      `pending_ruling` key) while `extension_version` stayed the hardcoded literal `"1.0.0"` on
+      both the old and new shape. Closed by introducing
+      `UNBACKED_REFS_EXTENSION_VERSION = "1.1.0"` (additive/minor bump, since the new key is
+      optional and backward compatible) and using it in place of the literal. The version
+      describes the FUNCTION's capability, not per-instance content, so every call emits 1.1.0
+      from now on regardless of whether a given call's `pending_ruling` happens to be empty --
+      per the conductor's own reasoning: a consumer needing `pending_ruling` support needs a way
+      to tell "producer capable of it" apart from "producer with nothing pending this time", and
+      a per-instance version could not express that. The one pre-existing test asserting
+      `extension_version == "1.0.0"` was updated to `"1.1.0"`.
 constraints:
   - 'Values unchanged: `priority="p2"`, `sla.due_at` from `expires_at`, `current_intent_ref=None`
     are IDENTICAL to what PR #4749 shipped. Only comments/docstrings/warnings and the
     `extensions` payload''s second key changed.'
   - "Touches exactly the 3 files PR #4749 introduced (`action_item_adapter.py`, `synthesis.py`,
-    `test_action_item_adapter.py`) plus one PENDING-ARMS.md ledger append. No other file."
+    `test_action_item_adapter.py`) plus one PENDING-ARMS.md ledger append, plus one NEW file
+    added in the gate round (`test_adapter_extensions_invariant.py`, a package-wide structural
+    test -- necessarily new, since it did not exist in PR #4749). No other file."
   - "`unbacked_refs_extension()`'s new `pending_ruling` parameter is backward compatible:
     existing positional-only call sites (the not-yet-opened slices 2/3a/3b in this same
     worktree) are unaffected, since it defaults to an empty tuple."
@@ -100,9 +127,10 @@ acceptance:
     the pre-existing `unbacked_refs` key in the SAME payload dict (one extension entry, two
     keys -- not two competing entries)."
   - "New test `test_pending_ruling_is_machine_checkable_not_only_prose` passes; the existing
-    `test_unbacked_refs_are_machine_checkable_not_only_prose` is unaffected."
+    `test_unbacked_refs_are_machine_checkable_not_only_prose` is updated (not merely unaffected)
+    to expect `extension_version == '1.1.0'`, per the Gap 2 version bump below."
   - "Full `backend/tests/services/research_os/` suite green; `ruff check` and
-    `ruff format --check` both clean on the 3 touched files."
+    `ruff format --check` both clean on every touched/new file."
   - "A new PENDING-ARMS.md row names the two open rulings (matrix item 0, item 6), a
     proof-of-armed test description that fails while any of the 3 field names remains in
     `pending_ruling`, and an owner (Zero via the conductor -- a business ruling, not buildable
@@ -111,6 +139,13 @@ acceptance:
     `hashing.py:3-5` and `:28`; `test_extensions_is_always_explicitly_set_never_omitted` arms
     it against `ActionItem`'s adapter output, and was guilt-verified this session (removing the
     `extensions=` call-site kwarg made it fail red, restored afterward)."
+  - "`test_adapter_extensions_invariant.py` (new, gate-round Gap 1 fix) AST-scans every
+    `.py` file in the package for `build_with_object_hash(...)` calls and asserts each passes
+    `extensions=` -- guilt-verified to name the exact offending file:line when the kwarg is
+    removed from the real call site, restored and re-verified green afterward."
+  - "`UNBACKED_REFS_EXTENSION_VERSION` (new, gate-round Gap 2 fix) is `'1.1.0'`, used in place
+    of the hardcoded `'1.0.0'` literal in `unbacked_refs_extension()`; the pre-existing test
+    asserting `extension_version == '1.0.0'` is updated to `'1.1.0'`."
 consumer_map:
   - "GitHub PR's `Harness floor recompute` required check -- Gear-2 evidence pack, floor=1 (no
     hot-zone-pattern path touched)."
