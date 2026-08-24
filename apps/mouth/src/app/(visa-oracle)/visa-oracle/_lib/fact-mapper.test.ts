@@ -121,8 +121,8 @@ function representativeAnswer(question: OracleQuestion): string {
 describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
   const backendPaths = extractApplicantFactPathsFromModelsPy();
 
-  it("sanity: the backend contract has 44 fact paths, sponsor.type included", () => {
-    expect(backendPaths.length).toBe(44);
+  it("sanity: the backend contract has 45 fact paths, sponsor.type included", () => {
+    expect(backendPaths.length).toBe(45);
     expect(backendPaths).toContain("sponsor.type");
     expect(backendPaths).toContain(
       "family.stepchild_marriage_certificate_confirmed",
@@ -131,15 +131,16 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
       "family.stepchild_birth_certificate_confirmed",
     );
     expect(backendPaths).toContain("family.sponsor_permit_basis");
+    expect(backendPaths).toContain("immigration.renewal_paid");
   });
 
-  it("emits exactly the 44 backend fact-path keys, sponsor.type included", () => {
+  it("emits exactly the 45 backend fact-path keys, sponsor.type included", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...backendPaths].sort());
   });
 
-  it("still emits exactly those 44 keys on a fully-answered interview (no extra keys sneak in)", () => {
+  it("still emits exactly those 45 keys on a fully-answered interview (no extra keys sneak in)", () => {
     const result = mapFacts({
       in_indonesia: "yes",
       permit_expiry: "2026-08-01",
