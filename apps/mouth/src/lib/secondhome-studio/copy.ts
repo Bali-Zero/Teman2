@@ -182,7 +182,7 @@ export const COPY = {
     },
     reasons: {
       propertyPendingStandard:
-        "Property-route cases go through our property validation standard (addendum 007) before we can confirm fit — that keeps the review honest on both sides.",
+        "Property-route cases go through our property validation standard before we can confirm fit — that keeps the review honest on both sides.",
       propertyDoesNotQualify:
         "Only a completed strata-title unit valued at USD 1,000,000 or more qualifies. Villas, land, leasehold, and off-plan purchases do not qualify for the property route.",
       unsureRoute:
@@ -329,7 +329,7 @@ export const COPY = {
       propertyEvidence: {
         title: "Provide your property evidence",
         range:
-          "Timing depends on our pending property validation standard (addendum 007), once published — typical, not a promise.",
+          "Timing depends on our pending property validation standard, once published — typical, not a promise.",
       },
       incomeEvidence: {
         title: "Prepare your income evidence",
