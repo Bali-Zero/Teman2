@@ -1,102 +1,83 @@
-"""ActionClaimGate — the team-bot's claim-vs-action check.
+"""ActionClaimGate — DEFENSE-IN-DEPTH ONLY. The primary control lives in
+``confirmation/reply_composer.py::compose_reply`` (see that module's
+docstring). This module is downgraded from primary to secondary control by
+explicit orchestrator ruling — read the "STATUS CHANGE" section below
+before touching either the signature or the pattern inventory.
 
-Closes gc-015 (B4b empirical finding, both serving stacks — llama.cpp AND
-Ollama — 18/24 golden suite): the model returned ZERO ``tool_calls`` and
-its ``content`` narrated a completed mutation verbatim: "The reminder for
-practice PR-3090 has been successfully created and is scheduled for
-**Thursday, August 26, 2026 at 14:00** (UTC+8). Let me know if you need
-further adjustments! 📅" (see
-``docs/plans/2026-08-25-due-bot-live/evidence/14b-ollama-tmpl-golden.json``,
-``.results[14]``). The golden case itself expected a NEW ``create_reminder``
-call correcting the date (an Indonesian follow-up "eh maaf, maksudku hari
-Kamis ya" arriving after the FIRST reminder had already been created) — the
-model instead re-asserted the stale reminder as if the correction had been
-applied, with no tool call to back that claim.
+---
 
-Nothing in the frozen architecture catches this shape. F4's ID-provenance
-rule ("IDs flow only tool->model, never model->tool unverified") and F6's
-"the executor calls the CRM with the STORED payload — post-confirmation
-text never touches the arguments" both presuppose a tool call EXISTS to
-inspect or a payload EXISTS to render from; here there is neither. Left
-alone, the runtime relays prose asserting an action to a staff member while
-nothing reached the CRM — silent and plausible, because the CRM is left in
-exactly the state it would be in had it never been asked.
+Originally written to close gc-015 (B4b empirical finding, both serving
+stacks, 18/24 golden suite): the model returned ZERO tool_calls and its
+content narrated a completed mutation ("The reminder ... has been
+successfully created ..."). Nothing in F4/F6 catches this shape at the
+schema level — both presuppose a tool call or a stored payload exists to
+inspect; here there is neither.
 
-Rule (orchestrator brief, 2026-08-25): a reply that claims an action
-occurred must be DERIVED from what actually executed this turn, never
-authored freely alongside it. This is the team-bot analogue of BOT A's
-claim-inventory gate (``client_bot/policy/types.py``'s
-``GateReason.UNINVENTORIED_REGULATED_STATEMENT`` /
-``UNINVENTORIED_NUMERIC_STATEMENT`` — check 6, "fail closed / ABSTAIN"), and
-the natural extension of F6's stored-payload rule to the one case F6 does
-not cover: zero proposals, pure narration.
+STATUS CHANGE (orchestrator ruling, same day, via a fenced cross-family
+refuter run against the FIRST version of this module):
 
-Design — two independent factors, ANDed only in the dangerous quadrant:
+The refuter reproduced 16/16 false ALLOWs against realistic rephrasings of
+the exact same lie gc-015 told — simple past ("The reminder was created"),
+bare declaratives ("Reminder created"), an emoji alone ("✅"), plural forms
+("Abbiamo aggiornato", "We have created"), a curly apostrophe defeating
+"I've", informal Indonesian ("udah dibuat" vs "sudah dibuat"), and a verb
+present in one language's PASSIVE list but absent from the same language's
+ACTIVE list ("cancellato"). It caught exactly the ONE string this module's
+inventory was built from and missed every natural neighbor of it.
 
-1. STRUCTURAL FACT (``execution_ok``, supplied by the caller — never
-   inferred from text): did a tool actually execute with
-   ``ToolResult.ok=True`` THIS turn? Derived from ``ToolDecision`` +
-   the executor's outcome, both typed. This factor alone is not a
-   heuristic.
-2. CONTENT SIGNAL (``_matches_completion_claim``): does ``reply_text``
-   assert, in the past/completed tense, that a mutation already happened?
-   A CLOSED, reviewed, word-boundary-anchored phrase inventory across
-   EN/IT/ID (F8's three working languages) — never a bare substring match
-   (cicatrix-superscar.md family #3: "no guardia senza test di innocenza E
-   colpevolezza, su entità/intento mai bare-substring"). Deliberately
-   narrow: a false NEGATIVE here just means this defense-in-depth layer
-   misses a novel phrasing (no regression versus today, where nothing
-   catches gc-015 at all); a false POSITIVE blocks an innocent reply, which
-   is what ``test_claim_gate.py``'s innocent-case suite exists to catch.
+This is memory ``a-weaker-test-agrees-with-itself.md``'s lesson one level
+up: composite-testing the INNOCENT side (this module's own prior round)
+found a real false BLOCK — good, kept work. But the GUILTY fixtures were
+never composite-tested against an adversary, because they were the
+phrasings this module's author had in mind while writing the inventory, so
+they could not falsify it. Same instrument bias, one layer higher.
 
-Verdict: BLOCK only where factor 1 is False AND factor 2 is True — nothing
-executed, yet the text claims something did. Every other combination is
-ALLOW: a real execution grounds any completion language (factor 1 True); a
-reply that makes no completion claim is fine on its own terms (factor 2
-False) — a clarifying question, a lookup summary, a proposal awaiting
-confirmation ("Sto per aprire ... Confermi?", future tense, per F6's own
-worked example), or an abstention are all exactly this shape and must never
-be blocked.
+The orchestrator's ruling: enumerating natural-language phrasings is an
+unbounded arms race — every widening that closes one false ALLOW risks a
+new false BLOCK, with no terminating condition. The rule this module was
+built to enforce — "a reply that claims an action occurred must be DERIVED
+from what actually executed, never authored freely alongside it" — asked
+for a CONSTRUCTION that cannot lie, and a detector over free text is
+structurally a weaker reading of that rule no matter how wide the
+inventory grows.
 
-This module is READ-ONLY / pure — no CRM call, no state. The caller (the
-eventual team-bot loop, out of scope here) owns supplying ``execution_ok``
-honestly and deciding what happens on BLOCK (retry, a server-authored
-fallback message, escalation) — this gate only refuses to certify the
-reply, it never rewrites it (mirrors ``FinalDecision``'s own rule: the gate
-"never 'fixes' regulatory facts in free text").
+The fix is `compose_reply` (confirmation/reply_composer.py): when a turn's
+ROUTED INTENT is a mutation and nothing executed, the reply is composed
+from the STRUCTURED outcome — a template, a re-proposal, or an explicit
+"not done" — and never touches the model's `content` at all. Free text
+never gets a chance to assert an action in the first place; there is
+nothing here to detect because the lie was never constructible.
 
-KNOWN LIMITATION, measured via composite adversarial testing (not just each
-innocent shape tested in isolation — see memory
-``a-weaker-test-agrees-with-itself.md``, whose lesson this module's test
-suite applies directly): an INFORMATIONAL reply that legitimately describes
-a PRE-EXISTING record in past-participle language — "the passport has
-already been marked as received for weeks — did you mean a different
-practice?" — trips the same pattern family as a genuine gc-015-style false
-claim, because nothing in ``reply_text`` alone distinguishes "this just
-happened" from "this has long been true". Two of
-``test_claim_gate.py``'s composite cases document this measured, not
-theoretical, over-block. It is an ACCEPTED v1 trade-off, not an oversight:
-the two failure directions are not symmetric-cost. A false BLOCK on an
-innocent lookup costs a retry/fallback message — recoverable, and visible
-to the caller as a gate decision it can act on. A false ALLOW on a real
-gc-015 relays a silent, plausible lie about CRM state directly to a staff
-member, with nothing downstream positioned to catch it. Resolving this
-precisely would need the turn's routed INTENT (mutation vs. read — Kimi
-FM2's deterministic router) as a third input, which this pure gate
-deliberately does not have; flagged as follow-up work for whichever part of
-the loop owns that router, not built here.
+THIS MODULE'S ROLE NOW: a defense-in-depth net for whatever
+`compose_reply` cannot yet cover — most concretely, any turn its
+(not-yet-built) upstream intent router misclassifies as
+`TurnIntent.READ_OR_NONE` when it should have been `MUTATION`. Its
+false-negative rate (documented, deliberately not chased to zero — widening
+it further is the anti-pattern this ruling names) is NO LONGER load-bearing
+on its own; it is one more layer behind the structural fix, not the thing
+standing between a model's prose and a staff member.
 
-Author: Claude Sonnet 5 (lane B3 — team-bot tool registry)
+``execution_ok: bool`` is GONE. The refuter's second finding: an
+unvalidated ``bool`` parameter on a plain function is not runtime-checked
+by Python — passing the STRING ``"false"`` is truthy and silently ALLOWed.
+Replaced with ``execution_record: ExecutionRecord | None`` (see
+``loop/execution_record.py``): either a REAL, typed record constructed by
+the one place execution actually happens, or ``None``. There is no
+truthy/falsy string left to smuggle through — the type itself is the fix.
+
+Author: Claude Sonnet 5 (lane B3 — team-bot confirmation state machine)
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 from enum import StrEnum
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .execution_record import ExecutionRecord
 from .tool_decision import ToolDecision
 
 __all__ = ["ActionClaimGate", "ActionClaimVerdict", "ClaimGateDecision"]
@@ -107,29 +88,63 @@ class ActionClaimVerdict(StrEnum):
     BLOCK = "block"
 
 
-# Closed, reviewed inventory — one entry per (language, mutation-verb
-# family). Word-boundary anchored (``\b``); every pattern requires a
-# PAST/COMPLETED tense marker so a prospective or confirm-asking sentence
-# ("Sto per aprire...", "Vuoi che crei...?", "Shall I mark it as
-# received?") never matches — those are exactly the innocent shape this
-# gate must not block.
+def _normalize(text: str) -> str:
+    """NFKC-normalize and fold the handful of Unicode punctuation variants
+    a phone keyboard actually produces (curly apostrophes/quotes, en/em
+    dashes) to their ASCII equivalents before matching. This is hygiene,
+    not widening — it makes the EXISTING patterns match what they were
+    always meant to match, rather than adding new phrasings to catch."""
+    normalized = unicodedata.normalize("NFKC", text)
+    return (
+        normalized.replace("’", "'")
+        .replace("‘", "'")
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+
+
+# Exact-match (not a substring search) — an emoji-only reply asserting
+# completion with nothing executed is as much a claim as any sentence.
+_COMPLETION_ONLY_EMOJI = frozenset({"✅", "✔️", "✔", "👍", "☑️", "☑"})
+
+# Closed, reviewed inventory. DELIBERATELY NOT exhaustive — see the module
+# docstring's STATUS CHANGE section: this is defense-in-depth, and chasing
+# every natural rephrasing is the anti-pattern the orchestrator ruled
+# against. Modest widening applied here (bare past tense with an explicit
+# subject, plural EN/IT forms, an informal ID contraction) closes the
+# clearest, lowest-risk gaps the refuter found; it does not attempt the
+# other twelve.
 _COMPLETION_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
-        # EN — "has/have been [successfully] <verb>", "I've <verb>ed",
-        # "successfully <verb>ed"
+        # EN — "has/have been [successfully] <verb>"
         r"\b(?:has|have)\s+been\s+(?:successfully\s+)?"
         r"(?:created|updated|marked|changed|opened|scheduled|set|recorded|cancelled|removed)\b",
-        r"\bI(?:'ve| have)\s+(?:successfully\s+)?"
-        r"(?:created|updated|marked|changed|opened|scheduled|set|recorded)\b",
+        # EN — "I've/I have/we've/we have <verb>ed" (active voice with an
+        # explicit subject pronoun — covers both the contraction and the
+        # full auxiliary, and both singular and plural subjects).
+        r"\b(?:I|we)(?:'ve| have)\s+(?:successfully\s+)?"
+        r"(?:created|updated|marked|changed|opened|scheduled|set|recorded|cancelled)\b",
+        # EN — "successfully <verb>ed"
         r"\bsuccessfully\s+(?:created|updated|marked|changed|opened|scheduled|recorded)\b",
-        # IT — "è stato/a <participio>", "ho <verbo>"
-        r"\bè\s+stat[oa]\s+(?:creat[oa]|aggiornat[oa]|segnat[oa]|modificat[oa]|"
-        r"apert[oa]|programmat[oa]|registrat[oa]|cancellat[oa])\b",
-        r"\bho\s+(?:creato|aggiornato|segnato|modificato|aperto|programmato|registrato)\b",
-        # ID — "sudah/telah <verb>", "berhasil <verb>"
-        r"\b(?:sudah|telah)\s+(?:dibuat|diperbarui|ditandai|diubah|dibuka|"
+        # EN — bare simple past with an explicit subject pronoun, no
+        # auxiliary: "I created", "we marked" — NOT a bare "X was created"
+        # (that composite shape is the documented, accepted false-block
+        # trade-off from the prior round; requiring the subject pronoun
+        # keeps this addition narrow rather than reopening that over-block).
+        r"\b(?:I|we)\s+(?:created|updated|marked|changed|opened|scheduled|set|recorded|cancelled)\b",
+        # IT — "è stato/a <participio>" (singular) / "sono stati/e <participio>" (plural)
+        r"\b(?:è\s+stat[oa]|sono\s+stat[ie])\s+(?:creat[oi]|aggiornat[oi]|segnat[oi]|"
+        r"modificat[oi]|apert[oi]|programmat[oi]|registrat[oi]|cancellat[oi])\b",
+        # IT — "ho/abbiamo <verbo>"
+        r"\b(?:ho|abbiamo)\s+(?:creato|aggiornato|segnato|modificato|aperto|programmato|"
+        r"registrato|cancellato)\b",
+        # ID — "sudah/telah/udah <verb>" (udah = informal contraction of sudah)
+        r"\b(?:sudah|telah|udah)\s+(?:dibuat|diperbarui|ditandai|diubah|dibuka|"
         r"dijadwalkan|dicatat|dibatalkan)\b",
+        # ID — "berhasil <verb>"
         r"\bberhasil\s+(?:dibuat|diperbarui|ditandai|diubah|dibuka|dijadwalkan|dicatat)\b",
     )
 )
@@ -137,9 +152,13 @@ _COMPLETION_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 
 def _matches_completion_claim(text: str) -> str | None:
     """Return the FIRST matching pattern's source (for the audit reason), or
-    ``None`` if ``text`` makes no completion claim."""
+    ``None`` if ``text`` makes no completion claim. Operates on the
+    normalized form."""
+    normalized = _normalize(text)
+    if normalized.strip() in _COMPLETION_ONLY_EMOJI:
+        return "emoji-only completion"
     for pattern in _COMPLETION_CLAIM_PATTERNS:
-        if pattern.search(text):
+        if pattern.search(normalized):
             return pattern.pattern
     return None
 
@@ -155,35 +174,37 @@ class ClaimGateDecision(BaseModel):
 
 
 class ActionClaimGate:
-    """Stateless. Safe to share across requests — no I/O, no instance state."""
+    """Stateless. Safe to share across requests — no I/O, no instance state.
+
+    DEFENSE-IN-DEPTH ONLY — see module docstring. Callers that can supply an
+    upstream ``TurnIntent`` classification should prefer
+    ``confirmation/reply_composer.py::compose_reply``, which never lets
+    ``reply_text`` reach the user unfiltered in the action domain at all.
+    This class exists for the path that classification does not (yet, or
+    ever) cover.
+    """
 
     @staticmethod
     def evaluate(
         reply_text: str,
         *,
         tool_decision: ToolDecision,
-        execution_ok: bool,
+        execution_record: ExecutionRecord | None,
     ) -> ClaimGateDecision:
         """
         Args:
             reply_text: the text about to be sent to the staff member THIS
-                turn — either the decision-turn's own ``raw_content`` (when
-                no tool was called; gc-015's exact case) or a later,
-                separate final-answer generation (Kimi FM5's "the
-                final-answer step is a separate, unconstrained generation
-                that only receives structured tool results").
+                turn.
             tool_decision: this turn's parsed ``ToolDecision``. Only its
                 ``proposed_a_tool_call`` shape informs the reason string —
-                the verdict itself never re-derives ``execution_ok`` from
-                it, because deciding to CALL a tool does not mean the call
-                SUCCEEDED (denied by RBAC, CRM 4xx/5xx, an expired
-                confirmation, ...); the caller must supply that fact.
-            execution_ok: True iff a tool call — from this turn's decision,
-                or an earlier confirmed proposal being executed now —
-                actually completed with ``ToolResult.ok=True`` THIS turn.
-                Never inferred here from ``tool_decision`` or from text.
+                the verdict never re-derives groundedness from it.
+            execution_record: proof (see ``loop/execution_record.py``) that
+                a tool executed THIS turn with ``ok=True``, or ``None`` if
+                nothing did. There is no bare bool left to accept here —
+                the refuter's finding that a truthy string could silently
+                ALLOW is closed by construction, not by validation.
         """
-        if execution_ok:
+        if execution_record is not None and execution_record.ok:
             return ClaimGateDecision(
                 verdict=ActionClaimVerdict.ALLOW,
                 reason="a tool executed successfully this turn; any completion language is grounded",

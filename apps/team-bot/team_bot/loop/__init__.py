@@ -9,12 +9,15 @@ class (B4b empirical finding — see claim_gate.py's module docstring).
 from __future__ import annotations
 
 from .claim_gate import ActionClaimGate, ActionClaimVerdict, ClaimGateDecision
+from .execution_record import ExecutionRecord, ExecutionSource
 from .tool_decision import ProposedToolCall, ToolDecision
 
 __all__ = [
     "ActionClaimGate",
     "ActionClaimVerdict",
     "ClaimGateDecision",
+    "ExecutionRecord",
+    "ExecutionSource",
     "ProposedToolCall",
     "ToolDecision",
 ]
