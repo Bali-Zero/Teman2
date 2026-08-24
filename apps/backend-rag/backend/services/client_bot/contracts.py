@@ -176,6 +176,14 @@ class BrainCandidate(BaseModel):
     bound here MUST be re-validated server-side via
     ``BrainCandidate.model_validate()`` regardless of what the provider
     claims to have enforced.
+
+    Also absent from this schema entirely: the disposition coupling
+    (``handoff_reason_code`` required iff handoff; non-empty ``answer``
+    iff answer; ``claims``/``cited_evidence_ids`` empty unless answer).
+    A lane generating structured output directly against this JSON file
+    can produce shapes that pass provider-side validation but fail
+    ``BrainCandidate.model_validate()`` — that mismatch is discovered via
+    the model, not the schema.
     """
 
     model_config = ConfigDict(
@@ -213,10 +221,15 @@ class BrainCandidate(BaseModel):
         - ``answer`` is non-empty if and only if ``disposition == "answer"``.
         - ``claims``/``cited_evidence_ids`` are empty unless ``disposition == "answer"``.
 
-        This conditional coupling is NOT representable in the committed JSON
-        Schema without hand-authored ``if``/``then`` keywords (pydantic does
-        not export model_validators to JSON Schema) — it is enforced here,
-        server-side, on every candidate regardless of provider.
+        This conditional coupling COULD be expressed in JSON Schema via
+        ``if``/``then`` — pydantic simply does not auto-export
+        model_validators that way. It deliberately is NOT hand-authored
+        here: provider structured-output modes (OpenAI/Gemini
+        ``response_schema``) enforce only a subset of JSON Schema and would
+        not honor an ``if``/``then`` conditional either, so encoding it
+        would add schema complexity with zero enforcement benefit at the
+        provider. It is enforced here, server-side, on every candidate
+        regardless of provider.
         """
         is_answer = self.disposition == "answer"
         is_handoff = self.disposition == "handoff"
@@ -226,8 +239,15 @@ class BrainCandidate(BaseModel):
         if not is_handoff and self.handoff_reason_code is not None:
             raise ValueError("handoff_reason_code must be unset unless disposition is handoff")
 
-        if is_answer and not self.answer:
-            raise ValueError("answer must be non-empty when disposition is answer")
+        # round-3 review, finding 3: `not self.answer` only rejects the
+        # literal empty string — " \n", "\t", and "\xa0" (non-breaking
+        # space) all pass as "non-empty", so a provider could return pure
+        # whitespace and the contract would bless it as a real answer.
+        # Non-empty is not non-blank; check the stripped form.
+        if is_answer and not self.answer.strip():
+            raise ValueError(
+                "answer must be non-empty (not just whitespace) when disposition is answer"
+            )
         if not is_answer and self.answer:
             raise ValueError("answer must be empty unless disposition is answer")
 
