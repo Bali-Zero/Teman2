@@ -10,8 +10,9 @@ import {
   type BlockedAnswer,
   type InterviewSnapshot,
 } from "../_lib/flow";
-import { QUESTIONS, getLane } from "../_lib/tree";
+import { QUESTIONS, getLane, type CategoryKey } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
+import { productBreakdownForCategory } from "../_lib/product-purpose-counts";
 import { prepareEvaluationRequest } from "../_lib/evaluation-request";
 import {
   evaluateVisaOracle,
@@ -65,6 +66,7 @@ import { ConfirmationCard } from "./ConfirmationCard";
 import { VerdictReveal } from "./VerdictReveal";
 import { OutcomeSheet } from "./OutcomeSheet";
 import { ConsentHandoff } from "./ConsentHandoff";
+import { ConsultantAccess } from "./ConsultantAccess";
 import { ThemeToggle, type OracleTheme } from "./ThemeToggle";
 import { LanguageToggle } from "./LanguageToggle";
 
@@ -715,6 +717,17 @@ function OracleShellRuntime({
   }, [clearAllEvaluationIdentities]);
 
   const lane = useMemo(() => getLane(state.facts), [state.facts]);
+  // The real, pack-and-tier-sourced breakdown for the selected category
+  // (`product-purpose-counts.ts`) — `undefined` while no category is chosen
+  // yet or the NotSure affordance left it `"unsure"` (matches the same
+  // undefined/"unsure" guard `fact-mapper.ts` uses for this field), `null`
+  // when the category has no honest breakdown (diaspora). PathsCounter only
+  // renders it once the interview has narrowed to a single branch.
+  const productBreakdown = useMemo(() => {
+    const category = state.facts.category;
+    if (category === undefined || category === "unsure") return undefined;
+    return productBreakdownForCategory(category as CategoryKey);
+  }, [state.facts.category]);
   const outcomeAssessmentReference =
     outcome?.provenance === "ENGINE" ? outcome.assessment.publicId : undefined;
   const guardianConsentRequired = isMinorForHandoff(
@@ -752,6 +765,20 @@ function OracleShellRuntime({
             {translate(language, "prototype.badge")}
           </span>
           <div className="oracle-topbar__actions">
+            {/* Contract C3 (FROZEN.md): present on every screen, invokable
+             * at any moment. Mounted once here rather than once per screen
+             * type — `oracle-topbar` already renders unconditionally for
+             * every `current.kind` below, so "ever-present" holds by
+             * construction. `outcome?.state` is undefined on every screen
+             * before a verdict exists (framing, every question,
+             * confirmation); `ConsultantAccess` reports that honestly as
+             * "IN_PROGRESS" rather than reusing a stale or guessed state. */}
+            <ConsultantAccess
+              language={language}
+              state={outcome?.state as VisaOracleTelemetryState | undefined}
+              assessmentReference={outcomeAssessmentReference}
+              guardianConsentRequired={guardianConsentRequired}
+            />
             {hasLocalResume && (
               <button
                 type="button"
@@ -788,6 +815,7 @@ function OracleShellRuntime({
                     language={language}
                     count={interviewBranchesRemaining}
                     visible
+                    productBreakdown={productBreakdown}
                   />
                 </div>
               )}

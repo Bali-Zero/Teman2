@@ -658,6 +658,12 @@ const en = {
 
   "paths.counter.label": "{{count}} interview branches",
   "paths.counter.aria": "{{count}} interview branches remaining",
+  "paths.counter.products_split":
+    "{{total}} paths serve your situation: {{selfService}} you complete here, {{consultantRouted}} go through a consultant.",
+  "paths.counter.products_all_selfservice":
+    "{{total}} paths serve your situation — all completed here.",
+  "paths.counter.products_all_consultant":
+    "{{total}} paths serve your situation — all through a consultant.",
 
   "confirmation.title": "Here’s what you told us",
   "confirmation.your_answers": "Your answers",
@@ -823,6 +829,11 @@ const en = {
   "theme.toggle.aria": "Switch between light and dark",
   "theme.toggle.light": "Light",
   "theme.toggle.dark": "Dark",
+
+  "consultant.trigger": "Talk to a consultant",
+  "consultant.trigger.aria":
+    "Talk to a consultant now, on WhatsApp — available on every screen, at any point in the interview",
+  "consultant.close.aria": "Close consultant panel",
   "language.toggle.aria": "Switch language",
   "language.option.en": "EN",
   "language.option.id": "ID",
@@ -1484,6 +1495,12 @@ const id: Record<Keys, string> = {
 
   "paths.counter.label": "{{count}} cabang wawancara",
   "paths.counter.aria": "{{count}} cabang wawancara tersisa",
+  "paths.counter.products_split":
+    "{{total}} jalur sesuai situasi Anda: {{selfService}} dapat diselesaikan di sini, {{consultantRouted}} melalui konsultan.",
+  "paths.counter.products_all_selfservice":
+    "{{total}} jalur sesuai situasi Anda — semua dapat diselesaikan di sini.",
+  "paths.counter.products_all_consultant":
+    "{{total}} jalur sesuai situasi Anda — semua melalui konsultan.",
 
   "confirmation.title": "Berikut yang Anda sampaikan",
   "confirmation.your_answers": "Jawaban Anda",
@@ -1652,6 +1669,11 @@ const id: Record<Keys, string> = {
   "theme.toggle.aria": "Ganti antara mode terang dan gelap",
   "theme.toggle.light": "Terang",
   "theme.toggle.dark": "Gelap",
+
+  "consultant.trigger": "Bicara dengan konsultan",
+  "consultant.trigger.aria":
+    "Bicara dengan konsultan sekarang, melalui WhatsApp — tersedia di setiap layar, kapan saja selama wawancara",
+  "consultant.close.aria": "Tutup panel konsultan",
   "language.toggle.aria": "Ganti bahasa",
   "language.option.en": "EN",
   "language.option.id": "ID",

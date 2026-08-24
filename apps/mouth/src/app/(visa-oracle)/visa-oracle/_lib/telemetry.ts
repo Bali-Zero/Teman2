@@ -18,7 +18,17 @@ export type VisaOracleTelemetryState =
   | "NEEDS_INPUT"
   | "HUMAN_REVIEW_REQUIRED"
   | "NO_SUPPORTED_PATH"
-  | "TEMPORARILY_UNAVAILABLE";
+  | "TEMPORARILY_UNAVAILABLE"
+  /**
+   * NOT one of the five engine outcomes (C1's frozen contract, `enums.py`).
+   * The ever-present consultant control (`ConsultantAccess.tsx`) can be
+   * invoked from any wizard screen — framing, a question, confirmation —
+   * before an evaluation has ever run, and there is no honest engine state
+   * to report at that point. This value exists so the handoff message and
+   * telemetry never claim one of the five real states for a visitor who has
+   * not been evaluated yet.
+   */
+  | "IN_PROGRESS";
 
 export interface VisaOracleTelemetry {
   event: VisaOracleTelemetryEvent;

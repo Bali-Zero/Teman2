@@ -387,6 +387,85 @@ html[data-oracle-theme-bootstrap="dark"]
   color: var(--oracle-bg-elevated);
 }
 
+/* ─── Consultant access (contract C3 — ever-present on every screen) ────── */
+.oracle-consultant-access {
+  position: relative;
+  display: inline-flex;
+}
+.oracle-consultant-access__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-consultant-access__trigger:hover,
+.oracle-consultant-access__trigger[aria-expanded="true"] {
+  color: var(--oracle-ink);
+  border-color: var(--oracle-canopy);
+}
+/* The label collapses to icon-only below the point where the topbar starts
+   competing for space with the tree minimap trigger + toggles (A.6's
+   mobile-first pattern — narrow, not max-width-overridden). */
+.oracle-consultant-access__label {
+  display: none;
+}
+@media (min-width: 640px) {
+  .oracle-consultant-access__label {
+    display: inline;
+  }
+}
+.oracle-consultant-access__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgb(0 0 0 / 35%);
+}
+.oracle-consultant-access__panel {
+  position: fixed;
+  z-index: 31;
+  top: calc(var(--space-4) * 2 + 44px);
+  right: var(--oracle-gutter);
+  left: var(--oracle-gutter);
+  width: min(100% - (2 * var(--oracle-gutter)), 24rem);
+  margin-left: auto;
+  max-height: calc(100dvh - var(--space-8) - 44px);
+  overflow-y: auto;
+  padding: var(--space-5);
+  border-radius: var(--oracle-radius-card);
+  border: 1px solid var(--oracle-border);
+  background: var(--oracle-bg-elevated);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+.oracle-consultant-access__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) var(--space-2)
+    auto;
+  float: right;
+  border-radius: var(--radius-md);
+  border: none;
+  background: none;
+  color: var(--oracle-ink-muted);
+  cursor: pointer;
+}
+.oracle-consultant-access__close:hover {
+  color: var(--oracle-ink);
+}
+
 /* ─── Focus (WCAG AA — visible on every interactive element) ───────────── */
 .oracle-root :is(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--oracle-focus-ring);
@@ -622,6 +701,11 @@ button.oracle-tree__step--editable:hover {
 .oracle-paths-counter strong {
   font-size: var(--text-lg);
   color: var(--oracle-ink);
+}
+.oracle-paths-counter__products {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--oracle-ink-faint);
 }
 
 /* ─── Question screen ───────────────────────────────────────────────────── */
