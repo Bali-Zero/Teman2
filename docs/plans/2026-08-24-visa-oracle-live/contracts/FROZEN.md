@@ -58,41 +58,88 @@ shape the schema already provides.
 
 ## C2 — verdict -> checkout handoff
 
-**Status: NOT IMPLEMENTABLE. This is a request to the GARUDA orchestrator, not a contract we can
-consume today.**
+**Status: AMENDED 2026-08-24 after the GARUDA orchestrator answered. The amendment changes the
+DESIGN, not a field name.** Still not implementable — the contract it depends on is on
+`feature/garuda-voa`, not main — but the shape below is now agreed between the two products.
 
-The mandate assumed GARUDA's order contract was on main. Measured (GROUND §4): it is not.
-`garuda_flow/` has no order, checkout, or commerce module; the only public GARUDA route is
-`GET /voa/{hash}`, a read-only archive; `balizero.com/visa/voa` is 404 since PR #4344 withdrew the
-public surface.
+### What the mandate assumed, and what is actually there
 
-### What we freeze on OUR side, so the graft is a one-line swap when the rails land
-
-The Oracle emits a single, self-contained handoff intent. It does not know what checkout looks like.
+The mandate said "consume GARUDA's FROZEN contracts from main". Measured (GROUND §4): no order,
+checkout, or commerce module exists on main; the only public GARUDA route is `GET /voa/{hash}`.
+The order contract is written but lives on GARUDA's integration branch, under a cross-family
+refuter, with names explicitly provisional until that verdict returns:
 
 ```
-VerdictHandoffIntent
-  evaluation_id            : uuid          # the decision this came from, already emitted by the engine
-  product_version_id       : uuid          # the chosen candidate (exactly one; two-candidate verdicts
-                                           #   resolve to one before handoff)
-  tier                     : T1 | T2 | T3  # from the product->tier map (owner switchboard #4)
-  quote_ref                : uuid | null   # the decision quote; null iff pricing status is
-                                           #   CONTACT_REQUIRED or UNKNOWN
+POST /api/visa/voa/orders          operationId: createOrderFromCheck
+  header  Idempotency-Key          mandatory; absent -> 400 IDEMPOTENCY_KEY_REQUIRED
+  body    CreateOrderRequest       additionalProperties: false
+            result_id              <- from GARUDA's createEligibilityCheck
+            applicant
+            review_confirmed       const true
+  201  ->  OrderCheckout { order_id, order_state, price_idr, checkout_url }
+```
+
+### The boundary this exposed — and why the first design was wrong
+
+GARUDA's order entry requires a `result_id`: the outcome of **GARUDA's own** VOA engine. It is an
+order for one product, not a generic order over 38. So `VerdictHandoffIntent` as first frozen does
+not fit — and forcing it to fit would have created the real defect: **two engines evaluating the
+same case.** The Oracle says VOA is supported, GARUDA's check then says otherwise, and the visitor
+has had two answers from one company thirty seconds apart. Hoping they agree is not a design.
+
+The cure is not a zero-divergence gate bolted on top. That gate is a net, and we still arm it
+(switchboard #3), but a net is not a structure. The cure is:
+
+> **For any product with a downstream proprietary engine (today: VOA only), the Oracle's verdict is
+> not a verdict.** It emits "this is the right route for you — let us confirm it", and the
+> authoritative eligibility check is that engine's, as a STEP OF THE JOURNEY rather than a second
+> opinion contradicting the first.
+
+This removes the contradiction by construction instead of by luck, at a price we accept: **for VOA
+the Oracle is a router, not the decider.** Which is what the mandate already says — "the Oracle
+absorbs GARUDA: VOA becomes the first product sold inside this funnel". The funnel is ours; the
+VOA decision stays theirs.
+
+### The chain (this, not the names, is what we froze)
+
+```
+Oracle (candidate + tier)
+  -> GARUDA createEligibilityCheck   -> result_id
+  -> GARUDA createOrderFromCheck     -> OrderCheckout
+```
+
+Names may still change; the CHAIN may not change silently, because the design above rests on it.
+Generating the `Idempotency-Key`, and not reusing it across two distinct attempts by the same
+visitor, is our responsibility.
+
+### Our side, degraded to what it actually is
+
+For a product with a downstream engine, the intent is a **routing** intent, not an order:
+
+```
+VerdictRoutingIntent
+  evaluation_id            : uuid          # the decision this came from
+  product_version_id       : uuid          # exactly one; two-candidate verdicts resolve first
+  tier                     : T1 | T2 | T3
+  quote_ref                : uuid | null   # null iff pricing is CONTACT_REQUIRED or UNKNOWN
   locale                   : "en" | "id"
-  consultant_required      : bool          # true for T2 and T3, always
+  consultant_required      : bool          # always true for T2 and T3
   created_at               : timestamptz
 ```
 
-Invariants: `tier=T3` implies the intent routes to a consultant and NEVER to checkout.
-`consultant_required=false` is legal only when `tier=T1`. `quote_ref=null` forbids any downstream
-screen that shows a price.
+Invariants unchanged: `tier=T3` never reaches checkout; `consultant_required=false` is legal only
+at T1; `quote_ref=null` forbids any downstream screen showing a price. GARUDA confirmed the last
+one is already satisfied from their side by construction — `OrderCheckout.price_idr` is
+`integer, minimum:1`, an absent price is not representable, and an unresolvable catalogue key
+returns `503 PRICE_UNRESOLVABLE` rather than an invented number. **That shape is load-bearing for
+our tier map; it must not be softened.**
 
-Until the GARUDA rails exist, the emitter is behind a flag and its only consumer is a test double.
-The request to the GARUDA orchestrator (sent by fleet mailbox) is: publish an order-creation
-contract on main that accepts this intent, and tell us its name. We adapt to theirs — we do not ask
-them to adopt ours.
+### The product-agnostic entry is deferred, with its prerequisite named
 
----
+A second, product-agnostic order entry accepting our intent for the other 37 products is declared
+future work, and its prerequisite is ours, not GARUDA's: **someone must own price and eligibility
+for 38 products.** Today we do not — 12 of 38 have no `pricing_key` at all. Claiming that entry
+before owning that is how the Oracle would start inventing prices.
 
 ## C3 — consultant assignment -> CRM
 
