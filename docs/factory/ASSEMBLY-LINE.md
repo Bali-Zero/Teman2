@@ -61,12 +61,12 @@ is admitted only for an irreversible decision (embedding-model-freeze class).
    (for a purchase funnel: a handful of real buyers watched end-to-end — no AI judge
    substitutes for a human failing to find the pay button). Rollback = flag off; DB stays
    backward-compatible. Gate G7 (owner): go-live and pricing only.
-7. **OPERATE + LEARN** — the paged alert is a BUSINESS INVARIANT ("paid orders in rolling 24h
-   > 0", "median upload→OCR < 60s"), plus a synthetic transaction that really buys (sandbox
-   > pay, refunded) every 10-15 min with a dead-man switch: probe silent 15 min → flag
-   > auto-off + owner alert. Infra-level alerts are demoted. Monthly: kill criterion checked —
-   > alive / narrowed / killed. Every incident ends in a changed contract, test, monitor, or
-   > runbook — never in a narrative doc.
+7. **OPERATE + LEARN** — the paged alert is a BUSINESS INVARIANT ("paid orders in rolling
+   24h above 0", "median upload→OCR < 60s"), plus a synthetic transaction that really buys
+   (sandbox pay, refunded) every 10-15 min with a dead-man switch: probe silent 15 min → flag
+   auto-off + owner alert. Infra-level alerts are demoted. Monthly: kill criterion checked —
+   alive / narrowed / killed. Every incident ends in a changed contract, test, monitor, or
+   runbook — never in a narrative doc.
 
 ## Verification economics (DeepSeek seat, adopted)
 
@@ -77,7 +77,7 @@ is admitted only for an irreversible decision (embedding-model-freeze class).
   adversarial pass; cosmetic UI gets contract-tests + visual diff only. The tier map is set
   once per product in `product.yaml`.
 - **Queueing discipline**: WIP ≤2 PRs per lane; merge-queue utilization <70%; a lane blocked
-  > 2h gets split or re-scoped by the orchestrator, not pushed harder.
+  over 2h gets split or re-scoped by the orchestrator, not pushed harder.
 
 ## Roles (5 families, all used fully — vendor parity per Zero 2026-08-24)
 
