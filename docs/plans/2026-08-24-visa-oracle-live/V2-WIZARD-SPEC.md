@@ -217,12 +217,14 @@ not an aesthetic, audit.
 
 ## Part B — the gap against the FROZEN contract
 
-**Correction to the brief**: `docs/plans/2026-08-24-visa-oracle-live/contracts/FROZEN.md` does not
-exist on `origin/main`, in this worktree, or on any pushed branch (`git ls-remote --heads origin
-feature/visa-oracle` returns nothing). It exists only inside the orchestrator's own local
-integration worktree, `.worktrees/visa-oracle-integration` (branch `feature/visa-oracle`, cut
-2026-08-24, not yet pushed). Read from there for this section — flagging this because a future
-session landing fresh from `origin/main` will hit the same dead path this brief gave me.
+**Correction, narrowed 2026-08-24 after the orchestrator re-checked**: an earlier draft of this
+note claimed `docs/plans/2026-08-24-visa-oracle-live/contracts/FROZEN.md` was not on any pushed
+branch — that was wrong; a stale/failed `git ls-remote` was over-generalized into a broader claim
+than the evidence supported. The true, narrower fact is only: **it is not on `origin/main`** —
+correctly so, since `feature/visa-oracle` is a deliberate integration branch that lands as a train
+at the end (mandate §3). It **is** pushed to `origin/feature/visa-oracle` and has been since before
+this unit started; the path given in the brief was live and this section was read from the real
+file. No fix to the mandate is needed here — only to this note.
 
 ### The five outcomes, verdict per outcome
 
@@ -378,6 +380,17 @@ Falsifiable, runnable statements. Each names what makes it fail, not just what m
    redirects into `(visa-oracle)/visa-oracle` (with old URLs preserved via redirect, not 404), or an
    explicit, dated decision is recorded that the old funnel is retired on its own timeline and why.
    **Fails if** ignition happens with both funnels still independently reachable and un-reconciled.
+10. **`NEEDS_INPUT` is reachable, or it is removed.** `gold-oracle-baseline.ts`'s own header
+    documents that the one user-facing path to this state (the SKIP/"Not sure" affordance) is
+    unconditionally overridden server-side into `HUMAN_REVIEW_REQUIRED` by the disclosed-review-flags
+    adapter before the response ever leaves the backend — a finding independently corroborated the
+    same day by a cross-family refuter working the engine side. A CI-runnable test drives the real
+    backend path that is supposed to produce `NEEDS_INPUT` (not a hand-built fixture injected past
+    the adapter) and asserts the response actually carries that state at least once. **Fails if** no
+    such path exists, in which case the rebuild must either wire one (a genuine, reachable
+    "we need more from you before we can answer" branch distinct from `HUMAN_REVIEW_REQUIRED`) or
+    delete the screen and the state from the five-outcome contract rather than ship a well-built UI
+    for an outcome production traffic can never actually produce.
 
 ---
 
@@ -392,9 +405,11 @@ Falsifiable, runnable statements. Each names what makes it fail, not just what m
 - **Screens missing the consultant control**: framing, every question screen (~53), confirmation —
   3 of the 4 screen types C3 names, plus checkout and portal, which do not exist yet at all.
   Verdict has it, but positioned as an afterthought rather than a persistent presence.
-- **Findings that correct the brief**: (a) `contracts/FROZEN.md` does not exist on `origin/main` —
-  it lives only in the orchestrator's unpushed `feature/visa-oracle` integration worktree; a
-  future session needs that path, not the one this brief gave. (b) A second, live, un-audited
+- **Findings that correct the brief**: (a) `contracts/FROZEN.md` is not on `origin/main` (it lands
+  with the `feature/visa-oracle` integration train, per mandate §3) — a prior version of this note
+  said it was unpushed entirely, which was wrong (a stale `git ls-remote` result, over-generalized);
+  it has in fact been on `origin/feature/visa-oracle` since before this unit started, and the path
+  the brief gave was live. (b) A second, live, un-audited
   `/visa` funnel (old 4-step wizard + clock + chat) coexists with `/visa-oracle` and is not
   addressed by this mandate anywhere — recommend an explicit consolidation decision before
   ignition (Part D, item 9). (c) No `mcp__claude-in-chrome__*` tool resolved in this session, so
