@@ -135,21 +135,38 @@ const mastheadLabelStyle: React.CSSProperties = {
   color: "var(--text-secondary, var(--color-text-muted))",
 };
 
+/** WCAG contrast fix (2026-08-24): `--color-border-subtle` composites to
+ *  ~1.2:1 against the editorial card backdrop — invisible, and below the
+ *  3.0:1 floor for non-text UI boundaries (WCAG 1.4.11). No shipped border
+ *  token clears that floor on the editorial theme (`--border-strong` tops
+ *  out at ~1.9:1 there), so this derives an opaque-enough value from
+ *  `--text-primary` instead of inventing a bare hex — it composites to
+ *  ~3.5:1 against the editorial backdrop and stays theme-adaptive. */
 const navButtonStyle: React.CSSProperties = {
   padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
   borderRadius: 8,
-  border: "1px solid var(--color-border-subtle)",
+  border: "1px solid color-mix(in srgb, var(--text-primary) 45%, transparent)",
   background: "transparent",
   color: "var(--text-primary)",
   cursor: "pointer",
   minHeight: 44,
 };
 
+/** WCAG contrast fix (2026-08-24): white-on-`var(--accent-funnel)` measured
+ *  3.62:1 on the visa/editorial pairing (and 4.36:1 on the editorial-base
+ *  blue) — both fail the 4.5:1 floor for this 16px/600 text, which is
+ *  normal-size (large-text exemption needs >=24px, or >=18.66px at
+ *  weight>=700). This funnel sells E33E/E33F senior visas (55+), whose own
+ *  audience skews toward LOWER contrast tolerance, not higher — so the cure
+ *  is darkening the fill to clear 4.5:1, never stretching the label to
+ *  dodge the floor via the large-text carve-out. Derived via color-mix so
+ *  it holds across every `--accent-funnel` resolution (per-theme, not one
+ *  hardcoded hex) — verified >=4.5:1 on both known resolutions. */
 const primaryNavButtonStyle: React.CSSProperties = {
   ...navButtonStyle,
   marginLeft: "auto",
   border: "none",
-  background: "var(--accent-funnel)",
+  background: "color-mix(in srgb, var(--accent-funnel) 85%, black)",
   color: "var(--text-on-accent, #fff)",
   fontWeight: 600,
 };

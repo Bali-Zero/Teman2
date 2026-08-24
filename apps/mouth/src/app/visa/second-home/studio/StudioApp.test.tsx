@@ -486,4 +486,33 @@ describe("StudioApp", () => {
       expect(stored).toEqual(saved);
     });
   });
+
+  describe("NavRow contrast fix (WCAG AA, 2026-08-24)", () => {
+    // jsdom resolves neither `color-mix()` nor custom properties, so a
+    // computed-color assertion here would be vacuous (verified instead on a
+    // real Chromium render — see the commit body for the measured
+    // before/after contrast numbers). These pin the RULE: the resting style
+    // must not be the bare token that measured under the WCAG floor.
+    it("primary CTA's resting background is not the bare --accent-funnel token (white-on-red measured 3.62:1, below the 4.5:1 floor for 16px/600 text)", () => {
+      render(<StudioApp />);
+
+      const continueBtn = screen.getByRole("button", { name: "Continue" });
+      const styleAttr = continueBtn.getAttribute("style") ?? "";
+      const bg = styleAttr.match(/background:\s*([^;]+)/)?.[1]?.trim();
+
+      expect(bg).toBeDefined();
+      expect(bg).not.toBe("var(--accent-funnel)");
+    });
+
+    it("Back button's resting border is not the bare --color-border-subtle token (measured ~1.2:1 against the card backdrop, below the 3.0:1 non-text UI floor)", () => {
+      render(<StudioApp />);
+
+      const backBtn = screen.getByRole("button", { name: "Back" });
+      const styleAttr = backBtn.getAttribute("style") ?? "";
+      const border = styleAttr.match(/border:\s*([^;]+)/)?.[1]?.trim();
+
+      expect(border).toBeDefined();
+      expect(border).not.toBe("1px solid var(--color-border-subtle)");
+    });
+  });
 });
