@@ -1,3 +1,7 @@
+---
+adversarial_review: kimi-k3
+---
+
 # I DUE BOT — 7-lens deep research (verbatim capture)
 
 > Round-1/2 research for `docs/plans/2026-08-25-due-bot-live/MANDATE.md` — the mandate is the
@@ -3487,3 +3491,16 @@ Priorità: normal
 ## 5) Where to host the agent loop
 
 Host the team-bot agent loop **on the Mini M4 Pro next to the local model**, not inside Fly. The loop sees WhatsApp messages, constructs prompts, receives CRM tool results, and holds confirmation state; that is PII-bearing operator context, so it should remain inside the local sovereignty boundary. Fly should stay out of the team-bot hot path: Meta webhook goes through Tailscale Funnel to the Mini, the Mini runs inference locally, and the Mini calls the existing CRM/gestionale backend endpoints over authenticated Tailscale/HTTPS, letting the backend enforce RBAC, validation, and audit logging. This also gives the cleanest failure blast radius: if the Mini or team agent crashes, only the internal team bot is affected, while the client-facing stack on Fly remains independent; the 48GB Mac can act as failover inference/agent node without dragging client PII into the cloud control plane.
+
+## Adversarial review
+
+Seat: Kimi K3 (Moonshot) — cross-family refuter, generator != grader. The refutation is not an
+appendix: it is LENS 6 above, verbatim. It attacked the round-2 frozen design and four of its
+findings changed the synthesis that `docs/plans/2026-08-25-due-bot-live/MANDATE.md` froze:
+(1) the 14B agentic loop was demoted to deterministic router + single-tool slot-filling (F4);
+(2) confirmation moved from prompt convention to a server-side state machine with idempotency
+keys and Meta interactive buttons (F6); (3) prompt-injection defense became architectural lane
+separation instead of filtering (F4); (4) its Funnel rejection was NOT accepted — the owner's
+Fly-out ruling and three other seats kept Funnel primary — but the dissent is recorded in F9 as
+a one-day reversible pivot with its evidence trigger. Survived findings and rejected findings
+are both traceable above.
