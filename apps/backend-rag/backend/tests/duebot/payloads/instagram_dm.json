@@ -1,0 +1,25 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "ig_page_1",
+      "time": 1700000000,
+      "messaging": [
+        {
+          "sender": {
+            "id": "ig_user_1"
+          },
+          "recipient": {
+            "id": "ig_page_1"
+          },
+          "timestamp": 1700000000,
+          "message": {
+            "mid": "ig_mid_fixture_001",
+            "text": "Hello from Instagram",
+            "is_echo": false
+          }
+        }
+      ]
+    }
+  ]
+}
