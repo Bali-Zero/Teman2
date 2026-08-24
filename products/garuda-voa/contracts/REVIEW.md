@@ -207,7 +207,7 @@ be Ngurah Rai, and otherwise suppresses it and routes to WhatsApp.
 ### Carried forward, not fixed
 
 - **The 2027 cliff has a date on it.** `COVERAGE_END = 2026-12-31`. From 2027-01-02 no open day is
-  certifiable and every arrival declines with `CALENDAR_COVERAGE_EXCEEDED`. Correct-by-design and
+  certifiable and every arrival declines with `ARRIVAL_DATE_UNCONFIRMED`. Correct-by-design and
   already pinned by a test — but it is a hard product cliff, and the 2027 SKB is expected around
   September 2026. It belongs in the ledger, not in a contract fix.
 - **A JSON-Schema nit**: under 2020-12, `790000.0` satisfies `type: integer`. Not worth a `multipleOf`
@@ -219,3 +219,44 @@ mutation — change the TTL, strip a civil zone, blank a response's headers, dro
 its own test red and only its own.
 
 **FREEZE: FINAL — this time with all three legs reported.**
+
+---
+
+## Round 3 — the first lane read the contract and found it wrong twice
+
+L2 implemented the three public operations as a literal translation of the frozen contract and,
+correctly, refused to paper over two places where the contract and the engine disagree. It flagged
+both rather than inventing an implementation to satisfy the document, which is the behaviour a
+frozen contract is supposed to produce.
+
+### Fixed here — `CALENDAR_COVERAGE_EXCEEDED` is gone, because the engine was right
+
+The contract declared it a **503**. The engine does something different and better: past
+`COVERAGE_END`, `intake.py:236-238` returns a **201 DECLINE** carrying `ARRIVAL_DATE_UNCONFIRMED`,
+and `nationality_eligibility.py:53-56` sets out the reasoning explicitly — the 2027 Cuti Bersama
+decree does not exist yet, so a 2027 date is "a real unknown, not a decline in disguise", and the
+engine "routes to a human rather than publishing a guessed date".
+
+A 503 would have said something false in two directions at once: that we are unavailable when we
+are not, and that coming back later would help when the thing that must change is a government
+decree expected around September 2026. An automated client would have retried it for months. The
+code is removed from both files; the parity test would have caught the dangling half.
+
+Note what stopped this: the contract was frozen, so the lane could not quietly implement a 503 that
+did not exist to make its own tests pass. The freeze is doing its job in the direction that is easy
+to overlook — not preventing a lane from being wrong, but preventing a lane from silently making the
+document right about itself.
+
+### Not fixed here — the freshness numbers still have no reader, and that is now assigned
+
+Round 2 put Q9's windows into the contract as `x-truth-freshness-max-age-days`. L2 confirms what
+that round already suspected: **nothing in `garuda_flow` reads them**, because no dated-source
+tracking exists to compare against. So `TRUTH_SHEET_STALE` is declared, the numbers are declared,
+and no code path can currently emit it.
+
+That is still `G-FRESHNESS-FAIL-CLOSED` declared-and-absent, one layer up from where it started —
+better, because the numbers are now binding rather than prose, but not yet a guardrail. L2 was right
+that it is not L2-scoped: it needs a stamp next to each truth source and a reader in front of
+`build_verdict` and `price_for_case`, which crosses lanes. It stays on the orchestrator, in
+PENDING-ARMS, and **no lane may implement a freshness check locally** — a per-lane version is how
+one surface declines and another sells the same stale price.

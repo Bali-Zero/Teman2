@@ -71,13 +71,6 @@ $defs:
           retryable: { const: false }
           message_key: { const: garuda_voa.error.sale_unavailable }
       - <<: *errorResponseBase
-        title: CALENDAR_COVERAGE_EXCEEDED
-        x-http-status: 503
-        properties:
-          code: { const: CALENDAR_COVERAGE_EXCEEDED }
-          retryable: { const: false }
-          message_key: { const: garuda_voa.error.sale_unavailable }
-      - <<: *errorResponseBase
         title: NOTICE_ACKNOWLEDGEMENT_REQUIRED
         x-http-status: 422
         properties:

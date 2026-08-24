@@ -145,13 +145,20 @@ paths:
         "503":
           description: >-
             Sale fails closed before persistence. The distinct code identifies unavailable
-            retention authority, price, truth freshness, truth authority, calendar coverage, or service.
+            retention authority, price, truth freshness, truth authority, or service.
+
+            The operating calendar is deliberately NOT among these. Past `COVERAGE_END` the
+            engine returns a 201 DECLINE carrying `ARRIVAL_DATE_UNCONFIRMED`, and that is the
+            correct answer rather than an outage: we are not unavailable, we simply cannot
+            confirm a date the 2027 decree has not yet fixed, and `intake.py` says so in as
+            many words — it "routes to a human rather than publishing a guessed date". A 503
+            would tell a 2027 traveller to come back later about something that will not
+            change for months, and an automated client would retry it forever.
           x-error-codes:
             - PERSISTENCE_POLICY_UNAVAILABLE
             - PRICE_UNRESOLVABLE
             - TRUTH_SHEET_STALE
             - TRUTH_AUTHORITY_UNAVAILABLE
-            - CALENDAR_COVERAGE_EXCEEDED
             - SERVICE_UNAVAILABLE
           headers: *publicPrivacyHeaders
           content: *errorContent
