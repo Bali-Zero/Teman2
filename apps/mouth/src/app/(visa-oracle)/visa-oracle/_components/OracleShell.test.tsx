@@ -13,6 +13,20 @@ vi.mock("../_lib/telemetry", async (importOriginal) => {
   return { ...original, emitVisaOracleTelemetry, nonReversibleHash };
 });
 
+const requestConsultantAssignment = vi.hoisted(() =>
+  // Typed with the shape actually read from `.mock.calls` below (the real
+  // signature is `RequestConsultantAssignmentOptions` — an inline shape here
+  // avoids importing that type into a `vi.hoisted` initializer).
+  vi.fn(async (_options: { evaluationId: string }) => undefined),
+);
+vi.mock("../_lib/consultant-assignment-client", async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import("../_lib/consultant-assignment-client")
+    >();
+  return { ...original, requestConsultantAssignment };
+});
+
 import {
   createInterviewSnapshot,
   flowReducer,
@@ -530,6 +544,7 @@ describe("OracleShell ever-present consultant control", () => {
     window.localStorage.clear();
     emitVisaOracleTelemetry.mockReset();
     nonReversibleHash.mockClear();
+    requestConsultantAssignment.mockClear();
     vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "ENGINE");
   });
 
@@ -627,5 +642,74 @@ describe("OracleShell ever-present consultant control", () => {
     // visited-screen-count, not merely be present "somewhere".
     expect(screensWithControl).toEqual(screensVisited);
     expect(screensWithControl.length).toBe(screensVisited.length);
+  });
+
+  // Cross-lane fix: before any real assessment id exists, `OracleShell` must
+  // hand out the SAME fallback evaluationId on every render of the same
+  // component instance — not a fresh `crypto.randomUUID()` per render. Two
+  // interactions with the ever-present consultant control from the same
+  // visitor, in different renders, must correlate to one
+  // `visa_oracle_consultant_requests` row, not two.
+  it("keeps the fallback evaluationId stable across re-renders when no real assessment id exists yet", async () => {
+    // ConsentHandoff renders no checkbox at all (just an "unavailable"
+    // notice) without a configured WhatsApp number — unlike the Playwright
+    // e2e config, the vitest env doesn't set this, so it's stubbed here.
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER", "628123456789");
+
+    render(<OracleShell />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    const consentCheckbox = () =>
+      screen.getByRole("checkbox", {
+        name: /i consent to open whatsapp/i,
+      });
+
+    // Interaction 1: open the ever-present topbar control and grant
+    // consent — this is the framing screen, before any evaluation has run,
+    // so OracleShell has no real assessment id and must hand out its
+    // stable fallback.
+    fireEvent.click(
+      screen.getByRole("button", { name: /^talk to a consultant/i }),
+    );
+    fireEvent.click(consentCheckbox());
+    await waitFor(() =>
+      expect(requestConsultantAssignment).toHaveBeenCalledTimes(1),
+    );
+    const firstEvaluationId =
+      requestConsultantAssignment.mock.calls[0]![0].evaluationId;
+    expect(firstEvaluationId).toEqual(expect.any(String));
+
+    // Revoke (proven elsewhere, ConsentHandoff.test.tsx, not to emit) and
+    // close the panel, then force a plain re-render of OracleShell that has
+    // nothing to do with the evaluation identity: toggling the framing
+    // screen's own "remember my answers" checkbox. Without the stability
+    // fix, the fallback was `crypto.randomUUID()` evaluated directly in the
+    // render body, so this re-render alone would already have minted a
+    // second id — no second consultant interaction is even required to
+    // prove the old code broken, but we drive a second real interaction
+    // anyway so this test exercises the actual reported symptom (two
+    // interactions, two ids).
+    fireEvent.click(consentCheckbox());
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close consultant panel" }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /save my interview on this device/i,
+      }),
+    );
+
+    // Interaction 2: open again and grant again.
+    fireEvent.click(
+      screen.getByRole("button", { name: /^talk to a consultant/i }),
+    );
+    fireEvent.click(consentCheckbox());
+    await waitFor(() =>
+      expect(requestConsultantAssignment).toHaveBeenCalledTimes(2),
+    );
+    const secondEvaluationId =
+      requestConsultantAssignment.mock.calls[1]![0].evaluationId;
+
+    expect(secondEvaluationId).toBe(firstEvaluationId);
   });
 });

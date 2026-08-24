@@ -745,9 +745,21 @@ function OracleShellRuntime({
   // `publicId` is deliberately NOT reused here: it is a non-reversible,
   // access-control-forbidden opaque token by the engine's own design, not a
   // correlation id. `crypto.randomUUID()` only stands in when no real
-  // assessment identity was ever generated for this outcome.
+  // assessment identity was ever generated for this outcome. The fallback is
+  // memoized in a ref (lazily initialised, generated at most once per
+  // component lifetime) rather than computed inline in the render body: both
+  // this control and the topbar's ever-present `ConsultantAccess` can render
+  // — and re-render — the same "no real assessment yet" session, and a fresh
+  // UUID on every render would mean two interactions from the same visitor
+  // could carry different fallback ids, breaking the one-evaluation identity
+  // this wiring exists to guarantee. A real assessment id always takes
+  // precedence over the fallback, every render.
+  const fallbackEvaluationIdRef = useRef<string | null>(null);
+  if (fallbackEvaluationIdRef.current === null) {
+    fallbackEvaluationIdRef.current = crypto.randomUUID();
+  }
   const consultantEvaluationId =
-    lastEvaluationAssessmentIdRef.current ?? crypto.randomUUID();
+    lastEvaluationAssessmentIdRef.current ?? fallbackEvaluationIdRef.current;
   // tier is an explicit, conservative placeholder: TIER-MAP.md's owner
   // switchboard #4 (the T1/T2 business-judgment split) is unsigned as of
   // this wiring. A SUPPORTED_CANDIDATES verdict always has a resolved price
@@ -809,6 +821,9 @@ function OracleShellRuntime({
               state={outcome?.state as VisaOracleTelemetryState | undefined}
               assessmentReference={outcomeAssessmentReference}
               guardianConsentRequired={guardianConsentRequired}
+              evaluationId={consultantEvaluationId}
+              tier={consultantTier}
+              productVersionId={consultantProductVersionId}
             />
             {hasLocalResume && (
               <button

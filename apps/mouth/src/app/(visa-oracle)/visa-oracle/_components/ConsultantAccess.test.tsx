@@ -9,6 +9,17 @@ vi.mock("../_lib/telemetry", async (importOriginal) => {
   return { ...original, emitVisaOracleTelemetry, nonReversibleHash };
 });
 
+const requestConsultantAssignment = vi.hoisted(() =>
+  vi.fn(async () => undefined),
+);
+vi.mock("../_lib/consultant-assignment-client", async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import("../_lib/consultant-assignment-client")
+    >();
+  return { ...original, requestConsultantAssignment };
+});
+
 // framer-motion's `motion.div` starts its entrance keyframe (`initial`) at
 // `opacity: 0` and only reaches `opacity: 1` after its transition runs —
 // real, correct behaviour for a fade-in panel, but jsdom never ticks a real
@@ -63,10 +74,16 @@ import { ConsultantAccess } from "./ConsultantAccess";
 // changing what a sighted user reads on the button.
 const TRIGGER_NAME = /^Talk to a consultant/;
 
+// C3 identity, always supplied by `OracleShell` in production — see the doc
+// comment on `ConsultantAccessProps.evaluationId`. A stable, realistic-looking
+// value for tests that don't assert on the identity itself.
+const TEST_EVALUATION_ID = "44444444-4444-4444-8444-444444444444";
+
 describe("ConsultantAccess", () => {
   beforeEach(() => {
     emitVisaOracleTelemetry.mockReset();
     nonReversibleHash.mockClear();
+    requestConsultantAssignment.mockClear();
     window.sessionStorage.clear();
     window.localStorage.clear();
   });
@@ -76,7 +93,14 @@ describe("ConsultantAccess", () => {
   });
 
   it("renders a stable trigger selector, closed by default", () => {
-    render(<ConsultantAccess language="en" whatsappNumber="628123456789" />);
+    render(
+      <ConsultantAccess
+        language="en"
+        whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
+      />,
+    );
 
     const trigger = screen.getByRole("button", { name: TRIGGER_NAME });
     expect(trigger).toHaveAttribute("data-oracle-consultant-trigger");
@@ -87,7 +111,14 @@ describe("ConsultantAccess", () => {
   it("opens the consent panel with an IN_PROGRESS scope when no verdict exists yet", () => {
     // No `state` prop passed — this is the mid-interview case (framing,
     // question, confirmation screens), before any evaluation has run.
-    render(<ConsultantAccess language="en" whatsappNumber="628123456789" />);
+    render(
+      <ConsultantAccess
+        language="en"
+        whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: TRIGGER_NAME }));
 
@@ -106,6 +137,8 @@ describe("ConsultantAccess", () => {
         state="HUMAN_REVIEW_REQUIRED"
         assessmentReference="ab12cd34ef56gh78"
         whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
       />,
     );
 
@@ -123,7 +156,12 @@ describe("ConsultantAccess", () => {
   it("closes on Escape and on an outside click", () => {
     render(
       <div>
-        <ConsultantAccess language="en" whatsappNumber="628123456789" />
+        <ConsultantAccess
+          language="en"
+          whatsappNumber="628123456789"
+          evaluationId={TEST_EVALUATION_ID}
+          tier="T3"
+        />
         <button type="button">outside</button>
       </div>,
     );
@@ -142,7 +180,14 @@ describe("ConsultantAccess", () => {
   });
 
   it("closes via its own close button without leaving the trigger stuck expanded", async () => {
-    render(<ConsultantAccess language="en" whatsappNumber="628123456789" />);
+    render(
+      <ConsultantAccess
+        language="en"
+        whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: TRIGGER_NAME }));
     fireEvent.click(
@@ -157,12 +202,54 @@ describe("ConsultantAccess", () => {
   });
 
   it("renders in Bahasa Indonesia when language is id", () => {
-    render(<ConsultantAccess language="id" whatsappNumber="628123456789" />);
+    render(
+      <ConsultantAccess
+        language="id"
+        whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
+      />,
+    );
 
     expect(
       screen.getByRole("button", {
         name: /^Bicara dengan konsultan/,
       }),
     ).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------
+  // C3 identity plumbing (cross-lane fix) — this control must forward the
+  // evaluationId/tier it is GIVEN by OracleShell, never mint its own. Both
+  // this ever-present topbar control and the verdict screen's own
+  // ConsentHandoff can be on screen for the same visitor at once; if each
+  // generated its own id, one visitor with one intent would write two
+  // uncorrelatable rows into visa_oracle_consultant_requests.
+  // ---------------------------------------------------------------------
+
+  it("forwards the evaluationId and tier it is given, rather than generating its own", async () => {
+    render(
+      <ConsultantAccess
+        language="en"
+        whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T2"
+        productVersionId="55555555-5555-4555-8555-555555555555"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: TRIGGER_NAME }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    await waitFor(() =>
+      expect(requestConsultantAssignment).toHaveBeenCalledTimes(1),
+    );
+
+    expect(requestConsultantAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        evaluationId: TEST_EVALUATION_ID,
+        tier: "T2",
+        productVersionId: "55555555-5555-4555-8555-555555555555",
+      }),
+    );
   });
 });

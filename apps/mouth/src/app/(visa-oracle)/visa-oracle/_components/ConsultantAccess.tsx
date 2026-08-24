@@ -6,6 +6,7 @@ import { MessageCircle, X } from "lucide-react";
 import type { Language } from "../_lib/flow";
 import { translate } from "../_lib/i18n";
 import type { VisaOracleTelemetryState } from "../_lib/telemetry";
+import type { ConsultantAssignmentTier } from "../_lib/consultant-assignment-client";
 import { ConsentHandoff } from "./ConsentHandoff";
 
 export interface ConsultantAccessProps {
@@ -20,6 +21,18 @@ export interface ConsultantAccessProps {
   assessmentReference?: string | null;
   guardianConsentRequired?: boolean;
   whatsappNumber?: string;
+  /**
+   * C3 identity, supplied by `OracleShell` — deliberately NOT generated here.
+   * This control and the verdict screen's own handoff can both be on screen at
+   * once (this one lives in the topbar, which renders on every `current.kind`),
+   * so if each minted its own `evaluationId` one visitor with one intent would
+   * produce two uncorrelatable rows in `visa_oracle_consultant_requests`.
+   * Same identity, different `origin_screen` — which is what that column is
+   * for.
+   */
+  evaluationId: string;
+  tier: ConsultantAssignmentTier;
+  productVersionId?: string | null;
 }
 
 /**
@@ -48,6 +61,9 @@ export function ConsultantAccess({
   assessmentReference,
   guardianConsentRequired = false,
   whatsappNumber,
+  evaluationId,
+  tier,
+  productVersionId,
 }: ConsultantAccessProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -126,6 +142,9 @@ export function ConsultantAccess({
                 assessmentReference={assessmentReference}
                 guardianConsentRequired={guardianConsentRequired}
                 whatsappNumber={whatsappNumber}
+                evaluationId={evaluationId}
+                tier={tier}
+                productVersionId={productVersionId}
               />
             </motion.div>
           </>
