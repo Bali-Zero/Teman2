@@ -41,9 +41,14 @@ L1 merges has built a table nobody may legally keep.
 | **L6** frontend + design   | `/visa/voa` pages restored then redesigned, tracker UI, Brevo emails from `zantara@`, imagegen assets                                                                                                                                                                              | Codex Terra + Haiku grunt | Opus 5 critic gate (screenshots, mobile-first, WCAG AA)           | contract tests + visual diff | blocked (contract + owner decision 5) |
 | **L7** control tower       | practice→CRM handoff with zero re-typing, SLA timer, state-change emails, funnel dashboard, business-invariant alerts, daily synthetic purchase probe with dead-man switch                                                                                                         | Sonnet 5                  | Kimi K3                                                           | full adversarial             | blocked (contract)                    |
 
-Refuter rule (ASSEMBLY-LINE verification economics): **one** cross-family refuter per PR, never two.
-The family that built a lane is excluded from its own refuter chain. Multi-seat panels are reserved
-for architecture and for the integrated product at the gauntlet, never per-PR.
+Refuter rule (ASSEMBLY-LINE verification economics, as corrected on 2026-08-24): **one**
+cross-family refuter per PR **by default**, and the family that built a lane is excluded from its
+own refuter chain. The "never two" cap rested on an unsourced number and **does not apply to the
+full-adversarial tier** — on L1/L2/L3/L4/L5/L7 a second seat is the orchestrator's call, not a rule
+violation. "Full adversarial pass" means three things, not one reviewer working harder: a
+cross-family refuter on the diff, an attack session against the running surface (replay, race,
+out-of-order, spoofed signature, boundary dates), and an independent re-derivation of every money
+and date figure by a seat that did not build it.
 
 ## File ownership — disjoint by construction
 
