@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "Claim": {
+      "additionalProperties": false,
+      "description": "One factual/regulatory/numeric assertion inside a candidate answer.",
+      "properties": {
+        "claim_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "regulatory",
+            "eligibility",
+            "deadline",
+            "price",
+            "procedural",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": ["claim_id", "text", "kind"],
+      "title": "Claim",
+      "type": "object"
+    }
+  },
+  "$id": "https://balizero.com/schemas/client_brain_candidate_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The ONLY type a ClientBrainProvider may return (research capture §1.5/§1.6).\n\nStrict by construction: ``extra=\"forbid\"`` is what makes\n``model_json_schema()`` emit ``additionalProperties: false`` — required\nfor both ``codex exec --output-schema`` (F3) and Gemini structured\noutput, and re-validated server-side even when a provider claims schema\ncompliance (research capture §1.5, closing paragraph).",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": ["answer", "abstain", "handoff"],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "answer": {
+      "maxLength": 8000,
+      "title": "Answer",
+      "type": "string"
+    },
+    "claims": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "maxItems": 50,
+      "title": "Claims",
+      "type": "array"
+    },
+    "cited_evidence_ids": {
+      "default": [],
+      "items": {
+        "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Cited Evidence Ids",
+      "type": "array"
+    },
+    "handoff_reason_code": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Handoff Reason Code"
+    },
+    "provider_name": {
+      "pattern": "^[a-zA-Z0-9._-]{1,128}$",
+      "title": "Provider Name",
+      "type": "string"
+    },
+    "model_name": {
+      "pattern": "^[a-zA-Z0-9._:/-]{1,128}$",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "package_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Package Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "disposition",
+    "answer",
+    "provider_name",
+    "model_name",
+    "package_sha256"
+  ],
+  "title": "BrainCandidate",
+  "type": "object"
+}
