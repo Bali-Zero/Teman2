@@ -825,6 +825,58 @@ class TestMetadataFallback:
             "DOC_43_2011_cccccccccccccccc"
         )
 
+    def test_two_ministries_same_number_and_year_do_not_share_an_identity(
+        self,
+    ) -> None:
+        """The production collision of 2026-08-25, as a test.
+
+        PMK 1/2026 (Ministry of Finance, Coretax) and Permen Imipas 1/2026
+        (Ministry of Immigration) extract to the SAME complete triple, because
+        every Indonesian ministry numbers its regulations from 1 each year. The
+        old rule appended the source hash only when the triple was visibly
+        incomplete, so this pair reduced to a single ``Permen_1_2026`` and the
+        second ingest overwrote 50 chunks of the first.
+
+        This asserts the identities DIFFER. It fails on the pre-fix code, where
+        both sides evaluate to ``Permen_1_2026`` — that is the point.
+        """
+        from backend.services.ingestion.legal_ingestion_service import (
+            build_content_bound_legal_doc_id,
+        )
+
+        coretax_metadata = {"type_abbrev": "Permen", "number": "1", "year": "2026"}
+        imipas_metadata = {"type_abbrev": "Permen", "number": "1", "year": "2026"}
+        assert coretax_metadata == imipas_metadata, (
+            "the premise of this test is that the EXTRACTED metadata is "
+            "identical; only the source bytes differ"
+        )
+
+        coretax_id = build_content_bound_legal_doc_id(coretax_metadata, "1" * 64)
+        imipas_id = build_content_bound_legal_doc_id(imipas_metadata, "2" * 64)
+
+        assert coretax_id != imipas_id
+        assert coretax_id == "Permen_1_2026_1111111111111111"
+        assert imipas_id == "Permen_1_2026_2222222222222222"
+
+    def test_same_source_bytes_keep_one_identity_so_reingest_overwrites(
+        self,
+    ) -> None:
+        """Binding to bytes must not cost idempotence.
+
+        A re-run of the same file must land on the same points, or every
+        re-ingestion would duplicate the corpus instead of refreshing it.
+        """
+        from backend.services.ingestion.legal_ingestion_service import (
+            build_content_bound_legal_doc_id,
+        )
+
+        metadata = {"type_abbrev": "Permen", "number": "10", "year": "2026"}
+        sha = "f" * 64
+
+        assert build_content_bound_legal_doc_id(
+            metadata, sha
+        ) == build_content_bound_legal_doc_id(dict(metadata), sha)
+
     @pytest.mark.asyncio
     async def test_metadata_unknown_with_category(self, service: MagicMock) -> None:
         service.cleaner.clean.return_value = "cleaned text"
