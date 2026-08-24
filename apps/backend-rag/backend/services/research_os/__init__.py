@@ -11,8 +11,14 @@ in as plain mappings by whatever caller eventually wires up a real read path
 
 This first slice covers the Magazine `ops_intents`/`ops_receipts` action
 chain only (`ActionItem`, `ActionIntent`, `OperationalReceipt`). It
-deliberately excludes `ExecutionAttempt` and `ApprovalReceipt` -- see
-`action_intent_adapter.py`'s module docstring for why.
+deliberately excludes `ExecutionAttempt` and `ApprovalReceipt` -- see the
+"ExecutionAttempt stays EXCLUDED from D3's three-adapter scope" ledger row
+in `.claude/skills/modus/PENDING-ARMS.md` for the ruling and its two open
+blockers, grounded in `compatibility-matrix-001.md` §1.3/§1.4/§2.0
+(`research/operations/execution/research-os-v1.0.0/evidence/p04/`).
+`operational_receipt_adapter.py`'s module docstring covers the adjacent,
+narrower blocker on `ExecutionAttempt` refs specifically inside
+`OperationalReceipt` construction.
 """
 
 from __future__ import annotations
