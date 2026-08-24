@@ -718,7 +718,17 @@ survived would hide from the reader how much scrutiny the surviving ones actuall
   the wider one R1 originally addressed (does any proof exist at all).
 - **R2 — "conditional pass" was asserted with no stated conditions.** Applied: new §9 lists seven
   numbered conditions, each with an owner and a closure test, plus an explicit list of what would move
-  this document to REFUSE.
+  this document to REFUSE. **Revised, after §9 itself moved, same class as R1 above**: this file's own
+  creation commit (`8089125ec`, squashed) shows the sub-commit that first wrote this Adversarial-review
+  section — the one counting "seven" — landing before a later sub-commit titled "reverse D7 to NOT
+  DELIVERED", whose message states verbatim "Adds §9 condition 8 (freeze-change ratification, owner
+  S9-C0)". So §9 gained an eighth condition after this bullet was written and the count here was never
+  refreshed. Arithmetic recount today (`grep -cE '^[0-9]+\. \*\*'` over §9's body): **eight**, not
+  seven. Deliberately not restated here as a number: how many of the eight remain open — read each
+  condition's own text for an inline `CLOSED`/`DONE` marker (condition 7 carries one as of this pass;
+  condition 8 carries one on its own second half only) rather than trust a count printed here, which
+  would go stale again the moment any other condition closes — exactly the failure this correction
+  exists to fix.
 - **R3 — as formulated, false; the underlying principle correct, and the finer check it demanded gives
   stronger evidence than the original.** Kimi hypothesized `primitives.py` lives inside `models/` and
   inflates the 25-file model count. It does not — `research_os/primitives.py`, one level above
