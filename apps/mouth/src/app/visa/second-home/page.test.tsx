@@ -131,6 +131,27 @@ describe("SecondHomeLanding", () => {
     expect(screen.queryByRole("button", { name: /apply/i })).toBeNull();
   });
 
+  // WCAG AA contrast guard (measured 2026-08-24): white text on the
+  // WhatsApp brand green (`#25D366`) computes to ~1.98:1, badly failing the
+  // 4.5:1 normal-text floor. Ratified cure
+  // (app/(visa-oracle)/visa-oracle/oracle.css:23-30, 2026-07-17 adversarial
+  // review): `#0d3a1f` on `#25D366` ~6.45:1. jsdom resolves neither
+  // `color-mix()` nor custom properties, so this asserts on the literal
+  // inline style value rather than a computed color (confirmed live via
+  // Playwright render — see the shipping commit for the measured
+  // rgb()/contrast numbers).
+  it("keeps the WhatsApp CTA's ink dark enough on the brand green (WCAG AA)", () => {
+    renderLanding();
+
+    const cta = screen.getByRole("link", { name: /free fit memo/i });
+    // Brand green stays byte-identical — only the ink moves. (jsdom's CSSOM
+    // normalizes the literal hex it parses to rgb() form; the var()
+    // fallback expression is left as-is since it isn't a plain color.)
+    expect(cta.style.background).toBe("var(--accent-whatsapp, #25D366)");
+    expect(cta.style.color).toBe("rgb(13, 58, 31)"); // #0d3a1f
+    expect(cta.style.color).not.toBe("var(--text-on-accent)");
+  });
+
   it("never states a forbidden claim", () => {
     const { container } = renderLanding();
     const text = container.textContent ?? "";
