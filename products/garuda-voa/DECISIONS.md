@@ -138,3 +138,52 @@ existing fail-closed path. One test per stamp pins the comparison.
 **These four numbers are the orchestrator's, not the owner's** — they are engineering safety
 margins, not commercial terms. If operations finds a window too tight in practice, changing it is a
 one-line diff plus a test, not a re-decision.
+
+---
+
+## Q10 — The transition ID that both recovery events are waiting for · DECIDED
+
+The contract review surfaced this one, and it is genuinely the orchestrator's: two events in
+`contracts/events.yaml` are written **deliberately uninhabitable** — `transition_id: {not: {}}` with
+an `x-disabled-until-grounded: true` — because the frozen `TransitionId` enum admits only
+`OP-00..OP-09` and `PR-01..PR-11`, and the architect refused to invent a value rather than let a
+false one validate. That was the right call, and it left the decision here.
+
+**The vocabulary already exists; the enum simply never adopted it.** `journeys/STATE-MACHINE.md`
+lines 118-124 name seven forbidden-input rows `OP-F01..OP-F07`, and two of them are recoveries that
+must be recorded rather than merely refused:
+
+- **OP-F04** — `refunded → paid` from a late valid webhook.
+- **OP-F05** — `failed → paid` or `expired → paid` from a late event.
+
+**Ruling: `OP-F04` and `OP-F05` join the `TransitionId` enum as first-class members.** Not
+`OP-10`/`OP-11`: the `F` is load-bearing. An ordinary `OP-nn` is a transition the funnel intends; an
+`OP-Fnn` is a compensation for an input the funnel forbids. Flattening them into the same numbering
+would make the two indistinguishable to every downstream reader at exactly the moment the
+distinction matters most — when real money has landed somewhere the state machine said it could not.
+The other five `OP-F` rows stay out of the enum, because they are pure rejections that mutate no
+business state and so have no transition to identify.
+
+### What this unblocks, concretely
+
+1. `PaymentLatePaidAfterRefund` becomes inhabitable: `transition_id: {const: OP-F04}`, and the
+   `x-disabled-until-grounded` / `x-todo-ground` pair comes off.
+2. A new `PaymentLatePaidAfterTerminal` (`payment.late_paid_after_terminal`,
+   `transition_id: {const: OP-F05}`, `customer_visible: false`) exists at last. Q2 above named this
+   event and the contract did not have it, which meant money arriving after we had told a customer
+   "expired" had no wire-representable path at all.
+3. Q2's two staff outcomes become expressible. This is the part that matters: Q2 says staff take
+   **exactly one of two paths — honour the order or refund in full, never neither**, and a contract
+   that cannot express both is a contract in which "neither" is the default.
+
+### A conflict this ruling also settles
+
+`STATE-MACHINE.md` OP-F05 says "keep terminal state; require a new order **or a grounded
+compensating procedure**", while Q2 says a compensating transition is committed and staff must
+resolve. These are not in conflict once grounded — Q2 _is_ the grounded compensating procedure that
+OP-F05 leaves as a placeholder. The terminal state is kept, as OP-F05 requires; the compensation is
+recorded beside it under `OP-F05` and carries the staff resolution, as Q2 requires. Neither document
+needs to be rewritten; the ambiguity was only ever the missing identifier.
+
+**This is not a lane's to revisit.** A lane that finds a third recovery needing an ID stops and says
+so, exactly as the architect did here.
