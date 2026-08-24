@@ -229,13 +229,21 @@ def _set_result_session_cookie(response: Response, secret: str) -> None:
     )
 
 
-# TODO(ground, orchestrator-scoped — not this lane's contract clause to fix):
-# `x-truth-freshness-max-age-days` (nationality_eligibility/rule_constants/
-# price_catalogue) has no dated-source tracking anywhere in `garuda_flow`
-# today, so TRUTH_SHEET_STALE / TRUTH_AUTHORITY_UNAVAILABLE / the calendar
-# CALENDAR_COVERAGE_EXCEEDED distinction from a genuine ARRIVAL_DATE_UNCONFIRMED
-# decline cannot be honoured by this lane without inventing a freshness
-# authority the contract assumes exists elsewhere. Flagged, not fixed.
+# TODO(ground, orchestrator-scoped — deliberately not this lane's to fix):
+# `x-truth-freshness-max-age-days` (nationality_eligibility / rule_constants /
+# price_catalogue) has no dated-source tracking anywhere in `garuda_flow`, so
+# nothing can currently emit TRUTH_SHEET_STALE or TRUTH_AUTHORITY_UNAVAILABLE.
+# The numbers are binding in the contract and the reader does not exist yet —
+# G-FRESHNESS-FAIL-CLOSED is declared and absent, and it stays with the
+# orchestrator on purpose: a freshness check implemented per-lane is how one
+# surface declines while another sells the same stale price.
+#
+# The calendar half of this note is CLOSED. It used to name
+# CALENDAR_COVERAGE_EXCEEDED, a 503 the contract declared; the lane was right
+# that it could not be told apart from a genuine ARRIVAL_DATE_UNCONFIRMED
+# decline, and the resolution was that it should not be — the engine's 201
+# DECLINE is the correct answer past COVERAGE_END, so the 503 was removed from
+# the contract instead. See contracts/REVIEW.md, round 3.
 
 
 @router.post(
