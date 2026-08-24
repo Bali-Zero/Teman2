@@ -670,11 +670,15 @@ export function StudioApp() {
               route={plan.route}
               product={verdict.product}
             />
-            <ReadinessChecklist
-              plan={plan}
-              verdict={verdict}
-              onToggle={toggleChecklistItem}
-            />
+            {/* Hierarchy fix (2026-08-25): the all-inclusive figure used to
+             *  render AFTER the 815px-tall ReadinessChecklist, so a client
+             *  who wants to know what this costs had to scroll past the
+             *  longest section on the page to find the shortest. Reading
+             *  order is now: eligibility -> money custody -> routes ->
+             *  timeline -> the figure -> documents -> WhatsApp handoff ->
+             *  save/print — cost is a decision input, the document list is
+             *  a task list you act on AFTER deciding. Content unchanged;
+             *  only position moved. */}
             {price ? (
               <section
                 style={{
@@ -728,6 +732,11 @@ export function StudioApp() {
                 </p>
               </section>
             ) : null}
+            <ReadinessChecklist
+              plan={plan}
+              verdict={verdict}
+              onToggle={toggleChecklistItem}
+            />
             <WhatsAppHandoff plan={plan} verdict={verdict} />
             <SavePlanBar plan={plan} onClear={handleClear} />
           </div>
