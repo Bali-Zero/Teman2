@@ -675,12 +675,15 @@ def test_media_ref_rejects_url_shaped_values() -> None:
 
 
 def test_media_ref_rejects_scheme_relative_url() -> None:
-    """B1a review round-1, finding 4: a naive ``"://" in value`` substring
-    check misses a scheme-relative URL (``//host/path`` — no scheme, still a
-    URL, still has network authority). Verified empirically with
-    ``urllib.parse.urlsplit`` before writing the fix: this string parses to
-    ``netloc="cdn.example.com"``, which is exactly what the fixed validator
-    checks."""
+    """Round-1 finding 4 (a naive ``"://" in value`` substring check missed
+    this scheme-relative URL) fixed round-1's guard by checking
+    ``urllib.parse.urlsplit(...).netloc``; round-3 replaced THAT guard
+    entirely with the ``^media-store:...$`` whitelist (round-3 finding 1 —
+    the netloc check itself had its own bypasses). This string is rejected
+    today because it simply does not match the whitelist pattern, not
+    because of any netloc check — kept as its own test because a
+    scheme-relative URL is exactly the shape round-1 was written to catch,
+    and it still must be caught."""
     with pytest.raises(ValidationError):
         CanonicalAttachment(
             attachment_id=uuid4(),
