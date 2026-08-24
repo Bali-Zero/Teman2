@@ -20,6 +20,7 @@ from typing import BinaryIO, Literal, TextIO
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from backend.services.garuda_flow.civil_clock import garuda_today
 from backend.services.garuda_flow.constants import (
     FINAL_CHECK_DAYS,
     INTERNAL_ESCALATION_DAYS,
@@ -269,7 +270,7 @@ def run_cli(stdin: BinaryIO, stdout: TextIO) -> int:
         generated_at = datetime.now(timezone.utc)
         response = build_internal_preview(
             request,
-            today=date.today(),
+            today=garuda_today(),
             generated_at=generated_at,
         )
     except (ValidationError, PreviewInputError):
