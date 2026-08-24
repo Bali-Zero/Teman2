@@ -16,6 +16,9 @@ type ContourField = Readonly<{
 
 type ContourPath = Readonly<{
   d: string;
+  centerX: number;
+  centerY: number;
+  fieldIndex: number;
   isCoastline: boolean;
   isIndexLine: boolean;
 }>;
@@ -24,44 +27,24 @@ const STUDIO_ATMOSPHERE_SEED = 340788;
 
 const CONTOUR_FIELDS: readonly ContourField[] = [
   {
-    centerX: 112,
-    centerY: 290,
-    radiusX: 340,
-    radiusY: 225,
-    rotation: -0.18,
-    levels: 8,
-    points: 18,
-    irregularity: 0.17,
-  },
-  {
-    centerX: 1220,
-    centerY: 590,
-    radiusX: 315,
-    radiusY: 410,
-    rotation: 0.24,
-    levels: 8,
-    points: 20,
+    centerX: 118,
+    centerY: 720,
+    radiusX: 360,
+    radiusY: 250,
+    rotation: -0.12,
+    levels: 15,
+    points: 22,
     irregularity: 0.14,
   },
   {
-    centerX: 350,
-    centerY: 1355,
-    radiusX: 360,
+    centerX: 1295,
+    centerY: 180,
+    radiusX: 330,
     radiusY: 250,
-    rotation: 0.12,
-    levels: 8,
-    points: 18,
-    irregularity: 0.19,
-  },
-  {
-    centerX: 1090,
-    centerY: 1570,
-    radiusX: 245,
-    radiusY: 315,
-    rotation: -0.34,
-    levels: 8,
-    points: 16,
-    irregularity: 0.16,
+    rotation: 0.18,
+    levels: 15,
+    points: 24,
+    irregularity: 0.12,
   },
 ] as const;
 
@@ -119,7 +102,7 @@ function buildContourPaths(seed: number): readonly ContourPath[] {
     );
 
     return Array.from({ length: field.levels }, (_, level) => {
-      const scale = 1 - level * 0.105;
+      const scale = 1 - level * 0.055;
       const ringPhase = phase + level * 0.07;
       const points = Array.from({ length: field.points }, (__, pointIndex) => {
         const angle = (pointIndex / field.points) * Math.PI * 2;
@@ -141,6 +124,9 @@ function buildContourPaths(seed: number): readonly ContourPath[] {
 
       return {
         d: toClosedBezierPath(points),
+        centerX: field.centerX,
+        centerY: field.centerY,
+        fieldIndex,
         isCoastline: level === field.levels - 1,
         isIndexLine: (level + fieldIndex) % 3 === 0,
       };
@@ -166,8 +152,8 @@ export function StudioAtmosphere() {
       <svg
         className="bz-shs-bathymetry"
         focusable="false"
-        preserveAspectRatio="xMidYMid slice"
-        viewBox="0 0 1440 1800"
+        preserveAspectRatio="none"
+        viewBox="0 0 1440 900"
         xmlns="http://www.w3.org/2000/svg"
       >
         <g fill="none">
@@ -175,16 +161,21 @@ export function StudioAtmosphere() {
             <path
               key={index}
               d={contour.d}
+              data-center-x={contour.centerX}
+              data-center-y={contour.centerY}
               data-contour="true"
+              data-field-index={contour.fieldIndex}
               opacity={
-                contour.isCoastline ? 0.9 : contour.isIndexLine ? 0.72 : 0.42
+                contour.isCoastline ? 0.64 : contour.isIndexLine ? 0.66 : 0.48
               }
               stroke={
                 contour.isCoastline
                   ? "var(--bz-shs-bathy-coast)"
                   : "var(--bz-shs-bathy-line)"
               }
-              strokeWidth={contour.isIndexLine ? 1.05 : 0.72}
+              strokeWidth={
+                contour.isCoastline ? 1.15 : contour.isIndexLine ? 1.05 : 0.86
+              }
               vectorEffect="non-scaling-stroke"
             />
           ))}
@@ -240,7 +231,7 @@ export function StudioAtmosphere() {
           );
           --bz-shs-bathy-line: color-mix(
             in srgb,
-            var(--text-primary) 7%,
+            var(--text-primary) 8%,
             transparent
           );
           --bz-shs-bathy-coast: color-mix(
@@ -267,18 +258,6 @@ export function StudioAtmosphere() {
           pointer-events: none;
           user-select: none;
           contain: paint;
-          background: var(--surface-base);
-        }
-
-        .bz-shs-atmosphere::before {
-          position: absolute;
-          inset: 0;
-          background: color-mix(
-            in srgb,
-            var(--surface-deep) 55%,
-            transparent
-          );
-          content: "";
         }
 
         .bz-shs-grain {
@@ -295,14 +274,14 @@ export function StudioAtmosphere() {
           width: 104%;
           height: 104%;
           inset: -2%;
-          opacity: 0.82;
+          opacity: 0.9;
           transform: translate3d(0, 0, 0) scale(1.01);
           transform-origin: center top;
         }
 
         .bz-shs-grain {
-          opacity: 0.028;
-          mix-blend-mode: overlay;
+          opacity: 0.06;
+          mix-blend-mode: soft-light;
         }
 
         .bz-shs-layout > main > div,
@@ -338,7 +317,7 @@ export function StudioAtmosphere() {
             transform: translate3d(0, 0, 0) scale(1.01);
           }
           to {
-            transform: translate3d(0, -1.25%, 0) scale(1.025);
+            transform: translate3d(0, -5%, 0) scale(1.025);
           }
         }
 

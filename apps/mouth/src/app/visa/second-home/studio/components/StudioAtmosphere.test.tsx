@@ -1,16 +1,23 @@
 import { render, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { StudioAtmosphere } from "./StudioAtmosphere";
 
 describe("StudioAtmosphere", () => {
-  it("renders identical procedural SVG output across two server renders", () => {
-    const firstRender = renderToStaticMarkup(<StudioAtmosphere />);
-    const secondRender = renderToStaticMarkup(<StudioAtmosphere />);
+  it("renders identical procedural SVG output across fresh module loads", async () => {
+    vi.resetModules();
+    const { StudioAtmosphere: FirstModuleAtmosphere } =
+      await import("./StudioAtmosphere");
+    const firstRender = renderToStaticMarkup(<FirstModuleAtmosphere />);
+
+    vi.resetModules();
+    const { StudioAtmosphere: SecondModuleAtmosphere } =
+      await import("./StudioAtmosphere");
+    const secondRender = renderToStaticMarkup(<SecondModuleAtmosphere />);
 
     expect(secondRender).toBe(firstRender);
-    expect(firstRender.match(/data-contour="true"/g)).toHaveLength(32);
+    expect(firstRender.match(/data-contour="true"/g)).toHaveLength(30);
   });
 
   it("is one aria-hidden decorative layer with no announced nodes", () => {
@@ -27,7 +34,7 @@ describe("StudioAtmosphere", () => {
     ).toBeNull();
   });
 
-  it("uses one static desaturated fractal-noise grain layer at 2.8% opacity", () => {
+  it("keeps the grain above the measured perceptibility floor", () => {
     const { container } = render(<StudioAtmosphere />);
     const turbulence = container.querySelector("feTurbulence");
     const colorMatrix = container.querySelector("feColorMatrix");
@@ -43,8 +50,48 @@ describe("StudioAtmosphere", () => {
     expect(pattern).toHaveAttribute("patternUnits", "userSpaceOnUse");
     expect(colorMatrix).toHaveAttribute("type", "saturate");
     expect(colorMatrix).toHaveAttribute("values", "0");
-    expect(style).toContain("opacity: 0.028");
-    expect(style).toContain("mix-blend-mode: overlay");
+    const grainRule = [...style.matchAll(/\.bz-shs-grain\s*\{([^}]*)\}/g)]
+      .map((match) => match[1])
+      .find((rule) => rule.includes("opacity:"));
+    const grainOpacity = grainRule?.match(/opacity:\s*([0-9.]+);/)?.[1];
+
+    expect(grainOpacity).toBeDefined();
+    expect(Number(grainOpacity)).toBeGreaterThanOrEqual(0.05);
+    expect(style).toContain("mix-blend-mode: soft-light");
+  });
+
+  it("places both contour-family centres inside the viewport side bands", () => {
+    const { container } = render(<StudioAtmosphere />);
+    const bathymetry = container.querySelector(".bz-shs-bathymetry");
+    const contours = [...container.querySelectorAll("[data-contour='true']")];
+    const centres = new Set(
+      contours.map(
+        (contour) =>
+          `${contour.getAttribute("data-center-x")}:${contour.getAttribute("data-center-y")}`,
+      ),
+    );
+
+    expect(bathymetry).toHaveAttribute("viewBox", "0 0 1440 900");
+    expect(bathymetry).toHaveAttribute("preserveAspectRatio", "none");
+    expect(centres).toEqual(new Set(["118:720", "1295:180"]));
+    for (const centre of centres) {
+      const [x, y] = centre.split(":").map(Number);
+      expect(x <= 160 || x >= 1200).toBe(true);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(900);
+    }
+  });
+
+  it("leaves the existing page atmosphere uncovered", () => {
+    const { container } = render(<StudioAtmosphere />);
+    const style = container.querySelector("style")?.textContent ?? "";
+    const atmosphereRule = style.match(
+      /\.bz-shs-atmosphere\s*\{([\s\S]*?)\}/,
+    )?.[1];
+
+    expect(atmosphereRule).toBeDefined();
+    expect(atmosphereRule).not.toContain("background:");
+    expect(style).not.toContain(".bz-shs-atmosphere::before");
   });
 
   it("removes its scroll-linked movement under reduced motion", () => {
@@ -52,6 +99,7 @@ describe("StudioAtmosphere", () => {
     const style = container.querySelector("style")?.textContent ?? "";
 
     expect(style).toContain("animation-timeline: scroll(root block)");
+    expect(style).toContain("translate3d(0, -5%, 0)");
     expect(style).toMatch(
       /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/,
     );
