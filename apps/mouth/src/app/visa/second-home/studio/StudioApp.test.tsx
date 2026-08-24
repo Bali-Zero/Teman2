@@ -429,6 +429,23 @@ describe("StudioApp", () => {
     });
   });
 
+  describe("Print layout fix (2026-08-24) — verdict-stage nav control is print-hidden", () => {
+    it("the 'Back to your answers' control is wrapped in the class SavePlanBar's print stylesheet hides", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      render(<StudioApp />);
+      const backButton = await screen.findByRole("button", {
+        name: /back to your answers/i,
+      });
+
+      // Behavioural, not source-text: this proves the actual DOM node the
+      // print stylesheet's `.bz-shs-back-to-answers { display: none }`
+      // selector (see SavePlanBar's PRINT_STYLES) targets really exists
+      // and really wraps this control — not just that some string with
+      // that name appears somewhere in a CSS blob.
+      expect(backButton.closest(".bz-shs-back-to-answers")).not.toBeNull();
+    });
+  });
+
   describe("S13 verdict-crown — exactly one <h1> at every stage", () => {
     it("question stage: exactly one <h1>, and its text is the page masthead 'Check your fit'", () => {
       const { container } = render(<StudioApp />);
