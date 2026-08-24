@@ -710,7 +710,12 @@ class Settings(BaseSettings):
             "verification. Default False preserves today's fail-open "
             "behavior — flipping this to True is a deliberate production "
             "decision (provision the secret first), not something this "
-            "code changes on its own. Set via META_WEBHOOK_REQUIRE_SIGNATURE "
+            "code changes on its own. ONE VALUE, BOTH SURFACES: there is no "
+            "per-channel switch — setting this True to protect Instagram "
+            "also fails WhatsApp closed if WHATSAPP_APP_SECRET is not "
+            "configured (and vice versa). Verify BOTH app secrets are "
+            "provisioned before flipping this, or the channel you did not "
+            "mean to touch goes dark. Set via META_WEBHOOK_REQUIRE_SIGNATURE "
             "env var."
         ),
     )
