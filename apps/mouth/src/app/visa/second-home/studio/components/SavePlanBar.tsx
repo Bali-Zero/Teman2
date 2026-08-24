@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import {
@@ -11,6 +11,14 @@ import { relevantPlan } from "@/lib/secondhome-studio/sequence";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 
 const STUDIO_PATH = "/visa/second-home/studio";
+
+// Two-step destructive confirm (P0, 2026-08-24): how long the armed
+// (confirming) state stays up before silently disarming, so the control is
+// never left destructive indefinitely if the user walks away mid-decision.
+// 5s splits the ~4-6s window this needs to sit in — long enough to read the
+// confirming label and re-tap, short enough that a walked-away tab doesn't
+// stay armed.
+const CLEAR_ARM_TIMEOUT_MS = 5000;
 
 const PRINT_STYLES = `
   @page {
@@ -181,6 +189,40 @@ const CLEAR_BUTTON_STYLES = `
     outline-offset: 3px;
   }
 
+  /* Armed state (two-step confirm, P0 2026-08-24): must be visible with NO
+     hover/focus needed — a touch tap has no hover, and arming is the moment
+     the destructive action becomes real, so the cue can't depend on a
+     pointer state the next tap (the confirm) won't have either. This is
+     also the one place the flat funnel accent belongs: it is unambiguous
+     here and nowhere near the price box's own red. Same contrast math as
+     ScenarioToggle's exploratory-control hover: this label is 16px/600 —
+     WCAG "normal text" (large-text exemption needs >=24px, or >=18.66px
+     bold) — so the floor is 4.5:1. The flat accent measures 4.13:1 on this
+     backdrop and fails; 70% accent mixed with white measures 5.6:1 and
+     still reads as the funnel accent rather than washing out to pink. Do
+     not tidy this back to var(--accent-funnel). Placed after the resting
+     :hover/:focus-visible rule above so equal-specificity source order
+     lets it win whether or not the armed button is also hovered. */
+  .bz-shs-clear-plan.bz-shs-clear-armed {
+    --bz-shs-clear-armed-active: color-mix(
+      in srgb,
+      var(--accent-funnel) 70%,
+      white
+    );
+    border-color: var(--accent-funnel);
+    background: color-mix(in srgb, var(--accent-funnel) 16%, transparent);
+    box-shadow: inset 0 0 0 1px currentColor;
+    color: var(--bz-shs-clear-armed-active);
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  .bz-shs-clear-plan.bz-shs-clear-armed:focus-visible {
+    outline: 3px solid var(--bz-shs-clear-armed-active);
+    outline-offset: 3px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .bz-shs-clear-plan {
       transition: none;
@@ -262,6 +304,56 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
     window.print();
   }
 
+  // Two-step destructive confirm for "Clear saved plan": the first
+  // activation only arms the control (label + danger treatment change, no
+  // side effect); the second activation actually clears. Works identically
+  // for mouse, touch and keyboard because it never depends on :hover — a
+  // touch tap has none.
+  const [clearArmed, setClearArmed] = useState(false);
+  // `setTimeout`/`clearTimeout` (not `window.setTimeout`) to match this
+  // codebase's existing ref-typing convention — `"node"` is in tsconfig's
+  // `types`, so the bare global resolves to `NodeJS.Timeout`, and
+  // `ReturnType<typeof setTimeout>` tracks whichever one is actually
+  // returned instead of hardcoding the browser's `number`.
+  const clearArmedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  function disarmClear() {
+    setClearArmed(false);
+    if (clearArmedTimeoutRef.current !== null) {
+      clearTimeout(clearArmedTimeoutRef.current);
+      clearArmedTimeoutRef.current = null;
+    }
+  }
+
+  function handleClearActivate() {
+    if (clearArmed) {
+      disarmClear();
+      onClear();
+      return;
+    }
+    setClearArmed(true);
+    clearArmedTimeoutRef.current = setTimeout(() => {
+      clearArmedTimeoutRef.current = null;
+      setClearArmed(false);
+    }, CLEAR_ARM_TIMEOUT_MS);
+  }
+
+  function handleClearKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "Escape" && clearArmed) {
+      disarmClear();
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (clearArmedTimeoutRef.current !== null) {
+        clearTimeout(clearArmedTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <section
       className="bz-shs-save-plan-bar"
@@ -305,12 +397,20 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         </button>
         <button
           type="button"
-          onClick={onClear}
-          className="bz-shs-clear-plan"
+          onClick={handleClearActivate}
+          onBlur={disarmClear}
+          onKeyDown={handleClearKeyDown}
+          className={
+            clearArmed
+              ? "bz-shs-clear-plan bz-shs-clear-armed"
+              : "bz-shs-clear-plan"
+          }
           style={clearButtonLayoutStyle}
         >
           <Trash2 size={16} strokeWidth={1.75} aria-hidden />
-          {getCopy("savePlanBar.clearButton")}
+          {clearArmed
+            ? getCopy("savePlanBar.clearConfirmButton")
+            : getCopy("savePlanBar.clearButton")}
         </button>
       </div>
       <div role="status" aria-live="polite" style={{ minHeight: "1.2em" }}>
@@ -334,6 +434,17 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
             }}
           >
             {getCopy("savePlanBar.copiedConfirmation")}
+          </p>
+        ) : null}
+        {clearArmed ? (
+          <p
+            style={{
+              margin: 0,
+              fontSize: "var(--text-sm, 0.85rem)",
+              color: "var(--text-primary)",
+            }}
+          >
+            {getCopy("savePlanBar.clearArmedStatus")}
           </p>
         ) : null}
       </div>

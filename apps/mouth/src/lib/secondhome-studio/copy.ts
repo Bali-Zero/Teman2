@@ -464,6 +464,15 @@ export const COPY = {
     linkWarning:
       "Anyone who receives the link may be able to view the answers it contains.",
     clearButton: "Clear saved plan",
+    // Two-step destructive confirm (P0, 2026-08-24): the button arms on the
+    // first activation and only clears on the second — mouse, keyboard, and
+    // touch alike, since a touch tap (unlike the other two) has no hover
+    // state to warn you first. Copy says "press", not "tap", because a
+    // mouse click and an Enter/Space keypress both count as an activation
+    // too and neither is a tap.
+    clearConfirmButton: "Press again to clear your plan",
+    clearArmedStatus:
+      "Ready to clear — press again to confirm, or Escape to cancel.",
   },
 } as const;
 
