@@ -171,3 +171,45 @@ shadow, the codex leg passing synthetic+shadow tripwires, the team bot executing
 preview→confirm→commit practice-open against staging CRM from a golden fixture, the failover
 drill green synthetically, and the owner switchboard presented as a single decision packet.
 Owner flips switches; the session proves live per surface after each flip (PROVE-LIVE).
+
+## Kill criterion (lane B7 — ASSEMBLY-LINE §0 requires one; the mandate did not carry one)
+
+ASSEMBLY-LINE's Gate G0 requires a falsifiable kill criterion per product. This mandate did not
+originally state one; the text below is B7's addition, additive to F1-F11 (nothing here reopens
+a frozen architectural decision) and reviewable by the owner at the same time as the switchboard
+packet.
+
+KILL that leg (revert to shadow-only or fully dark), do not keep iterating on it, if ANY of the
+following holds for 2 consecutive weeks after the leg in question has moved past shadow:
+
+- **Client bot — correctness.** `client_policy_unsupported_claim_escape_total` or
+  `client_bot_citation_integrity_fail_total` fires even once against REAL production traffic
+  (not golden/shadow) and stays uninvestigated/unfixed past 48h. Per the mandate's own framing
+  ("answers fast and wrongly is worse than down"), a bot producing regulatory harm faster than
+  it is caught is not a bot to iterate on live — kill client-send for that surface back to
+  shadow first, fix, then re-promote through the full ladder again.
+- **Client bot — the stated product KPI.** `client_bot_handoff_context_carryover_total /
+client_bot_handoff_created_total` measured under 80% for 3 consecutive weekly digests. The
+  mandate's own words: "context carry-over to the consultant is the product bar." A bot that
+  cannot clear its own stated bar for 3 straight weeks is failing on its own terms, not an
+  external one — all containment/resolution numbers upstream of this are the "unfalsifiable"
+  metrics ASSEMBLY-LINE's inversion warns against if this one is failing.
+- **Team bot — safety invariants.** Any confirmed occurrence of
+  `team_bot_mutation_without_confirmation_total`, `team_bot_rbac_scope_leak_total`, or
+  `team_bot_idempotency_double_execution_total` (tripwires.py). These are exactly the classes
+  UU PDP and Legge 5 exist to prevent; a single unrecovered incident is measured proof the
+  typed-loop/local-inference containment does not hold as designed. Response is not a patch on
+  the same architecture — mutations (F5/F6) revert to Q&A-only (`TEAM_BOT_MUTATIONS_ENABLED`
+  frozen false) pending a redesign, and the redesign itself needs a fresh owner ruling before
+  mutations re-arm.
+- **Codex leg — an ignored decision packet.** `codex.quota_fallback_ratio` fires 3 separate
+  times across 3 separate weeks with the resulting owner packet
+  (`ops/packets/QUOTA-WALL-STAGE2-PACKET.template.md`) never acted on. An owner packet raised
+  and ignored 3 times running means the leg's current promotion stage should be un-wound to
+  shadow-only until a decision is actually made — not left indefinitely in whatever
+  owner-only/5%/25% limbo it was at when the first packet fired.
+
+Reviewed monthly alongside the switchboard, per ASSEMBLY-LINE §7 ("Monthly: kill criterion
+checked — alive / narrowed / killed"). "Narrowed" is the expected middle outcome for most of
+these (drop a promotion rung, not the whole product) — full kill is reserved for the safety-tier
+rows above recurring past the stated window.
