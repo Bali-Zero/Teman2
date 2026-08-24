@@ -1712,6 +1712,27 @@ jobs:
           cd packages/core
           npx vitest --run
 
+      # DECLARED LIMIT: exclude only
+      # `__tests__/garuda-preview-process-integration.test.ts`. That test
+      # symlinks the real backend `.venv` at lines 43-46, while
+      # `resolveGarudaProcessConfig` requires `.venv/bin/python` at
+      # `lib/garuda-preview-adapter.ts:137,146`; CI installs Python packages
+      # system-wide at `.github/workflows/tests.yml:529-551`, and only in the
+      # backend job, so this frontend job has neither that `.venv` nor the
+      # backend dependencies the spawned CLI imports. PR #4796's
+      # `backend/tests/services/garuda_flow/test_preview_adapter_parity.py` runs
+      # in the backend suite and covers the nine hand-maintained constants'
+      # contract drift meanwhile. It does NOT prove this excluded test's unique
+      # boundary: the spawned child cannot read the backend `.env` or inherit
+      # unrelated application secrets. Closing the limit requires a backend
+      # venv plus its dependencies in an already-required CI context that can
+      # execute this real-child test; the pending-arms ledger tracks that work.
+      - name: Run admin-dashboard-local tests (except real Python process integration)
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        run: |
+          cd apps/admin-dashboard-local
+          npx vitest run --exclude='**/garuda-preview-process-integration.test.ts'
+
       # wa-mirror's vitest suite had NEVER run in CI — 8 test files, 0 gates.
       # The bridge is the organ that mirrors client WhatsApp lines, and the alert
       # policy it now carries (announce the failure to recover, never the
