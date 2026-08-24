@@ -30,9 +30,21 @@ price:
   # CORRECTED 2026-08-24 by the orchestrator, against the mandate's own seed text.
   # The mandate seeded `PNBP + 3jt`. That formula is NOT the VOA price and must not be
   # applied here: `services/garuda_flow/pricing.py` resolves TWO exact catalogue keys and
-  # fails closed on any mismatch, and those rows are all-inclusive (PNBP included) —
-  # test-owned at `apps/mouth/e2e/book-pricing.spec.ts:126`. Applying PNBP+3jt would quote
-  # ~3.5jt against a real catalogue price of 790k: a 4.4x overcharge on a live funnel.
+  # fails closed on any mismatch. Applying PNBP+3jt would quote ~3.5jt against a real
+  # catalogue price of 790k: a 4.4x overcharge on a live funnel.
+  #
+  # SELF-CORRECTION, same day, same file. An earlier version of this comment added
+  # "and those rows are all-inclusive (PNBP included) — test-owned at
+  # apps/mouth/e2e/book-pricing.spec.ts:126". Re-measured: that test is named "public
+  # visa service cards expose only exact all-inclusive PricingTool rows" and owns
+  # "show the catalogue row, unsplit" — it says nothing about what the amount contains.
+  # And the catalogue itself is silent: the VOA row is
+  # {key, name, category, validity, price: "790.000 IDR", notes: None}, and the string
+  # "PNBP" appears ZERO times in the whole prices file and zero times in pricing.py or
+  # garuda_flow. So "PNBP is inside the 790k" was an INFERENCE wearing a citation.
+  # It may well be true — but whether the customer still pays a government fee at the
+  # airport on top of what we charge is a client-facing money promise, and it now sits
+  # in owner_decisions id 7 as a question instead of in a comment as a fact.
   rule: >
     The price is whatever PricingTool returns for the case's exact catalogue key.
     It is never computed, never a formula, and never a literal in code.
@@ -111,8 +123,13 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "pick + sign up with his own credentials"
   - id: 2
     decision: terms_of_sale_and_refund
-    state: proposal-pending
-    gesture: "read, approve"
+    state: proposal-ready
+    packet: products/garuda-voa/ops/decision-packets/02-terms-and-refunds.md
+    # The packet existed since 21:57 and nobody could have found it: it was written into an
+    # abandoned worktree and never committed, so the switchboard read "proposal-pending" while
+    # the proposal sat finished on disk. Adopted here with one correction — see 7(b).
+    depends_on: 7
+    gesture: "read, approve — but 7(b) changes several rows, so answer that first"
   - id: 3
     decision: data_retention_days
     state: proposal-ready
@@ -157,8 +174,14 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # These are the exact amounts the funnel would charge, from a file last touched in May.
     measured_catalogue_age_days: 110
     question: >
-      Are 790.000 and 850.000 IDR still the correct prices today? The catalogue that
-      supplies them has not been touched in 110 days, and Q9's own freshness window is 90.
+      Two things, and the second is the one nobody has answered. (a) Are 790.000 and
+      850.000 IDR still the correct prices today? The catalogue that supplies them has
+      not been touched in 110 days, and Q9's own freshness window is 90. (b) Does that
+      amount INCLUDE the PNBP the traveller would otherwise pay the government, or is it
+      our fee on top of it? Measured 2026-08-24: "PNBP" appears zero times in the prices
+      file, zero times in pricing.py, zero times in garuda_flow; the catalogue row carries
+      no note. Nothing on disk answers (b), and this product's whole promise is ONE
+      all-inclusive price.
     consequence: >
       The freshness guardrail now being built will, correctly, refuse to sell on the day it
       ships — the catalogue is already past its window. There are only two honest exits:
