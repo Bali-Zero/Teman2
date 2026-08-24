@@ -59,6 +59,12 @@ FINAL_CHECK_DAYS: int = 1  # D-1 — internal final-check checkpoint
 
 # ── Intake ───────────────────────────────────────────────────────────
 MIN_PASSPORT_VALIDITY_DAYS: int = 180  # >= 6 months from entry (SOP §1/§4)
+# eVOA usability window from the GARUDA charter truth-sheet
+# (## GARUDA B1 — fatti chiave, line 41, verified 14 Jul 2026):
+# "eVOA berlaku 90 hari sejak diterbitkan untuk digunakan."
+# The engine has no issuance_date input, so today is used as the earliest
+# possible issuance date; the gate is therefore conservative.
+EVOA_USABILITY_WINDOW_DAYS: int = 90
 
 
 def b1_max_total_stay_exceeded(day_difference: int, max_total_stay_days: int) -> bool:
@@ -75,6 +81,7 @@ def b1_max_total_stay_exceeded(day_difference: int, max_total_stay_days: int) ->
 
 
 __all__ = [
+    "EVOA_USABILITY_WINDOW_DAYS",
     "EXTENSION_WINDOW_OPENS_DAYS",
     "FINAL_CHECK_DAYS",
     "INTERNAL_ESCALATION_DAYS",

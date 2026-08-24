@@ -13,6 +13,7 @@ from datetime import date, timedelta
 import pytest
 
 from backend.services.garuda_flow.constants import (
+    EVOA_USABILITY_WINDOW_DAYS,
     MIN_PASSPORT_VALIDITY_DAYS,
     PUBLISHED_FILING_DEADLINE_DAYS,
 )
@@ -294,12 +295,16 @@ class TestIssuanceSubmissionWindowGate:
         # A 2027 arrival date -- the 2027 SKB does not exist yet, so the
         # cutoff cannot be computed without guessing. Must NEVER silently
         # guess a date, and must decline distinctly from "too soon".
-        today = date(2026, 6, 1)
+        # today is chosen so the date is still INSIDE the eVOA usability
+        # window: only the calendar-coverage gate may fire here.
+        today = date(2026, 12, 1)
         req = _issuance(entry_date=COVERAGE_END + timedelta(days=5))
+        assert (req.entry_date - today).days < EVOA_USABILITY_WINDOW_DAYS
         verdict = build_verdict(req, today=today)
         assert verdict.decision is Decision.DECLINE
         assert "ARRIVAL_DATE_UNCONFIRMED" in verdict.decline_codes
         assert "ARRIVAL_TOO_SOON" not in verdict.decline_codes
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
         assert verdict.submit_by_date is None
 
     def test_extension_path_is_completely_unaffected_by_this_gate(self) -> None:
@@ -330,6 +335,69 @@ class TestIssuanceSubmissionWindowGate:
         req = _extension(entry_date=date(2026, 6, 20), voa_expiry_date=today + timedelta(days=18))
         verdict = build_verdict(req, today=today)
         assert verdict.accepted is True
+        assert verdict.submit_by_date is None
+
+
+class TestIssuanceUsabilityWindowGate:
+    """GARUDA B1 truth-sheet (line 41, verified 14 Jul 2026): an eVOA is
+    usable for 90 days from issuance. The engine has no issuance_date input,
+    so `today` is the anchor; this gate declines issuance requests whose
+    arrival is strictly later than `today + EVOA_USABILITY_WINDOW_DAYS`.
+    It is issuance-only and must never run for an extension case."""
+
+    def test_entry_91_days_out_declines_with_arrival_too_far(self) -> None:
+        # GUILT: 91 days is the first day outside the window.
+        today = date(2026, 8, 24)
+        entry = today + timedelta(days=91)
+        req = _issuance(entry_date=entry)
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision is Decision.DECLINE
+        assert "ARRIVAL_TOO_FAR" in verdict.decline_codes
+        assert "ARRIVAL_DATE_UNCONFIRMED" not in verdict.decline_codes
+        assert "ARRIVAL_TOO_SOON" not in verdict.decline_codes
+        # A usability decline must not suppress a truthful calendar cutoff.
+        assert verdict.submit_by_date == date(2026, 11, 20)
+
+    def test_entry_exactly_at_90_days_accepts(self) -> None:
+        # BOUNDARY: the 90th day is still inside the window. The gate uses a
+        # strict `>` comparison, so today+90 itself is accepted.
+        today = date(2026, 8, 24)
+        entry = today + timedelta(days=EVOA_USABILITY_WINDOW_DAYS)
+        req = _issuance(entry_date=entry)
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
+
+    def test_ordinary_near_term_issuance_is_unaffected(self) -> None:
+        # INNOCENCE: existing near-term issuance shape stays ACCEPT.
+        today = date(2026, 8, 24)
+        req = _issuance(entry_date=today + timedelta(days=5))
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
+
+    def test_extension_far_future_date_is_not_hit_by_this_gate(self) -> None:
+        # EXTENSION INNOCENCE: the gate is structurally issuance-only.
+        # An extension case with a far-future-shaped original entry_date would
+        # exceed the window if misapplied; it must remain governed by the
+        # extension runway / max-stay rules, not this gate.
+        today = date(2026, 8, 24)
+        req = _extension(
+            entry_date=today + timedelta(days=120),
+            voa_expiry_date=today + timedelta(days=150),
+        )
+        verdict = build_verdict(req, today=today)
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
+
+    def test_beyond_coverage_and_beyond_window_collects_both_reasons(self) -> None:
+        # Both independent gates report their reason; no cutoff is guessed.
+        today = date(2026, 6, 1)
+        req = _issuance(entry_date=COVERAGE_END + timedelta(days=5))
+        assert (req.entry_date - today).days > EVOA_USABILITY_WINDOW_DAYS
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision is Decision.DECLINE
+        assert "ARRIVAL_TOO_FAR" in verdict.decline_codes
+        assert "ARRIVAL_DATE_UNCONFIRMED" in verdict.decline_codes
         assert verdict.submit_by_date is None
 
 

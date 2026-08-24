@@ -302,10 +302,6 @@ export function StudioAtmosphere() {
           ) !important;
         }
 
-        .bz-shs-scenario-toggle-trigger {
-          color: var(--accent-funnel-text) !important;
-        }
-
         .bz-shs-verdict-stack section[data-verdict-band] > p:first-child,
         .bz-shs-memo [data-known="false"] dd {
           opacity: 1 !important;
