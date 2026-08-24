@@ -94,10 +94,16 @@ LAWS_2026 = [
     # for investment restructuring, NOT the Golden Visa; Permenkumham 34/2021 is a
     # Covid-era measure). Same discipline as the NB-2 loader's identity gate.
     #
-    # Deliberately NOT in this list: Kepmen M.IP-19.GR.01.01/2025. Its PDF is a
-    # SCAN with 0 extractable characters across 3 pages — ingesting it would add an
-    # empty document that looks present. Its verified manual transcription lives in
-    # NB-2; it belongs here only once it has passed OCR.
+    # Kepmen M.IP-19.GR.01.01/2025 enters as a `.txt`, NOT as its PDF. That PDF is
+    # a SCAN with 0 extractable characters across 3 pages (verified: pypdf returns
+    # an empty string for all three) — ingesting it would add a document that is
+    # present in the index and empty in substance. The `.txt` is the verbatim
+    # transcription read visually off those three pages, and it carries its own
+    # provenance header saying so, which means "this text was transcribed, not
+    # extracted" travels with the content into retrieval instead of being lost at
+    # the ingestion boundary. `.txt` is a first-class input here
+    # (`backend/core/parsers.py:530`). The scanned PDF stays in the Drive
+    # PERATURAN archive as the authentic artifact.
     {
         "filename": "UU_6_2011_Keimigrasian.pdf",
         "title": "UU 6/2011 - Keimigrasian",
@@ -195,6 +201,13 @@ LAWS_2026 = [
         "category": "keimigrasian",
         "marketing_title_it": "Permen Imipas 7/2026 - Intelligence Migratoria",
         "marketing_title_en": "Permen Imipas 7/2026 - Immigration Intelligence",
+    },
+    {
+        "filename": "Kepmen_MIP_19_GR0101_2025_Sistem_Kerja_TPI_TRANSKRIPSI.txt",
+        "title": "Kepmen M.IP-19.GR.01.01/2025 - Sistem Kerja pada Tempat Pemeriksaan Imigrasi (transkripsi verbatim dari PDF hasil pindai)",
+        "category": "keimigrasian",
+        "marketing_title_it": "Kepmen M.IP-19/2025 - Organizzazione del Lavoro ai Posti di Frontiera (trascrizione)",
+        "marketing_title_en": "Kepmen M.IP-19/2025 - Border Checkpoint Work System (transcription)",
     },
     {
         "filename": "PermenImipas_10_2026_Daftar_Negara_Bebas_Visa_Kunjungan.pdf",
