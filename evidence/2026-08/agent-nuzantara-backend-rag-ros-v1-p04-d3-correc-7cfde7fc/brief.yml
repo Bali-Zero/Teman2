@@ -1,0 +1,189 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-correction-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Correction PR to the already-merged P04-D3 slice 1 (PR #4749, `action_item_adapter.py`),
+  triggered by an independent reviewer's REFUSE verdict on the D3 compatibility matrix
+  (claims #10, #11, #12). The verdict found that this adapter's own code CITED the frozen
+  compatibility matrix as having already approved three decisions the matrix in fact
+  explicitly defers to an unissued ruling ("Ruling must decide"):
+
+    - claim #10: `priority="p2"` was commented as matrix-derived; matrix item 0 poses an open
+      question ("is a Magazine-sourced ActionItem valid with priority/sla permanently
+      null/defaulted, or does adopting this source require first extending the Magazine schema
+      to capture them") and recommends no default.
+    - claim #11: `expires_at` -> `sla.due_at` was commented as merely "an imperfect fit"; matrix
+      §1.2 marks this pairing "unmappable as-is -- needs a ruling", a stronger claim, and
+      `expires_at` is in fact a 24h operator-authorization window
+      (`apps/bali-zero-magazine/lib/server/operations-repository.ts:699`,
+      `delta > 86_400_000` throws), not a queue-SLA due-date concept at all.
+    - claim #12: `current_intent_ref=None` was commented as "matrix item 6's own suggested
+      resolution"; matrix item 6 presents this as ONE of two candidate rulings (the other being
+      a self-referencing pointer) and explicitly defers the choice -- it recommends neither.
+
+  Per explicit instruction from the conductor: the VALUES themselves are unchanged (`p2`,
+  the `expires_at`->`sla.due_at` mapping, `current_intent_ref=None` may well be the right
+  defaults -- that is a business ruling, not this lane's or the conductor's to make
+  unilaterally). What changes is the AUTHORITY CLAIM in the code: every comment/warning now
+  states the true state of the matrix (an open ruling question, not an endorsed answer) and
+  that the current value is this adapter's own disclosed placeholder pending that ruling.
+
+  A second, machine-checkable channel was added alongside the existing `unbacked_refs`
+  extensions marker: `unbacked_refs_extension()` (`synthesis.py`) now accepts an optional
+  `pending_ruling` tuple, merged into the SAME `extensions['com.balizero.research-os-adapters']`
+  payload dict (not a competing second entry) -- so a downstream consumer can branch on "this
+  value is not yet ruled on" in code, not only read it in a docstring/comment a reader could
+  skip. A new PENDING-ARMS.md row records the two open rulings (matrix item 0: priority+sla;
+  matrix item 6: current_intent_ref) with a proof-of-armed that is a test which fails while
+  either field name remains in `pending_ruling`.
+
+  BEFORE writing the second channel, this session empirically verified (not assumed) whether
+  `extensions` participates in `object_hash` computation. It does: `object_hash()`
+  (`packages/research-os-core/research_os/hashing.py`) computes over
+  `model_dump(mode="json", exclude_unset=True)`, and `extensions` is always explicitly passed by
+  every adapter call site, so it always enters the hash. Measured on the identical fixture row
+  (`make_ops_intent_row()`): the pre-correction hash (`unbacked_refs` only) was
+  `305489949ff73447eb4c5825ffd07c5b4708fb90cc609ee204a4714790a324ee`; the post-correction hash
+  (`unbacked_refs` + `pending_ruling`) is
+  `dd7d5a2dcb869d8121793bf5ad01ee9d4ef5f54c3f6b8da4952646dfff510e22` -- different, as expected.
+  This consequence is harmless today: no test or script anywhere hardcodes an `object_hash`
+  literal for this adapter's output (grepped), no parity probe compares `object_hash` itself
+  (the not-yet-opened parity slice compares field values, never the hash), and there is zero
+  persistence of `ActionItem` objects from this adapter anywhere yet (Deliverable 5's
+  `research_os_contract_core` migration exists, but this adapter has no live write path into
+  it). Stated here so the next reader does not have to re-derive it.
+
+  SECOND FINDING, surfaced while measuring the above, not what this PR set out to check: the
+  three-way hash comparison showed `object_hash` is sensitive not just to `extensions`' VALUE
+  but to whether the field was SET AT ALL. `research_os.hashing`'s own module docstring (lines
+  3-5) declares this as a deliberate wire rule -- "presence-preserving null semantics": an
+  absent field is omitted from the hashed payload (`exclude_unset=True`), a field explicitly
+  set is included even if empty. The same module (line 28) calls the resulting digest
+  "canonical object identity". Put together: two adapters producing the SAME logical object
+  from the SAME legacy row get TWO DIFFERENT canonical identities if one passes
+  `extensions={}` and the other omits the keyword entirely -- a difference of AUTHORING STYLE,
+  not of the object modeled. This adapter is safe today only because it always passes
+  `extensions=` explicitly -- a property of this code, not a rule written anywhere. Per
+  instruction, this is now armed rather than left as a documented habit: a new invariant
+  paragraph in `synthesis.py`'s module docstring (citing `hashing.py:3-5`/`:28`) plus a new
+  test, `test_extensions_is_always_explicitly_set_never_omitted`, asserting
+  `"extensions" in item.model_fields_set` on the adapter's real output. Guilt-armed this
+  session: removing the `extensions=` kwarg from the call site made BOTH this new test and the
+  pre-existing `test_pending_ruling_is_machine_checkable_not_only_prose` fail red (the latter
+  with `TypeError: 'NoneType' object is not subscriptable`), confirmed on the real adapter
+  output, then the file was restored and the full suite re-verified green. Whether a canonical
+  identity SHOULD depend on field-presence at all is a contract question this PR does not
+  decide (that belongs with the `ContentObject` null-contract row already on the ledger, same
+  family, opposite direction) -- this PR only makes ITS OWN adapter surface deterministic and
+  says so out loud.
+
+  GATE ROUND: the conductor's own review of this PR found two gaps in the arming above, both
+  closed in a third commit, neither touching a value:
+
+    - Gap 1 -- the behavioural test (`test_extensions_is_always_explicitly_set_never_omitted`)
+      only checks THIS adapter's real output; it would stay green even if a brand-new sibling
+      adapter (e.g. the not-yet-opened ActionIntent slice) copied the
+      `build_with_object_hash(...)` pattern and forgot `extensions=`. Closed with a package-wide
+      STRUCTURAL test (`test_adapter_extensions_invariant.py`): AST-parses every `.py` file
+      under `backend.services.research_os` for `build_with_object_hash(...)` calls and asserts
+      each one passes `extensions=` explicitly -- catches the omission in ANY future adapter
+      file, not just today's one. Guilt-armed: removing `extensions=` from the real call site
+      made this test fail with the exact offending file:line named in the assertion message,
+      then the file was restored and the full suite re-verified green.
+    - Gap 2 -- `unbacked_refs_extension()`'s payload SHAPE changed (gained the optional
+      `pending_ruling` key) while `extension_version` stayed the hardcoded literal `"1.0.0"` on
+      both the old and new shape. Closed by introducing
+      `UNBACKED_REFS_EXTENSION_VERSION = "1.1.0"` (additive/minor bump, since the new key is
+      optional and backward compatible) and using it in place of the literal. The version
+      describes the FUNCTION's capability, not per-instance content, so every call emits 1.1.0
+      from now on regardless of whether a given call's `pending_ruling` happens to be empty --
+      per the conductor's own reasoning: a consumer needing `pending_ruling` support needs a way
+      to tell "producer capable of it" apart from "producer with nothing pending this time", and
+      a per-instance version could not express that. The one pre-existing test asserting
+      `extension_version == "1.0.0"` was updated to `"1.1.0"`.
+constraints:
+  - 'Values unchanged: `priority="p2"`, `sla.due_at` from `expires_at`, `current_intent_ref=None`
+    are IDENTICAL to what PR #4749 shipped. Only comments/docstrings/warnings and the
+    `extensions` payload''s second key changed.'
+  - "Touches exactly the 3 files PR #4749 introduced (`action_item_adapter.py`, `synthesis.py`,
+    `test_action_item_adapter.py`) plus one PENDING-ARMS.md ledger append, plus one NEW file
+    added in the gate round (`test_adapter_extensions_invariant.py`, a package-wide structural
+    test -- necessarily new, since it did not exist in PR #4749). No other file."
+  - "`unbacked_refs_extension()`'s new `pending_ruling` parameter is backward compatible:
+    existing positional-only call sites (the not-yet-opened slices 2/3a/3b in this same
+    worktree) are unaffected, since it defaults to an empty tuple."
+  - "No PII: fixture data only (`conftest.py`'s synthetic ops_intents row)."
+  - "This PR does NOT itself decide the pending ruling(s) -- it makes the fact that they are
+    open, disclosed and machine-checkable. Slices 2/3a/3b remain frozen/unopened until this
+    lands, and must not replicate the 'matrix as approval' citation pattern for any value that
+    similarly awaits a ruling."
+acceptance:
+  - "`priority`, `expires_at`->`sla.due_at`, and `current_intent_ref` comments/warnings state the
+    matrix's actual position (an open 'Ruling must decide' question) and frame the current
+    value as this adapter's own placeholder -- never as matrix-endorsed."
+  - "`extensions['com.balizero.research-os-adapters'].payload['pending_ruling']` ==
+    `['priority', 'sla.due_at', 'current_intent_ref']` on every adapted `ActionItem`, alongside
+    the pre-existing `unbacked_refs` key in the SAME payload dict (one extension entry, two
+    keys -- not two competing entries)."
+  - "New test `test_pending_ruling_is_machine_checkable_not_only_prose` passes; the existing
+    `test_unbacked_refs_are_machine_checkable_not_only_prose` is updated (not merely unaffected)
+    to expect `extension_version == '1.1.0'`, per the Gap 2 version bump below."
+  - "Full `backend/tests/services/research_os/` suite green; `ruff check` and
+    `ruff format --check` both clean on every touched/new file."
+  - "A new PENDING-ARMS.md row names the two open rulings (matrix item 0, item 6), a
+    proof-of-armed test description that fails while any of the 3 field names remains in
+    `pending_ruling`, and an owner (Zero via the conductor -- a business ruling, not buildable
+    code)."
+  - "`synthesis.py`'s module docstring states the extensions-presence invariant, citing
+    `hashing.py:3-5` and `:28`; `test_extensions_is_always_explicitly_set_never_omitted` arms
+    it against `ActionItem`'s adapter output, and was guilt-verified this session (removing the
+    `extensions=` call-site kwarg made it fail red, restored afterward)."
+  - "`test_adapter_extensions_invariant.py` (new, gate-round Gap 1 fix) AST-scans every
+    `.py` file in the package for `build_with_object_hash(...)` calls and asserts each passes
+    `extensions=` -- guilt-verified to name the exact offending file:line when the kwarg is
+    removed from the real call site, restored and re-verified green afterward."
+  - "`UNBACKED_REFS_EXTENSION_VERSION` (new, gate-round Gap 2 fix) is `'1.1.0'`, used in place
+    of the hardcoded `'1.0.0'` literal in `unbacked_refs_extension()`; the pre-existing test
+    asserting `extension_version == '1.0.0'` is updated to `'1.1.0'`."
+consumer_map:
+  - "GitHub PR's `Harness floor recompute` required check -- Gear-2 evidence pack, floor=1 (no
+    hot-zone-pattern path touched)."
+  - "Slices 2 (ActionIntent), 3a (OperationalReceipt), 3b (shadow+parity) -- pushed but
+    unopened branches in this same worktree -- were held specifically pending this correction,
+    per the conductor's instruction, so they do not replicate the same citation defect. They
+    are the direct next consumers of this correction's pattern (both the comment-truthfulness
+    fix and the `pending_ruling` mechanism, if any of their own fields turn out to await a
+    similar ruling)."
+  - "Zero / the conductor: the actual ruling on matrix items 0 and 6 (new PENDING-ARMS row) is
+    a business decision this PR explicitly does not make."
+risks:
+  - "`extensions` participating in `object_hash` means every already-adapted `ActionItem` from
+    the pre-correction code has a DIFFERENT `object_hash` than the same row adapted after this
+    correction. Confirmed harmless today (no hardcoded hash literal, no parity-probe hash
+    comparison, zero persistence) -- but this stops being free the moment any future PR
+    persists these objects or compares hashes across adapter versions; flagged here so that
+    future work does not discover it by surprise."
+  - "The extensions-presence invariant is armed only for `ActionItem` in this PR (the only
+    adapter that exists in this worktree). The not-yet-opened slices 2 (ActionIntent), 3a
+    (OperationalReceipt), 3b (shadow+parity) live in a SEPARATE worktree and will need the same
+    invariant note plus their own `model_fields_set` assertion when they are rebased and
+    opened -- flagged here so it is not forgotten, not built here (out of this PR's file
+    scope)."
+  - "The `pending_ruling` marker is itself a disclosure mechanism, not a gate -- nothing in this
+    PR prevents a downstream consumer from ignoring `pending_ruling` and treating `priority`/
+    `current_intent_ref` as authoritative today. That is an accepted, pre-existing property of
+    the whole `unbacked_refs`/`pending_ruling` disclosure design (already true of `unbacked_refs`
+    since PR #4749; not new to this correction)."
+grader: |
+  session (this lane, Pro, worktree backend-rag-ros-v1-p04-d3-correction) wrote the correction
+  and its evidence pack. The defect this PR fixes was found by an INDEPENDENT reviewer (a
+  separate dispatch, not self-graded) issuing a REFUSE verdict on claims #10/#11/#12 against
+  the merged PR #4749 -- generator != grader for the finding itself, though the fix is authored
+  by the same lane that wrote the original defect (per the conductor's explicit instruction:
+  correct the citation, do not re-litigate the values, which remain a pending business ruling).
+budget: |
+  1 build lane (this session, correcting its own prior PR after an independent REFUSE). No
+  further council convened for this correction -- it is a scoped truthfulness fix to existing,
+  already-reviewed code, not a new design surface.
+pii: none

@@ -1,0 +1,130 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-slice3a-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D3 (legacy-to-canonical adapters, no
+  silent field dropping): SLICE 3a of 3 of the Magazine `ops_intents`/`ops_receipts` "action
+  chain" adapter subsystem under `apps/backend-rag/backend/services/research_os/`.
+
+  CORRECTED 2026-08-24 (team-lead ruling, this session) -- this brief originally described a
+  WORKING adapter (`(ops_receipts row, its parent ops_intents row)` -> canonical
+  `OperationalReceipt`, CONTRACTS.md §13.5, composing the sibling ActionItem adapter for
+  `subject_refs`/`classification`). That version shipped a defect team-lead found by
+  independently re-reading `operational_receipt.py` rather than trusting this lane's own
+  "bare pointer, so it's fine" resolution: `execution_attempt_ref` was a SYNTHESIZED_UNBACKED
+  `{execution_attempt_id, object_hash}` pointer to an `ExecutionAttempt` object never
+  constructed anywhere in this deliverable. That is NOT a harmless disclosed placeholder the
+  way `decision_packet_ref`/`requested_action_spec_ref` are elsewhere in this package --
+  `receipt_type="execution.result"` (this adapter's own settled, non-open choice, since
+  `ops_receipts` structurally cannot express any other v1 receipt_type) REQUIRES
+  `execution_attempt_ref` (`operational_receipt.py:170-175`), and
+  `EXECUTION_ATTEMPT_CAPABLE_RECEIPT_TYPES` (`operational_receipt.py:101-103`) has EXACTLY ONE
+  member -- `execution.result` -- so no other receipt_type may carry it either. Worse:
+  `close_execution_attempt()` (`operational_receipt.py:224-249`) compares the ref against a
+  REAL `ExecutionAttempt` object's own id/hash -- a synthesized ref can never match an object
+  that does not exist, so every receipt this adapter produced was PERMANENTLY unclosable, not
+  merely incomplete. This is precisely the failure shape `operational_receipt.py`'s own
+  2026-08-23 revision comment (lines 84-100) records being hardened against, after a
+  cross-family Kimi K3 adversarial review broke the PRIOR blocklist-shaped guard the same way
+  (a synthetic `execution_attempt_ref` sailed through unchallenged on an unregistered
+  `queue.closed` receipt_type in that incident). Shipping a synthesized ref on the type that
+  IS registered walks the same forbidden cargo in through the front door.
+
+  THIS PR NOW IMPLEMENTS THE CORRECTED DESIGN: `adapt_ops_receipt_to_operational_receipt`
+  performs every row-level validity check a future, unblocked version would still need
+  (pairing between the receipt and its parent intent row, delegation to the sibling
+  ActionItem adapter's own admissibility check, terminal-status validity, clock-skew ordering
+  between the parent intent's `completed_at` and this receipt's own `created_at`) and then
+  UNCONDITIONALLY REJECTS every row that passes those checks, disclosing the architectural
+  blocker as the rejection reason, rather than constructing an object. "Reject rather than
+  fabricate" -- the same discipline `action_item_adapter.py`'s own Sla check and this
+  package's `synthesis.py` module docstring already establish for every other adapter in this
+  deliverable, now applied to the one field where SYNTHESIZED_UNBACKED is not a legitimate
+  disclosure pattern at all: an authorization/closure-bearing reference, not a descriptive one.
+
+  This is currently the ONLY adapter in D3 that cannot successfully adapt any row from its
+  legacy source. That is the correct, honest state of this slice until an S9-C0 freeze-change
+  ruling decides how a legacy Magazine execution result can be represented as a canonical
+  `OperationalReceipt` without a real, constructible `ExecutionAttempt` -- see the
+  PENDING-ARMS.md row this PR carries.
+constraints:
+  - "Additive only: two new files (adapter + its test file) under
+    apps/backend-rag/backend/services/research_os/ and
+    apps/backend-rag/backend/tests/services/research_os/ (both directories already exist,
+    populated by the merged slice 1). Touches zero existing file. Does not modify
+    packages/research-os-core/ or any domain model."
+  - "Fresh worktree cut from origin/main AFTER PR #4758 (ActionItem correction) and PR #4756
+    (corrected D3 matrix) merged -- built in parallel with sibling slice 2, per an explicit
+    conductor instruction that parallel BUILD is fine while ARMING must be serialized."
+  - "Does NOT touch scripts/wr3_*, docs/wr3/contracts/, apps/backend-rag/backend/tests/conftest.py,
+    or test_xdist_worker_isolation.py (other lanes' leases)."
+  - "No PII: every row is a synthetic, fabricated fixture (conftest.py, already merged by slice
+    1) -- no real Magazine row is read, pasted, or referenced."
+  - "Arming is DEFERRED per an explicit conductor instruction: this lane's slices carry their
+    own ledger rows and may only be queued one ledger-touching PR at a time. PR stays with
+    auto-merge NOT armed regardless of queue state, since this adapter is architecturally
+    blocked (see objective) -- arming would ship an intentionally-inert adapter, which is safe
+    but not yet a decision this lane makes unilaterally about PR sequencing."
+acceptance:
+  - "Every ops_receipts row -- valid pairing, valid parent, terminal status, no clock skew --
+    is REJECTED, disclosing the architectural blocker as the reason --
+    test_every_row_is_rejected_pending_the_s9_c0_freeze_change_ruling,
+    test_rejection_reason_names_the_architectural_blocker."
+  - "Every one of ops_receipts' 11 legacy columns has an entry in the adapter's loss report with
+    a fate of REJECTED and the SAME reason (a full ledger, not a partial one) -- enforced by
+    assert_every_legacy_field_accounted_for, called inside the adapter's own _reject() helper
+    on every path."
+  - "Row-level validity checks that would matter once the architectural blocker lifts are still
+    exercised and produce THEIR OWN distinct rejection reason, not the generic blocked-reason:
+    mismatched pairing, parent-row rejection propagated from the sibling ActionItem adapter,
+    non-terminal status, and clock skew each have a dedicated test asserting the specific
+    reason text, and that the generic 'S9-C0' blocked-reason text is NOT what fired for the
+    pairing-mismatch case specifically (test_mismatched_intent_id_pairing_is_rejected_for_its
+    _own_reason) -- proving the two failure classes are genuinely distinguishable, not
+    collapsed into one generic rejection."
+  - "Every one of the four terminal statuses still reaches the architectural block (not an
+    earlier, unrelated rejection) -- test_every_terminal_status_still_hits_the_architectural
+    _block."
+  - "The loss-report completeness guard itself is guilt-verified: truncating one field's report
+    entry is caught by assert_every_legacy_field_accounted_for, not silently accepted --
+    test_incomplete_loss_report_is_caught_by_the_guard."
+  - "PYTHONPATH=. pytest backend/tests/services/research_os/ -q exits 0 in full (this PR's 8
+    tests + the pre-existing tests in the same directory, none regressed -- 19 total)."
+consumer_map:
+  - "GitHub PR's `Harness floor recompute` required check -- Gear-2 evidence pack, floor=1
+    (neither changed file matches HOTZONE_PATTERNS, verified against
+    scripts/evidence_pack_lint.py's own list directly, not assumed)."
+  - "Slice 3b (shadow dual-write flag + parity probe, NOT yet built as of this PR): would need
+    to treat this adapter's universal rejection as an expected, not anomalous, result for
+    ops_receipts rows until the S9-C0 ruling lands -- a naive parity probe that expects success
+    here would need updating, not this adapter."
+  - "Work Packet 04 Deliverable 5 (research_os_contract_core persistence, PR #4740, merged): not
+    reachable from this source today -- there is nothing for this adapter to persist yet."
+risks:
+  - "This adapter currently adapts ZERO rows successfully. That is the intended, corrected
+    behavior (see objective), not a bug -- but it means slice 3a, as chartered, does not yet
+    deliver a working OperationalReceipt adapter for Magazine. The value shipped here is: (a)
+    the row-level validity checks a future unblocked version needs, already built and tested,
+    and (b) a structural, tested, self-documenting refusal that prevents a future author from
+    'fixing' this into the unsafe synthesized-ref form without first securing the S9-C0
+    ruling."
+  - "The PENDING-ARMS.md row this PR carries is a hard architectural blocker, not an ordinary
+    disclosed-placeholder row like the sibling slices' rows -- it should not be treated as
+    routine 'awaiting a ruling, ship anyway' debt. No consumer should be built against this
+    adapter's success path until that ruling lands."
+grader: |
+  session (BUILD-lane subagent, Pro, worktree backend-rag-ros-v1-p04-d3-slice3a-operational-receipt)
+  wrote the original adapter and its tests; team-lead independently re-verified
+  operational_receipt.py directly (not trusting this lane's "bare pointer, so it's fine"
+  reasoning) and found the defect described above. The correction (unconditional rejection)
+  was then implemented by this session and re-verified: full test suite green (19/19), ruff
+  clean. Generator != grader held here in practice, not just in policy: the defect was caught
+  by an independent re-read of the cited model code, not by this lane's own review of its own
+  work.
+budget: |
+  1 build lane (this session) for the original adapter + 1 independent architectural review
+  (team-lead) that found the blocking defect + 1 correction pass (this session) implementing
+  the unconditional-rejection design -- same Gear-2 scope as slices 1/2, one canonical kind
+  (now architecturally blocked), additive, zero live consumers.
+pii: none

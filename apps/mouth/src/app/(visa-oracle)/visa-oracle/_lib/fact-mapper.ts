@@ -581,6 +581,15 @@ export function mapOracleFactsToApplicantFacts(
     "immigration.last_entry_date": unknownFact(NOT_ASKED),
     "immigration.overstay_days": integerFact(facts.overstay_days, 0, 36_500),
     "immigration.violation_history": mapViolationHistory(facts),
+    // No UI question exists yet for this fact (F4 rework, PR #4719 — Item 1
+    // will add one, gated on the already-collected `stay_permit_code` +
+    // `permit_expiry`, per team-lead review). Same rollout-default shape as
+    // `immigration.last_entry_date`/`intent.desired_entry_date` above: the
+    // backend's own `_RENEWAL_PAID_ROLLOUT_DEFAULT` is UNKNOWN/NOT_ASKED, so
+    // emitting that here — rather than omitting the key — keeps "never
+    // asked" and "never sent" distinct to the engine (see mapSponsorType's
+    // comment below for why that distinction matters).
+    "immigration.renewal_paid": unknownFact(NOT_ASKED),
     "intent.purposes": mapPurposes(facts),
     "intent.stay_days": mapStayDays(facts),
     "intent.desired_entry_date": unknownFact(NOT_ASKED),

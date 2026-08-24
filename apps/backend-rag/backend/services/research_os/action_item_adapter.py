@@ -4,10 +4,20 @@ Headline structural finding (matrix §1.0, re-confirmed by reading
 `schema.ts` directly this session): Magazine fuses queue-ownership
 (`ActionItem`) and authorization-bearing execution (`ActionIntent`) into ONE
 row. This adapter treats that fused row as the queue-registration moment:
-`ActionItem` revision 1, `current_intent_ref=None` always (matrix item 6's
-own suggested resolution -- there was never a moment the two existed
-independently, so a degenerate "no linked intent yet" is more honest than a
-self-referencing pointer or a fabricated one).
+`ActionItem` revision 1, `current_intent_ref=None` always.
+
+CORRECTED (independent reviewer, REFUSE verdict, claim #12): matrix item 6
+does NOT recommend this. It presents two candidate rulings -- a
+self-referencing pointer, or synthesizing the field as absent -- and
+explicitly defers the choice ("Ruling must decide"). `None` here is this
+adapter's own placeholder pending that ruling, not a matrix-endorsed
+resolution; the reasoning that follows (there was never a moment the two
+objects existed independently, so a degenerate "no linked intent yet" reads
+more honestly than a self-referencing pointer) is this adapter's OWN
+argument for the placeholder, offered to the conductor for a ruling, not
+authority borrowed from the matrix. The disclosure is also machine-checkable
+via `extensions['com.balizero.research-os-adapters'].payload['pending_ruling']`
+(see `synthesis.py`), not prose alone.
 
 Two fields are non-optional on the canonical model with NO legacy source at
 all: `decision_packet_ref` and `requested_action_spec_ref`. See
@@ -91,7 +101,9 @@ def adapt_ops_intent_to_action_item(row: OpsIntentRow) -> AdapterResult[ActionIt
             source_id=intent_id,
             canonical_kind=CANONICAL_KIND,
             fields=tuple(
-                LegacyFieldReport(k, LegacyFieldFate.REJECTED, None, f"unrecognized status {status!r}")
+                LegacyFieldReport(
+                    k, LegacyFieldFate.REJECTED, None, f"unrecognized status {status!r}"
+                )
                 for k in row
             ),
         )
@@ -158,42 +170,183 @@ def adapt_ops_intent_to_action_item(row: OpsIntentRow) -> AdapterResult[ActionIt
         created_at=created_at,
         recorded_at=recorded_at,
         producer=Producer(name="bali-zero-magazine", version="ops_intents/v1"),
-        lineage=Lineage(workflow_run_ref=None, input_hashes=(legacy_content_hash(row["request_hash"]),)),
-        retention=Retention(
-            retention_class="operational", retain_until=None, legal_hold=False, rights_expires_at=None
+        lineage=Lineage(
+            workflow_run_ref=None, input_hashes=(legacy_content_hash(row["request_hash"]),)
         ),
-        extensions=unbacked_refs_extension("decision_packet_ref", "requested_action_spec_ref"),
+        retention=Retention(
+            retention_class="operational",
+            retain_until=None,
+            legal_hold=False,
+            rights_expires_at=None,
+        ),
+        extensions=unbacked_refs_extension(
+            "decision_packet_ref",
+            "requested_action_spec_ref",
+            pending_ruling=("priority", "sla.due_at", "current_intent_ref"),
+        ),
     )
 
     fields.extend(
         [
-            LegacyFieldReport("intent_id", LegacyFieldFate.MAPPED, "action_item_id", "synthesized 1:1 from the fused row (see synthesis.synthetic_uuid)"),
-            LegacyFieldReport("actor_key", LegacyFieldFate.OMITTED, "owner_ref", "names who requested the action, not a queue-ownership actor; no ActorRef scheme fits"),
-            LegacyFieldReport("effective_role", LegacyFieldFate.OMITTED, None, "static schema CHECK constant ('operator'), belongs to ActionIntent.authority_required, not this kind"),
-            LegacyFieldReport("policy_version", LegacyFieldFate.OMITTED, None, "no canonical field for a policy-engine version on ActionItem"),
-            LegacyFieldReport("idempotency_key", LegacyFieldFate.OMITTED, None, "ActionItem carries no idempotency_key field (that lives on ActionIntent)"),
-            LegacyFieldReport("intent_kind", LegacyFieldFate.OMITTED, None, "action_type lives on ActionIntent, not ActionItem"),
-            LegacyFieldReport("params_json", LegacyFieldFate.OMITTED, None, "arguments live on ActionIntent, not ActionItem"),
-            LegacyFieldReport("request_hash", LegacyFieldFate.APPROXIMATED, "lineage.input_hashes", "carried through as a content-hash input, not this kind's own object_hash"),
-            LegacyFieldReport("reason_code", LegacyFieldFate.OMITTED, None, "no canonical field for a request-time reason on ActionItem"),
-            LegacyFieldReport("status", LegacyFieldFate.APPROXIMATED, "queue_state", "execution-lifecycle states mapped onto queue-triage states; not a 1:1 value match"),
-            LegacyFieldReport("attempt_limit", LegacyFieldFate.OMITTED, None, "no canonical ActionItem field for a retry ceiling"),
-            LegacyFieldReport("attempt_count", LegacyFieldFate.OMITTED, None, "belongs to ExecutionAttempt.attempt_number, a kind this slice excludes (see action_intent_adapter)"),
-            LegacyFieldReport("worker_id", LegacyFieldFate.OMITTED, "owner_ref", "names the executing worker, closer to ExecutionAttempt.executor than queue ownership"),
-            LegacyFieldReport("claim_token", LegacyFieldFate.OMITTED, None, "execution-lease credential, not a queue concept"),
-            LegacyFieldReport("fencing_token", LegacyFieldFate.OMITTED, None, "optimistic-concurrency counter, no canonical ActionItem equivalent"),
-            LegacyFieldReport("heartbeat_at", LegacyFieldFate.APPROXIMATED, "recorded_at", "used only as one candidate input to the recorded_at approximation (no updated_at column exists)"),
-            LegacyFieldReport("lease_deadline", LegacyFieldFate.OMITTED, None, "execution-lease deadline, distinct from the request-level expires_at used for sla.due_at"),
-            LegacyFieldReport("effect_token", LegacyFieldFate.OMITTED, None, "execution-effect credential, no canonical ActionItem field"),
-            LegacyFieldReport("pre_effect_attested_at", LegacyFieldFate.OMITTED, None, "execution attestation timestamp, belongs to a receipt/attempt kind"),
-            LegacyFieldReport("attested_policy_version", LegacyFieldFate.OMITTED, None, "execution attestation detail, not a queue concept"),
-            LegacyFieldReport("attestation_expires_at", LegacyFieldFate.OMITTED, None, "execution attestation detail, not a queue concept"),
-            LegacyFieldReport("effect_consumed_at", LegacyFieldFate.OMITTED, None, "execution-effect timestamp, not a queue concept"),
-            LegacyFieldReport("expires_at", LegacyFieldFate.APPROXIMATED, "sla.due_at", "a request-level TTL repurposed as a queue SLA due date; matrix flags this as an imperfect fit, disclosed not asserted"),
-            LegacyFieldReport("started_at", LegacyFieldFate.OMITTED, None, "belongs to ExecutionAttempt.started_at, a kind this slice excludes"),
-            LegacyFieldReport("completed_at", LegacyFieldFate.APPROXIMATED, "recorded_at", "used only as one candidate input to the recorded_at approximation"),
-            LegacyFieldReport("failure_code", LegacyFieldFate.APPROXIMATED, "close_reason", "only covers the failure case; folded into close_reason alongside status"),
-            LegacyFieldReport("created_at", LegacyFieldFate.MAPPED, "created_at / sla.opened_at", "direct match"),
+            LegacyFieldReport(
+                "intent_id",
+                LegacyFieldFate.MAPPED,
+                "action_item_id",
+                "synthesized 1:1 from the fused row (see synthesis.synthetic_uuid)",
+            ),
+            LegacyFieldReport(
+                "actor_key",
+                LegacyFieldFate.OMITTED,
+                "owner_ref",
+                "names who requested the action, not a queue-ownership actor; no ActorRef scheme fits",
+            ),
+            LegacyFieldReport(
+                "effective_role",
+                LegacyFieldFate.OMITTED,
+                None,
+                "static schema CHECK constant ('operator'), belongs to ActionIntent.authority_required, not this kind",
+            ),
+            LegacyFieldReport(
+                "policy_version",
+                LegacyFieldFate.OMITTED,
+                None,
+                "no canonical field for a policy-engine version on ActionItem",
+            ),
+            LegacyFieldReport(
+                "idempotency_key",
+                LegacyFieldFate.OMITTED,
+                None,
+                "ActionItem carries no idempotency_key field (that lives on ActionIntent)",
+            ),
+            LegacyFieldReport(
+                "intent_kind",
+                LegacyFieldFate.OMITTED,
+                None,
+                "action_type lives on ActionIntent, not ActionItem",
+            ),
+            LegacyFieldReport(
+                "params_json",
+                LegacyFieldFate.OMITTED,
+                None,
+                "arguments live on ActionIntent, not ActionItem",
+            ),
+            LegacyFieldReport(
+                "request_hash",
+                LegacyFieldFate.APPROXIMATED,
+                "lineage.input_hashes",
+                "carried through as a content-hash input, not this kind's own object_hash",
+            ),
+            LegacyFieldReport(
+                "reason_code",
+                LegacyFieldFate.OMITTED,
+                None,
+                "no canonical field for a request-time reason on ActionItem",
+            ),
+            LegacyFieldReport(
+                "status",
+                LegacyFieldFate.APPROXIMATED,
+                "queue_state",
+                "execution-lifecycle states mapped onto queue-triage states; not a 1:1 value match",
+            ),
+            LegacyFieldReport(
+                "attempt_limit",
+                LegacyFieldFate.OMITTED,
+                None,
+                "no canonical ActionItem field for a retry ceiling",
+            ),
+            LegacyFieldReport(
+                "attempt_count",
+                LegacyFieldFate.OMITTED,
+                None,
+                "belongs to ExecutionAttempt.attempt_number, a kind this slice excludes (see action_intent_adapter)",
+            ),
+            LegacyFieldReport(
+                "worker_id",
+                LegacyFieldFate.OMITTED,
+                "owner_ref",
+                "names the executing worker, closer to ExecutionAttempt.executor than queue ownership",
+            ),
+            LegacyFieldReport(
+                "claim_token",
+                LegacyFieldFate.OMITTED,
+                None,
+                "execution-lease credential, not a queue concept",
+            ),
+            LegacyFieldReport(
+                "fencing_token",
+                LegacyFieldFate.OMITTED,
+                None,
+                "optimistic-concurrency counter, no canonical ActionItem equivalent",
+            ),
+            LegacyFieldReport(
+                "heartbeat_at",
+                LegacyFieldFate.APPROXIMATED,
+                "recorded_at",
+                "used only as one candidate input to the recorded_at approximation (no updated_at column exists)",
+            ),
+            LegacyFieldReport(
+                "lease_deadline",
+                LegacyFieldFate.OMITTED,
+                None,
+                "execution-lease deadline, distinct from the request-level expires_at used for sla.due_at",
+            ),
+            LegacyFieldReport(
+                "effect_token",
+                LegacyFieldFate.OMITTED,
+                None,
+                "execution-effect credential, no canonical ActionItem field",
+            ),
+            LegacyFieldReport(
+                "pre_effect_attested_at",
+                LegacyFieldFate.OMITTED,
+                None,
+                "execution attestation timestamp, belongs to a receipt/attempt kind",
+            ),
+            LegacyFieldReport(
+                "attested_policy_version",
+                LegacyFieldFate.OMITTED,
+                None,
+                "execution attestation detail, not a queue concept",
+            ),
+            LegacyFieldReport(
+                "attestation_expires_at",
+                LegacyFieldFate.OMITTED,
+                None,
+                "execution attestation detail, not a queue concept",
+            ),
+            LegacyFieldReport(
+                "effect_consumed_at",
+                LegacyFieldFate.OMITTED,
+                None,
+                "execution-effect timestamp, not a queue concept",
+            ),
+            LegacyFieldReport(
+                "expires_at",
+                LegacyFieldFate.APPROXIMATED,
+                "sla.due_at",
+                "CORRECTED (independent review, claim #11): matrix §1.2 marks this pairing 'unmappable as-is -- needs a ruling', not merely an imperfect fit. `expires_at` bounds a 24h operator-authorization window at intent-creation time (operations-repository.ts:699, `delta > 86_400_000` throws), not a queue-SLA due-date concept at all. Mapping it onto sla.due_at anyway is this adapter's own placeholder pending a ruling, not a matrix-endorsed equivalence -- disclosed, not asserted",
+            ),
+            LegacyFieldReport(
+                "started_at",
+                LegacyFieldFate.OMITTED,
+                None,
+                "belongs to ExecutionAttempt.started_at, a kind this slice excludes",
+            ),
+            LegacyFieldReport(
+                "completed_at",
+                LegacyFieldFate.APPROXIMATED,
+                "recorded_at",
+                "used only as one candidate input to the recorded_at approximation",
+            ),
+            LegacyFieldReport(
+                "failure_code",
+                LegacyFieldFate.APPROXIMATED,
+                "close_reason",
+                "only covers the failure case; folded into close_reason alongside status",
+            ),
+            LegacyFieldReport(
+                "created_at", LegacyFieldFate.MAPPED, "created_at / sla.opened_at", "direct match"
+            ),
         ]
     )
     warnings.extend(
@@ -207,14 +360,25 @@ def adapt_ops_intent_to_action_item(row: OpsIntentRow) -> AdapterResult[ActionIt
             "prose: extensions['com.balizero.research-os-adapters'].payload['unbacked_refs'] names "
             "both fields, per an adversarial review (Kimi K3) that a loss report alone is documentation "
             "a consumer could skip.",
-            "priority defaulted to 'p2': ops_intents has no priority concept at all (matrix §0, "
-            "genuine information loss, not an adapter shortfall). Do not trust this value for triage "
+            "priority defaulted to 'p2': ops_intents has no priority concept at all -- genuine "
+            "information loss, not an adapter shortfall (matrix §0). CORRECTED (independent "
+            "review, REFUSE verdict, claim #10): matrix §0 does not endorse a default value -- "
+            "its own words are 'Ruling must decide: is a Magazine-sourced ActionItem valid with "
+            "priority/sla permanently null/defaulted, or does adopting this source require first "
+            "extending the Magazine schema to capture them' (i.e. whether this source is adoptable "
+            "at all, not merely which value to pick). 'p2' is this adapter's own placeholder "
+            "pending that ruling, not a matrix-approved value. Do not trust this value for triage "
             "ordering.",
             "risk_class/sensitivity defaulted to green/internal: no legacy classification signal "
             "exists; inert while the shadow dual-write flag defaults off (see shadow.py).",
             "current_intent_ref is always None for Magazine-sourced items: the fused row means there "
-            "was never a moment the queue-side and execution-side objects existed independently "
-            "(matrix item 6's own suggested resolution).",
+            "was never a moment the queue-side and execution-side objects existed independently. "
+            "CORRECTED (independent review, REFUSE verdict, claim #12): matrix item 6 presents "
+            "this as ONE of two candidate rulings (the other being a self-referencing pointer) and "
+            "explicitly defers the choice to a ruling not yet issued -- it does not recommend None. "
+            "This value is this adapter's own placeholder pending that ruling, disclosed "
+            "machine-checkably via "
+            "extensions['com.balizero.research-os-adapters'].payload['pending_ruling'].",
         ]
     )
 

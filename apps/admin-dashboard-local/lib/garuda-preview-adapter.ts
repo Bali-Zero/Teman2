@@ -42,6 +42,8 @@ const EXTENSION_WARNING =
   "Extension processing requires office-specific verification and an in-person photo/interview step.";
 const CALENDAR_WARNING =
   "The operating calendar does not cover this entry date. No issuance deadline is shown; staff must verify the applicable decree manually.";
+const PRICE_WARNING =
+  "The official catalogue price is unavailable. No price is shown; staff must confirm the price rather than invent one.";
 const SUCCESS_KEYS = [
   "decision",
   "reason_codes",
@@ -55,6 +57,8 @@ const SUCCESS_KEYS = [
   "internal_checkpoints",
   "price_idr",
   "price_source",
+  "price_status",
+  "price_warning",
   "generated_at",
   "calendar_coverage_start",
   "calendar_coverage_end",
@@ -103,6 +107,8 @@ export interface GarudaPreviewResult {
   internal_checkpoints: GarudaInternalCheckpoint[];
   price_idr: number | null;
   price_source: string | null;
+  price_status: "confirmed" | "unavailable";
+  price_warning: string | null;
   generated_at: string;
   calendar_coverage_start: string;
   calendar_coverage_end: string;
@@ -314,6 +320,7 @@ function parseEngineSuccess(stdout: string): GarudaPreviewResult {
     "uncovered",
     "not_applicable",
   ]);
+  const priceStatuses = new Set(["confirmed", "unavailable"]);
   if (
     containsForbiddenMarker(value) ||
     !hasExactKeys(value, SUCCESS_KEYS) ||
@@ -340,6 +347,9 @@ function parseEngineSuccess(stdout: string): GarudaPreviewResult {
       (typeof value.price_source === "string" &&
         OFFICIAL_PRICE_KEYS.has(value.price_source))
     ) ||
+    typeof value.price_status !== "string" ||
+    !priceStatuses.has(value.price_status) ||
+    !(value.price_warning === null || value.price_warning === PRICE_WARNING) ||
     !isIsoDateTime(value.generated_at) ||
     !isIsoDate(value.calendar_coverage_start) ||
     !isIsoDate(value.calendar_coverage_end) ||
@@ -368,6 +378,11 @@ function parseEngineSuccess(stdout: string): GarudaPreviewResult {
     (value.decision === "ACCEPT" && value.reason_codes.length !== 0) ||
     (value.decision === "DECLINE" && value.reason_codes.length === 0) ||
     (value.price_idr === null) !== (value.price_source === null) ||
+    (value.price_status === "unavailable") !==
+      (value.price_warning === PRICE_WARNING) ||
+    (value.price_status === "confirmed") !== (value.price_warning === null) ||
+    (value.price_status === "unavailable") !== (value.price_idr === null) ||
+    (value.price_status === "unavailable") !== (value.price_source === null) ||
     (value.price_source !== null &&
       value.price_source !==
         (value.case_type === "issuance"

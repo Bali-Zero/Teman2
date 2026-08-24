@@ -29,6 +29,8 @@ const VALID_RESULT = {
   internal_checkpoints: [],
   price_idr: 790_000,
   price_source: "B1 Visa on Arrival (VOA)",
+  price_status: "confirmed",
+  price_warning: null,
   generated_at: "2026-08-19T08:00:00Z",
   calendar_coverage_start: "2026-07-28",
   calendar_coverage_end: "2026-12-31",
@@ -191,6 +193,31 @@ describe("GARUDA Python execFile adapter", () => {
     { price_source: "B1 Visa on Arrival Extension" },
     { case_type: "extension", calendar_status: "not_applicable" },
   ])("rejects an inconsistent official price pair: %o", async (change) => {
+    engineResult({ ...VALID_RESULT, ...change });
+
+    await expect(runGarudaPreview("{}")).rejects.toMatchObject({
+      code: "preview_unavailable",
+    });
+  });
+
+  it.each([
+    {
+      price_status: "unavailable",
+      price_warning:
+        "The official catalogue price is unavailable. No price is shown; staff must confirm the price rather than invent one.",
+    },
+    {
+      price_status: "confirmed",
+      price_warning:
+        "The official catalogue price is unavailable. No price is shown; staff must confirm the price rather than invent one.",
+    },
+    {
+      price_idr: null,
+      price_source: null,
+      price_status: "unavailable",
+      price_warning: "Official price lookup failed.",
+    },
+  ])("rejects an inconsistent official price status: %o", async (change) => {
     engineResult({ ...VALID_RESULT, ...change });
 
     await expect(runGarudaPreview("{}")).rejects.toMatchObject({

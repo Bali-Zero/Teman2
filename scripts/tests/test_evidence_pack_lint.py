@@ -64,6 +64,17 @@ def tmp_repo(tmp_path):
             "receipts": [GOOD_RECEIPT],
             "dissent": [],
             "pii_scan": "clean",
+            # Rule 8 (D3 lane-declaration) went live at 2026-08-24 UTC midnight.
+            # Before that date a Gear>=2 pack with no `lanes` got a NOTICE; after
+            # it, a hard violation. These fixtures exist to exercise OTHER rules,
+            # so they carry a conformant block rather than riding a grace period
+            # that has now expired — otherwise every Gear>=2 test here fails for
+            # a reason it was never written to test. Rule 8's own guilt and
+            # innocence live in the `check_lanes_build_seat_diversity` tests,
+            # which pin `today` on both sides of the flip and call the function
+            # directly, so they are unaffected by this default. A test that needs
+            # `lanes` absent or malformed overrides it explicitly.
+            "lanes": [{"lane": "D1", "role": "build", "seat": "codex"}],
         }
         pack.update(overrides)
         p = tmp_path / "evidence" / "pack.yml"
@@ -651,6 +662,10 @@ def _write_full_tree(tmp_path, *, gear, pack_overrides):
         "receipts": [GOOD_RECEIPT],
         "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
         "pii_scan": "clean",
+        # See the identical note on `write_pack` above: rule 8 became enforcing
+        # at 2026-08-24 UTC midnight, and these fixtures test the ceiling and
+        # net-lines rules, not lane declaration.
+        "lanes": [{"lane": "D1", "role": "build", "seat": "codex"}],
     }
     pack.update(pack_overrides)
     (tmp_path / "evidence" / "pack.yml").write_text(
