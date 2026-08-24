@@ -84,6 +84,14 @@ class DeclineCode(str, Enum):
     # genuinely cannot compute this yet — a human will confirm":
     ARRIVAL_TOO_SOON = "ARRIVAL_TOO_SOON"
     ARRIVAL_DATE_UNCONFIRMED = "ARRIVAL_DATE_UNCONFIRMED"
+    # Not emitted by `screen()` either — layered on by
+    # `intake.build_verdict` for the issuance-only eVOA usability-window
+    # gate (GARUDA B1 truth-sheet, line 41, verified 14 Jul 2026):
+    # an eVOA is usable for EVOA_USABILITY_WINDOW_DAYS from issuance.
+    # With no issuance_date input, `today` is the earliest possible issuance
+    # date, so an arrival strictly later than today + that window cannot be
+    # covered. This is the other end of the same axis as ARRIVAL_TOO_SOON.
+    ARRIVAL_TOO_FAR = "ARRIVAL_TOO_FAR"
     # Not emitted by `screen()` either — layered on by `intake.build_verdict`
     # for the B1 max-total-stay boundary (`constants.b1_max_total_stay_exceeded`,
     # 2026-08-23): a printed extension expiry whose day-DIFFERENCE from entry
