@@ -838,8 +838,9 @@ export function mapOracleFactsToApplicantFacts(
     // rules in the currently-signed active pack — but that is NOT the
     // "question precedes the rule" gap `immigration.last_entry_date`'s
     // comment above warns about. It is read by NO rule BY DESIGN: it is
-    // the client-side MIRROR check against `hf.d12-onshore-conversion-
-    // excluded` (`safety_critical: true`), which reads ONLY
+    // the client-side MIRROR check against the rule
+    // `hf.d12-onshore-conversion-excluded` (`safety_critical: true`),
+    // which reads ONLY
     // `process.wants_onshore_conversion` — `flow.ts`'s
     // `channelConflictsWithOnshoreIntent` (flow.ts:416) detects a
     // self-contradictory `wants_onshore_conversion`/`application_channel`
