@@ -18329,10 +18329,11 @@ export interface components {
     /**
      * ApplicantFactsData
      * @description ``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-     *     with all keys required except the four transitional fields documented on
-     *     ``sponsor_type`` and the three ``family.stepchild_*``/
-     *     ``family.sponsor_permit_basis`` fields below (2026-08-23, same rollout
-     *     mechanism). Field order mirrors ``enums.FactPath``'s
+     *     with all keys required except the five transitional fields documented on
+     *     ``sponsor_type``, the three ``family.stepchild_*``/
+     *     ``family.sponsor_permit_basis`` fields (2026-08-23), and
+     *     ``immigration_renewal_paid`` (2026-08-24) below — all the same rollout
+     *     mechanism. Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
      *     grouping.
@@ -18426,6 +18427,16 @@ export interface components {
       "immigration.overstay_days":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownNonNegativeInteger"];
+      /**
+       * Immigration.Renewal Paid
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "immigration.renewal_paid":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
       /** Immigration.Violation History */
       "immigration.violation_history":
         | components["schemas"]["UnknownFact"]
@@ -20782,13 +20793,14 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 44 applicant-collected
+     * @description Every fact path the engine may ever reference — 45 applicant-collected
      *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
-     *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, and by the
+     *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
      *     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
-     *     and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings —
-     *     see each path's inline comment for its own grounding).
+     *     and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
+     *     and by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
+     *     comment for the grounding).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -20808,6 +20820,7 @@ export interface components {
       | "immigration.last_entry_date"
       | "immigration.overstay_days"
       | "immigration.violation_history"
+      | "immigration.renewal_paid"
       | "intent.purposes"
       | "intent.stay_days"
       | "intent.desired_entry_date"

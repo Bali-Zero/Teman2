@@ -486,6 +486,27 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "OAuth guard selftest fixture fragment — assembled at runtime to "
         "prove the guard fires; synthetic by construction, never a credential",
     ),
+    # D12 active-stay-permit HARD_FILTER source record (2026-08-24, F4/D12):
+    # content_sha256 is the same class as the contracts/packs/rulepack-*.json
+    # rule and the gold-replay payload_sha256 rule above — a content-derived
+    # sha256 of a PUBLIC source document (Bali Zero's own policy card, cited
+    # by canonical_url in the same JSON object), never a credential.
+    #
+    # Content-keyed, not path-keyed to the whole `inc8-pack-edits/` directory:
+    # that directory is an open writer set for doctrine-factory pack edits, so
+    # a path-only rule would blanket-approve any future finding anywhere in
+    # it (superscar #3). Narrowed to this exact reviewed file and the exact
+    # `"content_sha256": "<64-hex>"` field, end-anchored.
+    (
+        re.compile(
+            r"(^|/)research/visa/doctrine-factory/e5/inc8-pack-edits/"
+            r"d12-active-stay-permit-rule-and-source\.json$"
+        ),
+        re.compile(r'^\s*"content_sha256"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'),
+        "D12 active-stay-permit source record: content_sha256 is the "
+        "content-derived sha256 of a public Bali Zero policy source, "
+        "not a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
