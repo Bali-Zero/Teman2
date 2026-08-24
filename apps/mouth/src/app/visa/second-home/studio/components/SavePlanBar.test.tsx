@@ -57,7 +57,7 @@ describe("SavePlanBar print action", () => {
     ).not.toThrow();
   });
 
-  it("ships the global print rules for document colors, panels, controls, and the WhatsApp contact", () => {
+  it("ships targeted print rules without hiding content buttons globally", () => {
     const { container } = render(
       <SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />,
     );
@@ -67,7 +67,10 @@ describe("SavePlanBar print action", () => {
     // intentionally verify only that the browser-facing rules are emitted.
     expect(css).toContain("@media print");
     expect(css).toContain("--surface-base: #ffffff");
-    expect(css).toContain("button,");
+    expect(css).toContain(".bz-shs-save-plan-bar,");
+    expect(css).toContain(".bz-shs-option,");
+    expect(css).toContain(".bz-shs-scenario-toggle-trigger,");
+    expect(css).not.toMatch(/(?:^|[,{])\s*button\s*(?=[,{])/);
     expect(css).toContain("break-inside: avoid");
     expect(css).toContain('input[type="checkbox"]');
     expect(css).toContain('a[href^="https://wa.me"]::after');

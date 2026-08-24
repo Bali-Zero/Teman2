@@ -1,0 +1,273 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "P04-D3 slice 2 of 3: ActionIntent adapter (ops_intents -> ActionIntent), Kimi K3
+  adversarially reviewed, two real defects found and fixed, not just disclosed"
+diff:
+  net_lines: >-
+    Two commits on this branch, measured against this branch's own merge-base with
+    origin/main (17f2457bc0ca4115f9e0e73594ea7b0237ebc953, re-fetched fresh this session):
+    +793/-0 total across 4 files. action_intent_adapter.py (+546 lines total, includes both
+    the original construction and the Kimi-driven corrections), test_action_intent_adapter.py
+    (+243 lines, 17 tests), PENDING-ARMS.md (+4/-0, two new ledger rows -- the original
+    five-field pending_ruling disclosure row plus the separately-corrected ExecutionAttempt
+    -exclusion row), brief.yml (+119, evidence pack). No existing file touched.
+  behaviour_change: >-
+    This is a NEW adapter (no prior behaviour to change) with one internal correction cycle
+    before merge: the first commit (4419e3064) shipped arguments_hash=row["request_hash"] and
+    target=ExactObjectRef(object_kind=intent_kind, object_id=f"unbacked:{intent_id}", ...); the
+    second commit (bffc1045f) replaced both after a Kimi K3 adversarial review found the first
+    was a real-looking-but-unverifiable hash (worse than a marked placeholder) and the second
+    rested on a false premise ("no usable legacy analogue" when a 6-line port of Magazine's own
+    targetId()/targetKey() exists). Both are now: arguments_hash =
+    legacy_content_hash(params_json), a real recomputable content hash; target derives its real
+    kind+id from params_json via a ported _derive_target() function, falling back to the old
+    placeholder only when params_json is unparseable or lacks the expected key (defensively
+    tested, not expected to trigger for any row that passed the sibling adapter's own
+    validation).
+receipts:
+  - claim: "Base SHA re-measured fresh in this session, not copied from any document/prompt"
+    cmd: "git fetch origin main && git rev-parse origin/main"
+    exit: 0
+    ts: "2026-08-24T09:30:00Z"
+    seat: "session (pro)"
+  - claim:
+      "This branch's merge-base with origin/main is the correction PR's own merge commit
+      (17f2457bc), confirming the fresh-worktree-cut-after-both-prerequisite-PRs-merged
+      constraint held"
+    cmd: "git merge-base HEAD origin/main"
+    exit: 0
+    ts: "2026-08-24T09:30:10Z"
+    seat: "session (pro)"
+  - claim:
+      "Diff against merge-base is +793/-0 across exactly 4 files, zero existing file
+      touched"
+    cmd: "git diff --numstat $(git merge-base HEAD origin/main)..HEAD"
+    exit: 0
+    ts: "2026-08-24T09:31:00Z"
+    seat: "session (pro)"
+  - claim:
+      "PENDING-ARMS.md diff is exactly +4/-0 (two new rows, each with its own blank-line
+      separator, matching the file's own entry convention)"
+    cmd: "git diff --numstat $(git merge-base HEAD origin/main)..HEAD -- .claude/skills/modus/PENDING-ARMS.md"
+    exit: 0
+    ts: "2026-08-24T09:31:30Z"
+    seat: "session (pro)"
+  - claim:
+      "Full research_os test suite (17 new tests in this file + all pre-existing sibling
+      adapter tests) passes after the Kimi-driven correction commit, exit 0"
+    cmd: "PYTHONPATH=. pytest backend/tests/services/research_os/ backend/tests/unit/research_os/ -q --no-header"
+    exit: 0
+    ts: "2026-08-24T09:32:00Z"
+    seat: "session (pro)"
+  - claim: "ruff check and ruff format --check both pass clean on both touched files"
+    cmd: "ruff check backend/services/research_os/action_intent_adapter.py backend/tests/services/research_os/test_action_intent_adapter.py && ruff format --check <same 2 files>"
+    exit: 0
+    ts: "2026-08-24T09:33:00Z"
+    seat: "session (pro)"
+  - claim:
+      "Zero non-test, non-prose consumer of action_intent_adapter anywhere in the repo --
+      an initial bare-name grep produced 2 false positives (a sibling adapter's docstring
+      comment and this package's __init__.py module-docstring, both prose mentions by name,
+      not imports), re-verified with a precise import-statement-only grep that found zero hits"
+    cmd: "grep -rln 'action_intent_adapter' --include='*.py' apps/backend-rag/backend/ | grep -v test_action_intent_adapter; grep -rln 'from backend.services.research_os.action_intent_adapter import\\|from backend.services.research_os import action_intent_adapter\\|import action_intent_adapter' --include='*.py' apps/backend-rag/backend/ | grep -v test_action_intent_adapter"
+    exit: 1
+    ts: "2026-08-24T09:34:00Z"
+    seat: "session (pro)"
+    # exit 1 on the SECOND (precise) grep = zero real import-consumers found, confirmed. The
+    # first (bare-name) grep exits 0 with 2 hits, both verified by line-number inspection to be
+    # prose, not code -- both greps' outputs are shown above, not asserted from memory.
+  - claim:
+      "Evidence directory slug matches scripts/ci/evidence_paths.py's own computation for
+      this exact branch ref, not hand-typed"
+    cmd: "python3 scripts/ci/evidence_paths.py --ref agent/nuzantara/backend-rag/ros-v1-p04-d3-slice2-action-intent --json"
+    exit: 0
+    ts: "2026-08-24T09:35:00Z"
+    seat: "session (pro)"
+  - claim:
+      "Neither touched/new file matches any of the 15 HOTZONE_PATTERNS -- floor stays 1
+      (Gear-2), verified programmatically against the lint script's own pattern list, not
+      assumed from reading the list by eye"
+    cmd: 'python3 -c "import re,sys; sys.path.insert(0,''../../scripts''); from evidence_pack_lint import HOTZONE_PATTERNS; [print(f, [p for p in HOTZONE_PATTERNS if re.search(p,f)] or ''no match'') for f in [''apps/backend-rag/backend/services/research_os/action_intent_adapter.py'',''apps/backend-rag/backend/tests/services/research_os/test_action_intent_adapter.py'']]"'
+    exit: 0
+    ts: "2026-08-24T09:36:00Z"
+    seat: "session (pro)"
+  - claim:
+      "New PENDING-ARMS.md rows (both: the 5-field pending_ruling disclosure row, and the
+      separately-corrected ExecutionAttempt-exclusion row) parse cleanly, zero
+      PHANTOM-OPERATOR/MALFORMED introduced"
+    cmd: "python3 scripts/pending_arms_report.py --strict-phantom"
+    exit: 0
+    ts: "2026-08-24T09:37:00Z"
+    seat: "session (pro)"
+  - claim: >-
+      Kimi K3 adversarial review dispatched on the adapter's 4 riskiest design decisions
+      (composition coupling, request_hash reuse across 3 canonical slots, target-identity
+      synthesis, expires_after_seconds derivation), run via kimi-code/k3 with the full adapter
+      source + questions as the prompt, stdout captured verbatim by a dispatched subagent (not
+      summarized by this session before being read)
+    cmd: 'kimi -p "$(cat /tmp/kimi_review_prompt_slice2.txt)" -m kimi-code/k3 < /dev/null > /tmp/kimi_review_result_slice2.txt 2>&1'
+    exit: 0
+    ts: "2026-08-24T02:38:00Z"
+    seat: "kimi-code/k3 (cross-family adversarial reviewer, dispatched via a subagent to capture raw stdout)"
+  - claim:
+      "Every fact the Kimi review's verdict cited was independently re-verified against the
+      actual legacy TypeScript source (operations-repository.ts targetId()/targetKey():
+      518-533, the intent-creation request_hash composition: 710-720, the 24h authorization
+      window check: 699-704) and the Python legacy row shapes (legacy_magazine.py's OpsIntentRow,
+      confirming params_json is a raw JSON string field) before any code fix was made -- not
+      applied on the reviewer's authority alone"
+    cmd: "grep -n 'function targetId\\|function targetKey' -A8 apps/bali-zero-magazine/lib/server/operations-repository.ts; sed -n '693,720p' apps/bali-zero-magazine/lib/server/operations-repository.ts"
+    exit: 0
+    ts: "2026-08-24T09:00:00Z"
+    seat: "session (pro), via a dispatched grounding subagent"
+  - claim:
+      "Guilt-verified the shared AST-based extensions-presence invariant test
+      (test_adapter_extensions_invariant.py) catches a regression in THIS new file too, not
+      only the original sibling: temporarily renamed the extensions= kwarg at the real call
+      site, re-ran the invariant test (failed, naming the exact file:line), restored the file,
+      re-ran the full suite green"
+    cmd: "python3 -c script that replaces extensions= with a decoy kwarg in action_intent_adapter.py, runs pytest test_adapter_extensions_invariant.py -q, restores the original file, re-runs the full suite"
+    exit: 0
+    ts: "2026-08-24T05:15:00Z"
+    seat: "session (pro)"
+    # the intentionally-sabotaged run failed with: "AssertionError: build_with_object_hash
+    # call(s) omit extensions=, changing this adapter's canonical object identity by accident:
+    # ['action_intent_adapter.py:154']" -- exit 0 above refers to the overall guilt-arm
+    # procedure completing as designed (guilt confirmed, file restored, suite green again), not
+    # to that intentionally-red pytest invocation itself.
+tests:
+  - "backend/tests/services/research_os/test_action_intent_adapter.py -- 17 tests: the
+    original 13 (adapts a valid row, every legacy field accounted for, the package's own
+    cross-object invariant function verify_action_intent_matches_action_item called directly
+    against real sibling-adapter output, action_item_ref pins the real sibling object,
+    requested_action_spec_ref/risk_class/sensitivity byte-identical to the sibling,
+    unbacked_refs/pending_ruling machine-checkable, extensions always explicitly set, every
+    legacy status value adaptable, unrecognized status rejected with a full field ledger,
+    clock-skew row rejected not silently coerced, the loss-report completeness guard itself
+    guilt-verified, expires_after_seconds is a checked concrete number not trusted by
+    inspection) plus 4 added after the Kimi review: target derives the real kind+id from
+    params_json across all 5 known intent_kind values (not just the default fixture's shape),
+    target falls back to the old unbacked placeholder defensively when params_json lacks the
+    expected key, same fallback when params_json is unparseable JSON, and arguments_hash is
+    proven to be legacy_content_hash(params_json) specifically -- and proven DIFFERENT from
+    request_hash, closing off a regression back to the reused-hash defect."
+  - "backend/tests/services/research_os/ (full suite, including sibling ActionItem/
+    OperationalReceipt adapters + the AST invariant test) -- exit 0."
+static:
+  - "ruff check: 0 issues on both touched files (action_intent_adapter.py,
+    test_action_intent_adapter.py)."
+  - "ruff format --check: 0 issues (both files already correctly formatted after the Kimi-driven
+    edits -- re-verified, not assumed, after each round of changes)."
+runtime_proof:
+  - >-
+    No live consumer, by design (zero non-test consumers repo-wide, receipt above). Functional
+    proof is the adapter's own round-trip: a synthetic ops_intents row -> ActionIntent with
+    target/authority_required correctly derived or honestly placeholder'd, arguments_hash a
+    real recomputable content hash, and the package's own verify_action_intent_matches_action_item
+    invariant function raising nothing when run directly against this adapter's output paired
+    with the sibling ActionItem adapter's output on the identical row -- not a hand-rolled
+    assertion about what "should" hold.
+dissent:
+  - seat: "kimi-code/k3"
+    objection: "Q1 -- composition of action_item_adapter makes
+      verify_action_intent_matches_action_item's cross-object invariant tautological for this
+      source (a bug in the sibling propagates to both objects and still verifies), leaks the
+      sibling's queue-side admissibility policy (the Sla clock check) into ActionIntent's own
+      validity, and inherited risk_class/sensitivity placeholders were disclosed only in prose,
+      not in pending_ruling's machine-checkable channel."
+    status: CONFIRMED
+    # Outcome: partially fixed. risk_class/sensitivity ARE now in pending_ruling (a real code
+    # change, applied to both this adapter and the sibling slice-3a adapter proactively). The
+    # tautological-invariant and admissibility-policy-leak observations were left as disclosed
+    # residual risks (see residual_risks below), not code-fixed: the alternative (independent
+    # re-derivation) reintroduces the exact drift risk composition was chosen to avoid. The
+    # docstring's overstated "only way" claim was corrected to name the honest alternative.
+  - seat: "kimi-code/k3"
+    objection:
+      "Q2 -- arguments_hash reused row['request_hash'] verbatim, but request_hash
+      hashes the WHOLE request envelope (schema_version+intent_kind+reason_code+expires_at+
+      params), not the arguments alone; syntactically valid sha256 but can never verify
+      against a consumer's own recompute -- a materially worse lie than a marked placeholder."
+    status: CONFIRMED
+    # Outcome: FIXED. arguments_hash now = legacy_content_hash(params_json), a real,
+    # recomputable content hash of the actual arguments. input_revision_hash stays a disclosed
+    # placeholder (still reuses request_hash -- genuinely unresolved, its "revision" changes
+    # when only expires_at changes with no input change).
+  - seat: "kimi-code/k3"
+    objection:
+      "Q3 -- target's docstring premise ('no usable legacy analogue... out of this
+      adapter's scope') was FALSE: Magazine's own targetId()/targetKey() is a 6-line, 4-branch
+      pure function over params_json, already-available data, and the old placeholder broke
+      Magazine's own target-key co-reference (its concurrency model IS target-key fencing).
+      Also: object_ref.object_kind asserted intent_kind (the ACTION type) as if it were the
+      TARGET's kind -- a false statement, not a disclosed gap."
+    status: CONFIRMED
+    # Outcome: FIXED. Ported _derive_target(), deriving the real target kind+id from
+    # params_json per intent_kind, matching Magazine's own logic exactly. object_kind now
+    # derives from the same port, no longer asserting the action type as the target's kind.
+    # Falls back to the old intent-scoped placeholder only defensively (params_json
+    # unparseable or missing the expected key) -- tested for all 5 intent_kind values plus
+    # both fallback paths. target stays in pending_ruling on a narrower basis now (object_hash
+    # remains a synthesized-unbacked hash, since no real canonical Target object exists to
+    # hash), not because the kind/id are fabricated anymore.
+  - seat: "kimi-code/k3"
+    objection:
+      "Q4 -- the max(1, ...) clamp on authority_required.expires_after_seconds was a
+      latent fabrication path: unreachable today only because the sibling ActionItem adapter
+      rejects expires_at<=created_at first; if that assumption is ever revisited, the clamp
+      would silently manufacture a 1-second grant instead of failing."
+    status: CONFIRMED
+    # Outcome: FIXED. Clamp removed. The field's own gt=0 Pydantic validator now rejects
+    # honestly if that assumption is ever violated, rather than silently fabricating a
+    # 1-second window. Kimi separately assessed this field's core design (reusing a real 24h
+    # operator-authorization-window delta as a per-grant expiry) as "the least unsound of the
+    # four" -- disclosed and left as a genuine open placeholder in pending_ruling, not further
+    # changed.
+lanes:
+  - lane: "p04-d3-magazine-action-chain-adapters-slice2-action-intent"
+    role: build
+    seat: "claude-sonnet-5"
+  - lane: "p04-d3-magazine-action-chain-adapters-slice2-adversarial-review"
+    role: review
+    seat: "kimi-code/k3"
+residual_risks:
+  - >-
+    Two fields remain genuinely open placeholders after the Kimi-driven corrections:
+    authority_required.scope (no legacy source of any kind) and input_revision_hash (reuses
+    request_hash, semantically shifts when expires_at changes with no input change). Both
+    disclosed via pending_ruling, business/architecture ruling owned by Zero via team-lead, not
+    resolved by this PR.
+  - >-
+    risk_class/sensitivity are inherited placeholders from the composed sibling ActionItem
+    (defaults green/internal) -- now disclosed in pending_ruling per this session's own finding,
+    but the UNDERLYING placeholder value itself is not resolved by this PR; it is the sibling
+    ActionItem's own open ruling (already ledgered) that would resolve it.
+  - >-
+    The composition coupling with action_item_adapter (Q1 above) is a real, if currently
+    one-directional, architectural dependency: a future change to the sibling's construction
+    logic silently changes what this adapter's action_item_ref/requested_action_spec_ref/
+    risk_class/sensitivity carry, without this file's own diff showing it. Not fixed in this
+    PR -- disclosed as a residual risk, same as the sibling slice-3a adapter's identical
+    coupling.
+sources:
+  - "The corrected D3 compatibility matrix (merged as PR #4756, origin/main), §1.1's field
+    table, read directly from this fresh worktree, not carried over from a stale pre-correction
+    copy."
+  - "operations-repository.ts, read directly this session via a dispatched grounding
+    subagent: targetId()/targetKey() (518-533), the request_hash composition and 24h
+    authorization-window check (693-720), intentView() and the real ops_intents/IntentRow
+    shape (140-170, 561-583) -- confirming target_key/target_fencing_token exist on the REAL
+    DB table (drizzle/0006_operations_control_plane.sql) even though schema.ts's own Drizzle
+    object omits them, and that OpsIntentRow (the Python TypedDict this adapter actually reads)
+    mirrors schema.ts's incomplete shape, not the real table -- meaning params_json (present on
+    OpsIntentRow) is the only path to the real target identity, not target_key directly."
+  - "synthesis.py's legacy_content_hash(), read directly to confirm its exact signature
+    (variadic *parts: str, joined with ':' and sha256'd, no internal JSON serialization) before
+    using it for arguments_hash."
+  - "operational_receipt.py, read in full this session (298 lines) to independently ground
+    team-lead's separate ExecutionAttempt-exclusion correction (see the sibling PENDING-ARMS
+    row) before accepting it -- not applied on citation alone."
+  - "Kimi K3's full adversarial review output (191 lines, 47293 bytes), read verbatim via a
+    dispatched subagent that captured raw stdout, not summarized before being read."
+pii_scan: clean
+size_tokens: 2400

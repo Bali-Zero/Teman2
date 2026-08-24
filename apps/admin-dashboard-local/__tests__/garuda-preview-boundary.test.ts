@@ -166,6 +166,14 @@ describe("GARUDA internal preview boundaries", () => {
     expect(ui).not.toContain("Verified coverage ends");
   });
 
+  it("renders the engine price status and warning without an invented fallback", () => {
+    const ui = source("app/garuda-voa/GarudaPreviewClient.tsx");
+    expect(ui).toContain("Price status: {result.price_status}");
+    expect(ui).toContain("result.price_warning");
+    expect(ui).toContain('className="garuda-warning"');
+    expect(ui).not.toContain("No catalogue source returned");
+  });
+
   it("requires Bearer validation in every cockpit and GARUDA protected API", () => {
     for (const route of [
       "app/api/cockpit/session/route.ts",

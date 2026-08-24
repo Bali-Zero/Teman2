@@ -63,11 +63,30 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
     # unchanged count), and all 23 `gold_harness` personas plus all 20
     # canonical `test_evaluator_gold` personas still replay their expected
     # decisions unchanged (`test_gold_replay_artifact.py` zero-divergence).
+    #
+    # Moved a third time 2026-08-24 (`4e18c56e…` -> `cbdf4e61…`) when
+    # `immigration.renewal_paid` joined the fact vocabulary (F4, owner
+    # ruling on a renewal-in-process KITAS holder). Different from the two
+    # moves above in one respect worth naming: this fact IS consumed —
+    # `derived.has_active_stay_permit`'s FactSpec gained it as a new
+    # dependency, and `_derive_has_active_stay_permit` reads it as an early
+    # short-circuit — but 02_business_c2 (this test's persona) never
+    # supplies a KNOWN value for it, so the short-circuit does not fire and
+    # the derived fact's VALUE is unchanged. Verified, not assumed: node
+    # count is still 84 (no new trace node — the derived fact was already a
+    # node since 2026-08-23; only its dependency set widened), and
+    # `test_gold_replay_artifact.py::test_report_has_zero_divergences` is
+    # green — all 23 gold personas plus all canonical `test_evaluator_gold`
+    # personas replay their expected decisions unchanged. The literal moves
+    # here for the same reason as the two prior moves: `facts_hmac` is over
+    # the WHOLE snapshot (`canonical_fact_payload`), so every persona
+    # gaining one more UNKNOWN key necessarily moves it, independent of
+    # whether any rule reads that key.
     # If this literal ever moves again while the node set or a persona's
     # decision ALSO changed, that is a behaviour change wearing a fixture's
     # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "4e18c56e329acd1d16a290fbdb08e50c52afbdae8f30b702c8d64bf302db3b2c"
+        first.trace.sha256() == "cbdf4e61dfadcb510f679ee772c6691532adb431f90ad81f9e0ef0e8bf34eebd"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace

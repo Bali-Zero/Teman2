@@ -93,7 +93,7 @@ export function CustodyMap() {
                       <path d="m4 6 4 4 4-4" />
                     </svg>
                   </button>
-                  <p id={detailId} hidden={!isExpanded}>
+                  <p id={detailId} data-collapsed={!isExpanded}>
                     {getCopy(`custody.steps.${step}.body`)}
                   </p>
                 </div>
@@ -232,7 +232,7 @@ export function CustodyMap() {
           line-height: 1.6;
         }
 
-        .custody-node > p[hidden] {
+        .custody-node > p[data-collapsed="true"] {
           display: none;
         }
 
@@ -276,6 +276,16 @@ export function CustodyMap() {
         .custody-disclaimer {
           font-size: 0.82rem;
           font-style: italic;
+        }
+
+        @media print {
+          .custody-node > p[data-collapsed="true"] {
+            display: block !important;
+          }
+
+          .custody-chevron {
+            display: none !important;
+          }
         }
 
         @media (max-width: 760px) {

@@ -39,6 +39,10 @@
       "status": "KNOWN",
       "value": ["OVERSTAY"]
     },
+    "immigration.renewal_paid": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "intent.purposes": {
       "status": "KNOWN",
       "value": ["TOURISM"]

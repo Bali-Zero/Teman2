@@ -267,8 +267,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 17, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 17. "
+    assert len(CONTENT_KEYED_RULES) == 18, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 18. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -287,6 +287,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: fold_pack_seq12.py seq-11 chain anchor exact-value pin (2026-08-20)
     # +1: fold_pack_seq13_rules.py seq-12 chain anchor exact-value pin (2026-08-23, #4660)
     # +1: fold_pack_seq13_source.py seq-12 chain anchor exact-value pin (2026-08-23, #4667)
+    # +1: research/visa/doctrine-factory/e5/inc8-pack-edits/d12-active-stay-permit-rule-and-source.json content_sha256 (2026-08-24, #4719)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below

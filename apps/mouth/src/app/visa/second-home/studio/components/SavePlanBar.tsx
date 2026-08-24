@@ -43,9 +43,11 @@ const PRINT_STYLES = `
     }
 
     nav,
-    button,
     .fixed.bottom-0.left-0.right-0.z-50,
-    .bz-shs-save-plan-bar {
+    .bz-shs-save-plan-bar,
+    .bz-shs-option,
+    .bz-shs-scenario-toggle-trigger,
+    .bz-shs-scenario-toggle-back {
       display: none !important;
     }
 
