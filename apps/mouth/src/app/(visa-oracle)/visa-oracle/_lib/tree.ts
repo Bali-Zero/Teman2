@@ -426,11 +426,16 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
   /** WHO sponsors the stay, as a category. This is distinct from the
    * family/work/study "is the sponsor confirmed?" booleans elsewhere in
    * this file, and it is not the sponsor's identity either — just the
-   * category. Maps to the single optional `sponsor.type`
-   * FactPath (spec staged-rollout field). No rule in the currently
-   * active pack reads it yet; the question exists to collect the fact
-   * ahead of the rules that will (design doc §4, category-conditional
-   * questions). Asked only where the category makes the sponsor
+   * category. Maps to the single optional `sponsor.type` FactPath.
+   * CORRECTED 2026-08-25 (team-lead PASS-grade review of V1/E28, live pack
+   * probe): this WAS read by zero rules when this comment was first
+   * written, but is not anymore — `hf.e33a.sponsor-not-government` (EXCLUDE
+   * unless GOVERNMENT) and `hf.e33{b,c}.sponsor-not-government-or-none`
+   * (EXCLUDE unless GOVERNMENT/NONE) are real HARD_FILTER rules in
+   * rulepack-prod-013 keyed on this exact fact, and it is now also the
+   * gating condition for `employment_product_code`/
+   * `investment_product_code_govt` below — see those questions' own
+   * comments. Asked only where the category makes the sponsor
    * discriminating — see `FIXED_CATEGORY_QUESTIONS`/`getCategoryQuestionIds`
    * in flow.ts for exactly which categories include it. */
   sponsor_category: {
@@ -679,6 +684,114 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.investment_product_code" },
+    notSure: { mode: "human-review" },
+  },
+  // V1/E33 (2026-08-25, mandate docs/plans/2026-08-24-visa-oracle-live/
+  // MANDATE.md, team-lead ruling on E33A/B/C reachability): E33C's
+  // HARD_FILTER (`hf.e33c.sponsor-not-government-or-none`, EXCLUDE unless
+  // GOVERNMENT/NONE) is identical in shape to E33B's — one question
+  // suffices on this "invest" branch (unlike the "work" branch's
+  // `employment_product_code_govt`/`employment_product_code_none` split
+  // below, there is no second, narrower-gated product sharing this
+  // branch). Asked only when `sponsor_category` is GOVERNMENT or NONE
+  // (flow.ts's "invest" branch) — the other four `sponsor_category` values
+  // can never pass this HARD_FILTER regardless of what they'd name here,
+  // so they are never offered the choice. Maps to the same
+  // `intent.requested_product_code` fact as `investment_product_code`
+  // above (fact-mapper.ts merges all four V1/E28+E33 UI answers with `??`
+  // — mutually exclusive by construction, since a given `sponsor_category`
+  // can only ever put ONE of these four questions on the interview path).
+  investment_product_code_govt: {
+    id: "investment_product_code_govt",
+    i18nKey: "q.investment_product_code_govt",
+    kind: "choice",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["intent.requested_product_code"],
+    },
+    sensitive: false,
+    options: [
+      {
+        key: "E33C",
+        labelI18nKey: "q.investment_product_code_govt.opt.E33C",
+      },
+      {
+        key: "STANDARD",
+        labelI18nKey: "q.investment_product_code_govt.opt.STANDARD",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.investment_product_code_govt" },
+    notSure: { mode: "human-review" },
+  },
+  // V1/E33 (2026-08-25): E33A and E33B are BOTH purposes=EMPLOYMENT
+  // ("work" category — review.e33a.central-government-invitation /
+  // review.e33b.expertise-qualification), but their independent
+  // HARD_FILTERs are NOT the same gate: `hf.e33a.sponsor-not-government`
+  // is GOVERNMENT-only, `hf.e33b.sponsor-not-government-or-none` is
+  // GOVERNMENT-or-NONE. A single question with a union gate would offer
+  // E33A to a NONE-sponsor applicant who can never pass its HARD_FILTER —
+  // this is exactly the over-asking risk team-lead's ruling asked to
+  // avoid, and this codebase has no facts-dependent-`options` mechanism to
+  // filter the choice list within one question instead (checked: every
+  // `Question.options` in this file is a static array). So this is split
+  // into two mutually exclusive questions keyed on `sponsor_category`
+  // (GOVERNMENT vs NONE are the only two values `getCategoryQuestionIds`'s
+  // "work" branch, flow.ts, ever routes to either one of) rather than one
+  // shared question.
+  employment_product_code_govt: {
+    id: "employment_product_code_govt",
+    i18nKey: "q.employment_product_code_govt",
+    kind: "choice",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["intent.requested_product_code"],
+    },
+    sensitive: false,
+    options: [
+      {
+        key: "E33A",
+        labelI18nKey: "q.employment_product_code_govt.opt.E33A",
+      },
+      {
+        key: "E33B",
+        labelI18nKey: "q.employment_product_code_govt.opt.E33B",
+      },
+      {
+        key: "STANDARD",
+        labelI18nKey: "q.employment_product_code_govt.opt.STANDARD",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.employment_product_code_govt" },
+    notSure: { mode: "human-review" },
+  },
+  // Sibling of `employment_product_code_govt` immediately above, for the
+  // OTHER `sponsor_category` value E33B's HARD_FILTER accepts (`NONE`) but
+  // E33A's does not — see that question's comment for the full reasoning.
+  // Never both shown: `getCategoryQuestionIds` inserts at most one of the
+  // two, keyed on the same `sponsor_category` answer.
+  employment_product_code_none: {
+    id: "employment_product_code_none",
+    i18nKey: "q.employment_product_code_none",
+    kind: "choice",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["intent.requested_product_code"],
+    },
+    sensitive: false,
+    options: [
+      {
+        key: "E33B",
+        labelI18nKey: "q.employment_product_code_none.opt.E33B",
+      },
+      {
+        key: "STANDARD",
+        labelI18nKey: "q.employment_product_code_none.opt.STANDARD",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.employment_product_code_none" },
     notSure: { mode: "human-review" },
   },
   investment_pt_pma: {

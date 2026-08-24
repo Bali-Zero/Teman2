@@ -199,7 +199,27 @@ const en = {
   "q.sponsor_category.opt.INVESTMENT": "An investment or company I own",
   "q.sponsor_category.opt.GOVERNMENT": "A government body",
   "why.sponsor_category":
-    "The sponsor category is recorded as its own exact fact. No rule in the current pack reads it yet — this only prepares the ground for rules that will.",
+    "The sponsor category is recorded as its own exact fact. It decides whether specific government-sponsored or no-sponsor visa routes can even be shown to you.",
+
+  "q.employment_product_code_govt":
+    "Do you already know if your case is a central-government-invitation or expertise-qualification work visa (E33A/E33B)?",
+  "q.employment_product_code_govt.opt.E33A":
+    "Yes — a central government invitation",
+  "q.employment_product_code_govt.opt.E33B":
+    "Yes — an expertise-qualification nomination",
+  "q.employment_product_code_govt.opt.STANDARD":
+    "No — evaluate my case on standard criteria",
+  "why.employment_product_code_govt":
+    "These two routes only exist for a government sponsor. Naming one sends your case to a consultant for manual verification — it never selects a visa path on its own.",
+
+  "q.employment_product_code_none":
+    "Do you already know if your case is an expertise-qualification work visa (E33B)?",
+  "q.employment_product_code_none.opt.E33B":
+    "Yes — an expertise-qualification nomination",
+  "q.employment_product_code_none.opt.STANDARD":
+    "No — evaluate my case on standard criteria",
+  "why.employment_product_code_none":
+    "This route only exists when you have no sponsor. Naming it sends your case to a consultant for manual verification — it never selects a visa path on its own.",
 
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
@@ -300,6 +320,14 @@ const en = {
     "No — evaluate my case on standard criteria",
   "why.investment_product_code":
     "Naming one of these four routes sends it to a consultant for manual verification — this is never used to select a visa path on its own.",
+  "q.investment_product_code_govt":
+    "Do you already know if your case is a central-government-invitation investor visa (E33C)?",
+  "q.investment_product_code_govt.opt.E33C":
+    "Yes — a central government invitation or nomination",
+  "q.investment_product_code_govt.opt.STANDARD":
+    "No — evaluate my case on standard criteria",
+  "why.investment_product_code_govt":
+    "This route only exists when your sponsor is a government body or you have no sponsor. Naming it sends your case to a consultant for manual verification — it never selects a visa path on its own.",
   "q.investment_pt_pma": "Is the PT PMA commitment already concrete?",
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
@@ -1029,7 +1057,26 @@ const id: Record<Keys, string> = {
   "q.sponsor_category.opt.INVESTMENT": "Investasi atau perusahaan milik saya",
   "q.sponsor_category.opt.GOVERNMENT": "Instansi pemerintah",
   "why.sponsor_category":
-    "Kategori sponsor dicatat sebagai fakta tersendiri. Belum ada aturan dalam rule pack saat ini yang membacanya — ini hanya menyiapkan data untuk aturan yang akan datang.",
+    "Kategori sponsor dicatat sebagai fakta tersendiri. Kategori ini menentukan apakah jalur visa khusus sponsor-pemerintah atau tanpa-sponsor bahkan dapat ditampilkan kepada Anda.",
+
+  "q.employment_product_code_govt":
+    "Apakah Anda sudah tahu apakah kasus Anda adalah visa kerja undangan-pemerintah-pusat atau kualifikasi-keahlian (E33A/E33B)?",
+  "q.employment_product_code_govt.opt.E33A": "Ya — undangan pemerintah pusat",
+  "q.employment_product_code_govt.opt.E33B":
+    "Ya — nominasi kualifikasi keahlian",
+  "q.employment_product_code_govt.opt.STANDARD":
+    "Tidak — evaluasi kasus saya dengan kriteria standar",
+  "why.employment_product_code_govt":
+    "Kedua jalur ini hanya ada untuk sponsor pemerintah. Menyebutkan salah satunya mengirimkan kasus Anda ke konsultan untuk verifikasi manual — ini tidak pernah dipakai untuk memilih jalur visa sendiri.",
+
+  "q.employment_product_code_none":
+    "Apakah Anda sudah tahu apakah kasus Anda adalah visa kerja kualifikasi-keahlian (E33B)?",
+  "q.employment_product_code_none.opt.E33B":
+    "Ya — nominasi kualifikasi keahlian",
+  "q.employment_product_code_none.opt.STANDARD":
+    "Tidak — evaluasi kasus saya dengan kriteria standar",
+  "why.employment_product_code_none":
+    "Jalur ini hanya ada jika Anda tidak memiliki sponsor. Menyebutkannya mengirimkan kasus Anda ke konsultan untuk verifikasi manual — ini tidak pernah dipakai untuk memilih jalur visa sendiri.",
 
   "q.business_activity": "Apa kegiatan utama Anda dalam perjalanan bisnis?",
   "q.business_activity.hint":
@@ -1132,6 +1179,14 @@ const id: Record<Keys, string> = {
     "Tidak — evaluasi kasus saya dengan kriteria standar",
   "why.investment_product_code":
     "Menyebutkan salah satu dari empat jalur ini mengirimkannya ke konsultan untuk verifikasi manual — ini tidak pernah dipakai untuk memilih jalur visa sendiri.",
+  "q.investment_product_code_govt":
+    "Apakah Anda sudah tahu apakah kasus Anda adalah visa investor undangan-pemerintah-pusat (E33C)?",
+  "q.investment_product_code_govt.opt.E33C":
+    "Ya — undangan atau nominasi pemerintah pusat",
+  "q.investment_product_code_govt.opt.STANDARD":
+    "Tidak — evaluasi kasus saya dengan kriteria standar",
+  "why.investment_product_code_govt":
+    "Jalur ini hanya ada jika sponsor Anda adalah instansi pemerintah atau Anda tidak memiliki sponsor. Menyebutkannya mengirimkan kasus Anda ke konsultan untuk verifikasi manual — ini tidak pernah dipakai untuk memilih jalur visa sendiri.",
   "q.investment_pt_pma": "Apakah komitmen PT PMA sudah konkret?",
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
