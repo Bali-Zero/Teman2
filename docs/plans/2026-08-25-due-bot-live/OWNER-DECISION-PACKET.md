@@ -40,17 +40,24 @@ item 1; unrelated to the new WABA you're creating.
 
 ## Item 2 — Webhook signature enforcement (WhatsApp + Instagram) — CORRECTED
 
-**MANDATE.md's original framing** ("`WHATSAPP_APP_SECRET` fetched from Meta into Fly secrets —
-client bot fail-open scar") describes a state that was already wrong before this mandate was
-written, and the fix has since merged. Three separate corrections, verified directly against the
-merged code at integration-branch tip `6f336a822` (not assumed from the mandate text):
+**MANDATE.md's own text carries a false premise on this item** — a frozen document being wrong
+about the world, not merely stale, and worth stating plainly rather than quietly working around:
+its framing ("`WHATSAPP_APP_SECRET` fetched from Meta into Fly secrets — client bot fail-open
+scar") describes a state that was already wrong before this mandate was written, and the fix for
+the REAL gap (Instagram, below) has since merged. This is written down explicitly so a later
+reader does not need to re-run the curl themselves to discover the mandate is wrong here. Three
+separate corrections, verified directly against the merged code at integration-branch tip
+`6f336a822` (not assumed from the mandate text):
 
 **1. `WHATSAPP_APP_SECRET` was never actually missing.** Live-checked twice — 2026-08-24 by a
 prior session, and again just now during this packet's drafting:
 `curl -X POST https://nuzantara-rag.fly.dev/webhook/whatsapp` with an unsigned body returns
 **HTTP 401**, not a silent accept. The mandate's "fail-open" framing traces to a 2026-08-23
 finding that a next-day investigation corrected: "UNSET" came from a truncated
-`fly secrets list | head -20` (215 total rows), not from the secret's actual absence.
+`fly secrets list | head -20` (215 total rows), not from the secret's actual absence — the same
+shape of bug as cicatrix family #2's **W97** ("display-cap `[:40]` letto come completo"): a
+paged/truncated listing misread as the complete set. Named here so the next reader recognizes
+the shape instead of rediscovering it.
 
 **2. Instagram, not WhatsApp, was the real live gap — and it is now closed in code.** Verified
 live before the merge: an unsigned POST to `/webhook/instagram` returned **HTTP 200** (no check
