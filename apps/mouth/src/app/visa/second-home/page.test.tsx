@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { cormorant } from "@balizero/core/fonts/cormorant";
 import { I18nProvider } from "@/i18n";
 import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
 import { SecondHomeLanding } from "./SecondHomeLanding";
@@ -34,11 +35,15 @@ describe("SecondHomeLanding", () => {
   });
 
   it("renders the hero, both qualifying routes, and the all-inclusive price", () => {
-    renderLanding();
+    const { container } = renderLanding();
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      /up to 5 years/i,
-    );
+    const heroHeading = screen.getByRole("heading", { level: 1 });
+    expect(container.firstElementChild).toHaveClass(cormorant.variable);
+    expect(heroHeading).toHaveTextContent(/up to 5 years/i);
+    expect(heroHeading).toHaveStyle({
+      fontFamily: "var(--font-serif, Georgia, serif)",
+    });
+    expect(heroHeading.style.fontFamily).not.toMatch(/Cormorant Garamond/i);
     // Two qualifying routes — the only two verified bases.
     expect(screen.getAllByText(/USD 130,000/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/USD 1,000,000/).length).toBeGreaterThan(0);

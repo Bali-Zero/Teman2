@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Phone } from "lucide-react";
+import { cormorant } from "@balizero/core/fonts/cormorant";
 import { useTranslation } from "@/i18n";
 import { OFFERED_LOCALES, type Locale } from "@/i18n/types";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
@@ -90,6 +91,7 @@ const sectionRuleStyle: React.CSSProperties = {
 
 const heroSectionStyle: React.CSSProperties = {
   display: "grid",
+  minWidth: 0,
   gap: "var(--space-4, 1rem)",
   paddingTop: "var(--space-2, 0.5rem)",
   paddingBottom: "var(--space-6, 1.5rem)",
@@ -206,6 +208,7 @@ export function SecondHomeLanding() {
     // defect, same fix, this route has no AppFrame ancestor either).
     <div
       data-funnel="visa"
+      className={cormorant.variable}
       style={{ display: "grid", gap: "var(--space-6, 1.5rem)" }}
     >
       <LanguageSwitcher />
