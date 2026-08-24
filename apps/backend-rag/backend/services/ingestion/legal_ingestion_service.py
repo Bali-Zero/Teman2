@@ -274,6 +274,65 @@ class LegalIngestionService:
         )
         return [str(point["id"]) for point in points]
 
+    @staticmethod
+    async def _assert_identity_unclaimed(
+        vector_db: QdrantClient,
+        document_id: str,
+        source_basename: str,
+    ) -> None:
+        """Refuse to write onto an identity another source document already holds.
+
+        Chunk ids are ``{document_id}_Pasal_{n}`` and Qdrant point ids are
+        ``uuid5(chunk_id)``, so two documents sharing a ``document_id`` share
+        point ids and the second ingest OVERWRITES the first. Qdrant reports
+        that as a successful upsert, because it is one — which is why the
+        failure mode is silent data loss rather than an error.
+
+        Measured on 2026-08-25: ``Permen_1_2026`` held 544 points belonging to
+        PMK 1/2026 (Ministry of Finance, Coretax) *and* Permen Imipas 1/2026
+        (Ministry of Immigration). The tax regulation had upserted 544 chunks of
+        its own; 494 survived; the immigration regulation's 50 account for the
+        difference exactly.
+
+        This guard is deliberately the LOUD half of the cure. It does not decide
+        what a good identity is — it only refuses to let one document silently
+        become another. That makes every future collision, including classes
+        nobody has enumerated yet, an error at write time instead of a hole
+        discovered months later.
+
+        Re-ingesting the SAME source document is not a collision and must pass:
+        that is how a corpus is refreshed.
+        """
+        existing = await vector_db.scroll_strict(
+            metadata_filter={"document_id": document_id},
+        )
+        if not existing:
+            return
+
+        claimants: set[str] = set()
+        for point in existing:
+            payload = point.get("payload") or {}
+            metadata = payload.get("metadata")
+            if not isinstance(metadata, dict):
+                metadata = payload
+            claimant = metadata.get("source_basename")
+            if not claimant:
+                stored_path = metadata.get("file_path")
+                claimant = Path(str(stored_path)).name if stored_path else None
+            if claimant:
+                claimants.add(str(claimant))
+
+        foreign = claimants - {source_basename}
+        if foreign:
+            raise LegalIngestIntegrityError(
+                "Legal identity collision: document_id "
+                f"{document_id!r} is already held by {sorted(foreign)!r}; "
+                f"refusing to overwrite it with {source_basename!r}. "
+                "Two documents sharing an identity share point ids, so this "
+                "write would silently destroy the other document's chunks. "
+                "Declare a distinct document_id for one of them."
+            )
+
     async def ingest_legal_document(
         self,
         file_path: str,
@@ -301,6 +360,15 @@ class LegalIngestionService:
 
         try:
             retrieval_scope = validate_legal_retrieval_scope(retrieval_scope)
+            # The caller's document_id is the DECLARED STORAGE IDENTITY when it
+            # is given. Until 2026-08-25 this parameter reached only the
+            # ingestion logger and the log `extra` fields, while the identity
+            # actually written to Qdrant was always derived from the extracted
+            # (type, number, year) triple — so a caller who passed a
+            # document_id got a correlation id and believed they had set the
+            # storage key. Capture it here, before `start_ingestion` reassigns
+            # `document_id` to its own trace id.
+            declared_storage_id = document_id
             # Generate document ID if not provided
             if not document_id:
                 document_id = f"legal_{int(start_time)}_{Path(file_path).stem}"
@@ -718,7 +786,16 @@ Return ONLY valid JSON, no markdown."""
 
             # STAGE 6: Hierarchical Indexing (Parent-Child)
             # Generate a document ID
-            current_doc_id = build_content_bound_legal_doc_id(metadata, source_sha256)
+            # A declared identity wins over the derived one. The derived triple
+            # (type, number, year) does NOT identify an Indonesian instrument:
+            # every ministry numbers its regulations from 1 each year, so PMK
+            # 1/2026 and Permen Imipas 1/2026 both reduce to `Permen_1_2026`.
+            # Declaring the identity is how a curated corpus states which
+            # instrument a file is; derivation stays the fallback for ingests
+            # that declare nothing.
+            current_doc_id = declared_storage_id or build_content_bound_legal_doc_id(
+                metadata, source_sha256
+            )
             doc_id = current_doc_id
             if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
                 doc_id = f"{doc_id}__historical"
@@ -732,6 +809,11 @@ Return ONLY valid JSON, no markdown."""
                 "min_level": min_level,
                 "language": "id",  # Indonesian
                 "file_path": file_path,
+                # Stable per-source comparator for the identity-collision guard.
+                # `file_path` is absolute and therefore machine-dependent (the
+                # same file ingested from a worktree and from the checkout
+                # differs), so the basename is what the guard compares.
+                "source_basename": Path(file_path).name,
                 "doc_type": "legal",
                 # Legal-specific metadata
                 "legal_type": metadata.get("type_abbrev"),
@@ -763,6 +845,14 @@ Return ONLY valid JSON, no markdown."""
             # Use HierarchicalIndexer
             indexing_start = time.time()
             quarantined_current_ids: list[str] = []
+            # Fail BEFORE the first mutation: the quarantine below already
+            # rewrites payloads, so a collision detected after it would leave
+            # the other document's points half-modified.
+            await self._assert_identity_unclaimed(
+                request_vector_db,
+                doc_id,
+                Path(file_path).name,
+            )
             if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
                 reconciliation_state = "QUARANTINE_IN_PROGRESS"
                 quarantined_current_ids = await self._quarantine_current_points(

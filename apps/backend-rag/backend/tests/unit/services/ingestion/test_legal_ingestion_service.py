@@ -49,7 +49,13 @@ def _build_service() -> LegalIngestionService:
         mch.return_value = MagicMock()
         mbm.return_value = MagicMock()
         mce.return_value = MagicMock()
-        mqd.return_value = MagicMock()
+        # The identity-collision guard scrolls for points already holding the
+        # computed document_id before anything is written. The default world for
+        # these tests is "nothing there yet"; tests that need a pre-existing
+        # document override scroll_strict themselves.
+        _vector_db = MagicMock()
+        _vector_db.scroll_strict = AsyncMock(return_value=[])
+        mqd.return_value = _vector_db
         mtc.return_value = MagicMock()
         mhi.return_value = MagicMock()
 
@@ -380,6 +386,9 @@ class TestIngestSuccess:
         base_vector_db = service.vector_db
         base_indexer_qdrant = service.indexer.qdrant
         request_vector_db = MagicMock(collection_name="tax_genius")
+        # Same as the shared fixture: the identity guard scrolls the
+        # REQUEST-local client, so it needs an empty world too.
+        request_vector_db.scroll_strict = AsyncMock(return_value=[])
         service.cleaner.clean.return_value = "cleaned tax regulation"
         service.metadata_extractor.extract.return_value = {
             "type": "Peraturan Menteri Keuangan",
@@ -795,6 +804,232 @@ class TestSkipPricing:
             )
 
             assert result["success"] is True
+
+
+# --------------------------------------------------------------------------- #
+# ingest_legal_document -- identity collision guard
+# --------------------------------------------------------------------------- #
+
+
+class TestIdentityCollisionGuard:
+    """The incident of 2026-08-25, encoded.
+
+    In production, `Permen_1_2026` held 544 points belonging to TWO unrelated
+    laws: PMK 1/2026 (Ministry of Finance, Coretax) and Permen Imipas 1/2026
+    (Ministry of Immigration). Every Indonesian ministry numbers its regulations
+    from 1 each year, so the extracted (type, number, year) triple collapsed
+    them onto one identity. Chunk ids are `{document_id}_Pasal_{n}` and point
+    ids are `uuid5(chunk_id)`, so the second ingest OVERWROTE 50 chunks of the
+    first. Qdrant reported a successful upsert, because it was one.
+
+    A guard that only proves guilt is half a guard: the refresh case (the SAME
+    document re-ingested) must still pass, or the corpus can never be updated.
+    Both halves are asserted here.
+    """
+
+    @staticmethod
+    def _coretax_metadata() -> dict:
+        return {
+            "type": "Peraturan Menteri",
+            "type_abbrev": "Permen",
+            "number": "1",
+            "year": "2026",
+            "topic": "Coretax",
+            "status": None,
+            "full_title": "PMK 1/2026",
+        }
+
+    def _prime(self, service: MagicMock, existing: list) -> None:
+        service.cleaner.clean.return_value = "cleaned legal text"
+        service.metadata_extractor.extract.return_value = self._coretax_metadata()
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 4,
+                "chunks_upserted": 4,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 4,
+            }
+        )
+        service.vector_db.scroll_strict = AsyncMock(return_value=existing)
+        service.vector_db.set_payload_by_filter = AsyncMock()
+        service.vector_db.delete_by_filter = AsyncMock()
+        service.vector_db.ensure_keyword_payload_index = AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_guilt_a_second_document_on_a_held_identity_is_refused(
+        self, service: MagicMock
+    ) -> None:
+        """The real collision: a DIFFERENT source file on an occupied identity."""
+        self._prime(
+            service,
+            existing=[
+                {
+                    "id": "coretax-point",
+                    "payload": {
+                        "document_id": "Permen_1_2026",
+                        "source_basename": "PMK_1_2026_Coretax_System.pdf",
+                    },
+                }
+            ],
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PermenImipas_1_2026_Perubahan.pdf",
+                title="Permen Imipas 1/2026",
+                category="01_immigrazione",
+            )
+
+        assert result["success"] is False
+        assert "identity collision" in str(result.get("error", "")).lower()
+        # Nothing may be written, and nothing may be mutated: the guard runs
+        # before the quarantine, which already rewrites payloads.
+        service.indexer.index_legal_document.assert_not_awaited()
+        service.vector_db.set_payload_by_filter.assert_not_awaited()
+        service.vector_db.delete_by_filter.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_innocence_the_same_document_may_be_re_ingested(
+        self, service: MagicMock
+    ) -> None:
+        """Refreshing a document is not a collision. It is the point of a corpus."""
+        self._prime(
+            service,
+            existing=[
+                {
+                    "id": "coretax-point",
+                    "payload": {
+                        "document_id": "Permen_1_2026",
+                        "source_basename": "PMK_1_2026_Coretax_System.pdf",
+                    },
+                }
+            ],
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/somewhere/else/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is True
+        service.indexer.index_legal_document.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_innocence_an_unclaimed_identity_passes(
+        self, service: MagicMock
+    ) -> None:
+        self._prime(service, existing=[])
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_absolute_path_alone_does_not_read_as_a_foreign_document(
+        self, service: MagicMock
+    ) -> None:
+        """Legacy points carry an absolute `file_path`, which is machine-specific.
+
+        The same file ingested from a worktree and from the checkout has two
+        different absolute paths. Comparing those would refuse every legitimate
+        re-ingest from a different machine, so the guard compares BASENAMES.
+        """
+        self._prime(
+            service,
+            existing=[
+                {
+                    "id": "legacy-point",
+                    "payload": {
+                        "document_id": "Permen_1_2026",
+                        "file_path": "/Users/someone/else/PMK_1_2026_Coretax_System.pdf",
+                    },
+                }
+            ],
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/laws/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_declared_identity_is_what_gets_stored(
+        self, service: MagicMock
+    ) -> None:
+        """`document_id` must mean the storage key, not a log correlation id.
+
+        Until 2026-08-25 the caller's `document_id` reached only the ingestion
+        logger, while the id written to Qdrant was always the derived triple —
+        so a caller who declared an identity got a trace id and believed they
+        had set the storage key. Declaring it is what lets a curated corpus say
+        which instrument a file is, when the extractor cannot tell PMK 1/2026
+        from Permen Imipas 1/2026.
+        """
+        self._prime(service, existing=[])
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id_not_the_storage_key"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+                document_id="PMK_1_2026",
+            )
+
+        assert result["success"] is True
+        stored = service.indexer.index_legal_document.await_args.kwargs["document_id"]
+        assert stored == "PMK_1_2026"
+        assert stored != "Permen_1_2026", (
+            "the derived triple is exactly the value that collided; declaring "
+            "an identity must override it"
+        )
+
+    @pytest.mark.asyncio
+    async def test_without_a_declaration_the_derived_identity_is_unchanged(
+        self, service: MagicMock
+    ) -> None:
+        """No declaration ⇒ the pre-existing derivation, byte for byte.
+
+        This pins the blast radius: nothing already in the collection changes
+        identity, so no migration is owed and the historical-replacement key
+        keeps matching.
+        """
+        self._prime(service, existing=[])
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        stored = service.indexer.index_legal_document.await_args.kwargs["document_id"]
+        assert stored == "Permen_1_2026"
 
 
 # --------------------------------------------------------------------------- #
