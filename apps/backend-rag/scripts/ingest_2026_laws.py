@@ -217,18 +217,24 @@ LAWS_2026 = [
         "filename": "PermenImipas_9_2025_Penambahan_Bebas_Visa_Kunjungan.pdf",
         "title": "Permen Imipas 9/2025 - Penambahan Daftar Negara, Pemerintah Wilayah Administratif Khusus Suatu Negara, dan Entitas Tertentu atau Pemegang Izin Tinggal Tertentu dari Suatu Negara yang Diberikan Bebas Visa Kunjungan",
         "category": "keimigrasian",
-        # CONFIRMED REPEALED, not merely superseded-in-practice: PermenImipas
-        # 10/2026's own Pasal 4 names this exact instrument by number and its
-        # Berita Negara citation (2025 Nomor 594) and states "dicabut dan
-        # dinyatakan tidak berlaku" — verified by reading 10/2026's PDF text
-        # directly, not inferred from the later date. This is a STRONGER case
-        # for historical_only than Permenkumham 34/2021 below, which has no
-        # confirmed repeal at all. Ingested as `current` alongside 10/2026, the
-        # two entries would present as two live, conflicting visa-exempt
-        # country lists for the same live query.
+        # SUPERSEDED IN SUBSTANCE — deliberately NOT claimed as expressly
+        # repealed. An earlier revision of this comment asserted that
+        # PermenImipas 10/2026's Pasal 4 repeals THIS instrument; that was
+        # wrong. Re-read verbatim, 10/2026 Pasal 4 names "Peraturan Menteri
+        # Imigrasi dan Pemasyarakatan NOMOR 10 TAHUN 2025 ... (Berita Negara
+        # Republik Indonesia Tahun 2025 Nomor 594)" — a DIFFERENT instrument,
+        # which this repo does not hold. No primary text in our corpus repeals
+        # 9/2025 by name, and 9/2025 itself contains no repeal clause.
+        #
+        # The scope is still historical_only, on the honest ground: 9/2025,
+        # 10/2025 and 10/2026 are successive revisions of the SAME visa-free
+        # country list under Perpres 95/2024 Pasal 5(4), and 10/2026 is the
+        # operative one. Served as `current`, 9/2025 would answer "which
+        # countries are visa-free?" with a stale list competing against the
+        # live one — the exact failure historical_only exists to prevent.
         "retrieval_scope": "historical_only",
-        "marketing_title_it": "Permen Imipas 9/2025 - Ampliamento dei Paesi Esenti da Visto di Visita (ABROGATO dal 10/2026)",
-        "marketing_title_en": "Permen Imipas 9/2025 - Expanded Visa-Free Visit Country List (REPEALED by 10/2026)",
+        "marketing_title_it": "Permen Imipas 9/2025 - Ampliamento dei Paesi Esenti da Visto di Visita (SUPERATO: la lista in vigore è il 10/2026)",
+        "marketing_title_en": "Permen Imipas 9/2025 - Expanded Visa-Free Visit Country List (SUPERSEDED: the list in force is 10/2026)",
     },
     {
         "filename": "PermenImipas_14_2025_Tarif_Nol_Rupiah.pdf",
