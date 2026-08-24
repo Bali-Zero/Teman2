@@ -13,6 +13,7 @@ import {
   CATEGORY_KEYS,
   QUESTIONS,
   REVIEW_GATE_ITEMS,
+  daysRemaining,
   parseIsoDateUtc,
   type CategoryKey,
   type OracleFacts,
@@ -396,6 +397,25 @@ export function channelConflictsWithOnshoreIntent(
 }
 
 /**
+ * Gate for the `renewal_paid` question (F4, 2026-08-24): asked only when
+ * the applicant holds a stay permit (`holds_stay_permit === "yes"`, the
+ * only route that reaches `stay_permit_code`) AND `permit_expiry` is
+ * either KNOWN-and-in-the-past or itself UNKNOWN — a known-current permit
+ * skips it. Reuses `daysRemaining` (tree.ts) so "in the past" and "unknown"
+ * share the exact same parsing/validity rules the rest of the interview
+ * already relies on: an invalid/missing/"unsure" `permit_expiry` yields
+ * `null`, which this treats as unknown (ask), never as current (skip).
+ */
+export function shouldAskRenewalPaid(
+  facts: OracleFacts,
+  today: Date = new Date(),
+): boolean {
+  if (facts.holds_stay_permit !== "yes") return false;
+  const remaining = daysRemaining(facts.permit_expiry ?? "", today);
+  return remaining === null || remaining < 0;
+}
+
+/**
  * The flow graph, pure function of the current node + facts so far. This
  * is the single source of truth for "what comes next" — used by the
  * reducer, by tests, and by `getTreeSteps` below to project the path.
@@ -405,7 +425,6 @@ export function computeNextNode(
   facts: OracleFacts,
   today: Date = new Date(),
 ): OracleNode {
-  void today; // kept injectable for snapshot/API compatibility
   if (current.kind === "framing") {
     return { kind: "question", questionId: "in_indonesia" };
   }
@@ -478,6 +497,10 @@ export function computeNextNode(
         : { kind: "question", questionId: "overstay_days" };
     }
     case "stay_permit_code":
+      return shouldAskRenewalPaid(facts, today)
+        ? { kind: "question", questionId: "renewal_paid" }
+        : { kind: "question", questionId: "overstay_days" };
+    case "renewal_paid":
       return { kind: "question", questionId: "overstay_days" };
     case "current_status_code":
       return { kind: "question", questionId: "overstay_days" };
@@ -970,6 +993,11 @@ export function getTreeSteps(
   // answer converges with NO further permit-chain steps (the fact
   // resolves from that answer alone, see `fact-mapper.ts`), a "yes"
   // answer then adds `permit_expiry` + `stay_permit_code`.
+  const renewalPaidStep: { id: string; labelI18nKey: string }[] =
+    facts.holds_stay_permit === "yes" && shouldAskRenewalPaid(facts)
+      ? [{ id: "renewal_paid", labelI18nKey: "tree.renewal_paid" }]
+      : [];
+
   const permitChainSteps: { id: string; labelI18nKey: string }[] =
     facts.in_indonesia === "yes"
       ? [
@@ -981,6 +1009,7 @@ export function getTreeSteps(
                 id: "current_status_code",
                 labelI18nKey: "tree.current_status_code",
               },
+          ...renewalPaidStep,
         ]
       : facts.in_indonesia === "no"
         ? [
@@ -998,6 +1027,7 @@ export function getTreeSteps(
                     id: "stay_permit_code",
                     labelI18nKey: "tree.stay_permit_code",
                   },
+                  ...renewalPaidStep,
                 ]
               : []),
           ]

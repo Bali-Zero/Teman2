@@ -425,6 +425,69 @@ describe("onshore/offshore canonical fact collection", () => {
   });
 });
 
+describe("renewal_paid gating (F4, 2026-08-24 owner ruling)", () => {
+  it("is reached for an onshore expired-permit path", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "2020-01-01");
+    state = answer(state, "holds_stay_permit", "yes");
+    state = answer(state, "stay_permit_code", "E28A");
+    expectQuestion(state, "renewal_paid");
+    state = answer(state, "renewal_paid", "yes");
+    expectQuestion(state, "overstay_days");
+    expect(state.facts.renewal_paid).toBe("yes");
+  });
+
+  it("is reached for an onshore not-sure-expiry path", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "unsure");
+    state = answer(state, "holds_stay_permit", "yes");
+    state = answer(state, "stay_permit_code", "E28A");
+    expectQuestion(state, "renewal_paid");
+  });
+
+  it("is reached for an offshore expired-permit path", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "no");
+    state = answer(state, "holds_stay_permit", "yes");
+    state = answer(state, "permit_expiry", "2020-01-01");
+    state = answer(state, "stay_permit_code", "E28A");
+    expectQuestion(state, "renewal_paid");
+  });
+
+  it("is NOT reached for a known-current permit (onshore)", () => {
+    const next = computeNextNode(
+      { kind: "question", questionId: "stay_permit_code" },
+      {
+        in_indonesia: "yes",
+        permit_expiry: "2099-01-01",
+        holds_stay_permit: "yes",
+        stay_permit_code: "E28A",
+      },
+      new Date(2026, 7, 24),
+    );
+    expect(next).toEqual({ kind: "question", questionId: "overstay_days" });
+  });
+
+  it("is NOT reached when no stay permit is held (current_status_code branch never routes here)", () => {
+    const next = computeNextNode(
+      { kind: "question", questionId: "current_status_code" },
+      {
+        in_indonesia: "yes",
+        permit_expiry: "2020-01-01",
+        holds_stay_permit: "no",
+        current_status_code: "C1",
+      },
+      new Date(2026, 7, 24),
+    );
+    expect(next).toEqual({ kind: "question", questionId: "overstay_days" });
+  });
+});
+
 /**
  * `wants_onshore_conversion` and `application_channel` describe the SAME
  * real-world fact from two angles. Left uncross-checked, `false` +
