@@ -32,28 +32,88 @@ import {
 
 const PAGE_PATH = "/visa/second-home";
 
-const sectionStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "var(--space-3, 1rem)",
+/* ── Font facts (verified against packages/core/fonts/{cormorant,inter}.ts)
+   Cormorant variable axis: 300–700. Inter variable axis: 100–900.
+   We stay inside the loaded ranges so no browser synthesis occurs. ── */
+
+const fontSans =
+  "var(--font-sans, ui-sans-serif, system-ui, sans-serif)" as const;
+const fontSerif = "var(--font-serif, Georgia, serif)" as const;
+
+const tabularNums: React.CSSProperties = {
+  fontVariantNumeric: "tabular-nums",
+  fontFeatureSettings: '"tnum"',
 };
 
 const eyebrowStyle: React.CSSProperties = {
-  fontSize: "0.62rem",
-  letterSpacing: "0.15em",
+  fontFamily: fontSans,
+  fontSize: "0.7rem",
+  fontWeight: 600,
+  letterSpacing: "0.16em",
   textTransform: "uppercase",
-  opacity: 0.5,
   color: "var(--color-text-muted)",
   margin: 0,
+  lineHeight: 1.4,
 };
 
 const cardStyle: React.CSSProperties = {
   background: "var(--surface-raised)",
   border: "1px solid var(--color-border-subtle)",
   borderRadius: 12,
-  padding: "var(--space-4, 1.5rem)",
+  padding: "var(--space-4, 1rem)",
   display: "grid",
   gap: "var(--space-2, 0.5rem)",
   alignContent: "start",
+};
+
+const bodyStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: fontSans,
+  fontSize: "var(--text-base, 1rem)",
+  lineHeight: 1.7,
+  color: "var(--text-primary)",
+};
+
+const mutedBodyStyle: React.CSSProperties = {
+  ...bodyStyle,
+  fontSize: "var(--text-sm, 0.875rem)",
+  lineHeight: 1.65,
+  color: "var(--color-text-muted)",
+};
+
+const sectionRuleStyle: React.CSSProperties = {
+  borderTop: "1px solid var(--color-border-subtle)",
+  paddingTop: "var(--space-8, 2rem)",
+};
+
+/* ── Section rhythms ── */
+
+const heroSectionStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "var(--space-4, 1rem)",
+  paddingTop: "var(--space-2, 0.5rem)",
+  paddingBottom: "var(--space-6, 1.5rem)",
+};
+
+const majorSectionStyle: React.CSSProperties = {
+  ...sectionRuleStyle,
+  display: "grid",
+  gap: "var(--space-5, 1.25rem)",
+};
+
+const minorSectionStyle: React.CSSProperties = {
+  ...sectionRuleStyle,
+  display: "grid",
+  gap: "var(--space-4, 1rem)",
+  maxWidth: "48rem",
+};
+
+const ctaSectionStyle: React.CSSProperties = {
+  ...cardStyle,
+  gap: "var(--space-3, 0.75rem)",
+  textAlign: "center",
+  justifyItems: "center",
+  padding: "clamp(var(--space-5, 1.5rem), 4vw, var(--space-8, 2rem))",
 };
 
 /**
@@ -146,22 +206,22 @@ export function SecondHomeLanding() {
     // defect, same fix, this route has no AppFrame ancestor either).
     <div
       data-funnel="visa"
-      style={{ display: "grid", gap: "var(--space-6, 3rem)" }}
+      style={{ display: "grid", gap: "var(--space-6, 1.5rem)" }}
     >
       <LanguageSwitcher />
 
-      {/* ── HERO ── */}
-      <section
-        style={{ ...sectionStyle, paddingTop: "var(--space-2, 0.5rem)" }}
-      >
+      {/* HERO */}
+      <section style={heroSectionStyle}>
         <p style={eyebrowStyle}>{t("secondHome.hero.eyebrow")}</p>
         <h1
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.9rem, 5vw, 2.8rem)",
-            lineHeight: 1.15,
+            fontFamily: fontSerif,
+            fontSize: "clamp(2.75rem, 7vw, 4.5rem)",
+            fontWeight: 700,
+            lineHeight: 1.05,
             color: "var(--text-primary)",
+            maxWidth: "16ch",
           }}
         >
           {t("secondHome.hero.title")}
@@ -169,10 +229,12 @@ export function SecondHomeLanding() {
         <p
           style={{
             margin: 0,
-            fontSize: "clamp(1rem, 2.4vw, 1.15rem)",
+            fontFamily: fontSans,
+            fontSize: "clamp(1.05rem, 2.2vw, 1.3rem)",
             lineHeight: 1.6,
             color: "var(--color-text-muted)",
             maxWidth: "46rem",
+            paddingTop: "var(--space-1, 0.25rem)",
           }}
         >
           {t("secondHome.hero.subtitle")}
@@ -180,21 +242,29 @@ export function SecondHomeLanding() {
         {price ? (
           <div
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "var(--space-3, 1rem)",
-              marginTop: "var(--space-2, 0.5rem)",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "var(--space-3, 0.75rem)",
+              marginTop: "var(--space-4, 1rem)",
+              maxWidth: "42rem",
             }}
           >
             {[1, 2, 3].map((n) => (
               <div
                 key={n}
-                style={{ ...cardStyle, padding: "var(--space-3, 1rem)" }}
+                style={{
+                  ...cardStyle,
+                  padding: "var(--space-4, 1rem)",
+                  gap: "var(--space-1, 0.25rem)",
+                }}
               >
                 <div
                   style={{
-                    fontFamily: "var(--font-serif, Georgia, serif)",
-                    fontSize: "1.3rem",
+                    ...tabularNums,
+                    fontFamily: fontSerif,
+                    fontSize: "clamp(1.75rem, 4vw, 2.5rem)",
+                    fontWeight: 700,
+                    lineHeight: 1.1,
                     color: "var(--accent-funnel-text, var(--accent-funnel))",
                   }}
                 >
@@ -202,7 +272,9 @@ export function SecondHomeLanding() {
                 </div>
                 <div
                   style={{
+                    fontFamily: fontSans,
                     fontSize: "0.7rem",
+                    fontWeight: 600,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
                     color: "var(--color-text-muted)",
@@ -216,15 +288,18 @@ export function SecondHomeLanding() {
         ) : null}
       </section>
 
-      {/* ── TWO QUALIFYING ROUTES ── */}
-      <section style={sectionStyle}>
+      {/* TWO QUALIFYING ROUTES */}
+      <section style={majorSectionStyle}>
         <p style={eyebrowStyle}>{t("secondHome.routes.eyebrow")}</p>
         <h2
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            fontFamily: fontSerif,
+            fontSize: "clamp(1.75rem, 4vw, 2.6rem)",
+            fontWeight: 700,
+            lineHeight: 1.1,
             color: "var(--text-primary)",
+            maxWidth: "18ch",
           }}
         >
           {t("secondHome.routes.title")}
@@ -232,7 +307,7 @@ export function SecondHomeLanding() {
         <div
           style={{
             display: "grid",
-            gap: "var(--space-3, 1rem)",
+            gap: "var(--space-4, 1rem)",
             gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           }}
         >
@@ -240,7 +315,9 @@ export function SecondHomeLanding() {
             <div key={route} style={cardStyle}>
               <div
                 style={{
+                  fontFamily: fontSans,
                   fontSize: "0.7rem",
+                  fontWeight: 600,
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   color: "var(--color-text-muted)",
@@ -250,30 +327,18 @@ export function SecondHomeLanding() {
               </div>
               <div
                 style={{
-                  fontFamily: "var(--font-serif, Georgia, serif)",
-                  fontSize: "1.5rem",
+                  ...tabularNums,
+                  fontFamily: fontSerif,
+                  fontSize: "clamp(1.75rem, 3.6vw, 2.4rem)",
+                  fontWeight: 700,
+                  lineHeight: 1.1,
                   color: "var(--accent-funnel-text, var(--accent-funnel))",
                 }}
               >
                 {t(`secondHome.routes.${route}.amount`)}
               </div>
-              <p
-                style={{
-                  margin: 0,
-                  lineHeight: 1.6,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {t(`secondHome.routes.${route}.body`)}
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "var(--text-sm, 0.88rem)",
-                  lineHeight: 1.5,
-                  color: "var(--color-text-muted)",
-                }}
-              >
+              <p style={bodyStyle}>{t(`secondHome.routes.${route}.body`)}</p>
+              <p style={mutedBodyStyle}>
                 {t(`secondHome.routes.${route}.note`)}
               </p>
             </div>
@@ -281,14 +346,16 @@ export function SecondHomeLanding() {
         </div>
       </section>
 
-      {/* ── WHO IT'S FOR ── */}
-      <section style={sectionStyle}>
+      {/* WHO IT'S FOR */}
+      <section style={minorSectionStyle}>
         <p style={eyebrowStyle}>{t("secondHome.who.eyebrow")}</p>
         <h2
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            fontFamily: fontSerif,
+            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
+            fontWeight: 700,
+            lineHeight: 1.15,
             color: "var(--text-primary)",
           }}
         >
@@ -297,30 +364,22 @@ export function SecondHomeLanding() {
         <div
           style={{
             display: "grid",
-            gap: "var(--space-3, 1rem)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: "var(--space-3, 0.75rem)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           }}
         >
           {(["base", "e33e", "e33f"] as const).map((track) => (
             <div key={track} style={cardStyle}>
               <div
                 style={{
+                  fontFamily: fontSans,
                   fontWeight: 600,
                   color: "var(--text-primary)",
                 }}
               >
                 {t(`secondHome.who.${track}.title`)}
               </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "var(--text-sm, 0.92rem)",
-                  lineHeight: 1.6,
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {t(`secondHome.who.${track}.body`)}
-              </p>
+              <p style={mutedBodyStyle}>{t(`secondHome.who.${track}.body`)}</p>
             </div>
           ))}
         </div>
@@ -328,38 +387,18 @@ export function SecondHomeLanding() {
           <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
             {t("secondHome.who.family.title")}
           </div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "var(--text-sm, 0.92rem)",
-              lineHeight: 1.6,
-              color: "var(--color-text-muted)",
-            }}
-          >
-            {t("secondHome.who.family.body")}
-          </p>
+          <p style={mutedBodyStyle}>{t("secondHome.who.family.body")}</p>
         </div>
         <div style={cardStyle}>
           <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
             {t("secondHome.who.nowork.title")}
           </div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "var(--text-sm, 0.92rem)",
-              lineHeight: 1.6,
-              color: "var(--color-text-muted)",
-            }}
-          >
-            {t("secondHome.who.nowork.body")}
-          </p>
+          <p style={mutedBodyStyle}>{t("secondHome.who.nowork.body")}</p>
         </div>
         <p
           style={{
-            margin: 0,
-            fontSize: "var(--text-sm, 0.82rem)",
-            lineHeight: 1.5,
-            color: "var(--color-text-muted)",
+            ...mutedBodyStyle,
+            fontSize: "0.82rem",
             fontStyle: "italic",
           }}
         >
@@ -367,15 +406,18 @@ export function SecondHomeLanding() {
         </p>
       </section>
 
-      {/* ── WHAT BALI ZERO DOES + PRICE ── */}
-      <section style={sectionStyle}>
+      {/* WHAT BALI ZERO DOES + PRICE */}
+      <section style={majorSectionStyle}>
         <p style={eyebrowStyle}>{t("secondHome.how.eyebrow")}</p>
         <h2
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            fontFamily: fontSerif,
+            fontSize: "clamp(1.75rem, 4vw, 2.6rem)",
+            fontWeight: 700,
+            lineHeight: 1.1,
             color: "var(--text-primary)",
+            maxWidth: "18ch",
           }}
         >
           {t("secondHome.how.title")}
@@ -383,7 +425,7 @@ export function SecondHomeLanding() {
         <div
           style={{
             display: "grid",
-            gap: "var(--space-3, 1rem)",
+            gap: "var(--space-4, 1rem)",
             gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           }}
         >
@@ -391,7 +433,9 @@ export function SecondHomeLanding() {
             <div key={step} style={cardStyle}>
               <div
                 style={{
+                  fontFamily: fontSans,
                   fontSize: "0.7rem",
+                  fontWeight: 600,
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   color: "var(--accent-funnel-text, var(--accent-funnel))",
@@ -402,14 +446,7 @@ export function SecondHomeLanding() {
               <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
                 {t(`secondHome.how.step${step}.title`)}
               </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "var(--text-sm, 0.92rem)",
-                  lineHeight: 1.6,
-                  color: "var(--color-text-muted)",
-                }}
-              >
+              <p style={mutedBodyStyle}>
                 {t(`secondHome.how.step${step}.body`)}
               </p>
             </div>
@@ -423,12 +460,15 @@ export function SecondHomeLanding() {
             border: "1px solid var(--accent-funnel)",
             textAlign: "center",
             justifyItems: "center",
-            gap: "var(--space-1, 0.3rem)",
+            gap: "var(--space-2, 0.5rem)",
+            padding: "clamp(var(--space-5, 1.5rem), 4vw, var(--space-8, 2rem))",
           }}
         >
           <div
             style={{
-              fontSize: "0.7rem",
+              fontFamily: fontSans,
+              fontSize: "0.75rem",
+              fontWeight: 600,
               letterSpacing: "0.15em",
               textTransform: "uppercase",
               color: "var(--color-text-muted)",
@@ -438,8 +478,11 @@ export function SecondHomeLanding() {
           </div>
           <div
             style={{
-              fontFamily: "var(--font-serif, Georgia, serif)",
-              fontSize: "clamp(2rem, 5vw, 2.6rem)",
+              ...tabularNums,
+              fontFamily: fontSerif,
+              fontSize: "clamp(2.4rem, 6vw, 3.6rem)",
+              fontWeight: 700,
+              lineHeight: 1,
               color: "var(--accent-funnel-text, var(--accent-funnel))",
             }}
           >
@@ -448,8 +491,11 @@ export function SecondHomeLanding() {
           <p
             style={{
               margin: 0,
-              fontSize: "var(--text-sm, 0.88rem)",
+              fontFamily: fontSans,
+              fontSize: "var(--text-sm, 0.875rem)",
+              lineHeight: 1.5,
               color: "var(--color-text-muted)",
+              maxWidth: "30rem",
             }}
           >
             {t("secondHome.how.priceNote")}
@@ -457,24 +503,25 @@ export function SecondHomeLanding() {
         </div>
       </section>
 
-      {/* ── 90-DAY COMPLIANCE DUTY ── */}
-      <section style={sectionStyle}>
+      {/* 90-DAY COMPLIANCE DUTY */}
+      <section style={minorSectionStyle}>
         <p style={eyebrowStyle}>{t("secondHome.duty.eyebrow")}</p>
         <h2
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            fontFamily: fontSerif,
+            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
+            fontWeight: 700,
+            lineHeight: 1.15,
             color: "var(--text-primary)",
+            maxWidth: "20ch",
           }}
         >
           {t("secondHome.duty.title")}
         </h2>
         <p
           style={{
-            margin: 0,
-            lineHeight: 1.7,
-            color: "var(--text-primary)",
+            ...bodyStyle,
             maxWidth: "46rem",
           }}
         >
@@ -482,14 +529,16 @@ export function SecondHomeLanding() {
         </p>
       </section>
 
-      {/* ── FAQ (visible; mirrors SECOND_HOME_FAQS used for JSON-LD) ── */}
-      <section style={sectionStyle}>
+      {/* FAQ */}
+      <section style={minorSectionStyle}>
         <p style={eyebrowStyle}>{t("secondHome.faq.eyebrow")}</p>
         <h2
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            fontFamily: fontSerif,
+            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
+            fontWeight: 700,
+            lineHeight: 1.15,
             color: "var(--text-primary)",
           }}
         >
@@ -503,6 +552,7 @@ export function SecondHomeLanding() {
                   cursor: "pointer",
                   fontWeight: 600,
                   color: "var(--text-primary)",
+                  lineHeight: 1.5,
                 }}
               >
                 {item.q}
@@ -510,8 +560,8 @@ export function SecondHomeLanding() {
               <p
                 style={{
                   margin: "var(--space-2, 0.5rem) 0 0",
-                  fontSize: "var(--text-sm, 0.92rem)",
-                  lineHeight: 1.6,
+                  fontSize: "var(--text-sm, 0.875rem)",
+                  lineHeight: 1.65,
                   color: "var(--color-text-muted)",
                 }}
               >
@@ -522,25 +572,20 @@ export function SecondHomeLanding() {
         </div>
       </section>
 
-      {/* ── STUDIO CTA — self-serve fit-check, alternative to the WhatsApp
-          handoff below. English-only by design (the Studio itself is
-          EN-only per its frozen spec), so this section is not routed
-          through the locale dictionary like the rest of the page. ── */}
+      {/* STUDIO CTA */}
       <section
         style={{
-          ...cardStyle,
+          ...ctaSectionStyle,
           border: "1px solid var(--accent-funnel)",
-          gap: "var(--space-3, 1rem)",
-          textAlign: "center",
-          justifyItems: "center",
-          padding: "var(--space-5, 2rem)",
         }}
       >
         <h2
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            fontFamily: fontSerif,
+            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
+            fontWeight: 700,
+            lineHeight: 1.15,
             color: "var(--text-primary)",
           }}
         >
@@ -549,6 +594,8 @@ export function SecondHomeLanding() {
         <p
           style={{
             margin: 0,
+            fontFamily: fontSans,
+            fontSize: "var(--text-base, 1rem)",
             lineHeight: 1.6,
             color: "var(--color-text-muted)",
             maxWidth: "38rem",
@@ -576,22 +623,17 @@ export function SecondHomeLanding() {
         </Link>
       </section>
 
-      {/* ── CTA — the only action: free Fit Memo via WhatsApp handoff ── */}
-      <section
-        style={{
-          ...cardStyle,
-          gap: "var(--space-3, 1rem)",
-          textAlign: "center",
-          justifyItems: "center",
-          padding: "var(--space-5, 2rem)",
-        }}
-      >
+      {/* CTA */}
+      <section style={ctaSectionStyle}>
         <h2
           style={{
             margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            fontFamily: fontSerif,
+            fontSize: "clamp(1.75rem, 4vw, 2.6rem)",
+            fontWeight: 700,
+            lineHeight: 1.1,
             color: "var(--text-primary)",
+            maxWidth: "18ch",
           }}
         >
           {t("secondHome.cta.title")}
@@ -599,6 +641,8 @@ export function SecondHomeLanding() {
         <p
           style={{
             margin: 0,
+            fontFamily: fontSans,
+            fontSize: "var(--text-base, 1rem)",
             lineHeight: 1.6,
             color: "var(--color-text-muted)",
             maxWidth: "38rem",
@@ -625,8 +669,8 @@ export function SecondHomeLanding() {
             gap: 8,
             padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
             borderRadius: 8,
-            background: "#25D366",
-            color: "#fff",
+            background: "var(--accent-whatsapp, #25D366)",
+            color: "var(--text-on-accent)",
             fontWeight: 600,
             textDecoration: "none",
             minHeight: 44,
