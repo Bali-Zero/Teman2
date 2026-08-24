@@ -103,12 +103,31 @@ deliverables and not others for the same true fact.
   cycle before merge, not as a follow-up).
 - **Contract suites.** Ran `PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/unit/research_os
   backend/tests/services/research_os -q` from `apps/backend-rag` myself this session: **343 tests
-  across 22 files, exit code 0**, all green, no skips observed in the run (counts independently
-  cross-checked two ways: summing per-file counts from `--collect-only -q` output, and a direct file
-  count of `test_*.py` under both directories). A green suite proves the tests and the code agree with
-  each other, at the cases the tests happen to cover — it is not, by itself, proof the contracts are
-  correct against `CONTRACTS.md`'s prose or against every case that matters; the schema/fixture and
-  hashing checks above are a second, independent form of verification for exactly that reason.
+  across 22 files, exit code 0**, all green — **0 skips as run on this worktree this session, all
+  343/343 executed** (`grep -c SKIPPED` on `-v` output = 0; counts independently cross-checked two
+  ways: summing per-file counts from `--collect-only -q` output, and a direct file count of
+  `test_*.py` under both directories, and re-confirmed a second time by a fresh subagent run).
+  **Environment-conditional, stated precisely rather than as a single global fact**: the suite
+  contains one skip-gated test, `test_prettier_json_matches_real_prettier_across_shape_table`
+  (`test_schemas.py`), whose `pytest.mark.skipif` fires only when `node` is absent or this repo's own
+  `node_modules/prettier/index.mjs` is not installed. It ran (not skipped) here because that file
+  exists in this worktree (confirmed via `ls -la`, 644274 bytes) — a second reviewer's fact-check pass
+  correctly observed 1 skip in its own environment. **Neither measurement is wrong; the divergence has
+  a mechanism, and it favors treating the skip as expected, not the run as suspect**:
+  `node_modules` is repo-gitignored (`.gitignore:234`, confirmed by `git ls-files node_modules`
+  returning empty) and therefore untracked. The fact-check's own methodological rigor — building a
+  clean, disposable worktree specifically to avoid contaminating what it measured — is exactly what
+  produced the divergence: a fresh worktree cannot carry an untracked, gitignored directory, so a
+  clean-room reproduction of this suite will always see this one test skip, the same way CI will.
+  **A clean-room run is a *different* environment, not a neutral one** — for anything gated on an
+  untracked local install, it is the *less* representative of the two, not the more rigorous one.
+  So: "0 skips" or "1 skip" as a bare document-wide claim would each be wrong depending on where it's
+  read; a reader who reproduces this suite in a fresh worktree or in CI and gets 342/343 should read
+  that as a correct reproduction, not as a discovered regression. A green suite proves the tests and the
+  code agree with each other, at the cases the tests happen to cover — it is not, by itself, proof the
+  contracts are correct against `CONTRACTS.md`'s prose or against every case that matters; the
+  schema/fixture and hashing checks above are a second, independent form of verification for exactly
+  that reason.
 
 ## 3. PARTIAL — state both halves, never round up
 
@@ -156,9 +175,19 @@ deliverables and not others for the same true fact.
   STATEMENT` trigger. `grep -ci truncate` against the migration file returns **0** — no such trigger
   exists. So `UPDATE`/`DELETE` on individual rows are correctly rejected, but anyone holding the
   `TRUNCATE` privilege on the table can empty it in one statement, bypassing the row-level guard
-  entirely. "Append-only" is corrected to "row-mutation-rejecting" everywhere in this document. A
-  `PENDING-ARMS.md` line has been opened in this same commit; proof-of-armed is a `TRUNCATE` against
-  the table in a throwaway database being rejected once a statement-level trigger exists.
+  entirely. "Append-only" is corrected to "row-mutation-rejecting" everywhere in this document. **Not
+  just reasoned — measured, twice, independently, on real PostgreSQL 15.19 in a throwaway database**
+  (the same instance used for the apply/rollback proof in §6):
+  ```
+  INSERT   → rc 0, 1 row
+  UPDATE   → rc 1, blocked: "ERROR: research_os_objects is append-only" (the trigger's OWN error
+             text still says "append-only" — the same overclaim this document is correcting)
+             CONTEXT: PL/pgSQL function reject_research_os_objects_mutation() line 3 at RAISE
+  TRUNCATE → rc 0, "TRUNCATE TABLE", row count after = 0
+  ```
+  A `PENDING-ARMS.md` line is opened in this same commit with this exact reproduction; proof-of-armed
+  is the same `TRUNCATE` sequence rejecting once a `BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger
+  exists.
 - **D8.** **The field-level compatibility matrix IS delivered and present at this document's own
   measured HEAD** — `evidence/p04/compatibility-matrix-001.md`, confirmed this session by
   `git show <this-HEAD>:.../compatibility-matrix-001.md`, not by directory listing alone (a listing
@@ -195,11 +224,23 @@ deliverables and not others for the same true fact.
   `sanitization_receipt.py` and `risk_reclassification_receipt.py` document this as a **DECLARED
   LIMIT**. One methodological note, kept because it is itself a small instance of the anti-hallucination
   discipline this document is applying throughout: a first single-line `grep -n "DECLARED LIMIT"` found
-  the string in `risk_reclassification_receipt.py` seven times but returned nothing for
-  `sanitization_receipt.py`. That was the tool, not the world — the phrase is line-wrapped there
-  (`...rolls back the entire bundle." DECLARED` at end of one line, `LIMIT, verified rather than
-  assumed:` starting the next). A wrap-tolerant read confirms it is present, with the same verified-not-
-  assumed framing as the other module: "the only existing multi-object primitive in this package,
+  the string in `risk_reclassification_receipt.py` **five times (lines 20, 35, 42, 57, 115)** but
+  returned nothing for `sanitization_receipt.py`. That absence was the tool, not the world — the phrase
+  is line-wrapped there (`...rolls back the entire bundle." DECLARED` at end of one line,
+  `LIMIT, verified rather than assumed:` starting the next), and a wrap-tolerant read confirms it is
+  present, with the same verified-not-assumed framing as the other module.
+
+  **This exact paragraph mis-stated its own count, and that is the more instructive failure of the
+  two.** An earlier draft said "seven times" here, not five. The count was wrong **inside the very
+  passage arguing that a naive tool can lie about a count** — one lying instrument (the single-line
+  grep, diagnosed) sat beside a second, undiagnosed one (a wrong number, asserted with the same
+  confidence as the corrected claim next to it), in the same sentence, and it took a second reviewer's
+  independent recount — three concordant methods: `grep -c`, `grep -o | wc -l`, and direct line
+  citation — to catch it. Recorded rather than smoothed away: a document that argues for recounting
+  and then miscounts, and says so plainly when caught, is more credible than one that has never
+  visibly been wrong. The count above is now correct, verified the same three ways. A wrap-tolerant
+  read of `sanitization_receipt.py` confirms it makes the same verified-not-assumed framing as the
+  other module: "the only existing multi-object primitive in this package,
   `research_os.graph.select_current_member`, is a pure in-memory selector/quarantine function ... and
   no persistence/repository module exists anywhere under `packages/research-os-core` to check against
   (confirmed by listing the package: ...)". Both receipt modules genuinely make this claim, and both
@@ -238,7 +279,7 @@ Nothing in the request-serving path calls them. A contract layer nothing calls i
 whose real integration cost is still entirely unmeasured. Cohort B should plan for that cost, not
 assume it away because the contracts themselves are solid.
 
-## 6. Finding 2 — the migration has no apply/rollback test
+## 6. Finding 2 — the migration's apply/rollback proof exists but is not armed as a test
 
 No test names `279` or `contract_core` (verified by file name and by content — `grep -rl` across
 `apps/backend-rag/backend/tests/db/` for either string returns zero matches). The file that most
@@ -253,28 +294,45 @@ confirmation that **no generic mechanism exists from which `279` could have been
 distinction matters for the Conductor: "a sweep skipped it" is a bug in the sweep; "no sweep exists"
 is a structural gap — and the second is what this repository has. Named sibling migrations (`107`,
 `114_115_116`, `139`, `149` through `153`) each have their own dedicated per-migration test file in
-the same directory, confirmed by listing — 279 has none. What stands, doubly confirmed: **no test in
-this repository proves migration 279 applies and rolls back against an isolated database**, which is
-the packet's own stated exit criterion, unmet.
+the same directory, confirmed by listing — 279 has none. **No *automated* test in this repository
+proves migration 279 applies and rolls back against an isolated database.**
 
-**This is a decision for S9-C0, not something this document resolves (adversarial review R1).** A PASS
-document does not have the authority to waive a packet's own stated exit criterion, and neither does
-the builder who wrote it — that authority sits with the Conductor, and saying otherwise here would be
-this document doing exactly what §8 accuses the board of: quietly making a call that belongs upstream.
-Two explicit options, stated as options rather than resolved:
-1. **Accept the local-PostgreSQL-17.8 manual proof (below, this section) as sufficient evidence for now**, treating
-   the CI-isolated-database, PG15-specific automated test as a renegotiated exit criterion to be closed
-   later, before this migration is actually applied anywhere.
-2. **Hold D5 at its current PARTIAL grade** until a PG15 automated apply/rollback test exists in this
-   repository, and treat that test as a precondition for calling D5 done.
+**The packet's exit criterion has since been met by hand, on the correct PostgreSQL version, and
+independently reproduced — but it is still not armed as an automated test (adversarial review R1,
+revised after a second reviewer closed the PG15 gap with a real proof).** This changes what kind of
+decision is left for the Conductor: the earlier open question was "does the proof exist at all";
+that is now closed. What remains is "proven once by hand → armed as CI," the same esiste≠armato shape
+as everywhere else in this document, not "never proven."
+
+**Reproduced twice, independently, on real PostgreSQL 15.19** (a second reviewer's session ran it
+first, on a throwaway `postgres:15` Docker container on a non-production port, removed after; this
+session reproduced the identical sequence independently, on its own fresh throwaway container, before
+writing this paragraph):
+```
+APPLY    → rc 0 — table created, exactly 4 indexes (pkey, kind_recorded_idx,
+           object_id UNIQUE, payload_gin_idx — confirmed via \d), trigger present
+ROLLBACK → rc 0 — 0 tables, 0 functions remaining (drops the trigger function too)
+RE-APPLY → rc 0 — table restored
+```
+**Declared limit, stated rather than hidden**: this proof applied the migration to an **empty**
+database. Production, if this migration is ever applied there, carries 278 pre-existing migrations
+already. The proof shows the SQL is valid and reversible in isolation — which is what "isolated
+database" in the packet's exit criterion actually asks for — **not** that it composes cleanly against
+the existing production schema, which this proof does not and cannot claim.
+
+Two options for the Conductor, narrower than before because the proof itself is no longer in
+question:
+1. **Accept the manual, twice-reproduced PG15.19 proof as satisfying the exit criterion's substance**,
+   and treat "convert it into a permanent, automated CI test" as follow-up work rather than a blocking
+   gap — condition 6 in §9 reflects this framing.
+2. **Hold D5 at its current PARTIAL grade** until that manual proof is captured as a permanent,
+   automated test in this repository (matching the shape of the `107`/`114_115_116`/`139`/`149`–`153`
+   sibling tests), and treat that test's existence as the precondition for calling D5 done.
 This document does not pick between them. It is recorded as condition 5 in §9 below.
 
-I did not repeat the builder's manual local-database roundtrip proof myself this session (it requires
-mutating state on a live local Postgres instance whose ownership I could not confirm was safe to touch
-mid-session, and re-running someone else's already-narrated procedure adds little). As reported: APPLY
-rc 0 → table plus 4 indexes created; ROLLBACK rc 0 → zero tables; RE-APPLY rc 0 → table restored, on
-local PostgreSQL 17.8 — **explicitly not** the PG15 proof the packet requires, since CI runs
-`postgres:15`.
+**Squawk and the construct-level PG15 checks below were independently re-verified this session and
+remain unaffected by the above** — they establish that the migration's SQL is PG15-compatible by
+construction; the paragraphs above establish that it also runs correctly on a real PG15 instance.
 
 What I *did* independently re-verify, and where the source brief's phrasing needed a correction: the
 brief stated "`squawk --pg-version=15.0` reports zero issues." Run bare, that is **false** — I ran
@@ -397,12 +455,18 @@ unconditional; each has an owner and a closure test.
    next P04 builder. Closes when: the DECLARED LIMIT documented in `sanitization_receipt.py` and
    `risk_reclassification_receipt.py` is replaced by an actual cross-object atomic guard, or the
    Conductor formally accepts the declared limit as permanent scope for v1.0.0.
-5. **R1 — the PG15 apply/rollback exit criterion.** Owner: **S9-C0**, not a builder. Closes when: one
-   of the two options in §6 is chosen and recorded in this ledger.
-6. **A permanent, automated PG15 apply/rollback test for migration 279.** Owner: next P04 builder,
-   triggered if condition 5 resolves to option 2. Closes when: a dedicated test file exists (matching
-   the shape of the sibling tests for `107`, `114_115_116`, `139`, `149`–`153`) proving apply and
-   rollback against `postgres:15` in CI, not merely against a local PG17.8 instance.
+5. **R1 — whether the twice-reproduced manual PG15.19 proof (§6) satisfies the exit criterion's
+   substance, or only an automated CI test does.** Owner: **S9-C0**, not a builder. Closes when: one
+   of the two options in §6 is chosen and recorded in this ledger. **Narrower than at this document's
+   first draft**: the proof itself now exists and has been independently reproduced twice on the
+   correct PostgreSQL version — the open question is only whether that satisfies the letter of "tests
+   in an isolated database," not whether the migration actually works on PG15.
+6. **A permanent, automated PG15 apply/rollback test for migration 279, converting the manual proof
+   in §6 into CI.** Owner: next P04 builder. Closes when: a dedicated test file exists (matching the
+   shape of the sibling tests for `107`, `114_115_116`, `139`, `149`–`153`) proving apply and rollback
+   against `postgres:15` in CI. Declared, not hidden: neither the manual proof nor this future
+   automated test composes against production's existing 278 migrations — both apply to an empty
+   schema, which is what "isolated database" means, not a staging-parity claim.
 7. **The `TRUNCATE` gap on `research_os_objects` (§3, M1).** Owner: next P04 builder. Closes when:
    a `BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger exists and a `TRUNCATE` attempt against the
    table in a throwaway database is proven rejected — tracked in `PENDING-ARMS.md` alongside this
@@ -430,8 +494,14 @@ survived would hide from the reader how much scrutiny the surviving ones actuall
 
 - **R1 — the original verdict asserted a claim that contradicted the packet's own stated exit
   criterion for D5 (the PG15 apply/rollback test) without naming that as a decision only the
-  Conductor can make.** Applied: §6 now states the PG15/apply-rollback gap explicitly as a decision
-  for S9-C0, with two named options, resolved by neither this document nor its author.
+  Conductor can make.** Applied: §6 states the PG15/apply-rollback gap explicitly as a decision
+  for S9-C0, with two named options, resolved by neither this document nor its author. **Revised a
+  second time, after the finding itself moved**: between this review and this commit, the PG15 gap
+  was independently closed by manual proof — twice, by two different sessions, on real
+  PostgreSQL 15.19 in a throwaway database — while remaining unarmed as an automated test. §6 and §9
+  condition 5 are rewritten to reflect the narrower question that remains (does a twice-reproduced
+  manual proof satisfy the exit criterion's substance, versus does only an automated test) rather than
+  the wider one R1 originally addressed (does any proof exist at all).
 - **R2 — "conditional pass" was asserted with no stated conditions.** Applied: new §9 lists seven
   numbered conditions, each with an owner and a closure test, plus an explicit list of what would move
   this document to REFUSE.
@@ -470,9 +540,16 @@ survived would hide from the reader how much scrutiny the surviving ones actuall
   count.
 - **M5 — the contract-suite claim needed an exact count and an epistemic caveat on what "green" proves.**
   Applied: §2's contract-suites bullet now states **343 tests across 22 files**, exit 0 (cross-checked
-  by summing `--collect-only` per-file counts and by direct file count), plus a sentence that a green
-  suite proves tests and code agree at the covered cases, not that the contracts are correct against
-  every case that matters.
+  by summing `--collect-only` per-file counts, by direct file count, and by a fresh subagent re-run),
+  plus a sentence that a green suite proves tests and code agree at the covered cases, not that the
+  contracts are correct against every case that matters. **One correction to M5's own supporting
+  measurement, caught during this session's follow-up**: a fact-check pass reported "no skips" as
+  false and cited 1 skip — that count is real on the environment it was measured in, but is not a
+  document-wide fact. `test_prettier_json_matches_real_prettier_across_shape_table` skips only when
+  this repo's own `node_modules/prettier` is absent; it is present in this worktree, so the test runs
+  here (confirmed twice, including via a fresh subagent). §2 now states the skip as a property of the
+  test and its environment-conditional guard, not as a fixed count that would be wrong to state
+  identically everywhere.
 - **M6 — "schemas match" needed a scope delimitation.** Applied: §2 D2 now states explicitly that
   schema/fixture parity is static internal consistency (checked-in artifacts match what the models
   generate), not a semantic-correctness claim against `CONTRACTS.md`'s prose.
