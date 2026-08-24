@@ -280,7 +280,7 @@ class TestIssuanceSubmissionGateDeclineIsCleanOnTheWire:
     def test_arrival_date_unconfirmed_decline_is_clean_on_the_wire(self) -> None:
         from backend.services.garuda_flow.operating_calendar import COVERAGE_END
 
-        today = date(2026, 6, 1)
+        today = date(2026, 12, 1)
         entry = COVERAGE_END + timedelta(days=5)  # past the decreed 2026 calendar
         req = VoaIntakeRequest(
             case_type=CaseType.ISSUANCE,
@@ -294,7 +294,28 @@ class TestIssuanceSubmissionGateDeclineIsCleanOnTheWire:
         verdict = build_verdict(req, today=today)
         assert verdict.decision.value == "DECLINE"
         assert "ARRIVAL_DATE_UNCONFIRMED" in verdict.decline_codes
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
         assert verdict.submit_by_date is None  # never a guessed date
+        response = _decline_response(verdict.decline_codes, submit_by_date=verdict.submit_by_date)
+        _assert_payload_clean(response.model_dump_json())
+
+    def test_arrival_too_far_decline_is_clean_on_the_wire(self) -> None:
+        # 91 days out is the first day outside the eVOA usability window.
+        today = date(2026, 8, 24)
+        entry = today + timedelta(days=91)
+        req = VoaIntakeRequest(
+            case_type=CaseType.ISSUANCE,
+            nationality="USA",
+            entry_date=entry,
+            passport_expiry_date=entry + timedelta(days=400),
+            purpose=Purpose.TOURISM,
+            travellers=1,
+            self_pay=True,
+        )
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision.value == "DECLINE"
+        assert "ARRIVAL_TOO_FAR" in verdict.decline_codes
+        assert verdict.submit_by_date is not None
         response = _decline_response(verdict.decline_codes, submit_by_date=verdict.submit_by_date)
         _assert_payload_clean(response.model_dump_json())
 
