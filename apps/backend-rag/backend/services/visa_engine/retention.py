@@ -4,6 +4,16 @@ No retention duration lives in application code. Zero-approved policy rows
 are the only source of a duration/anchor, and PostgreSQL remains the final
 authority for binding and purging. This module exposes read/check and bounded
 worker primitives without inventing a scheduler cadence.
+
+A third governed store joined this module via migration 282:
+``visa_oracle_consultant_requests`` (migration 281, the durable "Talk to a
+consultant" request log). Unlike the decisions/idempotency pair above, that
+table carries no ``environment`` column and is not bound to a policy at
+INSERT time -- migration 282's own header explains why (a live,
+contract-frozen customer control that must not start fail-closing writes the
+instant a policy is missing). ``purge_expired_consultant_requests`` and
+``consultant_request_retention_evidence`` below resolve the governing policy
+dynamically, at read time, against ``visa_oracle_consultant_request_retention_policies``.
 """
 
 from __future__ import annotations
@@ -45,6 +55,16 @@ class DecisionRetentionEvidence:
 
     expired_rows: int
     expired_held_rows: int
+    max_lag_seconds: float
+    observed_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ConsultantRequestRetentionEvidence:
+    """Evaluation/client-identifier-free evidence for
+    ``visa_oracle_consultant_requests`` purge backlog/lag alerting."""
+
+    expired_rows: int
     max_lag_seconds: float
     observed_at: datetime
 
@@ -122,6 +142,40 @@ async def purge_expired_idempotency(
     async with db_pool.acquire() as conn:
         deleted = await conn.fetchval(
             "SELECT public.purge_visa_evaluate_idempotency($1, $2)",
+            limit,
+            requested_by,
+        )
+    return int(deleted)
+
+
+async def purge_expired_consultant_requests(
+    db_pool: asyncpg.Pool,
+    *,
+    limit: int,
+    requested_by: str,
+) -> int:
+    """Run one bounded, DB-enforced purge batch over
+    ``visa_oracle_consultant_requests`` and return deleted rows.
+
+    ``limit`` and actor are mandatory, same as the decisions/idempotency
+    purgers above: cadence and batch sizing remain an explicit
+    operator/scheduler decision. PostgreSQL independently rejects
+    out-of-range limits and non-expired rows, and records every successful
+    deletion batch as append-only aggregate evidence. Unlike the two purgers
+    above, "expired" is resolved dynamically against whichever
+    Zero-approved policy (if any) governed the row's anchor timestamp at
+    write time -- see migration 282's header. While no policy exists, or a
+    row's anchor timestamp falls outside every policy's effective_period,
+    this is a documented no-op: it returns 0 and writes no evidence batch.
+    """
+
+    if type(limit) is not int or not 1 <= limit <= 1_000:
+        raise ValueError("limit must be an integer between 1 and 1000")
+    if not isinstance(requested_by, str) or _REQUESTED_BY_RE.fullmatch(requested_by) is None:
+        raise ValueError("requested_by has an invalid format")
+    async with db_pool.acquire() as conn:
+        deleted = await conn.fetchval(
+            "SELECT public.purge_visa_oracle_consultant_requests($1, $2)",
             limit,
             requested_by,
         )
@@ -233,6 +287,25 @@ async def decision_retention_evidence(
     )
 
 
+async def consultant_request_retention_evidence(
+    db_pool: asyncpg.Pool,
+) -> ConsultantRequestRetentionEvidence:
+    """Read aggregate expired-row count and maximum lag for
+    ``visa_oracle_consultant_requests``, without evaluation_id/client_id."""
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM public.visa_oracle_consultant_requests_retention_evidence()"
+        )
+    if row is None:  # pragma: no cover - SQL function always returns one row
+        raise RuntimeError("consultant request retention evidence unavailable")
+    return ConsultantRequestRetentionEvidence(
+        expired_rows=int(row["expired_rows"]),
+        max_lag_seconds=float(row["max_lag_seconds"]),
+        observed_at=row["observed_at"],
+    )
+
+
 async def idempotency_key_usage_evidence(
     db_pool: asyncpg.Pool,
 ) -> tuple[IdempotencyKeyUsageEvidence, ...]:
@@ -253,14 +326,17 @@ async def idempotency_key_usage_evidence(
 
 
 __all__ = [
+    "ConsultantRequestRetentionEvidence",
     "DecisionRetentionEvidence",
     "IdempotencyKeyUsageEvidence",
     "IdempotencyRetentionEvidence",
     "active_policy_available",
+    "consultant_request_retention_evidence",
     "decision_retention_evidence",
     "erase_decision_for_dsr",
     "idempotency_key_usage_evidence",
     "idempotency_retention_evidence",
+    "purge_expired_consultant_requests",
     "purge_expired_decisions",
     "purge_expired_idempotency",
     "set_decision_legal_hold",
