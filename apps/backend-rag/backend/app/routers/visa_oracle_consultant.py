@@ -59,7 +59,12 @@ class ConsultantAssignmentRequestBody(BaseModel):
 
 
 class ConsultantAssignmentAccepted(BaseModel):
-    accepted: bool
+    """No ``accepted: bool`` — the 202 status code already carries that, and
+    every path that reaches this model's construction has, by construction,
+    already succeeded (any failure raises HTTPException first). A boolean
+    that can only ever be ``True`` is a field a future caller will one day
+    check as if it meant something (team-lead review finding)."""
+
     request_id: str
 
 
@@ -104,4 +109,4 @@ async def request_consultant_assignment(
     # request's own timeout instead of leaking an untracked background task.
     await notify_consultant_assignment_request(event, request_id)
 
-    return ConsultantAssignmentAccepted(accepted=True, request_id=str(request_id))
+    return ConsultantAssignmentAccepted(request_id=str(request_id))

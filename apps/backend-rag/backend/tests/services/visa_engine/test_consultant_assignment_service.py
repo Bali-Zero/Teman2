@@ -24,6 +24,7 @@ import httpx
 import pytest
 import pytest_asyncio
 
+from backend.db.migration_base import split_migration_sql
 from backend.services.visa_engine.consultant_assignment import (
     ConsultantAssignmentEvent,
     EventLocale,
@@ -64,7 +65,12 @@ async def db_pool() -> asyncpg.Pool:
 
 @pytest_asyncio.fixture(scope="function")
 async def consultant_requests_schema(db_pool: asyncpg.Pool) -> None:
-    forward_sql = _MIGRATION_281_PATH.read_text()
+    # split_migration_sql, not raw .read_text(): the file carries a
+    # `-- === ROLLBACK ===` section (CLAUDE.md's own documented scar —
+    # "Migration Runner Was Executing ROLLBACK Section In-Transaction",
+    # 2026-04-19) whose DROP statements would otherwise execute in the same
+    # implicit batch as the CREATE statements and silently undo them.
+    forward_sql, _ = split_migration_sql(_MIGRATION_281_PATH.read_text())
     async with db_pool.acquire() as conn:
         await conn.execute(_TEARDOWN_281_SQL)  # defensive, in case a prior run left it
         await conn.execute(forward_sql)
@@ -196,13 +202,33 @@ class TestNotifyConsultantAssignmentRequest:
     async def test_no_token_configured_is_a_silent_noop(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Not-raising alone would also be true of a version that tried to
+        send and silently ate a real failure — assert the SPECIFIC early-exit
+        path: no HTTP client is even constructed when unconfigured."""
+
         monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
-        # Must not raise even though nothing is configured.
+
+        client_constructed = False
+
+        class _AssertNeverConstructedClient:
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                nonlocal client_constructed
+                client_constructed = True
+
+        monkeypatch.setattr(httpx, "AsyncClient", _AssertNeverConstructedClient)
+
         await notify_consultant_assignment_request(_event(), uuid.uuid4())
 
+        assert client_constructed is False
+
     async def test_http_failure_is_swallowed_not_raised(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
+        """Not-raising alone doesn't distinguish 'caught and logged' from
+        'the whole function silently became a no-op' (the same shape as
+        the guard mutation-test earlier in this file) — assert the specific
+        warning fires, naming the failure, not just that nothing exploded."""
+
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token-for-test")
 
         class _FailingClient:
@@ -220,8 +246,18 @@ class TestNotifyConsultantAssignmentRequest:
 
         monkeypatch.setattr(httpx, "AsyncClient", _FailingClient)
 
-        # Must not raise — this is the whole point of "best-effort".
-        await notify_consultant_assignment_request(_event(), uuid.uuid4())
+        request_id = uuid.uuid4()
+        with caplog.at_level(
+            "WARNING", logger="backend.services.visa_engine.consultant_assignment_service"
+        ):
+            # Must not raise — this is the whole point of "best-effort".
+            await notify_consultant_assignment_request(_event(), request_id)
+
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert len(warnings) == 1
+        assert "swallowed" in warnings[0].message
+        assert str(request_id) in warnings[0].message
+        assert "simulated network failure" in warnings[0].message
 
     async def test_configured_and_successful_posts_to_telegram_api(
         self, monkeypatch: pytest.MonkeyPatch

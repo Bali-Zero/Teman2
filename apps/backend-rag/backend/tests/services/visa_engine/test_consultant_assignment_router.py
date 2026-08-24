@@ -31,6 +31,7 @@ import pytest_asyncio
 from fastapi import FastAPI
 
 from backend.app.routers import visa_oracle_consultant
+from backend.db.migration_base import split_migration_sql
 from backend.services.visa_engine import consultant_assignment_service
 
 pytestmark = pytest.mark.asyncio
@@ -86,7 +87,12 @@ async def db_pool() -> asyncpg.Pool:
 
 @pytest_asyncio.fixture(scope="function")
 async def consultant_requests_schema(db_pool: asyncpg.Pool) -> None:
-    forward_sql = _MIGRATION_281_PATH.read_text()
+    # split_migration_sql, not raw .read_text(): the file carries a
+    # `-- === ROLLBACK ===` section (CLAUDE.md's own documented scar —
+    # "Migration Runner Was Executing ROLLBACK Section In-Transaction",
+    # 2026-04-19) whose DROP statements would otherwise execute in the same
+    # implicit batch as the CREATE statements and silently undo them.
+    forward_sql, _ = split_migration_sql(_MIGRATION_281_PATH.read_text())
     async with db_pool.acquire() as conn:
         await conn.execute(_TEARDOWN_281_SQL)  # defensive, in case a prior run left it
         await conn.execute(forward_sql)
@@ -119,7 +125,12 @@ class TestSuccessPath:
 
         assert response.status_code == 202
         payload = response.json()
-        assert payload["accepted"] is True
+        # No `accepted` field (team-lead review finding: it could only ever
+        # be True, which is a field that means nothing — the 202 status
+        # already carries acceptance). Assert its ABSENCE, not its value —
+        # a stray `accepted` key surviving a future edit would be exactly
+        # the dead-field regression this removal was for.
+        assert set(payload.keys()) == {"request_id"}
         request_id = uuid.UUID(payload["request_id"])  # raises if not a real UUID
 
         async with db_pool.acquire() as conn:
