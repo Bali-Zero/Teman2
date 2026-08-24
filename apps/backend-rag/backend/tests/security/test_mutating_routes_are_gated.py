@@ -145,20 +145,31 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "/webhook/whatsapp",
         "Meta WhatsApp webhook. VERIFIED 2026-07-17: whatsapp_chat.py "
         "_verify_whatsapp_signature DOES check X-Hub-Signature-256 HMAC-SHA256 "
-        "when WHATSAPP_APP_SECRET is set — BUT its own docstring says "
-        "'True if signature is valid OR verification is disabled (no app "
-        "secret configured)': a silent fail-open if that env var is ever "
-        "unset. Config-dependent, not exploitable in this repo's default "
-        "state, but a landmine — see PENDING-ARMS.",
+        "when WHATSAPP_APP_SECRET is set. UPDATED 2026-08-25 (igverify "
+        "lane): the verifier now routes through the shared, tested "
+        "backend.security.webhook_verifier.verify_meta_hmac (same primitive "
+        "as Instagram's), and the config-dependent fail-open when no secret "
+        "is set is still the default — but no longer SILENT: a WARNING "
+        "logs on every skip, and the shared "
+        "settings.meta_webhook_require_signature knob can flip it to reject "
+        "instead. Still a landmine if the secret is genuinely never "
+        "provisioned — that is an operator[business] decision, not this "
+        "code's to make — see PENDING-ARMS.",
     ),
     IntentionalPublicMutation(
         "POST",
         "/webhook/instagram",
         "Meta Instagram webhook. VERIFIED 2026-07-17: instagram_chat.py's "
         "GET handshake DOES check INSTAGRAM_VERIFY_TOKEN, but the POST "
-        "handler (webhook_router.post, line 167) has ZERO signature check — "
-        "no X-Hub-Signature-256 HMAC verification of the actual message "
-        "payload at all. The registry reason overclaims — see PENDING-ARMS.",
+        "handler had ZERO signature check on the message payload. FIXED "
+        "2026-08-25 (igverify lane): the POST handler now calls "
+        "_verify_instagram_signature — the same verify_meta_hmac primitive "
+        "WhatsApp uses, provider='instagram' — before parsing the body. "
+        "Mirrors WhatsApp's exact config-dependent fail-open (default) vs "
+        "fail-closed (settings.meta_webhook_require_signature=True) shape, "
+        "including the loud skip warning — see PENDING-ARMS for the "
+        "remaining operator[business] decision on which policy production "
+        "should run.",
     ),
     # /webhook/telegram entry removed 2026-08-18 (Zero ruled REMOVE): the router it
     # named, telegram_webhook.py, no longer exists — the route was structurally dead

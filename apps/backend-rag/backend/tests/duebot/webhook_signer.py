@@ -11,18 +11,22 @@ and it is exactly the failure mode this module exists to make impossible to
 introduce by accident: ``sign_payload`` takes ``bytes`` in its signature,
 not a ``dict``, so there is no re-serialization step to get wrong.
 
-The production verifier this signer targets is
+The production verifiers this signer targets are
 ``backend.app.routers.whatsapp_chat._verify_whatsapp_signature`` (read,
-never modified, per the B6a mandate). ``test_webhook_signer.py`` proves a
-signature produced here is accepted by that exact function, and that
-mutating a single byte of the body is rejected by it — the RED case.
+never modified, per the B6a mandate) and, since 2026-08-25 (igverify
+lane), its Instagram sibling
+``backend.app.routers.instagram_chat._verify_instagram_signature``.
+``test_webhook_signer.py`` proves a signature produced here is accepted by
+each exact function, and that mutating a single byte of the body is
+rejected by it — the RED case, for both surfaces.
 
-Instagram's webhook POST handler (``backend.app.routers.instagram_chat``)
-does not verify ``X-Hub-Signature-256`` today (checked 2026-08-25 — no
-verifier of any kind on that router). This module still signs Instagram
-payloads: Meta computes the header uniformly across products, and a future
-IG verifier only needs to look like the WhatsApp one to be provable here.
-That gap is not this lane's to fix — see the B6a report for the pointer.
+Before 2026-08-25 the Instagram webhook POST handler
+(``backend.app.routers.instagram_chat``) did not verify
+``X-Hub-Signature-256`` at all — no verifier of any kind on that router.
+This module signed Instagram payloads anyway, ahead of that fix: Meta
+computes the header uniformly across products, so once
+``_verify_instagram_signature`` existed it needed only to look like the
+WhatsApp one to be provable here, with zero changes to this module.
 """
 
 from __future__ import annotations
