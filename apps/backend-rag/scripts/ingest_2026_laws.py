@@ -96,14 +96,39 @@ LAWS_2026 = [
     #
     # Kepmen M.IP-19.GR.01.01/2025 enters as a `.txt`, NOT as its PDF. That PDF is
     # a SCAN with 0 extractable characters across 3 pages (verified: pypdf returns
-    # an empty string for all three) — ingesting it would add a document that is
-    # present in the index and empty in substance. The `.txt` is the verbatim
-    # transcription read visually off those three pages, and it carries its own
-    # provenance header saying so, which means "this text was transcribed, not
-    # extracted" travels with the content into retrieval instead of being lost at
-    # the ingestion boundary. `.txt` is a first-class input here
+    # an empty string for all three). CORRECTED: this does NOT mean the pipeline
+    # would index it empty — `legal_ingestion_service.py` catches "No text
+    # extracted" and falls back to OCR, Gemini Vision included
+    # (`backend/core/parsers.py:117-126`), so the PDF path would have produced
+    # SOME text. The `.txt` is used instead because a human-verified verbatim
+    # transcription, read visually off the three pages, is more trustworthy than
+    # an unreviewed OCR/Vision pass on a document this short — not because the
+    # alternative was emptiness. It carries its own provenance header saying it
+    # was transcribed, not extracted, so that distinction travels with the
+    # content into retrieval. `.txt` is a first-class input here
     # (`backend/core/parsers.py:530`). The scanned PDF stays in the Drive
     # PERATURAN archive as the authentic artifact.
+    #
+    # Known gap, not fixed here: the provenance header lives only in the chunk
+    # TEXT (may or may not survive chunking as one piece with the body), not in
+    # a queryable metadata field — `source_url`/`effective_date` exist as
+    # `ingest_legal_document` params and are never passed by this script for any
+    # entry.
+    # UU 6/2011 and Permenkumham 22/2023 are both left `current`, deliberately,
+    # after considering and rejecting `historical_only`. Both are amended, not
+    # repealed — UU 6/2011 by UU 63/2024 (in this batch) and two earlier
+    # amendments not in this batch; Permenkumham 22/2023 by 11/2024 (also in
+    # this batch). Marking either `historical_only` would remove its still-valid
+    # UNAMENDED provisions from current-law retrieval, which is a worse failure
+    # than the one being guarded against.
+    #
+    # KNOWN, UNRESOLVED GAP: `retrieval_scope` is a whole-DOCUMENT field. Neither
+    # this script nor the ingestion service has any PASAL-level supersession
+    # tracking, so the specific articles that 63/2024 and 11/2024 rewrote remain
+    # retrievable from these base texts in their pre-amendment wording, with
+    # equal standing to the amendment's own text. This is not fixed by this
+    # entry list — it would need chunk-level supersession metadata the pipeline
+    # does not have today.
     {
         "filename": "UU_6_2011_Keimigrasian.pdf",
         "title": "UU 6/2011 - Keimigrasian",
@@ -148,7 +173,7 @@ LAWS_2026 = [
     },
     {
         "filename": "Permenkumham_34_2021_Visa_Izin_Tinggal_Masa_Covid19.pdf",
-        "title": "Permenkumham 34/2021 - Visa dan Izin Tinggal pada Masa Penanganan Penyebaran Corona Virus Disease 2019 dan Pemulihan Ekonomi Nasional",
+        "title": "Permenkumham 34/2021 - Pemberian Visa dan Izin Tinggal Keimigrasian dalam Masa Penanganan Penyebaran Corona Virus Disease 2019 dan Dampak Pemulihan Ekonomi Nasional",
         "category": "keimigrasian",
         # Scoped HISTORICAL on its own time-bound subject matter — this is a
         # Covid-emergency instrument whose operative window has passed. NOT on a
@@ -190,10 +215,20 @@ LAWS_2026 = [
     },
     {
         "filename": "PermenImipas_9_2025_Penambahan_Bebas_Visa_Kunjungan.pdf",
-        "title": "Permen Imipas 9/2025 - Penambahan Daftar Negara, Pemerintah Wilayah Administratif Khusus Suatu Negara, dan Entitas Tertentu yang Diberikan Bebas Visa Kunjungan",
+        "title": "Permen Imipas 9/2025 - Penambahan Daftar Negara, Pemerintah Wilayah Administratif Khusus Suatu Negara, dan Entitas Tertentu atau Pemegang Izin Tinggal Tertentu dari Suatu Negara yang Diberikan Bebas Visa Kunjungan",
         "category": "keimigrasian",
-        "marketing_title_it": "Permen Imipas 9/2025 - Ampliamento dei Paesi Esenti da Visto di Visita",
-        "marketing_title_en": "Permen Imipas 9/2025 - Expanded Visa-Free Visit Country List",
+        # CONFIRMED REPEALED, not merely superseded-in-practice: PermenImipas
+        # 10/2026's own Pasal 4 names this exact instrument by number and its
+        # Berita Negara citation (2025 Nomor 594) and states "dicabut dan
+        # dinyatakan tidak berlaku" — verified by reading 10/2026's PDF text
+        # directly, not inferred from the later date. This is a STRONGER case
+        # for historical_only than Permenkumham 34/2021 below, which has no
+        # confirmed repeal at all. Ingested as `current` alongside 10/2026, the
+        # two entries would present as two live, conflicting visa-exempt
+        # country lists for the same live query.
+        "retrieval_scope": "historical_only",
+        "marketing_title_it": "Permen Imipas 9/2025 - Ampliamento dei Paesi Esenti da Visto di Visita (ABROGATO dal 10/2026)",
+        "marketing_title_en": "Permen Imipas 9/2025 - Expanded Visa-Free Visit Country List (REPEALED by 10/2026)",
     },
     {
         "filename": "PermenImipas_14_2025_Tarif_Nol_Rupiah.pdf",
@@ -397,6 +432,14 @@ async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
                 "rencana pembangunan daerah bali",
                 "gerakan bali bersih sampah",
                 "kitab undang-undang hukum pidana KUHP baru",
+                # Immigration corpus added 2026-08-24 — without these, a broken
+                # or misindexed immigration document would still print
+                # "Pipeline verified" (found in adversarial review of this batch:
+                # the original 5 queries gave zero coverage to the 16 new docs).
+                "visa dan izin tinggal keimigrasian",
+                "daftar negara bebas visa kunjungan",
+                "kementerian imigrasi dan pemasyarakatan",
+                "sistem kerja tempat pemeriksaan imigrasi",
             ]
 
             for query in test_queries:
