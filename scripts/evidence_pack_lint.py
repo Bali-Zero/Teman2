@@ -242,6 +242,15 @@ VALID_GEARS = (1, 2, 3)
 # must adopt `lanes:`, so a two-week wait bought two more weeks of zero
 # adoption instead of protecting anyone from a live enforcement surprise.)
 LANES_NON_ANTHROPIC_ENFORCEMENT_DATE = datetime.date(2026, 8, 24)
+
+#: Minimal rule-8-conformant ``lanes`` block for selftest fixtures whose subject
+#: is some OTHER rule (dissent, hot-zone, ceiling, net-lines). Added 2026-08-24
+#: after the enforcement date above went live at UTC midnight and turned five
+#: unrelated innocence fixtures red — they had been riding the grace period, so
+#: the repo's merge queue stopped merging with no code change anywhere. Rule 8's
+#: own guilt/innocence lives in the dedicated `check_lanes_build_seat_diversity`
+#: cases, which pin `today` on both sides of the flip and are unaffected by this.
+_SELFTEST_LANES = [{"lane": "D1", "role": "build", "seat": "codex"}]
 VALID_LANE_ROLES = ("build", "review", "read")
 
 
@@ -888,6 +897,7 @@ def selftest() -> int:
             "grader": "codex-sol", "pii": "none",
         })
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [],
@@ -914,6 +924,7 @@ def selftest() -> int:
 
         # ---- innocence: non-empty dissent on gear-3 passes ------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
@@ -924,6 +935,7 @@ def selftest() -> int:
 
         # ---- guilt: dissent field missing entirely --------------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "pii_scan": "clean",
@@ -934,6 +946,7 @@ def selftest() -> int:
         # ---- guilt: receipt missing a required field ------------------------
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 1, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [{"claim": "no cmd here"}],
             "dissent": [],
@@ -946,6 +959,7 @@ def selftest() -> int:
 
         # ---- guilt: pii_scan not clean ---------------------------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [],
@@ -956,6 +970,7 @@ def selftest() -> int:
 
         # ---- guilt: oversize pack ---------------------------------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [],
@@ -973,6 +988,7 @@ def selftest() -> int:
 
         # ---- guilt: brief_ref missing key -------------------------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, None)
@@ -980,6 +996,7 @@ def selftest() -> int:
 
         # ---- guilt: brief_ref points nowhere -----------------------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/does-not-exist.yml",
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })
@@ -989,6 +1006,7 @@ def selftest() -> int:
         # ---- guilt: gear below deterministic floor -----------------------------
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 1, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })
@@ -1000,6 +1018,7 @@ def selftest() -> int:
         # ---- innocence: gear 3 on the same hotzone diff passes -----------------
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 3, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
@@ -1011,6 +1030,7 @@ def selftest() -> int:
         # ---- innocence: non-hotzone diff never demands gear 3 ------------------
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 1, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })
@@ -1020,6 +1040,7 @@ def selftest() -> int:
         # ---- guilt: gear-3 pack + council over a Gear-1-shaped docs diff -------
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 3, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
@@ -1033,6 +1054,7 @@ def selftest() -> int:
 
         # ---- innocence: same pack, but gear_override reports instead of failing
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
@@ -1047,6 +1069,7 @@ def selftest() -> int:
         # ---- guilt: empty/missing receipts on a Gear-3 pack --------------------
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 3, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
             "pii_scan": "clean",
@@ -1060,6 +1083,7 @@ def selftest() -> int:
 
         # ---- guilt: dissent entry missing structured fields --------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [{}],
@@ -1070,6 +1094,7 @@ def selftest() -> int:
 
         # ---- guilt: dissent entry with an invalid status ------------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "APPROVED"}],
@@ -1080,6 +1105,7 @@ def selftest() -> int:
 
         # ---- innocence: fully-structured dissent entry passes -------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "CONFIRMED"}],
@@ -1091,6 +1117,7 @@ def selftest() -> int:
         # ---- guilt: brief_ref is an absolute path (path-confinement) ------------
         absolute_target = root / "evidence" / "brief.yml"
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": str(absolute_target),
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })
@@ -1103,6 +1130,7 @@ def selftest() -> int:
         outside = root.parent / "outside-secret.yml"
         outside.write_text(yaml.safe_dump({"task_id": "x", "gear": 1, "grader": "y"}), encoding="utf-8")
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": f"../{outside.name}",
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })
@@ -1112,6 +1140,7 @@ def selftest() -> int:
 
         # ---- guilt: brief_ref names a directory, not a file ---------------------
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence",
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })
@@ -1122,6 +1151,7 @@ def selftest() -> int:
         # ---- guilt: gear is a bool/float, not a genuine int (type coercion) -----
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": True, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
+            "lanes": _SELFTEST_LANES,
             "brief_ref": "evidence/brief.yml",
             "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
         })

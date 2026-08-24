@@ -6,6 +6,7 @@ import {
   emptyPlan,
   encodePlanFragment,
   savePlan,
+  PLAN_STORAGE_KEY,
 } from "@/lib/secondhome-studio/plan-codec";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 import { StudioApp } from "./StudioApp";
@@ -425,6 +426,34 @@ describe("StudioApp", () => {
       render(<StudioApp />);
       await screen.findByRole("heading", { name: /strong match/i });
       expect(screen.getByText("Your money stays yours")).toBeInTheDocument();
+    });
+  });
+
+  describe("ScenarioToggle — saved-plan immutability", () => {
+    it("opening the route preview does not mutate the saved plan in localStorage", async () => {
+      const saved = fullPlan({
+        route: "deposit",
+        capital: "ready_130k",
+      });
+      savePlan(saved);
+
+      const fragmentPlan = fullPlan({
+        route: "property",
+        capital: null,
+        property: "none",
+      });
+      window.location.hash = `#p=${encodePlanFragment(fragmentPlan)}`;
+
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /needs human review/i });
+
+      fireEvent.click(screen.getByRole("button", { name: /other route/i }));
+      expect(screen.getByTestId("scenario-toggle-preview")).toBeInTheDocument();
+
+      const stored = JSON.parse(
+        window.localStorage.getItem(PLAN_STORAGE_KEY) ?? "null",
+      );
+      expect(stored).toEqual(saved);
     });
   });
 });

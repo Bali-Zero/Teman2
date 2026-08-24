@@ -1,0 +1,75 @@
+task_id: mouth-fullstack-e2e-wire
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Turn on the real Visa Oracle fullstack E2E (browser -> Next -> FastAPI ->
+  signed TEST RulePack -> Postgres) as ADVISORY CI, per owner order ("riaccendi
+  il pulsante e fate tutti i test") and the team-lead ruling on PR #4706's
+  finding. #4706 established the test itself was stale, not the infra: the
+  disposable-DB runner (fullstack_smoke.py) works end-to-end, but the spec
+  asserted UI copy the product deliberately does not render for
+  DECISIVE_SOURCE_FRESHNESS_UNKNOWN (that code is in engine-adapter.test.ts's
+  own KNOWN_UNMAPPED_REVIEW_REASON_CODES; reviewReason() renders
+  GENERIC_REVIEW_REASON for it, not a raw-code dump). This PR fixes that
+  assertion and wires the switch on, non-blocking.
+constraints:
+  - 'Advisory only. New, SEPARATE CI job (continue-on-error: true, not added
+    to test-summary''s needs, not a required check) — never a step inside the
+    existing e2e-tests job, so it cannot touch that job''s shared
+    Postgres/Redis services or its --grep "page Page|@offline" filter.'
+  - "The assertion fix must match the product's REAL current, deliberately
+    unit-tested behaviour (GENERIC_REVIEW_REASON), never be loosened into
+    something that would pass regardless of what the UI renders."
+  - "No PII anywhere in the pipeline — the disposable DB and the TEST RulePack
+    are synthetic fixtures, never production data."
+acceptance:
+  - "python -m backend.scripts.visa_engine.fullstack_smoke passes locally
+    against a real disposable DB, real uvicorn, real next dev, real signed
+    TEST RulePack."
+  - "The new CI job is wired so it can actually run there — not just locally:
+    the backend subprocess spawn must not hardcode a path (.venv/bin/python)
+    that only exists on a machine with a local venv, since CI installs deps
+    via `uv pip install --system` with no .venv."
+  - "actionlint clean on the modified workflow file."
+  - "No regression in the fullstack_smoke unit test suite from the
+    sys.executable change."
+consumer_map:
+  - "GitHub Actions tests.yml — the new visa-oracle-fullstack-smoke job runs
+    on every pull_request/merge_group where e2e-tests would run (same
+    needs.changes.outputs.run_e2e_tests gate)."
+  - "Any future promotion to required (tracked as a follow-up, not this PR) —
+    branch protection + test-summary's needs: would both need updating then,
+    neither is touched here."
+risks:
+  - "This job duplicates backend-dep/node-dep/Playwright-browser install
+    steps already done in e2e-tests, adding real CI wall-clock/minutes to
+    every PR that touches visa-oracle paths. Accepted for now because it is
+    advisory and isolated; a later optimization could share a cache or
+    artifact between the two jobs instead of reinstalling."
+  - 'continue-on-error: true means this job can go silently broken (e.g. a
+    future CI environment change breaks the postgres service or the apt
+    install) without ever turning anything red — the same shape cicatrix
+    family #2 ("esiste != armato") warns about, now applied to the very job
+    meant to prove a real chain works. No monitoring/report mechanism for
+    this job''s own health exists yet; that is a real gap, not covered by this
+    PR, to be closed at promotion time (or sooner, if it starts silently
+    failing).'
+  - "The workflow wiring itself (postgres service + apt install + env var
+    passing inside GitHub Actions) is UNVERIFIED until this PR's own CI run
+    completes — only the underlying Python script was proven locally on M5.
+    If the CI run of this very job fails for an infra reason unrelated to the
+    test (missing psql, wrong DSN, etc.), that is a real finding this PR's
+    own CI will surface, not something to paper over."
+  - "The sys.executable fix touches a previously-untested code path — no unit
+    test exec's the subprocess it changes; only a live local smoke run
+    exercises it (done once, manually, this session)."
+grader: |
+  Independent review requested from the team-lead (separate agent/context in
+  this session, already reviewed PR #4706 and issued the ruling this PR
+  implements) — generator != grader: the builder here (this session) must not
+  post its own harness/fable-gate verdict.
+budget: 1 build lane (this session) + 1 independent gate (team-lead or its
+  delegate); no council — a two-file assertion fix + one new advisory CI job
+  does not meet the council gate.
+pii: none

@@ -2184,6 +2184,117 @@ jobs:
           name: playwright-report
           path: apps/mouth/playwright-report/
 
+  # ADVISORY, non-required (2026-08-23). This job drives the ONLY test that
+  # exercises the real browser -> Next -> FastAPI -> signed TEST RulePack ->
+  # Postgres chain (e2e-tests above never reaches it: every visa-oracle spec
+  # it runs intercepts and mocks `/api/visa-oracle/evaluate`). It is opt-in
+  # (`VISA_ORACLE_FULLSTACK=1`) and owns its own disposable database via
+  # `backend/scripts/visa_engine/fullstack_smoke.py` — a separate job so it
+  # never touches the e2e-tests job's shared Postgres/Redis services or its
+  # `--grep "page Page|@offline"` filter.
+  #
+  # `continue-on-error: true` at job level does NOT make this job's own
+  # check-run report success when a step fails — measured 2026-08-24 on its
+  # first real run (job 97222544510, PR #4709): the step failed and the
+  # check-run's `conclusion` on the commit was `failure`, same as any other
+  # red job, `gh pr checks` included. What continue-on-error actually buys:
+  # the overall WORKFLOW RUN conclusion is not dragged down by this job, and
+  # any future job that `needs:` this one still proceeds. The reason this
+  # job does not block merging TODAY is that its name is absent from
+  # `main`'s branch protection `required_status_checks` — that is the one
+  # thing standing between "advisory" and "blocking", so adding this job's
+  # name there is exactly the mistake this paragraph warns against; nothing
+  # in the job's own config stops it. Promote to required only after it has
+  # demonstrably passed a few times in CI.
+  visa-oracle-fullstack-smoke:
+    name: Visa Oracle fullstack smoke (advisory)
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_e2e_tests != 'false'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies (uv, lock-pinned)
+        run: |
+          cd apps/backend-rag
+          pip install --upgrade pip uv
+          uv pip install --system -r requirements.lock.txt
+          uv pip install --system -e ../../packages/cell-core
+
+      - name: Install postgresql-client (bounded, fail-closed — scripts/ci/apt_install.sh)
+        run: bash scripts/ci/apt_install.sh psql postgresql-client
+
+      - name: Install Node dependencies
+        run: npm install --no-fund
+        env:
+          npm_config_fetch_retry_mintimeout: 20000
+          npm_config_fetch_retries: 3
+
+      - name: Cache Playwright browser binaries
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        # Always runs, cache hit or miss — see e2e-tests' own step above for
+        # why (`--with-deps` installs OS shared libs the browser needs, which
+        # actions/cache never persists on a fresh runner VM).
+        run: timeout 600 npx playwright install --with-deps chromium
+
+      - name: Run the disposable-DB fullstack smoke
+        env:
+          VISA_ORACLE_FULLSTACK: "1"
+          VISA_ORACLE_SMOKE_ADMIN_DSN: postgresql://test:test@127.0.0.1:5432/postgres
+          PYTHONDONTWRITEBYTECODE: "1"
+          # Importing backend.app.core constructs Settings() at module scope
+          # (backend/app/core/config.py), which requires these two even for a
+          # test-only smoke that never serves real auth. Same throwaway,
+          # non-secret values used by every other job in this workflow that
+          # imports the backend package (see e.g. the "Run backend stability
+          # gate" step above) — not a new convention.
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python -m backend.scripts.visa_engine.fullstack_smoke
+
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
