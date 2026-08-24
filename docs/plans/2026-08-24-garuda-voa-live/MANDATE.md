@@ -81,7 +81,15 @@ B1-extension max-stay edge.
 
 ## 5. Gates & verification (per ASSEMBLY-LINE, tightened here)
 
-- One cross-family refuter per PR; full adversarial pass ALWAYS on L1/L2/L3 (money/state/PII).
+- One cross-family refuter per PR; full adversarial pass ALWAYS on L1/L2/L3 (money/state/PII) —
+  "full pass" as ASSEMBLY-LINE now defines it: refuter + attack session + independent re-derivation
+  of every money/date figure. The P0 tier is exempt from the one-refuter cap.
+- **Declared override of ASSEMBLY-LINE's gate placement, deliberate and not accidental**: the
+  doctrine gates per PR; this mandate reviews the day's integrated diff each evening and lands a
+  pre-approved train. That moves the refuter from the landing PR to the integration diff, which is
+  the right unit when seven lanes converge daily — but it means the landing PRs are a formality,
+  so the evening pass IS the gate and must be treated with that weight. If an evening pass is
+  skipped, the next day's landing train does not go out.
 - Gauntlet on the integrated branch: full Playwright journey suite green on ephemeral env +
   contract fuzzing + payment attack session. Binary verdict.
 - Ship dark to prod, flag off. At 5%: **5 real buyers observed end-to-end** before 100%.

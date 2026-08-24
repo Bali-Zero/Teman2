@@ -3,7 +3,11 @@ date: 2026-08-24
 domain: operations
 client_case: none
 sources: 5
+adversarial_review: kimi-k3
 ---
+
+> `sources: 5` counts the five LLM seats on the panel, not five external sources — flagged by the
+> adversarial reviewer and left as-is, since the field describes what this capture is.
 
 # Product-factory total procedure — 5-seat cross-family panel (raw capture)
 
@@ -582,3 +586,68 @@ ADOPT (High Leverage, Zero Fluff)         DELIBERATELY DISCARD (Process Bloat)
 ### 5. Trivial Task Thrashing vs. Strategic Starvation
 * **Failure:** Agents burn cluster compute optimizing minor utilities while critical initiatives (e.g., GARUDA VOA) stall.
 * **Antidote:** **Value-Weighted Compute Allocation.** The Opus 5 orchestrator locks git worktrees to active business milestones defined in `INTENT.json`. Non-strategic refactor PRs are dropped automatically whenever a core product milestone is pending verification.
+
+---
+
+## Adversarial review
+
+Seat: **Kimi K3**, on fresh context, with no contact with the seats that produced the panel or the
+session that synthesised it. Brief: try to break the capture, the doctrine it produced
+(`docs/factory/ASSEMBLY-LINE.md`) and the first mandate written against it. Findings below are the
+reviewer's; the disposition after each is the orchestrator's, and every finding was re-verified
+against the file before being accepted — a refuter's claim is a lead, not a verdict.
+
+**1. The 70%/15% refuter numbers are unsourced and load-bearing (critical). ACCEPTED, FIXED.**
+ASSEMBLY-LINE derived "one cross-family refuter per PR, never two" from "the first catches ~70% of
+defects; a second adds ~15%". Traced to this capture, line 422, the DeepSeek seat's whole support is
+the phrase *"Simulation shows that a single adversarial reviewer (different family) per PR catches
+70% of bugs"* — no simulation is described, parameterised or linked. An LLM-asserted figure was
+promoted into doctrine to justify **reducing** review coverage. The doctrine now records the number
+as an unsourced heuristic and says so in those words, and the P0 tier (payment / eligibility /
+state) is exempt from the cap, because the doctrine's own `p×r×C > c` formula argues for more review
+exactly where a flat cap would remove it.
+
+**2. "Never two" contradicts "full adversarial pass ALWAYS" on the money lanes (high). ACCEPTED,
+FIXED.** Neither document defined what the "full pass" was beyond the single refuter the cap
+allowed. ASSEMBLY-LINE now defines it as three things — refuter on the diff, attack session against
+the running surface, and an independent re-derivation of every money and date figure by a seat that
+did not build it — because an undefined gate is not a gate.
+
+**3. The mandate silently replaces the per-PR gate with an evening batch (high). ACCEPTED, FIXED.**
+The doctrine gates per PR; the mandate reviews the day's integrated diff each evening and lands a
+"pre-approved" train, which makes the per-PR gate on the landing PRs a formality. The mandate has a
+precedence clause, but this divergence was not flagged as deliberate — it read as an accident. It is
+now a declared override that names the consequence: the evening pass IS the gate, and a skipped
+evening pass stops the next day's train.
+
+**4. Indicative rules with no checker, outside the honest backlog (medium). PARTIALLY ACCEPTED.**
+The reviewer lists eight: PR line caps, WIP ≤2 per lane, merge-queue utilisation <70%, daily rebase,
+"max ~5 concurrent decisions", the monthly kill-criterion check, the money re-derivation duty, and
+"every incident ends in a changed contract". The finding is correct and it is superscar #2 in
+miniature. It is NOT fixed here: moving eight imperatives into the backlog is a doctrine sweep, and
+doing it inside this PR would bury the three corrections above. Tracked instead as one line in the
+enforcement backlog.
+
+**5. Human code review discarded while its replacement is unarmed (medium). ACKNOWLEDGED, NOT
+FIXED.** Correct and uncomfortable: the refuter discipline that replaces human review is
+procedurally specified and mechanically unenforced, in a repo whose codeowner does not read code.
+The honest position is that this is the state of the world today, not a defect this PR introduces —
+the R1 gate that blocked this very PR is one of the few armed pieces of it. Arming a per-PR
+cross-family refuter check in CI is the right next move and belongs in the backlog, not in a
+doctrine edit.
+
+**6. "56/100 measured on 2026-08-24" has no re-derivation path (low-medium). ACCEPTED, FIXED BY
+MEASURING.** The reviewer searched `docs/` and `research/` and found the number only in the
+doctrine asserting it. Re-measured this session: of the last 100 merged PRs, **39** touched nothing
+but docs, research, `CLAUDE.md`, `AMENDMENTS.md` or a PENDING-ARMS ledger. The doctrine now carries
+the exact query instead of the briefed 56%, and says plainly that the figure is definition- and
+window-sensitive.
+
+**Checked and found fine**, which the reviewer stated explicitly rather than padding the list: the
+~15× multi-agent token claim IS sourced (Anthropic's multi-agent post, linked in this capture); the
+mandate's seven lanes are within the doctrine's 3-7 limit; the L1-L5 builder/refuter pairings are
+genuinely cross-family; and the mandate's precedence clause over ASSEMBLY-LINE is explicit. One
+cosmetic finding also accepted: the gate numbering skipped G4, and is now contiguous G0-G6.
+
+**VERDICT: PASS_WITH_LIMITS** — findings 1, 2, 3 and 6 corrected in this PR; 4 and 5 are real,
+named, and deferred to the enforcement backlog rather than silently dropped.

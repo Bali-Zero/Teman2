@@ -12,8 +12,22 @@
 
 **An artifact exists only if a gate consumes it.** If no automated gate or owner decision reads
 a document, it does not get written. Work-state lives in code, contracts, tests, and the merge
-queue — never in ledgers, status reports, or handoff prose. (Root cause it kills: 56/100 merged
-PRs measured on 2026-08-24 were process documentation.)
+queue — never in ledgers, status reports, or handoff prose.
+
+Root cause it kills, re-derivable rather than asserted: of the **last 100 merged PRs** as of
+2026-08-24, **39 touched nothing but** `docs/`, `research/`, `CLAUDE.md`, `AMENDMENTS.md` or a
+`PENDING-ARMS` ledger —
+
+```
+gh pr list --state merged --limit 100 --json number,files --jq '[.[] |
+  ([.files[].path] | all(test("^(docs/|research/|\\.claude/skills/.*PENDING-ARMS|AMENDMENTS\\.md$|CLAUDE\\.md$)")))]
+  | {total: length, docs_only: (map(select(.)) | length)}'
+```
+
+The panel was briefed with "56%", which nothing in this repo reproduces; the figure is
+definition-sensitive and window-sensitive, so the query above is the claim and 39/100 is its
+value. The conclusion is unchanged either way — roughly two of every five merges move no
+product — but a doctrine that cites a number it cannot re-derive is doing the thing it forbids.
 
 ## The unit of "done"
 
@@ -50,17 +64,17 @@ is admitted only for an irreversible decision (embedding-model-freeze class).
    changes through the owner.
 4. **PARALLEL BUILD** — 3-7 lanes max, each a vertical slice behind the product flag, own
    worktree, own file-ownership, frozen contract version. PRs ≤~200 logic lines (≤500 UI).
-   Local-first integration branch; daily rebase on main; no status PRs. Gate G5 per PR:
+   Local-first integration branch; daily rebase on main; no status PRs. Gate G4 per PR:
    typecheck, unit+property tests, contract tests, ONE cross-family refuter (see economics).
 5. **GAUNTLET** — on the integrated product: the full journey suite green on a real ephemeral
    environment; contract fuzzing; payment/state attack session (replay, race, webhook spoof,
-   out-of-order). Gate G6: 100% journeys pass, zero unhandled schema exceptions. Judge verdict
+   out-of-order). Gate G5: 100% journeys pass, zero unhandled schema exceptions. Judge verdict
    is binary: SHIP or one-paragraph BLOCK.
 6. **SHIP DARK** — merge queue lands it flag-off; immutable build; canary synthetic journey in
    prod. Progressive: internal → 5% → 100%, SLOs green at each step; **at 5%, real users**
    (for a purchase funnel: a handful of real buyers watched end-to-end — no AI judge
    substitutes for a human failing to find the pay button). Rollback = flag off; DB stays
-   backward-compatible. Gate G7 (owner): go-live and pricing only.
+   backward-compatible. Gate G6 (owner): go-live and pricing only.
 7. **OPERATE + LEARN** — the paged alert is a BUSINESS INVARIANT ("paid orders in rolling
    24h above 0", "median upload→OCR < 60s"), plus a synthetic transaction that really buys
    (sandbox pay, refunded) every 10-15 min with a dead-man switch: probe silent 15 min → flag
@@ -70,12 +84,25 @@ is admitted only for an irreversible decision (embedding-model-freeze class).
 
 ## Verification economics (DeepSeek seat, adopted)
 
-- **One cross-family refuter per PR, never two**: the first catches ~70% of defects; a second
-  adds ~15% for 2× cost and queue time. Multi-seat panels are for architecture and the
-  integrated product (stage 5), never per-PR.
+- **One cross-family refuter per PR by default — and the default is a budget rule, not a safety
+  finding.** The panel's DeepSeek seat justified it with "simulation shows a single reviewer
+  catches 70% of bugs; a second adds only 15%". **No simulation was described, parameterised or
+  linked**, so treat 70/15 as a plausible heuristic and never as evidence. It is deliberately
+  recorded here rather than laundered, because a fabricated-sounding number that argues for LESS
+  review is the one kind this factory must not absorb silently.
+  **The P0 tier is exempt from the cap**: the doctrine's own `p×r×C > c` formula argues for MORE
+  review exactly where payment, eligibility and state live, so a flat "never two" would override
+  the formula at its highest values. Multi-seat panels stay reserved for architecture and for the
+  integrated product (stage 5); on a P0 PR, a second seat is a judgement call the orchestrator may
+  make, not a rule violation.
 - **Risk-tiered review** (`p×r×C > c`): payment/eligibility/state code always gets the full
   adversarial pass; cosmetic UI gets contract-tests + visual diff only. The tier map is set
   once per product in `product.yaml`.
+  **"Full adversarial pass" is defined, because an undefined gate is not a gate**: a cross-family
+  refuter reading the diff, PLUS an attack session against the running surface (replay, race,
+  out-of-order, spoofed signature, boundary dates), PLUS an independent re-derivation of every
+  money and date figure by a seat that did not build it. Three things, not one reviewer working
+  harder.
 - **Queueing discipline**: WIP ≤2 PRs per lane; merge-queue utilization <70%; a lane blocked
   over 2h gets split or re-scoped by the orchestrator, not pushed harder.
 
@@ -117,3 +144,13 @@ total simplicity is the instrument that decides what qualifies.
    status reports and heartbeat chatter).
 4. Typed-contract toolchain (OpenAPI → TS client generation) wired into CI for the first
    product, then extracted as the platform template (`contracts kit`) for every next one.
+5. **Per-PR cross-family refuter check, armed in CI.** Today the refuter discipline that replaces
+   human code review is procedural — the R1 adversarial-review gate covers research captures only.
+   Until this is armed, the removal of human review rests on a convention, not a check. (Raised by
+   the adversarial review of this doctrine, 2026-08-24, finding 5.)
+6. **Sweep the unarmed imperatives out of the body and into this list.** The same review found
+   eight rules stated in the indicative that nothing enforces: PR line caps, WIP ≤2 per lane,
+   merge-queue utilisation <70%, daily rebase, the orchestrator's ~5 concurrent decisions, the
+   monthly kill-criterion check, the money/date re-derivation duty, and "every incident ends in a
+   changed contract, test, monitor or runbook". Each either gets a named checker or moves here.
+   (Finding 4.)
