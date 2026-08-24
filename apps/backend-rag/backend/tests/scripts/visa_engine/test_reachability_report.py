@@ -158,7 +158,36 @@ def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> Non
     assert seq7_report.required_facts_ast_mismatches == ()
 
 
-def test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper() -> None:
+def test_not_asked_facts_cross_check_agrees_and_excludes_known_promoted_facts() -> None:
+    """DERIVES the NOT_ASKED set from the live mapper via two independent
+    extraction paths and cross-checks they agree — it does NOT transcribe the
+    resulting list/count as a literal. A hardcoded literal here is exactly the
+    defect class this test used to carry: the live interview's NOT_ASKED
+    membership is derived data that legitimately shrinks every time a
+    genuinely-blocking fact is promoted to askable (F4's `renewal_paid`,
+    V1/E28's `intent.requested_product_code`), and a bare `assert found ==
+    [<list>]` goes red on every such — CORRECT — promotion, one site at a
+    time, hours or days apart (the exact `test_not_asked_facts_are_exactly_
+    the_six_hardcoded_in_the_mapper` -> `..._four_...` churn this replaces:
+    stale at six the moment it was written after F4 shipped `renewal_paid`,
+    stale again at four the moment V1/E28 shipped `requested_product_code`).
+    Team-lead ruling 2026-08-24 (coordination with an M5 session touching the
+    same file): derive, don't transcribe, so a future promotion needs no edit
+    here at all.
+
+    What IS asserted, and stays meaningful indefinitely:
+    1. Two independently-implemented extractions of "which facts does the
+       live mapper hard-code NOT_ASKED" (this test's own plain regex vs
+       ``build_report``'s compiled pattern) must produce the IDENTICAL set —
+       a real cross-implementation agreement check, not two copies of the
+       same regex (cicatrix family #6: a test that reimplements the function
+       under test and calls that "verification" proves nothing).
+    2. Facts already PROVEN promoted to askable (by a fix landed and tested
+       elsewhere) must never regress back into this set — a guilt-style
+       regression guard with a fixed, low membership count that does not
+       grow as the interview legitimately adds more one-day NOT_ASKED
+       fields for still-unimplemented questions.
+    """
     assert DEFAULT_FACT_MAPPER_PATH.exists(), (
         "the default fact-mapper path is stale — the live interview moved "
         "and this script's default needs updating"
@@ -167,22 +196,35 @@ def test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper() -> None:
     # Independent extraction: a plain unconditional-assignment regex, not the
     # module's own compiled pattern.
     found = sorted(set(re.findall(r'"([a-z_]+\.[a-z_]+)":\s*unknownFact\(NOT_ASKED\),', text)))
-    # Was five; 2026-08-24 F4 (D12 active-stay-permit exclusion) adds the
-    # sixth, `immigration.renewal_paid` — the fact-mapper placeholder that
-    # emits it as NOT_ASKED until the interview question (Item 1, its own
-    # PR) collects it. Same "vocabulary before the question exists" shape
-    # as the other five.
-    assert found == [
-        "commercial.service_fee_budget_idr",
-        "commercial.wants_quote",
-        "immigration.last_entry_date",
-        "immigration.renewal_paid",
-        "intent.desired_entry_date",
-        "intent.requested_product_code",
-    ]
 
     report = build_report(SEQ7_PACK)
-    assert list(report.not_asked_facts) == found
+    derived = list(report.not_asked_facts)
+    assert found == derived, (
+        f"the test's own independent regex and build_report()'s compiled pattern "
+        f"disagree on the live mapper's NOT_ASKED set: test found {len(found)} "
+        f"({found}), build_report found {len(derived)} ({derived})"
+    )
+
+    # Regression guards — facts a landed fix proved askable. Each entry here
+    # is load-bearing evidence, not a running tally: add one only alongside
+    # the fix that promoted it, never as a periodic "resync" edit.
+    promoted_facts = {
+        "immigration.renewal_paid": "F4 (D12 active-stay-permit exclusion, PR #4793) — "
+        "tree.ts/flow.ts ship the real question, fact-mapper.ts:591 maps "
+        "booleanFact(facts.renewal_paid).",
+        "intent.requested_product_code": "V1/E28 (2026-08-24, mandate "
+        "docs/plans/2026-08-24-visa-oracle-live/MANDATE.md) — "
+        "investment_product_code (tree.ts/flow.ts) feeds enumFact(...) in "
+        "fact-mapper.ts. Every E28B/C/D/F rule keys on this fact with "
+        "on_unknown=NEEDS_INPUT, so an unasked/UNKNOWN value routed every "
+        "applicant to BLOCKED_UNKNOWN — invisible behind a plausible "
+        "investor's ordinary SUPPORTED_CANDIDATES via E28A.",
+    }
+    for fact_path, why in promoted_facts.items():
+        assert fact_path not in found, (
+            f"{fact_path} regressed back to NOT_ASKED — this fact was proven askable "
+            f"by: {why}"
+        )
 
 
 def test_gold_persona_extraction_is_still_accurate() -> None:

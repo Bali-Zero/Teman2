@@ -359,6 +359,47 @@ describe("mapCurrentStatusCode — the synthesized NO_STAY_PERMIT sentinel (2026
   });
 });
 
+describe("V1/E28 (2026-08-24): investment_product_code -> intent.requested_product_code", () => {
+  // Before the fix this field was unconditionally `unknownFact(NOT_ASKED)`
+  // regardless of `facts` — every assertion below that supplies an answer
+  // would have failed against that old behavior (the KNOWN ones on the
+  // stale UNKNOWN shape; the "never asked" one is the one case the old code
+  // also produced, kept here as the innocence control).
+  it.each(["E28B", "E28C", "E28D", "E28F"])(
+    "%s -> KNOWN, unchanged",
+    (code) => {
+      expect(
+        mapFacts({ investment_product_code: code }).facts[
+          "intent.requested_product_code"
+        ],
+      ).toEqual({ status: "KNOWN", value: code });
+    },
+  );
+
+  it('"no specific code" (STANDARD) -> UNKNOWN NOT_PROVIDED, never blocks the ordinary E28A path', () => {
+    expect(
+      mapFacts({ investment_product_code: "STANDARD" }).facts[
+        "intent.requested_product_code"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
+  });
+
+  it("unsure -> UNKNOWN UNVERIFIED", () => {
+    expect(
+      mapFacts({ investment_product_code: "unsure" }).facts[
+        "intent.requested_product_code"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+  });
+
+  it("never asked (e.g. any non-invest category) -> UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["intent.requested_product_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+});
+
 describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   it("never asked -> UNKNOWN NOT_ASKED (the pre-existing default value)", () => {
     expect(mapSponsorType({})).toEqual({
