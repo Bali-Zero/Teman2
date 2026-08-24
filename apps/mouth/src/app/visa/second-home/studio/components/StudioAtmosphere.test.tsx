@@ -44,7 +44,12 @@ describe("StudioAtmosphere", () => {
 
     expect(turbulence).toHaveAttribute("type", "fractalNoise");
     expect(turbulence).toHaveAttribute("seed", "37");
-    expect(filter).toHaveAttribute("filterRes", "180 180");
+    // `filterRes` was removed from the SVG spec and has no rendering effect
+    // in current browsers; leaving it in the server-rendered markup makes
+    // React report a hydration attribute mismatch (measured live on
+    // localhost:3717 — 1 hydration-mismatch console message with it,
+    // 0 without). Do not re-add it.
+    expect(filter).not.toHaveAttribute("filterRes");
     expect(pattern).toHaveAttribute("width", "180");
     expect(pattern).toHaveAttribute("height", "180");
     expect(pattern).toHaveAttribute("patternUnits", "userSpaceOnUse");

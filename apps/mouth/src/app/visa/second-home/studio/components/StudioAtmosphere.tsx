@@ -191,7 +191,6 @@ export function StudioAtmosphere() {
           <filter
             id="bz-shs-paper-grain"
             colorInterpolationFilters="sRGB"
-            filterRes="180 180"
             x="0"
             y="0"
             width="100%"
