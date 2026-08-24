@@ -20,25 +20,46 @@ instead of to merge counts.
 
 ## Client bot + codex broker leg
 
-14 rows — entries 1-13 are F3/Sol §2.5 VERBATIM, plus 2 B7 additions the frozen research didn't
+15 rows — entries 1-13 are F3/Sol §2.5 VERBATIM, plus 3 B7 additions the frozen research didn't
 tabulate.
 
-| id                           | metric                                                       | threshold                                 | kind         | automatic action                                                          |
-| ---------------------------- | ------------------------------------------------------------ | ----------------------------------------- | ------------ | ------------------------------------------------------------------------- |
-| `codex.heartbeat_stale`      | `codex_broker_heartbeat_age_seconds`                         | > 45s                                     | technical    | Mark host offline; direct to Gemini                                       |
-| `codex.queue_growing`        | `codex_broker_queue_depth`                                   | >= 1 waiting                              | technical    | Bypass Codex for subsequent messages                                      |
-| `codex.exec_slow`            | `codex_exec_seconds`                                         | p90 > 12s over >=20 jobs                  | technical    | Do not arm / revert to Gemini                                             |
-| `codex.route_slow`           | `client_bot_codex_route_seconds`                             | p95 > 15s, 3 consecutive 15-min windows   | technical    | Disable active Codex routing; keep shadow                                 |
-| `codex.consecutive_failures` | `codex_consecutive_failures`                                 | >= 3                                      | technical    | Open seat breaker 5 min; half-open with 1 canary                          |
-| `codex.auth_dead`            | `codex_auth_dead_total`                                      | >= 1                                      | technical    | Latch seat offline; operator alert (switchboard item 4)                   |
-| `codex.quota_exhausted`      | `codex_quota_exhausted_total`                                | >= 1                                      | technical    | Cooldown seat; alert with evidence                                        |
-| `codex.quota_fallback_ratio` | `codex_quota_fallback_total / codex_eligible_requests_total` | >5%/7d (n>=50), or 2 exhausted windows/7d | technical    | **Produce owner packet** → `packets/QUOTA-WALL-STAGE2-PACKET.template.md` |
-| `codex.output_invalid_ratio` | `codex_output_invalid_total / codex_jobs_total`              | >1%/100 jobs, or 2 consecutive            | technical    | Quarantine CLI/model/schema combo                                         |
-| `codex.secret_canary_hit`    | `codex_secret_canary_hits_total`                             | > 0                                       | **business** | GLOBAL codex-leg kill (`CLIENT_BOT_CODEX_BROKER_ENABLED=false`); P0       |
-| `codex.fence_violation`      | `codex_fence_violation_or_double_completion_total`           | > 0                                       | technical    | Disable active leg; no affected output may send                           |
-| `ingress.ack_latency`        | `webhook_ack_latency_seconds`                                | p95 > 200ms, 5 min                        | technical    | Page ingress issue; shed LLM work from request path                       |
-| `fallback.failure_ratio`     | `fallback_provider_failure_total / ..._requests_total`       | >1%/30min (n>=100)                        | technical    | Disable bot auto-replies; human handoff only                              |
-| `codex.canary_probe_silent`  | `codex_canary_probe_age_seconds`                             | > 900s                                    | technical    | Cooldown seat; alert — heartbeat alone doesn't prove generation works     |
+**⚠️ rows and the QUOTA classification's arming condition.** B2a's first attempt at splitting
+AUTH_DEAD/QUOTA/POLICY_BLOCKED apart (stderr-regex matching) was refuted — 12 findings from a
+cross-family refuter, all reproduced, all traced to one design defect (a single stderr can match
+two classes; matching spans a whole multi-line blob; prose can't be reliably classified by
+vocabulary). It was replaced by
+`docs/plans/2026-08-25-due-bot-live/SPEC-codex-error-classification.md`, which states plainly:
+"This stays dark until a REAL codex exec quota event and a REAL policy block have been observed
+and their exact stderr recorded here... no caller may take an irreversible action on it" until
+then. The two ⚠️ rows above (`codex.quota_exhausted`, `codex.quota_fallback_ratio`) read that
+still-advisory classification — log and observe them, but do not treat their thresholds as
+confident enough to drive an unattended automatic action until the spec's arming condition is
+met. `codex.auth_dead` is NOT gated this way: it reads a different, pre-existing,
+empirically-anchored classifier (one already-tested pattern), not the refuted split.
+`codex.cli_version_mismatch` is also unaffected — it reads `wa_codex_daemon.py`'s own
+deterministic version-pin guard, unrelated to the contested stderr classifier, and is the one
+INTERNAL-class condition reliable enough to page on today.
+
+| id                              | metric                                                       | threshold                                 | kind         | automatic action                                                                        |
+| ------------------------------- | ------------------------------------------------------------ | ----------------------------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `codex.heartbeat_stale`         | `codex_broker_heartbeat_age_seconds`                         | > 45s                                     | technical    | Mark host offline; direct to Gemini                                                     |
+| `codex.queue_growing`           | `codex_broker_queue_depth`                                   | >= 1 waiting                              | technical    | Bypass Codex for subsequent messages                                                    |
+| `codex.exec_slow`               | `codex_exec_seconds`                                         | p90 > 12s over >=20 jobs                  | technical    | Do not arm / revert to Gemini                                                           |
+| `codex.route_slow`              | `client_bot_codex_route_seconds`                             | p95 > 15s, 3 consecutive 15-min windows   | technical    | Disable active Codex routing; keep shadow                                               |
+| `codex.consecutive_failures`    | `codex_consecutive_failures`                                 | >= 3                                      | technical    | Open seat breaker 5 min; half-open with 1 canary                                        |
+| `codex.auth_dead`               | `codex_auth_dead_total`                                      | >= 1                                      | technical    | Latch seat offline; operator alert (switchboard item 4)                                 |
+| `codex.quota_exhausted` ⚠️      | `codex_quota_exhausted_total`                                | >= 1                                      | technical    | Cooldown seat; alert with evidence                                                      |
+| `codex.quota_fallback_ratio` ⚠️ | `codex_quota_fallback_total / codex_eligible_requests_total` | >5%/7d (n>=50), or 2 exhausted windows/7d | technical    | **Produce owner packet** → `packets/QUOTA-WALL-STAGE2-PACKET.template.md`               |
+| `codex.output_invalid_ratio`    | `codex_output_invalid_total / codex_jobs_total`              | >1%/100 jobs, or 2 consecutive            | technical    | Quarantine CLI/model/schema combo                                                       |
+| `codex.secret_canary_hit`       | `codex_secret_canary_hits_total`                             | > 0                                       | **business** | GLOBAL codex-leg kill (`CLIENT_BOT_CODEX_BROKER_ENABLED=false`); P0                     |
+| `codex.fence_violation`         | `codex_fence_violation_or_double_completion_total`           | > 0                                       | technical    | Disable active leg; no affected output may send                                         |
+| `ingress.ack_latency`           | `webhook_ack_latency_seconds`                                | p95 > 200ms, 5 min                        | technical    | Page ingress issue; shed LLM work from request path                                     |
+| `fallback.failure_ratio`        | `fallback_provider_failure_total / ..._requests_total`       | >1%/30min (n>=100)                        | technical    | Disable bot auto-replies; human handoff only                                            |
+| `codex.canary_probe_silent`     | `codex_canary_probe_age_seconds`                             | > 900s                                    | technical    | Cooldown seat; alert — heartbeat alone doesn't prove generation works                   |
+| `codex.cli_version_mismatch`    | `codex_cli_version_mismatch_total`                           | >= 1                                      | technical    | Page operator — CLI/config drift, NOT AUTH_DEAD/QUOTA; `codex login` fixes nothing here |
+
+⚠️ = gated by `requires_arming_condition` (see note below the table) — the QUOTA classification
+these two read is advisory, not yet armed for automatic action.
 
 ## Client bot — business invariants (B7 additions closing the gap above)
 
