@@ -127,6 +127,30 @@ def test_execution_record_for_unregistered_tool_is_rejected() -> None:
         )
 
 
+def test_execution_record_for_a_read_tool_is_rejected() -> None:
+    """The gap named in the orchestrator report: registry-membership alone
+    doesn't establish the record is for a MUTATION. 'search_clients' is a
+    real, registered R0/READ tool — proof this isn't just re-testing the
+    unregistered-tool case."""
+    with pytest.raises(ValidationError):
+        ExecutionRecord(
+            tool_name="search_clients",
+            ok=True,
+            source=ExecutionSource.DIRECT_R1,
+            executed_at=_NOW,
+        )
+
+
+def test_execution_record_for_a_mutation_tool_is_accepted() -> None:
+    """Innocence companion to the above — a real R1/MUTATION tool must
+    still construct cleanly (guilt-only testing is exactly the instrument
+    bias this whole module's history warns against)."""
+    record = ExecutionRecord(
+        tool_name="create_reminder", ok=True, source=ExecutionSource.DIRECT_R1, executed_at=_NOW
+    )
+    assert record.tool_name == "create_reminder"
+
+
 # ---------------------------------------------------------------------------
 # GUILTY — gc-015 itself, still blocked.
 # ---------------------------------------------------------------------------
