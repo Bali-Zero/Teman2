@@ -42,6 +42,7 @@ import { ReadinessChecklist } from "./components/ReadinessChecklist";
 import { WhatsAppHandoff } from "./components/WhatsAppHandoff";
 import { SavePlanBar } from "./components/SavePlanBar";
 import { ScenarioToggle } from "./components/ScenarioToggle";
+import { StudioAtmosphere } from "./components/StudioAtmosphere";
 
 /**
  * Second Home Studio — the wizard state machine (spec §4).
@@ -99,10 +100,9 @@ function nowIso(): string {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  fontSize: "0.62rem",
-  letterSpacing: "0.15em",
+  fontSize: "0.68rem",
+  letterSpacing: "0.24em",
   textTransform: "uppercase",
-  opacity: 0.5,
   color: "var(--color-text-muted)",
   margin: 0,
 };
@@ -565,132 +565,151 @@ export function StudioApp() {
       // `funnel="visa"` prop (packages/core/components/apps/AppFrame.tsx);
       // this route has no AppFrame ancestor, so it sets the attribute here.
       data-funnel="visa"
-      style={{
-        display: "grid",
-        gap: "var(--space-5, 2rem)",
-        maxWidth: "1120px",
-        margin: "0 auto",
-        padding: "var(--space-5, 2rem) var(--space-4, 1.5rem)",
-      }}
+      className="bz-shs-studio"
     >
-      <header style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}>
-        <p style={eyebrowStyle}>Second Home Studio</p>
-        <h1
+      <StudioAtmosphere />
+      <div
+        className="bz-shs-content"
+        style={{
+          display: "grid",
+          gap: "var(--space-5, 2rem)",
+          maxWidth: "1120px",
+          margin: "0 auto",
+          padding: "var(--space-5, 2rem) var(--space-4, 1.5rem)",
+        }}
+      >
+        <header
           style={{
-            margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.7rem, 4.5vw, 2.4rem)",
-            color: "var(--text-primary)",
+            display: "grid",
+            gap: "var(--space-3, 0.75rem)",
+            padding: "clamp(2rem, 7vw, 5rem) 0 clamp(1rem, 2vw, 1.5rem)",
           }}
         >
-          Check your fit
-        </h1>
-      </header>
+          <p style={eyebrowStyle}>Second Home Studio</p>
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-serif, Georgia, serif)",
+              fontSize: "clamp(3.4rem, 8vw, 6.6rem)",
+              fontWeight: 500,
+              letterSpacing: "-0.035em",
+              lineHeight: 0.92,
+              maxWidth: "11ch",
+              textWrap: "balance",
+              color: "var(--text-primary)",
+            }}
+          >
+            Check your fit
+          </h1>
+        </header>
 
-      {!isVerdictStage ? (
-        <ProgressRail step={stepIndex + 1} total={sequence.length} />
-      ) : null}
+        {!isVerdictStage ? (
+          <ProgressRail step={stepIndex + 1} total={sequence.length} />
+        ) : null}
 
-      {isVerdictStage && verdict ? (
-        <div style={{ display: "grid", gap: "var(--space-4, 1.5rem)" }}>
-          <div>
-            <button
-              type="button"
-              onClick={goBack}
-              style={{ ...navButtonStyle, padding: "6px 14px" }}
-            >
-              ← Back to your answers
-            </button>
-          </div>
-          <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
-          {showCustodyMap ? <CustodyMap /> : null}
-          <RouteComparator highlight={plan.route === "unsure"} />
-          <ScenarioToggle plan={plan} />
-          <TimelineView
-            horizon={plan.horizon ?? "exploring"}
-            location={plan.location ?? "in_indonesia"}
-            route={plan.route}
-            product={verdict.product}
-          />
-          <ReadinessChecklist plan={plan} onToggle={toggleChecklistItem} />
-          {price ? (
-            <section
-              style={{
-                display: "grid",
-                gap: "var(--space-1, 0.3rem)",
-                background: "var(--surface-raised)",
-                border: "1px solid var(--accent-funnel)",
-                borderRadius: 12,
-                padding: "var(--space-4, 1.5rem)",
-                textAlign: "center",
-                justifyItems: "center",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "0.7rem",
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  color: "var(--color-text-muted)",
-                }}
+        {isVerdictStage && verdict ? (
+          <div
+            className="bz-shs-verdict-stack"
+            style={{ display: "grid", gap: "var(--space-4, 1.5rem)" }}
+          >
+            <div>
+              <button
+                type="button"
+                onClick={goBack}
+                style={{ ...navButtonStyle, padding: "6px 14px" }}
               >
-                {getCopy("price.label")}
-              </p>
-              <div
-                style={{
-                  fontFamily: "var(--font-serif, Georgia, serif)",
-                  fontSize: "clamp(1.8rem, 4.5vw, 2.4rem)",
-                  color: "var(--accent-funnel-text, var(--accent-funnel))",
-                }}
-              >
-                {price}
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "var(--text-sm, 0.88rem)",
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {getCopy("price.note")}
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "var(--text-sm, 0.85rem)",
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {getCopy("price.dependentsNote")}
-              </p>
-            </section>
-          ) : null}
-          <WhatsAppHandoff plan={plan} verdict={verdict} />
-          <SavePlanBar plan={plan} onClear={handleClear} />
-        </div>
-      ) : currentQuestion ? (
-        <div className="bz-shs-layout">
-          <main>
-            <QuestionStage
-              question={currentQuestion}
-              plan={plan}
-              onSelect={selectAnswer}
-              onBack={goBack}
-              onContinue={continueStep}
-              canGoBack={stepIndex > 0}
-              headingRef={stageHeadingRef}
+                ← Back to your answers
+              </button>
+            </div>
+            <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
+            {showCustodyMap ? <CustodyMap /> : null}
+            <RouteComparator highlight={plan.route === "unsure"} />
+            <ScenarioToggle plan={plan} />
+            <TimelineView
+              horizon={plan.horizon ?? "exploring"}
+              location={plan.location ?? "in_indonesia"}
+              route={plan.route}
+              product={verdict.product}
             />
-          </main>
-          <aside>
-            <MemoPreview plan={plan} />
-          </aside>
-        </div>
-      ) : null}
+            <ReadinessChecklist plan={plan} onToggle={toggleChecklistItem} />
+            {price ? (
+              <section
+                style={{
+                  display: "grid",
+                  gap: "var(--space-1, 0.3rem)",
+                  background: "var(--surface-raised)",
+                  border: "1px solid var(--accent-funnel)",
+                  borderRadius: 12,
+                  padding: "var(--space-4, 1.5rem)",
+                  textAlign: "center",
+                  justifyItems: "center",
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {getCopy("price.label")}
+                </p>
+                <div
+                  style={{
+                    fontFamily: "var(--font-serif, Georgia, serif)",
+                    fontSize: "clamp(1.8rem, 4.5vw, 2.4rem)",
+                    color: "var(--accent-funnel-text, var(--accent-funnel))",
+                  }}
+                >
+                  {price}
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "var(--text-sm, 0.88rem)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {getCopy("price.note")}
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "var(--text-sm, 0.85rem)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {getCopy("price.dependentsNote")}
+                </p>
+              </section>
+            ) : null}
+            <WhatsAppHandoff plan={plan} verdict={verdict} />
+            <SavePlanBar plan={plan} onClear={handleClear} />
+          </div>
+        ) : currentQuestion ? (
+          <div className="bz-shs-layout">
+            <main>
+              <QuestionStage
+                question={currentQuestion}
+                plan={plan}
+                onSelect={selectAnswer}
+                onBack={goBack}
+                onContinue={continueStep}
+                canGoBack={stepIndex > 0}
+                headingRef={stageHeadingRef}
+              />
+            </main>
+            <aside>
+              <MemoPreview plan={plan} />
+            </aside>
+          </div>
+        ) : null}
 
-      <ConsentBanner />
+        <ConsentBanner />
 
-      <style>{`
+        <style>{`
         .bz-shs-layout {
           display: grid;
           gap: var(--space-4, 1.5rem);
@@ -719,6 +738,7 @@ export function StudioApp() {
           }
         }
       `}</style>
+      </div>
     </div>
   );
 }

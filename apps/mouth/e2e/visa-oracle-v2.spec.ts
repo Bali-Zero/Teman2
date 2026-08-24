@@ -178,10 +178,12 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         facts?: Record<string, unknown>;
       };
       expect(body.assessment_id).toMatch(/^[0-9a-f-]{36}$/);
-      // 44, not 45: `derived.has_active_stay_permit` is server-derived and
+      // 45, not 46: `derived.has_active_stay_permit` is server-derived and
       // never sent on the wire — 41 + the 3 new applicant-collected facts
-      // (2026-08-23 vocabulary extension, PR #4650) is the correct count.
-      expect(Object.keys(body.facts ?? {})).toHaveLength(44);
+      // (2026-08-23 vocabulary extension, PR #4650) + `immigration.renewal_paid`
+      // (2026-08-24 F4/PR #4719, sent as a NOT_ASKED placeholder until the
+      // interview question exists) is the correct count.
+      expect(Object.keys(body.facts ?? {})).toHaveLength(45);
 
       if (state === "SUPPORTED_CANDIDATES") {
         await expect(page.getByText("Visit Visa C1")).toBeVisible();
