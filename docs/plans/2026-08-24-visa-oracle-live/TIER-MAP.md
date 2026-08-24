@@ -36,6 +36,20 @@ That single line assigns 12 products without a judgement call. The remaining 26 
 whether the product is a basic short-stay service or a significant status change — the one place
 where the owner's business judgement, not the pack, decides.
 
+> ⚠️ **"T3 by construction" is a POLICY of this map, not a behaviour of the engine.** Added
+> 2026-08-25 after the V2 lane began transcribing this rule into code (`product-tier-map.ts`) as
+> though it were derived. It is not: a product with a SUPPORT rule and no `pricing_key` is still
+> returned by the engine as a `SUPPORTED_CANDIDATE` — contract C1 forbids it from _claiming a
+> price_, it does not forbid it from _being a candidate_. Measured on seq-13: 29 products carry at
+> least one SUPPORT rule, 26 carry a `pricing_key`, and the intersection is 26 — so the priced set
+> is a strict subset of the supported set (no product is priced but unreachable), and exactly 3
+> products (**E30, E30E, E30F**, all STUDY) are recommendable-but-priceless.
+>
+> The consequence any consumer of this map inherits: a surface that counts those 3 as
+> "consultant-routed" will contradict a verdict screen that lists them as candidates. The two
+> boundaries — _sellable today_ (this map) and _offerable by the engine_ (the pack) — are both
+> legitimate and they are not the same set. Say which one you mean.
+
 ## T3 — assisted-only (12)
 
 Cannot be sold self-service today. The Oracle must recognize each and route to a consultant.
