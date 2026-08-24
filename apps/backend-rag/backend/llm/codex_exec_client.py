@@ -14,12 +14,31 @@ credential) is not provisioned under this ruling; that client stays in-tree
 as a DORMANT, reviewed alternative — this module does not import it, replace
 it, or delete it.
 
-⚠️ THIS FILE HAS ZERO WIRING. Nothing in `backend/services/rag/agentic/` or
-any other live module imports it. No config flag, no gateway branch, no
-hot-path reference exists anywhere in this repo — grep it yourself before
-trusting this comment. Any live use still requires a separate runtime design,
-security/privacy review, context-parity evidence, and explicit activation
-authorization; none is supplied by this file or ruling.
+⚠️ CORRECTED, B2b (2026-08-25) — the claim below this line used to read
+"THIS FILE HAS ZERO WIRING" and was false. `backend/services/rag/agentic/`
+still has no reference to it — but `wa_codex_daemon.py` imports this module
+and is the payload of `com.balizero.wa-codex-broker`, a LaunchDaemon
+installed on Pro (login-less `zantara-codex` user, `KeepAlive`) and RUNNING
+as of 2026-08-25. It executes from a root-owned deployed copy at
+`/usr/local/lib/wa-codex-broker/`, NOT from a git checkout — so a change
+here is inert until that copy is re-promoted, and live from the moment it
+is. That copy's `backend/**` tree is NOT in
+`infra/home-fork/declared-pairs.json`, so `lint_home_fork.py` does not
+watch it for drift (the wrapper and seat probe are declared; the payload
+is not). Its exception-type coupling to this module is real either way: a
+constructor-signature change here (this round: `CodexExecAuthError`/
+`CodexExecQuotaError`/`CodexExecPolicyBlockedError` now require
+`confidence=`; `CodexExecOutputShapeError` now requires `reason=`) breaks
+it on the next promotion — verified safe THIS round only because the
+daemon's production code catches by type with an `except Exception:`
+catch-all already swallowing every unnamed exception (`backend/tests/unit/
+services/test_wa_codex_daemon.py`'s own `TestErrorMapping` proves it maps
+every unnamed type, including the new `CodexExecAmbiguousError`, to the
+same `"cli_failure"` it always did) — re-verify this on every future
+signature change here, do not assume it holds. Any FURTHER live use beyond
+what `wa_codex_daemon.py` already does still requires a separate runtime
+design, security/privacy review, context-parity evidence, and explicit
+activation authorization; none is supplied by this file or ruling.
 
 Design mirrors `openai_responses_client.py`'s discipline (read that module's
 docstring first): a property-based `available` that never raises on

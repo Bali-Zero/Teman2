@@ -1827,6 +1827,27 @@ class TestSanitizedErrors:
 
 
 class TestProcessGroupKill:
+    """KNOWN FLAKE (2026-08-25, B2b), unrelated to this lane's change —
+    recorded here rather than left as folklore for whoever next sees it
+    red. `test_guilt_timeout_kills_grandchildren_via_process_group` below
+    spawns a REAL `sh` subprocess tree (not a fake — this class is the one
+    exception to the file's own W114 fake-at-the-subprocess-boundary
+    discipline, by necessity: it is proving an actual `os.killpg` call
+    against a real process group) and races a `grandchild.pid` sidecar
+    file against the test harness's own process/thread scheduling. Under
+    load (this file's full suite, or a machine already busy — a shared CI
+    runner, a parallel test session) that race has been observed to fail
+    with `AssertionError: fake binary never ran — harness broken, not a
+    verdict` (the fake `sh` binary's own first line never got to write the
+    pid file before the assertion checked for it) — a HARNESS timing
+    failure, not a verdict on `_kill_and_reap`/the group-kill it tests.
+    Passes reliably run in isolation (`pytest ... ::TestProcessGroupKill`
+    alone) — confirmed on 2026-08-25 immediately after the failure, same
+    commit, zero code changes between the two runs. NOT fixed here
+    (out of scope for a classification-logic lane) — flagged so a future
+    red run here is diagnosed against this note first, not re-litigated
+    from zero."""
+
     @pytest.mark.asyncio
     async def test_guilt_timeout_kills_grandchildren_via_process_group(
         self,
