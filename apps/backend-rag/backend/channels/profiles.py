@@ -8,7 +8,11 @@ F2 invariants (enforced by tests, not just convention):
 - A profile carries length/format/citation-style/history/deadlines/
   handoff-queue and NEVER a provider name. Changing
   ``CLIENT_BOT_PRIMARY_PROVIDER`` cannot alter transport behavior because
-  no field on this model can hold a provider identifier.
+  no field on this model can hold a provider identifier: ``renderer_name``/
+  ``handoff_queue`` are CLOSED enums (a value like ``"vertex-ai"`` cannot
+  be constructed at all, not merely "not currently present"), and the
+  three copy-key fields are pattern-anchored to
+  ``client_bot.<surface>.<kind>`` rather than free text.
 - ``client-kbli-v1`` is domain-restricted to KBLI only.
 - ``client-portal-v1`` requires authentication.
 
@@ -18,8 +22,9 @@ Author: Claude Opus 5 (lane B1a — client-bot contract freeze)
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.channels.models import AttachmentKind, ClientSurface
 
@@ -33,10 +38,21 @@ __all__ = [
     "PROFILES_BY_SURFACE",
     "CitationPolicy",
     "CitationStyle",
+    "HandoffQueue",
     "ProgressMode",
+    "RendererName",
     "SurfaceProfile",
     "get_profile",
 ]
+
+# The copy-key fields are per-surface i18n lookup keys, not a closed set the
+# way renderer_name/handoff_queue are — but they must still be structurally
+# incapable of holding an arbitrary value (a provider name included), so each
+# is pattern-anchored to `client_bot.<surface-slug>.<kind>` rather than typed
+# as free text.
+_ABSTAIN_KEY_PATTERN = r"^client_bot\.[a-z_]+\.abstain$"
+_TRANSIENT_FAILURE_KEY_PATTERN = r"^client_bot\.[a-z_]+\.transient_failure$"
+_HANDOFF_KEY_PATTERN = r"^client_bot\.[a-z_]+\.handoff$"
 
 
 class CitationPolicy(StrEnum):
@@ -54,6 +70,26 @@ class ProgressMode(StrEnum):
     NONE = "none"
     STATUS_ONLY = "status_only"
     SSE_STATUS = "sse_status"
+
+
+class RendererName(StrEnum):
+    """Closed set (F2: 'never a provider name'). A free ``str`` field could
+    hold ``"vertex-ai"`` just as easily as a real renderer id — a closed
+    enum cannot, by construction, so the value can never leak a provider
+    identity regardless of what anyone types into a profile later.
+    """
+
+    WHATSAPP_LIGHT = "whatsapp_light"
+    PLAIN_TEXT = "plain_text"
+    MARKDOWN = "markdown"
+
+
+class HandoffQueue(StrEnum):
+    """Closed set, same rationale as ``RendererName``."""
+
+    CLIENT_GENERAL = "client_general"
+    PORTAL_CASE = "portal_case"
+    KBLI_SPECIALIST = "kbli_specialist"
 
 
 class SurfaceProfile(BaseModel):
@@ -89,11 +125,11 @@ class SurfaceProfile(BaseModel):
     accepted_attachment_kinds: frozenset[AttachmentKind]
     max_attachments: int
 
-    renderer_name: str
-    handoff_queue: str
-    abstention_copy_key: str
-    transient_failure_copy_key: str
-    handoff_copy_key: str
+    renderer_name: RendererName
+    handoff_queue: HandoffQueue
+    abstention_copy_key: Annotated[str, Field(pattern=_ABSTAIN_KEY_PATTERN)]
+    transient_failure_copy_key: Annotated[str, Field(pattern=_TRANSIENT_FAILURE_KEY_PATTERN)]
+    handoff_copy_key: Annotated[str, Field(pattern=_HANDOFF_KEY_PATTERN)]
 
 
 # ---------------------------------------------------------------------------
@@ -128,8 +164,8 @@ CLIENT_WA_V1 = SurfaceProfile(
         {AttachmentKind.IMAGE, AttachmentKind.DOCUMENT, AttachmentKind.AUDIO}
     ),
     max_attachments=3,
-    renderer_name="whatsapp_light",
-    handoff_queue="client_general",
+    renderer_name=RendererName.WHATSAPP_LIGHT,
+    handoff_queue=HandoffQueue.CLIENT_GENERAL,
     abstention_copy_key="client_bot.whatsapp.abstain",
     transient_failure_copy_key="client_bot.whatsapp.transient_failure",
     handoff_copy_key="client_bot.whatsapp.handoff",
@@ -157,8 +193,8 @@ CLIENT_IG_V1 = SurfaceProfile(
     ack_deadline_ms=200,
     accepted_attachment_kinds=frozenset({AttachmentKind.IMAGE}),
     max_attachments=1,
-    renderer_name="plain_text",
-    handoff_queue="client_general",
+    renderer_name=RendererName.PLAIN_TEXT,
+    handoff_queue=HandoffQueue.CLIENT_GENERAL,
     abstention_copy_key="client_bot.instagram.abstain",
     transient_failure_copy_key="client_bot.instagram.transient_failure",
     handoff_copy_key="client_bot.instagram.handoff",
@@ -188,8 +224,8 @@ CLIENT_PORTAL_V1 = SurfaceProfile(
     ack_deadline_ms=500,
     accepted_attachment_kinds=frozenset({AttachmentKind.IMAGE, AttachmentKind.DOCUMENT}),
     max_attachments=5,
-    renderer_name="markdown",
-    handoff_queue="portal_case",
+    renderer_name=RendererName.MARKDOWN,
+    handoff_queue=HandoffQueue.PORTAL_CASE,
     abstention_copy_key="client_bot.portal.abstain",
     transient_failure_copy_key="client_bot.portal.transient_failure",
     handoff_copy_key="client_bot.portal.handoff",
@@ -220,8 +256,8 @@ CLIENT_KBLI_V1 = SurfaceProfile(
     ack_deadline_ms=500,
     accepted_attachment_kinds=frozenset({AttachmentKind.IMAGE, AttachmentKind.DOCUMENT}),
     max_attachments=2,
-    renderer_name="markdown",
-    handoff_queue="kbli_specialist",
+    renderer_name=RendererName.MARKDOWN,
+    handoff_queue=HandoffQueue.KBLI_SPECIALIST,
     abstention_copy_key="client_bot.kbli_widget.abstain",
     transient_failure_copy_key="client_bot.kbli_widget.transient_failure",
     handoff_copy_key="client_bot.kbli_widget.handoff",
