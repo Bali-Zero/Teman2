@@ -76,3 +76,49 @@ def test_civil_timezone_is_pinned_to_asia_makassar_not_jakarta() -> None:
     """
     assert civil_clock.GARUDA_CIVIL_TIMEZONE.key == "Asia/Makassar"
     assert civil_clock.GARUDA_CIVIL_TIMEZONE.key != "Asia/Jakarta"
+
+
+def test_cli_feeds_the_civil_anchor_into_the_engine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pin the WIRING, not just the helper.
+
+    ``test_garuda_today_*`` above prove the anchor computes the right date, but
+    nothing they assert would go red if someone put ``date.today()`` back at the
+    CLI call site — the helper would still be correct and still be unused. This
+    test fails in exactly that case: it replaces the anchor with a sentinel the
+    real clock can never return, and asserts the value reaches the engine.
+    """
+    import io
+    import json
+
+    from backend.services.garuda_flow import internal_preview_cli
+
+    sentinel = date(1999, 12, 31)
+    captured: dict[str, object] = {}
+
+    def _capture(request, *, today, generated_at):  # noqa: ANN001, ANN202
+        captured["today"] = today
+        raise internal_preview_cli.PreviewInputError("stop-after-capture")
+
+    monkeypatch.setattr(internal_preview_cli, "garuda_today", lambda: sentinel)
+    monkeypatch.setattr(internal_preview_cli, "build_internal_preview", _capture)
+
+    payload = json.dumps(
+        {
+            "case_type": "issuance",
+            "nationality": "usa",
+            "entry_date": "2026-08-24",
+            "passport_expiry_date": "2027-08-24",
+            "purpose": "tourism",
+            "travellers": 1,
+            "self_pay": True,
+        }
+    ).encode()
+
+    internal_preview_cli.run_cli(io.BytesIO(payload), io.StringIO())
+
+    assert captured["today"] == sentinel, (
+        "the CLI did not pass garuda_today() to the engine — the civil-day anchor "
+        "exists but is not wired in"
+    )
