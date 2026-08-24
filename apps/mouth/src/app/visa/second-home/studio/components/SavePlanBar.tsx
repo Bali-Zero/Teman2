@@ -194,47 +194,68 @@ const CLEAR_BUTTON_STYLES = `
      hover/focus needed — a touch tap has no hover, and arming is the moment
      the destructive action becomes real, so the cue can't depend on a
      pointer state the next tap (the confirm) won't have either.
-     P0 2026-08-24b: this used to read var(--accent-funnel), which on the
-     [data-theme="editorial"][data-funnel="visa"] scope this page always
-     carries resolves to #ff3344 — byte-identical to the price panel's own
-     border-top (both consume the same funnel-brand token). One control
-     said "trust this number", the other "you are about to destroy it",
-     painted the same red. In a funnel whose brand accent IS red, danger
-     cannot also be red — so the armed state reaches for --state-warning
-     (amber, ~#f59e0b unthemed) instead: a hue this page never otherwise
-     uses (navy / funnel red / WhatsApp green), and the conventional
-     "confirm?" signal. Do not tidy this back to var(--accent-funnel) —
-     that reintroduces the clash. Same contrast math as ScenarioToggle's
-     exploratory-control hover: this label is 16px/600 — WCAG "normal
-     text" (large-text exemption needs >=24px, or >=18.66px bold) — so the
-     text floor is 4.5:1 against its own painted fill, and the border
-     floor is 3:1 against the surface behind it (non-text UI). 62% amber
-     mixed with white measures both floors on this theme's raised-surface
-     backdrop; the flat token alone is too dark against the amber-tinted
-     fill to hold the text floor. Placed after the resting :hover/
-     :focus-visible rule above so equal-specificity source order lets it
-     win whether or not the armed button is also hovered. */
+     P0 2026-08-24b/c — two rounds on this one, both grounded on the
+     rendered page, not declared CSS:
+     Round b tried var(--accent-funnel): on this page's fixed
+     [data-theme="editorial"][data-funnel="visa"] scope that's #ff3344 —
+     byte-identical to the price panel's border. Fixed by switching to
+     --state-warning (amber) — which turned out to just relocate the
+     collision: VerdictPanel's edge_case band (property route, or ages
+     55-59 — NOT a rare case, the majority of a senior audience hits it)
+     paints its OWN border/fill in --state-warning at the same outline +
+     light-tint structure. Every hue on this page already carries a
+     verdict-band or price-panel meaning (success/info/warning/neutral/
+     funnel-red) — hunting for a free one just finds the next collision.
+     Round c changes the CHANNEL instead of the hue: a solid, opaque FILL
+     block. No verdict band and no price panel ever paints a solid fill —
+     they are all a thin border over --surface-raised (or a light
+     color-mix tint). The one solid-fill precedent already on this exact
+     page is WhatsAppHandoff's CTA (#25D366, WHATSAPP_GREEN) sitting right
+     above this button — proof a solid block already reads as "the other
+     kind of control" here, distinct from every outlined card regardless
+     of which hue it carries. That frees funnel red back up: reused as
+     color-mix(in srgb, var(--accent-funnel) 85%, black), the exact
+     darkening StudioApp.tsx's primaryNavButtonStyle already derives (see
+     its comment above, same file) because flat --accent-funnel under
+     white text measures 3.62:1 on this funnel/theme pairing — verified
+     4.5:1+ after the 85%-black mix, on both known --accent-funnel
+     resolutions. This label is 16px/600 — WCAG "normal text" (no
+     large-text exemption) — so 4.5:1 against the fill is the real floor:
+     measured 4.82:1 on the rendered page. But the fill itself (a DARK red,
+     deliberately mixed toward black so white text clears 4.5:1) only
+     measures 2.78:1 against the navy surface behind it — short of the 3:1
+     non-text/UI-boundary floor (WCAG 1.4.11). Darkening the fill further
+     to help criterion 2 makes criterion 3 worse and vice versa; the two
+     floors can't both be met by tuning ONE color. So the boundary is a
+     SEPARATE color from the fill: border-color and the inset ring both
+     read --text-on-accent (white on this funnel) instead of the fill
+     token — white-on-navy clears 3:1 by a wide margin regardless of what
+     the interior fill measures, and it's the same color already proven
+     for the text. The focus-visible outline below reads the SAME
+     --text-on-accent for the identical reason: an outline drawn in the
+     dark fill color would inherit its 2.78:1 problem. Do not tidy the
+     border/outline back to the fill color, and do not go back to
+     --state-warning or a bare/light --accent-funnel outline — all three
+     are collisions or contrast failures this fixes. Placed after the
+     resting :hover/:focus-visible rule above so equal-specificity source
+     order lets it win whether or not the armed button is also hovered. */
   .bz-shs-clear-plan.bz-shs-clear-armed {
-    --bz-shs-clear-armed-active: color-mix(
+    --bz-shs-clear-armed-fill: color-mix(
       in srgb,
-      var(--state-warning, #f59e0b) 62%,
-      white
+      var(--accent-funnel) 85%,
+      black
     );
-    border-color: var(--state-warning, #f59e0b);
-    background: color-mix(
-      in srgb,
-      var(--state-warning, #f59e0b) 18%,
-      transparent
-    );
-    box-shadow: inset 0 0 0 1px currentColor;
-    color: var(--bz-shs-clear-armed-active);
+    border-color: var(--text-on-accent, #fff);
+    background: var(--bz-shs-clear-armed-fill);
+    box-shadow: inset 0 0 0 1px var(--text-on-accent, #fff);
+    color: var(--text-on-accent, #fff);
     text-decoration-line: underline;
     text-decoration-thickness: 2px;
     text-underline-offset: 0.2em;
   }
 
   .bz-shs-clear-plan.bz-shs-clear-armed:focus-visible {
-    outline: 3px solid var(--bz-shs-clear-armed-active);
+    outline: 3px solid var(--text-on-accent, #fff);
     outline-offset: 3px;
   }
 
