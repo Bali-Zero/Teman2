@@ -717,15 +717,6 @@ export function SecondHomeLanding() {
           <Phone size={18} aria-hidden />
           {t("secondHome.cta.button")}
         </WhatsAppLeadButton>
-        <p
-          style={{
-            margin: 0,
-            fontSize: "var(--text-sm, 0.82rem)",
-            color: "var(--color-text-muted)",
-          }}
-        >
-          {t("secondHome.cta.note")}
-        </p>
       </section>
 
       <ConsentBanner />

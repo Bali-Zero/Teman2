@@ -67,14 +67,24 @@ export default function VisaClockResultPage({
     );
   if (!data)
     return (
-      <AppFrame funnel="visa" title="Visa Clock" subtitle="Loading your timeline…">
+      <AppFrame
+        funnel="visa"
+        title="Visa Clock"
+        subtitle="Loading your timeline…"
+      >
         <p style={{ color: "var(--color-text-muted)" }}>One moment.</p>
       </AppFrame>
     );
 
   const today = new Date().toISOString().slice(0, 10);
-  const checkpoints: TimelineCheckpoint[] = data.checkpoints.map((c) => ({ ...c, past: c.at < today }));
-  const daysLeft = Math.max(0, Math.ceil((new Date(data.expiry_date).getTime() - Date.now()) / 86_400_000));
+  const checkpoints: TimelineCheckpoint[] = data.checkpoints.map((c) => ({
+    ...c,
+    past: c.at < today,
+  }));
+  const daysLeft = Math.max(
+    0,
+    Math.ceil((new Date(data.expiry_date).getTime() - Date.now()) / 86_400_000),
+  );
   const publicUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/visa/clock/${data.hash}`
@@ -87,8 +97,12 @@ export default function VisaClockResultPage({
       subtitle={`Expires ${formatIsoDate(data.expiry_date)} — ${daysLeft} days from today.`}
       footer={
         <>
-          Timeline generated {formatIsoDate(today)}. Government fees may change —{" "}
-          <a href="https://balizero.com/pricing" style={{ color: "var(--accent-funnel-text)" }}>
+          Timeline generated {formatIsoDate(today)}. Government fees may change
+          —{" "}
+          <a
+            href="https://balizero.com/pricing"
+            style={{ color: "var(--accent-funnel-text)" }}
+          >
             pricing reference
           </a>
           .
@@ -142,7 +156,10 @@ export default function VisaClockResultPage({
         >
           Five-checkpoint timeline
         </div>
-        <AppResultTimeline checkpoints={checkpoints} expiryDate={data.expiry_date} />
+        <AppResultTimeline
+          checkpoints={checkpoints}
+          expiryDate={data.expiry_date}
+        />
       </section>
 
       {/* Chat accordion — only present on fresh POST result (session_jwt non-null) */}
@@ -174,9 +191,13 @@ export default function VisaClockResultPage({
       <AppWhatsAppCTA
         source="visa_clock"
         headline={`Want our team to file the ${data.visa_type} renewal?`}
-        description="Fixed fee, processed in ~14 days. Start on WhatsApp — we'll pick up in under 5 hours."
+        description="Fixed fee, processed in ~14 days. Start on WhatsApp."
         resultHash={data.hash}
-        context={{ visa_type: data.visa_type, entry_date: data.entry_date, expiry_date: data.expiry_date }}
+        context={{
+          visa_type: data.visa_type,
+          entry_date: data.entry_date,
+          expiry_date: data.expiry_date,
+        }}
         whatsappContext={[
           { label: "Visa", value: data.visa_type },
           { label: "Entry", value: formatIsoDate(data.entry_date) },
@@ -203,5 +224,9 @@ function formatIsoDate(iso: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }

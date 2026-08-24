@@ -2,6 +2,14 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// Named `*Messages` — NOT `it`/`id` — because vitest's global `it()` test
+// function lives in this module's scope too; a default import literally named
+// `it` shadows it and every `it(...)` below would silently resolve to the JSON
+// module. (Same trap already documented in i18n/secondhome-forbidden-claims.)
+import enMessages from "../../i18n/locales/en.json";
+import itMessages from "../../i18n/locales/it.json";
+import idMessages from "../../i18n/locales/id.json";
+
 /**
  * `Avg reply: 2 min` was served on the homepage from three places — TrustBar's
  * desktop and mobile variants and the hero CTA — and nobody had ever measured
@@ -91,6 +99,20 @@ const FILES = SCANNED.flatMap((d) => walk(join(SRC, d)));
 //     hyphen spellings. It is deliberately narrow — `responseTime` is a real
 //     variable in this app (innocence list) and any pattern reaching it would
 //     fire on machine latency, which is not a promise to a reader.
+//
+// Fourth round (2026-08-24). Three claims were still SERVED in production on
+// `8ccd7d2b8` and none of the nine patterns above could have stopped them, for
+// two structurally different reasons:
+//   - `we'll pick up in under 5 hours.` (app/visa/clock/[hash]/page.tsx:177) sat
+//     in a file this walk DOES read. No pattern fired: "pick up" is not a reply
+//     word. Diction, not scope. -> Pattern 10 below.
+//   - `secondHome.cta.note` in i18n/locales/{en,it,id}.json. Patterns 1 and 3 DO
+//     match the English string — the walk simply never opened the file. Scope,
+//     not diction. -> the i18n block at the bottom of this file.
+// Pattern 10 requires a first-person subject and forbids an object between
+// "pick up" and "in/within", for the same reason "respond" needs a subject:
+// "pick up your passport in 3 days" is a collection time, not a reply promise.
+// Measured against all 1,453 walked files: 1 hit, the offender, zero others.
 const CLAIMS: RegExp[] = [
   /\b(avg|average|typical)\.?[^.\n]{0,16}?\brepl(y|ies)\b/i,
   /\b(avg|average|typical)\.?\s+response\s*[:=]?\s*(under\s+|less\s+than\s+)?\d/i,
@@ -101,7 +123,91 @@ const CLAIMS: RegExp[] = [
   /\bavg[_\s-]*repl(y|ies)(?![a-z])/i,
   /\busually\s+(?:within|under)\s+\d+\s*(?:min|hour|hr)[a-z]*\b/i,
   /\b(response|repl(?:y|ies))[_\s-]*minutes\b/i,
+  /\b(?:we|we'll|we will|our\s+team|balizero)\b[^.\n]{0,20}?\bpick\s+up\s+(?:in|within)\s+(?:under\s+|less\s+than\s+)?\d/i,
 ];
+
+/**
+ * The i18n surface, and why it is reached by IMPORT rather than by the walk.
+ *
+ * `SCANNED` is ["app", "components", "lib"]; the dictionaries live in
+ * `src/i18n/locales/`, a sibling of all three. Widening the walk's extension
+ * filter to `.json` — the obvious move — was MEASURED before being written:
+ * there are ZERO `.json` files under app/components/lib, so it would read no
+ * new file and still not reach a single locale. An armed-looking change that
+ * cannot fire is the disease this guard exists to prevent, so it was not made.
+ * Widening `SCANNED` itself is a separate decision and is deliberately not
+ * taken here. The three dictionaries are therefore named explicitly, which is
+ * also what the header above prescribes for exceptions: name the module, do
+ * not widen a regex.
+ *
+ * Per-language patterns, because English-only matching is exactly how the
+ * Italian and Indonesian copies of this same claim stayed green while the
+ * English one was catchable (family #3 UNDER-match, the W77 language axis).
+ */
+const CLAIMS_IT: RegExp[] = [
+  /\brispost[ae]\b[^.\n]{0,30}?\b(?:entro|in)\s+(?:meno\s+di\s+)?\d/i,
+  /\brispondiamo\b[^.\n]{0,25}?\b(?:entro|in)\s+(?:meno\s+di\s+)?\d/i,
+  /\btempo\s+di\s+rispost[ae]\s*[:=]\s*\d/i,
+];
+
+const CLAIMS_ID: RegExp[] = [
+  /\bbalasan\b[^.\n]{0,30}?\b(?:kurang\s+dari|dalam|di\s+bawah)\s+\d/i,
+  /\bkami\s+(?:akan\s+)?membalas\b[^.\n]{0,25}?\b(?:dalam|kurang\s+dari)\s+\d/i,
+  /\bwaktu\s+balas(?:an)?\s*[:=]\s*\d/i,
+];
+
+const DICTIONARIES: {
+  locale: string;
+  messages: unknown;
+  patterns: RegExp[];
+}[] = [
+  { locale: "en", messages: enMessages, patterns: CLAIMS },
+  { locale: "it", messages: itMessages, patterns: CLAIMS_IT },
+  { locale: "id", messages: idMessages, patterns: CLAIMS_ID },
+];
+
+/** Every string leaf under a JSON subtree, with its dotted key path. */
+function leaves(node: unknown, path: string[], out: [string, string][]): void {
+  if (typeof node === "string") {
+    out.push([path.join("."), node]);
+    return;
+  }
+  if (Array.isArray(node)) {
+    node.forEach((v, i) => leaves(v, [...path, String(i)], out));
+    return;
+  }
+  if (node && typeof node === "object") {
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      leaves(v, [...path, k], out);
+    }
+  }
+}
+
+function sweep(messages: unknown, patterns: RegExp[]): string[] {
+  const out: [string, string][] = [];
+  leaves(messages, [], out);
+  return out
+    .filter(([, value]) => patterns.some((re) => re.test(value)))
+    .map(([key, value]) => `${key}: ${value}`);
+}
+
+// ── DECLARED GAP (2026-08-24) ─────────────────────────────────────────────
+// Two reply-speed-adjacent surfaces are knowingly NOT covered here. Written
+// down rather than left silent, because an undeclared residue is the next
+// leak:
+//
+//   1. `app/(blog)/services/page.tsx:353` — "WhatsApp or Visa Check for a
+//      first read — free, under 15 min." Whether "first read" is a reply-time
+//      promise or a scope promise is an OWNER call that has not been made.
+//      It is not removed and no pattern is aimed at it. If the owner rules it
+//      a claim, the pattern belongs beside Pattern 10, not in a widened
+//      Pattern 1.
+//   2. `fr.json` / `ru.json` get no per-language ruleset. Measured on
+//      2026-08-24: 188 string leaves each, zero hits under the English
+//      patterns, and neither carries `secondHome.cta.note` at all. So there is
+//      nothing to remove today — but a reply-time claim written in French or
+//      Russian would pass this guard unseen. Closing it means authoring two
+//      more rulesets and their guilt fixtures, which is a round of its own.
 
 describe("no page claims a response time nobody measured", () => {
   it("scans a plausible number of files", () => {
@@ -140,13 +246,20 @@ describe("no page claims a response time nobody measured", () => {
       '            { value: "4.8h", label: "avg first-reply on WhatsApp" },',
       "      trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}",
       "  responseMinutes: number;",
+      // removed 2026-08-24 — still SERVED on 8ccd7d2b8 at the file:line each
+      // was measured at. The first three are one claim in three languages;
+      // English-only patterns caught only the first.
+      '      "note": "Typical first reply on WhatsApp in under 5 hours."',
+      '      "note": "Prima risposta su WhatsApp in genere entro 5 ore."',
+      '      "note": "Balasan pertama di WhatsApp biasanya kurang dari 5 jam."',
+      '        description="Fixed fee, processed in ~14 days. Start on WhatsApp — we\'ll pick up in under 5 hours."',
       // caught by the first version, must not regress
       "  <p>We reply within 5 minutes</p>",
       "  <p>Our team responds in 2 minutes</p>",
       "  <span>Reply time: 2 min</span>",
     ]) {
       expect(
-        CLAIMS.some((re) => re.test(served)),
+        [...CLAIMS, ...CLAIMS_IT, ...CLAIMS_ID].some((re) => re.test(served)),
         `no pattern caught: ${served}`,
       ).toBe(true);
     }
@@ -197,9 +310,79 @@ describe("no page claims a response time nobody measured", () => {
       // Survives on the contact page after the 15-minute promise was removed:
       // a reply word with no duration attached is not a claim.
       "            No bots in the first reply. WhatsApp is the fastest channel —",
+      // Pattern 10's neighbours. A collection time is not a reply time, and
+      // the object between "pick up" and "in" is what tells them apart.
+      "You can pick up your passport in 3 days.",
+      "We can pick up your documents in 2 days.",
+      "Our team will pick up the file from the notary.",
+      "Pick up the conversation where you left it.",
     ]) {
-      const fired = CLAIMS.filter((re) => re.test(innocent));
+      const fired = [...CLAIMS, ...CLAIMS_IT, ...CLAIMS_ID].filter((re) =>
+        re.test(innocent),
+      );
       expect(fired.length, `fired on: ${innocent}`).toBe(0);
     }
+  });
+
+  // ── the i18n surface the walk cannot reach ──────────────────────────────
+  describe("no locale dictionary promises a reply speed", () => {
+    it("sees a plausible number of strings in each dictionary", () => {
+      // A dictionary that failed to import, or a `leaves` walk that broke,
+      // would let every assertion below pass by looking at nothing.
+      for (const { locale, messages } of DICTIONARIES) {
+        const out: [string, string][] = [];
+        leaves(messages, [], out);
+        expect(out.length, `${locale} dictionary looks empty`).toBeGreaterThan(
+          100,
+        );
+      }
+    });
+
+    for (const { locale, messages, patterns } of DICTIONARIES) {
+      it(`INNOCENCE (${locale}): the current dictionary makes no reply-time claim`, () => {
+        // Reported verbatim with its key path — vetted copy is never silently
+        // "fixed" from inside a test file.
+        expect(sweep(messages, patterns)).toEqual([]);
+      });
+    }
+
+    it("GUILT: the claim that was served is caught in all three languages", () => {
+      const planted = {
+        en: {
+          secondHome: {
+            cta: { note: "Typical first reply on WhatsApp in under 5 hours." },
+          },
+        },
+        it: {
+          secondHome: {
+            cta: { note: "Prima risposta su WhatsApp in genere entro 5 ore." },
+          },
+        },
+        id: {
+          secondHome: {
+            cta: {
+              note: "Balasan pertama di WhatsApp biasanya kurang dari 5 jam.",
+            },
+          },
+        },
+      };
+      expect(sweep(planted.en, CLAIMS)).toHaveLength(1);
+      expect(sweep(planted.it, CLAIMS_IT)).toHaveLength(1);
+      expect(sweep(planted.id, CLAIMS_ID)).toHaveLength(1);
+    });
+
+    it("INNOCENCE: neighbouring vetted copy does not trip the per-language sets", () => {
+      // Real strings from these same dictionaries. Each contains the reply
+      // word (reply / rispondiamo / balas) with NO duration attached — which
+      // is the whole distinction the patterns are built on.
+      const clean = {
+        en: "Tell us your situation on WhatsApp. We reply with an honest read.",
+        it: "Ti rispondiamo con una valutazione onesta: quale percorso conviene.",
+        id: "Kami balas dengan penilaian jujur: jalur mana yang cocok.",
+      };
+      expect(sweep({ a: clean.en }, CLAIMS)).toEqual([]);
+      expect(sweep({ a: clean.it }, CLAIMS_IT)).toEqual([]);
+      expect(sweep({ a: clean.id }, CLAIMS_ID)).toEqual([]);
+    });
   });
 });
