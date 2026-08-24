@@ -86,8 +86,11 @@ output (index, definition, tree placement, questions, NB-2 citations, tier).
 
 - Per assembly-line: one cross-family refuter per PR; full adversarial always on engine rules,
   pricing, and the checkout handoff.
-- V1 acceptance per product: rules reachable (no orphan fact paths), DeepSeek re-derives the
-  eligibility outcomes on the product's gold personas and matches, NB-2 citations verbatim.
+- V1 acceptance per product: rules reachable (no orphan fact paths), a cross-family seat
+  (Kimi K3 — the DeepSeek seat was RETIRED 2026-07-19) re-derives the eligibility outcomes on
+  the product's gold personas and matches, NB-2 citations verbatim. "Reachable" here means the
+  narrow thing it says: `reachable = bool(support)` is STATIC, so it is not evidence the product
+  evaluates correctly — the gold re-derivation is what carries that weight.
 - V2 acceptance: critic gate PASS on the full journey on a phone + the 5-state contract fully
   expressed in the UX (including honest hand-offs) + consultant control on every screen.
 - Gauntlet: full Playwright wizard journeys (happy + every 5-outcome path + tier routing) on
