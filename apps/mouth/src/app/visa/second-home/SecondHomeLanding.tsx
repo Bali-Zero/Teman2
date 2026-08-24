@@ -265,10 +265,9 @@ export function SecondHomeLanding() {
               >
                 <div
                   style={{
-                    ...tabularNums,
                     fontFamily: fontSerif,
-                    fontSize: "clamp(2rem, 4.5vw, 2.75rem)",
-                    fontWeight: 700,
+                    fontSize: "clamp(1.3rem, 3vw, 1.6rem)",
+                    fontWeight: 340,
                     lineHeight: 1.1,
                     color: "var(--accent-funnel-text, var(--accent-funnel))",
                   }}

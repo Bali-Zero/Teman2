@@ -93,6 +93,21 @@ describe("SecondHomeLanding", () => {
     });
   });
 
+  it("keeps the hero statistics proportional rather than tabular", () => {
+    renderLanding();
+
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    expect(hero).not.toBeNull();
+
+    ["5 years", "USD 130,000", "Free"].forEach((value) => {
+      const statistic = within(hero as HTMLElement).getByText(value, {
+        exact: true,
+      });
+      expect(statistic.style.fontVariantNumeric || "normal").toBe("normal");
+      expect(statistic.style.fontFeatureSettings || "normal").toBe("normal");
+    });
+  });
+
   it("covers the senior tracks, no-work-rights, and the 90-day duty", () => {
     renderLanding();
 
