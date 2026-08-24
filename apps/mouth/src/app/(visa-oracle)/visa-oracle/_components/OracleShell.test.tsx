@@ -712,4 +712,41 @@ describe("OracleShell ever-present consultant control", () => {
 
     expect(secondEvaluationId).toBe(firstEvaluationId);
   });
+
+  // V3 fix: origin_screen must say which surface asked. `OracleShell` is the
+  // only place that knows which screen is current, and it computes
+  // `consultantOriginScreen` from `current.kind` rather than either consumer
+  // guessing or a hardcoded literal reasserting itself. Driving the
+  // ever-present topbar control from a non-verdict screen (framing, here)
+  // must record "wizard" — proving this actually pins the wiring, not just
+  // the type, this test was watched RED against a temporarily restored
+  // `originScreen: "verdict"` hardcode in `ConsentHandoff.tsx` before this
+  // fix landed.
+  it('records origin_screen "wizard" when the topbar consultant control is driven from a non-verdict screen', async () => {
+    // ConsentHandoff renders no checkbox at all (just an "unavailable"
+    // notice) without a configured WhatsApp number — unlike the Playwright
+    // e2e config, the vitest env doesn't set this, so it's stubbed here.
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER", "628123456789");
+
+    render(<OracleShell />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    // Framing — no verdict exists yet, so `current.kind !== "verdict"` and
+    // OracleShell must decide "wizard".
+    fireEvent.click(
+      screen.getByRole("button", { name: /^talk to a consultant/i }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /i consent to open whatsapp/i,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(requestConsultantAssignment).toHaveBeenCalledTimes(1),
+    );
+    expect(requestConsultantAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({ originScreen: "wizard" }),
+    );
+  });
 });

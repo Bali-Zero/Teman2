@@ -6,7 +6,10 @@ import { MessageCircle, X } from "lucide-react";
 import type { Language } from "../_lib/flow";
 import { translate } from "../_lib/i18n";
 import type { VisaOracleTelemetryState } from "../_lib/telemetry";
-import type { ConsultantAssignmentTier } from "../_lib/consultant-assignment-client";
+import type {
+  ConsultantAssignmentOriginScreen,
+  ConsultantAssignmentTier,
+} from "../_lib/consultant-assignment-client";
 import { ConsentHandoff } from "./ConsentHandoff";
 
 export interface ConsultantAccessProps {
@@ -32,6 +35,17 @@ export interface ConsultantAccessProps {
    */
   evaluationId: string;
   tier: ConsultantAssignmentTier;
+  /**
+   * Required, no default: this control renders on every `current.kind`, so
+   * only `OracleShell` — the one place that actually knows which screen is
+   * current — can say whether this interaction is "wizard" or "verdict".
+   * Deliberately NOT inferred in here from the presence of `state` (verdict
+   * screens pass one, every other screen doesn't): that would be a second
+   * place guessing something the caller already knows for certain, which is
+   * the same shape of defect the shared `evaluationId` above exists to
+   * close.
+   */
+  originScreen: ConsultantAssignmentOriginScreen;
   productVersionId?: string | null;
 }
 
@@ -63,6 +77,7 @@ export function ConsultantAccess({
   whatsappNumber,
   evaluationId,
   tier,
+  originScreen,
   productVersionId,
 }: ConsultantAccessProps) {
   const [open, setOpen] = useState(false);
@@ -144,6 +159,7 @@ export function ConsultantAccess({
                 whatsappNumber={whatsappNumber}
                 evaluationId={evaluationId}
                 tier={tier}
+                originScreen={originScreen}
                 productVersionId={productVersionId}
               />
             </motion.div>

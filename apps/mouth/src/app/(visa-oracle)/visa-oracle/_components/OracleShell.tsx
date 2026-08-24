@@ -57,7 +57,10 @@ import {
   type VisaOracleMode,
 } from "../_lib/runtime-mode";
 import { shadowParityMatches } from "../_lib/shadow-parity";
-import type { ConsultantAssignmentTier } from "../_lib/consultant-assignment-client";
+import type {
+  ConsultantAssignmentOriginScreen,
+  ConsultantAssignmentTier,
+} from "../_lib/consultant-assignment-client";
 import type { OutcomeViewModel } from "../_lib/outcome-view-model";
 import type { VisaOracleEvaluateResponse } from "../_lib/visa-oracle-contract";
 import { LivingTree } from "./LivingTree";
@@ -760,6 +763,15 @@ function OracleShellRuntime({
   }
   const consultantEvaluationId =
     lastEvaluationAssessmentIdRef.current ?? fallbackEvaluationIdRef.current;
+  // origin_screen — this is the field that keeps V2's ever-present topbar
+  // control and this verdict-screen handoff distinguishable now that they
+  // share one `evaluationId` on purpose (see the comment above). `OracleShell`
+  // is the only place that actually knows which screen is current, so it
+  // decides here rather than letting either consumer guess from a side
+  // signal (`ConsentHandoff`/`ConsultantAccess` just forward what they're
+  // given — see their own doc comments on this prop).
+  const consultantOriginScreen: ConsultantAssignmentOriginScreen =
+    current.kind === "verdict" ? "verdict" : "wizard";
   // tier is an explicit, conservative placeholder: TIER-MAP.md's owner
   // switchboard #4 (the T1/T2 business-judgment split) is unsigned as of
   // this wiring. A SUPPORTED_CANDIDATES verdict always has a resolved price
@@ -823,6 +835,7 @@ function OracleShellRuntime({
               guardianConsentRequired={guardianConsentRequired}
               evaluationId={consultantEvaluationId}
               tier={consultantTier}
+              originScreen={consultantOriginScreen}
               productVersionId={consultantProductVersionId}
             />
             {hasLocalResume && (
@@ -958,6 +971,7 @@ function OracleShellRuntime({
                         guardianConsentRequired={guardianConsentRequired}
                         evaluationId={consultantEvaluationId}
                         tier={consultantTier}
+                        originScreen={consultantOriginScreen}
                         productVersionId={consultantProductVersionId}
                       />
                     }

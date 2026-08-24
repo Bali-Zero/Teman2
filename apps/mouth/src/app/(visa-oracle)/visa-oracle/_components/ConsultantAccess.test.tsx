@@ -99,6 +99,7 @@ describe("ConsultantAccess", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="wizard"
       />,
     );
 
@@ -117,6 +118,7 @@ describe("ConsultantAccess", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="wizard"
       />,
     );
 
@@ -139,6 +141,7 @@ describe("ConsultantAccess", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="verdict"
       />,
     );
 
@@ -161,6 +164,7 @@ describe("ConsultantAccess", () => {
           whatsappNumber="628123456789"
           evaluationId={TEST_EVALUATION_ID}
           tier="T3"
+          originScreen="wizard"
         />
         <button type="button">outside</button>
       </div>,
@@ -186,6 +190,7 @@ describe("ConsultantAccess", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="wizard"
       />,
     );
 
@@ -208,6 +213,7 @@ describe("ConsultantAccess", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="wizard"
       />,
     );
 
@@ -234,6 +240,7 @@ describe("ConsultantAccess", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T2"
+        originScreen="wizard"
         productVersionId="55555555-5555-4555-8555-555555555555"
       />,
     );

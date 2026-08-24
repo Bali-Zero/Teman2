@@ -18,6 +18,7 @@ import {
 } from "../_lib/consent-store";
 import {
   requestConsultantAssignment,
+  type ConsultantAssignmentOriginScreen,
   type ConsultantAssignmentTier,
 } from "../_lib/consultant-assignment-client";
 
@@ -48,6 +49,17 @@ export interface ConsentHandoffProps {
    */
   evaluationId: string;
   tier: ConsultantAssignmentTier;
+  /**
+   * Required, no default — deliberately: `ConsentHandoff` is mounted from
+   * two surfaces that now share ONE `evaluationId` on purpose (V2's
+   * ever-present topbar control and this verdict-screen handoff), and
+   * `origin_screen` is the only field that still tells those two rows
+   * apart downstream. A default here would let the next caller inherit a
+   * value silently instead of stating which screen it actually is — the
+   * same failure mode that produced the hardcoded `"verdict"` literal this
+   * prop replaces.
+   */
+  originScreen: ConsultantAssignmentOriginScreen;
   /** Present only once a client identity exists. */
   clientId?: string | null;
   /** Present only for a resolved SUPPORTED_CANDIDATES verdict. */
@@ -173,6 +185,7 @@ export function ConsentHandoff({
   createReceiptId = systemReceiptId,
   evaluationId,
   tier,
+  originScreen,
   clientId,
   productVersionId,
 }: ConsentHandoffProps) {
@@ -286,13 +299,21 @@ export function ConsentHandoff({
       });
 
     // C3 — the moment a visitor grants consent to the handoff IS the moment
-    // they invoked "Talk to a consultant" (this control's origin_screen is
-    // always "verdict" — the only screen it renders on today). Not awaited:
-    // this must never delay or fail the WhatsApp handoff it rides alongside.
+    // they invoked "Talk to a consultant". `ConsentHandoff` is mounted from
+    // two surfaces sharing one `evaluationId` on purpose (see the doc
+    // comment on `originScreen` above) — `origin_screen` is what a reader
+    // downstream uses to tell them apart, so it must reflect the caller's
+    // actual screen, never a literal fixed here. (A prior version of this
+    // comment declared this the only screen the control renders on — true
+    // when written, false the moment the topbar's ever-present control was
+    // wired to this same component; a self-declared premise like that one
+    // has an expiry date, and the expiry is silent unless the reader goes
+    // looking.) Not awaited: this must never delay or fail the WhatsApp
+    // handoff it rides alongside.
     void requestConsultantAssignment({
       evaluationId,
       clientId,
-      originScreen: "verdict",
+      originScreen,
       tier,
       productVersionId,
       locale: language,

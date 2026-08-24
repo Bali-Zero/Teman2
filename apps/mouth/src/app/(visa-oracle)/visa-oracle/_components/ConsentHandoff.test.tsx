@@ -52,6 +52,7 @@ describe("ConsentHandoff", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T2"
+        originScreen="verdict"
       />,
     );
 
@@ -73,6 +74,7 @@ describe("ConsentHandoff", () => {
         guardianConsentRequired
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="verdict"
       />,
     );
 
@@ -117,6 +119,7 @@ describe("ConsentHandoff", () => {
           createReceiptId={() => "receipt-expiring"}
           evaluationId={TEST_EVALUATION_ID}
           tier="T2"
+          originScreen="verdict"
         />
       </StrictMode>,
     );
@@ -162,6 +165,7 @@ describe("ConsentHandoff", () => {
         createReceiptId={() => "receipt-1"}
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="verdict"
       />,
     );
 
@@ -211,6 +215,7 @@ describe("ConsentHandoff", () => {
       createReceiptId: () => "receipt-scoped",
       evaluationId: TEST_EVALUATION_ID,
       tier: "T2" as const,
+      originScreen: "verdict" as const,
     };
     const first = render(<ConsentHandoff {...props} />);
     fireEvent.click(screen.getByRole("checkbox"));
@@ -250,6 +255,7 @@ describe("ConsentHandoff", () => {
         createReceiptId={() => "receipt-revocable"}
         evaluationId={TEST_EVALUATION_ID}
         tier="T2"
+        originScreen="verdict"
       />,
     );
 
@@ -277,6 +283,7 @@ describe("ConsentHandoff", () => {
         createReceiptId={() => "receipt-sensitive"}
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="verdict"
       />,
     );
 
@@ -306,6 +313,7 @@ describe("ConsentHandoff", () => {
         whatsappNumber="not-a-phone"
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="verdict"
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -320,6 +328,7 @@ describe("ConsentHandoff", () => {
         whatsappNumber=""
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="verdict"
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -341,6 +350,7 @@ describe("ConsentHandoff", () => {
         createReceiptId={() => "receipt-c3"}
         evaluationId={TEST_EVALUATION_ID}
         tier="T2"
+        originScreen="verdict"
         clientId="22222222-2222-4222-8222-222222222222"
         productVersionId="33333333-3333-4333-8333-333333333333"
       />,
@@ -370,6 +380,7 @@ describe("ConsentHandoff", () => {
         createReceiptId={() => "receipt-c3-toggle"}
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
+        originScreen="verdict"
       />,
     );
 
@@ -395,6 +406,7 @@ describe("ConsentHandoff", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T2"
+        originScreen="verdict"
       />,
     );
 
