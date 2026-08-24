@@ -46,7 +46,7 @@ _INTERNAL_LABELS: tuple[str, ...] = (
 
 _BASE_WARNINGS: tuple[str, ...] = (
     "Internal preliminary pre-screen only; it is not an immigration decision or an approval guarantee.",
-    "Nationality and entry-point eligibility are not yet checked against an authoritative dataset and require manual verification.",
+    "The nationality code is checked against the decree-sourced VOA list; this pre-screen does not collect an entry point, so staff must confirm entry-point eligibility.",
     "Passport type, document authenticity, and prior overstay, refusal, or blacklist history require human review.",
 )
 

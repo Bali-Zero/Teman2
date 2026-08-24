@@ -24,6 +24,64 @@ import type {
 import { TimelineView } from "./TimelineView";
 import { VerdictPanel } from "./VerdictPanel";
 
+type RestingScenarioTriggerStyle = {
+  borderColor: "var(--color-border-subtle)";
+  color: "var(--text-secondary)";
+};
+
+// Compile-time guard: the exploratory control stays neutral until the user
+// points to it or focuses it, preserving the funnel accent for the price box.
+// These values belong to the class rule only; putting them on the element's
+// inline style would prevent the interaction selectors below from winning.
+const restingScenarioTriggerStyle = {
+  borderColor: "var(--color-border-subtle)",
+  color: "var(--text-secondary)",
+} satisfies RestingScenarioTriggerStyle;
+
+const SCENARIO_TRIGGER_STYLES = `
+  .bz-shs-scenario-toggle-trigger {
+    border: 1px solid ${restingScenarioTriggerStyle.borderColor};
+    background: transparent;
+    color: ${restingScenarioTriggerStyle.color};
+    transition:
+      border-color var(--motion-duration-fast, 150ms) ease,
+      color var(--motion-duration-fast, 150ms) ease,
+      background-color var(--motion-duration-fast, 150ms) ease,
+      box-shadow var(--motion-duration-fast, 150ms) ease;
+  }
+
+  .bz-shs-scenario-toggle-trigger:is(:hover, :focus-visible) {
+    border-color: var(--accent-funnel);
+    background: color-mix(
+      in srgb,
+      var(--accent-funnel) 8%,
+      transparent
+    );
+    box-shadow: inset 0 0 0 1px currentColor;
+    /* This button's label is 16px/600 — WCAG "normal text" (large-text
+       exemption needs >=24px, or >=18.66px bold), so the floor is 4.5:1.
+       The full accent measures 4.13:1 on this backdrop and fails. 70%
+       accent mixed with white measures 5.59:1 and still reads as the
+       accent hue rather than washing out to pink. Do not tidy this back
+       to var(--accent-funnel). */
+    color: color-mix(in srgb, var(--accent-funnel) 70%, white);
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  .bz-shs-scenario-toggle-trigger:focus-visible {
+    outline: 3px solid var(--accent-funnel);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bz-shs-scenario-toggle-trigger {
+      transition: none;
+    }
+  }
+`;
+
 export function otherRoute(route: RouteIntent): RouteIntent {
   return route === "property" ? "deposit" : "property";
 }
@@ -114,27 +172,27 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
 
   if (!isOpen) {
     return (
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="bz-shs-scenario-toggle-trigger"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "var(--space-2, 0.5rem)",
-          padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
-          borderRadius: 8,
-          border: "1px solid var(--accent-funnel)",
-          background: "transparent",
-          color: "var(--accent-funnel)",
-          cursor: "pointer",
-          fontWeight: 600,
-          minHeight: 44,
-        }}
-      >
-        <GitCompare size={18} strokeWidth={1.5} aria-hidden />
-        {getCopy("scenarioToggle.controlLabel")}
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="bz-shs-scenario-toggle-trigger"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "var(--space-2, 0.5rem)",
+            padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontWeight: 600,
+            minHeight: 44,
+          }}
+        >
+          <GitCompare size={18} strokeWidth={1.5} aria-hidden />
+          {getCopy("scenarioToggle.controlLabel")}
+        </button>
+        <style>{SCENARIO_TRIGGER_STYLES}</style>
+      </>
     );
   }
 

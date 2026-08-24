@@ -38,7 +38,7 @@ const VALID_RESULT = {
   calendar_warning: null,
   warnings: [
     "Internal preliminary pre-screen only; it is not an immigration decision or an approval guarantee.",
-    "Nationality and entry-point eligibility are not yet checked against an authoritative dataset and require manual verification.",
+    "The nationality code is checked against the decree-sourced VOA list; this pre-screen does not collect an entry point, so staff must confirm entry-point eligibility.",
     "Passport type, document authenticity, and prior overstay, refusal, or blacklist history require human review.",
     "The expiry is an estimate; the printed immigration expiry is authoritative and must be verified before action.",
   ],
@@ -241,6 +241,7 @@ describe("GARUDA Python execFile adapter", () => {
   it.each([
     { reasonCodes: ["PURPOSE_NOT_ELIGIBLE"] },
     { reasonCodes: ["GROUP_CASE"] },
+    { reasonCodes: ["ARRIVAL_TOO_FAR"] },
     { reasonCodes: ["PURPOSE_NOT_ELIGIBLE", "GROUP_CASE"] },
   ])(
     "accepts unique bounded decline code sets: $reasonCodes",
@@ -295,6 +296,16 @@ describe("GARUDA Python execFile adapter", () => {
     await expect(runGarudaPreview("{}")).rejects.toMatchObject({
       code: "preview_unavailable",
     });
+  });
+
+  it("accepts an uncovered far arrival when manual routing is also present", async () => {
+    const result = {
+      ...VALID_UNCOVERED_RESULT,
+      reason_codes: ["ARRIVAL_DATE_UNCONFIRMED", "ARRIVAL_TOO_FAR"],
+    };
+    engineResult(result);
+
+    await expect(runGarudaPreview("{}")).resolves.toEqual(result);
   });
 
   it.each([

@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { cormorant } from "@balizero/core/fonts/cormorant";
 import { I18nProvider } from "@/i18n";
 import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
 import { SecondHomeLanding } from "./SecondHomeLanding";
@@ -28,17 +29,33 @@ function renderLanding() {
   );
 }
 
+function removeContainerBoundedPixelTracks(template: string): string {
+  let unresolved = template;
+  let previous: string;
+
+  do {
+    previous = unresolved;
+    unresolved = unresolved.replace(/\bmin(?:max)?\([^()]*%[^()]*\)/gi, "");
+  } while (unresolved !== previous);
+
+  return unresolved;
+}
+
 describe("SecondHomeLanding", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   it("renders the hero, both qualifying routes, and the all-inclusive price", () => {
-    renderLanding();
+    const { container } = renderLanding();
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      /up to 5 years/i,
-    );
+    const heroHeading = screen.getByRole("heading", { level: 1 });
+    expect(container.firstElementChild).toHaveClass(cormorant.variable);
+    expect(heroHeading).toHaveTextContent(/up to 5 years/i);
+    expect(heroHeading).toHaveStyle({
+      fontFamily: "var(--font-serif, Georgia, serif)",
+    });
+    expect(heroHeading.style.fontFamily).not.toMatch(/Cormorant Garamond/i);
     // Two qualifying routes — the only two verified bases.
     expect(screen.getAllByText(/USD 130,000/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/USD 1,000,000/).length).toBeGreaterThan(0);
@@ -52,6 +69,43 @@ describe("SecondHomeLanding", () => {
     );
     expect(expectedPrice).not.toBeNull();
     expect(screen.getByText(expectedPrice as string)).toBeInTheDocument();
+  });
+
+  it("keeps every pixel-based grid track bounded by its container", () => {
+    const { container } = renderLanding();
+    const gridTemplates = Array.from(
+      container.querySelectorAll<HTMLElement>("[style]"),
+    )
+      .map((element) => element.style.gridTemplateColumns)
+      .filter(Boolean);
+
+    expect(gridTemplates).not.toHaveLength(0);
+    gridTemplates.forEach((template) => {
+      const unresolved = removeContainerBoundedPixelTracks(template);
+      // Assert on a value that carries the offending template itself, so a
+      // failure prints "unsafe fixed pixel grid track: <template>" instead
+      // of an opaque boolean — `expect(actual, message)` is a Vitest-4
+      // runtime feature the project's `expect` types don't declare (TS2554).
+      const unsafeFixedPixelTrack = /\d+(?:\.\d+)?px/i.test(unresolved)
+        ? `unsafe fixed pixel grid track: ${template}`
+        : null;
+      expect(unsafeFixedPixelTrack).toBeNull();
+    });
+  });
+
+  it("keeps the hero statistics proportional rather than tabular", () => {
+    renderLanding();
+
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    expect(hero).not.toBeNull();
+
+    ["5 years", "USD 130,000", "Free"].forEach((value) => {
+      const statistic = within(hero as HTMLElement).getByText(value, {
+        exact: true,
+      });
+      expect(statistic.style.fontVariantNumeric || "normal").toBe("normal");
+      expect(statistic.style.fontFeatureSettings || "normal").toBe("normal");
+    });
   });
 
   it("covers the senior tracks, no-work-rights, and the 90-day duty", () => {
@@ -75,6 +129,27 @@ describe("SecondHomeLanding", () => {
     // No "apply now" flow anywhere on the page.
     expect(screen.queryByRole("link", { name: /apply/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /apply/i })).toBeNull();
+  });
+
+  // WCAG AA contrast guard (measured 2026-08-24): white text on the
+  // WhatsApp brand green (`#25D366`) computes to ~1.98:1, badly failing the
+  // 4.5:1 normal-text floor. Ratified cure
+  // (app/(visa-oracle)/visa-oracle/oracle.css:23-30, 2026-07-17 adversarial
+  // review): `#0d3a1f` on `#25D366` ~6.45:1. jsdom resolves neither
+  // `color-mix()` nor custom properties, so this asserts on the literal
+  // inline style value rather than a computed color (confirmed live via
+  // Playwright render — see the shipping commit for the measured
+  // rgb()/contrast numbers).
+  it("keeps the WhatsApp CTA's ink dark enough on the brand green (WCAG AA)", () => {
+    renderLanding();
+
+    const cta = screen.getByRole("link", { name: /free fit memo/i });
+    // Brand green stays byte-identical — only the ink moves. (jsdom's CSSOM
+    // normalizes the literal hex it parses to rgb() form; the var()
+    // fallback expression is left as-is since it isn't a plain color.)
+    expect(cta.style.background).toBe("var(--accent-whatsapp, #25D366)");
+    expect(cta.style.color).toBe("rgb(13, 58, 31)"); // #0d3a1f
+    expect(cta.style.color).not.toBe("var(--text-on-accent)");
   });
 
   it("never states a forbidden claim", () => {

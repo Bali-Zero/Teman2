@@ -99,6 +99,15 @@ describe("StudioAtmosphere", () => {
     expect(style).not.toContain(".bz-shs-atmosphere::before");
   });
 
+  it("does not override the scenario trigger's neutral resting colors", () => {
+    const { container } = render(<StudioAtmosphere />);
+    const style = container.querySelector("style")?.textContent ?? "";
+
+    expect(style).not.toMatch(
+      /\.bz-shs-scenario-toggle-trigger\s*\{[^}]*(?:--accent-funnel|--accent-funnel-text)/s,
+    );
+  });
+
   it("removes its scroll-linked movement under reduced motion", () => {
     const { container } = render(<StudioAtmosphere />);
     const style = container.querySelector("style")?.textContent ?? "";
