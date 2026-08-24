@@ -8,15 +8,26 @@ never receives a phone number, Instagram username, portal token, signed
 media URL, or raw webhook payload — only opaque references and stable
 pseudonymous subject tokens. That invariant is encoded here in the field
 TYPES (HMAC-shaped patterns, a media reference validator that rejects
-anything URL-shaped), not left to adapter discipline or a comment:
+anything with network authority), not left to adapter discipline or a
+comment:
 
 - ``CanonicalActor.subject_token`` must be a 64-hex-char digest (the shape
   of an HMAC-SHA256 hex output). A raw phone number or IG handle cannot
   satisfy this pattern, so a field-level type error — not a downstream
-  policy check — is what happens if an adapter forgets to hash it.
-- ``CanonicalAttachment.media_ref`` is rejected outright if it contains
-  ``://`` (i.e. looks like any URL, signed or not). Adapters must resolve
-  media through the internal media store and pass its opaque reference.
+  policy check — is what happens if an adapter forgets to hash it. What
+  this pattern does NOT prove: HMAC provenance. A syntactically-valid
+  64-hex-char string that is not actually an HMAC of anything (or is an
+  HMAC of the wrong thing) passes — the pattern is a SHAPE guarantee, not
+  a cryptographic one. Actually hashing the right input is an adapter
+  obligation this type cannot enforce; do not read it as more than that.
+- ``CanonicalAttachment.media_ref`` is rejected outright if it has network
+  authority — i.e. it parses (via ``urllib.parse.urlsplit``) to a non-empty
+  ``netloc``. This catches both an absolute URL (``https://host/...``) and
+  a scheme-relative one (``//host/...``, which a naive ``"://" in value``
+  substring check would miss). An opaque ``scheme:opaque-id`` reference
+  (e.g. ``media-store:abc123``) has no ``netloc`` and is legal. Adapters
+  must resolve media through the internal media store and pass its opaque
+  reference.
 
 This module intentionally does NOT import ``backend.channels.profiles`` —
 the "attachments/context must match the selected SurfaceProfile" checks
@@ -32,6 +43,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -93,19 +105,23 @@ class CanonicalAttachment(BaseModel):
     @field_validator("media_ref")
     @classmethod
     def _media_ref_must_not_be_url_shaped(cls, value: str) -> str:
-        """Reject anything that looks like a URL — signed or not (F1 hard invariant).
+        """Reject anything with network authority — signed or not (F1 hard invariant).
 
-        A real opaque media-store reference never contains a scheme separator;
-        a signed URL (S3/GCS/Meta media proxy) always does. This is a cheap,
-        robust structural check rather than an allow-list of media-store
-        naming schemes, which would need updating every time a new store is
-        added.
+        A real opaque media-store reference never carries a host; a signed
+        URL (S3/GCS/Meta media proxy) always does — parsed authority
+        (``netloc``) is what a URL actually IS, so this checks that instead
+        of grepping for ``"://"``, which a scheme-relative URL
+        (``//host/path?sig=...``) — no scheme, still a URL, still has a
+        host — would sail straight through. An opaque
+        ``scheme:opaque-id`` reference (e.g. ``media-store:abc123``) has no
+        ``netloc`` and is legal; verified empirically with
+        ``urllib.parse.urlsplit`` before writing this check.
         """
-        if "://" in value:
+        if urlsplit(value).netloc:
             raise ValueError(
                 "media_ref must be an opaque media-store reference, never a "
-                "URL (signed or otherwise) — resolve via the media store "
-                "before constructing CanonicalAttachment"
+                "URL (signed, scheme-relative, or otherwise) — resolve via "
+                "the media store before constructing CanonicalAttachment"
             )
         return value
 
