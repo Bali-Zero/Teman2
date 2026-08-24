@@ -1,6 +1,6 @@
 {
   "created_at": "2026-08-24T06:00:00Z",
-  "created_by": "agent.air-m5.backend-rag.visa-seq14-blocked5-e23uv-support.fold-2026-08-24",
+  "created_by": "agent.air-m5.backend-rag.visa-seq14-blocked5-e23uv-retire.fold-2026-08-24",
   "decision_domain": "IMMIGRATION_VISA",
   "engine_contract_version": "1.0.0",
   "engine_max_version": "1.0.0",
@@ -7875,102 +7875,6 @@
       "explanation_key": "explain.hf.e31c-sponsor-not-indonesian",
       "safety_critical": true,
       "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]
-    },
-    {
-      "rule_id": "el.e23u.diplomatic-household-support",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-08-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "values": ["EMPLOYMENT"],
-            "op": "intersects"
-          },
-          {
-            "fact": "sponsor.type",
-            "value": "INDIVIDUAL",
-            "op": "eq"
-          },
-          {
-            "fact": "work.employer_is_indonesian_entity",
-            "value": false,
-            "op": "eq"
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "E23U_DIPLOMATIC_HOUSEHOLD_ELIGIBLE",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "sponsor.type",
-        "work.employer_is_indonesian_entity"
-      ],
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
-      "explanation_key": "explain.el.e23u.diplomatic-household-support",
-      "safety_critical": false,
-      "product_version_ids": ["fa143e97-b444-5ae4-9b05-6365f15e3ec7"]
-    },
-    {
-      "rule_id": "el.e23v.trade-office-support",
-      "stage": "ELIGIBILITY",
-      "scope": "PRODUCTS",
-      "priority": 100,
-      "valid_period": {
-        "from": "2026-08-24T00:00:00Z",
-        "to": null
-      },
-      "when": {
-        "op": "all",
-        "args": [
-          {
-            "fact": "intent.purposes",
-            "values": ["EMPLOYMENT"],
-            "op": "intersects"
-          },
-          {
-            "fact": "sponsor.type",
-            "value": "GOVERNMENT",
-            "op": "eq"
-          },
-          {
-            "fact": "work.employer_is_indonesian_entity",
-            "value": false,
-            "op": "eq"
-          }
-        ]
-      },
-      "effect": {
-        "type": "SUPPORT",
-        "reason_code": "E23V_TRADE_OFFICE_ELIGIBLE",
-        "covered_purposes": ["EMPLOYMENT"]
-      },
-      "on_unknown": "NEEDS_INPUT",
-      "required_facts": [
-        "intent.purposes",
-        "sponsor.type",
-        "work.employer_is_indonesian_entity"
-      ],
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
-      "explanation_key": "explain.el.e23v.trade-office-support",
-      "safety_critical": false,
-      "product_version_ids": ["e8a1d738-daa7-5c99-a0c6-800b25579129"]
     }
   ],
   "rule_pack_id": "821e2ddc-4e7c-5a06-8609-2f402c6e51f0",

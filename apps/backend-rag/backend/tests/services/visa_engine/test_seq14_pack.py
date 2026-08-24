@@ -5,10 +5,31 @@ The blocked5 lane (2026-08-24): seq-13 reaches 29/38 products. Five of the
 nine still-blocked products (E23U, E23V, E33A, E33B, E33C) have their
 doctrine CLOSED (``research/visa/doctrine-factory/claims/
 e2c-blocked5-claim-ledger.md``, E2c mini-batch) but carried no
-ELIGIBILITY/SUPPORT rule at all. This fold inserts exactly TWO new claim-
-backed SUPPORT rules — E23U and E23V. E33A/E33B/E33C deliberately get NO
-new rule (see the fold's own module docstring and the PR body for the
-design-question writeup); reachability moves 29 -> 31.
+ELIGIBILITY/SUPPORT rule at all.
+
+**This fold is REMOVAL-ONLY — it inserts nothing.** An earlier revision
+inserted two SUPPORT rules for E23U/E23V; adversarial review found both
+WRONG (see the fold's own module docstring for the full writeup): they
+constrained the sponsor CATEGORY, never the attribute that DEFINES the
+product — E23U is the stay permit for the domestic staff of a
+**diplomat**, but the dropped rule matched any INDIVIDUAL sponsor; E23V is
+the permit for a foreign **Trade and Economic Office**, but the dropped
+rule matched any GOVERNMENT sponsor. ``SponsorType`` has no member that
+can express the defining attribute, and ``enums.py`` records that
+E23U/E23V have no governing Permenkumham Pasal at all — there is no
+statute to encode a narrower rule against. The two insertions were
+dropped entirely; what this fold DOES do is remove the two pre-existing
+``review.e23{u,v}.requested-product`` HUMAN_REVIEW rules, both keyed on
+``intent.requested_product_code`` (hard-coded ``NOT_ASKED`` in production
+at ``fact-mapper.ts:597``, hence permanently ``UNKNOWN``) — removing them
+is a strict improvement (they were poisoning the whole per-product proof
+to BLOCKED_UNKNOWN) and is behaviour-preserving, since a product with no
+SUPPORT rule at all does not surface either way. E23U and E23V stay
+unreachable by the engine and route to a human consultant; reachability
+does NOT move (still 29/38). E33A/E33B/E33C get no changes at all — their
+own SUPPORT-shape attempt was rejected in an earlier lane for unrelated
+reasons (see the fold's module docstring) and this fold does not revisit
+that.
 
 This module SKIPS cleanly (not error, not red) while
 ``rulepack-prod-014.source.json`` does not exist on disk — run
@@ -21,19 +42,18 @@ files on disk or the real evaluator:
     declaration, cross-checked against a fresh re-hash of the seq-13
     SOURCE bytes.
 (b) rule-set delta — mechanically diffed against seq-13: exactly the two
-    new rule_ids added, zero removed, zero changed, products/
-    source_records byte-identical.
+    ``review.e23{u,v}.requested-product`` rule_ids removed, ZERO added,
+    zero changed, products/source_records byte-identical.
 (c) zero lint findings — ``lint_duplicate_subtree`` /
     ``lint_unsatisfiable_condition`` run over every seq-14 rule.
 (d) ``compile_pack`` compiles seq-14 with zero errors.
 (e) idempotence — calling ``assemble_payload()`` twice yields
     canonical-JSON-identical output.
-(f) evaluator witnesses (house pattern, ``test_seq13_rules_pack.py``'s
-    ``TestE31CNationalityGateWitnesses``): per-product ``evaluate_product``
-    guilt/innocence/tri-state/non-contamination pairs for BOTH new rules,
-    plus a pinned seq-13 regression showing the SAME facts reached
-    UNSUPPORTED before this fold (the rule genuinely changes the outcome,
-    not merely "a rule exists").
+(f) evaluator witnesses (real evaluator, not the JSON): both products stay
+    genuinely unreachable (the over-broad shape the dropped rule would
+    have matched reaches NO support), the removed rule_ids are gone from
+    the pack, and the plain E23 product's support-rule outcome is
+    unchanged between seq-13 and seq-14 — the removal has no spillover.
 """
 
 from __future__ import annotations
@@ -78,15 +98,9 @@ _SEQ13_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-013.source.json"
 _SEQ13_SIGNED_PATH = _PACKS_DIR / "rulepack-prod-013.signed.json"
 _SEQ14_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-014.source.json"
 
-_E23U_RULE_ID = "el.e23u.diplomatic-household-support"
-_E23V_RULE_ID = "el.e23v.trade-office-support"
-_INSERTED_RULE_IDS = frozenset({_E23U_RULE_ID, _E23V_RULE_ID})
-_REMOVED_RULE_IDS = frozenset(
-    {"review.e23u.requested-product", "review.e23v.requested-product"}
-)
+_REMOVED_RULE_IDS = frozenset({"review.e23u.requested-product", "review.e23v.requested-product"})
 
-# Any instant on/after both inserted rules' valid_period.from
-# (2026-08-24T00:00:00Z) and inside every inherited rule's window.
+# Any instant inside every inherited rule's valid_period window.
 AT = datetime(2026, 8, 24, 12, 0, 0, tzinfo=timezone.utc)
 
 pytestmark = pytest.mark.skipif(
@@ -188,16 +202,14 @@ class TestChainGate:
 
 
 class TestRuleSetDelta:
-    def test_delta_is_exactly_two_removed_and_two_inserted(
+    def test_delta_is_exactly_two_removed_and_zero_inserted(
         self, seq13_source: dict[str, Any], seq14_source: dict[str, Any]
     ) -> None:
-        """The two ``review.e23{u,v}.requested-product`` rules are REMOVED
-        (see the fold's module docstring): keyed on
-        ``intent.requested_product_code`` (hard-coded NOT_ASKED at
-        ``fact-mapper.ts:597``), their permanent unknown blocks the WHOLE
-        per-product proof to BLOCKED_UNKNOWN regardless of ELIGIBILITY's
-        own verdict — proven live, not merely inert. Leaving them in place
-        would make the two new SUPPORT rules below dead on arrival."""
+        """This is a REMOVAL-ONLY fold (see module docstring for why no
+        SUPPORT rule replaces the two removed HUMAN_REVIEW rules): the two
+        ``review.e23{u,v}.requested-product`` rules are gone, nothing new
+        is added, and every rule that survives is byte-identical to its
+        seq-13 self."""
         r13 = {r["rule_id"]: r for r in seq13_source["rules"]}
         r14 = {r["rule_id"]: r for r in seq14_source["rules"]}
 
@@ -205,18 +217,18 @@ class TestRuleSetDelta:
         removed = set(r13) - set(r14)
         changed = {rid for rid in (set(r13) & set(r14)) if _canon(r13[rid]) != _canon(r14[rid])}
 
-        assert added == _INSERTED_RULE_IDS
+        assert added == set()
         assert removed == _REMOVED_RULE_IDS
         assert changed == set()
-        assert len(r14) == len(r13) - len(_REMOVED_RULE_IDS) + len(_INSERTED_RULE_IDS)
+        assert len(r14) == len(r13) - len(_REMOVED_RULE_IDS)
 
     def test_e33abc_rules_are_completely_untouched(
         self, seq13_source: dict[str, Any], seq14_source: dict[str, Any]
     ) -> None:
         """Explicit pin of the design decision: this fold makes ZERO
         changes to E33A/E33B/E33C — neither their HARD_FILTER nor their
-        (still-inert) HUMAN_REVIEW rule. See the PR body's design-question
-        writeup for why."""
+        (still-inert) HUMAN_REVIEW rule. See the fold's module docstring
+        for why."""
         e33abc_rule_ids = {
             "review.e33a.central-government-invitation",
             "hf.e33a.sponsor-not-government",
@@ -299,188 +311,101 @@ class TestFoldIsIdempotent:
 
 
 # ---------------------------------------------------------------------------
-# (f) evaluator witnesses — E23U
+# (f) evaluator witnesses — E23U/E23V stay unreachable, real evaluator
 # ---------------------------------------------------------------------------
 
-_E23U_BASE = {
+#: The exact fact shape the DROPPED ``el.e23u.diplomatic-household-support``
+#: rule would have matched. Kept here (not resurrected as a rule) purely to
+#: witness that the shape now reaches no support at all.
+_E23U_OVER_BROAD_SHAPE = {
     "intent.purposes": _known(["EMPLOYMENT"]),
     "sponsor.type": _known("INDIVIDUAL"),
     "work.employer_is_indonesian_entity": _known(False),
 }
 
-
-class TestE23UDiplomaticHouseholdSupportWitnesses:
-    def test_innocence_individual_sponsor_non_indonesian_employer_is_supported(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        proof = _proof(seq14, "E23U", dict(_E23U_BASE))
-        assert proof.status is ProductProofStatus.SUPPORTED
-        assert _E23U_RULE_ID in {r.rule_id for r in proof.support_rules}
-
-    def test_pinned_seq13_regression_same_facts_were_unsupported(
-        self, seq13: compiler.CompiledRulePack
-    ) -> None:
-        """The rule genuinely CHANGES the outcome: before this fold, E23U
-        had zero ELIGIBILITY-stage rules at all (only the inert
-        HUMAN_REVIEW keyed on the never-askable
-        ``intent.requested_product_code``), so the identical fact set
-        never reached SUPPORTED on seq-13."""
-        proof = _proof(seq13, "E23U", dict(_E23U_BASE))
-        assert proof.status is not ProductProofStatus.SUPPORTED
-
-    def test_guilt_employer_sponsor_is_not_supported(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        """A plain corporate-employer applicant (the shape plain E23
-        already serves) must not satisfy E23U's INDIVIDUAL-sponsor gate."""
-        overrides = {**_E23U_BASE, "sponsor.type": _known("EMPLOYER")}
-        proof = _proof(seq14, "E23U", overrides)
-        assert _E23U_RULE_ID not in {r.rule_id for r in proof.support_rules}
-
-    def test_guilt_government_sponsor_is_not_supported(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        """A GOVERNMENT-sponsored applicant (E23V's own shape) must not
-        satisfy E23U's INDIVIDUAL-sponsor gate — the two rules are
-        mutually exclusive on ``sponsor.type`` by construction."""
-        overrides = {**_E23U_BASE, "sponsor.type": _known("GOVERNMENT")}
-        proof = _proof(seq14, "E23U", overrides)
-        assert _E23U_RULE_ID not in {r.rule_id for r in proof.support_rules}
-
-    def test_guilt_indonesian_employer_is_not_supported(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        overrides = {**_E23U_BASE, "work.employer_is_indonesian_entity": _known(True)}
-        proof = _proof(seq14, "E23U", overrides)
-        assert _E23U_RULE_ID not in {r.rule_id for r in proof.support_rules}
-
-    def test_employment_purpose_conjunct_is_pinned(
-        self, seq14_source: dict[str, Any]
-    ) -> None:
-        rule = next(r for r in seq14_source["rules"] if r["rule_id"] == _E23U_RULE_ID)
-        assert {
-            "fact": "intent.purposes",
-            "values": ["EMPLOYMENT"],
-            "op": "intersects",
-        } in rule["when"]["args"]
-
-    def test_tristate_unknown_sponsor_type_blocks_never_excludes(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        overrides = {**_E23U_BASE, "sponsor.type": gf.unknown("NOT_ASKED")}
-        proof = _proof(seq14, "E23U", overrides)
-        assert proof.status is ProductProofStatus.BLOCKED_UNKNOWN
-        assert proof.status is not ProductProofStatus.EXCLUDED
-
-    def test_non_employment_applicant_is_not_contaminated(
-        self, seq13: compiler.CompiledRulePack, seq14: compiler.CompiledRulePack
-    ) -> None:
-        overrides = {
-            "intent.purposes": _known(["TOURISM"]),
-            "sponsor.type": gf.unknown("NOT_ASKED"),
-        }
-        for pack in (seq13, seq14):
-            proof = _proof(pack, "E23U", overrides)
-            assert proof.status is not ProductProofStatus.SUPPORTED
-            assert FactPath.SPONSOR_TYPE not in proof.missing_facts
-
-    def test_plain_e23_is_not_contaminated_by_the_new_rule(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        """The E23U shape (individual sponsor, non-Indonesian employer)
-        must never mark plain E23 SUPPORTED — the two products' SUPPORT
-        rules require opposite values of
-        ``work.employer_is_indonesian_entity``."""
-        proof = _proof(seq14, "E23", dict(_E23U_BASE))
-        assert proof.status is not ProductProofStatus.SUPPORTED
-
-
-# ---------------------------------------------------------------------------
-# (f) evaluator witnesses — E23V
-# ---------------------------------------------------------------------------
-
-_E23V_BASE = {
+#: Same for the dropped ``el.e23v.trade-office-support`` shape.
+_E23V_OVER_BROAD_SHAPE = {
     "intent.purposes": _known(["EMPLOYMENT"]),
     "sponsor.type": _known("GOVERNMENT"),
     "work.employer_is_indonesian_entity": _known(False),
 }
 
+#: A fact shape that DOES satisfy plain E23's own SUPPORT rule
+#: (``el.e23-employment-support``) — used to prove the removal has no
+#: spillover onto the neighbouring, unrelated product.
+_E23_SUPPORT_SHAPE = {
+    "intent.purposes": _known(["EMPLOYMENT"]),
+    "work.employer_is_indonesian_entity": _known(True),
+    "work.indonesian_work_sponsor_confirmed": _known(True),
+}
 
-class TestE23VTradeOfficeSupportWitnesses:
-    def test_innocence_government_sponsor_non_indonesian_employer_is_supported(
+
+class TestE23UE23VStayUnreachable:
+    def test_no_seq14_rule_mentions_e23u_or_e23v(self, seq14_source: dict[str, Any]) -> None:
+        """No rule in the seq-14 pack references either product — not the
+        removed HUMAN_REVIEW rule (gone), and no SUPPORT rule was ever
+        inserted for them (the design decision this rewrite documents)."""
+        offending = [
+            r["rule_id"]
+            for r in seq14_source["rules"]
+            if "e23u" in r["rule_id"].lower() or "e23v" in r["rule_id"].lower()
+        ]
+        assert offending == []
+
+    def test_e23u_over_broad_shape_reaches_no_support(
         self, seq14: compiler.CompiledRulePack
     ) -> None:
-        proof = _proof(seq14, "E23V", dict(_E23V_BASE))
-        assert proof.status is ProductProofStatus.SUPPORTED
-        assert _E23V_RULE_ID in {r.rule_id for r in proof.support_rules}
-
-    def test_pinned_seq13_regression_same_facts_were_unsupported(
-        self, seq13: compiler.CompiledRulePack
-    ) -> None:
-        proof = _proof(seq13, "E23V", dict(_E23V_BASE))
+        """The exact fact shape the dropped rule would have matched
+        (EMPLOYMENT purpose, INDIVIDUAL sponsor, non-Indonesian employer)
+        must reach NO support for E23U. This is the desired outcome: an
+        INDIVIDUAL sponsor is not evidence of a diplomatic mission — the
+        dropped rule would have declared a nanny hired by any
+        non-diplomatic expat family eligible for the diplomatic-household
+        stay permit, a false positive on a client-facing surface. With no
+        rule authored at all, E23U stays unreachable and routes to a human
+        consultant, which is the honest outcome until the fact vocabulary
+        can express "sponsor is a diplomatic mission"."""
+        proof = _proof(seq14, "E23U", dict(_E23U_OVER_BROAD_SHAPE))
         assert proof.status is not ProductProofStatus.SUPPORTED
+        assert proof.support_rules == ()
 
-    def test_guilt_individual_sponsor_is_not_supported(
+    def test_e23v_over_broad_shape_reaches_no_support(
         self, seq14: compiler.CompiledRulePack
     ) -> None:
-        overrides = {**_E23V_BASE, "sponsor.type": _known("INDIVIDUAL")}
-        proof = _proof(seq14, "E23V", overrides)
-        assert _E23V_RULE_ID not in {r.rule_id for r in proof.support_rules}
+        """Same reasoning as E23U's over-broad witness, for E23V: a
+        GOVERNMENT sponsor covers any government body, an Indonesian
+        agency's own domestic hire included — it is not evidence of a
+        foreign Trade and Economic Office. A SUPPORT verdict on this shape
+        would be a false positive on a client-facing surface, so E23V
+        reaches no support at all rather than an over-broad one."""
+        proof = _proof(seq14, "E23V", dict(_E23V_OVER_BROAD_SHAPE))
+        assert proof.status is not ProductProofStatus.SUPPORTED
+        assert proof.support_rules == ()
 
-    def test_guilt_indonesian_employer_is_not_supported(
-        self, seq14: compiler.CompiledRulePack
+    def test_removed_review_rules_are_absent_and_were_present_in_seq13(
+        self, seq13_source: dict[str, Any], seq14_source: dict[str, Any]
     ) -> None:
-        """A GOVERNMENT sponsor who IS an Indonesian-registered employer
-        (a domestic government agency, not a foreign trade office) must
-        not satisfy E23V's non-Indonesian-employer gate."""
-        overrides = {**_E23V_BASE, "work.employer_is_indonesian_entity": _known(True)}
-        proof = _proof(seq14, "E23V", overrides)
-        assert _E23V_RULE_ID not in {r.rule_id for r in proof.support_rules}
+        r13_ids = {r["rule_id"] for r in seq13_source["rules"]}
+        r14_ids = {r["rule_id"] for r in seq14_source["rules"]}
+        for rule_id in _REMOVED_RULE_IDS:
+            assert rule_id in r13_ids, rule_id
+            assert rule_id not in r14_ids, rule_id
 
-    def test_employment_purpose_conjunct_is_pinned(
-        self, seq14_source: dict[str, Any]
-    ) -> None:
-        rule = next(r for r in seq14_source["rules"] if r["rule_id"] == _E23V_RULE_ID)
-        assert {
-            "fact": "intent.purposes",
-            "values": ["EMPLOYMENT"],
-            "op": "intersects",
-        } in rule["when"]["args"]
-
-    def test_tristate_unknown_sponsor_type_blocks_never_excludes(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        overrides = {**_E23V_BASE, "sponsor.type": gf.unknown("NOT_ASKED")}
-        proof = _proof(seq14, "E23V", overrides)
-        assert proof.status is ProductProofStatus.BLOCKED_UNKNOWN
-        assert proof.status is not ProductProofStatus.EXCLUDED
-
-    def test_non_employment_applicant_is_not_contaminated(
+    def test_plain_e23_support_outcome_is_unchanged_between_seq13_and_seq14(
         self, seq13: compiler.CompiledRulePack, seq14: compiler.CompiledRulePack
     ) -> None:
-        overrides = {
-            "intent.purposes": _known(["TOURISM"]),
-            "sponsor.type": gf.unknown("NOT_ASKED"),
-        }
-        for pack in (seq13, seq14):
-            proof = _proof(pack, "E23V", overrides)
-            assert proof.status is not ProductProofStatus.SUPPORTED
-            assert FactPath.SPONSOR_TYPE not in proof.missing_facts
-
-    def test_e33a_never_reaches_supported_for_the_same_facts(
-        self, seq14: compiler.CompiledRulePack
-    ) -> None:
-        """Documents the known, disclosed fact-vocabulary ambiguity (PR
-        body design-question): E23V's GOVERNMENT-sponsor facts are also
-        consistent with E33A's real identity (Indonesian
-        central-government invitation), which the pack's own
-        ``sponsor.type`` vocabulary cannot distinguish from a foreign
-        trade office. This test pins that the ambiguity is NOT live today
-        — E33A carries no SUPPORT rule at all (untouched by this fold),
-        so it can never spuriously reach SUPPORTED alongside E23V for the
-        same fact pattern."""
-        proof = _proof(seq14, "E33A", dict(_E23V_BASE))
-        assert proof.status is not ProductProofStatus.SUPPORTED
+        """Regression guard proving the removal has no spillover onto the
+        neighbouring, unrelated E23 product: the same facts that satisfy
+        plain E23's own SUPPORT rule must reach the identical SUPPORTED
+        outcome, with the identical set of support-rule ids, in both
+        packs."""
+        proof13 = _proof(seq13, "E23", dict(_E23_SUPPORT_SHAPE))
+        proof14 = _proof(seq14, "E23", dict(_E23_SUPPORT_SHAPE))
+        assert proof13.status is ProductProofStatus.SUPPORTED
+        assert proof14.status is ProductProofStatus.SUPPORTED
+        ids13 = {r.rule_id for r in proof13.support_rules}
+        ids14 = {r.rule_id for r in proof14.support_rules}
+        assert ids13 == ids14
 
 
 # ---------------------------------------------------------------------------

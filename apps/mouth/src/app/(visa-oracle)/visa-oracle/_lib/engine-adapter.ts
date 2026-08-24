@@ -140,14 +140,6 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Your stated purpose and the circumstances you confirmed match what this visa covers.",
     "Tujuan yang Anda nyatakan dan keadaan yang Anda konfirmasi sesuai dengan cakupan visa ini.",
   ),
-  E23U_DIPLOMATIC_HOUSEHOLD_ELIGIBLE: text(
-    "Your employment is sponsored by an individual — a diplomat or diplomatic household — for an employer that is not an Indonesian entity.",
-    "Pekerjaan Anda disponsori oleh perseorangan — diplomat atau rumah tangga diplomatik — untuk pemberi kerja yang bukan badan usaha Indonesia.",
-  ),
-  E23V_TRADE_OFFICE_ELIGIBLE: text(
-    "Your employment is sponsored by a government body — a foreign Trade and Economic Office — for an employer that is not an Indonesian entity.",
-    "Pekerjaan Anda disponsori oleh instansi pemerintah — Kantor Dagang dan Ekonomi asing — untuk pemberi kerja yang bukan badan usaha Indonesia.",
-  ),
 
   // --- Requirements ------------------------------------------------------
   // Until rule pack seq-6 these were HUMAN_REVIEW rules, so an applicant who
