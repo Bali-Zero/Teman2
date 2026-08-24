@@ -155,11 +155,28 @@ describe("SavePlanBar clear-plan two-step confirm", () => {
     expect(restingRule).toContain("color: var(--text-secondary)");
     expect(restingRule).not.toContain("--accent-funnel");
     expect(restingRule).not.toContain("--color-error");
-    // The armed rule itself is scoped to the compound `.bz-shs-clear-armed`
-    // class and never applies at rest.
-    expect(css).toMatch(
-      /\.bz-shs-clear-plan\.bz-shs-clear-armed\s*\{[^}]*border-color:\s*var\(--accent-funnel\)[^}]*color:\s*var\(--bz-shs-clear-armed-active\)/s,
+  });
+
+  // Regression guard (#4826): the armed state used to read var(--accent-funnel),
+  // which on this page's [data-theme="editorial"][data-funnel="visa"] scope is
+  // byte-identical (#ff3344) to the verdict's all-inclusive-price panel border —
+  // the reassurance figure and the "about to destroy your plan" control painted
+  // the same red. Pin the armed rule to --state-warning (amber) instead, and
+  // fail the moment anything reintroduces --accent-funnel here.
+  it("arms the clear button with a warning accent, never the funnel-red accent (regression guard, #4826)", () => {
+    const { container } = render(
+      <SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />,
     );
+    const css = Array.from(container.querySelectorAll("style"))
+      .map((style) => style.textContent ?? "")
+      .join("\n");
+    const armedRule = css.match(
+      /\.bz-shs-clear-plan\.bz-shs-clear-armed\s*\{([^}]*)\}/,
+    )?.[1];
+
+    expect(armedRule).toContain("border-color: var(--state-warning, #f59e0b)");
+    expect(armedRule).toContain("var(--bz-shs-clear-armed-active)");
+    expect(armedRule).not.toContain("--accent-funnel");
   });
 
   it("disarms on blur — a subsequent single activation does not clear", () => {

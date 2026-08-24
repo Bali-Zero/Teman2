@@ -193,25 +193,39 @@ const CLEAR_BUTTON_STYLES = `
   /* Armed state (two-step confirm, P0 2026-08-24): must be visible with NO
      hover/focus needed — a touch tap has no hover, and arming is the moment
      the destructive action becomes real, so the cue can't depend on a
-     pointer state the next tap (the confirm) won't have either. This is
-     also the one place the flat funnel accent belongs: it is unambiguous
-     here and nowhere near the price box's own red. Same contrast math as
-     ScenarioToggle's exploratory-control hover: this label is 16px/600 —
-     WCAG "normal text" (large-text exemption needs >=24px, or >=18.66px
-     bold) — so the floor is 4.5:1. The flat accent measures 4.13:1 on this
-     backdrop and fails; 70% accent mixed with white measures 5.6:1 and
-     still reads as the funnel accent rather than washing out to pink. Do
-     not tidy this back to var(--accent-funnel). Placed after the resting
-     :hover/:focus-visible rule above so equal-specificity source order
-     lets it win whether or not the armed button is also hovered. */
+     pointer state the next tap (the confirm) won't have either.
+     P0 2026-08-24b: this used to read var(--accent-funnel), which on the
+     [data-theme="editorial"][data-funnel="visa"] scope this page always
+     carries resolves to #ff3344 — byte-identical to the price panel's own
+     border-top (both consume the same funnel-brand token). One control
+     said "trust this number", the other "you are about to destroy it",
+     painted the same red. In a funnel whose brand accent IS red, danger
+     cannot also be red — so the armed state reaches for --state-warning
+     (amber, ~#f59e0b unthemed) instead: a hue this page never otherwise
+     uses (navy / funnel red / WhatsApp green), and the conventional
+     "confirm?" signal. Do not tidy this back to var(--accent-funnel) —
+     that reintroduces the clash. Same contrast math as ScenarioToggle's
+     exploratory-control hover: this label is 16px/600 — WCAG "normal
+     text" (large-text exemption needs >=24px, or >=18.66px bold) — so the
+     text floor is 4.5:1 against its own painted fill, and the border
+     floor is 3:1 against the surface behind it (non-text UI). 62% amber
+     mixed with white measures both floors on this theme's raised-surface
+     backdrop; the flat token alone is too dark against the amber-tinted
+     fill to hold the text floor. Placed after the resting :hover/
+     :focus-visible rule above so equal-specificity source order lets it
+     win whether or not the armed button is also hovered. */
   .bz-shs-clear-plan.bz-shs-clear-armed {
     --bz-shs-clear-armed-active: color-mix(
       in srgb,
-      var(--accent-funnel) 70%,
+      var(--state-warning, #f59e0b) 62%,
       white
     );
-    border-color: var(--accent-funnel);
-    background: color-mix(in srgb, var(--accent-funnel) 16%, transparent);
+    border-color: var(--state-warning, #f59e0b);
+    background: color-mix(
+      in srgb,
+      var(--state-warning, #f59e0b) 18%,
+      transparent
+    );
     box-shadow: inset 0 0 0 1px currentColor;
     color: var(--bz-shs-clear-armed-active);
     text-decoration-line: underline;
