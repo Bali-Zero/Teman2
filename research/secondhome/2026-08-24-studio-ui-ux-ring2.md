@@ -2,15 +2,16 @@
 date: 2026-08-24
 domain: visa
 client_case: none (product/UX work on the E33 Second Home Studio)
-adversarial_review: kimi-k3
+adversarial_review: codex
 sources:
   - research/secondhome/2026-08-19-e33-sticky-funnel-research.md (the 5-seat product research this pass executes against)
   - .agents/skills/secondhome/SKILL.md (corner: verified facts, owner decisions, live state)
-  - production probe of https://balizero.com/visa/second-home and /studio, headless Chromium, 2026-08-24
-  - live PricingTool via search_service_pricing, 2026-08-24
+  - production probe of https://balizero.com/visa/second-home and /studio, headless Chromium, 2026-08-24 (reported by the original capture; screenshot artifacts are not retained in this worktree)
+  - live PricingTool via search_service_pricing, 2026-08-24 (reported by the original capture)
+  - apps/mouth/data/bali-zero-prices.json (Codex cross-check of all six cited E33/E33E/E33F rows, 2026-08-24)
   - Kimi K3 cross-family refutation of the ring-2 spec, 2026-08-24
-  - gh pr view (title/state ground-truth for #4743/4745/4747/4748/4751/4752/4753/4755), 2026-08-24
-  - prove-live walk on promoted production (post-#4751), full-page screenshot + direct fetch of the served JS chunk, 2026-08-24
+  - gh pr view (original capture's title/state check for #4743/4745/4747/4748/4751/4752/4753/4755), 2026-08-24; Codex's re-run could not reach api.github.com, so local origin/main first-parent history was used as the fallback
+  - reported prove-live walk on promoted production (post-#4751), full-page screenshots + direct fetch of the served JS chunk, 2026-08-24; artifacts not retained in this worktree and not independently reproduced by Codex
   - origin/main source read of SavePlanBar.tsx, CustodyMap.tsx, VerdictPanel.tsx, and packages/core/tokens/{primitives,semantic,themes/editorial}.css, 2026-08-24
 ---
 
@@ -20,7 +21,9 @@ This capture records the 2026-08-24 pass that turned the Second Home Studio from
 
 ## 1. What was measured
 
-The Phase-B core loop was already built: 8 modules, all wired, 256 vitest tests green. The pass measured how *alive* the surface felt and how honestly it reflected the underlying product rules.
+The Phase-B delivery record reported that the core loop was already built: 8 modules, all wired, 256 vitest tests green. The pass measured how *alive* the surface felt and how honestly it reflected the underlying product rules. Codex could not independently repeat that historical test tally in this worktree because local `vitest` dependencies are absent and the sandbox cannot reach the npm registry.
+
+The `file:line` citations in this section describe the pre-ring-2 source snapshot at `33377a032`. Most still match this worktree byte-for-byte; `MemoPreview.tsx:118-153` and `VerdictPanel.tsx:30` subsequently drifted because PRs #4745 and #4748 intentionally changed those exact sections. Their historical content was re-opened at `33377a032` and still supports the claims below.
 
 | # | Module | State | Evidence |
 |---|---|---|---|
@@ -34,7 +37,7 @@ The Phase-B core loop was already built: 8 modules, all wired, 256 vitest tests 
 | 8 | WhatsApp handoff | Built, correctly thin | `WhatsAppHandoff.tsx` + `whatsapp-bullets.ts`: branch-aware, ≤6 bullets, verified against the real backend contract (`whatsapp-bullets.ts:1-24`). |
 
 Visual surface measurements:
-- Landing page: 652 lines (`SecondHomeLanding.tsx`) + 12 components in `studio/components/`.
+- Landing page: 652 lines (`SecondHomeLanding.tsx`) + 10 source files in `studio/components/`, exporting 11 component functions (`QuestionCard.tsx` also exports `OptionButton`).
 - Zero images / SVG / icons across the entire surface except two `lucide-react` glyphs (`ChevronRight`, `Phone`).
 - Nine of the eleven components in `studio/components/` open with the same inline style block: `display:"grid", gap:"var(--space-3, 1rem)", background:"var(--surface-raised)", border:"1px solid var(--color-border-subtle)", borderRadius:12, padding:"var(--space-4, 1.5rem)"` (verified in `CustodyMap.tsx:12-20`, `ReadinessChecklist.tsx:22-30`, `RouteComparator.tsx:24-34`, `TimelineView.tsx:35-43`, `SavePlanBar.tsx:68-76`, `WhatsAppHandoff.tsx:35-43`).
 - `VerdictPanel.tsx:30` hardcodes `border: "2px solid var(--accent-funnel)"` regardless of `verdict.band`: a `strong_fit` and a `not_eligible` rendered with identical visual weight.
@@ -53,7 +56,7 @@ The Studio resolved **one** PricingTool key for **three** different products.
 
 A senior matched to E33E read a price ten million rupiah below the real product price.
 
-**Why 256 tests were green.** The PricingTool-only rule was obeyed at the **value** level — the figure always came from `usePricingData`, never a hardcoded literal — and violated at the **key** level. A test asserting "the price renders" passes; only a test asserting *which row was resolved, per branch* can fail. There was none.
+**Why the reported 256 tests could still be green.** The PricingTool-only rule was obeyed at the **value** level — the figure always came from `usePricingData`, never a hardcoded literal — and violated at the **key** level. A test asserting "the price renders" passes; only a test asserting *which row was resolved, per branch* can fail. There was none.
 
 **Fix.** PR #4747 introduced `resolveSecondHomePriceKey(product, location)`: it maps the verdict product — and, for `E33F` only, the offshore/onshore split already known from `plan.location` — onto the matching PricingTool row. The figure still comes from the pricing snapshot; only the key selection changed. When `product` is `E33F` and `location` is `null`, the resolver abstains and the price block does not render, because offshore and onshore are genuinely different products.
 
@@ -83,7 +86,7 @@ Kimi K3 reviewed the ring-2 spec cross-family. Conclusions, not softened:
 
 ## 4. What shipped
 
-Verified live with `gh pr view` on 2026-08-24:
+The original pass recorded these as verified with `gh pr view` on 2026-08-24. Codex re-ran all eight exact `gh pr view <n> --json title,state,mergedAt` commands, but this sandbox returned `error connecting to api.github.com` for every call; the API `state` fields therefore were not independently observed in the adversarial pass. As a fallback, all eight GitHub-authored squash commits were found in the first-parent history of local `origin/main`; their commit subjects match the titles below (the #4748 row is a fair shortening of the full subject, which ends “with semantic state tokens”).
 
 | PR | Title | State | What it does |
 |---|---|---|---|
@@ -98,11 +101,11 @@ Verified live with `gh pr view` on 2026-08-24:
 
 ## 4bis. Prove-live on promoted production (2026-08-24)
 
-Production has since been promoted and independently re-verified this session — this is new information the pass above did not have when it was written.
+The original production pass reported that production had been promoted and then re-verified. Codex could not independently reproduce that prove-live evidence in this worktree: the three named screenshots are absent, and the exact required chunk request returned HTTP code `000` (network failure), not a response that can confirm or refute the capture's reported HTTP 200. The claims below are therefore retained as attributed original-pass observations, not upgraded into a second independent attestation.
 
-1. **The price defect (§2) is cured on the served page — both halves.** A browser walk on promoted production — path: age 55–59 → deposit route → USD 50k deposit + USD 3k/month income → no family → ASAP → in Indonesia — renders, under the label "YOUR ALL-INCLUSIVE FIGURE", the figure **45.000.000 IDR** for the `E33E` match, the correct E33E price. Before PR #4747 the same walk rendered 35.000.000 IDR, understating the real product price by 10.000.000 IDR. Verified directly this turn, not from a report: a full-page screenshot (`after-E33E-verdict-desktop.png`, confirmed 2880×6958) shows "Matching product: **E33E**" and "YOUR ALL-INCLUSIVE FIGURE / 45.000.000 IDR". The base-E33 half — deposit route, USD 130k, no senior disclosure — has since completed too, and was likewise read directly this session: `after-base-verdict-desktop.png` (confirmed 2880×6870) shows a green `strong_fit` border with a check icon, "Matching product: **E33**", and **35.000.000 IDR** under "YOUR ALL-INCLUSIVE FIGURE" — the correct base price. Both products now resolve to their correct PricingTool row on promoted production; the PENDING-ARMS item PR #4755 opened for the not-yet-proven-live gap is closed by this evidence.
-2. **Bundle-level proof, independent of the browser.** Re-fetched the served chunk directly this turn — `curl https://balizero.com/_next/static/chunks/app/visa/second-home/studio/page-8450b87e629710e7.js` → HTTP 200 — and confirmed it contains the strings `E33E Second Home Senior`, `custody-outside`, and `Save as PDF`.
-3. **The other four visual changes are live in the same capture, confirmed directly**: the verdict panel carries an amber border + warning-triangle icon for the `edge_case` band and a green border + check icon for `strong_fit` (both read directly, above) plus a neutral `rgba(255,255,255,0.68)` border + X icon for `not_eligible` (`after-lowcapital-verdict-desktop.png`, read directly this session) — no longer the one undifferentiated accent border across all four bands that §1 flagged at `VerdictPanel.tsx:30`; the custody section renders as a 3-node money-path diagram — "Open an account in your own name" → "Use the bank evidence for your application" → "Maintain the qualifying position" — captioned "The deposit is evidence of your financial capacity. It is not a payment to Bali Zero," i.e. Bali Zero drawn outside the money chain; the timeline attributes each step to `YOU` / `BALI ZERO` / `IMIGRASI`; the save bar offers `Print / Save as PDF` alongside `Save on this device` / `Copy plan link` / `Clear saved plan`.
+1. **The original pass reported the price defect (§2) cured on the served page — both halves.** Its browser walk on promoted production — path: age 55–59 → deposit route → USD 50k deposit + USD 3k/month income → no family → ASAP → in Indonesia — reportedly rendered, under the label "YOUR ALL-INCLUSIVE FIGURE", the figure **45.000.000 IDR** for the `E33E` match, the correct E33E price. Before PR #4747 the same walk rendered 35.000.000 IDR, understating the real product price by 10.000.000 IDR. The unavailable full-page screenshot `after-E33E-verdict-desktop.png` was reported as 2880×6958 and as showing "Matching product: **E33E**" and "YOUR ALL-INCLUSIVE FIGURE / 45.000.000 IDR". The base-E33 half — deposit route, USD 130k, no senior disclosure — was likewise reported from the unavailable `after-base-verdict-desktop.png` (2880×6870): a green `strong_fit` border with a check icon, "Matching product: **E33**", and **35.000.000 IDR**. The original pass treated this evidence as closing the PENDING-ARMS item opened by PR #4755; Codex verified the resolver and price rows in source but did not independently prove their served-production behavior.
+2. **Bundle-level proof reported by the original pass.** It recorded `curl https://balizero.com/_next/static/chunks/app/visa/second-home/studio/page-8450b87e629710e7.js` → HTTP 200 and the strings `E33E Second Home Senior`, `custody-outside`, and `Save as PDF`. Codex's exact status command returned `000`; the follow-up `grep -o` emitted no substrings because no response body was received, so this pass cannot use that result as evidence that the strings are absent. All three strings do exist in the corresponding `origin/main` source, which proves they were built and merged, not that this exact chunk was served.
+3. **The other four visual changes were reported live in the same original capture**: the verdict panel carried an amber border + warning-triangle icon for the `edge_case` band and a green border + check icon for `strong_fit`, plus a neutral `rgba(255,255,255,0.68)` border + X icon for `not_eligible` in the unavailable `after-lowcapital-verdict-desktop.png` — no longer the one undifferentiated accent border across all four bands that §1 flagged at `VerdictPanel.tsx:30`; the custody section rendered as a 3-node money-path diagram — "Open an account in your own name" → "Use the bank evidence for your application" → "Maintain the qualifying position" — captioned "The deposit is evidence of your financial capacity. It is not a payment to Bali Zero," i.e. Bali Zero drawn outside the money chain; the timeline attributed each step to `YOU` / `BALI ZERO` / `IMIGRASI`; the save bar offered `Print / Save as PDF` alongside `Save on this device` / `Copy plan link` / `Clear saved plan`. Codex confirmed the corresponding implementations in source, but not their rendered production appearance.
 
 ## 5. What remains open and why
 
@@ -114,13 +117,15 @@ Waiting for a Zero decision:
 - **Regulatory Radar.** The data exists (`e33-fact-registry.json`: 34 facts, 7 confirmed / 18 pending / 8 unknown / 1 disputed), but publishing a curated list of what Bali Zero has asked Imigrasi in writing is positioning, not just engineering. Zero must decide which subset is safe to show and whether the transparency is worth the upkeep.
 - **Bookable human advisor.** The WhatsApp handoff exists as a plain CTA, but offering a named consultant with a response-time promise activates a real-client flow. That is an operations/owner decision, not a UI-only change.
 
+Built and merged after the original capture; production not re-probed in this review:
+- **Scenario Toggle.** Current `origin/main` imports `ScenarioToggle` in `StudioApp.tsx` and renders it on the verdict page. It is no longer an open build item.
+
 Not yet built, no external blocker:
-- **Scenario Toggle.** Pure client-side, data exists, no backend. Simply not scheduled yet.
 - **Target-Date Planner.** Demoted by the refuter; can be revisited if/when step durations are verified against real cases.
 - **Household Plan.** Demoted by the refuter; can be revisited when the dependent-product mapping for E33 is confirmed.
 
-Confirmed regression, fix in flight:
-- **Printing the plan hides the custody diagram's three nodes.** Confirmed directly this session by reading both source files, not from a report. #4751's print stylesheet (`SavePlanBar.tsx`'s `PRINT_STYLES`, inside `@media print`) hides every button on the page with a bare, unscoped selector: `nav, button, .fixed.bottom-0.left-0.right-0.z-50, .bz-shs-save-plan-bar { display: none !important; }`. #4753 — this same wave — rewrote each of `CustodyMap.tsx`'s three chain nodes as `<button type="button" aria-expanded={isExpanded}>`, wrapping the icon, title, and chevron; the step description sits outside the button but is `hidden` unless the node was expanded, and only the connecting `custody-arrow` SVGs and the `custody-outside` aside ("not a payment to Bali Zero") sit outside a `<button>` entirely. Net effect: on a printed plan the three custody nodes vanish completely — only arrows pointing at empty space and the outside-box survive. The printed plan is the artefact a prospect carries to their bank, so this is client-facing. A blanket selector written for the save bar's own controls silently swallowed content the moment a sibling PR turned that content into a control — the mechanism generalises beyond this page. A fix is in flight on a separate lane.
+Confirmed regression in the captured post-#4753 source, subsequently fixed in `origin/main`:
+- **Printing the plan hid the custody diagram's three nodes.** Confirmed by reading both files in the post-#4753 source snapshot. #4751's print stylesheet (`SavePlanBar.tsx`'s `PRINT_STYLES`, inside `@media print`) hid every button on the page with a bare, unscoped selector: `nav, button, .fixed.bottom-0.left-0.right-0.z-50, .bz-shs-save-plan-bar { display: none !important; }`. #4753 — this same wave — rewrote each of `CustodyMap.tsx`'s three chain nodes as `<button type="button" aria-expanded={isExpanded}>`, wrapping the icon, title, and chevron; the step description sat outside the button but was `hidden` unless the node was expanded, and only the connecting `custody-arrow` SVGs and the `custody-outside` aside ("not a payment to Bali Zero") sat outside a `<button>` entirely. Net effect in that snapshot: on a printed plan the three custody nodes vanished completely — only arrows pointing at empty space and the outside-box survived. The printed plan is the artefact a prospect carries to their bank, so this was client-facing. A blanket selector written for the save bar's own controls silently swallowed content the moment a sibling PR turned that content into a control — the mechanism generalises beyond this page. Current `origin/main` has removed the bare `button` selector and keeps the custody detail text in the DOM with `data-collapsed`; the source-level regression is closed, although production was not re-probed in this review.
 
 Also observed, not yet fixed:
 - **The reassurance figure and the destructive control read as the same red.** Confirmed by tracing both tokens to source this session: the all-inclusive price panel's border resolves to `--accent-funnel: #ff3344` (`packages/core/tokens/themes/editorial.css:57`, the visa-funnel override on the editorial theme); the "Clear saved plan" button's border resolves to `--color-error` → `--state-danger` → `--color-state-danger: #ef4444` (`packages/core/tokens/primitives.css:57`, applicable outside the light-theme override). The two hex values differ by only 16/17/0 in RGB — practically the same red on a reassurance box and a destructive action. The pass that walked the page measured the two elements ~321px apart, close enough to appear on screen together without scrolling.
@@ -134,3 +139,16 @@ The repeated failure mode is reading the system through a **proxy** instead of t
 - `VerdictPanel.tsx:30` fixed one border color for every band, so the most important payoff moment looked identical whether the user was strongly eligible or not eligible at all.
 
 The fix, in each case, was to measure closer to the source: the actual PricingTool key, the actual git graph, the actual DOM and token usage, the actual user-facing consequence of a design choice.
+
+## Adversarial review
+
+Reviewed by Codex (GPT-5), generator != grader, against the worktree at commit `14f750fe8`.
+
+- PR titles/states: re-scanned the document and ran `gh pr view <n> --json title,state,mergedAt` separately for #4743, #4745, #4747, #4748, #4751, #4752, #4753, and #4755. All eight commands failed with `error connecting to api.github.com`; no API `state` or `mergedAt` value was available to this reviewer. The fallback first-parent read of local `origin/main` found GitHub-authored squash commits `214dff8eb`, `5a0e355fb`, `e53a5d089`, `e1bb9f05f`, `b958e83a5`, `ec6d7b5e0`, `27c917d8c`, and `dac28e301` respectively. All eight are landed on `origin/main`; their subjects match the table, with #4748 fairly shortened from “differentiate VerdictPanel by fit band with semantic state tokens”. The table remains accurate, but this pass does not falsely present the unavailable GitHub API fields as observed.
+- `file:line` citations: opened all 25 unique citations (27 occurrences), plus the load-bearing pricing resolver, backend WhatsApp contract, `PRINT_STYLES`, custody-node implementation, and semantic-token chain. Twenty-three citations still match this worktree directly. `MemoPreview.tsx:118-153` and `VerdictPanel.tsx:30` drifted because #4745 and #4748 changed those sections; both historical claims were confirmed at the pre-ring-2 snapshot `33377a032`, so they were marked as historical drift rather than defects.
+- Prices: cross-checked every cited row against `apps/mouth/data/bali-zero-prices.json`. Exact matches: E33 5-year 35.000.000 IDR; E33E 5-year 45.000.000 IDR; E33E extend 10.000.000 IDR; E33F offshore 14.000.000 IDR; E33F Altus/onshore 16.000.000 IDR; E33F extend 10.000.000 IDR. No price mismatch was found.
+- Live/production claims: ran the exact chunk status command; it returned `000`, not a server status. The requested `curl -s ... | grep -o 'E33E Second Home Senior\|custody-outside\|Save as PDF'` then emitted no substrings because the fetch produced no response body (exit 1), so that result does not establish absence. The three screenshot files are not present anywhere in this worktree. §4bis and the frontmatter now distinguish the original pass's reported production evidence from what Codex independently re-verified; local `origin/main` contains all three strings, which proves built/merged source only.
+- Historical test tally: attempted `npx vitest --run src/lib/secondhome-studio src/app/visa/second-home/studio`; it failed with npm `ENOTFOUND` because `vitest` is not installed locally and the sandbox cannot reach `registry.npmjs.org`. The 256-test number is now explicitly attributed to the Phase-B delivery record rather than to this review.
+- Internal consistency and sources: §4's print feature and §5's post-#4753 print regression are sequential, not contradictory. Two stale “remains open” statements were corrected from current `origin/main`: `ScenarioToggle` is now imported/rendered, and the print selector regression is fixed in source. The frontmatter now includes the price JSON used by this review and labels unavailable production artifacts as reported; the legitimate Kimi K3 spec-review sources remain intact.
+
+Six defects or attestation gaps were corrected: the wrong frontmatter reviewer, the 12-versus-10 component-file count, the unqualified 256-test attestation, the independently-unverifiable prove-live wording, the stale Scenario Toggle status, and the stale print-fix status. No PR-title or price defect survived the checks above.
