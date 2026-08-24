@@ -56,7 +56,8 @@ const PRINT_STYLES = `
     .bz-shs-save-plan-bar,
     .bz-shs-option,
     .bz-shs-scenario-toggle-trigger,
-    .bz-shs-scenario-toggle-back {
+    .bz-shs-scenario-toggle-back,
+    .bz-shs-back-to-answers {
       display: none !important;
     }
 

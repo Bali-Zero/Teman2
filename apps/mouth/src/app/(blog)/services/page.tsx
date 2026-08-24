@@ -26,6 +26,7 @@ interface Service {
   tagline: string;
   description: string;
   accent: string;
+  ctaInk?: string;
   icon: typeof IdCard;
   bullets: string[];
   cta: { label: string; href: string };
@@ -87,6 +88,7 @@ const SERVICES: Service[] = [
     description:
       "Plot-level zoning, legal vehicle, tax exposure and risk score before you sign.",
     accent: "#22c55e",
+    ctaInk: "var(--accent-whatsapp-ink)",
     icon: MapPinned,
     bullets: [
       "RTRW / RDTR overlay per plot",
@@ -295,7 +297,7 @@ export default function ServicesPage() {
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-semibold"
                       style={{
                         background: s.accent,
-                        color: "#ffffff",
+                        color: s.ctaInk ?? "#ffffff",
                         boxShadow: `0 8px 24px color-mix(in srgb, ${s.accent} 45%, transparent)`,
                       }}
                     >

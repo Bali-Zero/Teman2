@@ -651,7 +651,7 @@ export function StudioApp() {
             className="bz-shs-verdict-stack"
             style={{ display: "grid", gap: "var(--space-4, 1.5rem)" }}
           >
-            <div>
+            <div className="bz-shs-back-to-answers">
               <button
                 type="button"
                 onClick={goBack}
