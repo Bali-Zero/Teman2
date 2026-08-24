@@ -4,7 +4,12 @@
     {
       "product_code": "E23U",
       "claim_ids": ["CL-E23U-01", "CL-E23U-02"],
-      "caveats": [],
+      "caveats": [
+        {
+          "claim_id": "CL-E23U-01",
+          "note": "Residual over-broad discriminator: SponsorType.INDIVIDUAL represents any natural-person Penjamin and cannot distinguish a foreign diplomatic mission's household-support pathway from another individual sponsor. The E23U=INDIVIDUAL mapping remains the unresolved Bali Zero working hypothesis documented in SponsorType's enums.py docstring (2026-08-11); this rule may therefore over-admit other individual-sponsor cases."
+        }
+      ],
       "rule": {
         "rule_id": "el.e23u.diplomatic-household-support",
         "stage": "ELIGIBILITY",
@@ -45,7 +50,12 @@
     {
       "product_code": "E23V",
       "claim_ids": ["CL-E23V-01", "CL-E23V-02"],
-      "caveats": [],
+      "caveats": [
+        {
+          "claim_id": "CL-E23V-01",
+          "note": "Residual over-broad discriminator: SponsorType.GOVERNMENT cannot distinguish a foreign trade or economic office from another foreign government body, including an Indonesian-government invitation. The E23V=GOVERNMENT mapping remains the unresolved Bali Zero working hypothesis documented in SponsorType's enums.py docstring (2026-08-11); this rule may therefore over-admit other government-sponsor cases."
+        }
+      ],
       "rule": {
         "rule_id": "el.e23v.trade-office-support",
         "stage": "ELIGIBILITY",

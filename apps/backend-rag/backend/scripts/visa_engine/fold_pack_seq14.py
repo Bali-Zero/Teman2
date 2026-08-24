@@ -69,8 +69,10 @@ caveat (the fact vocabulary's `sponsor.type` enum cannot distinguish "a
 foreign diplomatic mission" from "any other individual sponsor", nor "a
 foreign trade/economic office" from "any other foreign government body,
 including an Indonesian-government invitation") — flagged explicitly in
-each inserted rule's ``caveats`` in the compiled manifest and in the PR
-body, not silently accepted.
+each inserted rule's ``caveats`` in the source manifest
+(``inc9-pack-edits/inc9-rule-manifest.json``) and in the PR body, not
+silently accepted. The underlying working-hypothesis warning remains in
+``SponsorType``'s docstring in ``enums.py``.
 
 Every input is read from disk at run time. The chain hash is read LIVE
 from ``rulepack-prod-013.signed.json`` and asserted against the expected

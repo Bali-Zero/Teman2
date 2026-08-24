@@ -347,6 +347,23 @@ class TestE23UDiplomaticHouseholdSupportWitnesses:
         proof = _proof(seq14, "E23U", overrides)
         assert _E23U_RULE_ID not in {r.rule_id for r in proof.support_rules}
 
+    def test_guilt_indonesian_employer_is_not_supported(
+        self, seq14: compiler.CompiledRulePack
+    ) -> None:
+        overrides = {**_E23U_BASE, "work.employer_is_indonesian_entity": _known(True)}
+        proof = _proof(seq14, "E23U", overrides)
+        assert _E23U_RULE_ID not in {r.rule_id for r in proof.support_rules}
+
+    def test_employment_purpose_conjunct_is_pinned(
+        self, seq14_source: dict[str, Any]
+    ) -> None:
+        rule = next(r for r in seq14_source["rules"] if r["rule_id"] == _E23U_RULE_ID)
+        assert {
+            "fact": "intent.purposes",
+            "values": ["EMPLOYMENT"],
+            "op": "intersects",
+        } in rule["when"]["args"]
+
     def test_tristate_unknown_sponsor_type_blocks_never_excludes(
         self, seq14: compiler.CompiledRulePack
     ) -> None:
@@ -419,6 +436,16 @@ class TestE23VTradeOfficeSupportWitnesses:
         overrides = {**_E23V_BASE, "work.employer_is_indonesian_entity": _known(True)}
         proof = _proof(seq14, "E23V", overrides)
         assert _E23V_RULE_ID not in {r.rule_id for r in proof.support_rules}
+
+    def test_employment_purpose_conjunct_is_pinned(
+        self, seq14_source: dict[str, Any]
+    ) -> None:
+        rule = next(r for r in seq14_source["rules"] if r["rule_id"] == _E23V_RULE_ID)
+        assert {
+            "fact": "intent.purposes",
+            "values": ["EMPLOYMENT"],
+            "op": "intersects",
+        } in rule["when"]["args"]
 
     def test_tristate_unknown_sponsor_type_blocks_never_excludes(
         self, seq14: compiler.CompiledRulePack
