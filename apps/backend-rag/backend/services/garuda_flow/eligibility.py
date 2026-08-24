@@ -103,6 +103,19 @@ class DeclineCode(str, Enum):
     # boundary bug on the client-facing surface — here it is a DECLINE with
     # this neutral code, never a bare error.
     EXTENSION_EXCEEDS_MAX_STAY = "EXTENSION_EXCEEDS_MAX_STAY"
+    # Not emitted by `screen()` either — layered on by `intake.build_verdict`
+    # for G-FRESHNESS-FAIL-CLOSED (`freshness.py`, DECISIONS.md Q9): the
+    # decree-sourced nationality list or the D-7/D-14/eVOA-window/passport-
+    # validity rule bundle has gone unverified past its own re-verification
+    # window. This is the SAME pattern as `ARRIVAL_DATE_UNCONFIRMED` — the
+    # calendar's existing fail-closed path the freshness guard was designed
+    # to copy (GROUND.md §2): a normal DECLINE via this closed vocabulary,
+    # never a bare error and never a guessed answer built on data nobody has
+    # looked at recently. Reuses the exact token
+    # `contracts/openapi.yaml`'s `x-error-codes` already names for the
+    # (currently unwired) 503 shape of the same guardrail — same vocabulary,
+    # different layer, deliberately not two invented words for one concept.
+    TRUTH_SHEET_STALE = "TRUTH_SHEET_STALE"
 
 
 @dataclass(frozen=True)
