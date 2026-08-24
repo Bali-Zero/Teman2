@@ -80,64 +80,47 @@ tags:
 canonicalUrl: "https://balizero.com/tax/indonesia-tax-guide-for-foreigners"
 ogImage: "/static/insights/tax/indonesia-tax-guide.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "2270fbd80a32179e2a75fad202f3c609c9d0ba242ec38f6be4b2383855cdad0e"
+source_sha256: "e3a2fced7bd00f33cf172976c36d60ff14efb65556879a23011aee3db4854137"
 ---
 
-import {
-  DecisionTree,
-  Calculator,
-  ComparisonTable,
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  GlossaryTerm,
-  ConfidenceMeter,
-  AskZantara,
-  LegalDecoder,
-} from "@/components/insights/interactive";
+# Panduan Pajak Indonesia untuk Warga Asing 2026
 
-# Panduan Pajak Indonesia untuk Orang Asing 2026
+Hidup atau berbisnis di Indonesia sebagai warga asing membawa kewajiban pajak yang bisa membingungkan. Kabar baiknya? Sistem pajak Indonesia, meskipun kompleks, mengikuti aturan logis—dan memahaminya bisa menghemat uang dan stres Anda.
 
-Tinggal atau berbisnis di Indonesia sebagai orang asing disertai dengan kewajiban pajak yang bisa membingungkan. Kabar baiknya? Sistem pajak Indonesia, meski kompleks, mengikuti aturan yang logis—dan memahaminya dapat menghemat uang serta mengurangi stres Anda.
-
-Panduan komprehensif ini menjelaskan perpajakan Indonesia dari perspektif orang asing, mencakup segala hal mulai dari menentukan status residensi pajak hingga pelaporan SPT tahunan Anda.
+Panduan komprehensif ini menjelaskan perpajakan Indonesia dari perspektif warga asing, mencakup segala hal mulai dari menentukan status kependudukan pajak Anda hingga melapor SPT tahunan.
 
 <ConfidenceMeter
-  title="Tingkat Keyakinan Informasi"
+  title="Information Confidence"
   items={[
     {
-      label: "Aturan Residensi Pajak",
+      label: "Tax Residency Rules",
       confidence: 98,
-      source: "Regulasi UU PPh & DJP",
+      source: "UU PPh & DJP Regulations",
     },
-    { label: "Tarif & Braket Pajak", confidence: 98, source: "UU HPP 2021" },
+    { label: "Tax Rates & Brackets", confidence: 98, source: "UU HPP 2021" },
     {
-      label: "Persyaratan Pelaporan",
+      label: "Filing Requirements",
       confidence: 95,
-      source: "Panduan DJP 2024",
+      source: "DJP Guidelines 2024",
     },
+    { label: "Tax Treaty Info", confidence: 92, source: "DJP Treaty Database" },
     {
-      label: "Informasi Tax Treaty",
-      confidence: 92,
-      source: "Database Treaty DJP",
-    },
-    {
-      label: "Deduksi & Kredit",
+      label: "Deductions & Credits",
       confidence: 88,
-      source: "Regulasi PMK",
+      source: "PMK Regulations",
     },
   ]}
 />
 
 ---
 
-## Apakah Anda Residen Pajak?
+## Apakah Anda Kependudukan Pajak?
 
-Pertanyaan terpenting bagi setiap orang asing di Indonesia: **Apakah Anda residen pajak?** Hal ini menentukan apakah Indonesia hanya mengenakan pajak atas penghasilan Indonesia Anda, atau penghasilan Anda dari seluruh dunia.
+Pertanyaan paling penting bagi setiap warga asing di Indonesia: **Apakah Anda penduduk pajak?** Ini menentukan apakah Indonesia hanya memajak penghasilan Indonesia Anda, atau penghasilan seluruh dunia Anda.
 
 <DecisionTree
-  title="Tentukan Status Residensi Pajak Anda"
-  description="Jawab pertanyaan-pertanyaan ini untuk memahami kewajiban pajak Indonesia Anda"
+  title="Tentukan Status Kependudukan Pajak Anda"
+  description="Jawab pertanyaan ini untuk memahami kewajiban pajak Indonesia Anda"
   nodes={[
     {
       id: "start",
@@ -154,20 +137,16 @@ Pertanyaan terpenting bagi setiap orang asing di Indonesia: **Apakah Anda reside
     },
     {
       id: "check-intent",
-      question:
-        "Apakah Anda berniat tinggal di Indonesia secara permanen atau jangka panjang?",
+      question: "Apakah Anda berniat tinggal di Indonesia secara permanen atau jangka panjang?",
       options: [
-        {
-          label: "Ya, saya berencana tinggal di sini",
-          nextNodeId: "check-ties",
-        },
+        { label: "Ya, saya berencana tinggal di sini", nextNodeId: "check-ties" },
         { label: "Tidak, hanya tinggal sementara", nextNodeId: "check-kitas" },
       ],
     },
     {
       id: "check-ties",
-      question: "Apakah Anda memiliki ikatan yang kuat dengan Indonesia?",
-      helpText: "Keluarga, rumah permanen, kegiatan bisnis utama, dll.",
+      question: "Apakah Anda memiliki ikatan kuat dengan Indonesia?",
+      helpText: "Keluarga, rumah permanen, aktivitas bisnis utama, dll.",
       options: [
         {
           label: "Ya, saya memiliki ikatan kuat",
@@ -190,18 +169,15 @@ Pertanyaan terpenting bagi setiap orang asing di Indonesia: **Apakah Anda reside
     },
     {
       id: "check-work",
-      question: "Apakah Anda memperoleh penghasilan di Indonesia?",
+      question: "Apakah Anda mendapatkan penghasilan di Indonesia?",
       options: [
         {
           label: "Ya, dari sumber Indonesia",
           nextNodeId: "result-non-resident-taxable",
         },
+        { label: "Tidak, hanya penghasilan asing", nextNodeId: "result-non-resident" },
         {
-          label: "Tidak, hanya penghasilan luar negeri",
-          nextNodeId: "result-non-resident",
-        },
-        {
-          label: "Kerja remote untuk perusahaan asing",
+          label: "Remote work untuk perusahaan asing",
           nextNodeId: "result-remote-complex",
         },
       ],
@@ -209,7 +185,7 @@ Pertanyaan terpenting bagi setiap orang asing di Indonesia: **Apakah Anda reside
     {
       id: "count-days",
       question:
-        "Mari hitung hari Anda. Dalam 12 bulan terakhir, kira-kira berapa hari Anda berada di Indonesia?",
+        "Mari hitung hari Anda. Dalam 12 bulan terakhir, kira-kira berapa hari di Indonesia?",
       options: [
         { label: "0-90 hari", nextNodeId: "result-short-stay" },
         { label: "91-182 hari", nextNodeId: "result-approaching" },
@@ -219,72 +195,72 @@ Pertanyaan terpenting bagi setiap orang asing di Indonesia: **Apakah Anda reside
     {
       id: "result-resident-days",
       isResult: true,
-      title: "Residen Pajak (Aturan 183 Hari)",
+      title: "Penduduk Pajak (Aturan 183 Hari)",
       description:
-        "Anda adalah residen pajak Indonesia berdasarkan kehadiran fisik.",
+        "Anda adalah penduduk pajak Indonesia berdasarkan kehadiran fisik.",
       recommendation:
-        "Sebagai residen pajak, Indonesia dapat mengenakan pajak atas penghasilan seluruh dunia Anda. Anda harus mendapatkan NPWP, melaporkan SPT tahunan, dan melaporkan semua sumber penghasilan. Kredit pajak tersedia untuk pajak luar negeri yang telah dibayar.",
+        "Sebagai penduduk pajak, Indonesia dapat memajak penghasilan seluruh dunia Anda. Anda harus mendapatkan NPWP, melapor SPT tahunan, dan melaporkan semua sumber penghasilan. Kredit pajak tersedia untuk pajak asing yang telah dibayar.",
       nextSteps: [
-        "Segera daftar NPWP",
+        "Daftar NPWP segera",
         "Lacak semua sumber penghasilan",
-        "Pertimbangkan manfaat tax treaty",
-        "Lapor SPT Tahunan paling lambat 31 Maret",
+        "Pertimbangkan manfaat perjanjian pajak",
+        "Lapor SPT Tahunan pada 31 Maret",
       ],
     },
     {
       id: "result-resident-ties",
       isResult: true,
-      title: "Residen Pajak (Niat/Ikatan)",
+      title: "Penduduk Pajak (Niat/Ikatan)",
       description:
-        "Anda dapat dianggap sebagai residen pajak berdasarkan niat tinggal dan ikatan.",
+        "Anda mungkin dianggap penduduk pajak berdasarkan niat tinggal dan ikatan.",
       recommendation:
-        "Bahkan tanpa 183 hari, ikatan yang kuat (keluarga, kepemilikan rumah, bisnis) dapat menetapkan residensi. Konsultasikan dengan penasihat pajak untuk mengonfirmasi status Anda.",
+        "Meskipun tanpa 183 hari, ikatan kuat (keluarga, kepemilikan rumah, bisnis) dapat menetapkan kependudukan pajak. Konsultasikan dengan konsultan pajak untuk mengonfirmasi status Anda.",
       nextSteps: [
         "Dokumentasikan ikatan Anda dengan Indonesia",
         "Dapatkan NPWP",
-        "Pertimbangkan waktu residensi",
-        "Tinjau tax treaty",
+        "Pertimbangkan waktu kependudukan pajak",
+        "Tinjau perjanjian pajak",
       ],
     },
     {
       id: "result-likely-resident",
       isResult: true,
-      title: "Kemungkinan Residen Pajak (Pemegang KITAS)",
-      description: "Pemegang KITAS umumnya diperlakukan sebagai residen pajak.",
+      title: "Kemungkinan Penduduk Pajak (Pemegang KITAS)",
+      description: "Pemegang KITAS umumnya diperlakukan sebagai penduduk pajak.",
       recommendation:
-        "Jika Anda memegang KITAS dan bekerja di Indonesia, Anda hampir pasti adalah residen pajak. Pemberi kerja Anda harus memotong PPh 21. Anda harus melaporkan SPT tahunan.",
+        "Jika Anda memegang KITAS dan bekerja di Indonesia, Anda hampir pasti penduduk pajak. Pemberi kerja Anda harus memotong PPh 21. Anda harus melapor SPT tahunan.",
       nextSteps: [
         "NPWP melalui pemberi kerja atau langsung",
-        "Pemotongan PPh 21 bulanan",
+        "Potongan PPh 21 bulanan",
         "Pelaporan SPT tahunan",
-        "Cek apakah Anda perlu melaporkan aset luar negeri",
+        "Cek apakah Anda perlu melaporkan aset asing",
       ],
     },
     {
       id: "result-non-resident-taxable",
       isResult: true,
-      title: "Non-Residen dengan Penghasilan Indonesia",
+      title: "Non-Penduduk dengan Penghasilan Indonesia",
       description:
-        "Anda bukan residen pajak tetapi memiliki penghasilan yang bersumber dari Indonesia.",
+        "Anda bukan penduduk pajak tetapi memiliki penghasilan sumber Indonesia.",
       recommendation:
-        "Non-residen hanya membayar pajak atas penghasilan yang bersumber dari Indonesia. Pajak pemotongan (PPh 26) sebesar 20% berlaku kecuali tax treaty menguranginya. Tidak diperlukan pelaporan SPT.",
+        "Non-penduduk membayar pajak hanya pada penghasilan sumber Indonesia. Pajak pemotongan (PPh 26) sebesar 20% berlaku kecuali perjanjian pajak mengurangi ini. Tidak perlu pelaporan SPT.",
       nextSteps: [
-        "Cek apakah tax treaty berlaku",
-        "Pastikan pemotongan sudah benar",
-        "Dapatkan SKD untuk manfaat treaty",
-        "Simpan catatan untuk negara asal Anda",
+        "Cek apakah perjanjian pajak berlaku",
+        "Pastikan pemotongan benar",
+        "Dapatkan SKD untuk manfaat perjanjian pajak",
+        "Simpan catatan untuk negara asal",
       ],
     },
     {
       id: "result-non-resident",
       isResult: true,
-      title: "Non-Residen, Tanpa Penghasilan Indonesia",
+      title: "Non-Penduduk, Tanpa Penghasilan Indonesia",
       description: "Anda tidak memiliki kewajiban pajak Indonesia.",
       recommendation:
-        "Tidak ada penghasilan yang bersumber dari Indonesia berarti tidak ada kewajiban pajak Indonesia. Anda tidak perlu NPWP. Berhati-hatilah agar tidak melebihi 183 hari atau menciptakan kehadiran kena pajak.",
+        "Tidak ada penghasilan sumber Indonesia berarti tidak ada kewajiban pajak Indonesia. Anda tidak perlu NPWP. Hati-hati jangan melebihi 183 hari atau menciptakan kehadiran yang kena pajak.",
       nextSteps: [
-        "Lacak hari-hari Anda dengan hati-hati",
-        "Hindari penghasilan yang bersumber dari Indonesia",
+        "Lacak hari Anda dengan hati-hati",
+        "Hindari penghasilan sumber Indonesia",
         "Pertimbangkan kewajiban negara asal",
         "Tinjau jika situasi berubah",
       ],
@@ -293,13 +269,13 @@ Pertanyaan terpenting bagi setiap orang asing di Indonesia: **Apakah Anda reside
       id: "result-remote-complex",
       isResult: true,
       title: "Digital Nomad / Pekerja Remote",
-      description: "Situasi Anda membutuhkan analisis yang cermat.",
+      description: "Situasi Anda memerlukan analisis hati-hati.",
       recommendation:
-        "Kerja remote adalah area abu-abu. Secara teknis, pekerjaan yang dilakukan di Indonesia bisa menjadi penghasilan yang bersumber dari Indonesia. Banyak digital nomad tidak mendaftar, tetapi ini membawa risiko. Pemegang Visa Second Home memiliki aturan khusus.",
+        "Pekerjaan remote adalah area abu-abu. Secara teknis, pekerjaan yang dilakukan di Indonesia bisa menjadi penghasilan sumber Indonesia. Banyak digital nomad tidak mendaftar, tetapi ini membawa risiko. Pemegang Second Home Visa memiliki aturan khusus.",
       nextSteps: [
-        "Pertimbangkan aturan Visa Second Home",
-        "Lacak hari dengan cermat",
-        "Konsultasi dengan profesional pajak",
+        "Pertimbangkan aturan Second Home Visa",
+        "Lacak hari dengan hati-hati",
+        "Konsultasikan dengan profesional pajak",
         "Pertimbangkan pendaftaran sukarela",
       ],
     },
@@ -307,36 +283,36 @@ Pertanyaan terpenting bagi setiap orang asing di Indonesia: **Apakah Anda reside
       id: "result-short-stay",
       isResult: true,
       title: "Pengunjung Jangka Pendek",
-      description: "Anda jelas bukan residen pajak.",
+      description: "Anda jelas bukan penduduk pajak.",
       recommendation:
-        "Dengan tinggal di bawah 90 hari, Anda adalah non-residen. Hanya penghasilan yang bersumber dari Indonesia yang kena pajak (jarang bagi pengunjung singkat). Fokuslah pada kewajiban pajak negara asal Anda.",
+        "Dengan kurang dari 90 hari, Anda adalah non-penduduk. Hanya penghasilan sumber Indonesia yang kena pajak (jarang untuk pengunjung jangka pendek). Fokus pada kewajiban pajak negara asal Anda.",
       nextSteps: [
         "Tidak perlu pendaftaran pajak Indonesia",
-        "Deklarasikan penghasilan Indonesia di negara asal",
+        "Laporkan penghasilan Indonesia di negara asal",
         "Lacak tanggal masuk/keluar",
       ],
     },
     {
       id: "result-approaching",
       isResult: true,
-      title: "Mendekati Ambang Batas Residensi",
-      description: "Anda hampir menjadi residen pajak.",
+      title: "Mendekati Ambang Kependudukan",
+      description: "Anda mendekati menjadi penduduk pajak.",
       recommendation:
-        "91-182 hari berarti Anda mendekati ambang batas. Lacak hari-hari Anda dengan cermat. Pertimbangkan apakah menjadi residen menguntungkan atau apakah Anda harus membatasi masa tinggal Anda.",
+        "91-182 hari berarti Anda mendekati ambang batas. Lacak hari Anda dengan hati-hati. Pertimbangkan apakah menjadi penduduk menguntungkan atau jika Anda harus membatasi tinggal.",
       nextSteps: [
         "Lacak hari secara tepat",
         "Rencanakan strategi keluar jika perlu",
         "Pertimbangkan implikasi pajak",
-        "Konsultasi penasihat sebelum melewati 183 hari",
+        "Konsultasikan dengan penasihat sebelum melewati 183",
       ],
     },
   ]}
 />
 
 <InfoCard variant="important" title="Aturan 183 Hari">
-183 hari tersebut tidak harus berurutan. Indonesia menghitung hari dalam **periode 12 bulan apa pun**, yang dapat mencakup tahun kalender yang berbeda. Hari kedatangan dan keberangkatan keduanya dihitung sebagai hari penuh.
+183 hari tidak perlu berurutan. Indonesia menghitung hari dalam periode **12 bulan** apa pun, yang bisa melintasi tahun kalender. Hari masuk dan keluar dihitung sebagai hari penuh.
 
-Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung maju 12 bulan hingga 30 September 2025—total hari di Indonesia selama periode ini menentukan residensi.
+Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung mundur 12 bulan ke 30 September 2026—total hari di Indonesia selama periode ini menentukan kependudukan.
 
 </InfoCard>
 
@@ -345,28 +321,28 @@ Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung maju 12 bulan hingga 30 Se
 ## Memahami Jenis Pajak Indonesia
 
 <LegalDecoder
-  title="Istilah Pajak Utama untuk Orang Asing"
+  title="Istilah Pajak Kunci untuk Warga Asing"
   documentRef="UU No. 7/2021 (HPP)"
   documentType="UU"
   publishedDate="Oktober 2021"
-  status="active"
-  summary="Sistem pajak Indonesia mencakup pajak penghasilan (PPh), pajak pertambahan nilai (PPN), dan berbagai pajak pemotongan. Berikut adalah istilah-istilah utama yang perlu Anda ketahui."
+  status="aktif"
+  summary="Sistem pajak Indonesia mencakup pajak penghasilan (PPh), pajak pertambahan nilai (PPN), dan berbagai pajak pemotongan. Berikut adalah istilah kunci yang perlu Anda ketahui."
   sections={[
     {
       id: "pph",
       original:
         "Pajak Penghasilan (PPh) adalah pajak yang dikenakan terhadap orang pribadi atau badan atas penghasilan yang diterima atau diperoleh dalam tahun pajak.",
       explanation:
-        "PPh dikenakan atas semua penghasilan yang diperoleh individu atau entitas. Untuk orang asing, ini termasuk gaji, penghasilan bisnis, imbal hasil investasi, dan (jika residen) penghasilan dari seluruh dunia.",
+        "PPh (Pajak Penghasilan) dikenakan pada semua penghasilan yang diperoleh oleh individu atau entitas. Bagi warga asing, ini termasuk gaji, penghasilan bisnis, imbalan investasi, dan (jika penduduk) penghasilan seluruh dunia.",
       keyPoints: [
-        "Berlaku berbeda untuk residen dan non-residen",
-        "Residen: dikenakan pajak atas penghasilan seluruh dunia",
-        "Non-residen: dikenakan pajak hanya atas penghasilan Indonesia",
-        "Berbagai jenis PPh: 21 (gaji), 23 (jasa), 26 (pembayaran ke luar negeri)",
+        "Berlaku berbeda untuk penduduk dan non-penduduk",
+        "Penduduk: dipajak pada penghasilan seluruh dunia",
+        "Non-penduduk: dipajak hanya pada penghasilan Indonesia",
+        "Berbagai jenis PPh: 21 (gaji), 23 (jasa), 26 (pembayaran asing)",
       ],
       impact:
-        "Ini adalah kewajiban pajak utama Anda. Memahami PPh mana yang berlaku untuk penghasilan Anda sangatlah penting.",
-      severity: "high",
+        "Ini adalah kewajiban pajak utama Anda. Memahami PPh mana yang berlaku untuk penghasilan Anda sangat penting.",
+      severity: "tinggi",
       reference: "UU PPh Pasal 2",
     },
     {
@@ -374,16 +350,16 @@ Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung maju 12 bulan hingga 30 Se
       original:
         "PPh Pasal 21 adalah pajak atas penghasilan sehubungan dengan pekerjaan, jasa, atau kegiatan dengan nama dan dalam bentuk apa pun.",
       explanation:
-        "PPh 21 adalah pajak yang dipotong dari gaji Anda oleh pemberi kerja. Jika Anda bekerja di Indonesia, pemberi kerja memotong ini setiap bulan dan menyetorkannya ke kantor pajak atas nama Anda.",
+        "PPh 21 adalah pajak yang dipotong dari gaji Anda oleh pemberi kerja. Jika Anda bekerja di Indonesia, pemberi kerja Anda memotong ini setiap bulan dan membayarkannya ke kantor pajak atas nama Anda.",
       keyPoints: [
         "Dipotong bulanan oleh pemberi kerja",
         "Tarif progresif: 5% hingga 35%",
-        "Termasuk tunjangan dan fasilitas",
-        "Final bagi sebagian besar karyawan",
+        "Termasuk tunjangan dan manfaat",
+        "Final untuk sebagian besar karyawan",
       ],
       impact:
-        "Jika bekerja, Anda akan melihat PPh 21 di slip gaji Anda. Pastikan hitungannya benar.",
-      severity: "high",
+        "Jika bekerja, Anda akan melihat PPh 21 di slip gaji. Periksa apakah dihitung dengan benar.",
+      severity: "tinggi",
       reference: "UU PPh Pasal 21",
     },
     {
@@ -391,16 +367,16 @@ Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung maju 12 bulan hingga 30 Se
       original:
         "PPh Pasal 26 adalah pajak yang dipotong atas penghasilan yang dibayarkan kepada Wajib Pajak luar negeri.",
       explanation:
-        "PPh 26 dipotong dari pembayaran kepada non-residen. Jika Anda bukan residen pajak tetapi menerima penghasilan Indonesia (dividen, royalti, jasa), biasanya dipotong 20%—kecuali ada tax treaty yang menguranginya.",
+        "PPh 26 dipotong dari pembayaran kepada non-penduduk. Jika Anda bukan penduduk pajak tetapi menerima penghasilan Indonesia (dividen, royalti, jasa), 20% biasanya dipotong—kecuali perjanjian pajak mengurangi ini.",
       keyPoints: [
         "Tarif standar: 20%",
-        "Tax treaty dapat menguranginya menjadi 10-15%",
+        "Perjanjian pajak dapat mengurangi menjadi 10-15%",
         "Berlaku untuk: dividen, royalti, bunga, jasa",
-        "Dipotong oleh pembayar di Indonesia",
+        "Dipotong oleh pemberi bayar di Indonesia",
       ],
       impact:
-        "Non-residen: pastikan pembayar menerapkan tarif treaty yang benar. Simpan bukti potong untuk negara asal Anda.",
-      severity: "medium",
+        "Non-penduduk: pastikan pemberi bayar menerapkan tarif perjanjian yang benar. Simpan bukti pemotongan untuk negara asal.",
+      severity: "sedang",
       reference: "UU PPh Pasal 26",
     },
     {
@@ -408,16 +384,16 @@ Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung maju 12 bulan hingga 30 Se
       original:
         "Nomor Pokok Wajib Pajak (NPWP) adalah nomor yang diberikan kepada Wajib Pajak sebagai sarana dalam administrasi perpajakan.",
       explanation:
-        "NPWP adalah nomor identitas pajak Anda. Semua residen pajak harus memilikinya. NPWP juga diperlukan untuk banyak keperluan administratif: membuka rekening bank, membeli properti, proses visa tertentu.",
+        "NPWP adalah nomor identifikasi pajak Anda. Semua penduduk pajak harus memilikinya. Juga diperlukan untuk banyak keperluan administratif: membuka rekening bank, membeli properti, proses visa tertentu.",
       keyPoints: [
         "Format: XX.XXX.XXX.X-XXX.XXX",
         "Diperlukan untuk pelaporan pajak",
         "Dibutuhkan untuk rekening bank, properti",
-        "Orang asing menggunakan paspor untuk pendaftaran",
+        "Warga asing menggunakan paspor untuk pendaftaran",
       ],
       impact:
-        "Dapatkan NPWP segera. Tanpanya, Anda mungkin menghadapi pemotongan yang lebih tinggi (tambahan 20%) dan kesulitan administratif.",
-      severity: "high",
+        "Dapatkan NPWP segera. Tanpa itu, Anda mungkin menghadapi pemotongan lebih tinggi (penambahan 20%) dan kesulitan administratif.",
+      severity: "tinggi",
       reference: "UU KUP",
     },
     {
@@ -425,16 +401,16 @@ Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung maju 12 bulan hingga 30 Se
       original:
         "Surat Pemberitahuan (SPT) adalah surat yang oleh Wajib Pajak digunakan untuk melaporkan penghitungan dan/atau pembayaran pajak.",
       explanation:
-        "SPT adalah laporan pajak tahunan Anda. Residen pajak harus melaporkan SPT Tahunan paling lambat 31 Maret setiap tahun, melaporkan semua penghasilan meskipun pajak sudah dipotong.",
+        "SPT adalah SPT tahunan pajak Anda. Penduduk pajak harus melapor SPT Tahunan (laporan tahunan) pada 31 Maret setiap tahun, melaporkan semua penghasilan meskipun pajak sudah dipotong.",
       keyPoints: [
-        "Batas waktu: 31 Maret untuk perorangan",
+        "Jatuh tempo: 31 Maret untuk individu",
         "Melaporkan semua sumber penghasilan",
-        "Dapat mengklaim deduksi dan kredit",
-        "Dilaporkan online melalui DJP Online",
+        "Bisa mengklaim pengurangan dan kredit",
+        "Dilapor online via DJP Online",
       ],
       impact:
-        "Terlambat lapor = denda. Meskipun Anda tidak berutang pajak tambahan, Anda tetap harus lapor.",
-      severity: "high",
+        "Pelaporan terlambat = sanksi. Meskipun Anda tidak wajib bayar pajak tambahan, Anda harus melapor.",
+      severity: "tinggi",
       reference: "UU KUP Pasal 3",
     },
   ]}
@@ -442,62 +418,62 @@ Contoh: Jika Anda tiba 1 Oktober 2024, dan menghitung maju 12 bulan hingga 30 Se
 
 ---
 
-## Tarif Pajak Penghasilan untuk Perorangan
+## Tarif Pajak Penghasilan untuk Individu
 
-Indonesia menggunakan sistem **tarif pajak progresif** untuk penghasilan perorangan:
+Indonesia menggunakan sistem **tarif pajak progresif** untuk penghasilan individu:
 
 <ComparisonTable
-  title="Tarif Pajak Penghasilan Perorangan 2026"
-  description="Tarif progresif berlaku untuk penghasilan kena pajak tahunan (setelah deduksi)"
+  title="Tarif Pajak Penghasilan Individu 2026"
+  description="Tarif progresif berlaku untuk penghasilan kena pajak tahunan (setelah pengurangan)"
   items={[
     {
-      name: "Braket 1",
+      name: "Bracket 1",
       subtitle: "0 - 60 juta",
       values: {
-        "Rentang Penghasilan Tahunan": "Rp 0 - 60.000.000",
-        "Tarif Pajak": "5%",
-        "Pajak pada Braket": "Hingga Rp 3.000.000",
-        "Setara Bulanan": "~Rp 0-5 jt/bulan",
+        "Annual Income Range": "IDR 0 - 60.000.000",
+        "Tax Rate": "5%",
+        "Tax on Bracket": "Hingga IDR 3.000.000",
+        "Monthly Equivalent": "~IDR 0-5M/bulan",
       },
     },
     {
-      name: "Braket 2",
+      name: "Bracket 2",
       subtitle: "60 - 250 juta",
       values: {
-        "Rentang Penghasilan Tahunan": "Rp 60.000.001 - 250.000.000",
-        "Tarif Pajak": "15%",
-        "Pajak pada Braket": "Hingga Rp 28.500.000",
-        "Setara Bulanan": "~Rp 5-21 jt/bulan",
+        "Annual Income Range": "IDR 60.000.001 - 250.000.000",
+        "Tax Rate": "15%",
+        "Tax on Bracket": "Hingga IDR 28.500.000",
+        "Monthly Equivalent": "~IDR 5-21M/bulan",
       },
     },
     {
-      name: "Braket 3",
+      name: "Bracket 3",
       subtitle: "250 - 500 juta",
       values: {
-        "Rentang Penghasilan Tahunan": "Rp 250.000.001 - 500.000.000",
-        "Tarif Pajak": "25%",
-        "Pajak pada Braket": "Hingga Rp 62.500.000",
-        "Setara Bulanan": "~Rp 21-42 jt/bulan",
+        "Annual Income Range": "IDR 250.000.001 - 500.000.000",
+        "Tax Rate": "25%",
+        "Tax on Bracket": "Hingga IDR 62.500.000",
+        "Monthly Equivalent": "~IDR 21-42M/bulan",
       },
     },
     {
-      name: "Braket 4",
-      subtitle: "500 jt - 5 miliar",
+      name: "Bracket 4",
+      subtitle: "500M - 5 miliar",
       values: {
-        "Rentang Penghasilan Tahunan": "Rp 500.000.001 - 5.000.000.000",
-        "Tarif Pajak": "30%",
-        "Pajak pada Braket": "Hingga Rp 1.350.000.000",
-        "Setara Bulanan": "~Rp 42-417 jt/bulan",
+        "Annual Income Range": "IDR 500.000.001 - 5.000.000.000",
+        "Tax Rate": "30%",
+        "Tax on Bracket": "Hingga IDR 1.350.000.000",
+        "Monthly Equivalent": "~IDR 42-417M/bulan",
       },
     },
     {
-      name: "Braket 5",
+      name: "Bracket 5",
       subtitle: "Di atas 5 miliar",
       values: {
-        "Rentang Penghasilan Tahunan": "> Rp 5.000.000.000",
-        "Tarif Pajak": "35%",
-        "Pajak pada Braket": "Tak terbatas",
-        "Setara Bulanan": "> Rp 417 jt/bulan",
+        "Annual Income Range": "> IDR 5.000.000.000",
+        "Tax Rate": "35%",
+        "Tax on Bracket": "Tak terbatas",
+        "Monthly Equivalent": "> IDR 417M/bulan",
       },
       highlight: true,
     },
@@ -506,21 +482,21 @@ Indonesia menggunakan sistem **tarif pajak progresif** untuk penghasilan peroran
     {
       id: "income",
       label: "Penghasilan",
-      fields: ["Rentang Penghasilan Tahunan", "Setara Bulanan"],
+      fields: ["Annual Income Range", "Monthly Equivalent"],
     },
-    { id: "tax", label: "Pajak", fields: ["Tarif Pajak", "Pajak pada Braket"] },
+    { id: "tax", label: "Pajak", fields: ["Tax Rate", "Tax on Bracket"] },
   ]}
 />
 
 <InfoCard variant="tip" title="Cara Kerja Pajak Progresif">
-Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di atas Rp 5 miliar. Setiap braket hanya berlaku untuk penghasilan di dalam rentang tersebut.
+Anda tidak membayar 35% pada semua penghasilan Anda jika berpenghasilan di atas IDR 5 miliar. Setiap bracket hanya berlaku untuk penghasilan dalam rentang tersebut.
 
-**Contoh:** Jika Anda berpenghasilan Rp 300 juta setahun:
+**Contoh:** Jika Anda berpenghasilan IDR 300 juta per tahun:
 
-- Rp 60 jt pertama kena 5% = Rp 3.000.000
-- Rp 190 jt berikutnya (60 jt-250 jt) kena 15% = Rp 28.500.000
-- Rp 50 jt berikutnya (250 jt-300 jt) kena 25% = Rp 12.500.000
-- **Total pajak: Rp 44.000.000** (tarif efektif: ~14,7%)
+- IDR 60M pertama dipajaki 5% = IDR 3.000.000
+- IDR 190M berikutnya (60M-250M) dipajaki 15% = IDR 28.500.000
+- IDR 50M berikutnya (250M-300M) dipajaki 25% = IDR 12.500.000
+- **Total pajak: IDR 44.000.000** (tarif efektif: ~14,7%)
 </InfoCard>
 
 ---
@@ -529,11 +505,11 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
 
 <Calculator
   title="Kalkulator Pajak Penghasilan Indonesia"
-  description="Estimasi pajak penghasilan tahunan Anda berdasarkan gaji dan tunjangan"
+  description="Perkirakan pajak penghasilan tahunan Anda berdasarkan gaji dan tunjangan"
   fields={[
     {
       id: "monthly-salary",
-      label: "Gaji Bruto Bulanan",
+      label: "Gaji Kotor Bulanan",
       type: "number",
       defaultValue: 50000000,
       min: 0,
@@ -542,7 +518,7 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
     },
     {
       id: "allowances",
-      label: "Tunjangan Bulanan (perumahan, transport, dll.)",
+      label: "Tunjangan Bulanan (hunian, transportasi, dll)",
       type: "number",
       defaultValue: 15000000,
       min: 0,
@@ -554,7 +530,7 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
       label: "Bonus (dalam bulan gaji)",
       type: "select",
       options: [
-        { value: "0", label: "Tanpa bonus" },
+        { value: "0", label: "Tidak ada bonus" },
         { value: "1", label: "1 bulan (THR)" },
         { value: "2", label: "2 bulan" },
         { value: "3", label: "3 bulan" }
@@ -563,11 +539,11 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
     },
     {
       id: "marital-status",
-      label: "Status Pernikahan",
+      label: "Status Perkawinan",
       type: "select",
       options: [
         { value: "single", label: "Lajang (TK/0)" },
-        { value: "married-0", label: "Menikah, tanpa anak (K/0)" },
+        { value: "married-0", label: "Menikah, tidak punya anak (K/0)" },
         { value: "married-1", label: "Menikah, 1 anak (K/1)" },
         { value: "married-2", label: "Menikah, 2 anak (K/2)" },
         { value: "married-3", label: "Menikah, 3 anak (K/3)" }
@@ -586,7 +562,7 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
     const bonusMonths = Number(values['bonus-months']);
     const annual = (monthly * 12) + (Number(values['monthly-salary']) * bonusMonths);
 
-    // PTKP (non-taxable income)
+    // PTKP (penghasilan tidak kena pajak)
     const ptkpMap = {
       'single': 54000000,
       'married-0': 58500000,
@@ -596,11 +572,11 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
     };
     const ptkp = ptkpMap[values['marital-status']] || 54000000;
 
-    // Calculate taxable income
+    // Hitung penghasilan kena pajak
     let taxableIncome = annual - ptkp;
     if (taxableIncome < 0) taxableIncome = 0;
 
-    // Calculate tax
+    // Hitung pajak
     let tax = 0;
     let remaining = taxableIncome;
 
@@ -637,7 +613,7 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
       tax += remaining * 0.35;
     }
 
-    // Non-NPWP penalty: 20% higher
+    // Sanksi Non-NPWP: 20% lebih tinggi
     if (!values['has-npwp']) {
       tax = tax * 1.2;
     }
@@ -649,19 +625,19 @@ Anda tidak membayar 35% atas seluruh penghasilan Anda jika berpenghasilan di ata
     return {
       total: tax,
       breakdown: [
-        { label: "Penghasilan Bruto Tahunan", amount: annual },
+        { label: "Penghasilan Tahunan Kotor", amount: annual },
         { label: `PTKP (${values['marital-status']})`, amount: -ptkp },
         { label: "Penghasilan Kena Pajak", amount: taxableIncome },
         { label: "Pajak Tahunan (PPh 21)", amount: tax },
-        { label: "Pemotongan Pajak Bulanan", amount: monthlyTax },
-        { label: "Pendapatan Bersih Tahunan", amount: takeHome }
+        { label: "Potongan Pajak Bulanan", amount: monthlyTax },
+        { label: "Penghasilan Bersih Tahunan", amount: takeHome }
       ],
       currency: "IDR",
-      note: `Tarif pajak efektif: ${effectiveRate}%${!values['has-npwp'] ? ' (termasuk penalti 20% tanpa NPWP)' : ''}`
+      note: `Tarif pajak efektif: ${effectiveRate}%${!values['has-npwp'] ? ' (termasuk sanksi Non-NPWP 20%)' : ''}`
     };
 
 }}
-ctaText="Konsultasi dengan Penasihat Pajak"
+ctaText="Konsultasikan dengan Konsultan Pajak"
 ctaAction={() => window.open('/contact?service=tax-consultation', '\_blank')}
 />
 
@@ -671,131 +647,129 @@ ctaAction={() => window.open('/contact?service=tax-consultation', '\_blank')}
 
 <GlossaryTerm
   term="PTKP"
-  definition="Penghasilan Tidak Kena Pajak - ambang batas penghasilan yang tidak dikenakan pajak yang mengurangi penghasilan kena pajak Anda berdasarkan situasi pribadi."
+  definition="Penghasilan Tidak Kena Pajak - ambang batas penghasilan tidak kena pajak yang mengurangi penghasilan kena pajak Anda berdasarkan kondisi pribadi."
   indonesian="Penghasilan Tidak Kena Pajak"
   relatedTerms={["PPh 21", "SPT", "NPWP"]}
 >
   PTKP
 </GlossaryTerm>
-adalah jatah bebas pajak Anda. Ini dikurangkan dari penghasilan bruto sebelum
-pajak dihitung.
+adalah tunjangan bebas pajak Anda. Ini dikurangkan dari penghasilan kotor sebelum pajak dihitung.
 
-| Status                   | Kode | PTKP Tahunan  |
-| ------------------------ | ---- | ------------- |
-| Lajang, tanpa tanggungan | TK/0 | Rp 54.000.000 |
-| Lajang + 1 tanggungan    | TK/1 | Rp 58.500.000 |
-| Lajang + 2 tanggungan    | TK/2 | Rp 63.000.000 |
-| Lajang + 3 tanggungan    | TK/3 | Rp 67.500.000 |
-| Menikah, tanpa anak      | K/0  | Rp 58.500.000 |
-| Menikah + 1 anak         | K/1  | Rp 63.000.000 |
-| Menikah + 2 anak         | K/2  | Rp 67.500.000 |
-| Menikah + 3 anak         | K/3  | Rp 72.000.000 |
+| Status                | Kode | PTKP Tahunan    |
+| --------------------- | ---- | -------------- |
+| Lajang, tidak punya tanggungan | TK/0 | IDR 54.000.000 |
+| Lajang + 1 tanggungan  | TK/1 | IDR 58.500.000 |
+| Lajang + 2 tanggungan | TK/2 | IDR 63.000.000 |
+| Lajang + 3 tanggungan | TK/3 | IDR 67.500.000 |
+| Menikah, tidak punya anak  | K/0  | IDR 58.500.000 |
+| Menikah + 1 anak     | K/1  | IDR 63.000.000 |
+| Menikah + 2 anak     | K/2  | IDR 67.500.000 |
+| Menikah + 3 anak     | K/3  | IDR 72.000.000 |
 
 <InfoCard variant="note" title="Definisi Tanggungan">
 
-  Tanggungan harus: - Anggota keluarga sedarah (3 generasi) atau semenda (dalam
-  garis lurus) - Tinggal dalam satu rumah - Tidak memiliki penghasilan sendiri -
-  Maksimal 3 tanggungan yang bisa diklaim
+  Tanggungan harus: - Anggota keluarga berdasarkan darah (3 generasi) atau perkawinan (dalam garis lurus) - Tinggal di rumah tangga Anda - Tidak berpenghasilan sendiri -
+  Maksimal 3 tanggungan bisa diklaim
 </InfoCard>
 
 ---
 
-## Tax Treaty: Menghindari Pajak Berganda
+## Perjanjian Pajak: Menghindari Pajak Ganda
 
-Indonesia memiliki <GlossaryTerm term="Tax Treaty" definition="Perjanjian Penghindaran Pajak Berganda (P3B) - kesepakatan antara Indonesia dan negara lain untuk mencegah penghasilan yang sama dikenakan pajak dua kali." indonesian="Perjanjian Penghindaran Pajak Berganda">tax treaty</GlossaryTerm> dengan lebih dari 70 negara untuk mencegah pajak berganda. Jika negara asal Anda memiliki treaty dengan Indonesia, Anda dapat memperoleh manfaat:
+Indonesia memiliki <GlossaryTerm term="Perjanjian Pajak" definition="Perjanjian Penghindaran Pajak Berganda (P3B) - perjanjian antara Indonesia dan negara lain untuk mencegah penghasilan yang sama dipajaki dua kali." indonesian="Perjanjian Penghindaran Pajak Berganda">perjanjian pajak</GlossaryTerm> dengan lebih dari 70 negara untuk mencegah pajak ganda. Jika negara asal Anda memiliki perjanjian dengan Indonesia, Anda mungkin mendapat manfaat dari:
 
-- **Pengurangan tarif pemotongan** atas dividen, bunga, royalti
+- **Tarif pemotongan yang dikurangi** pada dividen, bunga, royalti
 - **Kredit pajak** untuk pajak Indonesia yang telah dibayar
-- **Aturan tie-breaker** untuk konflik residensi
+- **Aturan pemecah ikatan** untuk konflik kependudukan
 
 <ComparisonTable
-  title="Tarif Tax Treaty Utama"
-  description="Tarif pajak pemotongan di bawah tax treaty umum (vs standar 20%)"
+  title="Tarif Perjanjian Pajak Kunci"
+  description="Tarif pajak pemotongan di bawah perjanjian pajak umum (vs. standar 20%)"
   items={[
     {
       name: "Australia",
       values: {
-        Dividen: "15%",
-        Bunga: "10%",
-        Royalti: "10%/15%",
-        "Tahun Treaty": "1992",
+        Dividends: "15%",
+        Interest: "10%",
+        Royalties: "10%/15%",
+        "Treaty Year": "1992",
       },
     },
     {
-      name: "Inggris",
+      name: "United Kingdom",
       values: {
-        Dividen: "10%/15%",
-        Bunga: "10%",
-        Royalti: "10%/15%",
-        "Tahun Treaty": "1993",
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%/15%",
+        "Treaty Year": "1993",
       },
     },
     {
-      name: "Amerika Serikat",
+      name: "United States",
       values: {
-        Dividen: "10%/15%",
-        Bunga: "10%",
-        Royalti: "10%",
-        "Tahun Treaty": "1988",
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "1988",
       },
     },
     {
-      name: "Singapura",
+      name: "Singapore",
       values: {
-        Dividen: "10%/15%",
-        Bunga: "10%",
-        Royalti: "10%",
-        "Tahun Treaty": "1990",
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "1990",
       },
     },
     {
-      name: "Belanda",
+      name: "Netherlands",
       values: {
-        Dividen: "10%/15%",
-        Bunga: "10%",
-        Royalti: "10%",
-        "Tahun Treaty": "2002",
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "2002",
       },
     },
     {
-      name: "Jepang",
+      name: "Japan",
       values: {
-        Dividen: "10%/15%",
-        Bunga: "10%",
-        Royalti: "10%",
-        "Tahun Treaty": "1982",
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "1982",
       },
     },
     {
-      name: "Jerman",
+      name: "Germany",
       values: {
-        Dividen: "10%/15%",
-        Bunga: "10%",
-        Royalti: "10%/15%",
-        "Tahun Treaty": "1990",
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%/15%",
+        "Treaty Year": "1990",
       },
     },
   ]}
 />
 
-<InfoCard variant="tip" title="Mengklaim Manfaat Treaty">
-Untuk mengklaim tarif treaty yang dikurangi, Anda biasanya membutuhkan:
+<InfoCard variant="tip" title="Mengeklaim Manfaat Perjanjian">
+Untuk mengklaim tarif perjanjian yang dikurangi, Anda biasanya perlu:
 
-1. **SKD (Surat Keterangan Domisili)** - Sertifikat residensi pajak dari negara asal Anda
-2. **Formulir DGT** - Formulir Indonesia untuk mengklaim manfaat treaty
-3. **Dokumentasi** - Bukti bahwa Anda adalah pemilik manfaat (beneficial owner) dari penghasilan tersebut
+1. **SKD (Surat Keterangan Domisili)** - Sertifikat kependudukan pajak dari negara asal Anda
+2. **Formulir DGT** - Formulir Indonesia yang mengklaim manfaat perjanjian
+3. **Dokumentasi** - Bukti bahwa Anda adalah pemilik manfaat penghasilan
 
-Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk memastikan pemotongan yang benar.
+Serahkan ini kepada pemberi bayar Indonesia sebelum pembayaran untuk memastikan pemotongan yang benar.
 
 </InfoCard>
 
 ---
 
-## Pendaftaran NPWP untuk Orang Asing
+## Pendaftaran NPWP untuk Warga Asing
 
 <JourneyMap
   title="Mendapatkan NPWP Anda"
-  description="Proses langkah demi langkah bagi orang asing untuk mendapatkan nomor pajak Indonesia"
+  description="Proses langkah demi langkah bagi warga asing untuk mendapatkan nomor pajak Indonesia"
   estimatedTotal="1-7 hari"
   steps={[
     {
@@ -803,26 +777,26 @@ Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk
       title: "Siapkan Dokumen",
       description: "Kumpulkan semua dokumen yang diperlukan",
       duration: "1 hari",
-      status: "required",
+      status: "diperlukan",
       documents: [
-        "Paspor (salinan berwarna)",
-        "KITAS/KITAP (salinan berwarna)",
+        "Paspor (salinan warna)",
+        "KITAS/KITAP (salinan warna)",
         "Surat domisili (jika bekerja, dari pemberi kerja)",
         "Kontrak kerja (jika bekerja)",
-        "Formulir pendaftaran NPWP",
+        "Formulir aplikasi NPWP",
       ],
       tips: [
-        "Paspor harus masih berlaku",
-        "KITAS harus masih aktif",
-        "Surat dari pemberi kerja membantu mempercepat proses",
+        "Paspor harus berlaku",
+        "KITAS harus mutakhir",
+        "Surat pemberi kerja membantu mempercepat proses",
       ],
     },
     {
       id: "form",
-      title: "Isi Aplikasi",
+      title: "Lengkapi Aplikasi",
       description: "Isi formulir pendaftaran NPWP",
       duration: "30 menit",
-      status: "required",
+      status: "diperlukan",
       documents: [
         "Formulir diisi dalam Bahasa Indonesia",
         "Detail pemberi kerja (jika bekerja)",
@@ -832,19 +806,19 @@ Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk
     },
     {
       id: "submit",
-      title: "Kirim Aplikasi",
-      description: "Kirim ke kantor pajak (KPP) yang sesuai",
+      title: "Serahkan Aplikasi",
+      description: "Serahkan ke kantor pajak yang sesuai (KPP)",
       duration: "1-2 jam",
-      status: "required",
+      status: "diperlukan",
       documents: ["Semua dokumen di atas", "Paspor asli untuk verifikasi"],
       tips: [
-        "Datang ke KPP berdasarkan alamat domisili",
-        "Beberapa KPP mengizinkan pra-pendaftaran online",
+        "Pergi ke KPP berdasarkan alamat domisili",
+        "Beberapa KPP memungkinkan pra-daftar online",
         "Bule Counter mungkin tersedia di beberapa kantor",
       ],
       warnings: [
-        "Antrean panjang mungkin terjadi",
-        "Mungkin harus kembali jika dokumen belum lengkap",
+        "Antrian panjang mungkin terjadi",
+        "Mungkin perlu kembali jika dokumen tidak lengkap",
       ],
     },
     {
@@ -852,11 +826,11 @@ Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk
       title: "Verifikasi",
       description: "Kantor pajak memverifikasi dokumen Anda",
       duration: "Hari yang sama - 3 hari",
-      status: "required",
+      status: "diperlukan",
       tips: [
-        "Beberapa kantor menerbitkan di hari yang sama",
-        "Lainnya mungkin butuh waktu hingga 3 hari kerja",
-        "Cek status secara online melalui DJP",
+        "Beberapa kantor menerbitkan hari yang sama",
+        "Lainnya mungkin memakan waktu hingga 3 hari kerja",
+        "Cek status online via DJP",
       ],
     },
     {
@@ -865,21 +839,19 @@ Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk
       description: "Dapatkan kartu NPWP dan sertifikat Anda",
       duration: "Hari yang sama atau ambil nanti",
       status: "final",
-      documents: ["Kartu NPWP (fisik)", "SKT (Surat Keterangan Terdaftar)"],
+      documents: ["Kartu NPWP (fisik)", "SKT (sertifikat pendaftaran)"],
       tips: [
         "Simpan nomor NPWP Anda segera",
-        "Daftar ke DJP Online",
+        "Daftar DJP Online",
         "Update rekening bank dengan NPWP",
       ],
     },
   ]}
 />
 
-<InfoCard variant="warning" title="Tidak Ada NPWP = Pajak Lebih Tinggi">
+<InfoCard variant="warning" title="Tanpa NPWP = Pajak Lebih Tinggi">
 
-  Jika Anda tidak memiliki NPWP, pemotongan pajak Anda **20% lebih tinggi** dari
-  tarif normal. Ini bisa berjumlah signifikan dalam setahun. Dapatkan NPWP Anda
-  segera setelah Anda menjadi residen pajak.
+  Jika Anda tidak memiliki NPWP, pemotongan pajak Anda **20% lebih tinggi** daripada tarif normal. Ini bisa menumpuk secara signifikan selama setahun. Dapatkan NPWP segera setelah Anda menjadi penduduk pajak.
 </InfoCard>
 
 ---
@@ -887,8 +859,8 @@ Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk
 ## Pelaporan SPT Tahunan
 
 <Checklist
-  title="Checklist Pelaporan SPT"
-  description="Semua yang Anda butuhkan untuk melaporkan SPT tahunan Anda"
+  title="Daftar Periksa Pelaporan SPT"
+  description="Segala hal yang Anda butuhkan untuk melapor SPT tahunan"
   persistKey="spt-checklist"
   items={[
     {
@@ -897,86 +869,84 @@ Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk
       description:
         "Formulir 1721-A1 dari pemberi kerja yang menunjukkan penghasilan tahunan dan pajak yang dipotong",
       required: true,
-      category: "documents",
+      category: "dokumen",
     },
     {
       id: "other-income",
       label: "Dokumentasikan penghasilan Indonesia lainnya",
-      description: "Bunga, dividen, penghasilan sewa, kerja freelance",
+      description: "Bunga, dividen, penghasilan sewa, pekerjaan freelance",
       required: false,
-      category: "documents",
+      category: "dokumen",
     },
     {
       id: "foreign-income",
-      label: "Dokumentasikan penghasilan luar negeri (hanya residen)",
-      description: "Gaji luar negeri, investasi, penghasilan sewa",
+      label: "Dokumentasikan penghasilan asing (hanya penduduk)",
+      description: "Gaji asing, investasi, penghasilan sewa",
       required: false,
-      category: "documents",
+      category: "dokumen",
     },
     {
       id: "foreign-tax",
-      label: "Sertifikat pajak yang dibayar di luar negeri",
-      description: "Untuk mengklaim kredit pajak luar negeri",
+      label: "Sertifikat pajak asing yang dibayar",
+      description: "Untuk mengklaim kredit pajak asing",
       required: false,
-      category: "documents",
+      category: "dokumen",
     },
     {
       id: "efin",
-      label: "Dapatkan EFIN (Electronic Filing ID)",
-      description:
-        "Diperlukan untuk akses DJP Online - pendaftaran sekali saja",
+      label: "Dapatkan EFIN (ID Pelaporan Elektronik)",
+      description: "Diperlukan untuk akses DJP Online - pendaftaran sekali",
       required: true,
-      category: "registration",
+      category: "pendaftaran",
     },
     {
       id: "djp-login",
       label: "Akses DJP Online",
       description: "Login di djponline.pajak.go.id",
       required: true,
-      category: "registration",
+      category: "pendaftaran",
     },
     {
       id: "form-type",
       label: "Pilih formulir yang benar",
-      description:
-        "1770SS (&lt;60 jt), 1770S (karyawan), atau 1770 (bisnis/campuran)",
+      description: "1770SS (&lt;60M), 1770S (karyawan), atau 1770 (bisnis/campuran)",
       required: true,
-      category: "filing",
+      category: "pelaporan",
     },
     {
       id: "fill-form",
-      label: "Isi formulir SPT secara online",
-      description: "Masukkan penghasilan, deduksi, dan hitung pajak",
+      label: "Lengkapi formulir SPT online",
+      description: "Masukkan penghasilan, pengurangan, dan hitung pajak",
       required: true,
-      category: "filing",
+      category: "pelaporan",
     },
     {
       id: "check-calc",
       label: "Verifikasi perhitungan pajak",
-      description: "Cek apakah Kurang/Lebih Bayar",
+      description: "Cek apakah kurang bayar atau lebih bayar (Kurang/Lebih Bayar)",
       required: true,
-      category: "filing",
+      category: "pelaporan",
     },
     {
       id: "payment",
-      label: "Bayar jika ada kekurangan",
-      description: "Jika ada kurang bayar, bayar sebelum lapor",
+      label: "Bayar kekurangan bayar",
+      description: "Jika Anda wajib bayar pajak tambahan, bayar sebelum pelaporan",
       required: false,
-      category: "payment",
+      category: "pembayaran",
     },
     {
       id: "submit",
-      label: "Kirim SPT secara elektronik",
+      label: "Serahkan SPT secara elektronik",
       description: "E-filing melalui DJP Online",
       required: true,
-      category: "filing",
+      category: "pelaporan",
     },
     {
       id: "receipt",
-      label: "Simpan BPE (tanda terima elektronik)",
+      label: "Simpan BPE (kuitansi elektronik)",
       description: "Bukti pelaporan - simpan untuk arsip",
       required: true,
-      category: "filing",
+      category: "pelaporan",
     },
   ]}
   categories={[
@@ -989,16 +959,16 @@ Serahkan dokumen ini ke pembayar di Indonesia sebelum pembayaran dilakukan untuk
   allowExport={true}
 />
 
-<InfoCard variant="important" title="Batas Waktu SPT">
-- **SPT Perorangan**: 31 Maret (untuk penghasilan tahun sebelumnya)
-- **SPT Badan**: 30 April
+<InfoCard variant="important" title="Jatuh Tempo SPT">
+- **SPT Individu**: 31 Maret (untuk penghasilan tahun sebelumnya)
+- **SPT Perusahaan**: 30 April
 
-Denda keterlambatan lapor:
+Sanksi pelaporan terlambat:
 
-- Perorangan: Rp 100.000
-- Badan: Rp 1.000.000
+- Individu: IDR 100.000
+- Perusahaan: IDR 1.000.000
 
-Keterlambatan bayar: 2% per bulan dari pajak yang belum dibayar
+Pembayaran terlambat: 2% per bulan pada pajak yang belum dibayar
 
 </InfoCard>
 
@@ -1008,58 +978,58 @@ Keterlambatan bayar: 2% per bulan dari pajak yang belum dibayar
 
 ### Pekerja Remote / Digital Nomad
 
-<InfoCard variant="warning" title="Area Abu-Abu Pajak Digital Nomad">
-Indonesia tidak memiliki rezim pajak khusus untuk "digital nomad". Secara teknis:
+<InfoCard variant="warning" title="Area Abu-abu Pajak Digital Nomad">
+Indonesia tidak memiliki rezim pajak "digital nomad" khusus. Secara teknis:
 
-- Pekerjaan yang dilakukan di Indonesia = berpotensi menjadi penghasilan sumber Indonesia
-- 183+ hari = residen pajak, penghasilan seluruh dunia kena pajak
-- Visa turis tidak mengubah kewajiban pajak Anda
+- Pekerjaan yang dilakukan di Indonesia = berpotensi penghasilan sumber Indonesia
+- 183+ hari = penduduk pajak, penghasilan seluruh dunia kena pajak
+- Visa turis tidak mengubah kewajiban pajak
 
-**Realitas**: Banyak digital nomad tidak mendaftar. Ini berisiko. Kantor pajak semakin sadar akan keberadaan pekerja remote.
+**Realita**: Banyak digital nomad tidak mendaftar. Ini adalah risiko. Kantor pajak semakin sadar tentang pekerja remote.
 
-**Pendekatan paling aman**: Tinggal di bawah 183 hari, atau pertimbangkan pendaftaran sukarela jika tinggal lebih lama.
+**Pendekatan paling aman**: Tetap di bawah 183 hari, atau pertimbangkan pendaftaran sukarela jika tinggal lebih lama.
 
 </InfoCard>
 
-### Pemegang Visa Second Home
+### Pemegang Second Home Visa
 
-Visa **Second Home** yang baru (pemberian pertama 5 tahun, dapat diperpanjang hingga 10 tahun kumulatif) tidak secara otomatis menciptakan residensi pajak, tetapi:
+Visa **Second Home** baru (5 tahun pertama pemberian, dapat diperpanjang hingga maksimal kumulatif 10 tahun) tidak otomatis menciptakan kependudukan pajak, tetapi:
 
-- Tinggal 183+ hari tetap memicu residensi
-- Anda mungkin perlu membuktikan penghasilan tidak berasal dari Indonesia
-- Pertimbangkan pendaftaran NPWP sukarela untuk keperluan perbankan/properti
+- 183+ hari masih memicu kependudukan
+- Anda mungkin perlu membuktikan penghasilan tidak dari Indonesia
+- Pertimbangkan pendaftaran NPWP sukarela untuk perbankan/properti
 
-### Ekspatriat dalam Penugasan
+### Ekspatriat dalam Tugas
 
-Jika pemberi kerja di negara asal menugaskan Anda ke Indonesia:
+Jika pemberi kerja negara asal Anda menugaskan Anda ke Indonesia:
 
-- Biasanya menjadi residen pajak Indonesia
-- Mungkin berhak atas **tax equalization** (pemberi kerja menanggung selisih)
-- Cek pengaturan **pajak hipotetis** (hypothetical tax)
-- Koordinasikan dengan penasihat pajak negara asal dan negara tujuan
+- Biasanya menjadi penduduk pajak Indonesia
+- Mungkin berhak atas **penyesuaian pajak** (pemberi kerja menutupi perbedaan)
+- Cek untuk pengaturan **pajak hipotetis**
+- Koordinasikan dengan konsultan pajak negara asal dan negara tuan rumah
 
 ---
 
 ## Kesalahan Umum yang Harus Dihindari
 
-<InfoCard variant="error" title="Kesalahan Pajak yang Merugikan">
-**1. Tidak Membuat NPWP**
-Tambahan pajak 20% tanpa NPWP. Buat segera setelah Anda menjadi residen.
+<InfoCard variant="error" title="Kesalahan Pajak yang Menghabiskan Uang">
+**1. Tidak Mendapatkan NPWP**
+Penambahan pajak 20% tanpa NPWP. Dapatkan segera setelah Anda menjadi penduduk.
 
-**2. Melewatkan Batas Waktu Lapor**
-SPT paling lambat 31 Maret. Terlambat = denda. Pasang pengingat.
+**2. Melewatkan Jatuh Tempo Pelaporan**
+SPT jatuh tempo 31 Maret. Terlambat = sanksi. Atur pengingat.
 
-**3. Mengabaikan Penghasilan Luar Negeri**
-Residen harus melaporkan penghasilan seluruh dunia. Rekening bank luar negeri, investasi, penghasilan sewa—semuanya kena pajak.
+**3. Mengabaikan Penghasilan Asing**
+Penduduk harus melaporkan penghasilan seluruh dunia. Rekening bank asing, investasi, penghasilan sewa—semua kena pajak.
 
-**4. Salah Jenis Formulir**
-Menggunakan 1770SS padahal punya banyak sumber penghasilan. Gunakan formulir yang benar untuk situasi Anda.
+**4. Jenis Formulir Salah**
+Menggunakan 1770SS ketika Anda memiliki beberapa sumber penghasilan. Gunakan formulir yang benar untuk situasi Anda.
 
-**5. Tidak Mengklaim Manfaat Treaty**
-Jika Anda dipotong 20% padahal negara Anda punya treaty untuk 10%, Anda membayar lebih.
+**5. Tidak Mengeklaim Manfaat Perjanjian**
+Jika Anda dipajaki 20% tetapi negara Anda memiliki perjanjian untuk 10%, Anda membayar berlebihan.
 
-**6. Tidak Menyimpan Catatan**
-Simpan slip gaji, Bukti Potong, rekening koran selama 10 tahun. Kantor pajak bisa melakukan audit.
+**6. Tidak Ada Catatan**
+Simpan slip gaji, Bukti Potong, laporan bank selama 10 tahun. Kantor pajak bisa melakukan audit.
 
 </InfoCard>
 
@@ -1067,17 +1037,17 @@ Simpan slip gaji, Bukti Potong, rekening koran selama 10 tahun. Kantor pajak bis
 
 ## Butuh Bantuan?
 
-Pajak Indonesia bisa menjadi rumit, terutama bagi orang asing dengan banyak sumber penghasilan atau situasi lintas batas. Jika Anda memiliki pertanyaan khusus:
+Pajak Indonesia bisa kompleks, terutama bagi warga asing dengan beberapa sumber penghasilan atau situasi lintas batas. Jika Anda memiliki pertanyaan spesifik:
 
 <AskZantara
-  context="Perpajakan Indonesia, PPh, pendaftaran NPWP, pelaporan SPT, tax treaty, pajak ekspatriat"
-  placeholder="Tanyakan tentang situasi pajak spesifik Anda..."
+  context="Perpajakan Indonesia, PPh, pendaftaran NPWP, pelaporan SPT, perjanjian pajak, pajak ekspatriat"
+  placeholder="Tanya tentang situasi pajak spesifik Anda..."
   suggestedQuestions={[
-    "Bagaimana saya tahu jika saya residen pajak?",
-    "Apakah saya perlu melaporkan penghasilan luar negeri saya?",
-    "Berapa denda untuk keterlambatan lapor SPT?",
-    "Bagaimana cara mengklaim manfaat tax treaty?",
-    "Bisakah saya mengurangkan biaya sewa dari penghasilan kena pajak?",
+    "Bagaimana cara tahu apakah saya penduduk pajak?",
+    "Apakah saya perlu melaporkan penghasilan asing saya?",
+    "Berapa sanksi pelaporan SPT terlambat?",
+    "Bagaimana cara mengklaim manfaat perjanjian pajak?",
+    "Bisakah saya mengurangi sewa dari penghasilan kena pajak?",
   ]}
 />
 
@@ -1085,37 +1055,38 @@ Pajak Indonesia bisa menjadi rumit, terutama bagi orang asing dengan banyak sumb
 
 ## Artikel Terkait
 
-- [Pendaftaran NPWP untuk Orang Asing: Langkah demi Langkah](/insights/tax-legal/npwp-registration-foreigners)
+- [Pendaftaran NPWP untuk Warga Asing: Langkah demi Langkah](/insights/tax-legal/npwp-registration-foreigners)
 - [Panduan SPT Tahunan untuk Ekspatriat](/insights/tax-legal/annual-tax-return-guide)
-- [Tax Treaty: Menghindari Pajak Berganda](/insights/tax-legal/tax-treaties-explained)
+- [Perjanjian Pajak: Menghindari Pajak Ganda](/insights/tax-legal/tax-treaties-explained)
 - [Pajak Perusahaan di Indonesia](/insights/tax-legal/corporate-tax-indonesia)
 - [Pajak Freelancer di Indonesia](/insights/tax-legal/freelancer-taxes-indonesia)
+- [Kependudukan Pajak di Indonesia: Aturan 183 Hari Dijelaskan](/insights/tax/tax-residency-indonesia)
+- [Pajak Penghasilan Sewa 2026 Indonesia: 10% PPh Final untuk Villa & Properti](/insights/tax/rental-income-tax-indonesia)
+- [Pajak Pemotongan Indonesia 2026: Panduan Lengkap PPh](/insights/tax/withholding-tax-guide)
 
 ---
 
-## Opini dan Diskusi yang Berlangsung
+## Opini dan Diskusi Berlangsung
 
 <InfoCard
   variant="note"
-  title="⚠️ Nota: Bagian ini berisi OPINI dan diskusi yang belum dikonfirmasi secara resmi"
+  title="⚠️ Catatan: Bagian ini berisi OPINI dan diskusi yang belum dikonfirmasi secara resmi"
 >
 
-  Informasi berikut berasal dari diskusi publik, artikel industri, dan analisis
-  ahli. **Informasi ini tidak dikonfirmasi oleh sumber resmi pemerintah** dan
-  mungkin tidak terealisasi.
+  Informasi berikut berasal dari diskusi publik, artikel industri, dan analisis ahli. **Tidak dikonfirmasi oleh sumber resmi pemerintah** dan mungkin tidak terwujud.
 </InfoCard>
 
-### Kemungkinan perkembangan pajak 2026-2027 (OPINI)
+### Kemungkinan Perkembangan Pajak 2026-2027 (OPINI)
 
-Berdasarkan diskusi yang sedang berlangsung di sektor perpajakan Indonesia:
+Berdasarkan diskusi yang sedang berlangsung di industri perpajakan Indonesia:
 
-1. **Pajak Karbon (Carbon Tax)** - Ada diskusi tentang perluasan pajak karbon di luar sektor energi. Saat ini hanya diterapkan pada pembangkit listrik tenaga uap (PLTU) batubara, mungkin akan meluas ke transportasi dan industri manufaktur. _Belum ada tanggal pasti._
+1. **Pajak Karbon** - Diskusi perluasan pajak karbon di luar sektor energi. Saat ini hanya diterapkan pada pembangkit listrik tenaga batu bara, bisa meluas ke transportasi dan industri manufaktur. _Tidak ada tanggal dikonfirmasi._
 
-2. **Perluasan Pajak Layanan Digital** - Ada diskusi tentang kemungkinan perluasan perpajakan layanan digital untuk mencakup lebih banyak platform dan kreator konten. Beberapa opini menunjukkan hal ini juga bisa berdampak pada freelancer yang bekerja untuk klien luar negeri.
+2. **Digital Services Tax diperluas** - Ada diskusi kemungkinan perluasan pajak layanan digital untuk mencakup lebih banyak platform dan pembuat konten. Beberapa opini menunjukkan bisa juga menyangkut freelancer yang bekerja untuk klien asing.
 
-3. **Penyederhanaan NPWP untuk Orang Asing** - Beberapa ahli berpendapat bahwa proses pendaftaran NPWP bagi orang asing akan semakin disederhanakan dengan integrasi NIK-NPWP.
+3. **Pemerataan NPWP untuk warga asing** - Beberapa ahli berpendapat bahwa proses pendaftaran NPWP untuk warga asing akan lebih disederhanakan dengan integrasi NIK-NPWP.
 
-4. **Tax holiday untuk startup teknologi** - Ada diskusi mengenai kemungkinan insentif pajak tambahan untuk startup teknologi, namun belum ada pengumuman resmi.
+4. **Tax holiday untuk startup teknologi** - Diskusi kemungkinan insentif pajak tambahan untuk startup teknologi, namun belum ada pengumuman resmi.
 
 **Ingat**: Ini hanya diskusi. Untuk keputusan penting, tunggu konfirmasi resmi dari pajak.go.id atau konsultasikan dengan profesional pajak.
 
@@ -1123,8 +1094,6 @@ Berdasarkan diskusi yang sedang berlangsung di sektor perpajakan Indonesia:
 
 <InfoCard variant="note" title="Disclaimer">
 
-  Panduan ini hanya untuk tujuan informasi dan bukan merupakan saran pajak.
-  Hukum pajak sering berubah dan keadaan individu bervariasi. Selalu
-  berkonsultasi dengan profesional pajak yang berkualifikasi untuk saran yang
-  spesifik untuk situasi Anda. Terakhir diperbarui: Januari 2026.
+  Panduan ini hanya untuk tujuan informasi dan tidak merupakan nasihat pajak. Hukum pajak berubah sering dan kondisi individu bervariasi. Selalu konsultasikan dengan profesional pajak yang memenuhi syarat untuk nasihat spesifik situasi Anda.
+  Terakhir diperbarui: Januari 2026.
 </InfoCard>

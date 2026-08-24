@@ -1,0 +1,82 @@
+{
+  "story_cluster_id": "60000000-0000-4000-8000-000000000001",
+  "story_cluster_family_id": "60000000-0000-4000-8000-000000100001",
+  "revision": 2,
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "predecessor_refs": [
+    {
+      "story_cluster_id": "60000000-0000-4000-8000-000000900001",
+      "object_hash": "000000000000000000000000000000000000000000000000000000000000012d",
+      "operation": "canonical_change"
+    }
+  ],
+  "canonical_event_ref": {
+    "event_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "000000000000000000000000000000000000000000000000000000000000012e"
+  },
+  "members": [
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000001",
+        "object_hash": "000000000000000000000000000000000000000000000000000000000000012e"
+      },
+      "relationship": "same_event",
+      "source_group_id": "com.example.source_group_a",
+      "relation_score": 1.0
+    },
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000002",
+        "object_hash": "000000000000000000000000000000000000000000000000000000000000012f"
+      },
+      "relationship": "syndicated",
+      "source_group_id": "com.example.source_group_a",
+      "relation_score": 0.95
+    },
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000003",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000130"
+      },
+      "relationship": "near",
+      "source_group_id": "com.example.source_group_b",
+      "relation_score": 0.7
+    }
+  ],
+  "independent_source_groups": [
+    "com.example.source_group_a",
+    "com.example.source_group_b"
+  ],
+  "decision": {
+    "layers_run": ["exact", "normalized", "near"],
+    "thresholds_version": "2026.1",
+    "verdict": "merged",
+    "reasons": ["com.example.high_similarity_score"],
+    "decided_by": "deterministic",
+    "decided_at": "2026-01-15T08:00:00+08:00"
+  },
+  "recorded_at": "2026-01-15T00:05:00Z",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "producer": {
+    "name": "com.example.story_clusterer",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "run_id": "60000000-0000-4000-8000-000000900002",
+    "code_version": "1.0.0",
+    "model_version": "1.0.0",
+    "input_hashes": [
+      "0000000000000000000000000000000000000000000000000000000000000131",
+      "0000000000000000000000000000000000000000000000000000000000000132"
+    ]
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "eda66c3a5b26ddb4031276350b2e92dcb827adbe843dbcc1aac6d6cf86944565"
+}

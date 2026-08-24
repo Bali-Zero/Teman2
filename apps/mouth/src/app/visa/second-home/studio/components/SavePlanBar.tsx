@@ -11,6 +11,108 @@ import type { PlanState } from "@/lib/secondhome-studio/types";
 
 const STUDIO_PATH = "/visa/second-home/studio";
 
+const PRINT_STYLES = `
+  @page {
+    margin: 14mm;
+  }
+
+  @media print {
+    :root,
+    [data-theme],
+    [data-funnel="visa"] {
+      --background: #ffffff;
+      --foreground: #172033;
+      --surface-base: #ffffff;
+      --surface-raised: #ffffff;
+      --surface-sunken: #f4f6f8;
+      --text-primary: #172033;
+      --text-secondary: #334155;
+      --text-tertiary: #475569;
+      --color-text-muted: #475569;
+      --color-border-subtle: #cbd5e1;
+      --accent-funnel: #8f1d2c;
+      --accent-funnel-text: #8f1d2c;
+      --bz-elevated: #ffffff;
+      --tx-secondary: #334155;
+    }
+
+    html,
+    body {
+      background: #ffffff !important;
+      color: #172033 !important;
+    }
+
+    nav,
+    .fixed.bottom-0.left-0.right-0.z-50,
+    .bz-shs-save-plan-bar,
+    .bz-shs-option,
+    .bz-shs-scenario-toggle-trigger,
+    .bz-shs-scenario-toggle-back {
+      display: none !important;
+    }
+
+    .mx-auto.max-w-6xl,
+    [data-funnel="visa"] {
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    [data-funnel="visa"] section,
+    [data-funnel="visa"] table,
+    [data-funnel="visa"] tr,
+    [data-funnel="visa"] li {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    [data-funnel="visa"] section {
+      box-shadow: none !important;
+    }
+
+    [data-funnel="visa"] section > div {
+      overflow: visible !important;
+    }
+
+    [data-funnel="visa"] table {
+      width: 100% !important;
+      font-size: 9pt;
+    }
+
+    [data-funnel="visa"] th,
+    [data-funnel="visa"] td {
+      white-space: normal !important;
+    }
+
+    [data-funnel="visa"] input[type="checkbox"] {
+      appearance: auto;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    a[href^="https://wa.me"] {
+      display: inline !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+      color: #172033 !important;
+      font-weight: 600;
+      text-decoration: none !important;
+    }
+
+    a[href^="https://wa.me"] svg {
+      display: none !important;
+    }
+
+    a[href^="https://wa.me"]::after {
+      content: " (" attr(href) ")";
+      font-weight: 400;
+      overflow-wrap: anywhere;
+    }
+  }
+`;
+
 export interface SavePlanBarProps {
   plan: PlanState;
   /** Clears localStorage (plan-codec's clearPlan) and resets the wizard to
@@ -64,8 +166,16 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
     }
   }
 
+  function handlePrint() {
+    if (typeof window === "undefined" || typeof window.print !== "function") {
+      return;
+    }
+    window.print();
+  }
+
   return (
     <section
+      className="bz-shs-save-plan-bar"
       style={{
         display: "grid",
         gap: "var(--space-3, 1rem)",
@@ -100,6 +210,9 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         </button>
         <button type="button" onClick={handleCopyLink} style={buttonStyle}>
           {getCopy("savePlanBar.copyLinkButton")}
+        </button>
+        <button type="button" onClick={handlePrint} style={buttonStyle}>
+          {getCopy("savePlanBar.printButton")}
         </button>
         <button
           type="button"
@@ -146,6 +259,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
       >
         {getCopy("savePlanBar.linkWarning")}
       </p>
+      <style>{PRINT_STYLES}</style>
     </section>
   );
 }

@@ -116,10 +116,12 @@ class TestSponsorTypeRolloutDefault:
         """The rollout transition is a NAMED, finite set, and each closes.
 
         Renamed from "is the only optional field" (2026-08-23): the set
-        widened from one to four when the fact-vocabulary-extension mandate
-        added three more transitional fields under the same mechanism (see
-        the module docstring and ``TestFactVocabularyExtensionRolloutDefaults0823``).
-        Widening is deliberate and tracked HERE — this stops a field from
+        widened from one to four that day (three more transitional fields
+        under the fact-vocabulary-extension mandate, see the module
+        docstring and ``TestFactVocabularyExtensionRolloutDefaults0823``),
+        then to five on 2026-08-24 (``immigration_renewal_paid``, F4 — see
+        ``TestFactVocabularyExtensionRolloutDefault0824``). Widening is
+        deliberate and tracked HERE — this stops a field from
         silently acquiring a default under cover of an existing one without
         anyone updating the expected set. When any one field's interview
         ships and its default is removed, this test goes red for that
@@ -137,6 +139,7 @@ class TestSponsorTypeRolloutDefault:
             "family_stepchild_marriage_certificate_confirmed",
             "family_stepchild_birth_certificate_confirmed",
             "family_sponsor_permit_basis",
+            "immigration_renewal_paid",
         }, (
             "ApplicantFactsData's optional-field set changed. If you added a "
             "field with a default, don't: every fact is required so that an "
@@ -239,6 +242,68 @@ class TestFactVocabularyExtensionRolloutDefaults0823:
     def test_extra_forbidden_still_bites_for_the_new_fields_too(self) -> None:
         body = _all_unknown_facts()
         body["family.stepchild_marriage_certificate_confirmedx"] = dict(_UNKNOWN)
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+
+class TestFactVocabularyExtensionRolloutDefault0824:
+    """Same mechanism again, for the one fact the 2026-08-24 F4 mandate
+    added: ``immigration.renewal_paid`` (boolean — payment, not filing, per
+    the owner ruling; see ``fact_registry.py``'s
+    ``_derive_has_active_stay_permit`` docstring for the verbatim text).
+    Wire-compatibility requirement is identical to the 2026-08-23 set: "a
+    request that omits the new fact must still work, yielding UNKNOWN".
+    """
+
+    _WIRE_KEY = "immigration.renewal_paid"
+
+    def test_a_body_omitting_renewal_paid_still_validates(self) -> None:
+        body = _all_unknown_facts()
+        del body[self._WIRE_KEY]
+        assert self._WIRE_KEY not in body
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert isinstance(facts.immigration_renewal_paid, M.UnknownFact)
+        assert facts.immigration_renewal_paid.status == "UNKNOWN"
+        assert facts.immigration_renewal_paid.reason == enums.UnknownReason.NOT_ASKED
+
+    def test_the_default_asserts_unknown_and_never_a_value(self) -> None:
+        assert isinstance(M._RENEWAL_PAID_ROLLOUT_DEFAULT, M.UnknownFact)
+        assert M._RENEWAL_PAID_ROLLOUT_DEFAULT.status == "UNKNOWN"
+        assert not hasattr(M._RENEWAL_PAID_ROLLOUT_DEFAULT, "value")
+
+    def test_a_supplied_true_value_is_honoured_and_not_clobbered(self) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": True}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.immigration_renewal_paid.status == "KNOWN"
+        assert facts.immigration_renewal_paid.value is True
+
+    def test_a_supplied_false_value_is_honoured_and_not_clobbered(self) -> None:
+        """False is a real, meaningful answer here (unpaid renewal / no
+        renewal at all) — not a state that collapses into UNKNOWN."""
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": False}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.immigration_renewal_paid.status == "KNOWN"
+        assert facts.immigration_renewal_paid.value is False
+
+    def test_boolean_type_is_still_enforced_on_a_supplied_value(self) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": "yes"}  # a string, not a bool
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+    def test_extra_forbidden_still_bites_for_this_field_too(self) -> None:
+        body = _all_unknown_facts()
+        body["immigration.renewal_paidx"] = dict(_UNKNOWN)
 
         with pytest.raises(ValidationError):
             M.ApplicantFactsData.model_validate(body)

@@ -182,7 +182,7 @@ export const COPY = {
     },
     reasons: {
       propertyPendingStandard:
-        "Property-route cases go through our property validation standard (addendum 007) before we can confirm fit — that keeps the review honest on both sides.",
+        "Property-route cases go through our property validation standard before we can confirm fit — that keeps the review honest on both sides.",
       propertyDoesNotQualify:
         "Only a completed strata-title unit valued at USD 1,000,000 or more qualifies. Villas, land, leasehold, and off-plan purchases do not qualify for the property route.",
       unsureRoute:
@@ -278,6 +278,21 @@ export const COPY = {
     },
   },
 
+  scenarioToggle: {
+    controlLabel: "What if I took the other route?",
+    banner:
+      "You are comparing a different route. Your saved plan has not changed.",
+    back: "Back to your result",
+    previewEyebrow: "Route preview",
+    missingAnswer: {
+      heading:
+        "To give an honest fit-check result for this route, we would need to know:",
+      capital: "how much capital you could place in the required deposit",
+      property: "what property position you hold",
+      seniorFunding: "which senior funding profile matches you",
+    },
+  },
+
   timeline: {
     ownerLabels: {
       you: "You",
@@ -314,7 +329,7 @@ export const COPY = {
       propertyEvidence: {
         title: "Provide your property evidence",
         range:
-          "Timing depends on our pending property validation standard (addendum 007), once published — typical, not a promise.",
+          "Timing depends on our pending property validation standard, once published — typical, not a promise.",
       },
       incomeEvidence: {
         title: "Prepare your income evidence",
@@ -445,6 +460,7 @@ export const COPY = {
     savedConfirmation: "Plan saved on this device",
     copyLinkButton: "Copy plan link",
     copiedConfirmation: "Plan link copied",
+    printButton: "Print / Save as PDF",
     linkWarning:
       "Anyone who receives the link may be able to view the answers it contains.",
     clearButton: "Clear saved plan",

@@ -121,8 +121,8 @@ function representativeAnswer(question: OracleQuestion): string {
 describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
   const backendPaths = extractApplicantFactPathsFromModelsPy();
 
-  it("sanity: the backend contract has 44 fact paths, sponsor.type included", () => {
-    expect(backendPaths.length).toBe(44);
+  it("sanity: the backend contract has 45 fact paths, sponsor.type included", () => {
+    expect(backendPaths.length).toBe(45);
     expect(backendPaths).toContain("sponsor.type");
     expect(backendPaths).toContain(
       "family.stepchild_marriage_certificate_confirmed",
@@ -131,15 +131,16 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
       "family.stepchild_birth_certificate_confirmed",
     );
     expect(backendPaths).toContain("family.sponsor_permit_basis");
+    expect(backendPaths).toContain("immigration.renewal_paid");
   });
 
-  it("emits exactly the 44 backend fact-path keys, sponsor.type included", () => {
+  it("emits exactly the 45 backend fact-path keys, sponsor.type included", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...backendPaths].sort());
   });
 
-  it("still emits exactly those 44 keys on a fully-answered interview (no extra keys sneak in)", () => {
+  it("still emits exactly those 45 keys on a fully-answered interview (no extra keys sneak in)", () => {
     const result = mapFacts({
       in_indonesia: "yes",
       permit_expiry: "2026-08-01",
@@ -272,6 +273,53 @@ describe("mapCurrentStatusExpiry — permit_expiry -> immigration.current_status
     expect(mapCurrentStatusExpiry({ permit_expiry: "2026-02-30" })).toEqual({
       status: "UNKNOWN",
       reason: "NOT_PROVIDED",
+    });
+  });
+});
+
+describe("mapCurrentStatusCode — the synthesized NO_STAY_PERMIT sentinel (2026-08-24 P0 fix)", () => {
+  // mapCurrentStatusCode is not exported (internal to mapOracleFactsToApplicantFacts);
+  // reached here through the same `immigration.current_status_code` wire key
+  // every other test in this file uses for the exported facts, mapper.ts's
+  // own convention.
+  it("stay_permit_code answered -> KNOWN with the E-code, unaffected by holds_stay_permit", () => {
+    expect(
+      mapFacts({
+        stay_permit_code: "E28A",
+        holds_stay_permit: "yes",
+      }).facts["immigration.current_status_code"],
+    ).toEqual({ status: "KNOWN", value: "E28A" });
+  });
+
+  it("current_status_code answered (onshore 'no' path) -> KNOWN with the real visit-class code, never the sentinel", () => {
+    expect(
+      mapFacts({
+        current_status_code: "C1",
+        holds_stay_permit: "no",
+      }).facts["immigration.current_status_code"],
+    ).toEqual({ status: "KNOWN", value: "C1" });
+  });
+
+  it("neither raw field answered, holds_stay_permit='no' (offshore convergence) -> KNOWN NO_STAY_PERMIT, no question asked", () => {
+    expect(
+      mapFacts({ holds_stay_permit: "no" }).facts[
+        "immigration.current_status_code"
+      ],
+    ).toEqual({ status: "KNOWN", value: "NO_STAY_PERMIT" });
+  });
+
+  it("neither raw field answered, holds_stay_permit='yes' -> UNKNOWN NOT_ASKED (still waiting on stay_permit_code)", () => {
+    expect(
+      mapFacts({ holds_stay_permit: "yes" }).facts[
+        "immigration.current_status_code"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_ASKED" });
+  });
+
+  it("nothing answered at all -> UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["immigration.current_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
     });
   });
 });

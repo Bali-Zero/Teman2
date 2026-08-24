@@ -1,0 +1,58 @@
+{
+  "angle": "What changed and who it affects",
+  "audience": {
+    "language": "en",
+    "segment": "com.example.pma_operators"
+  },
+  "claim_refs": [
+    {
+      "claim_id": "30000000-0000-4000-8000-000000000101",
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "classification": {
+    "risk_class": "amber",
+    "sensitivity": "internal"
+  },
+  "contract_version": "research-os/v1.0.0",
+  "decision_packet_ref": {
+    "decision_packet_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "b6e262ab236ed024fd7f1e67e6a7f51bd9de4268ca9ef74bda5c05fcafaf6cba"
+  },
+  "lineage": {
+    "input_hashes": [],
+    "workflow_run_ref": {
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444",
+      "workflow_run_id": "30000000-0000-4000-8000-000000000301"
+    }
+  },
+  "lock_version": 2,
+  "must_resolve_before_use": ["confirm synthetic effective date with counsel"],
+  "object_hash": "835a8496874a02cbaee24642fa4d7eae210986f740b1295f14020c30917466ca",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "recorded_at": "2026-01-15T00:10:00Z",
+  "retention": {
+    "legal_hold": false,
+    "retention_class": "operational"
+  },
+  "source_refs": [
+    {
+      "content_hash": "8888888888888888888888888888888888888888888888888888888888888888",
+      "source_id": "com.example.synthetic-source-001",
+      "version_id": "v1"
+    }
+  ],
+  "state": "current",
+  "supersedes_topic_lock_ref": {
+    "object_hash": "7777777777777777777777777777777777777777777777777777777777777777",
+    "topic_lock_id": "31000000-0000-4000-8000-000000000001"
+  },
+  "tenant": "bali-zero",
+  "topic": "Synthetic KBLI risk-tier delta",
+  "topic_lock_family_id": "com.example.topic_lock_family_001",
+  "topic_lock_id": "31000000-0000-4000-8000-000000000001",
+  "why_now": "A synthetic regulatory delta was observed; the advisory window closes in 14 days."
+}

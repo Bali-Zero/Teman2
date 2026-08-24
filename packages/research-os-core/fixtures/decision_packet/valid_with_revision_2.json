@@ -1,0 +1,101 @@
+{
+  "alternatives": [
+    {
+      "summary": "synthetic alternative: defer to next cycle"
+    }
+  ],
+  "claim_refs": [
+    {
+      "claim_id": "30000000-0000-4000-8000-000000000101",
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "classification": {
+    "risk_class": "amber",
+    "sensitivity": "internal"
+  },
+  "contract_version": "research-os/v1.0.0",
+  "decision_packet_family_id": "com.example.decision_packet_family_001",
+  "decision_packet_id": "30000000-0000-4000-8000-000000000002",
+  "downstream_candidates": [
+    {
+      "surface": "com.example.newsletter"
+    }
+  ],
+  "evidence_refs": [
+    {
+      "evidence_id": "30000000-0000-4000-8000-000000000201",
+      "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "evidence_summary": {
+    "citations": [
+      {
+        "object_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "object_id": "synthetic-claim-101",
+        "object_kind": "com.example.claim"
+      }
+    ],
+    "text": "Synthetic summary citing one claim and one evidence item."
+  },
+  "lineage": {
+    "code_version": "1.2.3",
+    "input_hashes": [],
+    "model_version": "com.example.model-v1",
+    "prompt_version": "com.example.prompt-v1",
+    "workflow_run_ref": {
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444",
+      "workflow_run_id": "30000000-0000-4000-8000-000000000301"
+    }
+  },
+  "novelty": {
+    "basis": "no prior synthetic packet covered this synthetic topic",
+    "compared_window": {
+      "ended_at": "2026-01-15T00:00:00Z",
+      "started_at": "2026-01-01T00:00:00Z"
+    },
+    "score": 0.82
+  },
+  "object_hash": "4c96397c593df15e1af95ec31c938194d9c614ebeb229d038ac783942e5b2210",
+  "outcome_family": "compliance_protection",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "recommended_action": {
+    "action_type": "com.example.publish_advisory",
+    "due_at": "2026-01-20T00:00:00Z",
+    "expected_outcome": "synthetic client advisory published",
+    "owner_ref": {
+      "key_version": "synthetic-key-v1",
+      "pseudonym": "5555555555555555555555555555555555555555555555555555555555555555",
+      "purpose": "assignment",
+      "scheme": "hmac-sha256"
+    },
+    "target_surface": "com.example.kita_dashboard"
+  },
+  "recorded_at": "2026-01-16T00:05:00Z",
+  "retention": {
+    "legal_hold": false,
+    "retention_class": "operational"
+  },
+  "revision": 2,
+  "risk_analysis": {
+    "reasons": ["com.example.regulatory_delta_observed"],
+    "unresolved_questions": ["does the synthetic delta apply retroactively?"]
+  },
+  "source_document_refs": [
+    {
+      "document_content_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "document_id": "com.example.synthetic-doc-001",
+      "document_version_id": "v1"
+    }
+  ],
+  "supersedes_decision_packet_ref": {
+    "decision_packet_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "b6e262ab236ed024fd7f1e67e6a7f51bd9de4268ca9ef74bda5c05fcafaf6cba"
+  },
+  "tenant": "bali-zero",
+  "title": "Synthetic KBLI risk-tier delta warrants a client advisory",
+  "why_now": "A synthetic regulatory delta was observed; the advisory window closes in 14 days."
+}

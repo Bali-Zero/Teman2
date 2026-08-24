@@ -1,0 +1,54 @@
+{
+  "action_type": "com.example.publish_advisory",
+  "arguments_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "arguments_ref": "com.example://synthetic-arguments/001",
+  "authority_required": {
+    "expires_after_seconds": 3600,
+    "role": "com.example.editorial_operator",
+    "scope": "com.example.publish_advisory"
+  },
+  "contract_version": "research-os/v1.0.0",
+  "decision_packet_ref": {
+    "decision_packet_id": "30000000-0000-4000-8000-000000000001",
+    "object_hash": "b6e262ab236ed024fd7f1e67e6a7f51bd9de4268ca9ef74bda5c05fcafaf6cba"
+  },
+  "expected_outcome_types": ["com.example.advisory_published"],
+  "input_revision_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "lineage": {
+    "input_hashes": [],
+    "workflow_run_ref": {
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444",
+      "workflow_run_id": "30000000-0000-4000-8000-000000000301"
+    }
+  },
+  "object_hash": "874992c2d9e91e8fb509527a8443b683e4cc4537854f00032c3fb3f86ac42aa2",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "recorded_at": "2026-01-15T00:20:00Z",
+  "requested_action_spec_id": "33000000-0000-4000-8000-000000000002",
+  "retention": {
+    "legal_hold": false,
+    "retention_class": "operational"
+  },
+  "risk_class": "amber",
+  "sensitivity": "internal",
+  "suggested_due_at": "2026-01-20T00:00:00Z",
+  "suggested_owner_ref": {
+    "key_version": "synthetic-key-v1",
+    "pseudonym": "5555555555555555555555555555555555555555555555555555555555555555",
+    "purpose": "assignment",
+    "scheme": "hmac-sha256"
+  },
+  "target": {
+    "object_ref": {
+      "object_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "object_id": "synthetic-content-001",
+      "object_kind": "com.example.content_object"
+    },
+    "surface": "com.example.kita_dashboard.advisories",
+    "system": "com.example.kita_dashboard"
+  },
+  "tenant": "bali-zero"
+}

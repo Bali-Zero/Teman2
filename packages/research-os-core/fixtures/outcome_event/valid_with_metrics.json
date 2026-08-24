@@ -1,0 +1,55 @@
+{
+  "outcome_event_id": "b0000000-0000-4000-8000-000000000002",
+  "outcome_event_family_id": "com.example.outcome_event.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "subject_refs": {
+    "claim_refs": []
+  },
+  "outcome_type": "com.example.workflow_completed",
+  "value": 42.5,
+  "window": {
+    "started_at": "2026-04-15T00:00:00Z",
+    "ended_at": "2026-04-15T00:05:00Z"
+  },
+  "source_system": "GA4",
+  "quality": {
+    "attribution_strength": "correlational",
+    "completeness": 0.87,
+    "caveats": ["com.example.sampling_gap"],
+    "collection_version": "1.0.0"
+  },
+  "cohort": {
+    "size": 25,
+    "minimum_required": 10,
+    "suppressed": false
+  },
+  "observed_at": "2026-04-15T00:05:00Z",
+  "recorded_at": "2026-04-15T00:05:01Z",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal",
+    "aggregation_level": "individual_run"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "idempotency_key": "synthetic-outcome-001",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "metric_profile_ref": {
+    "metric_profile_id": "c0000000-0000-4000-8000-000000000001",
+    "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "metric_result_ref": {
+    "metric_result_id": "d0000000-0000-4000-8000-000000000001",
+    "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "object_hash": "b027e6aaf75484d6abc8f46dde92279a29d118e7d7ce1545ced509e3a7c8ebd8"
+}

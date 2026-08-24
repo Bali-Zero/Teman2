@@ -418,17 +418,65 @@ export function computeNextNode(
 
   switch (current.questionId) {
     case "in_indonesia": {
-      if (facts.in_indonesia === "yes") {
-        return { kind: "question", questionId: "permit_expiry" };
-      }
-      return { kind: "question", questionId: "overstay_days" };
+      // Fixed 2026-08-24 (Kimi refuter P0 finding on the D12
+      // offshore-reachability gap, then re-fixed same day after a
+      // team-lead funnel-cost review rejected the first version): before
+      // the P0 fix, `"no"` skipped straight to `overstay_days`, so
+      // `permit_expiry`/`holds_stay_permit`/`stay_permit_code`/
+      // `current_status_code` were structurally unreachable for every
+      // offshore applicant — D12's own target population, including the
+      // exact person the owner's D12 ruling names (someone abroad holding
+      // an unlapsed KITAS). #4695 fixed the codes on offer but never the
+      // reachability of the gate itself.
+      //
+      // The FIRST fix mirrored the onshore chain unconditionally (ask
+      // `permit_expiry` first, same as onshore) — team-lead measured that
+      // as a flat 3-question cost added to EVERY offshore applicant of
+      // EVERY product (~38), to serve exactly one product's rule (grepped
+      // the live signed pack: no product other than D12 reads these facts
+      // for an offshore applicant — the only other consumer, `BRIDGING`,
+      // is itself onshore-only). This version instead asks
+      // `holds_stay_permit` FIRST for offshore — a single gate question —
+      // and only expands into the full `permit_expiry`/`stay_permit_code`
+      // chain on "yes". A "no" answer converges straight to
+      // `overstay_days`: `fact-mapper.ts::mapCurrentStatusCode` derives
+      // `immigration.current_status_code` directly from that "no" (the
+      // synthesized `NO_STAY_PERMIT` sentinel — see its docstring and
+      // `fact_registry.py`'s `_VISIT_CLASS_STATUS_CODES`), so the fact
+      // still resolves definitely without a redundant extra question.
+      // Onshore is completely unchanged — see the `permit_expiry` and
+      // `holds_stay_permit` cases below for how the two orders coexist
+      // without looping.
+      return facts.in_indonesia === "yes"
+        ? { kind: "question", questionId: "permit_expiry" }
+        : { kind: "question", questionId: "holds_stay_permit" };
     }
     case "permit_expiry":
-      return { kind: "question", questionId: "holds_stay_permit" };
-    case "holds_stay_permit":
+      // Onshore always arrives here FIRST (before `holds_stay_permit`,
+      // the pre-existing order — deliberately not redesigned by this fix).
+      // Offshore arrives here ONLY after `holds_stay_permit === "yes"`
+      // (see that case below), so routing offshore straight to
+      // `stay_permit_code` here — instead of back to `holds_stay_permit` —
+      // is required to avoid an infinite loop, not an inconsistency.
+      return facts.in_indonesia === "yes"
+        ? { kind: "question", questionId: "holds_stay_permit" }
+        : { kind: "question", questionId: "stay_permit_code" };
+    case "holds_stay_permit": {
+      if (facts.in_indonesia === "yes") {
+        // Onshore: unchanged pre-existing behavior.
+        return facts.holds_stay_permit === "yes"
+          ? { kind: "question", questionId: "stay_permit_code" }
+          : { kind: "question", questionId: "current_status_code" };
+      }
+      // Offshore: this is the gate question itself (asked before
+      // `permit_expiry`, unlike onshore). "yes" still needs the real
+      // code+expiry chain; "no" converges directly — see the
+      // `fact-mapper.ts` comment above for why no further question is
+      // needed to resolve the fact.
       return facts.holds_stay_permit === "yes"
-        ? { kind: "question", questionId: "stay_permit_code" }
-        : { kind: "question", questionId: "current_status_code" };
+        ? { kind: "question", questionId: "permit_expiry" }
+        : { kind: "question", questionId: "overstay_days" };
+    }
     case "stay_permit_code":
       return { kind: "question", questionId: "overstay_days" };
     case "current_status_code":
@@ -911,31 +959,54 @@ export function getTreeSteps(
   current: OracleNode,
   facts: OracleFacts,
 ): { trunk: TreeStep[]; categoryLeaves: TreeCategoryLeaf[] | null } {
+  // The permit-status chain has TWO distinct shapes depending on
+  // `in_indonesia` (fixed 2026-08-24 — see `computeNextNode`'s
+  // `in_indonesia`/`permit_expiry`/`holds_stay_permit` cases for the
+  // routing this mirrors, and the funnel-cost review that produced it).
+  // Onshore always shows the full 3-node chain in the pre-existing order
+  // (`permit_expiry` → `holds_stay_permit` → one of the two code
+  // questions) the moment `in_indonesia` has a value. Offshore shows
+  // `holds_stay_permit` FIRST, alone, until it too has a value — a "no"
+  // answer converges with NO further permit-chain steps (the fact
+  // resolves from that answer alone, see `fact-mapper.ts`), a "yes"
+  // answer then adds `permit_expiry` + `stay_permit_code`.
+  const permitChainSteps: { id: string; labelI18nKey: string }[] =
+    facts.in_indonesia === "yes"
+      ? [
+          { id: "permit_expiry", labelI18nKey: "tree.permit_expiry" },
+          { id: "holds_stay_permit", labelI18nKey: "tree.holds_stay_permit" },
+          facts.holds_stay_permit === "yes"
+            ? { id: "stay_permit_code", labelI18nKey: "tree.stay_permit_code" }
+            : {
+                id: "current_status_code",
+                labelI18nKey: "tree.current_status_code",
+              },
+        ]
+      : facts.in_indonesia === "no"
+        ? [
+            {
+              id: "holds_stay_permit",
+              labelI18nKey: "tree.holds_stay_permit",
+            },
+            ...(facts.holds_stay_permit === "yes"
+              ? [
+                  {
+                    id: "permit_expiry",
+                    labelI18nKey: "tree.permit_expiry",
+                  },
+                  {
+                    id: "stay_permit_code",
+                    labelI18nKey: "tree.stay_permit_code",
+                  },
+                ]
+              : []),
+          ]
+        : [];
+
   const order = [
     { id: "framing", labelI18nKey: "tree.framing" },
     { id: "in_indonesia", labelI18nKey: "tree.in_indonesia" },
-    ...(facts.in_indonesia === "yes"
-      ? [
-          { id: "permit_expiry", labelI18nKey: "tree.permit_expiry" },
-          {
-            id: "holds_stay_permit",
-            labelI18nKey: "tree.holds_stay_permit",
-          },
-          ...(facts.holds_stay_permit === "yes"
-            ? [
-                {
-                  id: "stay_permit_code",
-                  labelI18nKey: "tree.stay_permit_code",
-                },
-              ]
-            : [
-                {
-                  id: "current_status_code",
-                  labelI18nKey: "tree.current_status_code",
-                },
-              ]),
-        ]
-      : []),
+    ...permitChainSteps,
     { id: "overstay_days", labelI18nKey: "tree.overstay_days" },
     ...(facts.in_indonesia === "yes"
       ? [

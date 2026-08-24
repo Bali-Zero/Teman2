@@ -1,0 +1,76 @@
+task_id: research-os-p04-d2-contract-core-migration-0824
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D2: bind the symbolic reservation
+  `research_os_contract_core` to a real, late-bound migration integer and ship the canonical
+  contract-core persistence table it names -- one additive, append-only, polymorphic object
+  store (public.research_os_objects) spanning all 25 canonical object kinds frozen in
+  CONTRACTS.md §21, proven applied and rolled back against a real PostgreSQL 15 instance
+  (never PG17, never production).
+
+  THIS IS PR #4740 (branch agent/nuzantara/backend-rag/ros-v1-p04-d2-contract-core). This is
+  the SECOND evidence revision on this PR: the first head (1c97719e5) shipped the migration
+  file with no evidence/brief.yml or evidence/pack.yml at all, which is why `Harness floor
+  recompute` came back red on this diff's hot-zone hit (floor 3, migrations_v2/* pattern) --
+  not a verdict problem, a missing-brief problem, per the conductor's independent-verification
+  message. This revision adds ONLY the per-PR evidence pair; the migration file's content is
+  byte-for-byte unchanged from the head the conductor already verified.
+constraints:
+  - "The migration number (279) is bound LATE, re-measured fresh against a freshly fetched
+    origin/main in this session, never copied from a document or a prompt (scar W40 -- TOCTOU
+    on a shared mutable counter). See the ledger note in `receipts:` below."
+  - "Additive only: creates one new table, two indexes, one function, one trigger. No ALTER,
+    no DROP, no TRUNCATE on any pre-existing table, column, or constraint."
+  - "Zero PII: every INSERT/UPDATE/DELETE exercised against the isolated PG15 container used
+    literal synthetic placeholder strings (`synthetic-wfr-*`, repeated hex digits for the
+    64-char hash column) -- never real client data, never committed anywhere."
+  - "Scope of this revision is evidence-only: adds evidence/brief.yml and evidence/pack.yml
+    at the per-PR path. Does NOT touch the .sql migration file's content -- the apply/rollback
+    proof the conductor already independently verified against the prior head stays valid,
+    unchanged."
+  - "Does not touch scripts/wr3_* or docs/wr3/contracts/ (another lane's lease)."
+  - "PR stays DRAFT. Nothing in this revision arms, enqueues, un-drafts, or merges #4740 --
+    the conductor is the gate and the publisher and arms it after independent verification,
+    per the mandate."
+acceptance:
+  - "`python3 scripts/evidence_pack_lint.py evidence/pack.yml --repo-root . --changed-files-file
+    <cf> --net-lines <measured>` exits 0 for a Gear-3 pack with non-empty receipts and dissent,
+    `pii_scan: clean`, and a `lanes:` block with a single non-Anthropic-diversity-exempt build
+    lane (1 build lane -- the >=2-build-lane diversity rule does not engage)."
+  - "`brief_ref` in pack.yml is the literal string `evidence/brief.yml` (never the real per-PR
+    path) -- the CI staging-tree contract per scripts/ci/evidence_paths.py's own docstring and
+    harness-floor.yml Step 6's comment; getting this backwards is the documented trap."
+  - "Migration 279 still applies and rolls back cleanly on PostgreSQL 15.19 with byte-identical
+    before/after schema dumps -- re-verified fresh in this same session (receipts below), not
+    assumed carried over from the prior turn's proof."
+consumer_map:
+  - "GitHub PR #4740's `Harness floor recompute` required check -- Step 4 (does this diff carry
+    evidence/brief.yml), Step 6 (evidence_pack_lint.py against evidence/pack.yml), and Step 7c
+    (reads whether the gate session already posted a real harness/fable-gate verdict for THIS
+    head sha -- that verdict is the conductor's to issue, not this revision's)."
+  - "Any downstream P04 domain packet (P02, P05, P06, P09, P12, P13, ...) that will build
+    adapters/projections on top of public.research_os_objects once this lands -- they inherit
+    the schema this migration creates, unchanged by this evidence-only revision."
+risks:
+  - "None to running systems: this migration has never been deployed and creates no objects
+    that any other code path references yet -- it is a new, unreferenced table. This revision
+    changes zero lines of the migration itself."
+  - "The P04 work-packet spec (research/operations/specs/evidence-to-action-freeze-2026-08-15/
+    work-packets/04-canonical-contracts.md) and WAVE-0-DISPATCH.md still cite the old, VOID
+    number `270_research_os_contract_core.sql` from the original (since-invalidated)
+    reservation -- flagged for spec hygiene, out of scope for this PR to fix (spotted by this
+    lane in the original delivery, confirmed still true, and the conductor asked it be kept on
+    the record)."
+grader:
+  session (this lane, Pro, worktree backend-rag-ros-v1-p04-d2-contract-core) authored the
+  migration and both evidence files; the conductor (separate Opus 5 session, team-lead) ran an
+  independent verification pass before requesting this evidence revision -- generator != grader,
+  per the ship-lifecycle rule. The conductor's own independent findings are the dissent entries
+  below, not self-graded by this lane.
+budget:
+  1 lane, no council -- a single additive migration + its evidence pack does not warrant one;
+  the gate session (Opus 5, xhigh/max) is the adversarial check this task needs, per the Gear-3
+  doctrine.
+pii: none
