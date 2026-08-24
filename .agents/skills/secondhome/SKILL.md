@@ -119,7 +119,11 @@ BY DESIGN until the first real case (F4b).
   28 sources, seq 1, version `2026.7.25`, payload sha `47a97c32…`.
 - **Pricing**: `VisaType.E33` + dedicated rows: base 35M; E33E 45M 5-year
   (+ 10M extend); E33F 14M offshore / 16M onshore (+ 10M extend). Bridge
-  resolves all three.
+  resolves all three. **E33E and E33F are different products, not tiers of
+  one product**: E33E is the 5-year deposit-plus-income senior route (flat
+  45M, no location split); E33F is the 1-year income-only senior route
+  (14M offshore / 16M onshore) — only E33F splits by offshore/onshore
+  location.
 - **Guard**: `e33_claim_guard.py` hooked in `orchestrator_core.py` step 12b
   (log + safe fallback note, non-blocking). 10 forbidden patterns:
   USD 1,500, any-bank, E33S/E33R, local work, ITAP-automatic, 5-10y,
