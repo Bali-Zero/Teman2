@@ -121,6 +121,34 @@ describe("SecondHomeLanding", () => {
     ).toBeInTheDocument();
   });
 
+  // Hero CTA (2026-08-25): the page's first click target used to sit at
+  // 87-90% scroll depth (the studio CTA further down). Pins that a fit-check
+  // entry point now exists inside the hero <section> itself, pointing at the
+  // same destination as the pre-existing footer instance, and that both
+  // pre-existing CTAs (studio footer link + WhatsApp handoff) are untouched.
+  it("gives the hero its own fit-check entry point, in addition to the existing ones", () => {
+    renderLanding();
+
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    expect(hero).not.toBeNull();
+
+    const heroCta = within(hero as HTMLElement).getByTestId(
+      "hero-fit-check-cta",
+    );
+    expect(heroCta).toHaveAttribute("href", "/visa/second-home/studio");
+    expect(heroCta).toHaveTextContent("Start the fit-check");
+
+    // The pre-existing footer instance still exists, same destination.
+    const footerCta = screen.getByTestId("footer-fit-check-cta");
+    expect(footerCta).toHaveAttribute("href", "/visa/second-home/studio");
+
+    // The WhatsApp handoff is still the only "free fit memo" CTA — the hero
+    // addition is a second entry point to the studio, not a re-ranking.
+    expect(
+      screen.getByRole("link", { name: /free fit memo/i }),
+    ).toBeInTheDocument();
+  });
+
   it("the only CTA is the free fit memo WhatsApp handoff", () => {
     renderLanding();
 
