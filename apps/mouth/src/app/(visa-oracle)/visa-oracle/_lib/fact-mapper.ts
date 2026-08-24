@@ -801,6 +801,12 @@ export function mapOracleFactsToApplicantFacts(
     "family.stepchild_birth_certificate_confirmed": booleanFact(
       facts.family_stepchild_birth_certificate_confirmed,
     ),
+    // V1 (2026-08-25, team-lead ledger pass): zero rules read this fact
+    // today, and none ever can — `mapFamilySponsorPermitBasis` (above)
+    // NEVER returns KNOWN, by design (self-declared 13-category legal
+    // taxonomy, same trust problem as its sibling `mapFamilySponsorStatus`
+    // — see that function's own docstring). Not a gap to fill or a
+    // question to remove; already the correct, ruled disposition.
     "family.sponsor_permit_basis": mapFamilySponsorPermitBasis(facts),
     "family.sponsor_confirmed": booleanFact(facts.family_sponsor_confirmed),
     "study.level": enumFact(facts.study_level, STUDY_LEVELS),
@@ -828,6 +834,25 @@ export function mapOracleFactsToApplicantFacts(
       0,
       Number.MAX_SAFE_INTEGER,
     ),
+    // V1 (2026-08-25, team-lead ledger pass): this fact is read by ZERO
+    // rules in the currently-signed active pack — but that is NOT the
+    // "question precedes the rule" gap `immigration.last_entry_date`'s
+    // comment above warns about. It is read by NO rule BY DESIGN: it is
+    // the client-side MIRROR check against `hf.d12-onshore-conversion-
+    // excluded` (`safety_critical: true`), which reads ONLY
+    // `process.wants_onshore_conversion` — `flow.ts`'s
+    // `channelConflictsWithOnshoreIntent` (flow.ts:416) detects a
+    // self-contradictory `wants_onshore_conversion`/`application_channel`
+    // pair and truncates the interview history at that frontier instead of
+    // ever sending the contradictory pair to the engine (call sites
+    // flow.ts:307 and flow.ts:785). This exists because of a real past bug
+    // (see flow.ts's own comment above `ONSHORE_APPLICATION_CHANNELS`):
+    // `false` on `wants_onshore_conversion` alone could disarm that
+    // HARD_FILTER while `ONSHORE_CONVERSION` sat unread, recommending D12
+    // to an applicant actually converting onshore. Do NOT remove this
+    // question on a "zero rule consumers" reading — that reading is
+    // correct but the wrong lens for THIS fact; removing it reopens the bug
+    // `channelConflictsWithOnshoreIntent` closed.
     "process.application_channel": enumFact(
       facts.application_channel,
       APPLICATION_CHANNELS,
