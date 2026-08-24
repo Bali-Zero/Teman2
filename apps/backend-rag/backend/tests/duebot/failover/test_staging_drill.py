@@ -419,3 +419,69 @@ async def test_stale_node_wakes_believing_stale_epoch() -> None:
         node_id="pro", epoch=2, lease_seconds=30.0, now=T0 + timedelta(seconds=10)
     )
     assert pro_renew.outcome is RenewOutcome.RENEWED
+
+
+# ---------------------------------------------------------------------
+# GUILT/INNOCENCE — a pending confirmation (B3's F6 PendingAction shape)
+# outliving a takeover. See F6-F9-PENDING-ACTION-EPOCH-GAP.md — this test
+# proves the SHAPE of the check B3's confirm() path would need to make if
+# it called F9's authorize() the way F7 intends; it does NOT prove F6's
+# actual SqlitePendingActionStore calls it today (it does not — confirmed
+# by reading apps/team-bot/team_bot/confirmation/store.py directly: its
+# epoch check compares against self._epoch, a value fixed once at
+# __init__ and never refreshed, never against this module's leader
+# record). No import from apps.team_bot anywhere in this test, by design
+# — the collision is named without reaching into the other lane's module.
+# ---------------------------------------------------------------------
+
+
+async def test_pending_action_confirmation_after_takeover_needs_a_live_epoch_check() -> None:
+    """Stand-in for a PendingAction: a plain (node_id, epoch) pair
+    "captured at propose time" — exactly the two fields F6's frozen
+    PendingAction schema carries (``leader_epoch``) plus the node that
+    proposed it. A takeover happens before it is confirmed. GUILT: a
+    confirmation attempt that still trusts the value captured at propose
+    time is rejected. INNOCENCE: a confirmation attempt that re-reads the
+    CURRENT (node_id, epoch) live — the fix direction this test's
+    docstring, and F6-F9-PENDING-ACTION-EPOCH-GAP.md, both point at — is
+    authorized normally. The difference between the two calls below is
+    the entire content of the open question: whether the caller trusts a
+    captured belief or asks F9 fresh.
+    """
+    store = _bootstrap_store(active_node_id="mini-pro2", epoch=1)
+    fake = FakeGraphAPI()
+
+    # A mutation is "proposed" here — captures (node, epoch) at this
+    # instant, the way F6's PendingAction.leader_epoch is stamped at
+    # propose() time from whatever epoch the store was constructed with.
+    proposed_under = await store.read()
+    captured_node_id = proposed_under.active_node_id
+    captured_epoch = proposed_under.leader_epoch
+
+    # ...takeover happens while the proposal sits unconfirmed...
+    tracker = MiniFailureTracker()
+    async with fake.client() as httpx_client:
+        failover_result = await _drive_n_unhealthy_ticks(
+            n=3, tracker=tracker, store=store, httpx_client=httpx_client
+        )
+    assert failover_result.kind is ActionKind.PROMOTED_AND_CONFIRMED
+
+    # GUILT — a confirm() implementation that trusts the value captured
+    # at propose time (what SqlitePendingActionStore does today, per its
+    # own self._epoch-is-never-refreshed shape) must be rejected.
+    stale_confirm_attempt = await store.authorize(
+        node_id=captured_node_id, epoch=captured_epoch, now=T0 + timedelta(seconds=10)
+    )
+    assert stale_confirm_attempt.outcome is AuthorizeOutcome.REJECTED_STALE_EPOCH
+    assert stale_confirm_attempt.http_status == 409
+
+    # INNOCENCE — a confirm() implementation that re-reads F9's CURRENT
+    # state live (the resolution direction named in
+    # F6-F9-PENDING-ACTION-EPOCH-GAP.md) is authorized normally. This is
+    # the "ask F9 fresh, don't trust a captured belief" contract every
+    # other caller in this suite already follows.
+    current = await store.read()
+    live_confirm_attempt = await store.authorize(
+        node_id=current.active_node_id, epoch=current.leader_epoch, now=T0 + timedelta(seconds=10)
+    )
+    assert live_confirm_attempt.outcome is AuthorizeOutcome.AUTHORIZED

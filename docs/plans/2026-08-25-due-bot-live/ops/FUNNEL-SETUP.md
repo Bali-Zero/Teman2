@@ -59,6 +59,7 @@ Funnel-level trick.
    (`backend/tests/duebot/failover/test_staging_drill.py`) proves the
    DECISION LOGIC; it explicitly does NOT and CANNOT prove Meta's real
    retry semantics against a new callback. Both must pass before arming.
+   A third precondition, orthogonal to both drills: the F6/F9 pending-action epoch gap in [F6-F9-PENDING-ACTION-EPOCH-GAP.md](F6-F9-PENDING-ACTION-EPOCH-GAP.md) must be resolved or explicitly waived by whoever rules on it — a PendingAction can currently outlive a takeover with no live epoch check.
 
 ## What this lane deliberately left for other lanes / the operator
 

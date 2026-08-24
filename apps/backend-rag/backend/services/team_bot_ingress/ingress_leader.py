@@ -284,6 +284,10 @@ def evaluate_authorize(
     :class:`InMemoryIngressLeaderStore` uses, rather than maintaining a
     second copy of three if-branches that could silently drift apart from
     the one the drill suite actually tests against.
+
+    See ``docs/plans/2026-08-25-due-bot-live/ops/F6-F9-PENDING-ACTION-EPOCH-GAP.md``
+    for an open cross-lane question about a caller (B3's
+    ``SqlitePendingActionStore``) that does not yet call this function at all.
     """
 
     if current.leader_epoch != epoch:
