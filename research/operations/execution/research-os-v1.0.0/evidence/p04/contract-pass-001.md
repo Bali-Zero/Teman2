@@ -154,15 +154,30 @@ deliverables and not others for the same true fact.
   pin and this one — re-run in full at the final SHA, not carried forward. That regression suite tests
   only real `UtcDateTime` fields; it is green and blind to the `idempotency_key`-class collision §4
   describes, so its passing is not evidence against that collision.
-  **This count is not stable going forward, and that is expected, not a defect in either number.**
-  PR #4781 (§4, §9 condition 8) reverts both the fold in `hashing.py` and, with it,
-  `test_hashing_timestamp_parity.py` in its entirety (`git diff --stat
-  origin/main...origin/agent/nuzantara/backend-rag/revert-4615-hash-fold`: the test file is a pure
-  deletion, 6 tests, 0 lines added) — it is deleted along with the code it was written to test, not
-  orphaned. So **349 tests across 23 files** is the correct, reproducible count at this document's
-  pin; once #4781 merges, the reproducible count reverts to **343 tests across 22 files**, the same
-  number cited above as "earlier in this session." A reader who reruns this suite after that merge and
-  gets 343/22 has reproduced this document correctly, not found it wrong.
+  **This count is not stable going forward, and that is expected, not a defect in either number —
+  but the number this document originally predicted for "after #4781" was wrong, and the correction
+  below is itself independently measured, not arithmetic on an old baseline.** An earlier draft of
+  this paragraph reasoned that #4781 (§4, §9 condition 8) reverts `test_hashing_timestamp_parity.py`
+  along with the fold, so "349 minus 6 tests, minus 1 file" should land back at 343/22 — the number
+  cited two sentences above as "earlier in this session." **That subtraction is wrong, because the
+  suite is not a static baseline plus one file: other PRs landed tests of their own between this
+  document's earlier pin and #4781's merge, and grew the suite faster than one file's removal shrank
+  it.** #4781 merged as `9eb328c81` (2026-08-24T07:49:31Z). Measured directly against that exact SHA,
+  this session, in an isolated worktree (`git worktree add --detach <path> origin/main`, avoiding any
+  need to disturb this branch's own checkout): `PYTHONPATH=. python -m pytest
+  backend/tests/unit/research_os backend/tests/services/research_os --collect-only -q`, per-file counts
+  summed independently to **360**, and a direct `test_*.py` file count under both directories gives
+  **23** — `test_hashing_timestamp_parity.py` is confirmed absent from the collection, so the fold's
+  own test genuinely left with the fold, but the surrounding suite outgrew that loss. Cross-checked
+  against a second, independent source: `PENDING-ARMS.md` line 1205, written by the revert's own
+  lane, separately cites "`pytest backend/tests/unit/research_os backend/tests/services/research_os`
+  reports 360 passed / 0 failed" — two independently-produced numbers agree, and neither is this
+  document's earlier subtraction. So: **349 tests across 23 files** is the correct, reproducible count
+  at this document's own pin (`e0df8ec8`); **360 tests across 23 files** is the correct, reproducible
+  count after #4781 (measured, not derived) — the file count coincidentally stays 23 in both cases,
+  the test count does not. A reader who reruns this suite post-#4781 and gets 360/23 has reproduced
+  this document correctly; a reader expecting 343/22 from an earlier draft's arithmetic will not find
+  it, because that number was never actually measured against the post-revert suite.
   **Environment-conditional, stated precisely rather than as a single global fact**: the suite
   contains one skip-gated test, `test_prettier_json_matches_real_prettier_across_shape_table`
   (`test_schemas.py`), whose `pytest.mark.skipif` fires only when `node` is absent or this repo's own
