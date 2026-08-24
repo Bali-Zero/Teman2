@@ -17,6 +17,13 @@ from backend.tests.services.visa_engine.gold_harness import loader as gold_loade
 
 _NOW = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
 
+# Arbitrary, deliberately NOT the real pricing catalog's date (see
+# backend/data/bali_zero_official_prices_2026.json::metadata.last_updated
+# and backend/tests/services/pricing/test_pricing_data_freshness.py, which
+# is what actually guards that file's freshness). This mock only needs SOME
+# value to prove the adapter reads ``metadata.last_updated`` at all.
+_MOCK_CATALOG_LAST_UPDATED = "2020-01-01"
+
 
 def _product(pricing_key: PricingKey | None) -> VisaProductVersion:
     product = gold_loader.load_and_compile_rule_pack().source_pack.payload.products[0]
@@ -41,7 +48,7 @@ class _Catalog:
     def get_all_prices(self) -> dict[str, Any]:
         return {
             "version": "test-2026.1",
-            "metadata": {"last_updated": "2026-05-06", "currency": "IDR"},
+            "metadata": {"last_updated": _MOCK_CATALOG_LAST_UPDATED, "currency": "IDR"},
             "services": {"single_entry_visas": {}},
         }
 

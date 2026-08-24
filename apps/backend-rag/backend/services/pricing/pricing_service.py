@@ -18,15 +18,52 @@ service has to handle internally:
   legacy ``price`` / ``duration`` / ``validity`` / ``notes`` fields.
 """
 
+import hashlib
 import json
 import logging
 from pathlib import Path
 from typing import Any
 
+import rfc8785
+
 logger = logging.getLogger(__name__)
 
 # Authoritative pricing JSON, 2026 edition.
 _PRICING_FILENAME = "bali_zero_official_prices_2026.json"
+
+
+def compute_price_content_sha256(services: dict[str, Any]) -> str:
+    """SHA-256 hex digest of the RFC 8785 (JCS) canonical form of the priced
+    ``services`` subtree.
+
+    This is the freshness tripwire for
+    ``bali_zero_official_prices_2026.json`` — mirrors the visa-engine rule
+    pack's ``payload_sha256`` (``backend/services/visa_engine/bundle.py``),
+    which hashes the canonicalized *payload* and never the signing envelope
+    around it. Same split here, for the same reason:
+
+    * IN scope: ``services`` — the exact tree ``PricingService``/``PricingTool``
+      serve as prices. Any edit to a price, a tier range, a new/removed
+      service row, changes this hash.
+    * OUT of scope: ``metadata`` (``last_updated``, ``currency``, ``contact``)
+      and the top-level ``version``/``effective_date``. These are
+      administrative/versioning fields, not price content — and critically,
+      ``metadata`` is where the computed digest itself gets recorded
+      (``metadata.content_sha256``). A hash that covered its own recorded
+      value could never be satisfied by construction (compute digest ->
+      write it into the object you just hashed -> now the object doesn't
+      hash to what's written), so ``metadata`` as a whole is excluded rather
+      than carving out just the one self-referential key.
+
+    RFC 8785 (not ``json.dumps(sort_keys=True)``) is used deliberately —
+    JCS normalizes number formatting and property ordering per the
+    ECMAScript ``JSON.stringify`` rules; a naive ``sort_keys`` dump does not,
+    and this repo already trusts JCS for exactly this kind of content hash
+    (see ``backend/services/visa_engine/bundle.py::_canonicalize_wire_object``).
+    """
+
+    canonical = rfc8785.dumps(services)
+    return hashlib.sha256(canonical).hexdigest()
 
 # Categories whose value is a flat ``{service_name: entry}`` mapping.
 _FLAT_CATEGORIES = (

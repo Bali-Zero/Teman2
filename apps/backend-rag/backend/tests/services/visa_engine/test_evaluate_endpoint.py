@@ -107,6 +107,16 @@ pytestmark = pytest.mark.asyncio
 
 _REAL_EVALUATE_URL = "/api/visa-oracle/evaluate?traffic_source=real"
 
+# Arbitrary, deliberately NOT the real pricing catalog's date (see
+# backend/data/bali_zero_official_prices_2026.json::metadata.last_updated).
+# The mock pricing catalogs below only need SOME ISO-8601 string to prove
+# pricing_adapter passes ``metadata.last_updated`` through to
+# ``catalog_last_updated`` unmodified — using the real file's date here
+# would silently couple this passthrough test to production data staleness,
+# which is exactly the trap that let the real file go ~3.5 months stale
+# unnoticed (see test_pricing_data_freshness.py).
+_MOCK_CATALOG_LAST_UPDATED = "2020-01-01"
+
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -1046,7 +1056,7 @@ def _patch_engine_chain(
 
         def get_all_prices(self) -> dict[str, object]:
             return {
-                "metadata": {"last_updated": "2026-05-06", "currency": "IDR"},
+                "metadata": {"last_updated": _MOCK_CATALOG_LAST_UPDATED, "currency": "IDR"},
                 "services": {},
             }
 
@@ -1804,7 +1814,7 @@ async def test_happy_path_http_end_to_end(monkeypatch: pytest.MonkeyPatch) -> No
         assert entry["pricing"]["status"] == "CONTACT_REQUIRED"
         assert entry["pricing"]["reason_code"] == "PRICING_ROW_NOT_EXACT_AMOUNT"
         assert entry["pricing"]["evaluated_at"] == body["decision"]["evaluated_at"]
-        assert entry["pricing"]["catalog_last_updated"] == "2026-05-06"
+        assert entry["pricing"]["catalog_last_updated"] == _MOCK_CATALOG_LAST_UPDATED
         assert len(entry["pricing"]["catalog_sha256"]) == 64
         assert len(entry["pricing"]["row_sha256"]) == 64
 
@@ -1843,7 +1853,7 @@ async def test_exact_pricingtool_rows_are_signed_and_persisted_as_quotes(
         def get_all_prices(self) -> dict[str, object]:
             return {
                 "version": "test-2026.1",
-                "metadata": {"last_updated": "2026-05-06", "currency": "IDR"},
+                "metadata": {"last_updated": _MOCK_CATALOG_LAST_UPDATED, "currency": "IDR"},
                 "services": {},
             }
 
@@ -2004,7 +2014,7 @@ async def test_malformed_pricing_row_keeps_approved_legal_decision(
         loaded = True
 
         def get_all_prices(self) -> dict[str, object]:
-            return {"metadata": {"last_updated": "2026-05-06"}, "services": {}}
+            return {"metadata": {"last_updated": _MOCK_CATALOG_LAST_UPDATED}, "services": {}}
 
         def get_service_by_key(self, key: str) -> list[str]:
             return [key, "malformed-row"]
