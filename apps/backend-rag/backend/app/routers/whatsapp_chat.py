@@ -13,8 +13,6 @@ v2: Upgraded brain — Sonnet 4.5, dynamic persona "Zan", client profile memory,
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import logging
 import re
@@ -29,6 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
 from backend.channels.format import format_rich_text
+from backend.security.webhook_verifier import WebhookVerificationError, verify_meta_hmac
 
 # `notify_human_telegram` now lives in
 # `backend/services/integrations/human_escalation_notifier.py` so the WhatsApp
@@ -1253,34 +1252,52 @@ async def verify_webhook(request: Request) -> PlainTextResponse:
 def _verify_whatsapp_signature(body: bytes, signature_header: str | None) -> bool:
     """Verify X-Hub-Signature-256 HMAC-SHA256 from Meta WhatsApp webhook.
 
+    Thin bool-returning wrapper over the shared, tested
+    ``backend.security.webhook_verifier.verify_meta_hmac`` — the actual HMAC
+    comparison lives there, once, shared with the Instagram router. This
+    function's name and its ``(body, signature_header) -> bool`` contract
+    are load-bearing: callers in this module, and every test in
+    ``backend/tests/duebot/`` and ``backend/tests/channels/``, depend on
+    both — do not rename it or change the return type.
+
     Args:
         body: Raw request body bytes
         signature_header: Value of X-Hub-Signature-256 header (format: "sha256=<hex>")
 
     Returns:
-        True if signature is valid or verification is disabled (no app secret configured)
+        True if the signature is valid, or verification was skipped because
+        no app secret is configured (dev mode) AND
+        ``settings.meta_webhook_require_signature`` is False (the default —
+        preserves today's fail-open behavior unconditionally). False on any
+        verification failure, including a missing secret when
+        ``meta_webhook_require_signature`` has been explicitly set True.
     """
     app_secret = settings.whatsapp_app_secret
-    if not app_secret:
-        # No app secret configured — skip verification (dev mode)
+    if not app_secret and not settings.meta_webhook_require_signature:
+        # Fail-open is still the configured policy and no secret exists —
+        # skip verification (dev mode), but LOUDLY: a production deploy
+        # must never sit in this state quietly (F-class landmine, see
+        # research/operations/2026-07-17-mutating-routes-authz-ledger.md).
+        logger.warning(
+            "⚠️ WhatsApp webhook: WHATSAPP_APP_SECRET not configured — "
+            "signature verification SKIPPED (fail-open). Set "
+            "WHATSAPP_APP_SECRET to enable it, or "
+            "META_WEBHOOK_REQUIRE_SIGNATURE=true to reject instead."
+        )
         return True
 
-    if not signature_header:
-        logger.warning("⚠️ WhatsApp webhook: missing X-Hub-Signature-256 header")
+    try:
+        verify_meta_hmac(
+            body,
+            signature_header,
+            app_secret,
+            provider="whatsapp",
+            require_secret=settings.meta_webhook_require_signature,
+        )
+    except WebhookVerificationError as exc:
+        logger.warning("⚠️ WhatsApp webhook signature verification failed: %s", exc.reason)
         return False
-
-    if not signature_header.startswith("sha256="):
-        logger.warning("⚠️ WhatsApp webhook: malformed signature header")
-        return False
-
-    expected_sig = signature_header[7:]  # Strip "sha256=" prefix
-    computed_sig = hmac.new(
-        app_secret.encode("utf-8"),
-        body,
-        hashlib.sha256,
-    ).hexdigest()
-
-    return hmac.compare_digest(computed_sig, expected_sig)
+    return True
 
 
 @router.post("")
