@@ -505,6 +505,16 @@ def test_renderer_name_rejects_a_value_outside_the_closed_set() -> None:
         )
 
 
+def test_renderer_name_has_exactly_the_frozen_three_members() -> None:
+    """B1a review round-3, finding 4: the closed-enum guarantee was only
+    incidentally pinned — adding RendererName.AZURE = "azure-openai" left
+    the full 89-test suite green, because no test asserted exact
+    membership (only that one specific guilt value, "vertex-ai", was
+    rejected). Mirrors the exact-set pin GateReason already had."""
+    assert {r.value for r in RendererName} == {"whatsapp_light", "plain_text", "markdown"}
+    assert len(RendererName) == 3
+
+
 def test_handoff_queue_is_a_closed_enum_not_free_text() -> None:
     assert SurfaceProfile.model_fields["handoff_queue"].annotation is HandoffQueue
     for profile in FROZEN_PROFILES:
@@ -516,6 +526,15 @@ def test_handoff_queue_rejects_a_value_outside_the_closed_set() -> None:
         SurfaceProfile.model_validate(
             {**CLIENT_WA_V1.model_dump(mode="json"), "handoff_queue": "openai_general"}
         )
+
+
+def test_handoff_queue_has_exactly_the_frozen_three_members() -> None:
+    assert {q.value for q in HandoffQueue} == {
+        "client_general",
+        "portal_case",
+        "kbli_specialist",
+    }
+    assert len(HandoffQueue) == 3
 
 
 @pytest.mark.parametrize(
@@ -681,6 +700,53 @@ def test_media_ref_accepts_opaque_reference() -> None:
     assert attachment.media_ref == "media-store:abc123"
 
 
+@pytest.mark.parametrize(
+    "bypass_media_ref",
+    [
+        "file:///etc/passwd",
+        "https:\\\\evil.com/x?sig=ABC",
+        "http:cdn.example.com/a?sig=X",
+        "https:/cdn.example.com/a",
+        "mailto:budi@example.com",
+        "media-store:+6281234567890",
+    ],
+    ids=[
+        "file-scheme",
+        "backslash-normalized-url",
+        "scheme-no-slashes",
+        "single-slash-scheme",
+        "mailto-pii",
+        "pii-inside-legal-shape",
+    ],
+)
+def test_media_ref_whitelist_rejects_every_round2_bypass(bypass_media_ref: str) -> None:
+    """B1a review round-3, finding 1: round-2's urlsplit(...).netloc guard
+    (a negative "doesn't look like a URL" check) let all six of these
+    through — verified empirically by the round-3 refuter, then measured
+    again here before the fix. The round-3 fix replaces the negative guard
+    with a positive whitelist (^media-store:[A-Za-z0-9_-]{1,256}$); every
+    one of these dies by construction now, including the PII-smuggled-
+    inside-a-legal-shape case (a phone number after the media-store: colon
+    is syntactically URL-free but still not what the pattern allows)."""
+    with pytest.raises(ValidationError):
+        CanonicalAttachment(
+            attachment_id=uuid4(),
+            kind=AttachmentKind.IMAGE,
+            mime_type="image/jpeg",
+            media_ref=bypass_media_ref,
+        )
+
+
+def test_media_ref_still_accepts_the_one_legal_shape() -> None:
+    attachment = CanonicalAttachment(
+        attachment_id=uuid4(),
+        kind=AttachmentKind.IMAGE,
+        mime_type="image/jpeg",
+        media_ref="media-store:AbC_-123",
+    )
+    assert attachment.media_ref == "media-store:AbC_-123"
+
+
 # ---------------------------------------------------------------------------
 # GateVerdict / GateReason / FinalDecision
 # ---------------------------------------------------------------------------
@@ -795,6 +861,19 @@ def test_brain_candidate_answer_envelope_is_12000_today() -> None:
 def test_answer_disposition_requires_non_empty_answer() -> None:
     with pytest.raises(ValidationError):
         make_brain_candidate(answer="")
+
+
+@pytest.mark.parametrize(
+    "blank_answer",
+    [" \n", "\t", "\xa0"],
+    ids=["space-newline", "tab", "non-breaking-space"],
+)
+def test_answer_disposition_rejects_whitespace_only_answer(blank_answer: str) -> None:
+    """B1a review round-3, finding 3: `not self.answer` only rejected the
+    literal empty string. Verified empirically before the fix that all
+    three of these passed as "non-empty" under disposition="answer"."""
+    with pytest.raises(ValidationError):
+        make_brain_candidate(answer=blank_answer)
 
 
 def test_answer_disposition_permits_but_does_not_require_claims() -> None:
@@ -1071,3 +1150,14 @@ def test_schema_docstring_tells_b2_provider_enforcement_is_a_subset() -> None:
     assert "subset" in description.lower()
     assert "structure" in description.lower()
     assert "server-side" in description.lower()
+
+
+def test_schema_docstring_warns_disposition_coupling_is_absent() -> None:
+    """B1a review round-3 correction: the disposition coupling IS
+    representable via JSON Schema if/then, but deliberately isn't encoded
+    (providers wouldn't honor it either) — B2 needs to be told the coupling
+    is entirely absent from this schema, not just that bounds are a
+    subset."""
+    description = BrainCandidate.model_json_schema()["description"].lower()
+    assert "disposition coupling" in description
+    assert "absent" in description
