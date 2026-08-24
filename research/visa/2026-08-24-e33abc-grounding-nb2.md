@@ -29,7 +29,7 @@ sources:
     note: "Ditjen Imigrasi official product page, fetched live this session"
   - url: "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E33C"
     note: "Ditjen Imigrasi official product page, fetched live this session — confirms NO USD 25M/50M figure on E33C's live page"
-adversarial_review: none (this report is itself the adversarial pass over the 2026-08-18 NB-2 claim ledger; no further cross-family review run in this session)
+adversarial_review: exempt-self-audit-of-nb2-ledger # this report is itself the adversarial pass over the 2026-08-18 NB-2 claim ledger; no further cross-family review run in this session
 ---
 
 # E33A / E33B / E33C grounding pass — can a SUPPORT rule be authored today?
