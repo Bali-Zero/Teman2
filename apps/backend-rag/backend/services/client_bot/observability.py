@@ -35,6 +35,20 @@ alerting layer compute the ratio over its own window, so the raw counts
 survive a threshold change and a restart does not lose the ratio's
 history mid-window.
 
+`codex_auth_dead_total` reflects a pre-existing, empirically-anchored
+classifier (the existing dark implementation's one tested AUTH_DEAD
+pattern). `codex_quota_exhausted_total` does NOT yet have the same
+grounding: B2a's stderr-regex AUTH/QUOTA/POLICY_BLOCKED split was
+refuted (12 reproduced findings against one design defect) and replaced
+by `docs/plans/2026-08-25-due-bot-live/SPEC-codex-error-classification.md`,
+which states the classification "stays dark until a REAL codex exec
+quota event and a REAL policy block have been observed... no caller may
+take an irreversible action on it" until then. `codex_cli_version_mismatch_total`
+is unrelated to that contested classifier — it is `wa_codex_daemon.py`'s
+own pre-existing, deterministic version-pin guard, and safe to act on
+today. See `tripwires.py`'s `requires_arming_condition` field for which
+tripwires this constraint binds.
+
 Author: Claude Opus 5 (lane B7 — control tower).
 """
 
@@ -68,6 +82,7 @@ __all__ = [
     "codex_broker_heartbeat_age_seconds",
     "codex_broker_queue_depth",
     "codex_canary_probe_age_seconds",
+    "codex_cli_version_mismatch_total",
     "codex_consecutive_failures",
     "codex_eligible_requests_total",
     "codex_exec_seconds",
@@ -103,7 +118,7 @@ __all__ = [
 #     quota_fallback_total, eligible_requests_total, output_invalid_total,
 #     jobs_total, secret_canary_hits_total, fence_violation_or_double_completion_total,
 #     unsupported_claim_escape_total, fallback_provider_failure_total,
-#     fallback_provider_requests_total
+#     fallback_provider_requests_total, cli_version_mismatch_total
 #   - Dead-man-switch synthetic probes (ASSEMBLY-LINE §7 pattern):
 #     synthetic_probe_age_seconds, canary_probe_age_seconds
 #   - Helpers: record_gate_verdict, record_handoff_created,
@@ -340,6 +355,21 @@ codex_secret_canary_hits_total = safe_register_counter(
     "Secret-canary token detections in codex broker output. >0: GLOBAL "
     "codex-leg kill switch, P0 operator alert (Sol §2.5) — the single "
     "highest-severity tripwire in this catalogue.",
+    (_SEAT_LABEL,),
+)
+
+codex_cli_version_mismatch_total = safe_register_counter(
+    "zantara_codex_cli_version_mismatch_total",
+    "codex exec refused to run because the installed CLI no longer matches "
+    "WA_CODEX_CLI_VERSION_PIN (wa_codex_daemon.py's own pre-existing, "
+    "deterministic version-pin guard — NOT part of the contested stderr-"
+    "regex AUTH_DEAD/QUOTA/POLICY_BLOCKED classification in "
+    "SPEC-codex-error-classification.md, which stays dark/advisory until a "
+    "real quota event and policy block are observed). >=1 is an "
+    "operator-actionable CLI/config-drift signal distinct from AUTH_DEAD: "
+    "the fix is re-approving the new CLI version or restoring the pinned "
+    "one, never `codex login` — see tripwires.py's `codex.cli_version_"
+    "mismatch` entry and owner switchboard item 4.",
     (_SEAT_LABEL,),
 )
 

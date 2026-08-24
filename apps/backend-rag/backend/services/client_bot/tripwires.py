@@ -78,6 +78,20 @@ class Tripwire(BaseModel):
     automatic_action: str
     source: str  # mandate F-number / research §, for traceability
     packet_template: str | None = None  # non-None iff the action is "produce a packet"
+    requires_arming_condition: str | None = None
+    """Non-None means the metric this row reads is populated by a classifier
+    that is not yet trustworthy enough to act on automatically — the
+    `automatic_action` may be TAKEN (logged, observed) but must not yet be
+    treated as reliable enough to drive an unattended kill-switch flip or
+    an owner packet with confidence. Set on the QUOTA-derived rows per
+    `SPEC-codex-error-classification.md`'s own arming condition: "stays
+    dark until a REAL codex exec quota event and a REAL policy block have
+    been observed and their exact stderr recorded... no caller may take
+    an irreversible action on it" until then. `codex.auth_dead` is
+    deliberately NOT gated this way — it reads a different, pre-existing,
+    empirically-anchored classifier (one tested pattern), not the refuted
+    stderr-regex split.
+    """
 
 
 TRIPWIRES: tuple[Tripwire, ...] = (
@@ -156,6 +170,10 @@ TRIPWIRES: tuple[Tripwire, ...] = (
         automatic_action="Cooldown seat; alert with measured window/reset evidence "
         "— never hidden as a timeout.",
         source="F3; research §2.5",
+        requires_arming_condition="SPEC-codex-error-classification.md: the QUOTA "
+        "classification is advisory until a REAL quota event's exact stderr is "
+        "observed and recorded there. Log/observe freely; do not treat this "
+        "count as confident enough to drive the cooldown unattended until then.",
     ),
     Tripwire(
         id="codex.quota_fallback_ratio",
@@ -170,6 +188,29 @@ TRIPWIRES: tuple[Tripwire, ...] = (
         source="F3; research §2.5",
         packet_template="docs/plans/2026-08-25-due-bot-live/ops/packets/"
         "QUOTA-WALL-STAGE2-PACKET.template.md",
+        requires_arming_condition="Same as codex.quota_exhausted — this ratio's "
+        "numerator inherits the same not-yet-arming-condition-met classification. "
+        "A packet MAY still be produced (it recommends, it doesn't auto-act), but "
+        "state the classification's advisory status in the packet's own Context "
+        "section rather than presenting the ratio as settled fact.",
+    ),
+    Tripwire(
+        id="codex.cli_version_mismatch",
+        metric="codex_cli_version_mismatch_total",
+        threshold=">= 1",
+        kind=TripwireKind.TECHNICAL,
+        metric_status=MetricStatus.WIRED,
+        plane=None,  # the daemon already self-quarantines (refuses to run
+        # unpinned); no additional switch to flip, page is the whole action
+        automatic_action="Page operator: CLI/config drift detected — restore "
+        "WA_CODEX_CLI_VERSION_PIN to the approved version, or re-approve the "
+        "new CLI version after re-verifying it. `codex login` fixes nothing "
+        "here — this is NOT an AUTH_DEAD/QUOTA condition (owner switchboard "
+        "item 4's distinction).",
+        source="B7 addition — wa_codex_daemon.py's pre-existing deterministic "
+        "version-pin guard; SPEC-codex-error-classification.md flagged this as "
+        "the one INTERNAL-class condition that IS operator-actionable and "
+        "reliably distinguishable today, unlike the rest of that bucket.",
     ),
     Tripwire(
         id="codex.output_invalid_ratio",

@@ -104,6 +104,30 @@ def test_at_least_one_business_invariant_per_bot() -> None:
     assert any(t.id.startswith("team.") for t in business)
 
 
+def test_quota_derived_rows_carry_the_arming_condition_gate() -> None:
+    # SPEC-codex-error-classification.md: the QUOTA classification stays
+    # advisory until real stderr is observed. Every tripwire whose metric
+    # reads that classification must say so — silently trusting it would
+    # repeat exactly the mistake the spec was written to stop.
+    gated = {t.id for t in TRIPWIRES if t.requires_arming_condition is not None}
+    assert gated == {"codex.quota_exhausted", "codex.quota_fallback_ratio"}
+
+
+def test_auth_dead_is_not_gated_by_the_quota_arming_condition() -> None:
+    # codex.auth_dead reads a DIFFERENT, pre-existing, empirically-anchored
+    # classifier — conflating the two would either wrongly distrust a
+    # reliable signal or wrongly trust an unreliable one.
+    auth_dead = next(t for t in TRIPWIRES if t.id == "codex.auth_dead")
+    assert auth_dead.requires_arming_condition is None
+
+
+def test_cli_version_mismatch_tripwire_is_distinct_from_auth_and_quota() -> None:
+    row = next(t for t in TRIPWIRES if t.id == "codex.cli_version_mismatch")
+    assert row.metric_status == MetricStatus.WIRED
+    assert row.requires_arming_condition is None
+    assert "codex login" in row.automatic_action  # names what it is NOT
+
+
 def test_kind_is_a_closed_vocabulary() -> None:
     for t in TRIPWIRES:
         assert t.kind in (TripwireKind.BUSINESS, TripwireKind.TECHNICAL)
