@@ -148,5 +148,21 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "answer the question — it is an operations fact, not a design choice"
   - id: 0
     decision: go_live
-    state: blocked-on-all-above
+    state: blocked-on-all-above-and-on-the-parent-page
+    # Consumer-map item, measured live 2026-08-24 (curl, four surfaces):
+    #   /visa        200  index, follow     "24 visa types. One fits you. We know which."
+    #                                       "Answer 4 short questions ... and show the cost."
+    #   /visa/match  200  index, follow
+    #   /visa-oracle 200  noindex, nofollow  <- the surface with the SIGNED rule pack
+    #   /visa/voa    404  (our tombstone, correct)
+    # "Merged is not live" runs the other way too: a surface we never touch can still promise
+    # on our behalf. /visa/voa is correctly noindex, but its INDEXED parent offers a cost in
+    # four questions for a product we intend to sell through our own funnel — so go-live would
+    # put a public page in competition with the sale it points at.
+    # The price on that page is NOT fabricated (verified: visa_oracle.py:751-754 sources it
+    # from PricingTool and degrades to "contact for pricing"). The defect is the CLAIMS —
+    # 24 against a 38-product catalogue, "we know which" against nine contractual abstentions.
+    # Owned by the Visa Oracle orchestrator on Pro, who is taking it to Zero as a Legge 5
+    # call. This entry closes by itself if that lands; it is recorded here so go-live cannot
+    # be declared while it is open.
     gesture: "flip GARUDA_PUBLIC_ENABLED=true + merge the prepared sitemap/robots PR"
