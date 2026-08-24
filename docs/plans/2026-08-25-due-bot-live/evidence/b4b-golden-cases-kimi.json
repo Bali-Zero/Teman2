@@ -1,0 +1,641 @@
+[
+  {
+    "id": "gc-001",
+    "category": "enum_translation",
+    "language_mix": ["it"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "la PR-2077 di Marco è stata approvata, segna la pratica come approvata che è tutto completato"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "update_practice_status",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-2077",
+        "new_status": "approved",
+        "reason_code": "completed"
+      },
+      "forbidden_argument_substrings": [
+        "approvata",
+        "approvato",
+        "completata",
+        "completato"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "Italian utterance maps to canonical enums approved/completed; any Italian form of either enum proves mistranslation."
+  },
+  {
+    "id": "gc-002",
+    "category": "enum_translation",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "PR-1042 statusnya ubah ke disetujui ya, dokumennya udah lengkap semua kok"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "update_practice_status",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-1042",
+        "new_status": "approved",
+        "reason_code": "docs_complete"
+      },
+      "forbidden_argument_substrings": [
+        "disetujui",
+        "dokumen_lengkap",
+        "dokumen lengkap"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "Indonesian 'disetujui'/'dokumen lengkap' must become approved/docs_complete in canonical English ASCII."
+  },
+  {
+    "id": "gc-003",
+    "category": "enum_translation",
+    "language_mix": ["it", "id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "untuk PR-1042, passaporto-nya Budi sudah aku terima lewat WhatsApp ya, tolong ditandai"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "mark_document_received",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-1042",
+        "document_type": "passport",
+        "source": "whatsapp"
+      },
+      "forbidden_argument_substrings": ["passaporto", "paspor"],
+      "requires_clarifying_question": false
+    },
+    "notes": "Document type said in Italian ('passaporto') inside an Indonesian sentence must resolve to the passport enum."
+  },
+  {
+    "id": "gc-004",
+    "category": "key_translation",
+    "language_mix": ["it"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "la pratica PR-3090 deve tornare in raccolta documenti, mancano ancora dei documenti da parte della cliente"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "update_practice_status",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-3090",
+        "new_status": "doc_collection",
+        "reason_code": "docs_missing"
+      },
+      "forbidden_argument_substrings": [
+        "stato_pratica",
+        "nuovo_stato",
+        "codice_motivo",
+        "motivo",
+        "id_pratica"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "Probes that JSON keys stay in canonical English (new_status, reason_code) even when the whole request is Italian."
+  },
+  {
+    "id": "gc-005",
+    "category": "key_translation",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "PR-2077: akta pendiriannya udah diterima hari ini, dikirim lewat kurir"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "mark_document_received",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-2077",
+        "document_type": "deed_of_establishment",
+        "source": "courier"
+      },
+      "forbidden_argument_substrings": [
+        "jenis_dokumen",
+        "tanggal_diterima",
+        "sumber",
+        "id_praktik",
+        "id_praktek"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "received_date is correctly omitted (defaults to today 2026-08-25); keys must not be Indonesian translations like jenis_dokumen."
+  },
+  {
+    "id": "gc-006",
+    "category": "key_translation",
+    "language_mix": ["it", "en"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "crea un reminder per PR-1042 domani alle 9, bisogna sollecitare i documenti mancanti al cliente"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "create_reminder",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "target_type": "practice",
+        "target_id": "PR-1042",
+        "reminder_type": "document_missing",
+        "due_at": "2026-08-26T09:00:00+08:00"
+      },
+      "forbidden_argument_substrings": [
+        "scadenza",
+        "tipo_promemoria",
+        "assegnato_a",
+        "tipo_target",
+        "promemoria"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "assigned_to is correctly omitted (defaults to requester); Italian key names like scadenza/tipo_promemoria are the failure being probed."
+  },
+  {
+    "id": "gc-007",
+    "category": "date_normalization",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "akta pendirian untuk PR-2077 diterima tanggal 12 Maret 2026 via email, tolong dicatat ya"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "mark_document_received",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-2077",
+        "document_type": "deed_of_establishment",
+        "source": "email",
+        "received_date": "2026-03-12"
+      },
+      "forbidden_argument_substrings": ["Maret", "12/03/2026", "12-03-2026"],
+      "requires_clarifying_question": false
+    },
+    "notes": "Indonesian month name '12 Maret 2026' must normalize to ISO 8601 2026-03-12, not a localized or DD/MM string."
+  },
+  {
+    "id": "gc-008",
+    "category": "date_normalization",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "bikin reminder dong buat PR-3090, besok jam 10 pagi follow up ke kliennya, assign ke Asya ya"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "create_reminder",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "target_type": "practice",
+        "target_id": "PR-3090",
+        "reminder_type": "follow_up",
+        "due_at": "2026-08-26T10:00:00+08:00",
+        "assigned_to": "USR-115"
+      },
+      "forbidden_argument_substrings": ["besok"],
+      "requires_clarifying_question": false
+    },
+    "notes": "Relative date 'besok' resolves against today 2026-08-25 (Asia/Makassar) to 2026-08-26, with +08:00 offset."
+  },
+  {
+    "id": "gc-009",
+    "category": "date_normalization",
+    "language_mix": ["it"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "reminder appuntamento per PR-1042 il 27/08/2026 alle 15, il cliente viene in ufficio"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "create_reminder",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "target_type": "practice",
+        "target_id": "PR-1042",
+        "reminder_type": "appointment",
+        "due_at": "2026-08-27T15:00:00+08:00"
+      },
+      "forbidden_argument_substrings": ["27/08/2026", "ore 15"],
+      "requires_clarifying_question": false
+    },
+    "notes": "Italian DD/MM/YYYY plus 'alle 15' must become 2026-08-27T15:00:00+08:00; swapping day/month would be the classic error."
+  },
+  {
+    "id": "gc-010",
+    "category": "id_from_name",
+    "language_mix": ["id", "en"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "coba cari data Budi Santoso, mau cek kitas-nya dia gimana"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "search_clients",
+      "must_not_call_mutation": true,
+      "expected_arguments": {
+        "query": "Budi Santoso"
+      },
+      "forbidden_argument_substrings": [],
+      "requires_clarifying_question": false
+    },
+    "notes": "Only a name is given, so the correct first step is search_clients; no ID may be invented and no mutation is warranted."
+  },
+  {
+    "id": "gc-011",
+    "category": "id_from_name",
+    "language_mix": ["it"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "mi serve la scheda di Marco Bianchi"
+      },
+      {
+        "role": "assistant",
+        "content": "[calls search_clients with {\"query\": \"Marco Bianchi\"}]"
+      },
+      {
+        "role": "tool",
+        "content": "[search_clients result: [{\"client_id\": \"CL-2077\", \"name\": \"Marco Bianchi\"}]]"
+      },
+      {
+        "role": "user",
+        "content": "ok aprila, fammi vedere tutto"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "get_client",
+      "must_not_call_mutation": true,
+      "expected_arguments": {
+        "client_id": "CL-2077"
+      },
+      "forbidden_argument_substrings": ["Marco Bianchi", "Marco", "Bianchi"],
+      "requires_clarifying_question": false
+    },
+    "notes": "After search returned CL-2077, the follow-up must call get_client with the resolved ID, never the person's name as client_id."
+  },
+  {
+    "id": "gc-012",
+    "category": "id_from_name",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "KTP-nya Siti Rahayu udah diterima nih via email, tandain dong"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "search_clients",
+      "must_not_call_mutation": true,
+      "expected_arguments": {
+        "query": "Siti Rahayu"
+      },
+      "forbidden_argument_substrings": [],
+      "requires_clarifying_question": false
+    },
+    "notes": "Mutation intent is clear but practice_id is unknown, so the correct first call is search_clients to resolve the client — not guessing PR-3090, not asking."
+  },
+  {
+    "id": "gc-013",
+    "category": "mid_conversation_language_switch",
+    "language_mix": ["it", "id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "PR-1042: paspornya Budi udah aku terima via WhatsApp, tandai ya"
+      },
+      {
+        "role": "assistant",
+        "content": "[calls mark_document_received with {\"practice_id\": \"PR-1042\", \"document_type\": \"passport\", \"source\": \"whatsapp\"}]"
+      },
+      {
+        "role": "tool",
+        "content": "[mark_document_received result: ok]"
+      },
+      {
+        "role": "user",
+        "content": "perfetto, anche la foto tessera, stessa cosa, sempre via WhatsApp"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "mark_document_received",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-1042",
+        "document_type": "passport_photo",
+        "source": "whatsapp"
+      },
+      "forbidden_argument_substrings": [
+        "foto_tessera",
+        "foto_passaporto",
+        "foto tessera"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "After switching to Italian, 'stessa cosa' must retain practice_id and source from the Indonesian first turn, mapping 'foto tessera' to passport_photo."
+  },
+  {
+    "id": "gc-014",
+    "category": "mid_conversation_language_switch",
+    "language_mix": ["id", "en"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "can you move PR-2077 to ready to submit? all docs are in"
+      },
+      {
+        "role": "assistant",
+        "content": "[calls update_practice_status with {\"practice_id\": \"PR-2077\", \"new_status\": \"ready_to_submit\", \"reason_code\": \"docs_complete\"}]"
+      },
+      {
+        "role": "tool",
+        "content": "[update_practice_status result: ok, confirmed]"
+      },
+      {
+        "role": "user",
+        "content": "oke, PR-3090 juga sama ya, dokumennya juga udah lengkap semua"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "update_practice_status",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-3090",
+        "new_status": "ready_to_submit",
+        "reason_code": "docs_complete"
+      },
+      "forbidden_argument_substrings": [
+        "siap_dikirim",
+        "siap untuk dikirim",
+        "dokumen_lengkap"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "'juga sama' (same for PR-3090) requires carrying the status+reason intent across an English-to-Indonesian switch and applying it to a new practice."
+  },
+  {
+    "id": "gc-015",
+    "category": "mid_conversation_language_switch",
+    "language_mix": ["it", "id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "crea un reminder per PR-3090 domani alle 14, follow-up con la cliente"
+      },
+      {
+        "role": "assistant",
+        "content": "[calls create_reminder with {\"target_type\": \"practice\", \"target_id\": \"PR-3090\", \"reminder_type\": \"follow_up\", \"due_at\": \"2026-08-26T14:00:00+08:00\"}]"
+      },
+      {
+        "role": "tool",
+        "content": "[create_reminder result: ok]"
+      },
+      {
+        "role": "user",
+        "content": "eh maaf, maksudku hari Kamis ya, jamnya tetap"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "create_reminder",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "target_type": "practice",
+        "target_id": "PR-3090",
+        "reminder_type": "follow_up",
+        "due_at": "2026-08-27T14:00:00+08:00"
+      },
+      "forbidden_argument_substrings": ["Kamis", "domani"],
+      "requires_clarifying_question": false
+    },
+    "notes": "Indonesian correction overrides the Italian date: 'hari Kamis' from Tuesday 2026-08-25 is Thursday 2026-08-27, keeping time and target from context."
+  },
+  {
+    "id": "gc-016",
+    "category": "over_explaining_vs_tool_call",
+    "language_mix": ["en"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "PR-1042: mark the NPWP as received, client dropped it off in person today"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "mark_document_received",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-1042",
+        "document_type": "npwp",
+        "source": "in_person"
+      },
+      "forbidden_argument_substrings": [],
+      "requires_clarifying_question": false
+    },
+    "notes": "Fully specified R2 mutation with known practice_id — the correct behavior is the tool call, not a prose summary of what would be done."
+  },
+  {
+    "id": "gc-017",
+    "category": "over_explaining_vs_tool_call",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "tolong langsung update aja PR-2077 jadi ready_to_submit, dokumen udah lengkap, ga usah nanya-nanya lagi"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "update_practice_status",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-2077",
+        "new_status": "ready_to_submit",
+        "reason_code": "docs_complete"
+      },
+      "forbidden_argument_substrings": ["siap_dikirim"],
+      "requires_clarifying_question": false
+    },
+    "notes": "User explicitly asks to skip discussion; per spec the model must still issue the update_practice_status call with correct args rather than explain or refuse."
+  },
+  {
+    "id": "gc-018",
+    "category": "over_explaining_vs_tool_call",
+    "language_mix": ["it"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "metti un reminder di pagamento per PR-3090 venerdì alle 11"
+      },
+      {
+        "role": "assistant",
+        "content": "Confermo: reminder di tipo pagamento su PR-3090 per venerdì 28/08/2026 ore 11:00. Procedo?"
+      },
+      {
+        "role": "user",
+        "content": "sì sì va bene, fallo e basta"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "create_reminder",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "target_type": "practice",
+        "target_id": "PR-3090",
+        "reminder_type": "payment",
+        "due_at": "2026-08-28T11:00:00+08:00"
+      },
+      "forbidden_argument_substrings": ["venerdì", "venerdi", "28/08/2026"],
+      "requires_clarifying_question": false
+    },
+    "notes": "Confirmation already given ('fallo e basta'); the model must call create_reminder now instead of re-explaining — venerdì from 2026-08-25 is 2026-08-28."
+  },
+  {
+    "id": "gc-019",
+    "category": "single_turn_code_switch",
+    "language_mix": ["it", "id", "en"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "marca la KTP di PR-3090 as received ya, dikirim via email kemarin"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "mark_document_received",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-3090",
+        "document_type": "ktp",
+        "source": "email",
+        "received_date": "2026-08-24"
+      },
+      "forbidden_argument_substrings": ["kemarin", "ieri"],
+      "requires_clarifying_question": false
+    },
+    "notes": "One sentence mixing Italian/Indonesian/English still yields one unambiguous call; 'kemarin' normalizes to 2026-08-24."
+  },
+  {
+    "id": "gc-020",
+    "category": "single_turn_code_switch",
+    "language_mix": ["it", "id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "bisa tolong set PR-1042 ke in_review? tutti i documenti sono completi"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "update_practice_status",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "practice_id": "PR-1042",
+        "new_status": "in_review",
+        "reason_code": "docs_complete"
+      },
+      "forbidden_argument_substrings": [
+        "tutti i documenti sono completi",
+        "documenti_completi",
+        "dokumen_lengkap"
+      ],
+      "requires_clarifying_question": false
+    },
+    "notes": "Status given in English, reason given in Italian, request framed in Indonesian — both enum args must land in canonical English."
+  },
+  {
+    "id": "gc-021",
+    "category": "single_turn_code_switch",
+    "language_mix": ["it", "id", "en"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "reminder domani mattina jam 9 per PR-2077, rinnovo — renewal maksudnya — assign ke Ari, grazie"
+      }
+    ],
+    "expected": {
+      "must_call_tool": "create_reminder",
+      "must_not_call_mutation": false,
+      "expected_arguments": {
+        "target_type": "practice",
+        "target_id": "PR-2077",
+        "reminder_type": "renewal",
+        "due_at": "2026-08-26T09:00:00+08:00",
+        "assigned_to": "USR-102"
+      },
+      "forbidden_argument_substrings": ["domani", "rinnovo"],
+      "requires_clarifying_question": false
+    },
+    "notes": "Trilingual single sentence: 'rinnovo' resolves to renewal enum, 'domani mattina jam 9' to 2026-08-26T09:00:00+08:00, 'Ari' to USR-102."
+  },
+  {
+    "id": "gc-022",
+    "category": "ambiguous_must_not_mutate",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "tandai dokumennya Budi udah masuk ya"
+      }
+    ],
+    "expected": {
+      "must_call_tool": null,
+      "must_not_call_mutation": true,
+      "expected_arguments": null,
+      "forbidden_argument_substrings": [],
+      "requires_clarifying_question": true
+    },
+    "notes": "Missing document_type (and practice_id not yet resolved): valid mark_document_received args cannot be constructed, so ask which document instead of mutating."
+  },
+  {
+    "id": "gc-023",
+    "category": "ambiguous_must_not_mutate",
+    "language_mix": ["id", "en"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "update status praktek itu ke submitted dong"
+      }
+    ],
+    "expected": {
+      "must_call_tool": null,
+      "must_not_call_mutation": true,
+      "expected_arguments": null,
+      "forbidden_argument_substrings": [],
+      "requires_clarifying_question": true
+    },
+    "notes": "Deictic 'praktek itu' with no client or practice referent in the conversation: no practice_id can be constructed, so clarification is required before any mutation."
+  },
+  {
+    "id": "gc-024",
+    "category": "ambiguous_must_not_mutate",
+    "language_mix": ["id"],
+    "turns": [
+      {
+        "role": "user",
+        "content": "PR-2077 tolong di-update ya statusnya, soalnya kemarin ada masalah sama datanya"
+      }
+    ],
+    "expected": {
+      "must_call_tool": null,
+      "must_not_call_mutation": true,
+      "expected_arguments": null,
+      "forbidden_argument_substrings": [],
+      "requires_clarifying_question": true
+    },
+    "notes": "Practice is identified and a reason is hinted (data_error) but new_status is unspecified — the model must ask which status rather than guess."
+  }
+]

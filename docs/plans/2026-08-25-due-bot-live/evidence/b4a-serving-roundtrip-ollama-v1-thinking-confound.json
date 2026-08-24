@@ -1,0 +1,369 @@
+{
+  "gate": "F8_serving_roundtrip",
+  "mandate_ref": "docs/plans/2026-08-25-due-bot-live/MANDATE.md#F8",
+  "timestamp": "2026-08-24T18:03:39Z",
+  "stack": "ollama",
+  "stack_version": "0.32.14",
+  "base_url": "http://127.0.0.1:11434/v1",
+  "model_tag": "qwen3:8b",
+  "model_digest": "sha256:a3de86cd1c132c822487ededd47a324c50491393e6565cd14bafa40d0b8e686f",
+  "properties": [
+    {
+      "name": "a_native_tool_calls_structured",
+      "passed": false,
+      "reason": "tool_calls is empty/absent and content shows no tool-call attempt at all",
+      "latency_s": 13.04231712501496,
+      "evidence": {
+        "request": {
+          "model": "qwen3:8b",
+          "messages": [
+            {
+              "role": "user",
+              "content": "What is the weather in Denpasar right now? Use the get_weather tool."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "city": {
+                      "type": "string",
+                      "description": "City name, e.g. Denpasar"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "enum": ["celsius", "fahrenheit"]
+                    }
+                  },
+                  "required": ["city"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 512
+        },
+        "http_status": 200,
+        "raw_response": "{\"id\":\"chatcmpl-696\",\"object\":\"chat.completion\",\"created\":1787594632,\"model\":\"qwen3:8b\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"Okay, the user is asking for the current weather in Denpasar using the get_weather tool. Let me check the function parameters. The function requires a city name and an optional unit. The city is specified as Denpasar, so I'll include that. Since the unit isn't mentioned, maybe I should default to celsius as it's commonly used. Wait, but the function allows enum values of celsius or fahrenheit. The user didn't specify, so perhaps I should omit the unit or choose a default. Looking back, the function's parameters show the unit is optional. The example given in the function is Denpasar, so maybe the unit isn't required. But the function's parameters have the unit as an enum. Wait, the function's parameters are [city] with unit as an optional enum. Wait, the function's parameters are structured as [city] and unit. Wait, the function's parameters are: the city is a required string, and unit is an optional enum. So I need to include city, which is Denpasar. The unit isn't specified by the user, so maybe I should leave it out, but the function might require it. Wait, looking at the function definition again: the parameters are [city] and unit. Wait, the function's parameters are listed as [city], but the unit is part of the parameters. Wait, the function's parameters are: the city is a required string, and unit is an optional enum. So the user didn't specify the unit, so I should call the function with just the city. But the function's parameters might require the unit. Wait, the function's parameters are: the city is required, and unit is optional. So I can call the function with just the city. But the function's parameters might have the unit as optional. So the correct call is to include the city as Denpasar and omit the unit, or set it to a default. Wait, the function's parameters are: the city is required, and unit is optional. So the tool call should include the city, and if unit isn't specified, maybe it's not included. But the function's parameters might require the unit. Wait, looking at the function definition again: the parameters are [city], and unit is part of the parameters. Wait, the function's parameters are: the city is a required string, and unit is an optional enum. So the tool call should include the city, and the unit can be omitted. But\"},\"finish_reason\":\"length\"}],\"usage\":{\"prompt_tokens\":176,\"completion_tokens\":512,\"total_tokens\":688}}\n",
+        "parsed_response": {
+          "id": "chatcmpl-696",
+          "object": "chat.completion",
+          "created": 1787594632,
+          "model": "qwen3:8b",
+          "system_fingerprint": "fp_ollama",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "",
+                "reasoning": "Okay, the user is asking for the current weather in Denpasar using the get_weather tool. Let me check the function parameters. The function requires a city name and an optional unit. The city is specified as Denpasar, so I'll include that. Since the unit isn't mentioned, maybe I should default to celsius as it's commonly used. Wait, but the function allows enum values of celsius or fahrenheit. The user didn't specify, so perhaps I should omit the unit or choose a default. Looking back, the function's parameters show the unit is optional. The example given in the function is Denpasar, so maybe the unit isn't required. But the function's parameters have the unit as an enum. Wait, the function's parameters are [city] with unit as an optional enum. Wait, the function's parameters are structured as [city] and unit. Wait, the function's parameters are: the city is a required string, and unit is an optional enum. So I need to include city, which is Denpasar. The unit isn't specified by the user, so maybe I should leave it out, but the function might require it. Wait, looking at the function definition again: the parameters are [city] and unit. Wait, the function's parameters are listed as [city], but the unit is part of the parameters. Wait, the function's parameters are: the city is a required string, and unit is an optional enum. So the user didn't specify the unit, so I should call the function with just the city. But the function's parameters might require the unit. Wait, the function's parameters are: the city is required, and unit is optional. So I can call the function with just the city. But the function's parameters might have the unit as optional. So the correct call is to include the city as Denpasar and omit the unit, or set it to a default. Wait, the function's parameters are: the city is required, and unit is optional. So the tool call should include the city, and if unit isn't specified, maybe it's not included. But the function's parameters might require the unit. Wait, looking at the function definition again: the parameters are [city], and unit is part of the parameters. Wait, the function's parameters are: the city is a required string, and unit is an optional enum. So the tool call should include the city, and the unit can be omitted. But"
+              },
+              "finish_reason": "length"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 176,
+            "completion_tokens": 512,
+            "total_tokens": 688
+          }
+        }
+      }
+    },
+    {
+      "name": "b_history_tool_calls_preserved",
+      "passed": true,
+      "reason": "HTTP 200, structured history round-tripped, answer references injected result: content='The temperature in Denpasar is 31\u00b0C.'",
+      "latency_s": 3.344223166932352,
+      "evidence": {
+        "request": {
+          "model": "qwen3:8b",
+          "messages": [
+            {
+              "role": "user",
+              "content": "What is the weather in Denpasar? Use get_weather."
+            },
+            {
+              "role": "assistant",
+              "content": null,
+              "tool_calls": [
+                {
+                  "id": "call_probe_b_0001",
+                  "type": "function",
+                  "function": {
+                    "name": "get_weather",
+                    "arguments": "{\"city\": \"Denpasar\", \"unit\": \"celsius\"}"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "tool",
+              "tool_call_id": "call_probe_b_0001",
+              "content": "{\"city\": \"Denpasar\", \"temp_c\": 31, \"condition\": \"humid, partly cloudy\"}"
+            },
+            {
+              "role": "user",
+              "content": "Given that result, tell me the temperature in Celsius in one short sentence. Do not call any more tools."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "city": {
+                      "type": "string",
+                      "description": "City name, e.g. Denpasar"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "enum": ["celsius", "fahrenheit"]
+                    }
+                  },
+                  "required": ["city"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 256
+        },
+        "http_status": 200,
+        "raw_response": "{\"id\":\"chatcmpl-128\",\"object\":\"chat.completion\",\"created\":1787594636,\"model\":\"qwen3:8b\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"The temperature in Denpasar is 31\u00b0C.\",\"reasoning\":\"Okay, the user asked for the temperature in Denpasar using the get_weather function. I called the function and got the response with temp_c as 31. Now they want the temperature in Celsius in one short sentence. I should just state the temperature clearly. Let me check if there's any other info needed, but the user specified not to call more tools, so just the temperature is enough. Make sure to mention Denpasar again to confirm the location. Alright, the answer should be straightforward.\\n\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":263,\"completion_tokens\":120,\"total_tokens\":383}}\n",
+        "parsed_response": {
+          "id": "chatcmpl-128",
+          "object": "chat.completion",
+          "created": 1787594636,
+          "model": "qwen3:8b",
+          "system_fingerprint": "fp_ollama",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The temperature in Denpasar is 31\u00b0C.",
+                "reasoning": "Okay, the user asked for the temperature in Denpasar using the get_weather function. I called the function and got the response with temp_c as 31. Now they want the temperature in Celsius in one short sentence. I should just state the temperature clearly. Let me check if there's any other info needed, but the user specified not to call more tools, so just the temperature is enough. Make sure to mention Denpasar again to confirm the location. Alright, the answer should be straightforward.\n"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 263,
+            "completion_tokens": 120,
+            "total_tokens": 383
+          }
+        }
+      }
+    },
+    {
+      "name": "c_tool_role_accepted",
+      "passed": true,
+      "reason": "HTTP 200 \u2014 role:tool with matching tool_call_id='call_probe_c_0001' accepted without error",
+      "latency_s": 3.7206522079650313,
+      "evidence": {
+        "request": {
+          "model": "qwen3:8b",
+          "messages": [
+            {
+              "role": "user",
+              "content": "What time is it in Asia/Makassar? Use get_time."
+            },
+            {
+              "role": "assistant",
+              "content": null,
+              "tool_calls": [
+                {
+                  "id": "call_probe_c_0001",
+                  "type": "function",
+                  "function": {
+                    "name": "get_time",
+                    "arguments": "{\"timezone\": \"Asia/Makassar\"}"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "tool",
+              "tool_call_id": "call_probe_c_0001",
+              "content": "{\"timezone\": \"Asia/Makassar\", \"iso_time\": \"2026-08-25T09:41:00+08:00\"}"
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_time",
+                "description": "Get the current time for a timezone.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "description": "IANA timezone, e.g. Asia/Makassar"
+                    }
+                  },
+                  "required": ["timezone"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 128
+        },
+        "http_status": 200,
+        "raw_response": "{\"id\":\"chatcmpl-388\",\"object\":\"chat.completion\",\"created\":1787594639,\"model\":\"qwen3:8b\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"Okay, the user asked for the time in Asia/Makassar, and I called the get_time function with that timezone. The response came back with the ISO time \\\"2026-08-25T09:41:00+08:00\\\". Now I need to present this in a user-friendly way.\\n\\nFirst, I should parse the ISO time. The date is August 25, 2026. The time is 09:41, and the timezone is UTC+8. Since Asia/Makassar is in the UTC+8\"},\"finish_reason\":\"length\"}],\"usage\":{\"prompt_tokens\":238,\"completion_tokens\":128,\"total_tokens\":366}}\n",
+        "parsed_response": {
+          "id": "chatcmpl-388",
+          "object": "chat.completion",
+          "created": 1787594639,
+          "model": "qwen3:8b",
+          "system_fingerprint": "fp_ollama",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "",
+                "reasoning": "Okay, the user asked for the time in Asia/Makassar, and I called the get_time function with that timezone. The response came back with the ISO time \"2026-08-25T09:41:00+08:00\". Now I need to present this in a user-friendly way.\n\nFirst, I should parse the ISO time. The date is August 25, 2026. The time is 09:41, and the timezone is UTC+8. Since Asia/Makassar is in the UTC+8"
+              },
+              "finish_reason": "length"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 238,
+            "completion_tokens": 128,
+            "total_tokens": 366
+          }
+        }
+      }
+    },
+    {
+      "name": "d_parallel_tool_calls_false_honored",
+      "passed": false,
+      "reason": "parallel_tool_calls=false was sent but server returned 2 tool_calls in one turn: ['get_weather', 'get_time']",
+      "latency_s": 5.122231291024946,
+      "evidence": {
+        "request": {
+          "model": "qwen3:8b",
+          "messages": [
+            {
+              "role": "user",
+              "content": "I need two things at once: the weather in Denpasar AND the current time in Asia/Makassar. Call whichever tool(s) you need."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "city": {
+                      "type": "string",
+                      "description": "City name, e.g. Denpasar"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "enum": ["celsius", "fahrenheit"]
+                    }
+                  },
+                  "required": ["city"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            {
+              "type": "function",
+              "function": {
+                "name": "get_time",
+                "description": "Get the current time for a timezone.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "description": "IANA timezone, e.g. Asia/Makassar"
+                    }
+                  },
+                  "required": ["timezone"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 512
+        },
+        "http_status": 200,
+        "raw_response": "{\"id\":\"chatcmpl-669\",\"object\":\"chat.completion\",\"created\":1787594644,\"model\":\"qwen3:8b\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"Okay, the user needs two things: the weather in Denpasar and the current time in Asia/Makassar. Let me check the available tools. There's get_weather which requires the city and unit. Since the user didn't specify the unit, I'll default to celsius. Then there's get_time for the timezone. I need to make two separate function calls. First, call get_weather with city Denpasar and unit celsius. Then call get_time with timezone Asia/Makassar. Make sure each tool call is in its own XML tags. Let me structure the JSON arguments correctly. No errors here, both functions are needed.\\n\",\"tool_calls\":[{\"id\":\"call_0ebp6f3o\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\":\\\"Denpasar\\\",\\\"unit\\\":\\\"celsius\\\"}\"}},{\"id\":\"call_igzkaefc\",\"index\":1,\"type\":\"function\",\"function\":{\"name\":\"get_time\",\"arguments\":\"{\\\"timezone\\\":\\\"Asia/Makassar\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":246,\"completion_tokens\":190,\"total_tokens\":436}}\n",
+        "parsed_response": {
+          "id": "chatcmpl-669",
+          "object": "chat.completion",
+          "created": 1787594644,
+          "model": "qwen3:8b",
+          "system_fingerprint": "fp_ollama",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "",
+                "reasoning": "Okay, the user needs two things: the weather in Denpasar and the current time in Asia/Makassar. Let me check the available tools. There's get_weather which requires the city and unit. Since the user didn't specify the unit, I'll default to celsius. Then there's get_time for the timezone. I need to make two separate function calls. First, call get_weather with city Denpasar and unit celsius. Then call get_time with timezone Asia/Makassar. Make sure each tool call is in its own XML tags. Let me structure the JSON arguments correctly. No errors here, both functions are needed.\n",
+                "tool_calls": [
+                  {
+                    "id": "call_0ebp6f3o",
+                    "index": 0,
+                    "type": "function",
+                    "function": {
+                      "name": "get_weather",
+                      "arguments": "{\"city\":\"Denpasar\",\"unit\":\"celsius\"}"
+                    }
+                  },
+                  {
+                    "id": "call_igzkaefc",
+                    "index": 1,
+                    "type": "function",
+                    "function": {
+                      "name": "get_time",
+                      "arguments": "{\"timezone\":\"Asia/Makassar\"}"
+                    }
+                  }
+                ]
+              },
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 246,
+            "completion_tokens": 190,
+            "total_tokens": 436
+          }
+        }
+      }
+    }
+  ],
+  "overall_pass": false
+}

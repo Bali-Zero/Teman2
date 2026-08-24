@@ -1,0 +1,436 @@
+{
+  "gate": "F8_serving_roundtrip",
+  "mandate_ref": "docs/plans/2026-08-25-due-bot-live/MANDATE.md#F8",
+  "timestamp": "2026-08-24T18:52:16Z",
+  "stack": "llama.cpp",
+  "stack_version": "0.2.0 (build 10566, commit bb4caa754)",
+  "base_url": "http://127.0.0.1:8091/v1",
+  "model_tag": "qwen3-14b-q6k-duebot",
+  "model_digest": "sha256:ec1f1d1421d7636a23e17645cac6fda39ee4b5f1f11e42eb09238089705ef699",
+  "extra_body": {},
+  "properties": [
+    {
+      "name": "a_native_tool_calls_structured",
+      "passed": true,
+      "reason": "structured tool_calls[0] = name='get_weather' id='081bSpyAdWoZduNk1FUGAMuez28Vz7LN' arguments={'city': 'Denpasar', 'unit': 'celsius'}; finish_reason='tool_calls'",
+      "latency_s": 2.5231575000000004,
+      "evidence": {
+        "request": {
+          "model": "qwen3-14b-q6k-duebot",
+          "messages": [
+            {
+              "role": "user",
+              "content": "What is the weather in Denpasar right now? Use the get_weather tool."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "city": {
+                      "type": "string",
+                      "description": "City name, e.g. Denpasar"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "enum": ["celsius", "fahrenheit"]
+                    }
+                  },
+                  "required": ["city"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 1024
+        },
+        "http_status": 200,
+        "raw_response": "{\"choices\":[{\"finish_reason\":\"tool_calls\",\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\": \\\"Denpasar\\\", \\\"unit\\\": \\\"celsius\\\"}\"},\"id\":\"081bSpyAdWoZduNk1FUGAMuez28Vz7LN\"}]}}],\"created\":1787597539,\"model\":\"qwen3-14b-q6k-duebot\",\"system_fingerprint\":\"b10566-bb4caa754\",\"object\":\"chat.completion\",\"usage\":{\"completion_tokens\":29,\"prompt_tokens\":208,\"total_tokens\":237,\"prompt_tokens_details\":{\"cached_tokens\":0}},\"id\":\"chatcmpl-AfDZvXygDWoHOsosOSp9oKqvfwBpMEP6\",\"timings\":{\"cache_n\":0,\"prompt_n\":208,\"prompt_ms\":1110.606,\"prompt_per_token_ms\":5.339451923076923,\"prompt_per_second\":187.28513982456423,\"predicted_n\":29,\"predicted_ms\":1384.381,\"predicted_per_token_ms\":49.44217857142858,\"predicted_per_second\":20.22564597462693}}",
+        "parsed_response": {
+          "choices": [
+            {
+              "finish_reason": "tool_calls",
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                  {
+                    "type": "function",
+                    "function": {
+                      "name": "get_weather",
+                      "arguments": "{\"city\": \"Denpasar\", \"unit\": \"celsius\"}"
+                    },
+                    "id": "081bSpyAdWoZduNk1FUGAMuez28Vz7LN"
+                  }
+                ]
+              }
+            }
+          ],
+          "created": 1787597539,
+          "model": "qwen3-14b-q6k-duebot",
+          "system_fingerprint": "b10566-bb4caa754",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 29,
+            "prompt_tokens": 208,
+            "total_tokens": 237,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            }
+          },
+          "id": "chatcmpl-AfDZvXygDWoHOsosOSp9oKqvfwBpMEP6",
+          "timings": {
+            "cache_n": 0,
+            "prompt_n": 208,
+            "prompt_ms": 1110.606,
+            "prompt_per_token_ms": 5.339451923076923,
+            "prompt_per_second": 187.28513982456423,
+            "predicted_n": 29,
+            "predicted_ms": 1384.381,
+            "predicted_per_token_ms": 49.44217857142858,
+            "predicted_per_second": 20.22564597462693
+          }
+        },
+        "tool_call_id": "081bSpyAdWoZduNk1FUGAMuez28Vz7LN",
+        "tool_call_name": "get_weather",
+        "tool_call_arguments": {
+          "city": "Denpasar",
+          "unit": "celsius"
+        }
+      }
+    },
+    {
+      "name": "b_history_tool_calls_preserved",
+      "passed": true,
+      "reason": "HTTP 200, structured history round-tripped, answer references injected result: content='The temperature in Denpasar is 31\u00b0C.'",
+      "latency_s": 1.2278385420000002,
+      "evidence": {
+        "request": {
+          "model": "qwen3-14b-q6k-duebot",
+          "messages": [
+            {
+              "role": "user",
+              "content": "What is the weather in Denpasar? Use get_weather."
+            },
+            {
+              "role": "assistant",
+              "content": null,
+              "tool_calls": [
+                {
+                  "id": "081bSpyAdWoZduNk1FUGAMuez28Vz7LN",
+                  "type": "function",
+                  "function": {
+                    "name": "get_weather",
+                    "arguments": "{\"city\": \"Denpasar\", \"unit\": \"celsius\"}"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "tool",
+              "tool_call_id": "081bSpyAdWoZduNk1FUGAMuez28Vz7LN",
+              "content": "{\"city\": \"Denpasar\", \"temp_c\": 31, \"condition\": \"humid, partly cloudy\"}"
+            },
+            {
+              "role": "user",
+              "content": "Given that result, tell me the temperature in Celsius in one short sentence. Do not call any more tools."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "city": {
+                      "type": "string",
+                      "description": "City name, e.g. Denpasar"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "enum": ["celsius", "fahrenheit"]
+                    }
+                  },
+                  "required": ["city"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 512
+        },
+        "http_status": 200,
+        "raw_response": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"The temperature in Denpasar is 31\u00b0C.\"}}],\"created\":1787597540,\"model\":\"qwen3-14b-q6k-duebot\",\"system_fingerprint\":\"b10566-bb4caa754\",\"object\":\"chat.completion\",\"usage\":{\"completion_tokens\":13,\"prompt_tokens\":298,\"total_tokens\":311,\"prompt_tokens_details\":{\"cached_tokens\":190}},\"id\":\"chatcmpl-dmMaY0C77CUKWMt9O0SKM9HfOJafJrjI\",\"timings\":{\"cache_n\":190,\"prompt_n\":108,\"prompt_ms\":627.61,\"prompt_per_token_ms\":5.811203703703704,\"prompt_per_second\":172.08138812319754,\"predicted_n\":13,\"predicted_ms\":594.042,\"predicted_per_token_ms\":49.5035,\"predicted_per_second\":20.200591877342006}}",
+        "parsed_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The temperature in Denpasar is 31\u00b0C."
+              }
+            }
+          ],
+          "created": 1787597540,
+          "model": "qwen3-14b-q6k-duebot",
+          "system_fingerprint": "b10566-bb4caa754",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 13,
+            "prompt_tokens": 298,
+            "total_tokens": 311,
+            "prompt_tokens_details": {
+              "cached_tokens": 190
+            }
+          },
+          "id": "chatcmpl-dmMaY0C77CUKWMt9O0SKM9HfOJafJrjI",
+          "timings": {
+            "cache_n": 190,
+            "prompt_n": 108,
+            "prompt_ms": 627.61,
+            "prompt_per_token_ms": 5.811203703703704,
+            "prompt_per_second": 172.08138812319754,
+            "predicted_n": 13,
+            "predicted_ms": 594.042,
+            "predicted_per_token_ms": 49.5035,
+            "predicted_per_second": 20.200591877342006
+          }
+        }
+      }
+    },
+    {
+      "name": "c_tool_role_accepted",
+      "passed": true,
+      "reason": "HTTP 200 \u2014 role:tool with matching tool_call_id='call_probe_c_0001' accepted without error",
+      "latency_s": 2.94074375,
+      "evidence": {
+        "request": {
+          "model": "qwen3-14b-q6k-duebot",
+          "messages": [
+            {
+              "role": "user",
+              "content": "What time is it in Asia/Makassar? Use get_time."
+            },
+            {
+              "role": "assistant",
+              "content": null,
+              "tool_calls": [
+                {
+                  "id": "call_probe_c_0001",
+                  "type": "function",
+                  "function": {
+                    "name": "get_time",
+                    "arguments": "{\"timezone\": \"Asia/Makassar\"}"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "tool",
+              "tool_call_id": "call_probe_c_0001",
+              "content": "{\"timezone\": \"Asia/Makassar\", \"iso_time\": \"2026-08-25T09:41:00+08:00\"}"
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_time",
+                "description": "Get the current time for a timezone.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "description": "IANA timezone, e.g. Asia/Makassar"
+                    }
+                  },
+                  "required": ["timezone"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 512
+        },
+        "http_status": 200,
+        "raw_response": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"The current time in Asia/Makassar is 2026-08-25 at 09:41:00 (UTC+08:00).\"}}],\"created\":1787597543,\"model\":\"qwen3-14b-q6k-duebot\",\"system_fingerprint\":\"b10566-bb4caa754\",\"object\":\"chat.completion\",\"usage\":{\"completion_tokens\":41,\"prompt_tokens\":266,\"total_tokens\":307,\"prompt_tokens_details\":{\"cached_tokens\":52}},\"id\":\"chatcmpl-U3qx3XGHkTRHkWSrJjthiAoe3JXikzc1\",\"timings\":{\"cache_n\":52,\"prompt_n\":214,\"prompt_ms\":954.113,\"prompt_per_token_ms\":4.458471962616823,\"prompt_per_second\":224.29209118836027,\"predicted_n\":41,\"predicted_ms\":1976.605,\"predicted_per_token_ms\":49.415125,\"predicted_per_second\":20.236719020745166}}",
+        "parsed_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The current time in Asia/Makassar is 2026-08-25 at 09:41:00 (UTC+08:00)."
+              }
+            }
+          ],
+          "created": 1787597543,
+          "model": "qwen3-14b-q6k-duebot",
+          "system_fingerprint": "b10566-bb4caa754",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 41,
+            "prompt_tokens": 266,
+            "total_tokens": 307,
+            "prompt_tokens_details": {
+              "cached_tokens": 52
+            }
+          },
+          "id": "chatcmpl-U3qx3XGHkTRHkWSrJjthiAoe3JXikzc1",
+          "timings": {
+            "cache_n": 52,
+            "prompt_n": 214,
+            "prompt_ms": 954.113,
+            "prompt_per_token_ms": 4.458471962616823,
+            "prompt_per_second": 224.29209118836027,
+            "predicted_n": 41,
+            "predicted_ms": 1976.605,
+            "predicted_per_token_ms": 49.415125,
+            "predicted_per_second": 20.236719020745166
+          }
+        }
+      }
+    },
+    {
+      "name": "d_parallel_tool_calls_false_honored",
+      "passed": false,
+      "reason": "parallel_tool_calls=false was sent but server returned 2 tool_calls in one turn: ['get_weather', 'get_time']",
+      "latency_s": 3.415821,
+      "evidence": {
+        "request": {
+          "model": "qwen3-14b-q6k-duebot",
+          "messages": [
+            {
+              "role": "user",
+              "content": "I need two things at once: the weather in Denpasar AND the current time in Asia/Makassar. Call whichever tool(s) you need."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "city": {
+                      "type": "string",
+                      "description": "City name, e.g. Denpasar"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "enum": ["celsius", "fahrenheit"]
+                    }
+                  },
+                  "required": ["city"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            {
+              "type": "function",
+              "function": {
+                "name": "get_time",
+                "description": "Get the current time for a timezone.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "description": "IANA timezone, e.g. Asia/Makassar"
+                    }
+                  },
+                  "required": ["timezone"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          ],
+          "tool_choice": "auto",
+          "parallel_tool_calls": false,
+          "temperature": 0.0,
+          "max_tokens": 768
+        },
+        "http_status": 200,
+        "raw_response": "{\"choices\":[{\"finish_reason\":\"tool_calls\",\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{\\\"city\\\": \\\"Denpasar\\\", \\\"unit\\\": \\\"celsius\\\"}\"},\"id\":\"rcv4fht9qsEok5Gy4kJXtVuUB3dfkEy6\"},{\"type\":\"function\",\"function\":{\"name\":\"get_time\",\"arguments\":\"{\\\"timezone\\\": \\\"Asia/Makassar\\\"}\"},\"id\":\"T8wpNHavXcJtP5ZUOD1YXj2IUFetKoMg\"}]}}],\"created\":1787597546,\"model\":\"qwen3-14b-q6k-duebot\",\"system_fingerprint\":\"b10566-bb4caa754\",\"object\":\"chat.completion\",\"usage\":{\"completion_tokens\":53,\"prompt_tokens\":303,\"total_tokens\":356,\"prompt_tokens_details\":{\"cached_tokens\":135}},\"id\":\"chatcmpl-ozNlzEZu7UZPmZ8rJHQakluWaTgaGx2R\",\"timings\":{\"cache_n\":135,\"prompt_n\":168,\"prompt_ms\":817.61,\"prompt_per_token_ms\":4.86672619047619,\"prompt_per_second\":205.47693888284144,\"predicted_n\":53,\"predicted_ms\":2589.137,\"predicted_per_token_ms\":49.791096153846155,\"predicted_per_second\":20.083912129794598}}",
+        "parsed_response": {
+          "choices": [
+            {
+              "finish_reason": "tool_calls",
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                  {
+                    "type": "function",
+                    "function": {
+                      "name": "get_weather",
+                      "arguments": "{\"city\": \"Denpasar\", \"unit\": \"celsius\"}"
+                    },
+                    "id": "rcv4fht9qsEok5Gy4kJXtVuUB3dfkEy6"
+                  },
+                  {
+                    "type": "function",
+                    "function": {
+                      "name": "get_time",
+                      "arguments": "{\"timezone\": \"Asia/Makassar\"}"
+                    },
+                    "id": "T8wpNHavXcJtP5ZUOD1YXj2IUFetKoMg"
+                  }
+                ]
+              }
+            }
+          ],
+          "created": 1787597546,
+          "model": "qwen3-14b-q6k-duebot",
+          "system_fingerprint": "b10566-bb4caa754",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 53,
+            "prompt_tokens": 303,
+            "total_tokens": 356,
+            "prompt_tokens_details": {
+              "cached_tokens": 135
+            }
+          },
+          "id": "chatcmpl-ozNlzEZu7UZPmZ8rJHQakluWaTgaGx2R",
+          "timings": {
+            "cache_n": 135,
+            "prompt_n": 168,
+            "prompt_ms": 817.61,
+            "prompt_per_token_ms": 4.86672619047619,
+            "prompt_per_second": 205.47693888284144,
+            "predicted_n": 53,
+            "predicted_ms": 2589.137,
+            "predicted_per_token_ms": 49.791096153846155,
+            "predicted_per_second": 20.083912129794598
+          }
+        }
+      }
+    }
+  ],
+  "overall_pass": false
+}
