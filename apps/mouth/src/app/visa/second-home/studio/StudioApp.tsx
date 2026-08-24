@@ -653,7 +653,11 @@ export function StudioApp() {
               route={plan.route}
               product={verdict.product}
             />
-            <ReadinessChecklist plan={plan} onToggle={toggleChecklistItem} />
+            <ReadinessChecklist
+              plan={plan}
+              verdict={verdict}
+              onToggle={toggleChecklistItem}
+            />
             {price ? (
               <section
                 style={{

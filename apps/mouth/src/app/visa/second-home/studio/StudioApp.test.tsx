@@ -159,16 +159,23 @@ describe("StudioApp", () => {
   });
 
   it("checklist toggle updates the readiness meter", async () => {
+    // fullPlan() is a deposit-route, no-family plan: 7 of the 10 items apply
+    // (property_documents, passive_income_evidence and family_records read
+    // "may also apply" for this route/family combination — see
+    // checklist.ts's classifyChecklistItem) — the meter's denominator
+    // reflects only the applicable group, never the full union.
     window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
     render(<StudioApp />);
 
-    expect(await screen.findByText(/0 of 10 prepared/)).toBeInTheDocument();
+    expect(await screen.findByText(/0 of 7 prepared/)).toBeInTheDocument();
 
+    // All 10 items still render as checkboxes (both groups stay visible AND
+    // tickable) — only the meter narrows, nothing is hidden or deleted.
     const checkboxes = screen.getAllByRole("checkbox");
     expect(checkboxes).toHaveLength(10);
-    fireEvent.click(checkboxes[0]);
+    fireEvent.click(checkboxes[0]); // first item in the "applies" group
 
-    expect(await screen.findByText(/1 of 10 prepared/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 of 7 prepared/)).toBeInTheDocument();
   });
 
   it("a crafted valid #p= fragment lands directly on the verdict page", async () => {
