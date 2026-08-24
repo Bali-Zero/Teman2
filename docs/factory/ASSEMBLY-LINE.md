@@ -118,6 +118,15 @@ is admitted only for an irreversible decision (embedding-model-freeze class).
   artifact hashes unchanged across a settling window. A report produced over a live writer must
   be re-measured line by line before any finding is accepted or rejected — which costs more than
   waiting for the writer to finish would have.
+  **Waiting for the generator to die is not always available, and there is a stronger form that
+  works whether or not it is: hand the refuter an extracted artifact at a fixed commit, never a
+  live ref.** The Visa Oracle orchestrator hit the same trap the same day, on a generator it had
+  no authority to stop — another lane's long-running job — and got past it by extracting the diff
+  it cared about into a throwaway worktree pinned to a fixed merge commit, so the refuter read a
+  frozen snapshot while the branch underneath kept moving. Two independent lanes finding the same
+  structural trap within hours of each other is a property of the process, not of one team's bad
+  afternoon. Prefer extraction; fall back to waiting for the writer to die only when extraction is
+  impractical.
 - **Queueing discipline**: WIP ≤2 PRs per lane; merge-queue utilization <70%; a lane blocked
   over 2h gets split or re-scoped by the orchestrator, not pushed harder.
 
