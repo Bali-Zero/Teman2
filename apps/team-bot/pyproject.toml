@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "team-bot"
+version = "0.1.0"
+description = "I DUE BOT — Bot B, the agentic team WhatsApp operator (F4-F7). This unit ships only the tool registry (F5) + ToolDecision schema + the claim-vs-action gate; the webhook/identity/confirmation-state-machine/sqlite pieces are separate units of the same lane."
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.9"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["team_bot*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
