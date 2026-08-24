@@ -777,6 +777,96 @@ describe("V1/E28 (2026-08-24): investment_product_code is askable for every inve
   });
 });
 
+describe("V1/E33 (2026-08-25): sponsor-gated E33A/B/C question reachability", () => {
+  it.each(["GOVERNMENT", "NONE"])(
+    "investment_product_code_govt is asked on the invest branch when sponsor_category is %s",
+    (sponsorCategory) => {
+      const ids = getCategoryQuestionIds({
+        category: "invest",
+        sponsor_category: sponsorCategory,
+      } as OracleFacts);
+      expect(ids).toContain("investment_product_code_govt");
+    },
+  );
+
+  it.each(["INDIVIDUAL", "EMPLOYER", "EDUCATION", "INVESTMENT", undefined])(
+    "investment_product_code_govt is never asked on the invest branch when sponsor_category is %s",
+    (sponsorCategory) => {
+      const ids = getCategoryQuestionIds({
+        category: "invest",
+        ...(sponsorCategory === undefined
+          ? {}
+          : { sponsor_category: sponsorCategory }),
+      } as OracleFacts);
+      expect(ids).not.toContain("investment_product_code_govt");
+    },
+  );
+
+  it("employment_product_code_govt is asked on the work branch if and only if sponsor_category is GOVERNMENT", () => {
+    for (const sponsorCategory of [
+      "NONE",
+      "INDIVIDUAL",
+      "EMPLOYER",
+      "EDUCATION",
+      "INVESTMENT",
+      "GOVERNMENT",
+    ]) {
+      const ids = getCategoryQuestionIds({
+        category: "work",
+        sponsor_category: sponsorCategory,
+      } as OracleFacts);
+      if (sponsorCategory === "GOVERNMENT") {
+        expect(ids).toContain("employment_product_code_govt");
+      } else {
+        expect(ids).not.toContain("employment_product_code_govt");
+      }
+    }
+  });
+
+  it("employment_product_code_none is asked on the work branch if and only if sponsor_category is NONE", () => {
+    for (const sponsorCategory of [
+      "NONE",
+      "INDIVIDUAL",
+      "EMPLOYER",
+      "EDUCATION",
+      "INVESTMENT",
+      "GOVERNMENT",
+    ]) {
+      const ids = getCategoryQuestionIds({
+        category: "work",
+        sponsor_category: sponsorCategory,
+      } as OracleFacts);
+      if (sponsorCategory === "NONE") {
+        expect(ids).toContain("employment_product_code_none");
+      } else {
+        expect(ids).not.toContain("employment_product_code_none");
+      }
+    }
+  });
+
+  it("employment_product_code_govt and employment_product_code_none are never both present (mutual exclusivity by construction)", () => {
+    for (const sponsorCategory of [
+      "NONE",
+      "INDIVIDUAL",
+      "EMPLOYER",
+      "EDUCATION",
+      "INVESTMENT",
+      "GOVERNMENT",
+      undefined,
+    ]) {
+      const ids = getCategoryQuestionIds({
+        category: "work",
+        ...(sponsorCategory === undefined
+          ? {}
+          : { sponsor_category: sponsorCategory }),
+      } as OracleFacts);
+      const hasGovt = ids.includes("employment_product_code_govt");
+      const hasNone = ids.includes("employment_product_code_none");
+      expect(hasGovt && hasNone).toBe(false);
+    }
+  });
+});
+
 describe("editing, pruning and branch projection", () => {
   it("editing category removes stale descendants from the abandoned branch", () => {
     let state = startOffshore("work");

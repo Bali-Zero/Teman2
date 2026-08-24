@@ -174,31 +174,67 @@ const PROPOSED_ROLES = [
   "NO_OPERATIONAL_ROLE",
   "OTHER",
 ] as const satisfies readonly ProposedRole[];
-// V1/E28 (2026-08-24, mandate docs/plans/2026-08-24-visa-oracle-live/MANDATE.md):
-// the four E28 Golden Visa investor tiers this UI question offers (E28B/C/D/F
-// — E28A never gates on this fact at all, it's the ordinary no-code path).
-// NOT the complete set of values any rule in the pack checks against
-// `intent.requested_product_code`: 13 rules total list this fact among their
-// `required_facts` (verified live against rulepack-prod-013.source.json,
-// team-lead PASS-grade review 2026-08-25) — these 4
-// (review.e28{b,c,d,f}.*-manual) plus review.e33{a,b,c}.* (3),
-// review.e23{u,v}.requested-product (2, in removal under PR #4797), and
-// el.bridging.* (4). Deliberately NOT closed-enum-typed on the wire
-// (`intent.requested_product_code` is a free `KnownString`, 1-64 chars) —
-// this list only decides what `investment_product_code`'s UI answer maps to
-// KNOWN vs UNKNOWN(NOT_PROVIDED); the "STANDARD" option (no specific code)
-// and any other stray value fall through to NOT_PROVIDED via `enumFact`.
+// V1/E28+E33 (2026-08-24/25, mandate docs/plans/2026-08-24-visa-oracle-live/
+// MANDATE.md): the seven product codes any V1 UI question on this repo lets
+// an applicant self-name (E28B/C/D/F, E33A/B/C — E28A never gates on this
+// fact at all, it's the ordinary no-code path). NOT the complete set of
+// values any rule in the pack checks against `intent.requested_product_code`:
+// 13 rules total list this fact among their `required_facts` (verified live
+// against rulepack-prod-013.source.json, team-lead PASS-grade review
+// 2026-08-25) — the 7 named above (review.e28{b,c,d,f}.*-manual +
+// review.e33{a,b,c}.*) plus review.e23{u,v}.requested-product (2, in removal
+// under PR #4797) and el.bridging.* (4). Deliberately NOT closed-enum-typed
+// on the wire (`intent.requested_product_code` is a free `KnownString`, 1-64
+// chars) — this list only decides which of the four UI answers merged below
+// maps to KNOWN vs UNKNOWN(NOT_PROVIDED); the "STANDARD" option (no specific
+// code) and any other stray value fall through to NOT_PROVIDED via
+// `enumFact`.
 //
-// E33A/E33B/E33C are DELIBERATELY EXCLUDED from this list, not an oversight:
-// per doctrine (research/visa/doctrine-factory/, team-lead 2026-08-25),
-// these three are not groundable through a self-declared UI answer at all —
-// the authenticity of a government invitation/nomination is not something an
-// applicant can self-certify by picking an option, unlike E28B/C/D/F where
-// naming the tier is itself the fact the rule needs. They stay `tier: T3`
-// for a reason this question cannot fix; the "V1 per-product method" for
-// E33A/B/C (when scheduled) needs a different mechanism, not a 3rd/4th/5th
-// entry appended here.
-const REQUESTED_PRODUCT_CODES = ["E28B", "E28C", "E28D", "E28F"] as const;
+// E33A/E33B/E33C were added 2026-08-25 (team-lead ruling, correcting an
+// earlier version of this comment that called them "not groundable" and
+// excluded them entirely). That concern conflated two different axes:
+// AUTOMATABILITY (nobody can auto-approve E33A/B/C on a self-declared
+// answer — true, and still true: all three have zero SUPPORT/ELIGIBILITY
+// rules, only a REQUIRE_REVIEW rule each) is NOT the same axis as
+// REACHABILITY (can the question even be asked at all). A T3 product with
+// zero SUPPORT rules still needs to be reachable so it routes to a human —
+// "invisible" is a silent BLOCKED_UNKNOWN outcome, exactly the E28B/C/D/F
+// failure this fact-mapper change originally fixed; HUMAN_REVIEW toward a
+// person IS the T3 promise this mandate makes, even with an incomplete
+// doctrine card.
+//
+// Unlike E28B/C/D/F (asked unconditionally in the "invest" branch), E33A/B/C
+// are gated: `employment_product_code_govt` / `employment_product_code_none`
+// / `investment_product_code_govt` (tree.ts) are inserted into the interview
+// ONLY when `sponsor_category` matches the exact value(s) each product's own
+// independent HARD_FILTER requires — GOVERNMENT for E33A
+// (`hf.e33a.sponsor-not-government`), GOVERNMENT-or-NONE for E33B/E33C
+// (`hf.e33{b,c}.sponsor-not-government-or-none`) — see flow.ts's
+// "work"/"invest" branches. This is deliberately NARROWER than gating on
+// purpose/category alone (an alternative this lane proposed and team-lead
+// rejected 2026-08-25): EMPLOYMENT/INVESTMENT purpose is a much wider slice
+// of traffic than the sponsor types that can ever pass these HARD_FILTERs,
+// and every extra applicant offered a choice they cannot pass is one more
+// person who could name it.
+//
+// DOCTRINE GAP (ledger, `.claude/skills/modus/PENDING-ARMS.md`, opened
+// 2026-08-25): no NB-2 claim anywhere in this repo states what "central
+// government invitation" (E33A/E33C) or the expertise-qualification
+// standard (E33B) actually requires — issuing ministry, document type,
+// validity period. The human reviewer who receives a REVIEW-routed E33A/B/C
+// case today has nothing written down to check it against. This is a real
+// gap that this V1 reachability fix does NOT close — see the ledger entry
+// for the missing-arming-step and proof-of-armed condition, not a footnote
+// buried in this comment.
+const REQUESTED_PRODUCT_CODES = [
+  "E28B",
+  "E28C",
+  "E28D",
+  "E28F",
+  "E33A",
+  "E33B",
+  "E33C",
+] as const;
 const FAMILY_RELATIONS = [
   "SPOUSE",
   "CHILD",
@@ -655,20 +691,38 @@ export function mapOracleFactsToApplicantFacts(
     // `mapPurposes` (above) returns `known([purpose])` — always exactly ONE
     // purpose, a pure function of `facts.category` via `CATEGORY_TO_PURPOSE`
     // (flow.ts), a TOTAL, DISJOINT mapping (`invest` -> `INVESTMENT`,
-    // `other` -> `OTHER`, never both). `investment_product_code` is only
-    // inserted into the question sequence when `category === "invest"`
-    // (flow.ts's `getCategoryQuestionIds`, asserted by flow.test.ts:775 for
-    // every non-invest category). So this fact reaching KNOWN implies
-    // category === "invest" implies `intent.purposes === [INVESTMENT]` —
-    // never `OTHER`. `el.bridging.destination-stated`'s own `purposes
-    // intersects [OTHER]` half of its `when` can never be satisfied on any
-    // path where this fact is KNOWN: the rule stays unreachable BY
-    // CONSTRUCTION, not by luck of what values got asked. See the
-    // `investment_product_code -> intent.requested_product_code implies
-    // NOT OTHER purpose` innocence test in fact-mapper.test.ts — it goes
-    // red the day someone asks this question outside the "invest" branch.
+    // `work` -> `EMPLOYMENT`, `other` -> `OTHER`, never any two at once).
+    // All four UI questions merged below (`investment_product_code`,
+    // `investment_product_code_govt`, `employment_product_code_govt`,
+    // `employment_product_code_none`) are only ever inserted into the
+    // question sequence when `category` is `"invest"` or `"work"`
+    // (flow.ts's `getCategoryQuestionIds`, asserted by flow.test.ts for
+    // every non-invest/non-work category). So this fact reaching KNOWN
+    // implies category is "invest" or "work" implies `intent.purposes` is
+    // `[INVESTMENT]` or `[EMPLOYMENT]` — never `[OTHER]`.
+    // `el.bridging.destination-stated`'s own `purposes intersects [OTHER]`
+    // half of its `when` can never be satisfied on any path where this
+    // fact is KNOWN: the rule stays unreachable BY CONSTRUCTION, not by
+    // luck of what values got asked. See the "implies NOT OTHER purpose"
+    // innocence test in fact-mapper.test.ts — it goes red the day someone
+    // asks any of these four questions outside the "invest"/"work"
+    // branches.
+    //
+    // V1/E33 innocence test (team-lead ruling 2026-08-25): "an applicant
+    // without a GOVERNMENT sponsor never produces a KNOWN
+    // requested_product_code for E33[A|B|C]" — `employment_product_code_govt`
+    // is inserted ONLY when `sponsor_category === "GOVERNMENT"`;
+    // `employment_product_code_none`/`investment_product_code_govt` ONLY
+    // when `sponsor_category` is `"GOVERNMENT"` or `"NONE"`. Every OTHER
+    // `sponsor_category` value (`INDIVIDUAL`/`EMPLOYER`/`EDUCATION`/
+    // `INVESTMENT`) never inserts any of the three E33-bearing questions,
+    // so none of these three UI facts can ever be set for those applicants
+    // — see the corresponding test in fact-mapper.test.ts.
     "intent.requested_product_code": enumFact(
-      facts.investment_product_code,
+      facts.investment_product_code ??
+        facts.investment_product_code_govt ??
+        facts.employment_product_code_govt ??
+        facts.employment_product_code_none,
       REQUESTED_PRODUCT_CODES,
     ),
     "work.employer_country_code": countryCodeFact(

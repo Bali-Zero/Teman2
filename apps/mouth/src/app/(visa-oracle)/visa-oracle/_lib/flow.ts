@@ -575,14 +575,11 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     "stay_days",
     "entry_pattern",
   ],
-  work: [
-    "sponsor_category",
-    "work_payer",
-    "work_indonesia_compensation",
-    "work_sponsor_confirmed",
-    "work_role",
-    "stay_days",
-  ],
+  // V1/E33 (2026-08-25): "work" moved to a dynamic branch below (the
+  // sponsor.type-gated `employment_product_code_govt`/`_none` insertion),
+  // same pattern as "invest"/"retirement"/"family" above — this entry is
+  // an unused Record placeholder, never actually returned.
+  work: [],
   remote: [
     "sponsor_category",
     "remote_clients",
@@ -640,7 +637,36 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       // see tree.ts's `investment_product_code` comment for why this is
       // NOT gated to `branch === "pt_pma"` (E28C has no PT PMA at all).
       "investment_product_code",
+      // V1/E33 (2026-08-25): only reachable when `sponsor_category` is one
+      // of the two values E33C's HARD_FILTER accepts — see tree.ts's
+      // `investment_product_code_govt` comment.
+      ...(facts.sponsor_category === "GOVERNMENT" ||
+      facts.sponsor_category === "NONE"
+        ? ["investment_product_code_govt"]
+        : []),
       ...branchQuestions,
+      "stay_days",
+    ];
+  }
+
+  if (category === "work") {
+    // V1/E33 (2026-08-25): E33A only for GOVERNMENT, E33B for
+    // GOVERNMENT-or-NONE — mutually exclusive gate matching each
+    // product's own independent HARD_FILTER exactly. See tree.ts's
+    // `employment_product_code_govt`/`employment_product_code_none`
+    // comments for why these are two separate questions rather than one
+    // shared question with a union gate.
+    return [
+      "sponsor_category",
+      ...(facts.sponsor_category === "GOVERNMENT"
+        ? ["employment_product_code_govt"]
+        : facts.sponsor_category === "NONE"
+          ? ["employment_product_code_none"]
+          : []),
+      "work_payer",
+      "work_indonesia_compensation",
+      "work_sponsor_confirmed",
+      "work_role",
       "stay_days",
     ];
   }

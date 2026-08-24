@@ -443,6 +443,125 @@ describe("V1/E28 (2026-08-24): investment_product_code -> intent.requested_produ
   });
 });
 
+describe("V1/E33 (2026-08-25): sponsor-gated E33A/B/C -> intent.requested_product_code", () => {
+  // Same disease-shape as V1/E28 above, narrower cure: E33A/E33B/E33C are
+  // reachable only through the sponsor-gated `employment_product_code_govt`/
+  // `employment_product_code_none`/`investment_product_code_govt` questions
+  // (tree.ts/flow.ts). Every case here mirrors the V1/E28 pattern exactly.
+  it("employment_product_code_govt=E33A (sponsor GOVERNMENT) -> KNOWN E33A", () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "GOVERNMENT",
+        employment_product_code_govt: "E33A",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "KNOWN", value: "E33A" });
+  });
+
+  it("employment_product_code_govt=E33B (sponsor GOVERNMENT) -> KNOWN E33B", () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "GOVERNMENT",
+        employment_product_code_govt: "E33B",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "KNOWN", value: "E33B" });
+  });
+
+  it("employment_product_code_none=E33B (sponsor NONE) -> KNOWN E33B", () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "NONE",
+        employment_product_code_none: "E33B",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "KNOWN", value: "E33B" });
+  });
+
+  it.each(["GOVERNMENT", "NONE"])(
+    "investment_product_code_govt=E33C (sponsor %s) -> KNOWN E33C",
+    (sponsorCategory) => {
+      expect(
+        mapFacts({
+          category: "invest",
+          sponsor_category: sponsorCategory,
+          investment_product_code_govt: "E33C",
+        } as OracleFacts).facts["intent.requested_product_code"],
+      ).toEqual({ status: "KNOWN", value: "E33C" });
+    },
+  );
+
+  it('employment_product_code_govt="STANDARD" -> UNKNOWN NOT_PROVIDED, never blocks a plausible E33A/B path', () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "GOVERNMENT",
+        employment_product_code_govt: "STANDARD",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
+  });
+
+  it("employment_product_code_govt=unsure -> UNKNOWN UNVERIFIED", () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "GOVERNMENT",
+        employment_product_code_govt: "unsure",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+  });
+
+  it("never asked (no V1/E33 UI fact set at all) -> UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["intent.requested_product_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  // TEAM-LEAD-MANDATED INNOCENCE TEST, verbatim requirement (2026-08-25
+  // ruling): "an applicant without a GOVERNMENT sponsor never produces a
+  // KNOWN requested_product_code for E33[A|B|C]". `sponsor_category`'s real
+  // option keys are read live from tree.ts (via QUESTIONS) rather than
+  // hardcoded, so this test cannot silently go stale if the enum drifts.
+  it("no sponsor_category value other than GOVERNMENT/NONE ever reaches the three E33-bearing questions or a KNOWN E33 code", () => {
+    const sponsorCategoryKeys = QUESTIONS.sponsor_category.options.map(
+      (option) => option.key,
+    );
+    const otherValues = sponsorCategoryKeys.filter(
+      (value) => value !== "GOVERNMENT" && value !== "NONE",
+    );
+    expect(otherValues.sort()).toEqual(
+      ["INDIVIDUAL", "EMPLOYER", "EDUCATION", "INVESTMENT"].sort(),
+    );
+    for (const sponsorCategory of otherValues) {
+      const workIds = getCategoryQuestionIds({
+        category: "work",
+        sponsor_category: sponsorCategory,
+      } as OracleFacts);
+      expect(workIds).not.toContain("employment_product_code_govt");
+      expect(workIds).not.toContain("employment_product_code_none");
+
+      const investIds = getCategoryQuestionIds({
+        category: "invest",
+        sponsor_category: sponsorCategory,
+      } as OracleFacts);
+      expect(investIds).not.toContain("investment_product_code_govt");
+
+      // Hence these three UI facts structurally cannot be set for this
+      // applicant, hence the fact-mapper can never resolve
+      // intent.requested_product_code to KNOWN via any of them.
+      const mapped = mapFacts({
+        category: "work",
+        sponsor_category: sponsorCategory,
+      } as OracleFacts);
+      expect(mapped.facts["intent.requested_product_code"]).toEqual({
+        status: "UNKNOWN",
+        reason: "NOT_ASKED",
+      });
+    }
+  });
+});
+
 describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   it("never asked -> UNKNOWN NOT_ASKED (the pre-existing default value)", () => {
     expect(mapSponsorType({})).toEqual({
