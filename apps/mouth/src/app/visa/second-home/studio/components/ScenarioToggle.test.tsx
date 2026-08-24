@@ -33,11 +33,44 @@ describe("ScenarioToggle", () => {
     });
   });
 
-  it("renders the control label when closed", () => {
+  it("keeps the closed trigger neutral at rest and exposes accent only on interaction", () => {
+    const { container } = render(
+      <ScenarioToggle plan={basePlan({ route: "deposit" })} />,
+    );
+    const trigger = screen.getByRole("button", { name: /other route/i });
+    const inlineStyle = trigger.getAttribute("style") ?? "";
+    const css = container.querySelector("style")?.textContent ?? "";
+    const restingRule = css.match(
+      /\.bz-shs-scenario-toggle-trigger\s*\{([^}]*)\}/,
+    )?.[1];
+
+    expect(inlineStyle).not.toContain("--accent-funnel");
+    expect(inlineStyle).not.toMatch(
+      /(?:^|;)\s*(?:border|background|color)\s*:/,
+    );
+    expect(restingRule).toContain(
+      "border: 1px solid var(--color-border-subtle)",
+    );
+    expect(restingRule).toContain("color: var(--text-secondary)");
+    expect(restingRule).not.toContain("--accent-funnel");
+    expect(css).toMatch(
+      /\.bz-shs-scenario-toggle-trigger:is\(:hover, :focus-visible\)\s*\{[^}]*border-color:\s*var\(--accent-funnel\)[^}]*color:\s*color-mix\(in srgb, var\(--accent-funnel\) 70%, white\)[^}]*text-decoration-line:\s*underline/s,
+    );
+    expect(css).toMatch(
+      /\.bz-shs-scenario-toggle-trigger:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--accent-funnel\)[^}]*outline-offset:\s*3px/s,
+    );
+  });
+
+  it("keeps its accessible name, decorative icon, and 44px touch target", () => {
     render(<ScenarioToggle plan={basePlan({ route: "deposit" })} />);
-    expect(
-      screen.getByRole("button", { name: /other route/i }),
-    ).toBeInTheDocument();
+    const trigger = screen.getByRole("button", { name: /other route/i });
+    const icon = trigger.querySelector("svg");
+
+    expect(trigger).toBeInTheDocument();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(Number.parseFloat(trigger.style.minHeight)).toBeGreaterThanOrEqual(
+      44,
+    );
   });
 
   it("opens the preview when the control is clicked and closes it with the back button", () => {
