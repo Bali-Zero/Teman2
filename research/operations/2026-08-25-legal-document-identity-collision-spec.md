@@ -1,3 +1,16 @@
+---
+date: 2026-08-25
+domain: operations
+client_case: none
+adversarial_review: kimi-k3
+sources:
+  - production measurement, Qdrant collection legal_unified_hybrid_hybrid (83,969 points, 28 document ids)
+  - ingestion log /tmp/laws_live_0825.log on Pro (lines 127, 8393)
+  - apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py
+  - apps/backend-rag/backend/core/legal/hierarchical_indexer.py
+  - PR #4864 (the refuted and reverted first attempt)
+---
+
 # Legal document identity: a collision that destroyed data, and why the obvious fix is worse
 
 > **Status:** SPEC. No code change is proposed for merge yet — the first attempt
@@ -171,3 +184,36 @@ its own PR with its own guilt/innocence tests.
 The 50 destroyed Coretax chunks are restored by re-ingesting PMK 1/2026 — but
 **only after** an identity fix lands, or the re-ingest simply re-runs the
 collision in the other direction.
+
+## Adversarial review
+
+**Reviewed by: Kimi K3 (cross-family, `kimi-k3`). Generator != grader — the seat
+that refuted this had no part in writing the fix it refuted.**
+
+This document exists BECAUSE of that review, which is an unusual shape worth
+stating plainly: the author wrote a cure (PR #4864), the refuter destroyed it,
+and the spec is what was left standing. The findings below are therefore not
+objections *to* the spec — they are its content.
+
+What the refuter attacked and what happened to each:
+
+| claim under attack | outcome |
+|---|---|
+| "544 upserted, 494 present, therefore 50 overwritten" | **Survived**, but only after the refuter forced a stronger proof. It named two alternative explanations that produce the same delta with no collision at all — intra-document pasal-number collapse, and a partial upsert failure — and neither is excluded by the arithmetic alone. What settles it is the grouping actually performed: 494 points carry the Coretax title, 50 carry the immigration one, under one identity. |
+| "the collision mechanism is real" | **Survived.** Verified in code by the refuter independently: `hierarchical_indexer.py:234` + `:340`. |
+| "making the source hash unconditional fixes it" | **REFUTED, and the fix was reverted.** It breaks historical replacement and institutionalises duplication on re-download — both then re-confirmed against the code, file:line, by a second independent reader. §2 is that finding. |
+| "no code parses document_id back into components" | **Survived** — the refuter looked and found none. |
+| "16 hex chars of sha is enough entropy" | **Survived** at this corpus scale. |
+
+Two things the refuter said that this document adopts as its own conclusions:
+that the *better* fixes were dismissed too fast (§4), and that **the missing
+invariant is not uniqueness but loudness** — a guard that turns a silent
+overwrite into an error is worth more than a cleverer identity, because it also
+catches the collision classes nobody has enumerated (§3, I4).
+
+Residual disagreement, recorded rather than resolved: the refuter proposed
+fixing the *extractor* (so PMK 1/2026 extracts as `PMK`, not `Permen`) as the
+root cure. This document treats that as necessary but insufficient — §5 shows
+the extractor is wrong on 6 of 19 documents for a different reason entirely, so
+depending on it for identity uniqueness would rest a data-integrity invariant on
+a component already known to be unreliable.
