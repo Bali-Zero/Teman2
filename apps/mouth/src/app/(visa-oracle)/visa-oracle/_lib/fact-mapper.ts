@@ -174,6 +174,15 @@ const PROPOSED_ROLES = [
   "NO_OPERATIONAL_ROLE",
   "OTHER",
 ] as const satisfies readonly ProposedRole[];
+// V1/E28 (2026-08-24, mandate docs/plans/2026-08-24-visa-oracle-live/MANDATE.md):
+// the only four `intent.requested_product_code` values any live rule ever
+// checks (rulepack-prod-013.source.json — review.e28{b,c,d,f}.*-manual, each
+// `on_unknown: NEEDS_INPUT`). Deliberately NOT closed-enum-typed on the wire
+// (`intent.requested_product_code` is a free `KnownString`, 1-64 chars) —
+// this list only decides what `investment_product_code`'s UI answer maps to
+// KNOWN vs UNKNOWN(NOT_PROVIDED); the "STANDARD" option (no specific code)
+// and any other stray value fall through to NOT_PROVIDED via `enumFact`.
+const REQUESTED_PRODUCT_CODES = ["E28B", "E28C", "E28D", "E28F"] as const;
 const FAMILY_RELATIONS = [
   "SPOUSE",
   "CHILD",
@@ -593,7 +602,25 @@ export function mapOracleFactsToApplicantFacts(
     "intent.stay_days": mapStayDays(facts),
     "intent.desired_entry_date": unknownFact(NOT_ASKED),
     "intent.entry_pattern": enumFact(facts.entry_pattern, ENTRY_PATTERNS),
-    "intent.requested_product_code": unknownFact(NOT_ASKED),
+    // V1/E28 (2026-08-24): the `investment_product_code` question now ships
+    // (tree.ts, asked for every "invest" category applicant right after
+    // `investment_vehicle` — flow.ts's `getCategoryQuestionIds`). Before
+    // this, this field was unconditionally `unknownFact(NOT_ASKED)` and no
+    // applicant could ever name E28B/E28C/E28D/E28F — the only 4 products
+    // whose sole rule keys on this exact fact
+    // (`review.e28{b,c,d,f}.*-manual`, each `REQUIRE_REVIEW` /
+    // `on_unknown: NEEDS_INPUT`) — making all four invisible in production
+    // (`NEEDS_INPUT` UNKNOWN routes to `BLOCKED_UNKNOWN`, which always loses
+    // to a plausible investor's ordinary `SUPPORTED_CANDIDATES` via E28A).
+    // Same `enumFact` treatment as every other closed-set choice question:
+    // a named code -> KNOWN; "no specific code"/anything else -> UNKNOWN
+    // NOT_PROVIDED (an ordinary E28A evaluation is unaffected either way);
+    // never asked (question gated out, e.g. any non-"invest" category) ->
+    // UNKNOWN NOT_ASKED, via `enumFact`'s own `value === undefined` branch.
+    "intent.requested_product_code": enumFact(
+      facts.investment_product_code,
+      REQUESTED_PRODUCT_CODES,
+    ),
     "work.employer_country_code": countryCodeFact(
       facts.remote_employer_country,
     ),

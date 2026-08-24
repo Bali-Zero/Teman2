@@ -286,6 +286,36 @@ export function CustodyMap() {
           .custody-chevron {
             display: none !important;
           }
+
+          /* Print fix (2026-08-24): at A4 print width the 3-column grid
+           * squeezed each step into an unreadable ~55px ribbon (one word
+           * per line), and the unbroken word "application" in step 2's
+           * heading overflowed past this section's overflow:hidden and
+           * was clipped mid-word ("applicatio|n"). Stack to one step per
+           * row, full page width — same shape as the <=760px screen
+           * breakpoint below, but scoped to @media print so it fires
+           * regardless of what width the print engine's internal layout
+           * pass actually computes (measured to differ from both the live
+           * viewport and the @page content box — screen-narrow media
+           * queries can't be trusted to also cover print).
+           *
+           * Arrows are hidden rather than rotated 90° like the mobile
+           * breakpoint does: a printed page has no scroll/hover affordance,
+           * consecutive steps are already separated by spacing and their
+           * own headings, and a disconnected floating chevron between
+           * full-width rows reads as clutter rather than flow. */
+          .custody-layout,
+          .custody-flow {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+
+          .custody-arrow {
+            display: none !important;
+          }
+
+          .custody-outside::before {
+            display: none !important;
+          }
         }
 
         @media (max-width: 760px) {

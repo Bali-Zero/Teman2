@@ -70,6 +70,10 @@ describe("SavePlanBar print action", () => {
     expect(css).toContain(".bz-shs-save-plan-bar,");
     expect(css).toContain(".bz-shs-option,");
     expect(css).toContain(".bz-shs-scenario-toggle-trigger,");
+    // 2026-08-24: the verdict page's "Back to your answers" nav control is
+    // dead weight in a printed/saved PDF — hidden alongside the other
+    // controls this block already suppresses.
+    expect(css).toContain(".bz-shs-back-to-answers");
     expect(css).not.toMatch(/(?:^|[,{])\s*button\s*(?=[,{])/);
     expect(css).toContain("break-inside: avoid");
     expect(css).toContain('input[type="checkbox"]');

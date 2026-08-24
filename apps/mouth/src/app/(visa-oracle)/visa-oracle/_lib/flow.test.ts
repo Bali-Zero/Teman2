@@ -92,6 +92,7 @@ const CATEGORY_CASES: ReadonlyArray<{
     branch: [
       ["sponsor_category", "INVESTMENT"],
       ["investment_vehicle", "pt_pma"],
+      ["investment_product_code", "STANDARD"],
       ["investment_pt_pma", "yes"],
       ["investment_capital_idr", "1000000000"],
       ["investment_paid_up_capital_idr", "500000000"],
@@ -732,6 +733,46 @@ describe("2026-08-23 owner ruling: stepchild evidence questions fire only for fa
         "family_stepchild_marriage_certificate_confirmed",
       );
       expect(ids).not.toContain("family_stepchild_birth_certificate_confirmed");
+    }
+  });
+});
+
+describe("V1/E28 (2026-08-24): investment_product_code is askable for every invest vehicle", () => {
+  // The mandate's disease: intent.requested_product_code was hard-coded
+  // NOT_ASKED in fact-mapper.ts, so no interview path could ever reach
+  // E28B/C/D/F (each product's sole rule keys on this exact fact). This
+  // asserts the fix by the REAL path a user walks — getCategoryQuestionIds —
+  // never by inspecting the mapper alone (acceptance item 1).
+  it.each([
+    "pt_pma",
+    "property",
+    "bank_deposit",
+    "merit",
+    "family",
+    "undecided",
+  ])(
+    "is asked right after investment_vehicle for every vehicle branch (%s), including the non-PT-PMA ones E28C needs",
+    (vehicle) => {
+      const ids = getCategoryQuestionIds({
+        category: "invest",
+        investment_vehicle: vehicle,
+      } as OracleFacts);
+      const vehicleIdx = ids.indexOf("investment_vehicle");
+      expect(vehicleIdx).toBeGreaterThanOrEqual(0);
+      expect(ids[vehicleIdx + 1]).toBe("investment_product_code");
+    },
+  );
+
+  it("is asked even before the vehicle is chosen (undefined branch)", () => {
+    const ids = getCategoryQuestionIds({ category: "invest" } as OracleFacts);
+    expect(ids).toContain("investment_product_code");
+  });
+
+  it("is never reachable through a non-invest category", () => {
+    for (const category of CATEGORY_KEYS) {
+      if (category === "invest") continue;
+      const ids = getCategoryQuestionIds({ category } as OracleFacts);
+      expect(ids).not.toContain("investment_product_code");
     }
   });
 });

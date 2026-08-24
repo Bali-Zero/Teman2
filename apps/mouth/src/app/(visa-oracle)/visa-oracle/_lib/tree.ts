@@ -651,6 +651,36 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.investment_vehicle" },
     notSure: { mode: "human-review" },
   },
+  // V1/E28 (2026-08-24, mandate docs/plans/2026-08-24-visa-oracle-live/
+  // MANDATE.md): asked for every "invest" applicant regardless of which
+  // `investment_vehicle` they picked — E28C is a pure capital-market
+  // portfolio investor (no PT PMA), so gating this on `investment_vehicle
+  // === "pt_pma"` would make E28C unreachable through this question. Maps
+  // straight to `intent.requested_product_code` (fact-mapper.ts), the ONE
+  // fact every E28B/C/D/F rule keys on.
+  investment_product_code: {
+    id: "investment_product_code",
+    i18nKey: "q.investment_product_code",
+    kind: "choice",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["intent.requested_product_code"],
+    },
+    sensitive: false,
+    options: [
+      { key: "E28B", labelI18nKey: "q.investment_product_code.opt.E28B" },
+      { key: "E28C", labelI18nKey: "q.investment_product_code.opt.E28C" },
+      { key: "E28D", labelI18nKey: "q.investment_product_code.opt.E28D" },
+      { key: "E28F", labelI18nKey: "q.investment_product_code.opt.E28F" },
+      {
+        key: "STANDARD",
+        labelI18nKey: "q.investment_product_code.opt.STANDARD",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.investment_product_code" },
+    notSure: { mode: "human-review" },
+  },
   investment_pt_pma: {
     id: "investment_pt_pma",
     i18nKey: "q.investment_pt_pma",

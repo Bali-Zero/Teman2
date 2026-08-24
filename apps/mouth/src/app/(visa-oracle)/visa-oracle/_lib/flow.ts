@@ -636,6 +636,10 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
     return [
       "sponsor_category",
       "investment_vehicle",
+      // V1/E28 (2026-08-24): unconditional across every vehicle branch —
+      // see tree.ts's `investment_product_code` comment for why this is
+      // NOT gated to `branch === "pt_pma"` (E28C has no PT PMA at all).
+      "investment_product_code",
       ...branchQuestions,
       "stay_days",
     ];

@@ -285,6 +285,21 @@ const en = {
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
     "This label only chooses which exact facts to ask next. It never chooses a visa path.",
+  "q.investment_product_code":
+    "Do you already know which specific investor visa product you want?",
+  "q.investment_product_code.hint":
+    "Choose only if a consultant or official source already named the exact code for you.",
+  "q.investment_product_code.opt.E28B":
+    "Golden Visa — company establishment (PT PMA)",
+  "q.investment_product_code.opt.E28C":
+    "Golden Visa — capital market (portfolio investment)",
+  "q.investment_product_code.opt.E28D": "Golden Visa — branch or subsidiary",
+  "q.investment_product_code.opt.E28F":
+    "Golden Visa — New Capital (IKN) subsidiary",
+  "q.investment_product_code.opt.STANDARD":
+    "No — evaluate my case on standard criteria",
+  "why.investment_product_code":
+    "Naming one of these four routes sends it to a consultant for manual verification — this is never used to select a visa path on its own.",
   "q.investment_pt_pma": "Is the PT PMA commitment already concrete?",
   "q.investment_pt_pma.hint":
     "Answer no for an idea, early discussion, or uncommitted plan.",
@@ -1101,6 +1116,22 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
     "Label ini hanya menentukan fakta persis yang ditanyakan berikutnya. Label ini tidak pernah memilih jalur visa.",
+  "q.investment_product_code":
+    "Apakah Anda sudah tahu produk visa investor spesifik yang Anda inginkan?",
+  "q.investment_product_code.hint":
+    "Pilih hanya jika konsultan atau sumber resmi sudah menyebutkan kode pastinya untuk Anda.",
+  "q.investment_product_code.opt.E28B":
+    "Golden Visa — pendirian perusahaan (PT PMA)",
+  "q.investment_product_code.opt.E28C":
+    "Golden Visa — pasar modal (investasi portofolio)",
+  "q.investment_product_code.opt.E28D":
+    "Golden Visa — cabang atau anak perusahaan",
+  "q.investment_product_code.opt.E28F":
+    "Golden Visa — anak perusahaan di Ibu Kota Nusantara (IKN)",
+  "q.investment_product_code.opt.STANDARD":
+    "Tidak — evaluasi kasus saya dengan kriteria standar",
+  "why.investment_product_code":
+    "Menyebutkan salah satu dari empat jalur ini mengirimkannya ke konsultan untuk verifikasi manual — ini tidak pernah dipakai untuk memilih jalur visa sendiri.",
   "q.investment_pt_pma": "Apakah komitmen PT PMA sudah konkret?",
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
