@@ -361,3 +361,72 @@ defect_classes:
       attempted under the OLD epoch must receive 409/403, never execute.
       Team-bot analogue: team.leader-epoch-change-mid-action.
     source: "5.4 (mine)"
+
+  # ---------------------------------------------------------------------
+  # bot: transport — B5 additions (F9 staging-drill, backend/tests/duebot/
+  # failover/test_staging_drill.py). Named after the orchestrator's own
+  # explicit ask for the drill: "split-brain attempted and refused, stale
+  # epoch rejected, both nodes up, neither node up, takeover during an
+  # in-flight action" (the stale-epoch case above already existed from
+  # B6a; these five are new).
+  # ---------------------------------------------------------------------
+  - id: transport.failover-both-nodes-healthy-no-action
+    bot: transport
+    title: Both nodes up — failoverd takes no action
+    description: >-
+      Mini healthy across multiple ticks: zero epoch CAS attempts, zero
+      WABA callback-override calls. The innocent counterpart to every
+      failoverd refusal/promotion case — proves the machinery is quiet
+      by default, not merely "fails closed when provoked".
+    source: "orchestrator ask, staging drill (mine)"
+
+  - id: transport.failover-neither-node-healthy-refused
+    bot: transport
+    title: Neither node up — promotion refused
+    description: >-
+      Mini is down AND Pro's own F9 step-3 prechecks fail (Ollama
+      unreachable, backend CRM unhealthy) — Pro must not claim
+      leadership just because Mini is worse off. Zero CAS attempts,
+      zero WABA calls, leader state unchanged.
+    source: "orchestrator ask, staging drill (mine)"
+
+  - id: transport.failover-split-brain-attempted-refused
+    bot: transport
+    title: Split-brain promotion attempt refused
+    description: >-
+      Two contenders race a promotion attempt against the same store at
+      the same expected epoch (superscar family #10's exact failure
+      shape) — exactly one may win; the loser gets CONFLICT_STALE_EPOCH
+      and never reaches the WABA callback call.
+    source: "orchestrator ask, staging drill (mine)"
+
+  - id: transport.failover-takeover-mid-flight-action
+    bot: transport
+    title: Takeover during an in-flight action
+    description: >-
+      A mutation captures the current epoch at its start; failover
+      promotes a new leader WHILE it is still in flight; the mutation's
+      completion check — using the epoch it captured earlier, not a
+      fresh read — must be rejected. Client-bot analogue:
+      client.human-takeover-thread-epoch-race.
+    source: "orchestrator ask, staging drill (mine)"
+
+  - id: transport.failover-no-automatic-failback
+    bot: transport
+    title: No automatic failback after the old node recovers
+    description: >-
+      F9: after Pro takes over and Mini later recovers healthy, a
+      further failoverd tick must do nothing — leadership stays with
+      Pro until an explicit operator action, never reverted on its own.
+    source: "F9 (mine)"
+
+  - id: transport.failover-stale-node-wakes-stale-epoch
+    bot: transport
+    title: A stale node wakes up believing a stale epoch
+    description: >-
+      After a promotion, the demoted node (crashed/restarted/
+      partitioned) still believes it holds the old epoch and tries to
+      heartbeat (renew) and authorize a mutation with it — both must be
+      rejected, while the real current leader's own heartbeat still
+      works.
+    source: "orchestrator's explicit example (mine)"

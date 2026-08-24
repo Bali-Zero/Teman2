@@ -39,6 +39,7 @@ differently:
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -181,15 +182,30 @@ class InMemoryIngressLeaderStore:
     ``UPDATE ... WHERE leader_epoch = $expected`` gives via row-level
     locking, reproduced here without a database so the split-brain drill
     can prove it deterministically and fast.
+
+    Every method opens with ``await asyncio.sleep(0)`` — a deliberate,
+    minimal yield to the event loop BEFORE touching any state. A real
+    Postgres-backed store (``ingress_state_repo.py``) always yields at
+    this point too, because ``pool.acquire()``/``fetchrow()`` is a real
+    network round-trip; without the same yield here, two callers racing
+    via ``asyncio.gather`` on THIS in-memory store would never actually
+    interleave (single-threaded asyncio runs a coroutine with no internal
+    await point start-to-finish before ever handing control back), so a
+    "concurrent" drill against it would silently degrade into two
+    sequential calls — proving nothing about the CAS guarantee it exists
+    to demonstrate. Caught by
+    ``test_staging_drill.py::test_split_brain_attempted_and_refused``
+    failing (both contenders "won", at epoch 2 and 3) before this yield
+    was added — kept as a comment here so the fix does not silently
+    regress if this class is edited again.
     """
 
     def __init__(self, initial: IngressLeaderState) -> None:
-        import asyncio
-
         self._state = initial
         self._lock = asyncio.Lock()
 
     async def read(self) -> IngressLeaderState:
+        await asyncio.sleep(0)
         return self._state
 
     async def try_promote(
@@ -201,6 +217,7 @@ class InMemoryIngressLeaderStore:
         new_callback_sha256: str,
         now: datetime,
     ) -> PromoteResult:
+        await asyncio.sleep(0)
         async with self._lock:
             current = self._state
             if current.leader_epoch != expected_epoch:
@@ -226,6 +243,7 @@ class InMemoryIngressLeaderStore:
         lease_seconds: float,
         now: datetime,
     ) -> RenewResult:
+        await asyncio.sleep(0)
         async with self._lock:
             current = self._state
             if current.leader_epoch != epoch:
