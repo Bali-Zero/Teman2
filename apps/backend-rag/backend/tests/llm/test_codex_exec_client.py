@@ -25,6 +25,7 @@ from backend.llm.codex_exec_client import (
     MODEL_LUNA,
     MODEL_SOL,
     MODEL_TERRA,
+    CodexExecAmbiguousError,
     CodexExecAuthError,
     CodexExecClient,
     CodexExecCommunicationError,
@@ -36,6 +37,8 @@ from backend.llm.codex_exec_client import (
     CodexExecResult,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
+    MatchConfidence,
+    OutputShapeReason,
 )
 
 # ---------------------------------------------------------------------------
@@ -573,11 +576,15 @@ class TestOutputContract:
         tmp_path,
         fake_exec: _FakeSubprocessExec,
     ) -> None:
+        """Ruling A (B2b): the classic transient — retrying is likely to
+        help — is distinguished from an oversized-output failure via
+        `reason=OutputShapeReason.EMPTY`."""
         client = _make_available_client(tmp_path)
         fake_exec.queue(_FakeProcess(b"", b"", 0))
 
-        with pytest.raises(CodexExecOutputShapeError):
+        with pytest.raises(CodexExecOutputShapeError) as exc_info:
             await client.generate("hello")
+        assert exc_info.value.reason is OutputShapeReason.EMPTY
 
     @pytest.mark.asyncio
     async def test_guilt_whitespace_only_stdout_on_exit_zero(
@@ -588,7 +595,50 @@ class TestOutputContract:
         client = _make_available_client(tmp_path)
         fake_exec.queue(_FakeProcess(b"   \n\t  ", b"", 0))
 
-        with pytest.raises(CodexExecOutputShapeError):
+        with pytest.raises(CodexExecOutputShapeError) as exc_info:
+            await client.generate("hello")
+        assert exc_info.value.reason is OutputShapeReason.EMPTY
+
+    # -- Ruling A (B2b): oversized-output is the OTHER OUTPUT_INVALID
+    #    sub-cause, reached via a non-zero exit + a structured payload-size
+    #    signal in stderr — NOT via the exit-0 empty-stdout path above. Its
+    #    retry semantics are OPPOSITE: the same prompt reproduces this, so
+    #    a caller must truncate/reprompt rather than blind-retry. --
+
+    @pytest.mark.asyncio
+    async def test_guilt_oversized_output_reclassified_from_resource_exhausted(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Refuter finding §2 (over-match): `RESOURCE_EXHAUSTED: received
+        message larger than max (...)` was previously read as `QUOTA` via
+        bare `resource_exhausted` — a payload-size failure, not account
+        quota. B2b reclassifies this exact reproduced string as
+        `OUTPUT_INVALID`/`oversized`, never `QUOTA`."""
+        client = _make_available_client(tmp_path)
+        stderr = b"RESOURCE_EXHAUSTED: received message larger than max (4194304 vs. 1048576)\n"
+        fake_exec.queue(_FakeProcess(b"", stderr, 1))
+
+        with pytest.raises(CodexExecOutputShapeError) as exc_info:
+            await client.generate("hello")
+        assert exc_info.value.reason is OutputShapeReason.OVERSIZED
+
+    @pytest.mark.asyncio
+    async def test_innocence_bare_resource_exhausted_stays_unknown(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """SPEC P5 ("unknown stays unknown"): bare `RESOURCE_EXHAUSTED` with
+        no size-qualifying context is genuinely ambiguous between quota and
+        payload-size (gRPC/Google API convention uses this status code for
+        BOTH) with no anchor either way for this CLI — deliberately left
+        unmatched rather than guessed at either meaning."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", b"RESOURCE_EXHAUSTED\n", 1))
+
+        with pytest.raises(CodexExecProcessError):
             await client.generate("hello")
 
     @pytest.mark.asyncio
@@ -887,23 +937,26 @@ class TestAuthDeathDetection:
     def test_guilt_boundary_formation_never_bridges_across_independently_searched_texts(
         self,
     ) -> None:
-        """GLM F26-4 (MEDIUM, CONFIRMED): a direct unit test on
-        `_auth_death_detected` itself (not through `generate()`) — two
+        """GLM F26-4 (MEDIUM, CONFIRMED), RE-EXPRESSED under the B2b
+        per-line classifier (`_classify_stderr` supersedes
+        `_auth_death_detected`, see that function's docstring): two
         fragments that would JOINTLY form a trigger phrase if concatenated
-        ("...was not" + "logged in...") must NOT match when searched as
-        SEPARATE arguments; the helper never joins them with a separator
-        first. Pins the structural property the module docstring and the
-        R26 addendum both describe, independent of today's one-argument
-        call site."""
+        ("...was not" + "logged in...") must NOT match when they are two
+        SEPARATE LINES of one stderr blob — SPEC P2, classification never
+        spans a record boundary. Pins the structural property the module
+        docstring and the B2b block comment both describe."""
         fragment_a = "the appointment was not"
         fragment_b = "logged in to the calendar system, please retry"
-        # If these were joined with "\n" (or any separator), "was not\nlogged
-        # in" would match `_AUTH_DEATH_RE`'s `not\s+logged\s+in` alternative
-        # (`\s+` matches a newline) — the exact seam F26-4 flagged.
-        assert client_module._AUTH_DEATH_RE.search(fragment_a + "\n" + fragment_b) is not None
-        assert client_module._auth_death_detected(fragment_a, fragment_b) is False
-        assert client_module._auth_death_detected(fragment_a) is False
-        assert client_module._auth_death_detected(fragment_b) is False
+        # If these were joined with "\n" and searched as ONE string (not
+        # split first), "was not\nlogged in" would match `_AUTH_PROSE_RE`'s
+        # `not\s+logged\s+in` alternative (`\s+` matches a newline) — the
+        # exact seam F26-4 flagged.
+        assert client_module._AUTH_PROSE_RE.search(fragment_a + "\n" + fragment_b) is not None
+        verdict = client_module._classify_stderr(fragment_a + "\n" + fragment_b)
+        assert verdict.winner is None
+        assert verdict.ambiguous_classes == frozenset()
+        assert client_module._classify_stderr(fragment_a).winner is None
+        assert client_module._classify_stderr(fragment_b).winner is None
 
     # -- R26-3: the backtick-optional tail of the `run codex login` clause,
     #    isolated from every other alternative's vocabulary --
@@ -1012,7 +1065,12 @@ class TestQuotaDetection:
     @pytest.mark.parametrize(
         "stderr_text",
         [
-            b"Error: quota exceeded for this billing period\n",
+            # R28-1 (2026-08-25): "Error: quota exceeded for this billing
+            # period" was DROPPED as a guilt fixture — bare "quota
+            # exceeded" is now deliberately excluded (reproduced over-match
+            # finding, see `_QUOTA_PROSE_RE`'s comment) — replaced with a
+            # real under-match target the vocabulary now covers.
+            b"Error: you have exceeded your current quota; check your plan and billing details.\n",
             b"429 too many requests: rate limit exceeded\n",
             b"insufficient_quota: you have hit your usage limit\n",
         ],
@@ -1036,12 +1094,24 @@ class TestQuotaDetection:
         fake_exec: _FakeSubprocessExec,
     ) -> None:
         """Guard against cicatrix family #3 over-match: a legitimate WA
-        answer discussing a KITAS sponsor quota must NOT be misclassified
-        as this client's own quota exhaustion, because `exit_code == 0`
-        never triggers the quota scan at all — mirrors
-        `test_innocence_success_path_never_scanned_for_auth_words`."""
+        answer must NOT be misclassified as this client's own quota
+        exhaustion, because `exit_code == 0` never triggers the quota scan
+        at all — mirrors `test_innocence_success_path_never_scanned_for_auth_words`.
+
+        Refuter test-defect finding §5 (2026-08-25 correction): the
+        pre-B2b version of this fixture ("Your sponsor's KITAS quota is
+        exceeded for this year") would NOT have matched the vocabulary
+        even if the success path WERE incorrectly scanned ("quota is
+        exceeded" is not "quota exceeded"), so the test proved nothing
+        about the guard it claimed to cover. This fixture contains a
+        genuine `MatchConfidence.HIGH` trigger ("429 too many requests")
+        so a regression that starts scanning stdout on success would
+        actually be caught here."""
         client = _make_available_client(tmp_path)
-        answer = b"Your sponsor's KITAS quota is exceeded for this year; the limit resets in January."
+        answer = (
+            b"The portal logged 429 too many requests while checking your sponsor's "
+            b"KITAS quota this year; the limit resets in January."
+        )
         fake_exec.queue(_FakeProcess(answer, b"", 0))
 
         result = await client.generate("what does sponsor quota exceeded mean")
@@ -1088,7 +1158,7 @@ class TestQuotaDetection:
         quota_dir = tmp_path / "quota"
         quota_dir.mkdir()
         quota_client = _make_available_client(quota_dir)
-        fake_exec.queue(_FakeProcess(b"", b"Error: quota exceeded for this billing period\n", 1))
+        fake_exec.queue(_FakeProcess(b"", b"Error: insufficient_quota reported by upstream\n", 1))
         with pytest.raises(CodexExecQuotaError):
             await quota_client.generate("hello")
 
@@ -1099,7 +1169,13 @@ class TestPolicyBlockedDetection:
         "stderr_text",
         [
             b"Error: this request violates the usage policy\n",
-            b"safety system refused to respond\n",
+            # R28-2 (2026-08-25): "safety system refused to respond" was
+            # DROPPED as a guilt fixture — bare "safety system" now
+            # deliberately excluded (reproduced over-match finding, see
+            # `_POLICY_PROSE_RE`'s comment) and bare "refused to respond"
+            # (no "... request" object) likewise. Replaced with a fixture
+            # that hits the NARROWED, still-reachable vocabulary.
+            b"Error: blocked by the safety filter; refused to respond to this request.\n",
         ],
     )
     async def test_guilt_constructed_policy_blocked_failure_raises_distinct_error(
@@ -1120,11 +1196,20 @@ class TestPolicyBlockedDetection:
         tmp_path,
         fake_exec: _FakeSubprocessExec,
     ) -> None:
-        """A legitimate immigration answer that genuinely discusses
-        government policy must not be misclassified as a policy refusal —
-        `exit_code == 0` never triggers the scan at all."""
+        """A legitimate immigration answer must not be misclassified as a
+        policy refusal — `exit_code == 0` never triggers the scan at all.
+
+        Refuter test-defect finding §5 (2026-08-25 correction): the pre-B2b
+        fixture ("The government policy requires...") would not have
+        matched the vocabulary even if scanned. This fixture contains a
+        genuine trigger ("cannot assist with that request") so a
+        regression that starts scanning stdout on success would actually
+        be caught here."""
         client = _make_available_client(tmp_path)
-        answer = b"The government policy requires you to carry a copy of your passport for safety."
+        answer = (
+            b"The government policy requires a passport copy; we cannot assist with "
+            b"that request outside business hours."
+        )
         fake_exec.queue(_FakeProcess(answer, b"", 0))
 
         result = await client.generate("what does the policy require")
@@ -1150,6 +1235,25 @@ class TestPolicyBlockedDetection:
         with pytest.raises(CodexExecProcessError):
             await client.generate("hello")
 
+    @pytest.mark.asyncio
+    async def test_innocence_bare_safety_system_no_longer_pages(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """R28-2 regression target: this exact string used to be a GUILT
+        fixture pre-B2b (it matched two policy alternatives at once,
+        masking that neither was a sound anchor — refuter test-defect
+        finding §5). "Safety system" over-matches ordinary facilities
+        prose ("The office fire safety system is under maintenance" —
+        refuter over-match finding §2); "refused to respond" alone (no
+        "... request" object) is also too generic. Both were narrowed."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", b"safety system refused to respond\n", 1))
+
+        with pytest.raises(CodexExecProcessError):
+            await client.generate("hello")
+
 
 class TestResidualFailureNotOverclassified:
     @pytest.mark.asyncio
@@ -1170,44 +1274,263 @@ class TestResidualFailureNotOverclassified:
         assert exc_info.value.exit_code == 1
 
 
-class TestWordClassDisjointness:
-    """KNOWN GAP flagged by the B2a landing commit (098ca08ee): the fixed
-    check order in `generate()` (auth -> quota -> policy-blocked -> generic)
-    is licensed by the in-file claim that the three word classes are
-    independent vocabularies by construction — a stderr line cannot
-    legitimately match more than one. That claim was verified empirically
-    at commit time but left UNTESTED, so a later edit to any of the three
-    patterns could silently reintroduce an overlap and misroute (e.g.) a
-    genuine quota event into `codex login` territory without any test ever
-    noticing. This pins it."""
+class TestMultiMatchPrecedence:
+    """SUPERSEDES the pre-B2b `TestWordClassDisjointness` (renamed away —
+    the old name/docstring described a claim the refuter proved FALSE, not
+    a claim this suite still makes). The old
+    `test_each_guilt_fixture_matches_exactly_one_word_class` tested each
+    vocabulary's OWN alternatives in isolation and reported the
+    payload-level disjointness claim settled — per the B2a landing
+    commit's own narrative: "That was the weaker test ... it measured the
+    wrong thing. The claim is about a stderr LINE, not about a
+    vocabulary." SPEC P7 requires testing on realistic COMPOSITE payloads
+    instead — every test below constructs one.
+
+    B2b's precedence rule (SPEC P1/P3, see the block comment above
+    `MatchConfidence` in `codex_exec_client.py`): a lone
+    `MatchConfidence.HIGH` match wins over any number of `.LOW` matches; a
+    genuine tie (0 or >=2 classes at HIGH) is `CodexExecAmbiguousError`,
+    never guessed.
+    """
+
+    @pytest.mark.asyncio
+    async def test_guilt_flagship_composite_high_quota_beats_low_auth(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Refuter finding §1 (Critical, "Ordering"): `Error: token has
+        expired; refresh failed with 429 too many requests` is a realistic
+        causal chain (expired token -> refresh attempt -> refresh
+        rate-limited) that matches BOTH auth (prose "token has expired")
+        and quota (structured "429 too many requests") on the SAME line.
+        B2a's fixed check order silently picked AUTH and sent an operator
+        to `codex login` for something login cannot fix. B2b resolves this
+        via P3 (machine-readable evidence wins): QUOTA is raised, not
+        AUTH, and the suppressed AUTH_DEATH candidate survives on
+        `.suppressed` rather than being silently dropped (P1)."""
+        client = _make_available_client(tmp_path)
+        stderr = b"Error: token has expired; refresh failed with 429 too many requests\n"
+        fake_exec.queue(_FakeProcess(b"", stderr, 1))
+
+        with pytest.raises(CodexExecQuotaError) as exc_info:
+            await client.generate("hello")
+        assert exc_info.value.confidence is MatchConfidence.HIGH
+        assert exc_info.value.suppressed == frozenset({"AUTH_DEATH"})
+
+    def test_guilt_true_tie_between_two_high_confidence_classes_is_ambiguous(self) -> None:
+        """SPEC P1: a genuine tie (both classes matched at
+        `MatchConfidence.HIGH`, no principled winner) is reported
+        AMBIGUOUS by `_classify_stderr`, never resolved by guessing. Direct
+        unit test on the classifier (not through `generate()`) —
+        `test_guilt_true_tie_raises_ambiguous_error_through_generate`
+        below covers the same shape end-to-end."""
+        verdict = client_module._classify_stderr(
+            "Error: token_revoked; also insufficient_quota reported by upstream"
+        )
+        assert verdict.winner is None
+        assert verdict.ambiguous_classes == frozenset(
+            {client_module._WireWordClass.AUTH_DEATH, client_module._WireWordClass.QUOTA}
+        )
+
+    @pytest.mark.asyncio
+    async def test_guilt_true_tie_raises_ambiguous_error_through_generate(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        client = _make_available_client(tmp_path)
+        stderr = b"Error: token_revoked; also insufficient_quota reported by upstream\n"
+        fake_exec.queue(_FakeProcess(b"", stderr, 1))
+
+        with pytest.raises(CodexExecAmbiguousError) as exc_info:
+            await client.generate("hello")
+        assert exc_info.value.candidates == frozenset({"AUTH_DEATH", "QUOTA"})
+
+    @pytest.mark.asyncio
+    async def test_innocence_single_class_match_never_raises_ambiguous(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Companion: a stderr matching exactly one class must never be
+        misrouted through the ambiguity path."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", b"Error: token_revoked\n", 1))
+
+        with pytest.raises(CodexExecAuthError) as exc_info:
+            await client.generate("hello")
+        assert exc_info.value.suppressed == frozenset()
+
+
+class TestReproducedRefuterFindings:
+    """The 12 findings a fenced cross-family refuter (gpt-5.6-sol, xhigh)
+    reproduced against B2a's compiled patterns, pinned as PERMANENT
+    regression fixtures per the ops orchestrator's mandate — see
+    `docs/plans/2026-08-25-due-bot-live/evidence/b2a-refuter-gpt56sol.txt`.
+    Findings §1 (ordering) and one over-match item of §2
+    (`RESOURCE_EXHAUSTED`, reclassified to `OUTPUT_INVALID`/`oversized`)
+    have dedicated full `generate()`-level tests elsewhere
+    (`TestMultiMatchPrecedence`/`TestOutputContract`) — the remaining 10
+    are pinned here directly against `_classify_stderr`, which is the
+    exact layer the refuter's findings are about. `expected_winner=None`
+    means the corrected behavior is "matches nothing" (residual/unknown,
+    SPEC P5) — not "unverified", these are all DELIBERATE corrections."""
 
     @pytest.mark.parametrize(
-        "guilty_text",
+        ("finding_id", "stderr_text", "expected_winner"),
         [
-            # auth-death guilt fixtures (see TestAuthDeathDetection above)
-            "Error: Not logged in. Run `codex login` to authenticate.",
-            "Error: token_revoked",
-            "401 unauthorized",
-            # quota guilt fixtures (see TestQuotaDetection above)
-            "Error: quota exceeded for this billing period",
-            "429 too many requests: rate limit exceeded",
-            "insufficient_quota: you have hit your usage limit",
-            # policy-blocked guilt fixtures (see TestPolicyBlockedDetection above)
-            "Error: this request violates the usage policy",
-            "safety system refused to respond",
+            # --- over-match findings (evidence file §2) ---
+            (
+                "over-match: ordinary 'too many requests' sentence",
+                "The client complained that the immigration officer made too "
+                "many requests for the same document.",
+                None,
+            ),
+            (
+                "over-match: 'cannot assist with' business prose",
+                "We cannot assist with the visa extension until your sponsor "
+                "sends the missing passport scan.",
+                None,
+            ),
+            (
+                "over-match: 'refused to answer' about a third party",
+                "The applicant refused to answer the immigration officer's question.",
+                None,
+            ),
+            (
+                "over-match: 'violates the policy' regulatory advice",
+                "Submitting duplicate visa applications violates the policy "
+                "and may delay approval.",
+                None,
+            ),
+            (
+                "over-match: 'safety system' facilities prose",
+                "The office fire safety system is under maintenance.",
+                None,
+            ),
+            (
+                "over-match: domain-overloaded 'sponsor's quota exceeded'",
+                "Your sponsor's quota exceeded this year's KITAS allocation.",
+                None,
+            ),
+            # --- regex defects (evidence file §4) ---
+            (
+                "newline-bridging: quota\\nexceeded across two log records",
+                "DEBUG field=quota\nexceeded retry budget while writing transcript",
+                None,
+            ),
+            (
+                "newline-bridging: content\\npolicy across two log records",
+                "DEBUG category=content\npolicy loader failed to initialize",
+                None,
+            ),
+            (
+                "underscore-boundary: insufficient_quota_error (trailing suffix)",
+                "Error code: insufficient_quota_error",
+                client_module._WireWordClass.QUOTA,
+            ),
+            (
+                "underscore-boundary: openai_insufficient_quota (leading prefix)",
+                "Error code: openai_insufficient_quota",
+                client_module._WireWordClass.QUOTA,
+            ),
         ],
     )
-    def test_each_guilt_fixture_matches_exactly_one_word_class(self, guilty_text: str) -> None:
-        matches = [
-            bool(client_module._AUTH_DEATH_RE.search(guilty_text)),
-            bool(client_module._QUOTA_RE.search(guilty_text)),
-            bool(client_module._POLICY_BLOCKED_RE.search(guilty_text)),
-        ]
-        assert sum(matches) == 1, (
-            f"{guilty_text!r} matched {sum(matches)} of the three word classes "
-            f"(auth/quota/policy) — expected exactly 1; the fixed check order in "
-            f"generate() silently depends on this staying true"
+    def test_finding_reproduced_and_corrected(
+        self,
+        finding_id: str,
+        stderr_text: str,
+        expected_winner,
+    ) -> None:
+        verdict = client_module._classify_stderr(stderr_text)
+        assert verdict.winner == expected_winner, (
+            f"finding {finding_id!r}: expected winner={expected_winner!r}, "
+            f"got {verdict.winner!r} (stderr={stderr_text!r})"
         )
+
+
+class TestVendorPhraseCoverage:
+    """Refuter under-match findings (evidence file §3) — standard vendor
+    phrasings the B2a vocabulary MISSED entirely, each pinned in
+    ISOLATION (no other alternative's vocabulary co-occurring) so a later
+    edit that breaks one specific alternative cannot hide behind another
+    still matching — same discipline as
+    `test_guilt_run_codex_login_clause_without_backticks` above."""
+
+    @pytest.mark.parametrize(
+        ("stderr_text", "expected_class", "expected_confidence"),
+        [
+            ("rate_limit_exceeded", client_module._WireWordClass.QUOTA, MatchConfidence.HIGH),
+            (
+                "the rate limit reached today",
+                client_module._WireWordClass.QUOTA,
+                MatchConfidence.LOW,
+            ),
+            (
+                "you exceeded your current quota",
+                client_module._WireWordClass.QUOTA,
+                MatchConfidence.LOW,
+            ),
+            (
+                "monthly credits exhausted",
+                client_module._WireWordClass.QUOTA,
+                MatchConfidence.LOW,
+            ),
+            (
+                "blocked by the safety filter",
+                client_module._WireWordClass.POLICY_BLOCKED,
+                MatchConfidence.LOW,
+            ),
+            (
+                "may violate our usage policy",
+                client_module._WireWordClass.POLICY_BLOCKED,
+                MatchConfidence.LOW,
+            ),
+            (
+                "I can't assist with that request",
+                client_module._WireWordClass.POLICY_BLOCKED,
+                MatchConfidence.LOW,
+            ),
+        ],
+    )
+    def test_previously_undermatched_phrase_now_reachable(
+        self,
+        stderr_text: str,
+        expected_class,
+        expected_confidence: MatchConfidence,
+    ) -> None:
+        verdict = client_module._classify_stderr(stderr_text)
+        assert verdict.winner is expected_class
+        assert verdict.confidence is expected_confidence
+
+
+class TestMultilingualInnocence:
+    """SPEC P6 ("guilt AND innocence under test"): ordinary IT/EN/ID
+    immigration-consultancy sentences a real WA/broker traffic stream
+    would plausibly contain, none of which may ever trigger a word
+    class."""
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "The client's KITAS expired last month and needs renewal before "
+            "the sponsor's quota resets.",
+            "Please sign the enclosed authorization form and return it with "
+            "your passport copy.",
+            "Il cliente non e' piu' autorizzato a soggiornare senza rinnovare "
+            "il permesso di lavoro.",
+            "Il sistema di sicurezza dell'ufficio e' in manutenzione questa settimana.",
+            "Klien harus login ke portal imigrasi untuk memperbarui KITAS "
+            "sebelum masa berlaku habis.",
+            "Kuota sponsor untuk tahun ini sudah terlampaui, jadi permohonan "
+            "baru harus menunggu.",
+        ],
+    )
+    def test_ordinary_consultancy_sentence_matches_nothing(self, text: str) -> None:
+        verdict = client_module._classify_stderr(text)
+        assert verdict.winner is None
+        assert verdict.ambiguous_classes == frozenset()
 
 
 # ---------------------------------------------------------------------------

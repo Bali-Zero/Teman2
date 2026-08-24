@@ -25,6 +25,8 @@ from backend.llm.codex_exec_client import (
     CodexExecProcessError,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
+    MatchConfidence,
+    OutputShapeReason,
 )
 from backend.services.integrations import wa_codex_daemon as daemon_module
 from backend.services.integrations.wa_codex_daemon import (
@@ -461,8 +463,14 @@ class TestErrorMapping:
             (CodexExecUnavailableError("u"), "spawn_failure"),
             (CodexExecProcessError(1), "cli_failure"),
             (CodexExecCommunicationError("c"), "cli_failure"),
-            (CodexExecOutputShapeError("o"), "cli_failure"),
-            (CodexExecAuthError("a"), "cli_failure"),
+            # B2b (2026-08-25): `CodexExecOutputShapeError`/`CodexExecAuthError`
+            # now require `reason=`/`confidence=` — this daemon predates that
+            # split (PR #4377) and, per its own `except` clauses just above,
+            # folds BOTH into "cli_failure" regardless of sub-cause/confidence,
+            # so a neutral value here changes nothing about what this test
+            # asserts.
+            (CodexExecOutputShapeError("o", reason=OutputShapeReason.EMPTY), "cli_failure"),
+            (CodexExecAuthError("a", confidence=MatchConfidence.LOW), "cli_failure"),
             (RuntimeError("anything unexpected"), "cli_failure"),
         ],
     )
