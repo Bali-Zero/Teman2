@@ -676,8 +676,15 @@ export function SecondHomeLanding() {
             gap: 8,
             padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
             borderRadius: 8,
+            // WCAG AA fix (measured 2026-08-24): `--text-on-accent` resolves
+            // to #fff here, which on the WhatsApp green computes to ~1.98:1,
+            // failing the 4.5:1 normal-text floor. Ratified cure
+            // (app/(visa-oracle)/visa-oracle/oracle.css:23-30, 2026-07-17
+            // adversarial review): #0d3a1f on #25D366 ~6.45:1. Only this
+            // call site's ink changes — the shared token and the brand
+            // green stay untouched.
             background: "var(--accent-whatsapp, #25D366)",
-            color: "var(--text-on-accent)",
+            color: "#0d3a1f",
             fontWeight: 600,
             textDecoration: "none",
             minHeight: 44,
