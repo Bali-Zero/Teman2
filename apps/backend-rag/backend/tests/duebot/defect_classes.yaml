@@ -1,0 +1,363 @@
+# Shared defect-class catalogue for I DUE BOT golden fixtures.
+#
+# `bot: client` and `bot: team` entries are the 17 + 17 classes named
+# verbatim (or near-verbatim) in
+# research/operations/2026-08-25-due-bot-7-lens-research.md §5.1
+# ("Required golden classes" / "Team fixtures include"), lines 1378-1417.
+# `bot: transport` entries are B6a's own additions — transport-layer
+# defect classes exercised directly by this harness's own test suite
+# (webhook signing/replay, the codex broker, failover) that are NOT named
+# in §5.1 but are load-bearing for the SAME golden-suite convention. See
+# the B6a report for exactly which entries these are and why they were
+# added.
+#
+# `id` is the stable key both bots' golden suites index into — never
+# renumber an existing id; add a new entry instead. `variants` records a
+# compound bullet's named sub-cases without inventing separate top-level
+# ids for them (that expansion, if wanted, is a call for whoever writes
+# the fixtures against a given id — B6b for `client`/`team`).
+defect_classes:
+  # ---------------------------------------------------------------------
+  # bot: client — research capture §5.1 "Required golden classes" (17)
+  # ---------------------------------------------------------------------
+  - id: client.regulation-supported-correct-citation
+    bot: client
+    title: Supported regulation with correct citation
+    description: >-
+      A regulatory claim the KB actually supports, answered with the
+      correct citation.
+    source: "5.1-client"
+
+  - id: client.regulation-unsupported-claim
+    bot: client
+    title: Unsupported regulatory claim
+    description: >-
+      A regulatory question the KB does not ground — the bot must abstain
+      rather than answer, per the citation-or-abstain contract.
+    source: "5.1-client"
+
+  - id: client.pricing-correct-and-invented
+    bot: client
+    title: Correct and invented prices
+    description: >-
+      A price the bot cites must come from PricingTool. This class covers
+      both the correct-price case and the invented/hallucinated-price
+      failure mode in one fixture pair.
+    source: "5.1-client"
+    variants:
+      - correct price cited from PricingTool
+      - invented/hallucinated price
+
+  - id: client.citation-missing
+    bot: client
+    title: Missing citation
+    description: A regulatory claim rendered with no citation attached at all.
+    source: "5.1-client"
+
+  - id: client.citation-wrong-evidence
+    bot: client
+    title: Citation points to wrong evidence
+    description: >-
+      A citation is present but does not actually support the claim it is
+      attached to.
+    source: "5.1-client"
+
+  - id: client.deadline-date-mismatch
+    bot: client
+    title: Deadline/date mismatch
+    description: A stated deadline or date does not match the grounding evidence.
+    source: "5.1-client"
+
+  - id: client.kbli-outside-widget-domain
+    bot: client
+    title: KBLI question outside the widget domain
+    description: >-
+      A non-KBLI question asked through the client-kbli-v1 surface, which
+      the F2 SurfaceProfile restricts to KBLI answers only.
+    source: "5.1-client"
+
+  - id: client.prompt-injection-in-retrieved-text
+    bot: client
+    title: Prompt injection in retrieved text
+    description: >-
+      Retrieved KB/context text contains an instruction aimed at the
+      model, not the user's actual question.
+    source: "5.1-client"
+
+  - id: client.secret-canary-output
+    bot: client
+    title: Secret/canary output
+    description: >-
+      The generated response contains a secret-canary token — the
+      global leg kill-switch trigger per F3.
+    source: "5.1-client"
+
+  - id: client.internal-reasoning-leakage
+    bot: client
+    title: Internal reasoning/scaffold leakage
+    description: >-
+      The response leaks chain-of-thought, tool scaffolding, or other
+      internal structure that should never reach the user.
+    source: "5.1-client"
+
+  - id: client.oversized-response
+    bot: client
+    title: Oversized WA/IG responses
+    description: >-
+      Generated content exceeds the WhatsApp/Instagram surface's length
+      limit and must be truncated/handled per the SurfaceProfile, not
+      silently rejected by the channel.
+    source: "5.1-client"
+
+  - id: client.human-takeover-thread-epoch-race
+    bot: client
+    title: Human-takeover/thread-epoch race
+    description: >-
+      A human agent takes over a thread while a bot answer is still in
+      flight — the late bot answer must not reach the user after takeover.
+    source: "5.1-client"
+
+  - id: client.duplicate-meta-delivery
+    bot: client
+    title: Duplicate Meta delivery
+    description: >-
+      Meta redelivers the same webhook event (retry / at-least-once
+      delivery) — must be idempotent, at most one reply.
+    source: "5.1-client"
+
+  - id: client.attachment-only-message
+    bot: client
+    title: Attachment-only message
+    description: An inbound message carrying only a media attachment, no text.
+    source: "5.1-client"
+
+  - id: client.provider-timeout-then-fallback
+    bot: client
+    title: Provider timeout followed by Gemini
+    description: >-
+      The primary brain (staged: Gemini today, codex-broker leg later)
+      times out and the request falls back to the working spine.
+    source: "5.1-client"
+
+  - id: client.both-providers-unavailable
+    bot: client
+    title: Both providers unavailable
+    description: >-
+      No brain can answer — the bot must degrade to a safe abstention/
+      handoff response, never a crash or a fabricated answer.
+    source: "5.1-client"
+
+  - id: client.handoff-insert-succeeds-and-fails
+    bot: client
+    title: Handoff insert succeeds and fails
+    description: >-
+      F10: the bot may say "l'ho passato al team" only AFTER the handoff
+      row is durably created. This class covers both the successful
+      insert (copy allowed to say "passed along") and the failed insert
+      (copy must fall back to "you can request").
+    source: "5.1-client"
+    variants:
+      - handoff row insert succeeds
+      - handoff row insert fails
+
+  # ---------------------------------------------------------------------
+  # bot: team — research capture §5.1 "Team fixtures include" (17)
+  # ---------------------------------------------------------------------
+  - id: team.known-active-staff-member
+    bot: team
+    title: Known active staff member
+    description: A message from an enrolled, active team WhatsApp identity.
+    source: "5.1-team"
+
+  - id: team.phone-unknown-inactive-unverified
+    bot: team
+    title: Unknown, inactive, and unverified phone
+    description: >-
+      Three distinct identity-gate rejections per F7 — none of these ever
+      reaches the LLM.
+    source: "5.1-team"
+    variants:
+      - unknown phone number
+      - inactive enrolled phone
+      - unverified phone
+
+  - id: team.correct-phone-wrong-waba
+    bot: team
+    title: Correct staff phone on the wrong WABA/phone number ID
+    description: >-
+      A legitimate staff phone number messages through the wrong
+      WABA/phone_number_id — F7 requires this to be rejected too.
+    source: "5.1-team"
+
+  - id: team.client-assigned-and-unassigned
+    bot: team
+    title: Assigned and unassigned clients
+    description: >-
+      `assigned_to` scoping — a staff member acting on a client assigned
+      to them versus one that is not.
+    source: "5.1-team"
+    variants:
+      - client assigned to the acting staff member
+      - client assigned to someone else
+
+  - id: team.client-null-assigned
+    bot: team
+    title: Null-assigned client
+    description: A client record with no `assigned_to` set at all.
+    source: "5.1-team"
+
+  - id: team.role-admin-vs-team
+    bot: team
+    title: Admin versus team role
+    description: RBAC branch — an admin identity versus a regular team identity.
+    source: "5.1-team"
+
+  - id: team.read-tool-allowed-denied
+    bot: team
+    title: Read tool allowed/denied
+    description: An R0 read tool call that RBAC allows versus one it denies.
+    source: "5.1-team"
+    variants:
+      - read tool call allowed
+      - read tool call denied
+
+  - id: team.mutation-requires-exact-confirmation-code
+    bot: team
+    title: Mutation cannot execute without exact confirmation code
+    description: >-
+      F6: an R2/R3 mutation attempted without the exact short_code
+      confirmation must not execute.
+    source: "5.1-team"
+
+  - id: team.confirmation-expired-replayed-cross-user-altered
+    bot: team
+    title: Expired, replayed, cross-user, and altered confirmations
+    description: >-
+      Four distinct ways a PendingAction confirmation can be invalid —
+      each must be rejected by the F6 state machine, not just the happy
+      path accepted.
+    source: "5.1-team"
+    variants:
+      - expired confirmation (past 5-min TTL)
+      - replayed confirmation (already consumed)
+      - cross-user confirmation (wrong actor)
+      - altered confirmation (args_sha256 mismatch)
+
+  - id: team.duplicate-wamid
+    bot: team
+    title: Duplicate wamid
+    description: The team-bot analogue of client.duplicate-meta-delivery.
+    source: "5.1-team"
+
+  - id: team.tool-result-prompt-injection
+    bot: team
+    title: Tool result containing prompt injection
+    description: >-
+      A CRM tool result contains text aimed at the model — F4's lane
+      separation means the action lane must never read it as an
+      instruction.
+    source: "5.1-team"
+
+  - id: team.model-repeats-blocked-tool-request
+    bot: team
+    title: Model repeatedly requesting a blocked tool
+    description: >-
+      The model keeps asking for a tool call RBAC or the tool registry
+      already refused — must not loop or eventually succeed by attrition.
+    source: "5.1-team"
+
+  - id: team.model-claims-success-without-receipt
+    bot: team
+    title: Model claiming an action succeeded without a receipt
+    description: >-
+      The model's free text asserts a mutation happened when no executor
+      receipt backs that claim — the reply must not be trusted verbatim.
+    source: "5.1-team"
+
+  - id: team.tool-step-exhaustion
+    bot: team
+    title: Tool step exhaustion
+    description: F4's MAX_STEPS=4 / MAX_READ_CALLS=3 budget is exceeded mid-turn.
+    source: "5.1-team"
+
+  - id: team.ollama-malformed-json-or-timeout
+    bot: team
+    title: Ollama malformed JSON/timeout
+    description: >-
+      The local inference plant (F8) returns unparseable structured output
+      or times out.
+    source: "5.1-team"
+
+  - id: team.backend-error-401-403-409-429-500
+    bot: team
+    title: "Backend 401/403/409/429/500"
+    description: >-
+      The CRM endpoint a tool calls returns each of these HTTP error
+      classes — the team-bot must surface a safe, typed response for each,
+      not a raw stack trace or a silent success.
+    source: "5.1-team"
+    variants: ["401", "403", "409", "429", "500"]
+
+  - id: team.leader-epoch-change-mid-action
+    bot: team
+    title: Leader-epoch change during an action
+    description: >-
+      F9's leader-epoch CAS flips (failover) while a mutation is mid-flight
+      — the stale epoch must not complete it.
+    source: "5.1-team"
+
+  # ---------------------------------------------------------------------
+  # bot: transport — B6a additions (NOT in §5.1; see the B6a report for
+  # which of these are new versus adjacent to an existing §5.2/§5.3/§5.4/F3
+  # scenario this harness directly exercises).
+  # ---------------------------------------------------------------------
+  - id: transport.webhook-signature-invalid-or-missing
+    bot: transport
+    title: Webhook signature invalid, missing, or malformed
+    description: >-
+      An inbound webhook POST arrives with no X-Hub-Signature-256 header,
+      a header for the wrong secret, or a header missing the "sha256="
+      prefix — all three must be rejected before the body is parsed.
+      Exercised directly in test_webhook_signer.py and
+      test_webhook_replay.py.
+    source: "5.2 (mine — not a §5.1 conversation-level class)"
+
+  - id: transport.webhook-raw-body-vs-reserialized-mismatch
+    bot: transport
+    title: Signature computed over raw bytes vs. a re-serialized body
+    description: >-
+      The single most common way a hand-rolled Meta webhook signer or
+      replayer silently breaks: signing/verifying a re-encoded
+      json.dumps() of the payload instead of the exact bytes on the wire.
+      Exercised in
+      test_webhook_signer.py::test_signature_over_reserialized_json_body_does_not_match.
+    source: "5.2 (mine)"
+
+  - id: transport.broker-auth-dead-vs-quota-collapse
+    bot: transport
+    title: Broker AUTH_DEAD and QUOTA must not collapse
+    description: >-
+      F3 names this explicitly as a live defect to cure before arming the
+      codex-broker leg: an auth failure and a quota exhaustion must be
+      two distinguishable typed outcomes, not one. FakeCodexBroker keeps
+      them as two BrokerErrorClass members on two call sites from the
+      start; test_fake_codex_broker.py proves both round-trip distinctly.
+    source: "F3 (mine)"
+
+  - id: transport.broker-breaker-half-open-canary-fails
+    bot: transport
+    title: Breaker half-open canary fails and re-opens
+    description: >-
+      After a 3-fail trip and cooldown, the breaker admits exactly one
+      canary job; if that canary also fails, the breaker must re-open
+      with a FRESH cooldown rather than falling through to closed.
+    source: "5.3 (mine)"
+
+  - id: transport.failover-stale-epoch-mutation-rejected
+    bot: transport
+    title: Stale leader-epoch mutation rejected after failover
+    description: >-
+      F9: after a leader-epoch CAS promotes a new node, a mutation
+      attempted under the OLD epoch must receive 409/403, never execute.
+      Team-bot analogue: team.leader-epoch-change-mid-action.
+    source: "5.4 (mine)"

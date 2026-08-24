@@ -1,0 +1,39 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "entry_1",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "6281234567890",
+              "phone_number_id": "100000000000001"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Harness Test User"
+                },
+                "wa_id": "6281234567890"
+              }
+            ],
+            "messages": [
+              {
+                "from": "6281234567890",
+                "id": "wamid.FIXTURE_TEXT_001",
+                "timestamp": "1700000000",
+                "type": "text",
+                "text": {
+                  "body": "Hello"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
