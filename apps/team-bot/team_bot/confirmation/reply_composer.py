@@ -1,0 +1,176 @@
+"""compose_reply — the PRIMARY control for the gc-015 defect class. Read
+``loop/claim_gate.py``'s "STATUS CHANGE" section first: that module is now
+defense-in-depth ONLY, because a detector over free text is structurally a
+weaker reading of "a reply that claims an action occurred must be derived
+from what actually executed" no matter how wide its pattern inventory grows.
+
+This module is the alternative: a CONSTRUCTION that cannot lie, rather than
+a detector that tries to catch every way it might. In the action domain
+(``TurnIntent.MUTATION``), the model's free-text ``content`` is never the
+reply — it is either replaced outright by a template rendered from a
+structured outcome (``outcomes.py``), or, if nothing structured exists to
+template from at all, replaced by a fixed, server-authored fallback
+sentence. There is no code path in the mutation branch that returns
+``model_content`` as-is; that is what makes the lie unconstructible instead
+of merely undetected.
+
+``TurnIntent`` — CONSUMPTION CONTRACT for F4's not-yet-built deterministic
+intent router (Kimi FM2). This module is written and tested against the
+contract below; nothing in this repo currently PRODUCES a ``TurnIntent`` for
+a live turn (F4's router is not built — same stub-shape as F7's
+``principal_id`` in ``models.py`` and F9's ``leader_epoch`` in ``store.py``:
+a field this unit consumes, not generates). Wiring a live caller into this
+module is out of scope here; this is the contract that caller must satisfy.
+
+Author: Claude Sonnet 5 (lane B3 — team-bot confirmation state machine)
+"""
+
+from __future__ import annotations
+
+from enum import StrEnum
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
+
+from team_bot.loop.claim_gate import ActionClaimGate, ActionClaimVerdict
+from team_bot.loop.execution_record import ExecutionRecord
+from team_bot.loop.tool_decision import ToolDecision
+
+from .models import PendingAction
+from .outcomes import DEFAULT_LOCALE, ConfirmationOutcome, Locale, render_outcome
+
+__all__ = ["ComposedReply", "TurnIntent", "compose_reply"]
+
+
+class TurnIntent(StrEnum):
+    """F4's (not-yet-built) deterministic router's classification of THIS
+    turn — the contract this module consumes. See module docstring: no live
+    producer exists yet."""
+
+    MUTATION = "mutation"  # this turn is proposing/confirming/executing/cancelling a tool
+    READ_OR_NONE = "read_or_none"  # a lookup, a question, small talk, or an abstention
+
+
+# The one FIXED, server-authored, localized sentence used when
+# TurnIntent.MUTATION is true but there is nothing structured to template
+# from at all (gc-015's exact shape: no confirmation_outcome, no
+# execution_record — the model narrated a mutation that never touched F6).
+# Never model content, never formatted with any model-supplied value.
+_NOTHING_STRUCTURED_FALLBACK: dict[Locale, str] = {
+    Locale.EN: "I wasn't able to complete that automatically — could you confirm the request again?",
+    Locale.IT: "Non sono riuscito a completarlo automaticamente — puoi confermare di nuovo la richiesta?",
+    Locale.ID: "Saya belum bisa menyelesaikannya secara otomatis — bisakah Anda mengonfirmasi permintaan lagi?",
+}
+
+# The generic clarifying template used when TurnIntent.READ_OR_NONE's
+# model_content is itself BLOCKed by ActionClaimGate as a last-resort net
+# (see compose_reply's branch 3). Same status as the fallback above: fixed,
+# server-authored, never model content.
+_CLAIM_GATE_BLOCKED_FALLBACK: dict[Locale, str] = {
+    Locale.EN: "I want to make sure I get this right — could you tell me a bit more about what you need?",
+    Locale.IT: "Voglio essere sicuro di aver capito bene — puoi darmi qualche dettaglio in più su cosa ti serve?",
+    Locale.ID: "Saya ingin memastikan saya memahami dengan benar — bisakah Anda memberi sedikit detail lagi tentang apa yang Anda butuhkan?",
+}
+
+
+class ComposedReply(BaseModel):
+    """What ``compose_reply`` returns. ``source`` names WHERE ``text`` came
+    from — the field the gc-015 regression test asserts on, since the bug
+    class this module closes is precisely "the reply's source was
+    unaccountably the model's own free text in the action domain"."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    text: str
+    source: Literal["template", "fallback", "model_content"]
+
+
+def compose_reply(
+    *,
+    turn_intent: TurnIntent,
+    model_content: str | None,
+    confirmation_outcome: ConfirmationOutcome | None,
+    action: PendingAction | None,
+    execution_record: ExecutionRecord | None = None,
+    tool_decision: ToolDecision | None = None,
+    locale: Locale = DEFAULT_LOCALE,
+) -> ComposedReply:
+    """Decide what the staff member actually sees this turn.
+
+    Branch order matters and is exhaustive:
+
+    1. ``confirmation_outcome`` provided -> render it from
+       ``outcomes.render_outcome`` (``source="template"``). This is F6's own
+       state machine reporting what just happened (propose/confirm/execute/
+       cancel) — the strongest possible grounding, so it always wins
+       regardless of ``turn_intent`` or what the model said.
+    2. Else, ``turn_intent == TurnIntent.MUTATION`` -> the reply is ALWAYS
+       composed from structure, NEVER from ``model_content``:
+       - ``execution_record`` present -> a short grounded sentence stating
+         success or failure, built from the record's own ``ok`` field
+         (``source="template"``).
+       - Nothing structured at all (no outcome, no record — gc-015's exact
+         shape) -> the fixed fallback sentence (``source="fallback"``).
+    3. Else (``TurnIntent.READ_OR_NONE``) -> ``model_content`` is the reply,
+       but only after passing ``ActionClaimGate`` as a last-resort net
+       (``source="model_content"`` on ALLOW). On BLOCK, fall back to the
+       generic clarifying template (``source="fallback"``) — this is the one
+       place this module still depends on the (deliberately imperfect,
+       defense-in-depth-only) text detector, for exactly the case
+       ``claim_gate.py``'s docstring names as its remaining job: a turn the
+       upstream router misclassified as READ_OR_NONE when it should have
+       been MUTATION.
+
+    ``tool_decision`` is required only for branch 3's ``ActionClaimGate``
+    call (that gate's own signature needs it to phrase its BLOCK reason) —
+    branches 1 and 2 never touch it.
+    """
+    if confirmation_outcome is not None:
+        return ComposedReply(
+            text=render_outcome(confirmation_outcome, action, locale), source="template"
+        )
+
+    if turn_intent == TurnIntent.MUTATION:
+        if execution_record is not None:
+            return ComposedReply(text=_render_execution_record(execution_record, locale), source="template")
+        return ComposedReply(text=_NOTHING_STRUCTURED_FALLBACK[locale], source="fallback")
+
+    # TurnIntent.READ_OR_NONE
+    if model_content is None:
+        return ComposedReply(text=_CLAIM_GATE_BLOCKED_FALLBACK[locale], source="fallback")
+
+    if tool_decision is None:
+        raise ValueError("tool_decision is required for TurnIntent.READ_OR_NONE (ActionClaimGate needs it)")
+
+    verdict = ActionClaimGate.evaluate(
+        model_content, tool_decision=tool_decision, execution_record=execution_record
+    )
+    if verdict.verdict == ActionClaimVerdict.BLOCK:
+        return ComposedReply(text=_CLAIM_GATE_BLOCKED_FALLBACK[locale], source="fallback")
+
+    return ComposedReply(text=model_content, source="model_content")
+
+
+# EN-only by design: this sentence is built from an ExecutionRecord alone
+# (tool_name + ok), independent of any PendingAction/outcome — MUTATION
+# turns whose execution happened outside F6's PendingAction flow (an R1
+# direct tool call, ExecutionSource.DIRECT_R1) have no ConfirmationOutcome
+# to render from outcomes.py at all, so this is the one server-authored
+# template in this module that lives outside that file. Localized the same
+# way as everything else in this module — not left to the model.
+_EXECUTION_RECORD_TEMPLATES: dict[bool, dict[Locale, str]] = {
+    True: {
+        Locale.EN: "Done — {tool} completed.",
+        Locale.IT: "Fatto — {tool} completato.",
+        Locale.ID: "Selesai — {tool} telah diselesaikan.",
+    },
+    False: {
+        Locale.EN: "That didn't complete — {tool} failed. Could you confirm the request again?",
+        Locale.IT: "Non è andato a buon fine — {tool} ha fallito. Puoi confermare di nuovo la richiesta?",
+        Locale.ID: "Itu tidak berhasil — {tool} gagal. Bisakah Anda mengonfirmasi permintaan lagi?",
+    },
+}
+
+
+def _render_execution_record(record: ExecutionRecord, locale: Locale) -> str:
+    return _EXECUTION_RECORD_TEMPLATES[record.ok][locale].format(tool=record.tool_name)
