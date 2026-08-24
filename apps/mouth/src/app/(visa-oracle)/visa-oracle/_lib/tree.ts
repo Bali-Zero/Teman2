@@ -597,24 +597,6 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.remote_compensation" },
     notSure: { mode: "human-review" },
   },
-  remote_employer_country: {
-    id: "remote_employer_country",
-    i18nKey: "q.remote_employer_country",
-    kind: "country-codes",
-    group: "details",
-    decisionMapping: {
-      kind: "FACT",
-      factPaths: ["work.employer_country_code"],
-    },
-    sensitive: true,
-    options: [],
-    codeInput: {
-      labelI18nKey: "q.remote_employer_country.label",
-      multiple: false,
-    },
-    whyWeAsk: { i18nKey: "why.remote_employer_country" },
-    notSure: { mode: "human-review" },
-  },
   remote_pt_pma: {
     id: "remote_pt_pma",
     i18nKey: "q.remote_pt_pma",

@@ -37,18 +37,43 @@ proves TWO claims: (1) the E28-style reachability claim (naming a code
 fires REVIEW, citing that product), and (2) the mechanism the narrower gate
 was designed around — that a HARD_FILTER-excluded product proof never
 escalates to a top-level ``HUMAN_REVIEW_REQUIRED`` (``evaluator.py``'s
-``evaluate_product``: a HARD_FILTER TRUE returns ``EXCLUDED`` immediately,
-before the REVIEW stage is ever consulted; ``evaluate()``'s aggregation only
-promotes ``ProductProofStatus.REVIEW`` proofs to
+``evaluate_product`` DOES evaluate the HUMAN_REVIEW stage's rules even when
+a HARD_FILTER is TRUE — ``hard_results``/``review_results`` are both
+computed unconditionally, for a complete audit trace — but a HARD_FILTER
+TRUE short-circuits the function to return ``EXCLUDED`` BEFORE that
+REVIEW result is ever USED; ``evaluate()``'s aggregation only promotes
+``ProductProofStatus.REVIEW`` proofs to
 ``DecisionState.HUMAN_REVIEW_REQUIRED``, never ``EXCLUDED`` ones, which sink
 to the lowest-precedence ``NO_SUPPORTED_PATH`` bucket instead) — so even a
 hypothetically over-broad gate could not have suppressed a genuine
-``SUPPORTED_CANDIDATES`` outcome the way a REVIEW-stage rule would. The
-narrower per-product gate is still correct UX (never offer a choice a
-sponsor type structurally cannot pass) and is what team-lead's ruling
-ordered; this module documents that the stricter design was a deliberate
-choice, not the only thing standing between production and a suppressed
-outcome.
+``SUPPORTED_CANDIDATES`` outcome the way a REVIEW-stage rule would.
+
+**SCOPE OF THIS GUARANTEE — READ BEFORE REUSING THIS PATTERN ELSEWHERE
+(corrected 2026-08-25, third-party engine-execution measurement against a
+real gold persona, coordinated via team-lead)**: this safety property holds
+ONLY for a product that itself carries a PRODUCTS-scope HARD_FILTER on the
+gating fact — exactly what E33A/B/C each have
+(``hf.e33{a,b,c}.sponsor-not-government[-or-none]``). It is NOT a property
+of the engine in general, and it does NOT hold for E28B/C/D/F: those four
+carry ZERO product-specific HARD_FILTER — only the two GLOBAL filters every
+product inherits (``hf.citizen``, ``hf.overstay-exceeds-60-days``). Measured
+directly against a real gold persona (an eligible investor, E28A-qualified):
+naming ``E28B`` does NOT get EXCLUDED by any HARD_FILTER — nothing excludes
+it — so its REVIEW result IS promoted, and ``DecisionState`` becomes
+``HUMAN_REVIEW_REQUIRED`` with **`candidates=[]`** — E28A's own
+``SUPPORTED_CANDIDATES`` entry is wiped from the response entirely, not
+merely demoted. See ``docs/plans/2026-08-24-visa-oracle-live/
+REVIEW-EMPTIES-CANDIDATES.md`` (feature/visa-oracle) for the full measurement
+and the three costed options put to Zero — this is a known, disclosed
+consequence of the ORIGINAL E28 fix (Zero's own ruling: "ask the question
+AND route above-threshold investment to a human"), not a defect this module
+introduces or claims to guard against. The narrower per-product gate this
+module tests is still correct UX for E33A/B/C specifically (never offer a
+choice a sponsor type structurally cannot pass) and is what team-lead's
+ruling ordered for THIS trio; it is a deliberate choice on top of an
+already-safe mechanism THAT E33A/B/C HAPPEN TO HAVE, not a general engine
+guarantee any future product-code question can rely on without checking
+whether that product carries its own PRODUCTS-scope HARD_FILTER first.
 
 Guilt+innocence pattern per product (house style, shared with the E28
 sibling module): naming a code with a MATCHING sponsor type fires REVIEW for
@@ -261,11 +286,15 @@ def test_named_product_code_with_mismatched_sponsor_is_excluded_never_review(
     rests on: naming a product whose ``sponsor.type`` HARD_FILTER the
     applicant cannot pass never reaches REVIEW at all —
     ``evaluate_product``'s HARD_FILTER-TRUE branch returns ``EXCLUDED``
-    immediately, before the HUMAN_REVIEW stage is even consulted (see module
-    docstring). This is what makes the narrower per-sponsor-type gate a
+    immediately, before that computed HUMAN_REVIEW result is ever USED (see
+    module docstring — the stage IS evaluated either way, for audit
+    completeness). This is what makes the narrower per-sponsor-type gate a
     UX/precision choice rather than the only thing standing between
-    production and a suppressed outcome — see the aggregate-level sibling
-    test below for the top-level consequence.
+    production and a suppressed outcome FOR E33A/B/C SPECIFICALLY — see the
+    module docstring's "SCOPE OF THIS GUARANTEE" note: this holds only
+    because E33A/B/C each carry their own PRODUCTS-scope HARD_FILTER, and
+    does NOT generalize to a product without one (E28B/C/D/F have none). See
+    the aggregate-level sibling test below for the top-level consequence.
     """
     assert wrong_sponsor_type not in _VALID_SPONSOR_TYPES[product_code]
     overrides = {
@@ -390,8 +419,25 @@ def test_naming_the_code_with_wrong_sponsor_never_forces_human_review_at_aggrega
     pointless — production never actually offers this combination to a real
     applicant, and the gate is still correct, precise UX per team-lead's
     ruling — it documents that the gate is a precision choice on top of an
-    already-safe mechanism, not the only thing standing between production
-    and a suppressed outcome.
+    already-safe mechanism THIS PRODUCT HAS (its own PRODUCTS-scope
+    HARD_FILTER), not the only thing standing between production and a
+    suppressed outcome.
+
+    **DOES NOT GENERALIZE — read the module docstring's "SCOPE OF THIS
+    GUARANTEE" note before reusing this test's shape for a different
+    product.** E28B/C/D/F have NO PRODUCTS-scope HARD_FILTER of their own —
+    only the two global filters every product inherits — so this exact
+    "mismatched-input still lands safely" outcome does NOT hold for them:
+    measured directly (third-party, real gold persona, coordinated via
+    team-lead — see ``docs/plans/2026-08-24-visa-oracle-live/
+    REVIEW-EMPTIES-CANDIDATES.md``), naming E28B for an otherwise
+    E28A-eligible investor does NOT get EXCLUDED by anything, so its REVIEW
+    result IS promoted and the resulting ``Decision`` carries
+    ``state=HUMAN_REVIEW_REQUIRED, candidates=[]`` — E28A's own
+    SUPPORTED_CANDIDATES entry is gone, not merely demoted. That is a known,
+    disclosed consequence of the ORIGINAL E28 fix (Zero's ruling: ask the
+    question AND route above-threshold investment to a human), not a defect
+    this test proves absent for E28 — it proves the OPPOSITE for E28.
     """
     assert wrong_sponsor_type not in _VALID_SPONSOR_TYPES[product_code]
     overrides = {
