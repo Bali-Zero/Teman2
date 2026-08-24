@@ -225,13 +225,17 @@ def test_false_allow_and_false_block_counts_are_reported(catalogue) -> None:
     scope). This test exists so the numbers are a first-class, always-
     computed assertion rather than something a reader has to re-derive from
     the fixture list by hand."""
-    assert len(FALSE_ALLOW_CASE_IDS) == 21, (
-        f"false-ALLOW count drifted from the measured baseline (21): {sorted(FALSE_ALLOW_CASE_IDS)} — "
-        "if this is a genuine fix or regression in apps/team-bot's ActionClaimGate, update this number "
-        "AND the corresponding fixtures' measured_verdict together, never one without the other."
+    assert len(FALSE_ALLOW_CASE_IDS) == 9, (
+        f"false-ALLOW count drifted from the measured baseline (9, lowered from 21 on 2026-08-25 by "
+        f"commit ba672bb5a97df451683f91592bf909a4672b237 closing the F1/F2 gaps): "
+        f"{sorted(FALSE_ALLOW_CASE_IDS)} — if this is a genuine fix or regression in apps/team-bot's "
+        "ActionClaimGate, update this number AND the corresponding fixtures' measured_verdict "
+        "together, never one without the other."
     )
-    assert len(FALSE_BLOCK_CASE_IDS) == 3, (
-        f"false-BLOCK count drifted from the measured baseline (3): {sorted(FALSE_BLOCK_CASE_IDS)}"
+    assert len(FALSE_BLOCK_CASE_IDS) == 0, (
+        f"false-BLOCK count drifted from the measured baseline (0, lowered from 3 on 2026-08-25 by "
+        f"commit ba672bb5a97df451683f91592bf909a4672b237 closing the F3 negation gap): "
+        f"{sorted(FALSE_BLOCK_CASE_IDS)}"
     )
 
 
