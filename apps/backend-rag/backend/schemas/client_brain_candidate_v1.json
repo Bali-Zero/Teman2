@@ -46,7 +46,7 @@
   "$id": "https://balizero.com/schemas/client_brain_candidate_v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "The ONLY type a ClientBrainProvider may return (research capture §1.5/§1.6).\n\nStrict by construction: ``extra=\"forbid\"`` is what makes\n``model_json_schema()`` emit ``additionalProperties: false`` — required\nfor both ``codex exec --output-schema`` (F3) and Gemini structured\noutput, and re-validated server-side even when a provider claims schema\ncompliance (research capture §1.5, closing paragraph).",
+  "description": "The ONLY type a ClientBrainProvider may return (research capture §1.5/§1.6).\n\nStrict by construction: ``extra=\"forbid\"`` is what makes\n``model_json_schema()`` emit ``additionalProperties: false`` — required\nfor both ``codex exec --output-schema`` (F3) and Gemini structured\noutput, and re-validated server-side even when a provider claims schema\ncompliance (research capture §1.5, closing paragraph).\n\nFor B2: provider-side structured-output enforcement (OpenAI/Gemini\n``response_schema``) typically grammar-enforces only a SUBSET of this\nJSON Schema — required/enum/type, not ``pattern``/``minLength``/\n``maxLength``/``maxItems``. This schema constrains STRUCTURE; every\nbound here MUST be re-validated server-side via\n``BrainCandidate.model_validate()`` regardless of what the provider\nclaims to have enforced.",
   "properties": {
     "schema_version": {
       "const": "1.0",
@@ -59,7 +59,7 @@
       "type": "string"
     },
     "answer": {
-      "maxLength": 8000,
+      "maxLength": 12000,
       "title": "Answer",
       "type": "string"
     },

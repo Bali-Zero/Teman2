@@ -22,13 +22,14 @@ Author: Claude Opus 5 (lane B1a — client-bot contract freeze)
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.channels.models import CanonicalMessage
-from backend.channels.profiles import SurfaceProfile
+from backend.channels.profiles import FROZEN_PROFILES, SurfaceProfile
 
 __all__ = [
     "BrainCandidate",
@@ -36,6 +37,8 @@ __all__ = [
     "Claim",
     "EvidenceItem",
     "GroundingBundle",
+    "HistoryRole",
+    "HistoryTurn",
     "PricingSnapshot",
 ]
 
@@ -84,6 +87,29 @@ class PricingSnapshot(BaseModel):
     snapshot_sha256: Annotated[str, Field(pattern=_SHA256_HEX)]
 
 
+class HistoryRole(StrEnum):
+    """Closed role set for a history turn — never an arbitrary key."""
+
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
+class HistoryTurn(BaseModel):
+    """One sanitized, bounded conversation turn (research capture §1.5: 'sanitized
+    and bounded'). This is the field that carries prior conversation content to a
+    CLOUD provider — the surface SYMBIOSIS Law 2 governs — so it is a real typed
+    model with ``extra="forbid"``, not a free-form ``dict[str, str]`` whose keys
+    and values a docstring merely asserted were sanitized. A dict shape cannot
+    enforce that; this model does.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: HistoryRole
+    content: Annotated[str, Field(max_length=4_000)]
+
+
 class GroundingBundle(BaseModel):
     """The single frozen evidence/pricing/history package every provider sees identically."""
 
@@ -94,8 +120,7 @@ class GroundingBundle(BaseModel):
     domain: Annotated[str, Field(min_length=1, max_length=64)]
     evidence: tuple[EvidenceItem, ...] = Field(default=(), max_length=50)
     pricing: PricingSnapshot | None = None
-    # Sanitized, bounded (research capture §1.5) — role/content pairs only.
-    history: tuple[dict[str, str], ...] = Field(default=(), max_length=50)
+    history: tuple[HistoryTurn, ...] = Field(default=(), max_length=50)
     persona_digest: Annotated[str, Field(min_length=1, max_length=200)]
     package_sha256: Annotated[str, Field(pattern=_SHA256_HEX)]
 
@@ -125,6 +150,16 @@ class Claim(BaseModel):
     )
 
 
+# The brain contract serves all four surfaces through ONE schema, so its bound
+# must be the ENVELOPE across every frozen profile's hard cap — never a number
+# picked independently of them. Derived, not hardcoded, so a future profile
+# edit cannot silently reopen the gap the B1a review round-1 found (BrainCandidate
+# permitted 8000 chars while three of four surfaces cap lower, and Portal's own
+# 12000-char budget was unreachable by construction). See
+# test_brain_candidate_answer_envelope_covers_every_profile_hard_cap.
+_ANSWER_MAX_LENGTH = max(profile.hard_max_chars for profile in FROZEN_PROFILES)
+
+
 class BrainCandidate(BaseModel):
     """The ONLY type a ClientBrainProvider may return (research capture §1.5/§1.6).
 
@@ -133,6 +168,14 @@ class BrainCandidate(BaseModel):
     for both ``codex exec --output-schema`` (F3) and Gemini structured
     output, and re-validated server-side even when a provider claims schema
     compliance (research capture §1.5, closing paragraph).
+
+    For B2: provider-side structured-output enforcement (OpenAI/Gemini
+    ``response_schema``) typically grammar-enforces only a SUBSET of this
+    JSON Schema — required/enum/type, not ``pattern``/``minLength``/
+    ``maxLength``/``maxItems``. This schema constrains STRUCTURE; every
+    bound here MUST be re-validated server-side via
+    ``BrainCandidate.model_validate()`` regardless of what the provider
+    claims to have enforced.
     """
 
     model_config = ConfigDict(
@@ -145,7 +188,11 @@ class BrainCandidate(BaseModel):
 
     schema_version: Literal["1.0"]
     disposition: Literal["answer", "abstain", "handoff"]
-    answer: Annotated[str, Field(max_length=8_000)]
+    # No default: research capture §1.5 requires the shared schema to "require
+    # all fields" — a default would drop `answer` out of the generated
+    # schema's `required` list. Callers must pass answer="" explicitly for
+    # abstain/handoff (enforced by the validator below).
+    answer: Annotated[str, Field(max_length=_ANSWER_MAX_LENGTH)]
     claims: tuple[Claim, ...] = Field(default=(), max_length=50)
     cited_evidence_ids: tuple[Annotated[str, Field(pattern=_SIMPLE_ID)], ...] = Field(
         default=(), max_length=50
@@ -154,3 +201,37 @@ class BrainCandidate(BaseModel):
     provider_name: Annotated[str, Field(pattern=r"^[a-zA-Z0-9._-]{1,128}$")]
     model_name: Annotated[str, Field(pattern=r"^[a-zA-Z0-9._:/-]{1,128}$")]
     package_sha256: Annotated[str, Field(pattern=_SHA256_HEX)]
+
+    @model_validator(mode="after")
+    def _disposition_constrains_payload(self) -> BrainCandidate:
+        """B1a review round-1, finding 5: ``disposition`` constrained nothing
+        about the rest of the payload — a ``handoff`` with no reason code, an
+        ``answer`` with an empty ``answer``, and an ``abstain`` carrying an
+        8000-char answer plus 50 claims were all schema-valid. Couple them:
+
+        - ``handoff_reason_code`` is set if and only if ``disposition == "handoff"``.
+        - ``answer`` is non-empty if and only if ``disposition == "answer"``.
+        - ``claims``/``cited_evidence_ids`` are empty unless ``disposition == "answer"``.
+
+        This conditional coupling is NOT representable in the committed JSON
+        Schema without hand-authored ``if``/``then`` keywords (pydantic does
+        not export model_validators to JSON Schema) — it is enforced here,
+        server-side, on every candidate regardless of provider.
+        """
+        is_answer = self.disposition == "answer"
+        is_handoff = self.disposition == "handoff"
+
+        if is_handoff and self.handoff_reason_code is None:
+            raise ValueError("handoff_reason_code is required when disposition is handoff")
+        if not is_handoff and self.handoff_reason_code is not None:
+            raise ValueError("handoff_reason_code must be unset unless disposition is handoff")
+
+        if is_answer and not self.answer:
+            raise ValueError("answer must be non-empty when disposition is answer")
+        if not is_answer and self.answer:
+            raise ValueError("answer must be empty unless disposition is answer")
+
+        if not is_answer and (self.claims or self.cited_evidence_ids):
+            raise ValueError("claims/cited_evidence_ids must be empty unless disposition is answer")
+
+        return self
