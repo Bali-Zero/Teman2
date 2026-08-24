@@ -118,7 +118,17 @@ _SEQ14_RULE_PACK_ID_URL = (
 _SEQ14_CREATED_AT = "2026-08-24T06:00:00Z"
 _SEQ14_CREATED_BY = "agent.air-m5.backend-rag.visa-seq14-blocked5-e23uv-retire.fold-2026-08-24"
 
-_EXPECTED_SEQ13_PAYLOAD_SHA256 = "b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"
+# fmt: off
+# The wrap below is LOAD-BEARING, not style. `scripts/detect_secrets_auto_triage.py`
+# approves this specific hash through a CONTENT_KEYED_RULE whose content pattern is
+# `^\s*"b9edb809…"\s*$` — the value alone on its own line. Collapsed to a single
+# assignment line (99 chars, so `ruff format` will collapse it given the chance) the
+# pattern stops matching, the finding goes unaudited, and the Detect Secrets gate goes
+# red. `test_guilt_fold_seq14_real_finding_approved` asserts this exact shape.
+_EXPECTED_SEQ13_PAYLOAD_SHA256 = (
+    "b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"
+)
+# fmt: on
 
 _IDENTITY_KEYS = frozenset(
     {"sequence", "version", "rule_pack_id", "previous_payload_sha256", "created_at", "created_by"}
