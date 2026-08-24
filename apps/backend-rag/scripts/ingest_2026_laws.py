@@ -150,6 +150,20 @@ LAWS_2026 = [
         "filename": "Permenkumham_34_2021_Visa_Izin_Tinggal_Masa_Covid19.pdf",
         "title": "Permenkumham 34/2021 - Visa dan Izin Tinggal pada Masa Penanganan Penyebaran Corona Virus Disease 2019 dan Pemulihan Ekonomi Nasional",
         "category": "keimigrasian",
+        # Scoped HISTORICAL on its own time-bound subject matter — this is a
+        # Covid-emergency instrument whose operative window has passed. NOT on a
+        # verified repeal: no repeal of 34/2021 was found (Permen Imipas 6/2025
+        # revokes Permenkumham *35*/2021, a different instrument). Ingested as
+        # `current` it would be retrievable as law in force, which on a
+        # client-facing surface is the failure that matters. Note the pipeline
+        # makes the Drive archive BLOCKING for this scope
+        # (`LegalIngestIntegrityError`), so this entry cannot land until the
+        # Drive service-account credential is present — a loud failure, by
+        # design, and the correct one.
+        # Literal, not the imported constant: LAWS_2026 is a module-level data
+        # literal that must stay `ast.literal_eval`-able. The value is pinned
+        # against the real constant at run time, right below the import.
+        "retrieval_scope": "historical_only",
         "marketing_title_it": "Permenkumham 34/2021 - Visti e Soggiorni nel Periodo Covid-19 (storico)",
         "marketing_title_en": "Permenkumham 34/2021 - Visas and Stay Permits during Covid-19 (historical)",
     },
@@ -230,7 +244,23 @@ SOURCE_DIR = PROJECT_ROOT / "data/kb_sources/2026_updates"
 
 async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
     try:
-        from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
+        from backend.services.ingestion.legal_ingestion_service import (
+            CURRENT_RETRIEVAL_SCOPE,
+            HISTORICAL_RETRIEVAL_SCOPE,
+            LegalIngestionService,
+        )
+
+        # Pin the literals used in LAWS_2026 against the real constants. If the
+        # service ever renames a scope, this fails loudly here instead of
+        # silently passing an unrecognised string into ingestion.
+        declared_scopes = {law.get("retrieval_scope") for law in LAWS_2026} - {None}
+        known_scopes = {CURRENT_RETRIEVAL_SCOPE, HISTORICAL_RETRIEVAL_SCOPE}
+        unknown_scopes = declared_scopes - known_scopes
+        if unknown_scopes:
+            raise RuntimeError(
+                f"LAWS_2026 declares unknown retrieval_scope(s): {sorted(unknown_scopes)}; "
+                f"the service accepts {sorted(known_scopes)}"
+            )
         from backend.services.rag.hybrid_search import HybridSearchService
         from backend.services.rag.reranker import CrossEncoderReranker
     except ImportError as e:
@@ -306,6 +336,7 @@ async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
                 file_path=str(file_path),
                 title=law["title"],
                 category=law["category"],
+                retrieval_scope=law.get("retrieval_scope", CURRENT_RETRIEVAL_SCOPE),
             )
 
             if result["success"]:
