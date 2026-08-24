@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { emptyPlan } from "@/lib/secondhome-studio/plan-codec";
@@ -86,6 +86,7 @@ describe("SavePlanBar print action", () => {
 describe("SavePlanBar clear-plan two-step confirm", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("does not clear on a single activation", () => {
@@ -154,6 +155,59 @@ describe("SavePlanBar clear-plan two-step confirm", () => {
     // class and never applies at rest.
     expect(css).toMatch(
       /\.bz-shs-clear-plan\.bz-shs-clear-armed\s*\{[^}]*border-color:\s*var\(--accent-funnel\)[^}]*color:\s*var\(--bz-shs-clear-armed-active\)/s,
+    );
+  });
+
+  it("disarms on blur — a subsequent single activation does not clear", () => {
+    const onClear = vi.fn();
+    render(<SavePlanBar plan={emptyPlan()} onClear={onClear} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear saved plan" }));
+    fireEvent.blur(
+      screen.getByRole("button", { name: "Press again to clear your plan" }),
+    );
+
+    // Disarmed: the label reverted, so this click only re-arms it.
+    fireEvent.click(screen.getByRole("button", { name: "Clear saved plan" }));
+
+    expect(onClear).not.toHaveBeenCalled();
+  });
+
+  it("disarms after the 5s arm timeout — a subsequent single activation does not clear", () => {
+    vi.useFakeTimers();
+    const onClear = vi.fn();
+    render(<SavePlanBar plan={emptyPlan()} onClear={onClear} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear saved plan" }));
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    // Disarmed: the label reverted, so this click only re-arms it.
+    fireEvent.click(screen.getByRole("button", { name: "Clear saved plan" }));
+
+    expect(onClear).not.toHaveBeenCalled();
+  });
+
+  // Not a console.error/"state update on an unmounted component" assertion:
+  // proven empirically vacuous first (mutation-tested — see PR discussion).
+  // React 18+ no longer warns on a hook-based setState after unmount, so
+  // that signal would pass identically whether or not the cleanup exists.
+  // This asserts the actual mechanism instead: the useEffect cleanup must
+  // call clearTimeout on the pending arm timer when the component unmounts.
+  it("clears the pending arm timer on unmount", () => {
+    const onClear = vi.fn();
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+    const { unmount } = render(
+      <SavePlanBar plan={emptyPlan()} onClear={onClear} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear saved plan" }));
+    const callsBeforeUnmount = clearTimeoutSpy.mock.calls.length;
+    unmount();
+
+    expect(clearTimeoutSpy.mock.calls.length).toBeGreaterThan(
+      callsBeforeUnmount,
     );
   });
 });
