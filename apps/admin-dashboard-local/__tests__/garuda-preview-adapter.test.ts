@@ -241,6 +241,7 @@ describe("GARUDA Python execFile adapter", () => {
   it.each([
     { reasonCodes: ["PURPOSE_NOT_ELIGIBLE"] },
     { reasonCodes: ["GROUP_CASE"] },
+    { reasonCodes: ["ARRIVAL_TOO_FAR"] },
     { reasonCodes: ["PURPOSE_NOT_ELIGIBLE", "GROUP_CASE"] },
   ])(
     "accepts unique bounded decline code sets: $reasonCodes",
@@ -295,6 +296,16 @@ describe("GARUDA Python execFile adapter", () => {
     await expect(runGarudaPreview("{}")).rejects.toMatchObject({
       code: "preview_unavailable",
     });
+  });
+
+  it("accepts an uncovered far arrival when manual routing is also present", async () => {
+    const result = {
+      ...VALID_UNCOVERED_RESULT,
+      reason_codes: ["ARRIVAL_DATE_UNCONFIRMED", "ARRIVAL_TOO_FAR"],
+    };
+    engineResult(result);
+
+    await expect(runGarudaPreview("{}")).resolves.toEqual(result);
   });
 
   it.each([

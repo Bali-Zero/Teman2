@@ -338,9 +338,11 @@ deliverables and not others for the same true fact.
   value regardless of which path produced it). #4615 merged as `4e2fb20c8` at 2026-08-24T03:08:38Z,
   despite the suspension — told in full in the Adversarial review section below. A revert branch,
   `agent/nuzantara/backend-rag/revert-4615-hash-fold` (tip `966b28d372f91d27b85c4e4152217859857c5116`),
-  carries a revert commit as of this pin, but **no PR is open for it yet** — checked via
+  carried a revert commit as of this pin, and **no PR was open for it yet at that point** — checked via
   `gh pr list --state all --head agent/nuzantara/backend-rag/revert-4615-hash-fold` at the time this
-  paragraph was written (empty result), not assumed from the branch's existence.
+  paragraph was written (empty result), not assumed from the branch's existence. **Post-merge
+  correction, 2026-08-24: that branch was opened as PR #4781 and has since merged**, as `9eb328c81` at
+  2026-08-24T07:49:31Z — see §9 condition 8 for the current state.
 
   **The real fix is a spec change, not a lane fix.** Per `CONTRACTS.md` §21 this needs a versioned
   freeze-change: PR #4627 landed a *proposal* (merged 2026-08-23T08:18:12Z) to amend §2, declare `Z`
@@ -351,9 +353,10 @@ deliverables and not others for the same true fact.
   deliberately leaves two canonical-form sub-options unranked for the Conductor to choose between.
   **D7 is graded NOT DELIVERED, not PARTIAL, because the only code on `origin/main` implementing
   "deterministic hashing" at this pin is the disqualified, suspended, wrongly-armed cure** — reverting
-  it (in flight, unmerged as of this pin) returns the module to the pre-#4615 state, which carries the
-  real-but-currently-unreachable spelling-mismatch defect and no fold. Owner of the real fix:
-  **S9-C0**, via ratifying the freeze-change (condition 8, §9).
+  it, in flight and unmerged as of this pin, **has since merged** (post-merge correction, 2026-08-24:
+  PR #4781, `9eb328c81`, 2026-08-24T07:49:31Z — see §9 condition 8), returning the module to the
+  pre-#4615 state, which carries the real-but-currently-unreachable spelling-mismatch defect and no
+  fold. Owner of the real fix: **S9-C0**, via ratifying the freeze-change (condition 8, §9).
 - **D10 — atomic side-effect-free `RequestedActionSpec` → `ActionItem` + `ActionIntent` repository
   primitive**, and its NEXUS containment adapter. No persistence/repository module exists anywhere
   under `packages/research-os-core` — confirmed both by directory search (`*repositor*`, `*persist*`:
@@ -534,9 +537,12 @@ succeed anywhere until the migration is applied. This is the correct state for a
 point in the packet — additive, reversible, and unapplied is not a defect — but it is a state Cohort B
 must be told, not one they should infer from the word "exist."
 
-They **may not** rely on: **deterministic cross-implementation hashing (D7 — the only code on
-`origin/main` implementing it at this pin is a disqualified, suspended, wrongly-armed cure that
-collides two different documents onto one hash; see §4)**; a contract registry (D6 — does not exist);
+They **may not** rely on: **deterministic cross-implementation hashing (D7 — still NOT DELIVERED,
+reason corrected post-merge 2026-08-24: PR #4781 reverted #4615's fold, merged `9eb328c81` at
+2026-08-24T07:49:31Z — `origin/main` no longer carries the raw-dict/model-path collision §4 describes.
+D7 stays NOT DELIVERED because the freeze-change proposal is still unratified (§4, §9 condition 8) and
+`hashing.py`, back at its pre-#4615 state, carries the original, real-but-currently-unreachable
+UTC-spelling defect with no fold in place; see §4)**; a contract registry (D6 — does not exist);
 a phased dual-write/read plan for their own packets (D8 second half — does not exist); any atomic
 multi-object repository primitive (D10 — does not exist, and the package's own code says so twice,
 independently); an atomic classification-change primitive across objects (D11 — both receipt modules
@@ -635,19 +641,23 @@ unconditional; each has an owner and a closure test.
    table in a throwaway database is proven rejected — tracked in `PENDING-ARMS.md` alongside this
    commit.
 8. **D7 — freeze-change ratification, `CONTRACTS.md` §2 vs §3's UTC-spelling inconsistency.**
-   Owner: **S9-C0**. Closes when: the freeze-change proposal in
+   Owner: **S9-C0**. **Post-merge correction, 2026-08-24: the second half of this condition is now
+   DONE.** This condition originally required BOTH the freeze-change ratified AND PR #4615's fold
+   reverted out of `canonicalize()`. The revert half closed: PR #4781
+   (`agent/nuzantara/backend-rag/revert-4615-hash-fold`) merged as `9eb328c81` at
+   2026-08-24T07:49:31Z — confirmed this pass by `grep -c _fold_utc_timestamp_spelling` and
+   `grep -c _UTC_TIMESTAMP_HASH_RE` on `hashing.py` (both 0 hits, both exit 1) and by
+   `git diff --quiet 868b62322 origin/main -- packages/research-os-core/research_os/hashing.py`
+   (exit 0 — byte-identical to the pre-#4615 state). **The condition stays OPEN on its remaining,
+   first half only, still owned by S9-C0**: the freeze-change proposal in
    `evidence/p04/freeze-change-proposal-001.md` (landed via PR #4627, 2026-08-23,
-   `adversarial_review: pending`) is ratified — `Z` declared the single canonical UTC spelling,
-   normalization moved to the MODEL layer via a `BeforeValidator` on `UtcDateTime` — and PR #4615's
-   fold is reverted out of `canonicalize()`. **The branch exists at this document's pin; the PR
-   carrying it does not** — `agent/nuzantara/backend-rag/revert-4615-hash-fold` was opened as PR #4781
-   and armed (`autoMergeRequest.enabledAt = 2026-08-24T07:22:14Z`) after this document's pin. Measured
-   fresh via GraphQL at the moment this line was written: `state: OPEN`, `mergedAt: null`,
-   `mergeQueueEntry: {state: AWAITING_CHECKS, position: 1}` — armed and now in the merge queue, not yet
-   landed. This is a live state that will keep moving; treat the fields, not this document's snapshot
-   of them, as ground truth by the time anyone reads this. Until it closes,
-   `research_os/hashing.py`'s deterministic-hashing guarantee does not hold for any canonical
-   object carrying a free-text field that happens to be timestamp-shaped.
+   `adversarial_review: pending`) is not yet ratified — `Z` is not yet declared the single canonical
+   UTC spelling, and normalization has not moved to the MODEL layer via a `BeforeValidator` on
+   `UtcDateTime`. Closes when that ratification lands. Until then, `hashing.py` carries no fold (so
+   the collision described in §4 no longer reproduces on `origin/main`) but also carries no
+   MODEL-layer normalization — the module's deterministic-hashing guarantee against the original
+   `+00:00`/`Z` spelling mismatch still does not formally hold, even though no shipped fixture in this
+   packet currently exercises it (every fixture uses canonical `Z`).
 
 **What would move this document's verdict from `PASS_WITH_LIMITS` (§1) to REFUSE**, stated so the Conductor and any
 future re-reader know the bar: any of §§2's PASS-graded claims (D1, D2, D9, D12, or the contract
