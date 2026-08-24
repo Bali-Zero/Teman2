@@ -31,6 +31,7 @@ const DECLINE_CODES = new Set([
   "ARRIVAL_TOO_SOON",
   "ARRIVAL_TOO_FAR",
   "ARRIVAL_DATE_UNCONFIRMED",
+  "EXTENSION_EXCEEDS_MAX_STAY",
 ]);
 const BASE_WARNINGS = [
   "Internal preliminary pre-screen only; it is not an immigration decision or an approval guarantee.",
