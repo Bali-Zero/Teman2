@@ -63,23 +63,42 @@ Neither §6 nor §9 is titled "migration proof" or "list of unresolved semantic 
 — the mapping above is this index's own construction, stated so a reader does not go looking for a
 heading that was never promised.
 
-**2. Artifact 4's "no automated test" claim needs a correction from what was reported earlier in
-this handoff's chat history — the earlier zero was a substring zero, and opening the directory
-(not just grepping it) found something material.** `grep`-ing
-`apps/backend-rag/backend/tests/db/` for the literal strings `279`/`contract_core` still returns
-zero hits, and no test file there is *named* for migration 279 — that much re-confirms. But
-listing the full directory (45 entries, all opened by name this session) surfaces
+**2. Artifact 4's "no automated test" claim, stated bare, is FALSE — and the narrower true claim
+needed two separate rounds of correction to land right.** Round one (this document's earlier
+draft): `grep`-ing `apps/backend-rag/backend/tests/db/` for the literal strings
+`279`/`contract_core` returns zero hits, and no test file there is *named* for migration 279 — both
+still hold. But that grep-zero was a substring zero, exactly the trap it looks like: opening the
+full directory (45 entries, all opened by name this session) surfaces
 `test_migration_280_research_os_objects_truncate_guard.py`, alongside a new migration file,
 `280_research_os_objects_truncate_guard.sql` — both landed via PR #4780, **after
 `contract-pass-001.md`'s last freshen, and mentioned nowhere in that document**
 (`grep -n 280 contract-pass-001.md` returns nothing). Migration 280 is precisely the fix for §9
-condition 7 (the `TRUNCATE` gap M1 found in the adversarial-review pass).
+condition 7 (the `TRUNCATE` gap M1 found in the adversarial-review pass), and it has a real,
+dedicated, guilt-armed test — so **"no automated test at all" is false.**
 
-Reading `test_migration_280_...py` directly:
-- Its `@pytest.mark.integration` database tests apply **migration 279's own forward SQL** as a
-  fixture-setup step (`_apply_clean()`, via the transaction-scoped `db_tx` fixture, rolled back at
-  teardown) before exercising 280's guard. So **279's forward/apply is now exercised by an
-  automated CI test** — as a dependency of 280's tests, not as a test of its own.
+**The precise, narrower claim, re-verified this round by opening every candidate file, not by
+re-grepping:** **migration 280 has a dedicated test. Migration 279 — the canonical core D2 the
+Cohort B migrations (271/272/273) chain off of — does not, and no generic sweep covers it either.**
+Three candidate generic runners were opened and read in full, not grepped for a name match:
+- `test_migration_uniqueness.py` — does sweep every real file under `migrations_v2/*.sql`
+  (`real_dir`, `test_real_migrations_v2_has_no_duplicates`), but checks **only** that no two files
+  share a numeric prefix. No apply, no rollback.
+- `test_migration_sql_validator.py` — `@pytest.mark.parametrize`d entirely on **inline SQL strings**
+  written in the test file (e.g. `999_scratch.sql` built from a Python string), never on a real
+  migration file. It proves the destructive-statement validator's own guilt/innocence pairs, not
+  that any real migration applies or rolls back.
+- `test_migration_contract.py` — globs `MIGRATIONS_DIR.glob("migration_*.py")` where
+  `MIGRATIONS_DIR = .../backend/migrations` — a **different directory** (`migrations`, not
+  `migrations_v2`) holding Python files, not SQL. Migration 279 is not in its scope by construction.
+
+So: none of the three generic sweeps exercises 279's apply or rollback. What DOES touch 279:
+- Reading `test_migration_280_...py` directly: its `@pytest.mark.integration` database tests apply
+  **migration 279's own forward SQL** as a fixture-setup step (`_apply_clean()`, via the
+  transaction-scoped `db_tx` fixture, rolled back at teardown) before exercising 280's guard. So
+  **279's forward/apply is exercised by an automated CI test** — as an incidental dependency of
+  280's tests, never as a test of 279 in its own right, and never asserted on its own (no assertion
+  in that file checks that 279's apply produced the expected table/index/trigger shape — only that
+  280's guard, once both are applied, behaves correctly).
 - **279's own ROLLBACK is still exercised nowhere.** `_apply_clean()` never calls it; only 280's
   own rollback (`DROP TRIGGER IF EXISTS research_os_objects_no_wipe ...`) is tested.
 - The `TRUNCATE` gap itself is closed and proven, guilt-armed, in the same file: the new guard
@@ -94,6 +113,10 @@ migration at all" is no longer an accurate summary: 279's forward SQL is now app
 run of `test_migration_280_...py`, and the `TRUNCATE` gap it left behind (§9 condition 7) now has
 its own closed, automated, guilt-armed proof — a fact this document is recording because
 `contract-pass-001.md` does not yet reflect it.
+
+**One-sentence summary for S9-C0**: migration 280 has a dedicated automated test; migration 279 does
+not, no generic sweep exercises its apply or rollback either, and its only proof remains a manual
+act narrated once in `contract-pass-001.md` §6 — not something that re-runs.
 
 **3. Artifact 5 (hash specification) remains graded NOT DELIVERED.** `hashing.py` exists and its
 plumbing is real (RFC 8785 canonicalization, `object_hash()` wired into 25+ models), but
