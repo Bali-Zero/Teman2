@@ -429,6 +429,36 @@ describe("StudioApp", () => {
     });
   });
 
+  describe("S13 verdict-crown — exactly one <h1> at every stage", () => {
+    it("question stage: exactly one <h1>, and its text is the page masthead 'Check your fit'", () => {
+      const { container } = render(<StudioApp />);
+      const h1s = container.querySelectorAll("h1");
+      expect(h1s).toHaveLength(1);
+      expect(h1s[0]).toHaveTextContent("Check your fit");
+    });
+
+    it("verdict stage: exactly one <h1>, and its text is the verdict heading — not 'Check your fit'", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      const { container } = render(<StudioApp />);
+      await screen.findByRole("heading", { name: /strong match/i });
+
+      const h1s = container.querySelectorAll("h1");
+      expect(h1s).toHaveLength(1);
+      expect(h1s[0]).toHaveTextContent(/strong match/i);
+      expect(h1s[0]).not.toHaveTextContent("Check your fit");
+    });
+
+    it("verdict stage: 'Check your fit' is still present (demoted, not deleted) but is not a heading element", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /strong match/i });
+
+      const masthead = screen.getByText("Check your fit");
+      expect(masthead).toBeInTheDocument();
+      expect(masthead.closest("h1,h2,h3,h4,h5,h6")).toBeNull();
+    });
+  });
+
   describe("ScenarioToggle — saved-plan immutability", () => {
     it("opening the route preview does not mutate the saved plan in localStorage", async () => {
       const saved = fullPlan({

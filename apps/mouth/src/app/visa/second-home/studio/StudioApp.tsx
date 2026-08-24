@@ -107,6 +107,34 @@ const eyebrowStyle: React.CSSProperties = {
   margin: 0,
 };
 
+const mastheadHeadingStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--font-serif, Georgia, serif)",
+  fontSize: "clamp(3.4rem, 8vw, 6.6rem)",
+  fontWeight: 500,
+  letterSpacing: "-0.035em",
+  lineHeight: 0.92,
+  maxWidth: "11ch",
+  textWrap: "balance",
+  color: "var(--text-primary)",
+};
+
+/** S13 verdict-crown: on the verdict stage the masthead recedes to a quiet,
+ *  PRESENTATIONAL label (paired with the "Second Home Studio" eyebrow as one
+ *  identifier block) so it stops competing with VerdictPanel's <h1>, which
+ *  becomes the page's sole <h1> at that point (INVARIANT — exactly one <h1>
+ *  at every stage). Words unchanged ("Check your fit") — demoted, never
+ *  deleted or reworded; not a heading tag, so heading-rank navigation never
+ *  sees it here. */
+const mastheadLabelStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--font-serif, Georgia, serif)",
+  fontSize: "1.05rem",
+  fontWeight: 500,
+  letterSpacing: "-0.01em",
+  color: "var(--text-secondary, var(--color-text-muted))",
+};
+
 const navButtonStyle: React.CSSProperties = {
   padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
   borderRadius: 8,
@@ -581,26 +609,20 @@ export function StudioApp() {
         <header
           style={{
             display: "grid",
-            gap: "var(--space-3, 0.75rem)",
-            padding: "clamp(2rem, 7vw, 5rem) 0 clamp(1rem, 2vw, 1.5rem)",
+            gap: isVerdictStage
+              ? "var(--space-1, 0.3rem)"
+              : "var(--space-3, 0.75rem)",
+            padding: isVerdictStage
+              ? "clamp(1rem, 3vw, 1.75rem) 0 clamp(0.5rem, 1vw, 0.75rem)"
+              : "clamp(2rem, 7vw, 5rem) 0 clamp(1rem, 2vw, 1.5rem)",
           }}
         >
           <p style={eyebrowStyle}>Second Home Studio</p>
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-serif, Georgia, serif)",
-              fontSize: "clamp(3.4rem, 8vw, 6.6rem)",
-              fontWeight: 500,
-              letterSpacing: "-0.035em",
-              lineHeight: 0.92,
-              maxWidth: "11ch",
-              textWrap: "balance",
-              color: "var(--text-primary)",
-            }}
-          >
-            Check your fit
-          </h1>
+          {isVerdictStage ? (
+            <p style={mastheadLabelStyle}>Check your fit</p>
+          ) : (
+            <h1 style={mastheadHeadingStyle}>Check your fit</h1>
+          )}
         </header>
 
         {!isVerdictStage ? (
