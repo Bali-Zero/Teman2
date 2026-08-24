@@ -145,6 +145,7 @@ def include_routers(api: FastAPI) -> None:
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
+        visa_oracle_consultant,  # [C3] Visa Oracle consultant-assignment event (public)
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         voice,
         wa_actions,
@@ -278,7 +279,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
-    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
+    api.include_router(
+        portal_notification_prefs.router
+    )  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
 
     # Compliance routers
@@ -482,6 +485,9 @@ def include_routers(api: FastAPI) -> None:
     # [W1] Visa Oracle v2 evaluate read-path — POST /api/visa-oracle/evaluate
     # (public exact path, own 30/min bucket; SHADOW-era mode=CURATED contract)
     api.include_router(visa_oracle_evaluate.router)
+    # [C3] Visa Oracle consultant-assignment event — POST /api/visa-oracle/consultant-assignment
+    # (public exact path, own 20/min bucket)
+    api.include_router(visa_oracle_consultant.router)
 
 
 def include_light_routers(api: FastAPI) -> None:
@@ -598,6 +604,7 @@ def include_light_routers(api: FastAPI) -> None:
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
+        visa_oracle_consultant,  # [C3] Visa Oracle consultant-assignment event (public)
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         wa_actions,
         wa_broker,  # /api/wa-broker/* codex broker transport (dedicated key, BOT-V4 S2)
@@ -715,7 +722,9 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(portal_invite.router)
     api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
-    api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
+    api.include_router(
+        portal_notification_prefs.router
+    )  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
 
     # Compliance routers
@@ -781,7 +790,9 @@ def include_light_routers(api: FastAPI) -> None:
     # Blog routers (light)
     api.include_router(newsletter.router)
     api.include_router(article_composer.router)
-    api.include_router(asset_upload.router)  # [P1.2 2026-05-26] /api/assets/upload Tigris proxy (light variant)
+    api.include_router(
+        asset_upload.router
+    )  # [P1.2 2026-05-26] /api/assets/upload Tigris proxy (light variant)
 
     # Performance router
     api.include_router(performance.router)
@@ -848,6 +859,9 @@ def include_light_routers(api: FastAPI) -> None:
     # [W1] Visa Oracle v2 evaluate read-path — POST /api/visa-oracle/evaluate
     # (public exact path, own 30/min bucket; SHADOW-era mode=CURATED contract)
     api.include_router(visa_oracle_evaluate.router)
+    # [C3] Visa Oracle consultant-assignment event — POST /api/visa-oracle/consultant-assignment
+    # (public exact path, own 20/min bucket)
+    api.include_router(visa_oracle_consultant.router)
 
     # intel/intel_scraper/intel_analytics serve on rag process (need /data volume for staging files)
 

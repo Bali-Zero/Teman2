@@ -57,6 +57,7 @@ import {
   type VisaOracleMode,
 } from "../_lib/runtime-mode";
 import { shadowParityMatches } from "../_lib/shadow-parity";
+import type { ConsultantAssignmentTier } from "../_lib/consultant-assignment-client";
 import type { OutcomeViewModel } from "../_lib/outcome-view-model";
 import type { VisaOracleEvaluateResponse } from "../_lib/visa-oracle-contract";
 import { LivingTree } from "./LivingTree";
@@ -303,6 +304,12 @@ function OracleShellRuntime({
   const evaluationGenerationRef = useRef(0);
   const evaluationCacheRef = useRef(new EvaluationRunCache<OutcomeViewModel>());
   const lastEvaluationKeyRef = useRef<string | null>(null);
+  // C3 wiring: the real assessment UUID for the evaluation currently behind
+  // `outcome`, if a real evaluate call was actually made for it. Reset to
+  // null at the top of every evaluation attempt (including the OFF/PREVIEW
+  // early-return paths, which never populate it) so a stale identity from a
+  // prior attempt can never attach to a later, unrelated outcome.
+  const lastEvaluationAssessmentIdRef = useRef<string | null>(null);
   const memoryIdentityStorageRef = useRef<EvaluationIdentityStorage | null>(
     null,
   );
@@ -500,6 +507,7 @@ function OracleShellRuntime({
     activeControllerRef.current = controller;
     setEvaluating(true);
     setOutcome(null);
+    lastEvaluationAssessmentIdRef.current = null;
 
     if (mode === "OFF") {
       setOutcome(
@@ -531,6 +539,7 @@ function OracleShellRuntime({
           storage: browserIdentityStorage ?? memoryIdentityStorage,
         });
         if (controller.signal.aborted) return;
+        lastEvaluationAssessmentIdRef.current = prepared.identity.assessmentId;
         let telemetryCorrelationHash: string | undefined;
         try {
           telemetryCorrelationHash = await nonReversibleHash(
@@ -730,6 +739,28 @@ function OracleShellRuntime({
   }, [state.facts.category]);
   const outcomeAssessmentReference =
     outcome?.provenance === "ENGINE" ? outcome.assessment.publicId : undefined;
+  // C3 wiring. `evaluation_id` is required by the frozen contract even when
+  // no real evaluate call happened (CLIENT_GUARD/PREVIEW/NETWORK_FAILURE
+  // outcomes can still render the verdict screen and its handoff control) —
+  // `publicId` is deliberately NOT reused here: it is a non-reversible,
+  // access-control-forbidden opaque token by the engine's own design, not a
+  // correlation id. `crypto.randomUUID()` only stands in when no real
+  // assessment identity was ever generated for this outcome.
+  const consultantEvaluationId =
+    lastEvaluationAssessmentIdRef.current ?? crypto.randomUUID();
+  // tier is an explicit, conservative placeholder: TIER-MAP.md's owner
+  // switchboard #4 (the T1/T2 business-judgment split) is unsigned as of
+  // this wiring. A SUPPORTED_CANDIDATES verdict always has a resolved price
+  // by construction (api_models.py's own quote-required invariant) and
+  // defaults to T2, never T1 — the safe-failure direction is an extra nudge
+  // to a self-service client, never silence to one who should hear from a
+  // consultant. Every other state has no supported candidate at all, so T3.
+  const consultantTier: ConsultantAssignmentTier =
+    outcome?.state === "SUPPORTED_CANDIDATES" ? "T2" : "T3";
+  const consultantProductVersionId =
+    outcome?.provenance === "ENGINE" && outcome.state === "SUPPORTED_CANDIDATES"
+      ? outcome.candidates[0]?.id
+      : undefined;
   const guardianConsentRequired = isMinorForHandoff(
     state.facts.birth_date,
     outcome?.provenance === "ENGINE"
@@ -910,6 +941,9 @@ function OracleShellRuntime({
                         state={outcome.state as VisaOracleTelemetryState}
                         assessmentReference={outcomeAssessmentReference}
                         guardianConsentRequired={guardianConsentRequired}
+                        evaluationId={consultantEvaluationId}
+                        tier={consultantTier}
+                        productVersionId={consultantProductVersionId}
                       />
                     }
                   />

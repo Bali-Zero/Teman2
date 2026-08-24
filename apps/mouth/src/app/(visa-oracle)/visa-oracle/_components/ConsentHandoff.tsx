@@ -16,6 +16,10 @@ import {
   type LocalConsentReceipt,
   type ConsentScope,
 } from "../_lib/consent-store";
+import {
+  requestConsultantAssignment,
+  type ConsultantAssignmentTier,
+} from "../_lib/consultant-assignment-client";
 
 const WHATSAPP_NUMBER_PATTERN = /^\d{8,15}$/;
 const PUBLIC_DECISION_ID_PATTERN = /^[a-z0-9]{16,20}$/;
@@ -34,6 +38,20 @@ export interface ConsentHandoffProps {
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   now?: () => Date;
   createReceiptId?: () => string;
+  /**
+   * C3 (`ConsultantAssignmentEvent`) wiring — required, not optional: a
+   * "Talk to a consultant" control with no evaluation identity to attach a
+   * signal to is exactly the gap this wiring exists to close (V3/unit-2,
+   * "ConsentHandoff funziona ma non emette"). The real assessment UUID when
+   * one exists, or a caller-generated fallback for the small set of outcome
+   * states that never reached the engine (see `OracleShell.tsx`).
+   */
+  evaluationId: string;
+  tier: ConsultantAssignmentTier;
+  /** Present only once a client identity exists. */
+  clientId?: string | null;
+  /** Present only for a resolved SUPPORTED_CANDIDATES verdict. */
+  productVersionId?: string | null;
 }
 
 const COPY = {
@@ -153,6 +171,10 @@ export function ConsentHandoff({
   storage,
   now = systemNow,
   createReceiptId = systemReceiptId,
+  evaluationId,
+  tier,
+  clientId,
+  productVersionId,
 }: ConsentHandoffProps) {
   const [receipt, setReceipt] = useState<LocalConsentReceipt | null>(null);
   const [guardianConfirmed, setGuardianConfirmed] = useState(false);
@@ -262,6 +284,19 @@ export function ConsentHandoff({
       .catch(() => {
         // No telemetry is safer than a reversible fallback correlator.
       });
+
+    // C3 — the moment a visitor grants consent to the handoff IS the moment
+    // they invoked "Talk to a consultant" (this control's origin_screen is
+    // always "verdict" — the only screen it renders on today). Not awaited:
+    // this must never delay or fail the WhatsApp handoff it rides alongside.
+    void requestConsultantAssignment({
+      evaluationId,
+      clientId,
+      originScreen: "verdict",
+      tier,
+      productVersionId,
+      locale: language,
+    });
   };
 
   const trackOpen = () => {

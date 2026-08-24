@@ -274,6 +274,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Visa Oracle v2 evaluate read-path (W1) — dedicated bucket, tighter
         # than the generic /api/ 120/min: exact path beats the /api/ prefix.
         "/api/visa-oracle/evaluate": (30, 60),  # 30 per minute - public engine evaluation
+        # C3 consultant-assignment event (V3) — tighter than evaluate: this
+        # is a "notify a human" write, not a read, and should be rarer.
+        "/api/visa-oracle/consultant-assignment": (
+            20,
+            60,
+        ),  # 20 per minute - consultant signal, public
         "/preview/": (60, 60),  # 60 per minute - article previews
         "/preview/upload": (10, 60),  # 10 per minute - prevent storage abuse
         "/api/legal/parent-documents": (20, 60),  # 20 per minute - internal ingestion

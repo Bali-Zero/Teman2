@@ -13,12 +13,29 @@ vi.mock("../_lib/telemetry", async (importOriginal) => {
   return { ...original, emitVisaOracleTelemetry, nonReversibleHash };
 });
 
+const requestConsultantAssignment = vi.hoisted(() =>
+  vi.fn(async () => undefined),
+);
+vi.mock("../_lib/consultant-assignment-client", async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import("../_lib/consultant-assignment-client")
+    >();
+  return { ...original, requestConsultantAssignment };
+});
+
 import { ConsentHandoff } from "./ConsentHandoff";
+
+// A stable, realistic-looking evaluationId for tests that don't assert on
+// the C3 emission itself — the prop is required (see module docstring on
+// ConsentHandoffProps), so every render call site needs one.
+const TEST_EVALUATION_ID = "11111111-1111-4111-8111-111111111111";
 
 describe("ConsentHandoff", () => {
   beforeEach(() => {
     emitVisaOracleTelemetry.mockReset();
     nonReversibleHash.mockClear();
+    requestConsultantAssignment.mockClear();
     window.sessionStorage.clear();
     window.localStorage.clear();
   });
@@ -33,6 +50,8 @@ describe("ConsentHandoff", () => {
         language="en"
         state="SUPPORTED_CANDIDATES"
         whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T2"
       />,
     );
 
@@ -52,6 +71,8 @@ describe("ConsentHandoff", () => {
         state="HUMAN_REVIEW_REQUIRED"
         whatsappNumber="628123456789"
         guardianConsentRequired
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
       />,
     );
 
@@ -94,6 +115,8 @@ describe("ConsentHandoff", () => {
           whatsappNumber="628123456789"
           storage={storage}
           createReceiptId={() => "receipt-expiring"}
+          evaluationId={TEST_EVALUATION_ID}
+          tier="T2"
         />
       </StrictMode>,
     );
@@ -137,6 +160,8 @@ describe("ConsentHandoff", () => {
         storage={storage}
         now={() => new Date("2026-08-03T12:00:00.000Z")}
         createReceiptId={() => "receipt-1"}
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
       />,
     );
 
@@ -184,6 +209,8 @@ describe("ConsentHandoff", () => {
       storage,
       now: () => new Date("2026-08-03T12:00:00.000Z"),
       createReceiptId: () => "receipt-scoped",
+      evaluationId: TEST_EVALUATION_ID,
+      tier: "T2" as const,
     };
     const first = render(<ConsentHandoff {...props} />);
     fireEvent.click(screen.getByRole("checkbox"));
@@ -221,6 +248,8 @@ describe("ConsentHandoff", () => {
         storage={storage}
         now={() => new Date("2026-08-03T12:00:00.000Z")}
         createReceiptId={() => "receipt-revocable"}
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T2"
       />,
     );
 
@@ -246,6 +275,8 @@ describe("ConsentHandoff", () => {
         state="HUMAN_REVIEW_REQUIRED"
         whatsappNumber="628123456789"
         createReceiptId={() => "receipt-sensitive"}
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
       />,
     );
 
@@ -273,6 +304,8 @@ describe("ConsentHandoff", () => {
         language="en"
         state="TEMPORARILY_UNAVAILABLE"
         whatsappNumber="not-a-phone"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -285,10 +318,86 @@ describe("ConsentHandoff", () => {
         language="id"
         state="TEMPORARILY_UNAVAILABLE"
         whatsappNumber=""
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
       "Pengalihan WhatsApp belum dikonfigurasi",
     );
+  });
+
+  // ---------------------------------------------------------------------
+  // C3 wiring (V3/unit-2) — the event actually fires, with the right shape,
+  // at the moment consent is granted.
+  // ---------------------------------------------------------------------
+
+  it("emits the C3 consultant-assignment event when consent is granted", async () => {
+    render(
+      <ConsentHandoff
+        language="id"
+        state="SUPPORTED_CANDIDATES"
+        whatsappNumber="628123456789"
+        createReceiptId={() => "receipt-c3"}
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T2"
+        clientId="22222222-2222-4222-8222-222222222222"
+        productVersionId="33333333-3333-4333-8333-333333333333"
+      />,
+    );
+
+    expect(requestConsultantAssignment).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("checkbox"));
+    await act(async () => Promise.resolve());
+
+    expect(requestConsultantAssignment).toHaveBeenCalledTimes(1);
+    expect(requestConsultantAssignment).toHaveBeenCalledWith({
+      evaluationId: TEST_EVALUATION_ID,
+      clientId: "22222222-2222-4222-8222-222222222222",
+      originScreen: "verdict",
+      tier: "T2",
+      productVersionId: "33333333-3333-4333-8333-333333333333",
+      locale: "id",
+    });
+  });
+
+  it("does not emit on revocation, and emits again on a fresh grant", async () => {
+    render(
+      <ConsentHandoff
+        language="en"
+        state="NO_SUPPORTED_PATH"
+        whatsappNumber="628123456789"
+        createReceiptId={() => "receipt-c3-toggle"}
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox");
+    fireEvent.click(checkbox); // grant
+    await act(async () => Promise.resolve());
+    expect(requestConsultantAssignment).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(checkbox); // revoke
+    await act(async () => Promise.resolve());
+    expect(requestConsultantAssignment).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(checkbox); // grant again
+    await act(async () => Promise.resolve());
+    expect(requestConsultantAssignment).toHaveBeenCalledTimes(2);
+  });
+
+  it("never emits when consent is never granted", () => {
+    render(
+      <ConsentHandoff
+        language="en"
+        state="SUPPORTED_CANDIDATES"
+        whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T2"
+      />,
+    );
+
+    expect(requestConsultantAssignment).not.toHaveBeenCalled();
   });
 });
