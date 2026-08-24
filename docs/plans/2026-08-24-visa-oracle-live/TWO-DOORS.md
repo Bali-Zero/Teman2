@@ -42,6 +42,38 @@ Set against the signed pack that the Oracle actually runs on:
   that must trace to a verified primary source, and this page is not under the Oracle's source
   discipline.
 
+## Correction received and verified: the public funnel does NOT invent prices
+
+The GARUDA orchestrator independently re-measured all four URLs (4/4 identical) and then
+corrected this document. Re-verified here on disk rather than accepted on their word:
+
+- `visa_oracle.py:1289` — `price = server_top.get("price") or "contact for pricing"`.
+- The `/handoff` docstring is explicit: the server-side PricingTool value comes from the
+  persisted session's own data, and _"the caller must then proceed WITHOUT a price rather than
+  fall back to the client-posted handoff body"_.
+- A client/server price divergence is **logged, not silenced**.
+
+So the old funnel is bound to PricingTool and degrades to "contact for pricing". **The original
+phrasing of this document implied a pricing risk that does not exist**, and the correction makes
+the case narrower and stronger: the defect is not a wrong number — it is the **claims** ("24" vs
+38, "we know which" vs nine contractual abstentions, "show the cost" vs 12 products with no
+`pricing_key`) plus the indexing inversion. A fabricated price would have to be switched off
+tonight; wrong claims are two lines of copy, which is exactly what the recommendation asks for.
+
+## And the divergence is sharper than "a different code path"
+
+Measured while verifying the correction — the two doors do not merely differ in front-end logic,
+they call **different backend services**:
+
+| Door                        | Endpoint                                                  | Decision engine                                                    |
+| --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------ |
+| `/visa` (public, indexable) | `POST /api/v1/visa-oracle/recommend`                      | `VisaOracleService.recommend_visas` (`visa_oracle_service.py:210`) |
+| `/visa-oracle` (shadow)     | `POST /api/visa-oracle/evaluate` (`evaluateVisaOracleV2`) | the deterministic evaluator over the signed rule pack              |
+
+Two engines, two catalogues, two notions of what may be asserted — and the one under a signed
+pack, an abstention contract and a projection validator is the hidden one. This makes divergence
+more likely by construction, not less, and it is what the V2 lane is now measuring.
+
 ## Why this is a defect NOW, not at ignition
 
 Every argument for keeping the Oracle in shadow — the engine is unproven, the DPIA is unsigned,
