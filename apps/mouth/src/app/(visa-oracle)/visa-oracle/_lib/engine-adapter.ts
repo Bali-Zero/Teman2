@@ -609,9 +609,16 @@ function price(
   if (candidate.pricing.status === "CONTACT_REQUIRED") {
     return {
       status: "CONTACT_REQUIRED",
+      // Deliberately explains WHY, not just that contact is needed
+      // (2026-08-25 — cross-lane risk closed: the counter on the wizard
+      // screens counts this exact candidate shape as "goes through a
+      // consultant," and this is the one place in the verdict screen a
+      // reader can otherwise mistake a real, engine-supported candidate
+      // with no published price for one they can buy immediately, since
+      // it is listed among the candidates like any other).
       message: text(
-        "An all-inclusive verified quote requires contact.",
-        "Penawaran all-inclusive terverifikasi memerlukan kontak.",
+        "This path doesn't have a published all-inclusive price yet — our team will confirm the cost and next steps with you directly.",
+        "Jalur ini belum memiliki harga all-inclusive yang dipublikasikan — tim kami akan memastikan biaya dan langkah selanjutnya langsung bersama Anda.",
       ),
     };
   }

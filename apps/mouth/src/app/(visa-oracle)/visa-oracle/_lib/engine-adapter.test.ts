@@ -87,6 +87,34 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(JSON.stringify(candidate)).not.toContain("60 days");
   });
 
+  /**
+   * Cross-lane risk closed 2026-08-25: a synthetic-persona run against the
+   * real seq-13 evaluator proved products with no `pricing_key` (e.g. E30,
+   * E30E, E30F — the exact three the wizard's decomposed paths-counter
+   * classifies as "consultant-routed", never sellable self-service) still
+   * come back inside `SUPPORTED_CANDIDATES` with `pricing.status ==
+   * "CONTACT_REQUIRED"` — the engine never drops a price-less candidate.
+   * A generic "requires contact" line risked reading as self-service to a
+   * skimming reader on a card that otherwise looks identical to a priced
+   * one. This pins the explicit, WHY-it-needs-contact copy so a future edit
+   * can't silently regress back to the vaguer wording.
+   */
+  it("explains WHY a price-less SUPPORTED_CANDIDATES card needs contact, not just that it does", () => {
+    const outcome = buildEngineOutcome(makeVisaOracleResponse());
+    expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
+    if (outcome.state !== "SUPPORTED_CANDIDATES")
+      throw new Error("unexpected state");
+    const { price } = outcome.candidates[0];
+    if (price.status !== "CONTACT_REQUIRED")
+      throw new Error("expected CONTACT_REQUIRED price");
+    expect(price.message.en).toBe(
+      "This path doesn't have a published all-inclusive price yet — our team will confirm the cost and next steps with you directly.",
+    );
+    expect(price.message.id).toBe(
+      "Jalur ini belum memiliki harga all-inclusive yang dipublikasikan — tim kami akan memastikan biaya dan langkah selanjutnya langsung bersama Anda.",
+    );
+  });
+
   it("renders an exact PricingTool quote as one all-inclusive IDR amount", () => {
     const response = makeVisaOracleResponse();
     const candidate = response.display.candidates[0];

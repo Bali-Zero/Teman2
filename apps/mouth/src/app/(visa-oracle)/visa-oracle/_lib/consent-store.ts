@@ -10,6 +10,12 @@ const OUTCOME_STATES = new Set([
   "HUMAN_REVIEW_REQUIRED",
   "NO_SUPPORTED_PATH",
   "TEMPORARILY_UNAVAILABLE",
+  // Not an engine outcome — the ever-present consultant control
+  // (`ConsultantAccess.tsx`) can be opened before any evaluation has run.
+  // Kept in lockstep with `VisaOracleTelemetryState` in `telemetry.ts`;
+  // `createLocalConsentReceipt` throws on a scope this set rejects, so a
+  // pre-verdict consent grant would hard-crash the wizard without this.
+  "IN_PROGRESS",
 ]);
 
 export const VISA_ORACLE_CONSENT_KEY = "visa-oracle:v2:handoff-consent:v2";
@@ -32,7 +38,8 @@ export interface ConsentScope {
     | "NEEDS_INPUT"
     | "HUMAN_REVIEW_REQUIRED"
     | "NO_SUPPORTED_PATH"
-    | "TEMPORARILY_UNAVAILABLE";
+    | "TEMPORARILY_UNAVAILABLE"
+    | "IN_PROGRESS";
   /** Opaque engine public id only. No facts, candidates or applicant data. */
   assessmentReference: string | null;
 }

@@ -514,3 +514,118 @@ describe("OracleShell authoritative evaluate integration", () => {
     );
   });
 });
+
+// V2-WIZARD-SPEC.md Part D item 2 ("Consultant control, ever-present,
+// mechanically counted... Fails if the count of screens-with-control is
+// less than the count of distinct screens visited"). Seeds a resume
+// snapshot per screen via `flowReducer` (same technique as this file's own
+// `verdictSnapshot()`/`installVerdictResume()`) rather than clicking
+// through the real UI end-to-end, so each screen is reached directly and
+// deterministically.
+describe("OracleShell ever-present consultant control", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+    emitVisaOracleTelemetry.mockReset();
+    nonReversibleHash.mockClear();
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "ENGINE");
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  // Two answers in: the first question (in_indonesia) is answered, its
+  // convergent follow-up (holds_stay_permit) is answered, and the CURRENT,
+  // unanswered node is overstay_days — a real mid-interview question
+  // screen, not the interview's first question.
+  function midInterviewSnapshot(): ReturnType<typeof createInterviewSnapshot> {
+    let state: FlowState = flowReducer(initialFlowState(), { type: "ADVANCE" });
+    for (const [questionId, value] of ANSWERS.slice(0, 2)) {
+      state = flowReducer(state, { type: "ANSWER", questionId, value });
+    }
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "question",
+      questionId: "overstay_days",
+    });
+    return createInterviewSnapshot(state, new Date());
+  }
+
+  // Every ANSWERS entry recorded, one ADVANCE short of verdict — the
+  // confirmation screen (mirrors verdictSnapshot()'s own loop, minus its
+  // final ADVANCE).
+  function confirmationSnapshot(): ReturnType<typeof createInterviewSnapshot> {
+    let state: FlowState = flowReducer(initialFlowState(), { type: "ADVANCE" });
+    for (const [questionId, value] of ANSWERS) {
+      state = flowReducer(state, { type: "ANSWER", questionId, value });
+    }
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "confirmation",
+    });
+    return createInterviewSnapshot(state, new Date());
+  }
+
+  it("keeps [data-oracle-consultant-trigger] present on every distinct screen visited — framing, a mid-interview question, confirmation, and verdict — mechanically counted", async () => {
+    const screensVisited: string[] = [];
+    const screensWithControl: string[] = [];
+
+    function recordScreen(name: string) {
+      screensVisited.push(name);
+      if (document.querySelector("[data-oracle-consultant-trigger]")) {
+        screensWithControl.push(name);
+      }
+    }
+
+    // Screen 1: framing — a fresh mount, no resume seeded.
+    const framing = render(<OracleShell />);
+    await screen.findByRole("button", { name: /^start$/i });
+    recordScreen("framing");
+    framing.unmount();
+
+    // Screen 2: a question mid-interview.
+    expect(
+      saveInterviewResume(midInterviewSnapshot(), { now: new Date() }),
+    ).toBe(true);
+    const question = render(<OracleShell />);
+    await screen.findByRole("heading", {
+      name: translate("en", "q.overstay_days"),
+    });
+    recordScreen("question:overstay_days");
+    question.unmount();
+    window.sessionStorage.clear();
+
+    // Screen 3: confirmation.
+    expect(
+      saveInterviewResume(confirmationSnapshot(), { now: new Date() }),
+    ).toBe(true);
+    const confirmation = render(<OracleShell />);
+    await screen.findByRole("heading", { name: /here.s what you told us/i });
+    recordScreen("confirmation");
+    confirmation.unmount();
+    window.sessionStorage.clear();
+
+    // Screen 4: verdict.
+    global.fetch = engineFetch();
+    expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
+      true,
+    );
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    recordScreen("verdict");
+
+    expect(screensVisited).toEqual([
+      "framing",
+      "question:overstay_days",
+      "confirmation",
+      "verdict",
+    ]);
+    // The literal acceptance criterion: the control-count must equal the
+    // visited-screen-count, not merely be present "somewhere".
+    expect(screensWithControl).toEqual(screensVisited);
+    expect(screensWithControl.length).toBe(screensVisited.length);
+  });
+});
