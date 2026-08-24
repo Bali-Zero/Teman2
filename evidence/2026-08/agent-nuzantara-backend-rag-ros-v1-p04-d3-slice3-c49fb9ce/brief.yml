@@ -1,0 +1,127 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-slice3a-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D3 (legacy-to-canonical adapters, no
+  silent field dropping): SLICE 3a of 3 of the Magazine `ops_intents`/`ops_receipts` "action
+  chain" adapter subsystem under `apps/backend-rag/backend/services/research_os/`.
+
+  Slice 1 (shared infrastructure + `ActionItem` adapter, PR #4749, corrected in PR #4758) and
+  slice 2 (`ActionIntent` adapter, this session, built in parallel with this slice) are the
+  siblings this PR composes. This PR ships the third canonical kind:
+  `(ops_receipts row, its parent ops_intents row)` -> canonical `OperationalReceipt`
+  (CONTRACTS.md §13.5).
+
+  DESIGN DECISION (structural, same argument slice 2 makes for `action_item_ref`): this adapter
+  takes BOTH the `ops_receipts` row AND its parent `ops_intents` row (the FK is UNIQUE per matrix
+  §1.5) and COMPOSES `action_item_adapter.adapt_ops_intent_to_action_item` on the parent row,
+  rather than deriving `subject_refs`/`classification` independently. The referenced `ActionItem`
+  genuinely exists once that adapter runs on the same row, so a synthesized-unbacked placeholder
+  for `subject_refs` would be a strictly worse disclosure than the real object reference.
+
+  SCOPE FINDING (re-verified against the CORRECTED D3 matrix, merged as PR #4756): §1.5's own
+  table grades `execution_attempt_ref` and `idempotency_key` both 🔴 "unmappable as-is -- needs a
+  ruling". `receipt_type` is this adapter's OWN settled choice (always "execution.result" --
+  `ops_receipts` structurally cannot express any other v1 receipt_type), not an open question.
+  `operational_receipt_family_id`/`supersedes_operational_receipt_ref` are a settled true-negative
+  (matrix §1.5 confirms `ops_receipts.intent_id UNIQUE` structurally forbids more than one receipt
+  per intent -- no correction/supersession model is expressible here at all).
+
+  SCOPE RESOLUTION (this session, reported to team-lead): `OperationalReceipt.execution_attempt_ref`
+  is a bare `ExecutionAttemptRef{execution_attempt_id, object_hash}` pointer, NOT the full
+  `ExecutionAttempt` object (whose own mandatory `approval_receipt_ref` would require constructing
+  `ApprovalReceipt`, a confirmed true-negative per matrix §1.3/§2.0). This means the original
+  3-adapter-kind scope for D3 (ActionItem, ActionIntent, OperationalReceipt) stands -- no 4th
+  "ExecutionAttempt adapter" is needed for this deliverable.
+
+  ADVERSARIAL-REVIEW-DRIVEN ADDITION (post Kimi K3 review of the sibling slice-2 adapter, same
+  session, 2026-08-24): the review found that `pending_ruling`'s machine-checkable channel
+  under-covers what `loss_report.warnings`' prose discloses -- specifically, `classification`
+  (`risk_class`/`sensitivity`) composed from the sibling `ActionItem` are themselves inherited
+  placeholders (that item defaults them to green/internal), but were absent from `pending_ruling`
+  on the reviewed sibling. This adapter includes `classification.risk_class`/
+  `classification.sensitivity` in its own `pending_ruling` from its FIRST version, alongside
+  `execution_attempt_ref`/`idempotency_key`, rather than shipping the same disclosure gap a
+  second time and waiting for a second review to find it.
+constraints:
+  - "Additive only: two new files (adapter + its test file) under
+    apps/backend-rag/backend/services/research_os/ and
+    apps/backend-rag/backend/tests/services/research_os/ (both directories already exist,
+    populated by the merged slice 1). Touches zero existing file. Does not modify
+    packages/research-os-core/ or any domain model."
+  - "Fresh worktree cut from origin/main AFTER PR #4758 (ActionItem correction) and PR #4756
+    (corrected D3 matrix) merged -- built in parallel with sibling slice 2, per an explicit
+    conductor instruction that parallel BUILD is fine while ARMING must be serialized."
+  - "Does NOT touch scripts/wr3_*, docs/wr3/contracts/, apps/backend-rag/backend/tests/conftest.py,
+    or test_xdist_worker_isolation.py (other lanes' leases)."
+  - "No PII: every row is a synthetic, fabricated fixture (conftest.py, already merged by slice
+    1) -- no real Magazine row is read, pasted, or referenced."
+  - "Arming is DEFERRED per an explicit conductor instruction: the merge queue's serialization
+    precedence for ledger-touching PRs is #4756 -> #4772 -> this lane's three slices, in
+    readiness order, per the conductor's explicit signal when the queue is clear. PR stays with
+    auto-merge NOT armed until then."
+acceptance:
+  - "Every one of ops_receipts' 11 legacy columns has an entry in the adapter's loss report with
+    a fate in {mapped, approximated, synthesized_unbacked, omitted, rejected} and a reason --
+    enforced by assert_every_legacy_field_accounted_for, called both inside the adapter and
+    independently from the test suite."
+  - "A mismatched (receipt_row.intent_id != intent_row.intent_id) pairing is rejected before any
+    composition happens -- test_mismatched_intent_id_pairing_is_rejected."
+  - "A row the sibling ActionItem adapter rejects on the parent intent row is ALSO rejected here,
+    via delegation rather than a duplicated check."
+  - "A non-terminal receipt status is rejected (receipts must represent a completed execution) --
+    test_non_terminal_status_is_rejected, and every one of the four terminal statuses IS
+    adaptable -- test_status_value_set_map_covers_every_terminal_status."
+  - "subject_refs and classification pin the REAL sibling ActionItem's own action_item_id/
+    object_hash/risk_class/sensitivity, not a placeholder -- test_subject_refs_pins_the_real_
+    sibling_action_item, test_classification_matches_sibling_action_item."
+  - "outcome_code best-effort parses receipt_json for a 'code' key and discloses (not silently
+    swallows) a parse failure or missing key via an honest fallback string --
+    test_outcome_code_falls_back_when_receipt_json_unparseable,
+    test_outcome_code_falls_back_when_code_key_absent."
+  - "pending_ruling and unbacked_refs are disclosed twice: in loss_report.warnings (prose) AND
+    in extensions['com.balizero.research-os-adapters'].payload (machine-checkable) -- from the
+    first version of this adapter, including the classification keys added after the sibling's
+    Kimi K3 review, not retrofitted after a review of THIS adapter."
+  - "PYTHONPATH=. pytest backend/tests/services/research_os/ -q exits 0 in full (this PR's 15 new
+    tests + the pre-existing tests in the same directory, none regressed)."
+consumer_map:
+  - "GitHub PR's `Harness floor recompute` required check -- Gear-2 evidence pack, floor=1
+    (neither changed file matches HOTZONE_PATTERNS, verified against
+    scripts/evidence_pack_lint.py's own list directly, not assumed)."
+  - "Slice 3b (shadow dual-write flag + parity probe, NOT yet built as of this PR): would import
+    this adapter alongside its two siblings to run all three adapters over the same live-shadowed
+    row set."
+  - "Work Packet 04 Deliverable 5 (research_os_contract_core persistence, PR #4740, merged): the
+    future canonical repository this adapter's output would eventually be written into via a
+    shadow flag -- not built here."
+risks:
+  - "execution_attempt_ref is a SYNTHESIZED_UNBACKED pointer to an ExecutionAttempt object that is
+    never constructed anywhere in this deliverable's three slices -- disclosed, not asserted as
+    resolved. See the Kimi K3 adversarial review of the sibling ActionIntent adapter (same
+    session) for the general shape of this risk class on this lane (a real-looking value that
+    cannot verify is worse than a marked placeholder) -- this adapter's own execution_attempt_ref
+    is marked unbacked from the start, not a verbatim legacy-value reuse, so that specific failure
+    mode does not apply here, but the review's broader finding (pending_ruling under-covering
+    inherited placeholders) directly informed this adapter's classification.* additions above."
+  - "idempotency_key reuses intent_id verbatim: ops_receipts has no receipt-level idempotency
+    column at all; matrix §1.5's own words, idempotency is enforced structurally by intent_id
+    UNIQUE, a different mechanism than a comparable per-receipt key. Disclosed via pending_ruling."
+  - "Composing action_item_adapter from within this adapter creates the same one-directional
+    coupling slice 2 has with the same sibling: a future change to ActionItem's own construction
+    logic silently changes what this adapter's subject_refs/classification carry, without this
+    file's own diff showing it."
+grader: |
+  session (BUILD-lane subagent, Pro, worktree backend-rag-ros-v1-p04-d3-slice3a-operational-receipt)
+  wrote the adapter, tests, and evidence pack; the design pattern (composition over independent
+  derivation) is the same one Kimi K3 adversarially reviewed on the sibling slice-2 adapter this
+  session -- that review's disclosure-completeness finding (machine channel under-covering
+  inherited placeholders) was applied here proactively rather than re-discovered by a fresh review
+  of this file; a dedicated adversarial pass on THIS adapter's own four risk-flagged decisions has
+  not yet been separately run as of this PR.
+budget: |
+  1 build lane (this session), reusing the adversarial-review finding already paid for on the
+  sibling slice-2 lane rather than re-running a full Kimi K3 pass on this file -- same Gear-2
+  scope as slices 1/2, one canonical kind, additive, zero live consumers.
+pii: none
