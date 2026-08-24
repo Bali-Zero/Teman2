@@ -29,6 +29,28 @@ tags:
     description: Authorized PR-02 through PR-11 transitions.
 
 x-feature-flag: GARUDA_PUBLIC_ENABLED
+
+# The numbers DECISIONS.md decided, in a form a lane is BOUND by rather than one it has to
+# remember. Q1 and Q9 were prose, and prose binds nobody: the money/date re-derivation found
+# that an implementer could ship any magic-link TTL and stay contract-valid, and that the
+# G-FRESHNESS-FAIL-CLOSED guardrail had no numbers to fail closed ON. That is the same
+# "declared and does not exist" shape this product already got bitten by once.
+x-magic-link:
+  ttl_minutes: 15
+  single_use: true
+  # DECISIONS.md Q1. A consumed token and an expired token MUST return the identical
+  # response: telling them apart is an oracle worth nothing to us and something to an
+  # attacker holding a leaked link. Session lifetime is a SEPARATE number and is not this
+  # one — conflating them is how a 15-minute link becomes a 15-minute portal.
+x-truth-freshness-max-age-days:
+  # DECISIONS.md Q9. Past the age the funnel declines to sell rather than quote, via
+  # TRUTH_SHEET_STALE. Engineering safety margins, revisable with a one-line diff and a test.
+  nationality_eligibility: 90
+  rule_constants: 180
+  price_catalogue: 90
+  # The operating calendar is deliberately absent: it is the one truth source that already
+  # enforces its own bound (COVERAGE_START/COVERAGE_END), and it is the pattern the three
+  # above copy rather than a fourth entry.
 x-public-privacy-response-headers: &publicPrivacyHeaders
   Cache-Control:
     description: This representation must never be stored by a shared or private cache.
@@ -995,13 +1017,25 @@ components:
         entry_date:
           type: string
           format: date
+          x-civil-timezone: Asia/Makassar
+          description: >-
+            A civil calendar day in Asia/Makassar, never a UTC instant. The backend runs on
+            Fly.io in UTC, and reading these as UTC days moves the ACCEPT/DECLINE cutoff and
+            the published deadline by a full day for the first eight hours of every Bali day
+            — the defect `civil_clock.py::garuda_today` exists to prevent. A client that
+            derives this from a local `Date` in another zone reintroduces it here.
         passport_expiry_date:
           type: string
           format: date
+          x-civil-timezone: Asia/Makassar
+          description: A civil calendar day in Asia/Makassar. See `entry_date`.
         voa_expiry_date:
           type: string
           format: date
-          description: Required only for extension; forbidden for issuance.
+          x-civil-timezone: Asia/Makassar
+          description: >-
+            Required only for extension; forbidden for issuance. A civil calendar day in
+            Asia/Makassar. See `entry_date`.
         purpose:
           $ref: "#/components/schemas/Purpose"
         travellers:
@@ -1045,10 +1079,22 @@ components:
         published_filing_deadline:
           type: string
           format: date
+          x-civil-timezone: Asia/Makassar
+          x-published-by-office: Ngurah Rai
           description: >-
-            The only public Safe Clock date, derived from
-            apps/backend-rag/backend/services/garuda_flow/constants.py:PUBLISHED_FILING_DEADLINE_DAYS
-            using apps/backend-rag/backend/services/garuda_flow/civil_clock.py:GARUDA_CIVIL_TIMEZONE.
+            The only public Safe Clock date. A civil calendar day in Asia/Makassar, derived
+            from `constants.py:PUBLISHED_FILING_DEADLINE_DAYS` via
+            `civil_clock.py:GARUDA_CIVIL_TIMEZONE`. Naming the symbol is not the same as
+            stating the day — a client cannot resolve a Python constant — so the zone is
+            written here literally as well.
+
+            SCOPED TO ONE OFFICE. This is the deadline Ngurah Rai publishes, and
+            `safe_clock.py` attaches "verify per office" to this very checkpoint — yet the
+            intake collects no office at all. It is the one externally sourced number we show
+            a visitor whose correctness depends on a fact we never ask for (GROUND.md §5,
+            owner decision 6). Until that decision lands, a surface may display this date only
+            when the filing office is known to be Ngurah Rai; otherwise it suppresses the date
+            and routes to WhatsApp.
         price_idr:
           type: integer
           minimum: 1

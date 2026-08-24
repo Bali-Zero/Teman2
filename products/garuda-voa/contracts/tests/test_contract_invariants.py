@@ -232,3 +232,48 @@ def test_every_mutating_operation_requires_an_idempotency_key(openapi: dict) -> 
         if not any(r.endswith("/IdempotencyKey") for r in refs):
             offenders.append(op["operationId"])
     assert not offenders, f"mutating operations without Idempotency-Key: {offenders}"
+
+
+def test_every_inbound_date_states_its_civil_day(openapi: dict) -> None:
+    """The engine already carries this scar: the backend runs on Fly.io in UTC, and reading a
+    Bali civil day as a UTC day moves the ACCEPT/DECLINE cutoff and the published deadline by
+    a full day for the first eight hours of every Bali day. `civil_clock.py::garuda_today`
+    cured it inside the engine; a `format: date` with nothing said about which day it means
+    lets it back in through the wire."""
+    offenders = []
+    for name, schema in openapi["components"]["schemas"].items():
+        if not isinstance(schema, dict):
+            continue
+        for prop, spec in (schema.get("properties") or {}).items():
+            if not isinstance(spec, dict) or spec.get("format") != "date":
+                continue
+            stated = spec.get("x-civil-timezone") or ""
+            if "Asia/Makassar" not in (stated + spec.get("description", "")):
+                offenders.append(f"{name}.{prop}")
+    assert not offenders, f"date fields that never say which civil day they mean: {offenders}"
+
+
+def test_the_prose_decisions_are_machine_readable(openapi: dict) -> None:
+    """Q1 and Q9 were decided in prose, and prose binds nobody.
+
+    The money/date re-derivation found that an implementer could ship any magic-link TTL and
+    stay contract-valid, and that `G-FRESHNESS-FAIL-CLOSED` — a declared guardrail — had no
+    numbers to fail closed on. A guardrail whose threshold does not exist is not a guardrail;
+    it is a sentence. These assertions are what turn the sentences into a contract.
+    """
+    link = openapi["x-magic-link"]
+    assert link["ttl_minutes"] == 15, "Q1's magic-link lifetime moved without a decision"
+    assert link["single_use"] is True
+
+    fresh = openapi["x-truth-freshness-max-age-days"]
+    assert fresh == {
+        "nationality_eligibility": 90,
+        "rule_constants": 180,
+        "price_catalogue": 90,
+    }, f"Q9's freshness windows changed to {fresh} — revisable, but not silently"
+
+    codes: set = set()
+    _collect(openapi, "x-error-codes", codes)
+    assert "TRUTH_SHEET_STALE" in codes, (
+        "the windows exist but nothing declines on them — the guardrail is prose again"
+    )

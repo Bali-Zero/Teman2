@@ -160,3 +160,62 @@ wrong first: the `$ref` walker reported 87 of 181 refs unresolved until it learn
 lesson in miniature.
 
 **FREEZE: FINAL.** Seven build lanes and the Visa Oracle V3 lane may build against these four files.
+
+---
+
+## Round 2 — and a correction to how round 1 was closed
+
+**I wrote "FREEZE: FINAL" above while the third leg of the adversarial pass was still running.**
+The corrected ASSEMBLY-LINE defines a full pass as three things — refuter on the diff, attack
+session, and an independent money/date re-derivation — and I declared the freeze on the strength of
+the first alone, because it was the one that had reported. That is the same mistake as reviewing a
+moving target, pointed the other way: instead of judging an artifact before it settled, I closed a
+gate before its evidence had arrived. The money/date leg then found four real things. Round 1's
+verdict stands on its merits; the word "FINAL" on it did not.
+
+The re-derivation ran on a cross-family seat (Kimi K3) after the Sonnet seat went idle twice without
+delivering — at the second silent idle, change the door rather than ask again. It confirmed the
+money path is clean and **ran** the resolver rather than reading it: issuance 790.000 IDR, extension
+850.000 IDR, both from catalogue keys, failing closed on any mismatch. What it found instead was
+that several numbers we had _decided_ were binding nobody.
+
+### Fixed in this round
+
+**The prose decisions now bind.** Q1's 15-minute magic-link TTL lived only in a portal service that
+nothing connects to this product, and the contract said merely "invalid, expired, or consumed" with
+no window — so an implementer could ship any lifetime and stay contract-valid. Q9's 90/180/90
+freshness windows existed **nowhere machine-readable at all**, which means `G-FRESHNESS-FAIL-CLOSED`,
+a guardrail this product declares, had no number to fail closed on. A guardrail whose threshold does
+not exist is a sentence, not a guardrail — and "declared and does not exist" is precisely the shape
+that already bit this product once. Both are now `x-magic-link` and `x-truth-freshness-max-age-days`
+in the contract, and both are asserted.
+
+**Every date field now says which civil day it means.** The engine already carries this scar:
+`civil_clock.py::garuda_today` exists because the backend runs in UTC and reading a Bali civil day
+as a UTC day moves the ACCEPT/DECLINE cutoff and the published deadline by a full day for the first
+eight hours of every Bali day. A bare `format: date` on the wire lets that straight back in, and
+three inbound fields had exactly that. The one outbound date named the Python symbol
+`GARUDA_CIVIL_TIMEZONE`, which a client cannot resolve — so the zone is now written literally too.
+
+**The published deadline is now scoped on the wire.** `published_filing_deadline` carries
+`x-published-by-office: Ngurah Rai` and states the constraint from GROUND.md §5 in full: the engine
+attaches "verify per office" to this exact checkpoint while the intake collects no office at all, so
+it is the one externally sourced number we show a visitor whose correctness depends on a fact we
+never ask for. Until owner decision 6 lands, a surface may show it only when the office is known to
+be Ngurah Rai, and otherwise suppresses it and routes to WhatsApp.
+
+### Carried forward, not fixed
+
+- **The 2027 cliff has a date on it.** `COVERAGE_END = 2026-12-31`. From 2027-01-02 no open day is
+  certifiable and every arrival declines with `CALENDAR_COVERAGE_EXCEEDED`. Correct-by-design and
+  already pinned by a test — but it is a hard product cliff, and the 2027 SKB is expected around
+  September 2026. It belongs in the ledger, not in a contract fix.
+- **A JSON-Schema nit**: under 2020-12, `790000.0` satisfies `type: integer`. Not worth a `multipleOf`
+  today; recorded so the next reader does not rediscover it.
+- **Finding 3** (PR-12's missing enum slot) is still the open question it was.
+
+Nine tests now, all green, and every one of the four added across both rounds proven to bite by
+mutation — change the TTL, strip a civil zone, blank a response's headers, drop `OP-F05`, each turns
+its own test red and only its own.
+
+**FREEZE: FINAL — this time with all three legs reported.**
