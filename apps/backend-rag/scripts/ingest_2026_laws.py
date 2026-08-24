@@ -53,6 +53,23 @@ logger = logging.getLogger("ingest_2026_laws")
 # Target documents with marketing metadata
 LAWS_2026 = [
     {
+        # DECLARED IDENTITY -- read this before touching either entry below.
+        #
+        # Both PMK 1/2026 and Permen Imipas 1/2026 derive the SAME document_id
+        # from the extracted (type, number, year) triple: `Permen_1_2026`. Every
+        # Indonesian ministry numbers its regulations from 1 each year, so that
+        # triple does not identify an instrument.
+        #
+        # Chunk ids are `{document_id}_Pasal_{n}` and Qdrant point ids are
+        # `uuid5(chunk_id)`. On 2026-08-25 the collision destroyed 50 chunks of
+        # this Coretax regulation when the immigration one was ingested over it,
+        # with no error at all -- an overwrite IS a successful upsert.
+        #
+        # Declaring `document_id` here is how the corpus states which instrument
+        # a file is, in the one place that actually knows. The service honours a
+        # declared id as the storage key and refuses to write onto an identity
+        # another source file already holds.
+        "document_id": "PMK_1_2026",
         "filename": "PMK_1_2026_Coretax_System.pdf",
         "title": "PMK 1/2026 - Perubahan Keempat atas PMK 81/2024 tentang Ketentuan Perpajakan dalam rangka Pelaksanaan Sistem Inti Administrasi Perpajakan (Coretax)",
         "category": "perpajakan_2026",
@@ -244,6 +261,9 @@ LAWS_2026 = [
         "marketing_title_en": "Permen Imipas 14/2025 - Zero-Rupiah Tariff for Immigration Services",
     },
     {
+        # Declared for the same reason as PMK_1_2026 above: without it this
+        # regulation and the Coretax one share the identity `Permen_1_2026`.
+        "document_id": "PermenImipas_1_2026",
         "filename": "PermenImipas_1_2026_Perubahan_Pencegahan_dan_Penangkalan.pdf",
         "title": "Permen Imipas 1/2026 - Perubahan atas Peraturan Menteri Imigrasi dan Pemasyarakatan Nomor 13 Tahun 2025 tentang Pelaksanaan Pencegahan dan Penangkalan",
         "category": "keimigrasian",
@@ -294,6 +314,17 @@ async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
         # Pin the literals used in LAWS_2026 against the real constants. If the
         # service ever renames a scope, this fails loudly here instead of
         # silently passing an unrecognised string into ingestion.
+        # A declared identity that repeats inside this very list would
+        # re-create by hand the exact collision the declaration exists to
+        # prevent. Fail here, before the first byte is written, rather than
+        # discovering it as missing chunks weeks later.
+        declared_ids = [law["document_id"] for law in LAWS_2026 if law.get("document_id")]
+        duplicate_ids = {i for i in declared_ids if declared_ids.count(i) > 1}
+        if duplicate_ids:
+            raise ValueError(
+                f"LAWS_2026 declares the same document_id more than once: {sorted(duplicate_ids)}"
+            )
+
         declared_scopes = {law.get("retrieval_scope") for law in LAWS_2026} - {None}
         known_scopes = {CURRENT_RETRIEVAL_SCOPE, HISTORICAL_RETRIEVAL_SCOPE}
         unknown_scopes = declared_scopes - known_scopes
@@ -378,6 +409,10 @@ async def run_ingestion(dry_run: bool = False, file_filter: str | None = None):
                 title=law["title"],
                 category=law["category"],
                 retrieval_scope=law.get("retrieval_scope", CURRENT_RETRIEVAL_SCOPE),
+                # Entries that declare one get that identity as the storage key;
+                # the rest keep the derived triple, so nothing already indexed
+                # changes identity and no migration is owed.
+                document_id=law.get("document_id"),
             )
 
             if result["success"]:
