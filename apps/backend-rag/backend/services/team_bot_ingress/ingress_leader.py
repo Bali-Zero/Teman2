@@ -253,16 +253,28 @@ class InMemoryIngressLeaderStore:
         # promote() and lost is supposed to see the NEW state and reject
         # — that is the stale-epoch-during-in-flight-action case, not a
         # bug to guard against).
-        current = self._state
-        if current.leader_epoch != epoch:
-            return AuthorizeResult(outcome=AuthorizeOutcome.REJECTED_STALE_EPOCH, state=current)
-        if current.active_node_id != node_id:
-            return AuthorizeResult(outcome=AuthorizeOutcome.REJECTED_WRONG_NODE, state=current)
-        if now > current.lease_expires_at:
-            return AuthorizeResult(
-                outcome=AuthorizeOutcome.REJECTED_LEASE_EXPIRED, state=current
-            )
-        return AuthorizeResult(outcome=AuthorizeOutcome.AUTHORIZED, state=current)
+        return evaluate_authorize(self._state, node_id=node_id, epoch=epoch, now=now)
+
+
+def evaluate_authorize(
+    current: IngressLeaderState, *, node_id: str, epoch: int, now: datetime
+) -> AuthorizeResult:
+    """The read-then-compare decision ``authorize()`` makes, factored out
+    as a pure function so ``ingress_state_repo.py``'s Postgres-backed
+    store (a plain ``SELECT`` followed by this same comparison — no CAS
+    needed for a read) can call the IDENTICAL rule
+    :class:`InMemoryIngressLeaderStore` uses, rather than maintaining a
+    second copy of three if-branches that could silently drift apart from
+    the one the drill suite actually tests against.
+    """
+
+    if current.leader_epoch != epoch:
+        return AuthorizeResult(outcome=AuthorizeOutcome.REJECTED_STALE_EPOCH, state=current)
+    if current.active_node_id != node_id:
+        return AuthorizeResult(outcome=AuthorizeOutcome.REJECTED_WRONG_NODE, state=current)
+    if now > current.lease_expires_at:
+        return AuthorizeResult(outcome=AuthorizeOutcome.REJECTED_LEASE_EXPIRED, state=current)
+    return AuthorizeResult(outcome=AuthorizeOutcome.AUTHORIZED, state=current)
 
 
 DEFAULT_RECORD_ID = "team_wa_default"
