@@ -21,6 +21,32 @@ to any materialized object. This is a deliberate, disclosed judgment call,
 not a silent workaround -- flagged to the conductor as a ruling this
 packet's matrix under-scoped (it recorded these refs as merely "no legacy
 source," not as constructor-blocking).
+
+INVARIANT (found while measuring `object_hash`'s own sensitivity in a
+correction PR, not the thing that PR set out to check): every adapter in
+this package MUST pass `extensions=` explicitly to `build_with_object_hash`
+-- even `extensions={}` when it has nothing to disclose -- and must never
+omit the keyword entirely. `research_os.hashing`'s module docstring (lines
+3-5) declares research-os/v1.0.0's wire rule as a deliberate
+"presence-preserving null semantics": an absent Pydantic field is OMITTED
+from the hashed payload (`model_dump(..., exclude_unset=True)`), while a
+field explicitly set is included even if empty. The same module (line 28)
+calls the resulting digest "canonical object identity". Put together: two
+adapters producing the SAME logical object from the SAME legacy row get TWO
+DIFFERENT canonical identities if one passes `extensions={}` and the other
+omits the keyword -- a difference of authoring style, not of the object
+modeled. Measured on one fixture row, holding every other field constant:
+`extensions` omitted, `extensions={}`, and `extensions=<a real payload>`
+produced three distinct `object_hash` values, all differing only in
+whether/how `extensions` was passed. This is the wire contract working
+exactly as designed (the presence-preserving rule is deliberate, not a
+bug) -- but until this correction, the discipline of always setting
+`extensions` explicitly lived only in this package's own authoring habit,
+nowhere that would turn red if a future adapter dropped it.
+`test_action_item_adapter.py::test_extensions_is_always_explicitly_set_never_omitted`
+arms this for `ActionItem`; any adapter later added to this package should
+carry the same assertion (`"extensions" in <canonical>.model_fields_set`)
+for its own kind.
 """
 
 from __future__ import annotations
@@ -50,17 +76,55 @@ _ADAPTER_NAMESPACE = uuid5(NAMESPACE_URL, "https://balizero.com/research-os/adap
 # (Kimi K3) asked for when it argued disclosure-in-prose alone is not enough.
 UNBACKED_REFS_EXTENSION_NAMESPACE = "com.balizero.research-os-adapters"
 
+# Versions the SHAPE this extension's payload can carry, not any one instance's
+# content: 1.0.0 could only ever hold `unbacked_refs`; 1.1.0 (this correction)
+# adds the optional `pending_ruling` key to the shape. Every call to
+# `unbacked_refs_extension()` from this version forward emits 1.1.0 --
+# including calls whose `pending_ruling` happens to be empty -- because the
+# version describes what the PRODUCER is capable of emitting, not what one
+# instance happens to contain (per Packet 04 Deliverable 3's own versioning
+# discipline: a consumer that requires `pending_ruling` support needs a way to
+# tell "producer capable of it" apart from "producer that simply had nothing
+# pending this time", and a per-instance version would not give it one). This
+# is an additive/backward-compatible change (a new optional key), hence a
+# MINOR bump, not a MAJOR one.
+UNBACKED_REFS_EXTENSION_VERSION = "1.1.0"
 
-def unbacked_refs_extension(*field_names: str) -> dict[str, ExtensionValue]:
+
+def unbacked_refs_extension(
+    *field_names: str, pending_ruling: tuple[str, ...] = ()
+) -> dict[str, ExtensionValue]:
     """Build the `extensions` payload naming which of this object's own ref
     fields are synthesized/unbacked (see module docstring). Safe against the
     frozen core vocabulary jail (`validate_extensions`): `unbacked_refs` is
     not in `V1_RESERVED_EXTENSION_FIELD_NAMES`, verified this session.
+
+    `pending_ruling` (added in a correction PR, per an independent reviewer's
+    REFUSE verdict, claims #10/#11/#12): names field(s) whose CURRENT VALUE
+    is this adapter's own placeholder, not a value the compatibility matrix
+    endorsed -- the matrix documented an absence of legacy source and posed
+    an open "Ruling must decide" question for these fields, it did not
+    recommend a resolution. This is the same two-channel discipline as
+    `unbacked_refs` (prose in the loss report AND a machine-checkable
+    marker): a comment claiming matrix approval is prose a reader could
+    trust without checking; this lets a downstream consumer branch on the
+    fact in code instead. `pending_ruling` is likewise not in
+    `V1_RESERVED_EXTENSION_FIELD_NAMES`, verified this session.
+
+    `extension_version` is always `UNBACKED_REFS_EXTENSION_VERSION`
+    ("1.1.0"), regardless of whether `pending_ruling` is passed on THIS
+    call: the version describes the payload SHAPE this function is capable
+    of emitting, not what one instance contains (see the module-level
+    constant's own comment for why a per-instance version would be the
+    wrong thing to expose).
     """
 
+    payload: dict[str, object] = {"unbacked_refs": list(field_names)}
+    if pending_ruling:
+        payload["pending_ruling"] = list(pending_ruling)
     return {
         UNBACKED_REFS_EXTENSION_NAMESPACE: ExtensionValue(
-            extension_version="1.0.0", payload={"unbacked_refs": list(field_names)}
+            extension_version=UNBACKED_REFS_EXTENSION_VERSION, payload=payload
         )
     }
 
