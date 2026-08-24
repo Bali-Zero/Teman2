@@ -31,6 +31,17 @@ Public surface:
 - ``fixtures`` — ``CLIENT_GOLDENS: tuple[ClientGoldenFixture, ...]``, the
   19 golden fixtures covering all 17 ``client.*`` defect classes (2 of the
   17 carry 2 fixtures each, for their named ``variants``).
+
+Lane B6c (``team_fixtures.py`` / ``test_team_goldens.py``) adds the
+``team.*`` side, same catalogue-binding discipline, adapted to a harder
+reality: ``apps/team-bot`` (lane B3) is mid-construction, not merely
+un-engined — most of its units (identity, RBAC, the confirmation state
+machine, the tool loop) do not exist in any form yet, so most team fixtures
+are specification data only, honestly marked as such. Its
+``team.model-claims-success-without-receipt`` fixtures are the exception —
+34 adversarial cases run live against the real ``ActionClaimGate``, skipping
+(not silently passing) when ``apps/team-bot`` is not on the branch. See
+``team_fixtures.py``'s module docstring for the finding-family details.
 """
 
 from __future__ import annotations

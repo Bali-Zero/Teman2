@@ -764,8 +764,13 @@ TEAM_GOLDENS: tuple[TeamGolden, ...] = (
         guilty=True,
         scenario="A PendingAction is PROPOSED under leader_epoch=3; before it is confirmed, F9's CAS promotes a new leader to leader_epoch=4; the confirmation then arrives.",
         expected_behavior="Must be rejected under the stale epoch, never completed — team-bot analogue of transport.failover-stale-epoch-mutation-rejected.",
-        executable=False,
-        notes="PendingAction.leader_epoch is a real typed field (int, ge=0) — proves the shape carries what CAS enforcement would need; the CAS check itself (store.py) does not exist yet.",
+        executable=True,
+        notes=(
+            "PARTIALLY EXECUTABLE: PendingAction.leader_epoch is a real typed field (int, ge=0) — the "
+            "test constructs a stale (epoch=3) and a fresh (epoch=4) snapshot and proves the field is "
+            "real and typed. The CAS check that would actually REJECT the stale one (store.py) does not "
+            "exist yet — this fixture cannot and does not claim to exercise that half."
+        ),
     ),
 )
 
