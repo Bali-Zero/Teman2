@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from research_os.enums import ExecutionTerminalOutcome
+from dataclasses import replace
 
-from backend.services.research_os.action_item_adapter import adapt_ops_intent_to_action_item
 from backend.services.research_os.loss_report import (
     LegacyFieldFate,
     LossReportIncompleteError,
@@ -14,123 +13,80 @@ from backend.services.research_os.operational_receipt_adapter import (
 from backend.tests.services.research_os.conftest import make_ops_receipt_row
 
 
-def test_adapts_a_matching_pair_into_a_valid_operational_receipt(ops_intent_row, ops_receipt_row):
-    result = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row)
-
-    assert result.accepted
-    receipt = result.canonical
-    assert receipt is not None
-    assert receipt.receipt_type == "execution.result"
-    assert receipt.terminal_outcome == ExecutionTerminalOutcome.SUCCEEDED
-    assert receipt.outcome_code == "effect_acknowledged"
-
-
-def test_every_legacy_field_is_accounted_for_never_silently_dropped(
+def test_every_row_is_rejected_pending_the_s9_c0_freeze_change_ruling(
     ops_intent_row, ops_receipt_row
 ):
+    """This adapter is intentionally non-functional as of 2026-08-24: see its
+    module docstring and the PENDING-ARMS ledger row for why -- a
+    synthesized execution_attempt_ref would make every receipt this source
+    could produce permanently unclosable (operational_receipt.py's own
+    close_execution_attempt gate), and no other v1 receipt_type is
+    expressible from ops_receipts.
+    """
+
     result = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row)
-
-    assert_every_legacy_field_accounted_for(dict(ops_receipt_row), result.loss_report)
-    fates = result.loss_report.fates()
-    assert set(fates) == set(ops_receipt_row)
-    assert all(isinstance(f, LegacyFieldFate) for f in fates.values())
-
-
-def test_mismatched_intent_id_pairing_is_rejected(ops_intent_row):
-    mismatched_receipt = make_ops_receipt_row(intent_id="0198f3a1-0000-7000-8000-000000000999")
-    result = adapt_ops_receipt_to_operational_receipt(mismatched_receipt, ops_intent_row)
 
     assert not result.accepted
     assert result.canonical is None
     assert all(f == LegacyFieldFate.REJECTED for f in result.loss_report.fates().values())
+    assert set(result.loss_report.fates()) == set(ops_receipt_row)
 
 
-def test_subject_refs_pins_the_real_sibling_action_item(ops_intent_row, ops_receipt_row):
-    item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
-    receipt = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row).canonical
-    assert item is not None and receipt is not None
-
-    assert len(receipt.subject_refs) == 1
-    ref = receipt.subject_refs[0]
-    assert ref.object_kind == "action_item"
-    assert ref.object_id == str(item.action_item_id)
-    assert ref.object_hash == item.object_hash
+def test_rejection_reason_names_the_architectural_blocker(ops_intent_row, ops_receipt_row):
+    result = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row)
+    reason = result.loss_report.fields[0].reason
+    assert "execution_attempt_ref" in reason
+    assert "S9-C0" in reason
 
 
-def test_classification_matches_sibling_action_item(ops_intent_row, ops_receipt_row):
-    item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
-    receipt = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row).canonical
-    assert item is not None and receipt is not None
+def test_mismatched_intent_id_pairing_is_rejected_for_its_own_reason(ops_intent_row):
+    mismatched_receipt = make_ops_receipt_row(intent_id="0198f3a1-0000-7000-8000-000000000999")
+    result = adapt_ops_receipt_to_operational_receipt(mismatched_receipt, ops_intent_row)
 
-    assert receipt.classification.risk_class == item.risk_class
-    assert receipt.classification.sensitivity == item.sensitivity
-
-
-def test_unbacked_refs_are_machine_checkable_not_only_prose(ops_intent_row, ops_receipt_row):
-    receipt = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row).canonical
-    marker = receipt.extensions["com.balizero.research-os-adapters"]
-    assert marker.extension_version == "1.1.0"
-    assert set(marker.payload["unbacked_refs"]) == {"execution_attempt_ref"}
+    assert not result.accepted
+    reason = result.loss_report.fields[0].reason
+    assert "mismatched pairing" in reason
+    assert "S9-C0" not in reason  # rejected for pairing, before the architectural check is reached
 
 
-def test_pending_ruling_is_machine_checkable_not_only_prose(ops_intent_row, ops_receipt_row):
-    receipt = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row).canonical
-    marker = receipt.extensions["com.balizero.research-os-adapters"]
-    assert set(marker.payload["pending_ruling"]) == {
-        "execution_attempt_ref",
-        "idempotency_key",
-        "classification.risk_class",
-        "classification.sensitivity",
-    }
+def test_parent_rejection_is_propagated_for_its_own_reason(ops_intent_row, ops_receipt_row):
+    bad_intent = {**ops_intent_row, "status": "not_a_real_status"}
+    result = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, bad_intent)
+
+    assert not result.accepted
+    reason = result.loss_report.fields[0].reason
+    assert "action_item adaptation" in reason
 
 
-def test_extensions_is_always_explicitly_set_never_omitted(ops_intent_row, ops_receipt_row):
-    receipt = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row).canonical
-    assert "extensions" in receipt.model_fields_set
-
-
-def test_non_terminal_status_is_rejected(ops_intent_row):
+def test_non_terminal_status_is_rejected_for_its_own_reason(ops_intent_row):
     non_terminal_receipt = make_ops_receipt_row(status="claimed")
     result = adapt_ops_receipt_to_operational_receipt(non_terminal_receipt, ops_intent_row)
 
     assert not result.accepted
-    assert result.canonical is None
+    reason = result.loss_report.fields[0].reason
+    assert "non-terminal status" in reason
 
 
-def test_outcome_code_falls_back_when_receipt_json_unparseable(ops_intent_row):
-    malformed_receipt = make_ops_receipt_row(receipt_json="not valid json{{{")
-    result = adapt_ops_receipt_to_operational_receipt(malformed_receipt, ops_intent_row)
+def test_clock_skew_is_rejected_for_its_own_reason(ops_intent_row, ops_receipt_row):
+    skewed_intent = {**ops_intent_row, "completed_at": "2026-08-20T23:00:00+00:00"}
+    result = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, skewed_intent)
 
-    assert result.accepted
-    assert result.canonical.outcome_code == "unbacked-outcome-succeeded"
-
-
-def test_outcome_code_falls_back_when_code_key_absent(ops_intent_row):
-    no_code_receipt = make_ops_receipt_row(receipt_json='{"other_field": "value"}')
-    result = adapt_ops_receipt_to_operational_receipt(no_code_receipt, ops_intent_row)
-
-    assert result.accepted
-    assert result.canonical.outcome_code == "unbacked-outcome-succeeded"
+    assert not result.accepted
+    reason = result.loss_report.fields[0].reason
+    assert "clock skew" in reason
 
 
-def test_supersedes_ref_is_always_none_and_family_id_disclosed(ops_intent_row, ops_receipt_row):
-    receipt = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row).canonical
-    assert receipt.supersedes_operational_receipt_ref is None
-    assert receipt.operational_receipt_family_id.startswith("bali-zero-magazine.ops-receipt.")
-
-
-def test_status_value_set_map_covers_every_terminal_status(ops_intent_row):
+def test_every_terminal_status_still_hits_the_architectural_block(ops_intent_row):
     for status in ["succeeded", "failed", "cancelled_revoked", "outcome_unknown"]:
         receipt_row = make_ops_receipt_row(status=status)
         result = adapt_ops_receipt_to_operational_receipt(receipt_row, ops_intent_row)
-        assert result.accepted, f"status={status} should be adaptable"
+        assert not result.accepted
+        assert "S9-C0" in result.loss_report.fields[0].reason, f"status={status}"
 
 
 def test_incomplete_loss_report_is_caught_by_the_guard(ops_intent_row, ops_receipt_row):
     result = adapt_ops_receipt_to_operational_receipt(ops_receipt_row, ops_intent_row)
     truncated_fields = result.loss_report.fields[:-1]
-    from dataclasses import replace
-
     truncated_report = replace(result.loss_report, fields=truncated_fields)
 
     try:
