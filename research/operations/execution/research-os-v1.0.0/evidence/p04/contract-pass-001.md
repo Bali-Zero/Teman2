@@ -7,7 +7,8 @@ adversarial_review: kimi-k3
 - **From**: builder H1, work packet P04 (Research OS v1.0.0, Wave 0)
 - **To**: S9-C0 (Conductor)
 - **Date**: 2026-08-24
-- **State**: `conditional_pass_contract_layer`
+- **State**: `PASS_WITH_LIMITS` — `SESSION-BOARD.md` §9's closed review-flow vocabulary (§1 below);
+  corrected from an earlier draft's `conditional_pass_contract_layer`, which was not a member of it
 - **Measured at**: 2026-08-24T07:22:20Z, `origin/main` HEAD `e0df8ec86795a6176a85653d760abac64137e454`
   (`docs(secondhome): record the 2026-08-23/24 Studio wave + price-key gotcha (#4763)`, committed
   2026-08-24T03:03:57Z — the merge-base of this worktree with `origin/main`), worktree
@@ -42,12 +43,34 @@ adversarial_review: kimi-k3
 
 ## 1. Verdict
 
-**CONDITIONAL PASS on the contract layer. This is NOT a P04-complete sign-off.** Every claim below
-was re-measured in this session against the SHA in the header — by direct file reads, by running
-the actual code (not by reading it and assuming), and by executing the repo's own configured lint
-where one exists — before being written down. Two of the source brief's claims did not survive that
-re-measurement unchanged; both are called out explicitly in §2/§3 rather than silently corrected,
-per the discipline this document itself argues for.
+**Verdict: `PASS_WITH_LIMITS`.** `SESSION-BOARD.md` §9's review-flow protocol defines a closed,
+four-token vocabulary for this line — `PASS / PASS_WITH_LIMITS / FAIL / insufficient_evidence`
+(line 264) — and this is the one that applies. **Corrected from an earlier draft, which headlined
+this "CONDITIONAL PASS on the contract layer": a phrase that is not a member of that set.** The
+phrase is not wrong as English and is kept below as a gloss, because it is clear and this document
+still wants it said in plain language — but it cannot be the verdict *token*, because §9's own gate
+policy pattern-matches on the four-word set, not on prose: `PASS_WITH_LIMITS` "unlocks only what the
+receipt explicitly names" — and what this receipt names is §7, nothing more. A verdict spelled
+outside the vocabulary gives that downstream gate nothing to match against, which a reader could
+reasonably take as an unrestricted PASS. That is exactly the wrong-direction asymmetry the next
+paragraph argues against, and exactly the shape the Adversarial-review section elsewhere in this
+document calls out in its own gate: an artifact that looks compliant is not the same as one a
+mechanical check can actually bind to. **Conditional/limited in the ordinary-English sense too — this
+is NOT a P04-complete sign-off** — but that is now the gloss, not the verdict.
+
+**Two different scales are in play here, deliberately, and they do not collapse into each other.**
+The packet-level verdict above (`PASS_WITH_LIMITS`, one token, §9's board protocol) grades the whole
+deliverable as a unit for the Conductor's review-flow gate. The per-deliverable rubric in §§2–4 below
+(PASS / PARTIAL / NOT DELIVERED, twelve separate grades, one per D-item) grades each D1–D12
+individually, on this document's own internal scale (defined two paragraphs below). §7's "what
+Cohort B may and may not start on" — the exact list `PASS_WITH_LIMITS` unlocks per board policy — is
+built from the twelve, not the one; the one packet verdict is what the board's sequence diagram reads.
+
+Every claim below was re-measured in this session against the SHA in the header — by direct file
+reads, by running the actual code (not by reading it and assuming), and by executing the repo's own
+configured lint where one exists — before being written down. Two of the source brief's claims did
+not survive that re-measurement unchanged; both are called out explicitly in §2/§3 rather than
+silently corrected, per the discipline this document itself argues for.
 
 Cohort B (P05 Intel Lake, P06 NAGA) is blocked by construction until this lands. Overstating what
 is sound here unblocks work that must stay blocked; understating it costs a day. The asymmetry is
@@ -507,7 +530,7 @@ declare this out of scope by design, not by oversight); or a semantic-version co
 production request path currently imports any of this layer, and the package is not even a declared
 dependency of the app that would consume it.
 
-## 8. Corrections to `SESSION-BOARD.md` §0 — measurements, not an edit
+## 8. Corrections to `SESSION-BOARD.md` — measurements, not an edit
 
 `SESSION-BOARD.md` §0 declares itself "measured 2026-08-23 by the Conductor" and warns, in its own
 text, "Re-measure before trusting it — a board is a snapshot, and this one decays." It has decayed,
@@ -530,7 +553,7 @@ a direct file-existence check, not by re-reading the board's claims and taking t
 | `research_os/schemas/` holds 2 schemas | **25** `.schema.json` artifacts |
 | "the remaining ~23 object kinds are still to land" | **zero** remaining — all 25 landed |
 | D2 absent: "no file matching `research_os` or `contract` exists" in `migrations_v2/` | `279_research_os_contract_core.sql` present; head moved `278` → **`279`** |
-| D3 absent: "no adapter/dual-write/parity file exists" under `packages/research-os-core/` | `apps/backend-rag/backend/services/research_os/` holds 6 files, including a real adapter with anti-silent-drop enforcement (§3 above); the compatibility matrix landed via #4756 (§3, D8) |
+| D3 absent: "no adapter/dual-write/parity file exists" under `packages/research-os-core/` | `apps/backend-rag/backend/services/research_os/` holds **7** files as of `origin/main`'s current tip (6 at this document's own pin, before PR #4774 landed a second adapter — §3 D4), including two real adapters with anti-silent-drop enforcement (§3 above); the compatibility matrix landed via #4756 (§3, D8) |
 
 Two things follow from this table, and only the first is actionable by anyone other than the
 Conductor:
@@ -544,6 +567,18 @@ Conductor:
    Whoever reads the board without also reading this PASS is deciding on numbers a day old. This
    section exists so that gap is stated by us, not discovered independently by a reader holding two
    documents that disagree.
+
+**A second correction, to a different section of the same board — `SESSION-BOARD.md` §9's Gate
+policy, not §0.** Its "Review and integration flow" states, verbatim (line 277): "G1, G2, G3, and G4
+require the separate Gear-3 Fable session defined by current Pro topology." That is expired doctrine.
+Per `CLAUDE.md` §5 (RULED Zero, 2026-08-20, verbatim: "Togliere Fable 5 dal workflow, lo uso solo io
+quando voglio."): Fable 5 is out of the workflow entirely — the Gear-3 final on-disk gate that ruling
+used to keep on Fable now closes on **Opus 5** (`xhigh` effort by default per the 2026-08-21
+amendment; `max` is opt-in on a declared adjudication, never a default), and "no doctrine, skill,
+cron, or script may auto-route to [Fable] — a session must never self-select it." §9's gate policy, as
+written, instructs G1–G4 to route to a session the repository's own doctrine forbids auto-routing to.
+Not an edit to the board — the same discipline as the §0 table above: measured, cited, left for the
+Conductor to reconcile.
 
 ## 9. Conditions on this PASS
 
@@ -591,12 +626,15 @@ unconditional; each has an owner and a closure test.
    normalization moved to the MODEL layer via a `BeforeValidator` on `UtcDateTime` — and PR #4615's
    fold is reverted out of `canonicalize()`. **The branch exists at this document's pin; the PR
    carrying it does not** — `agent/nuzantara/backend-rag/revert-4615-hash-fold` was opened as PR #4781
-   and armed (`autoMergeRequest.enabledAt = 2026-08-24T07:22:14Z`) after this document's pin, confirmed
-   not yet merged (`mergedAt: null`) as of the moment this line was measured. Until this closes,
+   and armed (`autoMergeRequest.enabledAt = 2026-08-24T07:22:14Z`) after this document's pin. Measured
+   fresh via GraphQL at the moment this line was written: `state: OPEN`, `mergedAt: null`,
+   `mergeQueueEntry: {state: AWAITING_CHECKS, position: 1}` — armed and now in the merge queue, not yet
+   landed. This is a live state that will keep moving; treat the fields, not this document's snapshot
+   of them, as ground truth by the time anyone reads this. Until it closes,
    `research_os/hashing.py`'s deterministic-hashing guarantee does not hold for any canonical
    object carrying a free-text field that happens to be timestamp-shaped.
 
-**What would move this document from CONDITIONAL PASS to REFUSE**, stated so the Conductor and any
+**What would move this document's verdict from `PASS_WITH_LIMITS` (§1) to REFUSE**, stated so the Conductor and any
 future re-reader know the bar: any of §§2's PASS-graded claims (D1, D2, D9, D12, or the contract
 suites) turning out false on independent re-verification; **a reproducible collision in `object_hash`
 surviving the revert of PR #4615** (condition 8) — the exact failure mode D7's correction in §4 exists
