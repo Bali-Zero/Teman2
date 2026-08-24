@@ -1,0 +1,126 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Forced-command receiver for the Nuzantara iQOO RADAR node.
+# It accepts only the closed Incident Capsule v1 schema: no free text exists.
+
+set -eu
+umask 077
+export LC_ALL=C
+
+STATE_DIR="$HOME/.local/state/nuzantara-radar"
+INCIDENT_DIR="$STATE_DIR/incidents"
+LOCK_DIR="$STATE_DIR/.receive.lock"
+MAX_BYTES=8192
+MAX_INCIDENTS=250
+
+reject() {
+    printf 'RADAR_REJECTED\n'
+    exit 64
+}
+
+# A relay key is forced to this executable. It must send JSON on stdin and may
+# never smuggle a shell command through SSH_ORIGINAL_COMMAND.
+[ "$#" -eq 0 ] || reject
+[ -z "${SSH_ORIGINAL_COMMAND:-}" ] || reject
+
+mkdir -p "$INCIDENT_DIR"
+chmod 700 "$STATE_DIR" "$INCIDENT_DIR"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    printf 'RADAR_BUSY\n'
+    exit 75
+fi
+
+PAYLOAD_FILE="$STATE_DIR/.incoming.$$"
+NORMALIZED_FILE="$STATE_DIR/.normalized.$$"
+cleanup() {
+    rm -f -- "$PAYLOAD_FILE" "$NORMALIZED_FILE"
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+trap cleanup EXIT HUP INT TERM
+
+# Read one byte beyond the contract ceiling so oversized input is detectable.
+dd bs=$((MAX_BYTES + 1)) count=1 of="$PAYLOAD_FILE" 2>/dev/null || reject
+BYTES=$(wc -c < "$PAYLOAD_FILE" | tr -d '[:space:]')
+[ "$BYTES" -gt 0 ] || reject
+[ "$BYTES" -le "$MAX_BYTES" ] || reject
+
+# Exact keys + finite enums are load-bearing. The phone cannot be turned into
+# a covert raw-log/PII sink because there is no arbitrary string field.
+jq -ceS '
+  select(
+  type == "object"
+  and (keys | sort) == ([
+    "category", "condition_id", "delivery_state", "details", "incident_id",
+    "observed_at", "pii_policy", "repeat_count", "route", "schema_version",
+    "severity", "source_class", "source_node", "stage"
+  ] | sort)
+  and .schema_version == 1
+  and (.incident_id | type == "string" and test("^[0-9a-f]{32}$"))
+  and (.condition_id | type == "string" and test("^[0-9a-f]{16}$"))
+  and (.observed_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))
+  and .severity == "critical"
+  and .stage == "detected"
+  and (.source_node == "pro" or .source_node == "mini" or .source_node == "other")
+  and (.source_class == "backup" or .source_class == "communications"
+       or .source_class == "cron" or .source_class == "database"
+       or .source_class == "healer" or .source_class == "security"
+       or .source_class == "watchdog" or .source_class == "system")
+  and (.category == "availability" or .category == "billing"
+       or .category == "communications" or .category == "compliance"
+       or .category == "data_integrity" or .category == "security"
+       or .category == "storage" or .category == "system")
+  and (.delivery_state == "sent" or .delivery_state == "queued"
+       or .delivery_state == "transport_unsent"
+       or .delivery_state == "budget_holdback")
+  and (.repeat_count | type == "number" and floor == . and . >= 1 and . <= 100000)
+  and .details == "kept_on_source"
+  and .pii_policy == "no_raw_logs_no_free_text"
+  and (.route | type == "object")
+  and (.route | keys | sort) == (["owner_gate", "repairer", "reviewer", "supervisor"] | sort)
+  and .route.repairer == "bounded_sonnet5_healer"
+  and .route.reviewer == "independent_medium"
+  and (.route.supervisor == "opus5_for_high_risk" or .route.supervisor == "medium_review")
+  and .route.owner_gate == "irreversible_only"
+  )
+' "$PAYLOAD_FILE" > "$NORMALIZED_FILE" || reject
+
+INCIDENT_ID=$(jq -r '.incident_id' "$NORMALIZED_FILE")
+DESTINATION="$INCIDENT_DIR/$INCIDENT_ID.json"
+if [ -f "$DESTINATION" ]; then
+    printf 'RADAR_DUPLICATE %s\n' "$INCIDENT_ID"
+    exit 0
+fi
+
+mv "$NORMALIZED_FILE" "$DESTINATION"
+chmod 600 "$DESTINATION"
+cp "$DESTINATION" "$STATE_DIR/.latest.$$"
+chmod 600 "$STATE_DIR/.latest.$$"
+mv "$STATE_DIR/.latest.$$" "$STATE_DIR/latest.json"
+
+# The queue is deliberately small and contains no raw logs. Keep the newest
+# 250 receipts; filenames are validated 32-character hexadecimal IDs.
+find "$INCIDENT_DIR" -maxdepth 1 -type f -name '*.json' -print \
+    | while IFS= read -r item; do
+        printf '%s %s\n' "$(stat -c '%Y' "$item" 2>/dev/null || stat -f '%m' "$item")" "$item"
+      done \
+    | sort -rn \
+    | awk -v keep="$MAX_INCIDENTS" 'NR > keep {print $2}' \
+    | while IFS= read -r stale; do rm -f -- "$stale"; done
+
+CATEGORY=$(jq -r '.category' "$DESTINATION")
+NODE=$(jq -r '.source_node' "$DESTINATION")
+OBSERVED=$(jq -r '.observed_at' "$DESTINATION")
+
+# Termux:API is optional. The receipt remains available through `radar status`
+# even when the Android companion add-on has not been installed yet.
+if command -v termux-notification >/dev/null 2>&1; then
+    termux-notification \
+        --id 91501 \
+        --title "Nuzantara P0: $CATEGORY" \
+        --content "$NODE · $OBSERVED · apri Termux e scrivi: radar status" \
+        --priority high >/dev/null 2>&1 || true
+fi
+if command -v termux-vibrate >/dev/null 2>&1; then
+    termux-vibrate -d 450 >/dev/null 2>&1 || true
+fi
+
+printf 'RADAR_OK %s\n' "$INCIDENT_ID"

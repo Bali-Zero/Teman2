@@ -1,0 +1,98 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Small operator console for the PII-safe iQOO RADAR queue.
+
+set -eu
+export LC_ALL=C
+
+STATE_DIR="$HOME/.local/state/nuzantara-radar"
+INCIDENT_DIR="$STATE_DIR/incidents"
+LATEST="$STATE_DIR/latest.json"
+
+usage() {
+    printf '%s\n' \
+        'Uso: radar status' \
+        '     radar list [numero]' \
+        '     radar show <incident-id>' \
+        '     radar health'
+}
+
+status() {
+    COUNT=$(find "$INCIDENT_DIR" -maxdepth 1 -type f -name '*.json' 2>/dev/null | wc -l | tr -d '[:space:]')
+    printf 'RADAR iQOO · %s capsule sicure\n' "$COUNT"
+    if [ ! -f "$LATEST" ]; then
+        printf 'Nessun allarme ricevuto.\n'
+        return
+    fi
+    jq -r '
+      "Ultimo: \(.severity | ascii_upcase) · \(.category) · \(.source_node)",
+      "Quando: \(.observed_at)",
+      "Stato invio: \(.delivery_state) · ripetizioni: \(.repeat_count)",
+      "Riparatore: \(.route.repairer)",
+      "Review: \(.route.supervisor)",
+      "ID: \(.incident_id)",
+      "Dettagli grezzi: trattenuti sul Mac sorgente"
+    ' "$LATEST"
+}
+
+list_incidents() {
+    LIMIT="${1:-10}"
+    case "$LIMIT" in
+        ''|*[!0-9]*) printf 'Il numero deve essere intero.\n' >&2; exit 64 ;;
+    esac
+    [ "$LIMIT" -ge 1 ] && [ "$LIMIT" -le 100 ] || {
+        printf 'Scegli un numero tra 1 e 100.\n' >&2
+        exit 64
+    }
+    LIST_FILE="$STATE_DIR/.list.$$"
+    trap 'rm -f -- "$LIST_FILE"' EXIT HUP INT TERM
+    find "$INCIDENT_DIR" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null \
+        | while IFS= read -r item; do
+            printf '%s %s\n' "$(stat -c '%Y' "$item" 2>/dev/null || stat -f '%m' "$item")" "$item"
+          done \
+        | sort -rn \
+        | awk -v limit="$LIMIT" 'NR <= limit {print $2}' > "$LIST_FILE"
+    if [ ! -s "$LIST_FILE" ]; then
+        printf 'Nessuna capsula.\n'
+        return
+    fi
+    while IFS= read -r item; do
+        jq -r '"\(.observed_at)  \(.category)  \(.source_node)  \(.incident_id)"' "$item"
+    done < "$LIST_FILE"
+    rm -f -- "$LIST_FILE"
+    trap - EXIT HUP INT TERM
+}
+
+show_incident() {
+    INCIDENT_ID="${1:-}"
+    case "$INCIDENT_ID" in
+        ''|*[!0-9a-f]*) printf 'Incident ID non valido.\n' >&2; exit 64 ;;
+    esac
+    [ "${#INCIDENT_ID}" -eq 32 ] || {
+        printf 'Incident ID non valido.\n' >&2
+        exit 64
+    }
+    FILE="$INCIDENT_DIR/$INCIDENT_ID.json"
+    [ -f "$FILE" ] || {
+        printf 'Capsula non trovata.\n' >&2
+        exit 66
+    }
+    jq . "$FILE"
+}
+
+health() {
+    if pgrep -x sshd >/dev/null 2>&1; then SSH_STATE=attivo; else SSH_STATE=spento; fi
+    if [ -f "$STATE_DIR/wake-lock.requested" ]; then WAKE_STATE=richiesto_a_Termux; else WAKE_STATE=non_richiesto; fi
+    if command -v termux-notification >/dev/null 2>&1; then NOTIFY_STATE=disponibile; else NOTIFY_STATE=non_installato; fi
+    printf 'SSH: %s\nWake-lock: %s\nNotifiche Android: %s\n' \
+        "$SSH_STATE" "$WAKE_STATE" "$NOTIFY_STATE"
+}
+
+mkdir -p "$INCIDENT_DIR"
+case "${1:-status}" in
+    status) status ;;
+    list) list_incidents "${2:-10}" ;;
+    show) show_incident "${2:-}" ;;
+    health) health ;;
+    help|-h|--help) usage ;;
+    *) usage >&2; exit 64 ;;
+esac

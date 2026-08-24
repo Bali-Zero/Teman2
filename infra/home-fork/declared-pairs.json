@@ -892,6 +892,26 @@
       "repo": "infra/claude-hooks/mailbox_inject.py",
       "_note": "Context-only PostToolUse/Stop hook (fleet mailbox reader) added 2026-08-23. Installed by infra/claude-hooks/install_mailbox_hook.sh (self-verifying vaccine, same pattern as install_worktree_hooks.sh). Never blocks a command — no guilt/innocence contract, registered in guard-conformance registry.json command_hooks.exempt like dispatch_nudge.py, not entries. Declared at PR-open, before any machine has installed it: --check will report the live copy ABSENT on all three machines until install_mailbox_hook.sh runs there — expected, not drift.",
       "machines": ["all"]
+    },
+    {
+      "live": "~/scripts/pro-iqoo-radar-relay.sh",
+      "repo": "infra/launchagents/wrappers/pro-iqoo-radar-relay.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.iqoo-radar-relay.plist",
+      "repo": "infra/launchagents/com.nuzantara.iqoo-radar-relay.plist",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/mini-iqoo-radar-relay.sh",
+      "repo": "infra/launchagents/wrappers/mini-iqoo-radar-relay.sh",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.mini-iqoo-radar-relay.plist",
+      "repo": "infra/launchagents/com.nuzantara.mini-iqoo-radar-relay.plist",
+      "machines": ["mini"]
     }
   ],
   "allow": [
