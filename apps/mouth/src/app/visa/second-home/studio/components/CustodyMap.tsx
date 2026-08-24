@@ -143,11 +143,32 @@ export function CustodyMap() {
           line-height: 1.2;
         }
 
+        /* Screen breakpoint fix (2026-08-24): #4823 cured the print half of
+         * this section's cramped-heading disease (@media print below); the
+         * screen half was never measured and stayed broken. The old
+         * side-by-side layout (3-column step flow | aside note) gave the
+         * aside's own minmax(12rem, 0.3fr) track first claim on the row,
+         * leaving the flow — and therefore each step card — squeezed at
+         * every width up to this section's 1120px content cap, not just
+         * near mobile. Measured on production: from 1024px to 1180px
+         * viewport width, each heading's actual text box was 82-113px
+         * wide (narrower than the word "application") and wrapped to 4-5
+         * lines. Fix, two parts: (1) the aside now always sits BELOW the
+         * step flow instead of beside it, so the flow keeps the full
+         * section width at every viewport; (2) the step flow's own
+         * 3-column -> 1-column stacking breakpoint moves from 760px to
+         * 1024px (below), because even with the full section width a
+         * 3-up card is still too narrow for the longest heading between
+         * ~760-1024px — measured 4 lines at 860px on this fix's own first
+         * draft. Both breakpoints now share the same 1024px threshold on
+         * purpose: below it the flow is a single vertical column (full
+         * width, roomy), at or above it there is enough per-card width
+         * for 3 columns to stay <=2 lines up to the 1120px content cap
+         * (measured 2 lines flat from 1180px to 1920px). */
         .custody-layout {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.3fr);
-          align-items: center;
-          gap: clamp(2rem, 4vw, 3.5rem);
+          grid-template-columns: minmax(0, 1fr);
+          gap: clamp(1.75rem, 4vw, 2.5rem);
           min-width: 0;
         }
 
@@ -250,20 +271,16 @@ export function CustodyMap() {
           stroke-width: 1.5;
         }
 
+        /* No side connector by default: the aside sits BELOW the (still
+         * horizontal, >1024px) step flow now, not beside it, so a
+         * pointing-left dashed line has nothing on its left to point at.
+         * The <=1024px breakpoint below restores a connector shaped for
+         * that width's fully-stacked, single-column step list. */
         .custody-outside {
           position: relative;
           padding: 1rem;
           border: 1px dashed var(--color-border-subtle);
           border-radius: 10px;
-        }
-
-        .custody-outside::before {
-          position: absolute;
-          top: 50%;
-          right: 100%;
-          width: clamp(2rem, 4vw, 3.5rem);
-          border-top: 1px dashed var(--color-border-subtle);
-          content: "";
         }
 
         .custody-outside p,
@@ -292,8 +309,10 @@ export function CustodyMap() {
            * per line), and the unbroken word "application" in step 2's
            * heading overflowed past this section's overflow:hidden and
            * was clipped mid-word ("applicatio|n"). Stack to one step per
-           * row, full page width — same shape as the <=760px screen
-           * breakpoint below, but scoped to @media print so it fires
+           * row, full page width — same shape as the <=1024px screen
+           * breakpoint below (760px when this comment was written; raised
+           * 2026-08-24, see the .custody-layout comment above), but scoped
+           * to @media print so it fires
            * regardless of what width the print engine's internal layout
            * pass actually computes (measured to differ from both the live
            * viewport and the @page content box — screen-narrow media
@@ -318,8 +337,11 @@ export function CustodyMap() {
           }
         }
 
-        @media (max-width: 760px) {
-          .custody-layout,
+        /* Was <=760px; raised to <=1024px (2026-08-24, see the .custody-layout
+         * comment above) — the 3-column flow needs more per-card width
+         * than 760-1024px viewports have to give without re-squeezing the
+         * headings this whole fix exists to un-squeeze. */
+        @media (max-width: 1024px) {
           .custody-flow {
             grid-template-columns: minmax(0, 1fr);
           }
@@ -338,20 +360,54 @@ export function CustodyMap() {
             transform: translateX(-50%) rotate(90deg);
           }
 
+          /* Only at this width is the flow itself a single vertical
+           * column (see .custody-flow override above), so a connector
+           * pointing left from the aside to that column reads correctly.
+           * Defined here (not as a default with per-width overrides)
+           * because >1024px has no such column for it to point at. */
           .custody-outside::before {
+            position: absolute;
             top: 1.5rem;
             right: 100%;
-            bottom: auto;
-            left: auto;
             width: 2rem;
-            height: 0;
             border-top: 1px dashed var(--color-border-subtle);
-            border-left: 0;
+            content: "";
           }
 
           .custody-outside {
             width: calc(100% - 2rem);
             margin-left: 2rem;
+          }
+        }
+
+        /* Narrow-phone tightening (2026-08-24): even full-width at this
+         * point (single-column flow, see above), a small-phone viewport
+         * still isn't wide enough for the longest heading ("Use the bank
+         * evidence for your application") to clear 2 lines once the
+         * button's own decorative chrome (icon + its gap + padding) is
+         * subtracted — measured 3 lines at 360-390px on this fix's first
+         * draft. The icon is aria-hidden decoration, so it is dropped
+         * here rather than shrunk: that returns its full width (icon +
+         * one gap) to the heading instead of only a few px. */
+        @media (max-width: 480px) {
+          .custody-icon {
+            display: none;
+          }
+
+          /* Explicit 2-column track (text, chevron) now that the icon
+           * column is gone — left as the original 3-column template's
+           * implicit auto-placement, the heading would land in an "auto"
+           * track sized by its own content instead of the flexible track,
+           * which is the wrong track for something meant to wrap. */
+          button {
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.5rem;
+            padding: 0.85rem 0.65rem;
+          }
+
+          .custody-chevron {
+            width: 14px;
+            height: 14px;
           }
         }
 
