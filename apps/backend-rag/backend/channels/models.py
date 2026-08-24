@@ -7,9 +7,8 @@ Hard invariant (F1): the brain (ClientBotEngine / any ClientBrainProvider)
 never receives a phone number, Instagram username, portal token, signed
 media URL, or raw webhook payload — only opaque references and stable
 pseudonymous subject tokens. That invariant is encoded here in the field
-TYPES (HMAC-shaped patterns, a media reference validator that rejects
-anything with network authority), not left to adapter discipline or a
-comment:
+TYPES (HMAC-shaped patterns, a media reference constrained to a single
+positive whitelist shape), not left to adapter discipline or a comment:
 
 - ``CanonicalActor.subject_token`` must be a 64-hex-char digest (the shape
   of an HMAC-SHA256 hex output). A raw phone number or IG handle cannot
@@ -20,14 +19,27 @@ comment:
   HMAC of the wrong thing) passes — the pattern is a SHAPE guarantee, not
   a cryptographic one. Actually hashing the right input is an adapter
   obligation this type cannot enforce; do not read it as more than that.
-- ``CanonicalAttachment.media_ref`` is rejected outright if it has network
-  authority — i.e. it parses (via ``urllib.parse.urlsplit``) to a non-empty
-  ``netloc``. This catches both an absolute URL (``https://host/...``) and
-  a scheme-relative one (``//host/...``, which a naive ``"://" in value``
-  substring check would miss). An opaque ``scheme:opaque-id`` reference
-  (e.g. ``media-store:abc123``) has no ``netloc`` and is legal. Adapters
-  must resolve media through the internal media store and pass its opaque
-  reference.
+- ``CanonicalAttachment.media_ref`` must match
+  ``^media-store:[A-Za-z0-9_-]{1,256}$`` — the one legal shape — rather
+  than pass a negative "doesn't look like a URL" guard. A negative guard
+  against an open-ended class (everything a URL can look like) is the
+  under-match half of superscar family #3, and it bit this exact field
+  twice: a bare ``"://" in value`` check missed a scheme-relative URL
+  (``//host/path``); the ``urlsplit(...).netloc`` check that replaced it
+  still let ``file:///etc/passwd``, ``https:\\evil.com/x?sig=ABC``
+  (browsers and httpx both normalize a backslash to a working URL),
+  ``http:cdn.example.com/a?sig=X``, ``https:/cdn.example.com/a``,
+  ``mailto:budi@example.com`` (an email address, in the one field whose
+  entire job is keeping identifying data out), and
+  ``media-store:+6281234567890`` (PII smuggled inside an otherwise legal
+  shape) all through — each verified empirically before this fix. The
+  legal shape here is narrow and fully known, so it is matched positively;
+  every input above is rejected by construction, no enumeration required.
+  What this pattern does NOT prove: that the referenced media actually
+  exists, or that the id was legitimately issued by the media store — a
+  syntactically valid but fabricated id still matches. That is a
+  service-layer obligation, not a type guarantee. Adapters must resolve
+  media through the internal media store and pass its opaque reference.
 
 This module intentionally does NOT import ``backend.channels.profiles`` —
 the "attachments/context must match the selected SurfaceProfile" checks
@@ -43,10 +55,9 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
-from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 __all__ = [
     "AttachmentKind",
@@ -63,6 +74,12 @@ __all__ = [
 # contract file, and pulling a shared "patterns" module in from services/client_bot
 # would create a cross-layer coupling this freeze does not need. See report decision log.
 _SHA256_HEX = r"^[0-9a-f]{64}$"
+
+# The ONE legal media_ref shape (round-2 review, finding 1): a positive
+# whitelist, not a negative "doesn't look like a URL" guard. See the module
+# docstring for the six concrete strings this replaced-in-round-2 guard let
+# through before this pattern existed.
+_MEDIA_REF_PATTERN = r"^media-store:[A-Za-z0-9_-]{1,256}$"
 
 
 class ClientSurface(StrEnum):
@@ -89,41 +106,20 @@ class AttachmentKind(StrEnum):
 
 
 class CanonicalAttachment(BaseModel):
-    """A single attachment reference. Never a signed/raw URL — see module docstring."""
+    """A single attachment reference — never a URL, never PII. See module docstring:
+    ``media_ref`` is constrained to the one legal whitelisted shape, not a blacklist.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     attachment_id: UUID
     kind: AttachmentKind
     mime_type: Annotated[str, Field(max_length=255)]
-    media_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    media_ref: Annotated[str, Field(pattern=_MEDIA_REF_PATTERN)]
     filename: Annotated[str, Field(max_length=255)] | None = None
     size_bytes: int | None = Field(default=None, ge=0)
     sha256: Annotated[str, Field(pattern=_SHA256_HEX)] | None = None
     extracted_text_ref: Annotated[str, Field(max_length=512)] | None = None
-
-    @field_validator("media_ref")
-    @classmethod
-    def _media_ref_must_not_be_url_shaped(cls, value: str) -> str:
-        """Reject anything with network authority — signed or not (F1 hard invariant).
-
-        A real opaque media-store reference never carries a host; a signed
-        URL (S3/GCS/Meta media proxy) always does — parsed authority
-        (``netloc``) is what a URL actually IS, so this checks that instead
-        of grepping for ``"://"``, which a scheme-relative URL
-        (``//host/path?sig=...``) — no scheme, still a URL, still has a
-        host — would sail straight through. An opaque
-        ``scheme:opaque-id`` reference (e.g. ``media-store:abc123``) has no
-        ``netloc`` and is legal; verified empirically with
-        ``urllib.parse.urlsplit`` before writing this check.
-        """
-        if urlsplit(value).netloc:
-            raise ValueError(
-                "media_ref must be an opaque media-store reference, never a "
-                "URL (signed, scheme-relative, or otherwise) — resolve via "
-                "the media store before constructing CanonicalAttachment"
-            )
-        return value
 
 
 class CanonicalActor(BaseModel):
