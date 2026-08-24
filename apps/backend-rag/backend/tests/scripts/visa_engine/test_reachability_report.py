@@ -136,13 +136,18 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     all_paths = {str(p.value) for p in DEFAULT_FACT_REGISTRY.all_paths()}
     assert set(seq7_report.unused_fact_paths) == all_paths - set(seq7_report.used_fact_paths)
     assert seq7_report.total_fact_paths == len(all_paths)
-    # The exact 12-path headline (was 8; 2026-08-23 vocabulary extension —
+    # The exact 13-path headline (was 8; 2026-08-23 vocabulary extension —
     # PR #4650 — added 4 new registry paths that no rule in
     # rulepack-prod-007.source.json references yet, which is exactly what
     # "vocabulary-only, no rulepack change" means: `derived.has_active_stay_permit`,
     # `family.sponsor_permit_basis`, `family.stepchild_marriage_certificate_confirmed`,
-    # `family.stepchild_birth_certificate_confirmed`).
-    assert len(seq7_report.unused_fact_paths) == 12
+    # `family.stepchild_birth_certificate_confirmed`). Was 12; 2026-08-24 F4
+    # (D12 active-stay-permit exclusion) adds the 13th, `immigration.renewal_paid` —
+    # also vocabulary-only against this frozen seq-7 baseline. Unlike the other
+    # four, it stays unused *by design* until seq-14 folds the D12 rule that
+    # reads it: this is a deliberately dormant fact, not an accidentally
+    # orphaned one — do not "fix" it by bumping the number down.
+    assert len(seq7_report.unused_fact_paths) == 13
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:
@@ -153,7 +158,7 @@ def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> Non
     assert seq7_report.required_facts_ast_mismatches == ()
 
 
-def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
+def test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper() -> None:
     assert DEFAULT_FACT_MAPPER_PATH.exists(), (
         "the default fact-mapper path is stale — the live interview moved "
         "and this script's default needs updating"
@@ -162,10 +167,16 @@ def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
     # Independent extraction: a plain unconditional-assignment regex, not the
     # module's own compiled pattern.
     found = sorted(set(re.findall(r'"([a-z_]+\.[a-z_]+)":\s*unknownFact\(NOT_ASKED\),', text)))
+    # Was five; 2026-08-24 F4 (D12 active-stay-permit exclusion) adds the
+    # sixth, `immigration.renewal_paid` — the fact-mapper placeholder that
+    # emits it as NOT_ASKED until the interview question (Item 1, its own
+    # PR) collects it. Same "vocabulary before the question exists" shape
+    # as the other five.
     assert found == [
         "commercial.service_fee_budget_idr",
         "commercial.wants_quote",
         "immigration.last_entry_date",
+        "immigration.renewal_paid",
         "intent.desired_entry_date",
         "intent.requested_product_code",
     ]

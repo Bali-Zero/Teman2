@@ -598,7 +598,7 @@ def build_gold_compiled_pack() -> CompiledRulePack:
 
 _UNKNOWN_NOT_ASKED = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
 
-#: Every one of the 44 fact paths defaulted to a KNOWN, "safe/neutral" value —
+#: Every one of the 45 fact paths defaulted to a KNOWN, "safe/neutral" value —
 #: a fully-answered, boring baseline applicant (adult, non-calling-country,
 #: no violations, offshore, non-onshore-conversion) that no rule in
 #: ``_build_rules`` flags. Every persona overrides only its OWN distinguishing
@@ -656,6 +656,7 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     "family.stepchild_marriage_certificate_confirmed": _UNKNOWN_NOT_ASKED,
     "family.stepchild_birth_certificate_confirmed": _UNKNOWN_NOT_ASKED,
     "family.sponsor_permit_basis": _UNKNOWN_NOT_ASKED,
+    "immigration.renewal_paid": _UNKNOWN_NOT_ASKED,
     "family.sponsor_confirmed": {"status": "KNOWN", "value": False},
     "study.level": _UNKNOWN_NOT_ASKED,
     "study.admission_confirmed": _UNKNOWN_NOT_ASKED,
