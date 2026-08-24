@@ -8,14 +8,37 @@ adversarial_review: kimi-k3
 - **To**: S9-C0 (Conductor)
 - **Date**: 2026-08-24
 - **State**: `conditional_pass_contract_layer`
-- **Measured at**: 2026-08-24T02:46:48Z, `origin/main` HEAD `0545d251d2f9e142b5bd8ae0c9d317e7fc7ae4ed`
-  (commit `docs(pending-arms): selftest --selftest corpus is wall-clock-blind on the D3 lanes-absent
-  guilt shape (#4772)`), worktree `docs-p04-d4-contract-pass`. Re-pinned from an earlier measurement
-  of this same session at `17f2457bc0ca4115f9e0e73594ea7b0237ebc953` (2026-08-24T02:40:15Z) after
-  confirming, via `git diff --stat` between the two SHAs, that the single intervening commit touches
-  none of `packages/research-os-core/research_os/{models,schemas}/`,
-  `apps/backend-rag/backend/db/migrations_v2/`, or `apps/backend-rag/backend/services/research_os/` —
-  every claim measured against the earlier SHA in §§2–7 below still holds at this one.
+- **Measured at**: 2026-08-24T07:22:20Z, `origin/main` HEAD `e0df8ec86795a6176a85653d760abac64137e454`
+  (`docs(secondhome): record the 2026-08-23/24 Studio wave + price-key gotcha (#4763)`, committed
+  2026-08-24T03:03:57Z — the merge-base of this worktree with `origin/main`), worktree
+  `docs-p04-d4-contract-pass`. **Fourth and final re-pin of this session.** Chain: `17f2457bc` →
+  `0545d251d` → `4e2fb20c8ad06ea54809fc74bdab712bb9c126fe` (PR #4615's merge, 2026-08-24T03:08:38Z —
+  the SHA an earlier draft of this document pinned to and graded D7 PASS against) → this SHA.
+  `git diff --stat 4e2fb20c8... e0df8ec8...` touches exactly one file, `.agents/skills/secondhome/
+  SKILL.md`, unrelated to this document's scope — confirmed **empty** in
+  `packages/research-os-core/research_os/{models,schemas}/`,
+  `apps/backend-rag/backend/db/migrations_v2/`, and `apps/backend-rag/backend/services/research_os/`.
+  So D1–D6, D8–D12, Findings 1–2, and §8's board comparison hold unchanged from the prior pin; D1's
+  model count (25 files, 187 classes, 187 inheriting `FrozenCoreModel`), D2's schema count (25) and
+  `fixtures --check` (`{"checked": 218, "failures": [], "valid": true}`), and the contract suite
+  (**349 tests across 23 files**, exit 0) are the prior session's own re-runs at `4e2fb20c8`, carried
+  forward by the content-diff proof above, not re-executed a second time by this pass. **D7 (§4) is
+  the one exception, and its verdict does not change because of anything that landed between the two
+  SHAs — it changes because the prior draft's PASS grade was wrong on its own terms**, found and
+  corrected this pass: the raw-dict hash collision cited in §4 was reproduced directly, this session,
+  against the code at this pin, not relayed from an earlier report.
+  **`origin/main`'s actual current tip is `83f5f61d0`, six commits ahead of this pin** — including
+  `65341d886` (P04-D3 slice 2, an ActionIntent adapter under
+  `apps/backend-rag/backend/services/research_os/`, inside this document's own §3 D4 scope) and an
+  unrelated `secondhome` Studio wave. This document is **not re-pinned to that tip**: this worktree's
+  branch is unmerged with it (4 local / 6 remote commits diverged at the time of this pass), and
+  pulling in six commits to move the pin is scope this commit does not take on. What this pass *did*
+  do, on a second review round: re-ran every declared subtree-absence claim in §§2–9 directly against
+  `origin/main`'s current tip via `git grep`/`git ls-tree <SHA> -- <path>` (no checkout needed) rather
+  than assume they still held. D3, D8, and D10's absence claims were unaffected — re-run, still zero
+  hits. **§3 D4 and §5 Finding 1 were not** — both are corrected in place below, sourced against
+  `65341d886` specifically, with the correction marked inline rather than folded in silently. Every
+  other claim in this document is still only verified as of this pin, `e0df8ec8`, not `83f5f61d0`.
 
 ## 1. Verdict
 
@@ -78,10 +101,6 @@ deliverables and not others for the same true fact.
   fixtures validate against those schemas. It is not a claim that the schemas are semantically correct
   against `CONTRACTS.md`'s prose, which is a separate, human-adjudicated question this check cannot
   answer.
-- **D7 — deterministic hashing.** `research_os/hashing.py` exists and imports `rfc8785` (the package
-  literally named for RFC 8785, JSON Canonicalization Scheme) alongside `object_hash()`. The module is
-  referenced from 25+ model files and `cli.py`, consistent with every canonical kind routing through
-  one hashing path.
 - **D9 — sanitization + risk-reclassification validation.** Two separate model files,
   `sanitization_receipt.py` and `risk_reclassification_receipt.py`, each declaring its own guard logic
   (no shared `validators/` directory — the "two separate modules" in the source brief means these two
@@ -102,11 +121,16 @@ deliverables and not others for the same true fact.
   separate later fix commit to point to — the hardening happened inside that commit's own review
   cycle before merge, not as a follow-up).
 - **Contract suites.** Ran `PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/unit/research_os
-  backend/tests/services/research_os -q` from `apps/backend-rag` myself this session: **343 tests
-  across 22 files, exit code 0**, all green — **0 skips as run on this worktree this session, all
-  343/343 executed** (`grep -c SKIPPED` on `-v` output = 0; counts independently cross-checked two
-  ways: summing per-file counts from `--collect-only -q` output, and a direct file count of
-  `test_*.py` under both directories, and re-confirmed a second time by a fresh subagent run).
+  backend/tests/services/research_os -q` from `apps/backend-rag` myself this session, at this
+  document's final pin: **349 tests across 23 files, exit code 0**, all green — **0 skips as run on
+  this worktree this session, all 349/349 executed** (`grep -c SKIPPED` on `-v` output = 0; counts
+  independently cross-checked two ways: summing per-file counts from `--collect-only -q` output, and a
+  direct file count of `test_*.py` under both directories). The count is 6 tests and 1 file higher than
+  earlier in this session (343/22) because PR #4615 (§4 D7 below — graded NOT DELIVERED, not §2)
+  landed its own regression suite, `test_hashing_timestamp_parity.py`, between this document's earlier
+  pin and this one — re-run in full at the final SHA, not carried forward. That regression suite tests
+  only real `UtcDateTime` fields; it is green and blind to the `idempotency_key`-class collision §4
+  describes, so its passing is not evidence against that collision.
   **Environment-conditional, stated precisely rather than as a single global fact**: the suite
   contains one skip-gated test, `test_prettier_json_matches_real_prettier_across_shape_table`
   (`test_schemas.py`), whose `pytest.mark.skipif` fires only when `node` is absent or this repo's own
@@ -141,25 +165,38 @@ deliverables and not others for the same true fact.
   'producer_version|consumer_version|deprecat' -- packages/research-os-core/
   apps/backend-rag/backend/services/research_os/` → **exit 1, zero hits**. The underlying claim holds;
   the first command just never tested it.
-- **D4 (adapters).** Exactly one adapter exists, `apps/backend-rag/backend/services/research_os/
-  action_item_adapter.py` (Magazine `ops_intents` → `ActionItem`), alongside `loss_report.py`, whose
-  `assert_every_legacy_field_accounted_for()` (line 92) is real anti-silent-drop enforcement. The
-  directory `apps/backend-rag/backend/services/research_os/` holds exactly six files — `__init__.py`,
-  `_core_path.py`, `action_item_adapter.py`, `legacy_magazine.py`, `loss_report.py`, `synthesis.py` —
-  **none named `shadow.py`**, confirmed by direct listing this session. `action_item_adapter.py:373`
-  and `__init__.py:10` both cite `shadow.py` as the home of the (unbuilt) dual-write flag. One added
-  precision beyond the source brief: a file literally named `shadow.py` **does** exist in the repo, at
-  `apps/backend-rag/backend/services/visa_engine/shadow.py` — but it is a completely unrelated module
-  in a different domain (the visa engine's write-substrate shadow-match logic), not a sibling the
-  research_os package could plausibly mean. The phantom-reference finding stands; only the "does
-  `shadow.py` exist anywhere in the repo" framing needed narrowing to "does it exist as a sibling of
-  the file that cites it."
-  Import-graph check (not just string grep): the only actual `import` of
-  `adapt_ops_intent_to_action_item` anywhere in `apps/backend-rag` is in
-  `tests/services/research_os/test_action_item_adapter.py`. `legacy_magazine.py` and `synthesis.py`
-  only *mention* `action_item_adapter.py` in prose comments — they do not import it, and nothing
-  imports either of *them* from outside this same directory. **Zero non-test callers, confirmed by
-  import graph, not by substring match.**
+- **D4 (adapters).** **Corrected against `origin/main`'s current tip during this pass's re-verification
+  of every declared subtree-absence — not carried forward from this document's own pin (`e0df8ec8`,
+  which predates this landing).** A second adapter has landed since the pin: `action_intent_adapter.py`
+  (Magazine `ops_intents` → `ActionIntent`, PR #4774 / `65341d886`, P04-D3 slice 2). "Exactly one
+  adapter exists" no longer holds — `git ls-tree origin/main -- apps/backend-rag/backend/services/
+  research_os/` now returns **seven** files, not six: `__init__.py`, `_core_path.py`,
+  `action_intent_adapter.py`, `action_item_adapter.py` (Magazine `ops_intents` → `ActionItem`),
+  `legacy_magazine.py`, `loss_report.py` (whose `assert_every_legacy_field_accounted_for()`, line 92,
+  is real anti-silent-drop enforcement, unchanged), `synthesis.py`. The directory still contains **no
+  file named `shadow.py`**, re-confirmed against `origin/main`'s tip — `action_item_adapter.py:373` and
+  `__init__.py:10` still cite it as the (unbuilt) home of the dual-write flag, and the phantom-reference
+  finding from the earlier pin (a differently-domained `shadow.py` exists under
+  `services/visa_engine/`, not a sibling this package could mean) stands unchanged.
+
+  **The import-graph claim changes materially, not just the file count.** `action_intent_adapter.py`
+  composes `action_item_adapter.adapt_ops_intent_to_action_item` by design — its own docstring states
+  the reason: the two objects share a cross-object invariant (`action_intent.action_item_ref` must pin
+  the sibling `ActionItem`'s exact `object_hash`), and computing the real `ActionItem` first is how it
+  satisfies that without re-deriving the same fields a second time. So `adapt_ops_intent_to_action_item`
+  now has **one production caller** — `action_intent_adapter.py` — in addition to its own test; the
+  earlier pin's claim that its *only* import anywhere in `apps/backend-rag` was
+  `test_action_item_adapter.py` is false at `origin/main`'s current tip, confirmed this pass by
+  `git grep -n adapt_ops_intent_to_action_item origin/main -- apps/backend-rag/backend`.
+  `adapt_ops_intent_to_action_intent` (the new function) has **zero** production callers of its own —
+  only `tests/services/research_os/test_action_intent_adapter.py` imports it. `legacy_magazine.py`
+  still only *mentions* `action_item_adapter.py` in prose comments, not an import. **What is still
+  true, and is the fact Finding 1 (§5) actually depends on: nothing imports either adapter from
+  *outside* `apps/backend-rag/backend/services/research_os/`, in either direction** — the new
+  composition is an internal cross-import between two siblings in the same unwired package, not a new
+  external consumer. "Zero non-test callers" as a bare, absolute claim about `action_item_adapter.py`
+  no longer holds and is not repeated here; the narrower, still-true fact (zero callers from outside
+  this directory) replaces it.
 - **D5 (persistence).** `apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql`
   exists: one generic, additive, polymorphic table `public.research_os_objects` (`BIGSERIAL` id,
   `object_kind`, `object_hash CHAR(64)`, `payload jsonb`, GIN index on `payload jsonb_path_ops`), with
@@ -214,6 +251,62 @@ deliverables and not others for the same true fact.
   unrelated **closed-enum-registry** concept (e.g. `enums.py:1`: `"""Frozen closed enum registry for
   Research OS v1.0.0."""`) or prose referencing that concept. None is a contract registry in the D6
   sense.
+- **D7 — deterministic hashing.** **Corrected from an earlier draft of this document, which graded
+  this PASS.** `research_os/hashing.py` exists, imports `rfc8785`, and `object_hash()` is wired into
+  25+ model files and `cli.py` — the plumbing an earlier draft's PASS bullet described is real. What
+  changes the grade is not the plumbing; it is what PR #4615 did to it.
+
+  **The underlying defect is real, and unreachable in practice with current fixtures.** `hashing.py`
+  landed in PR #4586 (`f6a7dfff6`) with a model-path/raw-dict-path disagreement: `UtcDateTime` accepts
+  both a trailing `Z` and a trailing `+00:00` for the same instant; the model path re-renders through
+  pydantic's `model_dump(mode="json")`, which always normalizes to `Z`, while the raw-dict path did
+  not — so a document round-tripped through `cli hash` on the `+00:00` spelling could fail `cli
+  validate`'s own re-hash with `object_hash_mismatch`. Every fixture in this packet uses canonical `Z`
+  (confirmed this session and the prior one), so this specific failure mode is not live in any shipped
+  fixture — it is a latent spec inconsistency (`CONTRACTS.md` §2 demands one hash "identical in every
+  implementation" while §3 permits two spellings of one instant), not a wound in production data.
+
+  **PR #4615's cure is disqualified, and was armed in violation of an explicit ledger instruction not
+  to.** `.claude/skills/modus/PENDING-ARMS.md` line 1205 SUSPENDED #4615 on 2026-08-23, after a
+  cross-family refutation (Kimi K3) and that session's own independent reproduction, stating verbatim
+  that the fold "must NOT be armed." The reason: `canonicalize()`'s fold matches any timestamp-*shaped*
+  string anywhere in the document tree, with no knowledge of which fields the schema actually types as
+  `UtcDateTime` — so a free-text field a real system would mint from a timestamp, e.g.
+  `idempotency_key` (`str, min_length=1` on nine model classes, confirmed this session by
+  `grep -rl idempotency_key packages/research-os-core/research_os/models/`), collides for two documents
+  that differ only in which spelling they used. **Reproduced directly, this session, against the code
+  at this document's pin** — not relayed from the ledger or from an earlier report:
+  ```
+  doc1 = {"contract_version": "1.0.0", "idempotency_key": "2026-01-01T00:01:00Z"}
+  doc2 = {"contract_version": "1.0.0", "idempotency_key": "2026-01-01T00:01:00+00:00"}
+  canonicalize(doc1) == canonicalize(doc2)  # both render b'..."idempotency_key":"2026-01-01T00:01:00Z"}'
+  sha256(canonicalize(doc1)).hexdigest() == sha256(canonicalize(doc2)).hexdigest()
+  == "98b552066551671d2f2b32c02672982b83b1f2bf0ddb53620d884e439ace860a"  # True — two different
+                                                                          # documents, one hash
+  ```
+  The fold is applied unconditionally after `model_dump()` inside `canonicalize()`, so this is not
+  confined to the raw-dict path: a model instance carrying that same `idempotency_key` collides
+  identically on the model path too, and both instances `model_validate` cleanly — no validator
+  intercepts it, confirmed by reading `canonicalize()`'s control flow (the fold runs on the dumped
+  value regardless of which path produced it). #4615 merged as `4e2fb20c8` at 2026-08-24T03:08:38Z,
+  despite the suspension — told in full in the Adversarial review section below. A revert branch,
+  `agent/nuzantara/backend-rag/revert-4615-hash-fold` (tip `966b28d372f91d27b85c4e4152217859857c5116`),
+  carries a revert commit as of this pin, but **no PR is open for it yet** — checked via
+  `gh pr list --state all --head agent/nuzantara/backend-rag/revert-4615-hash-fold` at the time this
+  paragraph was written (empty result), not assumed from the branch's existence.
+
+  **The real fix is a spec change, not a lane fix.** Per `CONTRACTS.md` §21 this needs a versioned
+  freeze-change: PR #4627 landed a *proposal* (merged 2026-08-23T08:18:12Z) to amend §2, declare `Z`
+  the single canonical UTC spelling, and normalize at the MODEL layer via a `BeforeValidator` on
+  `UtcDateTime` — which cannot reproduce this collision by construction, because pydantic only invokes
+  a field's validator chain for that field, never for an unrelated one like `idempotency_key`. The
+  proposal is **not yet ratified**: its own frontmatter marks `adversarial_review: pending`, and it
+  deliberately leaves two canonical-form sub-options unranked for the Conductor to choose between.
+  **D7 is graded NOT DELIVERED, not PARTIAL, because the only code on `origin/main` implementing
+  "deterministic hashing" at this pin is the disqualified, suspended, wrongly-armed cure** — reverting
+  it (in flight, unmerged as of this pin) returns the module to the pre-#4615 state, which carries the
+  real-but-currently-unreachable spelling-mismatch defect and no fold. Owner of the real fix:
+  **S9-C0**, via ratifying the freeze-change (condition 8, §9).
 - **D10 — atomic side-effect-free `RequestedActionSpec` → `ActionItem` + `ActionIntent` repository
   primitive**, and its NEXUS containment adapter. No persistence/repository module exists anywhere
   under `packages/research-os-core` — confirmed both by directory search (`*repositor*`, `*persist*`:
@@ -265,14 +358,22 @@ same-named packages to be told apart — the standalone core `research_os` (from
 `packages/research-os-core`) and `backend.services.research_os` (the adapter package under
 `apps/backend-rag`, §3 D4). Run this session:
 `grep -rn "^from research_os\|^import research_os\b" apps/backend-rag/backend | grep -v /tests/`.
-Result: the core package **is** imported, by exactly two files —
-`services/research_os/action_item_adapter.py` and `services/research_os/synthesis.py` — both inside
-the adapter package itself. Nothing outside `services/research_os/` imports the core package
-directly. And §3 D4 already independently established, by import graph rather than by grep, that
-`action_item_adapter.py` itself has zero non-test callers. So the chain closes: core package →
-imported only by the adapter → adapter imported only by its own test. The docstring's self-report and
-this independent import-graph check agree, and now the document shows the check rather than only the
-claim.
+**Re-run against `origin/main`'s current tip during this pass, not carried forward from this
+document's own pin** — the count changed. Result: the core package **is** imported, by **three**
+files — `services/research_os/action_item_adapter.py`, `services/research_os/synthesis.py`, and
+`services/research_os/action_intent_adapter.py` (landed via PR #4774 after this document's pin, §3
+D4) — all three inside the adapter package itself. Nothing outside `services/research_os/` imports
+the core package directly, which is the fact this Finding actually rests on and which the new file
+does not change. §3 D4 now independently establishes, by import graph rather than by grep, that
+`action_item_adapter.py`'s `adapt_ops_intent_to_action_item` has gained exactly one production caller
+— its new sibling `action_intent_adapter.py`, which composes it by design — while
+`action_intent_adapter.py` itself, like its sibling before it, has zero callers from outside its own
+test. So the chain is now: core package → imported only by two siblings inside the adapter package,
+one of which composes the other → neither adapter imported from outside `services/research_os/` except
+by tests. The docstring's self-report ("zero non-test consumers repo-wide") is itself one file stale
+in the same direction as this document's own earlier pin was — both undercounted by the same landing —
+but the conclusion that actually matters, that nothing in the production request path consumes this
+layer, is unaffected either way.
 
 Deliverables graded PASS in §2 are real and sound as *contracts* — but they are built in isolation.
 Nothing in the request-serving path calls them. A contract layer nothing calls is a contract layer
@@ -371,9 +472,10 @@ blocker on this PASS.
 
 P05 (Intel Lake) and P06 (NAGA) **may** build against: the 25 typed models and their `Extensions`/
 reserved-field guard; the 25 schema artifacts and fixture sets (`fixtures --check` passing at 218/218);
-the RFC 8785 canonical hashing path; the closed `ApprovalReceipt` subject/decision matrix and the
-queue-only `OperationalReceipt` profile set; the two sanitization/risk-reclassification downgrade
-validators. They **may** treat the `research_os_objects` persistence substrate as **schema-ready in
+the closed `ApprovalReceipt` subject/decision matrix and the queue-only `OperationalReceipt` profile
+set; the two sanitization/risk-reclassification downgrade validators. **The RFC 8785 canonical hashing
+path is deliberately absent from this list** — it was here in an earlier draft; D7 (§4) moved from PASS
+to NOT DELIVERED this session, and Cohort B may not rely on it (below). They **may** treat the `research_os_objects` persistence substrate as **schema-ready in
 the strict sense only**: the migration file exists, is additive, carries a real rollback section, and
 its apply → rollback → re-apply cycle has been run successfully against a throwaway database. **It is
 applied in no environment.** `research_os_objects` is absent from all 89 local databases on this
@@ -385,12 +487,14 @@ succeed anywhere until the migration is applied. This is the correct state for a
 point in the packet — additive, reversible, and unapplied is not a defect — but it is a state Cohort B
 must be told, not one they should infer from the word "exist."
 
-They **may not** rely on: a contract registry (D6 — does not exist); a phased dual-write/read plan for
-their own packets (D8 second half — does not exist); any atomic multi-object repository primitive
-(D10 — does not exist, and the package's own code says so twice, independently); an atomic
-classification-change primitive across objects (D11 — both receipt modules declare this out of scope
-by design, not by oversight); or a semantic-version compatibility *registry* (D3 — only a pairwise
-schema-diff checker exists). And they must budget for wiring: nothing in `apps/backend-rag`'s
+They **may not** rely on: **deterministic cross-implementation hashing (D7 — the only code on
+`origin/main` implementing it at this pin is a disqualified, suspended, wrongly-armed cure that
+collides two different documents onto one hash; see §4)**; a contract registry (D6 — does not exist);
+a phased dual-write/read plan for their own packets (D8 second half — does not exist); any atomic
+multi-object repository primitive (D10 — does not exist, and the package's own code says so twice,
+independently); an atomic classification-change primitive across objects (D11 — both receipt modules
+declare this out of scope by design, not by oversight); or a semantic-version compatibility *registry*
+(D3 — only a pairwise schema-diff checker exists). And they must budget for wiring: nothing in `apps/backend-rag`'s
 production request path currently imports any of this layer, and the package is not even a declared
 dependency of the app that would consume it.
 
@@ -471,13 +575,27 @@ unconditional; each has an owner and a closure test.
    a `BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger exists and a `TRUNCATE` attempt against the
    table in a throwaway database is proven rejected — tracked in `PENDING-ARMS.md` alongside this
    commit.
+8. **D7 — freeze-change ratification, `CONTRACTS.md` §2 vs §3's UTC-spelling inconsistency.**
+   Owner: **S9-C0**. Closes when: the freeze-change proposal in
+   `evidence/p04/freeze-change-proposal-001.md` (landed via PR #4627, 2026-08-23,
+   `adversarial_review: pending`) is ratified — `Z` declared the single canonical UTC spelling,
+   normalization moved to the MODEL layer via a `BeforeValidator` on `UtcDateTime` — and PR #4615's
+   fold is reverted out of `canonicalize()`. **The branch exists at this document's pin; the PR
+   carrying it does not** — `agent/nuzantara/backend-rag/revert-4615-hash-fold` was opened as PR #4781
+   and armed (`autoMergeRequest.enabledAt = 2026-08-24T07:22:14Z`) after this document's pin, confirmed
+   not yet merged (`mergedAt: null`) as of the moment this line was measured. Until this closes,
+   `research_os/hashing.py`'s deterministic-hashing guarantee does not hold for any canonical
+   object carrying a free-text field that happens to be timestamp-shaped.
 
 **What would move this document from CONDITIONAL PASS to REFUSE**, stated so the Conductor and any
-future re-reader know the bar: any of §§2's PASS-graded claims (D1, D2, D7, D9, D12, or the contract
-suites) turning out false on independent re-verification; the migration being applied to any
-environment while the `TRUNCATE` gap (condition 7) remains unfixed and unacknowledged; or Cohort B
-being found to already depend, in a merged PR, on D6, D10, or D11 as if they existed. None of those
-is true as of this document's measurement.
+future re-reader know the bar: any of §§2's PASS-graded claims (D1, D2, D9, D12, or the contract
+suites) turning out false on independent re-verification; **a reproducible collision in `object_hash`
+surviving the revert of PR #4615** (condition 8) — the exact failure mode D7's correction in §4 exists
+to flag, so its reappearance after the revert would mean the revert itself is incomplete, not merely
+that D7 stays NOT DELIVERED; the migration being applied to any environment while the `TRUNCATE` gap
+(condition 7) remains unfixed and unacknowledged; or Cohort B being found to already depend, in a
+merged PR, on D6, D7, D10, or D11 as if they existed. None of those is true as of this document's
+measurement.
 
 ## Adversarial review
 
@@ -539,7 +657,8 @@ survived would hide from the reader how much scrutiny the surviving ones actuall
   rewritten so its PARTIAL grade is attributed to Finding 2 (unmet exit criterion), not to consumer
   count.
 - **M5 — the contract-suite claim needed an exact count and an epistemic caveat on what "green" proves.**
-  Applied: §2's contract-suites bullet now states **343 tests across 22 files**, exit 0 (cross-checked
+  Applied: §2's contract-suites bullet now states an exact count (349 tests across 23 files at this
+  document's final pin, up from 343/22 earlier in the session — see the pin note below), exit 0 (cross-checked
   by summing `--collect-only` per-file counts, by direct file count, and by a fresh subagent re-run),
   plus a sentence that a green suite proves tests and code agree at the covered cases, not that the
   contracts are correct against every case that matters. **One correction to M5's own supporting
@@ -568,6 +687,29 @@ survived would hide from the reader how much scrutiny the surviving ones actuall
   impossibility to explain; the word "later" in the original draft was simply wrong. §3 D8 now says
   "earlier / ancestor commit" and cites the `--is-ancestor` check that proves it, downgraded to a
   minor wording fix rather than a substantive finding.
+
+**Post-Kimi, and the single most consequential finding of this whole review cycle: the session
+coordinating this contract-pass review armed a PR against an explicit ledger instruction not to.**
+`PENDING-ARMS.md` line 1205 SUSPENDED PR #4615 on 2026-08-23, after a cross-family refutation
+(Kimi K3) and that session's own independent reproduction of the collision described in §4 above,
+stating verbatim that the cure "must NOT be armed." The coordinating session read the diff, the CI
+checks, and the PR body — and armed and merged it anyway, without reading the ledger entry that named
+it. It merged as `4e2fb20c8` at 2026-08-24T03:08:38Z. An earlier draft of this document then graded D7
+PASS on the strength of that merge having landed: the same failure that put the collision on
+`origin/main` also, for one draft of this document, produced the evidence meant to catch exactly this
+class of mistake — an unverified "exists" read as "safe." (GitHub's PR timeline records the same actor,
+`Balizero1987`, for the arm as for every other action on the PR; it does not distinguish which session
+performed which action, so no attribution more specific than "the coordinating session" is available
+from that record.)
+
+This is not softened into a process footnote, because the shape is the one this document itself spent
+two Findings warning about. Finding 1 and Finding 2 are both instances of esiste≠armato — built is not
+wired, proven is not automated — and a document that raises that distinction twice against other
+people's work, in the same review cycle, does not get to stay silent about its own gate arming an
+explicit suspension. It does not deserve the signature it carries if it does. The one-line rule that
+follows, stated so it survives past this paragraph: **before arming any PR, grep the ledger for its
+number** — `grep '4615' .claude/skills/modus/PENDING-ARMS.md` would have answered, in this exact case,
+in under a second.
 
 **A second, independent repository fact-check was dispatched in parallel with Kimi's text-only
 review and had not returned as of this commit.** Its findings, when they arrive, are not represented
