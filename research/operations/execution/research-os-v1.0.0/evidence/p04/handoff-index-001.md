@@ -131,11 +131,32 @@ run of `test_migration_280_...py`, and the `TRUNCATE` gap it left behind (§9 co
 its own closed, automated, guilt-armed proof — a fact this document is recording because
 `contract-pass-001.md` does not yet reflect it.
 
-**One-sentence summary for S9-C0**: migration 280 has a dedicated automated test; migration 279 does
-not, no generic sweep exercises its apply or rollback either, and its only apply/rollback/re-apply
-proof remains the manual act described in `contract-pass-001.md` §6 — reproduced twice by hand
-against a throwaway PG15.19, but never automated, so it does not re-run itself the way a CI test
-would.
+**§9 condition 7 is CLOSED, and `contract-pass-001.md`'s own count of open conditions is now stale
+by one because of it.** Its text still lists condition 7 as open ("The `TRUNCATE` gap on
+`research_os_objects`. ... Closes when: a `BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger exists
+and a `TRUNCATE` attempt ... is proven rejected"). Migration 280 creates exactly that trigger, and
+`test_migration_280_...py`'s two live-DB tests prove both directions the condition asked for: guilt
+(`test_truncate_guard_blocks_truncate_but_not_insert` — `TRUNCATE` raises `append-only`, `INSERT`
+does not) and innocence (`test_truncate_guard_rollback_restores_truncate_then_reapply_reblocks` —
+remove the trigger and `TRUNCATE` succeeds again, re-add it and it re-blocks). `origin/main` has zero
+occurrences of the literal string `280` and zero of `#4780` inside `contract-pass-001.md`
+(`git grep -c` on the current tip), so this closure landed after the document's own text was last
+written and nothing in it can know about it. **A reader of `contract-pass-001.md` §9 alone counts
+eight open conditions where seven remain live** for a P04 builder — condition 7 is done, just not
+announced there. This index does not edit `contract-pass-001.md` to say so (out of this PR's scope,
+one file one concern) — S9-C0 should treat `contract-pass-001.md`'s condition count as off by one
+until that document is itself refreshed.
+
+**One-sentence summary for S9-C0, checked to agree with the body above rather than restate a
+shorter, looser version of it**: migration 280 has a dedicated automated test that runs against a
+real PostgreSQL 15 in CI — the `integration` marker is not deselected anywhere in
+`apps/backend-rag/pyproject.toml`'s `addopts`, and the `db_tx` fixture (`asyncpg.connect`, no
+try/skip) errors rather than silently skips if no database is reachable, so "it runs in CI" is a
+measured fact, not a hope. Migration 279 has no test of its own: its forward SQL is applied only
+incidentally, as fixture setup inside 280's test, with no assertion anywhere checking 279's own
+resulting shape, and its rollback is exercised nowhere. §9 condition 6 ("convert the manual proof
+into a permanent CI test") therefore remains open for 279 itself; §9 condition 7 (`TRUNCATE`) is
+closed, by 280, unannounced in the document that owns that condition.
 
 **3. Artifact 5 (hash specification) remains graded NOT DELIVERED.** `hashing.py` exists and its
 plumbing is real (RFC 8785 canonicalization, `object_hash()` wired into 25+ models), but
@@ -200,3 +221,18 @@ applies to its own Kimi review.
   implausible enough not to warrant a stronger check for this specific claim. Left as-is with no
   wording change; recorded here because the point is correct in general even where it does not
   change this file's conclusion.
+
+**Addendum, post-Kimi, found by human/team-lead re-check, not by the seat above.** The "one-sentence
+summary for S9-C0" this Kimi pass had just repaired ("narrated once" → "twice-independently-
+reproduced") carried a second, separate defect Kimi's pass did not catch: it said "no generic sweep
+exercises its apply or rollback either," which a reader taking that one line alone (its stated
+purpose) would read as "nothing exercises 279's apply" — directly contradicting the body's own
+"279's forward/apply is exercised by an automated CI test," twenty lines above it in the same
+annotation. "Generic sweep" was a term this document itself had defined narrowly (the three named
+runners), and the summary line, read alone, lost that scoping. Corrected in this same round: the
+summary now names the CI-apply fact explicitly instead of leaning on a term whose narrow meaning
+lived only in the paragraph above it. Recorded here, in this section, rather than silently folded
+into the fix, for the same reason `contract-pass-001.md` records its own arming-against-suspension
+failure in its own adversarial-review section: a document that argues for catching this class of
+error and then commits a fresh instance of it one round later does not get to leave that quietly out
+of its own record.
