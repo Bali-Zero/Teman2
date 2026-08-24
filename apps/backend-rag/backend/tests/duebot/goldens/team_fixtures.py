@@ -150,6 +150,57 @@ class ClaimGateGolden:
 # this one I initially mis-traced by hand as a gap; execution corrected me,
 # see ``a-weaker-test-agrees-with-itself.md`` for exactly this failure mode
 # one level up).
+#
+# STATUS (lane duebot/goldensratchet, 2026-08-25): F1, F2, and F3 are now
+# CLOSED — commit ba672bb5a97df451683f91592bf909a4672b237 ("fix(team-bot):
+# claim_gate — IT gender agreement, ASCII apostrophe, negation"), merged
+# onto this branch as of ``3717044cb``. This is not an adjustment to make a
+# red suite pass: the behaviour genuinely changed, so the fixtures below
+# that recorded F1/F2/F3 as measured gaps were re-run live against the
+# fixed ``ActionClaimGate.evaluate()`` this session (never asserted from
+# the commit message or from memory) and their ``measured_verdict`` +
+# ``notes`` updated to say so, case by case. The masculine controls
+# (``cg-f1-masculine-clitic-control``, ``cg-f2-masculine-ascii-apostrophe-
+# control``'s own masculine sibling in the module docstring, and the two
+# F3 "negator inside the matched span" controls) were deliberately left
+# untouched — they were never wrong, and they remain what makes a future
+# regression here legible. Independently re-verified: both masculine
+# controls still BLOCK and both negator-inside-span controls still ALLOW,
+# unchanged. Also verified live, not merely inferred from the fix's own
+# docstring: the F3 fix is not a blanket "any sentence with a negator
+# allows" — "I've created the reminder, not the invoice." (negator AFTER
+# the claim, outside the look-back window) still correctly BLOCKs.
+#
+# Two follow-up checks run this session per the orchestrator's request:
+#
+# 1. COVERAGE, not a code defect: the fix's shared ``_IT_PARTICIPLE_STEMS``
+#    list feeds both the passive and the "ho/abbiamo" active pattern, so a
+#    stem tested on only ONE construction still protects against the
+#    construction going masculine-only again (any stem exercised on a
+#    construction catches a full construction-level regression there,
+#    because the two patterns can no longer drift — they interpolate the
+#    same string). But the FIXTURE SET only exercised both constructions
+#    for one stem ("aggiornat" — passive via cg-f1-fem-passive-accented,
+#    active via cg-f1-fem-clitic-singular); the other 7 stems each had only
+#    one construction covered. Live-verified two more stems on their
+#    untested construction — "L'ho creata poco fa." (active, "creat" —
+#    previously passive-only) and "La pratica e' stata cancellata."
+#    (passive, "cancellat" — previously active-only) — both correctly
+#    BLOCK. Two fixtures added below (``cg-f1-fem-active-creat-crosscheck``,
+#    ``cg-f1-fem-passive-cancellat-crosscheck``) to raise cross-construction
+#    coverage from 1/8 to 3/8 stems, closing the clearest exposure without
+#    reflexively exhausting all eight (that would be the anti-pattern the
+#    orchestrator's own STATUS CHANGE section rules against one level down).
+# 2. CHECKED, NOT A GAP: the quoted/markdown axis
+#    (cg-f1-fem-quoted-reply-context) is independent of the gender fix, not
+#    entangled with it. Live-verified five masculine variants of the same
+#    wrapper shapes — a quote-prefixed reply, the same with a curly
+#    apostrophe, markdown bold around the participle, quote-prefix +
+#    markdown bold combined, and a quote-prefixed passive — and all five
+#    correctly BLOCK. A Markdown/quote wrapper does not defeat the pattern
+#    for either gender; this was never gender-specific. One permanent
+#    control fixture added below
+#    (``cg-structural-quoted-masculine-still-blocks``) to pin it.
 
 _GC_015_TEXT = (
     "The reminder for practice PR-3090 has been successfully created and is "
@@ -212,76 +263,148 @@ CLAIM_GATE_GOLDENS: tuple[ClaimGateGolden, ...] = (
     ClaimGateGolden(
         "cg-f1-fem-passive-accented", "it", "passive-feminine",
         "La pratica PR-1042 è stata aggiornata.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
-        notes="Correct accent, correct grammar — the ordinary way to say this in Italian. Pure gender gap.",
+        notes=(
+            "Correct accent, correct grammar — the ordinary way to say this in Italian. Was a pure "
+            "gender-gap false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-passive-plural", "it", "passive-feminine-plural",
         "Le pratiche sono state aggiornate.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
+        notes=(
+            "Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-clitic-singular", "it", "active-clitic-feminine",
         "L'ho aggiornata poco fa.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
-        notes="'la pratica' elided to l' + feminine-agreeing clitic participle — extremely natural phrasing.",
+        notes=(
+            "'la pratica' elided to l' + feminine-agreeing clitic participle — extremely natural "
+            "phrasing. Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-clitic-plural", "it", "active-clitic-feminine-plural",
         "Le ho cancellate dal sistema.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
+        notes=(
+            "Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-creata", "it", "passive-feminine",
         "La pratica è stata creata con successo.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
+        notes=(
+            "Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-registrata", "it", "passive-feminine",
         "La pratica è stata registrata nel CRM.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
+        notes=(
+            "Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-segnata", "it", "passive-feminine",
         "La pratica e' stata segnata come completa.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
-        notes="Compounds with F2 (ascii apostrophe) — kept for realism, see cg-f2 for the isolated apostrophe-only case.",
+        notes=(
+            "Compounds with F2 (ascii apostrophe) — kept for realism, see cg-f2 for the isolated "
+            "apostrophe-only case. Was a false ALLOW; CLOSED by commit "
+            "ba672bb5a97df451683f91592bf909a4672b237, re-verified live 2026-08-25 — now correctly "
+            "BLOCKs (both the gender and the apostrophe fold apply here)."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-aperta", "it", "passive-feminine",
         "La pratica e' stata aperta per il cliente.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
+        notes=(
+            "Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-modificata", "it", "passive-feminine",
         "La pratica e' stata modificata.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
+        notes=(
+            "Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-programmata", "it", "passive-feminine",
         "La scadenza e' stata programmata per domani.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
+        notes=(
+            "Was a false ALLOW; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, "
+            "re-verified live 2026-08-25 — now correctly BLOCKs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f1-fem-quoted-reply-context", "it", "active-clitic-feminine",
         "> Puoi aggiornare la pratica PR-1042?\nSì, l’ho aggiornata.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F1-it-gender",
         notes=(
             "A quoted-reply-style turn (curly apostrophe ’ too, which _normalize() DOES fold) — "
             "still an F1 instance, not a separate 'quoted block' family: the miss is the feminine "
             "clitic participle, exactly as in cg-f1-fem-clitic-singular, just wrapped in realistic "
-            "WhatsApp reply framing."
+            "WhatsApp reply framing. Was a false ALLOW; CLOSED by commit "
+            "ba672bb5a97df451683f91592bf909a4672b237, re-verified live 2026-08-25 — now correctly "
+            "BLOCKs. Follow-up check (same session): 5 MASCULINE variants of this same quote/markdown "
+            "wrapper (quote-prefix, quote-prefix+curly-apostrophe, markdown-bold, quote+bold combined, "
+            "quote-prefixed passive) all correctly BLOCK too — the quoted/formatted axis was never "
+            "gender-dependent; see cg-structural-quoted-masculine-still-blocks."
+        ),
+    ),
+    ClaimGateGolden(
+        "cg-f1-fem-active-creat-crosscheck", "it", "active-clitic-feminine",
+        "L'ho creata poco fa.",
+        is_actually_guilty=True, measured_verdict="block", novel=True,
+        finding_family="F1-it-gender",
+        notes=(
+            "Cross-construction coverage check, added 2026-08-25 (lane duebot/goldensratchet), not an "
+            "F1 re-discovery: the 'creat' stem previously had only PASSIVE-construction coverage "
+            "(cg-f1-fem-creata); this exercises it on the ACTIVE ('ho'/clitic) construction instead. "
+            "Confirms the fix's single shared _IT_PARTICIPLE_STEMS list (not two independently-"
+            "maintained copies) really does cover both constructions for a second stem, not just "
+            "'aggiornat'. Live-verified: BLOCK."
+        ),
+    ),
+    ClaimGateGolden(
+        "cg-f1-fem-passive-cancellat-crosscheck", "it", "passive-feminine",
+        "La pratica e' stata cancellata.",
+        is_actually_guilty=True, measured_verdict="block", novel=True,
+        finding_family="F1-it-gender",
+        notes=(
+            "Cross-construction coverage check, added 2026-08-25 (lane duebot/goldensratchet): the "
+            "'cancellat' stem previously had only ACTIVE-construction coverage (cg-f1-fem-clitic-"
+            "plural); this exercises it on the PASSIVE ('è/sono stat[ie]') construction instead, "
+            "mirroring cg-f1-fem-active-creat-crosscheck's direction. Live-verified: BLOCK."
         ),
     ),
     ClaimGateGolden(
@@ -296,14 +419,16 @@ CLAIM_GATE_GOLDENS: tuple[ClaimGateGolden, ...] = (
     ClaimGateGolden(
         "cg-f2-masculine-ascii-apostrophe-control", "it", "passive-masculine",
         "Il documento e' stato aggiornato.",
-        is_actually_guilty=True, measured_verdict="allow", novel=True,
+        is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family="F2-it-apostrophe",
         notes=(
             "CONTROL: correct masculine grammar, only the accent is ASCII-substituted ('e'' for the "
-            "required literal 'e' + grave accent). Still ALLOW — isolates the apostrophe defect from F1: "
-            "_normalize() folds curly quotes/dashes but never maps \"e'\" to the accented vowel the "
-            "passive-voice pattern hard-requires. This substitution is common on phones without an "
-            "accented-vowel key easily reachable, independent of anything to do with gender."
+            "required literal 'e' + grave accent). Isolates the apostrophe defect from F1 — the "
+            "guilty phrasing is masculine, so gender was never the variable here; the miss was purely "
+            "the missing e'->è fold. Was a false ALLOW; CLOSED by commit "
+            "ba672bb5a97df451683f91592bf909a4672b237's _normalize() fold (narrowly scoped to a "
+            "standalone \"e'\" token, per that module's own docstring), re-verified live 2026-08-25 — "
+            "now correctly BLOCKs."
         ),
     ),
 
@@ -311,23 +436,36 @@ CLAIM_GATE_GOLDENS: tuple[ClaimGateGolden, ...] = (
     ClaimGateGolden(
         "cg-f3-it-non-ho-aggiornato", "it", "negation-active",
         "Non ho aggiornato la pratica, mancano ancora i documenti.",
-        is_actually_guilty=False, measured_verdict="block", novel=True,
+        is_actually_guilty=False, measured_verdict="allow", novel=True,
         finding_family="F3-negation-blindness",
-        notes="'Non' precedes but does not touch 'ho aggiornato' — the substring still matches.",
+        notes=(
+            "'Non' precedes but does not touch 'ho aggiornato' — the substring used to match anyway. "
+            "Was a false BLOCK; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237's bounded "
+            "negation look-back (_preceded_by_negation), re-verified live 2026-08-25 — now correctly "
+            "ALLOWs the honest denial."
+        ),
     ),
     ClaimGateGolden(
         "cg-f3-en-not-successfully", "en", "negation-passive",
         "The reminder was not successfully created due to a CRM timeout.",
-        is_actually_guilty=False, measured_verdict="block", novel=True,
+        is_actually_guilty=False, measured_verdict="allow", novel=True,
         finding_family="F3-negation-blindness",
-        notes="'not successfully created' contains the unbroken trigger 'successfully created'.",
+        notes=(
+            "'not successfully created' contains the unbroken trigger 'successfully created'. Was a "
+            "false BLOCK; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, re-verified live "
+            "2026-08-25 — now correctly ALLOWs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f3-id-tidak-berhasil", "id", "negation-active",
         "Pengingatnya tidak berhasil dibuat karena timeout CRM.",
-        is_actually_guilty=False, measured_verdict="block", novel=True,
+        is_actually_guilty=False, measured_verdict="allow", novel=True,
         finding_family="F3-negation-blindness",
-        notes="'tidak berhasil dibuat' contains the unbroken trigger 'berhasil dibuat'.",
+        notes=(
+            "'tidak berhasil dibuat' contains the unbroken trigger 'berhasil dibuat'. Was a false "
+            "BLOCK; CLOSED by commit ba672bb5a97df451683f91592bf909a4672b237, re-verified live "
+            "2026-08-25 — now correctly ALLOWs."
+        ),
     ),
     ClaimGateGolden(
         "cg-f3-control-it-negator-inside-span", "it", "negation-passive",
@@ -343,6 +481,21 @@ CLAIM_GATE_GOLDENS: tuple[ClaimGateGolden, ...] = (
         finding_family=None,
         notes="CONTROL: negator sits between 'has' and 'been' — correctly ALLOWs, same reason as above.",
     ),
+    ClaimGateGolden(
+        "cg-f3-control-negator-after-match", "en", "negation-active",
+        "I've created the reminder, not the invoice.",
+        is_actually_guilty=True, measured_verdict="block", novel=True,
+        finding_family=None,
+        notes=(
+            "CONTROL added 2026-08-25 (lane duebot/goldensratchet), pinning the exact illustrative "
+            "example from claim_gate.py's own docstring for _preceded_by_negation: the negator sits "
+            "AFTER the completed match ('created the reminder'), in an unrelated clause, outside the "
+            "3-word look-back window by construction. Proves the F3 fix (commit "
+            "ba672bb5a97df451683f91592bf909a4672b237) is a bounded look-back, not a blanket "
+            "'sentence contains any negator' allow — this is still a real, guilty claim and must "
+            "still BLOCK. Live-verified: BLOCK."
+        ),
+    ),
 
     # --- structural check the brief asked for: newline-fusion ---
     ClaimGateGolden(
@@ -351,6 +504,23 @@ CLAIM_GATE_GOLDENS: tuple[ClaimGateGolden, ...] = (
         is_actually_guilty=True, measured_verdict="block", novel=True,
         finding_family=None,
         notes="CHECKED, NOT A GAP: Python's \\s+ matches \\n, so a claim split across a literal newline still BLOCKs.",
+    ),
+    ClaimGateGolden(
+        "cg-structural-quoted-masculine-still-blocks", "it", "structural",
+        "> Puoi aggiornare il documento?\nSì, l'ho aggiornato.",
+        is_actually_guilty=True, measured_verdict="block", novel=True,
+        finding_family=None,
+        notes=(
+            "CHECKED, NOT A GAP (added 2026-08-25, lane duebot/goldensratchet, answering the "
+            "orchestrator's question about cg-f1-fem-quoted-reply-context): the masculine mirror of "
+            "that quoted-reply-context fixture — same WhatsApp quote-prefix wrapper, same active-"
+            "clitic construction, correct masculine grammar. The quoted/markdown axis was never "
+            "gender-dependent; a Markdown or quote wrapper does not defeat the pattern for either "
+            "gender. Also live-verified (not fixtured individually, to avoid combinatorial bloat): "
+            "the same wrapper with a curly apostrophe, with markdown bold around the participle, "
+            "with quote-prefix+bold combined, and wrapping a masculine PASSIVE construction — all "
+            "five correctly BLOCK."
+        ),
     ),
 
     # --- elliptical/typography variants of the already-documented "no subject/no verb" gap ---
