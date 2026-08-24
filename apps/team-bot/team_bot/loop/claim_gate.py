@@ -65,6 +65,50 @@ Replaced with ``execution_record: ExecutionRecord | None`` (see
 the one place execution actually happens, or ``None``. There is no
 truthy/falsy string left to smuggle through — the type itself is the fix.
 
+ROUND 2 (B6c adversarial-fixture run, same day, relayed by the orchestrator
+with independent reproduction before forwarding): 21/26 false ALLOWs
+against 63 fixtures. Three distinct, orthogonal defects, all in the
+Italian inventory — fixed here, defense-in-depth scope unchanged:
+
+- **F1 — gender/number agreement, half-implemented.** The auxiliary
+  charclass already accepted feminine (``stat[oa]``/``stat[ie]``); the
+  PARTICIPLE charclass did not (``aggiornat[oi]`` has no ``-a``/``-e``).
+  ``pratica`` — the CRM's central object — is grammatically feminine, so
+  "la pratica è stata aggiornata" was invisible while "il documento è
+  stato aggiornato" (identical construction, masculine) was caught. Fixed
+  by completing the alternation to all four endings (o/a/i/e) via a SINGLE
+  shared stem list (``_IT_PARTICIPLE_STEMS``) reused by both the passive
+  and the "ho/abbiamo" active pattern — the defect was exactly these two
+  patterns carrying the same vocabulary independently and drifting out of
+  sync; a shared fragment makes that drift structurally harder to
+  reintroduce, not just patched once.
+- **F2 — ASCII apostrophe.** The passive pattern required the literal
+  ``è``; the ordinary mobile-keyboard substitution ``e'`` (no accented
+  key) defeated it regardless of gender. Folded in ``_normalize`` —
+  narrowly, only a standalone ``e'`` token, since that substitution is
+  never anything other than "è" in practice.
+- **F3 — negation-blindness (false BLOCK direction, fixed after F1/F2 per
+  instruction, not skipped).** ``.search()`` matches "ho aggiornato"
+  inside "non ho aggiornato" just as readily as inside a genuine claim.
+  A bot that cannot say "I did not manage to update it" without being
+  blocked has lost the ability to report its own failures. Fixed with a
+  bounded look-back over the words immediately preceding a match (see
+  ``_preceded_by_negation``) — not a lookbehind (Python's ``re`` lookbehind
+  is fixed-width only; these negators vary in length across three
+  languages) and not an unbounded scan (which would wrongly swallow a
+  genuine claim followed by an unrelated "not" clause later in the same
+  sentence).
+
+Explicitly NOT done: extending the charclass fix "reflexively" beyond what
+row-by-row verification supports. All eight IT participle stems in this
+list were checked individually against the o/a/i/e alternation before
+widening (none are irregular beyond ``apert-``, which still follows the
+same four-way pattern) — this is a verified grammatical completion, not a
+blind charclass expansion. B6c's fixtures (feminine guilty cases,
+masculine controls, the apostrophe case, and the three negation cases) are
+added as permanent regression tests so a later edit that breaks agreement,
+folding, or the negation guard goes red.
+
 Author: Claude Sonnet 5 (lane B3 — team-bot confirmation state machine)
 """
 
@@ -88,14 +132,23 @@ class ActionClaimVerdict(StrEnum):
     BLOCK = "block"
 
 
+_ASCII_E_GRAVE = re.compile(r"\be'(?=\s|$|[.,;:!?])", re.IGNORECASE)
+
+
 def _normalize(text: str) -> str:
-    """NFKC-normalize and fold the handful of Unicode punctuation variants
-    a phone keyboard actually produces (curly apostrophes/quotes, en/em
-    dashes) to their ASCII equivalents before matching. This is hygiene,
-    not widening — it makes the EXISTING patterns match what they were
-    always meant to match, rather than adding new phrasings to catch."""
+    """NFKC-normalize and fold the handful of Unicode/ASCII punctuation
+    substitutions a phone keyboard actually produces (curly
+    apostrophes/quotes, en/em dashes, and — B6c F2 — the missing-accented-
+    key substitution "e'" for "è") to what the existing patterns were
+    always meant to match. This is hygiene, not widening — it makes
+    EXISTING patterns match what they were always meant to match, rather
+    than adding new phrasings to catch. The "e'" -> "è" fold is narrowly
+    scoped to a standalone token (word boundary before "e", apostrophe
+    immediately after, then whitespace/punctuation/end) because that
+    substitution is never anything else in Italian text — it is not a
+    general "any e followed by an apostrophe" rule."""
     normalized = unicodedata.normalize("NFKC", text)
-    return (
+    normalized = (
         normalized.replace("’", "'")
         .replace("‘", "'")
         .replace("“", '"')
@@ -103,19 +156,40 @@ def _normalize(text: str) -> str:
         .replace("–", "-")
         .replace("—", "-")
     )
+    return _ASCII_E_GRAVE.sub("è", normalized)
 
 
 # Exact-match (not a substring search) — an emoji-only reply asserting
 # completion with nothing executed is as much a claim as any sentence.
 _COMPLETION_ONLY_EMOJI = frozenset({"✅", "✔️", "✔", "👍", "☑️", "☑"})
 
+# Shared IT past-participle stems — used by BOTH the passive ("è stato
+# aggiornato") and active ("ho aggiornato") patterns below. Defined ONCE
+# and reused, deliberately: B6c's F1 finding was exactly these two patterns
+# carrying the same eight-verb vocabulary independently, and one of the two
+# copies drifting to masculine-only endings while the other did not. All
+# eight are regular in the o/a/i/e (m.sg/f.sg/m.pl/f.pl) alternation —
+# checked individually, not assumed — including "apert-" (aprire's
+# irregular stem, but still a regular o/a/i/e alternation from that stem).
+_IT_PARTICIPLE_STEMS: tuple[str, ...] = (
+    "creat",
+    "aggiornat",
+    "segnat",
+    "modificat",
+    "apert",
+    "programmat",
+    "registrat",
+    "cancellat",
+)
+_IT_PARTICIPLE_ALTERNATION = "|".join(f"{stem}[oaie]" for stem in _IT_PARTICIPLE_STEMS)
+
 # Closed, reviewed inventory. DELIBERATELY NOT exhaustive — see the module
 # docstring's STATUS CHANGE section: this is defense-in-depth, and chasing
 # every natural rephrasing is the anti-pattern the orchestrator ruled
 # against. Modest widening applied here (bare past tense with an explicit
-# subject, plural EN/IT forms, an informal ID contraction) closes the
-# clearest, lowest-risk gaps the refuter found; it does not attempt the
-# other twelve.
+# subject, plural EN/IT forms, an informal ID contraction, and — B6c round
+# 2 — completed IT gender/number agreement) closes the clearest,
+# lowest-risk gaps found so far; it does not attempt every remaining one.
 _COMPLETION_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
@@ -135,12 +209,12 @@ _COMPLETION_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         # trade-off from the prior round; requiring the subject pronoun
         # keeps this addition narrow rather than reopening that over-block).
         r"\b(?:I|we)\s+(?:created|updated|marked|changed|opened|scheduled|set|recorded|cancelled)\b",
-        # IT — "è stato/a <participio>" (singular) / "sono stati/e <participio>" (plural)
-        r"\b(?:è\s+stat[oa]|sono\s+stat[ie])\s+(?:creat[oi]|aggiornat[oi]|segnat[oi]|"
-        r"modificat[oi]|apert[oi]|programmat[oi]|registrat[oi]|cancellat[oi])\b",
-        # IT — "ho/abbiamo <verbo>"
-        r"\b(?:ho|abbiamo)\s+(?:creato|aggiornato|segnato|modificato|aperto|programmato|"
-        r"registrato|cancellato)\b",
+        # IT — "è stato/a <participio>" (singular) / "sono stati/e <participio>"
+        # (plural) — participle now agrees in gender/number (B6c F1).
+        rf"\b(?:è\s+stat[oa]|sono\s+stat[ie])\s+(?:{_IT_PARTICIPLE_ALTERNATION})\b",
+        # IT — "ho/abbiamo <verbo>" — same stem/agreement fragment as above,
+        # not a second independently-maintained copy (B6c F1's root cause).
+        rf"\b(?:ho|abbiamo)\s+(?:{_IT_PARTICIPLE_ALTERNATION})\b",
         # ID — "sudah/telah/udah <verb>" (udah = informal contraction of sudah)
         r"\b(?:sudah|telah|udah)\s+(?:dibuat|diperbarui|ditandai|diubah|dibuka|"
         r"dijadwalkan|dicatat|dibatalkan)\b",
@@ -150,15 +224,41 @@ _COMPLETION_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 )
 
 
+# B6c F3: negation-blindness. A bounded look-back over the words IMMEDIATELY
+# preceding a match — not a lookbehind (Python's `re` lookbehind is
+# fixed-width only; these negators vary in length across three languages)
+# and not an unbounded "contains a negator anywhere" scan (which would
+# wrongly swallow a genuine claim followed by an unrelated "not" clause
+# later in the same sentence, e.g. "I've created the reminder, not the
+# invoice" is still a real claim — its "not" is AFTER the match, outside
+# this window by construction).
+_NEGATORS = frozenset({"not", "never", "non", "tidak", "belum"})
+_NEGATION_WINDOW_WORDS = 3
+
+
+def _preceded_by_negation(text: str, match_start: int) -> bool:
+    """``text`` must already be ``_normalize``'d. Checks only the words
+    strictly before ``match_start`` — a negator appearing after the match
+    never counts."""
+    preceding_words = re.findall(r"\S+", text[:match_start])[-_NEGATION_WINDOW_WORDS:]
+    for word in preceding_words:
+        stripped = word.strip(".,;:!?\"'").lower()
+        if stripped in _NEGATORS or stripped.endswith("n't"):
+            return True
+    return False
+
+
 def _matches_completion_claim(text: str) -> str | None:
     """Return the FIRST matching pattern's source (for the audit reason), or
     ``None`` if ``text`` makes no completion claim. Operates on the
-    normalized form."""
+    normalized form. A match preceded (within a short window) by a negator
+    is not a completion claim at all — see ``_preceded_by_negation``."""
     normalized = _normalize(text)
     if normalized.strip() in _COMPLETION_ONLY_EMOJI:
         return "emoji-only completion"
     for pattern in _COMPLETION_CLAIM_PATTERNS:
-        if pattern.search(normalized):
+        match = pattern.search(normalized)
+        if match is not None and not _preceded_by_negation(normalized, match.start()):
             return pattern.pattern
     return None
 

@@ -218,6 +218,58 @@ def test_innocent_shapes_stay_allowed_after_widening(text: str) -> None:
     assert verdict.verdict == ActionClaimVerdict.ALLOW, f"{text!r} -> {verdict.reason}"
 
 
+# ---------------------------------------------------------------------------
+# B6C ADVERSARIAL FIXTURES (2026-08-25) — 21/26 false ALLOWs against 63
+# fixtures, independently reproduced by the orchestrator before relaying.
+# Three orthogonal defects, all in the IT inventory:
+#
+#   F1 — gender/number agreement half-implemented: the auxiliary charclass
+#        accepted feminine (stat[oa]/stat[ie]), the PARTICIPLE charclass
+#        did not. "pratica" — the CRM's central object — is feminine, so
+#        this was the single most consequential miss in the set.
+#   F2 — the ASCII "e'" substitute for "è" (no accented key) defeated the
+#        passive pattern regardless of gender — orthogonal to F1.
+#   F3 — negation-blindness (false BLOCK direction, lower-ranked but not
+#        skipped): ".search()" matches "ho aggiornato" inside "non ho
+#        aggiornato" just as readily as inside a genuine claim.
+#
+# Masculine controls are included deliberately — the fix must not silently
+# break what already worked while fixing what didn't.
+# ---------------------------------------------------------------------------
+
+_B6C_CASES: tuple[tuple[str, str, ActionClaimVerdict], ...] = (
+    # F1 — feminine guilty, previously invisible.
+    ("f1_feminine_singular_passive", "La pratica è stata aggiornata.", ActionClaimVerdict.BLOCK),
+    ("f1_feminine_plural_passive", "Le pratiche sono state aggiornate.", ActionClaimVerdict.BLOCK),
+    ("f1_feminine_active_ho", "Ho aggiornata la pratica.", ActionClaimVerdict.BLOCK),
+    # F1 — masculine controls, must still catch (regression guard).
+    ("f1_masculine_singular_passive_control", "Il documento è stato aggiornato.", ActionClaimVerdict.BLOCK),
+    ("f1_masculine_plural_passive_control", "I documenti sono stati aggiornati.", ActionClaimVerdict.BLOCK),
+    # F2 — ASCII apostrophe substitute for "è", independent of gender
+    # (masculine here, isolating F2 from F1).
+    ("f2_ascii_e_grave", "Il documento e' stato aggiornato.", ActionClaimVerdict.BLOCK),
+    # F3 — negation must ALLOW, not BLOCK (recoverable direction, fixed
+    # after F1/F2 per instruction).
+    ("f3_it_non_ho", "Non ho aggiornato la pratica.", ActionClaimVerdict.ALLOW),
+    ("f3_en_was_not_successfully", "The reminder was not successfully created.", ActionClaimVerdict.ALLOW),
+    ("f3_id_tidak_berhasil", "Tidak berhasil dibuat pengingatnya.", ActionClaimVerdict.ALLOW),
+    ("f3_id_belum_berhasil", "Belum berhasil dibuat pengingatnya.", ActionClaimVerdict.ALLOW),
+    ("f3_en_contraction_havent", "I haven't successfully created the reminder yet.", ActionClaimVerdict.ALLOW),
+    # F3 control — negation is not simply "any 'not' anywhere in the
+    # message"; a genuine claim followed by an unrelated negated clause is
+    # still a genuine claim, since the negator is AFTER the match, not
+    # inside the look-back window.
+    ("f3_control_unrelated_trailing_negation", "I've created the reminder, not the invoice.", ActionClaimVerdict.BLOCK),
+)
+
+
+@pytest.mark.parametrize(("case_id", "text", "expected"), _B6C_CASES, ids=[c[0] for c in _B6C_CASES])
+def test_b6c_adversarial_fixture(case_id: str, text: str, expected: ActionClaimVerdict) -> None:
+    decision = _decision(selected=False, content=text)
+    verdict = ActionClaimGate.evaluate(text, tool_decision=decision, execution_record=None)
+    assert verdict.verdict == expected, f"{case_id}: got {verdict.verdict}, expected {expected} — {verdict.reason}"
+
+
 def test_composite_informational_reply_about_a_preexisting_record_is_still_a_measured_overblock() -> None:
     """The accepted v1 trade-off from the prior round, unchanged by this
     round's widening (the widened patterns all require an explicit
