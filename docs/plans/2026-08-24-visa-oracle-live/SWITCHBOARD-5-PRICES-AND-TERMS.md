@@ -69,10 +69,25 @@ La sua storia reale dice altro — **quattro modifiche di prezzo dopo quella dat
 2026-08-23 (E33E). Il campo che dovrebbe dire «quanto è fresco questo prezzo» è indietro di tre
 mesi e mezzo.
 
-E c'è il pezzo che lo rende strutturale: **i test fissano la data stantia come valore atteso**
-(`test_pricing_adapter.py:44`, e altri) — quindi non solo nessuno controlla che
-`last_updated` segua le modifiche, ma la suite **codifica** che resti ferma. Un campo di
-provenienza che nessuno aggiorna e che i test difendono non è una garanzia: è un'etichetta.
+> ⚠️ **CORREZIONE 2026-08-25, e la sbaglio io due volte prima di arrivarci.** La prima stesura di
+> questo paragrafo diceva: _«i test fissano la data stantia come valore atteso, quindi la suite
+> **codifica** che resti ferma»_. **È falso**, e va corretto perché è il tipo di frase su cui si
+> decide. Misurato senza troncare l'output: la stringa `2026-05-06` compare in **5** punti dei test
+> legati ai prezzi — 4 sono **fixture di catalogo finto** (`return {"metadata": {"last_updated":
+"2026-05-06", ...}}`) e 1 è un'asserzione (`test_evaluate_endpoint.py:1807`) che verifica il
+> round-trip **del valore del mock**, non del file vero. **Nessun test legge la data del file
+> reale.** La suite non difendeva la staleness: non la guardava affatto.
+>
+> Il reperto vero è più sottile e resta valido: la data stantia era stata **copiata dentro i mock**,
+> quindi chi cercava `2026-05-06` trovava 5 occorrenze nei test e ne concludeva che il campo fosse
+> sorvegliato. **Apparenza di copertura senza copertura.** La cura applicata sposta i mock a una
+> data deliberatamente lontana da qualunque data reale, così la coincidenza non può più ingannare.
+>
+> La catena dell'errore, per intero: una lane l'ha affermato, io l'ho **rafforzato** in una frase
+> più forte senza verificarlo, una seconda lane l'ha confutato, e la mia prima verifica della
+> confutazione era **anch'essa sbagliata** — avevo troncato il `git grep` con `head -12` e concluso
+> l'opposto. Tre misure, due sbagliate, e quella che ha retto è arrivata da chi aveva interesse a
+> contraddirmi.
 
 Un prezzo senza provenienza dimostrabile non si può approvare responsabilmente — e questa è
 l'unica ragione per cui non ti chiedo di firmare oggi anche una lista di prodotti-per-tier a
