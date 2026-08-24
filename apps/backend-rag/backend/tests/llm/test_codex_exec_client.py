@@ -30,7 +30,9 @@ from backend.llm.codex_exec_client import (
     CodexExecCommunicationError,
     CodexExecModelNotAllowedError,
     CodexExecOutputShapeError,
+    CodexExecPolicyBlockedError,
     CodexExecProcessError,
+    CodexExecQuotaError,
     CodexExecResult,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
@@ -991,6 +993,221 @@ class TestAuthDeathDetection:
 
         with pytest.raises(CodexExecProcessError):
             await client.generate("hello")
+
+
+# ---------------------------------------------------------------------------
+# Quota / policy-blocked detection (B2a, F3: "auth and quota MUST be
+# distinct (today they collapse; split before arming)"). Every trigger
+# pattern here is an UNVERIFIED HYPOTHESIS about codex-exec stderr wording
+# (see `_QUOTA_RE`/`_POLICY_BLOCKED_RE`'s module-level comments) — these
+# tests prove the CODE PATH is reachable given a matching stderr shape, NOT
+# that the shape matches real `codex exec` output. Test names say
+# "constructed" for the same reason `test_guilt_constructed_auth_failure_
+# raises_distinct_error` above does.
+# ---------------------------------------------------------------------------
+
+
+class TestQuotaDetection:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "stderr_text",
+        [
+            b"Error: quota exceeded for this billing period\n",
+            b"429 too many requests: rate limit exceeded\n",
+            b"insufficient_quota: you have hit your usage limit\n",
+        ],
+    )
+    async def test_guilt_constructed_quota_failure_raises_distinct_error(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+        stderr_text: bytes,
+    ) -> None:
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", stderr_text, 1))
+
+        with pytest.raises(CodexExecQuotaError):
+            await client.generate("hello")
+
+    @pytest.mark.asyncio
+    async def test_innocence_success_path_never_scanned_for_quota_words(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Guard against cicatrix family #3 over-match: a legitimate WA
+        answer discussing a KITAS sponsor quota must NOT be misclassified
+        as this client's own quota exhaustion, because `exit_code == 0`
+        never triggers the quota scan at all — mirrors
+        `test_innocence_success_path_never_scanned_for_auth_words`."""
+        client = _make_available_client(tmp_path)
+        answer = b"Your sponsor's KITAS quota is exceeded for this year; the limit resets in January."
+        fake_exec.queue(_FakeProcess(answer, b"", 0))
+
+        result = await client.generate("what does sponsor quota exceeded mean")
+
+        assert "quota" in result.text
+
+    @pytest.mark.asyncio
+    async def test_innocence_ordinary_wa_text_near_misses_do_not_page_as_quota(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Bare "exhausted"/"limit" wording, plausible ordinary
+        WA-immigration vocabulary, must not be misread as quota exhaustion
+        — only the anchored multi-word/unambiguous-token phrases in
+        `_QUOTA_RE` should page."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(
+            _FakeProcess(b"", b"I am exhausted from this process, the daily limit is unclear\n", 1)
+        )
+
+        with pytest.raises(CodexExecProcessError):
+            await client.generate("hello")
+
+    @pytest.mark.asyncio
+    async def test_guilt_auth_and_quota_are_distinct_outcomes(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """F3's core requirement, proven directly on this client: an
+        auth-shaped failure raises `CodexExecAuthError`, a quota-shaped
+        failure on a SEPARATE call raises `CodexExecQuotaError` — never the
+        other. Mirrors `fake_codex_broker.py`'s own named test
+        `test_auth_dead_and_quota_are_distinct_outcomes` at the
+        codex_exec_client layer."""
+        auth_dir = tmp_path / "auth"
+        auth_dir.mkdir()
+        auth_client = _make_available_client(auth_dir)
+        fake_exec.queue(_FakeProcess(b"", _CONSTRUCTED_AUTH_FAIL_STDERR, 1))
+        with pytest.raises(CodexExecAuthError):
+            await auth_client.generate("hello")
+
+        quota_dir = tmp_path / "quota"
+        quota_dir.mkdir()
+        quota_client = _make_available_client(quota_dir)
+        fake_exec.queue(_FakeProcess(b"", b"Error: quota exceeded for this billing period\n", 1))
+        with pytest.raises(CodexExecQuotaError):
+            await quota_client.generate("hello")
+
+
+class TestPolicyBlockedDetection:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "stderr_text",
+        [
+            b"Error: this request violates the usage policy\n",
+            b"safety system refused to respond\n",
+        ],
+    )
+    async def test_guilt_constructed_policy_blocked_failure_raises_distinct_error(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+        stderr_text: bytes,
+    ) -> None:
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", stderr_text, 1))
+
+        with pytest.raises(CodexExecPolicyBlockedError):
+            await client.generate("hello")
+
+    @pytest.mark.asyncio
+    async def test_innocence_success_path_never_scanned_for_policy_words(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """A legitimate immigration answer that genuinely discusses
+        government policy must not be misclassified as a policy refusal —
+        `exit_code == 0` never triggers the scan at all."""
+        client = _make_available_client(tmp_path)
+        answer = b"The government policy requires you to carry a copy of your passport for safety."
+        fake_exec.queue(_FakeProcess(answer, b"", 0))
+
+        result = await client.generate("what does the policy require")
+
+        assert "policy" in result.text
+
+    @pytest.mark.asyncio
+    async def test_innocence_ordinary_wa_text_near_misses_do_not_page_as_policy(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Bare "policy"/"safety" wording, plausible ordinary
+        WA-immigration vocabulary, must not be misread as a policy
+        refusal."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(
+            _FakeProcess(
+                b"", b"for your safety, the policy office is closed on weekends\n", 1
+            )
+        )
+
+        with pytest.raises(CodexExecProcessError):
+            await client.generate("hello")
+
+
+class TestResidualFailureNotOverclassified:
+    @pytest.mark.asyncio
+    async def test_innocence_generic_stderr_matches_no_word_class(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """A stderr string engineered to match none of the three word
+        classes (auth/quota/policy) still falls through to the pre-existing
+        generic `CodexExecProcessError` bucket — proves the three new
+        checks did not widen the residual bucket's boundary."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", b"Error: disk write failed unexpectedly\n", 1))
+
+        with pytest.raises(CodexExecProcessError) as exc_info:
+            await client.generate("hello")
+        assert exc_info.value.exit_code == 1
+
+
+class TestWordClassDisjointness:
+    """KNOWN GAP flagged by the B2a landing commit (098ca08ee): the fixed
+    check order in `generate()` (auth -> quota -> policy-blocked -> generic)
+    is licensed by the in-file claim that the three word classes are
+    independent vocabularies by construction — a stderr line cannot
+    legitimately match more than one. That claim was verified empirically
+    at commit time but left UNTESTED, so a later edit to any of the three
+    patterns could silently reintroduce an overlap and misroute (e.g.) a
+    genuine quota event into `codex login` territory without any test ever
+    noticing. This pins it."""
+
+    @pytest.mark.parametrize(
+        "guilty_text",
+        [
+            # auth-death guilt fixtures (see TestAuthDeathDetection above)
+            "Error: Not logged in. Run `codex login` to authenticate.",
+            "Error: token_revoked",
+            "401 unauthorized",
+            # quota guilt fixtures (see TestQuotaDetection above)
+            "Error: quota exceeded for this billing period",
+            "429 too many requests: rate limit exceeded",
+            "insufficient_quota: you have hit your usage limit",
+            # policy-blocked guilt fixtures (see TestPolicyBlockedDetection above)
+            "Error: this request violates the usage policy",
+            "safety system refused to respond",
+        ],
+    )
+    def test_each_guilt_fixture_matches_exactly_one_word_class(self, guilty_text: str) -> None:
+        matches = [
+            bool(client_module._AUTH_DEATH_RE.search(guilty_text)),
+            bool(client_module._QUOTA_RE.search(guilty_text)),
+            bool(client_module._POLICY_BLOCKED_RE.search(guilty_text)),
+        ]
+        assert sum(matches) == 1, (
+            f"{guilty_text!r} matched {sum(matches)} of the three word classes "
+            f"(auth/quota/policy) — expected exactly 1; the fixed check order in "
+            f"generate() silently depends on this staying true"
+        )
 
 
 # ---------------------------------------------------------------------------

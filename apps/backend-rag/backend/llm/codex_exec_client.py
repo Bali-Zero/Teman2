@@ -463,6 +463,96 @@ _AUTH_DEATH_RE: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
+# Quota-exhaustion word class — F3 (docs/plans/2026-08-25-due-bot-live/MANDATE.md):
+# "Closed wire error vocabulary: AUTH_DEAD | QUOTA | TIMEOUT | ... — auth and
+# quota MUST be distinct (today they collapse; split before arming)." Before
+# this addition, this module had NO quota-exhaustion detection at all (grep
+# the pre-B2a history: zero hits for "quota" anywhere in this file) — a
+# quota-shaped stderr message fell through to whichever neighbouring bucket
+# it happened to resemble, most often the generic `CodexExecProcessError`,
+# or worse, `CodexExecAuthError` if its wording brushed against the auth word
+# class.
+#
+# UNVERIFIED HYPOTHESIS, stronger caveat than `_AUTH_DEATH_RE` above's
+# "UNMEASURED": this pattern has never been validated against a real `codex
+# exec` quota-exhaustion event — this module has zero live wiring, so none
+# has ever been observed, and unlike auth-death (which has one measured
+# anchor, "not logged in", from `codex login status`) NOTHING here has a
+# codex-exec-observed anchor at all. The vocabulary is CROSS-REFERENCED from
+# a DIFFERENT CLI's cascade-detection grep — this repo's own Claude-arsenal
+# quota-fallback vocabulary (`~/.claude/CLAUDE.md` §Multi-LLM cascade,
+# `~/scripts/regulatory-watcher-run.sh`: "out of extra usage|usage limit|
+# quota exceeded|rate.limit|429|exhausted") — plus (2) standard OpenAI/
+# Codex-CLI quota/rate-limit diagnostic tokens (`insufficient_quota`,
+# `resource_exhausted`, "too many requests"), themselves not measured
+# against this specific CLI's actual stderr. That is a plausible-but-
+# unconfirmed transfer across a different CLI/vendor's diagnostic wording,
+# not a demonstrated fact about what `codex exec` prints — it must read
+# that way to a future reader without them needing to re-run an experiment
+# to find out. A green test against this pattern proves the CODE PATH is
+# reachable (a `_FakeProcess` fixture matches it and raises
+# `CodexExecQuotaError`); it does NOT prove the pattern fires on real
+# `codex exec` output. The first real quota exhaustion this client
+# encounters IS the measurement — this pattern should be revisited against
+# it, the same way `_AUTH_DEATH_RE` was revisited across its own R24-R28
+# rounds.
+#
+# Same word-boundary + multi-word-anchoring discipline as `_AUTH_DEATH_RE`:
+# no bare `429` alternative is included (mirrors the R25-3 lesson that bare
+# `401` false-positived on "completed after 401 ms" — a bare `429` risks the
+# identical class of false-positive on e.g. a port number, an id, or a
+# latency figure), so `429` only counts fused to "too many requests". Bare
+# "exhausted"/"limit" are deliberately excluded as standalone alternatives —
+# both are plausible ordinary WA-immigration vocabulary (a KITAS sponsor
+# "quota limit", "I am exhausted from the process") and would repeat the
+# exact over-match class `_AUTH_DEATH_RE`'s own comment block warns against.
+_QUOTA_RE: re.Pattern[str] = re.compile(
+    r"\b(?:"
+    r"429\s+too\s+many\s+requests|"
+    r"too\s+many\s+requests|"
+    r"rate[- ]limit(?:ed)?\s+exceeded|"
+    r"usage\s+limit(?:\s+reached)?|"
+    r"quota\s+exceeded|"
+    r"insufficient_quota|"
+    r"resource_exhausted|"
+    r"out\s+of\s+extra\s+usage"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+
+# Content-policy-refusal word class — F3's `POLICY_BLOCKED` member.
+#
+# UNVERIFIED HYPOTHESIS, EVEN WEAKER PRECEDENT than `_QUOTA_RE` above: quota
+# at least has this repo's own cross-referenced cascade-detection grep as a
+# REUSED (if unverified-for-this-CLI) vocabulary; this pattern has no
+# comparable in-repo precedent at all — it is plausible OpenAI/Codex-CLI
+# content-policy-refusal diagnostic phrasing assembled from general
+# knowledge of how such CLIs typically report refusals, never observed
+# against this specific `codex exec` binary's actual stderr, and never
+# cross-referenced against any other file in this repo. Nobody has ever
+# seen what `codex exec` prints on a policy block. Treat every alternative
+# as a best guess to be corrected against a real observed refusal, not a
+# settled pattern — a green test here proves the code path is reachable,
+# not that the trigger fires on real output (see `_QUOTA_RE`'s comment for
+# the full statement of this distinction, which applies here at least as
+# strongly). Every alternative is still multi-word/unambiguous-token
+# anchored, matching `_AUTH_DEATH_RE`'s discipline: bare "policy" or
+# "safety" alone are common enough in ordinary WA-immigration text ("the
+# government policy requires...", "for your safety, carry a copy of your
+# passport") that either would repeat the exact over-match class this
+# module's own history warns against.
+_POLICY_BLOCKED_RE: re.Pattern[str] = re.compile(
+    r"\b(?:"
+    r"content\s+policy|"
+    r"safety\s+system|"
+    r"cannot\s+assist\s+with|"
+    r"refused\s+to\s+(?:answer|respond)|"
+    r"violat(?:es?|ing)\s+(?:the\s+)?(?:usage\s+)?polic(?:y|ies)|"
+    r"moderation\s+block(?:ed)?"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+
 
 class CodexExecUnavailableError(RuntimeError):
     """Raised by `generate()` when `available` is `False` (binary missing,
@@ -486,6 +576,27 @@ class CodexExecAuthError(RuntimeError):
     re-login (`codex login`) is needed. Distinct from
     `CodexExecProcessError` so a caller can page a human for THIS class and
     silently retry-later for a generic failure.
+    """
+
+
+class CodexExecQuotaError(RuntimeError):
+    """The subprocess exited non-zero and its stderr (line-stripped of
+    echoed prompt/stdout, per `CodexExecAuthError`'s discipline) matched a
+    known quota-exhaustion word class (`_QUOTA_RE`). Distinct from
+    `CodexExecAuthError` — F3 (MANDATE.md) explicitly requires auth and
+    quota to be distinguishable outcomes, never collapsed into one bucket.
+    Distinct from `CodexExecProcessError` so a caller can apply
+    quota-specific backoff/fallback (e.g. route to a different seat) instead
+    of a generic retry-later.
+    """
+
+
+class CodexExecPolicyBlockedError(RuntimeError):
+    """The subprocess exited non-zero and its stderr (line-stripped) matched
+    a known content-policy-refusal word class (`_POLICY_BLOCKED_RE`).
+    Distinct from `CodexExecProcessError` so a caller can classify this as a
+    policy outcome (F3's `POLICY_BLOCKED`) rather than a transient failure
+    worth retrying.
     """
 
 
@@ -747,6 +858,22 @@ def _auth_death_detected(*texts: str) -> bool:
     scanned text at all) — this function's contract holds regardless of how
     many arguments a future caller passes."""
     return any(_AUTH_DEATH_RE.search(t) for t in texts if t)
+
+
+def _quota_detected(*texts: str) -> bool:
+    """Search each `texts` argument for `_QUOTA_RE` INDEPENDENTLY — same
+    no-concatenation discipline as `_auth_death_detected` (see that
+    function's docstring for the full rationale: joining streams before
+    searching risks a regex's `\\s+` alternatives bridging two otherwise
+    unrelated fragments across the seam). Today's one call site passes a
+    single, already line-stripped stderr string."""
+    return any(_QUOTA_RE.search(t) for t in texts if t)
+
+
+def _policy_blocked_detected(*texts: str) -> bool:
+    """Search each `texts` argument for `_POLICY_BLOCKED_RE` INDEPENDENTLY —
+    same no-concatenation discipline as `_auth_death_detected`."""
+    return any(_POLICY_BLOCKED_RE.search(t) for t in texts if t)
 
 
 class CodexExecClient:
@@ -1104,6 +1231,21 @@ class CodexExecClient:
                 # scans its argument(s) independently rather than joining
                 # them — see that helper's docstring.
                 stripped_stderr = _strip_known_lines(stderr, prompt, stdout)
+                # B2a addition (F3 — MANDATE.md: "auth and quota MUST be
+                # distinct; today they collapse; split before arming"):
+                # auth-death, quota-exhaustion, and policy-refusal are
+                # checked in that fixed order against the same
+                # `stripped_stderr`. The three word classes
+                # (`_AUTH_DEATH_RE` / `_QUOTA_RE` / `_POLICY_BLOCKED_RE`) are
+                # independent vocabularies by construction — a stderr line
+                # cannot legitimately match more than one — so this ordering
+                # carries no correctness weight of its own; auth is checked
+                # first simply because it is the longest-established,
+                # highest-confidence pattern of the three (measured in one
+                # case; quota and policy-blocked are both fully constructed,
+                # see their definitions above). Anything matching none of
+                # the three falls through to the pre-existing generic
+                # `CodexExecProcessError` bucket, unchanged.
                 if _auth_death_detected(stripped_stderr):
                     logger.warning(
                         "codex_exec: auth-death detected (exit_code=%d, model=%s) — "
@@ -1114,6 +1256,25 @@ class CodexExecClient:
                     raise CodexExecAuthError(
                         "codex exec reported an authentication failure — operator re-login "
                         "(`codex login`) needed",
+                    )
+                if _quota_detected(stripped_stderr):
+                    logger.warning(
+                        "codex_exec: quota exhaustion detected (exit_code=%d, model=%s)",
+                        exit_code,
+                        resolved_model,
+                    )
+                    raise CodexExecQuotaError(
+                        "codex exec reported quota/rate-limit exhaustion — distinct from an "
+                        "auth failure, needs quota-specific backoff or fallback",
+                    )
+                if _policy_blocked_detected(stripped_stderr):
+                    logger.warning(
+                        "codex_exec: policy-blocked detected (exit_code=%d, model=%s)",
+                        exit_code,
+                        resolved_model,
+                    )
+                    raise CodexExecPolicyBlockedError(
+                        "codex exec reported a content-policy refusal — no usable text",
                     )
                 logger.warning(
                     "codex_exec: process failed (exit_code=%d, model=%s)",
