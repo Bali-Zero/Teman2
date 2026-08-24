@@ -63,7 +63,8 @@ class TripwireKind(StrEnum):
 
 class MetricStatus(StrEnum):
     WIRED = "wired"  # `metric` is a registered instrument in observability.py
-    PLANNED = "planned"  # naming contract only — apps/team-bot/ doesn't exist
+    PLANNED = "planned"  # naming contract only — not merged into this lane's
+    # base yet (may already exist on an unmerged branch — see module docstring)
 
 
 class Tripwire(BaseModel):
@@ -366,7 +367,18 @@ TRIPWIRES: tuple[Tripwire, ...] = (
     ),
     # ======================================================================
     # Team-bot (BOT B) — naming contract only; apps/team-bot/ is B3's file
-    # ownership and does not exist yet. `metric_status=PLANNED` throughout.
+    # ownership. `metric_status=PLANNED` throughout.
+    #
+    # PLANNED here means "not observable from this lane's base", not
+    # "not built": as of this lane's merge-base with feature/due-bot
+    # (c2af8567d), apps/team-bot/ did not exist on that ancestry. B3 has
+    # SINCE built it (ToolDecision, ActionClaimGate, F6's confirmation
+    # state machine in progress) on `agent/mini-pro2/duebot/b3-toolregistry`
+    # — not yet merged as of this writing, so it is still invisible from
+    # here. Re-check PLANNED vs WIRED against the merged tip before this
+    # naming contract is finalized; a reader who sees PLANNED should read
+    # it as "not merged into this base," never assume it means "not built"
+    # (team-lead review finding, 2026-08-25).
     # ======================================================================
     Tripwire(
         id="team.confirmation_bypass",

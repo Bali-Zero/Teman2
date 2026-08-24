@@ -79,7 +79,15 @@ resets the 3-week kill-criterion clock. Team-lead review finding (2026-08-25): t
 family-#2 failure ("green because nothing was measured") the repo's own cicatrix rules already
 name — silence must not read as a passing grade.
 
-## Team bot (NAMING CONTRACT — `apps/team-bot/` doesn't exist yet, B3 implements)
+## Team bot (NAMING CONTRACT — pinned against this lane's base `c2af8567d`, B3 implements)
+
+**PLANNED means "not merged into this lane's base," not "not built."** As of this lane's
+merge-base with `feature/due-bot` (`c2af8567d`), `apps/team-bot/` did not exist on that
+ancestry — that is what the rows below reflect. B3 has since built it (`ToolDecision`,
+`ActionClaimGate`, F6's confirmation state machine in progress) on
+`agent/mini-pro2/duebot/b3-toolregistry`, not yet merged as of this writing. Re-check
+`PLANNED` vs `WIRED` against the merged tip before this naming contract is finalized —
+team-lead review finding, 2026-08-25.
 
 | id                                  | metric (planned)                                            | threshold     | kind         | automatic action                                                                 |
 | ----------------------------------- | ----------------------------------------------------------- | ------------- | ------------ | -------------------------------------------------------------------------------- |
