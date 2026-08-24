@@ -1,0 +1,48 @@
+# GENERATION SOURCE for BOTH the Python enum check and the TypeScript mirror.
+# Mirrors are generated; they are never edited independently.
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: GARUDA VOA public decline reason codes
+version: "1.0.0"
+source: "apps/backend-rag/backend/services/garuda_flow/eligibility.py:DeclineCode"
+
+$defs:
+  DeclineCode:
+    type: string
+    enum:
+      - NATIONALITY_NOT_ELIGIBLE
+      - PURPOSE_NOT_ELIGIBLE
+      - GROUP_CASE
+      - PASSPORT_TYPE
+      - PASSPORT_VALIDITY
+      - NOT_SELF_PAY
+      - FEEDBACK_REQUIRED
+      - URGENT_CASE
+      - SPECIAL_PASSPORT
+      - PRIOR_ISSUE
+      - FASTLANE_REQUEST
+      - EXPIRY_UNKNOWN
+      - EXPIRES_TOO_SOON
+      - EXTENSION_ALREADY_USED
+      - ARRIVAL_TOO_SOON
+      - ARRIVAL_DATE_UNCONFIRMED
+      - ARRIVAL_TOO_FAR
+      - EXTENSION_EXCEEDS_MAX_STAY
+    x-public-notes:
+      NATIONALITY_NOT_ELIGIBLE: Neutral eligibility category; it discloses no private rule or list.
+      PURPOSE_NOT_ELIGIBLE: Neutral purpose category; it discloses no internal decision prose.
+      GROUP_CASE: Neutral routing category; it discloses no group-size threshold.
+      PASSPORT_TYPE: Neutral document category; it names no private screening rule.
+      PASSPORT_VALIDITY: Neutral validity category; it discloses no internal threshold.
+      NOT_SELF_PAY: Neutral payment-responsibility category; it contains no financial detail.
+      FEEDBACK_REQUIRED: Neutral human-review route; it contains no private review note.
+      URGENT_CASE: Neutral timing category; it discloses no internal checkpoint.
+      SPECIAL_PASSPORT: Neutral document-routing category; it contains no passport data.
+      PRIOR_ISSUE: Neutral prior-history category; it contains no allegation or case detail.
+      FASTLANE_REQUEST: Neutral service-route category; it contains no internal workflow detail.
+      EXPIRY_UNKNOWN: Neutral missing-date category; it contains no submitted date.
+      EXPIRES_TOO_SOON: Neutral timing outcome; it discloses no cutoff or checkpoint.
+      EXTENSION_ALREADY_USED: Neutral usage-status category; it contains no document detail.
+      ARRIVAL_TOO_SOON: Neutral online-window outcome; it discloses no internal cutoff.
+      ARRIVAL_DATE_UNCONFIRMED: Neutral calendar-coverage outcome; it contains no guessed date.
+      ARRIVAL_TOO_FAR: Neutral arrival-window outcome; it discloses no internal duration.
+      EXTENSION_EXCEEDS_MAX_STAY: Neutral stay-boundary outcome; it discloses no literal limit.
