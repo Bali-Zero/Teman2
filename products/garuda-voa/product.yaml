@@ -1,0 +1,115 @@
+# GARUDA VOA — product.yaml
+# The first product on the assembly line (docs/factory/ASSEMBLY-LINE.md).
+# Orchestrator drafts; OWNER SIGNS at G0. Until `owner_signed_at` carries a real
+# timestamp, every downstream gate treats this file as a PROPOSAL, not authority.
+#
+# Mandate: docs/plans/2026-08-24-garuda-voa-live/MANDATE.md
+# Binding persistence design: research/visa/2026-08-23-voa-public-funnel-persistence-design.md
+
+schema_version: 1
+product: garuda-voa
+title: "VOA self-purchase (Visa on Arrival)"
+status: build-dark # build-dark | canary | live | narrowed | killed
+owner_signed_at: null # G0 signature — null means UNSIGNED
+flag: GARUDA_PUBLIC_ENABLED # default false everywhere
+
+customer:
+  who: "Tourist / short-stay traveler to Indonesia"
+  context: "Mobile-first, English-speaking, buying before or shortly after arrival"
+  problem: >
+    Today the only way to buy a VOA through Bali Zero is a WhatsApp conversation with
+    a human. The traveler cannot find out in advance whether they are eligible, what it
+    costs all-in, or when the filing deadline falls; and once they have paid there is no
+    place to watch the practice move.
+
+promise: "Know in 10 seconds, buy in 5 minutes, follow it like a parcel."
+
+price:
+  model: single-all-inclusive
+  source: PricingTool
+  rule: "PNBP + 3jt (Zero's rule); the PNBP figure is the composed Ditjen index value"
+  # HARD: never split fee / PNBP in any customer-facing surface. The all-inclusive
+  # invariant is already test-owned at apps/mouth/e2e/book-pricing.spec.ts:126.
+  never: ["split fee from PNBP", "quote a fee 'plus government cost'"]
+
+metrics:
+  primary:
+    name: paid_orders_per_week
+    definition: "count of orders whose payment was marked paid by a reconciled webhook, per ISO week"
+  secondary:
+    - name: check_to_purchase_conversion
+      definition: "orders_created / eligibility_checks_completed"
+    - name: decline_to_whatsapp_conversion
+      definition: "whatsapp_handoffs_from_decline / declined_verdicts"
+    - name: second_service_within_12m
+      definition: "share of VOA buyers who purchase any other Bali Zero service within 12 months"
+
+guardrails: # exactly 3 — ASSEMBLY-LINE caps this at 3
+  - id: G-OCR-LOCAL
+    rule: >
+      Document OCR runs LOCAL-first (qwen2.5vl:7b primary, for speed and cost). Cloud
+      families may reinforce, never replace, and only after redaction-before-egress.
+      Vendor parity per Zero 2026-08-24: no vendor-specific fence, the common Law 2
+      output boundary + UU PDP Art. 56 cascade applies to every cloud alike.
+  - id: G-FRESHNESS-FAIL-CLOSED
+    rule: >
+      Commercial freshness is fail-closed. If the government rules or the price truth-sheet
+      are stale beyond their declared window, the funnel DECLINES TO SELL and routes to
+      WhatsApp rather than promising a price or deadline it cannot stand behind.
+  - id: G-PAID-BY-WEBHOOK-ONLY
+    rule: >
+      An order becomes `paid` ONLY through a reconciled provider webhook (signature verified,
+      inbox-deduplicated, journal-appended). A browser redirect NEVER marks payment.
+
+kill_criterion:
+  proposed_by: orchestrator # owner may replace at G0
+  rule: >
+    If 60 days after go-live paid orders are below 10/week AND decline→WhatsApp conversion
+    is below 5%, narrow the product to the WhatsApp-assisted lane only.
+  checked: monthly
+
+non_goals_v1:
+  - other visa types
+  - multi-applicant carts
+  - native mobile apps
+  - loyalty / referral programs
+
+risk_tier_map: # ASSEMBLY-LINE verification economics: set once, here
+  full_adversarial_pass: # always the complete refuter pass
+    - "products/garuda-voa/contracts/**"
+    - "apps/backend-rag/backend/db/migrations_v2/**"
+    - "**/garuda*/**payment**"
+    - "**/garuda*/**order**"
+    - "**/garuda*/**retention**"
+    - "**/garuda*/**auth**"
+    - "apps/backend-rag/backend/services/garuda_flow/**"
+  contract_tests_and_visual_diff_only:
+    - "apps/mouth/src/app/visa/voa/**" # cosmetic UI layer only
+    - "products/garuda-voa/ops/dashboards/**"
+
+owner_decisions: # §3 switchboard — filled with prepared proposals, signed at the end
+  - id: 1
+    decision: payment_provider
+    state: proposal-pending
+    gesture: "pick + sign up with his own credentials"
+  - id: 2
+    decision: terms_of_sale_and_refund
+    state: proposal-pending
+    gesture: "read, approve"
+  - id: 3
+    decision: data_retention_days
+    state: proposal-pending
+    proposed_value_days: 90
+    gesture: "approve or change the number"
+  - id: 4
+    decision: legacy_garuda_voa_checks_rows
+    state: measurement-pending
+    gesture: "yes/no on the proposed disposition"
+  - id: 5
+    decision: visual_identity
+    state: proposal-pending
+    gesture: "pick 1 of 3 concepts"
+  - id: 0
+    decision: go_live
+    state: blocked-on-all-above
+    gesture: "flip GARUDA_PUBLIC_ENABLED=true + merge the prepared sitemap/robots PR"
