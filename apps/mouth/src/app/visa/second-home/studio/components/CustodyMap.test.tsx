@@ -54,6 +54,20 @@ describe("CustodyMap", () => {
     expect(screen.getByRole("list")).toBeInTheDocument();
   });
 
+  it("prints every node body and removes the interactive chevrons", () => {
+    const { container } = render(<CustodyMap />);
+    const css = Array.from(container.querySelectorAll("style"))
+      .map((style) => style.textContent ?? "")
+      .join("\n");
+
+    expect(css).toMatch(
+      /@media print\s*{[\s\S]*?\.custody-node > p\[data-collapsed="true"\]\s*{[\s\S]*?display: block !important;/,
+    );
+    expect(css).toMatch(
+      /@media print\s*{[\s\S]*?\.custody-chevron\s*{[\s\S]*?display: none !important;/,
+    );
+  });
+
   it("renders only user-visible strings sourced from copy.ts", () => {
     const { container } = render(<CustodyMap />);
     const assertRenderedTextComesFromCopy = () => {
@@ -61,7 +75,7 @@ describe("CustodyMap", () => {
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
       while (walker.nextNode()) {
         const parent = walker.currentNode.parentElement;
-        if (parent?.closest("style, [hidden]")) continue;
+        if (parent?.closest('style, [data-collapsed="true"]')) continue;
         const value = walker.currentNode.textContent?.trim();
         if (value) textNodes.push(value);
       }
