@@ -141,7 +141,7 @@ describe("ConsultantAccess", () => {
         whatsappNumber="628123456789"
         evaluationId={TEST_EVALUATION_ID}
         tier="T3"
-        originScreen="verdict"
+        originScreen="wizard"
       />,
     );
 
@@ -255,8 +255,37 @@ describe("ConsultantAccess", () => {
       expect.objectContaining({
         evaluationId: TEST_EVALUATION_ID,
         tier: "T2",
+        originScreen: "wizard",
         productVersionId: "55555555-5555-4555-8555-555555555555",
       }),
+    );
+  });
+
+  // ConsentHandoff is mounted from two surfaces that share ONE
+  // evaluationId on purpose (the ever-present topbar control here, and the
+  // verdict screen's own handoff). origin_screen is the only field left
+  // that tells those two rows apart downstream, so a control rendered on a
+  // non-verdict screen must never silently report "verdict" — pinning the
+  // regression this fix closed (a hardcoded literal inside ConsentHandoff).
+  it('emits origin_screen "wizard" from the ever-present topbar control on a non-verdict screen', async () => {
+    render(
+      <ConsultantAccess
+        language="en"
+        whatsappNumber="628123456789"
+        evaluationId={TEST_EVALUATION_ID}
+        tier="T3"
+        originScreen="wizard"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: TRIGGER_NAME }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    await waitFor(() =>
+      expect(requestConsultantAssignment).toHaveBeenCalledTimes(1),
+    );
+
+    expect(requestConsultantAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({ originScreen: "wizard" }),
     );
   });
 });
