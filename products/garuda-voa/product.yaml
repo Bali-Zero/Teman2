@@ -133,6 +133,19 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     decision: visual_identity
     state: proposal-pending
     gesture: "pick 1 of 3 concepts"
+  - id: 6
+    decision: filing_office_scope
+    state: question-ready
+    # Measured 2026-08-24 (GROUND.md §5): the one client-facing checkpoint is scoped to
+    # Ngurah Rai in constants.py:55 and safe_clock.py:151 ("verify per office"), and the
+    # intake collects no office field at all — grep for office|kanim in intake.py is empty.
+    question: >
+      Does a buyer who goes through this funnel ALWAYS have their extension filed at
+      Ngurah Rai / Denpasar, or can the filing office vary?
+    consequence: >
+      If it can vary, the published deadline we show is unsourced for those buyers.
+      Default until answered: display a deadline only when the office is known.
+    gesture: "answer the question — it is an operations fact, not a design choice"
   - id: 0
     decision: go_live
     state: blocked-on-all-above

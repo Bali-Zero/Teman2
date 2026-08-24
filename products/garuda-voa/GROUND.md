@@ -133,3 +133,32 @@ the connection. **No price literal is hardcoded in `garuda_flow`** — the only 
 (790_000/850_000) live in `test_pricing.py:29-34` as stub fixtures, and the fail-closed behaviour
 on any missing/malformed/drifted row is pinned by 12 parametrized cases
 (`test_pricing.py:50-72`).
+
+## 5. The published deadline is scoped to ONE office, and the funnel never asks which
+
+Measured on disk 2026-08-24, in this worktree:
+
+- `constants.py:55` — `PUBLISHED_FILING_DEADLINE_DAYS: int = 7  # D-7 — published Ngurah Rai
+deadline (client-facing)`. Every occurrence in the engine names Ngurah Rai:
+  `safe_clock.py:151` carries `note="Published filing deadline (Ngurah Rai — verify per office)."`
+- `grep -n "office\|kanim" intake.py` returns **nothing**. The intake has no office field, so
+  nothing in the request can distinguish a Bali filing from any other kanim.
+- The journeys mention `deadline` eight times and **never** mention an office.
+
+So the engine holds a per-office caveat that the customer-facing path cannot express, and the one
+externally-sourced number we are allowed to show a visitor is the only checkpoint whose correctness
+depends on a fact we never collect. Flagged by the Visa Oracle session on Pro (its own reading of the
+Ditjen pages: Ngurah Rai publishes two incompatible formulations on the same page, Yogyakarta a
+third). Their finding is a **LEAD** for us — this section records only what I re-measured here.
+
+**Status: OPEN, and it is NOT a lane's to decide.** Two branches, and which one is true is an
+operational fact about how Bali Zero files, not an engineering choice:
+
+1. **The funnel only ever files in Bali.** Then the number is right by construction, and the fix is
+   one line of copy — name the office next to the date, so the promise is falsifiable.
+2. **A buyer can be filing elsewhere.** Then the deadline shown is unsourced for that buyer, and the
+   honest surface either asks the office or suppresses the date and routes to WhatsApp.
+
+Until it is settled, the safe default is branch 2's suppression rule: **a deadline may be displayed
+only when the office it was published by is known**. That is the fail-closed shape the rest of this
+product already uses, and it costs nothing if branch 1 turns out to be true.
