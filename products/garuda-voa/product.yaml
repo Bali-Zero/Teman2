@@ -240,6 +240,34 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # to every real customer today. That makes this decision the top go-live blocker: no
     # other lane's work can sell anything until it is answered.
     blocks_go_live: true
+    # ── 2026-08-25, PARTIALLY ANSWERED (relay): Zero, verbatim "i prezzi sono ok". ──
+    # That answers 7(a) — 790.000 / 850.000 are attested current — and it is NOT the
+    # forbidden move recorded below. The prohibition was never against stamping; it was
+    # against stamping INSTEAD of looking. The owner looked. A stamp is a claim that a
+    # human looked, and now the claim is true.
+    #
+    # TWO REASONS THE RE-STAMP IS NOT DONE YET, both cheap to clear:
+    #
+    # (i) SCOPE. `metadata.last_updated` is ONE stamp over the WHOLE catalogue —
+    #     measured 2026-08-25 by loading the file: 9 service categories, 100 price rows
+    #     (kitas_permits 38, other_process 21, single_entry_visas 14, multiple_entry 7,
+    #     consultant 7, tax_accounting 4, kitap 3, company 3, urgent 3). GARUDA VOA is
+    #     TWO of those 100. Bumping it to today asserts owner attestation over KITAS,
+    #     tax and company prices that were never in the conversation — and the freshness
+    #     mechanism is about to be reused by sibling products, so a too-wide attestation
+    #     propagates. Needs one sentence from Zero: does "i prezzi sono ok" cover the
+    #     whole catalogue, or the VOA rows?
+    #
+    # (ii) 7(b) IS UNANSWERED AND MUST NOT BE CLOSED BY THIS. "The prices are ok" is not
+    #      "the price includes PNBP". Those are different questions and only the first
+    #      was asked. 7(b) is the one this session opened after catching its OWN
+    #      unverified claim that the row was PNBP-inclusive, and it decides whether an
+    #      absorbed ~33.650 IDR Xendit fee (decision 1) stacks on an unbudgeted
+    #      government fee. Still open. Do not let the relay's word "sciolta" close it.
+    #
+    # The fail-closed price gate the same relay asks us to "adopt" ALREADY EXISTS
+    # (pricing.py:92, built in round 4) — it is the organ that caught this, not a lesson
+    # still to be learned. Nobody should build a second one.
     # THE FORBIDDEN CURE, named explicitly because a competent lane proposed it on
     # 2026-08-25 (L7, in good faith, reading the line below): "refresh the catalogue's
     # metadata.last_updated stamp". Bumping the stamp WITHOUT re-verifying the prices is
