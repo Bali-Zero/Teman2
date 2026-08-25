@@ -163,6 +163,21 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # products copying this switchboard: WHEN A DECISION MOVES TO `ratified`, GREP THE FROZEN
     # ARTIFACTS FOR THE PLACEHOLDERS IT RETIRES IN THE SAME TURN. `TODO(ground)` is the
     # marker this product uses. A placeholder is not a note — it is a lane's instruction.
+    #
+    # Sweep them by DANGER, not by count, or the obligation becomes make-work and gets
+    # ignored. The 2026-08-25 sweep found nine `TODO(ground)` markers and only the two in the
+    # contract could hurt anyone. The discriminator is whether the placeholder is OPERATIVE:
+    #   - OPERATIVE — a lane's code implements it as written. The contract's `$ref` and its
+    #     `X-Provider-Signature` scheme were operative, so going stale turned them into false
+    #     instructions that were faithfully obeyed. These are the emergency.
+    #   - INERT — a comment sitting above text that defers abstractly to whatever the answer
+    #     turns out to be. The seven journey markers are this: their scenarios say "under the
+    #     grounded lifetime policy", never "15 minutes", so deciding the number leaves every
+    #     assertion correct. They cost nothing while stale, but they DO lie about provenance —
+    #     a journey still saying "approve the magic-link lifetime" invites a lane to go ask a
+    #     question that was answered in DECISIONS.md Q1. Annotate those; do not rush them.
+    # Swept 2026-08-25: 2 operative (cured, 00d6e52ee), 2 inert annotated (magic-link,
+    # freshness), 5 inert genuinely still open and correctly marked.
     retired_placeholders_swept: 2026-08-25
   - id: 2
     decision: terms_of_sale_and_refund
