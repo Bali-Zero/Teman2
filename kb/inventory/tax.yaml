@@ -1,0 +1,222 @@
+# Lane C — Tax, topic inventory (MANDATE §2, kind: topic). What legal_unified ACTUALLY
+# holds for the instruments scoped in kb/topics/tax.yaml, measured against production Qdrant
+# on 2026-08-25 by per-instrument scroll (document_id AND metadata.document_id, per mandate
+# §4.1 — both indexes queried for every instrument, never just one).
+#
+# measured_against.points / payload_shapes cover ONLY the 14 instruments below (the topic's
+# own footprint), not the whole 84,283-point legal_unified collection — consistent with the
+# G3 contract's synthetic fixture (measured_against.points == sum(instruments[].points) ==
+# sum(payload_shapes.values())).
+#
+# tax_genius_hybrid (340 points, curated Q&A guide, zero document_id anywhere — see
+# kb/topics/tax.yaml header) is deliberately NOT measured here: it carries no citable
+# instrument identity, so there is nothing in this schema's vocabulary to attach it to.
+
+schema_version: 1
+kind: topic
+lane: C
+topic: tax
+measured_at: "2026-08-25"
+
+measured_against:
+  collection: legal_unified
+  points: 2859
+  payload_shapes:
+    legacy_metadata_text: 2315
+    orphan_no_identity: 0
+    modern_id_only: 544
+    modern_id_chunk: 0
+    modern_full: 0
+
+instruments:
+  - id: UU_6_1983
+    points: 51
+    present: true
+    complete: false
+    incomplete_because: >-
+      51 chunks indexed for the KUP original enactment (as-amended consolidated edition);
+      completeness against the full pasal + elucidation list has not been cross-checked this
+      pass — treat as a lower bound on coverage, not a confirmed-whole edition.
+
+  - id: UU_28_2007
+    points: 311
+    present: true
+    complete: false
+    incomplete_because: >-
+      311 chunks span multiple pasal (8, 13A, 26A sampled directly) plus the "I. UMUM"
+      explanatory memorandum — broader coverage than any other instrument in this inventory,
+      but completeness against the full pasal list has not been cross-checked this pass.
+
+  - id: UU_16_2009
+    points: 2
+    present: true
+    complete: false
+    incomplete_because: >-
+      Only 2 chunks indexed, both closing/enactment boilerplate ("mulai berlaku pada tanggal
+      diundangkan..."), for a law ratifying a Perpu with dozens of substantive articles. This
+      is a near-total gap, not a partial edition — flagged distinctly from the other
+      "completeness unverified" rows because the shortfall here is measured, not merely
+      unconfirmed.
+
+  - id: PP_6_1983
+    points: 45
+    present: true
+    complete: false
+    incomplete_because: >-
+      45 chunks indexed (KUP confidentiality/enforcement provisions sampled: Pasal-34-style
+      secrecy duty, DJP sealing authority); completeness against the full pasal list has not
+      been cross-checked this pass.
+
+  - id: UU_7_1983
+    points: 44
+    present: true
+    complete: false
+    incomplete_because: >-
+      44 chunks for the 1983 PPh original-enactment edition; completeness against the full
+      pasal list has not been cross-checked this pass. Note this is a SEPARATE, smaller
+      edition of the same underlying law from TASSE_7_1983 (250 chunks) below — the two do not
+      sum to one complete document, they are two different partial editions.
+
+  - id: TASSE_7_1983
+    points: 250
+    present: true
+    complete: false
+    incomplete_because: >-
+      250 chunks span at least Pasal 31C and 31E (sampled directly) of the
+      consolidated-through-UU-36/2008 edition; completeness against that edition's full pasal
+      list has not been cross-checked this pass. Identity is mistyped in the corpus (see
+      kb/topics/tax.yaml) — completeness is a separate question from identity and both are
+      open.
+
+  - id: UU_36_2008
+    points: 65
+    present: true
+    complete: false
+    incomplete_because: >-
+      65 chunks sampled include Pasal 2 (subjek pajak), PTKP rupiah figures, and the closing
+      amendment clause referencing UU 7/1983; completeness against the full pasal list has not
+      been cross-checked this pass.
+
+  - id: PP_8_1983
+    points: 40
+    present: true
+    complete: false
+    incomplete_because: >-
+      40 chunks indexed (rate and Pajak Masukan/Keluaran definitions sampled directly);
+      completeness against the full pasal list has not been cross-checked this pass.
+
+  - id: UU_42_2009
+    points: 115
+    present: true
+    complete: false
+    incomplete_because: >-
+      115 chunks indexed; completeness against the full pasal list has not been cross-checked
+      this pass.
+
+  - id: Permen_81_2024
+    points: 430
+    present: true
+    complete: false
+    incomplete_because: >-
+      430 chunks indexed for a large, annex-bearing regulation; completeness against its own
+      lampiran/annex structure has not been cross-checked this pass.
+
+  - id: Permen_1_2026
+    points: 1506
+    present: true
+    complete: false
+    incomplete_because: >-
+      1506 points are stored under this document_id, but at minimum 50 of them are CONFIRMED
+      content from a different, unrelated instrument (Permenimipas 1/2026, immigration —
+      see kb/topics/tax.yaml note) collided into the same id; a further 962 points sit under
+      metadata-only (legacy shape) and have not yet been checked for the same contamination.
+      The true point count belonging to PMK 1/2026 itself has not been isolated. Treat this id
+      as CONTAMINATED, not merely partial — "complete" cannot be asserted for a document whose
+      own boundary is unproven.
+
+  # ── absent — three misses by different methods (§4.2), recorded per kb/topics/tax.yaml ──
+  - id: UU_7_2021
+    points: 0
+    present: false
+    lookup_attempts:
+      - "Qdrant scroll filter document_id=UU_7_2021 on legal_unified_hybrid_hybrid — 0 hits"
+      - "Qdrant scroll filter metadata.document_id=UU_7_2021 on legal_unified_hybrid_hybrid — 0 hits"
+      - "full-collection census of all 388 distinct legal_unified document_ids, scanned by id/title/category substring for harmonisasi/HPP/tax-adjacent categories — no match"
+      - "WebFetch of peraturan.go.id/id/uu-no-7-tahun-2021 confirmed the instrument exists officially, ruling out a citation error — the absence is a genuine KB gap, not a naming mismatch"
+
+  - id: PER_7_PJ_2025
+    points: 0
+    present: false
+    lookup_attempts:
+      - "Qdrant scroll filter for literal id variants PER-7-PJ-2025 and PER_7_PJ_2025 on both document_id and metadata.document_id, legal_unified_hybrid_hybrid — 0 hits for any variant"
+      - "checked the mandate's proposed candidate Permen_32_2022 (legal_unified_2026) directly: pulled 6 independent chunks of its own TEXT, all consistently a Peraturan Gubernur Sumatera Selatan on non-auction sale of regional government property — ruled out, not a match (see kb/topics/tax.yaml note)"
+      - "category/keyword scan of all 388 legal_unified document titles/categories for NIK, NPWP, PER-7 — no match"
+      - "WebSearch corroborated the instrument's real-world existence (2025-05-21 enactment per secondary sources) but found no corpus-adjacent trace under any name"
+
+  - id: KEP_55_PJ_2026
+    points: 0
+    present: false
+    lookup_attempts:
+      - "Qdrant scroll filter for literal id variants KEP-55-PJ-2026 and KEP_55_PJ_2026 on both document_id and metadata.document_id, legal_unified_hybrid_hybrid — 0 hits for any variant"
+      - "cross-checked the retired legal_unified_2026 collection directly: its TAX_UNKNOWN_UNKNOWN carries 21/21 chunks with book_title 'Keputusan Direktur Jenderal Pajak Nomor KEP-55/PJ/2026 (Penundaan Sanksi SPT Tahunan 2025)' and legal_number/legal_year literally 'UNKNOWN' — confirms the true identity AND confirms zero of those 21 chunks have been promoted under ANY identity into legal_unified"
+      - "category/keyword scan of all 388 legal_unified document titles/categories for SPT Tahunan, penundaan sanksi, KEP-55 — no match"
+
+# ── findings measured this pass, not chased (mandate §8 — outside-lane or repair-stage work) ──
+findings:
+  - id: TAXC-1
+    title: "UU_13_2016 in legal_unified is real Indonesian Patent Law, not the tax identity collision the mandate head start described"
+    detail: >-
+      All 118 points of legal_unified's UU_13_2016 were pulled (not sampled) and are uniformly
+      book_title="UU No 13 Tahun 2016 Tentang PATEN", legal_type=UU, legal_number=13,
+      legal_year=2016, content about patents throughout. The "PMK 9/2018 metadata / PBB-KB
+      governor's-annex text" contradiction the mandate cites lives in a separate 7-point
+      fragment inside the RETIRED legal_unified_2026 collection that happens to share the same
+      document_id string. `leaked_to_production: true` on that fragment's row in
+      kb/inventory/legal_unified_2026.yaml is not supported by what production actually holds.
+      Not a tax instrument either way — outside this lane, revisit owned by whoever holds that
+      file.
+    owner: "Work Item Zero / lane that owns kb/inventory/legal_unified_2026.yaml"
+    severity: medium
+
+  - id: TAXC-2
+    title: "02_tasse (Italian: 'taxes') category tag is noisy — several tagged documents are not tax instruments at all"
+    detail: >-
+      A category-based sweep of legal_unified surfaced UU_23_2002 (Perlindungan Anak — Child
+      Protection Law, mistagged 02_tasse) and a cluster of annual state-budget laws
+      (UU_41_2008, UU_47_2009, UU_36_2004, UU_35_2004, UU_60_2024, UU_15_2025, UU_3_2003 —
+      "Anggaran Pendapatan dan Belanja Negara" for various years) that deal with state revenue
+      in a general sense but are not client-facing tax obligations Bali Zero fields questions
+      on. Excluded from kb/topics/tax.yaml's scope deliberately; recorded here so the exclusion
+      reads as a decision, not an oversight for anyone re-running a category-based sweep.
+    owner: "lane C (tax) — informational, no action taken this pass"
+    severity: low
+
+  - id: TAXC-3
+    title: "tax_genius_hybrid (340 pts) is a curated guide corpus, not primary legal text"
+    detail: >-
+      Single flat point-id namespace, 100% orphan_no_identity shape (no document_id field on
+      any point). Sample content is consultant-dialogue Q&A (e-Faktur error codes, PPh 21
+      worked examples, VAT filing deadlines, some Javanese-language chunks), categorised
+      value_added_tax/income_tax/general_tax/corporate_tax/tax_registration/social_security/
+      tax_residency. Useful for practical-question journeys in a later pass, but out of scope
+      for THIS inventory and for kb/journeys/tax.yaml's instrument_id-anchored probes, which
+      require a citable legal identity this corpus does not carry.
+    owner: "lane C (tax) — informational, no action taken this pass"
+    severity: low
+
+  - id: TAXC-4
+    title: "A journey can measure green on an absent instrument via a citation inside a different, present document"
+    detail: >-
+      kb/journeys/tax.yaml J8 (instrument_id=UU_7_2021, phrase "Harmonisasi Peraturan
+      Perpajakan") measured GREEN against production 2026-08-25 even though UU_7_2021 (the HPP
+      law) is confirmed absent as a document (0 points under that id anywhere in
+      legal_unified). Manually inspecting the retrieved chunks: the phrase comes from a
+      citation recital inside Permen_167_2022 and PP_44T_2022 ("...sebagaimana telah diubah
+      terakhir dengan Undang-Undang Nomor 7 Tahun 2021 tentang Harmonisasi Peraturan
+      Perpajakan"), not from HPP's own substantive text. A phrase-only probe cannot by itself
+      distinguish "the instrument is ingested" from "the instrument is merely name-checked by
+      something else that is ingested" — worth generalising into the probe/journey contract
+      (e.g. pairing a phrase assertion with an instrument_id match on the SAME retrieved
+      chunk) rather than re-deriving per topic.
+    owner: "kb/ops/probe_retrieval.py owner (cross-topic, not tax-specific)"
+    severity: medium
