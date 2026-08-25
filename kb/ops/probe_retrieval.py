@@ -255,6 +255,54 @@ def unusable_phrase(phrase: str) -> str | None:
     return None
 
 
+# U+241F SYMBOL FOR UNIT SEPARATOR: a character no legal text contains, joined
+# between chunks so a phrase cannot match by straddling the seam between two
+# unrelated documents — a span that exists in nothing anyone ingested.
+CHUNK_SEPARATOR = "\u241f"
+
+
+def unserved_collections(names, lookup) -> list[str]:
+    """Names the running collection manager cannot hand back, sorted.
+
+    `lookup` is injected rather than reached for, and that is the whole point: this
+    is the EXACT predicate search_service.py evaluates (`if not vector_db`) before
+    silently substituting legal_unified, so it must have a test that can fail — and
+    it cannot have one if exercising it requires a live Qdrant. A floor whose only
+    proof needs production is a floor nobody checks.
+    """
+    return sorted({n for n in names if not lookup(n)})
+
+
+def indiscriminate_phrases(journeys, control_chunks) -> list[tuple[int, str]]:
+    """Phrases that also appear in the CONTROL query's results, with their index.
+
+    The control asks an unrelated, deliberately generic question — the standard
+    Indonesian statutory closing formula — and whatever comes back is arbitrary legal
+    text, chosen for a reason that has nothing to do with any journey. A journey's
+    phrase turning up in THAT is not evidence about the journey's instrument; it is
+    evidence the phrase is boilerplate, and a green from it would say only that the
+    corpus contains legal prose.
+
+    Measured 2026-08-25 in visa_oracle: one compliance paragraph is repeated across
+    ~85 of its 90 points. Any phrase drawn from it is hundreds of characters long —
+    it clears MIN_PHRASE_CHARS untouched — and matches nearly every document in the
+    collection. Length was never the property that mattered; discrimination was.
+
+    The check is ONE-DIRECTIONAL and the docstring says so on purpose: appearing in
+    the control's results is damning, absence from five arbitrary chunks proves
+    nothing. It is a cheap floor, not a certificate — the chunks are already fetched,
+    so it costs no query at all.
+    """
+    joiner = " %s " % CHUNK_SEPARATOR
+    haystack = joiner.join(normalize(c.get("text", "")) for c in control_chunks)
+    out = []
+    for i, j in enumerate(journeys, start=1):
+        phrase = normalize(j.get("verbatim_phrase", ""))
+        if phrase and phrase in haystack:
+            out.append((i, j.get("verbatim_phrase", "")))
+    return out
+
+
 def unknown_collections(names) -> list[str]:
     """Names this repo's registry does not define, sorted.
 
@@ -376,7 +424,7 @@ async def run(argv=None) -> int:
     # — which is the EXACT predicate (`if not vector_db`) that triggers the silent
     # substitution downstream. Checking the same condition ourselves closes it by
     # construction rather than by hoping the two stay in agreement.
-    absent = sorted(n for n in asked if not service.collection_manager.get_collection(n))
+    absent = unserved_collections(asked, service.collection_manager.get_collection)
     if absent:
         return refuse(
             args,
@@ -434,6 +482,29 @@ async def run(argv=None) -> int:
             print("Nothing was graded. Check QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY,")
             print("and that %r resolves to a populated collection." % args.collection)
         return 3
+
+    # The control has just proved production is reachable. Its chunks are also the
+    # cheapest boilerplate detector available: they were retrieved for a question
+    # that has nothing to do with any journey.
+    mirrors = indiscriminate_phrases(journeys, control)
+    if mirrors:
+        return refuse(
+            args,
+            "indiscriminate_phrase",
+            "; ".join("journey %d: %r" % (i, ph[:60]) for i, ph in mirrors),
+            ["BROKEN — %d phrase(s) also appear in the CONTROL query's results:"
+             % len(mirrors)]
+            + ["  - journey %d: %r" % (i, ph[:70]) for i, ph in mirrors]
+            + ["",
+               "Nothing was graded. The control asks an unrelated generic question, so "
+               "its results are",
+               "arbitrary legal text. A phrase found there is boilerplate: a green from "
+               "it would say the",
+               "corpus contains legal prose, not that THIS instrument's text came back. "
+               "Length is not the",
+               "property that matters — pick a span only this instrument could have "
+               "produced."],
+        )
 
     if args.json:
         degraded = detect_degraded(root) is not None
