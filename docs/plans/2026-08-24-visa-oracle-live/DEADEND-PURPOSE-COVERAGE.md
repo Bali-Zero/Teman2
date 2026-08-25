@@ -301,9 +301,20 @@ costruisce). Persona #15 passa da `NEEDS_INPUT` a `SUPPORTED_CANDIDATES ['E23']`
 altre 19 personas si muove. Dettaglio, misure e cerimonia di firma: `GOLD-DIVERGENCE-TRIAGE.md`,
 sezione «seq-16».
 
-**Aperto e non deciso qui**: la stessa colonna Hak, voce **2**, concede «Membawa keluarga untuk
-tinggal di wilayah Indonesia» — cioè `FAMILY`. Non è stato aggiunto: il GO era sul turismo, ed è una
-seconda asserzione normativa. Decisione di Zero (Legge 5).
+**Sul `FAMILY` la raccomandazione è cambiata dopo aver letto la cella intera** (correzione a una
+frase precedente di questo stesso blocco): la voce **2** della colonna Hak concede sì «Membawa
+keluarga untuk tinggal di wilayah Indonesia», ma **`sepanjang memenuhi ketentuan peraturan
+perundang-undangan di bidang keimigrasian`** — un diritto derivato e condizionato a portare _altri_,
+che rinvia ad altra normativa (i prodotti E31\*), non uno scopo che il titolare E23 persegue. La
+voce **4**, il turismo, è invece incondizionata. Poiché `covered_purposes` misura gli scopi
+**dichiarati dal richiedente**, `FAMILY` su E23 non è sostenuto dal testo. Resta decisione di Zero
+(Legge 5), ma la raccomandazione ora è **non aggiungerlo**.
+
+**Aperto, e più largo di quanto questo documento supponesse**: la voce 4 è **boilerplate** su decine
+di codici (verbatim su D14, D17, E23A, E23U), e **23 prodotti su 38** nel pack non dichiarano
+`TOURISM`. Il buco che la persona #15 ha fatto emergere su E23 è plausibilmente sistemico — ma
+nessuno ha letto le righe di E28/E30/E31, quindi resta **non verificato** e non va sanato per
+analogia. Lane nel ledger `modus`.
 
 Il punto **(C)** qui sopra — i prodotti di sola review che prendono l'intervista in ostaggio quando
 nulla è supportato — **resta aperto**: seq-16 lo rende meno probabile su questa forma (ora E23 vince

@@ -377,9 +377,17 @@ il payload sorgente seq-16 sullo stesso percorso del driver.
 
 ### La fonte, letta alla fonte
 
-Il PDF del Kepmen non era su disco; ora lo è stato. Scaricato da `kemenimipas.go.id`, **1.906.368
-byte, 80 pagine**, validato per **magic bytes** (`head -c 4` = `%PDF`) e non per stato HTTP — quei
-portali rispondono `200` con una pagina d'errore HTML. Riga E23, colonna **Hak**, voce **4**,
+Il PDF del Kepmen non era su disco; ora lo è stato. Scaricato da `kemenimipas.go.id`,
+**1.906.368 byte, 80 pagine**,
+`sha256 b8e326667c892ab2dfb52be220c82a0716bab6a516fe925c5e45096e9ef81c33` — la provenienza è
+ancorata all'**hash**, non a un percorso di scratch che sparisce — validato per **magic bytes**
+(`od -c -N4` = `%PDF`) e non per stato HTTP, perché quel portale risponde `200` con una pagina
+d'errore HTML. Riletto una terza volta sulla copia di Zero, confermata **byte-identica** (stesso
+sha256), e una **quarta** da un lettore indipendente incaricato di refutare la lettura, non di
+confermarla. Quel lettore ha stabilito i confini di colonna con un metodo migliore del mio: la
+tabella interlaccia Hak / Kewajiban / Larangan sulle stesse righe fisiche, ma **ogni colonna ha la
+propria numerazione indipendente** (Hak 1-5, Kewajiban 1-4, Larangan 1-4), quindi il marcatore sono
+i reset di numerazione, non la posizione orizzontale. Riga E23, colonna **Hak**, voce **4**,
 verbatim:
 
 > «Melakukan kegiatan yang berhubungan dengan **wisata**, melakukan pembelian barang, serta
@@ -430,12 +438,25 @@ difensivo** — se l'artefatto manca il modulo va rosso, non verde. Mutation-che
 
 ### Due cose lasciate fuori, dette invece che taciute
 
-1. **`FAMILY` — non toccato, e forse dovrebbe.** La stessa colonna Hak di E23, voce **2**, concede
-   «Membawa keluarga untuk tinggal di wilayah Indonesia». Per l'analogia su cui questo fold poggia
-   (E33A/E33G portano `FAMILY` accanto allo scopo primario), E23 la vorrebbe. **Non è stata
-   aggiunta**: il GO era sul turismo, e ogni voce di `covered_purposes` è un'asserzione normativa che
-   cambia chi riceve un «sì». Aggiungerne una seconda di mia iniziativa sarebbe legiferare oltre
-   l'istruzione. → **decisione di Zero** (Legge 5), non della sessione.
+1. **`FAMILY` — non aggiunto, e la lettura integrale dice che è giusto così.** ⚠️ Questa voce
+   **corregge una versione precedente di sé stessa**: dicevo «forse dovrebbe», avendo letto solo la
+   voce 2 e non l'intera cella. Le cinque voci della colonna Hak di E23 sono **di natura diversa**.
+   La **4** — turismo, acquisti, visita a parenti e amici — è un'attività del titolare enunciata
+   **senza alcuna condizione**, ed è ciò che seq-16 recepisce. La **2** è «Membawa keluarga untuk
+   tinggal di wilayah Indonesia **sepanjang memenuhi ketentuan peraturan perundang-undangan di
+   bidang keimigrasian**»: un diritto **derivato e condizionato** a portare _altri_, che rinvia
+   esplicitamente ad altra normativa immigratoria — nel motore, i prodotti famiglia E31\*. Il
+   lettore indipendente ha verificato proprio il punto critico, cioè che `sepanjang` appartenga al
+   blocco di testo della voce 2 e non sbordi dalla colonna Kewajiban accanto (che lì recita una
+   frase diversa, `…di bidang ketenagakerjaan`): regge. E ha trovato la stessa clausola verbatim su
+   E23A ed E23U — quindi la condizionalità è un **template di regime**, non una particolarità di
+   E23: l'asimmetria famiglia-condizionata / turismo-incondizionato è sistematica, il che rafforza
+   la lettura invece di indebolirla. Poiché `covered_purposes` misura gli scopi **dichiarati dal
+   richiedente**, chi dichiara `FAMILY` viene _per_ ragioni familiari — forma di E31, non di E23; e
+   il «mengunjungi keluarga dan teman» della voce 4 è _visitare_ dentro un diritto di turismo, non
+   risiedere per famiglia. L'analogia E33A/E33G su cui poggiava la versione precedente è più debole
+   di come l'avevo presentata: sono **righe diverse con la loro colonna Hak**, che non ho aperto. →
+   resta **decisione di Zero** (Legge 5); questa è la raccomandazione aggiornata: **non aggiungerlo**.
 2. **E23U / E23V restano `['EMPLOYMENT']`.** Verificato prima di lasciarli fuori: ciascuno porta
    **una sola** regola, `REQUIRE_REVIEW` a stadio HUMAN_REVIEW, nessuna `SUPPORT` — quindi né il
    limite del compilatore né la copertura-scopi di `evaluator.py:678` (che legge le regole
@@ -476,3 +497,22 @@ PYTHONPATH=. python -m backend.scripts.visa_engine.gold_replay_driver --offline 
 Atteso, e questo è il criterio: il driver deve **raccogliere da solo seq-16** (sceglie il pack
 firmato con sequenza massima) e leggere `explained_divergences: 15 · unexplained_divergences: 0 ·
 overall_pass: true`. Se raccoglie ancora seq-15, la firma non è atterrata dove il driver guarda.
+
+### ⚠️ Il turismo NON è una specialità di E23 — e 23 prodotti su 38 non lo dichiarano
+
+Il lettore indipendente ha trovato un fatto che rovescia l'inquadramento di questa sezione. La voce
+4 della colonna Hak — «wisata, pembelian barang, mengunjungi keluarga dan teman» — **non è
+distintiva di E23**: è **boilerplate** ripetuto su decine di codici. Verificata verbatim su **D14**,
+**D17**, **E23A**, **E23U**; su tutto il documento di 80 pagine «pembelian barang» ricorre **114**
+volte e «keluarga dan» **104**.
+
+E23 è dunque l'anomalia **nel nostro pack**, non nella normativa — è semplicemente il prodotto su
+cui una persona gold ha fatto emergere il buco. Misurato sullo stesso payload seq-16: **23 prodotti
+su 38 non dichiarano `TOURISM`** — `E23U`, `E23V`, i cinque `E28*`, i cinque `E30*`, i nove `E31*`,
+più `C2`, `C6`, `BRIDGING`.
+
+**Non li ho allargati, ed è deliberato.** Dei codici nominati dal lettore, solo `E23U` e `E23V`
+esistono nel nostro pack; `E23A`/`D14`/`D17`/`E23X`/`E23Y` no. Per tutti gli altri — E28, E30, E31 —
+**nessuno ha letto la riga**: allargarli per analogia sarebbe esattamente il passo che ho rifiutato
+di fare sul `FAMILY`. Ogni prodotto vuole la **sua** riga letta alla fonte prima che qualcuno tocchi
+il suo `covered_purposes`. Aperto come lane nel ledger `modus`, non sanato di soppiatto qui.

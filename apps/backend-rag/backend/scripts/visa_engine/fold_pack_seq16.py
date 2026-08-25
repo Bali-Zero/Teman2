@@ -28,29 +28,87 @@ Visa*), Lampiran, "Klasifikasi Visa Tinggal Terbatas", row **E23**, column
     barang, serta mengunjungi keluarga dan teman
 
 An E23 holder has an EXPLICIT right to tourism activity. Provenance, because a
-regulatory edit deserves it: the PDF was downloaded from kemenimipas.go.id
-(1,906,368 bytes, 80 pages), validated by MAGIC BYTES (``head -c 4`` == ``%PDF``,
-not by HTTP status — those portals answer 200 with an HTML error page), and the
-row was extracted twice independently (``pdftotext -layout`` and the raw text
-stream) and then re-read a third time by the session itself before this fold was
-written. Page 35, not the 37-38 an earlier internal factbase estimated.
+regulatory edit deserves it — anchored to a HASH, not to a path or a byte count,
+so it stays checkable after every scratch directory is gone::
+
+    sha256  b8e326667c892ab2dfb52be220c82a0716bab6a516fe925c5e45096e9ef81c33
+    size    1,906,368 bytes   pages 80   magic %PDF
+
+Validated by MAGIC BYTES (``od -c -N4`` == ``%PDF``), never by HTTP status — that
+portal answers 200 with an HTML error page. The row was extracted independently
+FOUR times: three by the authoring session (the last from the owner's own copy of
+the file, confirmed byte-identical by sha256), and once by an independent second
+reader dispatched to REFUTE the reading rather than confirm it.
+
+That second reader established the column boundaries by a better method than the
+first: this table interleaves Hak / Kewajiban / Larangan on the same physical
+lines under ``pdftotext -layout``, but **each column runs its own independent
+numbered list** (Hak 1)-5), Kewajiban 1)-4), Larangan 1)-4)), so the numbering
+resets — not horizontal position — are the unambiguous column marker. It
+confirmed all five Hak items verbatim.
+
+The row is on **page 35**, where ``wisata`` occurs exactly once (checked for
+hyphen-split fragments too). Caveat carried rather than smoothed: the PDF was
+produced by a merge/split tool, and each page's own "- N -" label sits at the TOP
+of its extraction; no off-by-one was detected across pages 34/35/36, but the
+label's provenance is a tool artifact. An earlier internal factbase estimated
+pages 37-38 and NB-2 said "Lampiran B.1" — both wrong on the coordinate while
+right on the substance.
 
 The pack's OWN convention already does this everywhere else: ``el.e33g
 .remote-work`` declares ``["REMOTE_WORK", "TOURISM", "FAMILY"]``, and four more
 rules pair ``SECOND_HOME`` with ``TOURISM``. Measured on seq-15, the bare
-``["EMPLOYMENT"]`` appears exactly TWICE — and both are E23's. It is the
-outlier, not the rule.
+``["EMPLOYMENT"]`` appears exactly TWICE — and both are E23's.
 
-DELIBERATELY OUT OF SCOPE, AND FLAGGED RATHER THAN SILENTLY SKIPPED
+DO NOT read that as "the Kepmen singles out E23". It does the opposite: the
+second reader found item 4 is BOILERPLATE across dozens of visa codes (verbatim
+on D14, D17, E23A, E23U; ``pembelian barang`` occurs 114 times in the 80-page
+document). E23 is the outlier IN OUR PACK, not in the regulation — it is simply
+the product where a gold persona happened to expose the gap. Measured on this
+same payload, **23 of 38 products declare no TOURISM at all**, including E23U
+and E23V whose identical Hak item the reader verified. Whether the others are
+under-declared too is UNVERIFIED — each needs its own row read before anyone
+touches it, which is precisely the discipline this fold followed for E23 and
+refused to shortcut for FAMILY. Recorded as a lane in the modus ledger, not
+silently widened here.
 
-E23's Hak item **2** grants ``Membawa keluarga untuk tinggal di wilayah
-Indonesia`` — a family-residence right, the same clause that plausibly puts
-``FAMILY`` in E33G's list. By the analogy this fold relies on, E23 arguably wants
-``FAMILY`` too. It is NOT added here: the owner's GO was about tourism, and every
-``covered_purposes`` entry is a regulatory assertion that changes who receives a
-"yes". Adding a second one on the session's own reading would be legislating past
-the instruction. Recorded for the owner in the seq-16 test module and in
-GOLD-DIVERGENCE-TRIAGE.md.
+WHY ``FAMILY`` IS NOT ADDED — the full cell says something different
+
+Reading the complete Hak column, not just the one item, settles this against a
+widening. The five entries are NOT of one kind:
+
+* item **1** — work in an employment relationship: the holder's own activity.
+* item **2** — ``Membawa keluarga untuk tinggal di wilayah Indonesia SEPANJANG
+  memenuhi ketentuan peraturan perundang-undangan di bidang keimigrasian``:
+  bringing dependants to reside, **conditional**, and the condition defers to
+  OTHER immigration provisions — in this engine, the family products (E31*),
+  which is where a dependant's own permit comes from. The second reader
+  specifically checked that ``sepanjang`` belongs to item 2's own four-line text
+  block and is not bleeding in from the neighbouring Kewajiban column (which at
+  that point reads an unrelated sentence ending ``...di bidang ketenagakerjaan``)
+  — that was the crux of the reading and it holds. It also found the identical
+  clause verbatim on E23A and E23U, so the conditional is a REGIME-WIDE template,
+  not an E23 peculiarity: the conditional-family / unconditional-tourism
+  asymmetry is systematic, which strengthens this reading rather than weakening
+  it.
+* item **3** — re-entry while the Izin Masuk Kembali is valid.
+* item **4** — tourism, shopping, and visiting family and friends: the holder's
+  own activity, stated with **no condition attached**. This is the one folded in.
+* item **5** — receiving remuneration for the work.
+
+``covered_purposes`` answers "which purposes DECLARED BY THE APPLICANT does this
+product satisfy". Item 2 is a derived, conditional right to bring OTHERS, not a
+purpose the E23 applicant pursues — someone whose declared purpose is ``FAMILY``
+is coming FOR family reasons, which is E31's shape. Item 4's own "mengunjungi
+keluarga dan teman" is VISITING inside a tourism right, not residing for family.
+
+An earlier draft of this docstring argued the opposite from the E33A/E33G analogy
+("they carry FAMILY beside the primary purpose, so E23 wants it too"). That
+analogy is weaker than it read: those are DIFFERENT rows with their own Hak
+columns, which this session has not opened. The tourism widening does not lean on
+it — item 4 is unconditional on its own terms — but the FAMILY case did, and it
+does not survive the full text. Left to the owner (Legge 5) with the reading
+above rather than silently dropped.
 
     PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq16
 """
@@ -121,8 +179,15 @@ _EDITED_PRODUCT_CODE = "E23"
 #: each carries exactly ONE rule and it is ``REQUIRE_REVIEW`` at HUMAN_REVIEW,
 #: never ``SUPPORT`` — so neither the compiler bound nor ``evaluator``'s
 #: purpose-coverage requirement (which reads TRUE *ELIGIBILITY* rules) ever
-#: engages for them. Widening them would assert a regulatory fact with no
-#: consumer. Verified on seq-15 before writing this line.
+#: engages for them. Verified on seq-15 before writing this line.
+#:
+#: BE PRECISE ABOUT WHY, because the normative half points the other way: the
+#: independent reader confirmed E23U's Hak item 4 is VERBATIM IDENTICAL to
+#: E23's, so E23U is under-declared in exactly the same sense E23 was. The
+#: reason to leave it is ENGINE-shaped, not law-shaped — the widening would have
+#: no consumer today. ``test_the_review_only_siblings_were_not_widened`` is the
+#: tripwire: the day either product gains a SUPPORT rule, it goes red and this
+#: decision has to be retaken.
 _UNTOUCHED_SIBLING_PRODUCTS = ("E23U", "E23V")
 
 _BEFORE = ["EMPLOYMENT"]
