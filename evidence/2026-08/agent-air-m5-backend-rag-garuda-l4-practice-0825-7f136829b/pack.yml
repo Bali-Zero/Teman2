@@ -1,0 +1,138 @@
+brief_ref: "evidence/brief.yml"
+lanes:
+  - lane: L4
+    role: build
+    seat: sonnet-5
+receipts:
+  - claim: >
+      Migration 287's forward DDL applies clean against a local Postgres
+      already carrying migrations through 284/285 (garuda_orders,
+      garuda_magic_link).
+    cmd: >
+      psql postgresql://balizero@localhost:5432/nuzantara_test
+      -f /tmp/287_forward.sql
+    exit: 0
+    ts: "2026-08-25T13:15:00Z"
+    seat: sonnet-5
+  - claim: >
+      PracticeRepository's 8-test integration suite passes against a real
+      Postgres, driving orders through the ACTUAL production repository
+      (GarudaOrderRepository.create_order_and_checkout /
+      handle_paid_event) rather than a hand-rolled row — covering: unpaid
+      order has no practice, first paid read mints Received (with journal
+      + outbox rows asserted), second read is idempotent (no duplicate
+      practice/journal/outbox), ownership filter hides another customer's
+      practice and does not side-effect one into existence, 5 concurrent
+      reads of the same paid order never mint two practices, a
+      nonexistent order returns None, and the "no OP-02 event" defensive
+      branch (unit-stubbed after the DB itself proved it unreachable via
+      the append-only journal trigger — see dissent).
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/garuda_portal/test_practice.py -q
+    exit: 0
+    ts: "2026-08-25T13:45:00Z"
+    seat: sonnet-5
+  - claim: >
+      The full related-suite regression (ownership IDOR tests, L3 order
+      repository, L4 magic-link, L4 practice, L7 probe/staleness tripwire)
+      stays green after wiring get_order_and_practice and rewriting
+      ReceivedPracticeStage's reason.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. .venv/bin/pytest
+      backend/tests/app/routers/test_garuda_orders_ownership.py
+      backend/tests/services/garuda_orders/
+      backend/tests/services/garuda_portal/
+      backend/tests/services/garuda_ops/
+      backend/tests/app/routers/test_garuda_portal_auth.py
+      backend/tests/app/routers/test_garuda_portal_auth_mounted.py -q
+    exit: 0
+    ts: "2026-08-25T13:47:00Z"
+    seat: sonnet-5
+  - claim: >
+      The rewritten test_received_practice_claim_is_still_true (staleness
+      tripwire) passes, together with its two upstream siblings it now
+      shares a predicate shape with (sandbox_checkout, signed_webhook_paid).
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/garuda_ops/test_blocked_stage_staleness.py -q
+    exit: 0
+    ts: "2026-08-25T13:46:00Z"
+    seat: sonnet-5
+  - claim: >
+      The FastAPI import chain (dependencies.py, and specifically
+      garuda_orders_router.py's new import of PracticeRepository) is
+      clean — no circular import, no rogue-AI import removal.
+    cmd: >
+      PYTHONPATH=. python -c
+      "from backend.app.dependencies import get_current_user;
+      from backend.app.routers.garuda_orders_router import router;
+      print('OK')"
+    exit: 0
+    ts: "2026-08-25T13:20:00Z"
+    seat: sonnet-5
+  - claim: >
+      Pre-commit hooks (migration-number uniqueness, migration ROLLBACK
+      marker presence, anti-reward-hacking lint, secret scan, Python
+      lint, FastAPI import-chain check, OFF-LIMITS file check) all pass
+      on the committed diff.
+    cmd: "git commit (pre-commit hook output captured in full)"
+    exit: 0
+    ts: "2026-08-25T13:48:12Z"
+    seat: sonnet-5
+dissent:
+  - seat: sonnet-5 (self, bite-proof — generator!=grader holds even
+      against one's own guard code)
+    objection: >
+      The first version of the "no OP-02 journal event" defensive-branch
+      test tried to force the anomaly by DELETEing the OP-02 row after a
+      real payment. That raised
+      `asyncpg.exceptions.CheckViolationError: garuda_order_journal is
+      append-only -- DELETE is forbidden` from migration 284's own guard
+      trigger. The scenario `_create_received_practice`'s docstring
+      claims is "structurally unreachable" is unreachable more strongly
+      than assumed (enforced by the database, not merely by the
+      application code's own transactional discipline) — but that also
+      means the defensive branch cannot be exercised end-to-end through
+      the public PracticeRepository surface with a real Postgres at all.
+      Replaced with a narrow unit test stubbing the connection directly
+      against `_create_received_practice`, which does exercise the
+      "logs and returns None" behavior, but is weaker evidence than an
+      integration test would have been for a scenario that (correctly)
+      cannot occur in production.
+    status: RETRACTED
+  - seat: sonnet-5 (self, bite-proof)
+    objection: >
+      test_concurrent_reads_of_a_paid_order_never_duplicate_pr01 gathers
+      5 coroutines against a pool fixture with min_size=1, max_size=2 —
+      this proves idempotency across overlapping/interleaved reads through
+      a shared pool, but with only 2 real connections available the 5
+      calls cannot all be truly simultaneous at the Postgres transaction
+      level the way 5 independent OS processes would be. The actual
+      structural guarantee is the UNIQUE constraint on
+      `garuda_practices.source_paid_journal_event_id` (migration 287),
+      which the test's assertions (exactly 1 practice row, exactly 1
+      PR-01 journal event, exactly 1 practice_id across all 5 results)
+      correctly pin regardless of how the pool scheduled the underlying
+      connections — but the test's own docstring should not be read as
+      "proved under true N-way DB-level concurrency", only "proved the
+      constraint the code relies on actually holds and the ON CONFLICT
+      fallback path actually returns the winner's row".
+    status: PLAUSIBLE
+  - seat: sonnet-5 (self, cross-check against a peer PR)
+    objection: >
+      Verified before writing any router code that PR4910 (order-ownership
+      IDOR fix) had actually MERGED into feature/garuda-voa, not merely
+      opened, and rebased this branch onto the refreshed integration
+      branch before touching garuda_orders_router.py — per the team-lead
+      brief's explicit instruction to extend PR4910's filter, not race it.
+      Also verified PR4912 (staleness-tripwire correction on the same
+      synthetic_probe.py file) had merged first, so this PR's edit to
+      ReceivedPracticeStage builds on PR4912's corrected sandbox_checkout/
+      signed_webhook_paid reasons rather than the stale ones they
+      replaced.
+    status: RETRACTED
+pii_scan: clean

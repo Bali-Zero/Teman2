@@ -139,19 +139,69 @@ def test_signed_webhook_paid_claim_is_still_true() -> None:
 
 
 def test_received_practice_claim_is_still_true() -> None:
-    """received_practice's reason: "no garuda_portal/practice package
-    exists yet". Still true: `services/garuda_portal/` holds
-    `magic_link.py`/`magic_link_store.py`/`idempotency.py` and no
-    practice-named module. (`garuda_ops/crm_handoff.py` exists and is
-    fully tested, but only against fakes -- `ports.py`'s own docstring
-    says nothing here may import asyncpg or a table name directly, and no
-    production file constructs `CrmHandoffService` with a real adapter --
-    so the CRM-handoff half of "one Received practice" is not wired either,
-    independent of the portal-package claim this test checks.)"""
-    garuda_portal_dir = _BACKEND_ROOT / "services" / "garuda_portal"
-    practice_modules = sorted(p.name for p in garuda_portal_dir.glob("*practice*"))
-    assert practice_modules == [], (
-        f"found {practice_modules} under services/garuda_portal/ -- "
-        "received_practice's reason is stale. Go verify end-to-end and "
-        "unblock the stage."
+    """received_practice's reason (post-L4-practice-module correction):
+    "L4's garuda_portal/practice module is real ... but this stage is
+    still unreachable ... sandbox_checkout/signed_webhook_paid block first
+    on the SAME orchestrator composition gap".
+
+    CORRECTED (team-lead review, 2026-08-25): the first version of this
+    predicate checked `services/garuda_portal/practice.py`'s mere
+    existence by FIXED PATH -- one step better than the glob it replaced
+    (`sorted(p.name for p in garuda_portal_dir.glob("*practice*"))`,
+    #4912's own recorded dissent on that PR), but still a filename check,
+    not a behavioural one: a refactor that renamed `practice.py` to
+    `progress.py` while keeping the class/wiring intact would fail this
+    test for the WRONG reason (file missing) even though the capability
+    is fully alive, and a refactor that gutted the wiring but left the
+    file's name untouched would pass it for the WRONG reason too. Two
+    behavioural predicates replace it, mirroring the shape
+    `test_sandbox_checkout_claim_is_still_true` /
+    `test_signed_webhook_paid_claim_is_still_true` already use (a
+    regex over ACTUAL CODE BEHAVIOUR, immune to which file it lives in):
+
+    1. A production file still calls `PracticeRepository(...).
+       get_order_and_practice_view(...)` -- the wiring `garuda_orders_
+       router.py::get_order_and_practice` actually performs, independent
+       of which module defines the class or what it is named on disk.
+    2. No production file still returns the OLD hardcoded
+       `"practice": None` literal `get_order_and_practice` used to answer
+       unconditionally before this wiring existed -- a direct regression
+       guard: if that literal ever comes back, this assertion (not just
+       the router's own tests) catches it.
+
+    What the reason ALSO says, in PROSE only (team-lead correction,
+    2026-08-25): this stage is STILL unreachable via the SAME two
+    upstream composition gaps `test_sandbox_checkout_claim_is_still_true`
+    / `test_signed_webhook_paid_claim_is_still_true` already check as
+    THEIR OWN predicate. This test does NOT duplicate that check. It was
+    tried -- asserting no production file assigns
+    `app.state.garuda_order_repository` or `app.state.garuda_payment_
+    provider` (the same two patterns those two tests own) -- and an
+    independent verifier proved it wrong by merging this PR
+    together with #4920 (which assigns exactly those two names onto
+    `app.state`) into a throwaway worktree at the product tip: two green
+    PRs, two textually-clean merges, guaranteed red the instant both
+    land, because this test and `test_sandbox_checkout_claim_is_still_
+    true`/`test_signed_webhook_paid_claim_is_still_true` would then
+    assert OPPOSITE things about the same two patterns -- and neither
+    PR's own CI can ever see that, since each runs against a base
+    without the other. The fix is not a smarter regex: it is to not
+    duplicate another stage's predicate at all. `received_practice`'s
+    OWN capability is the two behavioural checks below; the upstream
+    composition gap belongs to `sandbox_checkout`/`signed_webhook_paid`,
+    which already own it. If either of THEIR predicates goes stale, THEIR
+    tests go red first -- L3 can then move without this stage's test
+    breaking too, which is the point of one-predicate-per-stage."""
+    wiring_call = re.compile(r"PracticeRepository\([^)]*\)\.get_order_and_practice_view\(")
+    assert _any_production_file_matches(wiring_call), (
+        "no production file calls PracticeRepository(...).get_order_and_practice_view(...) "
+        "-- received_practice's reason claims this wiring is real and answers "
+        "get_order_and_practice. Go verify and rewrite the reason to whatever "
+        "actually serves (or fails to serve) practice now."
+    )
+    hardcoded_null_practice = re.compile(r'"practice"\s*:\s*None')
+    assert not _any_production_file_matches(hardcoded_null_practice), (
+        'a production file still returns the literal "practice": None -- '
+        "received_practice's reason claims that hardcode was replaced by real "
+        "PR-01 serving. Regression: go verify get_order_and_practice again."
     )
