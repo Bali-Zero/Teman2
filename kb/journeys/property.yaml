@@ -3,84 +3,166 @@
 # MANDATE §3 G2: written BEFORE any ingestion/repair work, by a different family than
 # the one that will build. Every verbatim_phrase below was copied character-for-character
 # from an actual chunk returned by a direct scroll of production `legal_unified_hybrid_hybrid`
-# on 2026-08-25 (never invented) — see the lane report for the raw tool output each one
-# came from. probe_state/probe_run_at were then set by actually running
-# kb/ops/probe_retrieval.py against production, per §3: "the probe suite runs against
-# production TODAY and fails RED cleanly".
+# on 2026-08-25 (never invented). probe_state/probe_run_at were set by actually running
+# kb/ops/probe_retrieval.py against production for the FINAL question wording below, on
+# 2026-08-25 (second run, after the traffic-driven rewrite below).
 #
-# MEASURED 2026-08-25, one real run against production `legal_unified` (control query
-# "peraturan perundang-undangan" found at rank 2/5 — production reachable): 3 red / 4
-# green (journeys 1,2,3 red; 4,5,6,7 green). This run hit kb/ops/probe_retrieval.py's
-# own documented DEGRADED PATH — installed google-genai 1.75.0 vs pinned 2.18.1 makes
-# Gemini query expansion raise and get swallowed, so retrieval ran WITHOUT multilingual
-# expansion. Per that tool's own doc: a red measured under this condition is a LOWER
-# BOUND on production, never an upper one — journeys 1-3 may retrieve green once probed
-# from an environment with the pinned client. Re-run before trusting a red here as final.
-# Journeys 1 and 2 additionally test a NARROWLY-SCOPED clause (forest-land clearing /
-# forest-zone land acquisition) against a BROADLY-PHRASED question (general Hak Milik
-# eligibility / general Hak Pengelolaan procedure) — their red may reflect a phrase/
-# question topic mismatch as much as a retrieval defect; journey 3 (villa Hak Pakai
-# duration) is the tightest question-to-phrase match of the three and is the one worth
-# trusting most as a genuine retrieval-quality red.
+# !! DEGRADED PATH at measurement time: installed google-genai 1.75.0 vs repo pin 2.18.1 —
+# Gemini query expansion raised and was swallowed on every one of the 9 questions below
+# (see raw probe log), so retrieval ran WITHOUT multilingual expansion. Every red below is
+# therefore a measured LOWER BOUND, not a final verdict — production with working expansion
+# may retrieve some of these correctly. The greens are unaffected by this caveat (they
+# already succeeded on the degraded path).
+#
+# REVISED after the orchestrator's traffic measurement (60,004 inbound WhatsApp messages,
+# 10,929 question-bearing; lane D = 187 of them). Findings applied: (1) not one real
+# client question in the sample named an instrument — most questions below are now
+# `phrasing: client`, worded the way a client actually asks, while verbatim_phrase stays
+# the statute's own words; (2) journey 9 is the cross-topic shape real traffic produces
+# (secondary-home KITAS deposit vs. Hak Pakai) — lane A owns the immigration side, this
+# lane's own Hak Pakai instrument anchors the assertion; (3) three journeys are non-English
+# (2 Indonesian, 1 Spanish) — lane D's traffic is the most Indonesian-heavy of the four;
+# (4) no journey below asks a case-state question ("is my certificate ready") — those are
+# not knowledge questions and the KB must not answer them.
+#
+# Second probe run (2026-08-25), production `legal_unified`, verdict DRIFT (file was still
+# `untested` at run time — expected, since journeys are written red-first before recording):
+#   #  RECORDED  MEASURED  RANK
+#   1  untested  red       -
+#   2  untested  red       -
+#   3  untested  green     6
+#   4  untested  green     2
+#   5  untested  green     3
+#   6  untested  green     1
+#   7  untested  green     6
+#   8  untested  green     1
+#   9  untested  red       -
+# 3 red (1, 2, 9), 6 green (3-8). Journey 9's red matches the orchestrator's own
+# expectation for that journey. Journeys 1-2's red is plausible under the DEGRADED PATH
+# caveat above — an English question about foreign land ownership may need multilingual
+# query expansion (currently broken) to surface the Indonesian-language UU_5_1960 text.
 
 schema_version: 1
 lane: D
 
 journeys:
-  - question: >
-      What land rights exist under Indonesian law, and can a foreigner hold land
-      directly (Hak Milik) the way an Indonesian citizen can?
-    verbatim_phrase: "hasi l hutan hanya dapat ipunyai oleh warga- negara Indonesia"
+  # ── 1: Hak Milik / citizens-only (UU 5/1960 Pasal 21) — the single most load-bearing
+  #      fact for "can a foreigner own land", stated in the statute's own clean words.
+  #      MEASURED RED 2026-08-25 (rank: not in top 5) — see DEGRADED PATH note above.
+  - question: "Can a foreigner actually own land in Bali outright, or only rent/lease it long-term?"
+    verbatim_phrase: "Hanya warga-negara Indonesia dapat mempunyai hak milik."
     instrument_id: UU_5_1960
+    phrasing: client
+    language: en
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
 
+  # ── 2: real traffic shape from the orchestrator's brief, paraphrased — mixed-partner /
+  #      nominee arrangement. Same instrument, the transfer-prohibition elucidation clause.
+  #      MEASURED RED 2026-08-25 — see DEGRADED PATH note above.
   - question: >
-      What is the procedure for a government body or state-owned enterprise to be
-      granted Hak Pengelolaan (management right) over state land, and how does that
-      differ from a private party's Hak Atas Tanah?
+      We want to buy a villa together — can my Indonesian partner hold the land in their
+      name, and can I still be legally part of it?
+    verbatim_phrase: "Hak milik tidak dapat dipunyai oleh orang asing dan pemindahan hak milik kepada orang asing dilarang"
+    instrument_id: UU_5_1960
+    phrasing: client
+    language: en
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 3: Indonesian, client-phrased. Hak Pengelolaan acquisition procedure.
+  #      MEASURED GREEN 2026-08-25, rank 6.
+  - question: "Bagaimana cara mengurus hak pengelolaan atas tanah negara untuk instansi pemerintah?"
     verbatim_phrase: "Perolehan tanah Hak Pengelolaan atau Hak Atas Tanah"
     instrument_id: Permen_18_2021
-    probe_state: red
+    phrasing: client
+    language: id
+    cross_topic: false
+    probe_state: green
     probe_run_at: "2026-08-25"
 
-  - question: >
-      A foreigner wants to hold a villa in Bali on Hak Pakai. How long can the right
-      last, and can it be extended and then renewed?
+  # ── 4: Indonesian, client-phrased. Villa Hak Pakai duration — the orchestrator's
+  #      specifically-flagged journey, now also asked in the language most of this
+  #      lane's traffic actually uses.
+  #      MEASURED GREEN 2026-08-25, rank 2.
+  - question: "Berapa lama hak pakai villa bisa dipegang orang asing, dan bisa diperpanjang atau diperbarui?"
     verbatim_phrase: "paling lama 30 (tiga puluh) tahun, diperpanjang untuk jangka waktu paling lama 20 (dua puluh) tahun"
     instrument_id: PP_6630_2021
-    probe_state: red
+    phrasing: client
+    language: id
+    cross_topic: false
+    probe_state: green
     probe_run_at: "2026-08-25"
 
+  # ── 5: Spanish, client-phrased. HGB/Hak Pakai -> Hak Milik conversion for a WNI.
+  #      MEASURED GREEN 2026-08-25, rank 3.
   - question: >
-      An Indonesian citizen holds Hak Guna Bangunan or Hak Pakai on the house they
-      live in — can that be upgraded to full ownership (Hak Milik), and who has to
-      apply for it?
+      ¿Puede convertirse un Hak Guna Bangunan o Hak Pakai sobre una vivienda en Hak
+      Milik (propiedad plena), y quién debe solicitarlo?
     verbatim_phrase: "Hak guna bangunan dan hak pakai yang dimiliki oleh Warga Negara Indonesia, yang digunakan dan dimanfaatkan untuk rumah tinggal"
     instrument_id: PP_6630_2021
+    phrasing: client
+    language: es
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
 
-  - question: >
-      What is a Satuan Rumah Susun (strata title / apartment unit) under Indonesian
-      property law?
+  # ── 6: English, client-phrased. Strata title definition.
+  #      MEASURED GREEN 2026-08-25, rank 1.
+  - question: "What is a Satuan Rumah Susun (strata title unit), and can a foreigner hold one?"
     verbatim_phrase: "Satuan Rumah Susun ada lah unit rumah susun yang tujuan utamanya digunakan"
     instrument_id: PP_6630_2021
+    phrasing: client
+    language: en
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
 
+  # ── 7: technical/analyst register, not a client's own words — HGB term length.
+  #      MEASURED GREEN 2026-08-25, rank 6.
   - question: >
-      How long is a Hak Guna Bangunan (building-use right) granted for nationally,
-      and how does that compare to the Hak Pakai term?
+      What is the statutory term length for Hak Guna Bangunan nationally, and how does
+      it compare to the Hak Pakai term?
     verbatim_phrase: "Hak Guna Bangunan diberikan untuk jangka waktu paling lama 30 (tiga puluh) tahun, diperpanjang untuk jangka waktu paling lama 20 (dua puluh) tahun"
     instrument_id: Permen_18_2021
+    phrasing: statute
+    language: en
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
 
-  - question: >
-      A client was told "UU 14/2023" governs land use planning in Bali — what does
-      that instrument actually say, and is it national law?
+  # ── 8: the identity-defect journey. Cites an instrument by design (testing whether
+  #      that citation surfaces the TRUE content) — must stay phrasing: statute.
+  #      MEASURED GREEN 2026-08-25, rank 1 — production DOES surface the Pergub content
+  #      under this citation; whether the client is told it is a Pergub and not a
+  #      national UU is a downstream generation-layer question, not a retrieval gap.
+  - question: "A client was told 'UU 14/2023' governs land-use planning in Bali — what does that instrument actually say, and is it national law?"
     verbatim_phrase: "RENCANA PEMBANGUNAN DAERAH PROVINSI BALI TAHUN 2024-2026"
     instrument_id: UU_14_2023
+    phrasing: statute
+    language: en
+    cross_topic: false
     probe_state: green
+    probe_run_at: "2026-08-25"
+
+  # ── 9: CROSS-TOPIC. Real traffic shape (secondary-home KITAS deposit vs. Hak Pakai).
+  #      Lane A owns the immigration/deposit-waiver rule; this lane's own instrument
+  #      anchors what Hak Pakai actually is and how long it lasts, which the compound
+  #      client question depends on. No citation in the question -> phrasing: client.
+  #      MEASURED RED 2026-08-25 — EXPECTED (orchestrator's own prediction for this
+  #      journey): the KB has no bridge between lane A's KITAS-deposit rule and lane D's
+  #      Hak Pakai duration clause, so a compound cross-lane question retrieves neither
+  #      half coherently. This red is the finding, not a defect in the journey.
+  - question: >
+      For a second home visa, do I still need the bank deposit, or does owning the
+      villa under hak pakai count instead?
+    verbatim_phrase: "paling lama 30 (tiga puluh) tahun, diperpanjang untuk jangka waktu paling lama 20 (dua puluh) tahun"
+    instrument_id: PP_6630_2021
+    phrasing: client
+    language: en
+    cross_topic: true
+    cross_topic_lane: A
+    probe_state: red
     probe_run_at: "2026-08-25"
