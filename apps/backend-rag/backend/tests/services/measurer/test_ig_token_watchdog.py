@@ -565,13 +565,40 @@ async def test_cli_refresh_with_persist_target_succeeds(clean_env, tmp_path):
 
 @pytest.mark.asyncio
 async def test_cli_fresh_state_exits_zero_without_network(clean_env, tmp_path):
+    """The fixture's 50-day cushion must be judged against the SAME instant
+    it was built from (an injected clock), never the real wall clock — a
+    fixed expiry compared to `datetime.now()` is a countdown that starts the
+    day this test is written and silently crosses the threshold later
+    (scar W129)."""
     state_file = _state(tmp_path, days_left=50)
     clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
     clean_env.setenv("IG_TOKEN_STATE_FILE", str(state_file))
     handler = GraphHandler()
     async with _client(handler) as client:
-        assert await run_from_env(http_client=client) == 0
+        assert await run_from_env(http_client=client, now=NOW) == 0
     assert handler.ig_refresh_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_cli_injected_clock_governs_not_the_real_clock(clean_env, tmp_path):
+    """Proof the injection is real: the SAME 50-day fixture reports fresh
+    when `now` is pinned before its expiry, and stale when pinned after —
+    regardless of what the real system clock says either time."""
+    state_file = _state(tmp_path, days_left=50)
+    clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
+    clean_env.setenv("IG_TOKEN_STATE_FILE", str(state_file))
+
+    handler_before = GraphHandler()
+    async with _client(handler_before) as client:
+        before_days = NOW + timedelta(days=1)
+        assert await run_from_env(http_client=client, now=before_days) == 0
+    assert handler_before.ig_refresh_calls == 0
+
+    handler_after = GraphHandler()
+    async with _client(handler_after) as client:
+        far_after = NOW + timedelta(days=365)
+        assert await run_from_env(http_client=client, now=far_after) == 2
+    assert handler_after.ig_refresh_calls == 1
 
 
 @pytest.mark.asyncio

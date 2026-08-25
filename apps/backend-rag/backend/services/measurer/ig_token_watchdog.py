@@ -612,12 +612,24 @@ def _resolve_token_from_env() -> tuple[str, str] | None:
     return None
 
 
-async def run_from_env(*, http_client: httpx.AsyncClient | None = None) -> int:
+async def run_from_env(
+    *,
+    http_client: httpx.AsyncClient | None = None,
+    now: datetime | None = None,
+) -> int:
     """CLI body: read config from env, run one pass, persist the result.
 
     A refresh that cannot be persisted is a FAILURE (exit 2), not a warning:
     the new token would be dropped and the cron would sit green while the
     live token marches toward expiry (family #2, esiste≠armato).
+
+    ``now`` is an injectable clock (default: the real wall clock via
+    ``run_watchdog``'s own ``now or datetime.now(timezone.utc)`` fallback).
+    Production callers never pass it — only tests, so a state file's expiry
+    is judged against the SAME instant its fixture was built from, not
+    whatever the real clock reads on the day the suite happens to run
+    (scar W129, family #6/#9: a frozen fixture compared to a live clock is a
+    countdown that expires silently).
     """
     resolved = _resolve_token_from_env()
     if resolved is None:
@@ -668,6 +680,7 @@ async def run_from_env(*, http_client: httpx.AsyncClient | None = None) -> int:
             threshold_days=threshold,
             state_file=state_file,
             http_client=http_client,
+            now=now,
         )
     finally:
         if http_client is None:
