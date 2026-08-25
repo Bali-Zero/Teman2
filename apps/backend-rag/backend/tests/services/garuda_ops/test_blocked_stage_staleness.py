@@ -108,39 +108,53 @@ def test_persistence_policy_claim_is_still_true() -> None:
 
 
 def test_sandbox_checkout_claim_is_still_true() -> None:
-    """sandbox_checkout's reason claims: "no order/payment-port package
-    exists (owner decision 1: payment provider)". FALSE as of this PR --
-    `services/garuda_orders/` (8 modules) and `services/payments/xendit.py`
-    both exist, and `garuda_orders_router.py` is mounted
-    (`router_manifest.py`/`router_registration.py`). This is the red-first
-    proof: the package claim is stale, which is exactly why this test
-    checks the package's ACTUAL remaining precondition instead --
-    `get_repository()` in `garuda_orders_router.py` fails closed with 503
-    until the orchestrator assigns a real `GarudaOrderRepository` onto
-    `app.state.garuda_order_repository`, which no production file does
-    (only `test_webhook_router.py` does, for its own fakes)."""
+    """sandbox_checkout's reason (CORRECTED 2026-08-25, composition PR
+    #4920): the orchestrator now DOES assign a real `GarudaOrderRepository`
+    onto `app.state.garuda_order_repository` in `service_initializer.py` --
+    that assignment existing is no longer the blocker, it is the fact this
+    test now expects. The real remaining blocker moved one level up: the
+    wiring's own gate on `GARUDA_XENDIT_SECRET_KEY` (no Xendit sandbox
+    account provisioned yet -- a business/owner decision, not a code gap).
+    This test checks BOTH halves mechanically: the assignment exists (the
+    wiring shipped) AND the gate still names the env var (the business
+    precondition is still what stands between the assignment and a live
+    request actually reaching a real repository). If either half goes
+    false, sandbox_checkout's reason is stale again."""
     assignment = re.compile(r"garuda_order_repository\s*=(?!=)")
-    assert not _any_production_file_matches(assignment), (
-        "a production file now assigns app.state.garuda_order_repository -- "
-        "sandbox_checkout's real blocker (no orchestrator wiring) may be "
-        "gone. Go verify end-to-end and unblock the stage."
+    gate = re.compile(r"GARUDA_XENDIT_SECRET_KEY")
+    assert _any_production_file_matches(assignment), (
+        "no production file assigns app.state.garuda_order_repository -- "
+        "the orchestrator wiring this reason describes appears to have "
+        "been reverted. Go verify and restore it or rewrite the reason."
+    )
+    assert _any_production_file_matches(gate), (
+        "no production file gates the order-repository wiring on "
+        "GARUDA_XENDIT_SECRET_KEY -- either the gate was removed (wiring "
+        "is now unconditional, in which case sandbox_checkout may be "
+        "ready to unblock for real) or renamed (update this predicate to "
+        "match). Go verify end-to-end before touching the stage."
     )
 
 
 def test_signed_webhook_paid_claim_is_still_true() -> None:
-    """signed_webhook_paid's reason claims: "no payment-port/webhook
-    implementation exists yet". FALSE as of this PR --
-    `services/payments/xendit.py` implements `verify_signature`/
-    `parse_event`/`refund` against `payments/port.py`'s `PaymentProvider`,
-    and `garuda_orders_router.py:receive_payment_webhook` calls both. The
-    real remaining precondition: `request.app.state.garuda_payment_provider`
-    is read (never assigned) by that route outside tests, so every real
-    callback still 503s."""
+    """signed_webhook_paid's reason (CORRECTED 2026-08-25, composition PR
+    #4920): same shape as sandbox_checkout above -- the orchestrator now
+    assigns a real `PaymentProvider` onto
+    `app.state.garuda_payment_provider`, gated on the same
+    `GARUDA_XENDIT_SECRET_KEY` business precondition."""
     assignment = re.compile(r"garuda_payment_provider\s*=(?!=)")
-    assert not _any_production_file_matches(assignment), (
-        "a production file now assigns app.state.garuda_payment_provider -- "
-        "signed_webhook_paid's real blocker (no orchestrator wiring) may be "
-        "gone. Go verify end-to-end and unblock the stage."
+    gate = re.compile(r"GARUDA_XENDIT_SECRET_KEY")
+    assert _any_production_file_matches(assignment), (
+        "no production file assigns app.state.garuda_payment_provider -- "
+        "the orchestrator wiring this reason describes appears to have "
+        "been reverted. Go verify and restore it or rewrite the reason."
+    )
+    assert _any_production_file_matches(gate), (
+        "no production file gates the payment-provider wiring on "
+        "GARUDA_XENDIT_SECRET_KEY -- either the gate was removed (wiring "
+        "is now unconditional, in which case signed_webhook_paid may be "
+        "ready to unblock for real) or renamed (update this predicate to "
+        "match). Go verify end-to-end before touching the stage."
     )
 
 

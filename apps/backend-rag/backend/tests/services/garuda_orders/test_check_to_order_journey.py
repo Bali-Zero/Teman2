@@ -28,7 +28,11 @@ asyncpg = pytest.importorskip("asyncpg")
 from backend.services.garuda_flow.check_store import PostgresCheckStore
 from backend.services.garuda_flow.civil_clock import garuda_today
 from backend.services.garuda_flow.intake import CaseType
-from backend.services.garuda_flow.public_api import EligibilityCheckOutcome, IdempotencyConflict
+from backend.services.garuda_flow.public_api import (
+    EligibilityCheckOutcome,
+    IdempotencyConflict,
+    PersistencePolicyUnavailable,
+)
 from backend.services.garuda_orders.eligibility_lookup import PostgresEligibilityCheckLookup
 from backend.services.garuda_orders.errors import OrderNotReady, ResultNotFound
 from backend.services.garuda_orders.idempotency import canonical_payload_sha256, scoped_key_sha256
@@ -279,6 +283,40 @@ async def test_create_conflict_same_key_different_payload_raises(check_store) ->
             canonical_request=_accept_canonical_request(case_type="extension")
             | {"voa_expiry_date": _TODAY.isoformat()},
             outcome=outcome,
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_with_no_signed_policy_fails_closed_cleanly_not_a_raw_db_exception(
+    check_store, pool
+) -> None:
+    """Load-bearing for the composition wiring decision (team-lead review,
+    2026-08-25): is it safe to wire the real PostgresCheckStore onto
+    app.state unconditionally, or only once Zero signs a GARUDA_CHECK
+    policy? This proves `create()`'s own pre-check
+    (`_policy_available` -> `PersistencePolicyUnavailable`) runs BEFORE the
+    INSERT, so the database's `INTO STRICT` trigger's raw
+    `asyncpg.RaiseError` never surfaces through this path -- the router's
+    existing `except PersistencePolicyUnavailable: return _error(...)`
+    handler still produces a clean 503, exactly matching
+    UnconfiguredCheckStore's behavior today. Closes the fixture-seeded
+    GARUDA_CHECK policy mid-test to simulate the real pre-signature state
+    (the `pool` fixture's own teardown close is then a safe no-op on an
+    already-closed row)."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE public.visa_decision_retention_policies
+               SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+             WHERE environment = 'TEST' AND policy_scope = 'GARUDA_CHECK'
+               AND upper(effective_period) IS NULL
+            """
+        )
+    with pytest.raises(PersistencePolicyUnavailable):
+        await check_store.create(
+            idempotency_key="journey-no-policy-key-0000001",
+            canonical_request=_accept_canonical_request(),
+            outcome=_accept_outcome(),
         )
 
 
