@@ -105,6 +105,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -121,6 +122,35 @@ REPO = os.environ.get("QUEUE_UNSTICK_REPO", "Bali-Zero/Teman2")
 # requires those measurements first — see PENDING-ARMS S12/C3 item (c).
 UPDATE_CAP = int(os.environ.get("QUEUE_UNSTICK_CAP", "1"))
 RECENT_COMMIT_SECONDS = int(os.environ.get("QUEUE_UNSTICK_RECENT_SECONDS", "300"))
+
+# ── Re-warm: GitHub answers UNKNOWN, and the asking is what fixes it ──────────
+#
+# A merge into the base branch invalidates `mergeStateStatus` for EVERY open PR.
+# The first query afterwards reads `UNKNOWN` and is ITSELF what triggers the
+# recomputation; ~40s later the values are real, and stay real while the base is
+# static. So a tick that queries ONCE is spending its query on the warm-up and
+# then classifying on the blind answer — it skips `status_UNKNOWN`, acts on
+# nothing, and looks like a healthy quiet tick in the log.
+#
+# Measured 2026-08-25 on Bali-Zero/Teman2 with main frozen at b5b1be8e3 (HEAD
+# checked before AND after, so no merge polluted the sample):
+#     16:09:45 -> 37 UNKNOWN   (first query after a merge)
+#     16:10:21 -> 1
+#     16:11:40 -> 1
+#     16:12:58 -> 3
+# and the three live ticks that preceded it: 0 UNKNOWN (warmed 60s earlier by a
+# --dry-run), 0 (base had not moved), 29 (#4886 landed 6 min before).
+#
+# THRESHOLD, and why it is not a guess: the two populations are far apart. Warm
+# baseline sat at 1-3 of ~38 (3-8%) — some PRs are legitimately UNKNOWN and no
+# amount of waiting resolves them. Blind sat at 29-37 of 38-39 (75-95%). Any
+# value in 10-50% separates them; 0.25 is the middle of that gap. This is a
+# SEPARATOR between two measured populations, not a tuned performance knob —
+# unlike UPDATE_CAP above, which is honestly labelled a placeholder.
+REWARM_UNKNOWN_RATIO = float(os.environ.get("QUEUE_UNSTICK_REWARM_RATIO", "0.25"))
+# 45s, not 36s: the measurement showed 37->1 within 36s, so 45 buys margin
+# without approaching the 10-minute tick interval.
+REWARM_WAIT_SECONDS = int(os.environ.get("QUEUE_UNSTICK_REWARM_WAIT", "45"))
 HOLD_LABELS = {"hold", "suspended"}
 STATE_DIR = Path(os.environ.get("QUEUE_UNSTICK_STATE_DIR", os.path.expanduser("~/.agent/decisions/state")))
 DIRTY_SEEN_FILE = STATE_DIR / "queue_unstick_dirty_seen.json"
@@ -191,6 +221,73 @@ def fetch_open_prs(repo: str = REPO) -> list[dict]:
         else:
             break
     return prs
+
+
+def _rewarm_enabled() -> bool:
+    return os.environ.get("QUEUE_UNSTICK_REWARM", "true").strip().lower() not in ("0", "false", "no", "off")
+
+
+def rewarm_if_blind(
+    prs: list[dict],
+    repo: str = REPO,
+    *,
+    fetch=None,
+    sleep=None,
+    wait_seconds: int | None = None,
+    ratio: float | None = None,
+) -> tuple[list[dict], dict]:
+    """If the first fetch came back mostly UNKNOWN, wait and fetch ONCE more.
+
+    Returns ``(prs, info)``. ``info`` always carries ``rewarmed`` and ``reason``
+    so the caller can put it in the summary line — a behaviour that changes what
+    the tick acts on and leaves no trace in the log is exactly the silent-organ
+    shape superscar #2 exists to catch.
+
+    Deliberately AT MOST ONE extra fetch, enforced by construction (no loop):
+    if the base branch keeps moving, the honest outcome is "still blind this
+    tick", not an unbounded retry inside a cron.
+
+    A failed re-fetch is NOT an error: it falls back to the original list, which
+    is precisely the behaviour this function replaced. Blind is the old normal,
+    so degrading to it costs nothing and must not redden the tick.
+    """
+    fetch = fetch or fetch_open_prs
+    sleep = sleep or time.sleep
+    wait_seconds = REWARM_WAIT_SECONDS if wait_seconds is None else wait_seconds
+    ratio = REWARM_UNKNOWN_RATIO if ratio is None else ratio
+
+    examined = len(prs)
+    unknown_before = sum(1 for pr in prs if pr.get("merge_state_status") == "UNKNOWN")
+    info = {
+        "rewarmed": False,
+        "reason": "",
+        "unknown_before": unknown_before,
+        "unknown_after": None,
+        "examined": examined,
+    }
+
+    if examined == 0:
+        # Guard BEFORE the division, not after — an empty repo must not raise.
+        info["reason"] = "no_open_prs"
+        return prs, info
+    if not _rewarm_enabled():
+        info["reason"] = "disabled"
+        return prs, info
+    if unknown_before / examined < ratio:
+        info["reason"] = f"already_warm({unknown_before}/{examined})"
+        return prs, info
+
+    sleep(wait_seconds)
+    try:
+        fresh = fetch(repo)
+    except Exception as exc:  # noqa: BLE001 — falling back to the blind list is safe
+        info["reason"] = f"refetch_failed({str(exc)[:120]})"
+        return prs, info
+
+    info["rewarmed"] = True
+    info["unknown_after"] = sum(1 for pr in fresh if pr.get("merge_state_status") == "UNKNOWN")
+    info["reason"] = f"rewarmed_after_{wait_seconds}s"
+    return fresh, info
 
 
 def _normalize_pr(node: dict) -> dict:
@@ -545,6 +642,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"QUEUE_UNSTICK_SUMMARY cannot_verify=true error={str(exc)[:400]!r}")
         return 4
 
+    # The first fetch may be the warm-up rather than the answer — see the
+    # REWARM_* constants. Runs in --dry-run too, on purpose: a dry-run that
+    # skipped this would paint a rosier picture of coverage than a real tick.
+    prs, rewarm = rewarm_if_blind(prs, args.repo)
+    if rewarm["rewarmed"]:
+        print(
+            f"rewarm: base moved, first read was blind "
+            f"({rewarm['unknown_before']}/{rewarm['examined']} UNKNOWN) — "
+            f"refetched, now {rewarm['unknown_after']} UNKNOWN"
+        )
+
     seen_dirty = {} if args.dry_run else load_dirty_seen()
     plan = plan_actions(prs, now, cap=UPDATE_CAP, recent_seconds=RECENT_COMMIT_SECONDS, seen_dirty=seen_dirty)
 
@@ -618,6 +726,9 @@ def main(argv: list[str] | None = None) -> int:
         f"dirty_signalled={len(signalled)} dirty_signal_failed={len(signal_failed)} "
         f"dirty_deduped={len(dirty_deduped)} "
         f"cap={UPDATE_CAP} "
+        f"rewarmed={str(rewarm['rewarmed']).lower()} "
+        f"unknown={rewarm['unknown_before'] if not rewarm['rewarmed'] else rewarm['unknown_after']} "
+        f"rewarm_reason={rewarm['reason']!r} "
         f"skipped={len(plan['skipped']) + len(dirty_deduped)} dry_run={str(args.dry_run).lower()} "
         f"skip_reasons={json.dumps(skip_reasons, sort_keys=True)}"
     )
