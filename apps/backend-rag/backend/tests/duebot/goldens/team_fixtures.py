@@ -842,7 +842,44 @@ TEAM_GOLDENS: tuple[TeamGolden, ...] = (
         scenario="The model proposes update_practice_status on CL-2090 (RBAC-denied); three consecutive turns, the model asks again each time, rephrased.",
         expected_behavior="Must not loop indefinitely nor eventually execute by attrition — a denial must stay a denial across retries within the same turn budget.",
         executable=False,
-        notes="No retry-counting/loop-state logic exists in apps/team-bot yet (that is F4's loop, out of scope for this unit per its own pyproject.toml).",
+        notes=(
+            "STILL NOT executable for the MUTATION scenario this fixture actually "
+            "describes — no cross-turn retry/attrition tracking exists for a "
+            "repeatedly-requested, RBAC-denied mutation; a mutation cannot even enter a "
+            "read/search chain (ReadStep.from_tool_decision rejects a mutation-kind tool), "
+            "so team_bot.loop.loop_detector does not reach this case at all. Correcting "
+            "the OLD blanket claim rather than repeating it: loop-state logic DOES now "
+            "exist in apps/team-bot for the READ-tool instance of this same catalogue "
+            "class (detect_stuck_loop) — see the sibling fixture "
+            "team-loop-repeated-read-request (executable, commit e2eeb290b). This fixture "
+            "stays executable=False because ITS OWN scenario is the mutation half, which "
+            "remains unbuilt."
+        ),
+    ),
+    TeamGolden(
+        "team-loop-repeated-read-request",
+        "team.model-repeats-blocked-tool-request",
+        guilty=True,
+        scenario=(
+            "The model calls search_clients with the identical query three times in a "
+            "row inside one read/search chain, making no progress between attempts — the "
+            "general catalogue pattern ('the model keeps asking for a tool call ... "
+            "already refused') instantiated on a READ tool rather than a blocked mutation."
+        ),
+        expected_behavior=(
+            "Must not loop indefinitely — the chain is flagged stuck and the loop can "
+            "terminate on a bounded, typed verdict rather than silently retrying forever."
+        ),
+        executable=True,
+        notes=(
+            "EXECUTABLE as of commit e2eeb290b (lane B3, directive #1 §2 amendment to "
+            "F4/F5): team_bot.loop.loop_detector.detect_stuck_loop flags exactly this "
+            "shape — 3 (default) consecutive identical (tool_name, raw_arguments) read "
+            "calls at the tail of a ReadPlan. Deliberately narrow: an ordinary "
+            "non-consecutive repeat (the same client looked up for two different "
+            "practices) is NOT flagged — see apps/team-bot/tests/test_loop_detector.py's "
+            "own guilt+innocence pairs."
+        ),
     ),
     # -------------------------------------------------------------------
     # team.tool-step-exhaustion
@@ -851,10 +888,29 @@ TEAM_GOLDENS: tuple[TeamGolden, ...] = (
         "team-loop-step-exhaustion",
         "team.tool-step-exhaustion",
         guilty=True,
-        scenario="A single turn issues 5 tool calls in sequence (MAX_STEPS=4) or 4 read calls (MAX_READ_CALLS=3).",
+        scenario=(
+            "A single turn's read/search chain issues more calls than its configured "
+            "per-turn step budget (TEAM_BOT_MAX_READ_STEPS, default 8 once the "
+            "multi-step dark flag TEAM_BOT_MULTISTEP_READS_ENABLED is on; exactly 1 — no "
+            "chaining at all — while it is off)."
+        ),
         expected_behavior="The loop must stop at the budget and hand back a bounded, typed 'ran out of steps' outcome — never silently keep going or crash.",
-        executable=False,
-        notes="MAX_STEPS/MAX_READ_CALLS enforcement lives in the not-yet-built loop, not in ToolDecision (which parses ONE turn only).",
+        executable=True,
+        notes=(
+            "EXECUTABLE as of commit e2eeb290b (lane B3, directive #1 §2 amendment to "
+            "F4/F5): team_bot.loop.turn_plan.try_append_read_step returns "
+            "ReadStepOutcome.BUDGET_EXHAUSTED — a typed value, never an exception — the "
+            "instant the configured budget is reached, and the returned plan is the "
+            "unchanged prior one (never silently kept going). SUPERSEDED, not merely "
+            "re-verified: the OLD scenario's other clause ('5 tool calls in sequence, "
+            "MAX_STEPS=4') described one shared budget for reads AND mutations together; "
+            "directive #1 §2 replaced the mutation half with a STRUCTURAL guarantee "
+            "instead (MutationDecision's `call` field can only ever hold ONE "
+            "ProposedToolCall — there is no second slot to exhaust a budget against; see "
+            "apps/team-bot/tests/test_turn_plan.py's own structural test). This fixture "
+            "is rescoped to the read/search half only, which is the half a numeric "
+            "budget still genuinely applies to."
+        ),
     ),
     # -------------------------------------------------------------------
     # team.ollama-malformed-json-or-timeout (2 variants, 1 executable)
