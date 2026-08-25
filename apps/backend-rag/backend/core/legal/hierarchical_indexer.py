@@ -20,6 +20,10 @@ from backend.core.legal.quality_validators import (
 logger = logging.getLogger(__name__)
 
 
+class LegalIndexIntegrityError(RuntimeError):
+    """Raised when two chunks of one document would occupy the same point id."""
+
+
 @dataclass
 class HierarchicalChunk:
     """Chunk con riferimenti gerarchici"""
@@ -302,6 +306,53 @@ class HierarchicalIndexer:
         )
         chunks_to_index.append(chunk)
 
+    @staticmethod
+    def _disambiguate_chunk_ids(chunks: list[HierarchicalChunk]) -> int:
+        """Make every chunk_id unique WITHIN this document. Returns how many were renamed.
+
+        Why this exists, measured on 2026-08-25. A chunk's point id is
+        ``uuid5(NAMESPACE_LEGAL, chunk_id)`` and a chunk_id is
+        ``f"{document_id}_Pasal_{number}"``. An Indonesian law is published
+        together with its PENJELASAN, the official article-by-article
+        commentary, which repeats the SAME article numbers. Both therefore
+        produced the same chunk_id, the same point id, and the second write --
+        the commentary, since it comes later in the PDF -- silently replaced the
+        first: the article itself.
+
+        Ingesting UU 40/2007 (Perseroan Terbatas) reported 378 chunks created
+        and left 202 points in Qdrant. 176 articles were destroyed by their own
+        commentary. What remained under Pasal 1, 7, 32, 33 and 109 -- including
+        the minimum-capital and paid-up-capital rules a PT PMA is founded on --
+        was the commentary text, in several cases the literal words
+        "Cukup jelas" ("self-explanatory"). An overwrite is a SUCCESSFUL upsert:
+        nothing failed, nothing was logged, and the count in the ingest result
+        was the number of chunks BUILT, never the number that survived.
+
+        Occurrences after the first get a ``#dupN`` suffix, deterministic in
+        document order, so re-ingesting the same PDF reproduces the same ids.
+        ``#`` cannot occur in a generated id, so the suffix cannot collide with
+        a real one -- and the function still asserts that afterwards rather than
+        trusting the argument.
+        """
+        seen: dict[str, int] = {}
+        renamed = 0
+        for chunk in chunks:
+            base = chunk.chunk_id
+            occurrence = seen.get(base, 0) + 1
+            seen[base] = occurrence
+            if occurrence > 1:
+                chunk.chunk_id = f"{base}#dup{occurrence}"
+                renamed += 1
+
+        identifiers = [chunk.chunk_id for chunk in chunks]
+        if len(set(identifiers)) != len(identifiers):
+            duplicates = sorted({i for i in identifiers if identifiers.count(i) > 1})
+            raise LegalIndexIntegrityError(
+                "Chunk ids remain ambiguous after disambiguation; refusing to "
+                f"upsert because a write would destroy a sibling: {duplicates[:5]}",
+            )
+        return renamed
+
     async def _upsert_hierarchical_chunks(
         self,
         chunks: list[HierarchicalChunk],
@@ -313,6 +364,16 @@ class HierarchicalIndexer:
         import uuid
 
         qdrant = qdrant_client or self.qdrant
+
+        # No chunk may silently destroy a sibling. See _disambiguate_chunk_ids.
+        renamed = self._disambiguate_chunk_ids(chunks)
+        if renamed:
+            logger.warning(
+                "Disambiguated %s of %s chunk ids that would have overwritten a sibling "
+                "(a law published with its Penjelasan repeats its article numbers)",
+                renamed,
+                len(chunks),
+            )
 
         # Namespace UUID per generare ID deterministici (stesso chunk_id → stesso UUID)
         NAMESPACE_LEGAL = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
@@ -331,6 +392,10 @@ class HierarchicalIndexer:
                 "hierarchy_level": chunk.hierarchy_level,
                 "parent_chunk_ids": chunk.parent_chunk_ids,
                 "bab_title": chunk.bab_title,
+                # The readable key the point id is derived from. `chunk_id` below
+                # is overwritten with the uuid5, which is unreadable and made this
+                # class of collision undiagnosable from the stored payload alone.
+                "chunk_key": chunk.chunk_id,
             }
 
             chunk_texts.append(chunk.text)
