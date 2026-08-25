@@ -701,6 +701,19 @@ class Settings(BaseSettings):
         default=None,
         description="WhatsApp App Secret for HMAC-SHA256 webhook signature verification. Set via WHATSAPP_APP_SECRET env var.",
     )
+    meta_webhook_require_signature: bool = Field(
+        default=False,
+        description=(
+            "Shared WhatsApp + Instagram knob: when True, webhook signature "
+            "verification fails CLOSED (rejects the request) if no app "
+            "secret is configured for that surface, instead of skipping "
+            "verification. Default False preserves today's fail-open "
+            "behavior — flipping this to True is a deliberate production "
+            "decision (provision the secret first), not something this "
+            "code changes on its own. Set via META_WEBHOOK_REQUIRE_SIGNATURE "
+            "env var."
+        ),
+    )
     whatsapp_api_token: str | None = Field(
         default=None,
         description="WhatsApp Cloud API access token from Meta Business. Set via WHATSAPP_API_TOKEN env var.",
@@ -859,6 +872,10 @@ class Settings(BaseSettings):
 
         return v
 
+    instagram_app_secret: str | None = Field(
+        default=None,
+        description="Instagram App Secret for HMAC-SHA256 webhook signature verification (Meta Graph API). Set via INSTAGRAM_APP_SECRET env var.",
+    )
     instagram_access_token: str | None = None  # Set via INSTAGRAM_ACCESS_TOKEN env var
     instagram_account_id: str | None = None  # Set via INSTAGRAM_ACCOUNT_ID env var
 
