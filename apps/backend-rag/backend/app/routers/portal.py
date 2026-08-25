@@ -162,7 +162,8 @@ async def get_current_client(
             # don't have one (most likely) we 422 with a helpful message.
             async with db_pool.acquire() as conn:
                 own = await conn.fetchrow(
-                    "SELECT id, email, full_name FROM clients WHERE LOWER(email) = LOWER($1)",
+                    "SELECT id, email, full_name FROM clients "
+                    "WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL",
                     user_email,
                 )
             if own:
@@ -188,7 +189,8 @@ async def get_current_client(
 
         async with db_pool.acquire() as conn:
             target = await conn.fetchrow(
-                "SELECT id, email, full_name FROM clients WHERE id = $1",
+                "SELECT id, email, full_name FROM clients "
+                "WHERE id = $1 AND deleted_at IS NULL",
                 as_client_id,
             )
             if not target:

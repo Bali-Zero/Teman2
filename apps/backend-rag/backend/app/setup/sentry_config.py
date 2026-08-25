@@ -64,13 +64,30 @@ _PII_KEY_SUBSTRINGS: tuple[str, ...] = (
     "last_name",
     "full_name",
     "contact_name",
+    # Added 2026-08-25 (GARUDA VOA L4 magic-link auth, CodeQL
+    # py/clear-text-storage-sensitive-data #8755 review): covers
+    # `account_session_secret` / `result_session_secret` / any future
+    # `*_secret` field. Substring is safe here — unlike "token" below, no
+    # legitimate non-PII field in this codebase's debug/breadcrumb data is
+    # named with a "secret" substring; every hit IS a credential.
+    "secret",
 )
 
 # Keys redacted on exact match only (case-insensitive). These are bare
 # identity fields whose literal name is PII but whose substring appears in
 # innocuous debug keys (e.g. "name" in "filename", "username" would match
 # "name" as a substring).
-_PII_EXACT_KEYS: frozenset[str] = frozenset({"name", "username"})
+#
+# "token" added 2026-08-25 (same review as "secret" above) for the magic-link
+# bearer (`MagicLinkExchange.token`). It is EXACT-match, deliberately not a
+# substring: this codebase logs `max_tokens`, `token_count`, `tokenizer`,
+# `input_tokens`/`output_tokens` constantly for LLM call debugging (see
+# `backend/llm/genai_client.py`, `generate_structured` callers) — substring
+# `"token"` would redact every one of those and make Sentry useless for LLM
+# diagnosis. This does NOT cover `access_token`/`refresh_token`/`csrf_token`
+# (Drive OAuth, auth cookies) — those are a pre-existing gap, out of scope
+# for the L4 PR that added this line; tracked separately, not fixed here.
+_PII_EXACT_KEYS: frozenset[str] = frozenset({"name", "username", "token"})
 
 # Keys to treat as "query-string-ish" — the value is a URL-encoded param
 # blob that we redact by key rather than parsing.
