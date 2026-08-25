@@ -205,7 +205,10 @@ def extract_text_from_pdf(
                     # Last resort: try vision model (skip if already in async context)
                     logger.info("OCR failed, trying vision model as last resort...")
                     try:
-                        from backend.services.multimodal.pdf_vision_service import PDFVisionService
+                        from backend.services.multimodal.pdf_vision_service import (
+                            IncompleteTranscriptionError,
+                            PDFVisionService,
+                        )
 
                         vision_service = PDFVisionService()
                         # Check if we're in an async context
@@ -233,6 +236,13 @@ def extract_text_from_pdf(
                                 if return_page_markers:
                                     return vision_text, []
                                 return vision_text
+                    except IncompleteTranscriptionError as vision_err:
+                        # A partially transcribed document must not fall through
+                        # to the generic "No text extracted" below: that message
+                        # would report the opposite of what happened and hide
+                        # which pages are missing.
+                        logger.error("%s", vision_err)
+                        raise DocumentParseError(str(vision_err)) from vision_err
                     except Exception as vision_err:
                         logger.warning("Vision extraction failed: %s", vision_err)
 
@@ -274,11 +284,22 @@ async def extract_text_from_pdf_ocr_async(file_path: str) -> str:
 
     Both problems are gone by delegating to the one real implementation.
     """
-    try:
-        from backend.services.multimodal.pdf_vision_service import PDFVisionService
+    from backend.services.multimodal.pdf_vision_service import (
+        IncompleteTranscriptionError,
+        PDFVisionService,
+    )
 
+    try:
         text = await PDFVisionService().transcribe_scanned_pdf(file_path)
         return text or ""
+    except IncompleteTranscriptionError as e:
+        # ADDED 2026-08-25. Everything else here degrades to "" on purpose, and
+        # that is right for a page we could not read at all. It is WRONG for a
+        # document we read in part: returning "" would report "nothing found"
+        # while returning the survivors would store an amputated law as if it
+        # were whole. Only a typed refusal carries the truth upward.
+        logger.error("%s", e)
+        raise DocumentParseError(str(e)) from e
     except Exception as e:
         logger.error("Vision OCR extraction failed: %s", e)
         return ""

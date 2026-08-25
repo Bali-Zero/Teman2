@@ -32,12 +32,41 @@ def scanned_pdf(tmp_path):
     """A two-page PDF with no text layer, i.e. what a scan looks like."""
     document = fitz.open()
     for _ in range(2):
-        document.new_page(width=200, height=200)
+        page = document.new_page(width=200, height=200)
+        # A real scan has ink on it. An all-white fixture would sail past the
+        # ink gate as "blank" and these tests would assert on a model that was
+        # never asked anything.
+        page.draw_rect(fitz.Rect(20, 20, 180, 180), color=(0, 0, 0), fill=(0, 0, 0))
     path = tmp_path / "scan.pdf"
     document.save(str(path))
     document.close()
     assert sum(len(page.get_text()) for page in fitz.open(str(path))) == 0
     return str(path)
+
+
+def _inked_scan(tmp_path, pages, name="inked.pdf"):
+    """A scan whose pages carry INK but no text layer.
+
+    The blank-page rule is measured on pixels, so a fixture of empty pages
+    cannot exercise it: an empty page is legitimately blank and is skipped by
+    design. Pages that must count as MISSING have to look written.
+    """
+    document = fitz.open()
+    for inked in pages:
+        page = document.new_page(width=200, height=200)
+        if inked:
+            page.draw_rect(fitz.Rect(20, 20, 180, 180), color=(0, 0, 0), fill=(0, 0, 0))
+    path = tmp_path / name
+    document.save(str(path))
+    document.close()
+    assert sum(len(page.get_text()) for page in fitz.open(str(path))) == 0
+    return str(path)
+
+
+@pytest.fixture
+def inked_scan(tmp_path):
+    """Three pages that all look written."""
+    return _inked_scan(tmp_path, [True, True, True])
 
 
 def _service(monkeypatch, *, ollama=None, gemini=None):
@@ -128,22 +157,327 @@ def test_the_sovereignty_gate_still_governs_the_cloud_fallback(monkeypatch, scan
     assert asyncio.run(service.transcribe_scanned_pdf(scanned_pdf)) is None
 
 
-def test_a_page_that_fails_does_not_lose_the_rest_of_the_document(monkeypatch, scanned_pdf):
+def test_a_transient_page_failure_is_retried_and_the_document_survives_whole(
+    monkeypatch,
+    inked_scan,
+):
+    """REVERSED 2026-08-25.
+
+    This test used to assert that a failed page simply drops out and the rest
+    of the document is returned -- "most of a decree beats none of it". Its
+    first live run disproved it: a real three-page decree came back as 1,204 of
+    6,109 characters because pages 2 and 3 timed out against a cold vision
+    model, and it was stored looking whole. The cure is not to salvage the
+    survivors, it is to RETRY the page (which is what recovered it by hand) and
+    to refuse the document if the page is still missing.
+    """
     service = PDFVisionService()
     calls = {"n": 0}
 
-    async def flaky(prompt, image_base64):
+    async def cold_then_warm(prompt, image_base64):
         calls["n"] += 1
         if calls["n"] == 1:
-            raise RuntimeError("render blew up")
-        return "PAGE TWO"
+            raise TimeoutError("vision model still loading")
+        return "HALAMAN"
 
     async def no_gemini(prompt, image_base64):
         return None
 
-    monkeypatch.setattr(service, "_analyze_via_ollama", flaky)
+    monkeypatch.setattr(service, "_analyze_via_ollama", cold_then_warm)
     monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
-    assert asyncio.run(service.transcribe_scanned_pdf(scanned_pdf)) == "PAGE TWO"
+    result = asyncio.run(service.transcribe_scanned_pdf(inked_scan))
+    assert result == "HALAMAN\n\nHALAMAN\n\nHALAMAN"
+    assert calls["n"] == 4  # one page cost two attempts, the other two cost one
+
+
+# ---------------------------------------------------------------------------
+# GUILT -- the completeness contract (added 2026-08-25)
+# ---------------------------------------------------------------------------
+
+
+def test_a_page_that_never_transcribes_refuses_the_whole_document(monkeypatch, inked_scan):
+    """The defect this cures: 1,204 of 6,109 characters, stored as a decree."""
+    service = PDFVisionService()
+    seen: list[int] = []
+
+    async def silent_on_the_second_page(prompt, image_base64):
+        seen.append(1)
+        # call 1 = page 1; calls 2 and 3 = page 2's two attempts, both silent;
+        # call 4 = page 3.
+        return None if len(seen) in (2, 3) else "ISI HALAMAN"
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", silent_on_the_second_page)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+
+    with pytest.raises(vision_module.IncompleteTranscriptionError) as excinfo:
+        asyncio.run(service.transcribe_scanned_pdf(inked_scan))
+
+    error = excinfo.value
+    assert error.missing_pages == [2]
+    assert error.page_count == 3
+    assert error.transcribed_chars > 0
+    assert "2" in str(error)
+
+
+def test_the_refusal_reaches_the_async_parser_as_a_parse_error(monkeypatch, inked_scan):
+    """`extract_text_from_pdf_ocr_async` degrades to "" on every other failure.
+    On THIS one it must not: "" would report nothing found while a partial
+    document had in fact been read."""
+    from backend.core import parsers
+    from backend.core.parsers import DocumentParseError
+
+    async def refuse(self, pdf_path, max_pages=None, **kwargs):
+        raise vision_module.IncompleteTranscriptionError(pdf_path, [2], 3, 1204)
+
+    monkeypatch.setattr(PDFVisionService, "transcribe_scanned_pdf", refuse)
+    with pytest.raises(DocumentParseError) as excinfo:
+        asyncio.run(parsers.extract_text_from_pdf_ocr_async(inked_scan))
+    assert "Incomplete" in str(excinfo.value)
+    assert "[2]" in str(excinfo.value)
+
+
+def test_the_sync_last_resort_names_the_missing_pages_not_no_text(monkeypatch, inked_scan):
+    from backend.core import parsers
+    from backend.core.parsers import DocumentParseError
+
+    async def refuse(self, pdf_path, max_pages=None, **kwargs):
+        raise vision_module.IncompleteTranscriptionError(pdf_path, [2, 3], 3, 1204)
+
+    monkeypatch.setattr(PDFVisionService, "transcribe_scanned_pdf", refuse)
+    monkeypatch.setattr(parsers, "extract_text_from_pdf_ocr", lambda path: "")
+    with pytest.raises(DocumentParseError) as excinfo:
+        parsers.extract_text_from_pdf(inked_scan)
+    message = str(excinfo.value)
+    assert "Incomplete" in message
+    assert "No text extracted" not in message
+
+
+# ---------------------------------------------------------------------------
+# INNOCENCE -- the contract must not refuse honest documents
+# ---------------------------------------------------------------------------
+
+
+def test_a_genuinely_blank_page_does_not_refuse_the_document(monkeypatch, tmp_path):
+    """The empty verso of a two-sided scan is silent because it is empty."""
+    path = _inked_scan(tmp_path, [True, False], name="one-blank.pdf")
+    service = PDFVisionService()
+    answers = iter(["ISI"])
+
+    async def only_the_inked_page_answers(prompt, image_base64):
+        return next(answers, None)
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", only_the_inked_page_answers)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    assert asyncio.run(service.transcribe_scanned_pdf(path)) == "ISI"
+
+
+def test_a_page_bearing_ink_that_stays_silent_is_never_called_blank(monkeypatch, tmp_path):
+    """The guilty twin of the test above: same shape, inked second page."""
+    path = _inked_scan(tmp_path, [True, True], name="both-inked.pdf")
+    service = PDFVisionService()
+    answers = iter(["ISI"])
+
+    async def only_the_first_page_answers(prompt, image_base64):
+        return next(answers, None)
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", only_the_first_page_answers)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    with pytest.raises(vision_module.IncompleteTranscriptionError):
+        asyncio.run(service.transcribe_scanned_pdf(path))
+
+
+def test_allow_partial_returns_the_survivors_for_a_caller_that_asked(monkeypatch, tmp_path):
+    path = _inked_scan(tmp_path, [True, True], name="partial-ok.pdf")
+    service = PDFVisionService()
+    answers = iter(["ISI"])
+
+    async def only_the_first_page_answers(prompt, image_base64):
+        return next(answers, None)
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", only_the_first_page_answers)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    result = asyncio.run(service.transcribe_scanned_pdf(path, allow_partial=True))
+    assert result == "ISI"
+
+
+def test_a_page_that_cannot_even_be_rendered_counts_as_missing(monkeypatch, tmp_path):
+    """An unmeasurable page must not be given the benefit of the doubt."""
+    path = _inked_scan(tmp_path, [True, True], name="unrenderable.pdf")
+    service = PDFVisionService()
+    real_render = service._render_page_to_image
+
+    def render_page_two_blows_up(pdf_path, page_number):
+        if page_number == 2:
+            raise OSError("pixmap allocation failed")
+        return real_render(pdf_path, page_number)
+
+    async def answer(prompt, image_base64):
+        return "ISI"
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_render_page_to_image", render_page_two_blows_up)
+    monkeypatch.setattr(service, "_analyze_via_ollama", answer)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    with pytest.raises(vision_module.IncompleteTranscriptionError) as excinfo:
+        asyncio.run(service.transcribe_scanned_pdf(path))
+    assert excinfo.value.missing_pages == [2]
+
+
+def test_a_whole_document_costs_exactly_one_attempt_per_page(monkeypatch, inked_scan):
+    """The retry must not double every call on the happy path."""
+    service = PDFVisionService()
+    calls = {"n": 0}
+
+    async def always_answers(prompt, image_base64):
+        calls["n"] += 1
+        return "ISI"
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", always_answers)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    assert asyncio.run(service.transcribe_scanned_pdf(inked_scan)) is not None
+    assert calls["n"] == 3
+
+
+def test_a_seal_only_page_does_not_refuse_the_document(monkeypatch, tmp_path):
+    """A signature/seal/map page is INKED and carries no text. Pixels cannot
+    tell it apart from a page the model failed on, so the model is asked to say
+    so -- and its answer is honoured.
+
+    Found by an independent refuter on 2026-08-25: without this, the first
+    Indonesian decree with a stamped signature page -- which is most of them --
+    would have been refused whole.
+    """
+    path = _inked_scan(tmp_path, [True, True], name="seal.pdf")
+    service = PDFVisionService()
+    answers = iter(["ISI HALAMAN", vision_module.NO_TEXT_SENTINEL])
+
+    async def page_two_is_a_seal(prompt, image_base64):
+        return next(answers, None)
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", page_two_is_a_seal)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    assert asyncio.run(service.transcribe_scanned_pdf(path)) == "ISI HALAMAN"
+
+
+def test_the_declaration_must_be_the_whole_answer_not_a_phrase_inside_it(
+    monkeypatch,
+    tmp_path,
+):
+    """Innocence twin of the test above: a page whose real text merely QUOTES
+    the sentinel is transcribed, not discarded."""
+    path = _inked_scan(tmp_path, [True], name="quoting.pdf")
+    service = PDFVisionService()
+    body = f"Pasal 1: sistem menuliskan {vision_module.NO_TEXT_SENTINEL} pada halaman kosong."
+
+    async def quotes_the_sentinel(prompt, image_base64):
+        return body
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", quotes_the_sentinel)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    assert asyncio.run(service.transcribe_scanned_pdf(path)) == body
+
+
+def test_an_inked_page_that_stays_silent_is_still_missing(monkeypatch, tmp_path):
+    """The sentinel must not become a way for silence to pass. A model that
+    ignores the instruction costs a loud refusal, never a quiet hole."""
+    path = _inked_scan(tmp_path, [True, True], name="silent-inked.pdf")
+    service = PDFVisionService()
+    answers = iter(["ISI"])
+
+    async def page_two_says_nothing_at_all(prompt, image_base64):
+        return next(answers, None)
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", page_two_says_nothing_at_all)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    with pytest.raises(vision_module.IncompleteTranscriptionError):
+        asyncio.run(service.transcribe_scanned_pdf(path))
+
+
+def test_a_page_with_no_ink_is_never_sent_to_the_vision_model(monkeypatch, tmp_path):
+    """Two ~30s attempts per blank verso is a double-sided scan spending minutes
+    to learn what one millisecond of pixel counting already knows."""
+    path = _inked_scan(tmp_path, [True, False, False], name="versos.pdf")
+    service = PDFVisionService()
+    calls = {"n": 0}
+
+    async def count(prompt, image_base64):
+        calls["n"] += 1
+        return "ISI"
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", count)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    assert asyncio.run(service.transcribe_scanned_pdf(path)) == "ISI"
+    assert calls["n"] == 1  # the two blank versos cost nothing
+
+
+def test_the_prompt_actually_asks_for_the_sentinel(monkeypatch, tmp_path):
+    """A contract that reads the sentinel while the model is never told to emit
+    it would be a rule with no counterpart -- green in tests, silent in life."""
+    assert vision_module.NO_TEXT_SENTINEL in PDFVisionService.TRANSCRIPTION_PROMPT
+
+    seen: list[str] = []
+    path = _inked_scan(tmp_path, [True], name="prompt.pdf")
+    service = PDFVisionService()
+
+    async def record(prompt, image_base64):
+        seen.append(prompt)
+        return "ISI"
+
+    async def no_gemini(prompt, image_base64):
+        return None
+
+    monkeypatch.setattr(service, "_analyze_via_ollama", record)
+    monkeypatch.setattr(service, "_analyze_via_gemini", no_gemini)
+    asyncio.run(service.transcribe_scanned_pdf(path))
+    assert seen and vision_module.NO_TEXT_SENTINEL in seen[0]
+
+
+def test_the_ink_measurement_separates_a_written_line_from_an_empty_page(tmp_path):
+    """Measured 2026-08-25: one short line on A4 = 0.049% ink, a bare page
+    number = 0.003%, an empty page = 0.000%, a real scanned decree 4.7-8.4%."""
+    document = fitz.open()
+    document.new_page(width=595, height=842)  # page 1: empty
+    written = document.new_page(width=595, height=842)
+    written.insert_text((72, 400), "Pasal 5 dihapus.", fontsize=11)
+    path = tmp_path / "ink.pdf"
+    document.save(str(path))
+    document.close()
+
+    service = PDFVisionService()
+    empty_ratio = service._page_ink_ratio(service._render_page_to_image(str(path), 1))
+    written_ratio = service._page_ink_ratio(service._render_page_to_image(str(path), 2))
+
+    assert empty_ratio < vision_module.BLANK_PAGE_INK_RATIO
+    assert written_ratio > vision_module.BLANK_PAGE_INK_RATIO
 
 
 def test_the_cloud_rate_limit_pause_never_runs_on_the_local_path(monkeypatch, scanned_pdf):
@@ -169,3 +503,42 @@ def test_an_unopenable_file_returns_none_not_an_exception(monkeypatch, tmp_path)
     broken = tmp_path / "not-a.pdf"
     broken.write_bytes(b"definitely not a pdf")
     assert asyncio.run(PDFVisionService().transcribe_scanned_pdf(str(broken))) is None
+
+
+# ---------------------------------------------------------------------------
+# The refusal must keep its meaning all the way up the ingestion stack
+# ---------------------------------------------------------------------------
+
+
+def test_a_half_read_document_is_not_sent_round_the_ocr_retry_again():
+    """`legal_ingestion_service` decides whether to give a scan a second, fuller
+    pass by looking for "No text extracted" IN THE MESSAGE. A half-read document
+    must not reach that branch -- the fuller pass already ran and came back
+    short -- and the decision must not depend on the wording of an error."""
+    from backend.core.parsers import DocumentParseError
+    from backend.services.ingestion import legal_ingestion_service as mod
+
+    cause = vision_module.IncompleteTranscriptionError("/x.pdf", [2], 3, 1204)
+    wrapped = DocumentParseError(str(cause))
+    wrapped.__cause__ = cause
+
+    assert "No text extracted" not in str(wrapped)  # the substring test misses it
+    assert isinstance(wrapped.__cause__, vision_module.IncompleteTranscriptionError)
+    assert mod._failure_stage(wrapped) is mod.IngestionStage.PARSING
+
+
+def test_a_reading_failure_is_not_filed_as_a_completed_ingestion():
+    """The stage used to be read off the word "parse" appearing in the message:
+    "Incomplete vision transcription of ..." contains no such word and was
+    recorded as COMPLETION -- a document that never got past reading, filed as
+    having reached the end."""
+    from backend.core.parsers import DocumentParseError
+    from backend.services.ingestion import legal_ingestion_service as mod
+
+    assert mod._failure_stage(DocumentParseError("Incomplete vision transcription of /x.pdf")) is (
+        mod.IngestionStage.PARSING
+    )
+    # innocence: a genuine late-stage failure is still COMPLETION
+    assert mod._failure_stage(RuntimeError("qdrant upsert rejected the batch")) is (
+        mod.IngestionStage.COMPLETION
+    )
