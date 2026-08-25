@@ -1,4 +1,4 @@
-# Persona #15 non è un vicolo cieco vivo: il wizard non sa dichiarare due scopi
+# Persona #15 non è un vicolo cieco vivo — ma due prodotti danno una risposta SBAGLIATA in silenzio
 
 > Misurato 2026-08-25 contro il pack **firmato** `rulepack-prod-013` (`payload_sha256 = b9edb809…`),
 > mai contro il pack fixture. Ogni numero prodotto da due sonde indipendenti che concordano.
@@ -46,6 +46,38 @@ chiedendo un fatto che non li renderebbe comunque mai una risposta.
 > qualunque prodotto SUPPORTED»_. Vero — ma perde **solo se un SUPPORTED esiste**. Quando non esiste,
 > vince, e detta la domanda. E lì `TIER-MAP.md` nomina solo gli E28: nel ramo `work` mordono E23U/E23V.
 
+## Il difetto VIVO, e non è un vicolo cieco: è una risposta sbagliata detta con sicurezza
+
+Cercando il vicolo se n'è trovato uno peggiore. **E23U** (personale domestico di diplomatico
+stranieri) ed **E23V** (personale di ufficio commerciale) hanno una regola di review che si accende
+solo se il richiedente li **nomina** — e nessuno può nominarli.
+
+Misurato enumerando ogni domanda dell'albero la cui `decisionMapping.factPaths` contiene
+`intent.requested_product_code`. Sono **quattro**, e queste sono tutte le loro opzioni:
+
+| domanda                        | opzioni offerte                      |
+| ------------------------------ | ------------------------------------ |
+| `investment_product_code`      | E28B · E28C · E28D · E28F · STANDARD |
+| `investment_product_code_govt` | E33C · STANDARD                      |
+| `employment_product_code_govt` | E33A · E33B · STANDARD               |
+| `employment_product_code_none` | E33B · STANDARD                      |
+
+Unione di tutti i valori proponibili: `E28B, E28C, E28D, E28F, E33A, E33B, E33C, STANDARD`.
+**`E23U` ed `E23V` non compaiono da nessuna parte** — sotto nessuna delle sei categorie di sponsor,
+incluse `GOVERNMENT` e `NONE` che la lane V1 ha già cablato. Non è un residuo di fall-through:
+**nessun visitatore può nominare quei due prodotti, mai.**
+
+La conseguenza non è uno schermo vuoto. Un assistente domestico di un diplomatico dichiara
+`work` → `["EMPLOYMENT"]` → E23 risulta `SUPPORTED` → **l'Oracolo gli risponde «E23»**, con
+sicurezza, mentre il suo caso reale è E23U e avrebbe dovuto attivare `HUMAN_REVIEW_REQUIRED`.
+Nessun blocco, nessun avviso: **una miscategorizzazione silenziosa.** Il mandato lo vieta a lettere
+tonde — _«Never an invented answer»_ — e questo è esattamente il modo in cui un motore
+deterministico può inventare: non allucinando un prodotto, ma tacendo su quello giusto.
+
+> **Provenienza**: la scoperta è della lane R8 (`DEADEND-SCOPE-EMPLOYER.md`, commit `528a00658`).
+> Non l'ho presa per buona: ho ri-enumerato io le domande e le loro opzioni dall'albero, e la
+> tabella qui sopra è la mia misura, non la sua. Concorda.
+
 ## Perché E23 cade con due scopi
 
 `evaluator.py:678` — candidato solo se **ogni** scopo dichiarato è coperto:
@@ -62,6 +94,19 @@ if purposes <= covered:   # covered = unione dei covered_purposes delle regole d
 `covered = {EMPLOYMENT}`, `purposes = {TOURISM, EMPLOYMENT}` → E23 `UNSUPPORTED` con
 `missing_purposes: ['TOURISM']` → nessun altro prodotto copre la coppia → `NO_SUPPORTED_PATH`,
 confermato con tutti e sei i valori di `SponsorType`.
+
+**E il pack fixture dice il contrario — misurato su entrambi i lati:**
+
+| pack                                          | `E23.covered_purposes`      |
+| --------------------------------------------- | --------------------------- |
+| **fixture** (`_gold_fixtures.py:537`)         | `["EMPLOYMENT", "TOURISM"]` |
+| **firmato** (`rulepack-prod-013.source.json`) | `["EMPLOYMENT"]`            |
+
+Il fixture lo fa di proposito — il suo stesso docstring (`:18`) scrive _«A product's own
+`covered_purposes` deliberately includes TOURISM for…»_ — e infatti anche C1, E31, E33G, E28A
+portano `TOURISM` accanto al loro scopo principale. **Quindi la divergenza #15 è precisamente
+questa riga, e nient'altro**: il corpus gold attende un comportamento che solo il pack fixture
+produce. Non è una prova che un richiedente reale sbatta contro un muro.
 
 ## Il censimento completo: 78 combinazioni di scopi
 
@@ -129,6 +174,22 @@ La divergenza ora **è spiegata**, con meccanismo e file:line, e rispetto al wiz
 cieco** — la forma non è producibile dal funnel. Resta una divergenza corpus↔pack legittima da
 tenere agli atti. **Raccomando: #3 diventa firmabile su questa base**, con la divergenza intatta e
 spiegata, non cancellata. È una tua chiamata, non mia.
+
+**(A-bis) E23U/E23V: la cosa che romperei per prima.**
+È l'unico difetto qui dentro che tocca un visitatore vero **oggi**, e produce una risposta sbagliata
+detta con sicurezza, non un errore visibile. Tre strade, in ordine di quanto mi convincono:
+
+1. **Una domanda onesta nel ramo `work`**, per ogni categoria di sponsor: «lavori per una
+   rappresentanza diplomatica o un ufficio commerciale estero?» → se sì, `E23U`/`E23V` e la review
+   scatta. È piccola, tutta frontend, nessuna firma, e cura la miscategorizzazione alla radice.
+2. **Regola di review su un fatto che l'intervista già raccoglie** (chi paga, che ruolo) invece che
+   sul nome del prodotto — non chiede al cliente di conoscere il codice del proprio visto, il che è
+   comunque la forma giusta. Costo: pack firmato.
+3. **Lasciare com'è e dichiararlo**, cioè accettare per iscritto che E23U/E23V non sono serviti
+   dall'Oracolo e che quei casi arrivano per altra via. Difendibile solo se è vero.
+
+**Raccomando (1) subito e (2) come forma definitiva.** (3) solo se mi dici che quei due casi non
+passano mai dal funnel.
 
 **(B) La policy «lavoro + turismo» deve esistere nel pack?**
 Oggi non c'è. Se un domani il wizard offrisse scopi multipli — o se un altro consumatore del motore
