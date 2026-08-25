@@ -122,8 +122,65 @@ blocker.
 
 ## Decision 5 — superseded instruments: remove or mark?
 
-Prepared recommendation pending the lanes' identity verdicts, which are what make the choice
-concrete. Held open.
+**The question is no longer hypothetical. Lane A measured it happening.**
 
-The mandate's own framing stands and is worth restating for the signature: an amended article
-still answering with its old text is worse than silence.
+Journey 3 asks how long a current ITAS is valid and quotes Permenkumham 22/2023, the
+regulation in force. It does not rank in the top ten. Journey 4 asks the same question
+against the equivalent span of **Permenkumham 29/2021, which was superseded**, and it
+comes back at rank 3. A client asking the plainest possible question about the duration
+of their own stay permit is answered from a regulation that no longer applies.
+
+Root cause, traced and verified independently (direct fetch of the official page plus two
+searches): **both documents carry `legal_status: dicabut` — "revoked" — in their own
+payload.** For 29/2021 that is correct. For 22/2023 it is wrong; it is the current
+instrument. So the corpus believes the law in force is dead.
+
+This matters for the shape of the decision, not only its urgency: **the obvious remedy
+makes it worse.** A filter that excludes anything marked `dicabut` would remove the
+correct regulation from the corpus and leave the superseded one — which at least is not
+excluded by a rule keyed on a field it fills honestly. Whatever is chosen here cannot be
+implemented as a filter on that field until the field is trustworthy.
+
+**Prepared recommendation: MARK, do not remove — and repair the status field first.**
+
+Three reasons, in order of weight:
+
+1. **Removal is irreversible and the identity data is demonstrably unreliable.** Lane A
+   found one in-force regulation marked revoked; lane D found a Bali governor's
+   regulation filed under a national statute number, and a national regulation stored
+   under a garbled four-digit id that no 2021 PP could have. A deletion rule driven by
+   these fields would delete correct law. Nothing in this campaign deletes anything.
+2. **A superseded instrument still has to be answerable.** Clients ask what applied when
+   they filed. An answer that says "this was the rule until 2023, and here is what
+   replaced it" is better than silence, and strictly better than an unlabelled quote from
+   the old text — which is what happens today.
+3. **Marking is testable and removal is not.** A mark can be asserted by a journey: ask
+   the current question, require the current instrument's phrase, and require the
+   superseded one to be labelled where it appears. That is a probe. "It was deleted" is
+   not a probe; it is an absence, and absences are what §4.2 says take three measurements
+   to establish.
+
+**Owner gesture:** pick MARK or REMOVE. If MARK, the repair of `legal_status` on
+Permenkumham 22/2023 and the audit of that field across the corpus become lane A's next
+unit of work rather than an inventory row.
+
+---
+
+## An error of my own, corrected by a lane
+
+Lane D's brief carried my framing of Permen ATR/BPN 18/2021 as a "fuller edition" —
+10,266 points in the retired collection against 534 in production, therefore the retired
+copy contains what production is missing. **That framing was wrong, and lane D measured
+it rather than accepting it.**
+
+Of production's 404 distinct fragment hashes, only **134 (33.17%)** were found anywhere
+in the retired copy. The retired edition does not contain two thirds of what production
+already has. Two explanations remain live and undistinguished — genuinely different
+content, or different chunk boundaries defeating hash-exact comparison — and the retired
+copy is ~2.7× internally duplicated (10,266 points across 3,860 unique fragments), which
+is consistent with a collection written nightly and never cleared.
+
+Lane D stopped at step 1 of the three-step order and retired nothing. That was correct.
+Recorded here because the campaign's rule that identity precedes content applies to the
+orchestrator's own assertions, and because a proposal built on the original framing —
+"promote the fuller edition" — would have destroyed two thirds of a live document.
