@@ -237,6 +237,22 @@ def create_api_app() -> FastAPI:
     register_middleware(api)
     include_light_routers(api)
 
+    # GARUDA VOA public router (`garuda_voa_public.py`) validates `result_id`
+    # by hand, never as a Pydantic path constraint, so FastAPI's automatic
+    # 422-on-any-parameterized-route default documents an outcome that
+    # cannot occur on two of its operations. Same pattern as
+    # `app_factory.py::create_app()`'s `_openapi_with_visa_decision_conditionals`
+    # — chain onto `app.openapi`, never reassign it outright, so a future
+    # wrapper here composes instead of clobbering this one.
+    from backend.app.routers.garuda_voa_public import strip_unreachable_validation_errors
+
+    default_openapi = api.openapi
+
+    def _openapi_with_garuda_voa_fix() -> dict:
+        return strip_unreachable_validation_errors(default_openapi())
+
+    api.openapi = _openapi_with_garuda_voa_fix
+
     # Proxy router: catches heavy routes and forwards to rag process
     # Must be added LAST (after all light routers)
     from backend.app.rag_proxy import create_proxy_router, is_proxy_enabled

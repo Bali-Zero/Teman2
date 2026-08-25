@@ -52,7 +52,11 @@ from backend.services.visa_engine.enums import UnknownReason, VisaPurpose
 from backend.services.visa_engine.models import RulePack
 from backend.services.visa_engine.repository import VisaEngineRepository
 from backend.tests.services.visa_engine import _builders as builders
-from backend.tests.services.visa_engine.conftest import tables_exist
+from backend.tests.services.visa_engine.conftest import (
+    restore_garuda_voa_retention_fk,
+    tables_exist,
+    unwind_garuda_voa_retention_fk,
+)
 from backend.tests.services.visa_engine.gold_harness import loader as gold_loader
 from backend.tests.services.visa_engine.test_repository import (
     _ENV,
@@ -607,6 +611,14 @@ async def shadow_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterat
     i.e. silently reintroduces the bug this fixture exists to fix, under a different
     cause. Measured: dropping the unrelated 262 table ``visa_evaluate_idempotency`` is
     enough to trigger it.
+
+    **One more FK sits above 264 itself**: migration 281 (GARUDA-VOA, a different product)
+    later added ``garuda_voa_checks.retention_policy_id`` / its legal-hold twin, both FKs onto
+    ``visa_decision_retention_policies``. When 264 is active, 281 is expected to be too (it is
+    deployed schema, not something this fixture ever applies), so ``rollback_264`` above would
+    hit the same ``DependentObjectsStillExistError`` unless unwound first — see
+    ``unwind_garuda_voa_retention_fk`` (conftest.py) for the shared guard, used here instead of
+    a sixth hand-rolled copy of it.
     """
     forward_252, rollback_252 = _read_migration_252()
     forward_255, rollback_255 = _read_migration_255()
@@ -616,6 +628,7 @@ async def shadow_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterat
         rollback_264_runnable = await tables_exist(
             conn, "visa_decisions", "visa_decision_payloads", "visa_evaluate_idempotency"
         )
+        unwound_281 = False
         if retention_present:
             if not rollback_264_runnable:
                 raise RuntimeError(
@@ -626,6 +639,7 @@ async def shadow_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterat
                     "part of 264 down without restoring it. Recreate this worker's clone from a "
                     "full-head template."
                 )
+            unwound_281 = await unwind_garuda_voa_retention_fk(conn)
             await conn.execute(rollback_264)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
@@ -643,6 +657,11 @@ async def shadow_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIterat
         # forward_252 just recreated the other two tables 264's forward needs.
         if await tables_exist(conn, "visa_evaluate_idempotency"):
             await conn.execute(forward_264)
+            # Restore 281's FK on top, but ONLY if setup actually unwound it — calling
+            # forward_281 when 281 was never torn down (e.g. retention_present was False,
+            # so the unwind never ran) raises a duplicate-object error instead of a no-op.
+            if unwound_281:
+                await restore_garuda_voa_retention_fk(conn)
 
 
 def _seed_gold_rule_pack_row(*, raw: dict, signature_seed: bytes) -> dict:

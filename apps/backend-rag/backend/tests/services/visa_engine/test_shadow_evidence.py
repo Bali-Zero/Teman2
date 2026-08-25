@@ -25,6 +25,10 @@ from backend.services.visa_engine.shadow_evidence import (
     collect_shadow_evidence,
     evaluate_shadow_evidence,
 )
+from backend.tests.services.visa_engine.conftest import (
+    restore_garuda_voa_retention_fk,
+    unwind_garuda_voa_retention_fk,
+)
 from backend.tests.services.visa_engine.gold_harness import loader as gold_loader
 
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -249,6 +253,13 @@ async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> As
     per-test database and never reads migration 264, the second opens no database
     connection at all. Left uncorrected, this sentence sends whoever picks this up
     next hunting two innocent files.
+
+    2026-08-25 addendum: migration 281 (GARUDA-VOA, a different product) later FK'd
+    ``garuda_voa_checks``/its legal-hold twin onto ``visa_decision_retention_policies``
+    (264). ``rollback_264`` above now goes through ``unwind_garuda_voa_retention_fk``
+    (conftest.py) first, for the identical ``DependentObjectsStillExistError`` reason —
+    this fixture was CI-broken by the same bug ``test_shadow_match.py`` had until this
+    shared helper existed.
     """
     forward_252, rollback_252 = _read_migration(_MIGRATION_252_PATH, 252)
     forward_255, rollback_255 = _read_migration(_MIGRATION_255_PATH, 255)
@@ -256,9 +267,15 @@ async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> As
     forward_257, rollback_257 = _read_migration(_MIGRATION_257_PATH, 257)
     forward_264, rollback_264 = _read_migration(_MIGRATION_264_PATH, 264)
     async with db_pool.acquire() as conn:
+        unwound_281 = False
         if await _tables_exist(
             conn, "visa_decisions", "visa_decision_payloads", "visa_evaluate_idempotency"
         ):
+            # Migration 281 (GARUDA-VOA, a different product) FKs onto
+            # visa_decision_retention_policies (264) — see
+            # unwind_garuda_voa_retention_fk's docstring (conftest.py) for the
+            # DependentObjectsStillExistError this avoids.
+            unwound_281 = await unwind_garuda_voa_retention_fk(conn)
             await conn.execute(rollback_264)
         await conn.execute(rollback_256)
         await conn.execute(rollback_255)
@@ -285,6 +302,10 @@ async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> As
         # forward touches it.
         if await _tables_exist(conn, "visa_evaluate_idempotency"):
             await conn.execute(forward_264)
+            # Restore 281's FK on top, but only if setup actually unwound it —
+            # forward_281 against an already-live 281 raises duplicate-object.
+            if unwound_281:
+                await restore_garuda_voa_retention_fk(conn)
 
 
 async def _insert_unavailable_audit_row(

@@ -1,7 +1,17 @@
 @red-first @journey @freshness @fail-closed
 Feature: Stale truth declines to sell without quoting
   # RED-FIRST: use the real signed truth-sheet registry and public response; frozen fixtures may not bypass freshness evaluation.
-  # TODO(ground): approve the rule and price truth-sheet authorities, signatures, declared freshness windows, and stable customer-safe failure copy.
+  # PARTLY GROUNDED 2026-08-25. Decided and binding: the freshness WINDOWS, in
+  # `x-truth-freshness-max-age-days` (contracts/openapi.yaml, DECISIONS.md Q9) —
+  # nationality_eligibility 90, rule_constants 180, price_catalogue 90 — and the wire outcome,
+  # which differs by source and is load-bearing both ways: a stale nationality list or rule
+  # constant DECLINES with ELIGIBILITY_UNCONFIRMED, a stale price catalogue is a 503
+  # PRICE_UNRESOLVABLE. The customer is never quoted a price we cannot stand behind, and never
+  # told "not eligible" when the truth is "we have not re-verified". Enforced fail-closed at
+  # garuda_flow/pricing.py:92.
+  # STILL TODO(ground): whether "signed" requires a cryptographic signature over the truth
+  # sheet (open, and shared with retention-fail-closed.feature), and the stable customer-safe
+  # failure copy.
 
   Background:
     Given one unambiguous active signed retention policy authorizes the public funnel row type

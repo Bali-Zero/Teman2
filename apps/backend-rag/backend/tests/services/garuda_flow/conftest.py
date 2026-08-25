@@ -68,5 +68,10 @@ def _assume_truth_sheets_fresh(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         pricing,
         "price_catalogue_freshness",
-        lambda *, today, service=None: _fresh_report("price_catalogue"),
+        # `**_` absorbs `service`/`key`/`row` — `price_catalogue_freshness` grew
+        # the latter two (per-row `verified_on` attestation, owner decision 7)
+        # after this fixture was written; a bare `service=None` kwarg-only
+        # signature would TypeError the instant any caller passes `key`/`row`,
+        # which `price_for_case` now always does.
+        lambda *, today, **_: _fresh_report("price_catalogue"),
     )
