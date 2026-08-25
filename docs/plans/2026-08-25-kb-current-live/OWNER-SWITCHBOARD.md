@@ -85,7 +85,51 @@ build constraints; a correction changes what gets built, not merely what gets wr
 
 ## Decision 2 — the official PDF of UU 25/2007 (Investment Law)
 
-Prepared measurement pending. Held open.
+**The question as written cannot be answered, because its premise is false.** The mandate
+records UU 25/2007 as "measured absent from the corpus and from every machine". Measured
+today by the orchestrator with a full scroll of all 84,283 points — not a sample — it is
+**present**, correctly identified, and has been all along:
+
+| method (§4.2 requires three) | result                                               |
+| ---------------------------- | ---------------------------------------------------- |
+| by identity `UU_25_2007`     | **65 points**                                        |
+| by title text                | `UU No 25 Tahun 2007 Tentang PENANAMAN MODAL`, exact |
+| by distinctive phrase        | its own text retrievable                             |
+
+So there is nothing to re-acquire on the grounds of absence. **The real defect is worse
+than absence, because absence is honest and this is not.**
+
+| document                                    | points | characters | distinct `Pasal N` in its text |
+| ------------------------------------------- | -----: | ---------: | -----------------------------: |
+| UU 25/2007 — Investment Law, ~40 articles   |     65 |     21,683 |          **1** (only Pasal 33) |
+| UU 40/2007 — Company Law, repaired today    |    379 |    202,960 |                             54 |
+| UU 6/2011 — Immigration Law, repaired today |    413 |    113,059 |                             43 |
+
+Across sixty-five chunks and twenty-one thousand characters, exactly one article marker
+appears anywhere in this law's text. Its healthy peers carry forty-three and fifty-four.
+Whatever those 65 points are, they are not the articulated body of the Investment Law.
+
+The consequence is the campaign's whole reason for existing: a question about foreign
+investment retrieves _something_ under the right name, with the right title, and answers
+from a sixth of a statute — with no signal to the reader that the other five sixths were
+never there. An absent law abstains. This one speaks.
+
+**Recommendation:** re-acquire UU 25/2007 whole, under the containment order the campaign
+already uses — prove what the 65 points contain BEFORE writing anything over that
+`document_id`, then write the full instrument, then retire the fragment. It belongs to
+lane B (company & investment), which is not open; opening it is the recommendation
+attached to this decision.
+
+**Owner gesture:** approve the re-acquisition. The original ask — supply the official PDF
+— is still useful and still welcome, but it is now a convenience rather than a blocker:
+the law is public and retrievable, and what stopped the work was a wrong premise, not a
+missing file.
+
+_Two neighbours found during the same scan, recorded and NOT chased (out of every open
+lane's scope): `UU_13_2017` carries 335 points under a title that reads like ministerial
+licensing guidelines rather than a statute, and `UU_49_2021` carries a title announcing an
+amendment to a Presidential Regulation. Both are statute-numbered ids wearing non-statute
+titles — the same defect class lane D found in `UU_14_2023`. Inventory rows for lane B._
 
 ---
 
@@ -184,3 +228,34 @@ Lane D stopped at step 1 of the three-step order and retired nothing. That was c
 Recorded here because the campaign's rule that identity precedes content applies to the
 orchestrator's own assertions, and because a proposal built on the original framing —
 "promote the fuller edition" — would have destroyed two thirds of a live document.
+
+---
+
+## What today's measurements did to the campaign's own premises
+
+Four inherited statements were refuted by measurement in a single afternoon. Three of them
+were mine. They are listed together because the pattern is more useful than any one of them.
+
+| statement                                                                                 | who wrote it                                            | what the measurement said                                                                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Permen_18_2021` in the retired collection is the "fuller edition" of the production copy | orchestrator, in lane D's brief                         | 134 of 404 production fragments found there — **33%**. The retired copy lacks two thirds of what production already has. Acting on the framing would have retired a live document.                                            |
+| `UU_13_2016`'s broken identity has **leaked to production**                               | orchestrator, in `kb/inventory/legal_unified_2026.yaml` | All 118 production points are consistent, correctly-identified **Patent Law**. Nothing leaked. The claim used a shared id _string_ as evidence about a _document_.                                                            |
+| `Permen_32_2022` **is** PER-7/PJ/2025 (NIK-NPWP Coretax)                                  | orchestrator, same file                                 | Six chunks of its own text: a **Sumatera Selatan governor's regulation** on non-auction sale of regional property. The identity had been taken from metadata and filename while the text sat recorded beside it, disagreeing. |
+| UU 25/2007 is **absent from the corpus and from every machine**                           | the mandate, §7 decision 2                              | Present: 65 points, exact title, correct identity — and carrying exactly one article marker across 21,683 characters. Not absent; hollow.                                                                                     |
+
+Every one of these was caught the same way: **a lane re-measured a fact it had been handed
+instead of building on it.** That is the behaviour §4 asks for, and it is the reason the
+campaign is worth running at scale rather than as one careful pass.
+
+The symmetric case is worth recording too, because a method that only ever refutes is not a
+method. Lane P was asked to test whether the campaign's own damage figure — 2,019 damaged
+fragments across 34 documents — was an artifact of a signal that reduces to a bare substring
+match on 99.1% of the corpus. It scrolled all 84,283 points whole, reproduced 2,019/34
+exactly, drew a stratified sample round-robin across all 34 documents with a fixed seed, and
+read 45 fragments by hand: **0 false positives out of 45.** The figure survives, and by lane
+P's own reading it may undercount.
+
+The lesson is not "distrust the documents". It is narrower and harder: **a claim about a
+document's identity is worthless unless the document's own text was read.** Three of the
+four refutations above are that single failure, committed by the person writing the rule
+that forbids it.
