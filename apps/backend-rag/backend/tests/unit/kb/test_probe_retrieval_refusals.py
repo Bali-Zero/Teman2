@@ -171,6 +171,14 @@ CONTROL_CHUNKS = [
     {"text": "Setiap orang yang melanggar ketentuan sebagaimana dimaksud dipidana."},
 ]
 
+# indiscriminate_phrases() takes a controls MAP (collection name -> that
+# collection's own chunks) plus the run's default collection, not a flat chunk
+# list — see its docstring (finding 10, 2026-08-26). Every test in this section
+# that does not itself override `collection:` on a journey resolves to
+# DEFAULT_COLLECTION, so CONTROLS is what the old bare CONTROL_CHUNKS used to be.
+DEFAULT_COLLECTION = "legal_unified"
+CONTROLS = {DEFAULT_COLLECTION: CONTROL_CHUNKS}
+
 
 def _j(phrase):
     return {"question": "q", "verbatim_phrase": phrase}
@@ -182,30 +190,32 @@ def test_innocence_a_phrase_only_its_own_instrument_could_produce_is_not_flagged
         _j("modal disetor paling sedikit Rp10.000.000.000"),
         _j("Perolehan tanah Hak Pengelolaan atau Hak Atas Tanah"),
     ]
-    assert PROBE.indiscriminate_phrases(journeys, CONTROL_CHUNKS) == []
+    assert PROBE.indiscriminate_phrases(journeys, CONTROLS, DEFAULT_COLLECTION) == []
 
 
 def test_guilt_a_phrase_lifted_from_the_control_results_is_refused():
     journeys = [_j("izin tinggal terbatas berlaku paling lama"),
                 _j("merupakan peraturan pelaksanaan")]
-    flagged = PROBE.indiscriminate_phrases(journeys, CONTROL_CHUNKS)
+    flagged = PROBE.indiscriminate_phrases(journeys, CONTROLS, DEFAULT_COLLECTION)
     assert [i for i, _ in flagged] == [2], flagged
 
 
 def test_guilt_the_control_phrase_itself_is_the_canonical_case():
-    flagged = PROBE.indiscriminate_phrases([_j(PROBE.CONTROL_PHRASE)], CONTROL_CHUNKS)
+    flagged = PROBE.indiscriminate_phrases(
+        [_j(PROBE.CONTROL_PHRASE)], CONTROLS, DEFAULT_COLLECTION)
     assert len(flagged) == 1
 
 
 def test_guilt_it_reports_every_offender_not_just_the_first():
     journeys = [_j("melanggar ketentuan sebagaimana dimaksud"), _j("izin tinggal terbatas berlaku"),
                 _j("Ketentuan lebih lanjut diatur")]
-    assert [i for i, _ in PROBE.indiscriminate_phrases(journeys, CONTROL_CHUNKS)] == [1, 3]
+    assert [i for i, _ in PROBE.indiscriminate_phrases(
+        journeys, CONTROLS, DEFAULT_COLLECTION)] == [1, 3]
 
 
 def test_it_normalises_before_comparing_so_casing_cannot_evade_it():
     flagged = PROBE.indiscriminate_phrases(
-        [_j("MERUPAKAN   PERATURAN\n  PELAKSANAAN")], CONTROL_CHUNKS)
+        [_j("MERUPAKAN   PERATURAN\n  PELAKSANAAN")], CONTROLS, DEFAULT_COLLECTION)
     assert len(flagged) == 1, "case and whitespace were enough to slip past the floor"
 
 
@@ -233,13 +243,14 @@ def test_a_phrase_cannot_match_across_two_unrelated_chunks_joined_together():
     assert straddle in joined_without_separator, (
         "the fixture no longer creates a seam — this test would pass vacuously"
     )
-    assert PROBE.indiscriminate_phrases([_j(straddle)], chunks) == []
+    assert PROBE.indiscriminate_phrases(
+        [_j(straddle)], {DEFAULT_COLLECTION: chunks}, DEFAULT_COLLECTION) == []
 
 
 def test_an_empty_phrase_is_left_to_the_length_rule():
     """Two rules, two jobs. If this one also claimed empties, its guilt cases would
     pass for the wrong reason and the length floor could be deleted unnoticed."""
-    assert PROBE.indiscriminate_phrases([_j("")], CONTROL_CHUNKS) == []
+    assert PROBE.indiscriminate_phrases([_j("")], CONTROLS, DEFAULT_COLLECTION) == []
     assert PROBE.unusable_phrase("") is not None
 
 
@@ -255,6 +266,92 @@ def test_the_discrimination_floor_runs_after_the_control_and_before_any_grading(
     assert src.index("CONTROL_PHRASE") < src.index("indiscriminate_phrases("), (
         "it must run AFTER the control, since it consumes the control's chunks"
     )
+
+
+# ── C2. the per-collection floor — PENDING-ARMS finding opened 2026-08-26 ─────
+# (refuter finding 10). The single global control used to let a journey scoped
+# to a DIFFERENT collection escape the discrimination check entirely: its phrase
+# was compared against the wrong corpus's boilerplate.
+
+def test_a_journey_overriding_collection_is_checked_against_ITS_OWN_control():
+    """Guilt: a phrase that is boilerplate in visa_oracle, for a journey scoped to
+    visa_oracle, must be caught by visa_oracle's OWN control — not missed because
+    the only control fetched was legal_unified's."""
+    visa_chunks = [{"text": "Setiap pemegang visa wajib melaporkan perubahan alamat "
+                             "kepada kantor imigrasi setempat paling lambat 30 hari."}]
+    controls = {DEFAULT_COLLECTION: CONTROL_CHUNKS, "visa_oracle": visa_chunks}
+    j = _j("wajib melaporkan perubahan alamat kepada kantor imigrasi")
+    j["collection"] = "visa_oracle"
+    flagged = PROBE.indiscriminate_phrases([j], controls, DEFAULT_COLLECTION)
+    assert [i for i, _ in flagged] == [1], (
+        "a journey scoped to visa_oracle must be checked against visa_oracle's own "
+        "control, not legal_unified's"
+    )
+
+
+def test_a_journey_overriding_collection_is_NOT_flagged_by_a_DIFFERENT_collections_boilerplate():
+    """Innocence, the mirror of the guilt case above: legal_unified's own
+    boilerplate (the standard CONTROL_PHRASE) must NOT leak into the check for a
+    journey scoped to visa_oracle, whose own control does not contain it. Before
+    this fix there was only ONE haystack, so this direction could not even be
+    expressed — every journey shared it regardless of `collection:`."""
+    controls = {DEFAULT_COLLECTION: CONTROL_CHUNKS, "visa_oracle": [
+        {"text": "izin tinggal terbatas berlaku paling lama dua tahun"}
+    ]}
+    j = _j(PROBE.CONTROL_PHRASE)  # boilerplate ONLY in legal_unified's control
+    j["collection"] = "visa_oracle"
+    flagged = PROBE.indiscriminate_phrases([j], controls, DEFAULT_COLLECTION)
+    assert flagged == [], (
+        "legal_unified's boilerplate leaked into the check for a journey scoped "
+        "to visa_oracle — the control is not being resolved per-journey"
+    )
+
+
+def test_a_journey_with_no_collection_override_still_uses_the_default():
+    """Innocence for the common case — every real journeys file today omits
+    `collection:` entirely, and this must behave exactly as it did before the
+    fix."""
+    assert PROBE.indiscriminate_phrases(
+        [_j("izin tinggal terbatas berlaku paling lama")], CONTROLS, DEFAULT_COLLECTION
+    ) == []
+
+
+def test_a_two_collection_fixture_flags_only_the_boilerplate_hit_regardless_of_entry_order():
+    """PENDING-ARMS proof-of-armed spec, verbatim: two entries on two different
+    collections, phrase boilerplate in the SECOND collection only, exits non-zero
+    — and this must hold in BOTH orders, because a fixture that leaves state
+    behind between calls is green alphabetically and red under xdist on the same
+    SHA (cicatrix family #9/#37). indiscriminate_phrases() builds its haystack
+    into a dict LOCAL to the call, never module-level, so there is nothing to
+    leave behind — this proves that rather than assuming it.
+    """
+    controls = {
+        DEFAULT_COLLECTION: CONTROL_CHUNKS,
+        "visa_oracle": [{"text": "Setiap pemegang visa wajib melaporkan perubahan "
+                                  "alamat kepada kantor imigrasi setempat"}],
+    }
+    clean = _j("izin tinggal terbatas berlaku paling lama")
+    boilerplate = _j("wajib melaporkan perubahan alamat kepada kantor imigrasi")
+    boilerplate["collection"] = "visa_oracle"
+
+    forward = PROBE.indiscriminate_phrases([clean, boilerplate], controls, DEFAULT_COLLECTION)
+    assert [i for i, _ in forward] == [2], forward
+
+    reversed_order = PROBE.indiscriminate_phrases(
+        [boilerplate, clean], controls, DEFAULT_COLLECTION)
+    assert [i for i, _ in reversed_order] == [1], reversed_order
+
+
+def test_a_collection_absent_from_controls_has_an_empty_haystack_not_a_crash():
+    """A journey resolving to a collection this run never fetched a control for
+    must not KeyError — `controls.get(collection, [])` inside indiscriminate_phrases
+    is what this pins. Whether that shape can occur in run() is a separate
+    question (run() fetches a control for every name in `asked`, which is built
+    FROM the same resolve_collection() calls); this proves the function itself
+    degrades safely rather than crashing if it ever did."""
+    j = _j("izin tinggal terbatas berlaku paling lama")
+    j["collection"] = "a_collection_no_control_was_fetched_for"
+    assert PROBE.indiscriminate_phrases([j], CONTROLS, DEFAULT_COLLECTION) == []
 
 
 # ── D. the refusals ACT, they are not merely mentioned ───────────────────────
@@ -416,3 +513,52 @@ def test_the_two_expectations_disagree_on_misattributed_and_that_is_the_point():
     assert PROBE.journey_satisfaction("green", "retrieves") != PROBE.journey_satisfaction(
         "green", "must_not_retrieve"
     )
+
+
+# ── F2. fail-closed, not fail-open — PENDING-ARMS guard 1, cross-family
+# completeness review (2026-08-26). The old must_not_retrieve formula was a
+# DENY-list (`not in ("green", "misattributed")`): anything the function was not
+# explicitly told to distrust was treated as safe, including values no real
+# caller in this module ever produces. A canary must default the OTHER way.
+
+def test_guilt_an_unrecognised_measured_state_does_not_satisfy_a_canary():
+    """A case mismatch, a None, or plain garbage must not silently clear a
+    canary just because it isn't spelled exactly 'green' or 'misattributed'."""
+    assert PROBE.journey_satisfaction("GREEN", "must_not_retrieve") is False
+    assert PROBE.journey_satisfaction(None, "must_not_retrieve") is False
+    assert PROBE.journey_satisfaction("banana", "must_not_retrieve") is False
+    assert PROBE.journey_satisfaction("untested", "must_not_retrieve") is False
+
+
+def test_guilt_an_unrecognised_expectation_satisfies_nothing():
+    """Guards the other argument: a missing/mistyped expectation must not fall
+    through to either the 'retrieves' or the 'must_not_retrieve' branch by
+    accident — it must land on the explicit refusal."""
+    assert PROBE.journey_satisfaction("green", None) is False
+    assert PROBE.journey_satisfaction("red", "must_not_retrive_typo") is False
+    assert PROBE.journey_satisfaction("green", "") is False
+
+
+REAL_STATE_TABLE = [
+    ("green", "retrieves", True),
+    ("misattributed", "retrieves", False),
+    ("red", "retrieves", False),
+    ("green", "must_not_retrieve", False),
+    ("misattributed", "must_not_retrieve", False),
+    ("red", "must_not_retrieve", True),
+]
+
+
+@pytest.mark.parametrize("state,expectation,expected", REAL_STATE_TABLE,
+                         ids=[f"{s}+{e}" for s, e, _ in REAL_STATE_TABLE])
+def test_innocence_the_three_real_measured_states_are_unchanged_by_the_fail_closed_rewrite(
+    state, expectation, expected
+):
+    """The allow-list rewrite must not change behaviour for any value production
+    code actually produces — locate_phrase() only ever returns green/misattributed
+    /red, and run() only ever passes 'retrieves' or 'must_not_retrieve'. Each of
+    the six combinations is asserted against its actual expected value here (not
+    merely "does not raise") — a single consolidated truth table, same shape as
+    the six individual tests above it, so a future edit that silently narrows
+    ANY one of the six is caught by name, not just by absence of an exception."""
+    assert PROBE.journey_satisfaction(state, expectation) is expected
