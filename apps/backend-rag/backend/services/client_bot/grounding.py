@@ -59,8 +59,32 @@ construction for every non-KBLI query. ``_DOMAIN_PRICING_CATEGORIES``
 below is the scoping heuristic; see its own comment for what it is (and is
 not) a claim about.
 
+Follow-up (lane B1d, 2026-08-25) — B1c's "``"key": service_name``" above
+was unique BY LUCK, not by construction: the live catalogue has 4 real
+collisions, all "Tier N" names shared between ``tax_accounting``'s
+``monthly_tax_basic`` and ``monthly_tax_bundled`` sub-blocks (a genuinely
+different price AND scope of work behind the identical dict key — see
+``_service_key_index``'s own docstring for the exact numbers). Two items
+sharing a key is exactly the shape ``pricing_check.py``'s per-claim
+binding (P1-P3) exists to prevent one layer up — a snapshot key that is
+not provably unique defeats the whole point of binding a claim to "the"
+item it names. ``_service_key_index`` below computes, once per build from
+the WHOLE on-disk catalogue (never a domain-scoped subset — see its own
+docstring for why), a key for every catalogue entry that is unique across
+the ENTIRE catalogue by construction: unambiguous entries keep their
+natural, human-readable display name unchanged (still verbatim what a
+model is meant to echo back into ``Claim.price_service_key``); only the
+genuinely colliding ones get a qualified ``"<sub_block>::<name>"`` form —
+still copy-paste-able from the ``"key"`` field the model is shown on the
+disambiguating item, never something the model has to construct from a
+scheme it was never told. ``pricing_check.py``'s own binding is hardened
+to match: a key claimed by more than one distinct item in a snapshot is
+now refused as ambiguous rather than silently merged (see that module's
+own comment on ``_snapshot_index_by_key``).
+
 Author: Claude Opus 5 (lane B1b — client-bot engine; lane B1c —
-service-identity binding + domain-scoped snapshot, 2026-08-25).
+service-identity binding + domain-scoped snapshot; lane B1d — qualified
+keys unique by construction across the whole catalogue, 2026-08-25).
 """
 
 from __future__ import annotations
@@ -69,6 +93,7 @@ import hashlib
 import json
 import logging
 import uuid
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
@@ -80,8 +105,8 @@ from backend.services.client_bot.contracts import (
     PricingSnapshot,
 )
 from backend.services.pricing.pricing_service import (
+    _NESTED_CATEGORIES,
     _entry_display_price,
-    _iter_service_entries,
     get_pricing_service,
 )
 
@@ -158,6 +183,136 @@ class EvidenceRetriever(Protocol):
     """
 
     async def retrieve(self, query: str, domain: str) -> tuple[EvidenceItem, ...]: ...
+
+
+# Namespace separator for a QUALIFIED key ("<sub_block or category>::<name>").
+# Chosen over "/" deliberately: several real catalogue display names already
+# contain a bare "/" (e.g. "Working KITAS (Altus/Onshore)", "Update Data /
+# Coretax Activation" — verified against the live 2026 catalogue), so "/"
+# would not visibly distinguish a qualified identifier from an ordinary
+# display name that happens to contain one. No catalogue name contains "::".
+_KEY_QUALIFIER_SEP = "::"
+
+
+def _iter_service_entries_with_subblock(
+    services_root: dict[str, Any],
+) -> list[tuple[str, str | None, str, dict[str, Any]]]:
+    """Same walk as ``pricing_service._iter_service_entries`` but additionally
+    yields the nested sub-block name (``None`` for flat categories) — the one
+    extra piece of context needed to build a collision-proof key when two
+    services share the SAME dict key across different sub-blocks.
+
+    Deliberately duplicated rather than changing
+    ``_iter_service_entries``'s shared 3-tuple return shape: that function
+    also backs ``PricingService.get_service_by_key()`` and its own
+    load-time service count, neither of which is this lane's mandate to
+    touch (``get_service_by_key`` has the identical first-match-wins
+    limitation on a colliding name — noted, not fixed here; see this
+    lane's report).
+    """
+    triples: list[tuple[str, str | None, str, dict[str, Any]]] = []
+    for category_name, category_payload in services_root.items():
+        if not isinstance(category_payload, dict):
+            continue
+        if category_name in _NESTED_CATEGORIES:
+            for sub_block_name, sub_block in category_payload.items():
+                if not isinstance(sub_block, dict):
+                    continue
+                for service_name, entry in sub_block.items():
+                    if isinstance(entry, dict):
+                        triples.append((category_name, sub_block_name, service_name, entry))
+        else:
+            for service_name, entry in category_payload.items():
+                if isinstance(entry, dict):
+                    triples.append((category_name, None, service_name, entry))
+    return triples
+
+
+def _service_key_index(
+    services_root: dict[str, Any],
+) -> dict[tuple[str, str | None, str], str]:
+    """Maps every ``(category, sub_block, service_name)`` triple in the WHOLE
+    catalogue to a key GUARANTEED unique across the ENTIRE catalogue —
+    computed once from every entry, deliberately NOT scoped to any single
+    domain's included categories.
+
+    Why global, not per-snapshot: today's ``_DOMAIN_PRICING_CATEGORIES``
+    never splits a colliding pair across two different domain snapshots
+    (both live inside ``tax_accounting``, which is included or excluded as
+    a whole), so a per-snapshot census would produce the identical result
+    for every real query today — but tying the qualification DECISION to a
+    domain-scoping heuristic that is itself "a deliberate judgment call,
+    not a mapping PricingService itself exposes" (see
+    ``_DOMAIN_PRICING_CATEGORIES``'s own comment) would make the same
+    catalogue entry sometimes qualified and sometimes not depending on
+    which domain happened to build the snapshot — a confusing, hard-to-audit
+    property for an identity string a client-facing check binds a price to.
+    A global, catalogue-wide census is a stable, static fact about the data
+    itself, not an artifact of how one particular call scoped it.
+
+    Most service names occur exactly once in the live 2026 catalogue and
+    keep their natural, human-readable display name as the key unchanged
+    from B1c — a model reading the snapshot echoes it back verbatim in
+    ``Claim.price_service_key`` (contracts.py P2). The live catalogue has
+    exactly 4 collisions today (verified 2026-08-25): "Tier 0-50",
+    "Tier 50-100", "Tier 100-200", "Tier 200+" — each shared between
+    ``tax_accounting``'s ``monthly_tax_basic`` (a tier-range price,
+    LKPM/Annual Tax NOT included) and ``monthly_tax_bundled`` (a single
+    price, LKPM + Annual Tax included) sub-blocks. A real spread of
+    ~500k-1.5M IDR and a different scope of work sit behind the identical
+    dict key. Those 4 pairs (8 items) get a qualified
+    ``"<sub_block or category>::<service_name>"`` key instead — still a
+    string a model can plausibly emit VERBATIM, because it is exactly the
+    ``"key"`` field value the model is shown on the one disambiguating item
+    it means to quote (never a scheme the model has to construct from
+    nothing it was shown).
+
+    Logs (never raises) if qualification still leaves a duplicate — see
+    the "why log, not raise" note below.
+    """
+    all_triples = _iter_service_entries_with_subblock(services_root)
+    name_counts = Counter(service_name for _category, _sub_block, service_name, _entry in all_triples)
+
+    keys: dict[tuple[str, str | None, str], str] = {}
+    for category, sub_block, service_name, _entry in all_triples:
+        if name_counts[service_name] > 1:
+            qualifier = sub_block or category
+            keys[(category, sub_block, service_name)] = f"{qualifier}{_KEY_QUALIFIER_SEP}{service_name}"
+        else:
+            keys[(category, sub_block, service_name)] = service_name
+
+    # Defensive, but deliberately NOT a raise: a residual collision after
+    # qualification would need a pathological catalogue shape (e.g. a flat
+    # category literally named the same as another category's sub-block,
+    # both containing a same-named service — not the live 2026 data, which
+    # test_service_key_index_is_unique_across_the_whole_real_catalogue
+    # proves clean). If it ever happened, crashing here would take down
+    # PRICING FOR THE ENTIRE ENGINE (this function runs once per
+    # ``build()`` call, for every non-KBLI domain, with no try/except
+    # around it) over ONE bad corner of the catalogue — a wildly
+    # disproportionate blast radius for a data-quality problem that
+    # ``pricing_check.py``'s own ``_snapshot_index_by_key`` already
+    # defends against independently (a key claimed by 2+ distinct items is
+    # refused there, per-claim, regardless of what produced the
+    # snapshot — see that module's own comment). So: log loudly (an
+    # operator must still fix the catalogue or the qualification scheme)
+    # and let the check-layer's per-claim refusal be the actual backstop,
+    # exactly the graceful-degradation posture the rest of this builder
+    # already takes (cf. "PricingService not loaded" above: WARNING +
+    # continue, never a crash).
+    assigned_counts = Counter(keys.values())
+    still_ambiguous = sorted(key for key, count in assigned_counts.items() if count > 1)
+    if still_ambiguous:
+        logger.error(
+            "grounding: pricing catalogue has key(s) that remain ambiguous "
+            "even after category/sub-block qualification: %r — a price "
+            "claim naming any of these will be safely REFUSED downstream "
+            "by pricing_check.py's own ambiguity check, not silently "
+            "accepted, but this must still be resolved in the catalogue "
+            "or the qualification scheme",
+            still_ambiguous,
+        )
+    return keys
 
 
 def _canonical_json(obj: Any) -> str:
@@ -277,6 +432,13 @@ class GroundingBundleBuilder:
         maps to zero categories (or an unrecognized domain) is a different,
         valid state: the tool IS working, there is simply nothing priced
         for this domain to quote.
+
+        Lane B1d: the ``"key"`` field is no longer the bare catalogue dict
+        key by default — it is whatever ``_service_key_index`` (built over
+        the WHOLE catalogue, not just this domain's slice) assigned that
+        entry, which is the bare name for every unambiguous service and a
+        qualified ``sub_block::name`` for the 4 colliding tax-tier pairs.
+        See ``_service_key_index``'s own docstring for the full rationale.
         """
         service = get_pricing_service()
         if not getattr(service, "loaded", False):
@@ -299,13 +461,17 @@ class GroundingBundleBuilder:
             )
             services_root = {}
 
+        key_index = _service_key_index(services_root)
+
         items: list[dict[str, object]] = []
-        for category, service_name, entry in _iter_service_entries(services_root):
+        for category, sub_block, service_name, entry in _iter_service_entries_with_subblock(
+            services_root
+        ):
             if category not in categories:
                 continue
             items.append(
                 {
-                    "key": service_name,
+                    "key": key_index[(category, sub_block, service_name)],
                     "name": entry.get("name") or service_name,
                     "price": _entry_display_price(entry),
                     "category": category,

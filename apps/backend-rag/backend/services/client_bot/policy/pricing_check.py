@@ -53,6 +53,31 @@ snapshot built by hand, pre-dating P1) and a bare currency amount with no
 claim behind it (check 6's territory, untouched here) still needs a
 some-real-number-somewhere floor.
 
+Follow-up (lane B1d, 2026-08-25) — layer 2's own identity binding was
+itself only unique BY LUCK: the live catalogue has 4 real collisions (see
+``grounding.py::_service_key_index`` for the exact names/prices), and this
+module's ``_snapshot_index_by_key`` used to MERGE the value sets of two
+items sharing an identity string rather than refusing — "permissive
+(either underlying price is accepted for that name)". That is the SAME
+disease this whole check exists to close, one layer down: a real price,
+for a service the claim did not actually name, silently accepted. Two
+independent fixes, deliberately layered rather than relying on either
+alone: (1) ``grounding.py`` now assigns every catalogue entry a key unique
+across the WHOLE catalogue by construction — the 4 colliding tax-tier
+pairs get a qualified ``sub_block::name`` key instead of the bare,
+colliding dict key, so a snapshot THIS module builds never hands it a
+duplicate identity in the first place; (2) this module no longer trusts
+that as the only guarantee — ``_snapshot_index_by_key`` now REFUSES
+(marks ``_AMBIGUOUS``) any key claimed by more than one distinct item in
+whatever ``PricingSnapshot`` it is actually handed, whether or not that
+snapshot came from ``grounding.py``'s current builder (a caller may still
+hand this a hand-built or future snapshot that does not carry the same
+guarantee — see the note on ``PricingSnapshot`` items above). A claim
+whose ``price_service_key`` resolves ambiguously is HANDOFF, never a
+silent pick of either price — "REFUSE only when it is genuinely
+ambiguous", never "accept whichever real price happens to be listed
+first".
+
 This module deliberately has NO visibility into ``GroundingBundle.history``
 — it receives only ``candidate`` and ``pricing``. A price claim whose
 service was established in a PRIOR conversation turn must still carry its
@@ -60,10 +85,18 @@ own ``price_service_key`` on THIS turn's claim; binding it correctly from
 prior-turn context is the generating provider's job, upstream of this
 check, not something re-derived here from conversation history. Stated
 explicitly per the orchestrator's 2026-08-25 ruling ("that decision must be
-stated, not left for the implementation to settle by accident").
+stated, not left for the implementation to settle by accident"). The same
+stance extends to an UNQUALIFIED name a model might emit for one half of a
+now-qualified pair (e.g. bare "Tier 0-50" instead of
+"monthly_tax_bundled::Tier 0-50"): this module does not attempt to resolve
+it on the model's behalf even when only one qualified variant happens to
+be present in a given snapshot — an exact match against a snapshot item's
+own declared identity, or HANDOFF. A provider is expected to echo the
+``"key"`` field verbatim from the item it means to quote (contracts.py P2's
+own comment); a provider that does not is safely refused, never guessed at.
 
 Author: Claude Opus 5 (lane B1b — client-bot engine; lane B1c — P1-P5
-service-identity binding, 2026-08-25).
+service-identity binding; lane B1d — ambiguous-key refusal, 2026-08-25).
 """
 
 from __future__ import annotations
@@ -198,30 +231,51 @@ def _item_identity(item: dict[str, object]) -> str | None:
     return None
 
 
-def _snapshot_index_by_key(pricing: PricingSnapshot) -> dict[str, set[int]]:
+# Sentinel returned by ``_snapshot_index_by_key`` for a key claimed by MORE
+# THAN ONE distinct item in a given snapshot — "ambiguous", never merged.
+# A private module-level object (not a string) so it can never collide with
+# a real ``set[int]`` value or be mistaken for one by an ``is`` check.
+_AMBIGUOUS = object()
+
+
+def _snapshot_index_by_key(pricing: PricingSnapshot) -> dict[str, object]:
     """Maps each item's declared identity to the numeric value(s) reachable
     INSIDE THAT ITEM ALONE (P1-P3) — the structural binding a price claim's
     ``price_service_key`` is checked against: "the amount(s)... must match
     THAT item's price, and only that item's", never the whole catalogue
     (``_snapshot_values`` above).
 
-    If two items happen to share the same identity string (a real,
-    pre-existing limitation of ``PricingService.get_service_by_key()``:
-    the live 2026 catalogue has duplicate service names across different
-    sub-categories, e.g. "Tier 0-50" in both ``monthly_tax_basic`` and
-    ``monthly_tax_bundled``), their value sets are merged rather than one
-    silently overwriting the other — permissive (either underlying price
-    is accepted for that name) but never wrong in the direction that
-    matters here: it can never accept an amount that belongs to some
-    THIRD, unrelated service.
+    Lane B1d: if two DISTINCT items in ``pricing.items`` happen to share the
+    same identity string, that key maps to ``_AMBIGUOUS`` rather than a
+    merged value set. ``grounding.py``'s builder now assigns every
+    catalogue entry a key unique across the whole catalogue by construction
+    (see its ``_service_key_index``), so a snapshot it builds should never
+    actually reach this branch — but ``PricingSnapshot.items`` is a plain
+    ``tuple[dict, ...]`` any caller can hand-build (this module's own
+    ``_item_identity`` docstring already notes B6b's hand-authored goldens
+    predate that guarantee), so this function does not trust the builder's
+    promise as its only defense. The value returned here is what
+    ``check_pricing``'s binding loop below treats as "refuse — genuinely
+    ambiguous", distinct from "absent" (the key maps to nothing at all).
+    Two items that happen to declare the SAME identity but an IDENTICAL
+    price would be indistinguishable from a real collision by this
+    function — deliberately: this module has no way to know whether that
+    is a harmless duplicate or two different services that coincidentally
+    cost the same, and refusing either way is the safe direction.
     """
-    index: dict[str, set[int]] = {}
+    counts: dict[str, int] = {}
+    values_by_key: dict[str, set[int]] = {}
     for item in pricing.items:
         key = _item_identity(item)
         if key is None:
             continue
-        index.setdefault(key, set())
-        _walk_numeric_values(item, index[key])
+        counts[key] = counts.get(key, 0) + 1
+        values_by_key.setdefault(key, set())
+        _walk_numeric_values(item, values_by_key[key])
+
+    index: dict[str, object] = {}
+    for key, values in values_by_key.items():
+        index[key] = _AMBIGUOUS if counts[key] > 1 else values
     return index
 
 
@@ -317,6 +371,25 @@ def check_pricing(candidate: BrainCandidate, pricing: PricingSnapshot | None) ->
                     reason=GateReason.PRICE_NOT_IN_SNAPSHOT,
                     reason_detail="price_service_key_not_in_snapshot",
                 )
+            if allowed_values is _AMBIGUOUS:
+                # Lane B1d: the claimed key names MORE THAN ONE distinct
+                # item in this snapshot — e.g. the bare, unqualified
+                # "Tier 0-50" when both the monthly_tax_basic AND
+                # monthly_tax_bundled variants are present under that same
+                # string. There is no single price to compare the claim's
+                # amount against, so this is refused exactly like a key
+                # that names nothing at all — never a silent pick of
+                # whichever price happens to be found first.
+                return CheckOutcome(
+                    verdict=GateVerdict.HANDOFF,
+                    reason=GateReason.PRICE_NOT_IN_SNAPSHOT,
+                    reason_detail="price_service_key_ambiguous_in_snapshot",
+                )
+            assert isinstance(allowed_values, set), (
+                "unreachable: _snapshot_index_by_key only ever maps a "
+                "resolvable key to a set[int] once None/_AMBIGUOUS are ruled "
+                "out above"
+            )
             for cur, value in claim_amounts:
                 if value < _VETO_FLOORS[cur]:
                     continue
