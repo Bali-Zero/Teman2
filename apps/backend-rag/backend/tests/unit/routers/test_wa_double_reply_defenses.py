@@ -432,3 +432,149 @@ async def test_claim_same_path_retry_reaffirms_its_own_win() -> None:
 
     assert first is True
     assert retry is True
+
+
+# ---------------------------------------------------------------------------
+# 3rd-pipeline scar (2026-08-25): the 30s recovery net re-routed meta-inbox
+# messages through the retired ChannelRouter pipeline because
+# process_meta_inbox_payload never marked the inbound_webhooks row
+# processed. Two prongs tested below: (A) process_meta_inbox_payload now
+# marks the row on success and NOT on handler failure, and (B) the
+# WebhookProcessor's recovery dispatch keeps meta-inbox payloads off
+# ChannelRouter entirely, as a second, independent line of defense.
+# ---------------------------------------------------------------------------
+
+
+def _webhook_payload(phone_number_id: str, wamid: str = "wamid.RECOVERY") -> dict[str, Any]:
+    return {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "entry-1",
+                "changes": [
+                    {
+                        "field": "messages",
+                        "value": {
+                            "metadata": {"phone_number_id": phone_number_id},
+                            "contacts": [{"profile": {"name": "Mario"}}],
+                            "messages": [
+                                {
+                                    "id": wamid,
+                                    "from": "628111",
+                                    "type": "text",
+                                    "text": {"body": "hello"},
+                                    "timestamp": "1735689600",
+                                }
+                            ],
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_meta_inbox_payload_marks_row_processed_on_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prong 1, innocence: a handled message closes its inbound_webhooks row."""
+    conn = MagicMock()
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=_AcquireCM(conn))
+
+    handle_mock = AsyncMock(return_value=None)
+    monkeypatch.setattr(whatsapp_chat, "_handle_meta_inbox_message", handle_mock)
+    monkeypatch.setattr(whatsapp_chat, "_resolve_webhook_id", AsyncMock(return_value=None))
+    mark_processed_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "backend.services.channels.inbound_webhook_repo.mark_processed",
+        mark_processed_mock,
+    )
+
+    await whatsapp_chat.process_meta_inbox_payload(
+        _webhook_payload(CANONICAL_ID, wamid="wamid.MARKED"),
+        request=None,
+        db_pool=pool,
+    )
+
+    handle_mock.assert_awaited_once()
+    mark_processed_mock.assert_awaited_once_with(
+        pool, channel="whatsapp", dedup_key="wamid.MARKED"
+    )
+
+
+@pytest.mark.asyncio
+async def test_meta_inbox_payload_does_not_mark_row_on_handler_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prong 1, guilt: a handler crash must leave the row open for retry."""
+    conn = MagicMock()
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=_AcquireCM(conn))
+
+    monkeypatch.setattr(
+        whatsapp_chat,
+        "_handle_meta_inbox_message",
+        AsyncMock(side_effect=RuntimeError("handler exploded")),
+    )
+    monkeypatch.setattr(whatsapp_chat, "_resolve_webhook_id", AsyncMock(return_value=None))
+    mark_processed_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "backend.services.channels.inbound_webhook_repo.mark_processed",
+        mark_processed_mock,
+    )
+
+    # process_meta_inbox_payload swallows the handler exception internally
+    # (existing "processing failed" catch-all) — must not raise here either.
+    await whatsapp_chat.process_meta_inbox_payload(
+        _webhook_payload(CANONICAL_ID, wamid="wamid.UNMARKED"),
+        request=None,
+        db_pool=pool,
+    )
+
+    mark_processed_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_recovery_net_routes_meta_inbox_payload_away_from_channel_router(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prong 2, guilt case avoided: meta-inbox payload never reaches ChannelRouter."""
+    pool = MagicMock()
+    process_meta_inbox_mock = AsyncMock(return_value=None)
+    monkeypatch.setattr(whatsapp_chat, "process_meta_inbox_payload", process_meta_inbox_mock)
+    legacy_route_mock = AsyncMock(
+        side_effect=AssertionError("ChannelRouter must not run for a meta-inbox payload")
+    )
+
+    payload = _webhook_payload(CANONICAL_ID, wamid="wamid.NET")
+    await whatsapp_chat.route_whatsapp_recovery(
+        payload, db_pool=pool, legacy_route=legacy_route_mock
+    )
+
+    process_meta_inbox_mock.assert_awaited_once_with(
+        raw_payload=payload, request=None, db_pool=pool
+    )
+    legacy_route_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_recovery_net_still_routes_non_meta_inbox_payload_through_channel_router(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prong 2, innocence (regression guard): unrelated numbers keep the old path."""
+    pool = MagicMock()
+    process_meta_inbox_mock = AsyncMock(
+        side_effect=AssertionError("non-meta-inbox payload must not use process_meta_inbox_payload")
+    )
+    monkeypatch.setattr(whatsapp_chat, "process_meta_inbox_payload", process_meta_inbox_mock)
+    legacy_route_mock = AsyncMock(return_value=None)
+
+    payload = _webhook_payload(UNRELATED_ID, wamid="wamid.LEGACY-NET")
+    await whatsapp_chat.route_whatsapp_recovery(
+        payload, db_pool=pool, legacy_route=legacy_route_mock
+    )
+
+    legacy_route_mock.assert_awaited_once_with(payload)
+    process_meta_inbox_mock.assert_not_awaited()

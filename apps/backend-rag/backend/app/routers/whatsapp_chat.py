@@ -1247,7 +1247,12 @@ async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request
         logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
 
 
-async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
+async def process_meta_inbox_payload(
+    raw_payload: dict[str, Any],
+    request: Request | None,
+    *,
+    db_pool: Any | None = None,
+) -> None:
     """Background task: drive the meta-inbox ledger for the target number only.
 
     Runs AFTER the webhook has persisted to inbound_webhooks and ACKed 200, so
@@ -1255,9 +1260,24 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
     META_INBOX_PHONE_NUMBER_IDS (every phone_number_id known to route to this
     number, not just the canonical one); any other number is ignored here (it
     stays on the existing inline triage flow).
+
+    ``db_pool`` lets a caller that has no ``Request`` (the WebhookProcessor
+    recovery net, see ``route_whatsapp_recovery``) inject the pool directly
+    instead of going through ``_get_db_pool(request)``. The normal webhook
+    call site still passes ``request`` and leaves ``db_pool`` unset.
+
+    On success — the message was handled (real work, an idempotent duplicate
+    no-op, or a lost cross-path claim) — marks the ``inbound_webhooks`` row
+    processed (2026-08-25 double-reply scar prong 1), mirroring the legacy
+    path's ``process_whatsapp_message_and_mark_processed``. Without this the
+    row stayed ``processed_at IS NULL`` forever, so the WebhookProcessor's
+    30s recovery net re-dispatched it through the retired ChannelRouter
+    pipeline, which crafted and sent its own, different reply — the
+    systematic second reply this fix closes. On handler FAILURE the row is
+    deliberately left unmarked so the recovery net still retries it.
     """
-    db_pool = _get_db_pool(request)
-    if db_pool is None:
+    pool = db_pool if db_pool is not None else _get_db_pool(request)
+    if pool is None:
         return
 
     try:
@@ -1267,7 +1287,9 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
         return
 
     try:
-        async with db_pool.acquire() as conn:
+        from backend.services.channels import inbound_webhook_repo
+
+        async with pool.acquire() as conn:
             for entry in webhook.entry:
                 for change in entry.changes:
                     if change.field != "messages":
@@ -1291,8 +1313,64 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
                         wamid = msg.get("id")
                         webhook_id = await _resolve_webhook_id(conn, wamid) if wamid else None
                         await _handle_meta_inbox_message(conn, msg, sender_name, webhook_id)
+
+                        if not wamid:
+                            continue
+                        try:
+                            await inbound_webhook_repo.mark_processed(
+                                pool,
+                                channel="whatsapp",
+                                dedup_key=wamid,
+                            )
+                        except Exception:
+                            logger.warning(
+                                "meta-inbox: failed to mark inbound row processed "
+                                "(wamid=%s)",
+                                wamid,
+                                exc_info=True,
+                            )
     except Exception as exc:
         logger.error("meta-inbox: processing failed: %s", exc, exc_info=True)
+
+
+async def route_whatsapp_recovery(
+    payload: dict[str, Any],
+    *,
+    db_pool: Any,
+    legacy_route: Any,
+) -> None:
+    """WebhookProcessor recovery-net dispatch for the ``whatsapp`` channel.
+
+    Keeps meta-inbox-targeted payloads out of the retired ChannelRouter
+    pipeline (2026-08-25 double-reply scar prong 2). ``ChannelRouter`` always
+    classifies intent itself and sends its own reply — it never passes
+    through ``wa_reply_claims`` — so routing a meta-inbox payload there on
+    recovery produced a second, different reply. Non-meta-inbox payloads are
+    unaffected: they still go through ``legacy_route`` exactly as before.
+
+    ``legacy_route`` is an ``Awaitable``-returning callable taking the raw
+    payload — the caller supplies its own bound ``_route_via_channel_router``
+    so this function never has to know about ``ChannelRouter``'s shape.
+    """
+    try:
+        webhook = WhatsAppWebhook(**payload)
+        is_meta_inbox = any(
+            change.field == "messages" and _change_belongs_to_meta_inbox(change)
+            for entry in webhook.entry
+            for change in entry.changes
+        )
+    except Exception:
+        logger.warning(
+            "whatsapp recovery: payload parse failed, defaulting to legacy route",
+            exc_info=True,
+        )
+        is_meta_inbox = False
+
+    if is_meta_inbox:
+        await process_meta_inbox_payload(raw_payload=payload, request=None, db_pool=db_pool)
+        return
+
+    await legacy_route(payload)
 
 
 @router.get("")
