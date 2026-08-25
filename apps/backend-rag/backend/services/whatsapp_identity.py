@@ -41,7 +41,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
-from backend.utils.pii_log_identifier import redact_identifier_for_log
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = get_logger(__name__)
 

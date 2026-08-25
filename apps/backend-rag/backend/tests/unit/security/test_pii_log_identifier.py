@@ -14,7 +14,7 @@ import hashlib
 
 import pytest
 
-from backend.utils.pii_log_identifier import (
+from backend.security.pii_log_identifier import (
     MISSING_IDENTIFIER_MARKER,
     redact_identifier_for_log,
 )

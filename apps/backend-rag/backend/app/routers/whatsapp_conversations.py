@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_optional_database_pool
 from backend.services.integrations.whatsapp_service import whatsapp_service
-from backend.utils.pii_log_identifier import redact_identifier_for_log
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 

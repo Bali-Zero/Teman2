@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 from backend.channels.base import BaseChannel
 from backend.channels.optimizations import message_deduplicator
 from backend.core.cache import invalidate_cache
-from backend.utils.pii_log_identifier import redact_identifier_for_log
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 

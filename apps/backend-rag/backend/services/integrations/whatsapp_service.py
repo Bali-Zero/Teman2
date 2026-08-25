@@ -17,7 +17,7 @@ from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
 from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
 from backend.utils.message_chunker import chunk_message
-from backend.utils.pii_log_identifier import redact_identifier_for_log
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 

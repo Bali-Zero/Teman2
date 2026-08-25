@@ -960,7 +960,7 @@ async def test_notify_human_telegram_with_context():
 # ============================================================
 #
 # whatsapp_chat.py is the LIVE client-bot WhatsApp path — 20 raw-phone log
-# sites, all now routed through backend.utils.pii_log_identifier.
+# sites, all now routed through backend.security.pii_log_identifier.
 # redact_identifier_for_log. Per cicatrix-superscar.md family #3, a guard
 # (here: a redaction) needs both a guilt test (the raw value never survives)
 # and an innocence test (the digest stays present/stable, so an operator can

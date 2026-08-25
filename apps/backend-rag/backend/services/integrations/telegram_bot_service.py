@@ -11,7 +11,7 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
 from backend.core.secret_log_redaction import install_telegram_token_redaction
-from backend.utils.pii_log_identifier import redact_identifier_for_log
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 install_telegram_token_redaction()
 

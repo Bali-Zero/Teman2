@@ -59,7 +59,7 @@ from backend.services.integrations.whatsapp_triage_service import (
 )
 from backend.services.whatsapp_kbli_guard import sanitize_whatsapp_kbli_reply
 from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
-from backend.utils.pii_log_identifier import redact_identifier_for_log
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 

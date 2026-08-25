@@ -16,7 +16,7 @@ import httpx
 from backend.channels.base import BaseChannel, ChannelMessage, ChannelResponse
 from backend.channels.whatsapp.config import WhatsAppChannelConfig
 from backend.channels.whatsapp.formatter import WhatsAppMessageFormatter
-from backend.utils.pii_log_identifier import redact_identifier_for_log
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
