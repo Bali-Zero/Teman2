@@ -71,10 +71,17 @@ CREATE TABLE public.garuda_orders (
                                                              'browser_return_observed')),
     browser_return_nonce    TEXT,
 
-    -- OP-F05 / Q2 / Q10 remediation case. Exactly one open case per order
-    -- at a time (a second late `paid` on an already-open case is OP-09, not
-    -- a second case) and exactly two resolutions, never a third.
+    -- OP-F04/OP-F05 / Q2 / Q10 remediation case. Exactly one open case per
+    -- order at a time (a second late `paid` on an already-open case is
+    -- OP-09, not a second case) and exactly two resolutions, never a third.
     late_case_open          BOOLEAN NOT NULL DEFAULT FALSE,
+    -- CORRECTED (refuter finding, cross-family review of this same commit):
+    -- the late `paid` webhook's OWN charge id must be persisted separately
+    -- from `provider_charge_id` (which, for an OP-F04 order, still holds the
+    -- ORIGINAL already-refunded charge, and for an OP-F05 order is NULL
+    -- because that order never reached OP-02). Without this column,
+    -- resolveLateOrder's refund path has no correct charge id to refund.
+    late_case_charge_id     TEXT,
     late_case_resolution    TEXT
                              CHECK (late_case_resolution IN ('honoured', 'refunded_in_full')),
     late_case_staff_reference TEXT,
@@ -103,6 +110,18 @@ CREATE INDEX idx_garuda_orders_state_checkout_expiry
 CREATE INDEX idx_garuda_orders_result_id_ref
     ON public.garuda_orders (result_id_ref);
 
+-- CORRECTED (refuter finding): without this, two createOrderFromCheck
+-- calls for the SAME reviewed check under two DIFFERENT Idempotency-Keys
+-- (a regenerated key after a lost first response, or a double-click that
+-- issues a fresh key) create two live orders and two checkout sessions for
+-- one check -- a real double-charge path OP-08's same-session dedup cannot
+-- see. A terminal (failed/expired/refunded) order does not block a fresh
+-- attempt; only one LIVE (created/awaiting_payment/paid) order per check
+-- may exist at a time.
+CREATE UNIQUE INDEX uq_garuda_orders_result_id_ref_live
+    ON public.garuda_orders (result_id_ref)
+    WHERE state IN ('created', 'awaiting_payment', 'paid');
+
 -- Defense-in-depth CAS guard (SM-G07): the app layer already does
 -- `UPDATE ... WHERE order_id = $1 AND state = $2`, but a trigger closes the
 -- gap for any future direct write that skips the app layer.
@@ -122,8 +141,14 @@ BEGIN
         WHEN OLD.state = 'awaiting_payment' AND NEW.state = 'created' THEN TRUE
         WHEN OLD.state = 'paid' AND NEW.state IN ('created', 'awaiting_payment', 'failed', 'expired') THEN TRUE
         WHEN OLD.state = 'refunded' THEN TRUE
-        WHEN OLD.state = 'failed' AND NEW.state IN ('created', 'awaiting_payment', 'paid', 'refunded') THEN TRUE
-        WHEN OLD.state = 'expired' AND NEW.state IN ('created', 'awaiting_payment', 'paid', 'refunded') THEN TRUE
+        -- CORRECTED (refuter finding): the original CASE omitted the
+        -- terminal-to-terminal edges. _FORBIDDEN_DESTINATIONS in
+        -- state_machine.py forbids failed<->expired too (STATE-MACHINE.md's
+        -- forbidden-transitions table has NO permitted edge out of any
+        -- terminal state) -- the trigger claiming to enforce "the
+        -- forbidden-transition matrix" must actually match it.
+        WHEN OLD.state = 'failed' AND NEW.state IN ('created', 'awaiting_payment', 'paid', 'refunded', 'expired') THEN TRUE
+        WHEN OLD.state = 'expired' AND NEW.state IN ('created', 'awaiting_payment', 'paid', 'refunded', 'failed') THEN TRUE
         ELSE FALSE
     END;
     IF forbidden THEN

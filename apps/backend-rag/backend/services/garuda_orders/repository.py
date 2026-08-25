@@ -271,7 +271,7 @@ class GarudaOrderRepository:
                 return "OP-09"  # duplicate delivery — already processed or in flight
 
             order = await conn.fetchrow(
-                "SELECT order_id, state FROM garuda_orders WHERE provider_session_id = $1 FOR UPDATE",
+                "SELECT order_id, state, price_idr FROM garuda_orders WHERE provider_session_id = $1 FOR UPDATE",
                 event.provider_session_id,
             )
             if order is None:
@@ -283,6 +283,20 @@ class GarudaOrderRepository:
 
             order_id, state = order["order_id"], order["state"]
             transition_id = "OP-02"
+
+            # CORRECTED (refuter finding): a signed webhook is authentic
+            # about WHO paid, never about HOW MUCH -- SM-G09/OP-F03 require
+            # "exact reconciliation to the order and amount", and this was
+            # missing entirely. A PAID event for the wrong amount/currency
+            # must never flip the order to `paid`.
+            if state == OrderState.AWAITING_PAYMENT.value and (
+                event.amount_idr != order["price_idr"] or event.currency != "IDR"
+            ):
+                await conn.execute(
+                    "UPDATE garuda_payment_inbox SET outcome = 'quarantined', processed_at = statement_timestamp() WHERE provider = 'xendit' AND provider_event_id = $1",
+                    event.provider_event_id,
+                )
+                return "OP-F03"
 
             if state == OrderState.AWAITING_PAYMENT.value:
                 await conn.execute(
@@ -334,6 +348,22 @@ class GarudaOrderRepository:
                 )
             elif state == OrderState.REFUNDED.value:
                 transition_id = "OP-F04"
+                # CORRECTED (refuter finding): this branch previously opened
+                # NO remediation case at all, so resolveLateOrder could never
+                # act on the very orders OP-F04 pages staff about. Also
+                # persists the LATE charge id (never `provider_charge_id`,
+                # which for a refunded order still names the ORIGINAL,
+                # already-refunded charge) so resolveLateOrder refunds the
+                # right money.
+                await conn.execute(
+                    """
+                    UPDATE garuda_orders
+                       SET late_case_open = TRUE, late_case_charge_id = $2
+                     WHERE order_id = $1 AND late_case_open = FALSE
+                    """,
+                    order_id,
+                    event.provider_charge_id,
+                )
                 event_id = await journal.append_event(
                     conn,
                     event_name="payment.late_paid_after_refund",
@@ -341,6 +371,7 @@ class GarudaOrderRepository:
                     aggregate_id=order_id,
                     transition_id="OP-F04",
                     customer_visible=False,
+                    detail={"charge_id": event.provider_charge_id},
                 )
                 await journal.enqueue_outbox(
                     conn,
@@ -350,9 +381,18 @@ class GarudaOrderRepository:
                 )
             elif state in (OrderState.FAILED.value, OrderState.EXPIRED.value):
                 transition_id = "OP-F05"
+                # CORRECTED (refuter finding): `provider_charge_id` is NULL
+                # here (a failed/expired order never reached OP-02) — the
+                # late charge id must be persisted on the order, not only in
+                # journal `detail`, or resolveLateOrder has nothing to refund.
                 await conn.execute(
-                    "UPDATE garuda_orders SET late_case_open = TRUE WHERE order_id = $1 AND late_case_open = FALSE",
+                    """
+                    UPDATE garuda_orders
+                       SET late_case_open = TRUE, late_case_charge_id = $2
+                     WHERE order_id = $1 AND late_case_open = FALSE
+                    """,
                     order_id,
+                    event.provider_charge_id,
                 )
                 event_id = await journal.append_event(
                     conn,
@@ -574,36 +614,53 @@ class GarudaOrderRepository:
                 assert outcome.response_body is not None
                 return outcome.response_body, True
 
-            row = await conn.fetchrow(
-                "SELECT order_id, state, late_case_open, price_idr, provider_charge_id FROM garuda_orders WHERE order_id = $1",
-                order_id,
-            )
-            if row is None:
-                raise OrderNotFound(order_id)
-            if not row["late_case_open"]:
-                raise NoOpenLateCase(order_id)
-
-            if resolution == "refunded_in_full":
-                try:
-                    await self._provider.refund(
-                        provider_charge_id=row["provider_charge_id"],
-                        idempotency_key=idempotency_key_sha256.hex(),
-                    )
-                except RefundFailed as exc:
-                    # Never record a resolution for a refund that did not happen.
-                    raise PaymentProviderUnavailable(order_id) from exc
-
+            # CORRECTED (refuter finding): the previous version read the row
+            # WITHOUT a lock and closed with an unconditional UPDATE. Two
+            # concurrent resolve_late_order calls with two DIFFERENT
+            # Idempotency-Keys (two staff members racing the same case)
+            # could both pass the `late_case_open` check and both call
+            # provider.refund -> a double refund. FOR UPDATE serializes the
+            # race at the row, and the closing UPDATE now re-asserts
+            # `late_case_open = TRUE` (CAS) rather than writing unconditionally.
+            # The lock is deliberately held across the external refund call
+            # (a rare staff action, not a hot path) because correctness here
+            # matters more than connection-hold time.
             async with conn.transaction():
-                await conn.execute(
+                row = await conn.fetchrow(
+                    "SELECT order_id, state, late_case_open, price_idr, late_case_charge_id "
+                    "FROM garuda_orders WHERE order_id = $1 FOR UPDATE",
+                    order_id,
+                )
+                if row is None:
+                    raise OrderNotFound(order_id)
+                if not row["late_case_open"]:
+                    raise NoOpenLateCase(order_id)
+
+                if resolution == "refunded_in_full":
+                    try:
+                        await self._provider.refund(
+                            provider_charge_id=row["late_case_charge_id"],
+                            idempotency_key=idempotency_key_sha256.hex(),
+                        )
+                    except RefundFailed as exc:
+                        # Never record a resolution for a refund that did not happen.
+                        raise PaymentProviderUnavailable(order_id) from exc
+
+                closed = await conn.fetchrow(
                     """
                     UPDATE garuda_orders
                        SET late_case_open = FALSE, late_case_resolution = $2, late_case_staff_reference = $3
-                     WHERE order_id = $1
+                     WHERE order_id = $1 AND late_case_open = TRUE
+                     RETURNING order_id
                     """,
                     order_id,
                     resolution,
                     staff_reference,
                 )
+                if (
+                    closed is None
+                ):  # pragma: no cover - defensive, FOR UPDATE above should prevent this
+                    raise NoOpenLateCase(order_id)
                 event_id = await journal.append_event(
                     conn,
                     event_name="order.late_resolved",

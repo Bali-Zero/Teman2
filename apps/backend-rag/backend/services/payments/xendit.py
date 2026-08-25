@@ -34,7 +34,11 @@ from backend.services.payments.port import (
     WebhookSignatureInvalid,
     WebhookUnparseable,
 )
-from backend.services.payments.terminal_taxonomy import FailureOutcome, map_provider_failure_code
+from backend.services.payments.terminal_taxonomy import (
+    FailureOutcome,
+    classify,
+    map_provider_failure_code,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +183,19 @@ class XenditPaymentProvider:
             )
         if status in ("EXPIRED", "FAILED"):
             raw_code = body.get("failure_code")
-            mapped = map_provider_failure_code("xendit", raw_code, _FAILURE_CODE_MAP)
+            # CORRECTED (refuter finding, minor): a real Xendit EXPIRED
+            # callback typically carries no `failure_code` at all -- routing
+            # it through map_provider_failure_code(None, ...) landed on
+            # UNRECOGNISED_RETRYABLE and paged staff for a routine checkout
+            # expiry. `status == "EXPIRED"` already tells us the outcome
+            # unambiguously (unless Xendit explicitly names a different
+            # failure_code, e.g. one of the two EXPIRED aliases in the
+            # table); map it directly instead of through the "code missing"
+            # branch of the generic lookup.
+            if status == "EXPIRED" and not raw_code:
+                mapped = classify(FailureOutcome.EXPIRED)
+            else:
+                mapped = map_provider_failure_code("xendit", raw_code, _FAILURE_CODE_MAP)
             return NormalizedFailureEvent(
                 provider_event_id=str(event_id),
                 provider_session_id=str(session_id),

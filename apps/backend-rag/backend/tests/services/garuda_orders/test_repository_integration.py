@@ -357,3 +357,190 @@ async def test_reconciliation_expires_unpaid_checkout(pool, repository):
     assert summary.expired == 1
     state = await pool.fetchval("SELECT state FROM garuda_orders WHERE order_id = $1", order_id)
     assert state == "expired"
+
+
+# --- The four tests below were added AFTER an independent cross-family
+# refuter (Kimi K3) reviewed commit e1a0f708a and found four real defects.
+# Each test proves the specific defect is fixed; none of these passed
+# before the corresponding repository.py/migration edit.
+
+
+@pytest.mark.asyncio
+async def test_op_f04_opens_a_remediation_case_and_persists_the_late_charge_id(pool, repository):
+    """Refuter finding (high): the OP-F04 branch previously journaled and
+    paged but never set `late_case_open`, so `resolveLateOrder` could never
+    act on exactly the orders it was paging staff about."""
+
+    key_digest = scoped_key_sha256(
+        actor="actor-5", operation="createOrderFromCheck", raw_key="idem-key-f04b-0001"
+    )
+    payload_digest = canonical_payload_sha256(
+        {"result_id": "result-5-0000000000", "applicant": {"e": 5}}
+    )
+    body, _ = await repository.create_order_and_checkout(
+        result_id="result-5-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest,
+        canonical_payload_sha256=payload_digest,
+    )
+    order_id = body["order_id"]
+
+    refund_event = NormalizedRefundEvent(
+        provider_event_id="evt-refund-2",
+        provider_refund_id="refund-2",
+        provider_charge_id="charge-original",
+        provider_session_id=f"sess-{order_id}",
+    )
+    await repository.handle_refund_event(refund_event, canonical_payload_sha256=b"\x10" * 32)
+    assert (
+        await pool.fetchval("SELECT state FROM garuda_orders WHERE order_id = $1", order_id)
+        == "refunded"
+    )
+
+    late_paid_event = NormalizedPaidEvent(
+        provider_event_id="evt-late-paid-3",
+        provider_charge_id="charge-the-late-one",
+        provider_session_id=f"sess-{order_id}",
+        amount_idr=body["price_idr"],
+        currency="IDR",
+    )
+    transition = await repository.handle_paid_event(
+        late_paid_event, canonical_payload_sha256=b"\x11" * 32
+    )
+    assert transition == "OP-F04"
+
+    late_open, late_charge_id, state_after = await pool.fetchrow(
+        "SELECT late_case_open, late_case_charge_id, state FROM garuda_orders WHERE order_id = $1",
+        order_id,
+    )
+    assert late_open is True  # was False before the fix — resolveLateOrder is now reachable
+    assert late_charge_id == "charge-the-late-one"  # never the original refunded charge
+    assert state_after == "refunded"  # unchanged, per OP-F04
+
+
+@pytest.mark.asyncio
+async def test_resolve_late_order_refunds_the_late_charge_not_the_original(pool, repository):
+    """Refuter finding (critical): `provider_charge_id` on a refunded order
+    still names the ORIGINAL already-refunded charge. resolveLateOrder must
+    refund `late_case_charge_id` (the late payment), never that one."""
+
+    key_digest = scoped_key_sha256(
+        actor="actor-6", operation="createOrderFromCheck", raw_key="idem-key-f04c-0001"
+    )
+    payload_digest = canonical_payload_sha256(
+        {"result_id": "result-6-0000000000", "applicant": {"e": 6}}
+    )
+    body, _ = await repository.create_order_and_checkout(
+        result_id="result-6-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest,
+        canonical_payload_sha256=payload_digest,
+    )
+    order_id = body["order_id"]
+
+    await repository.handle_refund_event(
+        NormalizedRefundEvent(
+            provider_event_id="evt-refund-3",
+            provider_refund_id="refund-3",
+            provider_charge_id="charge-original-2",
+            provider_session_id=f"sess-{order_id}",
+        ),
+        canonical_payload_sha256=b"\x12" * 32,
+    )
+    await repository.handle_paid_event(
+        NormalizedPaidEvent(
+            provider_event_id="evt-late-paid-4",
+            provider_charge_id="charge-the-actually-late-one",
+            provider_session_id=f"sess-{order_id}",
+            amount_idr=body["price_idr"],
+            currency="IDR",
+        ),
+        canonical_payload_sha256=b"\x13" * 32,
+    )
+
+    resolve_key = scoped_key_sha256(
+        actor="staff-2", operation="resolveLateOrder", raw_key="idem-key-resolve-0003"
+    )
+    resolve_payload = canonical_payload_sha256(
+        {"order_id": order_id, "resolution": "refunded_in_full", "staff_reference": "case-99"}
+    )
+    resolution_body, _ = await repository.resolve_late_order(
+        order_id=order_id,
+        resolution="refunded_in_full",
+        staff_reference="case-99",
+        idempotency_key_sha256=resolve_key,
+        canonical_payload_sha256=resolve_payload,
+    )
+    assert resolution_body["resolution"] == "refunded_in_full"
+    assert repository._provider.refund_calls == [
+        "charge-the-actually-late-one"
+    ]  # never "charge-original-2"
+
+
+@pytest.mark.asyncio
+async def test_paid_event_with_wrong_amount_is_quarantined_never_marks_paid(pool, repository):
+    """Refuter finding (critical): a signed webhook proves WHO paid, never
+    HOW MUCH. `handle_paid_event` must reconcile amount/currency against
+    the frozen order price before flipping state to `paid`."""
+
+    key_digest = scoped_key_sha256(
+        actor="actor-7", operation="createOrderFromCheck", raw_key="idem-key-amt-0001"
+    )
+    payload_digest = canonical_payload_sha256(
+        {"result_id": "result-7-0000000000", "applicant": {"e": 7}}
+    )
+    body, _ = await repository.create_order_and_checkout(
+        result_id="result-7-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest,
+        canonical_payload_sha256=payload_digest,
+    )
+    order_id = body["order_id"]
+    assert body["price_idr"] == 790_000
+
+    wrong_amount_event = NormalizedPaidEvent(
+        provider_event_id="evt-wrong-amount-1",
+        provider_charge_id="charge-wrong-amount",
+        provider_session_id=f"sess-{order_id}",
+        amount_idr=1,  # far below the real 790.000 price
+        currency="IDR",
+    )
+    transition = await repository.handle_paid_event(
+        wrong_amount_event, canonical_payload_sha256=b"\x14" * 32
+    )
+    assert transition == "OP-F03"
+    state = await pool.fetchval("SELECT state FROM garuda_orders WHERE order_id = $1", order_id)
+    assert state == "awaiting_payment"  # never flipped to paid on a mismatched amount
+
+
+@pytest.mark.asyncio
+async def test_two_orders_for_the_same_check_are_rejected_at_the_db_layer(pool):
+    """Refuter finding (medium-high): before the partial unique index, two
+    createOrderFromCheck calls for the SAME check under two DIFFERENT
+    Idempotency-Keys created two live orders — a double-charge path OP-08's
+    same-session dedup cannot see. Proven directly against the schema
+    (not through the repository, since the repository has no uniqueness
+    check of its own — the DB constraint IS the fix)."""
+
+    await pool.execute(
+        """
+        INSERT INTO garuda_orders (order_id, result_id_ref, case_type, applicant_full_name,
+            applicant_email, applicant_phone, applicant_passport_number, price_idr, price_catalogue_key)
+        VALUES ($1, 'result-8-0000000000', 'issuance', 'Test User', 't@example.com', '+10000000',
+                'P1234567', 790000, 'B1 Visa on Arrival (VOA)')
+        """,
+        "order-dup-check-a-0000000",
+    )
+    with pytest.raises(asyncpg.exceptions.UniqueViolationError):
+        await pool.execute(
+            """
+            INSERT INTO garuda_orders (order_id, result_id_ref, case_type, applicant_full_name,
+                applicant_email, applicant_phone, applicant_passport_number, price_idr, price_catalogue_key)
+            VALUES ($1, 'result-8-0000000000', 'issuance', 'Test User', 't@example.com', '+10000000',
+                    'P1234567', 790000, 'B1 Visa on Arrival (VOA)')
+            """,
+            "order-dup-check-b-0000000",
+        )
