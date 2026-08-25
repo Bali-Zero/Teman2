@@ -1,0 +1,114 @@
+# Lane C — Tax, journey probes (MANDATE §2/§3). Written BEFORE any ingestion or repair.
+# Every verbatim_phrase below is a real substring pulled from an actual chunk's own TEXT this
+# pass (never invented, never taken from a title/metadata field alone) — three exceptions
+# (J5, J7, J8) target instruments confirmed ABSENT from legal_unified this pass, where the
+# phrase instead comes from the instrument's real text in its ONE known home (a retired
+# collection for J5) or from the instrument's standard, widely-published statutory phrasing
+# corroborated by a WebSearch/WebFetch this pass (J7, J8) — see kb/inventory/tax.yaml and
+# kb/topics/tax.yaml for the method behind each.
+#
+# Collection target: ALL eight journeys are run with `--collection legal_unified` (the probe
+# tool's default and the collection kb/inventory/tax.yaml measures). tax_genius_hybrid (the
+# curated Q&A guide corpus, no citable document_id — see kb/topics/tax.yaml) is deliberately
+# NOT probed here: it has no instrument_id this schema can anchor a journey to. A red on any
+# journey below means "not indexed in legal_unified", not "in the other collection".
+#
+# Run: ./apps/backend-rag/.venv/bin/python kb/ops/probe_retrieval.py kb/journeys/tax.yaml
+# probe_state / probe_run_at below are the REAL recorded verdicts from that run, not filled in
+# ahead of running it (MANDATE §3: the suite must fail red against production on day one, and
+# this tool deliberately will not write its own expected value back — a human/lane does).
+
+schema_version: 1
+lane: C
+
+journeys:
+  - question: "Dalam KUP, kapan Direktur Jenderal Pajak menerbitkan Surat Ketetapan Pajak Lebih Bayar (SKPLB)?"
+    verbatim_phrase: "menerbitkan Surat Ketetapan Pajak Lebih Bayar"
+    instrument_id: UU_28_2007
+    probe_state: green
+    probe_run_at: "2026-08-25"
+    note: "Present instrument, 311 pts. MEASURED green, rank 2/5 — a real KUP objection/refund question surfaces its own law."
+
+  - question: "Berapa persen tarif PPN yang berlaku saat ini di Indonesia?"
+    verbatim_phrase: "Tarif Pajak Pertambahan Nilai berjumlah 10%"
+    instrument_id: PP_8_1983
+    probe_state: red
+    probe_run_at: "2026-08-25"
+    note: >-
+      Deliberately adversarial: PP_8_1983's own text sets VAT at 10%, a rate HPP (UU 7/2021,
+      confirmed absent from this corpus — see J8) has since moved past. MEASURED red — this
+      specific phrasing of the question does NOT surface the stale rate within the top 10.
+      That is good news for THIS query, but it does not retire the underlying gap: HPP's own
+      rate-setting text is still nowhere in the corpus (see J8), so a different phrasing of the
+      same question is not protected by anything structural — only by today's ranking.
+
+  - question: "Apa yang dilakukan Kantor Pelayanan Pajak saat ada permohonan perubahan data Objek Pajak PBB dalam sistem Coretax?"
+    verbatim_phrase: "Kepala Kantor Pelayanan Pajak melakukan penelitian administrasi"
+    instrument_id: Permen_81_2024
+    probe_state: green
+    probe_run_at: "2026-08-25"
+    note: "Present instrument, 430 pts, mistyped identity (Permen vs PMK). MEASURED green, rank 4/10 — the Coretax base regulation surfaces despite the type mismatch."
+
+  - question: "Apa isi PMK yang mengubah keempat kalinya PMK Nomor 81 Tahun 2024 tentang Coretax?"
+    verbatim_phrase: "PERUBAHAN KEEMPAT ATAS PERATURAN MENTERI KEUANGAN NOMOR 81 TAHUN 2024"
+    instrument_id: Permen_1_2026
+    probe_state: green
+    probe_run_at: "2026-08-25"
+    note: >-
+      Collision probe (see kb/topics/tax.yaml note on Permen_1_2026): this id also holds 50+
+      points of an unrelated immigration regulation under the same generic label. MEASURED
+      green, rank 1/10 — the tax-side text IS reachable amid the contamination. Does not clear
+      the collision itself, which is a separate repair; also observed dominating unrelated
+      queries (see J6) — its 1,506 points appear to be over-represented in ranking generally.
+
+  - question: "Apakah batas waktu SPT Tahunan Pajak Penghasilan Orang Pribadi Tahun Pajak 2025 mundur karena ada penundaan sanksi?"
+    verbatim_phrase: "SPT Tahunan Tahun Pajak 2025 tetap jatuh pada tanggal 31 Maret 2026"
+    instrument_id: KEP_55_PJ_2026
+    probe_state: red
+    probe_run_at: "2026-08-25"
+    note: >-
+      Confirmed ABSENT from legal_unified this pass (0 pts under any identity — whole, 21/21
+      chunks, only in the retired legal_unified_2026). MEASURED red, as expected — outstanding
+      work, not a surprise.
+
+  - question: "Siapa saja yang termasuk subjek pajak penghasilan menurut UU PPh?"
+    verbatim_phrase: "Yang menjadi subjek pajak adalah"
+    instrument_id: UU_36_2008
+    probe_state: red
+    probe_run_at: "2026-08-25"
+    note: >-
+      Present instrument, 65 pts, and the exact phrase IS in one of its indexed chunks
+      (directly sampled this pass). MEASURED red anyway — a genuine RETRIEVAL-RANKING miss,
+      not an ingestion gap: manually inspecting the top 10 for this query shows TASSE_7_1983
+      (the related consolidated PPh edition) and Permen_1_2026 (the Coretax/immigration
+      collision doc, unrelated to this question) dominating instead. Different failure class
+      from the absent-instrument reds above — worth lane P's attention on ranking/relevance,
+      not a re-acquisition task.
+
+  - question: "NIK saya otomatis jadi NPWP di sistem Coretax, apa dasar hukum resminya?"
+    verbatim_phrase: "Nomor Induk Kependudukan sebagai Nomor Pokok Wajib Pajak"
+    instrument_id: PER_7_PJ_2025
+    probe_state: red
+    probe_run_at: "2026-08-25"
+    note: >-
+      Confirmed ABSENT from legal_unified AND from legal_unified_2026 this pass (the mandate's
+      proposed lead, Permen_32_2022, was re-verified and retracted — see kb/topics/tax.yaml).
+      MEASURED red, as expected. Phrase is the instrument's standard, widely-published
+      statutory wording (WebSearch-corroborated 2026-08-25), not a corpus quote — there is no
+      corpus quote to take, because nothing under this identity has ever been ingested.
+
+  - question: "Apakah UU Harmonisasi Peraturan Perpajakan (HPP) tahun 2021 ada dalam basis pengetahuan pajak?"
+    verbatim_phrase: "Harmonisasi Peraturan Perpajakan"
+    instrument_id: UU_7_2021
+    probe_state: green
+    probe_run_at: "2026-08-25"
+    note: >-
+      MEASURED green, rank 2/10 — but this is exactly the trap mandate §4.1/§3 warns about,
+      caught and worth naming: the match is a CITATION inside two OTHER present instruments
+      (Permen_167_2022 and PP_44T_2022, both "...sebagaimana telah diubah terakhir dengan
+      Undang-Undang Nomor 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan"), not HPP's
+      own substantive text. HPP itself remains confirmed ABSENT as a document (0 points under
+      document_id=UU_7_2021 — see kb/inventory/tax.yaml). Recorded green because that is what
+      was measured and the phrase genuinely IS in the retrieved context (the journey's own
+      contract), but green here must not be read as "HPP is in the KB" by anyone skimming
+      probe_state alone — this is the biggest single gap in this inventory, not a closed item.
