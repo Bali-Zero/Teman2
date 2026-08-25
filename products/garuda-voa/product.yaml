@@ -118,9 +118,36 @@ risk_tier_map: # ASSEMBLY-LINE verification economics: set once, here
 owner_decisions: # §3 switchboard — filled with prepared proposals, signed at the end
   - id: 1
     decision: payment_provider
-    state: proposal-ready
+    state: ratified
     packet: products/garuda-voa/ops/decision-packets/01-payment-provider.md
-    gesture: "pick + sign up with his own credentials"
+    # RATIFIED 2026-08-25: Xendit. International card 3.5% + Rp6k, VA Rp13k, no monthly
+    # fee, payment links included. Same provenance caveat as decision 5: this reached the
+    # orchestrator by RELAY, not from Zero in-session. Enough to build dark and reversible;
+    # not enough to skip the signature. Confirm directly at go-live.
+    ratified: Xendit
+    # Zero attached a TIERED routing rule. Only tier (a) is in scope for THIS product, and
+    # that scoping is load-bearing — without it a lane builds the whole Bali Zero payment
+    # strategy into a VOA funnel that has no ticket above Rp 850k:
+    #   (a) small tickets (<= ~Rp 3jt) -> card in checkout, fee ABSORBED into the one
+    #       all-inclusive price, never a separate line. GARUDA VOA is entirely this tier
+    #       (issuance 790k, extension 850k). BUILD THIS.
+    #   (b) heavy T2 tickets (10-30jt) -> contained card deposit in checkout, balance by
+    #       international transfer/Wise in the consultant thread. NO SUCH TICKET EXISTS in
+    #       this product. Recorded for the sibling products; do NOT build it here.
+    #   (c) VA for customers holding an Indonesian account. Out of scope for a funnel whose
+    #       buyer is by definition a foreign tourist who has not yet entered the country.
+    fee_config_is_a_parameter: >
+      Zero's note: the card fee is negotiable at volume, so L3 wires it as configuration,
+      never a constant.
+    # MEASURED CONSEQUENCE, recorded because Zero is deciding fees while 7(b) is open:
+    # 3.5% + Rp6k on the 790k issuance is ~33.650 IDR, i.e. ~4.3% of the ticket, and it is
+    # ABSORBED. Whether that is affordable depends on a number nobody has yet confirmed —
+    # question 7(b) asks whether the 790k catalogue row is inclusive of PNBP. If it is not,
+    # the absorbed payment fee stacks on top of an unbudgeted government fee. This does not
+    # block L3 (the port is provider-neutral and the fee is configuration), but the margin
+    # answer is not knowable until 7(b) is.
+    depends_on_for_margin_only: 7
+    gesture: "sign up with his own credentials — the choice is made, the account is not"
   - id: 2
     decision: terms_of_sale_and_refund
     state: proposal-ready
@@ -148,8 +175,42 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "yes/no on the proposed disposition"
   - id: 5
     decision: visual_identity
-    state: proposal-pending
-    gesture: "pick 1 of 3 concepts"
+    state: ratified
+    # RATIFIED 2026-08-25: Concept A "The Stamp", with two BINDING copy constraints.
+    # PROVENANCE, stated plainly because it changes nothing now and matters at signature
+    # time: this reached the orchestrator by RELAY from a peer session reporting Zero's
+    # ruling, not from Zero in this session's own transcript. That is enough to build on —
+    # the work is dark behind the flag and reversible — and NOT enough to skip the
+    # confirmation. Decision 5 must still be confirmed directly with Zero in the go-live
+    # signature block, alongside every other decision here.
+    ratified: Concept A — "The Stamp"
+    binding_copy_constraints:
+      - id: 5a
+        rule: "The public funnel is ENGLISH. All of it."
+        # Costs nothing to honour: the public API emits reason CODES, never prose
+        # (reason-codes.yaml x-public-notes keeps them neutral categories on purpose), so
+        # this lands entirely on the presentation layer. Verified 2026-08-25 — no Italian
+        # string exists in garuda_voa_public.py or eligibility.py.
+      - id: 5b
+        rule: >
+          A DECLINE is positively educational, never rejecting. Mirror what the customer
+          themselves declared, then name what the VOA does not permit, then the
+          alternative, then the consultant's open hand. Never "the VOA is not for you".
+        example: >
+          "You told us you're coming to work — the VOA doesn't allow any work activity.
+          Here's what does…"
+        # Two consequences a lane will get wrong if they are not written down:
+        # (1) The mirroring uses the customer's OWN answers, held client-side. Do NOT ask
+        #     the backend to echo them back: the anonymous check carries no PII BY DESIGN
+        #     (migration 261's header argues the ABSENCE of PII is what lets the route be
+        #     public), and reason codes are deliberately coarse so they disclose no
+        #     internal decision prose. The educational copy is a UI mapping keyed on what
+        #     the customer typed, not a new field on the wire.
+        # (2) "Here's what does…" ROUTES to the Visa Oracle and to WhatsApp. GARUDA does
+        #     not own the decline -> alternative-visa mapping; that is the Oracle's
+        #     38-product question, and a second table here would be a duplicate authority
+        #     on a client-facing recommendation.
+    gesture: "confirm at signature time — the concept is picked, the relay is not the signature"
   - id: 6
     decision: filing_office_scope
     state: question-ready
@@ -172,7 +233,22 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     #   price_for_case(issuance)  = (790000, "B1 Visa on Arrival (VOA)")
     #   price_for_case(extension) = (850000, "B1 Visa on Arrival Extension")
     # These are the exact amounts the funnel would charge, from a file last touched in May.
-    measured_catalogue_age_days: 110
+    measured_catalogue_age_days: 111
+    # RE-MEASURED 2026-08-25 by importing the loader: age 111d vs window 90d, verdict STALE,
+    # and price_for_case(ISSUANCE) now returns (None, None). This is no longer a forecast.
+    # The guardrail is LIVE on the branch, so the funnel would answer 503 PRICE_UNRESOLVABLE
+    # to every real customer today. That makes this decision the top go-live blocker: no
+    # other lane's work can sell anything until it is answered.
+    blocks_go_live: true
+    # THE FORBIDDEN CURE, named explicitly because a competent lane proposed it on
+    # 2026-08-25 (L7, in good faith, reading the line below): "refresh the catalogue's
+    # metadata.last_updated stamp". Bumping the stamp WITHOUT re-verifying the prices is
+    # the same cheat as widening the window, wearing a different costume — it makes the
+    # guard green while nobody has looked at whether 790.000 is still the right number.
+    # That a careful reader independently proposed it is evidence the prohibition was not
+    # written where it gets read, not a fault of theirs: the "honest exits" sentence below
+    # says "re-verify AND re-stamp", and a skim lifts the second half out of the pair.
+    # The stamp is a CLAIM that a human looked. It is never the act of looking.
     question: >
       Two things, and the second is the one nobody has answered. (a) Are 790.000 and
       850.000 IDR still the correct prices today? The catalogue that supplies them has
@@ -185,11 +261,46 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     consequence: >
       The freshness guardrail now being built will, correctly, refuse to sell on the day it
       ships — the catalogue is already past its window. There are only two honest exits:
-      re-verify and re-stamp the catalogue, or rule that 90 days is the wrong window for a
-      list Bali Zero republishes on its own schedule. Quietly widening the window to make the
-      guard green is the one move that is not available: that turns the guardrail back into
-      the sentence it has been all along.
+      re-verify the prices and THEN re-stamp (in that order, and the stamp is worthless
+      without the first half), or rule that 90 days is the wrong window for a list Bali Zero
+      republishes on its own schedule. Two moves are NOT available, and they are the same
+      move: quietly widening the window, and bumping metadata.last_updated on prices nobody
+      re-checked. Either one turns the guardrail back into the sentence it has been all
+      along — green, and meaning nothing.
     gesture: "confirm the two amounts, or re-stamp the catalogue, or rule on the window"
+  - id: 8
+    decision: ocr_calibration_corpus
+    state: question-ready
+    # RAISED 2026-08-25 by the orchestrator after L5 shipped. This is NOT "pick a
+    # number" — it is the only question that unblocks measuring one.
+    #
+    # DECISIONS.md Q7 says the OCR confidence cut must be MEASURED against genuine
+    # passport photographs (good, dim, glare, angle, partial crop) and set where the
+    # false-confident rate goes to zero, because "the expensive error is not 'we asked
+    # again', it is 'we filed a wrong passport number'". L5's mandate is synthetic-only
+    # under the PII boundary, so L5 correctly REFUSED to source that corpus and said so
+    # rather than quietly calibrating on fabricated specimens.
+    #
+    # The two rules therefore collide, and the collision resolves in Zero's hands, not a
+    # lane's. Right now `CONFIDENCE_THRESHOLD = 0.80` in
+    # services/garuda_documents/confidence.py is a threshold picked by argument — which
+    # is precisely what Q7 forbids. It is a single named constant on purpose.
+    #
+    # Mitigating, and the reason this is not a go-live blocker on its own: the cut only
+    # decides whether we ask the customer to retake or pre-fill the field for their
+    # review. A human still confirms every field before submission, and no numeric
+    # confidence ever reaches the customer (Q7's frozen shape). What an uncalibrated cut
+    # buys us is friction if too high, and a pre-filled wrong value a tired customer may
+    # accept if too low.
+    question: >
+      On what corpus may we calibrate the OCR confidence threshold? Concretely: is there
+      a lawful basis and a controlled local environment for using real client passport
+      images already held, or should we build the corpus from consenting staff/personal
+      documents instead?
+    consequence: >
+      Until answered, 0.80 stands as an explicitly unmeasured default and Q7 stays open.
+      The number cannot be honestly calibrated on synthetic specimens.
+    gesture: "answer where the corpus comes from — the measurement follows from it"
   - id: 0
     decision: go_live
     state: blocked-on-all-above-and-on-the-parent-page
