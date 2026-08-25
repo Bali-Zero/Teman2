@@ -9,7 +9,7 @@ diff:
   insertions: 379
   deletions: 52
   hotzone_hits:
-    - apps/backend-rag/backend/db/migrations_v2/282_wa_reply_claims.sql
+    - apps/backend-rag/backend/db/migrations_v2/283_wa_reply_claims.sql
 
 lanes:
   - lane: build

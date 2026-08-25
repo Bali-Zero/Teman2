@@ -1,4 +1,4 @@
--- Migration 282: wa_reply_claims
+-- Migration 283: wa_reply_claims
 -- (2026-08-25 double-reply race: PR #4878 closed the routing gap that let a
 -- second webhook subscription reach the legacy inline path, but the
 -- cross-path dedup it added at the top of `process_whatsapp_message` is a
@@ -12,12 +12,31 @@
 -- TOCTOU, cicatrix family #5's shape applied to two application-level
 -- paths instead of two worktrees.)
 --
--- Renumbered 281 -> 282 (adversarial-review finding, W40 collision class):
--- PR #4854 already claims 281_garuda_voa_retention.sql on its own open
--- branch, and on origin/main the highest present number is 280
--- (280_research_os_objects_truncate_guard.sql) -- re-measured at rename
--- time via `git ls-tree origin/main -- .../migrations_v2/`. 282 is the
--- next free integer once #4854's claim on 281 is respected.
+-- Renumbered 281 -> 282 -> 283 (second adversarial-review finding, W40
+-- collision class -- the FIRST rename to 282 was itself a collision that
+-- was not caught by re-checking only main + the one other PR the first
+-- reviewer named). At rename time (2026-08-25), queried the FULL open-PR
+-- set, not just main: `gh pr list --state open --limit 300 --json
+-- number,files -q '.[] | .number as $n | .files[]?.path | select(test(
+-- "migrations_v2/[0-9]+_")) | "\($n): \(.)"'` returned PR #4879
+-- (garuda_orders, open) ALSO claiming 282 -- the exact silent-collision
+-- shape this rename exists to prevent, since CI's own migration-number
+-- lint only compares main + the current PR, never two open PRs against
+-- each other. `git ls-tree origin/main -- .../migrations_v2/` (cross-
+-- checked against the GitHub Contents API directly, not just a local
+-- fetch) confirms the highest number actually present on main is still
+-- 280 (280_research_os_objects_truncate_guard.sql).
+--
+-- Anomaly noted, NOT resolved here (out of scope, flagged for the
+-- record): PR #4854 is reported MERGED by the GitHub API and its commit
+-- message claims migration 281 (281_garuda_voa_retention.sql), but that
+-- file is absent from origin/main's current tip, and #4854's merge commit
+-- (09bb478323845a9e80a90afdaf877efff4018874) is NOT an ancestor of
+-- origin/main -- verified via `git merge-base --is-ancestor`. Whatever the
+-- cause, 281 is therefore NOT used as this PR's number: 283 keeps a
+-- two-integer margin from every number confirmed live (280 on main, 282
+-- claimed by open PR #4879), so a future resolution of the #4854/281
+-- anomaly (whichever direction it goes) cannot collide with this file.
 --
 -- Purpose
 -- -------
