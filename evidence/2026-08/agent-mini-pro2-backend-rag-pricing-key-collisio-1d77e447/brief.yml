@@ -30,10 +30,10 @@ constraints:
     sites: only the public router is not wrapped in try/except, so raising there would convert
     a wrong price into an unhandled 500 — worse, not better. Every consumer already degrades
     safely on None, so the fix needs no call-site changes."
-  - "The qualified form uses `::` and not `/`, because real catalogue names already contain a
-    bare slash (\"Working KITAS (Altus/Onshore)\") and `/` would not visibly separate a
+  - 'The qualified form uses `::` and not `/`, because real catalogue names already contain a
+    bare slash ("Working KITAS (Altus/Onshore)") and `/` would not visibly separate a
     qualified id from an ordinary name. Same convention as the sibling fix on the client-bot
-    snapshot builder — one convention for one problem, not two."
+    snapshot builder — one convention for one problem, not two.'
 acceptance:
   - "Each of the four colliding keys is refused rather than silently resolved, asserted against
     the REAL on-disk catalogue so the test fails the day a fifth collision is added."

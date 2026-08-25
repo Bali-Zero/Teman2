@@ -1,92 +1,119 @@
-brief_ref: evidence/2026-08/agent-mini-pro2-backend-rag-pricing-key-collisio-1d77e447/brief.yml
-plan_ref: >-
-  PR #4886 (agent/mini-pro2/backend-rag/pricing-key-collision) — get_service_by_key refuses to
-  guess on a colliding catalogue key, 2026-08-25.
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #4886 (agent/mini-pro2/backend-rag/pricing-key-collision) — get_service_by_key refuses to
+  guess on a colliding catalogue key, 2026-08-25."
 lanes:
   - lane: pricing-key-collision
     role: build
-    seat: "sonnet-5 (Mini worktree; reachability measurement, fix, guilt+innocence corpus, mutation proof)"
+    seat: sonnet-5 (Mini worktree; reachability measurement, fix, guilt+innocence corpus, mutation proof)
   - lane: pricing-key-collision-review
     role: review
-    seat: "opus-5 orchestrator (Mini; independent census, independent public-endpoint verification, diff read)"
+    seat:
+      opus-5 orchestrator (Mini; independent census, independent public-endpoint verification, diff
+      read)
 seat_diversity: satisfied
-seat_diversity_note: >-
-  Generator and grader are different seats and different model families' roles: a Sonnet 5 lane
-  built and proved it, the Opus 5 orchestrator re-derived the collision census from the raw
-  catalogue and re-verified the public-endpoint claim before accepting the report.
+seat_diversity_note:
+  "Generator and grader are different seats and different model families' roles: a
+  Sonnet 5 lane built and proved it, the Opus 5 orchestrator re-derived the collision census from the
+  raw catalogue and re-verified the public-endpoint claim before accepting the report."
 diff:
-  net_lines: >-
-    2 files changed, 436 insertions, 29 deletions (git diff --shortstat origin/main...HEAD).
-  behaviour_change: >-
+  net_lines: 2 files changed, 436 insertions, 29 deletions (git diff --shortstat origin/main...HEAD).
+  behaviour_change:
     For the four colliding keys only, a bare lookup now returns None instead of silently
-    returning the basic (cheaper, wrong-scope) row. All 105 unambiguous keys are unaffected. A
-    new qualified form "<sub_block>::<name>" lets a caller name one colliding row exactly.
+    returning the basic (cheaper, wrong-scope) row. All 105 unambiguous keys are unaffected. A new qualified
+    form "<sub_block>::<name>" lets a caller name one colliding row exactly.
 receipts:
-  - claim: "The catalogue contains exactly four duplicate service keys, all in tax_accounting, each pair with a different price."
-    cmd: "python3 walk of bali_zero_official_prices_2026.json counting service-level keys, then filtering names appearing more than once with differing prices"
-    result: "4 collisions: Tier 0-50 (1.8-2.0M vs 2.5M), Tier 50-100 (2.5-3.0M vs 3.5M), Tier 100-200 (3.5-4.5M vs 4.5M), Tier 200+ (5.0M vs 6.5M)"
+  - claim:
+      The catalogue contains exactly four duplicate service keys, all in tax_accounting, each pair
+      with a different price.
+    cmd:
+      python3 walk of bali_zero_official_prices_2026.json counting service-level keys, then filtering
+      names appearing more than once with differing prices
+    result:
+      "4 collisions: Tier 0-50 (1.8-2.0M vs 2.5M), Tier 50-100 (2.5-3.0M vs 3.5M), Tier 100-200 (3.5-4.5M
+      vs 4.5M), Tier 200+ (5.0M vs 6.5M)"
     exit: 0
     ts: "2026-08-25T05:12:00Z"
-    seat: "opus-5 orchestrator (Mini) — independently re-derived from the lane's own census, which matched exactly"
-  - claim: "The affected endpoint is PUBLIC and unauthenticated, so the wrong price was reachable from outside the system."
-    cmd: "grep -n '\"/api/pricing/service\"' apps/backend-rag/backend/app/auth/public_endpoints.py"
-    result: "304:        \"/api/pricing/service\","
+    seat:
+      opus-5 orchestrator (Mini) — independently re-derived from the lane's own census, which matched
+      exactly
+  - claim:
+      The affected endpoint is PUBLIC and unauthenticated, so the wrong price was reachable from outside
+      the system.
+    cmd: grep -n '"/api/pricing/service"' apps/backend-rag/backend/app/auth/public_endpoints.py
+    result: '304:        "/api/pricing/service",'
     exit: 0
     ts: "2026-08-25T06:56:07Z"
-    seat: "opus-5 orchestrator (Mini)"
-  - claim: "The deterministic floor is 3 because pricing_service.py is hot-zone; the brief declares Gear 3."
-    cmd: "git diff --name-only origin/main...HEAD > /tmp/pk_changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/pk_changed.txt"
+    seat: opus-5 orchestrator (Mini)
+  - claim:
+      The deterministic floor is 3 because pricing_service.py is hot-zone; the brief declares Gear
+      3.
+    cmd:
+      git diff --name-only origin/main...HEAD > /tmp/pk_changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/pk_changed.txt
     result: "3"
     exit: 0
     ts: "2026-08-25T06:56:07Z"
-    seat: "opus-5 orchestrator (Mini)"
-  - claim: "The fix is mutation-proven: reverting only the resolution logic reddens the guilt corpus and leaves the innocence corpus green."
-    cmd: "revert resolution logic (helpers kept so imports resolve); rerun the corpus with PYTHONDONTWRITEBYTECODE=1 -p no:cacheprovider"
-    result: "10 guilt tests RED, 11 innocence tests GREEN; restored and re-verified clean"
+    seat: opus-5 orchestrator (Mini)
+  - claim:
+      "The fix is mutation-proven: reverting only the resolution logic reddens the guilt corpus and
+      leaves the innocence corpus green."
+    cmd:
+      revert resolution logic (helpers kept so imports resolve); rerun the corpus with PYTHONDONTWRITEBYTECODE=1
+      -p no:cacheprovider
+    result: 10 guilt tests RED, 11 innocence tests GREEN; restored and re-verified clean
     exit: 0
     ts: "2026-08-25T06:10:00Z"
-    seat: "sonnet-5 lane (Mini worktree)"
-  - claim: "No consumer regressed."
-    cmd: "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 -m pytest backend/tests/services/pricing backend/tests -k 'dynamic_pricing or public_pricing or pricing_adapter' -p no:randomly -p no:cacheprovider"
-    result: "no FAILED or ERROR lines (127 tests across pricing, dynamic_pricing, public lookup, garuda_flow, visa_engine adapter; 106 pre-existing + 21 new)"
+    seat: sonnet-5 lane (Mini worktree)
+  - claim: No consumer regressed.
+    cmd:
+      PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 -m pytest backend/tests/services/pricing backend/tests
+      -k 'dynamic_pricing or public_pricing or pricing_adapter' -p no:randomly -p no:cacheprovider
+    result:
+      no FAILED or ERROR lines (127 tests across pricing, dynamic_pricing, public lookup, garuda_flow,
+      visa_engine adapter; 106 pre-existing + 21 new)
     exit: 0
     ts: "2026-08-25T06:40:00Z"
-    seat: "opus-5 orchestrator (Mini)"
-  - claim: "ruff caught a real UnboundLocalError in the lane's own first draft before it shipped."
-    cmd: "ruff check on the modified pricing_service.py"
-    result: "unbound loop variable in the ambiguity warning path — reachable only by a future collision spanning a flat category; fixed and re-verified before commit"
+    seat: opus-5 orchestrator (Mini)
+  - claim: ruff caught a real UnboundLocalError in the lane's own first draft before it shipped.
+    cmd: ruff check on the modified pricing_service.py
+    result:
+      unbound loop variable in the ambiguity warning path — reachable only by a future collision spanning
+      a flat category; fixed and re-verified before commit
     exit: 0
     ts: "2026-08-25T06:05:00Z"
-    seat: "sonnet-5 lane (Mini worktree)"
+    seat: sonnet-5 lane (Mini worktree)
 pii_scan: clean
-dissent: >-
-  None recorded. The one judgement worth naming is None-versus-raise: a reviewer could argue an
-  ambiguous key deserves a loud exception. It was rejected on evidence — the public router is
-  the one call site with no try/except, so raising there turns a wrong price into an unhandled
-  500. Refusing loudly at the service layer and degrading safely at the edge is the better trade.
+dissent:
+  - seat: opus-5 orchestrator (Mini), against the None-versus-raise choice
+    objection: An ambiguous key arguably deserves a loud exception rather than a silent None.
+    resolution:
+      Rejected on evidence. The public router is the one call site with no try/except, so raising
+      there converts a wrong price into an unhandled 500 — worse, not better. Refusing loudly at the service
+      layer and degrading safely at the edge is the better trade.
+    status: PLAUSIBLE
 tests:
-  - "backend/tests/services/pricing/test_pricing_service_key_collision.py — 21 new (10 guilt, 11 innocence)"
-  - "127 tests across pricing / dynamic_pricing / public lookup / garuda_flow / visa_engine adapter — 0 failures before and after"
-  - "full garuda_flow/ (163) and full visa_engine/ suites green"
+  - backend/tests/services/pricing/test_pricing_service_key_collision.py — 21 new (10 guilt, 11 innocence)
+  - 127 tests across pricing / dynamic_pricing / public lookup / garuda_flow / visa_engine adapter — 0 failures
+    before and after
+  - full garuda_flow/ (163) and full visa_engine/ suites green
 static:
-  - "ruff check clean on the touched files"
-runtime_proof: >-
-  The qualified-key path was exercised end to end through the actual public router, not only at
-  the service layer. NOT claimed: no request was made against the deployed Fly instance — this
-  is local proof against the real on-disk catalogue.
+  - ruff check clean on the touched files
+runtime_proof:
+  "The qualified-key path was exercised end to end through the actual public router, not
+  only at the service layer. NOT claimed: no request was made against the deployed Fly instance — this
+  is local proof against the real on-disk catalogue."
 residual_risks:
-  - "The data ambiguity itself persists for any human reading the price list: two rows called
-    Tier 0-50, 700k apart, distinguished only inside a long name. Owner decision, switchboard
-    item 10."
-  - "PricingService callers that pass a colliding key and render None as an empty string rather
-    than 'unavailable' would show a blank where a wrong number used to be. All three current
-    consumers were read and degrade safely; a future one might not."
+  - "The data ambiguity itself persists for any human reading the price list: two rows called Tier 0-50,
+    700k apart, distinguished only inside a long name. Owner decision, switchboard item 10."
+  - PricingService callers that pass a colliding key and render None as an empty string rather than 'unavailable'
+    would show a blank where a wrong number used to be. All three current consumers were read and degrade
+    safely; a future one might not.
 sources:
-  - "docs/plans/2026-08-25-due-bot-live/SPEC-price-service-binding.md — the sibling defect one layer up"
-  - "docs/plans/2026-08-25-due-bot-live/OWNER-DECISION-PACKET.md item 10 — the data-side decision"
-notes: >-
-  Found because a sibling lane closing the same disease on the client-bot's snapshot builder
-  flagged this method as carrying the identical first-match-wins bug and correctly refused to
-  fix it out of scope. The reachability was then measured per consumer rather than assumed,
-  which is what separated one publicly-exploitable path from two that are unreachable by
-  construction.
+  - docs/plans/2026-08-25-due-bot-live/SPEC-price-service-binding.md — the sibling defect one layer up
+  - docs/plans/2026-08-25-due-bot-live/OWNER-DECISION-PACKET.md item 10 — the data-side decision
+notes:
+  Found because a sibling lane closing the same disease on the client-bot's snapshot builder flagged
+  this method as carrying the identical first-match-wins bug and correctly refused to fix it out of scope.
+  The reachability was then measured per consumer rather than assumed, which is what separated one publicly-exploitable
+  path from two that are unreachable by construction.
