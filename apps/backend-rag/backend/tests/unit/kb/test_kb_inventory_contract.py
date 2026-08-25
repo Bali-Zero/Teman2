@@ -246,6 +246,180 @@ def test_a_leak_claim_is_backed_by_the_measurement(inventory):
             )
 
 
+# ── A shared identifier is not evidence of a leak, and a losing source is not an
+#    identity (measured 2026-08-25 against two false claims that landed in this
+#    file: UU_13_2016 and Permen_32_2022). Both predicates are pure so they can be
+#    exercised twice — once against the real inventory, once against synthetic
+#    guilt/innocence cases that do not depend on what the file currently contains
+#    (the anti-vacuity discipline `test_kb_topic_contract.py` documents at its top).
+
+def _leak_claim_is_evidenced(doc: dict) -> bool:
+    """True unless `leaked_to_production` is asserted on zero fragment-level support.
+
+    §4.2 says a presence/absence judgment takes more than one method; a leak claim
+    IS a presence judgment. `presence_in_legal_unified.by_document_id > 0` only
+    proves the id STRING exists in production — it says nothing about whether
+    THIS row's own content is there, and a retired collection can hold a document
+    whose id merely collides with an unrelated production document (UU_13_2016:
+    118 production points, all of them a correctly-identified Patent Law that
+    shares nothing but the string "UU_13_2016" with this row).
+
+    `fragments_absent_there` is measured per-document against the same
+    normalized-fragment hashes the containment proofs use elsewhere in this file.
+    If it equals `distinct_fragments`, NONE of this row's own fragments were found
+    in production — there is no content-level evidence at all, only the id
+    collision. A real leak leaves at least one of the row's own fragments present.
+    """
+    if not doc.get("leaked_to_production"):
+        return True
+    presence = doc["presence_in_legal_unified"]
+    return presence["fragments_absent_there"] < presence["distinct_fragments"]
+
+
+def _identity_not_named_from_losing_source(doc: dict) -> bool:
+    """True unless a `contradictory` row names `real_identity` from the side its
+    own verdict already says the text contradicts.
+
+    identity.verdict == "contradictory" means, by this file's own vocabulary,
+    "metadata and text name DIFFERENT instruments" — so within a contradictory
+    row, text and metadata already disagree by definition; the interesting
+    question is only which side `real_identity` was drawn from. §4.3 makes the
+    instrument's OWN TEXT authoritative over metadata and filename. A row that
+    sets `real_identity` to a value copied verbatim from `stated_in_metadata` (or
+    `stated_in_filename`) is naming the identity from the losing side while its
+    own `stated_in_text` field, recorded right beside it, disagrees.
+
+    Deliberately scoped to verdict == "contradictory" only:
+      - `mistyped` rows have text and metadata AGREEING on the instrument (only
+        the id's TYPE is wrong, e.g. a Pergub filed as a UU) — real_identity
+        legitimately restates metadata there, and that is not this bug.
+      - `lost` rows have no identity in the text at all (UNKNOWN placeholders) —
+        metadata is the only source there IS, so there is no losing side to have
+        preferred over it.
+    A verbatim-equality check (not a substring/contains check) is deliberate: this
+    repo's most-repeated defect class is guard-over-match, and a row where
+    `real_identity` legitimately restates the SAME instrument metadata names, in
+    different words, must not be flagged (the PP_6646_2021 shape: real_identity is
+    grounded in the filename's subject with a corrected number, not copied from
+    either losing field, even though the row is contradictory for other reasons).
+    """
+    identity = doc["identity"]
+    if identity["verdict"] != "contradictory":
+        return True
+    real = identity.get("real_identity")
+    if not real:
+        return True
+    return real != identity.get("stated_in_metadata") and real != identity.get("stated_in_filename")
+
+
+def test_a_leak_claim_has_fragment_level_evidence(inventory):
+    path, data = inventory
+    for doc in data["documents"]:
+        assert _leak_claim_is_evidenced(doc), (
+            "{}: {} claims leaked_to_production=true but fragments_absent_there "
+            "equals distinct_fragments — none of this document's own fragments "
+            "were found in production, only the id string collided. A shared "
+            "document_id is not evidence of a leak.".format(path.name, doc["document_id"])
+        )
+
+
+def test_identity_is_not_named_from_the_losing_source(inventory):
+    path, data = inventory
+    for doc in data["documents"]:
+        assert _identity_not_named_from_losing_source(doc), (
+            "{}: {} is contradictory yet real_identity is copied verbatim from "
+            "stated_in_metadata or stated_in_filename — naming the identity from "
+            "the side its own verdict says the text contradicts (§4.3: text "
+            "outranks metadata and filename).".format(path.name, doc["document_id"])
+        )
+
+
+def test_leak_and_identity_rules_have_guilt_and_innocence_cases():
+    """Synthetic proof, independent of what the real inventory currently contains.
+
+    MANDATE §4.9's anti-vacuity concern applies here too: the real file could be
+    repaired to zero violating rows (it now is) and the two rules above would
+    still report green whether or not they are actually wired correctly. These
+    cases exercise both predicates directly against the exact shapes measured
+    2026-08-25, so a regression in the predicate itself — not just an absence of
+    bad data — is what keeps this test honest.
+    """
+
+    def leak_doc(fragments_absent, distinct_fragments, claim=True):
+        return {
+            "leaked_to_production": claim,
+            "presence_in_legal_unified": {
+                "fragments_absent_there": fragments_absent,
+                "distinct_fragments": distinct_fragments,
+            },
+        }
+
+    # guilt: the exact shape of the false UU_13_2016 claim — all 7 of this row's
+    # own 7 fragments are absent from production, yet a leak is asserted anyway.
+    assert not _leak_claim_is_evidenced(leak_doc(7, 7))
+    # innocence: partial overlap IS real fragment-level evidence — the shape of
+    # the three genuine leaks still standing in this file (UU_14_2023 4/804,
+    # PP_18_2025 1/99, UU_17_2026 13/49 absent).
+    assert _leak_claim_is_evidenced(leak_doc(4, 804))
+    assert _leak_claim_is_evidenced(leak_doc(1, 99))
+    # innocence: no leak claimed at all, regardless of fragment counts — the
+    # ordinary shape of most rows in this file.
+    assert _leak_claim_is_evidenced(leak_doc(48, 48, claim=False))
+
+    def identity_doc(verdict, real, metadata, filename="whatever.pdf"):
+        return {
+            "identity": {
+                "verdict": verdict,
+                "real_identity": real,
+                "stated_in_metadata": metadata,
+                "stated_in_filename": filename,
+            }
+        }
+
+    # guilt: the exact shape of the false Permen_32_2022 claim — real_identity is
+    # a verbatim copy of stated_in_metadata on a contradictory row.
+    assert not _identity_not_named_from_losing_source(
+        identity_doc(
+            "contradictory",
+            "PER-7/PJ/2025 — NIK-NPWP Coretax",
+            "PER-7/PJ/2025 — NIK-NPWP Coretax",
+            "PER-7-PJ-2025.pdf",
+        )
+    )
+    # guilt, filename side: same inversion, sourced from the filename instead of
+    # the metadata field.
+    assert not _identity_not_named_from_losing_source(
+        identity_doc("contradictory", "legal_number=6646", "something_else", "legal_number=6646")
+    )
+    # innocence: the shape of the genuine PP_6646_2021 row — real_identity is
+    # drawn from NEITHER losing field verbatim (synthesized from the filename's
+    # subject plus a corrected number), even though the row is contradictory.
+    assert _identity_not_named_from_losing_source(
+        identity_doc(
+            "contradictory",
+            "PP 34/2021 — Penggunaan Tenaga Kerja Asing",
+            "legal_number=6646",
+            "pp_34_2021_penggunaan_tka.pdf",
+        )
+    )
+    # innocence: real_identity is null — nothing was named, so there is no source
+    # to have inverted (the UU_13_2016 / UU_31_2010 / Perda_15_2019 shape).
+    assert _identity_not_named_from_losing_source(identity_doc("contradictory", None, "x", "y"))
+    # innocence: verdict is "lost", not "contradictory" — metadata IS legitimately
+    # the identity source when text carries no identity at all (the
+    # TAX_UNKNOWN_UNKNOWN shape). Verbatim equality on purpose, to prove the
+    # verdict gate — not the string comparison — is what lets this through.
+    assert _identity_not_named_from_losing_source(
+        identity_doc("lost", "KEP-55/PJ/2026 — X", "KEP-55/PJ/2026 — X", "n/a")
+    )
+    # innocence: verdict "mistyped" — text and metadata already agree, only the
+    # id's TYPE is wrong; real_identity legitimately restates metadata (the
+    # UU_14_2023 shape). Verbatim equality again on purpose, same reason.
+    assert _identity_not_named_from_losing_source(
+        identity_doc("mistyped", "Pergub Bali 14/2023 - X", "Pergub Bali 14/2023 - X", "n/a")
+    )
+
+
 def test_decision_choice_is_from_the_mandates_three(inventory):
     path, data = inventory
     assert data["decision"]["choice"] in DECISION_CHOICES, path.name
