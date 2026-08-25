@@ -38,7 +38,11 @@ swallowed somewhere — returns nothing for every journey and reports "all red",
 which is indistinguishable from a knowledge base that is genuinely missing
 everything. So a control query runs FIRST and must return results. If it does not,
 this exits 3 (BROKEN) and reports no verdicts at all, because a probe that cannot
-demonstrate it reached production has no business grading anything.
+demonstrate it reached production has no business grading anything. It runs ONCE
+PER DISTINCT COLLECTION a journey actually resolves to (2026-08-26 — see
+`indiscriminate_phrases`'s docstring), memoized by name: any one of those failing
+is enough to refuse the whole run, because a run that cannot prove EVERY collection
+it is about to grade is reachable has no business grading any of them.
 
 EXITS (same vocabulary as scripts/kb/kb_inventory_probe.py)
   0  AT TARGET   — every journey is SATISFIED (see "expectation" below), and the
@@ -297,10 +301,26 @@ def journey_satisfaction(measured_state: str, expectation: str) -> bool:
     earlier rule derived both from `hit == (expectation == "retrieves")`, which
     made `misattributed` SATISFY a canary — the guard went quiet in precisely
     the case where the corpus was worse.
+
+    FAIL-CLOSED, not fail-open (PENDING-ARMS guard 1, cross-family completeness
+    review 2026-08-26): `must_not_retrieve` used to be a DENY-list —
+    `measured_state not in ("green", "misattributed")` — so ANYTHING else
+    satisfied a canary: a case-mismatched `"GREEN"`, `None`, or any other value
+    this function was never told to expect. `run()` only ever calls this with
+    the three values `locate_phrase()` actually returns, so that specific chain
+    is not reachable through this module's own code today — but this is a small
+    pure function nothing stops another caller from misusing, and a canary is
+    exactly the place a permissive default is the wrong direction: in doubt, a
+    reachable poison must be declared a VIOLATION, not silently satisfied. Now
+    an ALLOW-list — only the one state that has ever meant "the poison did not
+    come back" satisfies a canary; every real caller's three legitimate values
+    (`green`/`misattributed`/`red`) behave identically to before this change.
     """
     if expectation == "retrieves":
         return measured_state == "green"
-    return measured_state not in ("green", "misattributed")
+    if expectation == "must_not_retrieve":
+        return measured_state == "red"
+    return False  # an unrecognised expectation satisfies nothing, ever
 
 
 def locate_phrase(chunks: list[dict], phrase: str, instrument_id: str) -> dict:
@@ -398,8 +418,10 @@ def unserved_collections(names, lookup) -> list[str]:
     return sorted({n for n in names if not lookup(n)})
 
 
-def indiscriminate_phrases(journeys, control_chunks) -> list[tuple[int, str]]:
-    """Phrases that also appear in the CONTROL query's results, with their index.
+def indiscriminate_phrases(
+    journeys, controls: dict[str, list[dict]], default_collection: str
+) -> list[tuple[int, str]]:
+    """Phrases that also appear in THEIR OWN COLLECTION's control results.
 
     The control asks an unrelated, deliberately generic question — the standard
     Indonesian statutory closing formula — and whatever comes back is arbitrary legal
@@ -413,17 +435,37 @@ def indiscriminate_phrases(journeys, control_chunks) -> list[tuple[int, str]]:
     it clears MIN_PHRASE_CHARS untouched — and matches nearly every document in the
     collection. Length was never the property that mattered; discrimination was.
 
+    PER-COLLECTION (PENDING-ARMS finding opened 2026-08-26, refuter finding 10): a
+    journey can override its own `collection:` (see `resolve_collection`), and
+    checking it against a control fetched from a DIFFERENT collection proves
+    nothing — a phrase that is boilerplate in visa_oracle but rare in legal_unified
+    would sail past undetected if the only control fetched happened to be
+    legal_unified's. `controls` maps collection name -> that collection's OWN
+    control chunks (one retrieval per DISTINCT collection actually used by a run,
+    memoized by the caller — see `run()`); each journey is checked against the
+    haystack for the collection it resolves to, never a haystack shared across
+    collections. The per-journey haystack is built lazily into a LOCAL dict — never
+    module-level — so this function carries no state between calls: two calls in
+    either order against the same inputs return the same answer.
+
     The check is ONE-DIRECTIONAL and the docstring says so on purpose: appearing in
     the control's results is damning, absence from five arbitrary chunks proves
     nothing. It is a cheap floor, not a certificate — the chunks are already fetched,
     so it costs no query at all.
     """
-    joiner = " %s " % CHUNK_SEPARATOR
-    haystack = joiner.join(normalize(c.get("text", "")) for c in control_chunks)
+    haystacks: dict[str, str] = {}
     out = []
     for i, j in enumerate(journeys, start=1):
         phrase = normalize(j.get("verbatim_phrase", ""))
-        if phrase and phrase in haystack:
+        if not phrase:
+            continue
+        collection = resolve_collection(j, default_collection)
+        if collection not in haystacks:
+            joiner = " %s " % CHUNK_SEPARATOR
+            haystacks[collection] = joiner.join(
+                normalize(c.get("text", "")) for c in controls.get(collection, [])
+            )
+        if phrase in haystacks[collection]:
             out.append((i, j.get("verbatim_phrase", "")))
     return out
 
@@ -591,59 +633,88 @@ async def run(argv=None) -> int:
         )
 
     # ── the control, before anything is graded ──────────────────────────────
-    try:
-        control = await retrieve(service, CONTROL_QUERY, args.collection, 5)
-    except Exception as exc:  # noqa: BLE001 - the reason matters more than the type
-        if args.json:
-            print(json.dumps({
-                "journeys_file": str(args.journeys),
-                "collection": args.collection,
-                "verdict": VERDICT_BY_EXIT[3],
-                "reason": "control_failed",
-                "detail": "%s: %s" % (type(exc).__name__, exc),
-                "exit_code": 3,
-                "degraded_path": False,
-                "journeys": [],
-            }))
-        else:
-            print("BROKEN — the control query raised %s: %s" % (type(exc).__name__, exc))
-            print("Nothing was graded. A probe that cannot reach production cannot")
-            print("distinguish 'the knowledge base is missing this' from 'I am misconfigured'.")
-        return 3
+    # One retrieval PER DISTINCT COLLECTION actually used by a journey (`asked`,
+    # computed above), memoized by name — not just args.collection. PENDING-ARMS
+    # finding opened 2026-08-26 (refuter finding 10): the discrimination floor
+    # below used to check every journey's phrase against a SINGLE global control
+    # fetched from args.collection alone. A journey overriding `collection:` (e.g.
+    # to visa_oracle) was checked against the WRONG corpus's boilerplate — a
+    # phrase generic in visa_oracle but rare in legal_unified would sail through
+    # undetected. Today every real journeys file targets legal_unified alone, so
+    # the refuter marked this UNDETERMINED rather than reproduced — but lane B is
+    # writing company journeys against visa_oracle, so this is a failure waiting
+    # for them, not a hypothetical.
+    #
+    # (Named function deliberately NOT written here as a call-shaped substring:
+    # test_the_discrimination_floor_runs_after_the_control_and_before_any_grading
+    # in test_probe_retrieval_refusals.py asserts on the raw source-text POSITION
+    # of "CONTROL_PHRASE" vs the literal substring of this function's own call —
+    # a comment naming it earlier in the text moves that substring's position
+    # without moving any code. Reproduced live 2026-08-26 by an earlier draft of
+    # this very comment; family #3, guard-over-match's own blind spot.)
+    controls: dict[str, list[dict]] = {}
+    control_ranks: dict[str, int] = {}
+    for collection in sorted(asked):
+        try:
+            control_chunks = await retrieve(service, CONTROL_QUERY, collection, 5)
+        except Exception as exc:  # noqa: BLE001 - the reason matters more than the type
+            if args.json:
+                print(json.dumps({
+                    "journeys_file": str(args.journeys),
+                    "collection": args.collection,
+                    "verdict": VERDICT_BY_EXIT[3],
+                    "reason": "control_failed",
+                    "detail": "collection %r: %s: %s" % (collection, type(exc).__name__, exc),
+                    "exit_code": 3,
+                    "degraded_path": False,
+                    "journeys": [],
+                }))
+            else:
+                print("BROKEN — the control query on %r raised %s: %s"
+                      % (collection, type(exc).__name__, exc))
+                print("Nothing was graded. A probe that cannot reach production cannot")
+                print("distinguish 'the knowledge base is missing this' from 'I am misconfigured'.")
+            return 3
 
-    hit, rank = phrase_hit(control, CONTROL_PHRASE)
-    if not control or not hit:
-        if args.json:
-            print(json.dumps({
-                "journeys_file": str(args.journeys),
-                "collection": args.collection,
-                "verdict": VERDICT_BY_EXIT[3],
-                "reason": "control_failed",
-                "detail": "control returned %d chunks, phrase %r was %s"
-                          % (len(control), CONTROL_PHRASE, "absent" if control else "unreachable"),
-                "exit_code": 3,
-                "degraded_path": False,
-                "journeys": [],
-            }))
-        else:
-            print("BROKEN — the control query returned %d chunks and the control phrase"
-                  % len(control))
-            print("         %r was %s." % (CONTROL_PHRASE, "absent" if control else "unreachable"))
-            print("Nothing was graded. Check QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY,")
-            print("and that %r resolves to a populated collection." % args.collection)
-        return 3
+        hit, rank = phrase_hit(control_chunks, CONTROL_PHRASE)
+        if not control_chunks or not hit:
+            if args.json:
+                print(json.dumps({
+                    "journeys_file": str(args.journeys),
+                    "collection": args.collection,
+                    "verdict": VERDICT_BY_EXIT[3],
+                    "reason": "control_failed",
+                    "detail": "collection %r: control returned %d chunks, phrase %r was %s"
+                              % (collection, len(control_chunks), CONTROL_PHRASE,
+                                 "absent" if control_chunks else "unreachable"),
+                    "exit_code": 3,
+                    "degraded_path": False,
+                    "journeys": [],
+                }))
+            else:
+                print("BROKEN — the control query on %r returned %d chunks and the control"
+                      % (collection, len(control_chunks)))
+                print("         phrase %r was %s."
+                      % (CONTROL_PHRASE, "absent" if control_chunks else "unreachable"))
+                print("Nothing was graded. Check QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY,")
+                print("and that %r resolves to a populated collection." % collection)
+            return 3
 
-    # The control has just proved production is reachable. Its chunks are also the
-    # cheapest boilerplate detector available: they were retrieved for a question
-    # that has nothing to do with any journey.
-    mirrors = indiscriminate_phrases(journeys, control)
+        controls[collection] = control_chunks
+        control_ranks[collection] = rank
+
+    # Every collection this run touches has just proved production is reachable.
+    # Each collection's own chunks are also the cheapest boilerplate detector
+    # available for the journeys that resolve to it: they were retrieved for a
+    # question that has nothing to do with any journey.
+    mirrors = indiscriminate_phrases(journeys, controls, args.collection)
     if mirrors:
         return refuse(
             args,
             "indiscriminate_phrase",
             "; ".join("journey %d: %r" % (i, ph[:60]) for i, ph in mirrors),
-            ["BROKEN — %d phrase(s) also appear in the CONTROL query's results:"
-             % len(mirrors)]
+            ["BROKEN — %d phrase(s) also appear in their journey's own CONTROL query "
+             "results:" % len(mirrors)]
             + ["  - journey %d: %r" % (i, ph[:70]) for i, ph in mirrors]
             + ["",
                "Nothing was graded. The control asks an unrelated generic question, so "
@@ -659,8 +730,10 @@ async def run(argv=None) -> int:
     if args.json:
         degraded = detect_degraded(root) is not None
     else:
-        print("[control] %r found at rank %d of %d — production is reachable"
-              % (CONTROL_PHRASE, rank, len(control)))
+        for collection in sorted(controls):
+            print("[control:%s] %r found at rank %d of %d — production is reachable"
+                  % (collection, CONTROL_PHRASE, control_ranks[collection],
+                     len(controls[collection])))
         degraded = warn_if_degraded(root)
         print()
 
