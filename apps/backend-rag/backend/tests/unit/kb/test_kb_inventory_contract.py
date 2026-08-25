@@ -578,3 +578,24 @@ def test_the_gate_this_module_defers_topic_inventories_to_actually_exists():
     )
     for rule in ("def check_topic(", "def check_journey(", "def check_topic_inventory("):
         assert rule in source, f"{owner.name} no longer defines {rule!r}"
+
+
+def test_no_artifact_sits_where_no_gate_looks(capsys):
+    """A yaml directly under kb/ is read by nothing, and nothing would say so.
+
+    Every gate in this campaign scans a NAMED subdirectory — kb/topics, kb/journeys,
+    kb/inventory. A file at kb/<topic>.yaml is therefore parsed by no test, counted
+    in no census and refuted by no contract: it can be wrong forever in silence.
+
+    This is not hypothetical. On 2026-08-25 a malformed `cp` left kb/tax.yaml — a
+    stray duplicate of the tax INVENTORY — and a `git add -A` committed it. Nothing
+    failed, because nothing was looking. It is the campaign's own thesis turned on
+    its own working directory: an artifact that no gate reads is not an artifact.
+    """
+    kb = _repo_root() / "kb"
+    strays = sorted(p.name for p in kb.glob("*.yaml")) + sorted(p.name for p in kb.glob("*.yml"))
+    print(f"kb/ top level: {len(strays)} stray yaml file(s)")
+    assert strays == [], (
+        f"these sit directly under kb/ where no gate reads them: {strays}. Move each "
+        f"into kb/topics, kb/journeys or kb/inventory, or delete it."
+    )
