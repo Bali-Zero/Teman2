@@ -226,6 +226,15 @@ class TestHelperFunctions:
         assert entry.prefix == "/"
 
     def test_workspace_marketing_template_matches_exactly_one_segment(self):
+        route_auth_prefixes = {
+            endpoint.prefix
+            for endpoint in PUBLIC_ENDPOINTS
+            if endpoint.requires_route_auth
+        }
+        assert route_auth_prefixes == {
+            "/api/workspace-marketing/news/pending",
+            "/api/workspace-marketing/news/{item_id}",
+        }
         pending_entry = next(
             endpoint
             for endpoint in PUBLIC_ENDPOINTS

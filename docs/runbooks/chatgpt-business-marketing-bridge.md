@@ -137,6 +137,17 @@ For emergency revocation, stop the runtime, revoke the dedicated runtime key in
 Platform, and unlink the ChatGPT app. Removing the tunnel association blocks
 workspace discovery without exposing the local server.
 
+If `wr2_prepare_with_sol` reports that the active-job limit is reached after a
+Pro reboot or forced process termination, treat the visible `queued` or
+`running` record as potentially orphaned. Stop the tunnel runtime first and
+verify that no `workspace_marketing_worker` process remains. An authorized Pro
+operator may then change only that job record under
+`~/.nuzantara/workspace-marketing/jobs/` to `status: failed`, `phase: stopped`,
+and `error_kind: recovered_orphan`, using an atomic JSON replacement while
+preserving the original request operation record. Restart read-only and run
+`wr2_job_status` before re-arming. Never delete the whole state directory or
+reuse the old request key; a new supervised attempt needs a new request key.
+
 Never enable raw HTTP logging or payload capture in production. Tunnel
 transport logs and app-level compliance logs are different boundaries; keep
 both free of article bodies, prompts, identifiers, and secrets.
