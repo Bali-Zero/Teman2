@@ -25,14 +25,15 @@ opt-in and additive.
 A log-line correlator has no such stakes, but a different, harder one: it
 must NEVER fail back to printing the raw value, because F7 is a hard
 invariant, not a best-effort one. So this module fails closed the OTHER
-way — to a documented, non-secret placeholder digest — when no server
-secret is configured, and is keyed by ITS OWN salt (``LOG_PII_HMAC_SALT``,
-distinct from ``WA_MEMORY_SUBJECT_SALT``) so that rotating one does not
-silently change the other: memory-subject rotation is a deliberate
-memory-wipe product decision, log-digest rotation is routine hygiene, and
-the two must be free to happen independently (same reasoning
-``_memory_identity.py`` already gives for not borrowing
-``wa_inbox_bot_profile_key`` — see that module's docstring, point 4).
+way — to a RANDOM, non-source-derivable per-process salt (see
+``_unconfigured_fallback_salt`` below) — when no server secret is
+configured, and is keyed by ITS OWN salt (``LOG_PII_HMAC_SALT``, distinct
+from ``WA_MEMORY_SUBJECT_SALT``) so that rotating one does not silently
+change the other: memory-subject rotation is a deliberate memory-wipe
+product decision, log-digest rotation is routine hygiene, and the two must
+be free to happen independently (same reasoning ``_memory_identity.py``
+already gives for not borrowing ``wa_inbox_bot_profile_key`` — see that
+module's docstring, point 4).
 
 Design:
 - Normalize to bare digits first ("+62 821-3465-159", "628213465159" and
@@ -41,11 +42,13 @@ Design:
   Telegram numeric chat id is already all-digits, so the same normalization
   is a no-op for it — one function covers both identifier shapes safely.
 - HMAC-SHA256, keyed by ``LOG_PII_HMAC_SALT`` (env, read at call time — not
-  at import time — so tests can set/clear it per-case). Unset → a fixed,
-  clearly-non-secret fallback salt, so the ONE invariant that must never
-  break (no raw identifier in a log line) holds even when the operational
+  at import time — so tests can set/clear it per-case). Unset → a random
+  per-process fallback salt (never a literal in this file — see
+  ``_unconfigured_fallback_salt``), so the ONE invariant that must never
+  break (no raw identifier in a log line, AND no digest reproducible by
+  anyone holding only this source tree) holds even when the operational
   secret has not been provisioned; provisioning the real salt in production
-  is what makes the digest actually non-guessable from the fallback shape.
+  is what makes the digest correlate across process restarts.
 - Short (12 hex = 48 bits): enough to distinguish clients in any plausible
   client book without practical collision, short enough to stay legible
   next to a log message (cf. the memory-subject digest's 32 hex, which
@@ -59,9 +62,14 @@ shared plumbing (``backend/utils/``), not private to
 from __future__ import annotations
 
 import hmac
+import logging
 import os
 import re
+import secrets
+import threading
 from hashlib import sha256
+
+logger = logging.getLogger(__name__)
 
 #: Everything that is not a digit is noise: "+62 821-3465-159",
 #: "62821-3465159" and "+628213465159" must all produce the SAME digest.
@@ -71,15 +79,6 @@ _NON_DIGITS_RE = re.compile(r"\D+")
 #: Read at call time, never cached at import time, so a test can set or
 #: clear this env var per-case without needing to reload this module.
 _SALT_ENV_VAR = "LOG_PII_HMAC_SALT"
-
-#: NOT a secret — deliberately readable in source. Used only when the real
-#: operational salt has not been provisioned (local dev, unit tests, a
-#: misconfigured deploy). It still turns a raw identifier into a digest —
-#: the hard invariant this module exists to hold — it just does not resist
-#: a source-reading attacker the way the provisioned salt does.
-_UNCONFIGURED_FALLBACK_SALT = (
-    "nuzantara-log-pii-digest-fallback-not-a-real-secret-set-LOG_PII_HMAC_SALT-in-prod"
-)
 
 #: 12 hex = 48 bits. A log correlator, not a stored identity key — see
 #: module docstring for why this deliberately does not match the 32-hex
@@ -91,9 +90,66 @@ _DIGEST_HEX_LEN = 12
 #: digest, which always starts with ``id:``.
 MISSING_IDENTIFIER_MARKER = "<none>"
 
+_fallback_salt_lock = threading.Lock()
+_fallback_salt: str | None = None
+_fallback_warning_emitted = False
+
+
+def _unconfigured_fallback_salt() -> str:
+    """Random, non-reproducible-from-source HMAC key used only when
+    ``LOG_PII_HMAC_SALT`` is unset.
+
+    MUST NEVER be a literal in this file. A public repo means a fixed
+    string constant used as an HMAC key is not a secret at all: anyone
+    holding only the source can recompute every digest by enumerating the
+    small phone-number space and hashing each candidate with the known
+    constant (verified against the previous fallback design — the digest
+    for a synthetic phone was reproduced exactly from the source-visible
+    constant alone). A random per-process salt closes that hole by
+    construction: it is generated once, held only in process memory, and
+    never written anywhere.
+
+    Trade-off, made deliberately and loudly (not silently): the digest for
+    the SAME phone will differ across a process restart while unconfigured
+    (this module has no way to persist a secret it was never given) — but
+    within one running process, every call still gets the SAME salt, so
+    log-line correlation holds for the lifetime of that process. The
+    invariant this module exists to protect (no raw identifier in a log
+    line, and no digest an attacker can recompute from source) is never
+    traded away; only the *convenience* of cross-restart correlation is,
+    and only when the operator has not provisioned the real salt.
+    """
+    global _fallback_salt, _fallback_warning_emitted
+    with _fallback_salt_lock:
+        if _fallback_salt is None:
+            _fallback_salt = secrets.token_hex(32)
+        if not _fallback_warning_emitted:
+            logger.warning(
+                "%s is not set — log-line phone/chat-id digests are keyed "
+                "by a random per-process salt. They will NOT correlate "
+                "across a process restart, and this warning means the "
+                "operational secret has not been provisioned. Set %s in "
+                "this environment so digests stay stable across restarts.",
+                _SALT_ENV_VAR,
+                _SALT_ENV_VAR,
+            )
+            _fallback_warning_emitted = True
+        return _fallback_salt
+
 
 def _resolve_salt() -> str:
-    return os.getenv(_SALT_ENV_VAR) or _UNCONFIGURED_FALLBACK_SALT
+    return os.getenv(_SALT_ENV_VAR) or _unconfigured_fallback_salt()
+
+
+def _reset_fallback_salt_state_for_tests() -> None:
+    """Test-only: clear the cached random fallback salt and the
+    warn-once flag, so a test can simulate "a fresh process" (a NEW random
+    salt gets generated on the next unconfigured call) without actually
+    spawning one. Never called from production code."""
+    global _fallback_salt, _fallback_warning_emitted
+    with _fallback_salt_lock:
+        _fallback_salt = None
+        _fallback_warning_emitted = False
 
 
 def redact_identifier_for_log(value: str | int | None) -> str:
