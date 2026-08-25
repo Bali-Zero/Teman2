@@ -148,8 +148,42 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "yes/no on the proposed disposition"
   - id: 5
     decision: visual_identity
-    state: proposal-pending
-    gesture: "pick 1 of 3 concepts"
+    state: ratified
+    # RATIFIED 2026-08-25: Concept A "The Stamp", with two BINDING copy constraints.
+    # PROVENANCE, stated plainly because it changes nothing now and matters at signature
+    # time: this reached the orchestrator by RELAY from a peer session reporting Zero's
+    # ruling, not from Zero in this session's own transcript. That is enough to build on —
+    # the work is dark behind the flag and reversible — and NOT enough to skip the
+    # confirmation. Decision 5 must still be confirmed directly with Zero in the go-live
+    # signature block, alongside every other decision here.
+    ratified: Concept A — "The Stamp"
+    binding_copy_constraints:
+      - id: 5a
+        rule: "The public funnel is ENGLISH. All of it."
+        # Costs nothing to honour: the public API emits reason CODES, never prose
+        # (reason-codes.yaml x-public-notes keeps them neutral categories on purpose), so
+        # this lands entirely on the presentation layer. Verified 2026-08-25 — no Italian
+        # string exists in garuda_voa_public.py or eligibility.py.
+      - id: 5b
+        rule: >
+          A DECLINE is positively educational, never rejecting. Mirror what the customer
+          themselves declared, then name what the VOA does not permit, then the
+          alternative, then the consultant's open hand. Never "the VOA is not for you".
+        example: >
+          "You told us you're coming to work — the VOA doesn't allow any work activity.
+          Here's what does…"
+        # Two consequences a lane will get wrong if they are not written down:
+        # (1) The mirroring uses the customer's OWN answers, held client-side. Do NOT ask
+        #     the backend to echo them back: the anonymous check carries no PII BY DESIGN
+        #     (migration 261's header argues the ABSENCE of PII is what lets the route be
+        #     public), and reason codes are deliberately coarse so they disclose no
+        #     internal decision prose. The educational copy is a UI mapping keyed on what
+        #     the customer typed, not a new field on the wire.
+        # (2) "Here's what does…" ROUTES to the Visa Oracle and to WhatsApp. GARUDA does
+        #     not own the decline -> alternative-visa mapping; that is the Oracle's
+        #     38-product question, and a second table here would be a duplicate authority
+        #     on a client-facing recommendation.
+    gesture: "confirm at signature time — the concept is picked, the relay is not the signature"
   - id: 6
     decision: filing_office_scope
     state: question-ready
