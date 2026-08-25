@@ -131,6 +131,46 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "Passwordless magic-link request (FASE 6) — enumeration-safe by design "
         "per public_endpoints.py; an unauthenticated client asks for a link.",
     ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/auth/magic-links",
+        "GARUDA VOA magic-link request (L4, PR #4901/#4902) — precedes any "
+        "credential by construction, same shape as the FASE-6 row above: an "
+        "unauthenticated visitor asks for a login link. Enumeration-safe: "
+        "always 202 with an identical body whether the result is unknown, not "
+        "owned by the caller's session, or a real match — the unknown/not-owned "
+        "case returns before the store is ever touched, so it costs the same "
+        "as the real path. Reviewed 2026-08-25 against the handler "
+        "(request_magic_link in garuda_portal_auth.py): also throttled "
+        "email-scoped, 5 issues per 15 minutes (PostgresMagicLinkStore.issue), "
+        "closing the one abuse vector this route has (mailbox flooding) — "
+        "verified against the handler source, not copied from the row above.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/auth/sessions",
+        "GARUDA VOA magic-link exchange (L4, PR #4901/#4902) — must be public "
+        "for the same reason as the row above: the token IS the credential, "
+        "so a route that consumes it cannot itself require one. Reviewed "
+        "2026-08-25 against the handler (exchange_magic_link): unknown, "
+        "expired, and already-consumed tokens collapse to one byte-identical "
+        "401 (MAGIC_LINK_INVALID) — ExchangeOutcome carries no reason field a "
+        "router could leak through. Residual, stated honestly rather than "
+        "omitted: there is NO IP-scoped throttle on this route — deliberately "
+        "out of PostgresMagicLinkStore's scope (its exchange() Protocol "
+        "signature carries no client IP; an IP-scoped throttle is a "
+        "router/middleware concern, same precedent as visa_check's "
+        "RateLimitMiddleware) and not added at the router layer in this PR "
+        "either. Judged safe anyway, not a declared hole: the token is a "
+        "32-byte (256-bit) urlsafe secret with a 15-minute TTL "
+        "(MAGIC_LINK_TTL_MINUTES) — no per-IP guess rate makes brute-forcing "
+        "that space inside its lifetime remotely feasible, so the missing "
+        "throttle does not weaken the actual security property this route "
+        "depends on. (A separate, narrower resource-exhaustion concern — "
+        "unbounded garuda_magic_link_idempotency growth from repeated invalid "
+        "attempts under fresh Idempotency-Keys — is tracked as a dissent "
+        "finding in this PR's evidence pack, not as an authz gap.)",
+    ),
     # ── Signed/verified webhooks: identity SHOULD be proven by signature, not
     #    JWT — architecturally these two routes are correctly public. (A third,
     #    /webhook/telegram, was removed 2026-08-18 — see below.) BUT

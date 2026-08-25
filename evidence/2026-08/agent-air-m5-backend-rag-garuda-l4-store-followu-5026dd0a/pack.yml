@@ -15,19 +15,24 @@ seat_diversity_note: >-
   as satisfied by omission.
 diff:
   net_lines: >-
-    8 files, +577/-48 measured by `git diff --numstat origin/feature/garuda-voa...HEAD`.
-    Touches one migration's ROLLBACK section only (285_garuda_magic_link.sql),
-    one shared test fixture (conftest.py), one new static tripwire test file,
-    and the store/router/test files from this PR's first commit (RATE_LIMITED +
-    timing-equivalence, already independently tested before the regression
-    fix was added on top).
+    9 files, +577/-48 (+ the security registry entries below) measured by
+    `git diff --numstat origin/feature/garuda-voa...HEAD`. Touches one
+    migration's ROLLBACK section only (285_garuda_magic_link.sql), one shared
+    test fixture (conftest.py), one new static tripwire test file, one
+    security-registry test file (declaring, not fixing, two now-public
+    mutating routes), and the store/router/test files from this PR's first
+    commit (RATE_LIMITED + timing-equivalence, already independently tested
+    before the regression fix was added on top).
   behaviour_change: >-
     Production forward-path behaviour change: the issue() rate-limit count
     query now compares lower(email) instead of raw email (closes a real
     throttle-bypass found by review). No other production runtime behaviour
     changes -- the migration edit is rollback-only (285 has never been rolled
-    back in any real database) and the test/fixture changes affect only the
-    test suite's own setup/teardown, never a served request path.
+    back in any real database), the test/fixture changes affect only the
+    test suite's own setup/teardown, never a served request path, and the
+    security-registry entries are a DECLARATION of pre-existing router
+    behaviour (both routes were already public via public_endpoints.py since
+    #4901; this PR adds the accounting, not a code change to reachability).
 receipts:
   - claim: "The two tests the team-lead reported red (test_evaluate_endpoint.py::test_retention_policy_is_unseeded_and_new_decision_insert_fails_closed[SHADOW/ENFORCE], test_shadow_evidence.py::test_collect_filters_environment_and_uses_half_open_window) pass after the registry+rollback fix, even against a local DB carrying 51 leftover GARUDA_MAGIC_LINK policy rows from prior runs (the append-only table's real long-run state)."
     cmd: 'PYTHONPATH=. pytest "backend/tests/services/visa_engine/test_evaluate_endpoint.py::test_retention_policy_is_unseeded_and_new_decision_insert_fails_closed" "backend/tests/services/visa_engine/test_shadow_evidence.py::test_collect_filters_environment_and_uses_half_open_window" -v'
@@ -63,6 +68,16 @@ receipts:
     cmd: 'PYTHONPATH=. python3 -c "from backend.db.migration_base import split_migration_sql; from pathlib import Path; fwd, rb = split_migration_sql(Path(''backend/db/migrations_v2/285_garuda_magic_link.sql'').read_text()); assert ''garuda_285_narrow_policy_scope'' in rb; print(''OK'')"'
     exit: 0
     ts: "2026-08-25T19:00:00+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "test_mutating_routes_are_gated.py (the whole-app public-mutation accounting security gate) passes with the two new GARUDA VOA magic-link routes declared in INTENTIONALLY_PUBLIC_MUTATIONS, reasons written against the actual handler source (garuda_portal_auth.py) rather than copied from the neighbouring FASE-6 row."
+    cmd: "PYTHONPATH=. pytest backend/tests/security/test_mutating_routes_are_gated.py -v"
+    exit: 0
+    ts: "2026-08-25T19:40:00+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "ruff clean on the security registry test file."
+    cmd: "ruff check backend/tests/security/test_mutating_routes_are_gated.py"
+    exit: 0
+    ts: "2026-08-25T19:40:30+08:00"
     seat: "claude-opus-5 (this session)"
 dissent:
   - seat: "kimi-code/k3"
