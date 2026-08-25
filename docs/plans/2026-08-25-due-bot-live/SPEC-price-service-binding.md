@@ -128,3 +128,46 @@ It requires the team lead's go-ahead before implementation, and it is a
 precondition for arming real client sends (per team-lead ruling,
 2026-08-25) — not a shadow-mode blocker. The RED test stays red, on the
 record, until this lands.
+
+---
+
+## Orchestrator ruling on the frozen-fixture collision (2026-08-25)
+
+B1b asked before writing the validator, not after, and was right to. Recording the
+answer here because the lane hit a quota wall minutes later and this decision must
+outlive the session that made it.
+
+**The question.** Making `price_service_key` required-iff-`kind=="price"` via a
+model_validator breaks every existing `kind="price"` construction that omits it —
+including B6b's two frozen goldens, `PRICING_CORRECT` and `PRICING_INVENTED`.
+
+**Verified, not taken on report.** `PRICING_CORRECT`'s snapshot at
+`fixtures.py:154-156` already declares `{"service": "kitas_investor", ...}`, and the
+claim two lines below carries no service. So the edit wires an identity the fixture
+already states onto the claim beside it. It invents nothing.
+
+**AUTHORIZED**: edit both fixtures and add the parameter to
+`builders.py::make_claim()`, inside this PR, as one atomic step with the validator.
+
+**Why construction-time, not the softer gate-level failure.** Making the field
+optional and having the gate HANDOFF on a missing key looks less invasive and is
+worse. `PRICING_CORRECT` is the happy-path golden: it would flip from ALLOW to
+HANDOFF, silently changing what a frozen test asserts, with no diff anyone reviews.
+A frozen fixture whose meaning changes without its text changing is the failure mode
+freezing exists to prevent. A `ValidationError` at construction is loud, immediate,
+and impossible to mistake for a passing test.
+
+**The boundary this does NOT open.** Touching a frozen fixture is licensed here
+because the change is *mechanical and additive* and the value comes from the fixture's
+own data. It is not a precedent for editing a frozen fixture to make a test pass. The
+distinction is the same one B6d worked under: an expectation may be updated only when
+the gap it encoded was genuinely closed and the commit that closed it can be named.
+If the edit ever requires inventing a value the fixture does not already declare,
+stop and re-ask — that is a different question with a different answer.
+
+**Guilt and innocence both, when the work resumes.** The rejection cases are the easy
+half. The ones that decide whether this is landable are: the right price for the right
+service still passes; a service mentioned without a price claim does not trip it; and
+a price for a service the client asked about in a PREVIOUS turn behaves the way the
+implementer decides — that decision must be stated, not left for the implementation
+to settle by accident.
