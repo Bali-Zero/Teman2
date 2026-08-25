@@ -14,7 +14,7 @@ constraints:
   - "Pro/Mini LaunchAgents and dedicated forced-command keys remain unarmed until independent Opus 5 review; no merge, deploy, or auto-merge is part of this PR."
   - "The Termux receiver must fail closed on unknown fields, remote commands, invalid enums, malformed JSON, and payloads larger than 8 KiB."
 acceptance:
-  - "The relay and receiver hermetic test suites pass: 18 tests, including PII exclusion, EOF bootstrap, retry safety, replay idempotence, oversize rejection, and remote-command rejection."
+  - "The relay and receiver hermetic test suites pass: 27 tests, including PII exclusion, EOF bootstrap, retry safety, replay idempotence, incomplete-line preservation, stale/live lock behavior, exact-one-document input, oversize rejection, and remote-command rejection."
   - "Ruff, Ruff format, ShellCheck, plutil, git diff check, organ conformance, and organs-registry validation are clean."
   - "A live synthetic capsule sent to the iQOO is accepted once, recognized as a duplicate on replay, and rejected when an extra free-text field is added; all synthetic phone state is then removed and `radar status` reports zero capsules."
   - "The branch is pushed as a draft PR with auto-merge absent; the source-side relays remain recorded in PENDING-ARMS instead of being loaded."
@@ -26,7 +26,7 @@ consumer_map:
 risks:
   - "Automatic start after a physical reboot is not proven until the official Termux:Boot add-on is installed from the same signing source, opened once, and one reboot proof is recorded."
   - "Android notification/vibration is unavailable until the optional Termux:API app/package is installed; receipt and inspection still work through the `radar` CLI."
-  - "A source node cannot deliver while Tailscale, SSH, or the phone is offline; relay cursors advance only after an exact success/duplicate receipt, so recovery is retry-safe."
+  - "A source node cannot deliver while Tailscale, SSH, or the phone is offline; this is classified as temporary delivery (exit 75), relay cursors remain in place, and recovery is retry-safe without triggering a healer restart loop."
   - "The source-side LaunchAgents intentionally remain unarmed pending independent review, so live P0 events are not yet forwarded automatically."
 grader: >-
   Independent Opus 5 session, xhigh, fresh context. It must review this branch and
