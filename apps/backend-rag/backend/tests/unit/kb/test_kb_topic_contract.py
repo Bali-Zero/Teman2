@@ -96,9 +96,21 @@ LANGUAGES = frozenset({"en", "id", "it", "es"})
 # A citation, not a mention: "22/2023", "Nomor 22 Tahun 2023", "No. 6 of 2011".
 # Deliberately narrow — the cost of a false positive is one rephrased journey,
 # and the cost of a loose rule is a check that objects to honest questions.
+#
+# PENDING-ARMS finding opened 2026-08-26 (refuter finding 9): a question can name
+# its instrument's ARTICLE instead of its number/year \u2014 "Menurut Pasal 48 ayat (1)
+# Undang-Undang Keimigrasian..." \u2014 and evade every alternative below, none of
+# which requires a year at all. The third alternative closes this the SAME way
+# the first two already work: a legal-citation keyword bound to a NUMBER, never a
+# bare keyword alone. "Pasal khusus untuk pekerja asing" (no number after "pasal")
+# is deliberately NOT matched \u2014 that is a mention, not a citation, and staying
+# narrow means a client can say the word "pasal" without citing anything. Four
+# languages because the measured traffic is (see LANGUAGES above): id "pasal",
+# en "article", it "articolo", es "art\u00edculo".
 _CITATION = re.compile(
     r"\b\d{1,3}\s*/\s*(?:19|20)\d{2}\b"
-    r"|\b(?:no\.?|nomor|n[.\u00ba\u00b0])\s*\d{1,3}\s+(?:tahun|of|year|del)\s+(?:19|20)\d{2}\b",
+    r"|\b(?:no\.?|nomor|n[.\u00ba\u00b0])\s*\d{1,3}\s+(?:tahun|of|year|del)\s+(?:19|20)\d{2}\b"
+    r"|\b(?:pasal|article|articolo|art[i\u00ed]culo)\s+\d{1,4}\b",
     re.IGNORECASE,
 )
 
@@ -382,16 +394,53 @@ def check_topic_inventory(data: dict) -> list[str]:
         problems.append("schema_version must be 1")
     if data.get("lane") not in LANES:
         problems.append(f"lane must be one of {sorted(LANES)}, got {data.get('lane')!r}")
-    if not data.get("measured_at"):
+    measured_at = data.get("measured_at")
+    if not measured_at:
         problems.append("measured_at is required — an unmeasured inventory is a wish")
+    else:
+        # Cross-family completeness review (2026-08-26, PENDING-ARMS guard 4): a
+        # bare truthiness check passes measured_at: "never" — a string that reads
+        # as "this was measured" while recording no verifiable date at all. The
+        # identical shape was already fixed for journeys' probe_run_at (below);
+        # an inventory that claims to be a MEASUREMENT deserves the same floor.
+        try:
+            parsed_measured_at = date.fromisoformat(str(measured_at))
+        except ValueError:
+            problems.append(
+                f"measured_at {measured_at!r} is not a real date (expected "
+                f"YYYY-MM-DD) — a truthy string like 'never' passes a presence "
+                f"check while recording no verifiable measurement"
+            )
+        else:
+            if parsed_measured_at > date.today():
+                problems.append(
+                    f"measured_at {measured_at!r} is in the future — a "
+                    f"measurement cannot have happened after today"
+                )
 
     measured = data.get("measured_against")
     if not isinstance(measured, dict):
         problems.append("measured_against is required")
         return problems
 
-    if not measured.get("collection"):
+    collection = measured.get("collection")
+    if not collection:
         problems.append("measured_against.collection is required")
+    else:
+        # Same review: any non-empty string passed as a collection name, so
+        # "production-I-did-not-query" is indistinguishable from a real one.
+        # probe_retrieval.py already refuses an unregistered --collection against
+        # this exact registry (its unknown_collections()) — a static inventory
+        # file claiming to have measured a collection deserves the same check,
+        # not a second, looser standard for the same fact.
+        from backend.core.collection_registry import is_known_collection
+
+        if not is_known_collection(collection):
+            problems.append(
+                f"measured_against.collection {collection!r} is not a collection "
+                f"this repo's registry defines — see "
+                f"backend/core/collection_registry.py"
+            )
     points = measured.get("points")
     if not isinstance(points, int):
         problems.append("measured_against.points must be an integer")
@@ -504,6 +553,27 @@ def check_topic_inventory(data: dict) -> list[str]:
                     f"{where}: present=false requires lookup_attempts with at least THREE "
                     f"distinct methods (§4.2) — one lookup that found nothing is evidence "
                     f"about the lookup, not about the store"
+                )
+            elif len({str(a) for a in attempts}) < 3:
+                # Cross-family review (2026-08-25/26, PENDING-ARMS finding opened
+                # 2026-08-26): ["by id", "by id", "by id"] clears len(attempts)>=3
+                # above — three repetitions of ONE method, not three distinct
+                # looks. §4.2 was paid for by the two-payload-shapes failure: a
+                # scroll filtered on document_id finds nothing for a document
+                # whose identity lives only under metadata.document_id (78,486 of
+                # legal_unified's points), so ONE method finding zero is the
+                # EXPECTED result for a document that IS present. Repeating that
+                # same method three times re-confirms the identical blind spot —
+                # it is the false absence §4.2 exists to prevent, wearing the
+                # rule's own uniform. Deliberately NOT a closed method-name
+                # vocabulary here: that vocabulary already lives in
+                # scripts/kb/kb_inventory_probe.py (payload_shape()), which is
+                # another lane's active surface this round — DISTINCT is the
+                # floor this file can enforce without copying it.
+                problems.append(
+                    f"{where}: lookup_attempts {attempts!r} has {len(attempts)} entries "
+                    f"but only {len({str(a) for a in attempts})} distinct — §4.2 requires "
+                    f"THREE DISTINCT methods, not one method recorded three times"
                 )
 
     if isinstance(points, int) and instruments and total != points:
@@ -703,6 +773,19 @@ JOURNEY_GUILT = [
     ("the same trick in the No.-Tahun form",
      lambda d: d["journeys"][0].update(question="Apa isi Permenkumham Nomor 22 Tahun 2023?"),
      "wearing a label"),
+    # PENDING-ARMS finding opened 2026-08-26 (refuter finding 9) — the exact
+    # question named in the ledger row: an ARTICLE citation with no number/year
+    # anywhere in it, which every prior alternative in _CITATION missed entirely.
+    ("an article citation naming no number or year at all",
+     lambda d: d["journeys"][0].update(
+         question="Menurut Pasal 48 ayat (1) Undang-Undang Keimigrasian, kapan Izin "
+                   "Tinggal berakhir?"),
+     "wearing a label"),
+    ("the same article-citation shape in English",
+     lambda d: d["journeys"][0].update(
+         question="What does Article 48 of the Immigration Law say about when a "
+                   "residence permit ends?"),
+     "wearing a label"),
     ("language outside the closed vocabulary",
      lambda d: d["journeys"][0].update(language="bahasa"), "language must be one of"),
     ("language missing entirely",
@@ -746,6 +829,16 @@ INVENTORY_GUILT = [
     ("no measurement at all",
      lambda d: d.pop("measured_against"), "measured_against is required"),
     ("measured_at missing", lambda d: d.pop("measured_at"), "an unmeasured inventory is a wish"),
+    # PENDING-ARMS guard 4 (cross-family completeness review, 2026-08-26): a
+    # truthy-but-meaningless measured_at, and a fabricated collection name — the
+    # exact two fields that let a wholly invented inventory pass before this fix.
+    ("measured_at is truthy but not a real date",
+     lambda d: d.update(measured_at="never"), "not a real date"),
+    ("measured_at is a real date but in the future",
+     lambda d: d.update(measured_at="2099-01-01"), "in the future"),
+    ("measured_against.collection is fabricated, not in the registry",
+     lambda d: d["measured_against"].update(collection="production-I-did-not-query"),
+     "not a collection this repo's registry defines"),
     ("payload shape mix not recorded",
      lambda d: d["measured_against"].pop("payload_shapes"), "payload_shapes is required"),
     ("shape mix does not add up",
@@ -765,6 +858,14 @@ INVENTORY_GUILT = [
      lambda d: d["instruments"][0].update(present=False, points=0, lookup_attempts=["by id"])
      or d["measured_against"].update(points=0, payload_shapes={"legacy_metadata_text": 0}),
      "at least THREE distinct methods"),
+    # PENDING-ARMS finding opened 2026-08-26: len(attempts) >= 3 alone is not
+    # THREE MISSES — three repetitions of ONE method is the exact false-absence
+    # shape §4.2 exists to prevent.
+    ("lookup_attempts repeats the same method three times",
+     lambda d: d["instruments"][0].update(
+         present=False, points=0, lookup_attempts=["by id", "by id", "by id"])
+     or d["measured_against"].update(points=0, payload_shapes={"legacy_metadata_text": 0}),
+     "not one method recorded three times"),
     # F.1 — the closed payload-shape vocabulary (found by a cross-family refuter:
     # an arithmetically balanced dict of invented names passed the first draft)
     ("payload shape name invented, arithmetic balanced",
@@ -809,12 +910,60 @@ def test_guilt_topic_inventory(name, mutate, expected):
     )
 
 
+def test_innocence_three_genuinely_distinct_lookup_methods_pass():
+    """The other half of the guilt case above. A guard proven only by guilt can
+    over-match by construction — this proves the distinctness floor accepts what
+    §4.2 actually asks for: THREE DIFFERENT methods, not merely three entries."""
+    data = _good_inventory()
+    data["instruments"][0].update(
+        present=False, points=0,
+        lookup_attempts=["by document_id (flat payload)", "by metadata.document_id (legacy payload)",
+                          "by full-text scroll"],
+    )
+    data["measured_against"].update(points=0, payload_shapes={
+        "legacy_metadata_text": 0, "orphan_no_identity": 0, "modern_id_only": 0,
+        "modern_id_chunk": 0, "modern_full": 0,
+    })
+    assert check_topic_inventory(data) == []
+
+
 def test_the_guilt_matrix_is_not_empty():
     """Anti-vacuity on the anti-vacuity: an emptied parametrisation collects zero
     cases and pytest exits 0. Assert the COUNT, so deleting the cases is loud."""
     assert len(TOPIC_GUILT) >= 11, len(TOPIC_GUILT)
     assert len(JOURNEY_GUILT) >= 27, len(JOURNEY_GUILT)
     assert len(INVENTORY_GUILT) >= 16, len(INVENTORY_GUILT)
+
+
+# ── cites_an_instrument: the pure function, proven directly ──────────────────
+# PENDING-ARMS finding opened 2026-08-26 (refuter finding 9, cicatrix family #3's
+# under-match twin, W82). check_journey's guilt cases above prove the rule fires
+# inside the contract; this proves the boundary the fix actually drew — an
+# article-NUMBER citation is caught, a bare mention of the word is not — so a
+# future "simplify the regex" cannot widen or narrow it unnoticed.
+
+def test_guilt_an_article_number_citation_is_detected_in_every_supported_language():
+    assert cites_an_instrument(
+        "Menurut Pasal 48 ayat (1) Undang-Undang Keimigrasian, kapan Izin Tinggal berakhir?"
+    )
+    assert cites_an_instrument("What does Article 48 of the Immigration Law require?")
+    assert cites_an_instrument("Cosa dice l'articolo 48 della legge sull'immigrazione?")
+    assert cites_an_instrument("¿Qué dice el artículo 48 de la ley de inmigración?")
+
+
+def test_innocence_a_bare_mention_of_the_word_names_no_article_and_is_not_a_citation():
+    """The over-match risk this fix exists to avoid: 'pasal'/'article' with no
+    number following it is a MENTION, structurally identical to how a bare
+    'nomor'/'no.' with no digit was never caught before this fix either."""
+    assert not cites_an_instrument("Ada pasal khusus untuk pekerja asing di sini?")
+    assert not cites_an_instrument("Is there a specific article for remote workers?")
+
+
+def test_innocence_an_incidental_number_with_no_citation_keyword_is_still_not_a_citation():
+    """PENDING-ARMS proof-of-armed spec, verbatim: a genuine client question
+    carrying an incidental number must still pass after this fix, exactly as it
+    did before it — the fix must not have widened the net past article numbers."""
+    assert not cites_an_instrument("berapa lama proses 30 hari kerja?")
 
 
 # ── cross-source rules: three files that must agree, or one of them is fiction ──
@@ -924,6 +1073,40 @@ def check_agreement(topic: dict, journey: dict, inventory: dict) -> list[str]:
 
 def test_innocence_the_synthetic_trio_agrees():
     assert check_agreement(_good_topic(), _good_journey(), _good_inventory()) == []
+
+
+def test_the_reviewers_exact_fabricated_inventory_is_no_longer_silent():
+    """PENDING-ARMS guard 4, cross-family completeness review (2026-08-26): this
+    exact fixture was reported to return [] from check_topic_inventory() — an
+    artifact that LOOKS measured because it contains arithmetically-consistent
+    numbers, naming no command, probe, receipt, or source for the measurement at
+    all. The campaign's own thesis (a label is never the thing) turned against
+    its own deliverable. The structural cure — an inventory re-confirmed against
+    live Qdrant — is lane-Q's surface (scripts/kb/kb_inventory_probe.py); this is
+    only the static half: a real, non-future date, and a collection name the
+    registry actually knows.
+    """
+    inventory = {
+        "schema_version": 1,
+        "kind": "topic",
+        "lane": "A",
+        "topic": "immigration",
+        "measured_at": "never",
+        "measured_against": {
+            "collection": "production-I-did-not-query",
+            "points": 1,
+            "payload_shapes": {
+                "legacy_metadata_text": 1, "orphan_no_identity": 0,
+                "modern_id_only": 0, "modern_id_chunk": 0, "modern_full": 0,
+            },
+        },
+        "instruments": [
+            {"id": "Permenkumham_22_2023", "points": 1, "present": True, "complete": True},
+        ],
+    }
+    problems = check_topic_inventory(inventory)
+    assert any("not a real date" in p for p in problems), problems
+    assert any("not a collection this repo's registry defines" in p for p in problems), problems
 
 
 AGREEMENT_GUILT = [
