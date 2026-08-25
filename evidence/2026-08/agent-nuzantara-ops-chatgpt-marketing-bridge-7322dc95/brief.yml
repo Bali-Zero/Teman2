@@ -49,7 +49,8 @@ consumer_map:
   - "Kita News Room approval UI and WR2 Control remain the human action gates."
 risks:
   - "A stale SOL job can remain active after an abnormal worker death and
-    requires operator cleanup; it fails closed by blocking further SOL work."
+    fails closed by blocking further SOL work; bounded operator recovery is
+    documented and preserves the original operation/quota record."
   - "Some optional News summary fields can remain empty because the backend
     projection intentionally withholds body text from list responses."
   - "PII filters are defense in depth, not authorization to enter private data;
