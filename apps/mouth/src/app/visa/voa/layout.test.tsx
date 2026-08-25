@@ -1,12 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import GarudaVoaLayout, { isGarudaVoaPublicEnabled } from "./layout";
+import GarudaVoaLayout from "./layout";
 
 /**
  * The team-lead flag (2026-08-25): measured on this branch, GARUDA_PUBLIC_ENABLED
  * appeared three times in apps/mouth, all prose (test descriptions + a docblock) —
  * no frontend code read it, so the funnel rendered in full for anyone with the URL
  * despite the mandate's "running in PRODUCTION behind the flag". This file pins the
- * fix in both directions, plus the fail-closed parsing (unset/"false"/typo = dark).
+ * layout-level enforcement; the fail-closed parsing itself is pinned in flag.test.ts
+ * (moved there 2026-08-25 second round — see flag.ts's docblock for why the parsing
+ * function cannot live as a named export inside layout.tsx).
  */
 
 const notFoundMock = vi.hoisted(() =>
@@ -18,30 +20,6 @@ const notFoundMock = vi.hoisted(() =>
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
 }));
-
-describe("isGarudaVoaPublicEnabled — fail-closed parsing", () => {
-  const original = process.env.GARUDA_PUBLIC_ENABLED;
-  afterEach(() => {
-    if (original === undefined) delete process.env.GARUDA_PUBLIC_ENABLED;
-    else process.env.GARUDA_PUBLIC_ENABLED = original;
-  });
-
-  it.each([
-    [undefined, false],
-    ["", false],
-    ["false", false],
-    ["False", false],
-    ["0", false],
-    ["typo", false],
-    ["true", true],
-    ["TRUE", true],
-    ["  true  ", true],
-  ])("GARUDA_PUBLIC_ENABLED=%p -> %p", (value, expected) => {
-    if (value === undefined) delete process.env.GARUDA_PUBLIC_ENABLED;
-    else process.env.GARUDA_PUBLIC_ENABLED = value;
-    expect(isGarudaVoaPublicEnabled()).toBe(expected);
-  });
-});
 
 describe("GarudaVoaLayout — server-side gate", () => {
   const original = process.env.GARUDA_PUBLIC_ENABLED;
