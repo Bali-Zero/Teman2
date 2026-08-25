@@ -48,18 +48,33 @@ EXITS (same vocabulary as scripts/kb/kb_inventory_probe.py)
 There is deliberately NO --update flag. A probe that writes its own expected value
 back into the file it grades is not a probe. Print the correction; let a human or a
 lane put it in the file, where the contract gate can see it.
+
+--json (additive, 2026-08-25)
+Emits ONE JSON object on stdout instead of the human-readable report, for a caller
+(`kb/ops/probe_history.py`) that needs to record a verdict rather than read one.
+Nothing about grading changes — this only serializes the same verdict the human
+path already computes. Vocabulary is closed and mirrors the exit codes above, plus
+one field the human report does not need: `reason`, set on a `broken` verdict to
+distinguish "the journeys file declares nothing to run" (`no_journeys`) from "the
+control query itself failed" (`control_failed`) — two different exit-3 causes that
+a history recorder must not conflate (the first is "nothing was ever asked of
+production", the second is "production could not be reached").
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import re
 import sys
 from pathlib import Path
 
 WS = re.compile(r"\s+")
+
+# Closed vocabulary for --json's "verdict" field — one member per exit code above.
+VERDICT_BY_EXIT = {0: "at_target", 1: "drift", 2: "outstanding", 3: "broken"}
 
 # The control must be a phrase that is in this corpus regardless of any lane's work,
 # and specific enough that a random chunk will not contain it by accident. This one
@@ -99,23 +114,13 @@ def normalize(text: str) -> str:
     return WS.sub(" ", text or "").strip().lower()
 
 
-def warn_if_degraded(root: Path) -> None:
-    """Say out loud when this process is NOT running production's retrieval path.
+def detect_degraded(root: Path) -> str | None:
+    """Return a one-line description of the degraded-path mismatch, or None if clean.
 
-    Measured 2026-08-25: a local venv carrying google-genai 1.75.0 against a lock
-    that pins 2.18.1 makes every Gemini query-expansion call raise
-    `TypeError: 'async for' requires an object with __aiter__ method` — which
-    `QueryExpander` catches and returns None from, so retrieval proceeds WITHOUT
-    multilingual expansion and logs a warning nobody reads. Search still works,
-    the probe still produces verdicts, and every one of them is a measurement of a
-    narrower retrieval than production performs.
-
-    That is the dangerous shape: not a probe that breaks, but a probe that quietly
-    grades a degraded path and reports the result as production's. A red measured
-    here could be green in production, where expansion would have reached the
-    chunk. So the divergence is printed as a banner rather than left in a log line,
-    and the version is read from the SAME lock file CI installs from — never from a
-    hardcoded expectation, which would rot the first time the pin moves.
+    Pure detection, no printing — split out of `warn_if_degraded` so `--json` can
+    carry the same boolean the human banner is built from, without duplicating the
+    version-comparison logic (see `warn_if_degraded`'s docstring for what this
+    means and why it matters).
     """
     lock = root / "apps" / "backend-rag" / "requirements.lock.txt"
     pinned = None
@@ -132,13 +137,39 @@ def warn_if_degraded(root: Path) -> None:
         installed = None
 
     if pinned and installed and pinned != installed:
+        return "google-genai installed %s, repo pins %s" % (installed, pinned)
+    return None
+
+
+def warn_if_degraded(root: Path) -> bool:
+    """Say out loud when this process is NOT running production's retrieval path.
+
+    Measured 2026-08-25: a local venv carrying google-genai 1.75.0 against a lock
+    that pins 2.18.1 makes every Gemini query-expansion call raise
+    `TypeError: 'async for' requires an object with __aiter__ method` — which
+    `QueryExpander` catches and returns None from, so retrieval proceeds WITHOUT
+    multilingual expansion and logs a warning nobody reads. Search still works,
+    the probe still produces verdicts, and every one of them is a measurement of a
+    narrower retrieval than production performs.
+
+    That is the dangerous shape: not a probe that breaks, but a probe that quietly
+    grades a degraded path and reports the result as production's. A red measured
+    here could be green in production, where expansion would have reached the
+    chunk. So the divergence is printed as a banner rather than left in a log line,
+    and the version is read from the SAME lock file CI installs from — never from a
+    hardcoded expectation, which would rot the first time the pin moves.
+
+    Returns whether the banner fired, so `--json` can carry the same fact.
+    """
+    mismatch = detect_degraded(root)
+    if mismatch:
         print()
-        print("  !! DEGRADED PATH — google-genai installed %s, this repo pins %s."
-              % (installed, pinned))
+        print("  !! DEGRADED PATH — %s." % mismatch)
         print("     Gemini query expansion raises and is swallowed at this version, so")
         print("     retrieval below runs WITHOUT multilingual expansion. A red measured")
         print("     here may be green in production. Verdicts are still meaningful as a")
         print("     LOWER BOUND on what production retrieves — never as an upper one.")
+    return mismatch is not None
 
 
 async def retrieve(service, query: str, collection: str, limit: int) -> list[dict]:
@@ -176,6 +207,11 @@ async def run(argv=None) -> int:
     parser.add_argument("journeys", type=Path, help="kb/journeys/<topic>.yaml")
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--collection", default="legal_unified")
+    parser.add_argument(
+        "--json", action="store_true",
+        help="Emit one JSON object on stdout instead of the human report (additive; "
+             "grading is identical either way — see module docstring).",
+    )
     args = parser.parse_args(argv)
 
     root = repo_root()
@@ -187,7 +223,18 @@ async def run(argv=None) -> int:
     data = yaml.safe_load(args.journeys.read_text(encoding="utf-8")) or {}
     journeys = data.get("journeys") or []
     if not journeys:
-        print("%s declares no journeys — nothing to run" % args.journeys.name)
+        if args.json:
+            print(json.dumps({
+                "journeys_file": str(args.journeys),
+                "collection": args.collection,
+                "verdict": VERDICT_BY_EXIT[3],
+                "reason": "no_journeys",
+                "exit_code": 3,
+                "degraded_path": False,
+                "journeys": [],
+            }))
+        else:
+            print("%s declares no journeys — nothing to run" % args.journeys.name)
         return 3
 
     from backend.services.search.search_service import SearchService
@@ -198,30 +245,61 @@ async def run(argv=None) -> int:
     try:
         control = await retrieve(service, CONTROL_QUERY, args.collection, 5)
     except Exception as exc:  # noqa: BLE001 - the reason matters more than the type
-        print("BROKEN — the control query raised %s: %s" % (type(exc).__name__, exc))
-        print("Nothing was graded. A probe that cannot reach production cannot")
-        print("distinguish 'the knowledge base is missing this' from 'I am misconfigured'.")
+        if args.json:
+            print(json.dumps({
+                "journeys_file": str(args.journeys),
+                "collection": args.collection,
+                "verdict": VERDICT_BY_EXIT[3],
+                "reason": "control_failed",
+                "detail": "%s: %s" % (type(exc).__name__, exc),
+                "exit_code": 3,
+                "degraded_path": False,
+                "journeys": [],
+            }))
+        else:
+            print("BROKEN — the control query raised %s: %s" % (type(exc).__name__, exc))
+            print("Nothing was graded. A probe that cannot reach production cannot")
+            print("distinguish 'the knowledge base is missing this' from 'I am misconfigured'.")
         return 3
 
     hit, rank = phrase_hit(control, CONTROL_PHRASE)
     if not control or not hit:
-        print("BROKEN — the control query returned %d chunks and the control phrase"
-              % len(control))
-        print("         %r was %s." % (CONTROL_PHRASE, "absent" if control else "unreachable"))
-        print("Nothing was graded. Check QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY,")
-        print("and that %r resolves to a populated collection." % args.collection)
+        if args.json:
+            print(json.dumps({
+                "journeys_file": str(args.journeys),
+                "collection": args.collection,
+                "verdict": VERDICT_BY_EXIT[3],
+                "reason": "control_failed",
+                "detail": "control returned %d chunks, phrase %r was %s"
+                          % (len(control), CONTROL_PHRASE, "absent" if control else "unreachable"),
+                "exit_code": 3,
+                "degraded_path": False,
+                "journeys": [],
+            }))
+        else:
+            print("BROKEN — the control query returned %d chunks and the control phrase"
+                  % len(control))
+            print("         %r was %s." % (CONTROL_PHRASE, "absent" if control else "unreachable"))
+            print("Nothing was graded. Check QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY,")
+            print("and that %r resolves to a populated collection." % args.collection)
         return 3
-    print("[control] %r found at rank %d of %d — production is reachable"
-          % (CONTROL_PHRASE, rank, len(control)))
-    warn_if_degraded(root)
-    print()
+
+    if args.json:
+        degraded = detect_degraded(root) is not None
+    else:
+        print("[control] %r found at rank %d of %d — production is reachable"
+              % (CONTROL_PHRASE, rank, len(control)))
+        degraded = warn_if_degraded(root)
+        print()
 
     # ── the journeys ────────────────────────────────────────────────────────
     drift: list[str] = []
     outstanding: list[str] = []
-    header = "%-4s %-9s %-9s %-6s  %s" % ("#", "RECORDED", "MEASURED", "RANK", "QUESTION")
-    print(header)
-    print("-" * max(len(header), 78))
+    reported: list[dict] = []  # per-journey record, built regardless of --json
+    if not args.json:
+        header = "%-4s %-9s %-9s %-6s  %s" % ("#", "RECORDED", "MEASURED", "RANK", "QUESTION")
+        print(header)
+        print("-" * max(len(header), 78))
 
     for i, journey in enumerate(journeys, start=1):
         question = journey.get("question", "")
@@ -230,14 +308,25 @@ async def run(argv=None) -> int:
         try:
             chunks = await retrieve(service, question, args.collection, args.limit)
         except Exception as exc:  # noqa: BLE001
-            print("%-4d %-9s %-9s %-6s  %s" % (i, recorded, "ERROR", "-", question[:44]))
+            if not args.json:
+                print("%-4d %-9s %-9s %-6s  %s" % (i, recorded, "ERROR", "-", question[:44]))
             outstanding.append("journey %d raised %s: %s" % (i, type(exc).__name__, exc))
+            reported.append({
+                "index": i, "question": question, "recorded_state": recorded,
+                "measured_state": "error", "rank": None,
+                "error": "%s: %s" % (type(exc).__name__, exc),
+            })
             continue
 
         hit, rank = phrase_hit(chunks, phrase)
         measured = "green" if hit else "red"
-        print("%-4d %-9s %-9s %-6s  %s"
-              % (i, recorded, measured, rank if rank else "-", question[:44]))
+        if not args.json:
+            print("%-4d %-9s %-9s %-6s  %s"
+                  % (i, recorded, measured, rank if rank else "-", question[:44]))
+        reported.append({
+            "index": i, "question": question, "recorded_state": recorded,
+            "measured_state": measured, "rank": rank, "error": None,
+        })
 
         if recorded == "untested":
             drift.append(
@@ -256,6 +345,23 @@ async def run(argv=None) -> int:
                 "journey %d: %r is not in the retrieved context for %r"
                 % (i, phrase[:48], question[:48])
             )
+
+    exit_code = 0
+    if drift:
+        exit_code = 1
+    elif outstanding:
+        exit_code = 2
+
+    if args.json:
+        print(json.dumps({
+            "journeys_file": str(args.journeys),
+            "collection": args.collection,
+            "verdict": VERDICT_BY_EXIT[exit_code],
+            "exit_code": exit_code,
+            "degraded_path": degraded,
+            "journeys": reported,
+        }))
+        return exit_code
 
     print()
     if drift:
