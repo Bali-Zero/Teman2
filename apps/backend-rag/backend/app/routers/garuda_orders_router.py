@@ -5,10 +5,12 @@ L3: `createOrderFromCheck`, `getOrderAndPractice` (order half only — the
 `practice` field is served null here until L4/L7 wire their part),
 `observePaymentBrowserReturn`, `receivePaymentWebhook`, `resolveLateOrder`.
 
-Router registration (which process group, which app) is orchestrator-scoped
-per LANES.md — this file is NOT wired into `router_registration.py` by this
-lane; the orchestrator composes it alongside L2/L4's routers and injects the
-real `EligibilityCheckLookup` / `PaymentProvider` adapters at that point.
+Registered in `router_manifest.py` / `router_registration.py` (_API, mirrors
+L2's `garuda_voa_public` — mount unconditionally, GARUDA_PUBLIC_ENABLED
+re-checked per-request by this module's own `_require_flag`). The orchestrator
+still owns injecting the real `EligibilityCheckLookup` / `PaymentProvider`
+adapters onto `app.state` at composition time — `get_repository()` above
+fails closed with 503 until that happens.
 """
 
 from __future__ import annotations

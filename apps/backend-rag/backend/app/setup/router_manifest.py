@@ -211,6 +211,15 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
+    # ── GARUDA VOA L3 checkout + orders (contract-frozen) ──
+    # No mount-time condition: mirrors garuda_voa_public below — the flag
+    # (GARUDA_PUBLIC_ENABLED) is re-checked per-request by the router's own
+    # dependencies, not gated at mount. One authoritative gate, not two.
+    RouterEntry(
+        name="garuda_orders_router",
+        process_groups=_API,
+        tags=("visa", "garuda", "checkout", "orders"),
+    ),
     # ── GARUDA VOA (owner-only historical archive; preview is stateless) ──
     RouterEntry(
         name="garuda_voa",
