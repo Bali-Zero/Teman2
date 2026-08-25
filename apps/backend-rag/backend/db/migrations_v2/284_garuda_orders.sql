@@ -1,5 +1,5 @@
 -- ============================================================================
--- 282_garuda_orders.sql
+-- 284_garuda_orders.sql
 -- GARUDA VOA — L3 checkout + orders (products/garuda-voa/LANES.md).
 --
 -- MERGE-ORDER DEPENDENCY (flag for the orchestrator): this migration is
