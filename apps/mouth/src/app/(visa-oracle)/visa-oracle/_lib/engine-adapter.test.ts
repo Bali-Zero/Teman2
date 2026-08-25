@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import {
   NEXT_STEPS,
+  OUR_SOURCE_REVIEW_CODES,
   REVIEW_REASON_COPY,
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
@@ -784,11 +785,18 @@ describe("review reasons cover every code the current pack can emit", () => {
     "E33G_INCOME_EVIDENCE_REVIEW",
     "E33_WORK_RANGKAP_KEGIATAN_GATED",
     "GOVT_INVITATION_REQUIRED",
-    // Pack-independent (evaluate_path.py):
+    // Pack-independent (evaluate_path.py).
+    //
+    // The six SOURCE holds and MINOR_GUARDIAN_PRIVACY_REVIEW left this list on
+    // 2026-08-25: they now have their own copy. They were never a neutral gap —
+    // with no entry they rendered GENERIC_REVIEW_REASON, "Some of your answers
+    // need a person's judgment", which for a source hold is a FALSE statement
+    // about whose problem it is (the applicant answered fine; OUR regulatory
+    // source is the thing under re-verification). See the "every system-level
+    // review hold explains itself honestly" describe block at the end of this
+    // file: it reads those codes out of evaluate_path.py instead of mirroring
+    // them here, so a backend rename cannot silently drop one back into the gap.
     "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
-    "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
-    "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
-    "DECISIVE_SOURCE_STALE",
     "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
     "DISCLOSED_CRIMINAL_RECORD_REVIEW",
     "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
@@ -798,10 +806,6 @@ describe("review reasons cover every code the current pack can emit", () => {
     "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
     "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
     "DISCLOSED_UNCERTAINTY_REVIEW",
-    "MINOR_GUARDIAN_PRIVACY_REVIEW",
-    "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
-    "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
-    "SAFETY_CRITICAL_SOURCE_STALE",
   ];
 
   it("names every code the current pack + backend can emit, mapped or in the known gap", () => {
@@ -858,5 +862,86 @@ describe("review reasons cover every code the current pack can emit", () => {
       (code) => !allRealCodes.has(code),
     );
     expect(phantomEntries).toEqual([]);
+  });
+});
+
+describe("every system-level review hold explains itself honestly", () => {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const EVALUATE_PATH = path.resolve(
+    HERE,
+    "../../../../../../..",
+    "apps/backend-rag/backend/services/visa_engine/evaluate_path.py",
+  );
+
+  /**
+   * Cross-language tripwire, deliberately NOT a hardcoded mirror of the
+   * backend's constants: it reads the codes out of `evaluate_path.py` itself,
+   * so renaming one on the Python side turns this RED instead of silently
+   * dropping that hold back onto GENERIC_REVIEW_REASON.
+   *
+   * Why it matters, measured 2026-08-25: all seven of these holds shipped with
+   * no copy at all, so each rendered "Some of your answers need a person's
+   * judgment before we can confirm a path." For the six SOURCE holds that
+   * sentence is false — the applicant answered fine, OUR regulatory source is
+   * the thing under re-verification — and it is the kind of false attribution
+   * a regulated advisory funnel must not make. Nothing caught it because a
+   * missing key is a silent `??` fallback, never an error.
+   *
+   * Scope, stated rather than implied: only the `Reason(code=...)` holds
+   * raised by the policy ADAPTERS are required to have copy here. The
+   * `DisclosedReviewFlag` family maps to codes for which the generic sentence
+   * is accurate (they really are about what the applicant disclosed), so they
+   * are not forced into the map.
+   */
+  function systemReviewCodesFromBackend(): string[] {
+    const src = fs.readFileSync(EVALUATE_PATH, "utf-8");
+    const codes = new Set<string>();
+    for (const m of src.matchAll(/\bcode="([A-Z][A-Z0-9_]+)"/g)) {
+      const code = m[1];
+      // The adapters' own review holds all end in one of these shapes; the
+      // file also carries TEMPORARILY_UNAVAILABLE/outage codes, which are a
+      // different surface entirely (they never reach REVIEW_REASON_COPY).
+      if (
+        code.startsWith("DECISIVE_") ||
+        code.startsWith("SAFETY_CRITICAL_") ||
+        code === "MINOR_GUARDIAN_PRIVACY_REVIEW"
+      ) {
+        codes.add(code);
+      }
+    }
+    return [...codes].sort();
+  }
+
+  it("reads a non-empty set of holds out of the backend (anti-vacuity)", () => {
+    const codes = systemReviewCodesFromBackend();
+    // Guards the regex itself: if `evaluate_path.py` moves or the literal
+    // shape changes, this fails loudly instead of vacuously passing the
+    // per-code assertions below over an empty list.
+    expect(codes.length).toBeGreaterThanOrEqual(7);
+    expect(codes).toContain("MINOR_GUARDIAN_PRIVACY_REVIEW");
+  });
+
+  it("gives every one of them its own sentence, never the generic fallback", () => {
+    const generic = REVIEW_REASON_COPY.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW;
+    for (const code of systemReviewCodesFromBackend()) {
+      const copy = REVIEW_REASON_COPY[code];
+      expect(copy, `no copy for system review hold ${code}`).toBeDefined();
+      expect(copy.en.length).toBeGreaterThan(20);
+      expect(copy.id.length).toBeGreaterThan(20);
+      // ...and it is really ITS OWN sentence, not a shared placeholder.
+      expect(copy.en).not.toBe(generic.en);
+    }
+  });
+
+  it("never blames the applicant when the fault is our own source", () => {
+    for (const code of OUR_SOURCE_REVIEW_CODES) {
+      const copy = REVIEW_REASON_COPY[code];
+      expect(copy, `no copy for ${code}`).toBeDefined();
+      // GUILT: it must say whose problem this actually is.
+      expect(copy.en.toLowerCase()).toContain("our source");
+      expect(copy.id.toLowerCase()).toContain("sumber kami");
+      // INNOCENCE: it must not tell the applicant their answers are at fault.
+      expect(copy.en.toLowerCase()).not.toContain("your answers need");
+    }
   });
 });

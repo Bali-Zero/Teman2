@@ -580,7 +580,91 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     "The activity you disclosed sits close to a legal boundary that needs a person to confirm.",
     "Aktivitas yang Anda ungkapkan berada dekat batas hukum yang memerlukan konfirmasi dari seseorang.",
   ),
+
+  // ── The seven system-level holds (added 2026-08-25) ────────────────────
+  //
+  // These are emitted by `evaluate_path.py`'s policy adapters, not by a pack
+  // rule. Until now none of them had copy, so every one fell through to
+  // GENERIC_REVIEW_REASON — "Some of your answers need a person's judgment".
+  //
+  // For the six source holds that sentence is not merely vague, it is FALSE:
+  // it tells the applicant their answers are the problem when the applicant
+  // answered fine and OUR regulatory source is the thing under re-verification.
+  // In a regulated advisory funnel that is a wrong statement about whose
+  // problem it is, so each one now says what actually happened.
+  //
+  // Decided with the owner 2026-08-25 (RULING5-HALF-APPLIED.md): these three
+  // adapters deliberately do NOT carry candidates through — unlike the
+  // disclosed-flags adapter, they fire exactly when we no longer stand behind
+  // the computed candidate (revoked/stale source) or must not show it to this
+  // person (a minor). The honest cure for their empty screen is therefore an
+  // accurate REASON, never a product name we would not defend.
+  //
+  // Deliberately NOT promising a response time here: the "within 24 business
+  // hours" line is owner ruling #2's commercial promise, scoped to a T2
+  // candidate surface (T2_CONSULTANT_TERMS below). Repeating it on a review
+  // reason would extend a commercial commitment to a new surface, which is
+  // the owner's call, not this map's. The consultant step in `NEXT_STEPS`
+  // already carries the handoff.
+
+  // Wording note (2026-08-25, cross-family copy review): "*_NOT_APPLICABLE"
+  // does NOT mean "revoked". The decisive-source hold raises it for a UNION of
+  // causes — a secondary (non-primary) authority, revoked, superseded,
+  // unavailable, legally inapplicable, system-time-inapplicable, or
+  // non-current (`_apply_decisive_source_authority_hold`'s own docstring). A
+  // first draft said "is not currently applicable" / "sedang tidak berlaku";
+  // the Indonesian of that reads in legal register as "the regulation has been
+  // revoked", which would be a false statement whenever the real cause is
+  // merely "this citation is a secondary authority". Both languages now say we
+  // cannot RELY on it, which is true for every member of that union.
+  DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE: text(
+    "We cannot rely on the official source behind this answer right now, so a person confirms it — our source, not your answers.",
+    "Saat ini kami tidak dapat mengandalkan sumber resmi di balik jawaban ini, jadi seseorang memastikannya — ini soal sumber kami, bukan jawaban Anda.",
+  ),
+  DECISIVE_SOURCE_FRESHNESS_UNKNOWN: text(
+    "We cannot confirm when the official source behind this answer was last verified, so a person checks it — our source, not your answers.",
+    "Kami tidak dapat memastikan kapan sumber resmi di balik jawaban ini terakhir diverifikasi, jadi seseorang memeriksanya — ini soal sumber kami, bukan jawaban Anda.",
+  ),
+  DECISIVE_SOURCE_STALE: text(
+    "The official source behind this answer is due for re-verification, so a person confirms it — our source, not your answers.",
+    "Sumber resmi di balik jawaban ini perlu diverifikasi ulang, jadi seseorang memastikannya — ini soal sumber kami, bukan jawaban Anda.",
+  ),
+  // "krusial untuk keselamatan", not "sangat penting bagi keselamatan": the
+  // latter is grammatical but reads as marketing emphasis ("very important"),
+  // while "safety-critical" here is a hazard classification. "Krusial" is the
+  // standard loanword in Indonesian compliance/engineering register.
+  SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE: text(
+    "We cannot rely on a safety-critical source right now, so we do not answer automatically — our source, not your answers.",
+    "Saat ini kami tidak dapat mengandalkan sumber yang krusial untuk keselamatan, jadi kami tidak menjawab secara otomatis — ini soal sumber kami, bukan jawaban Anda.",
+  ),
+  SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN: text(
+    "We cannot confirm when a safety-critical source was last verified, so a person checks it — our source, not your answers.",
+    "Kami tidak dapat memastikan kapan sumber yang krusial untuk keselamatan terakhir diverifikasi, jadi seseorang memeriksanya — ini soal sumber kami, bukan jawaban Anda.",
+  ),
+  SAFETY_CRITICAL_SOURCE_STALE: text(
+    "A safety-critical source is due for re-verification, so a person confirms it — our source, not your answers.",
+    "Sumber yang krusial untuk keselamatan perlu diverifikasi ulang, jadi seseorang memastikannya — ini soal sumber kami, bukan jawaban Anda.",
+  ),
+  MINOR_GUARDIAN_PRIVACY_REVIEW: text(
+    "For an applicant under 18 we involve a parent or guardian before confirming anything, so a person handles this case.",
+    "Untuk pemohon di bawah 18 tahun, kami melibatkan orang tua atau wali sebelum mengonfirmasi apa pun, jadi kasus ini ditangani oleh seseorang.",
+  ),
 };
+
+/**
+ * The six review codes whose message must never blame the applicant's answers:
+ * they are raised by OUR source-verification holds. Exported so the test can
+ * assert the substance (each says "our source", none falls back to the generic
+ * "your answers" line) instead of merely asserting a key exists.
+ */
+export const OUR_SOURCE_REVIEW_CODES: readonly string[] = [
+  "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+  "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+  "DECISIVE_SOURCE_STALE",
+  "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
+  "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+  "SAFETY_CRITICAL_SOURCE_STALE",
+];
 
 const GENERIC_REVIEW_REASON: LocalizedText = text(
   "Some of your answers need a person's judgment before we can confirm a path.",
