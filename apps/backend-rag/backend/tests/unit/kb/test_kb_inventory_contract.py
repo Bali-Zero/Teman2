@@ -599,3 +599,154 @@ def test_no_artifact_sits_where_no_gate_looks(capsys):
         f"these sit directly under kb/ where no gate reads them: {strays}. Move each "
         f"into kb/topics, kb/journeys or kb/inventory, or delete it."
     )
+
+
+# ── open_findings: a finding recorded where no alarm reads it is not a finding ──
+#
+# Measured 2026-08-26: `open_findings` appeared NOWHERE outside the yaml that
+# declares it — not in this contract, not in kb_inventory_probe.py, not in
+# scripts/pending_arms_report.py. Eight findings, three of them severity `high`,
+# sat in a field that nothing validates and nothing ages. PENDING-ARMS.md is the
+# repo's one nagging surface (pending_arms_report.py alarms on rows open >48h and
+# CI enforces its owner vocabulary), so a high-severity finding must appear there
+# too. Medium and low deliberately do NOT have to: forcing every finding into the
+# ledger would drown the surface that makes it useful, which is the over-match
+# edge of cicatrix-superscar #3.
+
+SEVERITIES = frozenset({"high", "medium", "low"})
+LEDGER = ROOT / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
+
+
+def ledger_declares(finding_id: str, ledger_text: str) -> bool:
+    """True when the ledger holds a row whose SUBJECT is this finding.
+
+    Not a substring test, and the difference is not academic. The first version
+    of this helper asked `finding_id in ledger_text`, and a mutation run against
+    the real ledger could not make it fail: the WIZ-2 and WIZ-3 rows each say
+    "for the reason in the WIZ-1 row", so deleting the WIZ-1 row entirely left
+    the string "WIZ-1" in the file and the guard stayed green. A cross-reference
+    was satisfying a rule about existence — cicatrix-superscar #3 in the guard
+    written to enforce this campaign's own discipline, caught by its own mutation.
+
+    A bare substring also cannot tell WIZ-1 from WIZ-10. Ledger rows write their
+    subject as `**WIZ-1 — title**`; prose referring to another row does not.
+    """
+    marker = f"**{finding_id} \u2014"  # bold id followed by an em dash
+    return any(marker in line for line in ledger_text.splitlines())
+
+
+def unmirrored_high_findings(findings, ledger_text: str) -> list[str]:
+    """Ids of severity=high findings the ledger does not declare a row for.
+
+    Pure, so both guilt and innocence are testable without touching a real file.
+    """
+    missing = []
+    for finding in findings or []:
+        if finding.get("severity") != "high":
+            continue
+        finding_id = finding.get("id") or ""
+        # A missing id would make any containment test true, so a nameless high
+        # finding would satisfy the rule by having no name at all. Caught by this
+        # module's own guilt case before it ever shipped.
+        if not finding_id or not ledger_declares(finding_id, ledger_text):
+            missing.append(finding_id)
+    return missing
+
+
+def test_guilt_a_high_finding_absent_from_the_ledger_is_reported():
+    assert unmirrored_high_findings(
+        [{"id": "WIZ-99", "severity": "high"}], "an unrelated ledger"
+    ) == ["WIZ-99"]
+
+
+def test_innocence_a_high_finding_present_in_the_ledger_is_not_reported():
+    assert unmirrored_high_findings(
+        [{"id": "WIZ-99", "severity": "high"}],
+        "- opened 2026-01-01 (x) | **WIZ-99 \u2014 the thing** | detail | owner: session",
+    ) == []
+
+
+def test_guilt_a_cross_reference_from_another_row_does_not_count_as_a_row():
+    """The evasion that defeated the first version of this guard, on real data.
+
+    Deleting the WIZ-1 row from the real ledger left the string "WIZ-1" behind in
+    two sibling rows that mention it in prose, and the substring check stayed
+    green. Mentioning a finding is not owning it.
+    """
+    ledger = (
+        "- opened 2026-01-01 (x) | **WIZ-2 \u2014 other thing** | promoted for the "
+        "reason in the WIZ-1 row | owner: session"
+    )
+    assert unmirrored_high_findings([{"id": "WIZ-1", "severity": "high"}], ledger) == ["WIZ-1"]
+
+
+def test_guilt_a_longer_id_does_not_satisfy_a_shorter_one():
+    """WIZ-1 is a prefix of WIZ-10. A containment test cannot tell them apart,
+    and the day a tenth finding is opened the first one silently stops being
+    checked."""
+    ledger = "- opened 2026-01-01 (x) | **WIZ-10 \u2014 the tenth** | d | owner: session"
+    assert unmirrored_high_findings([{"id": "WIZ-1", "severity": "high"}], ledger) == ["WIZ-1"]
+
+
+def test_innocence_a_medium_finding_is_never_required_to_be_in_the_ledger():
+    """The ledger is a nagging surface; filling it with low-severity rows is how
+    it stops being read. Only `high` is mirrored."""
+    assert unmirrored_high_findings(
+        [{"id": "WIZ-4", "severity": "medium"}, {"id": "WIZ-8", "severity": "low"}], ""
+    ) == []
+
+
+def test_guilt_a_high_finding_with_no_id_cannot_pass_by_being_nameless():
+    """An empty id would be `"" in ledger_text` -> True for any text, so a
+    nameless finding would silently satisfy the rule. It must be reported."""
+    assert unmirrored_high_findings([{"severity": "high"}], "any ledger text") == [""]
+
+
+def test_every_finding_declares_a_known_severity(inventory):
+    path, data = inventory
+    for finding in data.get("open_findings") or []:
+        severity = finding.get("severity")
+        assert severity in SEVERITIES, (
+            f"{path.name}: finding {finding.get('id')!r} declares severity "
+            f"{severity!r}, which is outside {sorted(SEVERITIES)}. A severity this "
+            f"gate does not recognise is a finding it cannot route"
+        )
+
+
+def test_every_high_severity_finding_is_mirrored_in_the_pending_arms_ledger(inventory, capsys):
+    path, data = inventory
+    findings = data.get("open_findings") or []
+    ledger_text = LEDGER.read_text(encoding="utf-8")
+    missing = unmirrored_high_findings(findings, ledger_text)
+    high = [f for f in findings if f.get("severity") == "high"]
+    print(f"{path.name}: {len(high)} high finding(s) checked against the ledger")
+    assert not missing, (
+        f"{path.name} records {missing} at severity=high, but {LEDGER.name} does not "
+        f"mention them. open_findings is read by no alarm — it is not validated by "
+        f"the probe and not aged by pending_arms_report.py — so a high finding that "
+        f"lives only there will never nag anyone. Add a ledger row per id"
+    )
+
+
+def test_the_ledger_mirror_check_is_not_examining_zero_findings():
+    """Anti-vacuity for the test above.
+
+    Every assertion there is over `open_findings`; if no inventory declared any
+    high finding, the check would be green while examining nothing — and would
+    stay green through the day someone adds one. This asserts the corpus it
+    guards is non-empty, so the guard's own silence is never mistaken for proof.
+    """
+    high_total = 0
+    for path in _inventories():
+        data = _load(path)
+        if data.get("kind") != OWNED_KIND:
+            continue
+        high_total += sum(
+            1 for f in (data.get("open_findings") or []) if f.get("severity") == "high"
+        )
+    assert high_total > 0, (
+        "no inventory declares a single severity=high finding, so the mirror check "
+        "above is passing over an empty set. Either the campaign genuinely has none "
+        "left — delete this pair of tests and say so — or the field has been renamed "
+        "and the gate is now pointed at nothing"
+    )
