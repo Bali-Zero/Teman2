@@ -20,7 +20,11 @@ only proves it, it does not restate the reasoning):
   (e) `cmd_record`'s own exit code must not go green when one or more topics came
       back `broken` this run — all-broken AND mixed (some graded, some broken)
   (f) a `degraded_path` run must not be able to earn the 48h certificate on its
-      own — treated like `broken`: neither extends nor breaks a streak
+      own — treated like `broken` for the streak (neither extends nor breaks
+      it) AND for `cmd_record`'s own exit code (an all-degraded run must not
+      exit 0 either, the same failure shape rule (e) already closes for
+      `broken` — Round 2 / Guard 6 found this half of (f) was still open:
+      `graded` checked only the verdict field, never `degraded_path`)
 """
 
 from __future__ import annotations
@@ -325,6 +329,124 @@ def test_guilt_a_mixed_run_some_graded_some_broken_does_not_exit_zero(tmp_path, 
     assert "property" in out  # the broken topic is named, not just counted
 
 
+def test_guilt_an_all_degraded_run_does_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """Round 2 / Guard 6: the exact evasion the reviewer named. This
+    environment's google-genai was off the lock file's pin (measured live,
+    2026-08-26: 1.75.0 installed) — so EVERY run right now is degraded. A
+    single topic, verdict `at_target`, `degraded_path: true` used to satisfy
+    the OLD `graded` check (it only excluded `nothing_measured`/`broken` by
+    verdict) and exit 0 — meaning the scheduled job would report success for
+    the full 48h window with zero production-path evidence behind it."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    def fake_run_probe_json(path, collection, timeout_s=300):
+        return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                "exit_code": 0, "degraded_path": True,
+                "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                              "measured_state": "green", "rank": 1, "error": None}]}
+
+    monkeypatch.setattr(PH, "run_probe_json", fake_run_probe_json)
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0, "an all-degraded run (even verdict=at_target) exited 0"
+    lines = [json.loads(row) for row in history.read_text().splitlines()]
+    # The record IS written — it really did measure something, on the
+    # narrower path — only the job's own exit code must not go green.
+    assert lines[0]["verdict"] == "at_target"
+    assert lines[0]["degraded_path"] is True
+    assert "degraded" in out
+    # `cmd_record` also computes a SEPARATE `degraded` list (for the mixed-run
+    # branch below) that independently forces a non-zero exit even if
+    # `graded`'s own exclusion were removed — so exit_code alone cannot prove
+    # THIS exclusion specifically did the work; the message it produces can.
+    # Correct code hits `if not graded:` first for an all-degraded run and
+    # says "nothing measured cleanly" — it must NOT reach the "PARTIAL — N of
+    # M topic(s) graded cleanly" branch, which would misreport the one
+    # degraded topic as one that graded cleanly.
+    assert "nothing measured cleanly" in out, out
+    assert "graded cleanly" not in out, out
+
+
+def test_guilt_a_mixed_run_some_clean_some_degraded_does_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """Two topics: `immigration` grades cleanly and NOT degraded, `property`
+    grades at_target but degraded_path=True. The clean topic must not let the
+    degraded one hide — the mixed-run half of rule (e)+(f), same shape as the
+    existing broken/mixed test above."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+    (jdir / "property.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    def fake_run_probe_json(path, collection, timeout_s=300):
+        degraded = path.stem == "property"
+        return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                "exit_code": 0, "degraded_path": degraded,
+                "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                              "measured_state": "green", "rank": 1, "error": None}]}
+
+    monkeypatch.setattr(PH, "run_probe_json", fake_run_probe_json)
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0, "a mixed run (1 clean, 1 degraded) must not exit 0"
+    lines = {json.loads(row)["topic"]: json.loads(row) for row in history.read_text().splitlines()}
+    # BOTH records are still written — the degraded topic really was measured,
+    # just not on the production path.
+    assert lines["immigration"]["degraded_path"] is False
+    assert lines["property"]["degraded_path"] is True
+    assert "property" in out
+    # The separately-computed `degraded` list would force a non-zero exit even
+    # if `graded` stopped excluding degraded records — so pin the COUNT, which
+    # only the exclusion in `graded` gets right: exactly 1 of 2 graded
+    # cleanly, never 2 of 2 (which would silently count the degraded topic as
+    # clean evidence).
+    assert "1 of 2 topic(s) graded cleanly" in out, out
+    assert "2 of 2 topic(s) graded cleanly" not in out, out
+
+
+def test_guilt_a_broken_and_a_degraded_topic_together_do_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """Both absence-of-evidence shapes in the SAME record() run, alongside a
+    genuinely clean topic — the summary must name both, and neither hides
+    behind the other or behind the clean neighbour."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+    (jdir / "property.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+    (jdir / "tax.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    def fake_run_probe_json(path, collection, timeout_s=300):
+        if path.stem == "property":
+            return {"journeys_file": str(path), "collection": "nope", "verdict": "broken",
+                    "reason": "unknown_collection", "exit_code": 3, "degraded_path": False,
+                    "journeys": []}
+        if path.stem == "tax":
+            return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                    "exit_code": 0, "degraded_path": True,
+                    "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                                  "measured_state": "green", "rank": 1, "error": None}]}
+        return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                "exit_code": 0, "degraded_path": False,
+                "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                              "measured_state": "green", "rank": 1, "error": None}]}
+
+    monkeypatch.setattr(PH, "run_probe_json", fake_run_probe_json)
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert "property" in out and "tax" in out
+    # Only `immigration` is genuinely clean evidence — `graded` must exclude
+    # BOTH the broken and the degraded topic, not just the broken one.
+    assert "1 of 3 topic(s) graded cleanly" in out, out
+    assert "2 of 3 topic(s) graded cleanly" not in out, out
+
+
 def test_innocence_a_multi_topic_run_with_zero_broken_exits_zero(tmp_path, monkeypatch):
     """Two topics, both graded (one at_target, one outstanding), none broken —
     the ordinary healthy-mixed-verdict case must still exit 0."""
@@ -529,7 +651,7 @@ def test_guilt_no_records_at_all_is_not_at_target():
 
 def test_the_guilt_matrix_is_not_empty():
     guilt_tests = [name for name in globals() if name.startswith("test_guilt_")]
-    assert len(guilt_tests) >= 12, guilt_tests
+    assert len(guilt_tests) >= 20, guilt_tests
 
 
 # ── cmd_status end-to-end over a real tmp_path history file ──────────────────

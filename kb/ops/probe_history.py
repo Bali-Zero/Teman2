@@ -107,7 +107,11 @@ six true, not merely once, forever):
     nobody watching only the exit code would ever find out. `broken` is
     therefore treated as record()'s own guilt signal, not folded into "at least
     one thing worked" — a topic that could not be measured is not allowed to
-    hide behind the topics that could.
+    hide behind the topics that could. `cmd_record`'s `graded` list also
+    excludes `degraded_path` records for exactly this reason — see (f), which
+    is where that half of the rule is justified; an all-`degraded_path` run
+    used to satisfy this same `graded` check because it checked only the
+    verdict field, so a run with zero production-path evidence still exited 0.
 
 (f) A `degraded_path` RUN MUST NOT BE ABLE TO EARN THE CERTIFICATE ON ITS OWN.
     `probe_retrieval.py` sets `degraded_path: true` when this environment's
@@ -134,6 +138,19 @@ six true, not merely once, forever):
     degraded uniformly, regardless of which verdict it produced, keeps one
     rule instead of a verdict-dependent one and removes an entire axis of
     "was this the good kind of degraded or the bad kind" from the streak logic.
+
+    This is a DIFFERENT question from `cmd_record`'s own exit code, the same
+    way (c) and (e) are different questions about `broken` — and it has the
+    same answer. An all-`degraded_path` run, even with verdict `at_target` on
+    every topic, must not exit 0 at the job/scheduler level either: `graded`
+    in `cmd_record` excludes `degraded_path` records exactly as `gradable` in
+    `_streak` does, for the identical reason — a lower bound is not "green
+    against production." Without this, the day this environment's
+    `google-genai` drifts off the lock file's pin, the scheduled job keeps
+    reporting success while `_streak` (correctly) never advances the 48h
+    clock — a scheduler-green, streak-frozen split that nobody watching only
+    the job's exit code would ever notice, for as long as the version stays
+    drifted.
 
 Nothing here writes to Qdrant or touches `probe_retrieval.py`'s grading — this
 file only runs that script as a subprocess and interprets its `--json` output.
@@ -366,31 +383,57 @@ def cmd_record(args, root: Path) -> int:
               % (label, rec["verdict"], (rec["journeys_sha256"] or "-")[:12]))
 
     # Rule (e): `broken` and `nothing_measured` are BOTH an absence of evidence —
-    # neither may let record() claim success. `graded` is every record that
-    # actually measured something real about a topic today.
-    graded = [r for r in records if r["verdict"] not in (NOTHING_MEASURED, "broken")]
+    # neither may let record() claim success. Rule (f) extends the same logic to
+    # `degraded_path`: a record that produced a verdict but only on the
+    # narrower, non-production path is not the "green against production" §8
+    # asks for either, so it is excluded from `graded` the same way `broken` is
+    # — never by inspecting the verdict field alone. `graded` is every record
+    # that actually measured something real, on the real path, today.
+    graded = [r for r in records
+              if r["verdict"] not in (NOTHING_MEASURED, "broken")
+              and not r.get("degraded_path")]
     broken = [r for r in records if r["verdict"] == "broken"]
+    # A degraded record's verdict is never "broken" (build_record only ever
+    # sets one or the other) — see rule (f) — so this is disjoint from `broken`
+    # by construction, not by filtering it out here a second time.
+    degraded = [r for r in records
+                if r["verdict"] not in (NOTHING_MEASURED, "broken") and r.get("degraded_path")]
 
     if not graded:
         print()
-        print("nothing measured — every topic this run produced no gradable evidence "
-              "(%d topic file(s) found, %d broken, rest nothing_measured). This is "
-              "NOT success: record() intentionally does not exit 0 here."
-              % (len(files), len(broken)))
+        print(
+            "nothing measured cleanly — every topic this run produced no undegraded, "
+            "gradable evidence (%d topic file(s) found: %d broken, %d degraded, rest "
+            "nothing_measured). This is NOT success: record() intentionally does not "
+            "exit 0 here." % (len(files), len(broken), len(degraded))
+        )
         return 1
 
-    if broken:
-        # Rule (e), the mixed-run half: SOME topics graded, one or more came back
-        # broken. Exit non-zero anyway — see module docstring rule (e) for why a
-        # partially-green run must not read as a fully successful one.
+    if broken or degraded:
+        # Rule (e)+(f), the mixed-run half: SOME topics graded cleanly, one or
+        # more came back broken and/or degraded. Exit non-zero anyway — see
+        # module docstring rules (e)/(f) for why a partially-green run must not
+        # read as a fully successful one, and why degraded gets the same
+        # treatment as broken here even though it did produce a verdict.
+        parts = []
+        if broken:
+            parts.append(
+                "%d broken (not measured): %s"
+                % (len(broken), ", ".join(sorted(r["topic"] or "?" for r in broken)))
+            )
+        if degraded:
+            parts.append(
+                "%d degraded (measured, but on the narrower non-production path — "
+                "rule (f) — and not counted as clean evidence): %s"
+                % (len(degraded), ", ".join(sorted(r["topic"] or "?" for r in degraded)))
+            )
         print()
         print(
-            "PARTIAL — %d of %d topic(s) graded, %d came back broken and were NOT "
-            "measured: %s. record() intentionally does not exit 0 on a mixed run: "
-            "a broken topic hiding behind its graded neighbours is exactly how it "
-            "goes unnoticed for months while the scheduled job stays green."
-            % (len(graded), len(records), len(broken),
-               ", ".join(sorted(r["topic"] or "?" for r in broken)))
+            "PARTIAL — %d of %d topic(s) graded cleanly; %s. record() intentionally "
+            "does not exit 0 on a partial run: a broken or degraded topic hiding "
+            "behind its clean neighbours is exactly how it goes unnoticed for months "
+            "while the scheduled job stays green."
+            % (len(graded), len(records), "; ".join(parts))
         )
         return 1
 
