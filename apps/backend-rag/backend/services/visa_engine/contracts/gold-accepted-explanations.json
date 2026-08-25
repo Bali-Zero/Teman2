@@ -1,0 +1,886 @@
+{
+  "gate": "G-b",
+  "generated_at": "2026-08-25T14:00:49.404295+00:00",
+  "mode": "offline",
+  "overall_pass": false,
+  "pack": {
+    "consistent_across_personas": true,
+    "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+    "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+    "sequence": 15,
+    "version": "2026.8.25"
+  },
+  "pack_source": {
+    "decision_identity": "offline-only non-secret provider; not production integrity evidence",
+    "file": "services/visa_engine/contracts/packs/rulepack-prod-015.signed.json",
+    "kind": "repository_signed_pack",
+    "pack_metadata_source": "local evaluator decision.rule_pack",
+    "policy_adapters": [
+      "_apply_minor_privacy_hold",
+      "_apply_decisive_source_authority_hold",
+      "_apply_safety_critical_source_hold",
+      "_apply_disclosed_review_flags"
+    ],
+    "production_activation_status": "not checked; offline replay does not claim this pack is active in production",
+    "runtime_operations_excluded": [
+      "active_database_binding",
+      "retention_gate",
+      "pricing",
+      "sealing",
+      "persistence"
+    ],
+    "selection": "highest signed PRODUCTION sequence present in repository"
+  },
+  "packs_observed": [
+    {
+      "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+      "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+      "sequence": 15,
+      "version": "2026.8.25"
+    }
+  ],
+  "persona_count": 20,
+  "personas": [
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["CITIZENSHIP_LIST_DIVERGENCE"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": ["APPLICANT_IS_INDONESIAN_CITIZEN"],
+          "field": "no_path_reason_codes",
+          "persona_id": 1
+        },
+        {
+          "actual": ["CITIZENSHIP_LIST_DIVERGENCE"],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 1
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "NO_SUPPORTED_PATH",
+          "field": "state",
+          "persona_id": 1
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": ["APPLICANT_IS_INDONESIAN_CITIZEN"],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NO_SUPPORTED_PATH"
+      },
+      "explanation": "CLASS 2 (GOLD-DIVERGENCE-TRIAGE.md, named row) — a later safety rule firing, not a defect. The corpus expected a flat NO_SUPPORTED_PATH with APPLICANT_IS_INDONESIAN_CITIZEN; the engine instead raises CITIZENSHIP_LIST_DIVERGENCE and escalates to a human. Escalating beats refusing outright: a citizenship list can be wrong about a real person, and a human can see that. Divergence in the conservative direction, costing a consultant's time, never a wrong visa.",
+      "label": "ID citizen excluded outright",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 1
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "CALLING_VISA_REVIEW",
+          "CITIZENSHIP_LIST_DIVERGENCE"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": ["CALLING_VISA_REVIEW", "CITIZENSHIP_LIST_DIVERGENCE"],
+          "expected": ["CITIZENSHIP_EVIDENCE_CONFLICT"],
+          "field": "review_reason_codes",
+          "persona_id": 2
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["CITIZENSHIP_EVIDENCE_CONFLICT"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": "CLASS 3 (triage, named row) — the engine asks a different question first and still arrives. Same state (HUMAN_REVIEW_REQUIRED); the engine returns CALLING_VISA_REVIEW + CITIZENSHIP_LIST_DIVERGENCE where the corpus expected CITIZENSHIP_EVIDENCE_CONFLICT. Richer reasons for the same outcome — the consultant receives more context, not less.",
+      "label": "conflicting nationality evidence -> human review",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 2
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["CALLING_VISA_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["CALLING_VISA_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "calling-visa nationality -> human review",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 3
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["ACTIVE_OVERSTAY"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["ACTIVE_OVERSTAY"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "active overstay -> human review",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 4
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "MINOR_WITHOUT_CONFIRMED_GUARDIAN",
+          "MINOR_GUARDIAN_PRIVACY_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [
+            "MINOR_WITHOUT_CONFIRMED_GUARDIAN",
+            "MINOR_GUARDIAN_PRIVACY_REVIEW"
+          ],
+          "expected": ["MINOR_WITHOUT_CONFIRMED_GUARDIAN"],
+          "field": "review_reason_codes",
+          "persona_id": 5
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["MINOR_WITHOUT_CONFIRMED_GUARDIAN"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": "CLASS 2 — classified by the session on 2026-08-26, not by a ruling: this persona was the 16th divergence and was missing from the triage's taxonomy (which summed to 15). Identical shape to persona #6 and the same rule: same state, same (empty) candidates, the engine adds MINOR_GUARDIAN_PRIVACY_REVIEW alongside the expected MINOR_WITHOUT_CONFIRMED_GUARDIAN. Strictly more protective for a minor.",
+      "label": "minor without confirmed guardian -> human review",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 5
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["MINOR_GUARDIAN_PRIVACY_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": ["E31"],
+          "field": "candidate_products",
+          "persona_id": 6
+        },
+        {
+          "actual": ["MINOR_GUARDIAN_PRIVACY_REVIEW"],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 6
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "SUPPORTED_CANDIDATES",
+          "field": "state",
+          "persona_id": 6
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": ["E31"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": "CLASS 2 (triage, named row) — MINOR_GUARDIAN_PRIVACY_REVIEW, a safety rule added after the corpus was written. The corpus expected SUPPORTED_CANDIDATES [E31]; the engine routes the minor to a human instead. For an applicant under 18 that is the intended behaviour, not a regression.",
+      "label": "minor child with confirmed family sponsor -> E31",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 6
+    },
+    {
+      "actual": {
+        "candidate_products": ["C1", "E31A", "E31B", "E31D"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": ["C1", "E31A", "E31B", "E31D"],
+          "expected": ["E31"],
+          "field": "candidate_products",
+          "persona_id": 7
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": ["E31"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": "CLASS 1 (triage) — the corpus tests five product codes (E28A, E31, E23, E33G, C1); the engine's catalogue has 38. Same state (SUPPORTED_CANDIDATES); the engine answers C1/E31A/E31B/E31D where the corpus knew only the generic E31. The family route was subdivided after the corpus was written; the expectation is a smaller catalogue, not a wrong answer.",
+      "label": "adult spouse, registered marriage, confirmed sponsor -> E31",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 7
+    },
+    {
+      "actual": {
+        "candidate_products": ["C1", "E31D"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": ["C1", "E31D"],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 8
+        },
+        {
+          "actual": [],
+          "expected": ["family.marriage_registered"],
+          "field": "missing_facts",
+          "persona_id": 8
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "NEEDS_INPUT",
+          "field": "state",
+          "persona_id": 8
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": ["family.marriage_registered"],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": "CLASS 1 (triage) — same cause as #7. The corpus expected NEEDS_INPUT because its ONLY family product (E31) requires family.marriage_registered. The engine has products that do not need that fact at all (C1, a tourist visa, and E31D), so it can answer without it. The missing fact did not go unanswered: it stopped being required by the products actually offered.",
+      "label": "same as #7 but marriage_registered unverified -> needs input",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 8
+    },
+    {
+      "actual": {
+        "candidate_products": ["D12"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": ["D12"],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 9
+        },
+        {
+          "actual": [],
+          "expected": ["DIRECT_ONSHORE_CONVERSION_UNSUPPORTED"],
+          "field": "no_path_reason_codes",
+          "persona_id": 9
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "NO_SUPPORTED_PATH",
+          "field": "state",
+          "persona_id": 9
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": ["DIRECT_ONSHORE_CONVERSION_UNSUPPORTED"],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NO_SUPPORTED_PATH"
+      },
+      "explanation": "CLASS 1 (triage, explained at length there) — the corpus's NO_SUPPORTED_PATH means 'none of these five fits', not 'no visa in Indonesia fits'. The engine answers D12, the PRE-investment multiple-entry visit visa, which has carried six ELIGIBILITY rules since pack 009 and simply does not exist in the corpus's world. DIRECT_ONSHORE_CONVERSION_UNSUPPORTED remains true about the conversion; it is not true about the applicant's options.",
+      "label": "investor direct onshore conversion -> unsupported",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 9
+    },
+    {
+      "actual": {
+        "candidate_products": ["D12"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": ["D12"],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 10
+        },
+        {
+          "actual": [],
+          "expected": ["STATUS_BRIDGING_REVIEW"],
+          "field": "review_reason_codes",
+          "persona_id": 10
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "HUMAN_REVIEW_REQUIRED",
+          "field": "state",
+          "persona_id": 10
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["STATUS_BRIDGING_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": "CLASS 1 (triage, which lists this persona in that class) — the engine answers D12, a product the corpus has never heard of. RESIDUAL, recorded rather than hidden: this is the one Class-1 row where the engine also DROPS a reason the corpus expected (STATUS_BRIDGING_REVIEW) rather than merely adding products. Whether a status-bridging review should still fire when the answer is an offshore D12 is not settled by the triage's general reason, and persona #20 shows the engine does enforce bridging prohibitions elsewhere. Transcribed on the triage's authority; flagged for re-check before ENFORCE.",
+      "label": "same investor facts via status bridging -> human review",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 10
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["E33G_INCOME_EVIDENCE_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": ["E33G"],
+          "field": "candidate_products",
+          "persona_id": 11
+        },
+        {
+          "actual": ["E33G_INCOME_EVIDENCE_REVIEW"],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 11
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "SUPPORTED_CANDIDATES",
+          "field": "state",
+          "persona_id": 11
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": ["E33G"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": "CLASS 2 (triage, named row) — E33G_INCOME_EVIDENCE_REVIEW, a safety rule added after the corpus was written. The corpus expected SUPPORTED_CANDIDATES [E33G]; the engine asks a human to see the income evidence first. Conservative direction: costs a consultant's time, never a wrong visa.",
+      "label": "clean remote worker, no local footprint -> E33G",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 11
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["LOCAL_MARKET_ACTIVITY_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["LOCAL_MARKET_ACTIVITY_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "remote worker serving Indonesian clients -> human review",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 12
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": ["sponsor.type"],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "differences": [
+        {
+          "actual": ["sponsor.type"],
+          "expected": ["work.serves_indonesian_clients"],
+          "field": "missing_facts",
+          "persona_id": 13
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": ["work.serves_indonesian_clients"],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": "CLASS 3 (triage, named row) — same state (NEEDS_INPUT); the engine asks for sponsor.type where the corpus expected work.serves_indonesian_clients. Both are real, askable facts, so the interview still terminates. A different first question, not a dead end.",
+      "label": "remote worker, local-clients fact unprovided -> needs input",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 13
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": ["E33G_INCOME_EVIDENCE_REVIEW"],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": ["E33G"],
+          "field": "candidate_products",
+          "persona_id": 14
+        },
+        {
+          "actual": ["E33G_INCOME_EVIDENCE_REVIEW"],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 14
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "SUPPORTED_CANDIDATES",
+          "field": "state",
+          "persona_id": 14
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": ["E33G"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": "CLASS 2 (triage, named row) — the same E33G_INCOME_EVIDENCE_REVIEW as #11, on the tourism+remote-work shape. Conservative direction.",
+      "label": "tourism + remote-work purposes -> E33G only, never C1",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 14
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": ["intent.requested_product_code"],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": ["E23"],
+          "field": "candidate_products",
+          "persona_id": 15
+        },
+        {
+          "actual": ["intent.requested_product_code"],
+          "expected": [],
+          "field": "missing_facts",
+          "persona_id": 15
+        },
+        {
+          "actual": "NEEDS_INPUT",
+          "expected": "SUPPORTED_CANDIDATES",
+          "field": "state",
+          "persona_id": 15
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": ["E23"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "tourism + employment purposes -> E23 only, never C1",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 15
+    },
+    {
+      "actual": {
+        "candidate_products": ["D12"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": ["D12"],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 16
+        },
+        {
+          "actual": [],
+          "expected": ["INVESTMENT_CAPITAL_BELOW_FIXTURE_MINIMUM"],
+          "field": "no_path_reason_codes",
+          "persona_id": 16
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "NO_SUPPORTED_PATH",
+          "field": "state",
+          "persona_id": 16
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": ["INVESTMENT_CAPITAL_BELOW_FIXTURE_MINIMUM"],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NO_SUPPORTED_PATH"
+      },
+      "explanation": "CLASS 1 (triage, named there as 'the one most likely to be misread as a scandal') — the reason code says it itself: INVESTMENT_CAPITAL_BELOW_FIXTURE_MINIMUM describes the SYNTHETIC fixture's threshold, not Indonesian law. The engine offers D12, the pre-investment visit visa: telling an investor who falls just under the KITAS threshold to come and look around first is plausibly the commercially correct answer. The corpus could not say that because D12 does not exist in its world.",
+      "label": "investor capital 1 IDR below minimum -> no supported path",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 16
+    },
+    {
+      "actual": {
+        "candidate_products": ["D12"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": ["D12"],
+          "expected": ["E28A"],
+          "field": "candidate_products",
+          "persona_id": 17
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": ["E28A"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": "CLASS 1 (triage) — the corpus expected E28A (its own fixture minimum); the engine answers D12. RESIDUAL, recorded rather than hidden: unlike #9/#16 the applicant here MEETS the fixture's threshold, so the engine offering only the pre-investment visit visa rather than the investor route is a narrowing, and the triage's general 'wider catalogue' reason does not by itself account for a narrowing. Transcribed on the triage's authority; flagged for re-check before ENFORCE.",
+      "label": "investor at fixture minimum, low budget never filters -> E28A",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 17
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": ["intent.purposes"],
+        "no_path_reason_codes": [],
+        "notice_codes": ["OBSOLETE_PRODUCT_CODE"],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": ["intent.purposes"],
+        "no_path_reason_codes": [],
+        "notice_codes": ["OBSOLETE_PRODUCT_CODE"],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": null,
+      "label": "obsolete code requested, purposes not provided -> needs input + notice",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 18
+    },
+    {
+      "actual": {
+        "candidate_products": ["B1", "C1"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": ["OBSOLETE_PRODUCT_CODE"],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": ["B1", "C1"],
+          "expected": ["C1"],
+          "field": "candidate_products",
+          "persona_id": 19
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": ["C1"],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": ["OBSOLETE_PRODUCT_CODE"],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": "CLASS 1 (triage) — same state (SUPPORTED_CANDIDATES [C1] expected); the engine additionally offers B1, a product outside the corpus's five. A superset of the expected answer, not a different one.",
+      "label": "obsolete code requested, complete tourism facts -> C1 + notice",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 19
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+          "BRIDGING_TO_BRIDGING_PROHIBITED"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": [
+            "immigration.current_status_code",
+            "immigration.overstay_days"
+          ],
+          "field": "missing_facts",
+          "persona_id": 20
+        },
+        {
+          "actual": [
+            "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+            "BRIDGING_TO_BRIDGING_PROHIBITED"
+          ],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 20
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "NEEDS_INPUT",
+          "field": "state",
+          "persona_id": 20
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [
+          "immigration.current_status_code",
+          "immigration.overstay_days"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": "CLASS 2 (triage, named row, and singled out there) — this is Zero's bridging ruling of 2026-08-23 being enforced. The corpus expected the engine to ask for more facts; the engine instead recognises a prohibited bridging transition (BRIDGING_FROM_VISIT_ITK_PROHIBITED, BRIDGING_TO_BRIDGING_PROHIBITED) and stops. The ruling working, showing up as a 'failure'.",
+      "label": "onshore conversion wanted, status+overstay both unprovided",
+      "pack": {
+        "payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+        "rule_pack_id": "ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5",
+        "sequence": 15,
+        "version": "2026.8.25"
+      },
+      "persona_id": 20
+    }
+  ],
+  "report_schema_version": "1.0.0",
+  "summary": {
+    "explained_divergences": 0,
+    "personas_match": 4,
+    "personas_total": 20,
+    "personas_with_divergence": 16,
+    "unexplained_divergences": 16
+  }
+}
