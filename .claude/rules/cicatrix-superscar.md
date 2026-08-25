@@ -233,8 +233,8 @@ feeder split-brain.
 ## Orfane (uniche per natura, non forzate in un cluster)
 
 - **W38** — `backend_rag_v2` NOSUPERUSER (hardening, non un bug)
-- **P3 FLAKY** — clock-race in un test — **CURATA 2026-08-02**: orologio congelato, non un iteratore di
-  tick; mutation ha trovato di peggio (test asseriva un CONTEGGIO, verde con la dedup cancellata).
+- **P3 FLAKY** (CURATA 2026-08-02) + **W129** — test e produttore non condividono «adesso»: là un
+  tick reale non congelato, qui un orologio congelato nel test che il codice sotto test non legge.
 - **W33** — kill-switch operatore su auto-remediation
 - **W40** — collisione numerazione migrazioni
 - **W128** — collisione numero cicatrice (sibling W40) — antidoto `lint_scar_number_collision.py`
