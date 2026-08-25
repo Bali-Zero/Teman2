@@ -580,6 +580,56 @@ def test_the_gate_this_module_defers_topic_inventories_to_actually_exists():
         assert rule in source, f"{owner.name} no longer defines {rule!r}"
 
 
+GATED_DIRS = ("topics", "journeys", "inventory")
+
+
+def unreadable_artifacts(relative_paths) -> list[str]:
+    """Of these kb/-relative yaml paths, the ones no gate will ever parse.
+
+    Every gate in this campaign globs `kb/<named-dir>/*.yaml` — one level deep,
+    that extension, those three directories. Three shapes therefore fall outside
+    all of them, and a completeness review on 2026-08-26 produced a concrete
+    artifact for each:
+
+      kb/tax.yaml            top level, read by nobody (this happened, 2026-08-25)
+      kb/inventory/tax.yml   right folder, wrong extension: glob("*.yaml") misses it
+      kb/inventory/archive/tax.yaml   one level too deep, the globs are not recursive
+
+    The first version of this gate checked only the top level with two literal
+    globs, so the second and third were invisible to the guard written to catch
+    exactly this class.
+    """
+    strays = []
+    for relative in relative_paths:
+        parts = Path(relative).parts
+        if len(parts) == 2 and parts[0] in GATED_DIRS and parts[1].endswith(".yaml"):
+            continue
+        strays.append(relative)
+    return sorted(strays)
+
+
+def test_innocence_a_yaml_in_a_gated_directory_is_read():
+    assert unreadable_artifacts(["inventory/tax.yaml", "topics/company.yaml"]) == []
+
+
+def test_guilt_a_yaml_at_the_top_level_is_read_by_nobody():
+    assert unreadable_artifacts(["tax.yaml"]) == ["tax.yaml"]
+
+
+def test_guilt_a_yml_extension_in_a_gated_directory_is_read_by_nobody():
+    """The globs say `*.yaml`. A `.yml` sits in the right folder and is parsed
+    by no gate — the shape the depth-1 version of this guard could not see."""
+    assert unreadable_artifacts(["inventory/tax.yml"]) == ["inventory/tax.yml"]
+
+
+def test_guilt_a_nested_folder_hides_a_yaml_from_every_glob():
+    assert unreadable_artifacts(["inventory/archive/tax.yaml"]) == ["inventory/archive/tax.yaml"]
+
+
+def test_guilt_an_ungated_top_level_directory_is_not_a_hiding_place():
+    assert unreadable_artifacts(["ops/config.yaml"]) == ["ops/config.yaml"]
+
+
 def test_no_artifact_sits_where_no_gate_looks(capsys):
     """A yaml directly under kb/ is read by nothing, and nothing would say so.
 
@@ -593,11 +643,16 @@ def test_no_artifact_sits_where_no_gate_looks(capsys):
     its own working directory: an artifact that no gate reads is not an artifact.
     """
     kb = _repo_root() / "kb"
-    strays = sorted(p.name for p in kb.glob("*.yaml")) + sorted(p.name for p in kb.glob("*.yml"))
-    print(f"kb/ top level: {len(strays)} stray yaml file(s)")
+    found = sorted(
+        str(path.relative_to(kb)) for ext in ("*.yaml", "*.yml") for path in kb.rglob(ext)
+    )
+    strays = unreadable_artifacts(found)
+    print(f"kb/: {len(found)} yaml file(s), {len(strays)} that no gate reads")
     assert strays == [], (
-        f"these sit directly under kb/ where no gate reads them: {strays}. Move each "
-        f"into kb/topics, kb/journeys or kb/inventory, or delete it."
+        f"these live under kb/ where no gate reads them: {strays}. Every gate globs "
+        f"kb/<named-dir>/*.yaml exactly one level deep, so anything else — the top "
+        f"level, a nested folder, or a .yml extension — is parsed by nobody. Move each "
+        f"to kb/topics, kb/journeys or kb/inventory as a .yaml, or delete it."
     )
 
 
@@ -632,7 +687,19 @@ def ledger_declares(finding_id: str, ledger_text: str) -> bool:
     subject as `**WIZ-1 — title**`; prose referring to another row does not.
     """
     marker = f"**{finding_id} \u2014"  # bold id followed by an em dash
-    return any(marker in line for line in ledger_text.splitlines())
+    # `marker in line` alone was still not enough. A completeness review on
+    # 2026-08-26 passed all three of these with no row present at all:
+    #     <!-- **WIZ-99 - fake** -->
+    #     ```md\n**WIZ-99 - fake**\n```
+    #     > **WIZ-99 - quoted from a row that was deleted**
+    # A comment, a fenced block and a blockquote are not rows. Every real row in
+    # PENDING-ARMS.md begins `- opened `, so the line must BE a row, not merely
+    # contain the marker somewhere. (Lookalike dashes were checked and correctly
+    # rejected already: U+2013 and U+2015 do not match the em dash U+2014.)
+    return any(
+        line.lstrip().startswith("- opened ") and marker in line
+        for line in ledger_text.splitlines()
+    )
 
 
 def unmirrored_high_findings(findings, ledger_text: str) -> list[str]:
