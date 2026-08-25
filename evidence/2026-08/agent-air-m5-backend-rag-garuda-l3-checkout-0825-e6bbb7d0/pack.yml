@@ -1,4 +1,4 @@
-brief_ref: "evidence/2026-08/agent-air-m5-backend-rag-garuda-l3-checkout-0825-e6bbb7d0/brief.yml"
+brief_ref: "evidence/brief.yml"
 lanes:
   - lane: L3
     role: build
