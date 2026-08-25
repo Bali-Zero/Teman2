@@ -119,6 +119,28 @@ const ctaSectionStyle: React.CSSProperties = {
 };
 
 /**
+ * Fit-check CTA treatment — shared by the hero entry point (2026-08-25, this
+ * PR) and the pre-existing "Two ways to qualify"/studio footer instance. Same
+ * outline vocabulary as the rest of the page: transparent fill, funnel-red
+ * border + ink. Kept the SAME strength in both places (not stronger in the
+ * hero) so this early entry point reads as an additional, low-commitment
+ * option — never a re-ranking of the WhatsApp CTA, which stays the sole
+ * solid-fill/higher-visual-weight action per Legge 5.
+ */
+const fitCheckCtaStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
+  borderRadius: 8,
+  border: "1px solid var(--accent-funnel)",
+  color: "var(--accent-funnel-text, var(--accent-funnel))",
+  fontWeight: 600,
+  textDecoration: "none",
+  minHeight: 44,
+};
+
+/**
  * Real routes for the localized second-home variants (2026-08-20) — the only
  * locales this landing has a dedicated SSG page for today. An OFFERED_LOCALES
  * entry with no route here (there are none right now: en/id/it all route)
@@ -242,6 +264,18 @@ export function SecondHomeLanding() {
         >
           {t("secondHome.hero.subtitle")}
         </p>
+        {/* Hero CTA (2026-08-25): the page's first click target used to be
+            87%/90% down the scroll (studio) — a reader had to pass six
+            sections before any action existed. Same destination + treatment
+            as the pre-existing studio CTA further down; this is an earlier
+            entry point, not a replacement for it or for the WhatsApp CTA. */}
+        <Link
+          href="/visa/second-home/studio"
+          data-testid="hero-fit-check-cta"
+          style={{ ...fitCheckCtaStyle, justifySelf: "start" }}
+        >
+          Start the fit-check
+        </Link>
         {price ? (
           <div
             style={{
@@ -613,18 +647,8 @@ export function SecondHomeLanding() {
         </p>
         <Link
           href="/visa/second-home/studio"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
-            borderRadius: 8,
-            border: "1px solid var(--accent-funnel)",
-            color: "var(--accent-funnel-text, var(--accent-funnel))",
-            fontWeight: 600,
-            textDecoration: "none",
-            minHeight: 44,
-          }}
+          data-testid="footer-fit-check-cta"
+          style={fitCheckCtaStyle}
         >
           Start the fit-check
         </Link>

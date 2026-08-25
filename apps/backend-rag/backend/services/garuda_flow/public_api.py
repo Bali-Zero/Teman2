@@ -147,7 +147,7 @@ def evaluate_public_check(
     if not verdict.accepted:
         return EligibilityCheckOutcome(accepted=False, reason_codes=reason_codes)
 
-    amount, source = price_for_case(case_type)
+    amount, source = price_for_case(case_type, today=today)
     if amount is None:
         raise PriceUnresolvable(f"no catalogue price for case_type={case_type.value}")
 

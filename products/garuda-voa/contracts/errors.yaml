@@ -57,20 +57,6 @@ $defs:
           retryable: { const: false }
           message_key: { const: garuda_voa.error.sale_unavailable }
       - <<: *errorResponseBase
-        title: TRUTH_SHEET_STALE
-        x-http-status: 503
-        properties:
-          code: { const: TRUTH_SHEET_STALE }
-          retryable: { const: false }
-          message_key: { const: garuda_voa.error.sale_unavailable }
-      - <<: *errorResponseBase
-        title: TRUTH_AUTHORITY_UNAVAILABLE
-        x-http-status: 503
-        properties:
-          code: { const: TRUTH_AUTHORITY_UNAVAILABLE }
-          retryable: { const: false }
-          message_key: { const: garuda_voa.error.sale_unavailable }
-      - <<: *errorResponseBase
         title: NOTICE_ACKNOWLEDGEMENT_REQUIRED
         x-http-status: 422
         properties:

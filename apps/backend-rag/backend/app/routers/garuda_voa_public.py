@@ -229,14 +229,25 @@ def _set_result_session_cookie(response: Response, secret: str) -> None:
     )
 
 
-# TODO(ground, orchestrator-scoped — deliberately not this lane's to fix):
-# `x-truth-freshness-max-age-days` (nationality_eligibility / rule_constants /
-# price_catalogue) has no dated-source tracking anywhere in `garuda_flow`, so
-# nothing can currently emit TRUTH_SHEET_STALE or TRUTH_AUTHORITY_UNAVAILABLE.
-# The numbers are binding in the contract and the reader does not exist yet —
-# G-FRESHNESS-FAIL-CLOSED is declared and absent, and it stays with the
-# orchestrator on purpose: a freshness check implemented per-lane is how one
-# surface declines while another sells the same stale price.
+# UPDATE (orchestrator, `freshness.py`, G-FRESHNESS-FAIL-CLOSED): the reader
+# now exists. `intake.build_verdict` checks nationality_eligibility and
+# rule_constants freshness unconditionally and DECLINEs with the new
+# `DeclineCode.ELIGIBILITY_UNCONFIRMED` when either is past its window — the SAME
+# shape as the calendar precedent immediately below (a 201 DECLINE via the
+# closed vocabulary, never a bare error), which is why the outcome reaches
+# this router exactly like any other DECLINE and needs no new branch here.
+# `pricing.price_for_case` checks price_catalogue freshness and returns its
+# EXISTING `(None, None)` fail-closed shape when stale, which this router
+# already turns into 503 PRICE_UNRESOLVABLE via `PriceUnresolvable` below —
+# also no new branch needed.
+#
+# Net effect: neither `ELIGIBILITY_UNCONFIRMED` nor `TRUTH_AUTHORITY_UNAVAILABLE`
+# in `contracts/openapi.yaml`'s `x-error-codes` (503 shape) is ever emitted
+# by this design — they are now the SAME dead-declared-code situation the
+# paragraph below already resolved once for CALENDAR_COVERAGE_EXCEEDED.
+# Orchestrator-scoped, not this lane's to fix: whether to remove those two
+# codes from the frozen contract (contracts/** is orchestrator-only) is a
+# call for whoever owns that freeze, not a router change.
 #
 # The calendar half of this note is CLOSED. It used to name
 # CALENDAR_COVERAGE_EXCEEDED, a 503 the contract declared; the lane was right

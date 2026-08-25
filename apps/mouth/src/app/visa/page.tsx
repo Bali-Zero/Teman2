@@ -122,7 +122,8 @@ export default function VisaEntryPage() {
             margin: 0,
           }}
         >
-          Buying property or keeping USD 130,000+ in savings?{" "}
+          Have a USD 130,000 deposit in your own name at a state-owned (BUMN)
+          Indonesian bank, or a USD 1,000,000 completed strata unit?{" "}
           <Link
             href="/visa/second-home"
             style={{ color: "var(--accent-funnel)" }}
