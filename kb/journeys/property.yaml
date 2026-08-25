@@ -41,6 +41,22 @@
 # expectation for that journey. Journeys 1-2's red is plausible under the DEGRADED PATH
 # caveat above — an English question about foreign land ownership may need multilingual
 # query expansion (currently broken) to surface the Indonesian-language UU_5_1960 text.
+#
+# CONFIRMED 2026-08-25, per orchestrator's adversarial-review request (two probe defects
+# found after this file's first pass — "confirm rather than assume"):
+# (1) verbatim_phrase floor: every one of the 9 phrases below is a full clause/sentence,
+#     51-146 chars (min: journey 3 at 51, max: journey 7 at 146) — none is a bare word or
+#     trivial substring, so the reported empty-string/single-word false-green bug (an
+#     unbounded verbatim_phrase like "" or "dan" reporting GREEN at rank 1 against ANY
+#     text) cannot have produced any of this file's 6 greens. Measured directly against
+#     the checked-out kb/journeys/property.yaml with `len(j["verbatim_phrase"])` per
+#     journey, not eyeballed.
+# (2) collection-name resolution: the probe invocation used `--collection legal_unified`
+#     verbatim — the real, registered production alias (confirmed live: control query
+#     'peraturan perundang-undangan' found at rank 1 of 5 on both probe runs) — never a
+#     typo'd name. search_service.py's silent "Unknown collection -> defaulting to
+#     legal_unified" fallback (the second reported defect) is therefore not in play here:
+#     the exact name given already resolves correctly without touching that fallback path.
 
 schema_version: 1
 lane: D
