@@ -205,6 +205,26 @@ KILL_SWITCHES: tuple[KillSwitch, ...] = (
         "number and confirm no tool_call is emitted while false.",
     ),
     KillSwitch(
+        env_var="TEAM_BOT_MULTISTEP_READS_ENABLED",
+        plane=TripwirePlane.TEAM_REPLIES,
+        default_dark=True,
+        scope="global",
+        effect_when_off="Read/search chains are capped at exactly ONE step per turn — "
+        "today's exact behavior, unaffected by this switch's own existence. Directive #1 "
+        "§2 (2026-08-25) amends F4/F5: 'one tool per turn' stays unconditional for "
+        "MUTATIONS (always confirmed, never gated by this switch) but is relaxed for "
+        "reads/searches ONLY once this flips true, at which point "
+        "TEAM_BOT_MAX_READ_STEPS (default 8) sets the per-turn step budget — while this "
+        "is false that numeric var is read but has no effect (apps/team-bot/team_bot/"
+        "flags.py::max_read_steps() always returns 1).",
+        owning_lane="B3",
+        status=KillSwitchStatus.PLANNED,
+        verify_command="with the flag false, drive a read-heavy staff query through the "
+        "loop and confirm the read tool call count never exceeds 1 for that turn; with it "
+        "true, confirm the chain can reach TEAM_BOT_MAX_READ_STEPS before a bounded "
+        "'budget exhausted' outcome (never a hang or a crash).",
+    ),
+    KillSwitch(
         env_var="TEAM_BOT_MUTATIONS_ENABLED",
         plane=TripwirePlane.TEAM_MUTATIONS,
         default_dark=True,

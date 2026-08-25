@@ -45,13 +45,25 @@ Clearing it requires an operator `codex login` (owner switchboard item 4), never
 
 `apps/team-bot/` does not exist yet (B3's file ownership) — every row below is `planned`.
 
-| Env var                          | Default | Plane               | Effect when OFF                                                                                                                                             | Owning lane | Status  |
-| -------------------------------- | ------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------- |
-| `TEAM_BOT_INGRESS_ENABLED`       | `false` | team_replies        | Webhook not subscribed; zero inbound team-bot traffic accepted. First promotion rung.                                                                       | B3          | planned |
-| `TEAM_BOT_REPLY_ENABLED`         | `false` | team_replies        | Inbound logged + audited; no model reply sent.                                                                                                              | B3          | planned |
-| `TEAM_BOT_READ_TOOLS_ENABLED`    | `false` | team_replies        | R0/R1 read tools not exposed to the model.                                                                                                                  | B3          | planned |
-| `TEAM_BOT_MUTATIONS_ENABLED`     | `false` | team_mutations      | R2/R3 tools not registered at all. **The single switch that can stop a write to production CRM — the highest-severity row in this table.**                  | B3          | planned |
-| `TEAM_BOT_FAILOVER_AUTO_ENABLED` | `false` | failover_automation | `team-bot-failoverd` never auto-issues a WABA callback override. Stays dark until a staging-WABA retry drill passes (F9/Kimi dissent — see `TRIPWIRES.md`). | B5          | planned |
+| Env var                            | Default | Plane               | Effect when OFF                                                                                                                                              | Owning lane | Status  |
+| ---------------------------------- | ------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- | ------- |
+| `TEAM_BOT_INGRESS_ENABLED`         | `false` | team_replies        | Webhook not subscribed; zero inbound team-bot traffic accepted. First promotion rung.                                                                        | B3          | planned |
+| `TEAM_BOT_REPLY_ENABLED`           | `false` | team_replies        | Inbound logged + audited; no model reply sent.                                                                                                               | B3          | planned |
+| `TEAM_BOT_READ_TOOLS_ENABLED`      | `false` | team_replies        | R0/R1 read tools not exposed to the model.                                                                                                                   | B3          | planned |
+| `TEAM_BOT_MULTISTEP_READS_ENABLED` | `false` | team_replies        | Read/search chains capped at exactly ONE step per turn (today's exact behavior). See "Multi-step reads" below — mutations are never affected by this switch. | B3          | planned |
+| `TEAM_BOT_MUTATIONS_ENABLED`       | `false` | team_mutations      | R2/R3 tools not registered at all. **The single switch that can stop a write to production CRM — the highest-severity row in this table.**                   | B3          | planned |
+| `TEAM_BOT_FAILOVER_AUTO_ENABLED`   | `false` | failover_automation | `team-bot-failoverd` never auto-issues a WABA callback override. Stays dark until a staging-WABA retry drill passes (F9/Kimi dissent — see `TRIPWIRES.md`).  | B5          | planned |
+
+**Multi-step reads** (owner directive #1 §2, 2026-08-25 — amends F4/F5): "one tool per turn"
+stays unconditional for **mutations** (always confirmed, never gated by this switch) but is
+relaxed for reads/searches only once `TEAM_BOT_MULTISTEP_READS_ENABLED` flips true — at that
+point the companion (non-boolean, not itself a kill switch) env var `TEAM_BOT_MAX_READ_STEPS`
+(default 8) sets the per-turn read/search step budget. While the switch is false,
+`TEAM_BOT_MAX_READ_STEPS` is read but has no effect —
+`apps/team-bot/team_bot/flags.py::max_read_steps()` always returns 1 regardless of its value,
+so a stray or leftover numeric setting can never silently widen the chain on its own. The
+structural type that carries a chain (`ReadPlan`, `apps/team-bot/team_bot/loop/turn_plan.py`)
+enforces an absolute ceiling of 20 steps independent of this switch entirely.
 
 **Promotion order** (owner switchboard item 7, verbatim from MANDATE.md):
 `ingress/audit → shadow intent/tool selection → fixed replies to owner → allowlisted staff read
