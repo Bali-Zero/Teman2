@@ -191,6 +191,20 @@ cieco** — la forma non è producibile dal funnel. Resta una divergenza corpus�
 tenere agli atti. **Raccomando: #3 diventa firmabile su questa base**, con la divergenza intatta e
 spiegata, non cancellata. È una tua chiamata, non mia.
 
+> ✅ **COSTRUITO 2026-08-25 — Zero ha scelto (1), commit `59cc092a0`.** La domanda è
+> `employment_special_employer` (`tree.ts`/`flow.ts`/`i18n.ts`, EN+ID), non gated sullo sponsor, più
+> le copie dei due `reason_code` e **seq-15** (`fold_pack_seq15.py`, 109 → 111) che ri-autorizza le
+> due regole di review che **PR #4797 aveva ritirato**. #4797 era giusta sulla sua premessa — quelle
+> regole erano appese a un fatto inottenibile — e la premessa smette di valere nello stesso commit
+> che rende il fatto chiedibile. La sua obiezione alle regole SUPPORT (nessun predicato separa «casa
+> di un diplomatico» da «un qualunque datore individuale») **resta in piedi e non è stata toccata**:
+> seq-15 non autorizza nessuna SUPPORT, e un test lo tiene. Una riga di #4797 invece non regge —
+> «E23U/E23V stay unreachable and **route to a human consultant**»: la raggiungibilità è misurata,
+> l'instradamento no, e un prodotto irraggiungibile non instrada, tace. Un grader indipendente ha
+> trovato un bloccante prima del merge (il filo diceva `NOT_ASKED` per una domanda posta e risposta);
+> corretto e mutation-checked. Resta **non fatto**: seq-15 non è firmato, e che seq-13 sia il pack
+> attivo è **documentato, non misurato** — il DB di produzione non è leggibile da questa sessione.
+
 **(A-bis) E23U/E23V: la cosa che romperei per prima.**
 È l'unico difetto qui dentro che tocca un visitatore vero **oggi**, e produce una risposta sbagliata
 detta con sicurezza, non un errore visibile. Tre strade, in ordine di quanto mi convincono:
