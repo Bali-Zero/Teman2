@@ -221,13 +221,67 @@ def test_a_proven_duplicate_is_not_left_untriaged(inventory):
             )
 
 
+def _proof_is_incomplete(proof: dict | None) -> bool:
+    """True when a `containment_proof` fails to affirmatively declare `complete: true`.
+
+    Replaces `.get("complete") is False` — an identity comparison against a literal
+    — which reads a MISSING `complete` key as complete: `None is False` is `False`,
+    so `{"distinct_fragments_covered": 40, "distinct_fragments_total": 65}` (no
+    `complete` key at all) was never flagged. §4.6's interlock is written for the
+    case where a gap is DECLARED; a proof that is merely silent about completeness
+    is not evidence of completeness, and this campaign's own rule (§4.6, "one
+    uncovered fragment means do not delete") means unknown must fail closed, not
+    open. `None` — no containment_proof at all — is deliberately NOT incomplete
+    by this predicate: a document that never claimed containment in the first
+    place (e.g. disposition=promote_after_repair) is a different question, owned
+    by test_nothing_is_discarded_without_a_containment_proof for
+    disposition == discard_duplicate.
+    """
+    if proof is None:
+        return False
+    return proof.get("complete") is not True
+
+
+def test_guilt_a_containment_proof_missing_complete_is_treated_as_a_gap():
+    """The exact shape measured live: `complete` is a MISSING key, not a declared
+    `false`, sitting next to `decision.deletions_authorized: true`. The old
+    `is False` predicate called this complete; §4.6 says an unproven fragment
+    blocks deletion, so this must be a gap."""
+    assert _proof_is_incomplete(
+        {"distinct_fragments_covered": 40, "distinct_fragments_total": 65}
+    )
+
+
+def test_guilt_a_containment_proof_declaring_false_is_still_a_gap():
+    """The case the old predicate already caught — must not regress."""
+    assert _proof_is_incomplete({"complete": False})
+
+
+def test_innocence_no_containment_proof_at_all_is_not_this_rules_business():
+    """A document that never claimed containment (promote_after_repair,
+    catalogue_only, blocked_identity) is not a gap by THIS predicate — it is the
+    ordinary shape of most rows in a retired_collection inventory, and flagging
+    it would make deletions_authorized:true fail on files with zero discard
+    candidates."""
+    assert _proof_is_incomplete(None) is False
+
+
+def test_innocence_a_containment_proof_declaring_complete_true_is_not_a_gap():
+    assert (
+        _proof_is_incomplete(
+            {"distinct_fragments_covered": 65, "distinct_fragments_total": 65, "complete": True}
+        )
+        is False
+    )
+
+
 def test_deletion_is_interlocked_on_a_complete_proof(inventory):
     """No deletion may be authorized while any containment proof declares a gap."""
     path, data = inventory
     incomplete = [
         doc["document_id"]
         for doc in data["documents"]
-        if (doc.get("containment_proof") or {}).get("complete") is False
+        if _proof_is_incomplete(doc.get("containment_proof"))
     ]
     if incomplete:
         assert data["decision"]["deletions_authorized"] is False, (
@@ -470,6 +524,36 @@ def test_a_retired_collection_is_named_by_no_ingest_entrypoint(inventory):
     assert offenders == [], (
         f"{path.name} declares {retired!r} retired as an ingest target, but these entrypoints still "
         f"name it: {offenders}"
+    )
+
+
+def test_the_retirement_lint_check_is_not_examining_zero_inventories():
+    """Anti-vacuity for the test above, same pattern as
+    test_the_ledger_mirror_check_is_not_examining_zero_findings below.
+
+    The cross-source check above SKIPS twice — once for `kind != retired_collection`
+    (defence in depth; the `inventory` fixture already filters this), once for
+    `decision.choice != retire_as_target`. Nothing forces at least one real file to
+    take the second branch. If none ever did, the lint would never run against a
+    real ingest entrypoint list and every parametrisation would read green while
+    checking nothing — exactly the shape MANDATE.md §4.9 warns against, and the
+    same failure class `test_the_ledger_mirror_check_is_not_examining_zero_findings`
+    already guards for `open_findings`.
+    """
+    retired_as_target = []
+    for path in _inventories():
+        data = _load(path)
+        if data.get("kind") != OWNED_KIND:
+            continue
+        if (data.get("decision") or {}).get("choice") == "retire_as_target":
+            retired_as_target.append(path.name)
+    assert retired_as_target, (
+        "no kb/inventory/*.yaml with kind=retired_collection declares "
+        "decision.choice=retire_as_target, so "
+        "test_a_retired_collection_is_named_by_no_ingest_entrypoint skips on every "
+        "parametrisation and is passing over an empty set. Either no collection is "
+        "currently queued for retirement — delete this pair of tests and say so — "
+        "or the field has been renamed and the gate now points at nothing"
     )
 
 
