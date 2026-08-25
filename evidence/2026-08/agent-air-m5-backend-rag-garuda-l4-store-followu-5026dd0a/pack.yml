@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-08/agent-air-m5-backend-rag-garuda-l4-store-followu-5026dd0a/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: "PR #4902 (agent/air-m5/backend-rag/garuda-l4-store-followup-0825 -> feature/garuda-voa), 2026-08-25 -- team-lead's diagnosis of the 264/285 rollback regression on top of the two independently-verified spec additions (RATE_LIMITED reachability, exchange() timing-equivalence)."
 lanes:
   - lane: garuda-l4-store-followup
