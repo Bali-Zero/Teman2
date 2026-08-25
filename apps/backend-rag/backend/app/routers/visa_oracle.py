@@ -656,29 +656,6 @@ async def _persist_session_create(
         logger.warning("visa-oracle session persist (create) failed: %s", exc)
 
 
-async def _persist_session_append_message(
-    db_pool: Any,
-    session_id: str,
-    role: str,
-    content: str,
-) -> None:
-    """Append a chat message to an existing session. Non-fatal."""
-    try:
-        msg = json.dumps({"role": role, "content": content[:500]})
-        async with db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE visa_oracle_sessions
-                SET messages = messages || $2::text::jsonb
-                WHERE session_id = $1
-                """,
-                session_id,
-                f"[{msg}]",
-            )
-    except Exception as exc:
-        logger.warning("visa-oracle session persist (message) failed: %s", exc)
-
-
 def _update_row_count(status: str | None) -> int:
     """Parse asyncpg's `UPDATE N` command-status string. Returns 0 on any
     unparseable/missing status — a safe default that just triggers the
@@ -1200,9 +1177,14 @@ async def chat(
             body.session_id[:12],
         )
 
-        # Persist Q&A non-blocking
-        spawn(_persist_session_append_message(db_pool, body.session_id, "user", body.message))
-        spawn(_persist_session_append_message(db_pool, body.session_id, "assistant", answer_text))
+        # Free-text persistence retired (Owner ruling #3, 2026-08-25,
+        # docs/plans/2026-08-24-visa-oracle-live/OWNER-RULINGS-2026-08-25.md
+        # §3, verbatim): "sì, ritira il funnel vecchio a testo libero —
+        # raccoglieva ambiguità che poi pagavamo a mano." This endpoint no
+        # longer writes the visitor's typed message or the model's answer
+        # to visa_oracle_sessions.messages. Disposing of whatever backlog
+        # already exists in that column is a separate, credentialed
+        # operator act (SWITCHBOARD-2-RETENTION.md), not this change.
 
         return ChatResponse(
             success=True,

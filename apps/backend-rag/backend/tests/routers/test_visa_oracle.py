@@ -139,6 +139,41 @@ class TestChatRequest:
             ChatRequest(session_id="abc123")  # message missing
 
 
+class TestFreeTextChatCollectionRetired:
+    """Owner ruling #3 (2026-08-25, docs/plans/2026-08-24-visa-oracle-live/
+    OWNER-RULINGS-2026-08-25.md §3, verbatim): "si ferma la raccolta" — the
+    legacy free-text funnel (VisaChat / /chat's visitor-typed `message`)
+    must no longer be persisted to `visa_oracle_sessions.messages`.
+
+    A behavioral TestClient assertion would need to mock the /chat
+    endpoint's heavy lazy imports (get_genai_client, HybridSearchService) —
+    no existing test in this file exercises /chat for that reason. This
+    guard instead asserts the concrete thing the ruling forbids: the helper
+    that appended free text is gone from the module, and the write it
+    issued (`messages = messages || ...`) is gone from chat()'s source. A
+    reintroduction under the exact removed name, or of the SQL fragment
+    that actually performs the write, fails this test loudly.
+    """
+
+    def test_persist_session_append_message_helper_is_gone(self) -> None:
+        import backend.app.routers.visa_oracle as visa_oracle_module
+
+        assert not hasattr(visa_oracle_module, "_persist_session_append_message"), (
+            "the free-text message-append helper was retired by Owner ruling #3 "
+            "(2026-08-25) — it must not come back under its old name"
+        )
+
+    def test_chat_endpoint_source_has_no_messages_write(self) -> None:
+        import inspect
+
+        from backend.app.routers.visa_oracle import chat
+
+        source = inspect.getsource(chat)
+        assert "_persist_session_append_message" not in source
+        assert "messages = messages ||" not in source
+        assert "SET messages" not in source
+
+
 class TestHandoffRequest:
     """Validate HandoffRequest Pydantic model."""
 

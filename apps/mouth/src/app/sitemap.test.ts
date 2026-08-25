@@ -63,6 +63,12 @@ const INTENTIONALLY_UNLISTED: Record<string, string> = {
   "/visa/terms": "legal boilerplate, no search intent to serve",
   "/visa/voa":
     "retired public route; GARUDA VOA is an internal-only admin tool",
+  "/visa":
+    "retired public route (Owner ruling #4, 2026-08-25); 301s to " +
+    "/visa-oracle in next.config.ts",
+  "/visa/match":
+    "retired public route (Owner ruling #4, 2026-08-25); 301s to " +
+    "/visa-oracle in next.config.ts",
 };
 
 /**

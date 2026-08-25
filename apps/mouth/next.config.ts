@@ -345,6 +345,27 @@ const nextConfig: NextConfig = {
         destination: "/visa-oracle",
         permanent: true,
       },
+      // Owner ruling #4 (2026-08-25, docs/plans/2026-08-24-visa-oracle-live/
+      // OWNER-RULINGS-2026-08-25.md §4, verbatim): "la vecchia porta si
+      // ritira con 301 -> /visa-oracle — mai un motore non verificato
+      // indicizzato col nostro nome sopra." TWO-DOORS.md measured these two
+      // routes (and only these two) as the `index, follow` legacy funnel;
+      // /visa-oracle itself stays `noindex, nofollow` until a SEPARATE lane
+      // lands the T2-copy fix (ruling §1) — that ordering is binding, do
+      // NOT lift the noindex here. Exact source, no `:path*`: this must NOT
+      // catch /visa/match/[hash] (already-shared result pages, still meant
+      // to resolve) or /visa/clock, /visa/second-home*, /visa/voa (separate
+      // products TWO-DOORS.md explicitly did not measure or touch).
+      {
+        source: "/visa",
+        destination: "/visa-oracle",
+        permanent: true,
+      },
+      {
+        source: "/visa/match",
+        destination: "/visa-oracle",
+        permanent: true,
+      },
       // Note: /chat redirect to zantara.balizero.com is handled by middleware
       // (cannot be here — next.config redirects would conflict with middleware rewrites)
       // Wrong-page fix (2026-08-20): /visa/second-home-e33 was served 200 by the
