@@ -65,6 +65,37 @@ def fragment_hash(text: str) -> str:
     return hashlib.sha1(normalize(text).encode("utf-8")).hexdigest()
 
 
+PAYLOAD_SHAPES: tuple[str, ...] = (
+    "legacy_metadata_text",
+    "orphan_no_identity",
+    "modern_id_only",
+    "modern_id_chunk",
+    "modern_full",
+)
+
+
+def payload_shape(payload: dict) -> str:
+    """Name which of the modern payload fields this point actually carries.
+
+    Mandate §4.1 calls the modern shape a triple — top-level `document_id`,
+    `chunk_key` and `section`. Measured on 2026-08-25, that triple is not one
+    shape but three: of the 5,797 points in legal_unified carrying a top-level
+    `document_id`, only 792 carry all three; 4,992 carry `document_id` alone and
+    13 stop at `chunk_key`. A binary modern/legacy test hides that split, so a
+    probe written as `if "document_id" in payload: <read section>` is wrong for
+    86% of the points it calls modern. This function names the real shape, and
+    the caller compares the census to the inventory so a re-ingest that changes
+    the mix goes RED instead of passing unnoticed.
+    """
+    meta = payload.get("metadata")
+    meta = meta if isinstance(meta, dict) else {}
+    if not payload.get("document_id"):
+        return "legacy_metadata_text" if meta.get("document_id") else "orphan_no_identity"
+    if not payload.get("chunk_key"):
+        return "modern_id_only"
+    return "modern_full" if payload.get("section") else "modern_id_chunk"
+
+
 def census(client, collection: str):
     """Per-document point counts, per-document fragment hashes, payload shapes.
 
@@ -91,7 +122,7 @@ def census(client, collection: str):
             meta = meta if isinstance(meta, dict) else {}
             top = payload.get("document_id")
             nested = meta.get("document_id")
-            shapes["modern" if top else ("legacy" if nested else "neither")] += 1
+            shapes[payload_shape(payload)] += 1
             doc = top or nested or "<none>"
             by_doc[doc] += 1
             text = payload.get("text") or payload.get("content") or meta.get("text") or ""
@@ -102,6 +133,31 @@ def census(client, collection: str):
         if offset is None:
             break
     return points, by_doc, hashes_by_doc, all_hashes, shapes
+
+
+def shape_drift(collection: str, measured, recorded) -> list[str]:
+    """Report every shape whose live count differs from the recorded one.
+
+    Reports absent keys as 0 rather than skipping them: a shape that vanishes
+    from production is exactly the drift worth catching, and a loop over only
+    the live keys would stay silent about it.
+    """
+    findings = []
+    for shape in PAYLOAD_SHAPES:
+        live = measured.get(shape, 0)
+        want = recorded.get(shape, 0)
+        if live != want:
+            findings.append(
+                "%s payload shape %s is %d, inventory recorded %d"
+                % (collection, shape, live, want)
+            )
+    unknown = set(recorded) - set(PAYLOAD_SHAPES)
+    if unknown:
+        findings.append(
+            "%s inventory names payload shapes this probe cannot measure: %s"
+            % (collection, ", ".join(sorted(unknown)))
+        )
+    return findings
 
 
 def main(argv=None) -> int:
@@ -136,6 +192,8 @@ def main(argv=None) -> int:
         topic_points, topic_docs, topic_hashes, _, topic_shapes = census(client, topic_name)
         print("[live] %-28s %6d points  %3d docs  shapes=%s"
               % (topic_name, topic_points, len(topic_docs), dict(topic_shapes)))
+        drift.extend(shape_drift(topic_name, topic_shapes,
+                                 data["measured_against"]["payload_shapes"]))
         if topic_points != data["measured_against"]["points"]:
             drift.append(
                 "%s point count is %d, inventory recorded %d — the collection has "
@@ -146,6 +204,7 @@ def main(argv=None) -> int:
     read_points, read_docs, read_hashes, read_all_hashes, read_shapes = census(client, read_name)
     print("[live] %-28s %6d points  %3d docs  shapes=%s"
           % (read_name, read_points, len(read_docs), dict(read_shapes)))
+    drift.extend(shape_drift(read_name, read_shapes, data["compared_with"]["payload_shapes"]))
     if read_points != data["compared_with"]["points"]:
         drift.append(
             "%s point count is %d, inventory recorded %d" % (read_name, read_points,

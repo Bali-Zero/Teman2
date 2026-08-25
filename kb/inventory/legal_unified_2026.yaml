@@ -81,9 +81,12 @@ measured_against:
   registry_mapped: false
   points: 15410
   distinct_documents: 18
-  payload_shapes:
+  payload_shapes: # measured by kb_inventory_probe.py::payload_shape — see compared_with
     legacy_metadata_text: 15410
-    modern_top_level_document_id: 0
+    orphan_no_identity: 0
+    modern_id_only: 0
+    modern_id_chunk: 0
+    modern_full: 0
   distinct_content_fragments: 7343 # normalized sha1, >=40 chars, CONTEXT header stripped
 
 compared_with:
@@ -92,9 +95,22 @@ compared_with:
   registry_mapped: true
   points: 84283
   distinct_documents: 388
+  # §4.1 calls the modern payload a triple (document_id + chunk_key + section).
+  # Measured 2026-08-25, that triple is THREE shapes, not one: of the 5,797
+  # points carrying a top-level document_id, only 792 carry all three — and
+  # those 792 are exactly UU_6_2011 (413) and UU_40_2007 (379), the two
+  # documents repaired that day. 4,992 carry document_id ALONE and 13 stop at
+  # chunk_key. So a reader written as `if payload.get("document_id"): <use
+  # section>` is wrong on 86% of the points it calls modern, and the corpus is
+  # not "two generations" but one generation plus two repaired exceptions.
+  # Recorded here because the probe compares these counts against production:
+  # a re-ingest that shifts the mix goes RED as DRIFT.
   payload_shapes:
     legacy_metadata_text: 78486
-    modern_top_level_document_id: 5797
+    orphan_no_identity: 0
+    modern_id_only: 4992
+    modern_id_chunk: 13
+    modern_full: 792
   distinct_content_fragments: 56691
   fragments_shared_with_topic: 2334 # 31.8% of this collection's content already there
   fragments_only_in_topic: 5009

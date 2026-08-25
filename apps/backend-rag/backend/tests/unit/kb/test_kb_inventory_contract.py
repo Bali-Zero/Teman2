@@ -35,11 +35,33 @@ def _repo_root() -> Path:
 ROOT = _repo_root()
 INVENTORY_DIR = ROOT / "kb" / "inventory"
 
+
+def _probe():
+    """Load kb_inventory_probe.py as a module (it lives outside any package)."""
+    cached = sys.modules.get("kb_inventory_probe")
+    if cached is not None:
+        return cached
+    spec = importlib.util.spec_from_file_location(
+        "kb_inventory_probe", ROOT / "scripts" / "kb" / "kb_inventory_probe.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["kb_inventory_probe"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 IDENTITY_VERDICTS = frozenset({"consistent", "mistyped", "contradictory", "lost"})
 DISPOSITIONS = frozenset({
     "promote_after_repair", "discard_duplicate", "blocked_identity", "catalogue_only",
 })
 DECISION_CHOICES = frozenset({"retire_as_target", "promote", "point_a_reader_at_it"})
+
+# The closed payload-shape vocabulary. Imported from the probe rather than
+# restated, so the gate and the probe can never disagree about what a shape is
+# named — a tripwire that compares two restatements of one idea is blind, but
+# these two read the SAME tuple, and the probe's version is the one production
+# is measured with.
+PAYLOAD_SHAPES = frozenset(_probe().PAYLOAD_SHAPES)
 
 # MANDATE.md §2 gives topic inventories a different shape (instruments in scope,
 # in-force/superseded/revoked, official URL). They are validated by their own gate
@@ -274,4 +296,82 @@ def test_a_retired_collection_is_named_by_no_ingest_entrypoint(inventory):
     assert offenders == [], (
         f"{path.name} declares {retired!r} retired as an ingest target, but these entrypoints still "
         f"name it: {offenders}"
+    )
+
+
+def test_payload_shapes_use_the_closed_vocabulary(inventory):
+    """§4.1 is only enforceable if every inventory names shapes the probe measures.
+
+    A shape spelled some other way is not a stricter record — it is a row the
+    probe silently scores as 0 and the drift check can never reach.
+    """
+    path, data = inventory
+    for section in ("measured_against", "compared_with"):
+        block = data.get(section)
+        if block is None:
+            continue
+        shapes = block.get("payload_shapes")
+        assert isinstance(shapes, dict) and shapes, (
+            f"{path.name}: {section} has no payload_shapes — §4.1 requires the shape "
+            f"mix to be recorded, and the probe compares it against production"
+        )
+        unknown = set(shapes) - PAYLOAD_SHAPES
+        assert not unknown, (
+            f"{path.name}: {section}.payload_shapes names {sorted(unknown)}, which "
+            f"kb_inventory_probe.py cannot measure — known shapes are "
+            f"{sorted(PAYLOAD_SHAPES)}"
+        )
+        missing = PAYLOAD_SHAPES - set(shapes)
+        assert not missing, (
+            f"{path.name}: {section}.payload_shapes omits {sorted(missing)}. Omission "
+            f"reads as 'absent' and 'absent' is indistinguishable from 'never looked' — "
+            f"record a 0 when a shape is genuinely absent"
+        )
+
+
+def test_payload_shapes_sum_to_the_measured_points(inventory):
+    """Arithmetic, so no wording can soften it.
+
+    Every point in a collection has exactly one shape. If the shape counts do
+    not add up to the point count, the census read a different collection, or a
+    shape went uncounted — and in either case §4.1's guarantee is void.
+    """
+    path, data = inventory
+    for section in ("measured_against", "compared_with"):
+        block = data.get(section)
+        if block is None:
+            continue
+        shapes = block.get("payload_shapes") or {}
+        total = sum(shapes.values())
+        declared = block["points"]
+        assert total == declared, (
+            f"{path.name}: {section}.payload_shapes sums to {total} but points is "
+            f"{declared} — every point has exactly one shape, so these must be equal"
+        )
+
+
+def test_the_probe_actually_compares_the_recorded_shapes(inventory):
+    """The measurement existed for a day and was only printed, never compared.
+
+    census() computed the shape mix and main() formatted it into a log line;
+    nothing ever went red on it. This asserts the drift comparison is wired to
+    BOTH collections, because a probe that checks one of the two still passes
+    green over a re-ingest of the other.
+    """
+    del inventory  # gate on the probe source, once per parametrisation
+    source = (ROOT / "scripts" / "kb" / "kb_inventory_probe.py").read_text(encoding="utf-8")
+    assert source.count("shape_drift(") >= 3, (
+        "kb_inventory_probe.py must DEFINE shape_drift and CALL it for the topic "
+        "collection and the read collection — found fewer than 3 occurrences"
+    )
+    probe = _probe()
+    findings = probe.shape_drift("c", {"modern_full": 5}, {"modern_full": 4})
+    assert findings, "shape_drift returned nothing for a count that differs"
+    assert not probe.shape_drift("c", {"modern_full": 4}, {"modern_full": 4}), (
+        "shape_drift reported drift for two identical censuses"
+    )
+    vanished = probe.shape_drift("c", {}, {"modern_full": 7})
+    assert vanished, (
+        "shape_drift stayed silent about a shape that disappeared from production — "
+        "iterating the LIVE keys instead of the vocabulary is exactly this bug"
     )
