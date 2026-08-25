@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- LaunchDAEMON, not LaunchAgent (same reasoning as
+	     com.balizero.wa-codex-broker.plist): team-bot-failoverd is a
+	     login-less user, so a LaunchAgent for a user who never logs in
+	     never runs (superscar family #2, armed-to-nothing). Installed by
+	     scripts/provision_team_bot_failoverd.sh into /Library/LaunchDaemons
+	     with UserName demotion — launchd starts it at boot as
+	     team-bot-failoverd, no session required.
+
+	     PRO ONLY (F9 §4.2: Pro holds the Meta WABA-management token in
+	     Keychain/env — this plist must never be installed on Mini; a
+	     second failoverd instance racing the same CAS record is exactly
+	     superscar family #10's failure shape, even though the CAS
+	     primitive itself would still resolve it to one winner). -->
+	<key>Label</key>
+	<string>com.balizero.team-bot-failoverd</string>
+	<key>UserName</key>
+	<string>team-bot-failoverd</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/libexec/team-bot-failoverd-wrapper.sh</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/team-bot-failoverd</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/team-bot-failoverd</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<!-- The wrapper exec's the daemon's REAL blocking loop
+	     (FailoverdRunner.run_forever — scar family #7: exec-to-long-
+	     running-server is the legitimate KeepAlive shape, never a
+	     one-shot script). SuccessfulExit=false: a graceful SIGTERM stop
+	     (exit 0) stays down; a crash or a startup refusal (env file
+	     missing/placeholder, exit 78) restarts, throttled below so a
+	     persistent refusal cannot storm. -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<key>StandardOutPath</key>
+	<string>/Users/team-bot-failoverd/logs/team-bot-failoverd.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/team-bot-failoverd/logs/team-bot-failoverd.err</string>
+</dict>
+</plist>
