@@ -178,18 +178,89 @@ instruments:
 # ── Findings measured this session that lane A does NOT chase (§8, rule 8) ─────
 open_findings:
   - id: LANE-A-1
-    title: "`legal_status` metadata is wrong on at least one live, in-force instrument"
-    owner: "unassigned — likely a corpus-wide ingestion/parsing defect, not a lane-A ingest edit"
+    title: "`legal_status` is derivation-broken corpus-wide, not just mis-populated on two documents — decision 5's audit, closed"
+    owner: "Lane P (parser capability) — root cause is in the ingestion parser, not a lane-A data edit"
     detail: >-
-      Permen_22_2023 (current, in-force Visa dan Izin Tinggal regulation) carries
-      `legal_status: dicabut` ("revoked") on every one of its 402 points, sampled
-      directly. Permen_29_2021 (genuinely superseded) carries the SAME value. Any
-      retrieval-time filter that trusts this field to exclude revoked content (e.g.
-      `SearchService.search(..., apply_filters=True)`'s documented exclude_repealed
-      behaviour) would either do nothing here (both flagged identically) or exclude
-      the WRONG document. This is the field that would have been the clean fix for
-      journey 4's defect (below) and it cannot be trusted as-is. Scope of the defect
-      beyond these two documents is UNDETERMINED — not measured this session.
+      SECOND PASS (2026-08-25, same day, per MANDATE.md §7 decision 5 — the owner
+      chose MARK over REMOVE and required an audit before any filter is written).
+      Whole-scroll, not sampled: `scripts/kb/audit_legal_status.py` against all
+      84,283 points of legal_unified_hybrid_hybrid. Vocabulary is closed at exactly
+      two named values plus absence — `dicabut` (42,420 pts / 202 document_ids),
+      `berlaku` (26,107 pts / 168 document_ids), missing entirely (15,756 pts / 33
+      document_ids). Field location: 74.4% under `metadata.legal_status` (legacy
+      shape), 6.9% top-level (modern shape) — both read every scroll, per the
+      MANDATE §4.1 lesson. 14 document_ids hold BOTH values across their own
+      points (e.g. Permen_1_2026: 931 dicabut / 575 berlaku) — a single document
+      cannot honestly be both, which by itself proves the signal is per-chunk
+      noise, not a document-level fact.
+
+      ROOT CAUSE FOUND, read from the source, not inferred: `STATUS_PATTERNS` in
+      `apps/backend-rag/backend/core/legal/constants.py` is a bare regex —
+      `dicabut: DICABUT|TIDAK BERLAKU|DIGANTI`, `berlaku: BERLAKU|MASIH BERLAKU` —
+      searched against chunk text in `metadata_extractor.py` with dict-order
+      first-match-wins (dicabut checked before berlaku) and ZERO disambiguation of
+      WHAT or WHOM the match refers to. Sampled directly against production text
+      (not inferred): the DIGANTI pattern fires on the generic verb "digantikan" (a
+      guarantor being substituted — Permen_22_2023); TIDAK BERLAKU fires on "Izin
+      Tinggal yang tidak berlaku lagi" (an individual's STAY PERMIT expiring —
+      UU_6_2011) and on a provision not applying to a class of person ("tidak
+      berlaku terhadap warga negara Indonesia" — UU_6_2011 penjelasan); and, the
+      specific mechanism behind journey 4's defect, a law's own standard closing
+      clause revoking ITS PREDECESSORS ("Keputusan Presiden Nomor 31 Tahun 1998 ...
+      dicabut dan dinyatakan tidak berlaku" — PP_31_2013) gets read as the CURRENT,
+      still-valid document being revoked. This is family #3 (guard-over-match):
+      deciding legal status by bare substring, not by entity/intent.
+
+      SCALE, on ground truth verified this session (source_url fetch/search per
+      kb/topics/immigration.yaml): of lane A's 7 present, real-status-known
+      instruments, 4 of 5 `dicabut`-marked ones are WRONGLY marked — UU_6_2011
+      (413 pts), Permen_22_2023 (402 pts), Permen_11_2024 (345 pts), PP_31_2013
+      (324 pts) are all amended-but-valid or in-force, not revoked. Only
+      Permen_29_2021 (340 pts, genuinely superseded) is correctly `dicabut`, most
+      likely by the same coincidental mechanism rather than a correct
+      determination. UU_63_2024 (38 pts) is correctly `berlaku`. Outside lane A's
+      scope (bounding per the mandate: immigration's own instruments + the
+      highest-point documents corpus-wide), the two largest `dicabut`-marked
+      documents in the ENTIRE collection are also independently confirmed
+      (peraturan.go.id / JDIH Kemenkeu, web search 2026-08-25) to be currently
+      "Berlaku": UU_40_2007 (Company Law, 379 pts, 100% dicabut) and UU_6_2023
+      (Cipta Kerja ratification, 4,685 pts — the single largest dicabut-marked
+      document by point count in the whole corpus, 100% dicabut). Not chased
+      further (Lane B/C territory, MANDATE.md rule "a defect outside immigration:
+      inventory row, do not chase it") — recorded because it answers the
+      mandate's own scale question: this is not an immigration-lane quirk.
+
+      DRY-RUN REPAIR PROPOSED, NOT APPLIED: `scripts/kb/propose_legal_status_repair.py`
+      would flip exactly 4 document_ids / 1,484 points (`dicabut`→`berlaku`:
+      UU_6_2011 413, Permen_22_2023 402, Permen_11_2024 345, PP_31_2013 324) — the
+      only instruments this session can name a source for. Permen_27_2021
+      (dicabut, 6 pts) is deliberately EXCLUDED: its real status is recorded
+      `unknown` in kb/topics/immigration.yaml (source_verified: false) — proposing
+      a value would be guessing. No write was performed; this script has no
+      --apply flag by design.
+
+      MARKING PROBE BUILT AND RUN, makes decision 5 testable rather than declared:
+      `scripts/kb/probe_legal_status_marking.py` re-asks journey 4's exact question
+      through the real production path (`SearchService`, same as
+      kb/ops/probe_retrieval.py) and checks the retrieved chunks' own
+      `legal_status`. MEASURED 2026-08-25: Permen_22_2023 ranks 1st and is marked
+      `dicabut` (WRONG — should read as current) — OUTSTANDING; Permen_29_2021
+      ranks 3rd (matching journey 4's recorded rank) and is marked `dicabut`
+      (correct) — AT TARGET. Re-running this script after any repair is how a lane
+      proves the mark is correct in production, not just corrected in a report.
+
+      RECOMMENDATION (owner gesture — MANDATE §7 asked for one): the field is NOT
+      repairable by patching mismarked rows at large — the derivation mechanism
+      has no relationship to the fact it names, so a broader row-patch would make
+      hundreds of other document_ids' values look equally trustworthy with no
+      basis for that claim. Two separate actions: (1) apply the narrow, fully-
+      sourced 4-document /1,484-point correction above as a stopgap for THIS
+      lane's live defect — it is small enough to name every source and every
+      point; (2) declare `legal_status` corpus-wide UNTRUSTWORTHY for any
+      filter/exclude logic (the exact concern journey 4 already raised) until it
+      is re-derived from a document-level authoritative source, the way
+      kb/topics/*.yaml is built lane-by-lane, or the parser-level STATUS_PATTERNS
+      mechanism itself is retired/gated — a Lane P task, not a lane-A data edit.
     severity: high
 
   - id: LANE-A-2
