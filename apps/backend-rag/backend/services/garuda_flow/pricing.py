@@ -10,6 +10,7 @@ import logging
 import re
 from datetime import date
 
+from backend.app.utils.logging_utils import sanitize_for_log
 from backend.services.garuda_flow import freshness
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.pricing.pricing_service import PricingService
@@ -157,24 +158,33 @@ def price_for_case(
     try:
         row = service.get_service_by_key(key)
     except Exception:
-        logger.warning("garuda_flow: exact official price lookup failed for %s", case_type.value)
+        logger.warning(
+            "garuda_flow: exact official price lookup failed for %s",
+            sanitize_for_log(case_type.value),
+        )
         return None, None
 
     freshness_report = price_catalogue_freshness(today=today, service=service, key=key, row=row)
     if freshness_report.stale:
         logger.warning(
             "garuda_flow: price stale for case_type=%s (%s) — declining to quote",
-            case_type.value,
-            freshness_report.detail,
+            sanitize_for_log(case_type.value),
+            sanitize_for_log(freshness_report.detail),
         )
         return None, None
 
     if not isinstance(row, dict) or row.get("key") != key:
-        logger.warning("garuda_flow: official price key mismatch for case_type=%s", case_type.value)
+        logger.warning(
+            "garuda_flow: official price key mismatch for case_type=%s",
+            sanitize_for_log(case_type.value),
+        )
         return None, None
     amount = _positive_idr_amount(row.get("price"))
     if amount is None:
-        logger.warning("garuda_flow: malformed official price for case_type=%s", case_type.value)
+        logger.warning(
+            "garuda_flow: malformed official price for case_type=%s",
+            sanitize_for_log(case_type.value),
+        )
         return None, None
     return amount, key
 

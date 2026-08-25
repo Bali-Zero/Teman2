@@ -43,12 +43,12 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from backend.app.core.config import settings
 from backend.app.utils.cookie_auth import (
     get_cookie_domain,
-    get_cookie_secure,
     get_samesite_policy,
 )
-from backend.app.utils.logging_utils import get_logger
+from backend.app.utils.logging_utils import get_logger, sanitize_for_log
 from backend.services.garuda_flow.civil_clock import garuda_today
 from backend.services.garuda_flow.eligibility import DeclineCode
 from backend.services.garuda_flow.intake import CaseType, Purpose
@@ -392,12 +392,53 @@ def _result_body(outcome: EligibilityCheckOutcome) -> dict[str, object]:
     )
 
 
-def _set_result_session_cookie(response: Response, secret: str) -> None:
+#: Loopback hostnames a request can genuinely arrive on during local dev.
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _result_session_cookie_secure(request: Request) -> bool:
+    """Secure-by-default transport policy for `garuda_result_session`.
+
+    Deliberately NOT `cookie_auth.get_cookie_secure()`. That shared helper
+    returns `False` for every `settings.environment != "production"` —
+    staging, preview, container networks, anything reachable over a real
+    network that merely isn't the prod env string — which sends this
+    session bearer in the clear (CodeQL `py/clear-text-storage-sensitive-data`,
+    2026-08-26, same class as `garuda_portal_auth.py::_account_session_cookie_secure`,
+    2026-08-25, whose docstring explicitly left this file out of scope).
+    `HttpOnly` blocks JS access, not network interception, and `SameSite`
+    governs cross-site request behaviour, not confidentiality — neither
+    substitutes for `Secure` here.
+
+    Reads ONLY ASGI transport facts the client cannot forge via any header:
+    `request.scope["scheme"]` (set by the server from the actual connection,
+    not from `X-Forwarded-*` or `Host`) and `request.scope["server"]` (the
+    socket the connection is bound to) — never `request.url.hostname`, which
+    Starlette derives from the client-supplied `Host` header and is therefore
+    spoofable by anyone who can set one, including a MITM on a staging/preview
+    deploy.
+
+    Rule: `Secure=True` unless the connection is plain `http` AND the ASGI
+    `server` socket host is loopback (`localhost` / `127.0.0.1` / `::1`) —
+    i.e. `uvicorn --host 127.0.0.1` with no TLS, the one genuine local-dev
+    shape. `cookie_auth.get_cookie_secure()` itself is left untouched: its
+    other callers are out of scope for this fix.
+    """
+    if settings.environment == "production":
+        return getattr(settings, "cookie_secure", True)
+    if request.scope.get("scheme") == "https":
+        return True
+    server = request.scope.get("server")
+    server_host = (server[0] if server else "") or ""
+    return server_host.lower() not in _LOOPBACK_HOSTS
+
+
+def _set_result_session_cookie(response: Response, request: Request, secret: str) -> None:
     response.set_cookie(
         key=_RESULT_SESSION_COOKIE,
         value=secret,
         httponly=True,
-        secure=get_cookie_secure(),
+        secure=_result_session_cookie_secure(request),
         samesite=get_samesite_policy(),
         path="/",
         domain=get_cookie_domain(),
@@ -440,6 +481,7 @@ def _set_result_session_cookie(response: Response, secret: str) -> None:
 )
 async def create_eligibility_check(
     payload: EligibilityCheckRequest,
+    request: Request,
     response: Response,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
     store: CheckStore = Depends(get_garuda_check_store),
@@ -466,7 +508,10 @@ async def create_eligibility_check(
             today=today,
         )
     except PriceUnresolvable:
-        logger.warning("garuda_voa_public: price unresolvable for case_type=%s", payload.case_type)
+        logger.warning(
+            "garuda_voa_public: price unresolvable for case_type=%s",
+            sanitize_for_log(payload.case_type),
+        )
         return _error("PRICE_UNRESOLVABLE")
 
     canonical_request = payload.model_dump(mode="json")
@@ -488,7 +533,7 @@ async def create_eligibility_check(
     result.headers["Location"] = f"/visa/voa/{stored.result_id}"
     result.headers["Idempotency-Replayed"] = "true" if stored.idempotency_replayed else "false"
     if not stored.idempotency_replayed and stored.session_secret is not None:
-        _set_result_session_cookie(result, stored.session_secret)
+        _set_result_session_cookie(result, request, stored.session_secret)
     return result
 
 

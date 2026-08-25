@@ -38,6 +38,7 @@ import re
 
 import asyncpg
 
+from backend.app.utils.logging_utils import sanitize_for_log
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
 
@@ -87,7 +88,8 @@ class PostgresEligibilityCheckLookup:
             )
         except asyncpg.PostgresError:
             logger.warning(
-                "garuda_orders: eligibility check lookup failed for result_id=%s", result_id
+                "garuda_orders: eligibility check lookup failed for result_id=%s",
+                sanitize_for_log(result_id),
             )
             return None
         if row is None:

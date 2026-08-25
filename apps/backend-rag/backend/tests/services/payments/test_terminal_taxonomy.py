@@ -62,7 +62,11 @@ def test_every_failure_outcome_member_is_classified() -> None:
     # classify(), this test raises the same AssertionError classify() itself
     # would raise — the coverage sweep does not depend on classify() staying
     # silent about it.
-    for outcome in FailureOutcome:
+    # CodeQL false positive (py/non-iterable-in-for-loop): `FailureOutcome`
+    # is `class FailureOutcome(str, Enum)` — genuinely iterable at runtime
+    # (EnumMeta.__iter__), confirmed by this test passing. CodeQL's type
+    # inference on `(str, Enum)` mixins misses the metaclass __iter__.
+    for outcome in FailureOutcome:  # lgtm[py/non-iterable-in-for-loop]
         mapped = classify(outcome)
         assert mapped.outcome is outcome
 

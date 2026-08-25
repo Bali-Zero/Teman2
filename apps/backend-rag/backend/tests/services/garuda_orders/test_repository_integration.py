@@ -234,6 +234,7 @@ async def pool():
                 f"never silently pass by skipping."
             )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
+        raise AssertionError("unreachable: pytest.skip always raises") from exc
     async with p.acquire() as conn:
         await conn.execute(
             "TRUNCATE garuda_order_outbox, garuda_order_journal, garuda_payment_inbox, garuda_order_idempotency, garuda_orders CASCADE"

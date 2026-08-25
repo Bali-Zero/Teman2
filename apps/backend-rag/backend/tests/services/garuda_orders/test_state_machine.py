@@ -67,13 +67,17 @@ def test_forbidden_destinations_are_flagged(current: OrderState, target: OrderSt
 
 
 def test_self_transition_is_not_forbidden() -> None:
-    for state in OrderState:
+    # CodeQL false positive (py/non-iterable-in-for-loop): `OrderState` is
+    # `class OrderState(str, Enum)` — genuinely iterable at runtime
+    # (EnumMeta.__iter__), confirmed by this test passing. CodeQL's type
+    # inference on `(str, Enum)` mixins misses the metaclass __iter__.
+    for state in OrderState:  # lgtm[py/non-iterable-in-for-loop]
         assert is_forbidden_destination(state, state) is False
 
 
 def test_apply_transition_rejects_every_forbidden_edge() -> None:
     # Bite: every non-self edge that is NOT in the allowed map must raise.
-    for current in OrderState:
+    for current in OrderState:  # lgtm[py/non-iterable-in-for-loop]
         for transition in (
             TransitionId.OP_00,
             TransitionId.OP_01,

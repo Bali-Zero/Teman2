@@ -53,6 +53,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.app.utils.logging_utils import sanitize_for_log
 from backend.services.garuda_orders import journal
 
 logger = logging.getLogger(__name__)
@@ -211,7 +212,7 @@ class PracticeRepository:
                 # polling their tracker.
                 logger.error(
                     "garuda_portal.practice.pr01_missing_op02_event",
-                    extra={"order_id": order_id},
+                    extra={"order_id": sanitize_for_log(order_id)},
                 )
                 return None
             return await mint_received_practice(
@@ -287,7 +288,7 @@ async def mint_received_practice(
             # can observe it) -- fail safe.
             logger.error(
                 "garuda_portal.practice.pr01_race_lost_row_vanished",
-                extra={"order_id": order_id},
+                extra={"order_id": sanitize_for_log(order_id)},
             )
             return None
         return PracticeView(
@@ -315,7 +316,7 @@ async def mint_received_practice(
     )
     logger.info(
         "garuda_portal.practice.pr01_created",
-        extra={"order_id": order_id},
+        extra={"order_id": sanitize_for_log(order_id)},
     )
     return PracticeView(
         practice_id=won_practice_id,
