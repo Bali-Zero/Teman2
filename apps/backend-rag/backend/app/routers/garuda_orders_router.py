@@ -13,7 +13,10 @@ design in full).
 
 Registered in `router_manifest.py` / `router_registration.py` (_API, mirrors
 L2's `garuda_voa_public` — mount unconditionally, GARUDA_PUBLIC_ENABLED
-re-checked per-request by this module's own `_require_flag`). The orchestrator
+re-checked per-request by this module's own `_require_flag`, wired as a
+ROUTER-LEVEL dependency so it resolves before every other Depends() and
+before body validation — see the comment above `router = APIRouter(...)`
+below). The orchestrator
 still owns injecting the real `EligibilityCheckLookup` / `PaymentProvider`
 adapters onto `app.state` at composition time — `get_repository()` above
 fails closed with 503 until that happens.
@@ -45,13 +48,22 @@ from backend.services.garuda_orders.repository import GarudaOrderRepository
 from backend.services.garuda_portal.practice import PracticeRepository
 from backend.services.payments.port import WebhookSignatureInvalid, WebhookUnparseable
 
-router = APIRouter(prefix="/api/visa/voa", tags=["garuda-orders"])
-
 _FLAG_ENV_VAR = "GARUDA_PUBLIC_ENABLED"
 
 
 def _flag_enabled() -> bool:
-    return os.environ.get(_FLAG_ENV_VAR, "false").lower() == "true"
+    # CORRECTED (Gear-3 gate finding D, PR #4959): this used to read
+    # `os.environ.get(_FLAG_ENV_VAR, "false").lower() == "true"` — a
+    # strict-exact-"true" reader that disagreed with the permissive reader
+    # `garuda_voa_public._public_enabled()` / `garuda_portal_auth._public_
+    # enabled()` already use (trimmed, case-insensitive, accepts "1"/"yes").
+    # `GARUDA_PUBLIC_ENABLED=1` opened L2/L4 and left L3 dark — a customer
+    # could get a quote and then never check out. All three readers now
+    # share this exact body (kept as local per-file copies, not a shared
+    # import, per LANES.md file-ownership discipline); see
+    # `test_garuda_public_enabled_readers_agree.py` for the value matrix
+    # that pins the three copies identical.
+    return os.environ.get(_FLAG_ENV_VAR, "").strip().lower() in {"1", "true", "yes"}
 
 
 def _require_flag() -> None:
@@ -59,6 +71,29 @@ def _require_flag() -> None:
         raise HTTPException(
             status_code=404, detail={"code": "GARUDA_PUBLIC_DISABLED", "retryable": False}
         )
+
+
+# CORRECTED (Gear-3 gate finding B, PR #4959): `_require_flag()` used to be
+# the first statement INSIDE each handler body below. That is too late —
+# FastAPI resolves a path-operation's parameter dependencies (here, every
+# handler's `Depends(get_repository)`) BEFORE the handler function ever
+# runs, and `get_repository` 503s when `app.state.garuda_order_repository`
+# is unset (production's state until the orchestrator wires it). Net
+# effect: with the flag OFF and no repository wired, every route here
+# leaked a live 503 instead of a dark 404 — an anonymous existence-and-
+# liveness oracle.
+#
+# A router-level `dependencies=` entry is solved BEFORE a path operation's
+# own parameter dependencies (`fastapi/routing.py::_build_dependant_with_
+# parameterless_dependencies` inserts router-level deps at index 0 of the
+# dependant's dependency list; `fastapi/dependencies/utils.py::solve_
+# dependencies` walks that list in order and raises immediately on the
+# first exception) — proved empirically, not assumed, by
+# `test_garuda_voa_flag_ordering.py`, which fails red against the OLD
+# per-handler-body placement and passes green here.
+router = APIRouter(
+    prefix="/api/visa/voa", tags=["garuda-orders"], dependencies=[Depends(_require_flag)]
+)
 
 
 def _privacy_headers(response: Response) -> None:
@@ -161,7 +196,6 @@ async def create_order_from_check(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     repository: GarudaOrderRepository = Depends(get_repository),
 ) -> dict:
-    _require_flag()
     _privacy_headers(response)
     actor = await _require_magic_session_actor(request)
     key = _idempotency_key(idempotency_key)
@@ -243,7 +277,6 @@ async def get_order_and_practice(
     response: Response,
     repository: GarudaOrderRepository = Depends(get_repository),
 ) -> dict:
-    _require_flag()
     _privacy_headers(response)
     actor = await _require_magic_session_actor(request)
     pool = getattr(request.app.state, "garuda_db_pool", None)
@@ -277,7 +310,6 @@ async def observe_payment_browser_return(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     repository: GarudaOrderRepository = Depends(get_repository),
 ) -> None:
-    _require_flag()
     _privacy_headers(response)
     actor = await _require_magic_session_actor(request)
     _idempotency_key(idempotency_key)
@@ -313,7 +345,6 @@ async def receive_payment_webhook(
     # `$ref` here is the orchestrator's fix (frozen contract, not this
     # lane's to edit) -- this router-side removal is the corresponding fix
     # on the implementation.
-    _require_flag()
     _privacy_headers(response)
     raw_body = await request.body()
     provider = getattr(request.app.state, "garuda_payment_provider", None)
@@ -361,7 +392,6 @@ async def resolve_late_order(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     repository: GarudaOrderRepository = Depends(get_repository),
 ) -> dict:
-    _require_flag()
     _privacy_headers(response)
     actor = await _require_staff_actor(request, authorization)
     key = _idempotency_key(idempotency_key)

@@ -64,12 +64,25 @@ from backend.services.garuda_flow.public_api import (
 
 logger = get_logger(__name__)
 
+class _FeatureDisabled(Exception):
+    """Sentinel raised by the router-level `_require_public_enabled`
+    dependency below — see that function's docstring for why this exists
+    instead of raising `HTTPException` directly."""
+
+
 class _ContractErrorRoute(APIRoute):
     """Rewrite FastAPI's default 422 body into the frozen `errors.yaml` shape.
 
     `ErrorResponse` is a closed 3-field tuple (`code`/`retryable`/`message_key`)
     — FastAPI's default `{"detail": [...]}` is not contract-valid and would
     echo the field path back to the caller.
+
+    Also catches `_FeatureDisabled` (Gear-3 gate finding B, PR #4959):
+    `_require_public_enabled` is a router-level dependency, resolved before
+    Pydantic validates the request body — see that function's docstring —
+    so it must raise something this same route class can translate into
+    the contract's `GARUDA_PUBLIC_DISABLED` shape, exactly like the
+    `RequestValidationError` case below already does for a malformed body.
     """
 
     def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
@@ -80,17 +93,56 @@ class _ContractErrorRoute(APIRoute):
                 return await downstream(request)
             except RequestValidationError:
                 return _error("INVALID_REQUEST")
+            except _FeatureDisabled:
+                return _error("GARUDA_PUBLIC_DISABLED")
 
         return handler
+
+
+_FEATURE_FLAG_ENV = "GARUDA_PUBLIC_ENABLED"
+
+
+def _public_enabled() -> bool:
+    return os.environ.get(_FEATURE_FLAG_ENV, "").strip().lower() in {"1", "true", "yes"}
+
+
+def _require_public_enabled() -> None:
+    """Router-level dependency (Gear-3 gate finding B, PR #4959).
+
+    Every handler below used to open with
+    `if not _public_enabled(): return _error("GARUDA_PUBLIC_DISABLED")` as
+    its FIRST statement — too late for `create_eligibility_check`, whose
+    `payload: EligibilityCheckRequest` is a Pydantic body model that FastAPI
+    validates BEFORE the handler function ever runs. An empty/malformed
+    body with the flag OFF therefore leaked a 422 INVALID_REQUEST — a
+    response shape only a live, mounted GARUDA route can ever produce —
+    instead of the dark-launch 404.
+
+    A router-level `dependencies=` entry is solved before a path
+    operation's OWN parameter dependencies AND before body validation
+    (`fastapi/dependencies/utils.py::solve_dependencies` walks
+    `dependant.dependencies` — router-level entries inserted at index 0 by
+    `fastapi/routing.py::_build_dependant_with_parameterless_dependencies`
+    — to completion, raising immediately on the first exception, before it
+    ever reaches the `if dependant.body_params:` block) — proved
+    empirically, not assumed, by `test_garuda_voa_flag_ordering.py`, which
+    fails red against the OLD per-handler-body placement and passes green
+    here. Raises `_FeatureDisabled` rather than returning a `Response`
+    directly because a dependency's return value cannot short-circuit route
+    execution the way a handler's `return` can; `_ContractErrorRoute`
+    converts it to the contract's `GARUDA_PUBLIC_DISABLED` body.
+    """
+    if not _public_enabled():
+        raise _FeatureDisabled()
 
 
 router = APIRouter(
     prefix="/api/visa/voa",
     tags=["garuda-voa-public"],
     route_class=_ContractErrorRoute,
+    dependencies=[Depends(_require_public_enabled)],
 )
 
-_FEATURE_FLAG_ENV = "GARUDA_PUBLIC_ENABLED"
 _RESULT_SESSION_COOKIE = "garuda_result_session"
 
 #: `#/components/schemas/ResultId` verbatim.
@@ -246,10 +298,6 @@ def strip_unreachable_validation_errors(schema: dict) -> dict:
     return schema
 
 
-def _public_enabled() -> bool:
-    return os.environ.get(_FEATURE_FLAG_ENV, "").strip().lower() in {"1", "true", "yes"}
-
-
 def _valid_idempotency_key(value: str | None) -> str | None:
     if value is None:
         return None
@@ -396,9 +444,6 @@ async def create_eligibility_check(
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
     store: CheckStore = Depends(get_garuda_check_store),
 ) -> Response:
-    if not _public_enabled():
-        return _error("GARUDA_PUBLIC_DISABLED")
-
     key = _valid_idempotency_key(idempotency_key)
     if key is None:
         return _error("IDEMPOTENCY_KEY_REQUIRED")
@@ -457,9 +502,6 @@ async def get_eligibility_result(
     garuda_result_session: Annotated[str | None, Cookie()] = None,
     store: CheckStore = Depends(get_garuda_check_store),
 ) -> Response:
-    if not _public_enabled():
-        return _error("GARUDA_PUBLIC_DISABLED")
-
     # Non-enumerating: malformed id, absent cookie, and a real-but-unbound id
     # all take the identical path to RESULT_NOT_FOUND (contract, verbatim).
     if _RESULT_ID_PATTERN.fullmatch(result_id) is None or garuda_result_session is None:
@@ -491,9 +533,6 @@ async def delete_eligibility_result(
     garuda_result_session: Annotated[str | None, Cookie()] = None,
     store: CheckStore = Depends(get_garuda_check_store),
 ) -> Response:
-    if not _public_enabled():
-        return _error("GARUDA_PUBLIC_DISABLED")
-
     key = _valid_idempotency_key(idempotency_key)
     if key is None:
         return _error("IDEMPOTENCY_KEY_REQUIRED")

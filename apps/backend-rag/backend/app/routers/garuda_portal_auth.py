@@ -52,6 +52,13 @@ from backend.services.garuda_portal.magic_link import (
 logger = get_logger(__name__)
 
 
+class _FeatureDisabled(Exception):
+    """Sentinel raised by the router-level `_require_public_enabled`
+    dependency below — identical rationale to `garuda_voa_public.py`'s
+    twin, duplicated rather than imported per LANES.md file-ownership
+    discipline."""
+
+
 class _ContractErrorRoute(APIRoute):
     """Rewrite FastAPI's default 422 body into the frozen `errors.yaml` shape.
 
@@ -59,6 +66,10 @@ class _ContractErrorRoute(APIRoute):
     duplicated rather than imported because `garuda_voa*.py` is L2's file and
     this lane does not couple to another lane's private implementation
     detail (LANES.md file-ownership discipline).
+
+    Also catches `_FeatureDisabled` (Gear-3 gate finding B, PR #4959) —
+    both handlers below take a Pydantic body model, validated BEFORE the
+    handler runs; see `_require_public_enabled`'s docstring.
     """
 
     def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
@@ -69,15 +80,11 @@ class _ContractErrorRoute(APIRoute):
                 return await downstream(request)
             except RequestValidationError:
                 return _error("INVALID_REQUEST")
+            except _FeatureDisabled:
+                return _error("GARUDA_PUBLIC_DISABLED")
 
         return handler
 
-
-router = APIRouter(
-    prefix="/api/visa/voa/auth",
-    tags=["garuda-voa-magic-link"],
-    route_class=_ContractErrorRoute,
-)
 
 _FEATURE_FLAG_ENV = "GARUDA_PUBLIC_ENABLED"
 _RESULT_SESSION_COOKIE = "garuda_result_session"
@@ -123,6 +130,31 @@ def _error(code: str) -> JSONResponse:
 
 def _public_enabled() -> bool:
     return os.environ.get(_FEATURE_FLAG_ENV, "").strip().lower() in {"1", "true", "yes"}
+
+
+def _require_public_enabled() -> None:
+    """Router-level dependency (Gear-3 gate finding B, PR #4959) — identical
+    rationale to `garuda_voa_public._require_public_enabled`: both handlers
+    below take a Pydantic body model (`MagicLinkRequest` / `MagicLinkExchange`),
+    validated by FastAPI BEFORE the handler function runs, so the
+    `if not _public_enabled(): return _error(...)` that used to open each
+    handler body was too late — an empty/malformed body with the flag OFF
+    leaked a 422 INVALID_REQUEST instead of the dark-launch 404. A
+    router-level `dependencies=` entry is solved before body validation;
+    see the sibling docstring for the exact FastAPI mechanics and the test
+    that proves the ordering empirically
+    (`test_garuda_voa_flag_ordering.py`).
+    """
+    if not _public_enabled():
+        raise _FeatureDisabled()
+
+
+router = APIRouter(
+    prefix="/api/visa/voa/auth",
+    tags=["garuda-voa-magic-link"],
+    route_class=_ContractErrorRoute,
+    dependencies=[Depends(_require_public_enabled)],
+)
 
 
 class _IdempotencyKeyAbsent(Exception):
@@ -279,9 +311,6 @@ async def request_magic_link(
     """Always 202 for an unknown or non-owned result and never returns the
     token (contract, verbatim). Exact replay returns the original 202
     without another email."""
-    if not _public_enabled():
-        return _error("GARUDA_PUBLIC_DISABLED")
-
     try:
         key = _require_idempotency_key(idempotency_key)
     except _IdempotencyKeyAbsent:
@@ -360,9 +389,6 @@ async def exchange_magic_link(
     indistinguishable to the caller). An exact Idempotency-Key replay returns
     the original 204 but creates no second session and emits no second
     Set-Cookie; a consumed token under a new key is invalid."""
-    if not _public_enabled():
-        return _error("GARUDA_PUBLIC_DISABLED")
-
     try:
         key = _require_idempotency_key(idempotency_key)
     except _IdempotencyKeyAbsent:

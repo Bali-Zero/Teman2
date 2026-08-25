@@ -699,12 +699,33 @@ _VISA_ORACLE = (
         "support case rather than as an obvious broken page.",
         match="exact",
     ),
+    # CORRECTED (Gear-3 gate finding E, PR #4959): this used to be a single
+    # `/api/visa/voa/auth/` PREFIX entry (no `match=` given, and
+    # `PublicEndpoint.match` defaults to "prefix") — directly contradicting
+    # this file's own module docstring above ("Every entry below is EXACT
+    # or TEMPLATE, never PREFIX"). Measured:
+    # `is_public_path("/api/visa/voa/auth/anything-future-added-here")`
+    # returned `True`. No live leak today (`garuda_portal_auth.py` mounts
+    # exactly two routes under this prefix and the staff late-resolution
+    # path is disjoint from it), but any future route landed under
+    # `/api/visa/voa/auth/` would become anonymous with no review. Two
+    # EXACT entries for the two real routes instead — same posture as
+    # every other GARUDA VOA entry in this block.
     PublicEndpoint(
-        "/api/visa/voa/auth/",
+        "/api/visa/voa/auth/magic-links",
         Category.AUTH,
-        "GARUDA VOA magic-link issue+exchange — anonymous by design, contract-frozen "
-        "(products/garuda-voa/contracts/openapi.yaml), GARUDA_PUBLIC_ENABLED re-checked "
-        "per-request by the handler itself",
+        "GARUDA VOA requestMagicLink (L4, garuda_portal_auth.py) — anonymous by "
+        "design, contract-frozen (products/garuda-voa/contracts/openapi.yaml), "
+        "GARUDA_PUBLIC_ENABLED re-checked per-request by the handler itself",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/auth/sessions",
+        Category.AUTH,
+        "GARUDA VOA exchangeMagicLink (L4, garuda_portal_auth.py) — anonymous by "
+        "design, contract-frozen (products/garuda-voa/contracts/openapi.yaml), "
+        "GARUDA_PUBLIC_ENABLED re-checked per-request by the handler itself",
+        match="exact",
     ),
 )
 
