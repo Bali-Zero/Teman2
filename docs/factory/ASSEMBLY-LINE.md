@@ -159,6 +159,43 @@ Multi-agent fan-out costs ~15× tokens (Anthropic measurement) and DEGRADES on s
 problems (Google research). The fleet's power is spent only on genuinely parallelizable work;
 total simplicity is the instrument that decides what qualifies.
 
+## The integration branch must be protected BEFORE the first lane opens a PR
+
+Measured on the first product, 2026-08-25, at the cost of a red merge onto the
+auth path.
+
+`gh pr merge --auto` is the repo's standing rule (`CLAUDE.md` §2) and it is
+correct **for PRs into `main`**, where a required-context set exists and
+physically holds the PR until every check reports. A freshly created product
+integration branch has **no branch protection at all**, and on an unprotected
+branch `--auto` does not mean "merge when green" — it means **merge now**. Red
+CI never holds it. Neither does a manual `gh pr merge`.
+
+What that produced here: three lane briefs told their lanes to arm auto-merge
+_and_ told them the orchestrator would gate the result. Those two instructions
+are contradictory on an unprotected branch, and nobody noticed for two of the
+three because the orchestrator happened to hold those PRs by hand. The third
+merged 15 files of customer-facing surface unreviewed; the fourth merged the
+magic-link persistence layer with **two backend shards red**, carrying a
+regression that broke two pre-existing tests in another lane's file.
+
+So, in order, before the first lane is dispatched:
+
+1. **Protect the integration branch** with the same shard + CodeQL + harness-floor
+   contexts `main` requires. `enforce_admins: false` is the right setting — the
+   protection exists to stop the distracted merge, not to lock the orchestrator
+   out of a genuine emergency.
+2. Only then may a lane brief say "arm `--auto`". Until then the brief must say
+   the opposite, explicitly: **open the PR, report the number, do not arm.**
+3. Never write "arm auto-merge" and "I will gate this" into the same brief
+   without checking which of the two the branch actually enforces. One of them
+   is a wish.
+
+The general form, worth carrying to every product: **a standing rule inherited
+from `main` may be actively harmful on a branch that lacks the machinery `main`
+has.** Inherited rules travel with their enforcement or they travel as their own
+opposite.
+
 ## Enforcement backlog (not yet armed — tracked, per superscar #2 "esiste ≠ armato")
 
 1. CI rule: PR touching only `docs/`/`research/` requires an explicit owner-initialed label
