@@ -55,8 +55,11 @@ import httpx
 
 from backend.services.team_bot_ingress.ingress_leader import (
     DEFAULT_RECORD_ID,
+    AuthorizeOutcome,
     IngressLeaderStore,
     PromoteOutcome,
+    RenewOutcome,
+    evaluate_authorize,
 )
 from backend.services.team_bot_ingress.ingress_state_repo import PostgresIngressLeaderStore
 from backend.services.team_bot_ingress.waba_override import (
@@ -77,6 +80,7 @@ class ActionKind(StrEnum):
     NO_ACTION_NOT_YET_ELIGIBLE = "no_action_not_yet_eligible"
     REFUSED_SELF_UNHEALTHY = "refused_self_unhealthy"
     REFUSED_CAS_CONFLICT = "refused_cas_conflict"
+    REFUSED_STALE_LEADERSHIP_BEFORE_WRITE = "refused_stale_leadership_before_write"
     SHADOW_WOULD_PROMOTE_BUT_DISABLED = "shadow_would_promote_but_disabled"
     PROMOTED_AND_CONFIRMED = "promoted_and_confirmed"
     PROMOTED_BUT_CALLBACK_UNCONFIRMED = "promoted_but_callback_unconfirmed"
@@ -192,6 +196,47 @@ class FailoverdDeps:
     """
 
 
+async def _fence_write_with_live_epoch(
+    *, deps: FailoverdDeps, epoch: int, now: datetime
+) -> str | None:
+    """The write-fence every outbound WABA write must pass through
+    immediately before it fires — see
+    docs/plans/2026-08-25-due-bot-live/ops/F9-CALLBACK-WRITE-FENCE-SPEC.md.
+
+    Two live checks, in order, both against a FRESH read — never the
+    belief the caller formed earlier in the same tick:
+
+    1. ``evaluate_authorize`` — the SAME 3-way rule (epoch match, node
+       match, lease not expired) a CRM mutation endpoint uses per F7.
+       This is what makes "am I still leader RIGHT NOW" mean the SAME
+       thing for an outbound WABA write as it means for every other
+       protected action — refutation finding #4 named exactly this
+       inconsistency (an expired lease rejects a mutation via
+       authorize() but the WABA-write path checked nothing).
+    2. ``renew()`` — extends the lease NOW, as a CAS on the SAME
+       (node_id, epoch). A pure read-only check like authorize() cannot
+       do this (by design — it must stay safe for a read-only caller);
+       this fence is allowed to mutate, so it also keeps a legitimate
+       leader's lease topped up going forward, closing a separate,
+       previously-unexercised gap: nothing anywhere called renew()
+       before this fix, so a leader's lease was only ever set once, at
+       promotion.
+
+    Returns ``None`` if the write may proceed, or a short string naming
+    which check failed (for logging/ActionKind detail) otherwise.
+    """
+    current = await deps.store.read()
+    auth = evaluate_authorize(current, node_id=deps.node_id, epoch=epoch, now=now)
+    if auth.outcome is not AuthorizeOutcome.AUTHORIZED:
+        return f"authorize:{auth.outcome}"
+    renew_result = await deps.store.renew(
+        node_id=deps.node_id, epoch=epoch, lease_seconds=deps.lease_seconds, now=now
+    )
+    if renew_result.outcome is not RenewOutcome.RENEWED:
+        return f"renew:{renew_result.outcome}"
+    return None
+
+
 async def evaluate_and_act_once(
     *, tracker: MiniFailureTracker, deps: FailoverdDeps, now: datetime
 ) -> FailoverAction:
@@ -221,8 +266,22 @@ async def evaluate_and_act_once(
         )
 
     if current.active_node_id == deps.node_id:
-        # Already the leader per the SSOT — never re-promote. Only retry
-        # a PRIOR tick's failed WABA confirmation.
+        # Already the leader per an EARLIER read — never trust that
+        # belief for the outbound write itself. Fence immediately before
+        # firing (spec: F9-CALLBACK-WRITE-FENCE-SPEC.md).
+        fence_rejection = await _fence_write_with_live_epoch(
+            deps=deps, epoch=current.leader_epoch, now=now
+        )
+        if fence_rejection is not None:
+            logger.warning(
+                "team-bot-failoverd: refusing already-leader callback write, "
+                "live re-check failed (%s) — leadership belief was stale",
+                fence_rejection,
+            )
+            return FailoverAction(
+                kind=ActionKind.REFUSED_STALE_LEADERSHIP_BEFORE_WRITE,
+                detail=f"already_leader_branch:{fence_rejection}",
+            )
         try:
             await deps.waba_client.override_callback(
                 waba_id=deps.waba_id,
@@ -268,6 +327,27 @@ async def evaluate_and_act_once(
         deps.node_id,
         promote_result.state.leader_epoch,
     )
+    # Fence even a JUST-won promotion — try_promote's CAS already set a
+    # fresh lease, but the CAS commit and this write are two separate
+    # awaits with a real (if small) window between them where another
+    # concurrent promoter could have raced past (refutation finding #1's
+    # exact scenario: "DB leader B, WABA callback A"). Spec:
+    # F9-CALLBACK-WRITE-FENCE-SPEC.md.
+    fence_rejection = await _fence_write_with_live_epoch(
+        deps=deps, epoch=promote_result.state.leader_epoch, now=now
+    )
+    if fence_rejection is not None:
+        logger.critical(
+            "team-bot-failoverd: promoted to epoch=%d but the live write-fence "
+            "refused (%s) — refusing to write a callback that would overwrite "
+            "the CURRENT leader's own",
+            promote_result.state.leader_epoch,
+            fence_rejection,
+        )
+        return FailoverAction(
+            kind=ActionKind.REFUSED_STALE_LEADERSHIP_BEFORE_WRITE,
+            detail=f"post_promotion:{fence_rejection}",
+        )
     try:
         await deps.waba_client.override_callback(
             waba_id=deps.waba_id,
@@ -476,6 +556,54 @@ def build_real_deps(
     )
 
 
+async def _create_pool_with_retry(
+    database_url: str,
+    *,
+    max_attempts: int = 6,
+    initial_delay: float = 5.0,
+    max_delay: float = 60.0,
+) -> asyncpg.Pool:
+    """Bounded exponential-backoff retry around ``asyncpg.create_pool`` —
+    refutation finding #8: config parsing and pool creation ran before
+    ``asyncio.run()``/outside the runner's own tick-level exception
+    handling, so a transient Postgres-unavailable-at-BOOT condition
+    (network blip, boot ordering where the Postgres LaunchDaemon has not
+    started yet) exited the whole process and relied on launchd's
+    KeepAlive+ThrottleInterval to relaunch it every 30s forever — "the
+    loop is genuinely long-running only after initialization succeeds"
+    (the refuter's own words, spec: F9-CALLBACK-WRITE-FENCE-SPEC.md).
+    This absorbs an ordinary boot-ordering race INSIDE the process.
+
+    A PERMANENTLY broken DSN (wrong host, wrong credentials, Postgres
+    genuinely down for good) still fails — just after ``max_attempts``
+    (default: ~2 minutes total) rather than after one try. Missing
+    REQUIRED ENV VARS (``FailoverdConfig.from_env()``) are DELIBERATELY
+    NOT retried here — a real misconfiguration a human must fix by
+    editing the env file, which no amount of retrying resolves.
+    """
+    delay = initial_delay
+    last_error: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return await asyncpg.create_pool(database_url, min_size=1, max_size=2)
+        except (OSError, asyncpg.PostgresError) as exc:
+            last_error = exc
+            logger.warning(
+                "team-bot-failoverd: Postgres pool creation failed (attempt %d/%d): %s "
+                "— retrying in %.0fs",
+                attempt,
+                max_attempts,
+                exc,
+                delay,
+            )
+            if attempt < max_attempts:
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay)
+    raise RuntimeError(
+        f"team-bot-failoverd: could not create Postgres pool after {max_attempts} attempts"
+    ) from last_error
+
+
 class FailoverdRunner:
     """The real blocking loop (superscar family #7's antidote — a
     genuine ``while`` loop under ``KeepAlive``, never a one-shot script
@@ -530,7 +658,7 @@ def main() -> None:
 
     async def _run() -> None:
         http_client = httpx.AsyncClient(base_url="https://graph.facebook.com")
-        pg_pool = await asyncpg.create_pool(config.database_url, min_size=1, max_size=2)
+        pg_pool = await _create_pool_with_retry(config.database_url)
         try:
             deps = build_real_deps(config=config, http_client=http_client, pg_pool=pg_pool)
             runner = FailoverdRunner(deps=deps, poll_seconds=config.poll_seconds)

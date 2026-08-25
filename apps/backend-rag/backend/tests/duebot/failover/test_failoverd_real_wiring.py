@@ -20,6 +20,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+import asyncpg
 import httpx
 import pytest
 
@@ -28,6 +29,7 @@ from backend.services.team_bot_ingress.failoverd import (
     FailoverdConfig,
     FailoverdDeps,
     MiniFailureTracker,
+    _create_pool_with_retry,
     _find_tailscale_peer_online,
     _run_self_prechecks_not_fully_wired,
     evaluate_and_act_once,
@@ -287,3 +289,50 @@ async def test_evaluate_and_act_once_with_real_prechecks_never_promotes_today() 
         "_run_self_prechecks_not_fully_wired's body first, someone armed a promotion path that "
         "was never actually built."
     )
+
+
+# ---------------------------------------------------------------------
+# _create_pool_with_retry — refutation finding #8. See
+# F9-CALLBACK-WRITE-FENCE-SPEC.md.
+# ---------------------------------------------------------------------
+
+
+async def test_create_pool_with_retry_recovers_from_transient_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A transient Postgres-unavailable-at-BOOT condition (2 failures,
+    then success) must be absorbed inside the process, never raised.
+    """
+    attempts: list[str] = []
+    sentinel_pool = object()
+
+    async def _flaky_create_pool(dsn: str, **kwargs: object) -> object:
+        attempts.append(dsn)
+        if len(attempts) < 3:
+            raise OSError("connection refused (simulated transient)")
+        return sentinel_pool
+
+    monkeypatch.setattr(asyncpg, "create_pool", _flaky_create_pool)
+    pool = await _create_pool_with_retry(
+        "postgresql://user@host/db", max_attempts=5, initial_delay=0.001, max_delay=0.001
+    )
+    assert pool is sentinel_pool
+    assert len(attempts) == 3
+
+
+async def test_create_pool_with_retry_gives_up_after_max_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A PERMANENTLY broken DSN must still fail -- bounded retry buys time
+    for ordinary boot-ordering races, it does not paper over a genuine
+    misconfiguration forever.
+    """
+
+    async def _always_fails(dsn: str, **kwargs: object) -> object:
+        raise OSError("connection refused (simulated permanent)")
+
+    monkeypatch.setattr(asyncpg, "create_pool", _always_fails)
+    with pytest.raises(RuntimeError, match="could not create Postgres pool"):
+        await _create_pool_with_retry(
+            "postgresql://user@host/db", max_attempts=3, initial_delay=0.001, max_delay=0.001
+        )

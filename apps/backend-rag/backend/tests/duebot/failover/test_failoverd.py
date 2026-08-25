@@ -14,6 +14,7 @@ from backend.services.team_bot_ingress.failoverd import (
     FailoverdDeps,
     MiniFailureTracker,
     SelfHealthReport,
+    _fence_write_with_live_epoch,
     evaluate_and_act_once,
 )
 from backend.services.team_bot_ingress.ingress_leader import (
@@ -302,3 +303,89 @@ async def test_shadow_mode_takes_no_action_even_when_eligible_and_healthy() -> N
     final = await store.read()
     assert final.active_node_id == "mini-pro2"
     assert final.leader_epoch == 1
+
+
+# ---------------------------------------------------------------------
+# _fence_write_with_live_epoch — refutation findings #3/#4. See
+# F9-CALLBACK-WRITE-FENCE-SPEC.md.
+# ---------------------------------------------------------------------
+
+
+async def test_write_fence_refuses_stale_epoch() -> None:
+    store = _bootstrap_store(active_node_id="pro", epoch=2)
+    fake = FakeGraphAPI()
+    async with fake.client() as httpx_client:
+        deps = _deps(
+            node_id="pro", store=store, waba=fake, httpx_client=httpx_client, mini_ready=False
+        )
+        rejection = await _fence_write_with_live_epoch(deps=deps, epoch=1, now=T0)  # stale epoch
+    assert rejection is not None
+    assert "authorize" in rejection
+
+
+async def test_write_fence_refuses_expired_lease_even_with_matching_epoch_and_node() -> None:
+    """Refutation finding #4: an expired lease must refuse the write, the
+    SAME way authorize() already refuses a CRM mutation under an expired
+    lease -- consistency between the two gates is the whole point.
+    """
+    store = InMemoryIngressLeaderStore(
+        IngressLeaderState(
+            record_id=DEFAULT_RECORD_ID,
+            active_node_id="pro",
+            leader_epoch=2,
+            lease_expires_at=T0 - timedelta(seconds=5),  # already expired
+            callback_uri_sha256="a" * 64,
+            changed_at=T0 - timedelta(seconds=35),
+        )
+    )
+    fake = FakeGraphAPI()
+    async with fake.client() as httpx_client:
+        deps = _deps(
+            node_id="pro", store=store, waba=fake, httpx_client=httpx_client, mini_ready=False
+        )
+        rejection = await _fence_write_with_live_epoch(deps=deps, epoch=2, now=T0)
+    assert rejection is not None
+    assert "authorize" in rejection
+
+
+async def test_write_fence_succeeds_and_extends_the_lease() -> None:
+    store = _bootstrap_store(active_node_id="pro", epoch=2)
+    fake = FakeGraphAPI()
+    async with fake.client() as httpx_client:
+        deps = _deps(
+            node_id="pro", store=store, waba=fake, httpx_client=httpx_client, mini_ready=False
+        )
+        rejection = await _fence_write_with_live_epoch(deps=deps, epoch=2, now=T0)
+    assert rejection is None
+    state = await store.read()
+    assert state.lease_expires_at == T0 + timedelta(seconds=deps.lease_seconds)
+
+
+async def test_already_leader_branch_calls_the_fence_and_refuses_on_expired_lease() -> None:
+    """End-to-end through evaluate_and_act_once itself, not just the fence
+    helper in isolation -- proves the ALREADY-LEADER branch actually wires
+    the fence in, not merely that the fence works when called directly.
+    """
+    store = InMemoryIngressLeaderStore(
+        IngressLeaderState(
+            record_id=DEFAULT_RECORD_ID,
+            active_node_id="pro",
+            leader_epoch=2,
+            lease_expires_at=T0 - timedelta(seconds=5),
+            callback_uri_sha256="a" * 64,
+            changed_at=T0 - timedelta(seconds=35),
+        )
+    )
+    fake = FakeGraphAPI()
+    tracker = MiniFailureTracker()
+    for i in range(3):
+        tracker.record_failure(T0 + timedelta(seconds=i))
+    async with fake.client() as httpx_client:
+        deps = _deps(
+            node_id="pro", store=store, waba=fake, httpx_client=httpx_client, mini_ready=False
+        )
+        result = await evaluate_and_act_once(
+            tracker=tracker, deps=deps, now=T0 + timedelta(seconds=3)
+        )
+    assert result.kind is ActionKind.REFUSED_STALE_LEADERSHIP_BEFORE_WRITE
+    assert len(fake.post_calls) == 0, "the stale-lease leader must never reach Meta"

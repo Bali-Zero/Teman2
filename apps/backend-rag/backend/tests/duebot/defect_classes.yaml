@@ -430,3 +430,37 @@ defect_classes:
       rejected, while the real current leader's own heartbeat still
       works.
     source: "orchestrator's explicit example (mine)"
+
+  - id: transport.failover-write-fence-refuses-stale-belief
+    bot: transport
+    title: Outbound WABA write refused on a stale leadership belief
+    description: >-
+      F9 cross-family refutation findings #1/#3/#4 (F9-REFUTATION-2026-08-25.md):
+      an outbound WABA callback write — whether an already-leader retry or
+      the write immediately after a fresh promotion — must be refused if a
+      live re-check (epoch, node, lease) immediately before the write does
+      not confirm the acting node currently holds leadership. Closes the
+      "DB leader B, WABA callback A" mismatch and the "expired leader still
+      writes" inconsistency with authorize().
+    source: "F9-REFUTATION-2026-08-25.md #1/#3/#4 (mine)"
+
+  - id: transport.failover-epoch-monotonic-enforced-at-db
+    bot: transport
+    title: Epoch rollback rejected at the database, not just the app
+    description: >-
+      F9 cross-family refutation finding #7: migration 281's "written ONLY
+      via compare-and-swap" was a comment, not a constraint. Migration 282
+      adds a trigger rejecting any UPDATE that decreases leader_epoch,
+      independent of whether application code stays correct.
+    source: "F9-REFUTATION-2026-08-25.md #7 (mine)"
+
+  - id: transport.failover-startup-postgres-transient-retry
+    bot: transport
+    title: Startup absorbs a transient Postgres outage instead of exiting
+    description: >-
+      F9 cross-family refutation finding #8: pool creation at boot retried
+      with bounded exponential backoff inside the process, rather than
+      exiting and relying on launchd's KeepAlive+ThrottleInterval to
+      relaunch the whole process every 30s for an ordinary boot-ordering
+      race.
+    source: "F9-REFUTATION-2026-08-25.md #8 (mine)"
