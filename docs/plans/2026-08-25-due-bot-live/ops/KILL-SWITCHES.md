@@ -93,3 +93,27 @@ Never trust the flag alone — verify the effect:
 See `apps/backend-rag/backend/services/client_bot/kill_switches.py` — each entry also carries a
 `verify_command` field with the exact grep/curl/log-line to run, which this document summarizes
 rather than duplicates.
+
+## Verification receipt — "everything ships dark" (2026-08-25)
+
+The whole mandate rests on *born off*. That claim is now measured rather than assumed.
+
+Parsed this registry **structurally** (`ast`, reading each `KillSwitch(...)` call's own
+`env_var` / `default_dark` keywords) rather than by regex: **14 declarations, 13 born off.**
+
+The fourteenth is `WA_CODEX_SEAT_<n>_BREAKER_LATCHED` with `default_dark=False`, and it is
+correct: its own `effect_when_off` says *"N/A — this is a runtime-latched state, not an
+operator-set env var"*. A breaker is not a feature flag — `False` here means "the breaker is not
+tripped at birth", which is what you want from something the runtime latches on auth-death or
+three consecutive failures and an operator clears by re-login. Its leg is separately gated by
+`CLIENT_BOT_CODEX_BROKER_ENABLED`, which IS born off, so the breaker's default cannot make
+anything run.
+
+Also checked: no `client_bot_*` or `team_bot_*` field in `app/core/config.py` carries
+`default=True`.
+
+**Method note, because the first attempt got this wrong.** A regex pairing of `env_var=` against
+`default_dark=` returned 13 switches and 14 defaults — an off-by-one that mis-attributed the
+non-dark value to `TEAM_BOT_INGRESS_ENABLED`, which is in fact born off. A misaligned zip
+produces a confident, specific, false accusation. The `ast` parse reads each declaration as one
+object and cannot drift.
