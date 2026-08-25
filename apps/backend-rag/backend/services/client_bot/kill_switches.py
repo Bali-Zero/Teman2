@@ -198,11 +198,17 @@ KILL_SWITCHES: tuple[KillSwitch, ...] = (
         scope="global",
         effect_when_off="R0/R1 read tools (client.lookup, practice.list_"
         "assigned, ...) are not exposed to the model — staff get owner-only "
-        "fixed replies, no CRM read.",
+        "fixed replies, no CRM read. Lane B9 (apps/team-bot/team_bot/executor/) "
+        "also reads this flag as defense-in-depth one layer BELOW the loop: "
+        "ToolExecutor.execute refuses any ToolKind.READ call before dispatch "
+        "even if a future refactor ever exposed the tool schema anyway.",
         owning_lane="B3",
-        status=KillSwitchStatus.PLANNED,
+        status=KillSwitchStatus.WIRED,
         verify_command="ask the bot a read question from an allowlisted staff "
-        "number and confirm no tool_call is emitted while false.",
+        "number and confirm no tool_call is emitted while false; separately, "
+        "confirm apps/team-bot/team_bot/flags.py::is_team_bot_read_tools_enabled() "
+        "returns false and ToolExecutor.execute returns ExecutorErrorCode."
+        "FEATURE_DISABLED for a READ tool while it is.",
     ),
     KillSwitch(
         env_var="TEAM_BOT_MULTISTEP_READS_ENABLED",

@@ -43,6 +43,7 @@ __all__ = [
     "is_team_bot_enabled",
     "is_team_bot_memory_enabled",
     "is_team_bot_multistep_reads_enabled",
+    "is_team_bot_read_tools_enabled",
     "max_read_steps",
 ]
 
@@ -123,11 +124,51 @@ def is_team_bot_memory_enabled() -> bool:
     """
     return _truthy(os.getenv("TEAM_BOT_MEMORY_ENABLED", "false"))
 
+
+def is_team_bot_read_tools_enabled() -> bool:
+    """True only when ``TEAM_BOT_READ_TOOLS_ENABLED`` is truthy. Default
+    OFF. Registered PLANNED in the F11/B7 kill-switch registry
+    (``apps/backend-rag/backend/services/client_bot/kill_switches.py`` +
+    ``docs/plans/2026-08-25-due-bot-live/ops/KILL-SWITCHES.md``, plane
+    ``team_replies``) before this function existed; lane B9 (the executor
+    seam) wires the first real read of it and flips that registry entry's
+    ``status`` to WIRED in the same change, per the doc's own rule ("wired
+    means a named source file reads this env var TODAY").
+
+    The registry's own ``effect_when_off`` describes a LOOP-layer gate
+    ("R0/R1 read tools ... are not exposed to the model") that does not
+    exist yet (no live loop/webhook runtime in this app today). Lane B9's
+    ``team_bot.executor.tool_executor.ToolExecutor`` checks this flag at a
+    LOWER layer — immediately before it would ever dispatch a call —
+    as defense-in-depth for exactly the case the loop-layer gate is
+    supposed to prevent from ever reaching here, mirroring
+    ``services/rag/agentic/team_crm_tools.py``'s own documented pattern:
+    "even if a future refactor registers these tools unconditionally,
+    execute() still refuses when the flag is off."
+    """
+    return _truthy(os.getenv("TEAM_BOT_READ_TOOLS_ENABLED", "false"))
+
+
 def is_team_bot_brain_tp1_enabled() -> bool:
     """True only when ``TEAM_BOT_BRAIN_TP1_ENABLED`` is truthy. Default OFF
     (everything ships dark). While ``False``, ``BrainRouter`` never attempts
     any of the three TP1 cloud tiers and goes straight to the local
     read-only degradation lane — this is the single gesture to pull the
     cloud brain out of rotation without touching ``TEAM_BOT_REPLY_ENABLED``
-    (the master "send a reply at all" switch)."""
-    return _env_truthy("TEAM_BOT_BRAIN_TP1_ENABLED")
+    (the master "send a reply at all" switch).
+
+    Pre-existing bug fixed in passing (lane B9, discovered while adding
+    ``is_team_bot_read_tools_enabled`` above and editing this same file):
+    this call site referenced ``_env_truthy``, a name that does not exist
+    anywhere in this module — a bare call to this function would have
+    raised ``NameError``. Untested by the 381 tests that pass on this
+    branch today (nothing calls ``is_team_bot_brain_tp1_enabled`` yet — it
+    is, like everything else here, "not wired into a live path yet"), so
+    the defect was live but silent. Fixed to use the same shared
+    ``_truthy`` helper every other flag in this module already uses —
+    exactly the "two independently-maintained copies of 'is this on'"
+    drift class this module's own docstring warns about, except this
+    instance drifted all the way to a nonexistent name rather than a
+    second working copy.
+    """
+    return _truthy(os.getenv("TEAM_BOT_BRAIN_TP1_ENABLED", "false"))

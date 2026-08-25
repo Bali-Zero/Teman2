@@ -12,18 +12,33 @@ outcome text, and the reply-composition structural fix). The webhook and
 identity→principal mapping (F7), and sqlite Mini→Pro replication, are
 separate units of the same B3 lane and are **not** in this directory yet.
 
-## Everything here is inert
+## `registry/`/`loop/`/`confirmation/` are inert; `executor/` is not (lane B9)
 
-No server, no CRM client, no I/O. `registry/` is pure data (frozen pydantic
-models describing ten tool contracts); `loop/` is pure functions (parse a raw
-model turn, evaluate a reply against what actually executed). Nothing in this
-package is imported by any running service — there is no live path to wire a
-dark flag into yet. `team_bot/flags.py` defines the flags future wiring must
-check (`is_team_bot_enabled()`, mirroring
+`registry/` is pure data (frozen pydantic models describing ten tool
+contracts); `loop/` is pure functions (parse a raw model turn, evaluate a
+reply against what actually executed); `confirmation/`'s sqlite store is
+I/O but never a network call. **This is no longer true of the package as
+a whole**: `team_bot/executor/` (lane B9, F5's "the CRM endpoints" — see
+its own module docstrings for the full account) is real, importable,
+network-carrying code — an `httpx.AsyncClient`-backed `BackendClient`
+calling the Fly backend's own REST endpoints (never the `nuzantara-mcp`
+server; RECON domain 4), gated behind `team_bot.flags.is_team_bot_enabled()`
+and `is_team_bot_read_tools_enabled()` (both default OFF), and wired for
+exactly ONE of the ten tools — `get_required_documents` (R0). The other
+nine registered tool names have no `executor/tools/<name>.py` module yet
+and return `ExecutorErrorCode.NOT_IMPLEMENTED`, not a crash or a guess.
+Still nothing here is imported by a running webhook/loop RUNTIME (that
+piece — F7's identity mapping plus the actual model-driven loop — is a
+separate, not-yet-built B3 unit), but "nothing in this package does I/O"
+is no longer accurate as a description of the package's own contents.
+
+`team_bot/flags.py` defines the flags this and future wiring must check
+(`is_team_bot_enabled()`, mirroring
 `backend/services/rag/agentic/team_crm_tools.py::is_team_crm_tools_enabled()`;
 `is_team_bot_multistep_reads_enabled()`/`max_read_steps()` for the
-directive #1 §2 amendment below), all default OFF, so the loop/webhook
-units that come next have them ready rather than inventing their own.
+directive #1 §2 amendment below; `is_team_bot_read_tools_enabled()`, lane
+B9's first real read of the previously-registered-but-unwired
+`TEAM_BOT_READ_TOOLS_ENABLED` switch), all default OFF.
 
 ## Naming note — Qwen §4 verbatim, not the MANDATE's F5 prose shorthand
 
@@ -67,12 +82,54 @@ flags a chain only when the identical call repeats on the CONSECUTIVE tail — d
 triggered by an ordinary non-consecutive repeat (e.g. the same client looked up for two
 different practices).
 
+## The executor seam (lane B9)
+
+`docs/plans/2026-08-25-due-bot-live/RECON-domains-2-4.md`'s own framing:
+"The team bot cannot call anything ... the bottleneck is not the content
+of domains 2-4 ... that layer is the keystone lane." `team_bot/executor/`
+is that layer — it turns one validated `ProposedToolCall`
+(`team_bot.loop.tool_decision`) into a `ToolResult`
+(`team_bot.registry.envelope`) via `ToolExecutor.execute`, chaining:
+feature flags → F5 registry + per-tool binding lookup → the local,
+early-deny-only scope gate (`scope_gate.py`, F7) → argument re-validation
+→ auth resolution (`auth.py`'s `TokenProvider` — F7's identity mapping is
+NOT built here; `NullTokenProvider` fails every call closed until it is)
+→ the network call (`http_client.py`'s `BackendClient`) → untrusted-
+response validation (`response_mapping.py`, F4). A closed error
+vocabulary (`errors.py`'s `ExecutorErrorCode`) is the ONLY thing
+`ToolExecutor.execute` ever returns for a failure — it never raises for a
+business-outcome failure, only for a genuinely unexpected bug (caught at
+one deliberate chokepoint and turned into `INTERNAL`).
+
+**One tool wired, nine deliberately not**: `get_required_documents` (R0)
+runs end to end against a fake `httpx.MockTransport` (no test in this
+suite touches a real network — B6 law). Its own module docstring
+(`executor/tools/get_required_documents.py`) records a real discovery: no
+LIVE backend endpoint answers this tool's frozen, `practice_type`-only
+question today — `crm_practices.py:2122`'s real, live `required-documents`
+endpoint is keyed by `practice_id` instead, a genuinely different query
+domain 2's "missing: X" actually needs, and building the frozen tool's
+OWN static reference data would mean this lane inventing which documents
+a KITAS/work-permit/company-setup application requires, which is a
+content decision outside an executor-seam lane's standing to make. Read
+that docstring before wiring either this tool for real or the next one.
+
+**Known gap, not resolved here**: `confirmation/store.py`'s
+`SqlitePendingActionStore.execute`'s injected `execute_fn` contract is
+SYNCHRONOUS; this package's `BackendClient` is `httpx.AsyncClient`-based
+and async throughout. A future mutation-tool lane (R1/R2/R3, gated by
+`TEAM_BOT_MUTATIONS_ENABLED`, not built here) will need to resolve that
+mismatch — most likely a sync `httpx.Client` variant for the mutation
+execution path specifically, not forcing this read-path executor to serve
+both.
+
 ## Layout
 
 ```
 team_bot/
   flags.py            dark-flag helpers (default OFF): TEAM_BOT_ENABLED,
-                       TEAM_BOT_MULTISTEP_READS_ENABLED + max_read_steps()
+                       TEAM_BOT_MULTISTEP_READS_ENABLED + max_read_steps(),
+                       TEAM_BOT_READ_TOOLS_ENABLED (lane B9)
   registry/
     envelope.py        shared enums, ID patterns, common response envelope (Qwen §4 verbatim)
     tools.py            RiskTier / ConfirmPolicy / ToolSpec + the ten frozen ToolSpec entries
@@ -90,6 +147,15 @@ team_bot/
     reply_composer.py — F6's confirmation-gated mutation state machine (data shape, CAS
     behavior, encryption, confirm-code parsing, server-authored outcome text, and the
     structural reply-composition fix that supersedes claim_gate.py as the primary control)
+  executor/            lane B9 — the executor seam (see section above)
+    errors.py            ExecutorErrorCode — the closed error vocabulary
+    auth.py              AuthMaterial / TokenProvider / NullTokenProvider (F7 seam, not F7 itself)
+    scope_gate.py         the local, early-deny-only scope gate (F7)
+    http_client.py        BackendClient — the ONE persistent httpx.AsyncClient
+    response_mapping.py    BackendCallResult -> ToolResult (untrusted-response validation, F4)
+    tool_executor.py       ToolExecutor — the class that chains all of the above
+    tools/
+      get_required_documents.py  args/result models + the one wired tool's network call
 tests/
   test_registry.py
   test_tool_decision.py
@@ -98,6 +164,8 @@ tests/
   test_loop_detector.py
   test_flags.py
   test_confirmation_*.py, test_outcomes.py, test_reply_composer.py, test_idempotency.py
+  executor/             lane B9's suite (guilt+innocence pairs throughout;
+                         mutation-verified — see B9's own report, not committed here)
 ```
 
 The webhook and identity→principal mapping (F7) are not in this directory yet.
