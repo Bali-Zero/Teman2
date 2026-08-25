@@ -192,6 +192,44 @@ class HierarchicalIndexer:
                 )
                 chunks_to_index.append(h_chunk)
 
+        # 5bis. The PENJELASAN: the official article-by-article commentary
+        # published with the law. Until 2026-08-25 the section boundary was
+        # never found, so these entries were parsed AS the law and their chunk
+        # ids destroyed the real articles. Now that the boundary is found they
+        # must still be INDEXED -- an elucidation is authoritative
+        # interpretation, and simply dropping it would trade one data loss for
+        # another -- but under their own ids and labelled as commentary.
+        for pasal in structure.get("penjelasan_pasal_list") or []:
+            await self._add_pasal_to_chunks(
+                pasal=pasal,
+                document_id=document_id,
+                bab_id=None,
+                bab_title=None,
+                metadata=metadata,
+                chunks_to_index=chunks_to_index,
+                section="penjelasan",
+            )
+
+        penjelasan_umum = structure.get("penjelasan_umum")
+        if penjelasan_umum:
+            chunks_to_index.append(
+                HierarchicalChunk(
+                    chunk_id=f"{document_id}_Penjelasan_Umum",
+                    text=penjelasan_umum,
+                    document_id=document_id,
+                    chapter_id=None,
+                    section_id=None,
+                    article_id=None,
+                    hierarchy_path=f"{document_id}/Penjelasan_Umum",
+                    hierarchy_level=1,
+                    parent_chunk_ids=[document_id],
+                    sibling_chunk_ids=[],
+                    bab_title=None,
+                    bab_full_text=None,
+                    metadata={**metadata, "section": "penjelasan"},
+                ),
+            )
+
         # 6. Genera embeddings solo per i chunk (Pasal)
         chunks_upserted = 0
         if chunks_to_index:
@@ -233,16 +271,27 @@ class HierarchicalIndexer:
         bab_title,
         metadata,
         chunks_to_index,
+        section: str = "batang_tubuh",
     ):
-        """Helper to process a single Pasal and add it to chunks list"""
-        pasal_id = f"{document_id}_Pasal_{pasal['number']}"
+        """Helper to process a single Pasal and add it to chunks list.
+
+        `section` distinguishes the operative article ("batang_tubuh") from the
+        official commentary on it ("penjelasan"). It is load-bearing in two
+        ways: it keeps their ids apart, and it lets retrieval tell a RULE from a
+        NOTE ABOUT a rule -- which was impossible while both were stored under
+        the same key and one silently destroyed the other.
+        """
+        prefix = "Pasal" if section == "batang_tubuh" else "Penjelasan_Pasal"
+        pasal_id = f"{document_id}_{prefix}_{pasal['number']}"
 
         if bab_id:
             hierarchy_path = (
-                f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/Pasal_{pasal['number']}"
+                f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/{prefix}_{pasal['number']}"
             )
         else:
-            hierarchy_path = f"{document_id}/Pasal_{pasal['number']}"
+            hierarchy_path = f"{document_id}/{prefix}_{pasal['number']}"
+
+        metadata = {**metadata, "section": section}
 
         # SAFE SPLITTING: If Pasal is too large, split it using the chunker
         char_limit = 4000  # ~1000 tokens
