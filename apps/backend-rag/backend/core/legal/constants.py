@@ -269,9 +269,43 @@ AYAT_PATTERN = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
-# Penjelasan (Elucidation)
+# Penjelasan (Elucidation) -- the boundary between a law and the official
+# article-by-article commentary published with it.
+#
+# CORRECTED 2026-08-25. The previous pattern was
+# ``^Penjelasan\s+(?:Umum|Atas|Pasal|Ayat)`` and had TWO defects that combined
+# into a silent data-destroying bug:
+#
+# 1. It required the word at column 0. The real gazette heading is rendered
+#    "\n PENJELASAN \nATAS \nUNDANG-UNDANG ..." -- with a LEADING SPACE -- so
+#    the true boundary was never found.
+# 2. Accepting the qualifiers ``Pasal``/``Ayat`` let it match an ordinary
+#    in-sentence use, "penjelasan Pasal 123 ayat (2) ...", which lands at the
+#    start of a line purely because of a line wrap.
+#
+# Measured on UU 40/2007 (Perseroan Terbatas): the real heading sits at
+# character 133,167 and the old pattern instead matched at 201,998 -- 68,000
+# characters too late, out of 210,989. Everything before that false boundary was
+# treated as the operative body, so the commentary's repeated article numbers
+# were parsed as articles. Their chunk ids collided with the real ones and
+# destroyed them: 378 chunks built, 202 stored, and Pasal 32 (minimum capital)
+# left holding "Cukup jelas".
+#
+# Measured over the 58 text-layer PDFs in data/kb_sources: boundary detected in
+# 8 documents before, 10 after; duplicate article numbers left inside the body
+# 546 before, 398 after; zero documents made worse. The residual 398 are NOT
+# elucidations -- they are amending laws quoting the articles they amend, which
+# is what the chunk-id disambiguation guard handles.
 PENJELASAN_PATTERN = re.compile(
-    r"^Penjelasan\s+(?:Umum|Atas|Pasal|Ayat)",
+    # a line that is nothing but the heading ...
+    r"^[^\S\n]*PENJELASAN[^\S\n]*$"
+    # ... or the heading carrying its qualifier ...
+    r"|^[^\S\n]*PENJELASAN\s+(?:UMUM|ATAS)\b"
+    # ... or a per-article heading that OCCUPIES THE WHOLE LINE. The `$` is what
+    # separates a heading from prose: the false positive that used to be matched,
+    # "penjelasan Pasal 123 ayat (2) huruf c dan Pasal 125 ayat (6)", continues
+    # past the number and so cannot reach the end of its line.
+    r"|^[^\S\n]*PENJELASAN\s+PASAL\s+\d+[A-Z]?[^\S\n]*$",
     re.IGNORECASE | re.MULTILINE,
 )
 
