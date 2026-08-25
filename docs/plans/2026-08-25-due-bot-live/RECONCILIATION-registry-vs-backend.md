@@ -82,3 +82,27 @@ Everything ships dark, the switchboard stays the owner's, and no lane may park w
 this document. The executor seam B9 built is unaffected — it was built against the frozen
 contract deliberately, which is exactly why the mismatch surfaced as a report instead of as a
 silently-rewritten schema.
+
+## Addendum — what "the registry moves toward the backend" actually costs, and when
+
+The ruling above is unchanged. Two things it did not weigh, recorded before anyone acts on it:
+
+**1. It invalidates measured evidence — but less than it first appears.** `registry/tools.py`'s
+own docstring says it "stays byte-compatible with that measured evidence rather than silently
+disconnecting from it", referring to lane B4's golden-suite evaluations. Those were run against
+**Qwen3-14B**, the local model — which Directive #1 §1.1 has since demoted to the *third lane of
+degradation*, R0 tools only, with `qwen3.7-plus` via TP1 as the primary brain. So amending the
+registry does not disconnect the shipping brain from its evidence; it disconnects a fallback
+from its evidence.
+
+That is still a real cost, not zero: the local read-only lane genuinely uses those tools, and
+after an amendment its goldens no longer describe what ships. **The price is re-running the
+golden suite against the amended shape, on the brain that is actually primary.** Payable, and
+it must be paid in the same lane that amends the registry — not deferred, or the registry ends
+up describing something nobody measured.
+
+**2. It must come AFTER the endpoint scope work, not in parallel.** The mutation routes are
+being brought up to enforce `assigned_to` (lane `crm-mutation-scope`). If the registry is
+migrated toward today's endpoint shapes while those shapes are still changing, it migrates
+toward an intermediate state and has to move twice. Order: endpoints settle → registry migrates
+to the settled shape → goldens re-run against it.
