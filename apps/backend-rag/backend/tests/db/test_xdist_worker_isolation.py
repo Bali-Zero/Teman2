@@ -152,3 +152,173 @@ async def test_two_xdist_workers_do_not_share_a_database(
         f"worker B saw rows from the other worker: {b['sources_seen']!r} — "
         "shared-Postgres pollution (the #4477 bug)"
     )
+
+
+def _load_conftest_module():
+    """Import backend/tests/conftest.py's helpers as a plain module.
+
+    A fresh `importlib` load (not pytest's own conftest machinery) keeps
+    this test independent of whatever name pytest's own plugin manager
+    registered the real conftest module under. This whole test suite may
+    itself be running INSIDE a real xdist worker (e.g. under `-n auto` in
+    CI, or this file's own directory run under `-n 10` locally) — a plain
+    re-exec of the file would then re-trigger its module-level xdist block
+    using `PYTEST_XDIST_WORKER`/`TEST_DATABASE_URL` from THIS environment,
+    silently repointing `TEST_DATABASE_URL`/`INTAKE_TEST_DSN`/`DATABASE_URL`
+    to yet another nested clone and polluting every OTHER test that runs in
+    this same worker afterward. Hide `PYTEST_XDIST_WORKER` for the duration
+    of the exec so that block's own `if _xdist_worker_id:` guard is False
+    here, exactly like a genuine serial run — this loader only wants the
+    plain function objects, never that side effect.
+    """
+    import importlib.util
+
+    conftest_path = Path(__file__).resolve().parents[1] / "conftest.py"
+    spec = importlib.util.spec_from_file_location("_xdist_race_conftest_probe", conftest_path)
+    module = importlib.util.module_from_spec(spec)
+    saved_worker_id = os.environ.pop("PYTEST_XDIST_WORKER", None)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if saved_worker_id is not None:
+            os.environ["PYTEST_XDIST_WORKER"] = saved_worker_id
+    return module
+
+
+def _admin_dsn(dsn: str) -> str:
+    return dsn.rsplit("/", 1)[0] + "/postgres"
+
+
+async def test_old_shape_templating_off_a_live_worker_database_fails(
+    _require_local_postgres,
+) -> None:
+    """GUILT (2026-08-25, job 97847958574): reproduces the CI failure's
+    MECHANISM, not just its symptom.
+
+    Before the fix, `_xdist_clone_worker_database` templated every worker's
+    clone directly off `base_db` — and `base_db` was derived from
+    `TEST_DATABASE_URL`, the exact variable this file overwrites with a
+    worker-specific DSN a few lines later. Any re-derivation of `base_db`
+    AFTER that overwrite (the SCAR comment in conftest.py names the
+    concrete triggers) picks up a WORKER'S OWN LIVE DATABASE as the
+    template name. This reproduces exactly that shape directly against
+    the (still-present, now demoted to an internal helper) old call
+    contract: open a live connection to a worker's own database — mirroring
+    "gw0 must connect to it, to run its own tests" — then try to clone off
+    THAT database as if it were the base. Postgres must refuse with the
+    same `ObjectInUseError` CI hit.
+    """
+    conftest = _load_conftest_module()
+    base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])
+    admin_dsn = _admin_dsn(os.environ["TEST_DATABASE_URL"])
+
+    busy_worker_db = f"{base_db}_gw0"
+    await conftest._xdist_clone_worker_database(admin_dsn, base_db, busy_worker_db)
+
+    busy_dsn = conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], busy_worker_db)
+    busy_conn = await asyncpg.connect(busy_dsn)
+    try:
+        # This is the OLD call shape: templating off a worker's own live
+        # database (`busy_worker_db`), exactly what a wrong `base_db`
+        # re-derivation would have handed to `_xdist_clone_worker_database`.
+        with pytest.raises(RuntimeError, match="could not CREATE DATABASE"):
+            await conftest._xdist_clone_worker_database(
+                admin_dsn, busy_worker_db, f"{busy_worker_db}_gw1"
+            )
+    finally:
+        await busy_conn.close()
+        await conftest._xdist_drop_worker_database(admin_dsn, busy_worker_db)
+        await conftest._xdist_drop_worker_database(admin_dsn, f"{busy_worker_db}_gw1")
+
+
+async def test_new_shape_clones_succeed_while_a_sibling_worker_is_busy(
+    _require_local_postgres,
+) -> None:
+    """INNOCENCE for the fix: `_xdist_ensure_template_database` builds a
+    connectionless template, and cloning a NEW worker database from it
+    succeeds even while a SIBLING worker database (built from the same
+    template, holding a live connection exactly like gw0 mid-test) is busy
+    — because the clone never touches the sibling's database, only the
+    dedicated template.
+    """
+    conftest = _load_conftest_module()
+    base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])
+    admin_dsn = _admin_dsn(os.environ["TEST_DATABASE_URL"])
+    template_db = conftest._xdist_template_db_name(base_db)
+
+    await conftest._xdist_ensure_template_database(admin_dsn, base_db, template_db)
+
+    worker0_db = f"{base_db}_gw0"
+    worker1_db = f"{base_db}_gw1"
+    await conftest._xdist_clone_worker_database(admin_dsn, template_db, worker0_db)
+
+    worker0_dsn = conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], worker0_db)
+    busy_conn = await asyncpg.connect(worker0_dsn)
+    try:
+        # Must succeed: templates off `template_db`, never off worker0_db.
+        await conftest._xdist_clone_worker_database(admin_dsn, template_db, worker1_db)
+    finally:
+        await busy_conn.close()
+        await conftest._xdist_drop_worker_database(admin_dsn, worker0_db)
+        await conftest._xdist_drop_worker_database(admin_dsn, worker1_db)
+
+    # The template itself must refuse ordinary connections — the guarantee
+    # that makes it immune to ever being "busy".
+    with pytest.raises(asyncpg.PostgresError):
+        await asyncpg.connect(conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], template_db))
+
+    conn = await asyncpg.connect(admin_dsn)
+    try:
+        await conn.execute(f'DROP DATABASE IF EXISTS "{template_db}" WITH (FORCE)')
+    finally:
+        await conn.close()
+
+
+async def test_template_build_is_race_free_under_concurrent_workers(
+    _require_local_postgres,
+) -> None:
+    """The one-time template build is guarded by a Postgres ADVISORY LOCK
+    (not a Python lock — real xdist workers are separate OS processes), so
+    N workers calling `_xdist_ensure_template_database` at the same moment
+    must not race each other. Simulates that with 8 concurrent asyncio
+    tasks (each its own asyncpg connection, same as 8 separate processes
+    would have) hitting the SAME template name at once.
+    """
+    import asyncio
+
+    conftest = _load_conftest_module()
+    base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])
+    admin_dsn = _admin_dsn(os.environ["TEST_DATABASE_URL"])
+    template_db = conftest._xdist_template_db_name(base_db)
+
+    conn = await asyncpg.connect(admin_dsn)
+    try:
+        await conn.execute(f'DROP DATABASE IF EXISTS "{template_db}" WITH (FORCE)')
+    finally:
+        await conn.close()
+
+    try:
+        results = await asyncio.gather(
+            *[
+                conftest._xdist_ensure_template_database(admin_dsn, base_db, template_db)
+                for _ in range(8)
+            ],
+            return_exceptions=True,
+        )
+        failures = [r for r in results if isinstance(r, Exception)]
+        assert not failures, f"concurrent template build raced: {failures}"
+
+        conn = await asyncpg.connect(admin_dsn)
+        try:
+            allow_conn = await conn.fetchval(
+                "SELECT datallowconn FROM pg_database WHERE datname = $1", template_db
+            )
+        finally:
+            await conn.close()
+        assert allow_conn is False, "template must end up with ALLOW_CONNECTIONS false"
+    finally:
+        conn = await asyncpg.connect(admin_dsn)
+        try:
+            await conn.execute(f'DROP DATABASE IF EXISTS "{template_db}" WITH (FORCE)')
+        finally:
+            await conn.close()
