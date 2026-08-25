@@ -923,7 +923,14 @@ Return ONLY valid JSON, no markdown."""
                 "legal_number": metadata.get("number"),
                 "legal_year": metadata.get("year"),
                 "legal_topic": metadata.get("topic"),
-                "legal_status": metadata.get("status"),
+                # `legal_status` write RETIRED 2026-08-25 (Lane P,
+                # kb-p2-status-retire-0825) — see
+                # backend/core/legal/constants.py's tombstone comment above
+                # `# Status indicators`. The key is now genuinely absent from
+                # every new point, not present-and-None: `metadata` no longer
+                # carries a "status" entry at all, so there is nothing here to
+                # write. scripts/ci/legal_status_read_lint.py enforces that
+                # nothing reads the field this line used to populate.
                 "retrieval_scope": retrieval_scope,
                 # CRITICAL: Keep original keys for LegalChunker context injection
                 "type_abbrev": metadata.get("type_abbrev"),
