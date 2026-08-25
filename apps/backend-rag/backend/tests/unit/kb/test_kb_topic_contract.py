@@ -20,6 +20,7 @@ honest after.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -66,6 +67,28 @@ LANES = frozenset("ABCDEFP")
 PROBE_STATES = frozenset({"red", "green", "untested"})
 
 OWNED_KIND = "topic"
+
+
+def _probe():
+    """Load kb_inventory_probe.py (it lives outside any package)."""
+    import importlib.util
+
+    cached = sys.modules.get("kb_inventory_probe")
+    if cached is not None:
+        return cached
+    spec = importlib.util.spec_from_file_location(
+        "kb_inventory_probe", ROOT / "scripts" / "kb" / "kb_inventory_probe.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["kb_inventory_probe"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+# IMPORTED from the probe, never restated. The sibling gate does the same, for the
+# same reason: a tripwire that compares two restatements of one idea is blind, and
+# these two must read the SAME tuple the probe measures production with.
+PAYLOAD_SHAPES = frozenset(_probe().PAYLOAD_SHAPES)
 
 
 # ── the rules, as pure functions over already-parsed data ────────────────────
@@ -227,11 +250,30 @@ def check_topic_inventory(data: dict) -> list[str]:
             "measured_against.payload_shapes is required — §4.1, and the probe "
             "compares it against production"
         )
-    elif isinstance(points, int) and sum(shapes.values()) != points:
-        problems.append(
-            f"payload_shapes sums to {sum(shapes.values())} but points is {points} — "
-            f"every point has exactly one shape, so these must be equal"
-        )
+    else:
+        # The vocabulary must be CLOSED, not merely non-empty. An arithmetically
+        # balanced dict of invented shape names passed every check in the first
+        # draft of this gate — which is precisely the defect the sibling gate had
+        # just been fixed for, reproduced here. A shape spelled some other way is
+        # not a stricter record: it is a row the probe scores as 0 and the drift
+        # comparison can never reach.
+        unknown = set(shapes) - PAYLOAD_SHAPES
+        if unknown:
+            problems.append(
+                f"payload_shapes names {sorted(unknown)}, which kb_inventory_probe.py "
+                f"cannot measure — known shapes are {sorted(PAYLOAD_SHAPES)}"
+            )
+        missing = PAYLOAD_SHAPES - set(shapes)
+        if missing:
+            problems.append(
+                f"payload_shapes omits {sorted(missing)}. Omission reads as 'absent', and "
+                f"'absent' is indistinguishable from 'never looked' — record a 0"
+            )
+        if isinstance(points, int) and sum(shapes.values()) != points:
+            problems.append(
+                f"payload_shapes sums to {sum(shapes.values())} but points is {points} — "
+                f"every point has exactly one shape, so these must be equal"
+            )
 
     instruments = data.get("instruments")
     if not isinstance(instruments, list):
@@ -248,9 +290,44 @@ def check_topic_inventory(data: dict) -> list[str]:
             problems.append(f"{where}: points must be a non-negative integer")
         else:
             total += n
+        # §4.5 — whole or nothing. `present` must be stated, never inferred from
+        # a non-zero count: this repo has already stored a half-read law as if it
+        # were whole, and a partial document is worse than an absent one because
+        # it answers confidently from the half it has.
+        present = inst.get("present")
+        if present not in (True, False):
+            problems.append(
+                f"{where}: present must be an explicit true/false (§4.5) — inferring it "
+                f"from a point count cannot distinguish 'fully indexed' from 'the first "
+                f"three chunks landed and the ingest died'"
+            )
+        if present is True:
+            if isinstance(n, int) and n == 0:
+                problems.append(
+                    f"{where}: present=true with points=0 — a document that is 'there' "
+                    f"with nothing indexed is not there"
+                )
+            complete = inst.get("complete")
+            if complete not in (True, False):
+                problems.append(
+                    f"{where}: present=true requires an explicit complete true/false "
+                    f"(§4.5) — whether the WHOLE instrument is indexed, not merely some "
+                    f"of it"
+                )
+            elif complete is False and not inst.get("incomplete_because"):
+                problems.append(
+                    f"{where}: complete=false requires incomplete_because — a known-partial "
+                    f"document with no stated gap is indistinguishable from a whole one to "
+                    f"every reader downstream"
+                )
+        if present is False and isinstance(n, int) and n > 0:
+            problems.append(
+                f"{where}: present=false but points={n} — the store disagrees with the claim"
+            )
+
         # §4.2 — three misses before saying "missing". A claim of absence made
         # from one lookup is the single most repeated error in this corpus.
-        if inst.get("present") is False:
+        if present is False:
             attempts = inst.get("lookup_attempts")
             if not isinstance(attempts, list) or len(attempts) < 3:
                 problems.append(
@@ -315,9 +392,22 @@ def _good_inventory() -> dict:
         "measured_against": {
             "collection": "legal_unified",
             "points": 10,
-            "payload_shapes": {"legacy_metadata_text": 7, "modern_id_only": 3},
+            "payload_shapes": {
+                "legacy_metadata_text": 7,
+                "orphan_no_identity": 0,
+                "modern_id_only": 3,
+                "modern_id_chunk": 0,
+                "modern_full": 0,
+            },
         },
-        "instruments": [{"id": "Permenkumham_22_2023", "points": 10, "present": True}],
+        "instruments": [
+            {
+                "id": "Permenkumham_22_2023",
+                "points": 10,
+                "present": True,
+                "complete": True,
+            }
+        ],
     }
 
 
@@ -403,6 +493,32 @@ INVENTORY_GUILT = [
      lambda d: d["instruments"][0].update(present=False, points=0, lookup_attempts=["by id"])
      or d["measured_against"].update(points=0, payload_shapes={"legacy_metadata_text": 0}),
      "at least THREE distinct methods"),
+    # F.1 — the closed payload-shape vocabulary (found by a cross-family refuter:
+    # an arithmetically balanced dict of invented names passed the first draft)
+    ("payload shape name invented, arithmetic balanced",
+     lambda d: d["measured_against"].update(payload_shapes={"i_made_this_shape_up": 10}),
+     "cannot measure"),
+    ("payload shape omitted rather than recorded as zero",
+     lambda d: d["measured_against"]["payload_shapes"].pop("modern_full"),
+     "indistinguishable from 'never looked'"),
+    # F.2 — whole or nothing (§4.5)
+    ("present neither true nor false",
+     lambda d: d["instruments"][0].pop("present"), "explicit true/false"),
+    ("present true with nothing indexed",
+     lambda d: d["instruments"][0].update(points=0)
+     or d["measured_against"].update(points=0, payload_shapes={
+         "legacy_metadata_text": 0, "orphan_no_identity": 0, "modern_id_only": 0,
+         "modern_id_chunk": 0, "modern_full": 0}),
+     "is not there"),
+    ("present true but completeness never stated",
+     lambda d: d["instruments"][0].pop("complete"), "requires an explicit complete"),
+    ("known-partial document with no stated gap",
+     lambda d: d["instruments"][0].update(complete=False), "requires incomplete_because"),
+    ("absent according to the file, present in the store",
+     lambda d: d["instruments"][0].update(
+         present=False, complete=None,
+         lookup_attempts=["by id", "by phrase", "by scroll"]),
+     "the store disagrees with the claim"),
     ("absence claimed with no lookups recorded",
      lambda d: d["instruments"][0].update(present=False, points=0)
      or d["measured_against"].update(points=0, payload_shapes={"legacy_metadata_text": 0}),
@@ -426,7 +542,7 @@ def test_the_guilt_matrix_is_not_empty():
     cases and pytest exits 0. Assert the COUNT, so deleting the cases is loud."""
     assert len(TOPIC_GUILT) >= 11, len(TOPIC_GUILT)
     assert len(JOURNEY_GUILT) >= 7, len(JOURNEY_GUILT)
-    assert len(INVENTORY_GUILT) >= 7, len(INVENTORY_GUILT)
+    assert len(INVENTORY_GUILT) >= 14, len(INVENTORY_GUILT)
 
 
 # ── cross-source rules: three files that must agree, or one of them is fiction ──
@@ -592,22 +708,80 @@ def test_the_real_file_count_is_reported_not_assumed(capsys):
 
 
 def test_the_other_gate_still_defers_topic_inventories_to_this_one():
-    """The reverse interlock.
+    """The reverse interlock, exercised as BEHAVIOUR rather than read as text.
 
-    If `test_kb_inventory_contract.py` stopped skipping kind='topic', its
-    retired-collection rules would start judging topic inventories by a schema
-    that was never meant for them — every topic file would go red on
-    `measured_against.distinct_documents` and someone would 'fix' it by loosening
-    the retired-collection gate. The two modules must keep agreeing about who
-    owns what, and the agreement must be enforced rather than remembered.
+    The first version of this test string-grepped the sibling's source for
+    `OWNED_KIND = "retired_collection"` and for the word "topic". A cross-family
+    refuter showed that both assertions survive the exact regression the test
+    exists to prevent: delete the `pytest.skip` from the sibling's `inventory`
+    fixture and topic files start being judged by the retired-collection schema,
+    while the constant line and the word "topic" both sit elsewhere in the file,
+    untouched. The test was green over the defect — the same guard-over-text
+    failure this whole module is built to refuse, committed inside the module
+    that refuses it.
+
+    So this now CALLS the sibling's fixture function with a synthetic
+    kind='topic' entry and asserts it raises Skipped. Remove the deferral and the
+    function returns a value instead of raising, and this goes red. The fixture's
+    undecorated body is reached through `__wrapped__`, which pytest sets when it
+    wraps a fixture function — asserted below, so a pytest change that removes it
+    fails loudly here instead of silently disarming the check.
     """
-    other = Path(__file__).with_name("test_kb_inventory_contract.py")
-    assert other.is_file(), f"{other.name} is missing — the retired-collection gate is gone"
-    source = other.read_text(encoding="utf-8")
-    assert 'OWNED_KIND = "retired_collection"' in source, (
-        f"{other.name} no longer claims kind='retired_collection'"
+    import importlib.util
+
+    from _pytest.outcomes import Skipped
+
+    other_path = Path(__file__).with_name("test_kb_inventory_contract.py")
+    assert other_path.is_file(), (
+        f"{other_path.name} is missing — the retired-collection gate is gone"
     )
-    assert OWNED_KIND in source, (
-        f"{other.name} no longer mentions kind={OWNED_KIND!r} — if it stopped deferring, "
-        f"it is now judging topic inventories by the retired-collection schema"
+    spec = importlib.util.spec_from_file_location("_sibling_gate_probe", other_path)
+    sibling = importlib.util.module_from_spec(spec)
+    sys.modules["_sibling_gate_probe"] = sibling
+    spec.loader.exec_module(sibling)
+
+    assert sibling.OWNED_KIND == "retired_collection", (
+        f"{other_path.name} no longer claims kind='retired_collection'"
+    )
+    assert OWNED_KIND in sibling.KINDS, (
+        f"{other_path.name} dropped kind={OWNED_KIND!r} from its KINDS vocabulary — a "
+        f"file with an unknown kind is validated by nobody, which is the hole this "
+        f"pair of gates exists to close"
+    )
+
+    body = getattr(sibling.inventory, "__wrapped__", None)
+    assert body is not None, (
+        "sibling.inventory has no __wrapped__ — pytest no longer exposes the "
+        "undecorated fixture body, so this interlock can no longer exercise the "
+        "deferral. Rewrite it rather than letting it pass on a missing attribute"
+    )
+
+    topic_entry = (Path("synthetic_topic.yaml"), {"schema_version": 1, "kind": OWNED_KIND})
+    with pytest.raises(Skipped):
+        body(topic_entry)
+
+    # Innocence: the same fixture must NOT skip what it does own, or the guilt
+    # assertion above would pass against a fixture that skips everything.
+    #
+    # The `except Skipped -> pytest.fail` is load-bearing and was written the wrong
+    # way round first. A bare `assert body(owned_entry) == owned_entry` lets the
+    # Skipped propagate, and pytest reads a Skipped raised inside a test body as
+    # "skip this test" — so mutating the sibling's condition to `if True:` (defer
+    # EVERYTHING, including what it owns) left this test green by silencing it.
+    # The condition the probe exists to detect was the condition that muted the
+    # probe. Catch it explicitly, or do not claim to check it.
+    owned_entry = (
+        Path("synthetic_retired.yaml"),
+        {"schema_version": 1, "kind": sibling.OWNED_KIND},
+    )
+    try:
+        returned = body(owned_entry)
+    except Skipped as exc:  # pragma: no cover - only reachable under the mutation
+        pytest.fail(
+            f"the sibling fixture skipped an inventory of its OWN kind "
+            f"({sibling.OWNED_KIND!r}) — the deferral has stopped discriminating and "
+            f"now defers everything, so nothing is validated by anyone. Skip reason: {exc}"
+        )
+    assert returned == owned_entry, (
+        f"the sibling fixture returned {returned!r} for an inventory of its own kind"
     )
