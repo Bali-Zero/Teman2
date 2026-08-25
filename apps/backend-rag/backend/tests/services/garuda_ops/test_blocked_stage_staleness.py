@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -90,9 +91,14 @@ def test_persistence_policy_claim_is_still_true() -> None:
     can see, but `public_api.py`'s own docstring names the mechanical
     proxy: a real adapter is wired in "by replacing the
     `get_garuda_check_store` dependency in the router" — as long as that
-    dependency still returns `UnconfiguredCheckStore`, no adapter has been
-    wired and the claim holds."""
-    store = get_garuda_check_store()
+    dependency still returns `UnconfiguredCheckStore` when nothing is
+    wired onto `app.state.garuda_check_store` (PR #4920's composition
+    commit moved this from a bare no-arg function to
+    `request.app.state`-aware, mirroring #4910's
+    `get_garuda_magic_link_store` convention), no adapter has been wired
+    and the claim holds."""
+    no_state_request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace()))
+    store = get_garuda_check_store(no_state_request)
     assert isinstance(store, UnconfiguredCheckStore), (
         "get_garuda_check_store() no longer returns UnconfiguredCheckStore -- "
         "a real CheckStore adapter has been wired in. persistence_policy's "
