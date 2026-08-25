@@ -214,71 +214,114 @@ class PracticeRepository:
                     extra={"order_id": order_id},
                 )
                 return None
-            paid_event_id = paid_event["event_id"]
-
-            practice_id = journal.new_opaque_id("practice")
-            inserted = await conn.fetchrow(
-                """
-                INSERT INTO garuda_practices (practice_id, order_id, source_paid_journal_event_id)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (source_paid_journal_event_id) DO NOTHING
-                RETURNING practice_id
-                """,
-                practice_id,
-                order_id,
-                paid_event_id,
+            return await mint_received_practice(
+                conn, order_id=order_id, paid_journal_event_id=paid_event["event_id"]
             )
 
-            if inserted is None:
-                # Lost the race -- another concurrent read already created
-                # the practice for this same OP-02 event. Re-read its real
-                # practice_id rather than returning the id we minted but
-                # never persisted.
-                existing = await conn.fetchrow(
-                    "SELECT practice_id FROM garuda_practices WHERE source_paid_journal_event_id = $1",
-                    paid_event_id,
-                )
-                if existing is None:
-                    # Genuinely impossible under READ COMMITTED+ (the
-                    # conflicting row's inserting transaction must commit
-                    # before ON CONFLICT can observe it) -- fail safe.
-                    logger.error(
-                        "garuda_portal.practice.pr01_race_lost_row_vanished",
-                        extra={"order_id": order_id},
-                    )
-                    return None
-                return PracticeView(
-                    practice_id=existing["practice_id"],
-                    state="Received",
-                    artifact_available=False,
-                )
 
-            won_practice_id = inserted["practice_id"]
-            event_id = await journal.append_event(
-                conn,
-                event_name="practice.received",
-                aggregate_type="practice",
-                aggregate_id=won_practice_id,
-                transition_id="PR-01",
-                customer_visible=True,
-                idempotency_key_digest=hashlib.sha256(paid_event_id.encode("utf-8")).digest(),
-                detail={},
-            )
-            await journal.enqueue_outbox(
-                conn,
-                order_id=order_id,
-                journal_event_id=event_id,
-                job_type="practice_received_email",
-            )
-            logger.info(
-                "garuda_portal.practice.pr01_created",
+async def mint_received_practice(
+    conn: asyncpg.Connection, *, order_id: str, paid_journal_event_id: str
+) -> PracticeView | None:
+    """PR-01's actual write: `not_started -> Received`, given a KNOWN
+    `payment.paid`/OP-02 journal event id.
+
+    Two callers, both correct, both idempotent against the SAME
+    `source_paid_journal_event_id` UNIQUE constraint (migration 287):
+
+    1. `PracticeRepository._create_received_practice` (lazy-on-read
+       safety net): looks up the OP-02 event first, since the caller
+       there (a customer's GET) does not already have it.
+    2. `GarudaOrderRepository.handle_paid_event` (L3, EAGER path -- team-
+       lead directive 2026-08-25, cross-lane call explicitly authorized):
+       calls this DIRECTLY with the `event_id` it just minted for
+       `payment.paid`, in the SAME transaction, so a practice is recorded
+       the instant payment is confirmed -- never conditioned on the
+       customer ever opening their tracker page. This closes a real
+       product defect the lazy-only version had: a paid, never-viewed
+       order left Bali Zero holding money with no work item recorded.
+       Minting inside OP-02's own transaction (rather than out-of-band)
+       is INTENTIONAL, not merely convenient: if the practice INSERT ever
+       fails, the whole transaction rolls back -- `garuda_orders` never
+       reaches `paid`, `garuda_payment_inbox`'s dedup row never commits
+       either, and the provider's webhook retry (Xendit retries on a
+       non-2xx response) gets a clean second attempt instead of a
+       silently half-completed payment. This is a STRONGER invariant than
+       decoupling payment from practice creation, not merely a smaller
+       diff.
+
+    Idempotent under concurrent callers: `source_paid_journal_event_id`
+    is UNIQUE, so two racing callers for the same paid order (e.g. the
+    eager path from a webhook and a customer's lazy read arriving before
+    the webhook transaction commits) both attempt the INSERT, exactly one
+    commits, and the loser's `ON CONFLICT DO NOTHING` returns no row -- it
+    then re-SELECTs the winner's row rather than raising. Only the winner
+    appends the `practice.received` journal event and enqueues the
+    confirmation email job, so a race never produces two journal events
+    or two emails for one order (SM-G08).
+    """
+    practice_id = journal.new_opaque_id("practice")
+    inserted = await conn.fetchrow(
+        """
+        INSERT INTO garuda_practices (practice_id, order_id, source_paid_journal_event_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (source_paid_journal_event_id) DO NOTHING
+        RETURNING practice_id
+        """,
+        practice_id,
+        order_id,
+        paid_journal_event_id,
+    )
+
+    if inserted is None:
+        # Lost the race -- another concurrent caller already created the
+        # practice for this same OP-02 event. Re-read its real
+        # practice_id rather than returning the id we minted but never
+        # persisted.
+        existing = await conn.fetchrow(
+            "SELECT practice_id FROM garuda_practices WHERE source_paid_journal_event_id = $1",
+            paid_journal_event_id,
+        )
+        if existing is None:
+            # Genuinely impossible under READ COMMITTED+ (the conflicting
+            # row's inserting transaction must commit before ON CONFLICT
+            # can observe it) -- fail safe.
+            logger.error(
+                "garuda_portal.practice.pr01_race_lost_row_vanished",
                 extra={"order_id": order_id},
             )
-            return PracticeView(
-                practice_id=won_practice_id,
-                state="Received",
-                artifact_available=False,
-            )
+            return None
+        return PracticeView(
+            practice_id=existing["practice_id"],
+            state="Received",
+            artifact_available=False,
+        )
+
+    won_practice_id = inserted["practice_id"]
+    event_id = await journal.append_event(
+        conn,
+        event_name="practice.received",
+        aggregate_type="practice",
+        aggregate_id=won_practice_id,
+        transition_id="PR-01",
+        customer_visible=True,
+        idempotency_key_digest=hashlib.sha256(paid_journal_event_id.encode("utf-8")).digest(),
+        detail={},
+    )
+    await journal.enqueue_outbox(
+        conn,
+        order_id=order_id,
+        journal_event_id=event_id,
+        job_type="practice_received_email",
+    )
+    logger.info(
+        "garuda_portal.practice.pr01_created",
+        extra={"order_id": order_id},
+    )
+    return PracticeView(
+        practice_id=won_practice_id,
+        state="Received",
+        artifact_available=False,
+    )
 
 
-__all__ = ["PracticeRepository", "PracticeView"]
+__all__ = ["PracticeRepository", "PracticeView", "mint_received_practice"]

@@ -228,6 +228,46 @@ async def test_unpaid_order_has_no_practice(pool, order_repository, practice_rep
 
 
 @pytest.mark.asyncio
+async def test_a_paid_order_that_the_customer_never_looks_at_still_gets_a_practice(
+    pool, order_repository
+):
+    """Team-lead dissent (2026-08-25): before this test, the ONLY path that
+    ever inserted a `garuda_practices` row was `PracticeRepository.
+    get_order_and_practice_view` -- i.e. the customer opening their own
+    tracker page. A tourist who pays and closes the tab forever would leave
+    Bali Zero holding the money with NO work item recorded that a visa is
+    owed. This test drives ONLY `order_repository.handle_paid_event` --
+    never touching `PracticeRepository` at all -- and asserts a practice
+    row exists anyway, minted synchronously inside the SAME transaction
+    that writes `payment.paid`/OP-02, not conditioned on anyone ever
+    reading the tracker."""
+    order_id = await _create_and_pay_order(
+        order_repository,
+        result_id="result-neverread-000000",
+        provider_event_id="evt-neverread-1",
+    )
+
+    row = await pool.fetchrow(
+        "SELECT practice_id, state, source_paid_journal_event_id "
+        "FROM garuda_practices WHERE order_id = $1",
+        order_id,
+    )
+    assert row is not None, (
+        "no garuda_practices row exists for a paid order nobody ever read the "
+        "tracker for -- PR-01 must fire on the payment event, not on customer "
+        "curiosity."
+    )
+    assert row["state"] == "Received"
+
+    journal_row = await pool.fetchrow(
+        "SELECT event_id FROM garuda_order_journal "
+        "WHERE aggregate_type = 'practice' AND transition_id = 'PR-01' AND aggregate_id = $1",
+        row["practice_id"],
+    )
+    assert journal_row is not None
+
+
+@pytest.mark.asyncio
 async def test_a_paid_order_gets_a_received_practice_on_first_read(
     pool, order_repository, practice_repository
 ):
@@ -310,20 +350,35 @@ async def test_ownership_filter_hides_practice_from_a_different_result_id(
 ):
     """The same ownership predicate #4910 closed on the order query must
     hold on the practice read too -- a paid order's practice is never
-    observable through a `result_id_ref` that does not own it."""
+    observable through a `result_id_ref` that does not own it.
+
+    CORRECTED (team-lead dissent, 2026-08-25): a practice for a `paid`
+    order now exists REGARDLESS of who reads it -- `handle_paid_event`
+    mints PR-01 eagerly, in the same transaction as `payment.paid`. So the
+    count here is 1 from payment alone, not 0. What this test must prove
+    is narrower and still real: the intruding read (a) cannot SEE it, and
+    (b) does not mint a SECOND, redundant practice row for the same order
+    it is not allowed to observe."""
     order_id = await _create_and_pay_order(
         order_repository, result_id="result-owner-00000000000", provider_event_id="evt-p3"
     )
+    count_after_payment = await pool.fetchval(
+        "SELECT count(*) FROM garuda_practices WHERE order_id = $1", order_id
+    )
+    assert count_after_payment == 1
 
     view = await practice_repository.get_order_and_practice_view(
         order_id=order_id, result_id_ref="result-intruder-000000000"
     )
     assert view is None
 
-    # And the intruding read must not have side-effected a practice into
-    # existence for an order it cannot even see.
-    count = await pool.fetchval("SELECT count(*) FROM garuda_practices WHERE order_id = $1", order_id)
-    assert count == 0
+    # The intruding read must not have created a SECOND practice for an
+    # order it cannot even see (it also must not have been able to see the
+    # one that already exists -- asserted above via `view is None`).
+    count_after_intrusion = await pool.fetchval(
+        "SELECT count(*) FROM garuda_practices WHERE order_id = $1", order_id
+    )
+    assert count_after_intrusion == 1
 
 
 @pytest.mark.asyncio
