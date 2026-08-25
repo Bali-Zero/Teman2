@@ -199,6 +199,26 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
   - id: 3
     decision: data_retention_days
     state: proposal-ready
+    # ── blocks_go_live MOVED HERE 2026-08-25 (orchestrator session). ──
+    # Until today this flag lived ONLY on decision 7, on a claim that turned out to be
+    # stale (see that block). Clearing it there left the switchboard asserting that NOTHING
+    # blocks go-live, which is false in the more dangerous direction — so the flag moves to
+    # the decision that measurably does block, rather than being deleted.
+    #
+    # MEASURED, three independent ways, 2026-08-25:
+    #   (1) No migration anywhere seeds a GARUDA_CHECK row in visa_decision_retention_policies
+    #       (grep for INSERT INTO ... retention_policies across migrations_v2: zero hits).
+    #   (2) Migration 286's BEFORE INSERT trigger does `SELECT ... INTO STRICT policy ...
+    #       WHERE policy_scope = 'GARUDA_CHECK'` and raises `garuda check result has no
+    #       active Zero-approved retention policy` on NO_DATA_FOUND. So not one row can be
+    #       written to garuda_voa_check_results until Zero signs.
+    #   (3) test_blocked_stage_staleness.py::test_persistence_policy_claim_is_still_true
+    #       asserts get_garuda_check_store() still returns UnconfiguredCheckStore, and it
+    #       is green — i.e. the fail-closed state is not a claim, it is enforced and watched.
+    #
+    # This is a STRONGER blocker than 7 ever was: 7 was about whether a price could be
+    # quoted; this is about whether any customer record can be persisted at all.
+    blocks_go_live: true
     proposed_value_days: 90
     packet: products/garuda-voa/ops/decision-packets/03-data-retention.md
     gesture: "approve or change the number"
@@ -333,12 +353,32 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     #   price_for_case(extension) = (850000, "B1 Visa on Arrival Extension")
     # These are the exact amounts the funnel would charge, from a file last touched in May.
     measured_catalogue_age_days: 111
-    # RE-MEASURED 2026-08-25 by importing the loader: age 111d vs window 90d, verdict STALE,
-    # and price_for_case(ISSUANCE) now returns (None, None). This is no longer a forecast.
-    # The guardrail is LIVE on the branch, so the funnel would answer 503 PRICE_UNRESOLVABLE
-    # to every real customer today. That makes this decision the top go-live blocker: no
-    # other lane's work can sell anything until it is answered.
-    blocks_go_live: true
+    # ⚠️ SUPERSEDED — the block above was a TRUE measurement that went stale, and it said so
+    # in the one voice hardest to doubt: "RE-MEASURED ... this is no longer a forecast",
+    # concluding price_for_case(ISSUANCE) returns (None, None) and the funnel would answer
+    # 503 to every real customer. That was correct WHEN WRITTEN and is FALSE NOW. Commit
+    # 56dcb0689 ("per-row verified_on attestation, so the funnel can sell again") landed on
+    # this branch afterwards and nobody reconciled this file to it.
+    #
+    # RE-EXECUTED 2026-08-25 by the orchestrator session, real clock, real catalogue —
+    # not read off the guardrail's design, which is exactly how the wrong claim was produced:
+    #   price_for_case(CaseType.ISSUANCE,  today=date(2026,8,25)) -> (790000, "B1 Visa on Arrival (VOA)")
+    #   price_for_case(CaseType.EXTENSION, today=date(2026,8,25)) -> (850000, "B1 Visa on Arrival Extension")
+    # Both resolve. The funnel does NOT decline to sell.
+    #
+    # MECHANISM: freshness is checked PER ROW, not catalogue-wide. A row's own `verified_on`
+    # overrides the catalogue-wide `metadata.last_updated` for that row alone. Both VOA rows
+    # carry verified_on: 2026-08-25. So `measured_catalogue_age_days: 111` above is still
+    # TRUE and simply does not govern these two rows — the two facts never contradicted each
+    # other, which is why the wrong conclusion looked so solid.
+    #
+    # WHAT 7(a)'s OPEN SCOPE STILL GOVERNS (both real, neither blocking a sale today):
+    #   (a) whether the same per-row mechanism may be used to sell any of the other ~98 rows
+    #       without each getting its own verified_on;
+    #   (b) a RECURRING CLOCK: both VOA attestations are dated 2026-08-25, so under the same
+    #       90-day window they expire ~2026-11-23 and the funnel reverts to declining to sell.
+    #       Nobody owns that renewal yet. It is the successor to the trap this block records.
+    blocks_go_live: false
     # ── 2026-08-25, PARTIALLY ANSWERED (relay): Zero, verbatim "i prezzi sono ok". ──
     # That answers 7(a) — 790.000 / 850.000 are attested current — and it is NOT the
     # forbidden move recorded below. The prohibition was never against stamping; it was

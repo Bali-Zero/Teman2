@@ -587,6 +587,37 @@ async def test_cli_fresh_state_exits_zero_without_network(clean_env, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_cli_injected_clock_governs_not_the_real_clock(clean_env, tmp_path):
+    """GUARD: proves the `now` forwarding in `run_from_env` is load-bearing.
+
+    The sibling above pins the clock, but it would still pass if someone
+    dropped the `now=now` forwarding inside `run_from_env` — production would
+    fall back to the wall clock and, for a window of days around the fixture's
+    expiry, agree by coincidence. That is the same coincidence that armed W129
+    in the first place, so pinning alone is not a cure, only a reset of the
+    countdown.
+
+    This test cannot agree by coincidence: the SAME 50-day fixture must read
+    fresh at one injected instant and stale at another. No wall clock can
+    satisfy both in one run, so a broken forwarding fails here on any calendar
+    day rather than waiting for one.
+    """
+    state_file = _state(tmp_path, days_left=50)
+    clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
+    clean_env.setenv("IG_TOKEN_STATE_FILE", str(state_file))
+
+    handler_fresh = GraphHandler()
+    async with _client(handler_fresh) as client:
+        assert await run_from_env(http_client=client, now=NOW + timedelta(days=1)) == 0
+    assert handler_fresh.ig_refresh_calls == 0
+
+    handler_stale = GraphHandler()
+    async with _client(handler_stale) as client:
+        assert await run_from_env(http_client=client, now=NOW + timedelta(days=365)) == 2
+    assert handler_stale.ig_refresh_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_cli_invalid_token_exits_two(clean_env):
     clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
     clean_env.setenv("IG_TOKEN_FAMILY", "facebook")
