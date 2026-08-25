@@ -99,40 +99,67 @@ class GarudaOrderRepository:
 
             order_id = outcome.order_id
             if order_id is None:
-                order_id = journal.new_opaque_id("ord")
-                async with conn.transaction():
-                    await conn.execute(
-                        """
-                        INSERT INTO garuda_orders
-                            (order_id, result_id_ref, case_type, applicant_full_name,
-                             applicant_email, applicant_phone, applicant_passport_number,
-                             price_idr, price_catalogue_key)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                        """,
-                        order_id,
-                        result_id,
-                        check.case_type.value,
-                        applicant.full_name,
-                        applicant.email,
-                        applicant.phone,
-                        applicant.passport_number,
-                        price_idr,
-                        price_key,
-                    )
-                    await journal.append_event(
-                        conn,
-                        event_name="order.created",
-                        aggregate_type="order",
-                        aggregate_id=order_id,
-                        transition_id="OP-00",
-                        customer_visible=False,
-                        idempotency_key_digest=idempotency_key_sha256,
-                        canonical_payload_digest=canonical_payload_sha256,
-                        detail={"price_idr": price_idr, "price_catalogue_key": price_key},
-                    )
-                    await idempotency.bind_order_id(
-                        conn, key_sha256=idempotency_key_sha256, order_id=order_id
-                    )
+                # CORRECTED (refuter finding): a customer who reloads and
+                # issues a FRESH Idempotency-Key against a still-live
+                # `result_id_ref` used to hit `INSERT INTO garuda_orders`
+                # head-on into `uq_garuda_orders_result_id_ref_live` with no
+                # ON CONFLICT -- a raw asyncpg.UniqueViolationError -> 500 on
+                # the self-recovery path of a payment flow. Look up the live
+                # order for this check FIRST and bind this (new) key to it
+                # instead of inserting a duplicate -- two different
+                # Idempotency-Keys are allowed to reference the same order
+                # (no uniqueness on garuda_order_idempotency.order_id), and
+                # this also means a live `created` order gets a REAL
+                # checkout_url below (the CREATED branch calls the provider)
+                # instead of ever reaching the `pending-resume:` placeholder.
+                existing = await conn.fetchrow(
+                    """
+                    SELECT order_id FROM garuda_orders
+                     WHERE result_id_ref = $1 AND state IN ('created', 'awaiting_payment', 'paid')
+                    """,
+                    result_id,
+                )
+                if existing is not None:
+                    order_id = existing["order_id"]
+                    async with conn.transaction():
+                        await idempotency.bind_order_id(
+                            conn, key_sha256=idempotency_key_sha256, order_id=order_id
+                        )
+                else:
+                    order_id = journal.new_opaque_id("ord")
+                    async with conn.transaction():
+                        await conn.execute(
+                            """
+                            INSERT INTO garuda_orders
+                                (order_id, result_id_ref, case_type, applicant_full_name,
+                                 applicant_email, applicant_phone, applicant_passport_number,
+                                 price_idr, price_catalogue_key)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                            """,
+                            order_id,
+                            result_id,
+                            check.case_type.value,
+                            applicant.full_name,
+                            applicant.email,
+                            applicant.phone,
+                            applicant.passport_number,
+                            price_idr,
+                            price_key,
+                        )
+                        await journal.append_event(
+                            conn,
+                            event_name="order.created",
+                            aggregate_type="order",
+                            aggregate_id=order_id,
+                            transition_id="OP-00",
+                            customer_visible=False,
+                            idempotency_key_digest=idempotency_key_sha256,
+                            canonical_payload_digest=canonical_payload_sha256,
+                            detail={"price_idr": price_idr, "price_catalogue_key": price_key},
+                        )
+                        await idempotency.bind_order_id(
+                            conn, key_sha256=idempotency_key_sha256, order_id=order_id
+                        )
 
             row = await conn.fetchrow(
                 "SELECT state, price_idr FROM garuda_orders WHERE order_id = $1",

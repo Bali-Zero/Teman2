@@ -243,12 +243,23 @@ async def observe_payment_browser_return(
 async def receive_payment_webhook(
     request: Request,
     response: Response,
-    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     repository: GarudaOrderRepository = Depends(get_repository),
 ) -> None:
+    # CORRECTED (gate finding): this path was requiring an Idempotency-Key
+    # header, per the frozen contract's `$ref` on this operation. Xendit
+    # Invoices callbacks authenticate with a static `x-callback-token`
+    # (xendit.py:9-13, verify_signature below) -- Xendit has no reason to
+    # send `Idempotency-Key`, that header is a request-idempotency pattern
+    # for commands WE issue, never for an inbound provider callback. In
+    # production the route 400'd before signature verification ran,
+    # handle_paid_event never fired, and the order sat in awaiting_payment
+    # forever while OP-04 reconciliation saw the real charge and only
+    # logged a warning (repository.py, no page). The contract's own
+    # `$ref` here is the orchestrator's fix (frozen contract, not this
+    # lane's to edit) -- this router-side removal is the corresponding fix
+    # on the implementation.
     _require_flag()
     _privacy_headers(response)
-    _idempotency_key(idempotency_key)
     raw_body = await request.body()
     provider = getattr(request.app.state, "garuda_payment_provider", None)
     if provider is None:

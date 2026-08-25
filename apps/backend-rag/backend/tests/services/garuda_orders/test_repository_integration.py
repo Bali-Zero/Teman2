@@ -544,3 +544,58 @@ async def test_two_orders_for_the_same_check_are_rejected_at_the_db_layer(pool):
             """,
             "order-dup-check-b-0000000",
         )
+
+
+@pytest.mark.asyncio
+async def test_fresh_idempotency_key_against_a_still_live_order_does_not_crash(pool, repository):
+    """Gate finding: a customer who reloads and issues a FRESH Idempotency-
+    Key against a still-live `result_id_ref` used to hit `INSERT INTO
+    garuda_orders` head-on into `uq_garuda_orders_result_id_ref_live` with no
+    ON CONFLICT -- a raw asyncpg.UniqueViolationError -> 500 on the
+    self-recovery path of a payment flow. The repository must instead find
+    the live order and bind the new key to it, returning ITS real state."""
+
+    key_digest_1 = scoped_key_sha256(
+        actor="actor-9", operation="createOrderFromCheck", raw_key="idem-key-reload-0001"
+    )
+    payload_digest_1 = canonical_payload_sha256(
+        {"result_id": "result-9-0000000000", "applicant": {"e": 9}}
+    )
+    body1, replayed1 = await repository.create_order_and_checkout(
+        result_id="result-9-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest_1,
+        canonical_payload_sha256=payload_digest_1,
+    )
+    assert replayed1 is False
+    order_id = body1["order_id"]
+
+    # A DIFFERENT (fresh) Idempotency-Key -- e.g. the customer reloaded the
+    # checkout page and their client minted a new key -- against the SAME
+    # still-live result_id_ref. This must not raise, and must resolve to
+    # the SAME order rather than attempting (and failing) to create a second
+    # live one.
+    key_digest_2 = scoped_key_sha256(
+        actor="actor-9", operation="createOrderFromCheck", raw_key="idem-key-reload-0002"
+    )
+    payload_digest_2 = canonical_payload_sha256(
+        {"result_id": "result-9-0000000000", "applicant": {"e": 9}}
+    )
+    body2, replayed2 = await repository.create_order_and_checkout(
+        result_id="result-9-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest_2,
+        canonical_payload_sha256=payload_digest_2,
+    )
+    # Not a "replay" in the idempotency-cache sense (different key), but it
+    # must resolve to the SAME live order, not a crash and not a duplicate.
+    assert replayed2 is False
+    assert body2["order_id"] == order_id
+    assert body2["order_state"] == "awaiting_payment"
+
+    count = await pool.fetchval(
+        "SELECT count(*) FROM garuda_orders WHERE result_id_ref = 'result-9-0000000000'"
+    )
+    assert count == 1  # never a duplicate live order for the same check
