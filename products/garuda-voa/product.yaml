@@ -224,6 +224,39 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
       guard green is the one move that is not available: that turns the guardrail back into
       the sentence it has been all along.
     gesture: "confirm the two amounts, or re-stamp the catalogue, or rule on the window"
+  - id: 8
+    decision: ocr_calibration_corpus
+    state: question-ready
+    # RAISED 2026-08-25 by the orchestrator after L5 shipped. This is NOT "pick a
+    # number" — it is the only question that unblocks measuring one.
+    #
+    # DECISIONS.md Q7 says the OCR confidence cut must be MEASURED against genuine
+    # passport photographs (good, dim, glare, angle, partial crop) and set where the
+    # false-confident rate goes to zero, because "the expensive error is not 'we asked
+    # again', it is 'we filed a wrong passport number'". L5's mandate is synthetic-only
+    # under the PII boundary, so L5 correctly REFUSED to source that corpus and said so
+    # rather than quietly calibrating on fabricated specimens.
+    #
+    # The two rules therefore collide, and the collision resolves in Zero's hands, not a
+    # lane's. Right now `CONFIDENCE_THRESHOLD = 0.80` in
+    # services/garuda_documents/confidence.py is a threshold picked by argument — which
+    # is precisely what Q7 forbids. It is a single named constant on purpose.
+    #
+    # Mitigating, and the reason this is not a go-live blocker on its own: the cut only
+    # decides whether we ask the customer to retake or pre-fill the field for their
+    # review. A human still confirms every field before submission, and no numeric
+    # confidence ever reaches the customer (Q7's frozen shape). What an uncalibrated cut
+    # buys us is friction if too high, and a pre-filled wrong value a tired customer may
+    # accept if too low.
+    question: >
+      On what corpus may we calibrate the OCR confidence threshold? Concretely: is there
+      a lawful basis and a controlled local environment for using real client passport
+      images already held, or should we build the corpus from consenting staff/personal
+      documents instead?
+    consequence: >
+      Until answered, 0.80 stands as an explicitly unmeasured default and Q7 stays open.
+      The number cannot be honestly calibrated on synthetic specimens.
+    gesture: "answer where the corpus comes from — the measurement follows from it"
   - id: 0
     decision: go_live
     state: blocked-on-all-above-and-on-the-parent-page
