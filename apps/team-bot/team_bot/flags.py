@@ -39,6 +39,7 @@ __all__ = [
     "ABSOLUTE_MAX_READ_STEPS_ENV_CEILING",
     "DEFAULT_MAX_READ_STEPS",
     "SINGLE_STEP",
+    "is_team_bot_brain_tp1_enabled",
     "is_team_bot_enabled",
     "is_team_bot_memory_enabled",
     "is_team_bot_multistep_reads_enabled",
@@ -121,3 +122,12 @@ def is_team_bot_memory_enabled() -> bool:
     "is this on" is the exact drift class this module already learned about.
     """
     return _truthy(os.getenv("TEAM_BOT_MEMORY_ENABLED", "false"))
+
+def is_team_bot_brain_tp1_enabled() -> bool:
+    """True only when ``TEAM_BOT_BRAIN_TP1_ENABLED`` is truthy. Default OFF
+    (everything ships dark). While ``False``, ``BrainRouter`` never attempts
+    any of the three TP1 cloud tiers and goes straight to the local
+    read-only degradation lane — this is the single gesture to pull the
+    cloud brain out of rotation without touching ``TEAM_BOT_REPLY_ENABLED``
+    (the master "send a reply at all" switch)."""
+    return _env_truthy("TEAM_BOT_BRAIN_TP1_ENABLED")
