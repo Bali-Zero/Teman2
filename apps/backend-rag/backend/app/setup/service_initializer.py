@@ -1453,6 +1453,17 @@ async def initialize_services(app: FastAPI) -> None:
     # under `garuda_payment_http_client` so `app_factory.py`'s generic
     # "close anything with `client`/`service` in its attribute name"
     # shutdown loop closes it — no new cleanup plumbing needed.
+    #
+    # `GARUDA_PUBLIC_BASE_URL` (single base, no success/failure split —
+    # Dissent #3, 2026-08-25 review of PR #4920): the return route lives on
+    # the public site apps/mouth actually deploys to, verified from
+    # `apps/mouth/README.md`'s own "Live: www.balizero.com" badge, not
+    # assumed. `XenditPaymentProvider.create_checkout_session` builds the
+    # real per-order, per-nonce return URL from this base — a static
+    # success/failure pair could never carry the order id the return route
+    # requires, and the product's own return-page contract forbids a
+    # success/failure split anyway (browser return is an OBSERVATION, not a
+    # truth).
     garuda_xendit_secret_key = os.environ.get("GARUDA_XENDIT_SECRET_KEY", "").strip()
     if db_pool is not None and garuda_xendit_secret_key:
         try:
@@ -1470,11 +1481,8 @@ async def initialize_services(app: FastAPI) -> None:
                 callback_verification_token=os.environ.get(
                     "GARUDA_XENDIT_CALLBACK_TOKEN", ""
                 ).strip(),
-                success_redirect_url=os.environ.get(
-                    "GARUDA_CHECKOUT_SUCCESS_URL", "https://kita.balizero.com/garuda-voa/success"
-                ).strip(),
-                failure_redirect_url=os.environ.get(
-                    "GARUDA_CHECKOUT_FAILURE_URL", "https://kita.balizero.com/garuda-voa/failure"
+                public_base_url=os.environ.get(
+                    "GARUDA_PUBLIC_BASE_URL", "https://www.balizero.com"
                 ).strip(),
                 fee_config=XenditFeeConfig(
                     percentage_bps=int(os.environ.get("GARUDA_XENDIT_FEE_BPS", "0") or "0"),

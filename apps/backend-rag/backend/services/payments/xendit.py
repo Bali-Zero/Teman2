@@ -19,9 +19,11 @@ from __future__ import annotations
 
 import hmac
 import logging
+import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -85,8 +87,7 @@ class XenditPaymentProvider:
         *,
         secret_key: str,
         callback_verification_token: str,
-        success_redirect_url: str,
-        failure_redirect_url: str,
+        public_base_url: str,
         fee_config: XenditFeeConfig,
         client: httpx.AsyncClient,
         base_url: str = _SANDBOX_BASE_URL,
@@ -99,8 +100,18 @@ class XenditPaymentProvider:
             )
         self._secret_key = secret_key
         self._callback_verification_token = callback_verification_token
-        self._success_redirect_url = success_redirect_url
-        self._failure_redirect_url = failure_redirect_url
+        # `public_base_url` is the ONE thing this adapter needs to reach the
+        # frontend -- NOT two static success/failure URLs (Dissent #3,
+        # 2026-08-25 review of PR #4920). A static URL cannot carry the
+        # per-order `orderId` the return route requires, and the product's
+        # own contract forbids a success/failure split anyway: the browser
+        # return is an OBSERVATION, never a truth
+        # (`apps/mouth/.../orders/[orderId]/return/page.tsx` docstring), so
+        # there is deliberately ONE return route regardless of outcome. The
+        # per-invoice URL (order id + a freshly minted, opaque nonce) is
+        # built in `create_checkout_session` below, where `order_id` is
+        # actually known.
+        self._public_base_url = public_base_url.rstrip("/")
         self._fee_config = (
             fee_config  # kept for operator visibility only; never read by mapping code
         )
@@ -117,6 +128,17 @@ class XenditPaymentProvider:
         if price_idr <= 0:
             raise ValueError("price_idr must be a positive all-inclusive integer")
         expires_at = datetime.now(UTC) + timedelta(minutes=_CHECKOUT_TTL_MINUTES)
+        # One nonce, one route, regardless of outcome (see __init__ docstring
+        # note above). Minting it here does not create a second source of
+        # truth: `record_browser_return_observation` (repository.py OP-07)
+        # accepts and stores whatever nonce the browser echoes back on its
+        # FIRST write for this order_id -- there is no earlier value it must
+        # match. `secrets.token_urlsafe` is opaque and carries no PII.
+        return_nonce = secrets.token_urlsafe(32)
+        return_url = (
+            f"{self._public_base_url}/visa/voa/orders/{quote(order_id, safe='')}"
+            f"/return?return_nonce={quote(return_nonce, safe='')}"
+        )
         response = await self._client.post(
             f"{self._base_url}/v2/invoices",
             auth=(self._secret_key, ""),
@@ -126,8 +148,8 @@ class XenditPaymentProvider:
                 "amount": price_idr,
                 "currency": "IDR",
                 "invoice_duration": _CHECKOUT_TTL_MINUTES * 60,
-                "success_redirect_url": self._success_redirect_url,
-                "failure_redirect_url": self._failure_redirect_url,
+                "success_redirect_url": return_url,
+                "failure_redirect_url": return_url,
                 "payment_methods": ["CREDIT_CARD"],
             },
         )

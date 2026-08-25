@@ -82,6 +82,34 @@ receipts:
     exit: 0
     ts: "2026-08-25T13:10:00Z"
     seat: opus-5
+  - claim: >
+      Dissent #3 fix (static success/failure redirect URLs replaced by a
+      single per-order, per-nonce return URL): 4 new regression tests, and
+      confirmed each goes RED against the pre-fix constructor shape
+      (TypeError on the removed success_redirect_url/failure_redirect_url
+      kwargs) before going green against the fix -- not just written and
+      trusted.
+    cmd: >
+      PYTHONPATH=. pytest
+      backend/tests/services/payments/test_xendit_checkout_redirect.py -v
+    exit: 0
+    ts: "2026-08-25T14:05:00Z"
+    seat: opus-5
+  - claim: >
+      Full payments + garuda_orders + garuda_ops + ownership-router surface
+      is green after the Dissent #3 fix, 109 passed / 33 skipped (the
+      pre-existing, unrelated `role "nuzantara" does not exist` scar on
+      this M5 checkout), 0 failed.
+    cmd: >
+      PYTHONPATH=. pytest
+      backend/tests/services/payments/
+      backend/tests/services/garuda_orders/
+      backend/tests/services/garuda_ops/
+      backend/tests/app/routers/test_garuda_orders_ownership.py
+      --color=no
+    exit: 0
+    ts: "2026-08-25T14:07:00Z"
+    seat: opus-5
 dissent:
   - seat: team-lead (integration-branch orchestrator, cross-review of the
       base composition commit)
@@ -106,4 +134,17 @@ dissent:
       diff never touches _require_staff_actor or
       garuda_staff_session_verifier.
     status: RETRACTED
+  - seat: team-lead (structural review of the L3 order/payment wiring,
+      Dissent #3)
+    objection: >
+      The chosen GARUDA_CHECKOUT_SUCCESS_URL/GARUDA_CHECKOUT_FAILURE_URL
+      static env vars can never work: orderId is a dynamic Next.js route
+      segment (`[orderId]/return`) that no fixed string can carry, the
+      configured host/path (kita.balizero.com/garuda-voa/*) doesn't exist
+      in apps/mouth at all, and a two-URL success/failure split
+      contradicts the return route's own contract ("the browser return is
+      an OBSERVATION, not a truth" -- there must be exactly one route).
+      Not a naming preference -- structurally cannot reach the frontend as
+      built.
+    status: CONFIRMED
 pii_scan: clean
