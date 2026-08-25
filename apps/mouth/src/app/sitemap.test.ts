@@ -18,10 +18,16 @@ import { fileURLToPath } from "url";
  * every page into the sitemap, it is to make omission a decision instead of
  * an oversight.
  *
- * Dynamic `[hash]` result routes are excluded structurally. GARUDA VOA is now
- * an internal-only admin tool; its old public route remains a 404 tombstone
- * and is deliberately excluded below so it cannot regain search discovery by
- * accident.
+ * Dynamic `[hash]` result routes are excluded structurally.
+ *
+ * UPDATE 2026-08-25 (owner decision 5 ratified, `docs/plans/2026-08-24-garuda-voa-live/
+ * MANDATE.md`): the 404 tombstone at `/visa/voa` is retired — the funnel is real again
+ * (wizard + result pages), built against the frozen `products/garuda-voa/contracts/`.
+ * It stays deliberately excluded below because the product is shipping DARK
+ * (`docs/factory/ASSEMBLY-LINE.md` stage 6): `GARUDA_PUBLIC_ENABLED` is false, the layout
+ * keeps `robots: {index:false, follow:false}`, and go-live (product.yaml owner decision 0)
+ * is still blocked. When that decision closes, this exclusion and the layout's noindex
+ * move together, not just one of them — same discipline the visa-oracle block below states.
  */
 
 // Heavy data sources — this test is about route coverage, not content.
@@ -40,8 +46,6 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import sitemap from "./sitemap";
-import { GET as getVoaTombstone } from "./visa/voa/route";
-import { GET as getVoaResultTombstone } from "./visa/voa/[hash]/route";
 
 const APP_DIR = path.dirname(fileURLToPath(import.meta.url));
 const VISA_DIR = path.join(APP_DIR, "visa");
@@ -62,7 +66,7 @@ const INTENTIONALLY_UNLISTED: Record<string, string> = {
   "/visa/privacy": "legal boilerplate, no search intent to serve",
   "/visa/terms": "legal boilerplate, no search intent to serve",
   "/visa/voa":
-    "retired public route; GARUDA VOA is an internal-only admin tool",
+    "shipping dark — GARUDA_PUBLIC_ENABLED is false and go-live (owner decision 0) is unsigned",
 };
 
 /**
@@ -134,30 +138,45 @@ describe("sitemap — visa funnel findability", () => {
     expect(urls).not.toContain(`${BASE}/visa/voa`);
   });
 
-  it("keeps both retired GARUDA public pages as real 404 route handlers", async () => {
-    expect(fs.existsSync(path.join(VISA_DIR, "voa", "page.tsx"))).toBe(false);
+  it("GARUDA VOA is a real funnel again — no tombstone route handler left", () => {
+    // The 404 tombstone `route.ts` files are gone; a real page.tsx exists at
+    // both the wizard and the per-visitor result segment. If either
+    // `route.ts` reappears, Next.js would refuse to also serve `page.tsx` at
+    // that segment — restoring the tombstone accidentally would break the
+    // build, not silently win a routing conflict, but this test names the
+    // intent directly rather than relying on that build failure to notice.
+    expect(fs.existsSync(path.join(VISA_DIR, "voa", "page.tsx"))).toBe(true);
     expect(
       fs.existsSync(path.join(VISA_DIR, "voa", "[hash]", "page.tsx")),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(VISA_DIR, "voa", "route.ts"))).toBe(false);
+    expect(
+      fs.existsSync(path.join(VISA_DIR, "voa", "[hash]", "route.ts")),
     ).toBe(false);
-    const entry = fs.readFileSync(
-      path.join(VISA_DIR, "voa", "route.ts"),
+  });
+
+  it("the restored funnel calls only the frozen GARUDA VOA contract surface", () => {
+    const wizard = fs.readFileSync(
+      path.join(VISA_DIR, "voa", "page.tsx"),
       "utf8",
     );
     const result = fs.readFileSync(
-      path.join(VISA_DIR, "voa", "[hash]", "route.ts"),
+      path.join(VISA_DIR, "voa", "[hash]", "page.tsx"),
       "utf8",
     );
-    expect(entry).toContain('dynamic = "force-dynamic"');
-    expect(result).toContain('dynamic = "force-dynamic"');
-    expect(`${entry}\n${result}`).not.toContain("AppShareBar");
-    expect(`${entry}\n${result}`).not.toContain("/api/visa/voa");
-
-    for (const response of [getVoaTombstone(), getVoaResultTombstone()]) {
-      expect(response.status).toBe(404);
-      expect(response.headers.get("cache-control")).toContain("no-store");
-      expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
-      expect(await response.text()).toBe("Not Found\n");
+    const combined = `${wizard}\n${result}`;
+    // Every fetch target must live under the frozen surface
+    // (products/garuda-voa/contracts/openapi.yaml) — never a hand-invented path.
+    for (const path_ of [
+      "/api/visa/voa/eligibility-checks",
+      "/api/visa/voa/auth/magic-links",
+    ]) {
+      expect(combined).toContain(path_);
     }
+    // No submitted answer is ever placed on a URL, per SM-G03.
+    expect(combined).not.toMatch(
+      /\/api\/visa\/voa\/[^"'`]*\$\{.*(nationality|purpose|passport)/i,
+    );
   });
 
   it("has no canonical, OpenGraph, or indexable metadata for GARUDA", () => {
