@@ -565,12 +565,24 @@ async def test_cli_refresh_with_persist_target_succeeds(clean_env, tmp_path):
 
 @pytest.mark.asyncio
 async def test_cli_fresh_state_exits_zero_without_network(clean_env, tmp_path):
+    """INNOCENCE: 50 days left → exit 0 and no network call.
+
+    `now=NOW` is load-bearing, not decoration. `_state` writes an expiry
+    relative to the FROZEN NOW (2026-07-13), so without a pinned clock this
+    test asked production — which reads the wall clock — whether an expiry of
+    2026-09-01 was more than 7 days away. It was, for 43 days. On 2026-08-25
+    it stopped being, the CLI refreshed, found no IG_TOKEN_ENV_FILE, exited 2,
+    and this test went red on a commit nobody had touched — taking a merge
+    queue entry down with it. Every sibling in this file already pinned the
+    clock via run_watchdog(now=NOW); this one could not, because run_from_env
+    did not forward `now`. Now it does.
+    """
     state_file = _state(tmp_path, days_left=50)
     clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
     clean_env.setenv("IG_TOKEN_STATE_FILE", str(state_file))
     handler = GraphHandler()
     async with _client(handler) as client:
-        assert await run_from_env(http_client=client) == 0
+        assert await run_from_env(http_client=client, now=NOW) == 0
     assert handler.ig_refresh_calls == 0
 
 
