@@ -25,8 +25,12 @@ asyncpg = pytest.importorskip("asyncpg")
 from backend.services.garuda_portal.magic_link import (
     ExchangeOutcome,
     PersistencePolicyUnavailable,
+    RateLimited,
 )
-from backend.services.garuda_portal.magic_link_store import PostgresMagicLinkStore
+from backend.services.garuda_portal.magic_link_store import (
+    _MAX_ISSUES_PER_EMAIL_PER_WINDOW,
+    PostgresMagicLinkStore,
+)
 
 _DSN = (
     os.environ.get("GARUDA_L4_TEST_DSN")
@@ -351,3 +355,252 @@ async def test_exchange_replay_returns_same_outcome_without_a_second_session(poo
     async with pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM garuda_account_sessions")
     assert count == 1, "a replayed exchange must not mint a second session"
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting on issue (team-lead review, 2026-08-25 — RATE_LIMITED was
+# declared in the contract but unreachable on every code path before this).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_issue_raises_rate_limited_after_the_per_email_window_is_exhausted(pool, store):
+    email = f"flood-target-{uuid.uuid4().hex[:8]}@example.com"
+
+    for i in range(_MAX_ISSUES_PER_EMAIL_PER_WINDOW):
+        outcome = await store.issue(
+            idempotency_key=f"issue-key-flood-{i}",
+            result_id=_RESULT_ID,
+            email=email,
+            result_session_secret="whatever",
+        )
+        assert outcome.idempotency_replayed is False
+
+    with pytest.raises(RateLimited):
+        await store.issue(
+            idempotency_key="issue-key-flood-over-limit",
+            result_id=_RESULT_ID,
+            email=email,
+            result_session_secret="whatever",
+        )
+
+    async with pool.acquire() as conn:
+        count = await conn.fetchval(
+            "SELECT count(*) FROM garuda_magic_link_tokens WHERE email = $1", email
+        )
+    assert count == _MAX_ISSUES_PER_EMAIL_PER_WINDOW, (
+        "the rate-limited attempt must not have minted a token — the transaction "
+        "raising RateLimited must roll back its own idempotency reservation too"
+    )
+
+
+@pytest.mark.asyncio
+async def test_issue_rate_limit_does_not_double_count_an_exact_replay(pool, store):
+    """A replay of an already-issued request must not consume another slot
+    in the window — otherwise a client's own retry-after-timeout starves
+    out its own legitimate follow-up request."""
+    email = f"replay-safe-{uuid.uuid4().hex[:8]}@example.com"
+
+    for i in range(_MAX_ISSUES_PER_EMAIL_PER_WINDOW):
+        await store.issue(
+            idempotency_key=f"issue-key-replaysafe-{i}",
+            result_id=_RESULT_ID,
+            email=email,
+            result_session_secret="whatever",
+        )
+
+    # Replay the FIRST request under its original key — must succeed as a
+    # replay, not count as a 6th fresh issue, and must not itself raise.
+    replay = await store.issue(
+        idempotency_key="issue-key-replaysafe-0",
+        result_id=_RESULT_ID,
+        email=email,
+        result_session_secret="whatever",
+    )
+    assert replay.idempotency_replayed is True
+
+    async with pool.acquire() as conn:
+        count = await conn.fetchval(
+            "SELECT count(*) FROM garuda_magic_link_tokens WHERE email = $1", email
+        )
+    assert count == _MAX_ISSUES_PER_EMAIL_PER_WINDOW
+
+
+# ---------------------------------------------------------------------------
+# Timing equivalence across the three deny paths (team-lead review,
+# 2026-08-25 — byte-identical RESPONSES are necessary but not sufficient;
+# the adapter must not do measurably different WORK per deny reason).
+# ---------------------------------------------------------------------------
+
+
+def _make_counting_connection_class(counts: list[int]) -> type:
+    """A `connection_class` for `asyncpg.create_pool` that counts every
+    `fetchrow`/`fetchval`/`execute` round-trip. `counts` is a shared
+    single-element list (closed over, not a class attribute) so every
+    connection the pool hands out reports into the SAME counter — the
+    thing under test is the total number of statements one `exchange()`
+    call issues, not which specific connection issued them.
+    """
+
+    class _CountingConnection(asyncpg.Connection):
+        async def fetchrow(self, *args, **kwargs):
+            counts[0] += 1
+            return await super().fetchrow(*args, **kwargs)
+
+        async def fetchval(self, *args, **kwargs):
+            counts[0] += 1
+            return await super().fetchval(*args, **kwargs)
+
+        async def execute(self, *args, **kwargs):
+            counts[0] += 1
+            return await super().execute(*args, **kwargs)
+
+    return _CountingConnection
+
+
+@pytest.fixture
+async def counting_pool():
+    """A SEPARATE pool (own connection class) so this file's other tests'
+    connections are never instrumented — only exchange() calls made
+    through `counting_store` below are counted."""
+    counts = [0]
+    p = await asyncpg.create_pool(
+        dsn=_DSN, min_size=1, max_size=2, connection_class=_make_counting_connection_class(counts)
+    )
+    yield p, counts
+    await p.close()
+
+
+@pytest.mark.asyncio
+async def test_deny_paths_execute_the_same_query_shape(pool, store, counting_pool):
+    """Structural invariant: unknown / expired / consumed must each cause
+    `exchange()` to issue the SAME NUMBER of statements. This is the
+    mechanism-level property that makes engine-level timing constancy at
+    least possible — a naive implementation that does "return immediately
+    on no row" for one case and "look up, then compare, then return" for
+    another would fail this test long before any clock ever ran, which is
+    exactly why it is the primary, CI-stable gate (see
+    `test_deny_path_timing_does_not_separate_under_repetition` below for
+    the secondary, advisory empirical signal).
+    """
+    counting_conn_pool, counts = counting_pool
+    counting_store = PostgresMagicLinkStore(
+        counting_conn_pool, environment="TEST", send_email=_CapturingSender()
+    )
+
+    # Unknown.
+    counts[0] = 0
+    await counting_store.exchange(
+        idempotency_key="exchange-key-shape-unknown", token=secrets.token_urlsafe(32)
+    )
+    unknown_count = counts[0]
+
+    # Expired (same construction as the byte-identical-outcome test above).
+    expired_raw_token = secrets.token_urlsafe(32)
+    expired_hash = hashlib.sha256(expired_raw_token.encode()).hexdigest()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO garuda_magic_link_tokens (token_hash, result_id, email, environment, expires_at)
+            VALUES ($1, $2, $3, 'TEST', statement_timestamp() + INTERVAL '50 milliseconds')
+            """,
+            expired_hash,
+            _RESULT_ID,
+            _EMAIL,
+        )
+    await asyncio.sleep(0.25)
+    counts[0] = 0
+    await counting_store.exchange(idempotency_key="exchange-key-shape-expired", token=expired_raw_token)
+    expired_count = counts[0]
+
+    # Consumed.
+    consumed_raw_token = await _issue_and_capture_token(store, idempotency_key="issue-key-shape-consumed")
+    await store.exchange(idempotency_key="exchange-key-shape-consumed-first", token=consumed_raw_token)
+    counts[0] = 0
+    await counting_store.exchange(
+        idempotency_key="exchange-key-shape-consumed-second", token=consumed_raw_token
+    )
+    consumed_count = counts[0]
+
+    assert unknown_count == expired_count == consumed_count, (
+        f"deny paths issued different numbers of statements: "
+        f"unknown={unknown_count} expired={expired_count} consumed={consumed_count}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_deny_path_timing_does_not_separate_under_repetition(pool, store):
+    """Secondary, ADVISORY signal only — not the primary gate (see the
+    structural test above for that). CI runners are shared vCPUs with no
+    isolation guarantee; a single sample's wall-clock time is dominated by
+    scheduler jitter, not by this adapter's own logic, and asserting a
+    tight bound here would be exactly the kind of noisy, non-reproducible
+    check this repo's verification discipline warns against. What IS
+    reliably true, and what this test actually checks: averaged over many
+    repetitions, no deny path's MEAN latency should separate from the
+    others by an order of magnitude — a real "return immediately on no
+    row" shortcut would show up as a large, not a marginal, gap even
+    through CI noise. The tolerance below (5x) is deliberately generous;
+    it exists to catch a gross regression, not to certify constant-time
+    behaviour (the class docstring explains why true constant-time against
+    the underlying Postgres index is not attempted here at all).
+    """
+    import time
+
+    trials = 30
+
+    async def _time_unknown() -> float:
+        start = time.perf_counter()
+        await store.exchange(idempotency_key=f"timing-unknown-{uuid.uuid4().hex}", token=secrets.token_urlsafe(32))
+        return time.perf_counter() - start
+
+    async def _time_consumed(raw_token: str) -> float:
+        start = time.perf_counter()
+        await store.exchange(idempotency_key=f"timing-consumed-{uuid.uuid4().hex}", token=raw_token)
+        return time.perf_counter() - start
+
+    # One consumed token, exchanged repeatedly under fresh keys — each
+    # exchange after the first is a deny (already used_at), never a replay
+    # (fresh Idempotency-Key every time).
+    consumed_raw_token = await _issue_and_capture_token(store, idempotency_key="issue-key-timing-consumed")
+    await store.exchange(idempotency_key="exchange-key-timing-consumed-prime", token=consumed_raw_token)
+
+    unknown_samples = [await _time_unknown() for _ in range(trials)]
+    consumed_samples = [await _time_consumed(consumed_raw_token) for _ in range(trials)]
+
+    unknown_mean = sum(unknown_samples) / len(unknown_samples)
+    consumed_mean = sum(consumed_samples) / len(consumed_samples)
+    ratio = max(unknown_mean, consumed_mean) / max(min(unknown_mean, consumed_mean), 1e-9)
+
+    assert ratio < 5.0, (
+        f"unknown-vs-consumed deny latency separated by {ratio:.1f}x "
+        f"(unknown mean={unknown_mean * 1000:.3f}ms, consumed mean={consumed_mean * 1000:.3f}ms) "
+        f"— investigate for a short-circuit branch, not just CI noise"
+    )
+
+
+@pytest.mark.asyncio
+async def test_issue_rate_limit_counts_across_email_case_variants(pool, store):
+    """2026-08-25, Kimi K3 adversarial review: the rate limit must not be
+    defeatable by varying the email's case alone -- the column stores
+    exactly what was submitted, so without a case-insensitive comparison a
+    caller could multiply its own window N-for-1 against the same mailbox.
+    """
+    base = f"case-variant-{uuid.uuid4().hex[:8]}@example.com"
+    variants = [base, base.upper(), base.swapcase(), base.capitalize()]
+
+    for i in range(_MAX_ISSUES_PER_EMAIL_PER_WINDOW):
+        await store.issue(
+            idempotency_key=f"issue-key-case-variant-{i}",
+            result_id=_RESULT_ID,
+            email=variants[i % len(variants)],
+            result_session_secret="whatever",
+        )
+
+    with pytest.raises(RateLimited):
+        await store.issue(
+            idempotency_key="issue-key-case-variant-over-limit",
+            result_id=_RESULT_ID,
+            email=base.upper(),
+            result_session_secret="whatever",
+        )

@@ -29,6 +29,7 @@ from backend.services.garuda_portal.magic_link import (
     IdempotencyConflict,
     IssueOutcome,
     PersistencePolicyUnavailable,
+    RateLimited,
 )
 
 VALID_RESULT_ID = "r" * 22
@@ -253,6 +254,26 @@ def test_request_idempotency_conflict_409(fake_store):
     )
     assert resp.status_code == 409
     assert resp.json()["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+def test_request_rate_limited_is_visible_429(fake_store):
+    """Team-lead review, 2026-08-25: RATE_LIMITED was declared in the frozen
+    contract for `requestMagicLink` but unreachable on every code path
+    before `PostgresMagicLinkStore.issue` was given a reason to raise it.
+    This proves the ROUTER side of the wire is not the blocker — once any
+    store raises `RateLimited`, the handler surfaces it as the contract's
+    429, not the generic 500 the pre-existing catch-all would have produced.
+    """
+    fake_store.raise_on_issue = RateLimited("more than 5 magic-links in 15 minutes")
+    client = _client_with_store(fake_store)
+    resp = client.post(
+        "/api/visa/voa/auth/magic-links",
+        json={"result_id": VALID_RESULT_ID, "email": "a@example.com"},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+        cookies={"garuda_result_session": VALID_RESULT_SESSION},
+    )
+    assert resp.status_code == 429
+    assert resp.json()["code"] == "RATE_LIMITED"
 
 
 # ============================================================

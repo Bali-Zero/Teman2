@@ -45,6 +45,7 @@ from backend.services.garuda_portal.magic_link import (
     IdempotencyConflict,
     MagicLinkStore,
     PersistencePolicyUnavailable,
+    RateLimited,
     UnconfiguredMagicLinkStore,
 )
 
@@ -286,6 +287,14 @@ async def request_magic_link(
         )
     except IdempotencyConflict:
         return _error("IDEMPOTENCY_CONFLICT")
+    except RateLimited:
+        # Team-lead review, 2026-08-25: RATE_LIMITED is declared in the
+        # frozen contract for this operation and was unreachable on any
+        # code path before this. Observable by design (unlike the
+        # enumeration-safe 202 below) — see magic_link.RateLimited's
+        # docstring for why this does not leak email existence.
+        logger.warning("garuda_portal_auth: issue rate limit exceeded")
+        return _error("RATE_LIMITED")
     except PersistencePolicyUnavailable:
         logger.warning("garuda_portal_auth: persistence policy unavailable at issue")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")

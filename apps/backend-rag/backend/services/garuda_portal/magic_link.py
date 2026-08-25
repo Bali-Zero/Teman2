@@ -48,6 +48,7 @@ __all__ = [
     "IssueOutcome",
     "MagicLinkStore",
     "PersistencePolicyUnavailable",
+    "RateLimited",
     "UnconfiguredMagicLinkStore",
 ]
 
@@ -64,6 +65,22 @@ class PersistencePolicyUnavailable(RuntimeError):
 class IdempotencyConflict(RuntimeError):
     """The same scoped Idempotency-Key is already bound to a different
     canonical payload. Maps to the contract's ``IDEMPOTENCY_CONFLICT`` (409).
+    """
+
+
+class RateLimited(RuntimeError):
+    """The caller (scoped by whatever the store's adapter counts against —
+    for `issue`, the target email) has exceeded the anti-abuse threshold.
+
+    Maps to the contract's ``RATE_LIMITED`` (429, retryable) — declared for
+    BOTH `requestMagicLink` and `exchangeMagicLink` in
+    `contracts/openapi.yaml`, verified present on both operations 2026-08-25.
+    Unlike `IssueOutcome`'s deliberate enumeration-silence (a caller must
+    never learn from the RESPONSE SHAPE whether an email is a real result
+    owner), being rate-limited is allowed to be observable: it tells a
+    caller "you personally are sending too many requests", never "this
+    specific email exists". The two are orthogonal — see the adapter that
+    raises this for exactly what it counts and why.
     """
 
 
