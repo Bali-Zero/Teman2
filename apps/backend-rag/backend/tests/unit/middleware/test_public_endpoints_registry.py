@@ -226,11 +226,18 @@ class TestHelperFunctions:
         assert entry.prefix == "/"
 
     def test_workspace_marketing_template_matches_exactly_one_segment(self):
+        pending_entry = next(
+            endpoint
+            for endpoint in PUBLIC_ENDPOINTS
+            if endpoint.prefix == "/api/workspace-marketing/news/pending"
+        )
         entry = next(
             endpoint
             for endpoint in PUBLIC_ENDPOINTS
             if endpoint.prefix == "/api/workspace-marketing/news/{item_id}"
         )
+        assert pending_entry.requires_route_auth
+        assert entry.requires_route_auth
         assert entry.match == "template"
         assert entry.matches("/api/workspace-marketing/news/news_123")
         assert not entry.matches("/api/workspace-marketing/news/")

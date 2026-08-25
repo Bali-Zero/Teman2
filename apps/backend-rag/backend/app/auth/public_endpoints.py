@@ -47,6 +47,7 @@ class PublicEndpoint:
     category: Category
     reason: str
     match: str = "prefix"  # "prefix" | "exact"
+    requires_route_auth: bool = False
 
     def matches(self, path: str) -> bool:
         if self.match == "exact":
@@ -139,12 +140,14 @@ _INFRA = (
         Category.BRIDGE,
         "ChatGPT Business News Room projection - dedicated route key enforced in-router",
         match="exact",
+        requires_route_auth=True,
     ),
     PublicEndpoint(
         "/api/workspace-marketing/news/{item_id}",
         Category.BRIDGE,
         "ChatGPT Business single-news projection - dedicated route key enforced in-router",
         match="template",
+        requires_route_auth=True,
     ),
     # Intel Lake Wave 1 (2026-05-12, mig 168): unified intel pipeline ingest
     # endpoint. Public to bypass HybridAuthMiddleware — but enforces its own
