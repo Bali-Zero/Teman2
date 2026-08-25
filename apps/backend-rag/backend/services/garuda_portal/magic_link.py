@@ -35,7 +35,7 @@ SQL or `secrets.token_urlsafe` calls.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 #: `contracts/openapi.yaml` `x-magic-link.ttl_minutes` — DECISIONS.md Q1.
@@ -97,12 +97,32 @@ class ExchangeOutcome:
     `magic_link_replay` / `magic_link_invalid` / `magic_link_authorized`) —
     telemetry only, never serialized to the wire and never derived FROM the
     wire response.
+
+    `account_session_secret` is `repr=False` (2026-08-25, CodeQL #8755 review,
+    round 4): a dataclass repr's under an innocuous local-variable key (e.g.
+    `outcome`) is a leak vector NEITHER `sentry_sdk`'s own built-in
+    `EventScrubber` (`DEFAULT_DENYLIST`, exact-key match) NOR this repo's
+    `sentry_config._scrub` can close — both redact by KEY, never by scanning
+    inside an arbitrary string VALUE for a `field='secret'` pattern. Verified
+    empirically with a real `sentry_sdk.init()` + `capture_exception` pipeline:
+    before this fix, an uncaught exception with an `ExchangeOutcome` bound as
+    a local produced
+    `{"outcome": "ExchangeOutcome(..., account_session_secret='sess-...')"}` —
+    the secret travelled in full despite both scrubbers running. `repr=False`
+    fixes this AT THE SOURCE — every capture path (a traceback, a debugger
+    repr, an f-string, a future logger call) inherits it, instead of each one
+    needing its own guard. Chosen over a hand-written `__repr__` because it is
+    the idiomatic per-field dataclass mechanism and cannot drift when a field
+    is added later. NOTE: this only suppresses the dataclass-GENERATED repr —
+    an f-string that names the field explicitly (`f"{outcome.account_session_secret}"`)
+    or a `.dict()`-style serializer still exposes the raw value; grepped this
+    codebase 2026-08-25 and found no such call site for this dataclass.
     """
 
     authorized: bool
     security_counter: str
     result_id: str | None = None  # ACCEPT only
-    account_session_secret: str | None = None  # ACCEPT only, new session only
+    account_session_secret: str | None = field(default=None, repr=False)  # ACCEPT only, new session only
     idempotency_replayed: bool = False
 
 
