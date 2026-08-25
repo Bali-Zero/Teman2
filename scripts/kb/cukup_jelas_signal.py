@@ -14,9 +14,11 @@ signal that can quietly diverge from what it claims to measure.
 
 Measured false-positive rate (lane P, 2026-08-25): 0/45 on a stratified sample
 spanning 34 distinct documents (round-robin, not "first N found", seed
-20260825) — see kb/inventory/_cukup_jelas_sample.json and
-research/legal/2026-08-25-cukup-jelas-false-positive-rate.md for the full method
-and the read-through of every sample. Every one of the 45 was genuinely
+20260825) — see research/legal/_cukup_jelas_sample.json (the raw sample, for
+independent audit) and research/legal/2026-08-25-cukup-jelas-false-positive-rate.md
+(full method, the read-through of every sample, and an adversarial review that
+found and fixed real issues with the original draft of this measurement — read
+that section before trusting the 45/0 figure at face value). Every one of the 45 was genuinely
 elucidation-style text (a bare "Cukup jelas." boilerplate note, a fuller
 Penjelasan Pasal Demi Pasal explanation, or a "Tidak diberikan penjelasan,
 karena cukup jelas" statement) — none was an innocent occurrence (a citation,
