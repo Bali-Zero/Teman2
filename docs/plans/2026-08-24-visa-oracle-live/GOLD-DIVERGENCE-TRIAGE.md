@@ -250,3 +250,62 @@ spiegata, mai cancellata.
 
 Censimento completo (78 combinazioni di scopi, copertura per scopo, i 52 casi strutturalmente
 impossibili) e le tre decisioni aperte: `DEADEND-PURPOSE-COVERAGE.md`.
+
+---
+
+## Terzo seguito, 2026-08-25 — NB-2 risponde, e la fixture aveva ragione: è il pack firmato a divergere
+
+Le due correzioni qui sopra trattavano la fixture gold come l'artefatto e il pack come il metro:
+la fixture dichiara `E23 covered_purposes=["EMPLOYMENT","TOURISM"]`, il pack firmato dichiara
+`["EMPLOYMENT"]`, e la fixture stessa ammette nel proprio docstring di essere **«synthetic
+engine-test policy, not production Indonesian legal assertions»**. Su quella base avevo raccomandato
+di dichiarare il motore **mono-scopo per contratto**.
+
+**Zero ha riaperto la porta NotebookLM e NB-2 ha risposto. La raccomandazione era sbagliata.**
+
+Il Kepmen M.IP-08.GR.01.01/2025 (_Klasifikasi Visa_), Lampiran Bagian B.1, riga **E23**, colonna 5
+(**Hak** / Diritti) elenca alla lettera:
+
+> _«Melakukan kegiatan yang berhubungan dengan wisata, melakukan pembelian barang, serta mengunjungi
+> keluarga dan teman.»_
+
+Cioè: **il titolare di E23 ha un diritto esplicito, scritto nella classificazione, di fare turismo.**
+La fixture non stava inventando una comodità di test — stava riproducendo, per ragionamento, una
+norma vera. È il **pack firmato** che sotto-dichiara.
+
+E la simmetria regge dall'altro lato: la stessa tabella, riga **C1**, colonna 7 (**Larangan** /
+Divieti) vieta _«Menerima imbalan, upah, atau sejenisnya dari perorangan atau korporasi di
+Indonesia»_. Quindi l'etichetta della persona #15 — «lavoro + turismo → E23, **mai C1**» — non è una
+convenzione del corpus: è **la lettura corretta di due righe della stessa tabella**.
+
+### La distinzione che avrei sbagliato a scrivere nel contratto
+
+`Permenkumham 22/2023 Pasal 2 ayat (2)` dice _«Setiap Orang Asing hanya dapat memiliki 1 (satu)
+Visa»_ — **un visto per persona**, e `Pasal 70` lega il visto al proprio indice e alla propria
+`uraian kegiatan`. Questo è **mono-VISTO**, non **mono-SCOPO**: un solo prodotto vince, ma quel
+prodotto può coprire più scopi dichiarati, perché è la colonna _Hak_ a dirlo. Scrivere «il motore è
+mono-scopo» nel contratto avrebbe cristallizzato in invariante un **accidente del mapper** (un solo
+scrittore, mappa 1:1) travestendolo da vincolo di legge — e avrebbe reso permanentemente
+irraggiungibile un caso che la norma consente.
+
+### Cosa vale questa prova, e cosa non vale — disciplina W90
+
+- **Corroborata su due percorsi indipendenti**: NB-2 cita la riga E23 del Lampiran; il factbase su
+  disco `research/visa/2026-08-11-w3-sponsor-rules-factbase.md` usa **lo stesso strumento** (Kepmen
+  M.IP-08.GR.01.01/2025) nel frontmatter e ne cita la medesima struttura a colonne
+  Hak/Kewajiban/Larangan per E23U/E23V. Due lettori, un documento.
+- **Non l'ho riletta io.** Il PDF del Kepmen **non è su disco** (cercato: zero hit). Il factbase E23
+  su disco (`2026-07-24-w2-factbase-e23-full.md`, 69 righe) **non contiene affatto** la colonna Hak —
+  è sottile, e per di più porta ancora il nome sbagliato di E23V («Kantor Dagang dan Ekonomi»), che
+  il factbase W3 del 2026-08-11 ha poi corretto. Quindi: la clausola è citata, non ri-verificata da
+  me alla fonte.
+- **Azione conseguente**: prima di cambiare il pack, scaricare il Kepmen e rileggere la riga E23.
+  Il pack è firmato — correggerlo è **sostanza regolatoria**: nuovo `seq` + nuova firma, non un
+  ritocco di sessione.
+
+### Effetto sull'acceptance di #15
+
+L'acceptance corretta più sopra («una risposta onesta e non un muro») **resta valida e ora ha un
+vincitore indicato dalla norma**: la cura giusta è `SUPPORTED_CANDIDATES [E23]`, cioè insegnare al
+pack ciò che il Kepmen già dice, non `HUMAN_REVIEW_REQUIRED` come ripiego. Il ripiego resta
+accettabile solo finché la riga non è stata riletta alla fonte.

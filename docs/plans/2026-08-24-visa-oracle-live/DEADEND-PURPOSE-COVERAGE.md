@@ -231,8 +231,26 @@ Oggi non c'è. Se un domani il wizard offrisse scopi multipli — o se un altro 
 li manda — chi dichiara lavoro _e_ turismo esce con niente. Due strade: insegnare la policy al pack
 (E23 copre anche `TOURISM`, o una regola assorbe `TOURISM` quando c'è `EMPLOYMENT`), oppure
 dichiarare per scritto che il motore è **mono-scopo** e vincolare ogni consumatore a mandarne uno.
-**Raccomando la seconda** finché il prodotto è mono-scopo: è ciò che il codice già fa, e scriverlo
-lo rende un invariante difendibile con un test invece che un accidente del mapper.
+~~**Raccomando la seconda**~~ — **RITIRATA il 2026-08-25.** Zero ha riaperto la porta NotebookLM e
+NB-2 ha risposto: il Kepmen M.IP-08.GR.01.01/2025, Lampiran B.1, riga **E23**, colonna **Hak**,
+concede alla lettera _«Melakukan kegiatan yang berhubungan dengan wisata, melakukan pembelian
+barang, serta mengunjungi keluarga dan teman»_ — il titolare di E23 **ha diritto esplicito al
+turismo**. Quindi la fixture gold (`["EMPLOYMENT","TOURISM"]`) è normativamente giusta e **il pack
+firmato sotto-dichiara**; e l'etichetta della persona #15, «lavoro + turismo → E23, mai C1», è la
+lettura corretta di due righe della stessa tabella (C1, colonna **Larangan**, vieta _«Menerima
+imbalan, upah, atau sejenisnya…»_).
+
+**Raccomando ora la prima**: insegnare la policy al pack, `E23.covered_purposes ⊇ {EMPLOYMENT,
+TOURISM}`. Dichiarare il motore mono-scopo avrebbe scritto nel contratto un **accidente del mapper**
+spacciandolo per vincolo di legge: `Permenkumham 22/2023 Pasal 2(2)` (_«hanya dapat memiliki 1
+(satu) Visa»_) impone **un visto solo**, non **uno scopo solo** — un prodotto può coprirne più d'uno,
+ed è la colonna _Hak_ a stabilirlo.
+
+**Limite dichiarato, e vincola l'esecuzione (W90).** Il PDF del Kepmen non è su disco; io la riga
+E23 non l'ho riletta. La clausola è corroborata da due lettori indipendenti dello stesso strumento
+(NB-2, e il factbase `2026-08-11-w3-sponsor-rules-factbase.md` che lo cita in frontmatter), ma il
+pack è **firmato**: cambiarlo è sostanza regolatoria — nuovo `seq`, nuova firma, e prima si scarica
+il Kepmen e si rilegge la riga. Non è una modifica di sessione.
 
 **(C) Un prodotto senza regole di idoneità deve poter chiedere qualcosa?**
 Nove prodotti (i T3 di `TIER-MAP.md`) non possono mai essere una risposta, ma cinque di loro possono
