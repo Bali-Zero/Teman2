@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -66,6 +67,20 @@ LANES = frozenset("ABCDEFP")
 # production today); `untested` means the probe has never been run, which is NOT
 # the same thing and must not be allowed to masquerade as red.
 PROBE_STATES = frozenset({"red", "green", "untested"})
+
+# Whether a journey's phrase is SUPPOSED to come back, or SUPPOSED not to.
+# `retrieves` is what almost every journey means, and what `probe_state` meant on
+# its own before this field existed: prove the phrase comes back. A minority —
+# negative canaries scoped at a POISONED instrument, e.g.
+# kb/journeys/immigration.yaml journeys 2 and 8 — mean the opposite: the phrase
+# coming back, correctly attributed, IS the failure, and `probe_state: red` is
+# deliberately the safe, PERMANENT state (never expected to turn green). Found by
+# a cross-family review (2026-08-25): without this field, MANDATE §8's
+# "at_target sustained 48h" and a canary's forever-red state contradict each
+# other with no valid resolution — a topic carrying a canary could never legally
+# reach at_target under the old all-green definition. The vocabulary is closed so
+# a third meaning cannot be smuggled in as a typo.
+EXPECTATIONS = frozenset({"retrieves", "must_not_retrieve"})
 
 # How the question is worded. Measured 2026-08-25 over 10,929 question-bearing
 # client messages in the Pro-bound WhatsApp mirror: NOT ONE named an instrument.
@@ -215,7 +230,13 @@ def check_journey(data: dict) -> list[str]:
 
     for i, j in enumerate(journeys):
         where = f"journeys[{i}]"
-        if not j.get("question"):
+        # `.strip()`, not bare truthiness: a cross-family review (2026-08-25) found
+        # `question: " "` (whitespace only) passes a bare `not j.get("question")`
+        # check — Python's `not " "` is False, a non-empty string is truthy
+        # regardless of what is IN it. A question with no real content is
+        # indistinguishable from a missing one to every reader downstream.
+        question = j.get("question")
+        if not question or not str(question).strip():
             problems.append(f"{where}: question is required, in the user's own words")
 
         # The assertion target is the RETRIEVED CONTEXT, not the generated answer.
@@ -228,6 +249,18 @@ def check_journey(data: dict) -> list[str]:
                 f"has to appear in the RETRIEVED CONTEXT — a short phrase matches by "
                 f"accident and measures nothing"
             )
+        elif " " not in str(phrase).strip():
+            # Same review, same file: verbatim_phrase: "xxxxxxxxxxxx" (12 of one
+            # repeated character) clears the length floor untouched. Length was
+            # never the property that mattered here either — every real phrase in
+            # this suite is a multi-word SPAN of retrieved text; a single token,
+            # however long or however repeated, is not a span and matches by
+            # accident the same way a too-short phrase does.
+            problems.append(
+                f"{where}: verbatim_phrase {phrase!r} is a single token (no "
+                f"whitespace) — a substantive span of retrieved text is multiple "
+                f"words, not one token however long"
+            )
         if not j.get("instrument_id"):
             problems.append(
                 f"{where}: instrument_id is required — the phrase must be traceable to "
@@ -238,10 +271,41 @@ def check_journey(data: dict) -> list[str]:
             problems.append(
                 f"{where}: probe_state must be one of {sorted(PROBE_STATES)}, got {state!r}"
             )
-        if state in ("red", "green") and not j.get("probe_run_at"):
+        run_at = j.get("probe_run_at")
+        if state in ("red", "green"):
+            if not run_at:
+                problems.append(
+                    f"{where}: probe_state is {state!r} but probe_run_at is missing — a "
+                    f"verdict with no run behind it is 'untested' wearing a costume"
+                )
+            else:
+                # Same review: probe_run_at: never passes a bare presence check —
+                # "never" is truthy. Presence is not the same claim as "this is a
+                # date a run could have happened on"; require the second, not just
+                # the first.
+                try:
+                    date.fromisoformat(str(run_at))
+                except ValueError:
+                    problems.append(
+                        f"{where}: probe_run_at {run_at!r} is not a real date "
+                        f"(expected YYYY-MM-DD) — a truthy string like 'never' "
+                        f"passes a presence check while recording no verifiable run"
+                    )
+
+        # MANDATE §8 vs a negative canary's permanent-red state contradicted each
+        # other with no valid resolution before this field existed (2026-08-25
+        # cross-family review) — see EXPECTATIONS' docstring above.
+        expectation = j.get("expectation")
+        if expectation not in EXPECTATIONS:
             problems.append(
-                f"{where}: probe_state is {state!r} but probe_run_at is missing — a "
-                f"verdict with no run behind it is 'untested' wearing a costume"
+                f"{where}: expectation must be one of {sorted(EXPECTATIONS)}, got "
+                f"{expectation!r}"
+            )
+        elif expectation == "must_not_retrieve" and not j.get("reason"):
+            problems.append(
+                f"{where}: expectation is 'must_not_retrieve' but reason is missing — "
+                f"a canary with no stated reason is indistinguishable from a broken "
+                f"journey someone gave up on"
             )
 
         phrasing = j.get("phrasing")
@@ -331,6 +395,13 @@ def check_topic_inventory(data: dict) -> list[str]:
     points = measured.get("points")
     if not isinstance(points, int):
         problems.append("measured_against.points must be an integer")
+    elif points < 0:
+        # Cross-family review (2026-08-25): points: -1 with payload_shapes summing
+        # to -1 passed every existing check — nothing enforced non-negativity, and
+        # a point count cannot be negative in reality.
+        problems.append(
+            f"measured_against.points must be non-negative, got {points}"
+        )
 
     # §4.1 — the payload shape mix, in the vocabulary the probe measures. A topic
     # inventory that does not record it cannot be drift-checked, and the shape
@@ -359,6 +430,14 @@ def check_topic_inventory(data: dict) -> list[str]:
             problems.append(
                 f"payload_shapes omits {sorted(missing)}. Omission reads as 'absent', and "
                 f"'absent' is indistinguishable from 'never looked' — record a 0"
+            )
+        # Same review as measured_against.points above: every point has exactly
+        # one shape, so no shape's count can be negative either.
+        negative = {k: v for k, v in shapes.items() if not isinstance(v, int) or v < 0}
+        if negative:
+            problems.append(
+                f"payload_shapes has non-negative-integer value(s): "
+                f"{dict(sorted(negative.items()))} — a shape's count cannot be negative"
             )
         if isinstance(points, int) and sum(shapes.values()) != points:
             problems.append(
@@ -471,6 +550,7 @@ def _good_journey() -> dict:
                 "phrasing": "client",
                 "language": "id",
                 "cross_topic": False,
+                "expectation": "retrieves",
                 "probe_state": "red",
                 "probe_run_at": "2026-08-25",
             },
@@ -481,6 +561,7 @@ def _good_journey() -> dict:
                 "phrasing": "client",
                 "language": "en",
                 "cross_topic": False,
+                "expectation": "retrieves",
                 "probe_state": "red",
                 "probe_run_at": "2026-08-25",
             },
@@ -491,6 +572,7 @@ def _good_journey() -> dict:
                 "phrasing": "client",
                 "language": "it",
                 "cross_topic": False,
+                "expectation": "retrieves",
                 "probe_state": "red",
                 "probe_run_at": "2026-08-25",
             },
@@ -505,6 +587,7 @@ def _good_journey() -> dict:
                 "language": "en",
                 "cross_topic": True,
                 "cross_topic_lane": "D",
+                "expectation": "retrieves",
                 "probe_state": "red",
                 "probe_run_at": "2026-08-25",
             },
@@ -585,16 +668,30 @@ def test_guilt_topic(name, mutate, expected):
 JOURNEY_GUILT = [
     ("no journeys", lambda d: d.update(journeys=[]), "non-empty list"),
     ("question missing", lambda d: d["journeys"][0].pop("question"), "question is required"),
+    ("question is whitespace only",
+     lambda d: d["journeys"][0].update(question="   "), "question is required"),
     ("phrase too short to mean anything",
      lambda d: d["journeys"][0].update(verbatim_phrase="visa"), "substantive span"),
     ("phrase missing entirely",
      lambda d: d["journeys"][0].pop("verbatim_phrase"), "substantive span"),
+    ("phrase is a single repeated-character token",
+     lambda d: d["journeys"][0].update(verbatim_phrase="xxxxxxxxxxxx"),
+     "single token"),
     ("phrase not traceable to an instrument",
      lambda d: d["journeys"][0].pop("instrument_id"), "instrument_id is required"),
     ("probe verdict outside vocabulary",
      lambda d: d["journeys"][0].update(probe_state="probably red"), "probe_state must be one of"),
     ("verdict with no run behind it",
      lambda d: d["journeys"][0].pop("probe_run_at"), "wearing a costume"),
+    ("verdict run recorded on a non-date",
+     lambda d: d["journeys"][0].update(probe_run_at="never"), "not a real date"),
+    ("expectation missing",
+     lambda d: d["journeys"][0].pop("expectation"), "expectation must be one of"),
+    ("expectation outside the closed vocabulary",
+     lambda d: d["journeys"][0].update(expectation="maybe"), "expectation must be one of"),
+    ("must_not_retrieve canary with no stated reason",
+     lambda d: d["journeys"][0].update(expectation="must_not_retrieve"),
+     "reason is missing"),
     ("phrasing outside the closed vocabulary",
      lambda d: d["journeys"][0].update(phrasing="colloquial-ish"),
      "phrasing must be one of"),
@@ -654,6 +751,14 @@ INVENTORY_GUILT = [
     ("shape mix does not add up",
      lambda d: d["measured_against"]["payload_shapes"].update(modern_id_only=99),
      "every point has exactly one shape"),
+    # F.3 — non-negativity (found by a cross-family review: `points: -1` with
+    # `payload_shapes: {legacy_metadata_text: -1}` passed every check that
+    # existed before this — nothing enforced that a point count cannot be negative)
+    ("measured_against.points is negative",
+     lambda d: d["measured_against"].update(points=-1), "must be non-negative"),
+    ("a payload_shapes value is negative",
+     lambda d: d["measured_against"]["payload_shapes"].update(modern_id_only=-1),
+     "non-negative-integer value"),
     ("instrument points do not cover the collection",
      lambda d: d["instruments"][0].update(points=4), "does not cover the collection"),
     ("absence claimed from a single lookup",
@@ -708,11 +813,32 @@ def test_the_guilt_matrix_is_not_empty():
     """Anti-vacuity on the anti-vacuity: an emptied parametrisation collects zero
     cases and pytest exits 0. Assert the COUNT, so deleting the cases is loud."""
     assert len(TOPIC_GUILT) >= 11, len(TOPIC_GUILT)
-    assert len(JOURNEY_GUILT) >= 7, len(JOURNEY_GUILT)
-    assert len(INVENTORY_GUILT) >= 14, len(INVENTORY_GUILT)
+    assert len(JOURNEY_GUILT) >= 27, len(JOURNEY_GUILT)
+    assert len(INVENTORY_GUILT) >= 16, len(INVENTORY_GUILT)
 
 
 # ── cross-source rules: three files that must agree, or one of them is fiction ──
+
+
+def journey_satisfied(j: dict) -> bool | None:
+    """Whether j's RECORDED probe_state satisfies its expectation.
+
+    Returns None when probe_state is 'untested' — satisfaction is unknown, not
+    false, because nothing has been measured yet. `hit` is true only for a
+    recorded 'green'; a 'retrieves' journey is satisfied exactly when hit, and a
+    'must_not_retrieve' canary is satisfied exactly when NOT hit — a poisoned
+    instrument staying unretrieved is the safe state, not a failure. This is the
+    STATIC proxy for what probe_retrieval.py computes live against production
+    (same formula, `hit == (expectation == "retrieves")`); it reads the file's
+    own recorded claim, so a stale file and a satisfied file can disagree, which
+    is exactly what probe_retrieval.py's DRIFT exit exists to catch.
+    """
+    state = j.get("probe_state")
+    if state not in ("red", "green"):
+        return None
+    hit = state == "green"
+    expectation = j.get("expectation", "retrieves")
+    return hit == (expectation == "retrieves")
 
 
 def check_agreement(topic: dict, journey: dict, inventory: dict) -> list[str]:
@@ -744,18 +870,50 @@ def check_agreement(topic: dict, journey: dict, inventory: dict) -> list[str]:
                 f"file — the inventory measured a corpus the topic never claimed"
             )
 
+    # The reverse direction of the check above. A cross-family review (2026-08-25)
+    # showed this gate only ever looked for an inventory instrument the topic
+    # DIDN'T scope — it never checked the other way: a scoped instrument the
+    # inventory never mentions at all. `instruments: []` on an inventory whose
+    # topic scopes one real instrument passed every check that existed until now.
+    # Every scoped instrument must appear — present=true with a point count, or
+    # present=false with lookup_attempts (§4.2, already enforced by
+    # check_topic_inventory) is how the inventory "says why it does not" — silent
+    # absence from the list is not a legal way to record either state.
+    inventory_ids = {i.get("id") for i in (inventory.get("instruments") or [])}
+    if scoped:
+        never_measured = sorted(scoped - inventory_ids)
+        if never_measured:
+            problems.append(
+                f"kb/topics scopes instrument(s) {never_measured} that kb/inventory "
+                f"does not list at all — every scoped instrument must appear in the "
+                f"inventory, present=true with a point count or present=false with "
+                f"lookup_attempts, never silently absent from the file"
+            )
+
     # MANDATE §3: the journey suite must fail RED against production on the day it
-    # is written. A journey file whose probes are ALL green on creation day is
+    # is written. A journey file whose probes are ALL SATISFIED on creation day is
     # either measuring something that already worked — in which case there was no
     # work to do — or the probe is not reaching production at all. Both are worth
     # refusing, and the second is the one that actually happens.
-    states = [j.get("probe_state") for j in (journey.get("journeys") or [])]
-    if states and all(s == "green" for s in states):
+    #
+    # SATISFIED, not literal green (2026-08-25 cross-family review): the old rule
+    # checked `all(s == "green" ...)`, which a topic carrying a negative canary
+    # (kb/journeys/immigration.yaml journeys 2/8: safe state is `red`, forever)
+    # could never legitimately trigger even when every journey WAS satisfied on
+    # day one — MANDATE §8's at_target was unreachable for exactly that topic.
+    # `journey_satisfied` derives the same "would this ever need curing" question
+    # `probe_state == "green"` used to answer, but correctly for BOTH
+    # expectations — see its docstring for the formula and why the two can
+    # legitimately disagree.
+    journeys_list = journey.get("journeys") or []
+    satisfaction = [journey_satisfied(j) for j in journeys_list]
+    if satisfaction and all(s is True for s in satisfaction):
         problems.append(
-            "every journey probe is green on a freshly written file — either this "
-            "topic needed no work, or the probe is not reaching production (§3). "
-            "Record the red state first, then cure it"
+            "every journey is already satisfied on a freshly written file — either "
+            "this topic needed no work, or the probe is not reaching production "
+            "(§3). Record the unsatisfied state first, then cure it"
         )
+    states = [j.get("probe_state") for j in journeys_list]
     if states and all(s == "untested" for s in states):
         problems.append(
             "every journey probe is 'untested' — an unrun probe suite is not a red "
@@ -775,7 +933,14 @@ AGREEMENT_GUILT = [
     ("inventory measures an unscoped instrument",
      lambda t, j, v: v["instruments"][0].update(id="UU_Invented_99_2099"),
      "a corpus the topic never claimed"),
-    ("all probes green on day one",
+    # F.3 (reverse direction, cross-family review 2026-08-25): `instruments: []`
+    # on an inventory whose topic scopes one real instrument passed every check
+    # that existed before this — the old rule only ever looked for an unscoped
+    # inventory entry, never for a scoped one that never got an entry at all.
+    ("inventory lists no instruments at all while topic scopes one",
+     lambda t, j, v: v.update(instruments=[]),
+     "does not list at all"),
+    ("all probes satisfied on day one",
      lambda t, j, v: [x.update(probe_state="green") for x in j["journeys"]],
      "not reaching production"),
     ("all probes never run",
@@ -793,6 +958,76 @@ def test_guilt_agreement(name, mutate, expected):
     assert any(expected in p for p in problems), (
         f"{name}: check_agreement did not object. Problems returned: {problems}"
     )
+
+
+# ── journey_satisfied: the pure function, proven directly ────────────────────
+# The formula is small enough to hide a sign error inside `check_agreement`'s
+# list-comprehension proofs above, so it gets its own table — every combination
+# of the two inputs that matters, asserted against the derivation in its
+# docstring rather than against a restatement of the code.
+
+SATISFACTION_TABLE = [
+    ("retrieves + green is satisfied (the ordinary positive case)",
+     {"probe_state": "green", "expectation": "retrieves"}, True),
+    ("retrieves + red is NOT satisfied (ordinary coverage gap)",
+     {"probe_state": "red", "expectation": "retrieves"}, False),
+    ("must_not_retrieve + red is satisfied (the canary is safe)",
+     {"probe_state": "red", "expectation": "must_not_retrieve"}, True),
+    ("must_not_retrieve + green is NOT satisfied (the poison leaked)",
+     {"probe_state": "green", "expectation": "must_not_retrieve"}, False),
+    ("untested is unknown, not false, regardless of expectation",
+     {"probe_state": "untested", "expectation": "retrieves"}, None),
+    ("untested is unknown even for a canary",
+     {"probe_state": "untested", "expectation": "must_not_retrieve"}, None),
+    ("expectation absent defaults to retrieves (pre-existing journeys)",
+     {"probe_state": "green"}, True),
+]
+
+
+@pytest.mark.parametrize("name,journey,expected", SATISFACTION_TABLE,
+                         ids=[c[0] for c in SATISFACTION_TABLE])
+def test_journey_satisfied_table(name, journey, expected):
+    assert journey_satisfied(journey) is expected, name
+
+
+def test_all_satisfied_via_mixed_expectations_is_refused_even_though_not_all_green():
+    """MANDATE §3's day-one refusal is about SATISFACTION, not literal green — the
+    exact contradiction the cross-family review raised: a canary's SAFE state is
+    permanently `red`, so a topic carrying one could never trigger an "all green"
+    rule even on a day when every journey (canary included) was genuinely
+    satisfied. Proven here by a file that is NOT 'all green' (one journey is red)
+    yet must still be refused, because it IS 'all satisfied': a rule that only
+    checked `probe_state == "green"` would let this exact shape through, which is
+    precisely the shape the old rule could never catch for a canary-bearing topic.
+    """
+    t, j, v = _good_topic(), _good_journey(), _good_inventory()
+    t["instruments"].append({
+        "id": "Permen_35_2012_poison",
+        "declared_identity": "Permen 35/2012",
+        "verified_identity": "Permen 35/2012",
+        "identity_verdict": "consistent",
+        "status": "in_force",
+        "source_url": "https://example.org/permen-35-2012",
+        "source_verified": True,
+    })
+    j["journeys"][0].update(
+        verbatim_phrase="TATA NASKAH DINAS DI LINGKUNGAN PEMERINTAH KABUPATEN TEGAL",
+        instrument_id="Permen_35_2012_poison",
+        expectation="must_not_retrieve",
+        reason="green would mean an unrelated poisoned instrument leaked into this "
+               "topic's answer",
+        probe_state="red",
+    )
+    for other in j["journeys"][1:]:
+        other["probe_state"] = "green"
+
+    recorded_states = [x["probe_state"] for x in j["journeys"]]
+    assert recorded_states.count("red") == 1 and recorded_states.count("green") == 3, (
+        "fixture sanity: this must NOT be 'all green', or the test proves nothing"
+    )
+
+    problems = check_agreement(t, j, v)
+    assert any("already satisfied" in p for p in problems), problems
 
 
 # ── the same rules, against whatever real files exist ────────────────────────

@@ -41,10 +41,49 @@ this exits 3 (BROKEN) and reports no verdicts at all, because a probe that canno
 demonstrate it reached production has no business grading anything.
 
 EXITS (same vocabulary as scripts/kb/kb_inventory_probe.py)
-  0  AT TARGET   — every journey measured green, and the file says green
-  1  DRIFT       — the measurement disagrees with the recorded probe_state
-  2  OUTSTANDING — the file says red and the measurement agrees: work undone
+  0  AT TARGET   — every journey is SATISFIED (see "expectation" below), and the
+                   file's recorded state agrees
+  1  DRIFT       — the recorded probe_state disagrees with what production measured
+  2  OUTSTANDING — at least one journey is not satisfied. For a plain "retrieves"
+                   journey this is the ordinary "work undone" case (§3); it ALSO
+                   fires for a "must_not_retrieve" canary that measures green — a
+                   live regression, not routine coverage — and for a phrase found
+                   in the WRONG instrument (see "instrument-checked grading" below)
   3  BROKEN      — the control query failed; nothing was graded
+
+INSTRUMENT-CHECKED GRADING (2026-08-25, cross-family review finding — grading used
+to be "is the phrase anywhere in the retrieved chunks", full stop, and that let a
+journey go green off a citation inside a DIFFERENT document. Measured live in this
+campaign: tax journey 8's HPP phrase appears verbatim as a citation inside
+Permen_167_2022 and PP_44T_2022 ("...diubah terakhir dengan UU 7/2021 tentang HPP"),
+while UU_7_2021 — the instrument that journey actually scoped — has ZERO points in
+the corpus. The old grading called that green; it was never evidence about
+UU_7_2021 at all. So a hit is now graded against the CHUNK'S OWN identity, read
+from both payload generations (top-level `document_id` and nested
+`metadata.document_id` — see `chunk_instrument()`), not just its text:
+  - green         — the phrase is in a chunk that belongs to the journey's
+                     `instrument_id`.
+  - misattributed — the phrase came back, but every chunk carrying it belongs to a
+                     DIFFERENT instrument. Not a weaker green (it is not evidence
+                     for THIS instrument) and not folded into red (a red says the
+                     phrase never came back at all — a different, better-understood
+                     failure). A right-instrument hit wins over a wrong-instrument
+                     hit regardless of rank: green at rank 7 beats misattributed at
+                     rank 1, because rank measures retrieval quality and instrument
+                     identity measures whether the hit is usable evidence at all.
+  - red           — no chunk at any rank carries the phrase.
+
+EXPECTATION AND SATISFACTION (2026-08-25, cross-family review finding — MANDATE §8's
+"at_target sustained 48h" and a negative canary's permanent-red state contradicted
+each other with no valid resolution: a canary can never legitimately go green, so a
+topic with one could never reach the old definition of at_target). Each journey may
+carry `expectation: retrieves` (the default, and what every journey meant before this
+field existed) or `expectation: must_not_retrieve` (a canary: the phrase coming back,
+correctly attributed, IS the failure — see kb/journeys/immigration.yaml journeys 2 and
+8). `hit` is true only on a "green" grading; SATISFIED is `hit == (expectation ==
+"retrieves")`. `probe_state` keeps recording the raw measured hit (green/red) exactly
+as it always has — satisfaction is derived at report time, never stored, because two
+fields that can disagree are two fields one of which is a lie.
 
 There is deliberately NO --update flag. A probe that writes its own expected value
 back into the file it grades is not a probe. Print the correction; let a human or a
@@ -214,6 +253,67 @@ def phrase_hit(chunks: list[dict], phrase: str) -> tuple[bool, int | None]:
         if needle in normalize(chunk.get("text", "")):
             return True, i
     return False, None
+
+
+def chunk_instrument(chunk: dict) -> str | None:
+    """Which instrument this retrieved chunk's payload actually names, or None.
+
+    Two payload generations coexist in legal_unified (kb_inventory_probe.py's
+    PAYLOAD_SHAPES; MANDATE §4.1): a modern ingest writes `document_id` at the
+    payload's top level; a legacy ingest nests it under
+    `payload["metadata"]["document_id"]` instead. `_extract_point_metadata`
+    (backend/core/qdrant_db.py:192) folds a flat payload's other keys —
+    `document_id` included — into what reaches this probe as `chunk["metadata"]`,
+    and passes a legacy payload's own nested `metadata` dict through unchanged.
+    So by the time a chunk gets here, BOTH generations' identity lives at
+    `chunk["metadata"]["document_id"]`. This also checks `chunk["document_id"]`
+    directly rather than trusting that one normalisation layer never to change
+    shape underneath it. Measured 2026-08-25: 78,486 of legal_unified's 84,283
+    points (93%) carry identity ONLY in the nested form — a check that reads just
+    the flat key is blind to the entire legacy generation, which is the exact
+    failure this function exists not to repeat.
+    """
+    meta = chunk.get("metadata")
+    meta = meta if isinstance(meta, dict) else {}
+    return chunk.get("document_id") or meta.get("document_id") or None
+
+
+def locate_phrase(chunks: list[dict], phrase: str, instrument_id: str) -> dict:
+    """Where the phrase is, and — the point of this function — WHOSE it is.
+
+    See the module docstring's "INSTRUMENT-CHECKED GRADING" section for why a
+    text match alone is not enough (the tax-J8 defect: a phrase citation inside
+    a DIFFERENT instrument used to grade green). Returns a dict with:
+      "state"            — "green" | "misattributed" | "red"
+      "rank"              — 1-based rank of the reported hit, or None for red
+      "found_instrument" — the instrument actually holding the reported hit
+                             (== instrument_id for green; the wrong one for
+                             misattributed; None for red)
+
+    A RIGHT-instrument hit wins over a WRONG-instrument hit regardless of rank
+    — scanned in retrieval order, the first correct-instrument hit is returned
+    immediately; a wrong-instrument hit is only ever a fallback, reported at
+    ITS OWN first-seen rank so a reader can see how early the misattribution
+    would mislead a real answer.
+    """
+    needle = normalize(phrase)
+    wrong_rank: int | None = None
+    wrong_instrument: str | None = None
+    for i, chunk in enumerate(chunks, start=1):
+        if needle not in normalize(chunk.get("text", "")):
+            continue
+        found = chunk_instrument(chunk)
+        if found == instrument_id:
+            return {"state": "green", "rank": i, "found_instrument": found}
+        if wrong_rank is None:
+            wrong_rank, wrong_instrument = i, found
+    if wrong_rank is not None:
+        return {
+            "state": "misattributed",
+            "rank": wrong_rank,
+            "found_instrument": wrong_instrument,
+        }
+    return {"state": "red", "rank": None, "found_instrument": None}
 
 
 def resolve_collection(journey: dict, default: str) -> str:
@@ -394,6 +494,31 @@ async def run(argv=None) -> int:
                "never that this instrument's text did."],
         )
 
+    # Also BEFORE SearchService is constructed, and for the same reason: without
+    # an instrument_id this probe cannot tell a phrase found in the RIGHT document
+    # from one found in the WRONG one — which is exactly the defect it exists to
+    # catch (tax-J8). The topic-contract test requires this field too, but a lane
+    # iterating with this probe by hand never touches that gate.
+    missing_instrument = [
+        (i, j.get("question", ""))
+        for i, j in enumerate(journeys, start=1)
+        if not j.get("instrument_id")
+    ]
+    if missing_instrument:
+        return refuse(
+            args,
+            "missing_instrument_id",
+            "; ".join("journey %d has no instrument_id" % i for i, _ in missing_instrument),
+            ["BROKEN — %d journey(s) carry no instrument_id:" % len(missing_instrument)]
+            + ["  - journey %d (%s)" % (i, (q[:40] or "?")) for i, q in missing_instrument]
+            + ["",
+               "Nothing was graded. Without an instrument_id this probe cannot tell a "
+               "phrase found",
+               "in the RIGHT document from one found in the WRONG one (the tax-J8 "
+               "shape) — grading",
+               "anyway would silently fall back to the old, refuted, text-only check."],
+        )
+
     asked = {resolve_collection(j, args.collection) for j in journeys}
     asked.add(args.collection)
     strangers = unknown_collections(asked)
@@ -515,63 +640,108 @@ async def run(argv=None) -> int:
         print()
 
     # ── the journeys ────────────────────────────────────────────────────────
+    # Display-only shrink for the table; JSON always carries the full word.
+    MEASURED_DISPLAY = {"green": "green", "red": "red", "misattributed": "misattrib"}
+
     drift: list[str] = []
     outstanding: list[str] = []
     reported: list[dict] = []  # per-journey record, built regardless of --json
     if not args.json:
-        header = "%-4s %-9s %-9s %-6s %-16s  %s" % (
-            "#", "RECORDED", "MEASURED", "RANK", "COLLECTION", "QUESTION")
+        header = "%-4s %-9s %-10s %-6s %-4s %-16s  %s" % (
+            "#", "RECORDED", "MEASURED", "RANK", "SAT", "COLLECTION", "QUESTION")
         print(header)
         print("-" * max(len(header), 78))
 
     for i, journey in enumerate(journeys, start=1):
         question = journey.get("question", "")
         phrase = journey.get("verbatim_phrase", "")
+        instrument_id = journey.get("instrument_id", "")
+        expectation = journey.get("expectation", "retrieves")
         recorded = journey.get("probe_state", "untested")
         collection = resolve_collection(journey, args.collection)
         try:
             chunks = await retrieve(service, question, collection, args.limit)
         except Exception as exc:  # noqa: BLE001
             if not args.json:
-                print("%-4d %-9s %-9s %-6s %-16s  %s"
-                      % (i, recorded, "ERROR", "-", collection, question[:44]))
+                print("%-4d %-9s %-10s %-6s %-4s %-16s  %s"
+                      % (i, recorded, "ERROR", "-", "-", collection, question[:44]))
             outstanding.append("journey %d raised %s: %s" % (i, type(exc).__name__, exc))
             reported.append({
                 "index": i, "question": question, "recorded_state": recorded,
                 "measured_state": "error", "rank": None, "collection": collection,
+                "instrument_id": instrument_id, "expectation": expectation,
+                "found_instrument": None, "satisfied": None,
                 "error": "%s: %s" % (type(exc).__name__, exc),
             })
             continue
 
-        hit, rank = phrase_hit(chunks, phrase)
-        measured = "green" if hit else "red"
+        located = locate_phrase(chunks, phrase, instrument_id)
+        measured_state = located["state"]  # "green" | "misattributed" | "red"
+        rank = located["rank"]
+        found_instrument = located["found_instrument"]
+        hit = measured_state == "green"
+        graded = "green" if hit else "red"  # what a human should write into probe_state
+        satisfied = hit == (expectation == "retrieves")
+
         if not args.json:
-            print("%-4d %-9s %-9s %-6s %-16s  %s"
-                  % (i, recorded, measured, rank if rank else "-", collection,
-                     question[:44]))
+            print("%-4d %-9s %-10s %-6s %-4s %-16s  %s"
+                  % (i, recorded, MEASURED_DISPLAY[measured_state],
+                     rank if rank else "-", "yes" if satisfied else "no",
+                     collection, question[:44]))
         reported.append({
             "index": i, "question": question, "recorded_state": recorded,
-            "measured_state": measured, "rank": rank, "collection": collection,
+            "measured_state": measured_state, "rank": rank, "collection": collection,
+            "instrument_id": instrument_id, "expectation": expectation,
+            "found_instrument": found_instrument, "satisfied": satisfied,
             "error": None,
         })
 
+        # DRIFT compares the RECORDED probe_state against the raw measured HIT
+        # (graded), never against satisfaction — probe_state means exactly what
+        # it always meant ("did the phrase come back, correctly attributed"),
+        # regardless of what a journey's expectation makes of that fact.
         if recorded == "untested":
             drift.append(
                 "journey %d is recorded 'untested' but has now been run and measured "
-                "%r — record it, an unrun verdict is not a verdict" % (i, measured)
+                "%r — record it, an unrun verdict is not a verdict" % (i, measured_state)
             )
-        elif recorded != measured:
+        elif recorded != graded:
+            if expectation == "must_not_retrieve":
+                note = (
+                    "REGRESSION: this canary was safe and the poisoned instrument is "
+                    "now retrieved" if graded == "green" else
+                    "the file records a leak that production no longer reproduces — "
+                    "re-verify before declaring it permanently safe"
+                )
+            else:
+                note = (
+                    "the work landed and the file is stale" if graded == "green"
+                    else "REGRESSION: this used to be found and no longer is"
+                )
             drift.append(
                 "journey %d records %r, production measures %r — %s"
-                % (i, recorded, measured,
-                   "the work landed and the file is stale" if measured == "green"
-                   else "REGRESSION: this used to be found and no longer is")
+                % (i, recorded, measured_state, note)
             )
-        if measured == "red":
-            outstanding.append(
-                "journey %d: %r is not in the retrieved context for %r"
-                % (i, phrase[:48], question[:48])
-            )
+
+        if not satisfied:
+            if measured_state == "misattributed":
+                outstanding.append(
+                    "journey %d: %r is retrieved (rank %d) but attributed to %r, "
+                    "not %r — found, WRONG instrument (the tax-J8 shape)"
+                    % (i, phrase[:48], rank, found_instrument, instrument_id)
+                )
+            elif expectation == "must_not_retrieve":
+                outstanding.append(
+                    "journey %d: CANARY VIOLATED — %r is retrieved (rank %d) from "
+                    "the poisoned instrument %r: %s"
+                    % (i, phrase[:48], rank, instrument_id,
+                       journey.get("reason") or "no reason recorded")
+                )
+            else:
+                outstanding.append(
+                    "journey %d: %r is not in the retrieved context for %r"
+                    % (i, phrase[:48], question[:48])
+                )
 
     exit_code = 0
     if drift:
@@ -601,16 +771,20 @@ async def run(argv=None) -> int:
         return 1
 
     if outstanding:
-        print("OUTSTANDING — %d of %d journeys do not retrieve their phrase:"
+        print("OUTSTANDING — %d of %d journeys are not satisfied:"
               % (len(outstanding), len(journeys)))
         for item in outstanding:
             print("  - %s" % item)
         print()
-        print("Red on purpose: the file says red and production agrees. This is the")
-        print("state a journey is SUPPOSED to be in on the day it is written (§3).")
+        print("For a plain 'retrieves' journey, red is the state it is SUPPOSED to be")
+        print("in on the day it is written (§3) — work still to do, not a bug in this")
+        print("run. A line above naming a CANARY VIOLATED, or a WRONG instrument, is")
+        print("not routine coverage — it is a live regression the campaign exists to")
+        print("catch. Read which kind each line is before treating it as expected.")
         return 2
 
-    print("AT TARGET — every journey retrieves its verbatim phrase.")
+    print("AT TARGET — every journey is satisfied: 'retrieves' journeys found their")
+    print("phrase in the right instrument, and 'must_not_retrieve' canaries stayed red.")
     return 0
 
 
