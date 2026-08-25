@@ -189,10 +189,15 @@ open_findings:
       `berlaku` (26,107 pts / 168 document_ids), missing entirely (15,756 pts / 33
       document_ids). Field location: 74.4% under `metadata.legal_status` (legacy
       shape), 6.9% top-level (modern shape) — both read every scroll, per the
-      MANDATE §4.1 lesson. 14 document_ids hold BOTH values across their own
+      MANDATE §4.1 lesson. 9 document_ids hold BOTH named values across their own
       points (e.g. Permen_1_2026: 931 dicabut / 575 berlaku) — a single document
       cannot honestly be both, which by itself proves the signal is per-chunk
-      noise, not a document-level fact.
+      noise, not a document-level fact. (14 if partial coverage — one value plus
+      the field simply missing on some of the document's own points, e.g.
+      PP_28_2025's 7 missing-field points alongside its 721 dicabut / 159 berlaku
+      — is also counted; that wider number describes incomplete coverage, not a
+      second contradiction, so 9 is the correct figure for "one document, two
+      honest-can't-both-be-true values".)
 
       ROOT CAUSE FOUND, read from the source, not inferred: `STATUS_PATTERNS` in
       `apps/backend-rag/backend/core/legal/constants.py` is a bare regex —
