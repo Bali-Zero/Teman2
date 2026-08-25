@@ -1372,6 +1372,106 @@ class TestAddDocument:
             )
         assert exc_info.value.status_code == 404
 
+    # -- crm-mutation-scope (2026-08-25): RBAC gate --------------------------
+    # add_document_to_practice had NO scope check at all before this fix
+    # (reconciliation F7). These tests prove the admin-or-owner gate now
+    # mirrors update_practice's proven pattern.
+
+    @pytest.mark.asyncio
+    async def test_add_document_owner_created_by_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's creator (non-admin) may add documents."""
+        from backend.app.routers.crm_practices import add_document_to_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "documents": [],
+                "created_by": team_user["email"],
+                "assigned_to": "someone-else@balizero.com",
+            }
+        )
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await add_document_to_practice(
+                request=MagicMock(),
+                practice_id=1,
+                document_name="Passport Copy",
+                drive_file_id="drive123",
+                uploaded_by=team_user["email"],
+                db_pool=mock_db_pool,
+                current_user=team_user,
+            )
+        assert result["success"] is True
+        mock_db_conn.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_add_document_owner_assigned_to_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's assignee (non-admin) may add documents."""
+        from backend.app.routers.crm_practices import add_document_to_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "documents": [],
+                "created_by": "someone-else@balizero.com",
+                "assigned_to": team_user["email"],
+            }
+        )
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await add_document_to_practice(
+                request=MagicMock(),
+                practice_id=1,
+                document_name="Passport Copy",
+                drive_file_id="drive123",
+                uploaded_by=team_user["email"],
+                db_pool=mock_db_pool,
+                current_user=team_user,
+            )
+        assert result["success"] is True
+        mock_db_conn.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_add_document_denied_non_owner(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict, caplog
+    ) -> None:
+        """GUILT: a non-admin who neither created nor is assigned to the
+        practice gets 403, no write happens, and the attempt is logged
+        (auditable) — the exact gap the reconciliation found."""
+        import logging
+
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import add_document_to_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "documents": [],
+                "created_by": "owner@balizero.com",
+                "assigned_to": "other-owner@balizero.com",
+            }
+        )
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.crm_practices"):
+            with pytest.raises(HTTPException) as exc_info:
+                await add_document_to_practice(
+                    request=MagicMock(),
+                    practice_id=1,
+                    document_name="Passport Copy",
+                    drive_file_id="drive123",
+                    uploaded_by=team_user["email"],
+                    db_pool=mock_db_pool,
+                    current_user=team_user,
+                )
+        assert exc_info.value.status_code == 403
+        mock_db_conn.execute.assert_not_awaited()
+        assert any("crm.rbac_practice_write_denied" in r.message for r in caplog.records)
+
 
 # ---------------------------------------------------------------------------
 # Helper: _create_hr_bonus_on_completed

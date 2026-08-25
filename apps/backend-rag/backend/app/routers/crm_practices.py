@@ -71,6 +71,56 @@ PRACTICE_CLEARABLE_FIELDS = {
 REVENUE_GROWTH_CACHE_NAMESPACE = "crm_practices_revenue_growth"
 
 
+def _practice_ownership_flags(
+    current_user: dict[str, Any],
+    created_by: str | None,
+    assigned_to: str | None,
+) -> tuple[bool, bool, bool]:
+    """The created_by/assigned_to email-match derivation this router uses
+    to decide "does this actor own this practice".
+
+    `update_practice` (below) has enforced this exact matching logic
+    inline since inception; this function exists so every OTHER mutation
+    route on practices reuses the same derivation instead of re-deriving
+    it independently (crm-mutation-scope, 2026-08-25 reconciliation F7:
+    three of this router's four mutation paths had NO scope check at
+    all — only update_practice enforced admin-or-owner).
+
+    `update_practice`'s own inline block is left untouched on purpose —
+    it is the proven, load-bearing implementation this mirrors, and this
+    file's constraint is "do not weaken/regress it", so callers should
+    reuse THIS helper rather than the other way around.
+
+    Returns (user_is_admin, created_by_match, assigned_to_match). Does
+    NOT consider client-level ownership (client.assigned_to) — that is
+    a *view* concession update_practice grants separately for the
+    client-contact-field scrub, never a *write* pathway.
+    """
+    user_is_admin = is_crm_admin(current_user)
+    user_email_lower = (current_user.get("email") or "").lower()
+    created_by_match = bool(created_by and created_by.lower() == user_email_lower)
+    assigned_to_match = bool(assigned_to and assigned_to.lower() == user_email_lower)
+    return user_is_admin, created_by_match, assigned_to_match
+
+
+def _deny_practice_mutation(practice_id: int, current_user: dict[str, Any], detail: str) -> None:
+    """Log + raise 403 for a scope-denied practice mutation.
+
+    Structured warning — no raw identifiers logged (CLAUDE.md PII
+    boundary), only presence booleans — mirrors verify_client_access's
+    `crm.rbac_client_write_denied` convention so a denied attempt here
+    is auditable the same way a denied client write already is.
+    """
+    logger.warning(
+        "crm.rbac_practice_write_denied",
+        extra={
+            "practice_id": practice_id,
+            "user_email_present": bool(current_user.get("email")),
+        },
+    )
+    raise HTTPException(status_code=403, detail=detail)
+
+
 async def _create_hr_bonus_on_completed(
     db_pool: asyncpg.Pool,
     practice_id: int,
@@ -1676,17 +1726,35 @@ async def add_document_to_practice(
     """
     Add a document to a practice
 
+    Access Control:
+    - Admin users: can add documents to any practice
+    - Team members: can only add documents to practices they created or
+      are assigned to (mirrors update_practice; crm-mutation-scope)
+
     - **document_name**: Name/type of document (e.g., "Passport Copy")
     - **drive_file_id**: Google Drive file ID
     - **uploaded_by**: Email of person uploading
     """
     try:
         async with db_pool.acquire() as conn:
-            # Get current documents
-            row = await conn.fetchrow("SELECT documents FROM practices WHERE id = $1", practice_id)
+            # Get current documents + ownership fields (for the RBAC gate below)
+            row = await conn.fetchrow(
+                "SELECT documents, created_by, assigned_to FROM practices WHERE id = $1",
+                practice_id,
+            )
 
             if not row:
                 raise HTTPException(status_code=404, detail="Practice not found")
+
+            user_is_admin, created_by_match, assigned_to_match = _practice_ownership_flags(
+                current_user, row.get("created_by"), row.get("assigned_to")
+            )
+            if not user_is_admin and not (created_by_match or assigned_to_match):
+                _deny_practice_mutation(
+                    practice_id,
+                    current_user,
+                    "You don't have permission to add documents to this practice",
+                )
 
             documents = row["documents"] or []
 
