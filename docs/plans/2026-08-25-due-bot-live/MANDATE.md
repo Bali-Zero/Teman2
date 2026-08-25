@@ -136,6 +136,30 @@ tripwires (JSON parse fail rate, schema fail rate, repeated-call rate, enum-tran
 confirm-timeout rate, p95). One kill switch per side-effect plane: client send (per surface),
 broker generation, team replies, team mutations, failover automation.
 
+## Amendment — F5 and F7 rest on a premise that was measured false (2026-08-25)
+
+`RECONCILIATION-registry-vs-backend.md` reconciles all ten frozen tools against the backend
+they must call. **Zero MATCH**: eight SHAPE_DRIFT, one WRONG_QUESTION, one ABSENT. Read it
+before building anything that consumes F5's schemas or relies on F7's boundary.
+
+The two lines that change how this mandate is executed:
+
+- **F5's wire-level detail is a sketch, not a description.** The registry's ID vocabulary
+  (`CL-`/`PR-`/`USR-`) exists nowhere in the backend, and its `PracticeStatus` and
+  `PracticeType` enums share ZERO values with the ones the backend enforces. F5's *design
+  principles* stand — enums over free text, IDs over names, one mutation per tool — and are
+  the reason the mismatch was findable. Its literal values do not. Ruling: the registry moves
+  toward the backend.
+- **F7's boundary does not exist for three of the four mutation paths.** F7 states
+  "endpoint authorization is the boundary; the local authorizer is early-deny only". Measured:
+  only `update_practice_status`'s route enforces scope. `create_practice` has authentication
+  and ZERO authorization helpers across its whole body — any authenticated user can open a
+  practice for any client. Ruling: **a mutation tool does not arm until its endpoint enforces
+  scope**, and the local early-deny is NOT to be promoted to the boundary to close the gap —
+  that would place the control in the layer F7 itself declares non-authoritative.
+
+Everything else in F1-F11 stands, and everything still ships dark.
+
 ## Lanes (parallel sessions; the orchestrator dispatches and gates)
 
 - **B1 — Client-bot core**: CanonicalMessage + profiles + engine + provider router +
