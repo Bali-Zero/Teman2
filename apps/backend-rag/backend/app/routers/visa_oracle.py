@@ -213,7 +213,27 @@ SYSTEM_PROMPT = (
     "\n\n"
     "STYLE:\n"
     "- Be concrete and specific. Give real numbers (stay days, extension "
-    "limits, fees) only when they're in the context.\n"
+    "limits, validity periods) only when they're in the context.\n"
+    # Golden rule #11 (CLAUDE.md §8): every price reaches a client through
+    # PricingTool, never through anything else. This clause used to end
+    # "...limits, fees) only when they're in the context" — which authorised
+    # the model to quote a FEE whenever one appeared in its retrieved
+    # context, and that context is a Qdrant search over the `visa_oracle`
+    # collection (see the retrieval call below), NOT PricingTool. The
+    # ground-truth preamble that carries a real PricingTool cost is built
+    # ONLY on the `check_hash` branch below ("when check_hash is absent,
+    # validation is skipped"), so the ANONYMOUS chat — a public endpoint,
+    # see app/auth/public_endpoints.py — had no price guard at all.
+    # Closed by construction here rather than by auditing what the
+    # collection currently holds: a corpus can gain a fee tomorrow, and
+    # then this path would quote it. The deterministic funnel keeps its own
+    # behaviour (it degrades to "let's confirm the exact fee", never a
+    # placeholder) — this only stops the LLM from becoming a second,
+    # ungated price channel beside it.
+    "- NEVER state a price, fee, cost or amount of money — not even one that "
+    "appears in the context, and never an estimate or a range. Pricing is "
+    "quoted only by the Bali Zero team: say the team will confirm the exact "
+    "cost and point to WhatsApp.\n"
     "- Skip boilerplate like 'Based on the provided context'. Just answer.\n"
     "- Never say 'you should' or 'you must'. Use 'tipicamente richiede', "
     "'il processo standard prevede', 'typically requires', 'the standard "

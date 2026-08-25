@@ -878,3 +878,51 @@ class TestVisaTypesEndpoints:
         response = client.get("/api/v1/visa-oracle/visa-types/nonexistent-visa")
 
         assert response.status_code == 404
+
+
+class TestAnonymousChatCannotQuoteAPrice:
+    """Golden rule #11 (CLAUDE.md §8) on the ONE surface that had no guard.
+
+    The `/api/v1/visa-oracle/chat` endpoint is PUBLIC (see
+    ``app/auth/public_endpoints.py``). Its ground-truth preamble — the thing
+    that carries a real PricingTool cost and stops the model contradicting
+    the wizard — is built only on the ``check_hash`` branch; the router's own
+    comment says "when check_hash is absent, validation is skipped". So an
+    anonymous visitor's chat runs on the BASE ``SYSTEM_PROMPT`` alone.
+
+    That base prompt used to say, verbatim, *"Give real numbers (stay days,
+    extension limits, fees) only when they're in the context"* — and the
+    context is a Qdrant search over the ``visa_oracle`` collection, NOT
+    PricingTool. That authorised a second, ungated price channel beside the
+    deterministic funnel (which degrades honestly to "let's confirm the exact
+    fee" and never invents a placeholder).
+
+    These tests pin the closure BY CONSTRUCTION rather than by auditing what
+    the collection happens to hold today: a corpus can gain a fee tomorrow,
+    and a prompt that permits quoting it would quote it.
+    """
+
+    def test_system_prompt_does_not_authorise_quoting_fees_from_context(self) -> None:
+        from backend.app.routers import visa_oracle as visa_oracle_module
+
+        prompt = visa_oracle_module.SYSTEM_PROMPT
+        # Guilt: the exact permission that opened the channel must be gone.
+        assert "fees) only when they're in the context" not in prompt, (
+            "the base SYSTEM_PROMPT again authorises quoting a FEE whenever one "
+            "appears in the retrieved context — that context is a Qdrant search, "
+            "not PricingTool, and the anonymous chat has no other price guard"
+        )
+
+    def test_system_prompt_forbids_stating_any_price(self) -> None:
+        from backend.app.routers import visa_oracle as visa_oracle_module
+
+        prompt = visa_oracle_module.SYSTEM_PROMPT.lower()
+        # Innocence: the prohibition is actually present and names money,
+        # not merely the absence of the old permission (a prompt rewritten
+        # into silence would pass the guilt test above while leaving the
+        # model free to improvise).
+        assert "never state a price" in prompt
+        for token in ("fee", "cost"):
+            assert token in prompt, f"the prohibition must name {token!r} explicitly"
+        # And it must route the visitor to the humans who own pricing.
+        assert "team" in prompt
