@@ -384,6 +384,82 @@ def test_tool_result_prompt_injection_fixture_constructs_as_plain_data() -> None
 
 
 @requires_team_bot
+def test_read_chain_step_exhaustion_fixture_returns_a_typed_not_thrown_outcome() -> None:
+    """Flipped executable=True in commit e2eeb290b's follow-up (lane B3,
+    directive #1 §2): team_bot.loop.turn_plan.try_append_read_step must
+    hand back ReadStepOutcome.BUDGET_EXHAUSTED — a typed value — the
+    instant the configured per-turn budget is reached, never raise, and
+    never silently keep appending."""
+    from datetime import UTC, datetime
+
+    from team_bot.loop import ReadStepOutcome, ToolDecision, try_append_read_step
+
+    fx = next(f for f in TEAM_GOLDENS if f.case_id == "team-loop-step-exhaustion")
+    assert fx.executable
+
+    now = datetime(2026, 8, 25, 12, 0, 0, tzinfo=UTC)
+
+    def _read(query: str) -> ToolDecision:
+        message = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "c1",
+                    "type": "function",
+                    "function": {"name": "search_clients", "arguments": f'{{"query": "{query}"}}'},
+                }
+            ],
+        }
+        return ToolDecision.from_raw_message(message, model_name="qwen3-14b-q6k-duebot-tmpl", decided_at=now)
+
+    plan = None
+    for query in ["A", "B"]:
+        result = try_append_read_step(plan, _read(query), max_steps=2)
+        assert result.outcome == ReadStepOutcome.APPENDED
+        plan = result.plan
+
+    exhausted = try_append_read_step(plan, _read("C"), max_steps=2)
+    assert exhausted.outcome == ReadStepOutcome.BUDGET_EXHAUSTED
+    assert exhausted.plan is plan, "the plan must be returned UNCHANGED, not silently extended"
+
+
+@requires_team_bot
+def test_repeated_read_request_fixture_is_flagged_stuck_by_the_loop_detector() -> None:
+    """Sibling of the fixture above, same commit: the READ-tool instance of
+    team.model-repeats-blocked-tool-request that loop_detector.py DOES
+    cover (the MUTATION instance the OTHER fixture in this class describes
+    stays executable=False — see that fixture's own notes)."""
+    from datetime import UTC, datetime
+
+    from team_bot.loop import ToolDecision, detect_stuck_loop, try_append_read_step
+
+    fx = next(f for f in TEAM_GOLDENS if f.case_id == "team-loop-repeated-read-request")
+    assert fx.executable
+
+    now = datetime(2026, 8, 25, 12, 0, 0, tzinfo=UTC)
+    message = {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {
+                "id": "c1",
+                "type": "function",
+                "function": {"name": "search_clients", "arguments": '{"query": "John"}'},
+            }
+        ],
+    }
+    decision = ToolDecision.from_raw_message(message, model_name="qwen3-14b-q6k-duebot-tmpl", decided_at=now)
+
+    plan = None
+    for _ in range(3):
+        plan = try_append_read_step(plan, decision, max_steps=8).plan
+
+    verdict = detect_stuck_loop(plan)
+    assert verdict.stuck is True, verdict.reason
+
+
+@requires_team_bot
 def test_leader_epoch_field_is_a_real_typed_int_on_pending_action() -> None:
     from datetime import UTC, datetime, timedelta
 
@@ -448,6 +524,8 @@ def test_executable_count_matches_what_this_file_actually_exercises() -> None:
         "team-inference-malformed-json",
         "team-injection-tool-result",
         "team-failover-stale-epoch",
+        "team-loop-step-exhaustion",
+        "team-loop-repeated-read-request",
     }
     assert executable_ids == exercised_ids, (
         f"mismatch — marked executable but not exercised: {executable_ids - exercised_ids}; "
