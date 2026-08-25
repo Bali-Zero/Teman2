@@ -95,3 +95,25 @@ nothing.
 - `client_expiry_alerts_view` is created in `apps/backend-rag/scripts/apply_migration_033.py`,
   **not** under `migrations_v2/`. Anyone looking for it by the usual convention finds
   nothing and may conclude it is absent.
+
+## Addendum — the F7 class census (2026-08-25)
+
+The F7 lane closed `messaging_identity_service.py`. A census over the ENTITY rather than
+that file found the real size:
+
+**~40 raw-identifier log sites across ~13 files.** `app/routers/whatsapp_chat.py` alone
+carries ~14, on the live client-bot path. Fixing one file and calling "Raw phone never in
+logs" done is the W107 shape — a wrapper cured out of five, with the class left open and
+the ledger reading closed.
+
+Mitigating, and stated so severity is not overread: `app/setup/sentry_config.py`'s
+`_before_send` ALREADY redacts phone shapes before an event reaches Sentry, with
+shape-anchored regexes and its accepted collateral written down. Third-party egress is
+therefore covered. What stays exposed is **local and Fly log files**, which is precisely
+what CLAUDE.md §14 and Law 2 name.
+
+The sweep is dispatched as its own branch off `main`, NOT on the integration branch: it is
+a live surface outside this mandate's perimeter, and a PII exposure on a live surface does
+not wait for a product train to land. The shared helper travels with it by cherry-pick, so
+both branches carry identical content and the final train merges by content rather than
+conflicting.
