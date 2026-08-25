@@ -49,20 +49,39 @@ proves the SHAPE of direction (2) using only this lane's own code (no import fro
 `apps.team_bot`) — see that test's docstring for exactly what it does and does not
 prove.
 
-## A second consumer of the same gap class
+## Second consumer: B8 per-member memory (owner directive #1 §3)
 
-Zero's directive #1 (per-member team-bot memory: three layers in a local SQLite store
-on Mini, replicated to Pro, with the explicit requirement _"la memoria sopravvive al
-failover"_) puts per-member memory in exactly the same shape as F6's PendingAction —
-node-local SQLite state that must survive, or be correctly judged stale by, an F9
-takeover. B8 is building that store now and has been pointed at this file before
-designing it. Nobody should design a fix here for F6's pending actions alone: the same
-"is this node-local SQLite state current, and does the OTHER node see it after a
-takeover" question now has two independent consumers (F6 confirmations, team-bot
-memory), and a resolution shape picked without both in view — e.g. one that hardcodes
-`PendingAction`-specific fields into the check — would need re-doing the day the second
-consumer arrives. This paragraph is B5 naming the second instance, not designing
-either fix; sizing the actual resolution is still the open call above.
+`apps/team-bot/team_bot/memory/store.py`'s `SqliteMemberMemoryStore` is a second,
+independent per-node SQLite store with the same "Mini <-> Pro replication is out
+of scope" shape `SqlitePendingActionStore` carries — B8's own module docstring
+names this same open question explicitly rather than inventing a private answer,
+and raised it to the orchestrator as a cross-lane question instead of resolving
+it unilaterally.
+
+**Orchestrator ruling (2026-08-25, on B8's cross-lane question): one mechanism,
+not two.** B8's severity argument — a memory write is idempotent-ish (last-write-
+wins profile, insert-only episodic, increment-only pattern counter), so a
+split-brain degrades to a duplicated row or a double-counted pattern, never a
+wrong CRM mutation — is accepted, and is a good reason NOT to block B8 on this
+gap. It is not a reason to build B8 a second, independent resolution: the
+question a second mechanism would answer is "can two answers to the same
+problem diverge?" — and they can. Whoever writes the simpler one writes the
+precedent, and a future third consumer copies the precedent rather than
+re-deriving it; that third consumer may be a mutation. Two things sharpen the
+severity argument itself rather than defeat it: (1) the idempotency argument is
+about the CONSEQUENCE of a race, not about whether the race exists — the race
+itself is identical across every SQLite-per-node store this gap touches; (2) a
+double-counted learned pattern feeds proactivity (the bot acting unasked, on a
+wrong belief) — lower severity than a stale mutation, genuinely, but not zero.
+
+**Binding**: whoever designs the resolution for `SqlitePendingActionStore` is
+designing it for at least two consumers, not one — `SqliteMemberMemoryStore`
+adopts whatever mechanism is chosen here and does NOT get a cheaper bespoke
+answer, even though its own severity would arguably justify one. Ship each
+consumer single-node and dark until the mechanism lands, exactly as B3 and B8
+have both already done; a future third consumer does not get to copy B8's
+carve-out as precedent for skipping this line — B8 committed to the general
+answer, not to a cheaper one it happened to be safe enough to defer.
 
 ## A reference implementation now exists (finding #2)
 
