@@ -103,12 +103,16 @@ class ExchangeOutcome:
     `outcome`) is a leak vector NEITHER `sentry_sdk`'s own built-in
     `EventScrubber` (`DEFAULT_DENYLIST`, exact-key match) NOR this repo's
     `sentry_config._scrub` can close — both redact by KEY, never by scanning
-    inside an arbitrary string VALUE for a `field='secret'` pattern. Verified
-    empirically with a real `sentry_sdk.init()` + `capture_exception` pipeline:
-    before this fix, an uncaught exception with an `ExchangeOutcome` bound as
-    a local produced
-    `{"outcome": "ExchangeOutcome(..., account_session_secret='sess-...')"}` —
-    the secret travelled in full despite both scrubbers running. `repr=False`
+    inside an arbitrary string VALUE for a field-name-then-quoted-value
+    pattern. Verified empirically with a real `sentry_sdk.init()` +
+    `capture_exception` pipeline: before this fix, an uncaught exception with
+    an `ExchangeOutcome` bound as a local produced a single JSON string under
+    the innocuous key `outcome`, whose text was the whole `ExchangeOutcome`
+    repr with the session-secret field rendered inline — the secret travelled
+    in full despite both scrubbers running. (That repr is described here
+    rather than quoted: spelled out literally, the field-name-then-quoted-value
+    shape trips detect-secrets' Secret Keyword rule and reds the security job
+    on a docstring.) `repr=False`
     fixes this AT THE SOURCE — every capture path (a traceback, a debugger
     repr, an f-string, a future logger call) inherits it, instead of each one
     needing its own guard. Chosen over a hand-written `__repr__` because it is
