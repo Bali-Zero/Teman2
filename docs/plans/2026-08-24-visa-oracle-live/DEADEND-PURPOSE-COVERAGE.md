@@ -272,3 +272,39 @@ prendere l'intervista in ostaggio quando nulla è supportato. La cura pulita è
 `on_unknown: NO_EFFECT` su quelle regole di review — oppure l'invariante nel motore. Non urgente
 sul funnel di oggi (con un solo scopo c'è quasi sempre un `SUPPORTED` che vince), **ma è una mina
 che esplode esattamente quando il catalogo si allarga.**
+
+---
+
+## Il limite dichiarato è sciolto — riga riletta alla fonte, cura costruita (2026-08-26)
+
+Il blocco qui sopra si fermava su un limite esplicito: _«il PDF del Kepmen non è su disco; io la riga
+E23 non l'ho riletta»_. Il PDF ora è stato scaricato e la riga **riletta**: `kemenimipas.go.id`,
+1.906.368 byte, 80 pagine, validato per **magic bytes** (`%PDF`) e non per stato HTTP. Riga **E23**,
+colonna **Hak**, voce **4**, verbatim:
+
+> «Melakukan kegiatan yang berhubungan dengan **wisata**, melakukan pembelian barang, serta
+> mengunjungi keluarga dan teman»
+
+La clausola regge: la raccomandazione di questo documento — insegnare la policy al pack invece di
+dichiarare il motore mono-scopo — era corretta.
+
+**Una coordinata era però sbagliata in entrambi i lettori indipendenti**: NB-2 la dava in «Lampiran
+B.1», il factbase interno a pagina 37-38. È a **pagina 35**, Lampiran «Klasifikasi Visa Tinggal
+Terbatas». Due sonde che concordano sulla sostanza possono sbagliare insieme sulla collocazione —
+motivo per cui la rilettura alla fonte era un prerequisito e non una formalità.
+
+**La cura è `seq-16`**, costruita e misurata: `E23.covered_purposes` passa a
+`["EMPLOYMENT","TOURISM"]` sul **prodotto** e sulle sue **due** regole ELIGIBILITY SUPPORT (il
+compilatore rifiuta una regola SUPPORT che rivendichi uno scopo non dichiarato dal prodotto:
+`SUPPORT_RULE_PURPOSE_NOT_ON_PRODUCT` — le due superfici si muovono insieme o il pack non si
+costruisce). Persona #15 passa da `NEEDS_INPUT` a `SUPPORTED_CANDIDATES ['E23']`, e **nessuna** delle
+altre 19 personas si muove. Dettaglio, misure e cerimonia di firma: `GOLD-DIVERGENCE-TRIAGE.md`,
+sezione «seq-16».
+
+**Aperto e non deciso qui**: la stessa colonna Hak, voce **2**, concede «Membawa keluarga untuk
+tinggal di wilayah Indonesia» — cioè `FAMILY`. Non è stato aggiunto: il GO era sul turismo, ed è una
+seconda asserzione normativa. Decisione di Zero (Legge 5).
+
+Il punto **(C)** qui sopra — i prodotti di sola review che prendono l'intervista in ostaggio quando
+nulla è supportato — **resta aperto**: seq-16 lo rende meno probabile su questa forma (ora E23 vince
+per la #15), non lo cura.

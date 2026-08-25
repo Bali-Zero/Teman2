@@ -363,3 +363,116 @@ documento aveva designato come prova della cura **non è passato**, e continua a
 una ragione per ritirare la firma — il criterio firmato in §7 chiede «nessun vicolo cieco», e per un
 visitatore reale non ce n'è più uno — ma è una ragione perché il registro non dica che una prova è
 passata quando è misurabilmente rossa.
+
+---
+
+## ✅ seq-16 — la cura è costruita e l'accettazione falsificabile PASSA (misurato 2026-08-26)
+
+La sezione precedente prescriveva la cura: un **seq-16** che insegni
+`E23.covered_purposes ⊇ {EMPLOYMENT, TOURISM}`. È costruita. Non è ancora **firmata** — la firma è
+di Zero (`operator[credential]`), e finché non c'è, il driver continua per costruzione a replayare
+seq-15 (`select_highest_repository_pack` sceglie il pack **firmato** con sequenza massima), quindi il
+report ufficiale legge ancora `unexplained_divergences: 1`. Quello che segue è misurato compilando
+il payload sorgente seq-16 sullo stesso percorso del driver.
+
+### La fonte, letta alla fonte
+
+Il PDF del Kepmen non era su disco; ora lo è stato. Scaricato da `kemenimipas.go.id`, **1.906.368
+byte, 80 pagine**, validato per **magic bytes** (`head -c 4` = `%PDF`) e non per stato HTTP — quei
+portali rispondono `200` con una pagina d'errore HTML. Riga E23, colonna **Hak**, voce **4**,
+verbatim:
+
+> «Melakukan kegiatan yang berhubungan dengan **wisata**, melakukan pembelian barang, serta
+> mengunjungi keluarga dan teman»
+
+**Correzione alla sezione precedente**: quella riga citava NB-2 con «Lampiran B.1». La collocazione
+reale, riletta sul PDF, è **pagina 35**, Lampiran «Klasifikasi Visa Tinggal Terbatas» (una factbase
+interna la stimava a pagina 37-38: anche quella era sbagliata). Il verdetto NB-2 era un **lead
+corretto**, la sua coordinata no — che è esattamente la ragione per cui un verdetto NB si verifica
+alla fonte prima di diventare una modifica normativa.
+
+### Cosa cambia il fold, e cosa NON cambia
+
+`backend/scripts/visa_engine/fold_pack_seq16.py` — 111 regole dentro, 111 fuori, zero aggiunte, zero
+rimosse; 38 prodotti invariati come insieme. Superfici toccate: **una** (`E23`) e **due**
+(`el.e23-employment-support`, `el.e23-operational-work-boundary`), e in tutte e tre l'unica chiave
+che cambia è `covered_purposes: ["EMPLOYMENT"] → ["EMPLOYMENT","TOURISM"]`.
+
+**La prima stesura del fold toccava solo le due regole, ed era sbagliata.** Ha superato la
+validazione di schema (`RulePackPayload`) e si è schiantata sul compilatore:
+`SUPPORT_RULE_PURPOSE_NOT_ON_PRODUCT` — una regola SUPPORT non può rivendicare uno scopo che il
+**prodotto** non dichiara (`compiler.py:1085`); il `covered_purposes` del prodotto è il limite
+esterno. Schema-valido non è semanticamente valido: il gate di compilazione ora sta **dentro** il
+fold, non solo nel test, così un pack non compilabile non può raggiungere il disco.
+
+Il pack aveva già la convenzione, e E23 era l'unico fuori: `E33A` dichiara
+`['EMPLOYMENT','TOURISM','FAMILY']`, `E33B` cinque scopi, `E33G`
+`['REMOTE_WORK','TOURISM','FAMILY']`. Prima di seq-16, `['EMPLOYMENT']` nudo compariva su **due
+sole** regole in tutto il pack — le due di E23.
+
+### La misura
+
+```
+persona #15   seq-15:  NEEDS_INPUT            missing_facts=['intent.requested_product_code']
+              seq-16:  SUPPORTED_CANDIDATES   candidates=['E23']   missing_facts=[]
+personas mosse da seq-16:  1 su 20  (esattamente la #15)
+divergenze vs atteso:      seq-15 -> 16    seq-16 -> 15
+                           l'unica rimossa e' la #15, cioe' l'unica NON spiegata
+```
+
+L'accettazione che questo documento aveva fissato — _«it must flip from `NEEDS_INPUT` to
+`SUPPORTED_CANDIDATES [E23]`»_ — **passa**. E il collaterale è nullo: 19 personas su 20 non si
+muovono di un byte. Alla firma, il driver leggerà `explained 15 · unexplained 0 · overall_pass True`.
+
+Guardia: `backend/tests/services/visa_engine/test_seq16_pack.py`, 11 test, **nessuno skip
+difensivo** — se l'artefatto manca il modulo va rosso, non verde. Mutation-check eseguito: rimesso
+`["EMPLOYMENT"]` sul solo prodotto, **6 test su 11 vanno rossi**; ripristinato e ri-verificato verde.
+
+### Due cose lasciate fuori, dette invece che taciute
+
+1. **`FAMILY` — non toccato, e forse dovrebbe.** La stessa colonna Hak di E23, voce **2**, concede
+   «Membawa keluarga untuk tinggal di wilayah Indonesia». Per l'analogia su cui questo fold poggia
+   (E33A/E33G portano `FAMILY` accanto allo scopo primario), E23 la vorrebbe. **Non è stata
+   aggiunta**: il GO era sul turismo, e ogni voce di `covered_purposes` è un'asserzione normativa che
+   cambia chi riceve un «sì». Aggiungerne una seconda di mia iniziativa sarebbe legiferare oltre
+   l'istruzione. → **decisione di Zero** (Legge 5), non della sessione.
+2. **E23U / E23V restano `['EMPLOYMENT']`.** Verificato prima di lasciarli fuori: ciascuno porta
+   **una sola** regola, `REQUIRE_REVIEW` a stadio HUMAN_REVIEW, nessuna `SUPPORT` — quindi né il
+   limite del compilatore né la copertura-scopi di `evaluator.py:678` (che legge le regole
+   **ELIGIBILITY** vere) li ingaggiano mai. Allargarli asserirebbe un fatto normativo senza
+   consumatore. Un test lo tiene fermo: se domani nascesse una regola SUPPORT su di loro, va rosso.
+
+### Stato
+
+`rulepack-prod-016.source.json` è su disco, compila, e la sua catena punta al `payload_sha256`
+**dichiarato dal bundle firmato** di seq-15 (`08ba8b09…`) — non all'hash di un file sorgente
+qualsiasi. Manca solo la cerimonia di firma, che è di Zero.
+
+### La cerimonia, pronta (da eseguire su M5, `operator[credential]`)
+
+La chiave privata non è mai presente in questa sessione né nel processo FastAPI. `--kid` e
+`--environment` sono gli stessi di seq-15; `--sequence 16` deve combaciare con il campo `sequence`
+del payload, e `sign_pack.py` rifiuta se diverge. Il flag di produzione è obbligatorio.
+
+```bash
+cd <repo>/apps/backend-rag
+PYTHONPATH=. python -m backend.scripts.visa_engine.sign_pack \
+  backend/services/visa_engine/contracts/packs/rulepack-prod-016.source.json \
+  --kid prod-2026-07-1 \
+  --key-file <percorso chiave privata Ed25519 PEM, chmod 0600> \
+  --environment PRODUCTION \
+  --sequence 16 \
+  --i-know-this-is-production \
+  --output backend/services/visa_engine/contracts/packs/rulepack-prod-016.signed.json
+```
+
+Verifica dopo la firma (la fa la sessione, non serve la chiave):
+
+```bash
+PYTHONPATH=. python -m backend.scripts.visa_engine.gold_replay_driver --offline \
+  --accepted-explanations backend/services/visa_engine/contracts/gold-accepted-explanations.json
+```
+
+Atteso, e questo è il criterio: il driver deve **raccogliere da solo seq-16** (sceglie il pack
+firmato con sequenza massima) e leggere `explained_divergences: 15 · unexplained_divergences: 0 ·
+overall_pass: true`. Se raccoglie ancora seq-15, la firma non è atterrata dove il driver guarda.
