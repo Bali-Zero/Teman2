@@ -114,7 +114,8 @@ export const AppWizard: FC<AppWizardProps> = ({
   const nextStep = idx + 1 < steps.length ? steps[idx + 1] : null;
 
   const prevSummary = prevStep
-    ? (prevStep.summary?.(values[prevStep.id]) ?? defaultSummary(prevStep, values[prevStep.id]))
+    ? (prevStep.summary?.(values[prevStep.id]) ??
+      defaultSummary(prevStep, values[prevStep.id]))
     : null;
 
   const next = () => {
@@ -146,7 +147,13 @@ export const AppWizard: FC<AppWizardProps> = ({
   const progress = ((idx + 1) / steps.length) * 100;
 
   return (
-    <div style={{ display: "grid", gap: "var(--space-4, 1.5rem)", position: "relative" }}>
+    <div
+      style={{
+        display: "grid",
+        gap: "var(--space-4, 1.5rem)",
+        position: "relative",
+      }}
+    >
       {/* Hairline 2px progress bar, top */}
       <div
         role="progressbar"
@@ -173,28 +180,34 @@ export const AppWizard: FC<AppWizardProps> = ({
       </div>
 
       {/* Step label */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "baseline",
-        fontSize: "var(--text-xs, 0.72rem)",
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        color: "var(--color-text-muted)",
-      }}>
-        <span>Step {idx + 1} of {steps.length}</span>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          fontSize: "var(--text-xs, 0.72rem)",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "var(--color-text-muted)",
+        }}
+      >
+        <span>
+          Step {idx + 1} of {steps.length}
+        </span>
         <span>{step.title}</span>
       </div>
 
       {/* Previous step stacked summary */}
       {prevSummary ? (
-        <div style={{
-          opacity: 0.25,
-          fontSize: "var(--text-sm, 0.88rem)",
-          fontStyle: "italic",
-          paddingBottom: "var(--space-2, 0.5rem)",
-          borderBottom: "1px dashed var(--color-border-subtle)",
-        }}>
+        <div
+          style={{
+            opacity: 0.25,
+            fontSize: "var(--text-sm, 0.88rem)",
+            fontStyle: "italic",
+            paddingBottom: "var(--space-2, 0.5rem)",
+            borderBottom: "1px dashed var(--color-border-subtle)",
+          }}
+        >
           — {prevSummary}
         </div>
       ) : null}
@@ -232,42 +245,52 @@ export const AppWizard: FC<AppWizardProps> = ({
 
       {/* Next step peek */}
       {nextStep ? (
-        <div style={{
-          opacity: 0.2,
-          fontSize: "var(--text-sm, 0.88rem)",
-          fontStyle: "italic",
-          paddingTop: "var(--space-2, 0.5rem)",
-          borderTop: "1px dashed var(--color-border-subtle)",
-        }}>
+        <div
+          style={{
+            opacity: 0.2,
+            fontSize: "var(--text-sm, 0.88rem)",
+            fontStyle: "italic",
+            paddingTop: "var(--space-2, 0.5rem)",
+            borderTop: "1px dashed var(--color-border-subtle)",
+          }}
+        >
           — {nextStep.title} ↓
         </div>
       ) : null}
 
       {/* Error */}
       {error ? (
-        <p role="alert" style={{ margin: 0, color: "var(--color-error)", fontSize: "var(--text-sm, 0.88rem)" }}>
+        <p
+          role="alert"
+          style={{
+            margin: 0,
+            color: "var(--color-error)",
+            fontSize: "var(--text-sm, 0.88rem)",
+          }}
+        >
           {error}
         </p>
       ) : null}
 
       {/* Nav buttons */}
       <div style={{ display: "flex", gap: "var(--space-3, 1rem)" }}>
-        <button
-          type="button"
-          onClick={back}
-          disabled={idx === 0}
-          style={{
-            padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
-            borderRadius: "4px",
-            border: "1px solid var(--color-border-subtle)",
-            background: "transparent",
-            cursor: idx === 0 ? "not-allowed" : "pointer",
-            color: "var(--text-primary)",
-            minHeight: "44px",
-          }}
-        >
-          Back
-        </button>
+        {idx > 0 ? (
+          <button
+            type="button"
+            onClick={back}
+            style={{
+              padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
+              borderRadius: "4px",
+              border: "1px solid var(--color-border-subtle)",
+              background: "transparent",
+              cursor: "pointer",
+              color: "var(--text-primary)",
+              minHeight: "44px",
+            }}
+          >
+            Back
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={next}
