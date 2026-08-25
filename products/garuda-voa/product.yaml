@@ -118,9 +118,71 @@ risk_tier_map: # ASSEMBLY-LINE verification economics: set once, here
 owner_decisions: # §3 switchboard — filled with prepared proposals, signed at the end
   - id: 1
     decision: payment_provider
-    state: proposal-ready
+    state: ratified
     packet: products/garuda-voa/ops/decision-packets/01-payment-provider.md
-    gesture: "pick + sign up with his own credentials"
+    # RATIFIED 2026-08-25: Xendit. International card 3.5% + Rp6k, VA Rp13k, no monthly
+    # fee, payment links included. Same provenance caveat as decision 5: this reached the
+    # orchestrator by RELAY, not from Zero in-session. Enough to build dark and reversible;
+    # not enough to skip the signature. Confirm directly at go-live.
+    ratified: Xendit
+    # Zero attached a TIERED routing rule. Only tier (a) is in scope for THIS product, and
+    # that scoping is load-bearing — without it a lane builds the whole Bali Zero payment
+    # strategy into a VOA funnel that has no ticket above Rp 850k:
+    #   (a) small tickets (<= ~Rp 3jt) -> card in checkout, fee ABSORBED into the one
+    #       all-inclusive price, never a separate line. GARUDA VOA is entirely this tier
+    #       (issuance 790k, extension 850k). BUILD THIS.
+    #   (b) heavy T2 tickets (10-30jt) -> contained card deposit in checkout, balance by
+    #       international transfer/Wise in the consultant thread. NO SUCH TICKET EXISTS in
+    #       this product. Recorded for the sibling products; do NOT build it here.
+    #   (c) VA for customers holding an Indonesian account. Out of scope for a funnel whose
+    #       buyer is by definition a foreign tourist who has not yet entered the country.
+    fee_config_is_a_parameter: >
+      Zero's note: the card fee is negotiable at volume, so L3 wires it as configuration,
+      never a constant.
+    # MEASURED CONSEQUENCE, recorded because Zero is deciding fees while 7(b) is open:
+    # 3.5% + Rp6k on the 790k issuance is ~33.650 IDR, i.e. ~4.3% of the ticket, and it is
+    # ABSORBED. Whether that is affordable depends on a number nobody has yet confirmed —
+    # question 7(b) asks whether the 790k catalogue row is inclusive of PNBP. If it is not,
+    # the absorbed payment fee stacks on top of an unbudgeted government fee. This does not
+    # block L3 (the port is provider-neutral and the fee is configuration), but the margin
+    # answer is not knowable until 7(b) is.
+    # CLEARED 2026-08-25 by Zero's 7(b) ruling (price is PNBP-inclusive). Kept as a record
+    # of what the dependency was, because the margin is now MEASURABLE but NOT MEASURED:
+    # 790.000 is gross of the government fee, and the fee's amount is not on disk anywhere
+    # in this repo. Grounding it is the next step, and it is arithmetic, not a decision.
+    depends_on_for_margin_only: 7 # RESOLVED — see decision 7 ratification block
+    gesture: "sign up with his own credentials — the choice is made, the account is not"
+    # A RATIFICATION IS NOT DONE WHEN IT IS RECORDED HERE. It is done when every placeholder
+    # it retires has been swept out of the artifacts that were frozen while waiting for it.
+    # Ratifying this one on 2026-08-25 silently invalidated two `TODO(ground)` clauses in the
+    # frozen contract — both authored honestly ("we do not know the provider yet") and both
+    # WRONG the instant the provider was known. Nobody swept them, so the order lane built
+    # faithfully against a contract describing a world that had ended that morning: the
+    # webhook demanded an `Idempotency-Key` Xendit never sends (400 before signature check,
+    # every real payment stranded in `awaiting_payment` with nothing paged), and the security
+    # scheme still named a `X-Provider-Signature` body HMAC that does not exist. Cured in
+    # 00d6e52ee; the contract suite now guards both directions.
+    #
+    # The obligation this leaves behind, for every decision below and for the sibling
+    # products copying this switchboard: WHEN A DECISION MOVES TO `ratified`, GREP THE FROZEN
+    # ARTIFACTS FOR THE PLACEHOLDERS IT RETIRES IN THE SAME TURN. `TODO(ground)` is the
+    # marker this product uses. A placeholder is not a note — it is a lane's instruction.
+    #
+    # Sweep them by DANGER, not by count, or the obligation becomes make-work and gets
+    # ignored. The 2026-08-25 sweep found nine `TODO(ground)` markers and only the two in the
+    # contract could hurt anyone. The discriminator is whether the placeholder is OPERATIVE:
+    #   - OPERATIVE — a lane's code implements it as written. The contract's `$ref` and its
+    #     `X-Provider-Signature` scheme were operative, so going stale turned them into false
+    #     instructions that were faithfully obeyed. These are the emergency.
+    #   - INERT — a comment sitting above text that defers abstractly to whatever the answer
+    #     turns out to be. The seven journey markers are this: their scenarios say "under the
+    #     grounded lifetime policy", never "15 minutes", so deciding the number leaves every
+    #     assertion correct. They cost nothing while stale, but they DO lie about provenance —
+    #     a journey still saying "approve the magic-link lifetime" invites a lane to go ask a
+    #     question that was answered in DECISIONS.md Q1. Annotate those; do not rush them.
+    # Swept 2026-08-25: 2 operative (cured, 00d6e52ee), 2 inert annotated (magic-link,
+    # freshness), 5 inert genuinely still open and correctly marked.
+    retired_placeholders_swept: 2026-08-25
   - id: 2
     decision: terms_of_sale_and_refund
     state: proposal-ready
@@ -128,8 +190,12 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # The packet existed since 21:57 and nobody could have found it: it was written into an
     # abandoned worktree and never committed, so the switchboard read "proposal-pending" while
     # the proposal sat finished on disk. Adopted here with one correction — see 7(b).
-    depends_on: 7
-    gesture: "read, approve — but 7(b) changes several rows, so answer that first"
+    # CLEARED 2026-08-25: 7(b) is ruled INCLUSIVE and the refund table was re-read row by
+    # row against that answer — nothing in it changes (its "PNBP status" column tracks
+    # whether the fee was SPENT, not whether it is inside the price). This packet is
+    # signable as written; what still gates it is counsel, not this session.
+    depends_on: 7 # RESOLVED — no rewrite needed
+    gesture: "read and approve — 7(b) is answered and changed no row"
   - id: 3
     decision: data_retention_days
     state: proposal-ready
@@ -199,14 +265,93 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "answer the question — it is an operations fact, not a design choice"
   - id: 7
     decision: price_catalogue_currency
-    state: measured-question-ready
+    state: ratified-7b-open-7a-scope
+    # ── 2026-08-25, 7(b) RATIFIED. Zero, verbatim: "il prezzo include il PNBP". ──
+    # The 790.000 / 850.000 catalogue rows are ALL-INCLUSIVE: the traveller pays nothing
+    # further to the government. This is now a fact of record, not an inference — which is
+    # the whole point of having asked, since the session's own earlier claim to the same
+    # effect was an inference wearing a citation (see the self-correction at the top of
+    # this file).
+    #
+    # THE SWEEP THIS RATIFICATION OWES (per the obligation on decision 1), done in the
+    # same turn and reported by DANGER, not by count:
+    #   - OPERATIVE placeholders retired: NONE, and that is a measured result, not an
+    #     omission. "PNBP" appears zero times in the prices file, zero times in
+    #     pricing.py, zero times anywhere in garuda_flow — so no lane implements a split
+    #     and no code changes shape. The ruling CONFIRMS what the code already does: one
+    #     catalogue key, one amount, never split on a customer-facing surface.
+    #   - Packet 2's refund table: UNCHANGED, verified row by row. Its "PNBP status"
+    #     column asks whether the fee was SPENT YET, not whether it sits inside the price,
+    #      and every "full refund" row (1, 4, 5, 10) is a row where filing never happened
+    #     and the government fee was never paid. The two branching rows (1 and 2
+    #     pre-filing) branch on filing state, not on this answer. Packet 2's `depends_on:
+    #     7` is therefore CLEARED — nothing in it needs rewriting before it can be signed.
+    #   - The doubled rows the packet warned it had written "twice where the answer
+    #     changes it" collapse to the inclusive reading. No text is now unreachable.
+    #
+    # WHAT THIS ANSWER ACTUALLY MOVES — the margin, and it moves it a long way. 790.000 is
+    # GROSS, not net: the government fee comes out of it before anything else does, so the
+    # absorbed Xendit fee (decision 1) is NOT ~4.3% of a 790k margin, it is ~4.3% of gross
+    # charged against whatever is left after the state is paid. Until the PNBP amount is
+    # grounded on disk the per-order margin stays unknown; it is no longer BLOCKED, it is
+    # simply not yet measured. `depends_on_for_margin_only: 7` on decision 1 is cleared.
     # Measured 2026-08-24 by importing the loader, not by reading the file:
     #   backend/data/bali_zero_official_prices_2026.json  metadata.last_updated = 2026-05-06
     #   garuda_today() = 2026-08-24  ->  age 110 days,  Q9 price window = 90 days  ->  STALE
     #   price_for_case(issuance)  = (790000, "B1 Visa on Arrival (VOA)")
     #   price_for_case(extension) = (850000, "B1 Visa on Arrival Extension")
     # These are the exact amounts the funnel would charge, from a file last touched in May.
-    measured_catalogue_age_days: 110
+    measured_catalogue_age_days: 111
+    # RE-MEASURED 2026-08-25 by importing the loader: age 111d vs window 90d, verdict STALE,
+    # and price_for_case(ISSUANCE) now returns (None, None). This is no longer a forecast.
+    # The guardrail is LIVE on the branch, so the funnel would answer 503 PRICE_UNRESOLVABLE
+    # to every real customer today. That makes this decision the top go-live blocker: no
+    # other lane's work can sell anything until it is answered.
+    blocks_go_live: true
+    # ── 2026-08-25, PARTIALLY ANSWERED (relay): Zero, verbatim "i prezzi sono ok". ──
+    # That answers 7(a) — 790.000 / 850.000 are attested current — and it is NOT the
+    # forbidden move recorded below. The prohibition was never against stamping; it was
+    # against stamping INSTEAD of looking. The owner looked. A stamp is a claim that a
+    # human looked, and now the claim is true.
+    #
+    # TWO REASONS THE RE-STAMP IS NOT DONE YET, both cheap to clear:
+    #
+    # (i) SCOPE. `metadata.last_updated` is ONE stamp over the WHOLE catalogue —
+    #     measured 2026-08-25 by loading the file: 9 service categories, 100 price rows
+    #     (kitas_permits 38, other_process 21, single_entry_visas 14, multiple_entry 7,
+    #     consultant 7, tax_accounting 4, kitap 3, company 3, urgent 3). GARUDA VOA is
+    #     TWO of those 100. Bumping it to today asserts owner attestation over KITAS,
+    #     tax and company prices that were never in the conversation — and the freshness
+    #     mechanism is about to be reused by sibling products, so a too-wide attestation
+    #     propagates. Needs one sentence from Zero: does "i prezzi sono ok" cover the
+    #     whole catalogue, or the VOA rows?
+    #
+    # (ii) 7(b) WAS UNANSWERED AND WAS CORRECTLY NOT CLOSED BY THIS. "The prices are ok"
+    #      is not "the price includes PNBP"; only the first had been asked, and holding
+    #      the line cost one more question. Zero answered it directly on 2026-08-25 — see
+    #      the ratification block at the head of this decision. Kept here, past tense,
+    #      because the reasoning is the reusable part: two money questions that arrive in
+    #      the same sentence are still two questions, and a relay's summary word
+    #      ("sciolta") is not an answer to the one that was never put.
+    #
+    # (i) IS THEREFORE THE ONLY THING STILL OPEN ON THIS DECISION, and it is a SCOPE
+    #     question, not a price question. Until it is settled, this session will not bump
+    #     the catalogue-wide `metadata.last_updated`: doing so would assert owner
+    #     attestation over 98 rows Zero never saw. The narrower move — an attestation
+    #     scoped to the two VOA keys — is what unblocks go-live without over-claiming.
+    #
+    # The fail-closed price gate the same relay asks us to "adopt" ALREADY EXISTS
+    # (pricing.py:92, built in round 4) — it is the organ that caught this, not a lesson
+    # still to be learned. Nobody should build a second one.
+    # THE FORBIDDEN CURE, named explicitly because a competent lane proposed it on
+    # 2026-08-25 (L7, in good faith, reading the line below): "refresh the catalogue's
+    # metadata.last_updated stamp". Bumping the stamp WITHOUT re-verifying the prices is
+    # the same cheat as widening the window, wearing a different costume — it makes the
+    # guard green while nobody has looked at whether 790.000 is still the right number.
+    # That a careful reader independently proposed it is evidence the prohibition was not
+    # written where it gets read, not a fault of theirs: the "honest exits" sentence below
+    # says "re-verify AND re-stamp", and a skim lifts the second half out of the pair.
+    # The stamp is a CLAIM that a human looked. It is never the act of looking.
     question: >
       Two things, and the second is the one nobody has answered. (a) Are 790.000 and
       850.000 IDR still the correct prices today? The catalogue that supplies them has
@@ -216,14 +361,52 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
       file, zero times in pricing.py, zero times in garuda_flow; the catalogue row carries
       no note. Nothing on disk answers (b), and this product's whole promise is ONE
       all-inclusive price.
+      ANSWERED 2026-08-25 — (a) yes, attested by Zero; (b) INCLUSIVE, ruled by Zero. What
+      survives of this question is only the SCOPE of (a): whether the attestation covers
+      the whole 100-row catalogue or the two VOA rows.
     consequence: >
       The freshness guardrail now being built will, correctly, refuse to sell on the day it
       ships — the catalogue is already past its window. There are only two honest exits:
-      re-verify and re-stamp the catalogue, or rule that 90 days is the wrong window for a
-      list Bali Zero republishes on its own schedule. Quietly widening the window to make the
-      guard green is the one move that is not available: that turns the guardrail back into
-      the sentence it has been all along.
+      re-verify the prices and THEN re-stamp (in that order, and the stamp is worthless
+      without the first half), or rule that 90 days is the wrong window for a list Bali Zero
+      republishes on its own schedule. Two moves are NOT available, and they are the same
+      move: quietly widening the window, and bumping metadata.last_updated on prices nobody
+      re-checked. Either one turns the guardrail back into the sentence it has been all
+      along — green, and meaning nothing.
     gesture: "confirm the two amounts, or re-stamp the catalogue, or rule on the window"
+  - id: 8
+    decision: ocr_calibration_corpus
+    state: question-ready
+    # RAISED 2026-08-25 by the orchestrator after L5 shipped. This is NOT "pick a
+    # number" — it is the only question that unblocks measuring one.
+    #
+    # DECISIONS.md Q7 says the OCR confidence cut must be MEASURED against genuine
+    # passport photographs (good, dim, glare, angle, partial crop) and set where the
+    # false-confident rate goes to zero, because "the expensive error is not 'we asked
+    # again', it is 'we filed a wrong passport number'". L5's mandate is synthetic-only
+    # under the PII boundary, so L5 correctly REFUSED to source that corpus and said so
+    # rather than quietly calibrating on fabricated specimens.
+    #
+    # The two rules therefore collide, and the collision resolves in Zero's hands, not a
+    # lane's. Right now `CONFIDENCE_THRESHOLD = 0.80` in
+    # services/garuda_documents/confidence.py is a threshold picked by argument — which
+    # is precisely what Q7 forbids. It is a single named constant on purpose.
+    #
+    # Mitigating, and the reason this is not a go-live blocker on its own: the cut only
+    # decides whether we ask the customer to retake or pre-fill the field for their
+    # review. A human still confirms every field before submission, and no numeric
+    # confidence ever reaches the customer (Q7's frozen shape). What an uncalibrated cut
+    # buys us is friction if too high, and a pre-filled wrong value a tired customer may
+    # accept if too low.
+    question: >
+      On what corpus may we calibrate the OCR confidence threshold? Concretely: is there
+      a lawful basis and a controlled local environment for using real client passport
+      images already held, or should we build the corpus from consenting staff/personal
+      documents instead?
+    consequence: >
+      Until answered, 0.80 stands as an explicitly unmeasured default and Q7 stays open.
+      The number cannot be honestly calibrated on synthetic specimens.
+    gesture: "answer where the corpus comes from — the measurement follows from it"
   - id: 0
     decision: go_live
     state: blocked-on-all-above-and-on-the-parent-page

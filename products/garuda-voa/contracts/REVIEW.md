@@ -309,3 +309,67 @@ on the disabled gate and green on restore.
 Worth stating plainly because the failure mode is inverted from the usual one: a poisoned bytecode
 cache does not make a good test look broken, it makes a **broken test look proven**. Every mutation
 result in this document was re-run under those conditions.
+
+---
+
+## Round 5 — 2026-08-25 — the contract described a world that ended that morning
+
+Not a review round. An independent grader attacking the order lane's money paths found something
+the four preceding rounds could not have found, because it was not wrong when they ran.
+
+**The contract required a header the payment provider never sends.** `POST
+/api/visa/voa/webhooks/payment` carried `$ref: "#/components/parameters/IdempotencyKey"`, and
+`IdempotencyKey` is `required: true`. The order lane implemented it faithfully — a hard 400 before
+signature verification. Xendit Invoices callbacks authenticate with a static `x-callback-token` and
+carry no `Idempotency-Key`, so in production every genuine payment confirmation would have been
+rejected at the door: customer charged, `handle_paid_event` never reached, order left in
+`awaiting_payment`. OP-04 reconciliation sees the real charge and by design leaves it for the
+webhook to settle — a `logger.warning`, no page. Charged, undelivered, and silent.
+
+The second stale clause sat beside it: `ProviderSignature` still declared `X-Provider-Signature`
+and described a signed body digest. Xendit has no body HMAC. The adapter had implemented the real
+mechanism, so contract and code had disagreed since the adapter landed, with nothing comparing them.
+
+### The mechanism, which matters more than the bug
+
+Both clauses were honest when written. Both carried an explicit `TODO(ground): ... after the owner
+selects the provider`. The owner selected the provider on the morning of 2026-08-25 — and a
+ratification recorded in `product.yaml` fires nothing. The placeholders stayed, the lanes kept
+building against them, and a `TODO` that had been a truthful confession became a false instruction
+without a single file changing.
+
+This is the freeze's own logic turned against it. A frozen contract is valuable because lanes may
+trust it without asking; that is exactly why a clause that goes stale inside it is more dangerous
+than the same clause anywhere else. **A placeholder in a frozen artifact is not a note. It is a
+lane's instruction, and it must be swept in the same turn the decision that retires it is
+ratified.** Recorded as a standing obligation on decision 1 in `product.yaml`.
+
+### What the suite learned
+
+`test_every_mutating_operation_requires_an_idempotency_key` was over-broad and stayed green while
+being wrong — at freeze time the webhook obediently carried the header, so the invariant and the
+defect agreed. Two tests now, deliberately split along guilt and innocence:
+
+- the original permits the header's ABSENCE on inbound provider callbacks, exempt by
+  `operationId`, and the exemption cannot widen quietly: an exempt name must still exist (an
+  exemption for a deleted operation is a hole that only widens) and must be
+  `ProviderSignature`-secured, so no customer-facing route can be waved through by adding its name;
+- `test_the_inbound_callback_does_not_demand_a_client_header` forbids its PRESENCE, which is the
+  actual defect shape and the one a missing-key check can never see.
+
+Bite-proved both under purged `__pycache__` with `PYTHONDONTWRITEBYTECODE=1 -p no:cacheprovider`:
+restoring the `$ref` reddens the guilt test; exempting `createOrderFromCheck` reddens the
+not-a-callback assertion. Collection floor 10 to 11.
+
+### A correction to the grader, and a trap worth naming
+
+The grader reported `test_the_price_is_one_field_and_never_a_computation` ABSENT from the whole
+repository, and concluded SM-G04 was enforced by comment rather than by CI. It is not absent — it
+is at `tests/test_contract_invariants.py:179` and has been since round 1. The grader searched
+exhaustively and truthfully from inside a LANE worktree, whose base predates this suite.
+
+**A repo-wide search run from a worktree searches that worktree's branch, not the repository.** It
+returns a confident, well-evidenced ABSENT for something that exists one branch over. The same
+gesture that makes lanes safe from each other makes their negative findings unreliable, and a
+negative finding is precisely the kind that gets acted on by building the missing thing twice. Any
+ABSENT claim spanning lanes must be re-run against the integration branch before it is believed.

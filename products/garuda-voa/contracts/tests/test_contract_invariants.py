@@ -250,15 +250,78 @@ def test_the_anonymous_check_carries_no_pii(openapi: dict) -> None:
 
 
 def test_every_mutating_operation_requires_an_idempotency_key(openapi: dict) -> None:
+    """Every mutation WE issue is keyed. Inbound provider callbacks are not ours to key.
+
+    This test was written over-broad and stayed green while being wrong, because at freeze
+    time the webhook obediently carried the header too. It cost a real defect: the router
+    implemented the `$ref` faithfully and hard-400'd every genuine Xendit callback before
+    the signature check, leaving paid orders stranded in `awaiting_payment` with nothing
+    paged (measured 2026-08-25). An `Idempotency-Key` is a request-idempotency pattern for
+    commands a CLIENT issues; a payment provider POSTing an event to us sends no such
+    header and has no reason to invent one.
+
+    The exemption is by operationId and it cannot widen quietly: every exempt name must
+    still exist, and must be secured by `ProviderSignature`. That second assertion is the
+    one that matters — a customer-facing route cannot be waved through by adding its name
+    here, because it would not be provider-authenticated.
+    """
+    exempt = frozenset({"receivePaymentWebhook"})
+
+    all_operation_ids = {op["operationId"] for _route, _verb, op in _operations(openapi)}
+    stale = exempt - all_operation_ids
+    assert not stale, (
+        f"exemption names an operation the contract no longer has: {sorted(stale)} — an "
+        "exemption for a deleted operation is a hole that only ever widens. Delete it."
+    )
+
+    not_a_callback = []
+    for _route, _verb, op in _operations(openapi):
+        if op["operationId"] not in exempt:
+            continue
+        schemes = {name for req in (op.get("security") or []) for name in req}
+        if "ProviderSignature" not in schemes:
+            not_a_callback.append(op["operationId"])
+    assert not not_a_callback, (
+        f"exempted from Idempotency-Key but not provider-authenticated: {not_a_callback} — "
+        "only inbound provider callbacks may be exempt, and this one is reachable by a "
+        "client. Do not add a name here to make a diff pass."
+    )
+
     offenders = []
     for _route, verb, op in _operations(openapi):
-        if verb == "get":
+        if verb == "get" or op["operationId"] in exempt:
             continue
         params = op.get("parameters") or []
         refs = [p.get("$ref", "") for p in params if isinstance(p, dict)]
         if not any(r.endswith("/IdempotencyKey") for r in refs):
             offenders.append(op["operationId"])
     assert not offenders, f"mutating operations without Idempotency-Key: {offenders}"
+
+
+def test_the_inbound_callback_does_not_demand_a_client_header(openapi: dict) -> None:
+    """The guilt side of the exemption above: requiring the header here BREAKS the path.
+
+    Not a duplicate of the exemption — that one permits the absence, this one forbids the
+    presence. Restoring the `$ref` on this path is the exact shape of the 2026-08-25 defect,
+    and it would otherwise sail through a suite that only ever checked for a MISSING key.
+    """
+    for route, verb, op in _operations(openapi):
+        if op["operationId"] != "receivePaymentWebhook":
+            continue
+        refs = [
+            p.get("$ref", "") for p in (op.get("parameters") or []) if isinstance(p, dict)
+        ]
+        assert not any(r.endswith("/IdempotencyKey") for r in refs), (
+            f"{verb.upper()} {route} requires Idempotency-Key. The payment provider does not "
+            "send it, so this 400s every real payment confirmation before the signature is "
+            "verified. Webhook dedup is keyed on (provider, provider_event_id) in "
+            "garuda_payment_inbox and never needed this header."
+        )
+        return
+    pytest.fail(
+        "receivePaymentWebhook is gone from the contract — this guard now protects nothing. "
+        "Repoint it at the operation that replaced it rather than deleting it."
+    )
 
 
 def test_every_inbound_date_states_its_civil_day(openapi: dict) -> None:
@@ -342,4 +405,46 @@ def test_reason_codes_match_the_engine_enum_exactly() -> None:
     assert contract - engine == set(), (
         f"the contract promises codes the engine never emits: {sorted(contract - engine)} "
         "— dead vocabulary that a consumer will write handling for and never exercise"
+    )
+
+
+def test_the_order_response_can_say_the_customer_already_paid(openapi: dict) -> None:
+    """A response schema that can express only one outcome forces the code to lie.
+
+    `OrderCheckout.order_state` was `const: "awaiting_payment"`. The implementation
+    hardcoded that literal — correctly, because the contract admitted nothing else — and a
+    customer whose order had already been paid was handed a payment action on resume. The
+    defect looked like sloppy code and was actually this schema, faithfully obeyed.
+
+    Two properties, and the second is the one with teeth: the state must be able to say
+    `paid`, AND the payment action must be able to be absent. Either alone still permits
+    the lie — a schema that admits `paid` but demands a non-null `checkout_url` just moves
+    the contradiction one field over.
+    """
+    checkout = openapi["components"]["schemas"]["OrderCheckout"]
+    state = checkout["properties"]["order_state"]
+
+    assert "const" not in state, (
+        "order_state is pinned to a single constant, so every response must claim that state "
+        "whatever the order is really doing. This is exactly the shape that told a paying "
+        "customer to pay again."
+    )
+    allowed = set(state.get("enum") or [])
+    assert "paid" in allowed, (
+        f"order_state cannot express `paid` (allows {sorted(allowed)}). An order can be paid "
+        "by a webhook while the customer's first attempt is still in flight; if the response "
+        "cannot say so, it must say something false."
+    )
+
+    url_type = checkout["properties"]["checkout_url"]["type"]
+    accepts_null = "null" in (url_type if isinstance(url_type, list) else [url_type])
+    assert accepts_null, (
+        "checkout_url cannot be null, so a paid order still has to carry a payment "
+        "capability. Required-and-nullable is deliberate here: optional would let the key be "
+        "omitted, and a consumer reading a missing key gets `undefined`, which renders as an "
+        "enabled button just as happily as a URL does."
+    )
+    assert "checkout_url" in checkout["required"], (
+        "checkout_url was made optional rather than nullable — see the reasoning above; the "
+        "consumer must be forced to answer 'is there anything to pay?' explicitly."
     )

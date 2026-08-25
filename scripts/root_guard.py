@@ -141,6 +141,11 @@ WHITELIST_DIRS: set[str] = {
     # scripts/evidence_pack_lint.py and consumed by
     # .github/workflows/harness-floor.yml. Not a scratch/dump dir.
     "evidence",
+    # Per-product factory artifacts (docs/factory/ASSEMBLY-LINE.md, RULED Zero
+    # 2026-08-24): products/<name>/ holds product.yaml, journeys/, contracts/,
+    # ops/ — the contract-and-decision artifacts the factory doctrine defines,
+    # not code. One directory per product. First tenant: products/garuda-voa/.
+    "products",
 }
 
 # Allowed tracked dotfiles directories.

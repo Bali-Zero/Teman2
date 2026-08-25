@@ -450,3 +450,55 @@ def test_a_stale_price_catalogue_reaches_the_wire_as_503_price_unresolvable(
     assert "790" not in body and "850" not in body, (
         "a price leaked into a fail-closed response"
     )
+
+
+def test_a_fresh_price_catalogue_reaches_the_wire_as_a_real_quote(monkeypatch) -> None:
+    """The other direction of the same gate, previously uncovered in this file.
+
+    `test_privacy_headers_present_on_successful_create` proves a 201 status but never
+    inspects the body, and every other create test in this file is about a DIFFERENT
+    guard (flag/idempotency/shape) tripping BEFORE pricing ever runs. Nothing here
+    proved that a genuinely fresh price actually reaches the wire as a real quote — a
+    fail-closed test with no matching fail-open test can pass on a funnel that never
+    quotes at all, which is exactly the state this file's own history records (see the
+    stale test above, and the sibling report this test was requested alongside).
+
+    Forces FRESH explicitly via `price_catalogue_freshness` (the same seam the stale
+    test above patches) rather than relying on the real catalogue/row happening to be
+    fresh today: the two VOA rows carry a real `verified_on` stamp that is fresh right
+    now (owner decision 7, 2026-08-25), but that stamp ages out on its own 90-day clock
+    — this test must not silently start asserting nothing once it does, the same
+    coupling the stale test above is careful to avoid.
+    """
+    from backend.services.garuda_flow import freshness, pricing
+
+    def _fresh(*, today: object, **_: object) -> freshness.FreshnessReport:
+        return freshness.FreshnessReport(
+            source="price_catalogue",
+            verdict=freshness.FreshnessVerdict.FRESH,
+            stamp="2026-01-01",
+            age_days=0,
+            max_age_days=freshness.MAX_AGE_DAYS["price_catalogue"],
+            detail="synthetic: forced fresh for this test only",
+        )
+
+    monkeypatch.setattr(pricing, "price_catalogue_freshness", _fresh)
+    monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
+    app = _app()
+    _override_store(app, _FakeStore())
+
+    response = TestClient(app).post(
+        "/api/visa/voa/eligibility-checks",
+        json=VALID_ISSUANCE_BODY,
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+
+    assert response.status_code == 201, (
+        f"a fresh price catalogue answered {response.status_code} — the funnel "
+        "refused to quote despite a genuinely fresh price"
+    )
+    body = response.json()
+    assert body["verdict"] == "ACCEPT"
+    # The real ISSUANCE catalogue amount, not a stub value — proves the router's
+    # ACCEPT path actually plumbs `price_for_case`'s real result to the wire.
+    assert body["price_idr"] == 790_000
