@@ -1,4 +1,4 @@
--- Migration 281: wa_reply_claims
+-- Migration 282: wa_reply_claims
 -- (2026-08-25 double-reply race: PR #4878 closed the routing gap that let a
 -- second webhook subscription reach the legacy inline path, but the
 -- cross-path dedup it added at the top of `process_whatsapp_message` is a
@@ -12,14 +12,12 @@
 -- TOCTOU, cicatrix family #5's shape applied to two application-level
 -- paths instead of two worktrees.)
 --
--- Measurement (fresh in this turn, immediately before writing this file):
---   * `git fetch origin main && git rev-parse origin/main` -> re-measured
---     immediately before commit (see PR body for the exact SHA carried as
---     `base:`).
---   * `git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/
---     db/migrations_v2/ | sed -E 's#.*/([0-9]+)_.*#\1#' | sort -n | tail`
---     -> highest present is 280 (280_research_os_objects_truncate_guard.sql).
---   -> next available integer: 281.
+-- Renumbered 281 -> 282 (adversarial-review finding, W40 collision class):
+-- PR #4854 already claims 281_garuda_voa_retention.sql on its own open
+-- branch, and on origin/main the highest present number is 280
+-- (280_research_os_objects_truncate_guard.sql) -- re-measured at rename
+-- time via `git ls-tree origin/main -- .../migrations_v2/`. 282 is the
+-- next free integer once #4854's claim on 281 is respected.
 --
 -- Purpose
 -- -------
@@ -43,6 +41,16 @@
 -- same-path retry (each path's own downstream dedup already makes
 -- re-processing idempotent); different = the OTHER path already claimed
 -- this wamid -- log and discard.
+--
+-- Retention (declared, NOT implemented here -- one-concern rule)
+-- ----------------------------------------------------------------
+-- This table grows by one row per inbound WhatsApp message, forever --
+-- there is no TTL, no cleanup job, and no expiry column in this migration.
+-- A future migration/cron should add either a `claimed_at`-based retention
+-- sweep (the column already exists for this purpose) or a partitioning
+-- scheme once volume warrants it. Out of scope for this PR, which only
+-- cures the double-reply race; flagging it explicitly so it does not read
+-- as an oversight.
 --
 -- Additive only
 -- --------------

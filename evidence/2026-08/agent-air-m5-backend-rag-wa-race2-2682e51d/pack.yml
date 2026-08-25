@@ -6,15 +6,18 @@ brief_ref: evidence/brief.yml
 plan_ref: PR #4881 — agent/air-m5/backend-rag/wa-race2
 diff:
   files: 5
-  insertions: 316
-  deletions: 43
+  insertions: 379
+  deletions: 52
   hotzone_hits:
-    - apps/backend-rag/backend/db/migrations_v2/281_wa_reply_claims.sql
+    - apps/backend-rag/backend/db/migrations_v2/282_wa_reply_claims.sql
 
 lanes:
   - lane: build
     role: build
     seat: sonnet-5
+  - lane: review
+    role: review
+    seat: independent-gear3-grader
 
 receipts:
   - claim: "Deterministic floor for this diff is 3 (hot-zone migration path)."
@@ -22,35 +25,55 @@ receipts:
     exit: 0
     ts: "2026-08-25T05:40:11Z"
     seat: sonnet-5
-  - claim: "New migration 281_wa_reply_claims.sql is squawk-clean under the repo's standard exclusion set."
-    cmd: "squawk --pg-version=15.0 --exclude=require-concurrent-index-creation --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid --exclude=prefer-bigint-over-int --exclude=prefer-identity --exclude=disallowed-unique-constraint apps/backend-rag/backend/db/migrations_v2/281_wa_reply_claims.sql"
+  - claim: "New migration 282_wa_reply_claims.sql is squawk-clean under the repo's standard exclusion set (renumbered 281 -> 282 after adversarial review found PR #4854 already claims 281 on its own branch, and main tops out at 280 — W40 collision class)."
+    cmd: "squawk --pg-version=15.0 --exclude=require-concurrent-index-creation --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid --exclude=prefer-bigint-over-int --exclude=prefer-identity --exclude=disallowed-unique-constraint apps/backend-rag/backend/db/migrations_v2/282_wa_reply_claims.sql"
     exit: 0
-    ts: "2026-08-25T05:39:47Z"
+    ts: "2026-08-25T06:50:00Z"
     seat: sonnet-5
   - claim: "The migration carries exactly one ROLLBACK marker."
-    cmd: "grep -c '^-- === ROLLBACK ===$' apps/backend-rag/backend/db/migrations_v2/281_wa_reply_claims.sql"
+    cmd: "grep -c '^-- === ROLLBACK ===$' apps/backend-rag/backend/db/migrations_v2/282_wa_reply_claims.sql"
     exit: 0
-    ts: "2026-08-25T05:39:52Z"
+    ts: "2026-08-25T06:50:05Z"
     seat: sonnet-5
-  - claim: "Full backend/tests/unit/routers/ suite is green (1502 passed, 0 failed) after the atomic-claim change, the claim-ordering fix, and the collateral mock fixes; the 4 deselected tests are a pre-existing local Postgres-role gap (asyncpg InvalidAuthorizationSpecificationError), verified via git stash/pop to reproduce identically on pre-change code."
+  - claim: "Confirmed main tops out at migration 280 and PR #4854 already claims 281, before renumbering this PR's migration to 282."
+    cmd: "git ls-tree origin/main -- apps/backend-rag/backend/db/migrations_v2/ | grep -E '28[0-9]_'"
+    exit: 0
+    ts: "2026-08-25T06:48:30Z"
+    seat: sonnet-5
+  - claim: "Full backend/tests/unit/routers/ suite is green (1502 passed, 0 failed) after the atomic-claim change, the claim-ordering fix, the collateral mock fixes, and the two new should_escalate-awaited assertions; the 4 deselected tests are a pre-existing local Postgres-role gap (asyncpg InvalidAuthorizationSpecificationError), verified via git stash/pop to reproduce identically on pre-change code."
     cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/routers/ --deselect backend/tests/unit/routers/test_wa_meta_inbox_onconflict.py"
     exit: 0
-    ts: "2026-08-25T05:45:02Z"
+    ts: "2026-08-25T07:05:00Z"
     seat: sonnet-5
   - claim: "The race-simulation defenses (_claim_wamid_reply unit tests + the two claim-gate integration tests) pass, including the exactly-one-winner and same-path-retry cases."
     cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/routers/test_wa_double_reply_defenses.py -v"
     exit: 0
-    ts: "2026-08-25T05:44:10Z"
+    ts: "2026-08-25T07:04:10Z"
     seat: sonnet-5
   - claim: "ruff is clean on both touched Python files."
     cmd: "ruff check backend/app/routers/whatsapp_chat.py backend/tests/unit/routers/test_wa_double_reply_defenses.py"
     exit: 0
-    ts: "2026-08-25T05:44:55Z"
+    ts: "2026-08-25T07:04:55Z"
     seat: sonnet-5
   - claim: "'Visa Oracle fullstack smoke (advisory)' is genuinely advisory — it is absent from main's required_status_checks contexts, while 'Harness floor recompute' is present in that same list."
     cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection | jq .required_status_checks.contexts"
     exit: 0
     ts: "2026-08-25T05:30:18Z"
+    seat: sonnet-5
+  - claim: "Mutation M1 (gate legacy always early-return, applied by hardcoding `if True:` in place of `if not won_claim:`) turns test_wamid_claimed_by_legacy_proceeds_to_legacy_flow RED (AssertionError: should_escalate_mock expected to have been awaited once, awaited 0 times); test_dedup_db_error_is_non_blocking is unaffected by M1 as expected (its pool.acquire already raises before reaching that line). File cleanly reverted afterward (verified 0-diff against a pre-mutation backup)."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/routers/test_wa_double_reply_defenses.py::test_wamid_claimed_by_legacy_proceeds_to_legacy_flow backend/tests/unit/routers/test_wa_double_reply_defenses.py::test_dedup_db_error_is_non_blocking -v"
+    exit: 1
+    ts: "2026-08-25T06:55:20Z"
+    seat: sonnet-5
+  - claim: "Mutation M2 (the claim's except re-raises instead of swallowing) turns test_dedup_db_error_is_non_blocking RED (same AssertionError shape — should_escalate never awaited, the re-raised RuntimeError is instead caught by the OUTER try/except and swallowed into a sent error message); test_wamid_claimed_by_legacy_proceeds_to_legacy_flow is unaffected by M2 as expected (its fetchval never raises). File cleanly reverted afterward (verified 0-diff against a pre-mutation backup)."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/routers/test_wa_double_reply_defenses.py::test_wamid_claimed_by_legacy_proceeds_to_legacy_flow backend/tests/unit/routers/test_wa_double_reply_defenses.py::test_dedup_db_error_is_non_blocking -v"
+    exit: 1
+    ts: "2026-08-25T06:58:40Z"
+    seat: sonnet-5
+  - claim: "After reverting both mutants, the full backend/tests/unit/routers/ suite and ruff are green again."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/routers/ --deselect backend/tests/unit/routers/test_wa_meta_inbox_onconflict.py && ruff check backend/app/routers/whatsapp_chat.py backend/tests/unit/routers/test_wa_double_reply_defenses.py"
+    exit: 0
+    ts: "2026-08-25T07:05:30Z"
     seat: sonnet-5
 
 tests:
@@ -86,14 +109,40 @@ dissent:
       (process_whatsapp_message, steps "0"/"0.5"); updated
       test_wamid_already_claimed_by_meta_inbox_skips_legacy_generation,
       test_wamid_claimed_by_legacy_proceeds_to_legacy_flow, and
-      test_dedup_db_error_is_non_blocking to prove the new ordering — the
-      last of the three was found, in the same self-review pass, to be
-      passing VACUOUSLY under the naive reorder (is_allowed=False stopped
-      the flow at the earlier allowlist gate before ever reaching
-      pool.acquire), and was fixed to flip is_allowed to True and assert
-      pool.acquire.called so it actually exercises the DB-error/non-blocking
-      path it is named for. Full suite green after the fix: 1502 passed,
-      0 failed.
+      test_dedup_db_error_is_non_blocking to prove the new ordering.
+      Full suite green after the fix: 1502 passed, 0 failed.
+  - seat: independent-gear3-grader
+    objection: >
+      REWORK verdict on the first evidence pack, 4 findings: (1) migration
+      281 collides with PR #4854's own open 281_garuda_voa_retention.sql
+      (main tops out at 280 — W40 collision class), and the table needs a
+      declared retention note (unbounded growth, one row per message
+      forever). (2) test_wamid_claimed_by_legacy_proceeds_to_legacy_flow and
+      test_dedup_db_error_is_non_blocking pass even under mutants M1 (the
+      legacy claim gate hardcoded to always early-return) and M2 (the
+      claim's except re-raising instead of swallowing) — both tests only
+      asserted `result is None`, which the outer try/except in
+      process_whatsapp_message also produces on an early-return or a
+      swallowed re-raise, so neither mutant was actually being caught. (3)
+      the pack's own dissent text claimed the DB-error test "actually
+      exercises the DB-error path" before that claim was true. (4) the
+      pack's diff insertions/deletions were stale (316/43) against a
+      measured 371/52 at review time.
+    status: CONFIRMED
+    repro: >
+      Production code judged CORRECT by the grader — only evidence and one
+      number were at fault. Cured in this same PR, same branch: migration
+      renamed 281 -> 282 with a retention comment declaring the gap as
+      future work; both flagged tests now capture the should_escalate mock
+      and call should_escalate_mock.assert_awaited_once() after the
+      `result is None` assertion; re-ran M1 and M2 against the corrected
+      tests — both mutants now turn the correct single test RED (receipts
+      above), then the file was cleanly reverted (0-diff against a
+      pre-mutation backup) and the full suite re-confirmed green; this
+      pack's own diff numbers were re-measured with `git diff --numstat`
+      against origin/main after all fixes (379/52, not the earlier 316/43
+      nor the grader's interim 371/52 — both stale snapshots from before the
+      mutation-test fix's own diff was added).
 
 residual_risks:
   - "test_wa_meta_inbox_onconflict.py (4 tests) fails locally with asyncpg
@@ -106,7 +155,28 @@ residual_risks:
     non-required (absent from branch protection's required_status_checks
     contexts) and unrelated to this change's scope — left untouched per the
     one-concern rule, per explicit team-lead instruction."
+  - "wa_reply_claims has no TTL/retention: it grows by one row per inbound
+    WhatsApp message forever. Declared in the migration's own header as
+    future work (a claimed_at-based sweep or partitioning), not implemented
+    in this PR (one-concern rule)."
+  - "During a sustained DB outage, the double-reply race RETURNS: both paths
+    fail to acquire/claim (best-effort, by design — a DB hiccup must never
+    mute a genuinely legacy message), so both proceed and can both answer
+    the same wamid. This is the deliberate trade-off #4878 already made
+    (never-mute over never-duplicate during DB unreachability) and this PR
+    preserves it rather than changing it — flagging it explicitly so the
+    trade-off is visible, not an oversight."
+  - "A crash between a won claim and the reply/ledger write leaves that
+    wamid permanently claimed with no answer ever sent, unless Meta
+    redelivers the webhook (which would retry the whole flow with the same
+    wamid — the claim UPSERT's same-path-retry handling covers that case,
+    but a redelivery is not guaranteed to happen)."
+  - "The meta-inbox path claims a wamid (winning the race) even on
+    human_handling=True threads, where the bot deliberately does not answer
+    — this is intended silence (a human is handling the conversation), not a
+    defect, but it means a 'won the claim' log line does not imply a reply
+    was actually sent."
 
 sources: []
 pii_scan: clean
-size_tokens: 2200
+size_tokens: 4200

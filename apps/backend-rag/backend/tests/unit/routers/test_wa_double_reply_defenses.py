@@ -237,10 +237,11 @@ async def test_wamid_claimed_by_legacy_proceeds_to_legacy_flow(
     # triage logic this test has no business exercising. The outer
     # try/except in process_whatsapp_message swallows this and returns
     # None, which is exactly the assertion below.
+    should_escalate_mock = AsyncMock(
+        side_effect=RuntimeError("stop here — claim gate already proven passed")
+    )
     monkeypatch.setattr(
-        whatsapp_chat.whatsapp_triage_service,
-        "should_escalate",
-        AsyncMock(side_effect=RuntimeError("stop here — claim gate already proven passed")),
+        whatsapp_chat.whatsapp_triage_service, "should_escalate", should_escalate_mock
     )
 
     result = await whatsapp_chat.process_whatsapp_message(
@@ -255,6 +256,14 @@ async def test_wamid_claimed_by_legacy_proceeds_to_legacy_flow(
     # won the claim itself — proof neither gate early-returned.
     assert is_allowed_calls == ["628111"]
     assert conn.fetchval.await_args[0][1] == "wamid.LEGACY-ONLY"
+    # The outer try/except returns None on ANY unhandled exception past this
+    # point, so `result is None` alone does not prove the flow reached the
+    # claim gate — a mutant that early-returns right after the allowlist
+    # check (never touching should_escalate) also yields None here
+    # (adversarial-review finding: mutation testing survived on this
+    # assertion gap). Assert the sentinel was actually awaited so a mutant
+    # that short-circuits before it goes red.
+    should_escalate_mock.assert_awaited_once()
     assert result is None
 
 
@@ -284,10 +293,11 @@ async def test_dedup_db_error_is_non_blocking(monkeypatch: pytest.MonkeyPatch) -
     # is real triage logic this test has no business exercising. The outer
     # try/except in process_whatsapp_message swallows this and returns None,
     # which is exactly the assertion below.
+    should_escalate_mock = AsyncMock(
+        side_effect=RuntimeError("stop here — claim gate already proven passed")
+    )
     monkeypatch.setattr(
-        whatsapp_chat.whatsapp_triage_service,
-        "should_escalate",
-        AsyncMock(side_effect=RuntimeError("stop here — claim gate already proven passed")),
+        whatsapp_chat.whatsapp_triage_service, "should_escalate", should_escalate_mock
     )
 
     # Must not raise despite the claim's DB call failing.
@@ -300,6 +310,15 @@ async def test_dedup_db_error_is_non_blocking(monkeypatch: pytest.MonkeyPatch) -
     )
     assert is_allowed_calls == ["628111"]
     assert pool.acquire.called
+    # `result is None` alone is also produced by the swallowed RuntimeError
+    # from pool.acquire itself (caught by the claim's own try/except) OR by
+    # the outer try/except catching anything else — neither proves the flow
+    # actually continued PAST the failed claim into triage, which is the
+    # whole point of "non-blocking" (adversarial-review finding: mutation
+    # testing survived here too, same gap as the sibling test above).
+    # Assert the sentinel was awaited so a mutant that re-raises inside the
+    # claim's except (muting instead of continuing) goes red.
+    should_escalate_mock.assert_awaited_once()
     assert result is None
 
 
