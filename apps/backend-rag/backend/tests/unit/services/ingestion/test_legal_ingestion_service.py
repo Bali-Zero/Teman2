@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import httpx
 import pytest
 
 if TYPE_CHECKING:
@@ -55,6 +56,12 @@ def _build_service() -> LegalIngestionService:
         # document override scroll_strict themselves.
         _vector_db = MagicMock()
         _vector_db.scroll_strict = AsyncMock(return_value=[])
+        # Awaited on EVERY ingest now (the identity guard's filter keys
+        # must be indexed before it scrolls), so the bare MagicMock this
+        # attribute would otherwise be is not awaitable.
+        _vector_db.ensure_keyword_payload_index = AsyncMock(
+            return_value={"success": True}
+        )
         mqd.return_value = _vector_db
         mtc.return_value = MagicMock()
         mhi.return_value = MagicMock()
@@ -389,6 +396,9 @@ class TestIngestSuccess:
         # Same as the shared fixture: the identity guard scrolls the
         # REQUEST-local client, so it needs an empty world too.
         request_vector_db.scroll_strict = AsyncMock(return_value=[])
+        request_vector_db.ensure_keyword_payload_index = AsyncMock(
+            return_value={"success": True}
+        )
         service.cleaner.clean.return_value = "cleaned tax regulation"
         service.metadata_extractor.extract.return_value = {
             "type": "Peraturan Menteri Keuangan",
@@ -1113,10 +1123,168 @@ class TestIdentityCollisionGuard:
         assert stored == "Permen_1_2026"
 
 
+
+    @staticmethod
+    def _keys_named_by(qdrant_filter: object) -> set[str]:
+        """Every payload key a Qdrant filter names, at any nesting depth."""
+        found: set[str] = set()
+        if isinstance(qdrant_filter, dict):
+            key = qdrant_filter.get("key")
+            if isinstance(key, str):
+                found.add(key)
+            for value in qdrant_filter.values():
+                found |= TestIdentityCollisionGuard._keys_named_by(value)
+        elif isinstance(qdrant_filter, list):
+            for item in qdrant_filter:
+                found |= TestIdentityCollisionGuard._keys_named_by(item)
+        return found
+
+    @staticmethod
+    def _ensured_fields(mock: AsyncMock) -> set[str]:
+        return {
+            (c.args[0] if c.args else c.kwargs["field_name"])
+            for c in mock.call_args_list
+        }
+
+    @pytest.mark.asyncio
+    async def test_every_key_the_identity_filter_names_has_an_index(
+        self, service: MagicMock
+    ) -> None:
+        """The guard's query must be ANSWERABLE, not merely well-formed.
+
+        This is the defect the seven tests above could not see, because every
+        one of them mocks `scroll_strict` -- the exact call that failed. Qdrant
+        does not treat a filter on an unindexed key as "matches nothing"; it
+        REJECTS it with HTTP 400 "Index required but not found". So the guard
+        shipped in #4865 did not silently pass, it made every legal ingest fail
+        -- colliding or not -- and no unit test could tell, because the mock
+        answered where production errored.
+
+        The expectation here is DERIVED from the production filter builder
+        rather than typed as a literal, so it tracks the builder: whatever keys
+        `_convert_filter_to_qdrant_format` decides to name, the service must
+        have ensured an index for each of them.
+        """
+        from backend.core.qdrant_db import QdrantClient as RealQdrantClient
+
+        real = RealQdrantClient(collection_name="legal_unified")
+        # Premise: legal_unified is a flat-payload collection, so the builder
+        # ADDS the bare key beside the nested one instead of replacing it. If
+        # that ever becomes a replacement, this pin fails and whoever changed
+        # it is sent back to re-read the guard.
+        assert real._include_flat_payload_filters() is True
+        required = self._keys_named_by(
+            real._convert_filter_to_qdrant_format(
+                {"document_id": "PMK_1_2026"},
+                include_flat_payload=True,
+            )
+        )
+        assert required == {"document_id", "metadata.document_id"}
+
+        self._prime(service, existing=[])
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is True
+        ensured = self._ensured_fields(service.vector_db.ensure_keyword_payload_index)
+        assert required <= ensured, (
+            f"the identity filter names {sorted(required)} but the service only "
+            f"ensured indexes for {sorted(ensured)}; the unindexed keys make the "
+            "guard's scroll an HTTP 400 instead of an answer"
+        )
+
+    @pytest.mark.asyncio
+    async def test_the_index_is_ensured_before_the_guard_scrolls(
+        self, service: MagicMock
+    ) -> None:
+        """Ordering is the whole point: an index created after the query that
+        needs it cures nothing. Asserting only that both calls happened would
+        pass on the broken ordering, so the sequence itself is asserted."""
+        self._prime(service, existing=[])
+        order: list[str] = []
+
+        async def _record_index(field_name: str) -> dict:
+            order.append(f"index:{field_name}")
+            return {"success": True, "field_name": field_name}
+
+        async def _record_scroll(**_: object) -> list:
+            order.append("scroll")
+            return []
+
+        service.vector_db.ensure_keyword_payload_index = AsyncMock(
+            side_effect=_record_index
+        )
+        service.vector_db.scroll_strict = AsyncMock(side_effect=_record_scroll)
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is True
+        assert "scroll" in order, "the guard did not run at all"
+        for field in ("document_id", "metadata.document_id"):
+            marker = f"index:{field}"
+            assert marker in order, f"{field} was never indexed"
+            assert order.index(marker) < order.index("scroll"), (
+                f"{field} was indexed AFTER the guard's scroll, which is the "
+                "same outage in a different order"
+            )
+
+
+
+    @pytest.mark.asyncio
+    async def test_a_failed_index_put_aborts_before_any_mutation(
+        self, service: MagicMock
+    ) -> None:
+        """The index call is fail-closed, and that is a deliberate choice.
+
+        `ensure_keyword_payload_index` is a bare PUT with `raise_for_status()`:
+        no tolerance, no "already exists" branch. So a 403 on a caller-supplied
+        collection, or a timeout on a first-ever index build, aborts an ingest
+        that might otherwise have succeeded. That is the correct trade -- an
+        ingest whose collision guard cannot run must not proceed -- but it is a
+        real behavioural surface this change introduces, and an untested one is
+        just a claim. What must hold is that the abort happens BEFORE anything
+        is written: no scroll, no quarantine, no indexing.
+        """
+        self._prime(service, existing=[])
+        service.vector_db.ensure_keyword_payload_index = AsyncMock(
+            side_effect=httpx.HTTPStatusError(
+                "403 Forbidden",
+                request=httpx.Request("PUT", "http://qdrant/collections/x/index"),
+                response=httpx.Response(403),
+            )
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is False
+        service.vector_db.scroll_strict.assert_not_awaited()
+        service.vector_db.set_payload_by_filter.assert_not_awaited()
+        service.vector_db.delete_by_filter.assert_not_awaited()
+        service.indexer.index_legal_document.assert_not_awaited()
+
 # --------------------------------------------------------------------------- #
 # ingest_legal_document -- metadata fallback
 # --------------------------------------------------------------------------- #
-
 
 class TestMetadataFallback:
     def test_incomplete_metadata_identity_is_bound_to_source_content(self) -> None:
