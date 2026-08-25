@@ -225,6 +225,153 @@ def test_price_service_key_absent_from_snapshot_is_handoff() -> None:
     assert outcome.reason == GateReason.PRICE_NOT_IN_SNAPSHOT
 
 
+# ---------------------------------------------------------------------------
+# Lane B1d, 2026-08-25 — the tax-tier collision (the SAME disease one layer
+# down: a snapshot key that is unique only by luck, not by construction).
+# The live catalogue has 4 real "Tier N" names shared, unqualified, between
+# tax_accounting's monthly_tax_basic (a range, LKPM/Annual NOT included) and
+# monthly_tax_bundled (a single price, LKPM+Annual included) sub-blocks —
+# a real ~500k-1.5M IDR spread and a different scope of work behind the
+# identical dict key. B1c's own _snapshot_index_by_key MERGED the two
+# items' value sets under that shared key and let either price through;
+# this section proves that is now refused, and that the fix (grounding.py
+# assigning each colliding entry a QUALIFIED key) still binds correctly.
+# ---------------------------------------------------------------------------
+
+# The bare, UNQUALIFIED shape a pre-fix (or hand-built) snapshot would have
+# handed both tax-tier variants — the reproduction of the original defect.
+_BARE_TAX_TIER_COLLISION_ITEMS = (
+    {
+        "key": "Tier 0-50",
+        "name": "Monthly Tax Report — 0 to 50 transactions (without LKPM & Annual)",
+        "price": "Rp 1.800.000 – 2.000.000",
+    },
+    {
+        "key": "Tier 0-50",
+        "name": "Monthly Tax Report — 0 to 50 transactions (including LKPM & Annual)",
+        "price": "2.500.000 IDR",
+    },
+)
+
+# The QUALIFIED shape grounding.py's fixed builder actually produces today.
+_QUALIFIED_TAX_TIER_ITEMS = (
+    {
+        "key": "monthly_tax_basic::Tier 0-50",
+        "name": "Monthly Tax Report — 0 to 50 transactions (without LKPM & Annual)",
+        "price": "Rp 1.800.000 – 2.000.000",
+    },
+    {
+        "key": "monthly_tax_bundled::Tier 0-50",
+        "name": "Monthly Tax Report — 0 to 50 transactions (including LKPM & Annual)",
+        "price": "2.500.000 IDR",
+    },
+)
+
+
+def test_bare_ambiguous_tier_key_is_refused_not_silently_merged() -> None:
+    """Reproduces the ORIGINAL defect verbatim: a snapshot that hands the
+    SAME bare catalogue name ("Tier 0-50") to two different items used to
+    let ``_snapshot_index_by_key`` MERGE their value sets — a claim bound
+    to that name and quoting the OTHER item's real price (2.500.000, the
+    bundled tier) passed, because 2.500.000 IS a real number under that
+    shared key. This is guilt in its purest, pre-qualification form: even
+    an OLD snapshot that never went through grounding.py's fixed key
+    assignment must now be refused by check_pricing itself, not merged.
+    """
+    snapshot = make_pricing_snapshot("tier-bare", items=_BARE_TAX_TIER_COLLISION_ITEMS)
+    claim = make_claim(
+        suffix="p1", text="Rp 2.500.000", kind="price", price_service_key="Tier 0-50"
+    )
+    candidate = make_answer_candidate(
+        "tier-bare",
+        answer="Untuk paket bulanan 0-50 transaksi, biayanya Rp 2.500.000.",
+        claims=(claim,),
+    )
+    outcome = check_pricing(candidate, snapshot)
+    assert outcome is not None, (
+        "an ambiguous, bare key ('Tier 0-50') resolved to a MERGED value "
+        "set and silently accepted a price that belongs to the OTHER tax "
+        "tier variant sharing the same catalogue dict key"
+    )
+    assert outcome.verdict == GateVerdict.HANDOFF
+    assert outcome.reason == GateReason.PRICE_NOT_IN_SNAPSHOT
+    assert outcome.reason_detail == "price_service_key_ambiguous_in_snapshot"
+
+
+def test_qualified_tier_key_binds_the_bundled_price_correctly() -> None:
+    """Innocence: with the QUALIFIED keys grounding.py's fix actually
+    produces, a claim correctly bound to the bundled tier and quoting the
+    bundled tier's OWN price still passes — the fix does not turn into a
+    check so strict it rejects a correct, qualified-key claim.
+    """
+    snapshot = make_pricing_snapshot("tier-qualified", items=_QUALIFIED_TAX_TIER_ITEMS)
+    claim = make_claim(
+        suffix="bundled",
+        text="Rp 2.500.000",
+        kind="price",
+        price_service_key="monthly_tax_bundled::Tier 0-50",
+    )
+    candidate = make_answer_candidate(
+        "tier-qualified",
+        answer=(
+            "Paket bundled 0-50 transaksi (sudah termasuk LKPM & laporan "
+            "tahunan): Rp 2.500.000."
+        ),
+        claims=(claim,),
+    )
+    assert check_pricing(candidate, snapshot) is None
+
+
+def test_qualified_tier_key_binds_the_basic_price_correctly() -> None:
+    """Innocence, the other half of the pair: the basic tier's own range
+    (1.800.000-2.000.000) bound to ITS qualified key also passes — proving
+    the fix does not collapse both variants into "any tax-tier price
+    passes for either key", which would just be the old merge bug renamed.
+    """
+    snapshot = make_pricing_snapshot("tier-qualified", items=_QUALIFIED_TAX_TIER_ITEMS)
+    claim = make_claim(
+        suffix="basic",
+        text="Rp 1.800.000",
+        kind="price",
+        price_service_key="monthly_tax_basic::Tier 0-50",
+    )
+    candidate = make_answer_candidate(
+        "tier-qualified",
+        answer=(
+            "Paket basic 0-50 transaksi (belum termasuk LKPM & laporan "
+            "tahunan): mulai dari Rp 1.800.000."
+        ),
+        claims=(claim,),
+    )
+    assert check_pricing(candidate, snapshot) is None
+
+
+def test_qualified_tier_key_still_refuses_the_other_variants_price() -> None:
+    """Guilt in its QUALIFIED form: unique keys alone are not the binding
+    check — a claim correctly bound to the basic tier's key but quoting
+    the BUNDLED tier's price (2.500.000, a real number, just for the
+    wrong variant) must still be refused by the existing P1-P3 binding,
+    now that there is no ambiguity to hide behind.
+    """
+    snapshot = make_pricing_snapshot("tier-qualified", items=_QUALIFIED_TAX_TIER_ITEMS)
+    claim = make_claim(
+        suffix="wrong-variant",
+        text="Rp 2.500.000",
+        kind="price",
+        price_service_key="monthly_tax_basic::Tier 0-50",
+    )
+    candidate = make_answer_candidate(
+        "tier-qualified",
+        answer="Paket basic 0-50 transaksi: Rp 2.500.000.",
+        claims=(claim,),
+    )
+    outcome = check_pricing(candidate, snapshot)
+    assert outcome is not None
+    assert outcome.verdict == GateVerdict.HANDOFF
+    assert outcome.reason == GateReason.PRICE_NOT_IN_SNAPSHOT
+    assert outcome.reason_detail == "quoted_amount_not_for_claimed_service"
+
+
 def test_cross_turn_service_context_is_not_check_pricings_job() -> None:
     """Decision stated per the orchestrator's ruling: check_pricing has NO
     visibility into ``GroundingBundle.history`` (it receives only
