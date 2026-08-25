@@ -4,9 +4,13 @@
 # before validating, so brief_ref must always read "evidence/brief.yml".
 brief_ref: evidence/brief.yml
 plan_ref: PR #4881 — agent/air-m5/backend-rag/wa-race2
+# Diff stats below are the LITERAL output of the command in the matching
+# receipt (git diff --numstat origin/main...HEAD, code files only, summed
+# by hand ONLY as 93+100+203+18+3=417 / 24+0+19+9+0=52 -- the per-file rows
+# are the transcription of the command's own stdout, not a re-estimate).
 diff:
   files: 5
-  insertions: 379
+  insertions: 417
   deletions: 52
   hotzone_hits:
     - apps/backend-rag/backend/db/migrations_v2/283_wa_reply_claims.sql
@@ -25,20 +29,30 @@ receipts:
     exit: 0
     ts: "2026-08-25T05:40:11Z"
     seat: sonnet-5
-  - claim: "New migration 282_wa_reply_claims.sql is squawk-clean under the repo's standard exclusion set (renumbered 281 -> 282 after adversarial review found PR #4854 already claims 281 on its own branch, and main tops out at 280 — W40 collision class)."
-    cmd: "squawk --pg-version=15.0 --exclude=require-concurrent-index-creation --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid --exclude=prefer-bigint-over-int --exclude=prefer-identity --exclude=disallowed-unique-constraint apps/backend-rag/backend/db/migrations_v2/282_wa_reply_claims.sql"
+  - claim: "New migration 283_wa_reply_claims.sql is squawk-clean under the repo's standard exclusion set (renumbered 282 -> 283 after a SECOND adversarial-review finding: PR #4879, open, already claims 282 with 282_garuda_orders.sql)."
+    cmd: "squawk --pg-version=15.0 --exclude=require-concurrent-index-creation --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid --exclude=prefer-bigint-over-int --exclude=prefer-identity --exclude=disallowed-unique-constraint apps/backend-rag/backend/db/migrations_v2/283_wa_reply_claims.sql"
     exit: 0
-    ts: "2026-08-25T06:50:00Z"
+    ts: "2026-08-25T07:32:10Z"
     seat: sonnet-5
   - claim: "The migration carries exactly one ROLLBACK marker."
-    cmd: "grep -c '^-- === ROLLBACK ===$' apps/backend-rag/backend/db/migrations_v2/282_wa_reply_claims.sql"
+    cmd: "grep -c '^-- === ROLLBACK ===$' apps/backend-rag/backend/db/migrations_v2/283_wa_reply_claims.sql"
     exit: 0
-    ts: "2026-08-25T06:50:05Z"
+    ts: "2026-08-25T07:32:15Z"
     seat: sonnet-5
-  - claim: "Confirmed main tops out at migration 280 and PR #4854 already claims 281, before renumbering this PR's migration to 282."
-    cmd: "git ls-tree origin/main -- apps/backend-rag/backend/db/migrations_v2/ | grep -E '28[0-9]_'"
+  - claim: "Queried the FULL open-PR set (not just main + one named PR) for migration-number claims: PR #4879 (open) claims 282 with 282_garuda_orders.sql, colliding with this branch's prior rename target. No open PR claims 283."
+    cmd: "gh pr list --state open --limit 300 --json number,files -q '.[] | .number as $n | .files[]?.path | select(test(\"migrations_v2/[0-9]+_\")) | \"\\($n): \\(.)\"'"
     exit: 0
-    ts: "2026-08-25T06:48:30Z"
+    ts: "2026-08-25T07:28:40Z"
+    seat: sonnet-5
+  - claim: "Confirmed main's real tip still tops out at migration 280 (via git ls-tree AND independently via the GitHub Contents API, which agree). Also found and recorded, without resolving: PR #4854 is reported MERGED and claims migration 281 in its commit message, but 281_garuda_voa_retention.sql is absent from origin/main and #4854's merge commit is not an ancestor of origin/main — chose 283 to keep a two-integer margin from every number confirmed live (280 on main, 282 claimed by #4879) so this anomaly cannot collide with this file whichever way it resolves."
+    cmd: "git ls-tree origin/main -- apps/backend-rag/backend/db/migrations_v2/ | grep -E '28[0-9]_'; gh api repos/Bali-Zero/Teman2/contents/apps/backend-rag/backend/db/migrations_v2 --jq '.[].name' | grep -E '^28[0-9]_'; git merge-base --is-ancestor 09bb478323845a9e80a90afdaf877efff4018874 origin/main"
+    exit: 1
+    ts: "2026-08-25T07:29:30Z"
+    seat: sonnet-5
+  - claim: "Literal git diff --numstat origin/main...HEAD after the 283 rename, transcribed verbatim (not hand-summed): whatsapp_chat.py 93/24, 283_wa_reply_claims.sql 100/0, test_wa_double_reply_defenses.py 203/19, test_wa_inbox_webhook.py 18/9, test_whatsapp_chat_coverage.py 3/0. Code-file totals: 5 files, 417 insertions, 52 deletions."
+    cmd: "git diff --numstat origin/main...HEAD"
+    exit: 0
+    ts: "2026-08-25T07:36:05Z"
     seat: sonnet-5
   - claim: "Full backend/tests/unit/routers/ suite is green (1502 passed, 0 failed) after the atomic-claim change, the claim-ordering fix, the collateral mock fixes, and the two new should_escalate-awaited assertions; the 4 deselected tests are a pre-existing local Postgres-role gap (asyncpg InvalidAuthorizationSpecificationError), verified via git stash/pop to reproduce identically on pre-change code."
     cmd: "PYTHONPATH=. python -m pytest backend/tests/unit/routers/ --deselect backend/tests/unit/routers/test_wa_meta_inbox_onconflict.py"
@@ -143,6 +157,41 @@ dissent:
       against origin/main after all fixes (379/52, not the earlier 316/43
       nor the grader's interim 371/52 — both stale snapshots from before the
       mutation-test fix's own diff was added).
+  - seat: independent-gear3-grader
+    objection: >
+      Second REWORK, same PR: (1) migration 282 collides with PR #4879
+      (garuda_orders, open), which claimed 282 with 282_garuda_orders.sql
+      BEFORE this branch's own rename to 282 — the prior round's rename
+      only checked main + one named PR (#4854), not the full open-PR set,
+      so it walked into a second, different collision of the exact same
+      class (W40) it was meant to fix. The migration-number CI lint only
+      compares main + the current PR, so this would have landed silently
+      and discover_migrations would have skipped one migration at runtime.
+      (2) the pack's own diff insertions figure ("379") was a hand
+      recomposition using an earlier per-file count for the test file (184
+      insertions) that did not match the actual diff at review time (the
+      grader's own recount: 203).
+    status: CONFIRMED
+    repro: >
+      Queried the FULL open-PR set this time, not just main + one named
+      PR: `gh pr list --state open --limit 300 --json number,files -q
+      '.[] | .number as $n | .files[]?.path | select(test(
+      "migrations_v2/[0-9]+_")) | "\($n): \(.)"'` returned both #4879:282
+      and (this branch, pre-fix) #4881:282 — confirmed collision. Also
+      found, while investigating: PR #4854 is reported MERGED and its
+      commit claims migration 281, but 281_garuda_voa_retention.sql is
+      absent from origin/main's live tip and the merge commit is not an
+      ancestor of origin/main (verified via `git merge-base
+      --is-ancestor`) — flagged in the migration header and this pack's
+      residual_risks as an unresolved anomaly, deliberately NOT used to
+      justify reclaiming 281 here. Renamed 282 -> 283, keeping a
+      two-integer margin from both numbers confirmed live (280 on main,
+      282 claimed by #4879) so the anomaly cannot collide with this file
+      whichever way it resolves. Re-ran squawk (0 issues) and the migration
+      number lint (164 files, all unique) on the renamed file. This pack's
+      diff stats are now the LITERAL transcription of `git diff --numstat
+      origin/main...HEAD` run after the rename (receipt above), not a hand
+      sum from an earlier state: 417 insertions / 52 deletions, 5 files.
 
 residual_risks:
   - "test_wa_meta_inbox_onconflict.py (4 tests) fails locally with asyncpg
@@ -176,6 +225,15 @@ residual_risks:
     — this is intended silence (a human is handling the conversation), not a
     defect, but it means a 'won the claim' log line does not imply a reply
     was actually sent."
+  - "UNRESOLVED, out of scope for this PR: PR #4854 is reported MERGED by
+    the GitHub API and its commit message claims migration
+    281_garuda_voa_retention.sql, but that file is absent from
+    origin/main's live tip and #4854's merge commit
+    (09bb478323845a9e80a90afdaf877efff4018874) is not an ancestor of
+    origin/main. This PR does not use 281 and does not attempt to
+    diagnose or fix the anomaly (one-concern rule) — flagging it because
+    it looks exactly like the class of silent-drop this whole PR exists
+    to prevent, just on a different table."
 
 sources: []
 pii_scan: clean
