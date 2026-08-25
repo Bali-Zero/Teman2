@@ -294,7 +294,7 @@ arms it.
 ## Item 9 — One sentence on the PII boundary for per-member memory — NEW, directive #1
 
 **What it is.** Directive #1 adds three-layer per-member memory, and its episodic layer has to
-resolve anaphora — *"and for the other client?"* — which requires storing enough to
+resolve anaphora — _"and for the other client?"_ — which requires storing enough to
 disambiguate one client from another across turns.
 
 **The tension, stated plainly.** You granted this lane a derogation for **processing**
@@ -322,16 +322,16 @@ capability report rather than as a leak.
 **What it is.** `bali_zero_official_prices_2026.json` names four services twice, with
 different prices each time. It is the entire monthly tax product line:
 
-| key | basic (without LKPM & Annual) | bundled (including them) | spread |
-|---|---|---|---|
-| `Tier 0-50` | 1.800.000 – 2.000.000 IDR | 2.500.000 IDR | up to 700k |
-| `Tier 50-100` | 2.500.000 – 3.000.000 IDR | 3.500.000 IDR | up to 1.0M |
-| `Tier 100-200` | 3.500.000 – 4.500.000 IDR | 4.500.000 IDR | up to 1.0M |
-| `Tier 200+` | 5.000.000 IDR | 6.500.000 IDR | 1.5M |
+| key            | basic (without LKPM & Annual) | bundled (including them) | spread     |
+| -------------- | ----------------------------- | ------------------------ | ---------- |
+| `Tier 0-50`    | 1.800.000 – 2.000.000 IDR     | 2.500.000 IDR            | up to 700k |
+| `Tier 50-100`  | 2.500.000 – 3.000.000 IDR     | 3.500.000 IDR            | up to 1.0M |
+| `Tier 100-200` | 3.500.000 – 4.500.000 IDR     | 4.500.000 IDR            | up to 1.0M |
+| `Tier 200+`    | 5.000.000 IDR                 | 6.500.000 IDR            | 1.5M       |
 
 Census run over the live catalogue: 109 service keys, 4 of them duplicated, all four in
 `tax_accounting`, all four with a different price on each side. So this is not an edge
-case — it is *every* monthly-tax price the bot could quote.
+case — it is _every_ monthly-tax price the bot could quote.
 
 **What does NOT need you.** The bot path is being closed in code (lane B1d): the pricing
 snapshot gets keys that are unique by construction, so a claim naming `Tier 0-50` can no
@@ -354,6 +354,38 @@ reason.
 / `Tier 0-50 (bundled)`), which also makes the code fix simpler rather than redundant.
 **Cost of not answering:** none for the bot, which is being fixed regardless. The residual
 risk stays where it already is — on humans reading the list.
+
+---
+
+## Item 11 — one of v1's declared tools has no backend at all — NEW, found 2026-08-25
+
+**What it is.** Directive #1 §3 put **deadlines & compliance, with proactive reminders**, inside
+v1 as domain 3. A reconciliation of all ten frozen team-bot tools against the live backend found
+that `create_reminder` is **ABSENT**: no `reminders` table, no model, no route anywhere in
+`backend-rag/backend`. Verified by search, not inferred from a doc.
+
+**What DOES exist, so the gap is narrower than it sounds.** The proactive half is live and
+running: `routers/cron_notifiers.py` (visa-expiry, LKPM deadlines, compliance forecast, …),
+driven by GitHub Actions cron into Fly, each endpoint behind its own `system_settings` kill
+switch. That machinery _sends_ deadline alerts today. And `TeamMyDeadlinesTool` already answers
+"what is due for MY clients", filtered by `assigned_to`.
+
+**What is missing** is the ad-hoc direction: a staff member telling the bot _"remind me about
+this practice on the 14th"_. Nothing can store that.
+
+**The decision.** Two honest options, and it is yours because it changes what v1 means:
+
+- **Build the surface** — a `reminders` table plus a create/list route, with the same
+  `assigned_to` scoping the rest of the CRM enforces. Real work, and it adds a persistence
+  surface that will hold client-linked rows (so it inherits item 9's PII boundary question).
+- **Drop `create_reminder` from v1** — the bot answers deadline questions and the existing cron
+  keeps sending proactive alerts, but a staff member cannot ask it to remember something new.
+  Costs nothing and narrows the product.
+
+**What does NOT need you:** nothing is blocked meanwhile. The other nine tools are unaffected,
+and the orchestrator's standing ruling is that a tool with no backing route is not a tool — so
+`create_reminder` stays out of v1 by default until you say otherwise. This item exists so that
+default is a decision you made rather than one discovered by whoever wires R1.
 
 ---
 
