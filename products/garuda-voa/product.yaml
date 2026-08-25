@@ -233,7 +233,22 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     #   price_for_case(issuance)  = (790000, "B1 Visa on Arrival (VOA)")
     #   price_for_case(extension) = (850000, "B1 Visa on Arrival Extension")
     # These are the exact amounts the funnel would charge, from a file last touched in May.
-    measured_catalogue_age_days: 110
+    measured_catalogue_age_days: 111
+    # RE-MEASURED 2026-08-25 by importing the loader: age 111d vs window 90d, verdict STALE,
+    # and price_for_case(ISSUANCE) now returns (None, None). This is no longer a forecast.
+    # The guardrail is LIVE on the branch, so the funnel would answer 503 PRICE_UNRESOLVABLE
+    # to every real customer today. That makes this decision the top go-live blocker: no
+    # other lane's work can sell anything until it is answered.
+    blocks_go_live: true
+    # THE FORBIDDEN CURE, named explicitly because a competent lane proposed it on
+    # 2026-08-25 (L7, in good faith, reading the line below): "refresh the catalogue's
+    # metadata.last_updated stamp". Bumping the stamp WITHOUT re-verifying the prices is
+    # the same cheat as widening the window, wearing a different costume — it makes the
+    # guard green while nobody has looked at whether 790.000 is still the right number.
+    # That a careful reader independently proposed it is evidence the prohibition was not
+    # written where it gets read, not a fault of theirs: the "honest exits" sentence below
+    # says "re-verify AND re-stamp", and a skim lifts the second half out of the pair.
+    # The stamp is a CLAIM that a human looked. It is never the act of looking.
     question: >
       Two things, and the second is the one nobody has answered. (a) Are 790.000 and
       850.000 IDR still the correct prices today? The catalogue that supplies them has
@@ -246,10 +261,12 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     consequence: >
       The freshness guardrail now being built will, correctly, refuse to sell on the day it
       ships — the catalogue is already past its window. There are only two honest exits:
-      re-verify and re-stamp the catalogue, or rule that 90 days is the wrong window for a
-      list Bali Zero republishes on its own schedule. Quietly widening the window to make the
-      guard green is the one move that is not available: that turns the guardrail back into
-      the sentence it has been all along.
+      re-verify the prices and THEN re-stamp (in that order, and the stamp is worthless
+      without the first half), or rule that 90 days is the wrong window for a list Bali Zero
+      republishes on its own schedule. Two moves are NOT available, and they are the same
+      move: quietly widening the window, and bumping metadata.last_updated on prices nobody
+      re-checked. Either one turns the guardrail back into the sentence it has been all
+      along — green, and meaning nothing.
     gesture: "confirm the two amounts, or re-stamp the catalogue, or rule on the window"
   - id: 8
     decision: ocr_calibration_corpus
