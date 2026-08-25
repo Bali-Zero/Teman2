@@ -1,38 +1,75 @@
 #!/usr/bin/env python3
 """kb_inventory_probe — measure a kb/inventory/*.yaml against LIVE production.
 
-The CI gate (`test_kb_inventory_contract.py`) proves an inventory is internally
-sound and consistent with the registry and the ingest entrypoints. It cannot
-prove the inventory still describes the world: CI has no Qdrant credentials, and
-a probe that ran there would be flaky theatre.
+The CI gate (`test_kb_inventory_contract.py` / `test_kb_topic_contract.py`) proves
+an inventory is internally sound — consistent with itself, the registry, the ingest
+entrypoints. It cannot prove the inventory still describes the world: CI has no
+Qdrant credentials, and a probe that ran there would be flaky theatre. Measured
+2026-08-26: four `kind: topic` inventories (kb/inventory/{company,immigration,
+property,tax}.yaml) declared point counts and payload-shape mixes "measured
+against production" on 2026-08-25, and nothing has re-measured any of them since
+— this module dispatches on `kind` for exactly that reason; before this dispatch
+existed, handing it a topic file raised KeyError on `compared_with`, a key only
+the retired-collection schema carries.
 
-This is the half that touches production. It answers two different questions, and
-keeps them apart because their cures are opposite:
+This is the half that touches production. Dispatches on `data["kind"]`:
 
-  DRIFT       production no longer matches what the inventory recorded.
-              The inventory is STALE. Re-measure before acting on any of it.
-              -> exit 1
+  kind: retired_collection  (`_run_retired_collection`) — a triage of documents
+    queued for promotion/discard/blocking against a READ collection. Answers two
+    questions, kept apart because their cures are opposite:
+      DRIFT        production no longer matches what the inventory recorded.
+                   The inventory is STALE. Re-measure before acting on any of it.
+                   -> exit 1
+      OUTSTANDING  production matches the recorded baseline, and the dispositions
+                   have not been carried out yet. Honest state of a campaign
+                   mid-flight, RED on purpose: undone work must not read as success.
+                   -> exit 2
+      exit 0 only when every document has reached the state its disposition declares.
 
-  OUTSTANDING production matches the recorded baseline, and the dispositions have
-              not been carried out yet. This is the honest state of a campaign
-              mid-flight, and it is RED on purpose: an inventory whose work is
-              undone must not read as success.
-              -> exit 2
+  kind: topic  (`_run_topic`) — a lane's own scoped instruments inside ONE
+    collection. No disposition to reach, so the verdict is binary:
+      DRIFT        production has moved since `measured_at` (point count, payload
+                   shape mix, or a named instrument's count). -> exit 1
+      exit 0 only when every recorded number still matches production.
 
-  exit 0 only when every document has reached the state its disposition declares.
+  Any other `kind` (or none) -> exit 3, BROKEN, nothing measured — same vocabulary
+  as the missing-`.env` case below and as `kb/ops/probe_retrieval.py`.
+
+--json (additive, 2026-08-26): emits ONE JSON object on stdout instead of the
+human report, for a caller (`kb/ops/probe_history.py`) that needs to RECORD a
+verdict rather than have a human read one — the same contract, and the same
+reason, as `kb/ops/probe_retrieval.py`'s own `--json` (grading is identical
+either way; this only serializes it). Wired for `kind: topic` only today
+(`_run_topic`) — `kind: retired_collection` has no `documents:`/disposition
+JSON shape yet, and `main()` refuses with a `broken` JSON object rather than
+silently falling back to the human report a caller that asked for JSON did
+not request. `VERDICT_BY_EXIT` below mirrors `probe_retrieval.py`'s own dict
+by convention (same four strings), not by import — that file belongs to a
+different lane's PR at the moment this was written.
 
 Run it: PYTHONPATH unnecessary; it reads apps/backend-rag/.env for credentials.
     python3 scripts/kb/kb_inventory_probe.py kb/inventory/legal_unified_2026.yaml
+    python3 scripts/kb/kb_inventory_probe.py kb/inventory/immigration.yaml
+    python3 scripts/kb/kb_inventory_probe.py kb/inventory/immigration.yaml --json
 """
 from __future__ import annotations
 
 import argparse
 import collections
 import hashlib
+import json
 import os
 import re
 import sys
 from pathlib import Path
+
+# Closed vocabulary for --json's "verdict" field. Matches kb/ops/probe_retrieval.py's
+# own VERDICT_BY_EXIT string-for-string (documented equivalence, not a shared import —
+# see the --json paragraph above). `_run_topic` only ever produces 0/1/3; 2
+# ("outstanding") is `_run_retired_collection`'s disposition concept, which --json
+# does not cover yet — kept here anyway so the full script's exit-code vocabulary is
+# named in one place rather than half of it living only in exit codes nobody strings.
+VERDICT_BY_EXIT = {0: "at_target", 1: "drift", 2: "outstanding", 3: "broken"}
 
 WS = re.compile(r"\s+")
 CTX = re.compile(r"^\[CONTEXT:[^\]]*\]\s*", re.S)
@@ -45,6 +82,42 @@ def repo_root(start: Path | None = None) -> Path:
         if (candidate / ".git").exists() and (candidate / "apps").is_dir():
             return candidate
     raise SystemExit("kb_inventory_probe: repo root not found")
+
+
+def resolve_physical(name: str) -> str:
+    """Map a LOGICAL collection name (what every kb/inventory/*.yaml records) to
+    the live PHYSICAL Qdrant collection.
+
+    MEASURED 2026-08-26, against real production: no literal Qdrant collection
+    is named `legal_unified` — `client.get_collections()` lists 14 names, and
+    the live one is `legal_unified_hybrid_hybrid`
+    (`collection_registry.py::LOGICAL_TO_PHYSICAL_COLLECTIONS`). Before this
+    resolution existed, running THIS module's own topic probe against real
+    production for all four `kind: topic` inventories printed `[live]
+    legal_unified: ABSENT from Qdrant` and reported every instrument at 100%
+    DRIFT — true of the STRING, false of the CONTENT: the collection is there,
+    holding 84,361 points, under a different literal name. The same bug was
+    already latent in `_run_retired_collection`'s `read_name` lookup, which
+    this module inherited unchanged and which had never been run against real
+    production under test before this fix (`_run_retired_collection` itself
+    had zero coverage). A probe that does not resolve is not measuring drift,
+    it is measuring its own naming bug — which is exactly the false-positive
+    shape this campaign exists to refuse (a red for the wrong reason is as
+    untrustworthy as a green for the wrong reason).
+
+    Falls through unchanged for any name the registry does not know (e.g.
+    `legal_unified_2026`, itself a literal collection) — `.get(name, name)`,
+    the same fallback `collection_registry.resolve_collection_name` itself
+    uses, so a name outside the logical registry is passed through rather than
+    mangled.
+    """
+    root = repo_root()
+    backend_path = str(root / "apps" / "backend-rag")
+    if backend_path not in sys.path:
+        sys.path.insert(0, backend_path)
+    from backend.core.collection_registry import resolve_collection_name
+
+    return resolve_collection_name(name)
 
 
 def load_env(root: Path) -> None:
@@ -114,12 +187,26 @@ def census(client, collection: str):
     Reads BOTH payload shapes every time (mandate §3.1). A probe that filtered
     only `document_id` reported "0 damaged" for a document with 118 damaged
     points; this one is not allowed to make that mistake.
+
+    Returns `(points, by_doc, hashes_by_doc, all_hashes, shapes, shapes_by_doc)`
+    — six values. `shapes_by_doc` (added alongside the topic-drift dispatch) is
+    the SAME per-document breakdown `shapes` already aggregates, just not
+    collapsed across documents: `shapes_by_doc[doc_id][shape_name]`. A topic
+    inventory's `measured_against.points`/`payload_shapes` describe only ITS
+    OWN scoped instruments inside a collection SHARED across every lane (§4.1
+    — `legal_unified` alone holds 84,283 points across 388 documents; no single
+    topic owns more than a few dozen of them), so comparing those fields
+    against the WHOLE collection's totals is a false positive by construction,
+    every time, for every topic but the one that happens to own the entire
+    collection. `shapes_by_doc` is what lets the caller sum only the shapes of
+    the documents a topic actually scoped.
     """
     points = 0
     by_doc = collections.Counter()
     hashes_by_doc = collections.defaultdict(set)
     all_hashes = set()
     shapes = collections.Counter()
+    shapes_by_doc = collections.defaultdict(collections.Counter)
     offset = None
     while True:
         batch, offset = client.scroll(
@@ -134,9 +221,11 @@ def census(client, collection: str):
             meta = meta if isinstance(meta, dict) else {}
             top = payload.get("document_id")
             nested = meta.get("document_id")
-            shapes[payload_shape(payload)] += 1
+            shape = payload_shape(payload)
+            shapes[shape] += 1
             doc = top or nested or "<none>"
             by_doc[doc] += 1
+            shapes_by_doc[doc][shape] += 1
             text = payload.get("text") or payload.get("content") or meta.get("text") or ""
             if len(normalize(text)) >= MIN_FRAGMENT_CHARS:
                 digest = fragment_hash(text)
@@ -144,7 +233,7 @@ def census(client, collection: str):
                 all_hashes.add(digest)
         if offset is None:
             break
-    return points, by_doc, hashes_by_doc, all_hashes, shapes
+    return points, by_doc, hashes_by_doc, all_hashes, shapes, shapes_by_doc
 
 
 def shape_drift(collection: str, measured, recorded) -> list[str]:
@@ -172,36 +261,115 @@ def shape_drift(collection: str, measured, recorded) -> list[str]:
     return findings
 
 
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("inventory", type=Path)
-    parser.add_argument("--quiet", action="store_true")
-    args = parser.parse_args(argv)
+def topic_drift(data: dict, by_doc, shapes_by_doc) -> list[str]:
+    """DRIFT findings for a `kind: topic` inventory (MANDATE.md §2/§4.1).
 
-    import yaml
+    Pure function over already-measured census output — no Qdrant object is
+    touched here, only `by_doc`/`shapes_by_doc`, two of the six values
+    `census()` returns. That is deliberate: the retired-collection gate this
+    module already has (`shape_drift`) is tested this way, and a topic inventory
+    with a `kind: topic` schema had NO production check at all before this
+    function existed — `main()` unconditionally read `data["compared_with"]`,
+    a key that only the retired-collection schema carries, and raised KeyError
+    on the first topic file handed to it.
 
-    root = repo_root()
-    load_env(root)
-    from qdrant_client import QdrantClient
+    SCOPED TO THE TOPIC'S OWN INSTRUMENTS, not the whole collection. MEASURED
+    2026-08-25/26 against all four real `kind: topic` inventories: every one
+    of them satisfies `sum(instrument.points) == measured_against.points` and
+    the matching identity for `payload_shapes` (also enforced statically by
+    `test_kb_topic_contract.py::check_topic_inventory`) — because
+    `measured_against` describes what THIS topic's lane scoped and measured,
+    inside a `legal_unified` collection SHARED across every other lane (84,283
+    points / 388 documents total, measured 2026-08-25; no single topic scopes
+    more than a few dozen). An earlier version of this function compared
+    `measured_against.points`/`payload_shapes` against the WHOLE collection's
+    live totals and reported every topic as 100% DRIFT, on every run, forever
+    — a false positive baked into the comparison itself, not a real
+    divergence: run against real production, it reported "legal_unified point
+    count is 84283, inventory recorded 1868" for the immigration topic, which
+    is arithmetically true and means nothing (1868 is what THIS topic scoped;
+    84283 is everyone's).
 
-    data = yaml.safe_load(args.inventory.read_text(encoding="utf-8"))
+    So both point count and shape mix are summed here ONLY over the
+    instrument ids this topic's own `instruments:` list names, before
+    comparison — a probe that checked the whole collection would be unable to
+    ever pass for a shared collection with more than one lane in it, which is
+    every topic collection this campaign has.
+
+    Per-instrument point counts are still read straight from `by_doc` — the
+    already-scrolled per-document tally, keyed by `top or nested` (§4.1: a
+    document's identity can live at the top level or under
+    `metadata.document_id`, and a reader that only checks one is wrong on the
+    majority of this corpus's points) — so an instrument counted under either
+    payload shape is found here without this function ever issuing a second,
+    filtered query of its own. A server-side filter on an unindexed key
+    returns HTTP 400, not zero results (MANDATE.md §4.1); reusing the
+    already-scrolled tally sidesteps that failure mode entirely rather than
+    working around it.
+    """
+    findings: list[str] = []
+    measured = data["measured_against"]
+    collection = measured["collection"]
+    instrument_ids = [inst.get("id") for inst in data.get("instruments") or []]
+
+    topic_points = sum(by_doc.get(iid, 0) for iid in instrument_ids)
+    if topic_points != measured["points"]:
+        findings.append(
+            "%s (this topic's own instruments) point count is %d, inventory "
+            "recorded %d — the collection has moved since %s"
+            % (collection, topic_points, measured["points"], data.get("measured_at"))
+        )
+
+    topic_shapes = collections.Counter()
+    for iid in instrument_ids:
+        topic_shapes.update(shapes_by_doc.get(iid, {}))
+    findings.extend(shape_drift(collection, topic_shapes, measured["payload_shapes"]))
+
+    for inst in data.get("instruments") or []:
+        iid = inst.get("id")
+        declared = inst.get("points", 0)
+        live = by_doc.get(iid, 0)
+        if live != declared:
+            findings.append(
+                "%s: %d points in %s, inventory recorded %d"
+                % (iid, live, collection, declared)
+            )
+    return findings
+
+
+def _run_retired_collection(client, data: dict) -> int:
+    """The original `main()` body — `kind: retired_collection` — plus ONE fix.
+
+    Extracted so `main()` can dispatch on `data["kind"]` instead of assuming
+    this schema for every file handed to it. Exit codes and printed output are
+    unchanged from before the dispatch was added, EXCEPT: `topic_name` /
+    `read_name` are now resolved through `resolve_physical()` before either
+    is checked for membership in `live` or handed to `census()`. They were
+    previously used as literal Qdrant collection names — correct for
+    `legal_unified_2026` (a literal collection) but wrong for `legal_unified`
+    (a logical alias for `legal_unified_hybrid_hybrid`), which this function's
+    own `read_name` has always been. That bug was never caught because this
+    function had zero test coverage before today; see `resolve_physical`'s
+    docstring for how it was found. Display strings keep the LOGICAL name
+    throughout (what the inventory itself records), so nothing downstream of
+    the resolution — the DOCUMENT table, the drift text — changes shape.
+    """
     topic_name = data["measured_against"]["collection"]
     read_name = data["compared_with"]["collection"]
+    topic_physical = resolve_physical(topic_name)
+    read_physical = resolve_physical(read_name)
 
-    client = QdrantClient(
-        url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"], timeout=300
-    )
     live = {c.name for c in client.get_collections().collections}
 
     drift: list[str] = []
     outstanding: list[str] = []
 
-    topic_exists = topic_name in live
+    topic_exists = topic_physical in live
     if not topic_exists:
         print("[live] %s: ABSENT from Qdrant" % topic_name)
         topic_points, topic_docs, topic_hashes = 0, collections.Counter(), {}
     else:
-        topic_points, topic_docs, topic_hashes, _, topic_shapes = census(client, topic_name)
+        topic_points, topic_docs, topic_hashes, _, topic_shapes, _ = census(client, topic_physical)
         print("[live] %-28s %6d points  %3d docs  shapes=%s"
               % (topic_name, topic_points, len(topic_docs), dict(topic_shapes)))
         drift.extend(shape_drift(topic_name, topic_shapes,
@@ -213,7 +381,7 @@ def main(argv=None) -> int:
                                     data["measured_against"]["points"], data["measured_at"])
             )
 
-    read_points, read_docs, read_hashes, read_all_hashes, read_shapes = census(client, read_name)
+    read_points, read_docs, read_hashes, read_all_hashes, read_shapes, _ = census(client, read_physical)
     print("[live] %-28s %6d points  %3d docs  shapes=%s"
           % (read_name, read_points, len(read_docs), dict(read_shapes)))
     drift.extend(shape_drift(read_name, read_shapes, data["compared_with"]["payload_shapes"]))
@@ -286,6 +454,164 @@ def main(argv=None) -> int:
 
     print("AT TARGET — every document has reached the state its disposition declares.")
     return 0
+
+
+def _run_topic(
+    client, data: dict, inventory_path: Path | None = None, *, as_json: bool = False
+) -> int:
+    """`kind: topic` — measure ONE collection against the instruments a lane scoped.
+
+    No `documents`/`disposition` machinery here: a topic inventory has no target
+    state to reach beyond "the numbers this file recorded are still true" (a
+    topic's outstanding REPAIR work — `complete: false` instruments, blocked
+    identities — is recorded honestly in the file itself, per MANDATE.md §4.5/§4.2,
+    and is not this probe's job to re-litigate). So the verdict is binary: DRIFT
+    (exit 1) when production has moved since `measured_at`, AT TARGET (exit 0)
+    otherwise — the same two states `shape_drift` already reports for, reused via
+    `topic_drift` rather than reimplemented.
+
+    `as_json=True` (module docstring's --json paragraph): suppresses every human
+    print and emits ONE `json.dumps(...)` object on stdout instead, built from the
+    exact same `topic_drift`/`by_doc` data the human report reads — grading does
+    not branch on `as_json` anywhere in this function, only presentation does.
+    `inventory_path` is optional and cosmetic (the `inventory_file` field a
+    caller correlating multiple runs wants) — `topic_drift`'s grading never
+    touches it, so a direct unit-test call omitting it grades identically.
+    """
+    collection = data["measured_against"]["collection"]
+    physical = resolve_physical(collection)
+    live = {c.name for c in client.get_collections().collections}
+    collection_live = physical in live
+
+    if not collection_live:
+        if not as_json:
+            print("[live] %s: ABSENT from Qdrant" % collection)
+        by_doc, shapes_by_doc = collections.Counter(), collections.defaultdict(collections.Counter)
+    else:
+        points, by_doc, _hashes_by_doc, _all_hashes, shapes, shapes_by_doc = census(client, physical)
+        # Whole-collection totals, printed for context ONLY — `legal_unified` is
+        # SHARED across every lane, so these numbers are never compared against
+        # this topic's own `measured_against` (see `topic_drift`'s docstring).
+        if not as_json:
+            print("[live] %-28s %6d points total  %3d docs total  shapes=%s"
+                  % (collection, points, len(by_doc), dict(shapes)))
+
+    findings = topic_drift(data, by_doc, shapes_by_doc)
+
+    if not as_json:
+        print()
+        header = "%-28s %10s %10s  %s" % ("INSTRUMENT", "declared", "live", "STATE")
+        print(header)
+        print("-" * len(header))
+
+    instruments = []
+    for inst in data.get("instruments") or []:
+        iid = inst.get("id")
+        declared = inst.get("points", 0)
+        live_n = by_doc.get(iid, 0)
+        at_target = live_n == declared
+        instruments.append(
+            {"id": iid, "declared": declared, "live": live_n, "at_target": at_target}
+        )
+        if not as_json:
+            print("%-28s %10d %10d  %s"
+                  % (iid, declared, live_n, "AT TARGET" if at_target else "DRIFT"))
+
+    exit_code = 1 if findings else 0
+
+    if as_json:
+        print(json.dumps({
+            "inventory_file": str(inventory_path) if inventory_path else None,
+            "collection": collection,
+            "physical_collection": physical,
+            "collection_live": collection_live,
+            "measured_at": data.get("measured_at"),
+            "verdict": VERDICT_BY_EXIT[exit_code],
+            "exit_code": exit_code,
+            "instruments": instruments,
+            "findings": findings,
+        }))
+        return exit_code
+
+    print()
+    if findings:
+        print("DRIFT — production no longer matches the recorded measurement (%d):" % len(findings))
+        for item in findings:
+            print("  ! %s" % item)
+        print()
+        print("The inventory is STALE. Re-measure before trusting any number in it —")
+        print("MANDATE.md §1: 'measured against production' is the whole claim a topic")
+        print("inventory makes, and this is what checks it stayed true.")
+        return 1
+
+    print("AT TARGET — every number this inventory recorded still matches production.")
+    return 0
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("inventory", type=Path)
+    parser.add_argument("--quiet", action="store_true")
+    parser.add_argument(
+        "--json", action="store_true",
+        help="Emit one JSON object on stdout instead of the human report (additive; "
+             "grading is identical either way — see the module docstring's --json "
+             "paragraph). Only wired for kind: topic today; any other kind still "
+             "emits ONE JSON object — a 'broken' verdict explaining why — rather "
+             "than silently falling back to the human report a caller that asked "
+             "for JSON did not request.",
+    )
+    args = parser.parse_args(argv)
+
+    import yaml
+
+    root = repo_root()
+    load_env(root)
+    from qdrant_client import QdrantClient
+
+    data = yaml.safe_load(args.inventory.read_text(encoding="utf-8"))
+    kind = data.get("kind")
+
+    client = QdrantClient(
+        url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"], timeout=300
+    )
+
+    if kind == "topic":
+        return _run_topic(client, data, args.inventory, as_json=args.json)
+
+    if args.json:
+        # --json was requested but this kind has no JSON output yet
+        # (_run_retired_collection's documents:/disposition shape is out of THIS
+        # change's scope). Refuse with a JSON object, not human prose on stdout —
+        # a caller that asked for one JSON object and got two different output
+        # shapes depending on `kind` is the exact silent-divergence class this
+        # probe already refuses for a missing .env / an unrecognised kind.
+        print(json.dumps({
+            "inventory_file": str(args.inventory),
+            "kind": kind,
+            "verdict": VERDICT_BY_EXIT[3],
+            "exit_code": 3,
+            "reason": "json_only_implemented_for_topic",
+            "detail": "--json is only wired for kind: topic; kind=%r has no JSON "
+                      "output yet — rerun without --json for the human report."
+                      % kind,
+        }))
+        return 3
+
+    if kind == "retired_collection":
+        return _run_retired_collection(client, data)
+
+    # Same vocabulary as the missing-.env case above and as kb/ops/probe_retrieval.py:
+    # 3 means BROKEN, nothing was measured. An inventory whose `kind` this probe does
+    # not recognise must not silently fall through to either schema's KeyErrors, and
+    # must not be read as DRIFT (1) or AT TARGET (0) — both would claim a measurement
+    # that never happened.
+    print(
+        "BROKEN — kind=%r is neither 'topic' nor 'retired_collection'; this probe "
+        "has no schema for it. Nothing was measured." % kind,
+        file=sys.stderr,
+    )
+    return 3
 
 
 if __name__ == "__main__":
