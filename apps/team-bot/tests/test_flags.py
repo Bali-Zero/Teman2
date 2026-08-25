@@ -13,8 +13,10 @@ from team_bot.flags import (
     ABSOLUTE_MAX_READ_STEPS_ENV_CEILING,
     DEFAULT_MAX_READ_STEPS,
     SINGLE_STEP,
+    is_team_bot_brain_tp1_enabled,
     is_team_bot_enabled,
     is_team_bot_multistep_reads_enabled,
+    is_team_bot_read_tools_enabled,
     max_read_steps,
 )
 from team_bot.loop import ABSOLUTE_MAX_READ_STEPS
@@ -120,3 +122,46 @@ def test_max_read_steps_falls_back_to_default_on_garbage_value(monkeypatch: pyte
     monkeypatch.setenv("TEAM_BOT_MULTISTEP_READS_ENABLED", "true")
     monkeypatch.setenv("TEAM_BOT_MAX_READ_STEPS", "not-a-number")
     assert max_read_steps() == DEFAULT_MAX_READ_STEPS
+
+
+# ---------------------------------------------------------------------------
+# is_team_bot_read_tools_enabled — lane B9's first real read of the
+# previously-PLANNED-only TEAM_BOT_READ_TOOLS_ENABLED switch.
+# ---------------------------------------------------------------------------
+
+
+def test_read_tools_enabled_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TEAM_BOT_READ_TOOLS_ENABLED", raising=False)
+    assert is_team_bot_read_tools_enabled() is False
+
+
+@pytest.mark.parametrize("value", ["1", "true", "True", "yes", "on"])
+def test_read_tools_enabled_truthy_values(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("TEAM_BOT_READ_TOOLS_ENABLED", value)
+    assert is_team_bot_read_tools_enabled() is True
+
+
+@pytest.mark.parametrize("value", ["0", "false", "no", "off", "garbage"])
+def test_read_tools_enabled_falsy_values(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("TEAM_BOT_READ_TOOLS_ENABLED", value)
+    assert is_team_bot_read_tools_enabled() is False
+
+
+# ---------------------------------------------------------------------------
+# is_team_bot_brain_tp1_enabled — regression test for the pre-existing
+# `_env_truthy` NameError this lane fixed in passing (see flags.py's own
+# docstring on this function for the full account). Before the fix, EVERY
+# call here raised NameError regardless of the env var's value; no test
+# anywhere in this suite called this function until now (brain/test_router.py
+# always passes an explicit is_tp1_enabled override, never the default).
+# ---------------------------------------------------------------------------
+
+
+def test_brain_tp1_enabled_no_longer_raises_and_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TEAM_BOT_BRAIN_TP1_ENABLED", raising=False)
+    assert is_team_bot_brain_tp1_enabled() is False
+
+
+def test_brain_tp1_enabled_true_when_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TEAM_BOT_BRAIN_TP1_ENABLED", "true")
+    assert is_team_bot_brain_tp1_enabled() is True
