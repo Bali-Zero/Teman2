@@ -1,0 +1,120 @@
+# kb/inventory/property.yaml — Lane D (property & land), kind: topic.
+#
+# What the store ACTUALLY holds, measured 2026-08-25 by direct Qdrant scroll of
+# production `legal_unified` (physically `legal_unified_hybrid_hybrid`), reusing
+# census()/payload_shape() from scripts/kb/kb_inventory_probe.py so the measurement
+# method is identical to what the CI gate imports (never a reimplementation).
+#
+# `measured_against` is scoped to THIS topic's instruments (not the whole 84,283-pt
+# collection) — points/payload_shapes here sum to exactly what lane D's 5 instrument
+# rows below account for: 1,847 points across the 4 present instruments, 0 for the
+# one absent/unresolved instrument.
+
+schema_version: 1
+kind: topic
+lane: D
+topic: property
+measured_at: "2026-08-25"
+
+measured_against:
+  collection: legal_unified
+  points: 1847
+  payload_shapes:
+    legacy_metadata_text: 750 # UU_5_1960 (216) + Permen_18_2021 (534)
+    orphan_no_identity: 0
+    modern_id_only: 1097 # PP_6630_2021 (143) + UU_14_2023 (954)
+    modern_id_chunk: 0
+    modern_full: 0
+
+instruments:
+  - id: UU_5_1960
+    points: 216
+    present: true
+    complete: false
+    incomplete_because: >
+      Only checked for the MANDATE §6 damage signal (a point whose section is not
+      'penjelasan' and whose text contains 'Cukup jelas') — 0 occurrences found, so
+      this instrument does NOT have the commentary-answering-as-law defect. Full
+      Pasal-range coverage (no missing articles) and a closing-signature-block check
+      were NOT independently verified within this lane's time budget.
+
+  - id: Permen_18_2021
+    points: 534
+    present: true
+    complete: false
+    incomplete_because: >
+      Same limitation as UU_5_1960 above: verified clean of the §6 'Cukup jelas'
+      commentary-contamination signal (0 occurrences across all 534 points), but
+      full article-range completeness was not independently re-verified — this row
+      inherits the team's Work Item Zero head-start finding that legal_unified_2026
+      (retired) holds 10,266 points for this same document_id vs 534 here, and the
+      fragment-containment proof below (§ next section) found only 33% coverage,
+      which argues AGAINST assuming 534 is the whole instrument.
+
+  - id: PP_6630_2021
+    points: 143
+    present: true
+    complete: false
+    incomplete_because: >
+      Verified clean of the §6 'Cukup jelas' signal (0 occurrences across 143
+      points), and its identity is now resolved (see kb/topics/property.yaml — this
+      is PP 18/2021 under a garbled stored number). 143 points for a Peraturan
+      Pemerintah covering Hak Pengelolaan + Hak Atas Tanah + Satuan Rumah Susun +
+      Pendaftaran Tanah (a substantial multi-chapter regulation) has not been
+      cross-checked against an independent article count — plausible but unverified.
+
+  - id: UU_14_2023
+    points: 954
+    present: true
+    complete: false
+    incomplete_because: >
+      Verified clean of the §6 'Cukup jelas' signal (0 occurrences across 954
+      points). Completeness is secondary here to the identity defect (see
+      kb/topics/property.yaml — this is Pergub Bali No 14/2023, an RPD covering
+      2024-2026, not the real national UU 14/2023 which is an unrelated IKN-law
+      amendment) — whether these 954 points constitute the WHOLE Pergub document
+      was not independently verified within budget.
+
+  - id: UU_31_2010_or_Perda_15_2019
+    points: 0
+    present: false
+    lookup_attempts:
+      - "exact document_id match for 'UU_31_2010' against all 388 distinct document_id values enumerated in production legal_unified — 0 hits"
+      - "exact document_id match for 'Perda_15_2019' against the same 388-id enumeration — 0 hits"
+      - "near-match sweep on number+year ('*_31_2010', '*_15_2019') across the full enumeration — the only hit was UU_15_2019 (4 pts), whose retrieved chunk text was read and confirmed to be a DIFFERENT, unrelated law (post-enactment legislative review procedure — 'Pemantauan dan Peninjauan terhadap Undang-Undang'), not this instrument"
+
+# ── Fragment-containment proof, MANDATE §4.4/§4.6 (mandatory order: prove
+#    containment FIRST, only then retire/promote) — Permen_18_2021 / production
+#    534 pts vs legal_unified_2026 (retired) 10,266 pts for the same document_id.
+containment_proofs:
+  - instrument_id: Permen_18_2021
+    compared_with:
+      collection: legal_unified_2026
+      points: 10266
+    production_points: 534
+    production_fragment_hashes: 404 # normalized text, >=40 chars, per fragment
+    retired_fragment_hashes: 3860
+    covered_fragment_hashes: 134
+    uncovered_fragment_hashes: 270
+    covered_ratio: 0.3317
+    verdict: >
+      CONTAINMENT NOT PROVEN. Only 33.2% (134/404) of production's fragment-level
+      hashes are found anywhere in the 10,266-point retired edition — the opposite
+      of the ~100% precedent this campaign requires before retiring an edition
+      (MANDATE §4.6 cites 42/42 and 261/261 as the bar). Two explanations are both
+      live and were NOT distinguished within budget: (a) the retired edition is
+      genuinely missing 67% of what production has (the "fuller edition" hypothesis
+      is WRONG), or (b) the two editions were chunked with different boundaries, so
+      substantively-overlapping text hashes differently and the fragment-hash method
+      undercounts true containment (both editions' text samples read as the same
+      regulation on inspection — see kb/topics/property.yaml's identity block, and
+      the retired edition IS ~19x denser in points for the same instrument, which is
+      also consistent with the "written nightly, never cleared" duplication pattern
+      MANDATE §1 already flags for this collection: 10,266 points but only 3,860
+      unique fragment hashes, a 2.7x internal duplication ratio).
+    disposition: >
+      STOPPED AT STEP 1 of the mandated order (prove containment -> retire -> write
+      fuller edition). Production Permen_18_2021 (534 pts) was NOT retired and
+      legal_unified_2026's edition was NOT promoted. A substring/article-level
+      comparison (not fragment-hash) is needed to tell (a) from (b) above before any
+      further step in this sequence is safe to take.
