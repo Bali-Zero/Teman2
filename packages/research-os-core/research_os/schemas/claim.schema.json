@@ -1,0 +1,622 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ClaimConfidence": {
+      "additionalProperties": false,
+      "description": "``confidence: {score, method, calibrated_on?}``.",
+      "properties": {
+        "calibrated_on": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibrated On"
+        },
+        "method": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Method",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": ["score", "method"],
+      "title": "ClaimConfidence",
+      "type": "object"
+    },
+    "ClaimEvidenceRef": {
+      "additionalProperties": false,
+      "description": "``evidence_refs`` item: ``{evidence_id, object_hash, stance}``.",
+      "properties": {
+        "evidence_id": {
+          "format": "uuid",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "stance": {
+          "$ref": "#/$defs/EvidenceStance"
+        }
+      },
+      "required": ["evidence_id", "object_hash", "stance"],
+      "title": "ClaimEvidenceRef",
+      "type": "object"
+    },
+    "ClaimLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {run_id, extractor, model_version?, prompt_version?, input_claim_refs}``.",
+      "properties": {
+        "extractor": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Extractor",
+          "type": "string"
+        },
+        "input_claim_refs": {
+          "items": {
+            "$ref": "#/$defs/ClaimRef"
+          },
+          "title": "Input Claim Refs",
+          "type": "array"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["run_id", "extractor", "input_claim_refs"],
+      "title": "ClaimLineage",
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "description": "Exact reference to one immutable ``Claim`` revision: ``{claim_id, object_hash}``.",
+      "properties": {
+        "claim_id": {
+          "format": "uuid",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["claim_id", "object_hash"],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "ClaimReview": {
+      "additionalProperties": false,
+      "description": "``review: {state, reviewer_ref?, reviewed_at?, rationale_code?}``.",
+      "properties": {
+        "rationale_code": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale Code"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "reviewer_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "state": {
+          "$ref": "#/$defs/ReviewState"
+        }
+      },
+      "required": ["state"],
+      "title": "ClaimReview",
+      "type": "object"
+    },
+    "ClaimScope": {
+      "additionalProperties": false,
+      "description": "``scope: {jurisdiction?, audience?, domain}``.",
+      "properties": {
+        "audience": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audience"
+        },
+        "domain": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Domain",
+          "type": "string"
+        },
+        "jurisdiction": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Jurisdiction"
+        }
+      },
+      "required": ["domain"],
+      "title": "ClaimScope",
+      "type": "object"
+    },
+    "ClaimStatement": {
+      "additionalProperties": false,
+      "description": "``statement: {subject_ref, predicate, object_ref_or_value, unit?, currency?, modality?}``.",
+      "properties": {
+        "currency": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "modality": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modality"
+        },
+        "object_ref_or_value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExactObjectRef"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "Object Ref Or Value"
+        },
+        "predicate": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Predicate",
+          "type": "string"
+        },
+        "subject_ref": {
+          "$ref": "#/$defs/ExactObjectRef"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": ["subject_ref", "predicate", "object_ref_or_value"],
+      "title": "ClaimStatement",
+      "type": "object"
+    },
+    "ClaimStatus": {
+      "enum": [
+        "supported",
+        "contradicted",
+        "inconclusive",
+        "superseded",
+        "expired"
+      ],
+      "title": "ClaimStatus",
+      "type": "string"
+    },
+    "ClaimTime": {
+      "additionalProperties": false,
+      "description": "``time: {valid_from?, valid_to?, recorded_at}``.",
+      "properties": {
+        "recorded_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid To"
+        }
+      },
+      "required": ["recorded_at"],
+      "title": "ClaimTime",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "EvidenceStance": {
+      "enum": ["supports", "contradicts", "contextualizes", "inconclusive"],
+      "title": "EvidenceStance",
+      "type": "string"
+    },
+    "ExactObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        }
+      },
+      "required": ["object_kind", "object_id", "object_hash"],
+      "title": "ExactObjectRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "ReviewState": {
+      "enum": [
+        "unreviewed",
+        "machine_checked",
+        "human_approved",
+        "human_rejected",
+        "superseded"
+      ],
+      "title": "ReviewState",
+      "type": "string"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "claim_family_id": {
+      "format": "uuid",
+      "title": "Claim Family Id",
+      "type": "string"
+    },
+    "claim_id": {
+      "format": "uuid",
+      "title": "Claim Id",
+      "type": "string"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "confidence": {
+      "$ref": "#/$defs/ClaimConfidence"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "$ref": "#/$defs/ClaimEvidenceRef"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "lineage": {
+      "$ref": "#/$defs/ClaimLineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "review": {
+      "$ref": "#/$defs/ClaimReview"
+    },
+    "scope": {
+      "$ref": "#/$defs/ClaimScope"
+    },
+    "statement": {
+      "$ref": "#/$defs/ClaimStatement"
+    },
+    "status": {
+      "$ref": "#/$defs/ClaimStatus"
+    },
+    "supersedes_claim_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ClaimRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "time": {
+      "$ref": "#/$defs/ClaimTime"
+    }
+  },
+  "required": [
+    "claim_id",
+    "claim_family_id",
+    "contract_version",
+    "tenant",
+    "statement",
+    "scope",
+    "time",
+    "status",
+    "evidence_refs",
+    "confidence",
+    "classification",
+    "review",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "Claim",
+  "type": "object"
+}

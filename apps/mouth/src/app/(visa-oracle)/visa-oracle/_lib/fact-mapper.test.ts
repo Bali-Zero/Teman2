@@ -43,6 +43,15 @@ import {
 // explicit UNKNOWN (NOT_ASKED by default), never omitted. The key is still
 // optional on the wire (models.py keeps a transitional default so older
 // 40-key clients don't 422) but the frontend contract is now the full 41.
+//
+// Widened again 2026-08-23 (owner ruling — Visa Oracle fact vocabulary
+// extension, vocabulary-only, no rule change): three more optional/defaulted
+// keys join the same rollout idiom —
+// `family.stepchild_marriage_certificate_confirmed`,
+// `family.stepchild_birth_certificate_confirmed` and
+// `family.sponsor_permit_basis`. Same posture as `sponsor.type`: this mapper
+// emits all three on every call, KNOWN when answered, otherwise an explicit
+// UNKNOWN, never omitted — the frontend contract is now the full 44.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -112,18 +121,26 @@ function representativeAnswer(question: OracleQuestion): string {
 describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
   const backendPaths = extractApplicantFactPathsFromModelsPy();
 
-  it("sanity: the backend contract has 41 fact paths, sponsor.type included", () => {
-    expect(backendPaths.length).toBe(41);
+  it("sanity: the backend contract has 45 fact paths, sponsor.type included", () => {
+    expect(backendPaths.length).toBe(45);
     expect(backendPaths).toContain("sponsor.type");
+    expect(backendPaths).toContain(
+      "family.stepchild_marriage_certificate_confirmed",
+    );
+    expect(backendPaths).toContain(
+      "family.stepchild_birth_certificate_confirmed",
+    );
+    expect(backendPaths).toContain("family.sponsor_permit_basis");
+    expect(backendPaths).toContain("immigration.renewal_paid");
   });
 
-  it("emits exactly the 41 backend fact-path keys, sponsor.type included", () => {
+  it("emits exactly the 45 backend fact-path keys, sponsor.type included", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...backendPaths].sort());
   });
 
-  it("still emits exactly those 41 keys on a fully-answered interview (no extra keys sneak in)", () => {
+  it("still emits exactly those 45 keys on a fully-answered interview (no extra keys sneak in)", () => {
     const result = mapFacts({
       in_indonesia: "yes",
       permit_expiry: "2026-08-01",
@@ -164,6 +181,7 @@ describe("question registry -> wire coverage", () => {
     ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
     ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
     ["family_sponsor_status_code", "FOO", "AMBIGUOUS_SPONSOR"],
+    ["family_sponsor_permit_basis", "EXPERT", "AMBIGUOUS_SPONSOR"],
     ["diaspora_connection", "former_citizen", "ACTIVITY_BOUNDARY"],
     ["diaspora_documents", "passport", "ACTIVITY_BOUNDARY"],
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
@@ -255,6 +273,88 @@ describe("mapCurrentStatusExpiry — permit_expiry -> immigration.current_status
     expect(mapCurrentStatusExpiry({ permit_expiry: "2026-02-30" })).toEqual({
       status: "UNKNOWN",
       reason: "NOT_PROVIDED",
+    });
+  });
+});
+
+describe("renewal_paid -> immigration.renewal_paid (F4, 2026-08-24 owner ruling)", () => {
+  it("yes -> KNOWN true", () => {
+    expect(
+      mapFacts({ renewal_paid: "yes" }).facts["immigration.renewal_paid"],
+    ).toEqual({
+      status: "KNOWN",
+      value: true,
+    });
+  });
+
+  it("no -> KNOWN false", () => {
+    expect(
+      mapFacts({ renewal_paid: "no" }).facts["immigration.renewal_paid"],
+    ).toEqual({
+      status: "KNOWN",
+      value: false,
+    });
+  });
+
+  it('"not sure" -> UNKNOWN UNVERIFIED, never a guessed false', () => {
+    const fact = mapFacts({ renewal_paid: "unsure" }).facts[
+      "immigration.renewal_paid"
+    ];
+    expect(fact).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+    expect(fact).not.toEqual({ status: "KNOWN", value: false });
+  });
+
+  it("never asked -> UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["immigration.renewal_paid"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+});
+
+describe("mapCurrentStatusCode — the synthesized NO_STAY_PERMIT sentinel (2026-08-24 P0 fix)", () => {
+  // mapCurrentStatusCode is not exported (internal to mapOracleFactsToApplicantFacts);
+  // reached here through the same `immigration.current_status_code` wire key
+  // every other test in this file uses for the exported facts, mapper.ts's
+  // own convention.
+  it("stay_permit_code answered -> KNOWN with the E-code, unaffected by holds_stay_permit", () => {
+    expect(
+      mapFacts({
+        stay_permit_code: "E28A",
+        holds_stay_permit: "yes",
+      }).facts["immigration.current_status_code"],
+    ).toEqual({ status: "KNOWN", value: "E28A" });
+  });
+
+  it("current_status_code answered (onshore 'no' path) -> KNOWN with the real visit-class code, never the sentinel", () => {
+    expect(
+      mapFacts({
+        current_status_code: "C1",
+        holds_stay_permit: "no",
+      }).facts["immigration.current_status_code"],
+    ).toEqual({ status: "KNOWN", value: "C1" });
+  });
+
+  it("neither raw field answered, holds_stay_permit='no' (offshore convergence) -> KNOWN NO_STAY_PERMIT, no question asked", () => {
+    expect(
+      mapFacts({ holds_stay_permit: "no" }).facts[
+        "immigration.current_status_code"
+      ],
+    ).toEqual({ status: "KNOWN", value: "NO_STAY_PERMIT" });
+  });
+
+  it("neither raw field answered, holds_stay_permit='yes' -> UNKNOWN NOT_ASKED (still waiting on stay_permit_code)", () => {
+    expect(
+      mapFacts({ holds_stay_permit: "yes" }).facts[
+        "immigration.current_status_code"
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_ASKED" });
+  });
+
+  it("nothing answered at all -> UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["immigration.current_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
     });
   });
 });
@@ -597,6 +697,50 @@ describe("family sponsor status — unverified human context", () => {
       reason: "UNVERIFIED",
     });
     expect(result.disclosed_review_flags).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  // 2026-08-23: `family.sponsor_permit_basis` shipped in PR #4650 wired to
+  // `enumFact()` directly — a self-declared choice resolved straight to
+  // KNOWN, missing the parallel to the sibling test immediately above.
+  // Corrected to mirror it exactly: collected, flagged, never trusted.
+  it("never turns a self-declared permit-basis category into a KNOWN signed fact", () => {
+    const result = mapFacts({
+      family_sponsor_confirmed: "yes",
+      family_sponsor_permit_basis: "EXPERT",
+    });
+    expect(result.facts["family.sponsor_permit_basis"]).toEqual({
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
+    });
+    expect(result.disclosed_review_flags).toContain("AMBIGUOUS_SPONSOR");
+  });
+
+  it("resolves NOT_APPLICABLE for both sponsor facts when no sponsor is confirmed", () => {
+    const result = mapFacts({
+      family_sponsor_confirmed: "no",
+      family_sponsor_status_code: "E28B",
+      family_sponsor_permit_basis: "EXPERT",
+    });
+    expect(result.facts["family.sponsor_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
+    expect(result.facts["family.sponsor_permit_basis"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
+  });
+
+  it("resolves NOT_ASKED for both sponsor facts on an empty interview", () => {
+    const result = mapFacts({});
+    expect(result.facts["family.sponsor_status_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+    expect(result.facts["family.sponsor_permit_basis"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
   });
 });
 

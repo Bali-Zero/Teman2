@@ -1,0 +1,632 @@
+{
+  "$defs": {
+    "AssetAnchorRef": {
+      "additionalProperties": false,
+      "description": "``identity.anchor_ref`` -- section 10 gives the bare key with no\nnested shape. Modeled on the sibling operator-decision lane's\n``CreativeLock`` ``AssetRef`` idiom (``{asset_id, content_hash}``,\nsection 8.2), since an \"anchor\" in this domain is itself an existing\nasset.",
+      "properties": {
+        "asset_id": {
+          "minLength": 1,
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        }
+      },
+      "required": ["asset_id", "content_hash"],
+      "title": "AssetAnchorRef",
+      "type": "object"
+    },
+    "AudioMetadata": {
+      "additionalProperties": false,
+      "description": "``audio?: {transcript_hash, subtitle_hash, loudness_lufs,\nsync_result}``.\n\nINTERPRETATION: ``sync_result`` has no entry in section 3's closed\nenum registry -- modeled as an open ``RegisteredName``, the same\nreasoning as ``MediaAsset.rights`` above.",
+      "properties": {
+        "loudness_lufs": {
+          "title": "Loudness Lufs",
+          "type": "number"
+        },
+        "subtitle_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Subtitle Hash",
+          "type": "string"
+        },
+        "sync_result": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Sync Result",
+          "type": "string"
+        },
+        "transcript_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Transcript Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "transcript_hash",
+        "subtitle_hash",
+        "loudness_lufs",
+        "sync_result"
+      ],
+      "title": "AudioMetadata",
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "description": "``{claim_id, object_hash}`` -- no ``stance``, unlike ``Claim.evidence_refs``\n(section 6). Section 9 spells this pair-only shape verbatim for\n``ContentObject.claim_refs``.",
+      "properties": {
+        "claim_id": {
+          "format": "uuid",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["claim_id", "object_hash"],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "ContentLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {workflow_run_ref: {...}, input_hashes: [], code_version?,\nmodel_version?, prompt_version?}`` -- ``workflow_run_ref`` has no ``?``\nin either section 9 or section 10, so (unlike ``primitives.Lineage``,\nwhose ``workflow_run_ref`` is optional for kinds that may run outside a\nworkflow) it is mandatory here, mirroring the sibling operator-decision\nlane's identical ``DecisionPacketLineage`` shape for section 7.",
+      "properties": {
+        "code_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code Version"
+        },
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "ContentLineage",
+      "type": "object"
+    },
+    "ContentObjectRef": {
+      "additionalProperties": false,
+      "description": "``{content_object_id, revision, object_hash}`` -- unlike every other\n``supersedes_*_ref`` in this contract family (``ActionItemRef``,\n``DecisionPacketRef``, ...), section 9 explicitly bakes the\npredecessor's own ``revision`` into the exact reference rather than\nleaving it to be looked up. This same ref shape is what\n``MediaManifest.content_object_ref`` (section 10) points at a\n``ContentObject`` with, so it is defined here and imported there.",
+      "properties": {
+        "content_object_id": {
+          "format": "uuid",
+          "title": "Content Object Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": ["content_object_id", "revision", "object_hash"],
+      "title": "ContentObjectRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "IdentityMetadata": {
+      "additionalProperties": false,
+      "description": "``identity?: {anchor_ref, verification_result}``.\n\nINTERPRETATION: ``verification_result`` has no entry in section 3's\nclosed enum registry -- modeled as an open ``RegisteredName``, the\nsame reasoning as ``MediaAsset.rights`` and ``AudioMetadata.sync_result``.",
+      "properties": {
+        "anchor_ref": {
+          "$ref": "#/$defs/AssetAnchorRef"
+        },
+        "verification_result": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Verification Result",
+          "type": "string"
+        }
+      },
+      "required": ["anchor_ref", "verification_result"],
+      "title": "IdentityMetadata",
+      "type": "object"
+    },
+    "MediaAsset": {
+      "additionalProperties": false,
+      "description": "``assets: [{asset_id, sha256, risk_class, sensitivity, source,\nderivation, rights, rights_expires_at?, prompt_ref?, model?, seed?,\ntool_version?}]``.\n\nSection 10: \"Every asset entry binds immutable asset identity/content\nhash and both classification axes\" (``asset_id``/``sha256``/\n``risk_class``/``sensitivity`` mandatory) and \"Every hero or clip\ndeclares source, derivation, and rights status\" (``source``/\n``derivation``/``rights`` also mandatory, matching the absence of a\n``?`` on all six in section 10's wire shape).\n\nINTERPRETATION: ``rights`` has no entry in section 3's closed enum\nregistry -- the identical gap the sibling operator-decision lane found\nfor ``CreativeLock.reference_assets[].rights_state`` (also unlisted in\nsection 3), which it resolved as an open ``RegisteredName`` rather\nthan fabricate a closed set the freeze never wrote down. Mirrored\nhere. ``source``/``derivation`` are given as bare keys with no\nenumerated values or nested shape at all, so they are modeled as\nfree-form non-empty strings.",
+      "properties": {
+        "asset_id": {
+          "minLength": 1,
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "derivation": {
+          "minLength": 1,
+          "title": "Derivation",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "prompt_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Ref"
+        },
+        "rights": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Rights",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "tool_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Version"
+        }
+      },
+      "required": [
+        "asset_id",
+        "sha256",
+        "risk_class",
+        "sensitivity",
+        "source",
+        "derivation",
+        "rights"
+      ],
+      "title": "MediaAsset",
+      "type": "object"
+    },
+    "PlatformSpec": {
+      "additionalProperties": false,
+      "description": "``platform_specs: [{platform, aspect_ratio, safe_zone,\nduration_or_count}]``.\n\nINTERPRETATION: ``platform`` names a target channel the same way\n``CreativeLock.channel_intent[].surface`` (section 8.2) does, so it is\ntyped ``Identifier`` by the same reasoning. ``aspect_ratio``/\n``safe_zone`` are bare keys with no enumerated values, modeled as\nfree-form non-empty strings. ``duration_or_count``'s compound name\nliterally signals either a duration (seconds) or a count (item\nnumber) with no unit given for either -- modeled as ``int | float``\nrather than pick one meaning the freeze does not commit to.",
+      "properties": {
+        "aspect_ratio": {
+          "minLength": 1,
+          "title": "Aspect Ratio",
+          "type": "string"
+        },
+        "duration_or_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Duration Or Count"
+        },
+        "platform": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Platform",
+          "type": "string"
+        },
+        "safe_zone": {
+          "minLength": 1,
+          "title": "Safe Zone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "platform",
+        "aspect_ratio",
+        "safe_zone",
+        "duration_or_count"
+      ],
+      "title": "PlatformSpec",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "description": "``quality: {checks: [], critic_target_hash: sha256?}``.\n\nINTERPRETATION: ``checks`` is bare ``[]`` with no inner key names at\nall -- the same shape the sibling operator-decision lane found for\n``DecisionPacket.alternatives``/``downstream_candidates`` (section 7),\nwhich it modeled as free-form JSON objects rather than invent a\nstructure. Mirrored here (as ``QualityCheck``, not a bare dict -- see\nits docstring) rather than reinvented.",
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/QualityCheck"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "critic_target_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Critic Target Hash"
+        }
+      },
+      "required": ["checks"],
+      "title": "Quality",
+      "type": "object"
+    },
+    "QualityCheck": {
+      "additionalProperties": true,
+      "description": "One ``quality.checks[]`` entry -- section 10 gives ``checks: []`` bare,\nwith no inner key names at all (see ``Quality`` below). ``extra=\"allow\"``\ndeliberately overrides ``FrozenCoreModel``'s own ``extra=\"forbid\"`` (the\none open-vocabulary override in this module) rather than falling back to\na bare ``dict[str, Any]`` element: a plain dict's own entries stay\nmutable after the outer tuple/model validates, so a live ``Quality``\ncould be mutated post-validation while still reporting its original,\nnow-stale ``object_hash`` -- contradicting section 2's \"``object_hash``\nalways means the hash of the complete canonical object\" and Rule 4.\nMaking each entry its own ``FrozenCoreModel`` subclass gives it the same\n``frozen=True`` protection every other object in this package already\ngets (pydantic's per-model ``ConfigDict`` merge -- verified: a child's\npartial ``ConfigDict`` updates the parent's key-by-key, so ``frozen=True``\nsurvives here without being re-stated), closing the gap with the\npackage's existing idiom instead of inventing a bespoke immutable-dict\ntype.",
+      "properties": {},
+      "title": "QualityCheck",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "TimelineOrSlidesRef": {
+      "additionalProperties": false,
+      "description": "``timeline_or_slides: durable structured reference with sha256``.\n\nINTERPRETATION: the prose gives no key names at all (unlike almost\nevery other field in this contract family, which spells out\n``{a, b, c}``). Modeled minimally as ``{locator, sha256}``, reusing\n``Evidence.source_span``'s ``locator`` idiom (section 5) for \"durable\nstructured reference\" and adding the one key the prose explicitly\nnames. Not presented as spec-derived.",
+      "properties": {
+        "locator": {
+          "minLength": 1,
+          "title": "Locator",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": ["locator", "sha256"],
+      "title": "TimelineOrSlidesRef",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/MediaAsset"
+      },
+      "title": "Assets",
+      "type": "array"
+    },
+    "audio": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AudioMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "claim_refs": {
+      "items": {
+        "$ref": "#/$defs/ClaimRef"
+      },
+      "title": "Claim Refs",
+      "type": "array"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "content_object_ref": {
+      "$ref": "#/$defs/ContentObjectRef"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "identity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IdentityMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "lineage": {
+      "$ref": "#/$defs/ContentLineage"
+    },
+    "media_manifest_id": {
+      "format": "uuid",
+      "title": "Media Manifest Id",
+      "type": "string"
+    },
+    "media_type": {
+      "enum": ["carousel", "video", "image", "audio"],
+      "title": "Media Type",
+      "type": "string"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "platform_specs": {
+      "items": {
+        "$ref": "#/$defs/PlatformSpec"
+      },
+      "title": "Platform Specs",
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "quality": {
+      "$ref": "#/$defs/Quality"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "timeline_or_slides": {
+      "$ref": "#/$defs/TimelineOrSlidesRef"
+    }
+  },
+  "required": [
+    "media_manifest_id",
+    "contract_version",
+    "tenant",
+    "content_object_ref",
+    "media_type",
+    "claim_refs",
+    "classification",
+    "assets",
+    "timeline_or_slides",
+    "quality",
+    "platform_specs",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "MediaManifest",
+  "type": "object"
+}

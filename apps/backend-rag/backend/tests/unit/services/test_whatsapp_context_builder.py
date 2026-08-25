@@ -26,6 +26,8 @@ os.environ.setdefault("OPENAI_API_KEY", "test_key")
 os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
 from backend.services.whatsapp_context_builder import (
+    _VISA_PATTERNS,
+    VISA_CODES,
     build_context,
     detect_language,
     extract_interests,
@@ -223,14 +225,34 @@ class TestExtractVisaMentions:
     @pytest.mark.parametrize(
         "code",
         [
+            "a1",
+            "b1",
+            "b211",
+            "b211a",
+            "b211b",
             "c1",
             "c2",
+            "c6",
             "c7a",
             "c7b",
+            "c7c",
+            "c8a",
+            "c8b",
+            "c10",
+            "c18",
+            "c22a",
+            "c22b",
+            "d1",
+            "d2",
             "d12",
+            "e23",
+            "e30a",
+            "e30b",
+            "e33",
+            "e33e",
+            "e33f",
             "e33g",
             "voa",
-            "b211",
             "kitas",
             "kitap",
             "merp",
@@ -238,6 +260,7 @@ class TestExtractVisaMentions:
             "erp",
             "pma",
             "npwp",
+            "npwpd",
             "spt",
             "sktt",
             "skck",
@@ -248,6 +271,314 @@ class TestExtractVisaMentions:
         """Each defined visa code is detectable."""
         result = extract_visa_mentions(f"I need {code} visa")
         assert code.upper() in result
+
+
+# ============================================================================
+# Second Home + word-boundary matcher guilt / innocence tests
+# ============================================================================
+
+
+class TestSecondHomeAndBoundaryMatching:
+    """Guilt and innocence tests for the word-boundary visa matcher.
+
+    The matcher must recognise the base Second Home family (E33/E33E/E33F)
+    and its natural-language triggers, while refusing to fire on substrings
+    of longer codes ("e33" inside "e33g", "c1" inside "c18", etc.).
+    """
+
+    # --- GUILT ---
+    def test_second_home_english_triggers_second_home_prospect(self) -> None:
+        """"I want the Second Home Visa" tags SECOND HOME and types correctly."""
+        visas = extract_visa_mentions("I want the Second Home Visa")
+        assert "SECOND HOME" in visas
+        client_type = infer_client_type({"visa_discussed": visas})
+        assert client_type == "second_home_prospect"
+
+    def test_e33_base_tags_second_home_prospect(self) -> None:
+        """"interested in E33" tags E33 and types as second-home prospect."""
+        visas = extract_visa_mentions("interested in E33")
+        assert "E33" in visas
+        assert "E33G" not in visas
+        client_type = infer_client_type({"visa_discussed": visas})
+        assert client_type == "second_home_prospect"
+
+    def test_e33e_senior_tags_retiree(self) -> None:
+        """"E33E senior route" tags E33E (not bare E33) and types as retiree."""
+        visas = extract_visa_mentions("E33E senior route")
+        assert "E33E" in visas
+        assert "E33" not in visas
+        client_type = infer_client_type({"visa_discussed": visas})
+        assert client_type == "retiree"
+
+    def test_rumah_kedua_triggers_second_home_prospect(self) -> None:
+        """"visa rumah kedua" tags RUMAH KEDUA and types correctly."""
+        visas = extract_visa_mentions("visa rumah kedua")
+        assert "RUMAH KEDUA" in visas
+        client_type = infer_client_type({"visa_discussed": visas})
+        assert client_type == "second_home_prospect"
+
+    # --- INNOCENCE: prefix collisions in the code list ---
+    @pytest.mark.parametrize(
+        "text,expected_code,unexpected_code",
+        [
+            ("E33G remote worker", "E33G", "E33"),
+            ("E33E senior citizen visa", "E33E", "E33"),
+            ("E33F family senior visa", "E33F", "E33"),
+            ("C18 work trial visa", "C18", "C1"),
+            ("C22A internship visa", "C22A", "C2"),
+            ("C22B training visa", "C22B", "C2"),
+        ],
+        ids=[
+            "e33g-not-e33",
+            "e33e-not-e33",
+            "e33f-not-e33",
+            "c18-not-c1",
+            "c22a-not-c2",
+            "c22b-not-c2",
+        ],
+    )
+    def test_prefix_collision_innocence(
+        self,
+        text: str,
+        expected_code: str,
+        unexpected_code: str,
+    ) -> None:
+        """A shorter code must not match inside a longer code with the same prefix."""
+        visas = extract_visa_mentions(text)
+        assert expected_code.upper() in visas
+        assert unexpected_code.upper() not in visas
+
+    def test_e33g_stays_digital_nomad(self) -> None:
+        """E33G leads must still type as digital_nomad, not second_home_prospect."""
+        visas = extract_visa_mentions("E33G remote worker")
+        client_type = infer_client_type({"visa_discussed": visas})
+        assert client_type == "digital_nomad"
+
+    # --- REGRESSION: multi-word phrases boundaries ---
+    @pytest.mark.parametrize(
+        "text,expected_code",
+        [
+            ("I want a second home", "SECOND HOME"),
+            ("saya mau rumah kedua", "RUMAH KEDUA"),
+            ("I need working kitas", "WORKING KITAS"),
+            ("book a virtual office", "VIRTUAL OFFICE"),
+        ],
+        ids=[
+            "second-home-exact",
+            "rumah-kedua-exact",
+            "working-kitas-exact",
+            "virtual-office-exact",
+        ],
+    )
+    def test_multiword_phrase_matches_exactly(
+        self,
+        text: str,
+        expected_code: str,
+    ) -> None:
+        """Multi-word visa codes fire on exact phrase matches."""
+        visas = extract_visa_mentions(text)
+        assert expected_code.upper() in visas
+
+    @pytest.mark.parametrize(
+        "text,unexpected_code",
+        [
+            ("I am a second homeowner", "SECOND HOME"),
+            ("rumah keduaan di bali", "RUMAH KEDUA"),
+            ("workings kitas only", "WORKING KITAS"),
+            ("virtual officer service", "VIRTUAL OFFICE"),
+            ("secondly my home", "SECOND HOME"),
+        ],
+        ids=[
+            "second-homeowner",
+            "rumah-keduaan",
+            "workings-kitas",
+            "virtual-officer",
+            "secondly-home",
+        ],
+    )
+    def test_multiword_phrase_rejects_substrings(
+        self,
+        text: str,
+        unexpected_code: str,
+    ) -> None:
+        """Multi-word visa codes do not fire on substrings of longer words."""
+        visas = extract_visa_mentions(text)
+        assert unexpected_code.upper() not in visas
+
+    def test_punctuation_adjacency_still_matches(self) -> None:
+        """Standalone tokens adjacent to punctuation still match."""
+        visas = extract_visa_mentions("E33. (E33G) e33/e33e and kitas?")
+        assert "E33" in visas
+        assert "E33G" in visas
+        assert "E33E" in visas
+        assert "KITAS" in visas
+
+
+# ============================================================================
+# Round-2 boundary regression + structural sibling coverage
+# ============================================================================
+
+
+# Canonical code tokens extracted from the live Bali Zero price catalogue
+# (apps/backend-rag/backend/data/bali_zero_official_prices_2026.json).
+# Used by the structural test to catch short codes whose longer siblings are
+# missing from VISA_CODES.
+_CATALOGUE_CODES = frozenset(
+    {
+        "a1",
+        "b1",
+        "b211",
+        "b211a",
+        "b211b",
+        "c1",
+        "c2",
+        "c6",
+        "c7a",
+        "c7b",
+        "c7c",
+        "c8a",
+        "c8b",
+        "c10",
+        "c18",
+        "c22a",
+        "c22b",
+        "d1",
+        "d2",
+        "d12",
+        "e23",
+        "e30a",
+        "e30b",
+        "e33",
+        "e33e",
+        "e33f",
+        "e33g",
+        "voa",
+        "kitas",
+        "kitap",
+        "merp",
+        "epo",
+        "erp",
+        "pma",
+        "virtual office",
+        "npwp",
+        "npwpd",
+        "spt",
+        "freelance",
+        "investor",
+        "retirement",
+        "spouse",
+        "dependent",
+        "working kitas",
+        "second home",
+        "rumah kedua",
+        "sktt",
+        "skck",
+        "domicilie",
+    },
+)
+
+
+class TestVisaCodeBoundaryRegressions:
+    """Regression tests for the word-boundary matcher coverage gap.
+
+    The boundary fix removed accidental substring matches (e.g. "c1" inside
+    "c18"). This class proves the *intentional* longer codes are still
+    detected, and that the shorter prefix does NOT fire on them.
+    """
+
+    @pytest.mark.parametrize(
+        "text,expected_codes,unexpected_codes",
+        [
+            ("I am on a B211A now", {"B211A"}, {"B211"}),
+            ("extend my B211B", {"B211B"}, {"B211"}),
+            ("B211 visa", {"B211"}, {"B211A", "B211B"}),
+            ("C10 speaker visa", {"C10"}, {"C1"}),
+            ("C18 work trial", {"C18"}, {"C1"}),
+        ],
+        ids=[
+            "b211a-not-b211",
+            "b211b-not-b211",
+            "b211-only",
+            "c10-not-c1",
+            "c18-not-c1",
+        ],
+    )
+    def test_explicit_regression_cases(
+        self,
+        text: str,
+        expected_codes: set[str],
+        unexpected_codes: set[str],
+    ) -> None:
+        """Known regression cases from the round-2 grader report."""
+        visas = set(extract_visa_mentions(text))
+        assert expected_codes.issubset(visas), f"Missing {expected_codes - visas} in {visas}"
+        assert not unexpected_codes & visas, f"Unexpected {unexpected_codes & visas} in {visas}"
+
+    @pytest.mark.parametrize(
+        "text,expected_code,unexpected_code",
+        [
+            ("A1 visa-free tourism", "A1", "A12"),
+            ("B1 visa on arrival", "B1", "B211"),
+            ("B211A visit visa", "B211A", "B211"),
+            ("B211B visit visa", "B211B", "B211"),
+            ("C6 social activity", "C6", "C60"),
+            ("C7C music visa", "C7C", "C7CAT"),
+            ("C8A sports event", "C8A", "C8AB"),
+            ("C8B referee visa", "C8B", "C8BC"),
+            ("C10 speaker visa", "C10", "C1"),
+            ("D1 tourism one year", "D1", "D12"),
+            ("D2 business one year", "D2", "D22"),
+            ("E23 freelance visa", "E23", "E230"),
+            ("E30A education visa", "E30A", "E30AB"),
+            ("E30B higher education", "E30B", "E30BC"),
+            ("NPWPD registration", "NPWPD", "NPWP"),
+        ],
+        ids=[
+            "a1",
+            "b1",
+            "b211a",
+            "b211b",
+            "c6",
+            "c7c",
+            "c8a",
+            "c8b",
+            "c10",
+            "d1",
+            "d2",
+            "e23",
+            "e30a",
+            "e30b",
+            "npwpd",
+        ],
+    )
+    def test_new_code_guilt_and_innocence(
+        self,
+        text: str,
+        expected_code: str,
+        unexpected_code: str,
+    ) -> None:
+        """Every new code added in round 2 matches standalone and not as a prefix."""
+        visas = set(extract_visa_mentions(text))
+        assert expected_code.upper() in visas
+        assert unexpected_code.upper() not in visas
+
+    def test_no_code_has_an_unlisted_longer_sibling(self) -> None:
+        """Structural guard: if a short code is listed, its catalogue siblings must be too.
+
+        This prevents the boundary matcher from silently narrowing coverage the
+        next time a short code is added without its longer real-world siblings.
+        """
+        missing: list[tuple[str, str]] = []
+        for short in VISA_CODES:
+            for long in _CATALOGUE_CODES:
+                if long != short and long.startswith(short) and long not in VISA_CODES:
+                    missing.append((short, long))
+
+        assert not missing, (
+            "VISA_CODES contains a short code but is missing its longer catalogue sibling(s).\n"
+            "Add the missing sibling(s) to restore coverage:\n"
+            + "\n".join(f"  {short!r} -> add {long!r}" for short, long in missing)
+        )
 
 
 # ============================================================================
@@ -353,6 +684,11 @@ class TestInferClientType:
             ({"visa_discussed": ["PMA"]}, "entrepreneur"),
             ({"interests": ["remote_work"]}, "digital_nomad"),
             ({"visa_discussed": ["E33G"]}, "digital_nomad"),
+            ({"visa_discussed": ["E33"]}, "second_home_prospect"),
+            ({"visa_discussed": ["SECOND HOME"]}, "second_home_prospect"),
+            ({"visa_discussed": ["RUMAH KEDUA"]}, "second_home_prospect"),
+            ({"visa_discussed": ["E33E"]}, "retiree"),
+            ({"visa_discussed": ["E33F"]}, "retiree"),
             ({"interests": ["family_relocation"]}, "family_relocating"),
             ({"interests": ["investment"]}, "investor"),
             ({"visa_discussed": ["KITAS"]}, "potential_expat"),
@@ -370,6 +706,11 @@ class TestInferClientType:
             "entrepreneur-visa",
             "nomad-interest",
             "nomad-visa",
+            "second-home-e33",
+            "second-home-english",
+            "second-home-indonesian",
+            "retiree-e33e",
+            "retiree-e33f",
             "family",
             "investor",
             "expat-kitas",
@@ -659,3 +1000,12 @@ class TestBuildContextIntegration:
         assert "investment" in profile["interests"]
         assert "family_relocation" in profile["interests"]
         assert "KITAS" in profile["visa_discussed"]
+
+
+
+class TestVisaPatternLists:
+    """Structural guard for the strict zip in extract_visa_mentions."""
+
+    def test_visa_codes_and_patterns_same_length(self) -> None:
+        """If these lists diverge, the strict zip in extract_visa_mentions raises."""
+        assert len(VISA_CODES) == len(_VISA_PATTERNS)

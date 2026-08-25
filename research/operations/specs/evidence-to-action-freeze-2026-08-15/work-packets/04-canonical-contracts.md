@@ -13,7 +13,7 @@ adversarial_review: exempt-frozen-spec-landed-verbatim-from-10d500e1c
 
 You are the execution session responsible for turning the frozen semantics in `CONTRACTS.md` into strict, reusable, versioned contracts without forcing an immediate rewrite of existing producers and consumers.
 
-You are not alone in the codebase. Work in a dedicated worktree, declare exact ownership before editing, preserve all concurrent changes, and hold the central contract/migration lease. Migration `270` is reserved for this packet's canonical core. Refresh the authoritative Pro head; if it is occupied, stop the entire downstream migration block and request a versioned Conductor ledger revision. Never merge, deploy, publish, or remove a legacy field in this packet.
+You are not alone in the codebase. Work in a dedicated worktree, declare exact ownership before editing, preserve all concurrent changes, and hold the central contract/migration lease. This packet's canonical core reserves the symbolic migration name `research_os_contract_core`, never a fixed integer — the `270` this section originally named was found entirely void on 2026-08-23 (occupied by unrelated work); the integer is bound at integration time from a freshly re-measured Pro head, never read from this or any other document (see `research-os-v1.0.0/SESSION-BOARD.md` §0, Migration-ledger decision 001 — it shipped as `279_research_os_contract_core.sql`). Refresh the authoritative Pro head; if it is occupied, stop the entire downstream migration block and request a versioned Conductor ledger revision. Never merge, deploy, publish, or remove a legacy field in this packet.
 
 ## Mission
 
@@ -33,7 +33,7 @@ Preferred new ownership boundary:
 
 - new `packages/core/research_os/` schemas, JSON Schema exports, validators, and fixtures;
 - new `apps/backend-rag/backend/services/research_os/` adapters and repositories;
-- migration `apps/backend-rag/backend/db/migrations_v2/270_research_os_contract_core.sql` with the mandatory rollback marker, including the one canonical `OutcomeEvent` repository;
+- migration `apps/backend-rag/backend/db/migrations_v2/<int>_research_os_contract_core.sql` (`<int>` bound at integration time, not 270 — see the note above) with the mandatory rollback marker, including the one canonical `OutcomeEvent` repository;
 - focused tests under the corresponding package/backend test paths;
 - contract documentation generated from or verified against the code.
 
@@ -73,7 +73,7 @@ The authoritative source is `research/operations/specs/evidence-to-action-freeze
 2. Write contract fixtures and validators before migrations.
 3. Implement canonical hashing with the single `^[0-9a-f]{64}$` wire encoding, timestamps, closed subject/decision pairs, sensitivity propagation, and version rules.
 4. Add adapters and explicit `losses`/`warnings` output.
-5. Add canonical persistence and rollback migration 270; domain packets reference this core instead of creating parallel event/approval/outcome ledgers.
+5. Add canonical persistence and rollback via the `research_os_contract_core` migration (integer bound at integration time, not 270 — see the note above); domain packets reference this core instead of creating parallel event/approval/outcome ledgers.
 6. Implement and transaction-test the side-effect-free `RequestedActionSpec` → `ActionItem` + `ActionIntent` primitive. Wrap it in a fail-closed Packet 01 containment/manual adapter restricted to the five exact Task 7 action types; any other caller or action type is rejected. Packet 12 later owns the general runtime endpoint, queue integration, permissions, and presentation around the same primitive.
 7. Dual-write in tests only; then provide feature flags defaulting off for domain packets.
 8. Generate compatibility and adoption reports.

@@ -1481,7 +1481,7 @@ VISA_TYPES = [
         "name": "Second Home Visa Elderly for 5 Years Golden Visa",
         "category": "KITAS/Limited Stay",
         "duration": "See details",
-        "cost_visa": "IDR 14.000.000 (Offshore) / 16.000.000 (Onshore)",
+        "cost_visa": "Contact for Quote",
         "requirements": [],
         "description": "Official title: Second Home Visa Elderly for 5 Years Golden Visa",
         "metadata": {

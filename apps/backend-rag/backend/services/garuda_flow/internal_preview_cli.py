@@ -24,6 +24,7 @@ from backend.services.garuda_flow.constants import (
     FINAL_CHECK_DAYS,
     INTERNAL_ESCALATION_DAYS,
     PILOT_INTAKE_THRESHOLD_DAYS,
+    b1_max_total_stay_exceeded,
 )
 from backend.services.garuda_flow.intake import (
     CaseType,
@@ -45,7 +46,7 @@ _INTERNAL_LABELS: tuple[str, ...] = (
 
 _BASE_WARNINGS: tuple[str, ...] = (
     "Internal preliminary pre-screen only; it is not an immigration decision or an approval guarantee.",
-    "Nationality and entry-point eligibility are not yet checked against an authoritative dataset and require manual verification.",
+    "The nationality code is checked against the decree-sourced VOA list; this pre-screen does not collect an entry point, so staff must confirm entry-point eligibility.",
     "Passport type, document authenticity, and prior overstay, refusal, or blacklist history require human review.",
 )
 
@@ -99,6 +100,8 @@ class InternalPreviewResponse(_StrictModel):
     internal_checkpoints: list[InternalCheckpoint]
     price_idr: int | None
     price_source: str | None
+    price_status: Literal["confirmed", "unavailable"]
+    price_warning: str | None
     generated_at: datetime
     calendar_coverage_start: date
     calendar_coverage_end: date
@@ -132,7 +135,9 @@ def _validate_entry_window(request: InternalPreviewRequest, *, today: date) -> N
     meta = VISA_META[VisaType.B1]
     extension_count, extension_days = meta.extensions
     max_total_stay_days = meta.duration_days + extension_count * extension_days
-    if (printed_expiry - request.entry_date).days > max_total_stay_days:
+    if b1_max_total_stay_exceeded(
+        (printed_expiry - request.entry_date).days, max_total_stay_days
+    ):
         raise PreviewInputError("extension expiry exceeds B1 maximum stay")
 
 
@@ -158,6 +163,19 @@ def build_internal_preview(
     )
     verdict = build_verdict(intake, today=today)
     price_idr, price_source = price_for_case(request.case_type)
+    price_status: Literal["confirmed", "unavailable"] = (
+        "confirmed"
+        if price_idr is not None and price_source is not None
+        else "unavailable"
+    )
+    price_warning: str | None = None
+    if price_status == "unavailable":
+        price_idr = None
+        price_source = None
+        price_warning = (
+            "The official catalogue price is unavailable. "
+            "No price is shown; staff must confirm the price rather than invent one."
+        )
 
     checkpoints: list[InternalCheckpoint] = []
     if request.case_type is CaseType.EXTENSION:
@@ -215,6 +233,8 @@ def build_internal_preview(
         internal_checkpoints=checkpoints,
         price_idr=price_idr,
         price_source=price_source,
+        price_status=price_status,
+        price_warning=price_warning,
         generated_at=generated_at,
         calendar_coverage_start=COVERAGE_START,
         calendar_coverage_end=COVERAGE_END,

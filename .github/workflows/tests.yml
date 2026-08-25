@@ -626,6 +626,94 @@ jobs:
       - name: Check LLM cost tracking coverage
         run: python scripts/check_llm_cost_tracking.py
 
+      - name: Run core tests (fast gate — always run)
+        # MOVED here from `backend-shard` on 2026-08-23 (follow-up to #4647),
+        # and deliberately placed LAST in this job — see the ORDERING note below.
+        # The step is written once, but inside the shard job that line ran once
+        # PER MATRIX LEG: measured 7s / 8s / 8s on merge_group run 32632670541,
+        # i.e. ~16s of duplicated runner time and — because the critical path is
+        # the SLOWEST shard and every leg paid it — ~8s ON THE CRITICAL PATH.
+        # That mattered: the same run missed the <=8 min target by 12-40s, so
+        # these 8s were 20-65% of the miss. Here it runs ONCE, on a job measured
+        # at 203s against the slowest shard's 381s, so it costs zero critical
+        # path. Precisely: the GATE runs once. The module itself still executes
+        # twice per full run (this gate, plus the shard that owns it in the
+        # corpus) — down from four, not to one. NOT gated to `matrix.shard == 1` instead: that saving would be
+        # probabilistic, since shard 1 may itself be the slowest leg.
+        #
+        # THE GUILT CHAIN SURVIVES THE MOVE, and that is the load-bearing part.
+        # This job is NOT a required context — only the `Backend Tests (Python)`
+        # fan-in is — but the fan-in's `Assert every upstream job succeeded`
+        # step reads `needs.backend-static.result` in the SAME loop as
+        # `needs.backend-shard.result` and exits non-zero on either, so a red
+        # core test here still reddens the required context. The shard side of
+        # that loop was proven live on dispatch run 32634126661 (one red leg of
+        # three -> fan-in red at exactly this step); the static side is the same
+        # loop, same fail-closed exit.
+        #
+        # ORDERING — LAST, NOT FIRST, and this was a refuter finding (Codex
+        # gpt-5.6-sol, round 1). The first draft put this step before
+        # pip-audit. Because a failing step skips the rest of the job, a
+        # broken core test would then have MASKED four independent gates
+        # (pip-audit, mypy, the import-chain gate, LLM cost coverage) that
+        # used to report regardless — backend-static was independent of the
+        # shards before this move. Last costs nothing: placing it first would
+        # not surface a core failure any sooner at the FAN-IN, because the
+        # fan-in waits on all three shards (~350s) either way.
+        #
+        # THE FAIL-FAST PROPERTY IS TRADED AWAY, DECLARED NOT HIDDEN. Inside
+        # backend-shard this gate turned a core regression red in ~10s (each
+        # leg exited at ~8s via -x). Here the required context still waits for
+        # the shards, so a core regression now goes red in ~350s. That is a
+        # real loss on the RED path, accepted for an ~8s gain on the GREEN
+        # path, which is every run. The alternative the refuter named — a
+        # separate `backend-core` job wired into the fan-in's needs — would
+        # restore fail-fast, but it adds a fifth concurrent job to the runner
+        # slot pressure tests.yml already calls the binding constraint, so it
+        # is not taken here.
+        #
+        # No DATABASE_URL / REDIS_URL: this job has no `services:`, and the
+        # module does not need them. MEASURED, not assumed — its 24 tests pass
+        # with both variables unset AND with them pointed at closed ports
+        # (127.0.0.1:59999 / :59998). The old values were inherited from the
+        # pre-split combined job, where those services happened to exist.
+        # pytest / pytest-asyncio / pytest-cov come from requirements.lock.txt
+        # (verified present); this module needs no pytest-mock, fakeredis or
+        # xdist, and the single conftest on its collection path imports only
+        # stdlib, pydantic and pytest.
+        run: |
+          mkdir -p "$RUNNER_TEMP/static-receipts"
+          cd apps/backend-rag
+          PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
+            -q -ra --no-header --tb=short --durations=10 -x \
+            "--junit-xml=$RUNNER_TEMP/static-receipts/test-results-core.xml"
+
+      - name: Upload core-gate test results
+        # DIAGNOSTIC ONLY — and `continue-on-error: true` is what MAKES that true.
+        # A refuter (Codex gpt-5.6-sol, round 1) caught the first draft claiming
+        # "nothing gates on this file" while the upload step itself could fail the
+        # job: a transient artifact-service error would conclude backend-static
+        # `failure`, and the fan-in's assert reads `needs.backend-static.result`,
+        # so the required context would go red with every real gate green.
+        # `if-no-files-found: warn` only covers a MISSING file; it does not make
+        # the upload itself best-effort.
+        #
+        # NOT parity with the pre-move state, stated plainly because the first
+        # draft overclaimed it: the core junit used to ride into the
+        # `backend-test-results` artifact via the fan-in's
+        # `shard-receipts/test-results-*.xml` glob. It now lands in a DIFFERENT
+        # artifact under a DIFFERENT filename, so anything outside this repo that
+        # downloaded `backend-test-results` looking for `test-results-core-*.xml`
+        # will find nothing. No in-repo consumer exists (grepped); external ones
+        # are not observable from a diff.
+        uses: actions/upload-artifact@v7
+        if: always()
+        continue-on-error: true
+        with:
+          name: backend-core-gate-results
+          path: ${{ runner.temp }}/static-receipts/test-results-core.xml
+          if-no-files-found: warn
+
   backend-shard:
     name: Backend Shard ${{ matrix.shard }}
     needs: [changes]
@@ -749,16 +837,6 @@ jobs:
           # (scripts/tests/test_test_deps_declared.py's guilt check pins the
           # two together, same rule fakeredis already follows).
           uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist
-
-      - name: Run core tests (fast gate — always run)
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
-          REDIS_URL: redis://localhost:6379
-        run: |
-          cd apps/backend-rag
-          PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
-            -q -ra --no-header --tb=short --durations=10 -x \
-            "--junit-xml=$RUNNER_TEMP/shard-receipts/test-results-core-${SHARD_INDEX}.xml"
 
       - name: Bootstrap SQLModel tables
         # Router-level integration tests assume the full schema (e.g.
@@ -2105,6 +2183,117 @@ jobs:
         with:
           name: playwright-report
           path: apps/mouth/playwright-report/
+
+  # ADVISORY, non-required (2026-08-23). This job drives the ONLY test that
+  # exercises the real browser -> Next -> FastAPI -> signed TEST RulePack ->
+  # Postgres chain (e2e-tests above never reaches it: every visa-oracle spec
+  # it runs intercepts and mocks `/api/visa-oracle/evaluate`). It is opt-in
+  # (`VISA_ORACLE_FULLSTACK=1`) and owns its own disposable database via
+  # `backend/scripts/visa_engine/fullstack_smoke.py` — a separate job so it
+  # never touches the e2e-tests job's shared Postgres/Redis services or its
+  # `--grep "page Page|@offline"` filter.
+  #
+  # `continue-on-error: true` at job level does NOT make this job's own
+  # check-run report success when a step fails — measured 2026-08-24 on its
+  # first real run (job 97222544510, PR #4709): the step failed and the
+  # check-run's `conclusion` on the commit was `failure`, same as any other
+  # red job, `gh pr checks` included. What continue-on-error actually buys:
+  # the overall WORKFLOW RUN conclusion is not dragged down by this job, and
+  # any future job that `needs:` this one still proceeds. The reason this
+  # job does not block merging TODAY is that its name is absent from
+  # `main`'s branch protection `required_status_checks` — that is the one
+  # thing standing between "advisory" and "blocking", so adding this job's
+  # name there is exactly the mistake this paragraph warns against; nothing
+  # in the job's own config stops it. Promote to required only after it has
+  # demonstrably passed a few times in CI.
+  visa-oracle-fullstack-smoke:
+    name: Visa Oracle fullstack smoke (advisory)
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_e2e_tests != 'false'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies (uv, lock-pinned)
+        run: |
+          cd apps/backend-rag
+          pip install --upgrade pip uv
+          uv pip install --system -r requirements.lock.txt
+          uv pip install --system -e ../../packages/cell-core
+
+      - name: Install postgresql-client (bounded, fail-closed — scripts/ci/apt_install.sh)
+        run: bash scripts/ci/apt_install.sh psql postgresql-client
+
+      - name: Install Node dependencies
+        run: npm install --no-fund
+        env:
+          npm_config_fetch_retry_mintimeout: 20000
+          npm_config_fetch_retries: 3
+
+      - name: Cache Playwright browser binaries
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        # Always runs, cache hit or miss — see e2e-tests' own step above for
+        # why (`--with-deps` installs OS shared libs the browser needs, which
+        # actions/cache never persists on a fresh runner VM).
+        run: timeout 600 npx playwright install --with-deps chromium
+
+      - name: Run the disposable-DB fullstack smoke
+        env:
+          VISA_ORACLE_FULLSTACK: "1"
+          VISA_ORACLE_SMOKE_ADMIN_DSN: postgresql://test:test@127.0.0.1:5432/postgres
+          PYTHONDONTWRITEBYTECODE: "1"
+          # Importing backend.app.core constructs Settings() at module scope
+          # (backend/app/core/config.py), which requires these two even for a
+          # test-only smoke that never serves real auth. Same throwaway,
+          # non-secret values used by every other job in this workflow that
+          # imports the backend package (see e.g. the "Run backend stability
+          # gate" step above) — not a new convention.
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python -m backend.scripts.visa_engine.fullstack_smoke
 
   test-summary:
     name: Test Summary

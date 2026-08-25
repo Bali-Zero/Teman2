@@ -1,0 +1,408 @@
+# STAGING PATH, NOT THE REAL ONE — and this is the documented contract, not
+# an oversight. harness-floor.yml copies both files into a synthetic tree at
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their CANONICAL names,
+# whatever their real location, and evidence_pack_lint.py resolves brief_ref
+# against THAT root. So this field must always read the literal
+# evidence/brief.yml even when the files live at
+# evidence/<YYYY-MM>/<slug>/. The real brief for this PR is
+# evidence/2026-08/agent-nuzantara-ops-wa-throughput-arm-1454a982/brief.yml.
+# Writing the per-PR path here — the "obviously correct" value — is the exact
+# trap the workflow comment warns about, and this pack walked into it: the
+# resulting failure reads "brief_ref does not resolve to a file on disk",
+# which says nothing about staging versus real layout. Do not "fix" this back.
+brief_ref: evidence/brief.yml
+plan_ref: "/bot corner Gear-3 mandate — arm the WA throughput sentinel merged in PR #4630 (Pro, 2026-08-23)"
+lanes:
+  - lane: wa-throughput-arm
+    role: build
+    seat: "claude-opus-5 (this session — authored the wrapper, plist and registry entry)"
+  - lane: wa-throughput-gate
+    role: review
+    seat: "claude-opus-5 (independent gate subagent, fresh context, wrote none of the three files)"
+  - lane: wa-throughput-gate-xfamily
+    role: review
+    seat: "kimi-code/k3 (Moonshot — cross-family adversarial gate; returned two CONFIRMED MEDIUMs the Anthropic lanes did not)"
+seat_diversity: degraded
+seat_diversity_note: >-
+  Single BUILD lane, so the D3 rule's own floor (>=2 build lanes) does not fire
+  and the field stays "degraded" on that basis alone. The review side is NOT
+  degraded: a cross-family seat (kimi-code/k3) gated this diff and found two
+  CONFIRMED MEDIUMs, both of which the Anthropic review lanes missed. That is
+  the whole argument for cross-family review stated as a measurement rather
+  than a principle.
+
+  Recorded because it cost something to learn: the first Anthropic gate
+  subagent went idle FOUR times without ever emitting a report. An idle
+  notification is not a verdict, and reading it as one would have shipped this
+  PR with both MEDIUMs open. The cross-family seat was reached for as a
+  delivery fix and turned out to be the substantive one.
+diff:
+  net_lines: >-
+    AS OF 85954fccd (pinned deliberately — see below): 5 files, +749/-78,
+    measured THREE-DOT against the merge base. Never two-dot, which on a moved
+    base blames this PR for files that landed on main after the branch point
+    (W102). Two of the five are evidence/brief.yml and evidence/pack.yml, which
+    already exist on main and are therefore REWRITTEN, not created — the
+    fixed-path collision hazard, which duly bit: PR #4693 landed rewriting both
+    while this PR was in flight, GitHub marked it CONFLICTING, and a
+    CONFLICTING PR fires ZERO workflows, so the green could never arrive and
+    nothing was red to say why. Deterministic gear floor recomputed from this
+    diff = 3 (hot-zone: infra/launchagents/). Gear 3 is the floor, not a choice.
+
+    The pin is the point. An earlier revision of this field carried a bare
+    "3 files, +222/-1", which an independent fact-check found to be both stale
+    AND arithmetically wrong when written (91+102+30 is 223, not 222). A byte
+    count stated unqualified inside a file that every subsequent commit
+    changes is a claim that decays by construction; the only form that stays
+    true is one bound to a named SHA.
+  behaviour_change: >-
+    NOTHING changes on any machine when this merges. It adds the artifacts
+    that let an operator install the organ; installing it is a separate,
+    post-merge step. Once installed, Pro runs a read-only SELECT max() pair
+    against production every 900s and can emit p0/digest Telegram alerts.
+receipts:
+  - claim: "The deterministic gear floor is 3, recomputed from this diff — not taken from the brief"
+    cmd: "git diff --name-only origin/main...HEAD > changed.txt; scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt"
+    result: "3 (infra/launchagents/com.nuzantara.wa-bot-throughput-sentinel.plist is the hot-zone hit)"
+    exit: 0
+    ts: "2026-08-23T14:05Z"
+    seat: "session (pro, build lane)"
+  - claim: "The organ conformance gate passes, and the pass is CAUSED by the registry entry — guilt-tested, not merely observed green"
+    cmd: "infra/organ-conformance/check_organ_conformance.py  (cwd = the worktree; with the registry label replaced by a placeholder, then restored)"
+    result: >-
+      With the label removed the gate reproduces the exact CI message —
+      "NEW organ without genes: ...wa-bot-throughput-sentinel.plist missing
+      ['G1_registry']", rc=1. Restored: "178 plists scanned, 121
+      grandfathered, 0 regressions, 0 non-conformant births", rc=0. The
+      registry file was byte-restored from a copy afterwards and `git diff`
+      shows only the intended checksum line plus the 29-line entry.
+    exit: 0
+    ts: "2026-08-23T14:02Z"
+    seat: "session (pro, build lane)"
+  - claim: "An earlier green from this same gate was a FALSE green, and is recorded because the trap is reusable"
+    cmd: "check_organ_conformance.py --repo <worktree>   vs   the same script run with cwd inside the worktree"
+    result: >-
+      Both printed an identical "178 plists scanned". `--repo` does not
+      redirect the scan — the script resolves the tree from its own process
+      cwd — so the first three runs were scanning the MAIN checkout, which
+      does not contain this plist at all. Measured discriminator:
+      `git ls-files '*.plist'` is 185 in main and 186 in the worktree, so
+      identical counts could not both be right. The real probe is
+      `--json` piped through a check that the plist appears in `organs`:
+      it does. Two probes that agree on a number they cannot both be
+      measuring is not corroboration.
+    exit: 0
+    ts: "2026-08-23T14:01Z"
+    seat: "session (pro, build lane)"
+  - claim: "A live run through the wrapper reaches PRODUCTION and reports the real 24-day outage — the DSN chain resolves correctly end to end"
+    cmd: "bash scripts/wa_bot_throughput_sentinel_run.sh --dry-run"
+    result: >-
+      "condition=dead_channel business=False inbound_age_min=848.2
+      outbound_age_min=848.2 raw_inbound_h=588.7 raw_outbound_h=588.7",
+      wrapper rc=0. 588.7h before the run timestamp is 2026-07-30T01:26Z,
+      which reconciles with the independently known last successful answer
+      at 2026-07-30T01:23:58Z. What this receipt proves on its own is the
+      part that matters: the run reached a database holding REAL production
+      history through the chain the wrapper builds.
+
+      One claim that used to ride inside this receipt has been demoted, on an
+      independent fact-check: "the dev database carries zero rows in both
+      tables" is an assertion about live Postgres state with no receipt of its
+      own — not reproducible from the repo, and it was sitting in narrative
+      form beside a genuinely measured result, where it borrowed that result's
+      standing. It is inherited from the wrapper header's 2026-08-23 audit and
+      is NOT independently verified here. The argument does not need it: the
+      measured output is real production ages, and since round 3 the DSN
+      property is enforced by a deterministic guard rather than inferred from
+      what some other database does or does not contain.
+    exit: 0
+    ts: "2026-08-23T14:08Z"
+    seat: "session (pro, build lane)"
+  - claim: "The KeepAlive linter does not flag the new plist (superscar #7)"
+    cmd: "scripts/lint_plist_keepalive.py"
+    result: >-
+      "clean — no KeepAlive=true wrapper shows a one-shot smell", rc=0, and the
+      new plist is not among the findings: it is StartInterval=900 with
+      KeepAlive=false, the correct shape for a one-shot.
+
+      CORRECTED after an independent fact-check. This receipt first said "the
+      three WARN lines it prints". The linter prints TWELVE. The author had
+      read its output through `tail -4` and reported the tail as the whole —
+      a display cap mistaken for the complete set, which is a scar this repo
+      already catalogues (W97) and the author was supposed to know. The
+      load-bearing half of the claim (rc=0, this plist not flagged) was true
+      and is unchanged; the count beside it was not, and a wrong number
+      standing next to a right one borrows its credibility.
+    exit: 0
+    ts: "2026-08-23T14:10Z"
+    seat: "session (pro, build lane)"
+  - claim: "The HOME-fork linter fails repo-wide, and NOT because of this PR — stated rather than quietly omitted"
+    cmd: "scripts/lint_home_fork.py  |  grep -c UNDECLARED  |  grep -ci wa.bot.throughput"
+    result: >-
+      rc=2, 123 UNDECLARED pre-existing pairs (crontab payloads under
+      ~/scripts and ~/Desktop/nuzantara-deploy). Occurrences of this organ in
+      that output: 0. Its payload is the canonical checkout
+      (/Users/nuzantara/nuzantara/scripts/...), so no declared pair applies.
+    exit: 2
+    ts: "2026-08-23T14:11Z"
+    seat: "session (pro, build lane)"
+  - claim: "bridge_source describes what the script ACTUALLY writes, read from the writer rather than copied from a neighbouring entry"
+    cmd: "read scripts/lib/heartbeat.py:26-42 and scripts/wa_bot_throughput_sentinel.py:92"
+    result: >-
+      ORGAN_ID = "pro.wa_bot_throughput_sentinel"; the helper writes
+      ~/.organism/last_seen/<organ_id>.json with keys ts/status/note. The
+      registry entry names exactly that path and those two fields. W110/W120:
+      a probe reading a different key than the reporter emits goes quiet
+      instead of red.
+    exit: 0
+    ts: "2026-08-23T13:58Z"
+    seat: "session (pro, build lane)"
+  - claim: "expected_hb_seconds is 1350 rather than the generator's naive copy of the 900s interval, for a measured reason"
+    cmd: "read scripts/sentinel-aggregate.py:19-21 and scripts/organ_birth.py:286"
+    result: >-
+      sentinel-aggregate classifies stale at age > expected_hb_seconds and
+      dead at age > 3x. organ_birth.py emits expected_hb_seconds = the
+      StartInterval verbatim, which for a 900s organ means any ordinary
+      launchd jitter reads as staleness every cycle. 1350 = 1.5x, the same
+      value pro.wa_mirror_freshness_liveness already uses on the same cadence.
+    exit: 0
+    ts: "2026-08-23T13:57Z"
+    seat: "session (pro, build lane)"
+  - claim: "The new interpreter guard is guilt-tested: without it the failure wrote NO heartbeat, with it the failure names its own cause"
+    cmd: "copy of the wrapper with PYBIN repointed at /nonexistent/venv/bin/python, ORGANISM_LAST_SEEN_DIR isolated to a scratch dir; then the real wrapper unchanged"
+    result: >-
+      BEFORE the guard: rc=1 and the last_seen dir held 0 files (counted with
+      `/bin/ls -1A | wc -l`). AFTER: rc=78 and exactly 1 file —
+      {"status":"error","note":"venv interpreter missing:
+      /nonexistent/venv/bin/python"}. INNOCENCE on the same guard: the real
+      wrapper still reaches production (condition=dead_channel,
+      raw_inbound_h=588.9, rc=0). `bash -n` clean; the probe copy was removed
+      and `git status` shows no residue.
+    exit: 0
+    ts: "2026-08-23T14:15Z"
+    seat: "session (pro, build lane)"
+  - claim: "The cross-family gate's silent-exit finding is CONFIRMED, and its secret-leak half is confirmed too — but only in the realistic malformation shape, which my first probe missed"
+    cmd: "the pre-cure wrapper (git show HEAD:...) against two malformed secrets files: (a) a syntax error, (b) a credential pasted on its own line with no KEY= prefix; ORGANISM_LAST_SEEN_DIR isolated, canary token grepped for"
+    result: >-
+      Shape (a), syntax error: rc=2, ZERO heartbeat files — silent path
+      CONFIRMED — but the canary did NOT appear, because bash quotes the
+      offending TOKEN, not the value. On that evidence alone I would have
+      written the leak half off as not reproduced. Shape (b), the realistic
+      accident: rc=127, ZERO heartbeats, and the credential printed VERBATIM to
+      stderr — "<file>: line 2: <CANARY>-looks-like-a-token: command not found"
+      — straight into the organ's .err.log. Superscar #4 and #2 in one line.
+      The finding was right; my first probe was the wrong shape for it.
+    exit: 0
+    ts: "2026-08-23T14:33Z"
+    seat: "session (pro, build lane) verifying kimi-code/k3's finding"
+  - claim: "Both round-2 cures are guilt-tested and innocence-tested"
+    cmd: "same two malformed files against the CURED wrapper; and a bogus INTAKE_DATABASE_URL injected into a live run"
+    result: >-
+      Malformed secrets, cured: rc=78, exactly ONE heartbeat —
+      {"status":"error","note":"secrets file failed to parse (rc=1): <path>"} —
+      and the canary count in the output is 0 (bash's stderr is discarded on
+      purpose; the failure is reported by file name and return code only).
+      DSN override, cured: with INTAKE_DATABASE_URL set to a deliberately
+      unreachable dev DSN the run logs "WARN: INTAKE_DATABASE_URL is set and
+      outranks DATABASE_URL_LOCAL — unsetting it for this run" and STILL
+      reaches production (condition=dead_channel, raw_inbound_h=589.1, rc=0).
+      Innocence: with no override present the WARN line count is 0.
+    exit: 0
+    ts: "2026-08-23T14:32Z"
+    seat: "session (pro, build lane)"
+  - claim: "Round 3 — the cure of the cure: lifting errexit alone was not enough, and the fix had made the remaining case MORE silent"
+    cmd: 'a secrets file containing DATABASE_URL_LOCAL="postgresql://u:$PGPASS_REMOVED@127.0.0.1:15432/db" (the realistic idiom after someone deletes the PGPASS line), run against the round-2 wrapper and then the round-3 wrapper'
+    result: >-
+      ROUND 2: rc=1, ZERO heartbeat files, EMPTY output — nounset killed the
+      whole wrapper mid-source, and because round 2 had just started discarding
+      bash's stderr for the leak fix, the "unbound variable" message was gone
+      too. The fix had made that path MORE silent, not less. ROUND 3 (set +u
+      lifted across the source and restored after): rc=2, ONE heartbeat, and a
+      real diagnostic reaches the log — "DB connect failed: password
+      authentication failed for user u". Empty interpolation surfaces
+      downstream in the payload's own error handling: degraded, never silent.
+      Restoration verified separately — after the block, referencing an unbound
+      variable still aborts, so -e and -u are genuinely re-armed.
+    exit: 0
+    ts: "2026-08-23T14:41Z"
+    seat: "session (pro, build lane) verifying kimi-code/k3's residual finding"
+  - claim: "FINAL GATE VERDICT: PASS, from the cross-family seat, on the discharged condition"
+    cmd: "kimi -m kimi-code/k3 -p <the round-3 block plus the before/after measurement>"
+    result: >-
+      "Condition discharged... no unmeasured hazard from set +u; the behavior is
+      empty-substitution only". It also answered the wrong-value question
+      precisely: set +u never substitutes a different non-empty value, and the
+      one case that COULD (the referenced variable being set in the ambient
+      environment and leaking into the interpolation) behaves identically under
+      -u and +u — so that hazard is neither introduced nor worsened here. It
+      named one theoretical edge, an empty HOST segment which libpq reads as
+      "local unix socket" rather than an error, and gated it: this file
+      interpolates credentials only, host and port are literals.
+      VERDICT: PASS.
+    exit: 0
+    ts: "2026-08-23T14:44Z"
+    seat: "kimi-code/k3 (cross-family gate)"
+pii_scan: clean
+tests:
+  - "scripts/tests/test_wa_bot_throughput_sentinel.py — 45 tests, merged with the payload in PR #4630; not re-run here because this PR does not touch the payload."
+static:
+  - "pre-commit hooks pass on the registry commit, none bypassed"
+  - "organism.tools.validate_organs_registry --update-checksum: checksum updated, rc=0"
+notes:
+  - >-
+    MEASURED COST OF THIS PACK'S OWN FILE PATH, contributed by another lane the
+    same day and recorded here because it is the strongest argument against the
+    current design: evidence/brief.yml and evidence/pack.yml are FIXED root
+    paths that every Gear-3 PR rewrites, so two of them cannot sit in the merge
+    queue together. That lane was ejected from position 8 — position does not
+    protect, because the entries ahead dirty you by LANDING, not by overtaking.
+    Its measured bill: three independent graders judged the SAME code three
+    times, 15 byte-identical blobs across three heads, not one line of code
+    changed — only the base moved. The recurring cost is not the merge, it is
+    that the gate verdict is bound to the head SHA, so every base movement
+    voids it and buys another full gate.
+  - >-
+    THE ONE THING THIS PR DOES NOT PROVE. Merging arms nothing. The organ is
+    real only when the plist is bootstrapped on Pro and the heartbeat sidecar
+    is read TWICE, at least one interval apart, and seen to ADVANCE — plus a
+    negative control confirming it reports wrong-database, not dead-channel,
+    against a history-free DB. A zero exit code and the presence of a plist
+    line are not proof. That is superscar #2, which is the exact defect this
+    sentinel exists to detect, so committing it here would be self-refuting.
+dissent:
+  - seat: "the build lane, against its own artifact — the interpreter was the one UNCHECKED precondition"
+    objection: >-
+      The wrapper's header states that "a missing precondition is a
+      wrapper-level failure with a heartbeat, not a paging storm". That is
+      true for the three preconditions it checks (secrets file, DSN name,
+      tunnel) and FALSE for the interpreter, which it did not check. With the
+      venv python missing, `exec "$PYBIN"` fails, `set -e` exits 1, and NO
+      heartbeat is written at all — so the only remaining signal is the
+      sidecar going stale (>1350s), which is slower than the other paths and
+      carries no cause. In an organ built specifically against superscar #2,
+      a path that fails without emitting a signal is the wrong defect to
+      leave in.
+    status: CONFIRMED
+    note: >-
+      Found by the build lane, not by the gate, and measured rather than
+      reasoned: a byte-identical copy of the wrapper with PYBIN repointed at
+      a nonexistent path, run with ORGANISM_LAST_SEEN_DIR isolated to a
+      scratch directory, left that directory with ZERO files (counted with
+      `/bin/ls -1A | wc -l`, not with a glob). Cured in this PR by an
+      executability guard that emits the same error-heartbeat shape as the
+      other three preconditions and exits 78.
+
+      Recorded because the FIRST version of that probe was invalid and would
+      have produced the same conclusion for the wrong reason: copied to the
+      scratchpad, the wrapper's REPO_ROOT resolved outside the repo and it
+      died at line 44 failing to source heartbeat.sh — never reaching the
+      exec at all. The second run reached line 91 for the right reason. A
+      probe that fails early gives you the answer you expected with none of
+      the evidence.
+  - seat: "the build lane, against the plist header's own hardening claim"
+    objection: >-
+      The plist header ends with "Plist permissions hardened to 0444 per
+      cicatrix P0-3", stated as accomplished fact. The install procedure
+      documented ten lines above it is `cp` followed by `launchctl
+      bootstrap`, with no chmod anywhere — so nothing in the documented path
+      produces 0444, and git cannot carry it either (the blob is 100644,
+      identical to the sibling organ's). The claim has no mechanism behind
+      it.
+    status: CONFIRMED
+    note: >-
+      Cured by putting the chmod into the install steps rather than by
+      deleting the sentence, because the hardening is wanted; what was
+      missing was the instruction that achieves it. This is the same shape
+      as the rest of this PR: a stated property nobody executes is
+      indistinguishable from a property that holds, right up until it
+      matters.
+  - seat: "kimi-code/k3 (cross-family gate), against the build lane"
+    objection: >-
+      `set -a; source "$SECRETS"` runs unguarded under `set -euo pipefail`, one
+      block ABOVE the interpreter guard the build lane had just added. A
+      malformed secrets file therefore aborts the script mid-source with no
+      heartbeat at all — the same silent class, left open in the same file, in
+      the same commit that claimed to close it. And bash echoes the offending
+      line to stderr, so in a secrets file that text is plausibly a credential
+      landing in the organ's .err.log.
+    status: CONFIRMED
+    note: >-
+      Both halves reproduced (see receipts), the second only in the realistic
+      shape. Cured: errexit disabled across the source, bash's stderr discarded
+      deliberately, failure reported by file name and rc, exit 78 with an error
+      heartbeat. The finding is worth more than the fix: the build lane cured
+      one instance of a defect class and did not sweep the file for its
+      siblings, which is precisely the shape catalogued as "tightening a rule
+      without auditing its siblings on the same product".
+  - seat: "kimi-code/k3 (cross-family gate), against the build lane's own correction"
+    objection: >-
+      The comment claiming the wrapper "cannot prove they are unset (reading
+      that file is guarded)" is false. The wrapper SOURCES the file, so after
+      sourcing it can test INTAKE_DATABASE_URL / LOCAL_DATABASE_URL in its own
+      environment without reading anything. Settling for verification "by
+      effect" routes the config fault through the payload's wrong-database p0
+      — exactly the paging storm this wrapper's own header says it exists to
+      prevent.
+    status: CONFIRMED
+    note: >-
+      Correct, and pointed: the build lane had replaced a false claim with a
+      DIFFERENT false claim in the same commit, one round earlier. Cured with a
+      deterministic guard that unsets either name and logs the override.
+      Unset rather than fatal, deliberately — this wrapper's intent is
+      unambiguous, and turning an unrelated addition to a shared secrets file
+      into an outage OF THE OUTAGE-DETECTOR is the wrong trade.
+  - seat: "the build lane, against its own dispatch of the cross-family seat"
+    objection: >-
+      The cross-family gate was given the diff, not the machine — but it
+      autonomously read the variable NAMES in ~/.nuzantara-secrets.env and
+      queried live launchd state (it reported the pg-proxy PID). No values were
+      echoed and its findings were correct and useful, but the session's own
+      standing rule is that an external seat must never be pointed at env,
+      launchctl, ps or secrets surfaces, because dispatching one hands over the
+      ENVIRONMENT and not merely the prompt.
+    status: CONFIRMED
+    note: >-
+      Recorded rather than quietly accepted, because the boundary was crossed
+      by the seat's own initiative and not by the prompt — which means the
+      mitigation is not "write a better prompt" but "assume repo-agentic seats
+      will read what they can reach, and scope the dispatch accordingly". No
+      credential value appears in the seat's transcript or in this pack. The
+      useful half of the finding it obtained that way (the secrets file defines
+      DATABASE_URL, DATABASE_URL_LOCAL, EVENTBUS_DATABASE_URL and
+      WA_MIRROR_DATABASE_URL, and neither overriding name) is NOT relied on
+      here: the deterministic guard makes the property hold regardless of what
+      that file contains, which is the whole point of preferring a guard to an
+      observation.
+  - seat: "kimi-code/k3 (cross-family gate), against the build lane's SECOND correction"
+    objection: >-
+      The guarded `source` lifted errexit but not nounset, while the script runs
+      under `set -euo pipefail`. A secrets file interpolating a variable that no
+      longer exists — the ordinary idiom after someone removes a PGPASS line —
+      therefore still killed the whole wrapper mid-source with no heartbeat, and
+      the round-2 stderr suppression had removed the last remaining clue. The
+      defect class survived into its own fix.
+    status: CONFIRMED
+    note: >-
+      Measured before/after (see receipts) and cured with `set +u` across the
+      source. This is the third round on one surface and the reason it is
+      recorded rather than smoothed over: rounds 1 and 2 each cured ONE trigger
+      of a single class — a failure path that exits without emitting a signal —
+      without sweeping the file for the others. The repo already catalogues that
+      exact shape. A fix-of-a-fix is allowed to depth 1; had this third
+      correction also been wrong, the right move was to stop and write the spec,
+      not to open a fourth round.
+  - seat: "kimi-code/k3 (cross-family gate), naming a hazard this PR does NOT cure"
+    objection: >-
+      If a variable referenced inside the secrets file is already set in the
+      AMBIENT environment, it leaks into the interpolation and produces a
+      genuinely wrong non-empty value. This behaves identically under `set -u`
+      and `set +u`, so it is neither introduced nor worsened by anything here —
+      it argues for the wrapper scrubbing its inherited environment before
+      sourcing, which it does not do.
+    status: PLAUSIBLE
+    note: >-
+      Left uncured deliberately and declared rather than folded in: it is
+      pre-existing, orthogonal to both cures, and out of this PR's one concern.
+      Marked PLAUSIBLE rather than CONFIRMED because it was reasoned from shell
+      semantics and NOT measured here — the honest status for a claim nobody
+      executed.

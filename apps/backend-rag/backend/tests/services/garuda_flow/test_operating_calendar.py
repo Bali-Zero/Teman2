@@ -117,8 +117,13 @@ class TestCoverageBounds:
         # fails closed.
         assert last_open_day_before(COVERAGE_END) is not None
 
-    def test_departure_the_day_after_coverage_end_is_uncovered(self) -> None:
-        assert last_open_day_before(COVERAGE_END + timedelta(days=1)) is None
+    def test_day_after_coverage_end_can_use_the_covered_boundary_day(self) -> None:
+        # The old expectation of None asserted the off-by-one bug, not the
+        # fail-closed property: this function searches strictly before its
+        # input, so COVERAGE_END is the only candidate and remains covered.
+        # The farther-past tests above still protect fail-closed behavior once
+        # the search would have to begin outside the materialized calendar.
+        assert last_open_day_before(COVERAGE_END + timedelta(days=1)) == COVERAGE_END
 
 
 class TestCalendarDataNeverExceedsCoverageEnd:

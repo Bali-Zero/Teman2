@@ -31,6 +31,19 @@ Every number here is traceable to a governance document, NOT invented:
 - ``INTERNAL_ESCALATION_DAYS`` (D-3) / ``FINAL_CHECK_DAYS`` (D-1): internal
   Bali Zero checkpoints only (SOP §6) — never quoted to clients.
 - ``MIN_PASSPORT_VALIDITY_DAYS`` (≥6 months from entry): SOP §1 + §4 checklist.
+- ``b1_max_total_stay_exceeded()``: B1 stay is counted with the arrival day AS
+  DAY 1 — imigrasi.go.id's own B1 page states the initial stay is "maksimal 30
+  hari, dihitung sejak tanggal kedatangan" (max 30 days, counted FROM the
+  arrival date). So for a legal maximum of N days (``VISA_META[VisaType.B1]``:
+  30 + 1×30 extension = 60), day N of the stay is ``entry_date + (N - 1)``
+  days, and a printed expiry of ``entry_date + N`` days is already day N+1 —
+  one day past the maximum. The day-DIFFERENCE comparison against the max is
+  therefore inclusive (``>=``), never strict (``>``); this helper is the
+  single place that convention is expressed, so the internal preview CLI's
+  B1 max-stay guard never re-derives it from a bare comparison operator
+  (verified 2026-08-23: a previous strict-`>` inline comparison silently
+  ACCEPTed a difference exactly equal to the max, one day over the legal
+  maximum).
 
 These are the enforceable form of what the Gate-1 role-play validated by hand.
 """
@@ -46,12 +59,34 @@ FINAL_CHECK_DAYS: int = 1  # D-1 — internal final-check checkpoint
 
 # ── Intake ───────────────────────────────────────────────────────────
 MIN_PASSPORT_VALIDITY_DAYS: int = 180  # >= 6 months from entry (SOP §1/§4)
+# eVOA usability window from the GARUDA charter truth-sheet
+# (## GARUDA B1 — fatti chiave, line 41, verified 14 Jul 2026):
+# "eVOA berlaku 90 hari sejak diterbitkan untuk digunakan."
+# The engine has no issuance_date input, so today is used as the earliest
+# possible issuance date; the gate is therefore conservative.
+EVOA_USABILITY_WINDOW_DAYS: int = 90
+
+
+def b1_max_total_stay_exceeded(day_difference: int, max_total_stay_days: int) -> bool:
+    """Whether a B1 printed-expiry day-difference exceeds the legal max stay.
+
+    ``day_difference`` is ``(printed_expiry - entry_date).days``.
+    ``max_total_stay_days`` is the legal maximum (base duration + extensions,
+    e.g. derived from ``VISA_META[VisaType.B1]``) expressed as a day COUNT,
+    not an offset. See the module docstring above for why the comparison is
+    inclusive: the arrival day counts as day 1, so a difference equal to the
+    max is already one day past it.
+    """
+    return day_difference >= max_total_stay_days
+
 
 __all__ = [
+    "EVOA_USABILITY_WINDOW_DAYS",
     "EXTENSION_WINDOW_OPENS_DAYS",
     "FINAL_CHECK_DAYS",
     "INTERNAL_ESCALATION_DAYS",
     "MIN_PASSPORT_VALIDITY_DAYS",
     "PILOT_INTAKE_THRESHOLD_DAYS",
     "PUBLISHED_FILING_DEADLINE_DAYS",
+    "b1_max_total_stay_exceeded",
 ]

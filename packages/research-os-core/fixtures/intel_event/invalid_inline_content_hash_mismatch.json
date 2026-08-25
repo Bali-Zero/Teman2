@@ -1,0 +1,57 @@
+{
+  "event_id": "30000000-0000-4000-8000-000000000003",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "event_type": "com.example.regulatory_update_observed",
+  "producer": {
+    "name": "com.example.intel_ingestor",
+    "version": "1.0.0",
+    "machine_class": "interactive"
+  },
+  "source": {
+    "uri": "https://example.gov/regulation/2026-003",
+    "source_type": "government_gazette"
+  },
+  "times": {
+    "observed_at": "2026-01-03T00:05:00Z",
+    "ingested_at": "2026-01-03T00:10:00Z"
+  },
+  "identity": {
+    "content_hash": "0000000000000000000000000000000000000000000000000000000000000006",
+    "idempotency_key": "com.example.intel_ingestor:reg-2026-003"
+  },
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "lineage": {
+    "pipeline_run_id": "30000000-0000-4000-8000-000000900003",
+    "input_event_refs": [
+      {
+        "event_id": "30000000-0000-4000-8000-000000000001",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000007"
+      }
+    ]
+  },
+  "payload_ref": {
+    "ref_type": "inline_public",
+    "payload": {
+      "headline": "synthetic regulation notice",
+      "code": "REG-2026-003"
+    },
+    "content_hash": "0000000000000000000000000000000000000000000000000000000000067932"
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "extensions": {
+    "com.example.event-note": {
+      "extension_version": "1.0.0",
+      "payload": {
+        "synthetic_note_code": "fixture-only"
+      }
+    }
+  },
+  "object_hash": "299522f56d5d1d8d5bd5785ce70fe266a6efe47f8285107385a1e1eada34a1db"
+}

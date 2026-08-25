@@ -1,7 +1,7 @@
 """Tests for ``backend.services.visa_engine.fact_registry``.
 
-Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (44
-entries, 41 applicant + 3 derived); ``spec()``/``missing_paths()`` behavior
+Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (49
+entries, 45 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
 (the PR1 brief's "required_facts subset-of registry" primitive); commercial
 classification exactly matches ``enums.COMMERCIAL_FACT_PATHS``; PII
 classification spot-checks per this module's own documented rationale;
@@ -43,8 +43,8 @@ class TestDefaultCatalogCompleteness:
             spec = DEFAULT_FACT_REGISTRY.spec(path)
             assert spec.path is path
 
-    def test_catalog_has_exactly_44_entries(self) -> None:
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 44
+    def test_catalog_has_exactly_49_entries(self) -> None:
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
 
     def test_all_paths_matches_fact_path_enum(self) -> None:
         assert DEFAULT_FACT_REGISTRY.all_paths() == frozenset(FactPath)
@@ -137,7 +137,7 @@ class TestRegistryImmutability:
         # must be impossible, not merely type-annotated as read-only.
         with pytest.raises(AttributeError):
             DEFAULT_FACT_REGISTRY._specs.clear()  # type: ignore[attr-defined]
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 44
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
 
     def test_specs_mapping_cannot_be_item_assigned(self) -> None:
         with pytest.raises(TypeError):
@@ -262,7 +262,7 @@ class TestValueFormatKindConsistency:
         # hotfix's __post_init__ addition must not retroactively break
         # _DEFAULT_SPECS (module import already proves this at collection
         # time; this is the explicit, readable assertion of it).
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 44
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
 
 
 class TestRegistryConstruction:
@@ -294,15 +294,16 @@ class TestRegistryConstruction:
             ]
         )
         assert custom.all_paths() == frozenset({FactPath.PERSON_BIRTH_DATE})
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 44
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
 
 
 _UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
 
 
 def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | None = None) -> ApplicantFacts:
-    """Build an ``ApplicantFacts`` with every one of the 41 paths defaulted
-    to UNKNOWN, then override the given wire keys with KNOWN wire values —
+    """Build an ``ApplicantFacts`` with every one of the 45 required
+    applicant paths defaulted to UNKNOWN, then override the given wire keys
+    with KNOWN wire values —
     the minimal builder ``derive()``'s tests need (distinct from
     ``conftest.make_applicant_facts``, which is all-UNKNOWN with no override
     knob)."""
@@ -349,6 +350,10 @@ def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | No
         "process.wants_onshore_conversion": _UNKNOWN_WIRE,
         "commercial.service_fee_budget_idr": _UNKNOWN_WIRE,
         "commercial.wants_quote": _UNKNOWN_WIRE,
+        "family.stepchild_marriage_certificate_confirmed": _UNKNOWN_WIRE,
+        "family.stepchild_birth_certificate_confirmed": _UNKNOWN_WIRE,
+        "family.sponsor_permit_basis": _UNKNOWN_WIRE,
+        "immigration.renewal_paid": _UNKNOWN_WIRE,
     }
     facts.update(overrides)
     return ApplicantFacts(
@@ -378,7 +383,7 @@ class TestDeriveRequiresAwareEffectiveAt:
 
 
 class TestDeriveWireToRuntime:
-    def test_every_one_of_44_paths_present_in_snapshot(self) -> None:
+    def test_every_one_of_48_paths_present_in_snapshot(self) -> None:
         snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
         assert frozenset(snapshot.values) == frozenset(FactPath)
 
@@ -513,9 +518,9 @@ class TestCanonicalFactPayload:
         payload = canonical_fact_payload(_applicant_facts({}))
         assert list(payload.keys()) == sorted(payload.keys())
 
-    def test_covers_all_41_applicant_paths(self) -> None:
+    def test_covers_all_45_applicant_paths(self) -> None:
         payload = canonical_fact_payload(_applicant_facts({}))
-        assert len(payload) == 41
+        assert len(payload) == 45
 
     def test_is_json_serializable(self) -> None:
         import json
@@ -532,3 +537,445 @@ class TestCanonicalFactPayload:
         payload_a = canonical_fact_payload(facts)
         payload_b = canonical_fact_payload(facts)
         assert payload_a == payload_b
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-23 fact vocabulary extension — three owner rulings (stepchild
+# evidence, sponsor permit basis, active stay permit).
+# ---------------------------------------------------------------------------
+
+
+class TestStepchildEvidenceFactSpecs:
+    """``family.stepchild_marriage_certificate_confirmed`` / ``family.
+    stepchild_birth_certificate_confirmed`` — modeled exactly like
+    ``family.marriage_registered`` / ``family.sponsor_confirmed``: plain
+    booleans, PERSONAL pii_class, no allowed_values.
+    """
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            FactPath.FAMILY_STEPCHILD_MARRIAGE_CERTIFICATE_CONFIRMED,
+            FactPath.FAMILY_STEPCHILD_BIRTH_CERTIFICATE_CONFIRMED,
+        ],
+    )
+    def test_is_boolean_personal_not_derived(self, path: FactPath) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(path)
+        assert spec.kind is FactValueKind.BOOLEAN
+        assert spec.pii_class is PiiClass.PERSONAL
+        assert spec.derived is False
+        assert spec.allowed_values is None
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "family.stepchild_marriage_certificate_confirmed",
+            "family.stepchild_birth_certificate_confirmed",
+        ],
+    )
+    def test_round_trips_known_true_through_derive(self, path: str) -> None:
+        facts = _applicant_facts({path: {"status": "KNOWN", "value": True}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        assert snapshot.values[FactPath(path)] == KnownFact(value=True)
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "family.stepchild_marriage_certificate_confirmed",
+            "family.stepchild_birth_certificate_confirmed",
+        ],
+    )
+    def test_unknown_when_not_asked(self, path: str) -> None:
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        fact = snapshot.values[FactPath(path)]
+        assert isinstance(fact, UnknownFact)
+        assert fact.reason.value == "NOT_ASKED"
+
+
+class TestRelationTypeStepchild:
+    """``RelationType.STEPCHILD`` widens ``family.relation_to_sponsor``'s
+    closed enum (2026-08-23 owner ruling — see ``enums.RelationType``'s
+    docstring for the E31D grounding).
+    """
+
+    def test_stepchild_is_an_allowed_relation_value(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.FAMILY_RELATION_TO_SPONSOR)
+        assert spec.allowed_values is not None
+        assert "STEPCHILD" in spec.allowed_values
+
+    def test_existing_relation_values_still_allowed(self) -> None:
+        # Innocence: widening the set must not drop any existing member.
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.FAMILY_RELATION_TO_SPONSOR)
+        for value in ("SPOUSE", "CHILD", "PARENT", "SIBLING", "DEPENDENT", "OTHER"):
+            assert value in spec.allowed_values
+
+    def test_known_relation_model_accepts_stepchild(self) -> None:
+        from backend.services.visa_engine.models import KnownRelation
+
+        fact = KnownRelation(status="KNOWN", value="STEPCHILD")
+        assert fact.value.value == "STEPCHILD"
+
+
+class TestSponsorPermitBasisFact:
+    """``family.sponsor_permit_basis`` — closed enum transcribed from
+    Permenkumham 11/2024 Pasal 33 ayat (2) huruf a-l (see ``enums.
+    SponsorPermitBasis``'s docstring for the verbatim ayat (7) exclusion
+    this fact exists to make expressible).
+    """
+
+    _GROUNDED_VALUES = (
+        "EXPERT",
+        "WORKER",
+        "MARITIME_CREW",
+        "CLERGY",
+        "FOREIGN_INVESTMENT",
+        "SCIENTIFIC_RESEARCH",
+        "EDUCATION",
+        "FAMILY_REUNIFICATION",
+        "REPATRIATION",
+        "SECOND_HOME",
+        "MEDICAL_TREATMENT",
+        "WORKING_HOLIDAY",
+        "OTHER",
+    )
+
+    def test_is_string_with_the_thirteen_grounded_values(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.FAMILY_SPONSOR_PERMIT_BASIS)
+        assert spec.kind is FactValueKind.STRING
+        assert spec.allowed_values == frozenset(self._GROUNDED_VALUES)
+
+    def test_not_flagged_derived_and_not_pii_sensitive(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.FAMILY_SPONSOR_PERMIT_BASIS)
+        assert spec.derived is False
+        assert spec.pii_class is PiiClass.PERSONAL
+
+    def test_family_reunification_round_trips_through_derive(self) -> None:
+        facts = _applicant_facts(
+            {"family.sponsor_permit_basis": {"status": "KNOWN", "value": "FAMILY_REUNIFICATION"}}
+        )
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        assert snapshot.values[FactPath.FAMILY_SPONSOR_PERMIT_BASIS] == KnownFact(
+            value="FAMILY_REUNIFICATION"
+        )
+
+    def test_a_value_outside_the_enum_is_rejected_at_the_model_layer(self) -> None:
+        from pydantic import ValidationError
+
+        from backend.services.visa_engine.models import KnownSponsorPermitBasis
+
+        with pytest.raises(ValidationError):
+            KnownSponsorPermitBasis(status="KNOWN", value="BENEFACTOR")  # type: ignore[arg-type]
+
+    def test_unknown_when_not_asked(self) -> None:
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        fact = snapshot.values[FactPath.FAMILY_SPONSOR_PERMIT_BASIS]
+        assert isinstance(fact, UnknownFact)
+        assert fact.reason.value == "NOT_ASKED"
+
+
+class TestDeriveHasActiveStayPermit:
+    """``derived.has_active_stay_permit`` — owner ruling: an applicant WITH
+    an active KITAS is excluded from D12. Exhaustive tri-state truth table
+    per the mandate: known-active / known-expired / unknown-code /
+    unknown-expiry / both-unknown, plus the visit-class and unclassifiable
+    code paths the classification is grounded on.
+    """
+
+    def _snapshot(
+        self,
+        code,
+        expiry,
+        *,
+        renewal_paid: dict[str, object] | None = None,
+        effective_at: datetime = GOLD_EFFECTIVE_AT,
+    ):
+        overrides = {
+            "immigration.current_status_code": code,
+            "immigration.current_status_expiry": expiry,
+        }
+        if renewal_paid is not None:
+            overrides["immigration.renewal_paid"] = renewal_paid
+        facts = _applicant_facts(overrides)
+        return DEFAULT_FACT_REGISTRY.derive(facts, effective_at=effective_at)
+
+    @staticmethod
+    def _known(value: object) -> dict[str, object]:
+        return {"status": "KNOWN", "value": value}
+
+    @staticmethod
+    def _unknown(reason: str = "NOT_ASKED") -> dict[str, object]:
+        return {"status": "UNKNOWN", "reason": reason}
+
+    # -- known-active ------------------------------------------------------
+
+    def test_known_active_permit_code_with_future_expiry_is_true(self) -> None:
+        snapshot = self._snapshot(
+            self._known("E23"),
+            self._known("2030-01-01"),
+            effective_at=datetime(2026, 8, 23, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=True)
+
+    def test_expiry_on_the_reference_date_itself_is_still_active(self) -> None:
+        # Inclusive boundary, same convention as _derive_age_years.
+        snapshot = self._snapshot(
+            self._known("E33"),
+            self._known("2026-08-23"),
+            effective_at=datetime(2026, 8, 23, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=True)
+
+    # -- known-expired -------------------------------------------------------
+
+    def test_known_expired_permit_is_false_not_unknown(self) -> None:
+        # Owner ruling: an EXPIRED permit is "no active permit" — that
+        # person CAN apply for D12. A real, tested, POSITIVE False.
+        snapshot = self._snapshot(
+            self._known("E28A"),
+            self._known("2020-01-01"),
+            effective_at=datetime(2026, 8, 23, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    def test_expiry_one_day_before_reference_date_is_expired(self) -> None:
+        snapshot = self._snapshot(
+            self._known("E31B"),
+            self._known("2026-08-22"),
+            effective_at=datetime(2026, 8, 23, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    # -- unknown-code ---------------------------------------------------------
+
+    def test_unknown_current_status_code_yields_unknown_never_false(self) -> None:
+        snapshot = self._snapshot(self._unknown(), self._known("2030-01-01"))
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+
+    # -- unknown-expiry ---------------------------------------------------------
+
+    def test_unknown_expiry_with_permit_shaped_code_yields_unknown_never_false(self) -> None:
+        # The whole point of the tri-state rule: a permit-shaped code with
+        # UNKNOWN expiry must NEVER resolve to False (False would wrongly
+        # ADMIT this applicant to D12).
+        snapshot = self._snapshot(self._known("E31B"), self._unknown())
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+
+    # -- both-unknown ---------------------------------------------------------
+
+    def test_both_unknown_yields_unknown(self) -> None:
+        snapshot = self._snapshot(self._unknown(), self._unknown())
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+
+    # -- grounding: visit-class codes are a real, positive False -----------
+
+    @pytest.mark.parametrize(
+        "code",
+        ["A1", "C1", "C2", "C6", "ITK_FROM_BVK", "ITK_FROM_VISIT_C", "ITK_FROM_VISIT_D", "ITK_PERALIHAN"],
+    )
+    def test_every_frontend_offered_visit_class_code_is_false_regardless_of_expiry(
+        self, code: str
+    ) -> None:
+        # Innocence sweep over every value the current interview can ever
+        # send as KNOWN (tree.ts's current_status_code options). None of
+        # them is an ITAS/ITAP-class permit; expiry is irrelevant to a code
+        # that was never a residence permit in the first place, so this
+        # stays False even with a far-future expiry.
+        snapshot = self._snapshot(self._known(code), self._known("2099-01-01"))
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    def test_visit_class_code_is_false_even_when_expiry_is_unknown(self) -> None:
+        # A visit-class code short-circuits before ever consulting expiry.
+        snapshot = self._snapshot(self._known("C1"), self._unknown())
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    # -- grounding: NO_STAY_PERMIT, the offshore convergence sentinel ------
+
+    def test_no_stay_permit_sentinel_is_a_definite_false_the_reachability_proof_for_pr_4727(
+        self,
+    ) -> None:
+        # This is the backend half of the P0 offshore-reachability fix's
+        # own reachability proof (team-lead review, PR #4727): NOT one of
+        # tree.ts's 8 real current_status_code options — it is a value
+        # apps/mouth's fact-mapper.ts synthesizes directly, without asking
+        # a question, when an OFFSHORE applicant answers the existing
+        # `holds_stay_permit` gate "no" (flow.test.ts and
+        # fact-mapper.test.ts on that PR prove the frontend reaches this
+        # value with zero further questions). This test proves the OTHER
+        # half: the wire value the frontend actually sends resolves the
+        # fact DEFINITELY on the real derivation, not to UNKNOWN — the
+        # exact failure mode the original P0 exposed at the flow-graph
+        # level with no backend fact ever reachable at all. Expiry is
+        # irrelevant here for the same reason as every other visit-class
+        # code: a NO_STAY_PERMIT applicant was never a residence-permit
+        # holder in the first place.
+        snapshot = self._snapshot(self._known("NO_STAY_PERMIT"), self._unknown())
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    def test_no_stay_permit_sentinel_is_false_even_with_renewal_paid_true(self) -> None:
+        # The joint case team-lead's #4719 re-grade flagged (2026-08-24):
+        # merging PR #4727's sentinel with this PR's F4 rework produced two
+        # correct changes composed in the right order, but no single test
+        # named BOTH `NO_STAY_PERMIT` and `renewal_paid` — so
+        # `NO_STAY_PERMIT + renewal_paid=True -> False` held only by
+        # ordering (the sentinel check runs before `renewal_paid` is ever
+        # read), pinned by nothing. Unreachable through today's funnel
+        # (the sentinel only arises from `holds_stay_permit === "no"`, and
+        # the planned interview question only asks `renewal_paid` after
+        # `stay_permit_code`, which the sentinel branch never reaches) —
+        # but the engine accepts direct payloads, and a future edit that
+        # moved `renewal_paid` above the sentinel check would invert this
+        # silently: the existing renewal_paid tests would still show their
+        # three reds (they never touch NO_STAY_PERMIT), and this is the
+        # only test that would catch it. A person who told the interview
+        # directly "I hold no permit at all" must never be turned into an
+        # active-permit holder by an unrelated payment flag — that would
+        # admit a fabricated case (there is nothing here to renew) to
+        # exactly the outcome a NO_STAY_PERMIT applicant should never
+        # reach, real KITAS or not.
+        snapshot = self._snapshot(
+            self._known("NO_STAY_PERMIT"),
+            self._unknown(),
+            renewal_paid=self._known(True),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    # -- grounding: an unclassifiable code is honestly UNKNOWN, never a guess --
+
+    @pytest.mark.parametrize("code", ["XYZ", "other", "B211", "NONE_ISSUED"])
+    def test_unclassifiable_code_is_unknown_not_a_guess(self, code: str) -> None:
+        # "NONE_ISSUED" included deliberately: it is a gold-fixture-local
+        # sentinel (`_gold_fixtures.py`'s baseline persona), not a value
+        # this fact's grounding recognizes — proving the classification
+        # never special-cases a sibling fixture's private convention.
+        snapshot = self._snapshot(self._known(code), self._known("2030-01-01"))
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+        assert fact.reason.value == "UNVERIFIED"
+
+    # -- F4 (2026-08-24): renewal_paid can turn a stay-permit-shaped code's --
+    # -- expired verdict into True — nothing else -----------------------
+    #
+    # Owner ruling, verbatim: "chi ha un kitas scaduto e il pagamento del
+    # rinnovo e' avvenuto prima della scadenza, se verra accettato non ci
+    # sono penali. se lo ha pagato dopo la scadenza, si conteranno i giorni
+    # tra scadenza e pagamento. In ogni caso resta sul visa che ha esteso,
+    # non va su un altro" — clarified further, verbatim: "esatto il rinno si
+    # considera depositato se ce stato pagamento".
+    #
+    # REWORKED 2026-08-24 (team-lead review, second pass): the first version
+    # checked renewal_paid before code was even read, so it overrode EVERY
+    # code unconditionally — including a real, correctly-recorded
+    # visit-class code (a C1 tourist with renewal_paid=True would have
+    # wrongly resolved True). Corrected: renewal_paid is now consulted only
+    # once the code is confirmed KNOWN and stay-permit-SHAPED — see the
+    # derivation's own 2026-08-24 REWORKED docstring note for the full
+    # reasoning, including why code-UNKNOWN + renewal_paid=True resolves
+    # UNKNOWN, not True.
+
+    def test_renewal_paid_true_turns_an_expired_stay_permit_shaped_code_active(
+        self,
+    ) -> None:
+        # "the applicant the ruling names": an expired KITAS with a paid,
+        # in-flight renewal — today's pre-F4 behaviour was a wrongly-admitting
+        # False. This is the case F4 exists to reverse.
+        snapshot = self._snapshot(
+            self._known("E23"),
+            self._known("2020-01-01"),  # expired years ago on the printed card
+            renewal_paid=self._known(True),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=True)
+
+    def test_renewal_paid_true_does_not_rescue_a_real_visit_class_code(self) -> None:
+        # The corrected claim (was the opposite pre-rework): a REAL,
+        # grounded member of _VISIT_CLASS_STATUS_CODES (ITK_PERALIHAN) is
+        # NOT a KITAS being renewed — it is a different permit class
+        # entirely, and the ruling presupposes "chi ha un kitas", not
+        # "anyone who has paid something". Payment must never rescue a code
+        # this registry has positively classified as non-residence.
+        snapshot = self._snapshot(
+            self._known("ITK_PERALIHAN"),
+            self._known("2020-01-01"),
+            renewal_paid=self._known(True),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    def test_renewal_paid_true_with_stay_permit_shaped_code_and_unknown_expiry_is_still_true(
+        self,
+    ) -> None:
+        # The placement claim: renewal_paid is checked BEFORE the expiry
+        # comparison, not after, because "in ogni caso" makes the expiry
+        # date irrelevant once the code is confirmed stay-permit-shaped —
+        # the applicant stays on the extended visa whether or not this
+        # snapshot happens to also know its old printed expiry date.
+        snapshot = self._snapshot(
+            self._known("E23"),
+            self._unknown(),
+            renewal_paid=self._known(True),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=True)
+
+    def test_renewal_paid_true_with_unknown_code_is_unknown_not_true(self) -> None:
+        # The case the reviewer explicitly could not settle in advance,
+        # resolved by the rework's placement: with no code at all, the
+        # ruling's own premise ("chi ha un kitas") cannot be confirmed — we
+        # would not know WHAT permit class was extended. Guessing True here
+        # would repeat, one layer up, the exact defect this rework fixes.
+        snapshot = self._snapshot(
+            self._unknown(),
+            self._unknown(),
+            renewal_paid=self._known(True),
+        )
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+
+    def test_renewal_paid_true_with_unclassifiable_code_is_unknown_not_true(self) -> None:
+        # Same reasoning, the unclassifiable-shape case: we have a code, but
+        # cannot confirm it is a real stay-permit code, so renewal_paid is
+        # never consulted for it either.
+        snapshot = self._snapshot(
+            self._known("XYZ"),
+            self._known("2020-01-01"),
+            renewal_paid=self._known(True),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)
+        assert fact.reason.value == "UNVERIFIED"
+
+    def test_renewal_paid_false_does_not_change_pre_f4_behaviour(self) -> None:
+        # A KNOWN False (unpaid, or no renewal at all) is a real answer, but
+        # it must fall through to the exact pre-F4 logic unchanged — an
+        # expired code still resolves False.
+        snapshot = self._snapshot(
+            self._known("E23"),
+            self._known("2020-01-01"),
+            renewal_paid=self._known(False),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    def test_renewal_paid_unknown_default_does_not_change_pre_f4_behaviour(self) -> None:
+        # The rollout-default case: no interview has asked this yet, so
+        # every pre-existing caller omits the key and gets UNKNOWN here —
+        # proving F4 shipped with ZERO behaviour change for any client that
+        # has not adopted the new question yet (fail-safe by construction,
+        # same guarantee the rollout-default mechanism exists to provide).
+        snapshot = self._snapshot(
+            self._known("E23"),
+            self._known("2020-01-01"),
+            effective_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+        )
+        assert snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT] == KnownFact(value=False)
+
+    def test_renewal_paid_unknown_does_not_mask_an_otherwise_unknown_code(self) -> None:
+        # UNKNOWN renewal_paid must not manufacture certainty the code/expiry
+        # logic itself would not have reached.
+        snapshot = self._snapshot(self._unknown(), self._known("2030-01-01"))
+        fact = snapshot.values[FactPath.DERIVED_HAS_ACTIVE_STAY_PERMIT]
+        assert isinstance(fact, UnknownFact)

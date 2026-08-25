@@ -88,21 +88,64 @@ NOISE_PATTERNS = [
 # LEGAL DOCUMENT TYPE PATTERNS
 # ============================================================================
 
-LEGAL_TYPE_PATTERN = re.compile(
-    r"(UNDANG-UNDANG|PERATURAN PEMERINTAH|PERATURAN PRESIDEN|KEPUTUSAN PRESIDEN|PERATURAN MENTERI|QANUN|PERATURAN DAERAH|PERATURAN KEPALA)",
-    re.IGNORECASE,
+# Ordered LONGEST-FIRST wherever one name is a prefix of another. Python
+# alternation is first-match-wins at a given position, so "UNDANG-UNDANG" listed
+# before "UNDANG-UNDANG DASAR" would silently file the constitution as an
+# ordinary law, and "PERATURAN PEMERINTAH" before its PENGGANTI form would file
+# an emergency regulation (Perppu) as a government regulation (PP). Both are
+# identity collisions waiting to happen, since document_id is built from the
+# abbreviation.
+LEGAL_TYPE_NAMES = (
+    "PERATURAN PEMERINTAH PENGGANTI UNDANG-UNDANG",
+    "UNDANG-UNDANG DASAR",
+    "UNDANG-UNDANG",
+    "PERATURAN PEMERINTAH",
+    "PERATURAN PRESIDEN",
+    "KEPUTUSAN PRESIDEN",
+    "INSTRUKSI PRESIDEN",
+    "PERATURAN MENTERI",
+    "KEPUTUSAN MENTERI",
+    "INSTRUKSI MENTERI",
+    "PERATURAN GUBERNUR",
+    "KEPUTUSAN GUBERNUR",
+    "PERATURAN BUPATI",
+    "PERATURAN WALIKOTA",
+    "PERATURAN WALI KOTA",
+    "PERATURAN DAERAH",
+    "PERATURAN BADAN",
+    "PERATURAN KEPALA",
+    "SURAT EDARAN",
+    "QANUN",
 )
 
-# Abbreviations mapping
+_LEGAL_TYPE_ALTERNATION = "|".join(re.escape(name) for name in LEGAL_TYPE_NAMES)
+
+LEGAL_TYPE_PATTERN = re.compile(rf"({_LEGAL_TYPE_ALTERNATION})", re.IGNORECASE)
+
+# Abbreviations mapping. Every name in LEGAL_TYPE_NAMES must appear here --
+# a missing entry does not raise, it falls through to the full Indonesian name
+# and quietly changes the shape of document_id (see the tripwire test).
 LEGAL_TYPE_ABBREV = {
+    "PERATURAN PEMERINTAH PENGGANTI UNDANG-UNDANG": "Perppu",
+    "UNDANG-UNDANG DASAR": "UUD",
     "UNDANG-UNDANG": "UU",
     "PERATURAN PEMERINTAH": "PP",
     "PERATURAN PRESIDEN": "Perpres",
     "KEPUTUSAN PRESIDEN": "Keppres",
+    "INSTRUKSI PRESIDEN": "Inpres",
     "PERATURAN MENTERI": "Permen",
-    "QANUN": "Qanun",
+    "KEPUTUSAN MENTERI": "Kepmen",
+    "INSTRUKSI MENTERI": "Inmen",
+    "PERATURAN GUBERNUR": "Pergub",
+    "KEPUTUSAN GUBERNUR": "Kepgub",
+    "PERATURAN BUPATI": "Perbup",
+    "PERATURAN WALIKOTA": "Perwali",
+    "PERATURAN WALI KOTA": "Perwali",
     "PERATURAN DAERAH": "Perda",
+    "PERATURAN BADAN": "Perban",
     "PERATURAN KEPALA": "Perkep",
+    "SURAT EDARAN": "SE",
+    "QANUN": "Qanun",
 }
 
 # ============================================================================
@@ -114,6 +157,53 @@ NUMBER_PATTERN = re.compile(r"NOMOR\s+(\d+[A-Z]?)(?:[/-]\d+)?", re.IGNORECASE)
 
 # Year
 YEAR_PATTERN = re.compile(r"TAHUN\s+(\d{4})", re.IGNORECASE)
+
+# ---------------------------------------------------------------------------
+# TITLE-BLOCK IDENTITY PATTERN
+# ---------------------------------------------------------------------------
+# Why this exists. The three patterns above are searched INDEPENDENTLY over the
+# whole document, each taking its first hit. Every Indonesian regulation cites
+# other regulations, so that lets the type come from one instrument, the number
+# from a second and the year from a third -- an identity assembled from three
+# different laws. It is not hypothetical: PP 31/2013 (Immigration) was stored as
+# number 5409, and a ministerial decree measured on 2026-08-25 came out as
+# "UU 28/2025" with every field scavenged from its own citation list.
+#
+# This pattern requires type, number and year to be CO-LOCATED, in title order,
+# inside a bounded window, so all three can only come from one instrument.
+# Measured over the 188 real PDFs in kb_sources (27 with a filename that states
+# the expected answer): 20/27 correct before, 26/27 after. The single remaining
+# miss is a PDF whose title page does not survive parsing at all -- no pattern
+# can reach it.
+#
+# The gaps are bounded and lazy ({0,120} and {0,40}) and no quantifier nests
+# over an overlapping character class. Measured against 200k-character
+# pathological inputs: 0.011s and 0.006s. This file already carries a ReDoS
+# scar (see the page-pattern comment above) -- the bounds are load-bearing,
+# not decorative.
+
+# A document number is NOT always an integer. Ministerial decrees are numbered
+# alphanumerically (e.g. "M.IP-19.GR.01.01"), so the token is captured broadly
+# here and interpreted in normalize_document_number().
+_NUMBER_TOKEN = r"[A-Za-z0-9][A-Za-z0-9./-]{0,40}"
+
+LEGAL_TITLE_PATTERN = re.compile(
+    rf"(?P<type>{_LEGAL_TYPE_ALTERNATION})"
+    rf"[\s\S]{{0,120}}?"
+    rf"NOMOR\s*(?P<number>{_NUMBER_TOKEN})"
+    rf"[\s\S]{{0,40}}?"
+    rf"TAHUN\s*(?P<year>(?:19|20)\d{{2}})",
+    re.IGNORECASE,
+)
+
+# The citation list opens with "Menimbang"/"Mengingat"; the title block is what
+# precedes it. The search deliberately starts at CITATION_SEARCH_OFFSET rather
+# than 0: on some scans the cleaner hoists those two words to the very front of
+# the text, and a guard that merely required `start > 200` then fell through to
+# the whole document (measured on Perpres 157/2024).
+CITATION_START_PATTERN = re.compile(r"\bMENIMBANG\b|\bMENGINGAT\b", re.IGNORECASE)
+CITATION_SEARCH_OFFSET = 200
+TITLE_BLOCK_FALLBACK_CHARS = 6000
 
 # Topic (text after "TENTANG" until "DENGAN RAHMAT" or end)
 TOPIC_PATTERN = re.compile(
@@ -179,9 +269,43 @@ AYAT_PATTERN = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
-# Penjelasan (Elucidation)
+# Penjelasan (Elucidation) -- the boundary between a law and the official
+# article-by-article commentary published with it.
+#
+# CORRECTED 2026-08-25. The previous pattern was
+# ``^Penjelasan\s+(?:Umum|Atas|Pasal|Ayat)`` and had TWO defects that combined
+# into a silent data-destroying bug:
+#
+# 1. It required the word at column 0. The real gazette heading is rendered
+#    "\n PENJELASAN \nATAS \nUNDANG-UNDANG ..." -- with a LEADING SPACE -- so
+#    the true boundary was never found.
+# 2. Accepting the qualifiers ``Pasal``/``Ayat`` let it match an ordinary
+#    in-sentence use, "penjelasan Pasal 123 ayat (2) ...", which lands at the
+#    start of a line purely because of a line wrap.
+#
+# Measured on UU 40/2007 (Perseroan Terbatas): the real heading sits at
+# character 133,167 and the old pattern instead matched at 201,998 -- 68,000
+# characters too late, out of 210,989. Everything before that false boundary was
+# treated as the operative body, so the commentary's repeated article numbers
+# were parsed as articles. Their chunk ids collided with the real ones and
+# destroyed them: 378 chunks built, 202 stored, and Pasal 32 (minimum capital)
+# left holding "Cukup jelas".
+#
+# Measured over the 58 text-layer PDFs in data/kb_sources: boundary detected in
+# 8 documents before, 10 after; duplicate article numbers left inside the body
+# 546 before, 398 after; zero documents made worse. The residual 398 are NOT
+# elucidations -- they are amending laws quoting the articles they amend, which
+# is what the chunk-id disambiguation guard handles.
 PENJELASAN_PATTERN = re.compile(
-    r"^Penjelasan\s+(?:Umum|Atas|Pasal|Ayat)",
+    # a line that is nothing but the heading ...
+    r"^[^\S\n]*PENJELASAN[^\S\n]*$"
+    # ... or the heading carrying its qualifier ...
+    r"|^[^\S\n]*PENJELASAN\s+(?:UMUM|ATAS)\b"
+    # ... or a per-article heading that OCCUPIES THE WHOLE LINE. The `$` is what
+    # separates a heading from prose: the false positive that used to be matched,
+    # "penjelasan Pasal 123 ayat (2) huruf c dan Pasal 125 ayat (6)", continues
+    # past the number and so cannot reach the end of its line.
+    r"|^[^\S\n]*PENJELASAN\s+PASAL\s+\d+[A-Z]?[^\S\n]*$",
     re.IGNORECASE | re.MULTILINE,
 )
 

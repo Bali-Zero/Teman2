@@ -93,11 +93,13 @@ Owned scope:
 ```text
 packages/core/research_os/**
 apps/backend-rag/backend/services/research_os/**
-apps/backend-rag/backend/db/migrations_v2/270_research_os_contract_core.sql
+apps/backend-rag/backend/db/migrations_v2/<int>_research_os_contract_core.sql
 apps/backend-rag/backend/tests/**/research_os/**
 apps/backend-rag/tests/**/research_os/**
 research/operations/execution/research-os-v1.0.0/evidence/p04/**
 ```
+
+The migration's symbolic name is `research_os_contract_core`; `<int>` is bound at integration time from a freshly re-measured `origin/main`, never read from this or any other document. The `270`–`276` block this dispatch originally reserved was found entirely void on 2026-08-23 (occupied by unrelated work) and superseded by this symbolic-name rule — see `SESSION-BOARD.md` §0 (Migration-ledger decision 001). The migration in fact shipped as `279_research_os_contract_core.sql` (PR #4740), bound against a head of `278`.
 
 Required exclusive leases:
 
@@ -108,7 +110,7 @@ migration-ledger-270-276
 
 Allowed work:
 
-- strict canonical models, fixtures, validators, hashing, compatibility registry, adapters, additive repository primitives, migration 270, rollback and focused tests;
+- strict canonical models, fixtures, validators, hashing, compatibility registry, adapters, additive repository primitives, the `research_os_contract_core` migration (integer bound at integration time, not 270 — see the note above), rollback and focused tests;
 - test-only dual-write using synthetic/public fixtures;
 - the side-effect-free containment/manual materializer needed later by P01.
 
@@ -129,7 +131,7 @@ python3 scripts/fleet_dispatch.py place \
   --files \
     packages/core/research_os \
     apps/backend-rag/backend/services/research_os \
-    apps/backend-rag/backend/db/migrations_v2/270_research_os_contract_core.sql \
+    apps/backend-rag/backend/db/migrations_v2/<int>_research_os_contract_core.sql \
     apps/backend-rag/backend/tests \
     apps/backend-rag/tests \
   --dry-run
@@ -146,7 +148,7 @@ Exit to review:
 - no runtime flag is enabled;
 - atomic commit and evidence bundle exist.
 
-Reviewer family: architecture/contract refuter different from the builder. A P04 PASS opens G1 eligibility; only the serial integrator may bring migration 270 into the integration branch.
+Reviewer family: architecture/contract refuter different from the builder. A P04 PASS opens G1 eligibility; only the serial integrator may bring the `research_os_contract_core` migration into the integration branch, with its integer bound at that time (not 270 — see the note above).
 
 ### H2 — P01 NEXUS containment, Tasks 1–6 only
 
@@ -365,7 +367,7 @@ Allowed verdicts are `pass`, `pass_with_limits`, `fail`, and `insufficient_evide
 
 Only I1 integrates reviewed implementation branches. Initial order:
 
-1. P04 and migration 270;
+1. P04 and its `research_os_contract_core` migration (integer bound at integration time, not 270 — see the note in §4);
 2. no other schema change until P04's integrated contract suite passes;
 3. P02/migration 271, P05/migration 272, and P06/migration 273 only after their later implementation branches pass;
 4. P03 may integrate independently of the schema train only if the exact diff has no shared-contract collision and its P04 compatibility review passes.

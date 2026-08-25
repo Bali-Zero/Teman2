@@ -60,7 +60,7 @@ export function InlineNewsCTA() {
           padding: "0.55rem 1.1rem",
           borderRadius: "0.7rem",
           background: "#25D366",
-          color: "#fff",
+          color: "var(--accent-whatsapp-ink)",
           fontSize: 13,
           fontWeight: 600,
           whiteSpace: "nowrap",

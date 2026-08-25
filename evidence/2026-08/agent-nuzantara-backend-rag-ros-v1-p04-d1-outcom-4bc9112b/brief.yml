@@ -1,0 +1,41 @@
+task_id: ros-v1-p04-d1-outcome-event
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  P04-D1 canonical contract for CONTRACTS.md §16 `OutcomeEvent` — the last object kind in the
+  D1 remainder. With this kind, all 25 object kinds the spec declares (15 top-level `## N.`
+  sections + 10 `### N.M` sub-sections; §8 and §13 are containers, not kinds) are implemented
+  on `main`.
+
+  One frozen Pydantic model, its generated Draft 2020-12 schema, 13 fixture files, a test
+  module, and registration in `cli.py` / `models/__init__.py` / `schemas/__init__.py`. Every
+  file in the diff belongs to this kind, is a registration line, or is this PR's own evidence
+  pair.
+
+  Gear 3 is declared by convention with the sibling P04-D1 kind PRs (#4643/#4621/#4610), not by
+  the deterministic hot-zone floor — this diff touches no `HOTZONE_PATTERNS` path
+  (`scripts/evidence_pack_lint.py`), so the computed floor is 1. `compute_ceiling()` does not
+  flag it either: 21 files / +2619-139, neither docs-only nor small-shaped. Gear 3 reflects the
+  weight of an adversarially-reviewed new canonical contract kind added to a spec other kinds
+  reference, not a mechanical floor hit.
+constraints:
+  - "`CONTRACT_MODELS` (cli.py), `__all__` (models/__init__.py) and `SCHEMA_MODELS`
+    (schemas/__init__.py) must each register exactly one new kind, `outcome_event` — every kind
+    already on `main` must still be present, checked by SET DIFF against a pattern with a
+    verified non-zero hit count on both sides (the file uses absolute `from research_os.models.*`
+    imports; a `from .` pattern silently matches zero on both sides and reads as 'no loss' while
+    proving nothing — the exact trap an earlier probe in this same session's PR fell into)."
+  - "`metric_profile_ref` / `metric_result_ref` shapes (`{metric_profile_id, object_hash}` /
+    `{metric_result_id, object_hash}`) must stay byte-for-byte identical to the kinds they
+    reference — §19/§20 landed on `main` via #4637, so this PR's shapes are checked against
+    what is actually on `main`, not against whatever branch they were first compared to."
+  - "The checked-in schema must express the `metric_profile_ref`/`metric_result_ref`
+    joint-presence invariant (CONTRACTS.md:865) with presence-AND-value semantics
+    (`required` + `not: {type: null}`), matching the model's `is None` test — `dependentRequired`
+    alone tests presence only and a document with the key present-and-explicitly-null slips past
+    it while the model still rejects it (this contract uses presence-preserving null semantics,
+    hashing.py:3-5 option b)."
+  - "Every fixture-loading test loop must assert its own glob is non-empty — an unasserted glob
+    over an emptied/renamed fixtures directory passes having validated nothing, the identical
+    green as a run that validated everything."

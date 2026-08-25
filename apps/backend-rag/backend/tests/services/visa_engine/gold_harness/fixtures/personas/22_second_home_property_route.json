@@ -39,6 +39,10 @@
       "status": "KNOWN",
       "value": []
     },
+    "immigration.renewal_paid": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "intent.purposes": {
       "status": "KNOWN",
       "value": ["SECOND_HOME"]
@@ -112,6 +116,18 @@
       "reason": "NOT_ASKED"
     },
     "family.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.stepchild_marriage_certificate_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.stepchild_birth_certificate_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "family.sponsor_permit_basis": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },

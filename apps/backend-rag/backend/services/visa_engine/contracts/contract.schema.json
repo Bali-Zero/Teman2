@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the one transitional field documented on\n``sponsor_type`` below. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the five transitional fields documented on\n``sponsor_type``, the three ``family.stepchild_*``/\n``family.sponsor_permit_basis`` fields (2026-08-23), and\n``immigration_renewal_paid`` (2026-08-24) below \u2014 all the same rollout\nmechanism. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -319,6 +319,28 @@
           ],
           "title": "Family.Sponsor Nationalities"
         },
+        "family.sponsor_permit_basis": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownSponsorPermitBasis",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownSponsorPermitBasis"
+            }
+          ],
+          "title": "Family.Sponsor Permit Basis"
+        },
         "family.sponsor_status_code": {
           "discriminator": {
             "mapping": {
@@ -336,6 +358,50 @@
             }
           ],
           "title": "Family.Sponsor Status Code"
+        },
+        "family.stepchild_birth_certificate_confirmed": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Family.Stepchild Birth Certificate Confirmed"
+        },
+        "family.stepchild_marriage_certificate_confirmed": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Family.Stepchild Marriage Certificate Confirmed"
         },
         "immigration.current_status_code": {
           "discriminator": {
@@ -426,6 +492,28 @@
             }
           ],
           "title": "Immigration.Overstay Days"
+        },
+        "immigration.renewal_paid": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Immigration.Renewal Paid"
         },
         "immigration.violation_history": {
           "discriminator": {
@@ -2176,7 +2264,7 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 41 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and\nby ``sponsor.type`` for the sponsor-category question, 2026-08-10).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 45 applicant-collected\n+ 4 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by\n``sponsor.type`` for the sponsor-category question, 2026-08-10, by the\ntwo ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``\nand ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),\nand by ``immigration.renewal_paid`` (2026-08-24, F4 \u2014 see its own inline\ncomment for the grounding).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
@@ -2187,6 +2275,7 @@
         "immigration.last_entry_date",
         "immigration.overstay_days",
         "immigration.violation_history",
+        "immigration.renewal_paid",
         "intent.purposes",
         "intent.stay_days",
         "intent.desired_entry_date",
@@ -2206,6 +2295,9 @@
         "family.sponsor_status_code",
         "family.marriage_registered",
         "family.sponsor_confirmed",
+        "family.stepchild_marriage_certificate_confirmed",
+        "family.stepchild_birth_certificate_confirmed",
+        "family.sponsor_permit_basis",
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
@@ -2221,7 +2313,8 @@
         "commercial.wants_quote",
         "derived.age_years",
         "derived.is_minor",
-        "derived.has_indonesian_citizenship"
+        "derived.has_indonesian_citizenship",
+        "derived.has_active_stay_permit"
       ],
       "title": "FactPath",
       "type": "string"
@@ -2629,6 +2722,23 @@
       },
       "required": ["status", "value"],
       "title": "KnownRelation",
+      "type": "object"
+    },
+    "KnownSponsorPermitBasis": {
+      "additionalProperties": false,
+      "description": "What activity basis the SPONSOR's own stay permit was granted under \u2014\nsee ``enums.SponsorPermitBasis``'s docstring for the Pasal 33 ayat (7)\ngrounding. Distinct from ``KnownSponsorType`` (WHO the sponsor is, not\nwhat basis their own permit rests on).",
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/SponsorPermitBasis"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownSponsorPermitBasis",
       "type": "object"
     },
     "KnownSponsorType": {
@@ -3273,7 +3383,16 @@
       "type": "object"
     },
     "RelationType": {
-      "enum": ["SPOUSE", "CHILD", "PARENT", "SIBLING", "DEPENDENT", "OTHER"],
+      "description": "The applicant's relationship to the family sponsor (``family.relation_to_sponsor``).\n\n``STEPCHILD`` added 2026-08-23 (owner ruling, verbatim: \"figliastro =\nfiglio del coniuge, serve akta nikah + akta lahir\"): E31D (\"Family Visa \u2014\nStepchild of Foreigner in Legal Mixed Marriage\") is a distinct product\nfrom CHILD (a couple's own biological/adopted child) and from SPOUSE, but\nevery one of its three ELIGIBILITY rules could previously only test bare\n``intent.purposes intersects [\"FAMILY\"]`` \u2014 the vocabulary had no way to\nsay \"stepchild\" at all (`research/visa/2026-08-15-gold-family-refuter.md`,\nwhich reproduced this as fail-open product manufacture on sequence 7 and\nexplicitly blocked a rule-only repair, demanding this vocabulary\nextension first). Grounded independently in Permenkumham 11/2024's\nPasal 33 ayat (2) huruf h angka 4: \"anak dari Orang Asing yang kawin\nsecara sah dengan warga negara Indonesia\" (\"child OF A FOREIGNER who is\nlegally married to an Indonesian citizen\") \u2014 exactly the stepchild-of-a-\nlawful-mixed-marriage shape E31D names. The two evidence facts the owner\nnamed for this relation \u2014 the parents' marriage certificate and the\nchild's birth certificate \u2014 are ``FactPath.FAMILY_STEPCHILD_MARRIAGE_\nCERTIFICATE_CONFIRMED`` / ``FAMILY_STEPCHILD_BIRTH_CERTIFICATE_CONFIRMED``\nbelow. This PR adds the vocabulary only; the rules that consume it\n(a real STEPCHILD/evidence-gated E31D ELIGIBILITY rule, replacing the\nthree purpose-only ones) land in a separate, later PR.",
+      "enum": [
+        "SPOUSE",
+        "CHILD",
+        "PARENT",
+        "SIBLING",
+        "DEPENDENT",
+        "STEPCHILD",
+        "OTHER"
+      ],
       "title": "RelationType",
       "type": "string"
     },
@@ -4236,6 +4355,26 @@
     "SourceStatus": {
       "enum": ["VERIFIED", "SUPERSEDED", "REVOKED", "UNAVAILABLE"],
       "title": "SourceStatus",
+      "type": "string"
+    },
+    "SponsorPermitBasis": {
+      "description": "What activity BASIS the sponsor's own stay permit (ITAS/ITAP) was\ngranted under \u2014 added 2026-08-23 so a rule can express Permenkumham\n11/2024's Pasal 33 ayat (7) exclusion (verbatim, re-extracted from the\nprimary PDF ``data/source_documents/t0_regulations/\npermenkumham_11_2024_perubahan_visa.pdf``, item 10):\n\n    \"Visa tinggal terbatas sebagaimana dimaksud pada ayat (2) huruf h\n    angka 2, angka 5, angka 8, dan angka 9 tidak dapat diajukan untuk\n    penyatuan kepada pemegang Izin Tinggal Penyatuan Keluarga.\"\n\nThose four angka are exactly the four family-reunification products\nwhose sponsor must already hold an ITAS/ITAP \u2014 E31B (spouse of ITAS/ITAP\nholder), E31E (minor child of ITAS/ITAP-holder parent), E31H (parent of\nITAS/ITAP-holder child) and E31J (minor sibling of ITAS/ITAP holder). The\nlaw forbids chaining one of those four onto a sponsor whose OWN permit\nwas itself granted under huruf h (penyatuan keluarga / family\nreunification) \u2014 no daisy-chaining family-reunification permits across\ngenerations. ``family.sponsor_status_code`` (a free-form product-code\nSTRING, no ``allowed_values``) can express whether the sponsor's permit\nis merely *valid*; it cannot express *what it is for*, which is the gap\nthis fact closes.\n\nThe value domain is transcribed directly from Pasal 33 ayat (2) huruf\na-l \u2014 the complete, exhaustive list of limited-stay-visa activity\ncategories in the regulation, not a guessed binary. ``FAMILY_REUNIFICATION``\n(huruf h) is the one basis ayat (7) excludes; every other member is a\nreal, distinct huruf. ``OTHER`` is the closed-vocabulary escape hatch for\na sponsor permit that predates this classification or does not cleanly\nmap to a single huruf \u2014 it is deliberately NOT the same value as\n``FAMILY_REUNIFICATION`` and must never be used as a proxy for it.",
+      "enum": [
+        "EXPERT",
+        "WORKER",
+        "MARITIME_CREW",
+        "CLERGY",
+        "FOREIGN_INVESTMENT",
+        "SCIENTIFIC_RESEARCH",
+        "EDUCATION",
+        "FAMILY_REUNIFICATION",
+        "REPATRIATION",
+        "SECOND_HOME",
+        "MEDICAL_TREATMENT",
+        "WORKING_HOLIDAY",
+        "OTHER"
+      ],
+      "title": "SponsorPermitBasis",
       "type": "string"
     },
     "SponsorType": {

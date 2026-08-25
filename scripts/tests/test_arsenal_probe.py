@@ -18,10 +18,6 @@ import textwrap
 import time
 from pathlib import Path
 from types import ModuleType
-from typing import Optional
-
-import pytest
-
 MODULE_PATH = Path(__file__).resolve().parent.parent / "arsenal_probe.py"
 
 
@@ -122,28 +118,28 @@ def test_benign_oauth_token_mention_is_not_auth_dead():
     assert status == ap.UNKNOWN_ERR
 
 
-def test_glm_1211_classifies_model_err_never_shed():
+def test_bracketed_1211_classifies_model_err_never_shed():
     ev = 'HTTP 400 {"error": {"code": 1211, "message": "Unknown Model"}}'
-    status = ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False)
+    status = ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False)
     assert status == ap.MODEL_ERR
     assert status != ap.SHED
 
 
 def test_unknown_model_text_classifies_model_err():
-    ev = "Unknown Model requested: glm-99"
-    assert ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False) == ap.MODEL_ERR
+    ev = "Unknown Model requested: missing-model"
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.MODEL_ERR
 
 
 def test_529_classifies_shed_never_model_err():
     ev = "HTTP 529 the server is overloaded, please retry"
-    status = ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False)
+    status = ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False)
     assert status == ap.SHED
     assert status != ap.MODEL_ERR
 
 
 def test_overloaded_text_classifies_shed():
     ev = "service overloaded right now"
-    assert ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False) == ap.SHED
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.SHED
 
 
 def test_402_classifies_balance_dead():
@@ -337,7 +333,7 @@ def test_keychain_locked_returns_cred_unavailable_reason(monkeypatch):
 
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     monkeypatch.setattr(ap.shutil, "which", lambda name: "/usr/bin/security" if name == "security" else None)
-    token, note = ap.load_keychain_token("glm-coding-plan-token")
+    token, note = ap.load_keychain_token("test-service")
     assert token is None
     assert note is not None
     assert "36" in note or "locked" in note.lower() or "absent" in note.lower()
@@ -351,14 +347,14 @@ def test_keychain_success_returns_token_never_in_note(monkeypatch):
 
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: FakeCompleted())
     monkeypatch.setattr(ap.shutil, "which", lambda name: "/usr/bin/security" if name == "security" else None)
-    token, note = ap.load_keychain_token("glm-coding-plan-token")
+    token, note = ap.load_keychain_token("test-service")
     assert token == "supersecrettoken123"
     assert note is None
 
 
 def test_keychain_binary_absent_is_cred_unavailable(monkeypatch):
     monkeypatch.setattr(ap.shutil, "which", lambda name: None)
-    token, note = ap.load_keychain_token("glm-coding-plan-token")
+    token, note = ap.load_keychain_token("test-service")
     assert token is None
     assert note is not None
 
@@ -455,7 +451,7 @@ def test_http_post_json_200_returns_scrubbed_evidence(monkeypatch):
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
     status, full, tail = ap.http_post_json(
-        "https://api.z.ai/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
+        "https://example.invalid/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status == 200
     assert "glm-5.2" in full
@@ -478,7 +474,7 @@ def test_http_post_json_full_body_is_untruncated_past_160_chars(monkeypatch):
         return _FakeHTTPResponse(200, long_body)
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
-    status, full, tail = ap.http_post_json("https://api.z.ai/x", {}, {}, 10, [])
+    status, full, tail = ap.http_post_json("https://example.invalid/x", {}, {}, 10, [])
     assert status == 200
     assert '"model": "glm-5.2"' in full  # present in the untruncated body
     assert '"model": "glm-5.2"' not in tail  # and absent from the 160-char tail
@@ -486,17 +482,20 @@ def test_http_post_json_full_body_is_untruncated_past_160_chars(monkeypatch):
 
 
 def test_http_post_json_error_never_leaks_authorization_value(monkeypatch):
+    import io
     import urllib.error
 
     def fake_urlopen(req, timeout):
         # simulate a server that echoes the request headers back in the error body
         # (worst case scenario the redaction must survive)
-        body = f'{{"error": "unauthorized", "your_header_was": "Bearer secrettoken12345678901234"}}'.encode()
-        raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", {}, None)
+        body = b'{"error": "unauthorized", "your_header_was": "Bearer secrettoken12345678901234"}'
+        raise urllib.error.HTTPError(
+            req.full_url, 401, "Unauthorized", {}, io.BytesIO(body)
+        )
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
     status, full, tail = ap.http_post_json(
-        "https://api.z.ai/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
+        "https://example.invalid/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status == 401
     assert "secrettoken12345678901234" not in full
@@ -511,7 +510,7 @@ def test_http_post_json_url_error_is_scrubbed(monkeypatch):
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
     status, full, tail = ap.http_post_json(
-        "https://api.z.ai/x", {}, {}, 10, ["secrettoken12345678901234"]
+        "https://example.invalid/x", {}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status is None
     assert "secrettoken12345678901234" not in full
@@ -660,68 +659,6 @@ def test_probe_claude_pong_mentioning_login_stays_live(monkeypatch):
     assert status == ap.LIVE
 
 
-def test_probe_glm_cred_unavailable_when_keychain_locked(monkeypatch):
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: (None, "keychain locked"))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.CRED_UNAVAILABLE
-    assert ap.is_strict_fail(status) is False
-
-
-def test_probe_glm_live_on_200_with_model(monkeypatch):
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, '{"model": "glm-5.2"}', '{"model": "glm-5.2"}'))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.LIVE
-
-
-def test_probe_glm_live_when_model_marker_only_survives_in_full_body(monkeypatch):
-    # GUILT case (2026-08-21 scar): a genuinely LIVE 200 response whose "model" field
-    # sits before the 160-char tail must still classify LIVE — this is exactly the
-    # shape z.ai's Anthropic-compatible envelope produces (model near the start,
-    # content/usage padding pushes it out of any tail window). Before the fix this
-    # read UNKNOWN_ERR — a live seat silently misread as dead.
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    full_body = '{"model": "glm-5.2", "id": "abc", "content": "' + ("y" * 300) + '"}'
-    tail_only = full_body[-160:]
-    assert '"model"' not in tail_only  # premise: the marker really is outside the tail
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, full_body, tail_only))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.LIVE
-
-
-def test_probe_glm_not_live_when_model_absent_from_full_body(monkeypatch):
-    # INNOCENCE case: a genuinely dead/malformed 200 with no "model" field anywhere
-    # (not even truncated away) must NOT read LIVE — the fix widens WHERE the check
-    # looks, it must not widen WHAT counts as a positive marker.
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    full_body = '{"id": "abc", "content": "' + ("y" * 300) + '"}'
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, full_body, full_body[-160:]))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status != ap.LIVE
-
-
-def test_probe_glm_model_err_on_1211(monkeypatch):
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    body = '{"error": {"code": 1211, "message": "Unknown Model"}}'
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (400, body, body))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.MODEL_ERR
-
-
-def test_probe_glm_never_leaks_token_in_evidence(monkeypatch):
-    token = "leaktoken1234567890123456"
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: (token, None))
-
-    def fake_http(url, headers, body, timeout, secret_values):
-        assert token in secret_values  # the probe must pass its own secret for scrubbing
-        scrubbed = ap.evidence_tail(f"unauthorized, saw {token}", secret_values)
-        return 401, scrubbed, scrubbed
-
-    monkeypatch.setattr(ap, "http_post_json", fake_http)
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert token not in ev
-
-
 def _tp1_live_body(model: str, content: str = "PONG") -> str:
     return json.dumps(
         {
@@ -851,7 +788,7 @@ def test_probe_tp1_content_mentioning_api_key_phrase_stays_live(monkeypatch):
 def test_probe_tp1_never_leaks_token_in_evidence(monkeypatch):
     """Kimi round-2 finding #3: every other TP1 test mocks http_post_json
     entirely, so the real scrub()/redaction path for THIS door was never
-    exercised — in the shape of test_probe_glm_never_leaks_token_in_evidence."""
+    exercised — this test keeps the real TP1 redaction path pinned."""
     token = "tp1-leaktoken1234567890123456"
     monkeypatch.setattr(
         ap,
@@ -1375,7 +1312,7 @@ def test_compute_transitions_no_prev_report_is_empty():
 
 def test_compute_transitions_new_seat_not_in_prev_is_not_a_transition():
     prev = {"seats": [{"seat": "codex", "status": "LIVE"}]}
-    current = [{"seat": "codex", "status": "LIVE"}, {"seat": "glm", "status": "AUTH_DEAD"}]
+    current = [{"seat": "codex", "status": "LIVE"}, {"seat": "agy", "status": "AUTH_DEAD"}]
     transitions = ap.compute_transitions(prev, current)
     assert transitions == []
 
@@ -1468,7 +1405,7 @@ def test_read_last_filters_to_non_ok_seats(tmp_path, monkeypatch):
         "context": {},
         "seats": [
             {"seat": "claude", "status": "LIVE", "healthy": True, "latency_ms": 1, "evidence": "", "required": True},
-            {"seat": "glm", "status": "QUOTA_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
+            {"seat": "agy", "status": "QUOTA_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
             {"seat": "codex", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
         ],
         "transitions": [],
@@ -1478,7 +1415,7 @@ def test_read_last_filters_to_non_ok_seats(tmp_path, monkeypatch):
     result = ap.read_last()
     assert result == {
         "findings": [
-            {"seat": "glm", "status": "QUOTA_DEAD"},
+            {"seat": "agy", "status": "QUOTA_DEAD"},
             {"seat": "codex", "status": "AUTH_DEAD"},
         ]
     }
@@ -1509,15 +1446,15 @@ def test_read_last_seats_filter_applies(tmp_path, monkeypatch):
         "ts": "x",
         "context": {},
         "seats": [
-            {"seat": "glm", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
+            {"seat": "agy", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
             {"seat": "codex", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
         ],
         "transitions": [],
         "summary": {"live": 0, "dead_strict": 2, "context_limited": 0, "transient": 0},
     }
     ap._atomic_write_json(tmp_path / "last.json", fixture)
-    result = ap.read_last(seats_filter=["glm"])
-    assert result == {"findings": [{"seat": "glm", "status": "AUTH_DEAD"}]}
+    result = ap.read_last(seats_filter=["agy"])
+    assert result == {"findings": [{"seat": "agy", "status": "AUTH_DEAD"}]}
 
 
 def test_read_last_corrupted_report_treated_as_never_ran(tmp_path, monkeypatch):
@@ -1608,9 +1545,9 @@ def test_run_computes_summary_counts(tmp_path, monkeypatch):
     monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
     monkeypatch.setitem(ap.PROBE_FUNCS, "claude", lambda timeout: (ap.LIVE, "PONG", 10))
     monkeypatch.setitem(ap.PROBE_FUNCS, "codex", lambda timeout: (ap.AUTH_DEAD, "401", 10))
-    monkeypatch.setitem(ap.PROBE_FUNCS, "glm", lambda timeout: (ap.CRED_UNAVAILABLE, "locked", 5))
+    monkeypatch.setitem(ap.PROBE_FUNCS, "kimi", lambda timeout: (ap.CRED_UNAVAILABLE, "locked", 5))
     monkeypatch.setitem(ap.PROBE_FUNCS, "agy", lambda timeout: (ap.QUOTA_DEAD, "429", 5))
-    report = ap.run(seats=["claude", "codex", "glm", "agy"], timeout_mult=1.0, live_gen=False, machine="m5")
+    report = ap.run(seats=["claude", "codex", "kimi", "agy"], timeout_mult=1.0, live_gen=False, machine="m5")
     summ = report["summary"]
     assert summ["live"] == 1
     assert summ["dead_strict"] == 1
@@ -1636,7 +1573,7 @@ def test_run_preserves_requested_seat_order(tmp_path, monkeypatch):
     monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
     for seat in ap.ALL_SEATS:
         monkeypatch.setitem(ap.PROBE_FUNCS, seat, (lambda s: (lambda timeout: (ap.LIVE, "ok", 1)))(seat))
-    requested = ["ollama", "claude", "nlm", "glm"]
+    requested = ["ollama", "claude", "nlm", "tp1-glm-5.2"]
     report = ap.run(seats=requested, timeout_mult=1.0, live_gen=False, machine="m5")
     assert [s["seat"] for s in report["seats"]] == requested
 
@@ -1737,12 +1674,13 @@ def test_main_report_never_contains_secret_after_full_run(tmp_path, monkeypatch,
     monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
     secret = "sk-verysecretvaluethatmustnotleak"
 
-    def fake_glm(timeout):
+    def fake_tp1_glm(timeout):
         # simulate a probe that saw the secret internally but must not report it
         return ap.AUTH_DEAD, ap.evidence_tail(f"401 saw {secret}", [secret]), 5
 
-    monkeypatch.setitem(ap.PROBE_FUNCS, "glm", fake_glm)
-    code = ap.main(["--seats", "glm", "--json"])
+    monkeypatch.setitem(ap.PROBE_FUNCS, "tp1-glm-5.2", fake_tp1_glm)
+    code = ap.main(["--seats", "tp1-glm-5.2", "--json"])
+    assert code == 0
     out = capsys.readouterr().out
     assert secret not in out
     report_on_disk = (tmp_path / "last.json").read_text()
@@ -1783,10 +1721,10 @@ def test_main_selftest_flag_routes_to_selftest(capsys):
 # ---- request-id digit-run innocence (scar #3, added at Fable review) ----------
 
 def test_request_id_digit_run_never_false_matches_numeric_codes():
-    # z.ai request ids are long digit runs; one minted at 12:11 embeds "1211",
+    # Provider request ids are long digit runs; one minted at 12:11 embeds "1211",
     # one at 14:01 embeds "401", one at 04:29 embeds "429". None may classify.
     ev = "API Error: 529 overloaded [20260706121155c8877b89100e44a6]"
-    assert ap.classify_generic(ev, False, "glm", False) == ap.SHED
+    assert ap.classify_generic(ev, False, "codex", False) == ap.SHED
 
     ev2 = "temporary failure [2026070614015500aa] retry later"
     assert ap.classify_generic(ev2, False, "codex", False) == ap.UNKNOWN_ERR
@@ -1796,8 +1734,8 @@ def test_request_id_digit_run_never_false_matches_numeric_codes():
 
 
 def test_bracketed_numeric_codes_still_match():
-    assert ap.classify_generic("HTTP 400 [1211] Unknown Model", False, "glm", False) == ap.MODEL_ERR
-    assert ap.classify_generic("HTTP 401 Authentication Failed", False, "glm", False) == ap.AUTH_DEAD
+    assert ap.classify_generic("HTTP 400 [1211] Unknown Model", False, "codex", False) == ap.MODEL_ERR
+    assert ap.classify_generic("HTTP 401 Authentication Failed", False, "codex", False) == ap.AUTH_DEAD
     assert ap.classify_generic("HTTP 429 too many requests", False, "codex", False) == ap.QUOTA_DEAD
 
 
@@ -2037,6 +1975,7 @@ def test_main_output_never_empty_even_with_every_seat_dead(tmp_path, monkeypatch
     for seat in ap.ALL_SEATS:
         monkeypatch.setitem(ap.PROBE_FUNCS, seat, lambda timeout: (ap.UNKNOWN_ERR, "dead", 1))
     code = ap.main([])
+    assert code == 0
     out, err = capsys.readouterr()
     assert (out + err).strip() != ""
     assert f"0 of {len(ap.ALL_SEATS)} seats OK" in out
@@ -2054,6 +1993,7 @@ def test_main_header_printed_even_if_every_probe_crashes(tmp_path, monkeypatch, 
     for seat in ap.ALL_SEATS:
         monkeypatch.setitem(ap.PROBE_FUNCS, seat, boom)
     code = ap.main([])
+    assert code == 0
     err = capsys.readouterr().err
     assert f"probing {len(ap.ALL_SEATS)} seat(s)" in err
 
@@ -2076,14 +2016,14 @@ def test_render_table_includes_n_of_m_seats_ok_line():
 def test_summary_line_includes_n_of_m_seats_ok():
     report = {
         "machine": "pro",
-        "seats": [{"seat": "claude"}, {"seat": "codex"}, {"seat": "glm"}],
+        "seats": [{"seat": "claude"}, {"seat": "codex"}, {"seat": "tp1-glm-5.2"}],
         "summary": {"live": 1, "dead_strict": 1, "context_limited": 1, "transient": 0},
     }
     line = ap.summary_line(report)
     assert "1 of 3 seats OK" in line
 
 
-def test_probe_claude_strips_glm_session_env(monkeypatch):
+def test_probe_claude_strips_custom_anthropic_session_env(monkeypatch):
     captured_env = {}
 
     def fake_run(cmd, timeout, env=None, stdin_devnull=True):
@@ -2093,8 +2033,8 @@ def test_probe_claude_strips_glm_session_env(monkeypatch):
     monkeypatch.setattr(ap, "run_probe_cmd", fake_run)
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/fake/claude", True))
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-paid-key-must-die")
-    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "glm-token-must-die")
-    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic")
+    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "custom-token-must-die")
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://custom-endpoint.invalid")
     status, _, _ = ap.probe_claude(timeout=5)
     assert status == ap.LIVE
     assert "ANTHROPIC_API_KEY" not in captured_env

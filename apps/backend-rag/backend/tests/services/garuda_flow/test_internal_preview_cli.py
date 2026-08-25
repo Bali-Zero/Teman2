@@ -50,6 +50,8 @@ def test_accepted_issuance_uses_real_pricing_and_no_internal_checkpoints() -> No
     assert response.internal_checkpoints == []
     assert response.price_idr is not None
     assert response.price_source == "B1 Visa on Arrival (VOA)"
+    assert response.price_status == "confirmed"
+    assert response.price_warning is None
     assert response.generated_at == _NOW
     assert response.submit_by_date is not None
     assert response.submit_by_date < response.entry_date
@@ -57,6 +59,24 @@ def test_accepted_issuance_uses_real_pricing_and_no_internal_checkpoints() -> No
     assert response.calendar_coverage_start == date(2026, 7, 28)
     assert response.computed_stay_end == response.expiry_date
     assert "last_legal_day" not in response.model_dump()
+
+
+def test_unavailable_price_is_explicit_and_requires_staff_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "backend.services.garuda_flow.internal_preview_cli.price_for_case",
+        lambda _case_type: (None, None),
+    )
+
+    response = build_internal_preview(_request(), today=_TODAY, generated_at=_NOW)
+
+    assert response.decision == "ACCEPT"
+    assert response.price_idr is None
+    assert response.price_source is None
+    assert response.price_status == "unavailable"
+    assert response.price_warning is not None
+    assert "staff must confirm the price rather than invent one" in response.price_warning
 
 
 @pytest.mark.parametrize(
@@ -253,6 +273,36 @@ def test_extension_rejects_printed_expiry_beyond_b1_max_total_stay() -> None:
 
     with pytest.raises(ValueError, match="maximum stay"):
         build_internal_preview(request, today=_TODAY, generated_at=_NOW)
+
+
+def test_extension_rejects_printed_expiry_exactly_at_b1_max_total_stay_boundary() -> None:
+    # GUILT case: entry 2026-07-01 + 60 days (B1's inclusive-count max, day 1 = arrival
+    # day per imigrasi.go.id) lands on 2026-08-30 — that is day 61 of stay, one day
+    # PAST the legal maximum, so it must be rejected. A naive `> max_total_stay_days`
+    # comparison on the day-DIFFERENCE lets this exact boundary through as ACCEPT
+    # because the difference (60) is not strictly greater than the max (60).
+    request = _request(
+        case_type="extension",
+        entry_date="2026-07-01",
+        voa_expiry_date="2026-08-30",
+    )
+
+    with pytest.raises(ValueError, match="maximum stay"):
+        build_internal_preview(request, today=_TODAY, generated_at=_NOW)
+
+
+def test_extension_accepts_printed_expiry_one_day_inside_b1_max_total_stay_boundary() -> None:
+    # INNOCENCE case: entry 2026-07-01 + 59 days = 2026-08-29 is day 60 of stay —
+    # the legal maximum itself, still valid — and must remain ACCEPT.
+    request = _request(
+        case_type="extension",
+        entry_date="2026-07-01",
+        voa_expiry_date="2026-08-29",
+    )
+
+    response = build_internal_preview(request, today=_TODAY, generated_at=_NOW)
+
+    assert response.decision == "ACCEPT"
 
 
 def test_past_printed_expiry_reaches_engine_and_declines_as_expired() -> None:
