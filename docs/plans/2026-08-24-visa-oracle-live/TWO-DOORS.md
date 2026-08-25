@@ -25,6 +25,10 @@ projection validator — is the one search engines cannot see.
 Neither tree appears in `sitemap.xml` (which lists `/services/visa` and `/visas/*` articles only),
 but `index, follow` is sufficient for discovery through any inbound link.
 
+> ⚠️ **Measured false — corrected in "Second correction" near the end of this document.** As of
+> this document's own 2026-08-24 snapshot, `/visa` and `/visa/match` **did** appear in
+> `sitemap.ts`. The false claim understated the exposure, not overstated it.
+
 ## What the public page promises, verbatim from the served HTML
 
 > "**24 visa types. One fits you. We know which.**"
@@ -76,9 +80,71 @@ they call **different backend services**:
 | `/visa` (public, indexable) | `POST /api/v1/visa-oracle/recommend`                      | `VisaOracleService.recommend_visas` (`visa_oracle_service.py:210`) |
 | `/visa-oracle` (shadow)     | `POST /api/visa-oracle/evaluate` (`evaluateVisaOracleV2`) | the deterministic evaluator over the signed rule pack              |
 
+> ⚠️ **The `/visa` row is measured false — corrected in "Second correction" near the end of this
+> document.** `POST /api/v1/visa-oracle/recommend` is real code, but it is dead from the live
+> frontend — nothing on the live page calls it.
+
 Two engines, two catalogues, two notions of what may be asserted — and the one under a signed
 pack, an abstention contract and a projection validator is the hidden one. This makes divergence
 more likely by construction, not less, and it is what the V2 lane is now measuring.
+
+## Second correction, received and verified: wrong backend, and the sitemap error understated the exposure
+
+Both measured directly on disk in this worktree, not accepted on anyone's word — because this
+document is what Zero read before issuing ruling #4, its errors are load-bearing enough to record
+in full rather than silently fix.
+
+**What was claimed.** The table above: the public `/visa` door runs on
+`POST /api/v1/visa-oracle/recommend` → `VisaOracleService.recommend_visas`. And in _The
+inversion_, above: neither `/visa` nor `/visa/match` appeared in `sitemap.xml`.
+
+**What is true.**
+
+- The live public page, `apps/mouth/src/app/visa/match/page.tsx:260`, calls
+  `fetch("/api/visa/match", ...)`. That path is served by a **separate router**:
+  `apps/backend-rag/backend/app/routers/visa_check.py` (`prefix="/api/visa"`,
+  `@router.post("/match", ...)` at line 225, handler `submit_match`), which calls
+  `match_tree.recommend_visa` (`backend/services/visa_check/match_tree.py:300`) and reads/writes
+  through `VisaCheckRepository` (`backend/services/visa_check/repository.py:56`).
+  `VisaOracleService` and `POST /api/v1/visa-oracle/recommend` are real, live code
+  (`visa_oracle.py:796`, registered under `API_V1_STR="/api/v1"`) — but **dead from the live
+  frontend**. Their only client, `recommendVisas()` in
+  `apps/mouth/src/lib/visa-oracle/api.ts:238-241`, is never imported by any page component (the
+  only page-level importer of that module, `VisaChat.tsx`, pulls `sendChatMessage`/
+  `triggerHandoff`, not `recommendVisas`) — its sole caller anywhere in the repo is its own unit
+  test, `apps/mouth/src/lib/visa-oracle/api.test.ts`.
+- At the time of this document's 2026-08-24 snapshot, `/visa` and `/visa/match` **did** appear in
+  `sitemap.ts` — confirmed via `git show 4d1eae0b3^:apps/mouth/src/app/sitemap.ts`, lines 145-146
+  of the `visaPaths` array. Commit `4d1eae0b3` (2026-08-25, implementing ruling #4) is what
+  removed them and recorded both as a deliberate post-redirect omission in `sitemap.test.ts`'s
+  `INTENTIONALLY_UNLISTED` guard — that commit's own message already named both corrections above,
+  independently of this edit.
+
+**How the false claims were produced.** The endpoint table inferred the live backend from the
+funnel's dedicated API client module (`api.ts`'s `recommendVisas()`, which genuinely does call
+`/api/v1/visa-oracle/recommend`) rather than from the page component that actually renders
+`/visa/match` and issues the request — the two disagree, and only the page component's `fetch`
+call is live traffic. The sitemap claim appears to have been checked against a state where the
+2026-08-25 removal had already happened, rather than the state that was actually live on
+2026-08-24 when `balizero.com` was measured for this document.
+
+**What this does not change.** Ruling #4 — retire the old door with a 301, lift the noindex on
+`/visa-oracle` only after the T2-copy fix lands — stands unaffected. Both errors were about _which
+code_ the old door ran and _whether it was in the sitemap_; neither is a reason to keep an
+unverified engine indexed under our name. If anything, the sitemap correction makes the SEO
+exposure **larger than this document claimed, not smaller**: `/visa` and `/visa/match` were not
+merely `index, follow`-eligible through inbound links, they were formally submitted to search
+engines via `sitemap.xml` itself.
+
+**Honest re-reading required.** The "Correction received and verified: the public funnel does NOT
+invent prices" section above drew its evidence entirely from `visa_oracle.py` — the same wrong
+module identified here. Its finding (bound to PricingTool, degrades to "contact for pricing",
+divergence logged not silenced) may well be true of `VisaOracleService`, but it says nothing about
+what the _actually live_ path — `visa_check.py::submit_match` / `match_tree.recommend_visa` /
+`VisaCheckRepository` — does with price. Any claim in this document about the legacy funnel's
+backend evaluation behavior that rests on `VisaOracleService` must be re-read as **untested**: it
+was measured against the wrong module. Re-verifying pricing/behavior against the real live path is
+the obvious next step and is not done here.
 
 ## Why this is a defect NOW, not at ignition
 
@@ -96,9 +162,9 @@ The shadow discipline is protecting the wrong surface.
   `apps/mouth/src/lib/visa-oracle/quiz-logic.ts`, a different code path from the signed engine, so
   divergence is possible by construction — but "possible" is not "measured", and this document
   does not pretend otherwise.
-- Not claimed: that the page is actually indexed. `index, follow` plus no sitemap entry means
-  _eligible_ for indexing, not _indexed_. Confirming that needs Search Console, which is an
-  operator surface.
+- Not claimed: that the page is actually indexed. `index, follow` — plus, as corrected above, an
+  actual `sitemap.xml` entry at the time of measurement — means _eligible_ for indexing, not
+  _indexed_. Confirming that needs Search Console, which is an operator surface.
 - Not touched: `apps/mouth/src/app/visa/voa/` is GARUDA's tombstone (404 by design, PR #4344) and
   `second-home/` belongs to the Second Home lane. Neither is this lane's to change.
 
