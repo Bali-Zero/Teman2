@@ -3,10 +3,11 @@
 # on 2026-08-25 by per-instrument scroll (document_id AND metadata.document_id, per mandate
 # §4.1 — both indexes queried for every instrument, never just one).
 #
-# measured_against.points / payload_shapes cover ONLY the 14 instruments below (the topic's
-# own footprint), not the whole 84,283-point legal_unified collection — consistent with the
-# G3 contract's synthetic fixture (measured_against.points == sum(instruments[].points) ==
-# sum(payload_shapes.values())).
+# measured_against.points / payload_shapes cover ONLY the 15 instruments below (the topic's
+# own footprint — 14 in scope per kb/topics/tax.yaml, plus UU_7_1945, a same-pass discovery;
+# see finding TAXC-5 below), not the whole 84,283-point legal_unified collection — consistent
+# with the G3 contract's synthetic fixture (measured_against.points ==
+# sum(instruments[].points) == sum(payload_shapes.values())).
 #
 # tax_genius_hybrid (340 points, curated Q&A guide, zero document_id anywhere — see
 # kb/topics/tax.yaml header) is deliberately NOT measured here: it carries no citable
@@ -20,9 +21,9 @@ measured_at: "2026-08-25"
 
 measured_against:
   collection: legal_unified
-  points: 2859
+  points: 2890
   payload_shapes:
-    legacy_metadata_text: 2315
+    legacy_metadata_text: 2346
     orphan_no_identity: 0
     modern_id_only: 544
     modern_id_chunk: 0
@@ -134,6 +135,19 @@ instruments:
       as CONTAMINATED, not merely partial — "complete" cannot be asserted for a document whose
       own boundary is unproven.
 
+  # ── same-pass discovery, found via J13's boilerplate-distinctiveness check, not scoped in ──
+  # ── kb/topics/tax.yaml's original 14 — see finding TAXC-5 above for the full story ────────
+  - id: UU_7_1945
+    points: 31
+    present: true
+    complete: false
+    incomplete_because: >-
+      31 chunks under a document_id that is itself a mislabel — see TAXC-5 above for the full
+      finding. Content spans at least Pasal 1, 2, 8, 13, 14, and 20 of what appears to be a
+      consolidated KUP-as-amended-by-HPP text; completeness against any specific edition's full
+      pasal list has not been cross-checked this pass, and cannot be meaningfully assessed until
+      the identity question itself is resolved at repair-stage.
+
   # ── absent — three misses by different methods (§4.2), recorded per kb/topics/tax.yaml ──
   - id: UU_7_2021
     points: 0
@@ -219,4 +233,33 @@ findings:
       (e.g. pairing a phrase assertion with an instrument_id match on the SAME retrieved
       chunk) rather than re-deriving per topic.
     owner: "kb/ops/probe_retrieval.py owner (cross-topic, not tax-specific)"
+    severity: medium
+
+  - id: TAXC-5
+    title: "UU_7_1945 in legal_unified appears to be HPP (UU 7/2021) content stored under a garbled, wrong document_id, not a real 1945 statute"
+    detail: >-
+      Found while running the boilerplate-distinctiveness check on kb/journeys/tax.yaml J13's
+      candidate phrase (KUP Pasal 2 ayat (1), the taxpayer-registration article): a full-collection
+      scroll of legal_unified's 84,283 points for that exact phrase returned exactly 2 distinct
+      document_ids — UU_28_2007 (expected) and UU_7_1945 (not expected; not in this topic's scope
+      list). `metadata.book_title` on all 31 points under UU_7_1945 reads "UU No 7 Tahun 1945
+      Tentang HARMONI SASI PERATURAN PERPAJAI(AN" — legal_type=UU, legal_number=7, legal_year=1945
+      on every point. This is not a real Indonesian statute: Indonesia had no tax-administration
+      law in 1945, and "HARMONI SASI...PERPAJAI(AN" is garbled OCR of "Harmonisasi Peraturan
+      Perpajakan" — HPP's own name. Content-level evidence corroborates the garbled title, not
+      just the title itself: its Pasal 2 chunk carries an ayat (1a) — "Nomor Pokok Wajib Pajak
+      sebagaimana dimaksud pada ayat (1) bagi Wajib Pajak orang pribadi yang merupakan penduduk
+      Indonesia menggunakan nomor induk kependudukan" (the NIK-as-NPWP provision) — that
+      UU_28_2007's own Pasal 2 chunk does NOT carry, because that provision did not exist until
+      HPP introduced it in 2021; UU_28_2007 is a 2007 instrument and cannot contain 2021 text.
+      Practical consequence: HPP's CONTENT may be reachable in production even though the identity
+      UU_7_2021 is confirmed absent — checked three independent ways, see this file's UU_7_2021
+      row above — zero points under that id anywhere in legal_unified. The bookkeeping "instrument
+      absent" and the practical "is this content retrievable" question have come apart; a client
+      question about HPP could plausibly retrieve this mislabeled fragment even though the
+      identity-level absence claim remains literally true. Separately, `metadata.legal_status` on
+      this id reads "dicabut" (revoked) — noted but NOT asserted confidently, since it may itself
+      be an OCR/mislabel artifact of the same ingest defect that produced the wrong year, rather
+      than a genuine status determination.
+    owner: "lane C (tax), flagged for repair-stage — reindexing/relabeling is out of scope for this measurement pass"
     severity: medium

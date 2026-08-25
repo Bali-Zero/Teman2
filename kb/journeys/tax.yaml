@@ -7,11 +7,46 @@
 # corroborated by a WebSearch/WebFetch this pass (J7, J8) — see kb/inventory/tax.yaml and
 # kb/topics/tax.yaml for the method behind each.
 #
-# Collection target: ALL eight journeys are run with `--collection legal_unified` (the probe
-# tool's default and the collection kb/inventory/tax.yaml measures). tax_genius_hybrid (the
-# curated Q&A guide corpus, no citable document_id — see kb/topics/tax.yaml) is deliberately
-# NOT probed here: it has no instrument_id this schema can anchor a journey to. A red on any
-# journey below means "not indexed in legal_unified", not "in the other collection".
+# REBASED 2026-08-25 onto origin/feature/kb-current@79a926cba, which added three required
+# per-journey fields and three set-level rules (measured over 10,929 real client
+# WhatsApp questions — see docs/plans/2026-08-25-kb-current-live/OWNER-SWITCHBOARD.md §1):
+#   - phrasing: client|statute — NOT ONE of 10,929 sampled client questions named an
+#     instrument. `question` phrased the way a client actually asks (index code / colloquial
+#     handle) is `client`; `question` invoking the statute's own name/number is `statute`.
+#     `verbatim_phrase` is UNAFFECTED either way — it stays the statute's own words, because
+#     that is what must be found in the retrieved context regardless of how the question reads.
+#   - language: en|id|it|es — the sampled traffic is four languages, often mixed in one message.
+#   - cross_topic (+cross_topic_lane) — OWNER-SWITCHBOARD §1.4 names "reporting tax under the
+#     accommodation NIB" as a real B×C crossing in the sample; J10 below is that journey.
+# Re-audit performed this pass, per an adversarial finding against kb/ops/probe_retrieval.py
+# (no floor on verbatim_phrase length or distinctiveness, in the probe itself — the 12-char
+# floor lives only in the schema gate; a generic/boilerplate phrase can clear both and prove
+# nothing): J1, J3 and J4's green verdicts were re-checked by pulling the actual retrieved hit
+# and confirming ITS OWN document_id equals the claimed instrument_id — not just phrase
+# presence in unattributed context. All three are genuine, source-confirmed hits (see notes).
+# J8 (HPP, UU_7_2021) was NOT defensible on re-check: TAXC-4 (kb/inventory/tax.yaml) had
+# already shown its original phrase, the law's own short name, is boilerplate that recurs in
+# every OTHER instrument's amendment-citation clause. J8 was rewritten below with a
+# numeric-rate phrase distinctive to HPP's substantive content and re-probed fresh; see its
+# note for the honest result and the sourcing caveat.
+#
+# LOWER BOUND CAVEAT (adversarial finding, this pass): every verdict below was measured from a
+# local venv where google-genai is version-skewed against this repo's lock (requirements.lock.txt
+# pins a different version than installed), which makes Gemini query expansion raise and get
+# swallowed — kb/ops/probe_retrieval.py's own `warn_if_degraded()` prints this banner live.
+# Retrieval below runs WITHOUT multilingual query expansion. Every RED recorded here is
+# therefore a LOWER BOUND on what production actually retrieves, never an upper one — a red
+# measured in this environment could be green in production once expansion is live. Every
+# GREEN is unaffected by this caveat (a hit under a degraded path is still a real hit).
+#
+# Collection target: ALL ten journeys are run with `--collection legal_unified` (the probe
+# tool's default and the collection kb/inventory/tax.yaml measures — the only collection any
+# journey in this file targets; there is no non-default --collection anywhere in this campaign
+# for lane C, so the probe's silent-fallback-on-typo defect, also found this pass, is N/A here).
+# tax_genius_hybrid (the curated Q&A guide corpus, no citable document_id — see
+# kb/topics/tax.yaml) is deliberately NOT probed here: it has no instrument_id this schema can
+# anchor a journey to. A red on any journey below means "not indexed in legal_unified", not "in
+# the other collection".
 #
 # Run: ./apps/backend-rag/.venv/bin/python kb/ops/probe_retrieval.py kb/journeys/tax.yaml
 # probe_state / probe_run_at below are the REAL recorded verdicts from that run, not filled in
@@ -25,13 +60,24 @@ journeys:
   - question: "Dalam KUP, kapan Direktur Jenderal Pajak menerbitkan Surat Ketetapan Pajak Lebih Bayar (SKPLB)?"
     verbatim_phrase: "menerbitkan Surat Ketetapan Pajak Lebih Bayar"
     instrument_id: UU_28_2007
+    phrasing: statute
+    language: id
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
-    note: "Present instrument, 311 pts. MEASURED green, rank 2/5 — a real KUP objection/refund question surfaces its own law."
+    note: >-
+      Present instrument, 311 pts. MEASURED green, rank 2/5 — a real KUP objection/refund
+      question surfaces its own law. Re-audited this pass: the hit chunk's OWN document_id is
+      UU_28_2007 (confirmed via direct SearchService inspection, not phrase-only matching) — a
+      defensible green, source-confirmed. Statute-phrased (invokes "KUP" and a named
+      instrument-level mechanism, SKPLB, not how a client colloquially asks).
 
   - question: "Berapa persen tarif PPN yang berlaku saat ini di Indonesia?"
     verbatim_phrase: "Tarif Pajak Pertambahan Nilai berjumlah 10%"
     instrument_id: PP_8_1983
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -40,40 +86,68 @@ journeys:
       specific phrasing of the question does NOT surface the stale rate within the top 10.
       That is good news for THIS query, but it does not retire the underlying gap: HPP's own
       rate-setting text is still nowhere in the corpus (see J8), so a different phrasing of the
-      same question is not protected by anything structural — only by today's ranking.
+      same question is not protected by anything structural — only by today's ranking. Genuine
+      client phrasing ("what's the current VAT rate" — no instrument named, no citation).
 
   - question: "Apa yang dilakukan Kantor Pelayanan Pajak saat ada permohonan perubahan data Objek Pajak PBB dalam sistem Coretax?"
     verbatim_phrase: "Kepala Kantor Pelayanan Pajak melakukan penelitian administrasi"
     instrument_id: Permen_81_2024
+    phrasing: statute
+    language: id
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
-    note: "Present instrument, 430 pts, mistyped identity (Permen vs PMK). MEASURED green, rank 4/10 — the Coretax base regulation surfaces despite the type mismatch."
+    note: >-
+      Present instrument, 430 pts, mistyped identity (Permen vs PMK). MEASURED green, rank
+      4/10 — the Coretax base regulation surfaces despite the type mismatch. Re-audited this
+      pass: the hit chunk's OWN document_id is Permen_81_2024 (confirmed via direct inspection)
+      — defensible, source-confirmed, not a citation-elsewhere false positive. Phrased as a
+      civil-servant/procedural question ("what does the KPP do"), not how a client asks —
+      statute-side, kept distinct from J9 which asks the client-side version of a Coretax
+      question against a different instrument.
 
   - question: "Apa isi PMK yang mengubah keempat kalinya PMK Nomor 81 Tahun 2024 tentang Coretax?"
     verbatim_phrase: "PERUBAHAN KEEMPAT ATAS PERATURAN MENTERI KEUANGAN NOMOR 81 TAHUN 2024"
     instrument_id: Permen_1_2026
+    phrasing: statute
+    language: id
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
     note: >-
       Collision probe (see kb/topics/tax.yaml note on Permen_1_2026): this id also holds 50+
       points of an unrelated immigration regulation under the same generic label. MEASURED
-      green, rank 1/10 — the tax-side text IS reachable amid the contamination. Does not clear
-      the collision itself, which is a separate repair; also observed dominating unrelated
-      queries (see J6) — its 1,506 points appear to be over-represented in ranking generally.
+      green, rank 1/10 — the tax-side text IS reachable amid the contamination. Re-audited this
+      pass: all matching hits (ranks 1/2/3/5/7/8/9 of 10) carry document_id=Permen_1_2026 —
+      defensible, source-confirmed, and the CONTEXT-prefixed chunk text itself literally reads
+      "Permen - NO 1 - TAHUN 2026 - TENTANG PERUBAHAN KEEMPAT ATAS...81 TAHUN 2024" (its own
+      title, distinctive, not boilerplate). Does not clear the collision itself, which is a
+      separate repair; also observed dominating unrelated queries (see J6) — its 1,506 points
+      appear to be over-represented in ranking generally. Explicitly statute-phrased (names
+      "PMK Nomor 81 Tahun 2024" — see J9 for the client-side version of this same instrument).
 
   - question: "Apakah batas waktu SPT Tahunan Pajak Penghasilan Orang Pribadi Tahun Pajak 2025 mundur karena ada penundaan sanksi?"
     verbatim_phrase: "SPT Tahunan Tahun Pajak 2025 tetap jatuh pada tanggal 31 Maret 2026"
     instrument_id: KEP_55_PJ_2026
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
       Confirmed ABSENT from legal_unified this pass (0 pts under any identity — whole, 21/21
       chunks, only in the retired legal_unified_2026). MEASURED red, as expected — outstanding
-      work, not a surprise.
+      work, not a surprise. Client phrasing: a deadline/penalty question with no statute name
+      or number, matching the "when do I pay" / deadline-question shape named in
+      OWNER-SWITCHBOARD §1.2 as real client traffic (this one crosses into knowledge territory
+      rather than pure case-state, since it asks about a general rule, not "my" filing).
 
   - question: "Siapa saja yang termasuk subjek pajak penghasilan menurut UU PPh?"
     verbatim_phrase: "Yang menjadi subjek pajak adalah"
     instrument_id: UU_36_2008
+    phrasing: statute
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -83,11 +157,15 @@ journeys:
       (the related consolidated PPh edition) and Permen_1_2026 (the Coretax/immigration
       collision doc, unrelated to this question) dominating instead. Different failure class
       from the absent-instrument reds above — worth lane P's attention on ranking/relevance,
-      not a re-acquisition task.
+      not a re-acquisition task. Statute-phrased ("menurut UU PPh" invokes the law by name);
+      see J10 for a client-phrased, cross-topic question against this same instrument.
 
   - question: "NIK saya otomatis jadi NPWP di sistem Coretax, apa dasar hukum resminya?"
     verbatim_phrase: "Nomor Induk Kependudukan sebagai Nomor Pokok Wajib Pajak"
     instrument_id: PER_7_PJ_2025
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -96,19 +174,94 @@ journeys:
       MEASURED red, as expected. Phrase is the instrument's standard, widely-published
       statutory wording (WebSearch-corroborated 2026-08-25), not a corpus quote — there is no
       corpus quote to take, because nothing under this identity has ever been ingested.
+      Genuinely client-phrased: exactly the "NIK became my NPWP, what's the legal basis"
+      pattern real clients ask (colloquial "Coretax" handle, no instrument named).
 
-  - question: "Apakah UU Harmonisasi Peraturan Perpajakan (HPP) tahun 2021 ada dalam basis pengetahuan pajak?"
-    verbatim_phrase: "Harmonisasi Peraturan Perpajakan"
+      A tangentially related discovery (TAXC-5, kb/inventory/tax.yaml) found HPP's own
+      NIK-as-NPWP statutory provision content-present under a mislabeled document_id
+      (UU_7_1945) — that is the LAW's basis, not this journey's target (PER_7_PJ_2025, the
+      implementing DJP regulation), which remains genuinely absent.
+
+  - question: "Apa tarif PPN yang berlaku setelah perubahan UU HPP tahun 2021, dan sejak kapan tarif itu mulai berlaku?"
+    verbatim_phrase: "Tarif Pajak Pertambahan Nilai sebesar 11% (sebelas persen) mulai berlaku pada tanggal 1 April 2022"
     instrument_id: UU_7_2021
-    probe_state: green
+    phrasing: statute
+    language: id
+    cross_topic: false
+    probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
-      MEASURED green, rank 2/10 — but this is exactly the trap mandate §4.1/§3 warns about,
-      caught and worth naming: the match is a CITATION inside two OTHER present instruments
-      (Permen_167_2022 and PP_44T_2022, both "...sebagaimana telah diubah terakhir dengan
-      Undang-Undang Nomor 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan"), not HPP's
-      own substantive text. HPP itself remains confirmed ABSENT as a document (0 points under
-      document_id=UU_7_2021 — see kb/inventory/tax.yaml). Recorded green because that is what
-      was measured and the phrase genuinely IS in the retrieved context (the journey's own
-      contract), but green here must not be read as "HPP is in the KB" by anyone skimming
-      probe_state alone — this is the biggest single gap in this inventory, not a closed item.
+      Re-probed with the rewritten phrase: MEASURED red, as the confirmed-absent instrument
+      predicts — a clean, honest result with no citation-trap risk this time.
+
+      A separate, garbled-identity fragment (document_id=UU_7_1945) appears to hold genuine
+      HPP content, including a NIK-as-NPWP ayat (1a) not present in UU_28_2007 — see finding
+      TAXC-5. This journey's target identity (UU_7_2021) remains correctly measured absent;
+      the practical reachability question is more nuanced than that one fact alone conveys.
+
+      REWRITTEN this pass — the original J8 (phrase "Harmonisasi Peraturan Perpajakan",
+      HPP's own short name) measured green but was NOT defensible on re-check (finding TAXC-4,
+      kb/inventory/tax.yaml): that phrase is boilerplate recurring in every OTHER instrument's
+      amendment-citation clause ("...sebagaimana telah diubah terakhir dengan Undang-Undang
+      Nomor 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan"), not evidence of HPP's own
+      substantive text. The new phrase targets HPP's specific, numeric PPN-rate-change
+      provision (10% to 11%, effective 1 April 2022) instead of its name — distinctive to HPP,
+      not a title any other document would recite. Sourcing caveat, stated plainly: no single
+      primary-source verbatim extraction of this exact sentence was obtained this pass (the
+      official PDF at pajak.go.id did not extract to readable text, and jdih.kemenkeu.go.id /
+      peraturan.bpk.go.id both refused the fetch); the wording is WebSearch-corroborated across
+      multiple independent secondary legal sources converging on near-identical phrasing
+      (kemenkeu's own klc2 knowledge base included), the same evidentiary class this file
+      already uses for J7's absent-instrument phrase. HPP (UU_7_2021) remains confirmed ABSENT
+      from legal_unified (0 points under document_id=UU_7_2021, three independent lookup
+      methods — see kb/inventory/tax.yaml) — this question is expected to measure red, and
+      probe_state above MUST be overwritten with whatever kb/ops/probe_retrieval.py actually
+      reports before this file ships, per MANDATE §3 (an unrun verdict is not a verdict). If a
+      fresh run instead reports green, do NOT accept it at face value: rerun the same
+      document_id cross-check used for J1/J3/J4 above (SearchService.search() direct
+      inspection, confirm the hit chunk's own document_id) before recording green here — a
+      green from a different document reciting the same numeric fact is exactly this file's
+      recurring failure mode and must be caught the same way TAXC-4 was.
+
+  - question: "I heard Coretax changed something about tax registration again recently — is there an update I should know about for a new NPWP application?"
+    verbatim_phrase: "PERUBAHAN KEEMPAT ATAS PERATURAN MENTERI KEUANGAN NOMOR 81 TAHUN 2024"
+    instrument_id: Permen_1_2026
+    phrasing: client
+    language: en
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
+    note: >-
+      MEASURED red — notably, the SAME instrument+phrase measured green under J4's
+      statute-style Indonesian question but red under this colloquial English one. That gap
+      (not an ingestion gap, a phrasing-sensitivity gap) is exactly the retrieval risk
+      OWNER-SWITCHBOARD §1.3 describes: a corpus can be indexed and still be unreachable by how
+      a real client actually asks.
+
+      NEW this pass — the client-side companion to J4 (same instrument, same
+      source-confirmed real phrase, deliberately different, colloquial English question). Not
+      merely a duplicate: retrieval ranking depends on the query, so this is an independent
+      measurement of whether a NON-statute-phrased question about the same underlying fact
+      still surfaces it.
+
+  - question: "My company has a NIB for running a small guesthouse — does the rental income need to be reported separately for tax, or is it just part of our normal company tax filing?"
+    verbatim_phrase: "Yang menjadi subjek pajak adalah"
+    instrument_id: UU_36_2008
+    phrasing: client
+    language: en
+    cross_topic: true
+    cross_topic_lane: B
+    probe_state: red
+    probe_run_at: "2026-08-25"
+    note: >-
+      MEASURED red — consistent with J6 (same underlying phrase, different question, also
+      red), reinforcing this is a genuine ranking issue rather than one query's bad luck.
+
+      NEW this pass — the cross-topic journey OWNER-SWITCHBOARD §1.4 requires: "reporting tax
+      under the accommodation NIB" is named there explicitly as a real B×C crossing in the
+      sampled traffic. instrument_id stays inside lane C's own scope (UU_36_2008, income tax
+      subjects — per MANDATE contract, cross_topic_lane flags that answering the REAL question
+      fully also depends on lane B's NIB/business-classification rules, it does not redirect
+      the probe target itself). Same underlying phrase as J6 (which measured red — a genuine
+      ranking miss, not an ingestion gap), now tested against an entirely different, colloquial,
+      cross-topic question.

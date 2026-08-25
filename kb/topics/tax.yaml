@@ -125,6 +125,25 @@ instruments:
       see kb/inventory/tax.yaml. Its absence is exactly why PP_8_1983's 10% VAT-rate text
       (still in the corpus) is dangerous if surfaced for a rate question — see journey J2.
 
+  # ── HPP content under a garbled identity — same-pass discovery via J13's boilerplate-check, ──
+  # ── distinct from the UU_7_2021 row above: that row is the CORRECT identity, confirmed ──
+  # ── absent; this row is the MISLABELED fragment, confirmed present. See TAXC-5, ──
+  # ── kb/inventory/tax.yaml, for the full finding. ──────────────────────────────────────────
+  - id: UU_7_1945
+    declared_identity: "UU No 7 Tahun 1945 Tentang HARMONI SASI PERATURAN PERPAJAI(AN (the corpus's own book_title/legal_type/legal_number/legal_year fields literally store this — UU/7/1945 — on all 31 points; Indonesia enacted no tax-administration law in 1945)"
+    verified_identity: "Content-level evidence, not a clean title match (the title itself is garbled), indicates this is HPP — UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan — text: (1) its Pasal 2 chunk carries ayat (1a), the NIK-as-NPWP provision ('Nomor Pokok Wajib Pajak sebagaimana dimaksud pada ayat (1) bagi Wajib Pajak orang pribadi yang merupakan penduduk Indonesia menggunakan nomor induk kependudukan'), which UU_28_2007's own 2007-vintage Pasal 2 chunk does not carry, because that provision did not exist until HPP introduced it in 2021; (2) the garbled book_title itself decodes to 'UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan' once the OCR errors ('1945' for '2021', 'HARMONI SASI'/'PERPAJAI(AN' for 'HARMONISASI'/'PERPAJAKAN') are accounted for. Inferred, not independently source-verified against an official gazette page for THIS specific 31-point fragment."
+    identity_verdict: mistyped
+    status: unknown
+    source_url: "https://peraturan.go.id/id/uu-no-7-tahun-2021"
+    source_verified: true # this is the same URL already WebFetched for the UU_7_2021 row above (title matches exactly, PDF links present) — reused here because the claimed identity is the same instrument; NOT a fresh byte-for-byte diff of this 31-point fragment against that page
+    note: >-
+      status is 'unknown' rather than mirroring UU_7_2021's 'in_force': this corpus fragment's
+      OWN metadata.legal_status reads 'dicabut' (revoked), which directly conflicts with HPP's
+      real-world in-force status — but that 'dicabut' tag may itself be an OCR/mislabel artifact
+      of the same ingest defect that produced the wrong year, not a genuine status determination.
+      Recorded honestly as unknown rather than asserting either value with more confidence than
+      the evidence supports. See TAXC-5 (kb/inventory/tax.yaml) for the full discovery.
+
   # ── PPN (Pajak Pertambahan Nilai / VAT) chain ───────────────────────────────────────────
   - id: PP_8_1983
     declared_identity: "PP No. 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah"
