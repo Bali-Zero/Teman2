@@ -389,6 +389,38 @@ default is a decision you made rather than one discovered by whoever wires R1.
 
 ---
 
+## Item 12 — may a staff member open a case for a client who is not theirs? — NEW, 2026-08-25
+
+**Why this reached you.** F7 says the CRM endpoint is the authorization boundary. A census of
+`crm_practices.py` found 9 mutation routes, 4 with no ownership check. Three were closed as
+plain gaps. `POST /api/crm/practices/` was **deliberately not closed**, and that is a business
+call rather than an engineering one.
+
+**The evidence for stopping.** Its only real HTTP caller is the staff UI, reached from six entry
+points — none scoped to "my clients". One is a global keyboard shortcut carrying **no client_id
+at all**, so the page that follows offers an unfiltered client search: the product actively
+invites a staff member to open a case for any client in the book. And the closest analog in this
+codebase, `create_interaction`, calls `verify_client_access` with `write` left at its default
+`False` — it deliberately does not ownership-gate the equivalent action.
+
+An ownership gate would therefore 403 the routine "open a new case" flow the moment the selected
+client is not already assigned to the actor.
+
+**The question, precisely.** Is company-wide case creation the intended rule, or an accident the
+UI has been getting away with? Both are defensible for a ten-person office where everyone is
+staff:
+
+- **Intended** — leave it open. Assignment is an organisational convenience, not a permission
+  boundary. Nothing to do; this item closes.
+- **Not intended** — the fix is NOT a 403 on the endpoint alone, which would break the UI the
+  same day. It needs the client picker filtered to the actor's clients, an explicit override for
+  whoever legitimately opens cases across the book, and only then the endpoint gate.
+
+**What this does NOT block.** Nothing today. It does bear on the team bot: the `open_practice`
+tool inherits whatever rule you set, and until it is set that tool stays dark like the rest.
+
+---
+
 ## See also
 
 - **Kill criterion**: `MANDATE.md` (new section, this lane's addition) — the measured conditions
