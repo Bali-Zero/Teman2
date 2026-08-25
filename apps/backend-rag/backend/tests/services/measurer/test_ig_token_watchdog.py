@@ -116,9 +116,35 @@ def _client(handler: GraphHandler) -> httpx.AsyncClient:
     return httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
 
-def _state(tmp_path: Path, days_left: float) -> Path:
+def _state(tmp_path: Path, days_left: float, *, base: datetime) -> Path:
+    """Write a state sidecar claiming ``days_left`` days of validity.
+
+    ``base`` is DELIBERATELY required — there is no default, and there must
+    never be one again.
+
+    ``days_left`` is a RELATIVE quantity, but the file stores an ABSOLUTE
+    instant. Which clock that instant is measured from has to match the clock
+    the code under test will read, or the fixture silently ages one real day
+    per real day until it crosses a threshold:
+
+      * tests that pass ``now=NOW`` into ``run_watchdog``/``inspect_token``
+        pin the production clock, so ``base=NOW`` is self-consistent forever;
+      * ``run_from_env`` — the CLI entry point — takes NO ``now`` parameter and
+        reads ``datetime.now(timezone.utc)``, so a fixture handed to it MUST be
+        written from the real clock.
+
+    Getting this wrong is not a flake, it is a dated bomb. Until 2026-08-25
+    this helper defaulted to ``NOW`` (2026-07-13T12:00Z) and
+    ``test_cli_fresh_state_exits_zero_without_network`` — the one caller on the
+    CLI path — asked for 50 days. That expiry is 2026-09-01T12:00Z, which fell
+    inside the 7-day refresh threshold at exactly **2026-08-25T12:00:00Z**, 43
+    days after the fixture was written. The test was green for 43 days and then
+    red permanently, on every PR whose shard collected it. A default here is
+    what let one caller pick the wrong clock without saying so; requiring the
+    argument makes the choice visible at every call site.
+    """
     p = tmp_path / "state.json"
-    write_state_expiry(p, NOW + timedelta(days=days_left), refreshed_at=NOW)
+    write_state_expiry(p, base + timedelta(days=days_left), refreshed_at=base)
     return p
 
 
@@ -141,7 +167,7 @@ async def test_ig_refresh_returns_new_token_and_expiry():
 async def test_ig_watchdog_refreshes_near_expired_state(tmp_path, caplog):
     """GUILT: state says 3 days left → refresh fires on graph.instagram.com."""
     handler = GraphHandler()
-    state = _state(tmp_path, days_left=3)
+    state = _state(tmp_path, days_left=3, base=NOW)
     async with _client(handler) as client:
         with caplog.at_level("INFO"):
             outcome = await run_watchdog(
@@ -164,7 +190,7 @@ async def test_ig_watchdog_refreshes_near_expired_state(tmp_path, caplog):
 async def test_ig_watchdog_skips_fresh_state(tmp_path):
     """INNOCENCE: state says 45 days left → NO network call at all."""
     handler = GraphHandler()
-    state = _state(tmp_path, days_left=45)
+    state = _state(tmp_path, days_left=45, base=NOW)
     async with _client(handler) as client:
         outcome = await run_watchdog(
             FAKE_TOKEN,
@@ -565,13 +591,40 @@ async def test_cli_refresh_with_persist_target_succeeds(clean_env, tmp_path):
 
 @pytest.mark.asyncio
 async def test_cli_fresh_state_exits_zero_without_network(clean_env, tmp_path):
-    state_file = _state(tmp_path, days_left=50)
+    # base=REAL clock, not NOW: run_from_env takes no ``now`` parameter, so it
+    # reads datetime.now(timezone.utc). See _state's docstring — a frozen base
+    # here is what made this test go red on 2026-08-25T12:00:00Z.
+    state_file = _state(tmp_path, days_left=50, base=datetime.now(timezone.utc))
     clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
     clean_env.setenv("IG_TOKEN_STATE_FILE", str(state_file))
     handler = GraphHandler()
     async with _client(handler) as client:
         assert await run_from_env(http_client=client) == 0
     assert handler.ig_refresh_calls == 0
+
+
+def test_cli_state_fixture_is_measured_against_the_real_clock(tmp_path):
+    """GUARD for the 2026-08-25 dated bomb — fails the day someone re-freezes it.
+
+    The test above is the only ``_state`` caller on the ``run_from_env`` path,
+    and that path reads the real clock. This asserts the property that made it
+    go red rather than the symptom: a fixture written for the CLI must still
+    have comfortably more than the refresh threshold left when measured
+    against ``datetime.now(timezone.utc)``.
+
+    Written with ``base=NOW`` (the old default) this assertion is FALSE from
+    2026-08-25T12:00Z onward, so a revert cannot pass silently. Written with
+    the real clock it holds on every calendar date, forever.
+    """
+    state_file = _state(tmp_path, days_left=50, base=datetime.now(timezone.utc))
+    expiry = read_state_expiry(state_file)
+    assert expiry is not None
+    days_left = (expiry - datetime.now(timezone.utc)).total_seconds() / 86400
+    assert days_left > DEFAULT_REFRESH_THRESHOLD_DAYS + 30, (
+        f"CLI state fixture has only {days_left:.2f}d left against the real "
+        f"clock (threshold {DEFAULT_REFRESH_THRESHOLD_DAYS}d) — it was almost "
+        f"certainly written from a frozen base. See _state's docstring."
+    )
 
 
 @pytest.mark.asyncio
