@@ -124,10 +124,16 @@ def _sign(body: dict) -> tuple[bytes, dict[str, str]]:
 
 @pytest.mark.usefixtures("client")
 class TestPaymentWebhook:
-    async def test_no_idempotency_key_header_still_reaches_204_and_marks_paid(
+    async def test_the_provider_callback_does_not_need_our_client_idempotency_header(
         self, pool, client: AsyncClient
     ) -> None:
-        """The real-world shape: Xendit never sends Idempotency-Key at all."""
+        """Guards the router against re-acquiring the gate defect: Xendit
+        Invoices callbacks authenticate with `x-callback-token`, never our
+        `Idempotency-Key` -- that header is a request-idempotency pattern
+        for commands WE issue, not one an inbound provider callback carries.
+        A real Xendit PAID callback sends no Idempotency-Key at all; this
+        must still reach 204 and mark the order paid, not 400 before
+        signature verification ever runs (the exact production defect)."""
 
         order_id = "ord_webhook_bite_1_0000000"
         session_id = "sess-webhook-bite-1"
