@@ -375,3 +375,32 @@ def test_the_probe_actually_compares_the_recorded_shapes(inventory):
         "shape_drift stayed silent about a shape that disappeared from production — "
         "iterating the LIVE keys instead of the vocabulary is exactly this bug"
     )
+
+
+def test_the_gate_this_module_defers_topic_inventories_to_actually_exists():
+    """This module SKIPS every kind='topic' file saying it is "owned by another gate".
+
+    Measured 2026-08-25, before `test_kb_topic_contract.py` was written: that
+    sentence was false. A three-line topic inventory whose only content was the
+    word `nonsense` passed this entire suite with rc=0 — one test looked at it,
+    skipped, and named an owner that did not exist. A defensive skip pointing at
+    a missing owner is worse than no skip, because it reads as coverage to
+    everyone downstream, including whoever adds the next `kind`.
+
+    So the deferral is now interlocked: delete or rename the topic gate and this
+    goes red, instead of quietly reopening the hole. The same interlock runs in
+    the other direction in that file.
+    """
+    owner = Path(__file__).with_name("test_kb_topic_contract.py")
+    assert owner.is_file(), (
+        f"{owner.name} is missing, but this module still skips kind='topic' files as "
+        f"'owned by another gate' — that owner is gone and topic inventories are now "
+        f"judged by nobody"
+    )
+    source = owner.read_text(encoding="utf-8")
+    assert 'OWNED_KIND = "topic"' in source, (
+        f"{owner.name} exists but no longer claims kind='topic' — the deferral in this "
+        f"module now points at a gate that has stopped owning what it defers"
+    )
+    for rule in ("def check_topic(", "def check_journey(", "def check_topic_inventory("):
+        assert rule in source, f"{owner.name} no longer defines {rule!r}"
