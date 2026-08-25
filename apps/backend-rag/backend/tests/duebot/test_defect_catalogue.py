@@ -81,20 +81,20 @@ def test_all_ids_are_unique(catalogue: list[DefectClass]) -> None:
     assert len(ids) == len(set(ids)), "duplicate id present"
 
 
-def test_exactly_45_classes_17_client_17_team_11_transport(catalogue: list[DefectClass]) -> None:
-    """5 -> 11 transport entries as of the B5 staging drill (F9): six new
-    ids for the orchestrator's named failover cases (split-brain,
-    neither/both-nodes-up, takeover-mid-flight, no-automatic-failback,
-    stale-node-wakes-stale-epoch) added alongside the pre-existing
-    transport.failover-stale-epoch-mutation-rejected from B6a. Per this
-    catalogue's own convention (see the module docstring): "never
-    renumber an existing id; add a new entry instead" — this count test
-    is updated in lockstep with additions, the ids themselves are not.
+def test_exactly_48_classes_17_client_17_team_14_transport(catalogue: list[DefectClass]) -> None:
+    """11 -> 14 transport entries as of the B5 F9-CALLBACK-WRITE-FENCE-SPEC
+    fix (cross-family refutation F9-REFUTATION-2026-08-25.md): three new
+    ids for findings #1/#3/#4 (the write-fence, one mechanism), #7 (DB-level
+    epoch-monotonic trigger), and #8 (startup Postgres retry) — added
+    alongside the pre-existing 11 transport entries. Per this catalogue's
+    own convention (see the module docstring): "never renumber an existing
+    id; add a new entry instead" — this count test is updated in lockstep
+    with additions, the ids themselves are not.
     """
-    assert len(catalogue) == 45
+    assert len(catalogue) == 48
     assert len(by_bot(catalogue, "client")) == 17
     assert len(by_bot(catalogue, "team")) == 17
-    assert len(by_bot(catalogue, "transport")) == 11
+    assert len(by_bot(catalogue, "transport")) == 14
 
 
 def test_client_count_matches_research_capture_5_1(catalogue: list[DefectClass]) -> None:

@@ -49,6 +49,37 @@ proves the SHAPE of direction (2) using only this lane's own code (no import fro
 `apps.team_bot`) — see that test's docstring for exactly what it does and does not
 prove.
 
+## A second consumer of the same gap class
+
+Zero's directive #1 (per-member team-bot memory: three layers in a local SQLite store
+on Mini, replicated to Pro, with the explicit requirement _"la memoria sopravvive al
+failover"_) puts per-member memory in exactly the same shape as F6's PendingAction —
+node-local SQLite state that must survive, or be correctly judged stale by, an F9
+takeover. B8 is building that store now and has been pointed at this file before
+designing it. Nobody should design a fix here for F6's pending actions alone: the same
+"is this node-local SQLite state current, and does the OTHER node see it after a
+takeover" question now has two independent consumers (F6 confirmations, team-bot
+memory), and a resolution shape picked without both in view — e.g. one that hardcodes
+`PendingAction`-specific fields into the check — would need re-doing the day the second
+consumer arrives. This paragraph is B5 naming the second instance, not designing
+either fix; sizing the actual resolution is still the open call above.
+
+## A reference implementation now exists (finding #2)
+
+A cross-family refutation of F9 (`F9-REFUTATION-2026-08-25.md`, finding #2)
+named the SAME class of bug directly inside this lane's own module:
+`authorize()` is a plain read-then-compare — nothing atomically binds its
+verdict to the mutation it is meant to gate, so a check that returns
+AUTHORIZED can still be stale by the time the protected write actually
+commits, if any time passes between the two. `F9-CALLBACK-WRITE-FENCE-SPEC.md`
+fixes this for F9's OWN outbound WABA write (the one mutation this lane
+controls end to end): a new `_fence_write_with_live_epoch` helper re-checks
+`authorize()` AND extends the lease via `renew()` immediately before the
+write, never trusting a belief read earlier in the same tick. Whoever wires
+this same discipline into F6's confirm/execute path (or a CRM mutation
+endpoint generally) has a concrete, tested reference to copy rather than
+inventing the shape from scratch.
+
 ## Candidate resolution shapes (not a decision — for whoever rules on this)
 
 - **B3's confirm/execute path calls F9's `IngressLeaderStore.authorize()`** (already

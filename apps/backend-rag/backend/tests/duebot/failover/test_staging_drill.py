@@ -43,6 +43,8 @@ existed from B6a; the others below were added by this lane):
         -> transport.failover-no-automatic-failback
     test_stale_node_wakes_believing_stale_epoch
         -> transport.failover-stale-node-wakes-stale-epoch
+    test_write_fence_refuses_a_delayed_write_after_a_rival_already_took_over
+        -> transport.failover-write-fence-refuses-stale-belief
 """
 
 from __future__ import annotations
@@ -55,6 +57,7 @@ from backend.services.team_bot_ingress.failoverd import (
     FailoverdDeps,
     MiniFailureTracker,
     SelfHealthReport,
+    _fence_write_with_live_epoch,
     evaluate_and_act_once,
 )
 from backend.services.team_bot_ingress.ingress_leader import (
@@ -62,6 +65,7 @@ from backend.services.team_bot_ingress.ingress_leader import (
     AuthorizeOutcome,
     IngressLeaderState,
     InMemoryIngressLeaderStore,
+    PromoteOutcome,
     RenewOutcome,
 )
 from backend.services.team_bot_ingress.waba_override import WABAOverrideClient
@@ -485,3 +489,76 @@ async def test_pending_action_confirmation_after_takeover_needs_a_live_epoch_che
         node_id=current.active_node_id, epoch=current.leader_epoch, now=T0 + timedelta(seconds=10)
     )
     assert live_confirm_attempt.outcome is AuthorizeOutcome.AUTHORIZED
+
+
+# ---------------------------------------------------------------------
+# GUILT — refutation finding #1: an obsolete winner's DELAYED write must
+# be refused after a rival has already taken over. See
+# F9-CALLBACK-WRITE-FENCE-SPEC.md.
+# ---------------------------------------------------------------------
+
+
+async def test_write_fence_refuses_a_delayed_write_after_a_rival_already_took_over() -> None:
+    """Refutation finding #1's exact harm, reproduced directly against the
+    write-fence: contender A's CAS succeeds (epoch 1->2) but its WABA
+    write is DELAYED (paused scheduler, GC, slow DNS -- anything). While
+    paused, a SEPARATE contender B's tick runs to completion: B reads
+    epoch=2 (correctly current), promotes to epoch=3, and confirms ITS
+    OWN callback. A then resumes and reaches the write-fence with the
+    epoch IT won (2) -- no longer current. Before this fix,
+    evaluate_and_act_once fired the WABA write unconditionally the moment
+    try_promote succeeded, with no re-check -- the refuter's scenario
+    ("DB leader B, WABA callback A") was reachable. The fence must refuse
+    A's delayed write.
+    """
+    store = _bootstrap_store(active_node_id="mini-pro2", epoch=1)
+    fake = FakeGraphAPI()
+
+    # A's CAS succeeds -- the part of A's tick that already ran before it
+    # was "paused".
+    promote_a = await store.try_promote(
+        expected_epoch=1,
+        new_node_id="pro-contender-a",
+        lease_seconds=60.0,
+        new_callback_sha256="a" * 64,
+        now=T0,
+    )
+    assert promote_a.outcome is PromoteOutcome.PROMOTED
+    assert promote_a.state.leader_epoch == 2
+
+    # B's FULL tick runs to completion while A is still paused: B reads
+    # epoch=2 (current), is eligible (Mini down), promotes to epoch 3,
+    # and successfully confirms its own callback.
+    tracker_b = MiniFailureTracker()
+    async with fake.client() as httpx_client:
+        action_b = await _drive_n_unhealthy_ticks(
+            n=3,
+            tracker=tracker_b,
+            store=store,
+            httpx_client=httpx_client,
+            node_id="pro-contender-b",
+        )
+        assert action_b.kind is ActionKind.PROMOTED_AND_CONFIRMED
+        b_confirmed_calls = len(fake.post_calls)
+        assert b_confirmed_calls == 1
+
+        # A now resumes and reaches the write-fence with the epoch it WON
+        # (2) -- no longer current (B now holds epoch 3).
+        deps_a = _deps(
+            node_id="pro-contender-a",
+            store=store,
+            httpx_client=httpx_client,
+            mini_ready=False,
+        )
+        fence_rejection = await _fence_write_with_live_epoch(
+            deps=deps_a, epoch=promote_a.state.leader_epoch, now=T0 + timedelta(seconds=10)
+        )
+
+    assert fence_rejection is not None, (
+        "A's delayed write must be refused -- B is now the current leader"
+    )
+    # A's callback must NEVER have reached Meta -- still exactly B's one call.
+    assert len(fake.post_calls) == b_confirmed_calls
+    final = await store.read()
+    assert final.active_node_id == "pro-contender-b"
+    assert final.leader_epoch == 3
