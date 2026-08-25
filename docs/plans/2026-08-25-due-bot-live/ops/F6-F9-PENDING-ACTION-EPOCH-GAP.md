@@ -69,6 +69,40 @@ prove.
 None of these is committed. This file exists so the choice is made on purpose, by
 whoever owns wiring F6 to F9, not discovered as a production incident.
 
+## Second consumer: B8 per-member memory (owner directive #1 §3)
+
+`apps/team-bot/team_bot/memory/store.py`'s `SqliteMemberMemoryStore` is a second,
+independent per-node SQLite store with the same "Mini <-> Pro replication is out
+of scope" shape `SqlitePendingActionStore` carries — B8's own module docstring
+names this same open question explicitly rather than inventing a private answer,
+and raised it to the orchestrator as a cross-lane question instead of resolving
+it unilaterally.
+
+**Orchestrator ruling (2026-08-25, on B8's cross-lane question): one mechanism,
+not two.** B8's severity argument — a memory write is idempotent-ish (last-write-
+wins profile, insert-only episodic, increment-only pattern counter), so a
+split-brain degrades to a duplicated row or a double-counted pattern, never a
+wrong CRM mutation — is accepted, and is a good reason NOT to block B8 on this
+gap. It is not a reason to build B8 a second, independent resolution: the
+question a second mechanism would answer is "can two answers to the same
+problem diverge?" — and they can. Whoever writes the simpler one writes the
+precedent, and a future third consumer copies the precedent rather than
+re-deriving it; that third consumer may be a mutation. Two things sharpen the
+severity argument itself rather than defeat it: (1) the idempotency argument is
+about the CONSEQUENCE of a race, not about whether the race exists — the race
+itself is identical across every SQLite-per-node store this gap touches; (2) a
+double-counted learned pattern feeds proactivity (the bot acting unasked, on a
+wrong belief) — lower severity than a stale mutation, genuinely, but not zero.
+
+**Binding**: whoever designs the resolution for `SqlitePendingActionStore` is
+designing it for at least two consumers, not one — `SqliteMemberMemoryStore`
+adopts whatever mechanism is chosen here and does NOT get a cheaper bespoke
+answer, even though its own severity would arguably justify one. Ship each
+consumer single-node and dark until the mechanism lands, exactly as B3 and B8
+have both already done; a future third consumer does not get to copy B8's
+carve-out as precedent for skipping this line — B8 committed to the general
+answer, not to a cheaper one it happened to be safe enough to defer.
+
 ## Why this cannot bite today
 
 `TEAM_BOT_FAILOVER_AUTO_ENABLED` defaults false and stays false until the operator
