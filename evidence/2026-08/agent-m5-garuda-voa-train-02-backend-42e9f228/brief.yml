@@ -38,7 +38,7 @@ acceptance: >
   `run-migrations` produces from the OLD (pre-PR) image.
 consumer_map:
   - Every downstream GARUDA lane already merged to the shared
-    feature/garuda-voa integration branch (L1-L7: checkout, portal,
+    feature/garuda-voa integration branch (L1-L7 -- checkout, portal,
     documents, practices, magic-link session, control-tower) depends on
     this PR's routers/migrations/services landing on main intact -- this
     is the backend half of the assembly-line's "land the whole organ,
@@ -69,7 +69,7 @@ grader: pr2-preflight session (cross-lane landing session, generator!=
 budget: 132 files, +22188/-19 net lines -- a train-landing PR by design,
   not a single-unit-of-work PR; the 5 migrations
   (281,284,285,286,287_*.sql) are the hot-zone trigger for this gear-3
-  floor. Verification scope for THIS evidence pack: the isolated slice
+  floor. Verification scope for THIS evidence pack -- the isolated slice
   covering the dark-by-flag contract (flag default, payment gate,
   zero-env import, public-mutation registry) plus the two test modules
   that exercise it directly -- not a full-repo re-run of every test the
