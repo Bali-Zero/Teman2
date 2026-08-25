@@ -49,6 +49,21 @@ proves the SHAPE of direction (2) using only this lane's own code (no import fro
 `apps.team_bot`) — see that test's docstring for exactly what it does and does not
 prove.
 
+## A second consumer of the same gap class
+
+Zero's directive #1 (per-member team-bot memory: three layers in a local SQLite store
+on Mini, replicated to Pro, with the explicit requirement _"la memoria sopravvive al
+failover"_) puts per-member memory in exactly the same shape as F6's PendingAction —
+node-local SQLite state that must survive, or be correctly judged stale by, an F9
+takeover. B8 is building that store now and has been pointed at this file before
+designing it. Nobody should design a fix here for F6's pending actions alone: the same
+"is this node-local SQLite state current, and does the OTHER node see it after a
+takeover" question now has two independent consumers (F6 confirmations, team-bot
+memory), and a resolution shape picked without both in view — e.g. one that hardcodes
+`PendingAction`-specific fields into the check — would need re-doing the day the second
+consumer arrives. This paragraph is B5 naming the second instance, not designing
+either fix; sizing the actual resolution is still the open call above.
+
 ## Candidate resolution shapes (not a decision — for whoever rules on this)
 
 - **B3's confirm/execute path calls F9's `IngressLeaderStore.authorize()`** (already
