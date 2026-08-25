@@ -1,6 +1,7 @@
 ---
 date: 2026-08-26
 domain: compliance
+adversarial_review: kimi
 sources:
   - infra/launchagents/wrappers/regulatory-watcher-run.sh (== ~/scripts/regulatory-watcher-run.sh, sha256-identical, verified this session)
   - infra/eventbus/regulatory_ingest_runner.py
@@ -11,6 +12,22 @@ sources:
   - research/regulatory/*.json (57 files, origin/main, read via `git show`)
   - live LegalMetadataExtractor / build_content_bound_legal_doc_id, run in-process on 12 real
     watcher-delta samples this session — read-only, zero writes to any store
+  - adversarial review by `kimi` (Kimi K3, 2026-08-26) — 5 findings (C5-C9), all independently
+    re-verified this session before any correction was applied; see "Adversarial review" below
+  - `/tmp/c5c7_measure.py` (this session, not committed) — live `LegalMetadataExtractor` +
+    `build_content_bound_legal_doc_id`, re-run in-process (read-only, zero writes) against **all
+    48** delta objects across the 57 tracked `research/regulatory/*.json` files on `origin/main`
+    (the original 12-sample run was a subset of this population) — confirms the reviewer's
+    27/48 = 56.2% orphan rate and 21 (order-insensitive) / 24 (order-sensitive) distinct top-level
+    key-shapes
+  - `git log --all -S 'legal_unified" + "_2026'` against
+    `infra/eventbus/regulatory_ingest_runner.py` (this session) — zero commits; confirms the
+    reviewer's finding that this string never existed in the runner itself
+  - apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py:270-320,355-440
+    (read-only, this session — verified the actual `def` lines for
+    `build_content_bound_legal_doc_id` (281) and `_assert_identity_unclaimed` (360)) and
+    infra/launchagents/wrappers/regulatory-watcher-run.sh:295-390 (verified `promote_delta_via_pr`
+    `def` at line 301)
 ---
 
 # WIZ-1 — which route reconnects the regulatory watcher to the KB, and should either be armed now
@@ -24,8 +41,12 @@ Qdrant, nothing deleted, no LaunchAgent touched. Worktree: `backend-rag-wiz1-rou
 The blocker is identity, and it is a *different* shape of the identity problem than WIZ-2's own
 framing suggested. It is not "dal nome del file" — that specific failure mode has already been
 partly hardened (a fail-closed collision guard + a content-hash fallback landed 2026-08-25, the
-day before this measurement). What remains, measured directly against the live extractor on 12
-real watcher deltas: roughly two-thirds of the watcher's own short findings would land in the KB
+day before this measurement). What remains, measured directly against the live extractor on all
+**48** watcher deltas in the tracked backlog (**CORRECTED 2026-08-26** — this line originally cited
+a 12-sample spot-check's rate as if it were the population rate; the full-population run below is
+the authoritative number, a stronger test than the sample, and is what the rest of this document
+now cites):
+**27 of 48 (56.2%)** of the watcher's own short findings would land in the KB
 **orphaned from citation lookup** — embedded and vector-searchable, but invisible to any
 document_id/citation-exact query, KG entity-linking, or future de-dup pass. That is a quieter
 failure than WIZ-2's "confidently wrong" case, but it is still not something to ship blind.
@@ -49,7 +70,9 @@ case, the tracked file IS the live one. `grep -inE "qdrant|upsert|ingest|embed"`
 matches**. The script's actual output contract is a JSON delta file, a Telegram alert, an
 `intel_lake_outbox` enqueue (a *different* pipeline, not Qdrant), and — since some point in its
 history — a step that **commits the delta into the tracked repo tree itself** via an ephemeral
-worktree + auto-merged PR (`promote_delta_via_pr()`, script lines 289–383). That last piece is why
+worktree + auto-merged PR (`promote_delta_via_pr()`, script lines 301–383 —
+**corrected 2026-08-26**, the function's `def` is at line 301, not 289; the closing line, 383, was
+already right). That last piece is why
 delta files exist on `origin/main` at all: this is not a manual backlog, it is a working, if
 narrow, promotion pipeline — it just stops at "the delta is a tracked file," never at "the delta is
 a KB entry."
@@ -69,10 +92,15 @@ a KB entry."
   a full scan that day. A consumer must honor this flag; a naive "read every file, ingest every
   delta" pass would treat a partial/degraded day's (possibly empty) findings as a clean "nothing
   new."
-- **Schema drift is real but additive.** 23 distinct top-level key-shapes across 57 files (fields
+- **Schema drift is real but additive.** **CORRECTED 2026-08-26** — re-run against the same 57
+  files on `origin/main`: **21** distinct top-level key-shapes when keys are compared
+  order-insensitively (sorted-tuple identity), or **24** when compared order-sensitively (raw key
+  order as `dict.keys()` yields it); this line originally said "23", which reproduces under neither
+  method. State the method alongside the number going forward — order-insensitive (21) is the more
+  meaningful count for a consumer that reads keys by name, not position. Fields
   like `nb_query_notes`, `note`, `dedup_notes`, `web_sources_checked`, `confidence_note`,
-  `sources_checked_no_delta` appear/disappear over time) and 12 distinct per-delta-object key
-  shapes. None of this ever *drops* the 7 core fields a consumer would key on —
+  `sources_checked_no_delta` appear/disappear over time. 12 distinct per-delta-object key
+  shapes (unaffected by this correction — not re-measured, no discrepancy was flagged there). None of this ever *drops* the 7 core fields a consumer would key on —
   `citation, title_id, title_en, service_line, source, summary, verbatim_excerpt` are present in
   every one of the 48 delta objects, in every shape observed. A consumer built against those 7
   fields is stable across the full history; one that also reads `new_today_count` or assumes a
@@ -93,10 +121,22 @@ collections in full against production Qdrant, part of this same campaign) state
 reads** — 84,283 points, 388 documents. `legal_unified_2026` is a **frozen, unrelated, 15,410-point
 artifact from 2026-05-16** that this same work item's decision record retires as a target
 (`decision.choice: retire_as_target`). `regulatory_ingest_runner.py:425` already targets
-`"legal_unified"` literally — the correct one. `scripts/ci/ingest_target_lint.py`'s own docstring
-(lines 6, 25-26) documents that this runner *did* once resolve to the wrong name via a string
-concatenation (`"legal_unified" + "_2026"`) that a now-superseded regex scanner missed; an
-AST-based lint replaced it and the runner is a `DECLARED_ENTRYPOINT` at the correct name today.
+`"legal_unified"` literally — the correct one. **CORRECTED 2026-08-26** — this paragraph previously
+fused two separate, real facts into one false history. `scripts/ci/ingest_target_lint.py`'s own
+docstring (lines 6-15) says the runner named the **plain string literal** `legal_unified_2026`
+directly — not via any concatenation — and that this made it write to a dead collection nothing
+reads (and, separately, fail its own preflight outright). The string-concatenation form,
+`LegalIngestionService(collection_name="legal_unified" + "_2026")`, is a **different, later fact**:
+per the same docstring (lines 17-27), it is a counterexample a cross-family refuter *constructed* to
+break the first cut of this lint, which matched collection literals with a regex — the concatenation
+demonstrates the regex's blind spot, it was never a state the runner's own code passed through.
+Verified independently this session: `git log --all -S 'legal_unified" + "_2026'` against
+`infra/eventbus/regulatory_ingest_runner.py` returns **zero** commits — that string never existed in
+the runner. It appears only in the fix commit (`1dbc497bb`) and the AST-rebuild commit
+(`854796d0b`), both as the lint's own illustrative counterexample. So: the runner's historical bug
+was a literal, not a concatenation; the concatenation was the refuter's stress-test of the regex
+scanner, a fact about the *lint*, not about the *runner*. An AST-based lint replaced the regex one
+and the runner is a `DECLARED_ENTRYPOINT` at the correct name today — that part was already right.
 This is resolved, not open — noted here because getting it backwards would have wrecked the whole
 analysis.
 
@@ -197,9 +237,11 @@ falling back to three independent whole-document regex searches per field when t
 change the risk profile from WIZ-2's worst case:**
 
 1. Any field left `UNKNOWN`/`DOC`/`0`/`NONE` forces a 16-hex-char content-hash suffix onto the id
-   (`legal_ingestion_service.py:215-228`) — this makes a failed extraction land under a unique,
-   non-colliding id instead of a plausible-but-wrong one.
-2. `_assert_identity_unclaimed()` (lines 298-374) is a fail-closed guard: a NEW source cannot
+   (`legal_ingestion_service.py:281-289` — **corrected 2026-08-26**, was cited as 215-228; the
+   function (`build_content_bound_legal_doc_id`) starts at 281 and returns at 289) — this makes a
+   failed extraction land under a unique, non-colliding id instead of a plausible-but-wrong one.
+2. `_assert_identity_unclaimed()` (lines 360-436 — **corrected 2026-08-26**, was cited as 298-374;
+   the method's `def` is at line 360) is a fail-closed guard: a NEW source cannot
    silently overwrite an EXISTING different source holding the same `document_id` — it raises
    `LegalIngestIntegrityError` instead. (It was added after measuring the exact collision WIZ-2's
    class of defect produces: `Permen_1_2026` held 544 points shared between PMK 1/2026 and Permen
@@ -229,9 +271,13 @@ obvious way a Route-B implementation would (`title_id + citation + summary + ver
 | `UU 4/2026` | UU/4/2026 | **`UU_4_2026`** (clean) |
 
 **Reading this straight:** 4 distinct regulations (5 of 12 rows, 2 of which correctly collapse onto
-one id) land with a clean, citation-matching identity. The other 8 rows fall into the
+one id) land with a clean, citation-matching identity. **CORRECTED 2026-08-26** — this line
+originally said "the other 8 rows fall into the hash-suffixed safety net"; 12 − 5 = **7**, not 8,
+and the table above has exactly 7 hash-suffixed rows. The other **7** rows fall into the
 hash-suffixed safety net — **safe from collision, but permanently unreachable by document_id or
-citation lookup**, findable only via vector similarity. None of the 12 reproduced WIZ-2's worst
+citation lookup**, findable only via vector similarity (this 12-row sample's own rate, 7/12 =
+58.3%, is close to but not identical with the full-population 56.2% measured in "The finding, up
+front" above, which is the authoritative number — see the correction there). None of the 12 reproduced WIZ-2's worst
 case (a clean-looking id that names the *wrong* instrument) — the 2026-08-25 hardening appears to
 be doing its job on this sample. But two things in this small sample are still worth flagging
 explicitly rather than washing out in an average:
@@ -254,11 +300,13 @@ title implies — that specific hole has a fresh, real patch. What it still does
 WIZ-2's own stated cure (a title-block extractor with guilt-AND-innocence tests, "plus an
 ingest-time check that refuses a document_id its own title block contradicts") would add, is any
 check that an extracted triple is *plausible* rather than merely non-colliding. On short,
-watcher-shaped text specifically, that gap manifests as a large orphaned fraction (roughly
-two-thirds in this sample) rather than as silent corruption — which is a materially different, and
+watcher-shaped text specifically, that gap manifests as a large orphaned fraction — **56.2% (27 of
+48), measured across the full tracked backlog, not the "roughly two-thirds" this section originally
+estimated from the 12-row sample alone (corrected 2026-08-26; full-population measurement in "The
+finding, up front" above)** — rather than as silent corruption — which is a materially different, and
 more tolerable, failure mode than what was measured on full-PDF ingests in the legal_unified_2026
 experiment (11 of 18, ~61%, carrying a *confidently wrong* identity). But "more tolerable" is not
-"acceptable to ship": two-thirds of a compliance-relevant regulatory KB effectively invisible to
+"acceptable to ship": more than half of a compliance-relevant regulatory KB effectively invisible to
 exact lookup, silently, with no alarm, is still a defect a paying client's tax or visa question
 could walk straight into.
 
@@ -287,3 +335,74 @@ Sources for the pricing figure in §4:
 [CloudZero — OpenAI API pricing in 2026](https://www.cloudzero.com/blog/openai-pricing/),
 [EmbeddingCost.com — OpenAI Embedding Pricing 2026](https://embeddingcost.com/openai),
 [TokenMix — OpenAI Embedding Pricing 2026](https://tokenmix.ai/blog/openai-embedding-pricing).
+
+## Adversarial review
+
+**Seat:** `kimi` (Kimi K3), 2026-08-26, cross-family review of this file and the companion
+outstanding-journeys triage (`2026-08-26-outstanding-journeys-triage.md`), against
+`origin/feature/kb-current`.
+
+**Verdict: SURVIVES_WITH_LIMITS.** No central thesis of this file was refuted — Route B remains the
+right eventual shape, cost remains a non-factor, and identity remains the correct blocker for
+arming either route today. The reviewer found 5 corner defects (C5-C9 below): one headline number
+that undersold the true orphan rate, one arithmetic slip, one conflated-history paragraph, one
+schema-count discrepancy, and one sample-vs-population ambiguity. None of these change the
+recommendation in §6.
+
+**What the reviewer independently verified, the hard way, rather than trusting this file's
+tables:** re-ran the live `LegalMetadataExtractor` + `build_content_bound_legal_doc_id` against the
+**entire 48-delta population** (this file's original measurement covered a 12-delta sample) to
+check whether the headline "roughly two-thirds" orphan-rate claim held at scale — it did not, at
+the claimed figure, though the underlying phenomenon (a large orphaned majority) does hold and is
+in fact worse in the corrected number's precision than the rounded original suggested. This is a
+stronger check than anything in the original file, which never re-ran its own method past the
+12-item sample.
+
+**Findings and what was corrected, each independently re-verified by this session before any fix
+was applied — no correction below was applied on the reviewer's word alone:**
+
+- **C5 — the most serious.** The title claim "roughly two-thirds" (8/12 = 66.7%) contradicted the
+  file's own §5.2 table, which shows 5 clean + 7 hash-suffixed = 12, i.e. 7/12 = 58.3%, not 8/12.
+  **Fixed**, and strengthened rather than merely corrected: this session independently re-ran the
+  live extractor against **all 48 deltas** in the tracked backlog (not just the 12-item sample) and
+  measured **27/48 = 56.2%** — confirming the reviewer's own full-population figure exactly. All
+  four occurrences of "roughly two-thirds" (the up-front finding, §5.2, and twice in §5.3) now cite
+  27/48 = 56.2% as the authoritative number, with the 12-sample rate kept only as a corroborating
+  spot-check.
+- **C6** — §1.3 claimed the ingest runner "did once resolve to the wrong name via a string
+  concatenation" that a regex scanner missed. **Fixed.** Verified via
+  `git log --all -S 'legal_unified" + "_2026'` against
+  `infra/eventbus/regulatory_ingest_runner.py`: **zero** commits — that string never existed in the
+  runner. `scripts/ci/ingest_target_lint.py`'s docstring shows two separate facts this file had
+  fused into one: the runner's real historical bug was the plain literal `legal_unified_2026`
+  (lines 6-15), and the concatenation form was a refuter-constructed counterexample used to break
+  the *lint's* first (regex) implementation (lines 17-27) — never a state the runner's code passed
+  through. Corrected to separate the two facts; the conclusion (the runner targets the correct name
+  today) is unaffected.
+- **C7** — "23 distinct top-level key-shapes across 57 files" did not reproduce under either an
+  order-sensitive or order-insensitive key comparison. **Fixed** — re-measured on the same 57
+  files: **21** distinct shapes order-insensitive, **24** order-sensitive; both numbers and the
+  method are now stated together.
+- **C8** — three line citations were wrong: the hash-suffix mechanism was cited at
+  `legal_ingestion_service.py:215-228` (actual `def build_content_bound_legal_doc_id` at 281,
+  returns at 289); `_assert_identity_unclaimed()` was cited at "lines 298-374" (actual `def` at
+  360, body extends to 436); `promote_delta_via_pr()` was cited at "script lines 289-383" (actual
+  `def` at 301 — the closing line, 383, was already correct). **Fixed**, each verified by opening
+  the file at the corrected line this session.
+- **C9** — the up-front finding paragraph presented the n=12 sample's rate as if it were the
+  population rate, with no caveat. **Fixed** as part of C5 — the paragraph now states the
+  full-population measurement (27/48) as authoritative and explicitly flags that the original text
+  conflated sample and population.
+
+**What the reviewer explicitly declared it could not verify, and why:** the reviewer's C5/C7
+findings were arithmetic/reproduction checks against this file's own tables and against the live
+extractor run on the 12-sample subset — it did not have (or state having) access to re-run the
+extractor against the full 48-delta population itself; this session supplied that measurement,
+which is what makes the corrected numbers here stronger than a re-assertion of the reviewer's own
+figures would have been. The reviewer's C6 finding was reasoned from the two docstring passages in
+`ingest_target_lint.py` without an independent git-history check; this session added the
+`git log -S` verification that the concatenation form never existed in the runner, closing the one
+gap the reviewer's own finding left open. Neither this session nor the reviewer has access to
+production Qdrant write credentials — nothing in this file's cost/identity analysis was verified by
+an actual ingest; that remains true after this review, unchanged from the original mandate's
+read-only constraint.
