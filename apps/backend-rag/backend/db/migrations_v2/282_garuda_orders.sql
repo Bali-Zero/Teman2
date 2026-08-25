@@ -365,9 +365,9 @@ CREATE INDEX idx_garuda_order_outbox_undispatched
 
 -- === ROLLBACK ===
 
--- squawk-ignore: prefer-robust-stmts -- this section deliberately runs the
--- destructive teardown for local/CI rollback only; it is never applied to
--- a live database by the migration runner's forward path.
+-- This section deliberately runs the destructive teardown for local/CI
+-- rollback only; it is never applied to a live database by the migration
+-- runner's forward path.
 DROP TABLE IF EXISTS public.garuda_order_outbox;
 DROP TRIGGER IF EXISTS trg_guard_garuda_order_journal_append_only ON public.garuda_order_journal;
 DROP FUNCTION IF EXISTS public.guard_garuda_order_journal_append_only();
