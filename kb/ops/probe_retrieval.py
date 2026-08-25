@@ -23,11 +23,12 @@ RRF fusion. A probe that reimplemented any of that could go green while producti
 went red, or the reverse.
 
 Two production behaviours are pinned on purpose:
-  * `collection_override="legal_unified"`. Without it the legacy router sends any
-    question containing "visa" / "kitas" / "imigrasi" to `visa_oracle` and the
-    question never reaches this corpus at all — a red that means "routed elsewhere",
-    not "not indexed". `collection_override` exists for exactly this ("Force
-    specific collection (for testing)", its own docstring).
+  * `collection_override="legal_unified"` (the `--collection` default, overridable
+    PER JOURNEY — see below). Without it the legacy router sends any question
+    containing "visa" / "kitas" / "imigrasi" to `visa_oracle` and the question never
+    reaches this corpus at all — a red that means "routed elsewhere", not "not
+    indexed". `collection_override` exists for exactly this ("Force specific
+    collection (for testing)", its own docstring).
   * `.search()`, not `search_with_reranking()`. Reranking runs a cross-encoder and
     is not deterministic; a probe that flickers teaches people to rerun it.
 
@@ -48,6 +49,19 @@ EXITS (same vocabulary as scripts/kb/kb_inventory_probe.py)
 There is deliberately NO --update flag. A probe that writes its own expected value
 back into the file it grades is not a probe. Print the correction; let a human or a
 lane put it in the file, where the contract gate can see it.
+
+PER-JOURNEY COLLECTION OVERRIDE
+A topic can span more than one live collection — e.g. lane A (immigration) reads
+`legal_unified` for statutes/Permenkumham but production's own router sends a
+"visa"/"kitas"/"imigrasi" question to `visa_oracle` first, with `immigration_circulars`
+as a documented fallback (`surface_router.py:63`). A single `--collection` flag cannot
+express that a canary journey deliberately targets a DIFFERENT collection than its
+neighbours. So each journey entry MAY carry its own `collection:` key; when present it
+wins over `--collection` for that journey only, and the run's table prints which
+collection actually served each row so a reader never has to guess. Omitting it keeps
+the previous behaviour (every journey uses `--collection`, default `legal_unified`)
+exactly as before — this is additive, not a breaking change to journeys that don't need
+it. See `test_probe_retrieval_collection_override.py` for the guilt/innocence proof.
 """
 
 from __future__ import annotations
@@ -171,6 +185,19 @@ def phrase_hit(chunks: list[dict], phrase: str) -> tuple[bool, int | None]:
     return False, None
 
 
+def resolve_collection(journey: dict, default: str) -> str:
+    """Which collection THIS journey's question is sent to.
+
+    A journey's own `collection:` key wins; an absent/blank key falls back to the
+    run's `--collection` default. Kept as a pure function (no I/O) so
+    `test_probe_retrieval_collection_override.py` can prove both branches without a
+    live Qdrant connection — the guilt case an inline `journey.get("collection") or
+    args.collection` scattered at the call site could not be proven the same way.
+    """
+    override = journey.get("collection")
+    return override if isinstance(override, str) and override.strip() else default
+
+
 async def run(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("journeys", type=Path, help="kb/journeys/<topic>.yaml")
@@ -219,7 +246,8 @@ async def run(argv=None) -> int:
     # ── the journeys ────────────────────────────────────────────────────────
     drift: list[str] = []
     outstanding: list[str] = []
-    header = "%-4s %-9s %-9s %-6s  %s" % ("#", "RECORDED", "MEASURED", "RANK", "QUESTION")
+    header = "%-4s %-9s %-9s %-6s %-16s  %s" % (
+        "#", "RECORDED", "MEASURED", "RANK", "COLLECTION", "QUESTION")
     print(header)
     print("-" * max(len(header), 78))
 
@@ -227,17 +255,19 @@ async def run(argv=None) -> int:
         question = journey.get("question", "")
         phrase = journey.get("verbatim_phrase", "")
         recorded = journey.get("probe_state", "untested")
+        collection = resolve_collection(journey, args.collection)
         try:
-            chunks = await retrieve(service, question, args.collection, args.limit)
+            chunks = await retrieve(service, question, collection, args.limit)
         except Exception as exc:  # noqa: BLE001
-            print("%-4d %-9s %-9s %-6s  %s" % (i, recorded, "ERROR", "-", question[:44]))
+            print("%-4d %-9s %-9s %-6s %-16s  %s"
+                  % (i, recorded, "ERROR", "-", collection, question[:44]))
             outstanding.append("journey %d raised %s: %s" % (i, type(exc).__name__, exc))
             continue
 
         hit, rank = phrase_hit(chunks, phrase)
         measured = "green" if hit else "red"
-        print("%-4d %-9s %-9s %-6s  %s"
-              % (i, recorded, measured, rank if rank else "-", question[:44]))
+        print("%-4d %-9s %-9s %-6s %-16s  %s"
+              % (i, recorded, measured, rank if rank else "-", collection, question[:44]))
 
         if recorded == "untested":
             drift.append(
