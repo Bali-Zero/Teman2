@@ -23,6 +23,19 @@ reads_enabled()`` exposes — never two independently-maintained copies of
 "is this on" (the exact drift class B6c's F1 finding already found once in
 ``loop/claim_gate.py``, at a different layer).
 
+``is_team_bot_brain_tp1_enabled`` is lane B4-tp1's own switch, registered in
+``apps/backend-rag/backend/services/client_bot/kill_switches.py`` (plane
+``team_replies`` — F11 has no dedicated "brain generation" plane distinct
+from replies; this is the narrower gesture that pulls only the CLOUD tiers
+out of rotation, leaving ``TEAM_BOT_REPLY_ENABLED`` as the master switch for
+whether a reply is sent at all). Read directly by
+``team_bot.brain.router.BrainRouter`` — see that module for the resulting
+"skip straight to local read-only" behavior when this is ``False``. Uses the
+shared ``_truthy`` helper below, same as every other flag in this module —
+never its own inline truthiness check (that would be the exact
+independently-maintained-copy drift ``max_read_steps()``'s own docstring
+already warns about, one layer up).
+
 Nothing in ``team_bot.registry`` or ``team_bot.loop`` reads these flags
 today — they are pure data/functions with no I/O (``turn_plan.py``'s
 ``try_append_read_step`` takes ``max_steps`` as an explicit parameter for
@@ -39,6 +52,7 @@ __all__ = [
     "ABSOLUTE_MAX_READ_STEPS_ENV_CEILING",
     "DEFAULT_MAX_READ_STEPS",
     "SINGLE_STEP",
+    "is_team_bot_brain_tp1_enabled",
     "is_team_bot_enabled",
     "is_team_bot_memory_enabled",
     "is_team_bot_multistep_reads_enabled",
@@ -121,3 +135,13 @@ def is_team_bot_memory_enabled() -> bool:
     "is this on" is the exact drift class this module already learned about.
     """
     return _truthy(os.getenv("TEAM_BOT_MEMORY_ENABLED", "false"))
+
+
+def is_team_bot_brain_tp1_enabled() -> bool:
+    """True only when ``TEAM_BOT_BRAIN_TP1_ENABLED`` is truthy. Default OFF
+    (everything ships dark). While ``False``, ``BrainRouter`` never attempts
+    any of the three TP1 cloud tiers and goes straight to the local
+    read-only degradation lane — this is the single gesture to pull the
+    cloud brain out of rotation without touching ``TEAM_BOT_REPLY_ENABLED``
+    (the master "send a reply at all" switch)."""
+    return _truthy(os.getenv("TEAM_BOT_BRAIN_TP1_ENABLED", "false"))
