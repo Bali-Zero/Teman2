@@ -20,7 +20,11 @@ only proves it, it does not restate the reasoning):
   (e) `cmd_record`'s own exit code must not go green when one or more topics came
       back `broken` this run — all-broken AND mixed (some graded, some broken)
   (f) a `degraded_path` run must not be able to earn the 48h certificate on its
-      own — treated like `broken`: neither extends nor breaks a streak
+      own — treated like `broken` for the streak (neither extends nor breaks
+      it) AND for `cmd_record`'s own exit code (an all-degraded run must not
+      exit 0 either, the same failure shape rule (e) already closes for
+      `broken` — Round 2 / Guard 6 found this half of (f) was still open:
+      `graded` checked only the verdict field, never `degraded_path`)
 """
 
 from __future__ import annotations
@@ -74,6 +78,28 @@ def rec(hours_before_ref: float, verdict: str, journeys_sha: str = SHA_A,
             "degraded_path": degraded_path, "journeys": []}
 
 
+CLEAN_INVENTORY_RESULT = {"verdict": "at_target", "exit_code": 0, "findings": []}
+
+
+@pytest.fixture(autouse=True)
+def _default_clean_inventory_probe(monkeypatch):
+    """Rule (g): every `cmd_record` test gets a clean, `at_target` inventory
+    verdict by default, so the ~10 pre-existing tests above (written before
+    rule (g) existed) keep proving exactly what they always proved — the
+    retrieval/broken/degraded dimension — without also spawning a REAL
+    `kb_inventory_probe.py` subprocess against a tmp_path that has no
+    kb/inventory/<topic>.yaml on disk (which would fall through to this
+    file's own `broken` fallback and silently flip every one of their exit
+    codes). A test that means to exercise the inventory dimension itself
+    overrides this within its own body via a further `monkeypatch.setattr` —
+    pytest resolves that LIFO (last set wins), so the override always applies
+    for that test regardless of fixture ordering."""
+    monkeypatch.setattr(
+        PH, "run_inventory_probe_json",
+        lambda inventory_path, timeout_s=300: dict(CLEAN_INVENTORY_RESULT),
+    )
+
+
 # ── closed vocabulary, imported not restated ─────────────────────────────────
 
 
@@ -94,7 +120,8 @@ SHAS = {"journeys": SHA_A, "topics": SHA_A, "inventory": SHA_A}
 
 def test_innocence_build_record_passes_through_a_real_verdict():
     r = PH.build_record("immigration", Path("kb/journeys/immigration.yaml"), SHAS,
-                         {"verdict": "at_target", "exit_code": 0, "journeys": []})
+                         {"verdict": "at_target", "exit_code": 0, "journeys": []},
+                         CLEAN_INVENTORY_RESULT)
     assert r["verdict"] == "at_target"
     assert r["journeys_sha256"] == SHA_A
     assert r["topics_sha256"] == SHA_A
@@ -104,13 +131,49 @@ def test_innocence_build_record_passes_through_a_real_verdict():
 
 def test_guilt_build_record_coerces_an_unrecognized_verdict_to_broken():
     r = PH.build_record("immigration", Path("kb/journeys/immigration.yaml"), SHAS,
-                         {"verdict": "totally_fine_i_promise", "exit_code": 0, "journeys": []})
+                         {"verdict": "totally_fine_i_promise", "exit_code": 0, "journeys": []},
+                         CLEAN_INVENTORY_RESULT)
     assert r["verdict"] == "broken"
 
 
 def test_guilt_build_record_treats_a_missing_verdict_as_broken():
-    r = PH.build_record("immigration", Path("kb/journeys/immigration.yaml"), SHAS, {})
+    r = PH.build_record("immigration", Path("kb/journeys/immigration.yaml"), SHAS, {},
+                         CLEAN_INVENTORY_RESULT)
     assert r["verdict"] == "broken"
+
+
+# ── rule (g): build_record keeps the two verdicts DISTINCT, never AND'd ──────
+
+
+def test_guilt_build_record_coerces_an_unrecognized_inventory_verdict_to_broken():
+    """Mirrors the retrieval-verdict guilt case above, for the inventory half —
+    an unrecognized inventory_verdict is closer to broken (evidence about the
+    inventory PROBE, not the inventory itself) than to any real outcome."""
+    r = PH.build_record("immigration", Path("kb/journeys/immigration.yaml"), SHAS,
+                         {"verdict": "at_target", "exit_code": 0, "journeys": []},
+                         {"verdict": "not_a_real_verdict", "exit_code": 0, "findings": []})
+    assert r["inventory_verdict"] == "broken"
+    assert r["verdict"] == "at_target"  # the retrieval verdict is untouched
+
+
+def test_guilt_build_record_treats_a_missing_inventory_verdict_as_broken():
+    r = PH.build_record("immigration", Path("kb/journeys/immigration.yaml"), SHAS,
+                         {"verdict": "at_target", "exit_code": 0, "journeys": []}, {})
+    assert r["inventory_verdict"] == "broken"
+    assert r["verdict"] == "at_target"
+
+
+def test_innocence_build_record_keeps_retrieval_and_inventory_verdicts_independent():
+    """The exact shape rule (g) exists to preserve: retrieval at_target next to
+    inventory drift are TWO facts, not one collapsed boolean. Neither field's
+    value may be derived from, or overwritten by, the other."""
+    r = PH.build_record("immigration", Path("kb/journeys/immigration.yaml"), SHAS,
+                         {"verdict": "at_target", "exit_code": 0, "journeys": []},
+                         {"verdict": "drift", "exit_code": 1, "findings": ["UU_6_2011: declared 109, live 0"]})
+    assert r["verdict"] == "at_target"
+    assert r["inventory_verdict"] == "drift"
+    assert r["inventory_exit_code"] == 1
+    assert r["inventory_findings"] == ["UU_6_2011: declared 109, live 0"]
 
 
 # ── artifact_shas / MISSING_SHA: the sentinel must never collide with a hash ──
@@ -325,6 +388,124 @@ def test_guilt_a_mixed_run_some_graded_some_broken_does_not_exit_zero(tmp_path, 
     assert "property" in out  # the broken topic is named, not just counted
 
 
+def test_guilt_an_all_degraded_run_does_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """Round 2 / Guard 6: the exact evasion the reviewer named. This
+    environment's google-genai was off the lock file's pin (measured live,
+    2026-08-26: 1.75.0 installed) — so EVERY run right now is degraded. A
+    single topic, verdict `at_target`, `degraded_path: true` used to satisfy
+    the OLD `graded` check (it only excluded `nothing_measured`/`broken` by
+    verdict) and exit 0 — meaning the scheduled job would report success for
+    the full 48h window with zero production-path evidence behind it."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    def fake_run_probe_json(path, collection, timeout_s=300):
+        return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                "exit_code": 0, "degraded_path": True,
+                "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                              "measured_state": "green", "rank": 1, "error": None}]}
+
+    monkeypatch.setattr(PH, "run_probe_json", fake_run_probe_json)
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0, "an all-degraded run (even verdict=at_target) exited 0"
+    lines = [json.loads(row) for row in history.read_text().splitlines()]
+    # The record IS written — it really did measure something, on the
+    # narrower path — only the job's own exit code must not go green.
+    assert lines[0]["verdict"] == "at_target"
+    assert lines[0]["degraded_path"] is True
+    assert "degraded" in out
+    # `cmd_record` also computes a SEPARATE `degraded` list (for the mixed-run
+    # branch below) that independently forces a non-zero exit even if
+    # `graded`'s own exclusion were removed — so exit_code alone cannot prove
+    # THIS exclusion specifically did the work; the message it produces can.
+    # Correct code hits `if not graded:` first for an all-degraded run and
+    # says "nothing measured cleanly" — it must NOT reach the "PARTIAL — N of
+    # M topic(s) graded cleanly" branch, which would misreport the one
+    # degraded topic as one that graded cleanly.
+    assert "nothing measured cleanly" in out, out
+    assert "graded cleanly" not in out, out
+
+
+def test_guilt_a_mixed_run_some_clean_some_degraded_does_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """Two topics: `immigration` grades cleanly and NOT degraded, `property`
+    grades at_target but degraded_path=True. The clean topic must not let the
+    degraded one hide — the mixed-run half of rule (e)+(f), same shape as the
+    existing broken/mixed test above."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+    (jdir / "property.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    def fake_run_probe_json(path, collection, timeout_s=300):
+        degraded = path.stem == "property"
+        return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                "exit_code": 0, "degraded_path": degraded,
+                "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                              "measured_state": "green", "rank": 1, "error": None}]}
+
+    monkeypatch.setattr(PH, "run_probe_json", fake_run_probe_json)
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0, "a mixed run (1 clean, 1 degraded) must not exit 0"
+    lines = {json.loads(row)["topic"]: json.loads(row) for row in history.read_text().splitlines()}
+    # BOTH records are still written — the degraded topic really was measured,
+    # just not on the production path.
+    assert lines["immigration"]["degraded_path"] is False
+    assert lines["property"]["degraded_path"] is True
+    assert "property" in out
+    # The separately-computed `degraded` list would force a non-zero exit even
+    # if `graded` stopped excluding degraded records — so pin the COUNT, which
+    # only the exclusion in `graded` gets right: exactly 1 of 2 graded
+    # cleanly, never 2 of 2 (which would silently count the degraded topic as
+    # clean evidence).
+    assert "1 of 2 topic(s) graded cleanly" in out, out
+    assert "2 of 2 topic(s) graded cleanly" not in out, out
+
+
+def test_guilt_a_broken_and_a_degraded_topic_together_do_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """Both absence-of-evidence shapes in the SAME record() run, alongside a
+    genuinely clean topic — the summary must name both, and neither hides
+    behind the other or behind the clean neighbour."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+    (jdir / "property.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+    (jdir / "tax.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    def fake_run_probe_json(path, collection, timeout_s=300):
+        if path.stem == "property":
+            return {"journeys_file": str(path), "collection": "nope", "verdict": "broken",
+                    "reason": "unknown_collection", "exit_code": 3, "degraded_path": False,
+                    "journeys": []}
+        if path.stem == "tax":
+            return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                    "exit_code": 0, "degraded_path": True,
+                    "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                                  "measured_state": "green", "rank": 1, "error": None}]}
+        return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+                "exit_code": 0, "degraded_path": False,
+                "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                              "measured_state": "green", "rank": 1, "error": None}]}
+
+    monkeypatch.setattr(PH, "run_probe_json", fake_run_probe_json)
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert "property" in out and "tax" in out
+    # Only `immigration` is genuinely clean evidence — `graded` must exclude
+    # BOTH the broken and the degraded topic, not just the broken one.
+    assert "1 of 3 topic(s) graded cleanly" in out, out
+    assert "2 of 3 topic(s) graded cleanly" not in out, out
+
+
 def test_innocence_a_multi_topic_run_with_zero_broken_exits_zero(tmp_path, monkeypatch):
     """Two topics, both graded (one at_target, one outstanding), none broken —
     the ordinary healthy-mixed-verdict case must still exit 0."""
@@ -345,6 +526,130 @@ def test_innocence_a_multi_topic_run_with_zero_broken_exits_zero(tmp_path, monke
     history = tmp_path / "history.jsonl"
     exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
     assert exit_code == 0
+
+
+# ── rule (g): the inventory is RE-MEASURED against production, not just hashed
+# `run_inventory_probe_json` is monkeypatched per-test below (overriding the
+# module-wide clean default from `_default_clean_inventory_probe`) — `run_probe_json`
+# always reports a genuinely clean retrieval verdict in these, so a non-zero
+# exit code can only be coming from the inventory dimension being tested.
+
+
+def _clean_retrieval(path, collection, timeout_s=300):
+    return {"journeys_file": str(path), "collection": collection, "verdict": "at_target",
+            "exit_code": 0, "degraded_path": False,
+            "journeys": [{"index": 1, "question": "q", "recorded_state": "green",
+                          "measured_state": "green", "rank": 1, "error": None}]}
+
+
+def test_guilt_an_inventory_broken_topic_does_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """kb_inventory_probe.py itself failed to measure (e.g. the collection is
+    gone from Qdrant, or the subprocess crashed) — retrieval graded cleanly,
+    but the SAME topic's inventory claim was never actually re-confirmed. Must
+    not exit 0: a clean retrieval verdict must not paper over an inventory
+    that was never checked this run."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    monkeypatch.setattr(PH, "run_probe_json", _clean_retrieval)
+    monkeypatch.setattr(
+        PH, "run_inventory_probe_json",
+        lambda inventory_path, timeout_s=300: {
+            "verdict": "broken", "exit_code": 3, "reason": "control_failed", "findings": [],
+        },
+    )
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0, "an inventory-broken topic exited 0"
+    assert "inventory-broken" in out, out
+    lines = [json.loads(row) for row in history.read_text().splitlines()]
+    # The retrieval verdict is untouched — the two facts stay distinct.
+    assert lines[0]["verdict"] == "at_target"
+    assert lines[0]["inventory_verdict"] == "broken"
+
+
+def test_guilt_an_inventory_drift_topic_does_not_exit_zero(tmp_path, monkeypatch, capsys):
+    """The exact scenario rule (g) exists for: production moved (a point count
+    changed) while kb/inventory/immigration.yaml's BYTES sat untouched — the
+    sha256 alone would never see this. Retrieval still grades cleanly (the
+    journeys suite doesn't query inventory counts), so this is the ONLY signal
+    that catches it."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    monkeypatch.setattr(PH, "run_probe_json", _clean_retrieval)
+    monkeypatch.setattr(
+        PH, "run_inventory_probe_json",
+        lambda inventory_path, timeout_s=300: {
+            "verdict": "drift", "exit_code": 1, "findings": ["UU_6_2011: declared 109, live 0"],
+        },
+    )
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0, "an inventory-drift topic exited 0"
+    assert "inventory-drift" in out, out
+    lines = [json.loads(row) for row in history.read_text().splitlines()]
+    assert lines[0]["verdict"] == "at_target"
+    assert lines[0]["inventory_verdict"] == "drift"
+    assert lines[0]["inventory_findings"] == ["UU_6_2011: declared 109, live 0"]
+
+
+def test_innocence_inventory_at_target_alongside_clean_retrieval_exits_zero(tmp_path, monkeypatch):
+    """The happy path this rule must not break: both dimensions genuinely
+    clean, both actually measured (not just hashed) — record() exits 0."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    monkeypatch.setattr(PH, "run_probe_json", _clean_retrieval)
+    monkeypatch.setattr(
+        PH, "run_inventory_probe_json",
+        lambda inventory_path, timeout_s=300: dict(CLEAN_INVENTORY_RESULT),
+    )
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    assert exit_code == 0
+
+
+def test_guilt_a_mixed_run_one_clean_one_inventory_drift_names_both_facts_separately(
+    tmp_path, monkeypatch, capsys
+):
+    """Two topics: `immigration` fully clean on both dimensions, `property`
+    grades cleanly on retrieval but its inventory drifted. The clean topic's
+    genuine evidence is still recorded (its own retrieval AND inventory both
+    at_target) — only `property`'s inventory problem forces the exit code,
+    and the message must name `property` specifically, not just the count."""
+    root = tmp_path
+    jdir = root / "kb" / "journeys"
+    jdir.mkdir(parents=True)
+    (jdir / "immigration.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+    (jdir / "property.yaml").write_text("schema_version: 1\njourneys: [{}]\n")
+
+    monkeypatch.setattr(PH, "run_probe_json", _clean_retrieval)
+
+    def fake_inventory(inventory_path, timeout_s=300):
+        if "property" in str(inventory_path):
+            return {"verdict": "drift", "exit_code": 1, "findings": ["Permen_22_2023: declared 4, live 0"]}
+        return dict(CLEAN_INVENTORY_RESULT)
+
+    monkeypatch.setattr(PH, "run_inventory_probe_json", fake_inventory)
+    history = tmp_path / "history.jsonl"
+    exit_code = PH.cmd_record(_ns(history=str(history), collection="legal_unified"), root)
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    assert "property" in out
+    lines = {json.loads(row)["topic"]: json.loads(row) for row in history.read_text().splitlines()}
+    assert lines["immigration"]["verdict"] == "at_target"
+    assert lines["immigration"]["inventory_verdict"] == "at_target"
+    assert lines["property"]["verdict"] == "at_target"  # retrieval was genuinely clean
+    assert lines["property"]["inventory_verdict"] == "drift"  # only the inventory drifted
 
 
 def test_guilt_status_with_no_history_file_is_nothing_measured(tmp_path, capsys):
@@ -529,7 +834,7 @@ def test_guilt_no_records_at_all_is_not_at_target():
 
 def test_the_guilt_matrix_is_not_empty():
     guilt_tests = [name for name in globals() if name.startswith("test_guilt_")]
-    assert len(guilt_tests) >= 12, guilt_tests
+    assert len(guilt_tests) >= 26, guilt_tests
 
 
 # ── cmd_status end-to-end over a real tmp_path history file ──────────────────

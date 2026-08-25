@@ -67,9 +67,9 @@ def doc_id_of(chunk: dict) -> str:
 def legal_status_of(chunk: dict) -> str:
     meta = chunk.get("metadata")
     meta = meta if isinstance(meta, dict) else {}
-    val = chunk.get("legal_status")
+    val = chunk.get("legal_status")  # legal-status-lint: allow — probe tool, inspects the broken field, does not decide with it
     if val is None:
-        val = meta.get("legal_status")
+        val = meta.get("legal_status")  # legal-status-lint: allow — probe tool, inspects the broken field, does not decide with it
     return str(val) if val is not None else "<missing>"
 
 

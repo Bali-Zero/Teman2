@@ -104,8 +104,8 @@ def extract_legal_status_location(payload: dict) -> str:
     a real repair script would need to touch on THIS point."""
     meta = payload.get("metadata")
     meta = meta if isinstance(meta, dict) else {}
-    top_present = "legal_status" in payload and payload.get("legal_status") is not None
-    nested_present = "legal_status" in meta and meta.get("legal_status") is not None
+    top_present = "legal_status" in payload and payload.get("legal_status") is not None  # legal-status-lint: allow — proposes a MARKed, human-reviewed repair, does not decide with the field itself
+    nested_present = "legal_status" in meta and meta.get("legal_status") is not None  # legal-status-lint: allow — proposes a MARKed, human-reviewed repair, does not decide with the field itself
     if top_present and nested_present:
         return "both"
     if top_present:
@@ -154,7 +154,7 @@ def main() -> int:
                 payload = point.payload or {}
                 meta = payload.get("metadata")
                 meta = meta if isinstance(meta, dict) else {}
-                current = payload.get("legal_status") or meta.get("legal_status")
+                current = payload.get("legal_status") or meta.get("legal_status")  # legal-status-lint: allow — proposes a MARKed, human-reviewed repair, does not decide with the field itself
                 n_points += 1
                 if str(current) == expect_from:
                     n_matching_expected += 1

@@ -69,10 +69,10 @@ def extract_legal_status(payload: dict) -> tuple[str, str]:
     """
     meta = payload.get("metadata")
     meta = meta if isinstance(meta, dict) else {}
-    top = payload.get("legal_status")
-    nested = meta.get("legal_status")
-    top_present = "legal_status" in payload and top is not None
-    nested_present = "legal_status" in meta and nested is not None
+    top = payload.get("legal_status")  # legal-status-lint: allow — audit tool, inspects the broken field, does not decide with it
+    nested = meta.get("legal_status")  # legal-status-lint: allow — audit tool, inspects the broken field, does not decide with it
+    top_present = "legal_status" in payload and top is not None  # legal-status-lint: allow — audit tool, inspects the broken field, does not decide with it
+    nested_present = "legal_status" in meta and nested is not None  # legal-status-lint: allow — audit tool, inspects the broken field, does not decide with it
     if top_present and nested_present:
         if top == nested:
             return (str(top), "both")
