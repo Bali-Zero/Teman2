@@ -551,18 +551,25 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "in-router by `_require_magic_session_actor` (verified 2026-08-26): "
         "the dependency reads the `garuda_session` cookie and awaits "
         "`app.state.garuda_magic_session_verifier`, raising 401 "
-        "SESSION_REQUIRED before any mutation runs if either is missing — "
-        "and today the verifier is unwired, so the route is closed to EVERY "
-        "caller (fail-closed-by-construction, the same 'no caller wired yet, "
-        "never a silent bypass' shape documented on `UnconfiguredCheckStore`). "
-        "Once wired, the verified session's own `result_id` becomes `actor`, "
-        "and the handler additionally requires the request body's `result_id` "
-        "to equal `actor` — a session for one eligibility check cannot open "
-        "an order against a different one; a mismatch collapses to the same "
-        "404 RESULT_NOT_FOUND used for 'no such result' (non-enumerating, "
-        "per `ResultNotFound`'s own docstring). Same class of "
-        "middleware-invisible, real in-router auth Depends as the existing "
-        "`/api/knowledge/visa/` rows above.",
+        "SESSION_REQUIRED before any mutation runs if either is missing or "
+        "the cookie fails to resolve to a session. This is REAL, LIVE auth "
+        "in production, not a theoretical gate: `service_initializer.py` "
+        "wires `app.state.garuda_magic_session_verifier = "
+        "garuda_magic_link_store.verify_session` whenever `db_pool is not "
+        "None` (~line 1352), which it is on every deployed instance — a "
+        "caller reaches this route only by first obtaining a valid magic-link "
+        "session (see the `/api/visa/voa/auth/sessions` row above). The "
+        "verified session's own `result_id` becomes `actor`, and the handler "
+        "additionally requires the request body's `result_id` to equal "
+        "`actor` — a session for one eligibility check cannot open an order "
+        "against a different one; a mismatch collapses to the same 404 "
+        "RESULT_NOT_FOUND used for 'no such result' (non-enumerating, per "
+        "`ResultNotFound`'s own docstring). (If `db_pool` were ever None the "
+        "slot is never set and the route degrades to 401 for everyone — a "
+        "degradation path, not the normal state, per the wiring site's own "
+        "'non-critical: fail-closed exactly as with no adapter at all' "
+        "comment.) Same class of middleware-invisible, real in-router auth "
+        "Depends as the existing `/api/knowledge/visa/` rows above.",
     ),
     IntentionalPublicMutation(
         "POST",
@@ -570,12 +577,13 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "Twin of the /api/visa/voa/orders row above — same "
         "`_require_magic_session_actor` in-router gate "
         "(garuda_orders_router.py::observe_payment_browser_return, verified "
-        "2026-08-26), fails closed 401 SESSION_REQUIRED until the session "
-        "verifier is wired. The mutation itself (recording a one-time "
-        "`return_nonce`) is additionally scoped to the caller's own "
-        "`order_id` via `record_browser_return_observation(order_id=..., "
-        "result_id=actor, ...)`; an order that is not the caller's raises "
-        "`OrderNotFound` -> 404, never written.",
+        "2026-08-26), live and wired in production per the same "
+        "`service_initializer.py` (~line 1352) `db_pool is not None` check. "
+        "The mutation itself (recording a one-time `return_nonce`) is "
+        "additionally scoped to the caller's own `order_id` via "
+        "`record_browser_return_observation(order_id=..., result_id=actor, "
+        "...)`; an order that is not the caller's raises `OrderNotFound` -> "
+        "404, never written.",
     ),
     IntentionalPublicMutation(
         "POST",
