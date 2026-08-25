@@ -83,6 +83,43 @@ class _FakeProvider:
         return "refund-fake-1"
 
 
+async def _ensure_garuda_order_test_policy(conn: asyncpg.Connection) -> None:
+    """Install this suite's own Zero-approved GARUDA_ORDER retention policy fixture.
+
+    SM-G01/OP-F07 (migration 282, `active_garuda_order_policy_available`) fails
+    closed by construction -- migration 281 deliberately seeds NO policy row for
+    ANY scope, GARUDA_ORDER included: a policy is a Zero-approved business
+    decision, never a migration default (products/garuda-voa/DECISIONS.md).
+    Every test in this file exercises `create_order_and_checkout`, which reads
+    that gate, so the fixture -- not a migration -- installs the row this suite
+    needs, exactly like `test_retention.py` / `test_garuda_voa_retention.py`
+    already do for GARUDA_CHECK via `_insert_garuda_check_policy`.
+
+    `environment='PRODUCTION'` matches the `repository` fixture below
+    (`GarudaOrderRepository(..., environment="PRODUCTION")`). Bare
+    `ON CONFLICT DO NOTHING` (no target) makes this idempotent across the
+    module's repeated per-test `pool` fixture runs against a shared DSN,
+    whether the prior insert is still present via the module's own
+    unique-key conflict or the exclusion constraint on overlapping
+    `effective_period` ranges.
+    """
+    await conn.execute(
+        """
+        INSERT INTO public.visa_decision_retention_policies (
+            environment, policy_scope, policy_version, retention_interval,
+            idempotency_retention_interval, legal_hold_review_interval,
+            retention_anchor, effective_period, approved_by, approval_reference
+        ) VALUES (
+            'PRODUCTION', 'GARUDA_ORDER', 'l3-test-fixture-v1', INTERVAL '90 days',
+            INTERVAL '1 hour', INTERVAL '30 days',
+            'CREATED_AT', tstzrange(clock_timestamp() - INTERVAL '1 day', NULL, '[)'),
+            'zero-test-approver', 'ZERO-GARUDA-ORDER-RETENTION-TEST-APPROVAL'
+        )
+        ON CONFLICT DO NOTHING
+        """
+    )
+
+
 @pytest.fixture
 async def pool():
     try:
@@ -105,6 +142,7 @@ async def pool():
         await conn.execute(
             "TRUNCATE garuda_order_outbox, garuda_order_journal, garuda_payment_inbox, garuda_order_idempotency, garuda_orders CASCADE"
         )
+        await _ensure_garuda_order_test_policy(conn)
     yield p
     await p.close()
 
