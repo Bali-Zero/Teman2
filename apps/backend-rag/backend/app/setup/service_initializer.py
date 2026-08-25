@@ -1353,7 +1353,18 @@ async def initialize_services(app: FastAPI) -> None:
             app.state.garuda_magic_session_verifier = garuda_magic_link_store.verify_session
             # `get_order_and_practice` reads this directly for its raw
             # ownership-filtered SELECT (no repository layer for that one
-            # read yet).
+            # read yet). This is the SAME pool object as `app.state.db_pool`
+            # (set just above by `initialize_database_services`) -- a
+            # domain-named alias, never a second `asyncpg.create_pool()`.
+            # Kept as its own attribute (not "read `app.state.db_pool`
+            # directly from the router") for the same reason every other
+            # domain slot here does (`app.state.ts_service`,
+            # `app.state.graph_service`, ...): `garuda_orders_router.py` is
+            # L3's file and should depend on a name that says what it's
+            # for, not on the shared RAG pool's specific attribute name,
+            # which is `service_initializer`'s internal wiring detail. If a
+            # dedicated GARUDA pool is ever split out, only this one line
+            # changes; the router is untouched either way.
             app.state.garuda_db_pool = db_pool
 
             # `garuda_portal_auth`'s own `issue`/`exchange` operations

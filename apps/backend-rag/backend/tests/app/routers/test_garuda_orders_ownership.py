@@ -468,3 +468,87 @@ class TestCreateOrderOwnership:
             "result-a-create-own-000",
         )
         assert count == 1
+
+
+# ============================================================
+# db_pool degradation shape (gate finding, not in the original brief):
+# `service_initializer.py` legitimately sets `app.state.db_pool = None`
+# on a failed init -- the pool is nullable, not just sometimes-absent.
+# `get_order_and_practice` used to read `request.app.state.garuda_db_pool`
+# unguarded and call `.fetchrow(...)` on it: an ABSENT attribute and an
+# explicit `None` both raised `AttributeError`, surfacing as an uncaught
+# 500 -- while `get_repository` (same "nothing wired yet" condition, one
+# function away) deliberately answers 503 SERVICE_UNAVAILABLE/retryable.
+# Same cause, two different answers is the actual defect: fixed by
+# `getattr(request.app.state, "garuda_db_pool", None)` + an explicit
+# `is None` check, which collapses BOTH states into the SAME 503 shape.
+# These two tests exercise them separately -- absent-attribute and
+# explicit-None are distinct states and only one of them previously even
+# reached the getattr default.
+# ============================================================
+
+
+class TestDbPoolDegradationIsFiveOhThreeNotFiveHundred:
+    async def _client_with_session_but(
+        self,
+        pool,
+        magic_link_store: PostgresMagicLinkStore,
+        repository: GarudaOrderRepository,
+        *,
+        raw_secret: str,
+        result_id: str,
+        pool_state: str,  # "absent" or "none"
+    ) -> AsyncClient:
+        await _seed_session(pool, raw_secret=raw_secret, result_id=result_id)
+        application = FastAPI()
+        application.include_router(garuda_orders_router.router)
+        # Auth still goes through the REAL, working verifier, and
+        # `garuda_order_repository` is wired to a WORKING repository --
+        # `get_repository`'s own 503 (an unrelated dependency, resolved by
+        # FastAPI before the route body runs) must not be what makes this
+        # test pass. Only `garuda_db_pool` is degraded; that is the one
+        # thing under test.
+        application.state.garuda_magic_session_verifier = magic_link_store.verify_session
+        application.state.garuda_order_repository = repository
+        if pool_state == "none":
+            application.state.garuda_db_pool = None
+        # else "absent": the attribute is never set on app.state at all.
+        return AsyncClient(transport=ASGITransport(app=application), base_url="http://t")
+
+    async def test_absent_garuda_db_pool_attribute_is_503_not_500(
+        self, pool, magic_link_store: PostgresMagicLinkStore, repository: GarudaOrderRepository
+    ) -> None:
+        raw_secret = "secret-pool-absent-00000000000000000000"
+        client = await self._client_with_session_but(
+            pool,
+            magic_link_store,
+            repository,
+            raw_secret=raw_secret,
+            result_id="result-pool-absent-0000",
+            pool_state="absent",
+        )
+        resp = await client.get(
+            "/api/visa/voa/orders/ord_pool_absent_000000",
+            cookies={_SESSION_COOKIE: raw_secret},
+        )
+        assert resp.status_code == 503, resp.text
+        assert resp.json()["detail"]["code"] == "SERVICE_UNAVAILABLE"
+
+    async def test_explicit_none_garuda_db_pool_is_503_not_500(
+        self, pool, magic_link_store: PostgresMagicLinkStore, repository: GarudaOrderRepository
+    ) -> None:
+        raw_secret = "secret-pool-none-000000000000000000000"
+        client = await self._client_with_session_but(
+            pool,
+            magic_link_store,
+            repository,
+            raw_secret=raw_secret,
+            result_id="result-pool-none-00000",
+            pool_state="none",
+        )
+        resp = await client.get(
+            "/api/visa/voa/orders/ord_pool_none_0000000",
+            cookies={_SESSION_COOKIE: raw_secret},
+        )
+        assert resp.status_code == 503, resp.text
+        assert resp.json()["detail"]["code"] == "SERVICE_UNAVAILABLE"
