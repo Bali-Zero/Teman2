@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import signal
 import socket
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,7 @@ FLOWKIT_CLI = REPO_ROOT / "scripts/flowkit_cli.py"
 PRO_HOSTNAME = "Nuzantara"
 FLOW_PROJECT_NAME = "bali-zero-marketing-workspace"
 FLOW_PAYGATE_TIER = "PAYGATE_TIER_TIER1P5"
-ALLOWED_ORIENTATIONS = frozenset({"PORTRAIT", "LANDSCAPE", "SQUARE"})
+ALLOWED_ORIENTATIONS = frozenset({"PORTRAIT", "LANDSCAPE"})
 
 
 def _valid_value(value: str) -> bool:
@@ -113,9 +114,11 @@ async def run(args: list[str], *, timeout_s: int = 600) -> dict[str, Any]:
     try:
         stdout, _ = await asyncio.wait_for(process.communicate(), timeout=timeout_s)
     except asyncio.TimeoutError:
-        process.kill()
-        await process.communicate()
+        await _terminate_process_group(process)
         return _normalized_failure("flowkit_timeout")
+    except asyncio.CancelledError:
+        await asyncio.shield(_terminate_process_group(process))
+        raise
     if process.returncode != 0:
         return _normalized_failure("flowkit_error")
 
@@ -127,3 +130,18 @@ async def run(args: list[str], *, timeout_s: int = 600) -> dict[str, Any]:
     except json.JSONDecodeError:
         return _normalized_failure("flowkit_error")
     return payload if isinstance(payload, dict) else _normalized_failure("flowkit_error")
+
+
+async def _terminate_process_group(process: asyncio.subprocess.Process) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        await asyncio.wait_for(process.wait(), timeout=10)
+    except asyncio.TimeoutError:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            return
+        await process.wait()

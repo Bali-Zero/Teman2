@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
+from backend.app import rag_proxy
 from backend.app.routers import intel
 from backend.middleware.hybrid_auth import HybridAuthMiddleware
 
@@ -106,6 +107,7 @@ async def test_pending_projection_is_bounded_and_drops_internal_fields(monkeypat
     assert result["count"] == 1
     assert len(result["items"]) == 1
     assert result["items"][0]["title"] == "Public title"
+    assert "content" not in result["items"][0]
     assert "internal_path" not in result["items"][0]
     assert "source" not in result["items"][0]
     assert "enrichment" not in result["items"][0]
@@ -271,3 +273,8 @@ def test_workspace_marketing_router_has_no_mutating_routes() -> None:
             methods.update(getattr(route, "methods", set()))
 
     assert methods == {"GET"}
+
+
+def test_workspace_marketing_routes_reach_the_rag_process_in_split_production() -> None:
+    assert rag_proxy.is_heavy_route("/api/workspace-marketing/news/pending") is True
+    assert rag_proxy.is_heavy_route("/api/workspace-marketing/news/news_1") is True

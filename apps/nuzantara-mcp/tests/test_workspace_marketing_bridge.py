@@ -530,6 +530,16 @@ def test_team_input_rejects_oversize_instead_of_truncating_before_scan() -> None
         )
 
 
+def test_indonesian_grouped_currency_is_public_editorial_data() -> None:
+    text = "Modal disetor PT PMA naik ke Rp 2.500.000.000 per KBLI"
+
+    assert marketing._public_team_input(text, field="topic", limit=500) == text
+    assert marketing._clean_text(text) == text
+    article = marketing._public_news_article({"title": text, "content": text})
+    assert article["title"] == text
+    assert article["content"] == text
+
+
 def test_workspace_flowkit_runner_rejects_unapproved_argv_shapes() -> None:
     with pytest.raises(RuntimeError, match="not allowed"):
         workspace_flowkit._validate_args(["publish", "--project", "other"])
@@ -547,6 +557,105 @@ def test_workspace_flowkit_runner_rejects_unapproved_argv_shapes() -> None:
                 workspace_flowkit.FLOW_PAYGATE_TIER,
             ]
         )
+    with pytest.raises(RuntimeError, match="not allowed"):
+        workspace_flowkit._validate_args(
+            [
+                "generate-image",
+                "--prompt",
+                "Public editorial image",
+                "--orientation",
+                "SQUARE",
+                "--project",
+                workspace_flowkit.FLOW_PROJECT_NAME,
+                "--paygate-tier",
+                workspace_flowkit.FLOW_PAYGATE_TIER,
+            ]
+        )
+    assert marketing.ALLOWED_ORIENTATIONS == {"PORTRAIT", "LANDSCAPE"}
+
+
+@pytest.mark.asyncio
+async def test_workspace_flowkit_cancellation_kills_process_group(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeProcess:
+        pid = 7654
+        returncode: int | None = None
+
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            self.started.set()
+            await asyncio.Event().wait()
+            return b"", b""
+
+        async def wait(self) -> int:
+            self.returncode = -15
+            return self.returncode
+
+    python_path = tmp_path / "python"
+    cli_path = tmp_path / "flowkit_cli.py"
+    python_path.touch()
+    cli_path.touch()
+    process = FakeProcess()
+    signals: list[tuple[int, int]] = []
+
+    async def fake_create_subprocess_exec(*_args: str, **_kwargs: Any) -> FakeProcess:
+        return process
+
+    monkeypatch.setattr(workspace_flowkit, "PRO_HOSTNAME", "test-pro")
+    monkeypatch.setattr(workspace_flowkit.socket, "gethostname", lambda: "test-pro")
+    monkeypatch.setattr(workspace_flowkit, "FLOWKIT_PYTHON", python_path)
+    monkeypatch.setattr(workspace_flowkit, "FLOWKIT_CLI", cli_path)
+    monkeypatch.setattr(
+        workspace_flowkit.asyncio,
+        "create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+    monkeypatch.setattr(
+        workspace_flowkit.os,
+        "killpg",
+        lambda pid, sent_signal: signals.append((pid, sent_signal)),
+    )
+
+    task = asyncio.create_task(workspace_flowkit.run(["health"], timeout_s=600))
+    await process.started.wait()
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert signals == [(process.pid, workspace_flowkit.signal.SIGTERM)]
+
+
+@pytest.mark.asyncio
+async def test_cancelled_flow_operation_is_replayable_as_cancelled(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    runner = AsyncMock(side_effect=asyncio.CancelledError)
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", runner)
+    tools, _ = _capture_tools(AsyncMock())
+
+    with pytest.raises(asyncio.CancelledError):
+        await tools["flow_generate_image"](
+            "Public Bali Zero editorial image treatment",
+            "flow-cancelled-01",
+            "SETUJU",
+        )
+
+    replay = await tools["flow_generate_image"](
+        "Public Bali Zero editorial image treatment",
+        "flow-cancelled-01",
+        "SETUJU",
+    )
+
+    assert replay == {"ok": False, "status": "cancelled"}
+    runner.assert_awaited_once()
 
 
 def test_workspace_flowkit_environment_drops_server_credentials(monkeypatch) -> None:

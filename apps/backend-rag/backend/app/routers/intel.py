@@ -312,7 +312,6 @@ def _workspace_marketing_summary(item: dict[str, Any]) -> dict[str, Any]:
         "detected_at",
         "published_at",
         "source_name",
-        "content",
     )
     public: dict[str, Any] = {}
     for field in fields:
@@ -326,6 +325,10 @@ def _workspace_marketing_summary(item: dict[str, Any]) -> dict[str, Any]:
 
 def _workspace_marketing_article(item: dict[str, Any]) -> dict[str, Any]:
     public = _workspace_marketing_summary(item)
+    if "content" in item:
+        safe_content = _workspace_text(item["content"])
+        if safe_content is not _WORKSPACE_OMIT:
+            public["content"] = safe_content
     source_url = item.get("source_url")
     if isinstance(source_url, str):
         parsed = urlsplit(source_url)

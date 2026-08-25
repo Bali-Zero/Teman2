@@ -42,7 +42,7 @@ FLOW_PROJECT_NAME = "bali-zero-marketing-workspace"
 FLOW_PAYGATE_TIER = "PAYGATE_TIER_TIER1P5"
 ALLOWED_PLATFORMS = frozenset({"instagram", "x", "facebook"})
 ALLOWED_LANGUAGES = frozenset({"id", "en"})
-ALLOWED_ORIENTATIONS = frozenset({"PORTRAIT", "LANDSCAPE", "SQUARE"})
+ALLOWED_ORIENTATIONS = frozenset({"PORTRAIT", "LANDSCAPE"})
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 ITEM_ID_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,158}[A-Za-z0-9])?$")
 MEDIA_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,256}$")
@@ -53,7 +53,7 @@ _EMAIL_RE = re.compile(
     r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])",
     re.IGNORECASE,
 )
-_PHONE_RE = re.compile(r"(?<!\w)(?:\+\d{1,3}[\s().-]*)?(?:\d[\s().-]*){8,14}(?!\w)")
+_PHONE_RE = re.compile(r"(?<!\w)(?:\+\d{1,3}[\s()-]*)?(?:\d[\s()-]*){8,14}(?!\w)")
 _IDENTIFIER_RE = re.compile(
     r"\b(NIK|KTP|NPWP|passport(?:\s+number)?|nomor\s+paspor|tax\s+id|id\s+number)"
     r"\b\s*[:#-]?\s*[A-Z0-9.-]{6,}",
@@ -933,6 +933,15 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
                 ],
                 timeout_s=300,
             )
+        except asyncio.CancelledError:
+            operation.update(
+                {
+                    "status": "cancelled",
+                    "result": {"ok": False, "status": "cancelled"},
+                }
+            )
+            _write_json_atomic(operation_path, operation)
+            raise
         except Exception as exc:
             operation.update(
                 {
@@ -1009,6 +1018,15 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             args.extend(["--scene-id", safe_scene_id])
         try:
             payload = await _run_flowkit_cli(args, timeout_s=780)
+        except asyncio.CancelledError:
+            operation.update(
+                {
+                    "status": "cancelled",
+                    "result": {"ok": False, "status": "cancelled"},
+                }
+            )
+            _write_json_atomic(operation_path, operation)
+            raise
         except Exception as exc:
             operation.update(
                 {
