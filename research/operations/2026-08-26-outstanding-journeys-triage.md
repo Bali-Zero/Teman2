@@ -15,6 +15,8 @@ sources:
   - team-lead's own read-only same-value measurement on J4 (2026-08-26, verbal report — `legal_status` absent from both documents' embedded text; identical `dicabut` value on winner and loser, 402/402 vs 340/340), independently reproduced this session (/tmp/j4investigate/measure1_same_field.py)
   - team-lead's own corpus-wide `legal_status` ground-truth measurement (2026-08-26, verbal report — 9 documents with independently known status, 7 contradicted by their own marking, including two self-consistent proofs needing no external source: `UU_63_2024` titled "PERUBAHAN KETIGA ATAS UU NOMOR 6 TAHUN 2011" yet marked `berlaku` while `UU_6_2011` itself is marked `dicabut`; `Permen_11_2024` titled as amending `Permen_22_2023`) — primary source for the corpus-wide verdict below; this session's own aggregate scroll (/tmp/j4investigate/aggregate_and_perdoc.py, same 84,283-point totals) is corroboration only
   - apps/backend-rag/backend/core/legal/constants.py (read-only, this session — `STATUS_PATTERNS` comment block confirms the write-side mechanism is RETIRED as of 2026-08-25, Lane P kb-p2-status-retire-0825, already merged to `feature/kb-current`)
+  - team-lead's `git log -L` verification on `kb/journeys/company.yaml`'s company-J7 line (2026-08-26, verbal report — the line was born correct in the original lane-B commit `6ba56e9ab` and was never edited) and their probe-matcher sweep of all 41 `verbatim_phrase` journeys (2026-08-26, verbal report — only 4 phrases genuinely absent anywhere: immigration-J2/J8, tax-J5/J8)
+  - kb/ops/probe_retrieval.py's `normalize()` function, imported directly (not reimplemented) this session to independently re-check company-J7 (/tmp/j4investigate/verify_companyj7.py) — reproduces the team lead's single-hit finding exactly, point `004ac9d4-262b-503e-939c-8f3d6f7d27e0`
 ---
 
 # Outstanding-journeys triage — 24 reds, classified and costed, zero writes
@@ -45,7 +47,9 @@ sources:
    the normalized phrase appears **anywhere in the whole collection**, under which document_id(s) —
    method 3, content search, done once for all 24 phrases rather than 24 separate scrolls.
 4. One follow-up targeted script (`/tmp/triage_scan2.py`) for a single row (company-J7) where the
-   full-scan result needed a closer read to explain, below.
+   full-scan result needed a closer read to explain, below. **This script's own needle-splitting
+   was the source of a wrong conclusion, corrected 2026-08-26 by the team lead — see the
+   "Matcher methodology correction" section below.**
 5. **The degraded-path caveat below was retracted the same day, by measurement, not argument.**
    The team lead ran the pinned `google-genai==2.18.1` in an **isolated overlay**
    (`pip install --target`, prepended to `PYTHONPATH` for the probe's process only) rather than
@@ -88,11 +92,11 @@ production write (Qdrant upsert/payload-patch) or not.
 | company | 3 | PP_7_2025 | **B** | Full scroll: phrase found, attributed to `PP_7_2025`, **the same point id** (`049a486c-…`) as journey 2 — the two journeys' phrases are the code title and the code description of the *same* KBLI entry. | Same as journey 2 — likely the same ranking fix resolves (or fails) both together. | No |
 | company | 5 | UU_49_2021 | **B** | Full scroll: phrase found under **both** `UU_49_2021` (correct) and `UU_6_2023` (the Cipta Kerja omnibus, 4,685 pts — the single largest document in the whole collection per `LANE-A-1`'s corpus-wide scale note). The much larger omnibus document is the more likely rank competitor. | Ranking / per-document score normalization (a 4,685-pt document structurally dominates a 4-pt one on any naive score). | No |
 | company | 6 | UU_25_2007 | **B**, corrected from an initial read of A | Full scroll: phrase **found**, attributed to `UU_25_2007` (point `9a76e89e-…`). `uu_25_2007_fragment_categorisation` in the inventory documents this instrument as 0/65 *operative*-article points (100% Penjelasan/boilerplate) — but this specific journey is explicitly the **"HOLLOW-INSTRUMENT diagnostic"**: its own note says a green here "does not mean the instrument is whole," i.e. the phrase living in Penjelasan narrative prose is the *expected*, already-anticipated shape of a positive hit. My independent re-scan confirms the phrase is genuinely there, correctly attributed — it simply isn't ranking top-10. | Ranking. Separately (already tracked, not re-derived here): the instrument itself needs its operative body ingested — `disposition` in `company.yaml` already stops this at "step 1 of 3" (containment proved, not yet re-ingested) — but that's a different, already-known, already-out-of-band unit of work, not what THIS journey's red is diagnosing. | No (for this journey's own red) |
-| company | 7 | Permen_5_2025 | **E** | Full scroll: phrase **not found anywhere** in 84,283 points. Follow-up targeted scroll of all 4,722 `Permen_5_2025` points found the exact **context** 6 times, e.g. point `004ac9d4-…`: `"...dasar pemrosesan **perizinan berusaha** berba sis risiko sesuai ketentuan peraturan perundang-undangan..."` — the corpus text reads **"Perizinan Berusaha Berbasis Risiko"** (risk-based *business licensing*); the journey's `verbatim_phrase` reads **"Perizinan Berba[space]sis Risiko"**, silently dropping the word **"Berusaha"**. This is not a corpus defect: the phrase can never match as a contiguous substring regardless of retrieval quality, because it was mistranscribed when the journey was authored. (Separately, and not the cause: the corpus itself has both `berbasis` and, in at least one point, the literal OCR-split `berba sis` — coincidental, not the reason for the miss.) | Fix `verbatim_phrase` in `kb/journeys/company.yaml` to include "Berusaha"; only then does this journey measure anything real about the corpus. | No — journey-file text fix only |
+| company | 7 | Permen_5_2025 | **B** | **CORRECTED 2026-08-26 — the team lead checked this row and it did not hold; independently re-verified, they are right.** `kb/journeys/company.yaml`'s `verbatim_phrase` **does** include "Berusaha" (re-read fresh: `"sebagai dasar pemrosesan Perizinan Berusaha Berba sis Risiko sesuai ketentuan peraturan perundang-undangan"`; the team lead confirmed via `git log -L` on the original lane-B commit that the line was born this way and was never edited). My original claim that the journey silently dropped the word was a transcription error on **my own side**, made when I copied the phrase into an ad-hoc follow-up script — not a defect in the yaml. The real mechanism: the corpus text carries a newline mid-phrase (`"...Berba sis Risiko sesuai \nketentuan..."`), which `kb/ops/probe_retrieval.py`'s own `normalize()` (whitespace-collapse + lowercase) already handles and my ad-hoc needle-splitting did not. Independently reproduced this session by **importing that exact function** (`from kb.ops.probe_retrieval import normalize`, not reimplementing it) and re-scanning all 4,722 `Permen_5_2025` points: **1 exact normalized match**, point `004ac9d4-262b-503e-939c-8f3d6f7d27e0`, under the correct claimed instrument. This is a genuine retrieval miss — one point out of 84,283 doesn't rank for this cross-topic (KKPR-zoning × OSS-licensing), Spanish-language, client-phrased question — not a malformed journey. Retract the earlier "can never match regardless of retrieval quality" claim; it is false. | Ranking (a single low-density point competing for a compound zoning×licensing question is a classic long-tail retrieval miss, not an ingest gap). | No |
 | company | 8 | UU_40_2007 | **B** | Full scroll: phrase found, attributed to `UU_40_2007` (point `007182fc-…`). | Ranking. | No |
 | company | 9 | Permen_5_2025 | **B** | Full scroll: phrase found, attributed to `Permen_5_2025` (point `0027f82d-…`) — the same physical point that also carries journey 7's "Berbasis Risiko" boilerplate, confirming this is real, present regulation text, just not ranking for the cross-topic B×C paraphrase. | Ranking (cross-topic compound question competing against single-topic phrasing). | No |
 | company | 11 | PP_28_2025 | **B** | Full scroll: phrase found, attributed to `PP_28_2025` (point `0189c802-…`), one of the 855 points NOT flagged by the §6 damage signal (32/887 are). | Ranking. | No |
-| tax | 2 | PP_8_1983 | **E** | Phrase found, attributed to `PP_8_1983` (confirmed, plus a second hit under `UU_8_1983`). The journey's own note calls the measured RED **"good news"** — surfacing this stale 10% rate would be a Decision-5 violation (superseded content answering as current), exactly the shape immigration's canaries exist to catch. But this journey's `expectation:` field is `retrieves`, not `must_not_retrieve` — so the schema's own `journey_satisfaction()` marks it **unsatisfied** for behaving safely, and a "fix" that made it rank higher would make the corpus *worse*, not better. The journey's contract is inverted relative to its own documented intent. | None on the corpus. Correct the journey: either flip `expectation` to `must_not_retrieve` (making it an explicit canary, like immigration J2/J4/J8), or retire it in favour of tax-J8 (`UU_7_2021`/HPP), which already tests the thing that actually needs fixing — the *correct* current rate being retrievable. | No — journey-file correction only |
+| tax | 2 | PP_8_1983 | **E** | Phrase found, attributed to `PP_8_1983` (confirmed, plus a second hit under `UU_8_1983`). The journey's own note calls the measured RED **"good news"** — surfacing this stale 10% rate would be a Decision-5 violation (superseded content answering as current), exactly the shape immigration's canaries exist to catch. But this journey's `expectation:` field is `retrieves`, not `must_not_retrieve` — so the schema's own `journey_satisfaction()` marks it **unsatisfied** for behaving safely, and a "fix" that made it rank higher would make the corpus *worse*, not better. The journey's contract is inverted relative to its own documented intent. **CONFIRMED 2026-08-26 — the team lead reviewed this call independently and it holds**, and adds the consequence I hadn't spelled out: correcting `expectation` to `must_not_retrieve` does **not** remove this red — the phrase is found (2 hits), so under `must_not_retrieve` semantics `journey_satisfaction()` still marks it unsatisfied, and it stays exactly as red as today. What changes is the *meaning*: today it silently reads as "retrieval failed to surface something useful" (a ranking-improvement target); corrected, it reads as "the corpus surfaces a superseded rate for a live-rate question" — a canary correctly firing on real poison. The second is the true, and worse, state of the corpus, and should be stated rather than left for whoever fixes the field to discover on their own. | None on the corpus. Correct the journey: either flip `expectation` to `must_not_retrieve` (making it an explicit canary, like immigration J2/J4/J8 — this keeps the row red, by design, with the corrected meaning above), or retire it in favour of tax-J8 (`UU_7_2021`/HPP), which already tests the thing that actually needs fixing — the *correct* current rate being retrievable. | No — journey-file correction only |
 | tax | 5 | KEP_55_PJ_2026 | **A** | `instrument_counts["KEP_55_PJ_2026"] = 0`; phrase not found anywhere in 84,283 points. Matches `kb/inventory/tax.yaml`'s own 3-method confirmation (document_id 0 hits, metadata.document_id 0 hits, cross-check against the retired `legal_unified_2026` collection: 21/21 chunks exist there under book_title "Keputusan Direktur Jenderal Pajak Nomor KEP-55/PJ/2026", never promoted). My independent full-collection content scan is a 4th, convergent method. | Acquire/ingest this DJP Kepdirjen instrument (or promote+relabel the 21 already-known chunks from `legal_unified_2026`, which exist under a `TAX_UNKNOWN_UNKNOWN` id there and would need identity repair, not fresh acquisition). | **Yes** |
 | tax | 6 | UU_36_2008 | **B** | Full scroll: phrase found, attributed to `UU_36_2008` (correct), **also** under `TASSE_7_1983` and `UU_6_2023` — three editions/citations of the same evolving PPh-subject provision. Journey's own note: manual top-10 inspection shows `TASSE_7_1983` and `Permen_1_2026` (the 1,506-pt contaminated document, `LANE-A-1`/out-of-scope finding) dominating instead — a genuine ranking miss, not an ingestion gap. | Ranking / possibly de-weighting `Permen_1_2026`'s outsized, partly-contaminated footprint generally (it is independently flagged in `company.yaml`'s out-of-scope findings as a 7-8-way ministry collision). | No |
 | tax | 7 | PER_7_PJ_2025 | **A** | `instrument_counts["PER_7_PJ_2025"] = 0`. Phrase **is** found elsewhere in the corpus — under `Permen_81_2024` (the Coretax base reg, in-scope and green on J3) and `UU_7_1945` (the garbled-identity HPP fragment `TAXC-5` already documents) — but never under the journey's actual target, `PER_7_PJ_2025` (the specific implementing DJP regulation), confirmed absent by 4 independent methods in `kb/inventory/tax.yaml` (id variants, the retracted `Permen_32_2022` lead, category scan, WebSearch). The underlying *legal fact* (NIK=NPWP) is answerable from Permen_81_2024/UU_7_1945; this specific *instrument* is not in the KB under any identity. | Acquire PER-7/PJ/2025 specifically — the general fact is already present elsewhere, but this journey is deliberately scoped to the implementing regulation itself (the journey file says so explicitly), so a broader-instrument workaround is not what was asked for. | **Yes** |
@@ -171,19 +175,43 @@ the only topic carrying any `must_not_retrieve` canary (`immigration.yaml` lines
 and J8 are green; J4 is the only outstanding one). No other row needs the winner-vs-loser
 re-measurement the team lead specified.
 
+## Matcher methodology correction — reused the probe's own `normalize()`, not a reimplementation
+
+The team lead caught a defect in this triage's own tooling on company-J7 (below): my ad-hoc
+follow-up script split the verbatim phrase into shorter needles instead of testing it whole, and I
+mistranscribed **"Berusaha"** out of the phrase entirely when copying it into that script — the
+`kb/journeys/company.yaml` text was correct all along (confirmed via `git log -L` on the original
+lane-B commit: never edited). The corpus text also carries a mid-phrase newline, which
+`kb/ops/probe_retrieval.py`'s own `normalize()` (whitespace-collapse + lowercase) already handles
+and my ad-hoc needle-splitting did not. Independently reproduced this session by **importing that
+exact function** (`from kb.ops.probe_retrieval import normalize`, not reimplementing it) and
+re-scanning: 1 exact normalized match, point `004ac9d4-262b-503e-939c-8f3d6f7d27e0`, under the
+correct claimed instrument. Company-J7 is reclassified B below.
+
+The team lead then ran the same probe-matcher check across **all 41** `verbatim_phrase` journeys
+in the four files (not just the 24 red ones) and reports: only **4 phrases are genuinely absent
+from the corpus anywhere** — immigration-J2, immigration-J8, tax-J5, tax-J8. The other 37,
+including company-J7, exist somewhere. This session's own Class A calls (tax-5, tax-7, tax-8) are
+unaffected: tax-5 and tax-8 are on the team lead's confirmed-absent list, and tax-7's Class A call
+was never a phrase-absence claim — it was an instrument-specific absence (`PER_7_PJ_2025`), with
+the underlying phrase/fact explicitly noted as present elsewhere (`Permen_81_2024`, `UU_7_1945`)
+in that row already. A check of every other row in this table found no other "phrase not found
+anywhere" claim, so no further reclassification follows from this sweep.
+
 ## Aggregate
 
 | Classe | Count | Requires production write |
 |---|---|---|
 | A — strumento assente | 3 (tax-5, tax-7, tax-8) | Yes, all 3 |
-| B — presente ma non recuperato | 18 | No for 16; **Yes** for immigration-J6 (ingest-generation reconciliation, not a pure rerank); ambiguous/likely-no-but-not-pure-ranking for property-J9 |
+| B — presente ma non recuperato | 19 (adds company-J7, corrected 2026-08-26 from E) | No for 17; **Yes** for immigration-J6 (ingest-generation reconciliation, not a pure rerank); ambiguous/likely-no-but-not-pure-ranking for property-J9 |
 | C — identità sbagliata | 0 | — |
 | D — canary violato | 1 (immigration-J4) | **No** (corrected 2026-08-26 — `legal_status` is confirmed inert at retrieval time; the previously-proposed repair does not touch this defect's actual, unestablished cause) |
-| E — percorso sbagliato | 2 (company-J7, tax-J2) | No |
+| E — percorso sbagliato | 1 (tax-J2) | No |
 
-**24 total.** No consistent slice is class E (2/24, ~8%) — this does **not** meet the bar for
-stopping and flagging before finishing the table, but both E findings are cheap, concrete, and
-worth fixing before anyone spends effort "curing the corpus" against a miswritten probe.
+**24 total.** Class E dropped from 2 to 1 (company-J7 corrected to B, 2026-08-26) — not a
+consistent slice (1/24, ~4%), so this still does not meet the bar for stopping and flagging before
+finishing the table. The one remaining E finding is cheap, concrete, and worth fixing before
+anyone spends effort "curing the corpus" against a miswritten journey contract.
 
 **Groupable into single units of work:**
 
@@ -209,8 +237,15 @@ worth fixing before anyone spends effort "curing the corpus" against a miswritte
    issuing authority, different source, a full UU not a Kepdirjen/Perdirjen) — but check whether
    `UU_7_1945`'s existing 31-point fragment can be *expanded* (same source document, more pages)
    before starting a second, separate ingest of the same law under a second identity.
-5. **company-J7 + tax-J2, a single "journey QA pass"** — two independent text corrections to two
-   different `kb/journeys/*.yaml` files, no shared code, no production risk, could land in one PR.
+5. ~~company-J7 + tax-J2, a single "journey QA pass"~~ — **company-J7 removed from this item,
+   corrected 2026-08-26** (see the row above): it is not a text-correction/journey-QA case at all,
+   it is a genuine one-point-in-84,283 retrieval miss. It is not grouped below either — a single
+   low-density point competing on a compound cross-topic (zoning×licensing), cross-lingual
+   (Spanish) question does not share a mechanism with either lever in item 6, so it stands as its
+   own, ungrouped B row. **tax-J2 alone remains here**: one journey-file correction
+   (`expectation: retrieves` → `must_not_retrieve`), no production risk, no shared code with
+   anything else — but per the row above, applying it does not remove a red; it only corrects what
+   the red means. Land it whenever convenient; it is not urgent in the way a false-red would be.
 6. **Two candidate reranking levers, each touching multiple B rows**, worth trying independently
    rather than assumed to be the same fix: (a) a penjelasan/commentary de-boost relative to
    operative-article chunks (immigration-J5, company-J6) and (b) per-document score normalization
