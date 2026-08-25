@@ -110,6 +110,28 @@ receipts:
     exit: 0
     ts: "2026-08-25T14:07:00Z"
     seat: opus-5
+  - claim: >
+      Corrected GARUDA_PUBLIC_BASE_URL default from https://www.balizero.com
+      to the canonical apex https://balizero.com (team-lead measured live:
+      apex is canonical, www. 308-redirects to it preserving the query
+      string) and re-cited the SSOT as apps/mouth's own canonical-URL
+      emitters (sitemap.ts, layout.tsx's NEXT_PUBLIC_PUBLIC_URL fallback)
+      rather than the README badge. Full surface still green after the
+      change, 109 passed / 33 skipped / 0 failed. Deliberately did NOT wire
+      NEXT_PUBLIC_PUBLIC_URL itself into the backend read -- it is a
+      frontend build-time var on a different deploy platform (Vercel vs
+      Fly); named it as the comment's cross-reference instead of coupling
+      by variable name.
+    cmd: >
+      PYTHONPATH=. pytest
+      backend/tests/services/payments/
+      backend/tests/services/garuda_orders/
+      backend/tests/services/garuda_ops/
+      backend/tests/app/routers/test_garuda_orders_ownership.py
+      --color=no
+    exit: 0
+    ts: "2026-08-25T14:35:00Z"
+    seat: opus-5
 dissent:
   - seat: team-lead (integration-branch orchestrator, cross-review of the
       base composition commit)
@@ -134,8 +156,9 @@ dissent:
       diff never touches _require_staff_actor or
       garuda_staff_session_verifier.
     status: RETRACTED
-  - seat: team-lead (structural review of the L3 order/payment wiring,
-      Dissent #3)
+  - seat: >
+      team-lead (structural review of the L3 order/payment wiring, the
+      third dissent)
     objection: >
       The chosen GARUDA_CHECKOUT_SUCCESS_URL/GARUDA_CHECKOUT_FAILURE_URL
       static env vars can never work: orderId is a dynamic Next.js route
@@ -146,5 +169,19 @@ dissent:
       an OBSERVATION, not a truth" -- there must be exactly one route).
       Not a naming preference -- structurally cannot reach the frontend as
       built.
+    status: CONFIRMED
+  - seat: >
+      team-lead (mutation-test critique of the third dissent's RED-first
+      evidence)
+    objection: >
+      The RED-first proof for test_xendit_checkout_redirect.py's 5 tests
+      was a TypeError on a removed constructor kwarg -- a vacuous red
+      (proves only that a signature changed, never reaches the
+      order-id-in-URL assertion). Team-lead mutated the fix instead
+      (dropped the order_id from the URL builder on the actual fixed
+      head) and re-ran: exit 0 -> exit 1, confirming the tests bite for
+      the right reason. Also confirmed the 308 apex redirect preserves
+      the query string, retracting a hazard opus-5 had not raised but
+      would have needed to rule out.
     status: CONFIRMED
 pii_scan: clean

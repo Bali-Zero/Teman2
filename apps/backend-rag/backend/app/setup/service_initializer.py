@@ -1456,10 +1456,21 @@ async def initialize_services(app: FastAPI) -> None:
     #
     # `GARUDA_PUBLIC_BASE_URL` (single base, no success/failure split —
     # Dissent #3, 2026-08-25 review of PR #4920): the return route lives on
-    # the public site apps/mouth actually deploys to, verified from
-    # `apps/mouth/README.md`'s own "Live: www.balizero.com" badge, not
-    # assumed. `XenditPaymentProvider.create_checkout_session` builds the
-    # real per-order, per-nonce return URL from this base — a static
+    # the public site apps/mouth actually deploys to. Default is the CANONICAL
+    # apex origin, `https://balizero.com` -- not `www.`, which 308-redirects
+    # to the apex (measured live: `www.` -> 308 -> apex, query string
+    # preserved across the hop). Sourced from the app's own canonical-URL
+    # emitters, `apps/mouth/src/app/sitemap.ts` (`const baseUrl =
+    # "https://balizero.com"`) and `layout.tsx`'s `NEXT_PUBLIC_PUBLIC_URL`
+    # fallback -- a README "Live:" badge is a claim, these are declarations.
+    # Deliberately NOT reading `NEXT_PUBLIC_PUBLIC_URL` itself here: it is a
+    # frontend build-time var baked into the Vercel bundle, and this is a
+    # backend runtime env read on Fly -- coupling the two platforms' configs
+    # by variable name would look wired but silently drift the moment either
+    # deploy sets it differently, which is worse than a plainly independent
+    # default with the SSOT named in this comment.
+    # `XenditPaymentProvider.create_checkout_session` builds the real
+    # per-order, per-nonce return URL from this base — a static
     # success/failure pair could never carry the order id the return route
     # requires, and the product's own return-page contract forbids a
     # success/failure split anyway (browser return is an OBSERVATION, not a
@@ -1482,7 +1493,7 @@ async def initialize_services(app: FastAPI) -> None:
                     "GARUDA_XENDIT_CALLBACK_TOKEN", ""
                 ).strip(),
                 public_base_url=os.environ.get(
-                    "GARUDA_PUBLIC_BASE_URL", "https://www.balizero.com"
+                    "GARUDA_PUBLIC_BASE_URL", "https://balizero.com"
                 ).strip(),
                 fee_config=XenditFeeConfig(
                     percentage_bps=int(os.environ.get("GARUDA_XENDIT_FEE_BPS", "0") or "0"),
