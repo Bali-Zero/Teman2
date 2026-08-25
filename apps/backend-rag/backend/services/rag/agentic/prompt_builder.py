@@ -439,6 +439,74 @@ def _word_anchored(*alternations: str) -> tuple[re.Pattern[str], ...]:
     return tuple(re.compile(rf"\b(?:{alt})\b") for alt in alternations)
 
 
+# ------------------------------------------------------------------
+# Greeting-matching normaliser (2026-08-25).
+#
+# `check_greetings` below only fires on an EXACT anchored match
+# (`^ciao$`, `^ciao\s*!*$`, ...). Measured against 34 realistic WhatsApp
+# openers, that exact-anchoring hit only 19/34 — 15 misses fell through to
+# full RAG retrieval and got an ABSTAIN instead of a greeting. All 15 misses
+# were one of three WhatsApp-typing shapes, never a missing greeting word:
+#   - word-final elongation: "ciaooo", "buongiornoo", "Salveee", "helloooo",
+#     "hiii", "heyyy", "haloo", "haiii", "selamat pagii", "holaa", "buonaseraa"
+#   - trailing emoticon/emoji: "Ciao :)", "ciao 😊"
+#   - repeated token: "ciao ciao"
+# This helper normalises the string used ONLY for pattern matching inside
+# check_greetings — it must never replace `query_lower` where that feeds the
+# response-language detection further down in the same function.
+_EMOJI_RANGES_RE = re.compile(
+    "["
+    "\U0001f000-\U0001f0ff"  # mahjong/dominoes/playing cards block
+    "\U0001f300-\U0001faff"  # symbols & pictographs (incl. supplemental, extended-A)
+    "\U00002600-\U000026ff"  # miscellaneous symbols
+    "\U00002700-\U000027bf"  # dingbats
+    "\U0001f1e6-\U0001f1ff"  # regional indicator symbols (flag components)
+    "\U00002b00-\U00002bff"  # miscellaneous symbols and arrows
+    "️"  # variation selector-16 (emoji presentation)
+    "‍"  # zero-width joiner (emoji sequences)
+    "]+"
+)
+
+# ASCII emoticon shapes anchored to the END of the string only — e.g. ":)"
+# ":-D" ";)" — never a bare charset strip, so real words ending in a letter
+# that also happens to be an emoticon mouth (e.g. "...help", "...KTP") are
+# never touched: the run must START with an eye char (:;=8).
+_TRAILING_EMOTICON_RE = re.compile(r"[:;=8][\-o^]?[)\]dDpP(/\\|3]+$")
+
+
+def _normalize_for_greeting_match(text: str) -> str:
+    """Normalise an already-lowercased query for greeting PATTERN MATCHING only.
+
+    Order: (1) strip trailing whitespace/punctuation/emoticons/emoji, repeated
+    until stable since they can stack ("ciao! :)", "ciao 😊!!"); (2) collapse
+    WORD-FINAL character elongation (a run of 2+ identical letters at the END
+    of a word -> one) — word-final ONLY, so "hello"/"hallo" (doubled letter in
+    the MIDDLE of the word, still followed by more letters) are untouched;
+    (3) collapse an immediately repeated whole token ("ciao ciao" -> "ciao").
+    """
+    while True:
+        stripped = text.rstrip()
+        stripped = _EMOJI_RANGES_RE.sub("", stripped).rstrip()
+        stripped = _TRAILING_EMOTICON_RE.sub("", stripped).rstrip()
+        stripped = stripped.rstrip(" \t!?.,;:~-")
+        if stripped == text:
+            break
+        text = stripped
+
+    # Word-final elongation: `\1+` is greedy so it consumes the WHOLE trailing
+    # run of the repeated letter, and `\b` anchors the collapse to a word
+    # boundary — a mid-word double (hello, hallo, buongiorno, buonasera,
+    # selamat, guten tag) is never followed by a boundary right after the
+    # repeat, so it never matches.
+    text = re.sub(r"(\w)\1+\b", r"\1", text)
+
+    # Repeated greeting token: the WHOLE normalised string is the same word
+    # two-or-more times, separated by whitespace.
+    text = re.sub(r"^(\w+)(?:\s+\1)+$", r"\1", text)
+
+    return text
+
+
 class SystemPromptBuilder:
     """
     Builds dynamic system prompts with caching for performance.
@@ -1031,8 +1099,13 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             r"^(hallo|guten tag|guten morgen|guten abend)\s*!*$",
         ]
 
+        # Match against the NORMALISED text only — query_lower stays untouched
+        # below for response-language detection (see block comment above
+        # _normalize_for_greeting_match).
+        normalized_query = _normalize_for_greeting_match(query_lower)
+
         for pattern in greeting_patterns:
-            if re.match(pattern, query_lower):
+            if re.match(pattern, normalized_query):
                 # Determine response language: user preference > query language > default
                 if user_lang is None:
                     # Detect from query
