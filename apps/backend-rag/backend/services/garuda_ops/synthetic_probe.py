@@ -189,8 +189,26 @@ SignedWebhookStage = _blocked_stage(
 )
 ReceivedPracticeStage = _blocked_stage(
     "received_practice",
-    "L4",
-    "no garuda_portal/practice package exists yet",
+    "orchestrator",
+    # CORRECTED (same staleness-tripwire class as sandbox_checkout /
+    # signed_webhook_paid above): `services/garuda_portal/practice.py` now
+    # exists and PR-01 is real -- `PracticeRepository.get_order_and_
+    # practice_view` mints a `Received` practice the moment it observes a
+    # paid order, and `garuda_orders_router.py::get_order_and_practice`
+    # calls it instead of hardcoding `None`. The REAL remaining blocker is
+    # upstream of this stage entirely: `sandbox_checkout`/`signed_webhook_
+    # paid` above are themselves still blocked on the orchestrator's own
+    # composition gap (no production code wires `app.state.garuda_order_
+    # repository` / `app.state.garuda_payment_provider`), so this probe
+    # never reaches a genuinely paid order to hand this stage in the first
+    # place -- `run_probe` stops at the first non-success (see its own
+    # comment) two stages before this one runs. This stage's own
+    # capability is no longer the gap; the pipeline upstream of it is.
+    "L4's garuda_portal/practice module is real (PR-01 implemented, "
+    "wired into garuda_orders_router.py), but this stage is still "
+    "unreachable in run_probe -- sandbox_checkout/signed_webhook_paid "
+    "block first on the SAME orchestrator composition gap those stages "
+    "already name",
 )
 
 DEFAULT_STAGES: tuple[type[ProbeStage], ...] = (
