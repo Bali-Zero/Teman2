@@ -1,0 +1,153 @@
+---
+date: 2026-08-26
+domain: operations
+client_case: none
+sources:
+  - kb/journeys/{immigration,company,tax,property}.yaml (origin/feature/kb-current @ 9cb41f45a)
+  - kb/inventory/{immigration,company,tax,property}.yaml (same ref)
+  - kb/ops/probe_retrieval.py (read-only, re-run against production 2026-08-26 — not modified)
+  - scripts/kb/kb_inventory_probe.py (read-only, method reused for the census pattern — not modified)
+  - /tmp/triage_scan.py, /tmp/triage_scan2.py (this session's own read-only verification scripts, not committed)
+  - production Qdrant `legal_unified_hybrid_hybrid` (84,283 points, single full scroll, 2026-08-26)
+---
+
+# Outstanding-journeys triage — 24 reds, classified and costed, zero writes
+
+> TRIAGE ONLY. No collection was written to. No `kb/journeys/*.yaml` or `kb/inventory/*.yaml` file
+> was edited. `kb/ops/probe_retrieval.py`, `kb/ops/probe_history.py`,
+> `scripts/ci/legal_status_read_lint.py`, `scripts/kb/kb_inventory_probe.py`,
+> `backend/core/legal/*`, and both `test_kb_*_contract.py` files were read, never touched.
+
+## Method
+
+1. Re-ran `apps/backend-rag/.venv/bin/python kb/ops/probe_retrieval.py kb/journeys/<topic>.yaml --json`
+   for all four topics against production, today. **Zero drift**: every recorded `probe_state`
+   matched the fresh measurement, exit code 2 (OUTSTANDING) on all four files, confirming the
+   24-red count in the mandate (5+9+7+3) is current, not stale.
+2. Confirmed the degraded-path venv is unchanged and did not touch it: `google-genai` installed
+   `1.75.0` vs repo lock `2.18.1`; `qdrant-client` installed `1.13.3`, whose own compatibility
+   warning reports the live server at `1.16.3`, while the repo lock pins `1.19.0` — a three-way
+   version spread (installed / server-reports / repo-pins-for-next-upgrade), not the two-way one
+   the mandate text stated. Multilingual query expansion is confirmed still broken (same
+   `TypeError: 'async for' requires an object with __aiter__ method` on every run).
+3. Wrote one standalone, read-only script (`/tmp/triage_scan.py`, never committed) that opens a
+   **single full scroll** of `legal_unified_hybrid_hybrid` (84,283 points, confirmed by count) and,
+   for each of the 24 outstanding journeys' `(instrument_id, verbatim_phrase)` pairs, checks in one
+   pass: (a) total point count under that instrument_id — reading `document_id` (top-level) OR
+   `metadata.document_id` (nested), i.e. methods 1+2 of the mandate's three-method absence proof,
+   combined the same way `chunk_instrument()` in `probe_retrieval.py` already does it; (b) whether
+   the normalized phrase appears **anywhere in the whole collection**, under which document_id(s) —
+   method 3, content search, done once for all 24 phrases rather than 24 separate scrolls.
+4. One follow-up targeted script (`/tmp/triage_scan2.py`) for a single row (company-J7) where the
+   full-scan result needed a closer read to explain, below.
+
+Full raw output of both scripts is not reproduced verbatim here for space; the specific hits cited
+per row below are real point IDs from that scan, quotable on request.
+
+## The table
+
+Legend — **Classe**: A=strumento assente · B=presente ma non recuperato · C=identità sbagliata ·
+D=canary violato · E=percorso sbagliato. **Scrittura?**: whether the proposed cura requires a
+production write (Qdrant upsert/payload-patch) or not.
+
+| Topic | # | instrument_id | Classe | Prova (comando/risultato reale) | Cura proposta | Scrittura? |
+|---|---|---|---|---|---|---|
+| immigration | 3 | Permen_22_2023 | **B** | Full scroll: phrase found, attributed to `Permen_22_2023` (point `013faf15-…`). `kb/inventory/immigration.yaml` independently scanned all 402 points and confirms Golden Visa provisions present verbatim. Reworded from official term → colloquial "KITAS" and re-run twice; stably red both times, not a boundary flicker. | Retrieval ranking (penjelasan/competing-article weighting or a de-dup pass) — not an ingest gap. | No |
+| immigration | 4 | Permen_29_2021 (canary, target Permen_22_2023) | **D** | `kb/ops/probe_retrieval.py`: measured GREEN, rank 3 — the **revoked** Permen_29_2021 text outranks the current Permen_22_2023 for a live ITAS-duration question. Root cause found and sourced in `LANE-A-1`: `legal_status` on **both** documents reads `dicabut`, one correctly (Permen_29_2021) and one **wrongly** (Permen_22_2023, the current in-force regulation) — a bare-regex `STATUS_PATTERNS` match with no entity/intent disambiguation (family #3, guard-over-match). | `scripts/kb/propose_legal_status_repair.py` (already written, dry-run only) would flip exactly **4 document_ids / 1,484 points** (`UU_6_2011` 413, `Permen_22_2023` 402, `Permen_11_2024` 345, `PP_31_2013` 324) `dicabut`→`berlaku`, sourced individually. Not executed. | **Yes** — payload metadata patch, scoped and ready |
+| immigration | 5 | UU_6_2011 | **B** | Full scroll: phrase found, attributed to `UU_6_2011` (point `00aa451d-…`). Journey's own note: phrase is in a `section: penjelasan` chunk (commentary), not the operative Pasal — plausible cause is a penjelasan chunk out-competing denser operative text for this question's embedding. | Re-rank weighting / a penjelasan de-boost — not an ingest gap. | No |
+| immigration | 6 | UU_63_2024 | **B** | Full scroll: phrase found, attributed to `UU_63_2024` (2 hits, both correctly attributed). `LANE-A-4`: the instrument's 38 points are split across **two unreconciled ingestion generations** (10 `modern_id_only` + 28 `legacy_metadata_text`) for the same 10-article law, plausibly under-competing against `UU_6_2011`'s 413 points for a general re-entry question. History: flaky red/green at the rank-10 boundary under the *original* official-terminology wording; **stably red** across 3 runs after rewording to colloquial "KITAS" phrasing. | Reconcile the two ingestion generations into one (a re-ingest/consolidation), which is more than a pure ranking tweak — this is a write, unlike the other B rows in this table. | **Yes** (reconciliation write), unlike most B rows here |
+| immigration | 10 | Permen_22_2023 | **B** | Full scroll: phrase found under **both** `Permen_22_2023` and `Permen_11_2024` (3 hits total). `LANE-A-6` confirms the Pasal 185/186 "lanjut usia" (60+) clause is genuinely present by direct scroll — but a targeted search of all 402+345 points for `hak pakai`/`deposit`/`deposito` found **zero** hits either. Measured red 3 stable runs. | Two separate needs bundled in one journey: (1) ranking — the visa-eligibility half alone doesn't even clear top-10; (2) a genuine content gap on the property-tenure half (`hak pakai`), which is Lane D's domain per `LANE-A-6`, not a ranking fix. | No for (1); the (2) half needs Lane D content that may not exist anywhere yet — not scoped here |
+| company | 1 | UU_40_2007 | **B** | Full scroll: phrase found, attributed to `UU_40_2007` (point `06bebfd9-…`), the already-repaired 379-point clean edition. | Ranking (a merger/acquisition/spin-off provision competing poorly against a client-phrased English paraphrase of an Indonesian statute). | No |
+| company | 2 | PP_7_2025 | **B** | Full scroll: phrase found, attributed to `PP_7_2025` (point `049a486c-…`). KBLI 2025 (3,522 points, clean of §6 signal). | Ranking — a KBLI classification description competing poorly against a client paraphrase. | No |
+| company | 3 | PP_7_2025 | **B** | Full scroll: phrase found, attributed to `PP_7_2025`, **the same point id** (`049a486c-…`) as journey 2 — the two journeys' phrases are the code title and the code description of the *same* KBLI entry. | Same as journey 2 — likely the same ranking fix resolves (or fails) both together. | No |
+| company | 5 | UU_49_2021 | **B** | Full scroll: phrase found under **both** `UU_49_2021` (correct) and `UU_6_2023` (the Cipta Kerja omnibus, 4,685 pts — the single largest document in the whole collection per `LANE-A-1`'s corpus-wide scale note). The much larger omnibus document is the more likely rank competitor. | Ranking / per-document score normalization (a 4,685-pt document structurally dominates a 4-pt one on any naive score). | No |
+| company | 6 | UU_25_2007 | **B**, corrected from an initial read of A | Full scroll: phrase **found**, attributed to `UU_25_2007` (point `9a76e89e-…`). `uu_25_2007_fragment_categorisation` in the inventory documents this instrument as 0/65 *operative*-article points (100% Penjelasan/boilerplate) — but this specific journey is explicitly the **"HOLLOW-INSTRUMENT diagnostic"**: its own note says a green here "does not mean the instrument is whole," i.e. the phrase living in Penjelasan narrative prose is the *expected*, already-anticipated shape of a positive hit. My independent re-scan confirms the phrase is genuinely there, correctly attributed — it simply isn't ranking top-10. | Ranking. Separately (already tracked, not re-derived here): the instrument itself needs its operative body ingested — `disposition` in `company.yaml` already stops this at "step 1 of 3" (containment proved, not yet re-ingested) — but that's a different, already-known, already-out-of-band unit of work, not what THIS journey's red is diagnosing. | No (for this journey's own red) |
+| company | 7 | Permen_5_2025 | **E** | Full scroll: phrase **not found anywhere** in 84,283 points. Follow-up targeted scroll of all 4,722 `Permen_5_2025` points found the exact **context** 6 times, e.g. point `004ac9d4-…`: `"...dasar pemrosesan **perizinan berusaha** berba sis risiko sesuai ketentuan peraturan perundang-undangan..."` — the corpus text reads **"Perizinan Berusaha Berbasis Risiko"** (risk-based *business licensing*); the journey's `verbatim_phrase` reads **"Perizinan Berba[space]sis Risiko"**, silently dropping the word **"Berusaha"**. This is not a corpus defect: the phrase can never match as a contiguous substring regardless of retrieval quality, because it was mistranscribed when the journey was authored. (Separately, and not the cause: the corpus itself has both `berbasis` and, in at least one point, the literal OCR-split `berba sis` — coincidental, not the reason for the miss.) | Fix `verbatim_phrase` in `kb/journeys/company.yaml` to include "Berusaha"; only then does this journey measure anything real about the corpus. | No — journey-file text fix only |
+| company | 8 | UU_40_2007 | **B** | Full scroll: phrase found, attributed to `UU_40_2007` (point `007182fc-…`). | Ranking. | No |
+| company | 9 | Permen_5_2025 | **B** | Full scroll: phrase found, attributed to `Permen_5_2025` (point `0027f82d-…`) — the same physical point that also carries journey 7's "Berbasis Risiko" boilerplate, confirming this is real, present regulation text, just not ranking for the cross-topic B×C paraphrase. | Ranking (cross-topic compound question competing against single-topic phrasing). | No |
+| company | 11 | PP_28_2025 | **B** | Full scroll: phrase found, attributed to `PP_28_2025` (point `0189c802-…`), one of the 855 points NOT flagged by the §6 damage signal (32/887 are). | Ranking. | No |
+| tax | 2 | PP_8_1983 | **E** | Phrase found, attributed to `PP_8_1983` (confirmed, plus a second hit under `UU_8_1983`). The journey's own note calls the measured RED **"good news"** — surfacing this stale 10% rate would be a Decision-5 violation (superseded content answering as current), exactly the shape immigration's canaries exist to catch. But this journey's `expectation:` field is `retrieves`, not `must_not_retrieve` — so the schema's own `journey_satisfaction()` marks it **unsatisfied** for behaving safely, and a "fix" that made it rank higher would make the corpus *worse*, not better. The journey's contract is inverted relative to its own documented intent. | None on the corpus. Correct the journey: either flip `expectation` to `must_not_retrieve` (making it an explicit canary, like immigration J2/J4/J8), or retire it in favour of tax-J8 (`UU_7_2021`/HPP), which already tests the thing that actually needs fixing — the *correct* current rate being retrievable. | No — journey-file correction only |
+| tax | 5 | KEP_55_PJ_2026 | **A** | `instrument_counts["KEP_55_PJ_2026"] = 0`; phrase not found anywhere in 84,283 points. Matches `kb/inventory/tax.yaml`'s own 3-method confirmation (document_id 0 hits, metadata.document_id 0 hits, cross-check against the retired `legal_unified_2026` collection: 21/21 chunks exist there under book_title "Keputusan Direktur Jenderal Pajak Nomor KEP-55/PJ/2026", never promoted). My independent full-collection content scan is a 4th, convergent method. | Acquire/ingest this DJP Kepdirjen instrument (or promote+relabel the 21 already-known chunks from `legal_unified_2026`, which exist under a `TAX_UNKNOWN_UNKNOWN` id there and would need identity repair, not fresh acquisition). | **Yes** |
+| tax | 6 | UU_36_2008 | **B** | Full scroll: phrase found, attributed to `UU_36_2008` (correct), **also** under `TASSE_7_1983` and `UU_6_2023` — three editions/citations of the same evolving PPh-subject provision. Journey's own note: manual top-10 inspection shows `TASSE_7_1983` and `Permen_1_2026` (the 1,506-pt contaminated document, `LANE-A-1`/out-of-scope finding) dominating instead — a genuine ranking miss, not an ingestion gap. | Ranking / possibly de-weighting `Permen_1_2026`'s outsized, partly-contaminated footprint generally (it is independently flagged in `company.yaml`'s out-of-scope findings as a 7-8-way ministry collision). | No |
+| tax | 7 | PER_7_PJ_2025 | **A** | `instrument_counts["PER_7_PJ_2025"] = 0`. Phrase **is** found elsewhere in the corpus — under `Permen_81_2024` (the Coretax base reg, in-scope and green on J3) and `UU_7_1945` (the garbled-identity HPP fragment `TAXC-5` already documents) — but never under the journey's actual target, `PER_7_PJ_2025` (the specific implementing DJP regulation), confirmed absent by 4 independent methods in `kb/inventory/tax.yaml` (id variants, the retracted `Permen_32_2022` lead, category scan, WebSearch). The underlying *legal fact* (NIK=NPWP) is answerable from Permen_81_2024/UU_7_1945; this specific *instrument* is not in the KB under any identity. | Acquire PER-7/PJ/2025 specifically — the general fact is already present elsewhere, but this journey is deliberately scoped to the implementing regulation itself (the journey file says so explicitly), so a broader-instrument workaround is not what was asked for. | **Yes** |
+| tax | 8 | UU_7_2021 (HPP) | **A** | `instrument_counts["UU_7_2021"] = 0`; phrase (the 11%-VAT-rate provision) not found **anywhere** in 84,283 points — including not under `UU_7_1945`, the garbled HPP fragment `TAXC-5` found for a *different* HPP provision (NIK-NPWP, Pasal 2 ayat 1a). So the mislabeled fragment does not cover this journey's specific need; it is a different slice of HPP, not the whole law. | A full acquisition of UU 7/2021 is the honest cure — the existing `UU_7_1945` fragment is not a shortcut for THIS provision, only for the NIK-NPWP one (which is tax-J7's territory in spirit, though a different target instrument). Worth checking, before any fresh download, whether `UU_7_1945`'s 31 points can be *expanded* (same source, more pages) rather than acquiring a second, separate ingest of the same law under two identities. | **Yes** |
+| tax | 9 | Permen_1_2026 | **B** | Full scroll: phrase found, attributed to `Permen_1_2026` (3 hits) — the **identical** instrument+phrase as tax-J4, which measures GREEN at rank 1 under Indonesian statute-phrasing. J9 asks the same underlying fact in colloquial English and measures RED. Journey's own note names this a "phrasing-sensitivity gap," not an ingestion gap. | Ranking / cross-lingual retrieval — see the degraded-path discussion below; this is the single cleanest same-fact minimal-pair in the whole set (J4 green, J9 red, nothing else changed but question language). | No |
+| tax | 10 | UU_36_2008 | **B** | Same evidence as tax-J6 (identical phrase, identical attribution) — measured red, consistent with J6, "reinforcing this is a genuine ranking issue rather than one query's bad luck" per the journey's own note. | Same as J6. | No |
+| property | 1 | UU_5_1960 | **B** | Full scroll: phrase found, attributed to `UU_5_1960` (point `7ebdcd3b-…`), the 216-point clean-of-§6-signal instrument. `property.yaml`'s own header states every phrase in the file was pulled character-for-character from a real chunk. | Ranking — see degraded-path note (English question, Indonesian statute). | No |
+| property | 2 | UU_5_1960 | **B** | Full scroll: phrase found, attributed to `UU_5_1960` (point `c7e9ae7c-…`). | Ranking — same caveat as property-J1. | No |
+| property | 9 | PP_6630_2021 | **B** | Full scroll: phrase found, attributed to **both** `PP_6630_2021` and `Permen_18_2021` — the identical phrase as property-J4, which measures GREEN at rank 2. Journey's own note: "the KB has no bridge between lane A's KITAS-deposit rule and lane D's Hak Pakai duration clause, so a compound cross-lane question retrieves neither half coherently... This red is the finding, not a defect in the journey." | Ranking is unlikely to be the whole story here — a compound A×D question may need multi-hop synthesis this single-collection retrieval doesn't attempt, which is a different (and larger) unit of work than a rerank tweak. Recorded as the orchestrator's own designed finding, not re-litigated here. | No (not a corpus write; may not even be a pure-retrieval fix) |
+
+## The degraded-path question, answered per class
+
+**Class A (3 rows: tax-5, tax-7, tax-8) — the verdict holds regardless of query expansion.**
+Absence-of-document is a fact about what was ingested, not about how a query is embedded or
+expanded. Multilingual query expansion changes what gets *retrieved* from what exists; it cannot
+retrieve content that was never written to the collection. All three were independently confirmed
+absent by a **4th** method today (full-collection content scan) on top of the 3-4 methods
+`kb/inventory/tax.yaml` already ran. This is the one class where "cannot know" does not apply.
+
+**Class B (18 rows) — genuinely mixed, and the language of the question is the strongest signal
+available without running a working expansion path myself (forbidden — shared venv).**
+
+- **Same-language (Indonesian question, Indonesian statute) ranking competitions** — immigration
+  J3/J5/J6/J10, company J2/J9 (both `id`), tax J6/J10 (`id`) — multilingual expansion targets
+  cross-lingual gaps specifically; I cannot rule out that Indonesian synonym expansion (e.g.
+  official "Izin Tinggal Terbatas" vs colloquial "KITAS") also helps here, but the mechanism the
+  degraded-path banner names (Gemini *multilingual* expansion) is not obviously the lever for these.
+  **Cannot fully know; plausible but not the most likely single fix.**
+- **Cross-lingual client questions (EN/IT/ES) against Indonesian statute text** — company
+  J1/J3/J5/J6/J8/J11, tax J9, property J1/J2/J9 — this is exactly the shape
+  `property.yaml`'s own header already calls out ("an English question about foreign land
+  ownership may need multilingual query expansion... to surface the Indonesian-language text").
+  Tax-J9 is the cleanest evidence in the whole set: the **identical** instrument+phrase as tax-J4
+  measures green in Indonesian and red in English, with nothing else different. **Plausibly
+  resolved by expansion; I cannot verify without a working google-genai, which I was told not to
+  touch.**
+
+**Class D (1 row: immigration-J4) — expansion is irrelevant.** The root cause is a `legal_status`
+metadata defect (a bare-regex mismarking, `LANE-A-1`), not a query-side phenomenon. Fixing
+expansion would not change which document a `legal_status`-blind ranking prefers.
+
+**Class E (2 rows) — not a retrieval question at all.** company-J7's phrase cannot match under any
+retrieval quality, expanded or not, because it is missing a word. tax-J2's dissatisfaction is a
+contract-semantics mismatch, orthogonal to what gets retrieved.
+
+## Aggregate
+
+| Classe | Count | Requires production write |
+|---|---|---|
+| A — strumento assente | 3 (tax-5, tax-7, tax-8) | Yes, all 3 |
+| B — presente ma non recuperato | 18 | No for 16; **Yes** for immigration-J6 (ingest-generation reconciliation, not a pure rerank); ambiguous/likely-no-but-not-pure-ranking for property-J9 |
+| C — identità sbagliata | 0 | — |
+| D — canary violato | 1 (immigration-J4) | Yes — script ready, not yet run |
+| E — percorso sbagliato | 2 (company-J7, tax-J2) | No |
+
+**24 total.** No consistent slice is class E (2/24, ~8%) — this does **not** meet the bar for
+stopping and flagging before finishing the table, but both E findings are cheap, concrete, and
+worth fixing before anyone spends effort "curing the corpus" against a miswritten probe.
+
+**Groupable into single units of work:**
+
+1. **Re-run all four probes once the venv's `google-genai`/`qdrant-client` mismatch is resolved,
+   before touching ranking code.** This is a zero-corpus-write, zero-code-change experiment that
+   could resolve some unknown subset of the 9 cross-lingual Class-B rows "for free." Not done here
+   — the venv is shared with other agents running today and I was told not to touch it. Highest
+   leverage-per-cost action on the whole list; do it first.
+2. **immigration-J4's `legal_status` repair** — one already-written, already-dry-run script,
+   4 document_ids / 1,484 points, fully sourced. Ready to execute as its own PR.
+3. **tax-J5 + tax-J7 acquisition** — both DJP-issued (Kepdirjen / Perdirjen), both confirmed
+   absent by convergent methods, both candidates for the *same* "recover from `legal_unified_2026`
+   or re-acquire from pajak.go.id" workflow the mandate's §1 already describes for other
+   instruments. Natural single batch.
+4. **tax-J8 (HPP) is its own acquisition**, not groupable with the DJP pair above (different
+   issuing authority, different source, a full UU not a Kepdirjen/Perdirjen) — but check whether
+   `UU_7_1945`'s existing 31-point fragment can be *expanded* (same source document, more pages)
+   before starting a second, separate ingest of the same law under a second identity.
+5. **company-J7 + tax-J2, a single "journey QA pass"** — two independent text corrections to two
+   different `kb/journeys/*.yaml` files, no shared code, no production risk, could land in one PR.
+6. **Two candidate reranking levers, each touching multiple B rows**, worth trying independently
+   rather than assumed to be the same fix: (a) a penjelasan/commentary de-boost relative to
+   operative-article chunks (immigration-J5, company-J6) and (b) per-document score normalization
+   so a large document (UU_6_2023 at 4,685 pts, Permen_1_2026 at 1,506 pts) does not structurally
+   drown out a thin one for a shared topic (company-J5, tax-J6/J10, immigration-J6). Neither is
+   proven here — these are hypotheses grouped by shared mechanism, not verified fixes.
