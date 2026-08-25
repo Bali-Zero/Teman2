@@ -43,15 +43,25 @@ Clearing it requires an operator `codex login` (owner switchboard item 4), never
 
 ## Team bot (planes: `team_replies`, `team_mutations`, `failover_automation`)
 
-`apps/team-bot/` does not exist yet (B3's file ownership) — every row below is `planned`.
+`apps/team-bot/` ships the tool registry, confirmation state machine, and (lane B4-tp1,
+directive#1§1) the brain adapter — the webhook/identity/sqlite-replication units are
+still separate; most rows below remain `planned` until those land.
 
-| Env var                          | Default | Plane               | Effect when OFF                                                                                                                                             | Owning lane | Status  |
-| -------------------------------- | ------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------- |
-| `TEAM_BOT_INGRESS_ENABLED`       | `false` | team_replies        | Webhook not subscribed; zero inbound team-bot traffic accepted. First promotion rung.                                                                       | B3          | planned |
-| `TEAM_BOT_REPLY_ENABLED`         | `false` | team_replies        | Inbound logged + audited; no model reply sent.                                                                                                              | B3          | planned |
-| `TEAM_BOT_READ_TOOLS_ENABLED`    | `false` | team_replies        | R0/R1 read tools not exposed to the model.                                                                                                                  | B3          | planned |
-| `TEAM_BOT_MUTATIONS_ENABLED`     | `false` | team_mutations      | R2/R3 tools not registered at all. **The single switch that can stop a write to production CRM — the highest-severity row in this table.**                  | B3          | planned |
-| `TEAM_BOT_FAILOVER_AUTO_ENABLED` | `false` | failover_automation | `team-bot-failoverd` never auto-issues a WABA callback override. Stays dark until a staging-WABA retry drill passes (F9/Kimi dissent — see `TRIPWIRES.md`). | B5          | planned |
+| Env var                          | Default | Plane               | Effect when OFF                                                                                                                                                                                                                                                             | Owning lane | Status  |
+| -------------------------------- | ------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------- |
+| `TEAM_BOT_INGRESS_ENABLED`       | `false` | team_replies        | Webhook not subscribed; zero inbound team-bot traffic accepted. First promotion rung.                                                                                                                                                                                       | B3          | planned |
+| `TEAM_BOT_REPLY_ENABLED`         | `false` | team_replies        | Inbound logged + audited; no model reply sent.                                                                                                                                                                                                                              | B3          | planned |
+| `TEAM_BOT_BRAIN_TP1_ENABLED`     | `false` | team_replies        | `BrainRouter` never attempts any TP1 cloud tier (qwen3.7-plus / qwen3.6-flash / glm-5.2); every turn answers from the local read-only Mini model (R0 tools only, and it says so). Narrower than `TEAM_BOT_REPLY_ENABLED` — pulls only the cloud brain, not replies overall. | B4          | wired   |
+| `TEAM_BOT_READ_TOOLS_ENABLED`    | `false` | team_replies        | R0/R1 read tools not exposed to the model.                                                                                                                                                                                                                                  | B3          | planned |
+| `TEAM_BOT_MUTATIONS_ENABLED`     | `false` | team_mutations      | R2/R3 tools not registered at all. **The single switch that can stop a write to production CRM — the highest-severity row in this table.**                                                                                                                                  | B3          | planned |
+| `TEAM_BOT_FAILOVER_AUTO_ENABLED` | `false` | failover_automation | `team-bot-failoverd` never auto-issues a WABA callback override. Stays dark until a staging-WABA retry drill passes (F9/Kimi dissent — see `TRIPWIRES.md`).                                                                                                                 | B5          | planned |
+
+**TP1 depletion probe note (B4-tp1)**: `team_bot.brain.depletion_probe.DepletionProbe`
+raises the two 30%/10% headroom alarms directive#1§1 requires, but only once an owner
+sets `TEAM_BOT_TP1_QUOTA_TOKENS_7D` — TP1 exposes no live credits/balance API to poll
+(confirmed `research/operations/2026-08-14-probe1-tp1-burn-rate.md` Part 2, 20/20 plausible
+paths 404), so this is local usage-accounting against an owner-assigned budget, not a
+flag with an on/off default. See the module docstring for the derivation math.
 
 **Promotion order** (owner switchboard item 7, verbatim from MANDATE.md):
 `ingress/audit → shadow intent/tool selection → fixed replies to owner → allowlisted staff read
