@@ -1,0 +1,61 @@
+task_id: garuda-l3-checkout-0825
+gear: 3
+l_level: L3
+gate_class: hot-zone-migration
+objective: >
+  Fix 3 own-diff defects found on L3's checkout/orders PR before it can
+  merge: (1) garuda_orders_router.py existed but had no manifest entry and
+  no include_router call, so the whole checkout funnel 404'd from routing;
+  (2) the lane's own money-path integration tests failed closed with
+  PersistencePolicyUnavailable because no GARUDA_ORDER retention policy row
+  existed and no test fixture installed one; (3) migration 282_garuda_orders.sql
+  puts this PR in the hot-zone Gear-3 floor, which requires its own evidence
+  pack — this pair is that pack.
+constraints:
+  - No retention policy row may be seeded by a migration (per
+    products/garuda-voa/DECISIONS.md, a policy is a Zero-approved business
+    decision). Tests must install their own fixture policy, mirroring L1's
+    _insert_garuda_check_policy pattern — never insert a GARUDA_ORDER policy
+    via migrations_v2.
+  - Do not edit the already-merged 281_garuda_voa_retention.sql migration.
+  - Do not renumber 282_garuda_orders.sql without a real collision (verified
+    none exists against origin/feature/garuda-voa).
+  - Router registration in this backend is NOT manifest-driven — both
+    router_manifest.py (RouterEntry) AND router_registration.py
+    (include_routers + include_light_routers) need editing, mirroring how
+    L2's garuda_voa_public router was wired (commit 20ef324d1).
+acceptance: >
+  backend/tests/setup/test_router_manifest.py +
+  backend/tests/setup/test_manifest_registration_parity.py green (router
+  registered); backend/tests/services/garuda_orders/ collects and passes a
+  non-zero count of real tests against a migrated Postgres, including the
+  money-path tests in test_repository_integration.py that previously failed
+  closed on PersistencePolicyUnavailable.
+consumer_map:
+  - L4 (portal/magic-link auth) and L7 (documents) will wire real
+    app.state.garuda_magic_session_verifier / garuda_order_repository
+    adapters onto this router at orchestrator-composition time; until then
+    every route fails closed (503 SERVICE_UNAVAILABLE / SESSION_REQUIRED),
+    never a silent bypass.
+  - Any future GARUDA_ORDER-scope reader/writer depends on this PR's
+    manifest + registration entries to actually receive HTTP traffic in
+    prod (main_api / include_light_routers).
+risks:
+  - The router file's own docstring claimed mounting was deliberately left
+    to "the orchestrator" — this PR overrides that reading because
+    test_router_manifest.py structurally requires every router file to
+    have a manifest entry (or an explicit dead-code whitelist entry), so
+    "orchestrator wires it later" was never actually optional here.
+  - Real adapter injection (EligibilityCheckLookup / PaymentProvider /
+    magic-session verifier) is still unwired — mounting the router does
+    NOT make the funnel live end-to-end, only routable; it 503s/401s until
+    L4/L7 finish their part.
+grader: team-lead (integration-branch merger, generator!=grader — this
+  lane's own session never grades its own diff)
+budget: ~15 net lines (router_manifest.py + router_registration.py x2 +
+  docstring correction) + ~35 net lines (one test fixture) across 3 files;
+  2 pytest gate commands run against real Postgres (manifest/parity gate on
+  the shared dev DB, garuda_orders suite on a fresh throwaway DB migrated
+  through 282, both dropped after verification).
+pii: none — schema/router-registration/test-fixture code only, no client
+  data touched or transcribed.

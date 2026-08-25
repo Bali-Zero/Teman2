@@ -1,0 +1,109 @@
+brief_ref: "evidence/2026-08/agent-air-m5-backend-rag-garuda-l3-checkout-0825-e6bbb7d0/brief.yml"
+lanes:
+  - lane: L3
+    role: build
+    seat: sonnet-5
+receipts:
+  - claim: >
+      Router manifest + registration parity gates pass with
+      garuda_orders_router registered (_API, no mount-time condition,
+      mirroring garuda_voa_public) — 370 tests, zero failures.
+    cmd: >
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m
+      pytest backend/tests/setup/test_router_manifest.py
+      backend/tests/setup/test_manifest_registration_parity.py -q
+    exit: 0
+    ts: "2026-08-25T07:05:00Z"
+    seat: sonnet-5
+  - claim: >
+      backend/tests/services/garuda_orders/ collects 47 real tests
+      (test_repository_integration.py, test_state_machine.py,
+      test_webhook_router.py) and all 47 pass against a fresh Postgres DB
+      migrated through 282_garuda_orders.sql via `python -m backend.db.migrate
+      apply-all` — including the 12 money-path tests in
+      test_repository_integration.py that previously failed closed with
+      PersistencePolicyUnavailable before this PR's test-fixture policy row
+      was added. No test skipped for want of a database.
+    cmd: >
+      createdb garuda_l3_verify_1787642254 && DATABASE_URL=postgresql://
+      localhost:5432/garuda_l3_verify_1787642254 PYTHONPATH=.:../crm-cell
+      .venv/bin/python -m backend.db.migrate apply-all && INTAKE_TEST_DSN=
+      postgresql://localhost:5432/garuda_l3_verify_1787642254
+      PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest
+      backend/tests/services/garuda_orders/ -v
+    exit: 0
+    ts: "2026-08-25T07:17:51Z"
+    seat: sonnet-5
+  - claim: >
+      Confirmed migration 282_garuda_orders.sql applies cleanly (no number
+      collision) on a fresh DB migrated from scratch, immediately after
+      281_garuda_voa_retention.sql — both logged
+      "applied successfully" with no error, on top of the pre-existing
+      264_visa_decision_retention_policy chain that widened policy_scope to
+      admit 'GARUDA_ORDER'.
+    cmd: >
+      DATABASE_URL=postgresql://localhost:5432/garuda_l3_verify_1787642254
+      PYTHONPATH=.:../crm-cell .venv/bin/python -m backend.db.migrate
+      apply-all
+    exit: 0
+    ts: "2026-08-25T07:17:51Z"
+    seat: sonnet-5
+dissent:
+  - seat: sonnet-5 (self, bite-proof — generator!=grader holds even
+      against one's own reading of the router file's docstring)
+    objection: >
+      garuda_orders_router.py's own module docstring stated mounting was
+      "orchestrator-scoped per LANES.md" and deliberately NOT this lane's
+      job ("this file is NOT wired into router_registration.py by this
+      lane"). Read literally, editing router_registration.py here
+      contradicts the file's own stated intent.
+    status: RETRACTED
+    resolution: >
+      test_router_manifest.py structurally requires every router file
+      under backend/app/routers/ to have either a manifest entry or an
+      explicit NON_ROUTER_FILES/DEAD_ROUTER_FILE_HASHES whitelist entry —
+      "orchestrator wires it later" was never a state this repo's own gate
+      allows a live router file to sit in indefinitely. Mirrored the exact
+      shape L2 used for garuda_voa_public (commit 20ef324d1): mount
+      unconditionally, GARUDA_PUBLIC_ENABLED re-checked per-request inside
+      the router (already true here via _require_flag on every route), and
+      updated the stale docstring to match. Real adapter wiring
+      (EligibilityCheckLookup/PaymentProvider/magic-session verifier) is
+      unaffected — get_repository()/the auth seam still fail closed with
+      503/401 until L4/L7/the orchestrator inject the real instances.
+  - seat: sonnet-5 (self, bite-proof)
+    objection: >
+      Before reading repository.py and migration 282, considered whether
+      PersistencePolicyUnavailable might indicate the DB function
+      active_garuda_order_policy_available() itself was missing, broken, or
+      reading the wrong policy_scope value — i.e. that the defect was in
+      product code, not in test fixtures.
+    status: RETRACTED
+    resolution: >
+      Read migration 282_garuda_orders.sql:173-189 — the function is
+      correctly defined (mirrors L1's active_garuda_check_policy_available
+      exactly, reads policy_scope='GARUDA_ORDER' from the same
+      visa_decision_retention_policies table L1's migration 281 already
+      widened its CHECK constraint to admit). The function and table are
+      correct by design; no product-code bug exists. The only thing
+      missing was a policy row, which per DECISIONS.md must never come from
+      a migration — so the fix is exactly the test-fixture pattern L1's own
+      test_retention.py already established for GARUDA_CHECK, applied here
+      for GARUDA_ORDER.
+  - seat: sonnet-5 (self, bite-proof)
+    objection: >
+      The `ON CONFLICT DO NOTHING` (no target) on the fixture policy insert
+      could theoretically mask a real duplicate-policy bug if two different
+      test runs raced to insert conflicting policy_version values under
+      concurrent CI sharding against the same DSN.
+    status: PLAUSIBLE
+    resolution: >
+      Not fully closed here — the fixture uses a fixed policy_version
+      ('l3-test-fixture-v1') and a wide open-ended effective_period
+      specifically so repeated per-test-function pool-fixture runs within
+      one process are idempotent, which is what was verified (47/47 pass,
+      single process, single DSN). Cross-process/sharded-CI concurrent
+      first-insert races against the SAME DSN were not exercised in this
+      verification and remain a residual risk if this suite is ever
+      sharded across parallel workers pointed at one shared Postgres.
+pii_scan: clean
