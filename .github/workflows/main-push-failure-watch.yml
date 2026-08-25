@@ -142,6 +142,7 @@ on:
       - Docs Inventory Refresh
       - Docs Sync Check
       - manual - fly api diagnostics
+      - manual - garuda voa arm
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
       - Frontend Live Sentinel
