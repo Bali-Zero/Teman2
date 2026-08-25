@@ -2,13 +2,15 @@
 
 Standalone app, per `docs/plans/2026-08-25-due-bot-live/MANDATE.md` F4: intended
 home is `127.0.0.1:8765` on the Mini, next to the local Qwen3-14B inference
-plant (F8). **This directory ships only lane B3's tool-registry unit** —
-`team_bot/registry/` (the ten-tool risk-tiered registry, F5) and
-`team_bot/loop/` (the `ToolDecision` schema shared with B4's serving
-contract, plus the `ActionClaimGate` closing the gc-015 defect class). The
-webhook, identity→principal mapping (F7), confirmation state machine (F6),
-and sqlite state + Mini→Pro replication are separate units of the same B3
-lane and are **not** in this directory yet.
+plant (F8). **This directory ships lane B3's units built so far**: the
+tool registry (`team_bot/registry/`, F5), the typed tool loop
+(`team_bot/loop/` — `ToolDecision`/`ActionClaimGate` and, as of the
+directive #1 §2 amendment, the multi-step-reads type split), and F6's
+confirmation-gated mutation state machine (`team_bot/confirmation/` — data
+shape, sqlite CAS store, encryption, confirm-code parsing, server-authored
+outcome text, and the reply-composition structural fix). The webhook and
+identity→principal mapping (F7), and sqlite Mini→Pro replication, are
+separate units of the same B3 lane and are **not** in this directory yet.
 
 ## Everything here is inert
 
@@ -16,11 +18,12 @@ No server, no CRM client, no I/O. `registry/` is pure data (frozen pydantic
 models describing ten tool contracts); `loop/` is pure functions (parse a raw
 model turn, evaluate a reply against what actually executed). Nothing in this
 package is imported by any running service — there is no live path to wire a
-dark flag into yet. `team_bot/flags.py` defines the flag future wiring must
-check (`is_team_bot_enabled()`, mirrors
-`backend/services/rag/agentic/team_crm_tools.py::is_team_crm_tools_enabled()`),
-default OFF, so the loop/webhook units that come next have it ready rather
-than inventing their own.
+dark flag into yet. `team_bot/flags.py` defines the flags future wiring must
+check (`is_team_bot_enabled()`, mirroring
+`backend/services/rag/agentic/team_crm_tools.py::is_team_crm_tools_enabled()`;
+`is_team_bot_multistep_reads_enabled()`/`max_read_steps()` for the
+directive #1 §2 amendment below), all default OFF, so the loop/webhook
+units that come next have them ready rather than inventing their own.
 
 ## Naming note — Qwen §4 verbatim, not the MANDATE's F5 prose shorthand
 
@@ -47,11 +50,29 @@ of the same ten tools, not a second, independently-binding technical spec.
 Flagged to the orchestrator per the brief's instruction to surface any case
 where closing gc-015 "turns out to require touching something frozen."
 
+## Multi-step reads (owner directive #1 §2, 2026-08-25 — amends F4/F5)
+
+"One tool per turn" now applies ONLY to mutations (always confirmed, unchanged). Reads/searches
+may chain across multiple sequential turns, gated by the dark flag
+`TEAM_BOT_MULTISTEP_READS_ENABLED` (default off — `flags.py::max_read_steps()` returns exactly
+1, today's original behavior, whenever it is off, regardless of `TEAM_BOT_MAX_READ_STEPS`'s
+value). See `docs/plans/2026-08-25-due-bot-live/ops/KILL-SWITCHES.md` for the registered switch.
+
+This is implemented as a TYPE SPLIT, not a validator, so `tool_decision.py` is untouched:
+`turn_plan.py` adds `ReadPlan` (an ordered, bounded sequence of read steps) alongside
+`MutationDecision` (exactly one call — structurally incapable of representing more than one,
+which is what makes "one mutation per turn" unrepresentable-if-violated rather than merely
+checked) and `FinalAnswer`. `loop_detector.py` adds `detect_stuck_loop`, a narrow guard that
+flags a chain only when the identical call repeats on the CONSECUTIVE tail — deliberately not
+triggered by an ordinary non-consecutive repeat (e.g. the same client looked up for two
+different practices).
+
 ## Layout
 
 ```
 team_bot/
-  flags.py            dark-flag helper (default OFF), for future wiring
+  flags.py            dark-flag helpers (default OFF): TEAM_BOT_ENABLED,
+                       TEAM_BOT_MULTISTEP_READS_ENABLED + max_read_steps()
   registry/
     envelope.py        shared enums, ID patterns, common response envelope (Qwen §4 verbatim)
     tools.py            RiskTier / ConfirmPolicy / ToolSpec + the ten frozen ToolSpec entries
@@ -61,8 +82,22 @@ team_bot/
                          `parallel_tool_calls: false` is honored by neither llama.cpp nor Ollama
     claim_gate.py        ActionClaimGate — blocks a reply that claims a completed action
                          when nothing executed this turn (closes gc-015)
+    turn_plan.py        ReadStep/ReadPlan/MutationDecision/FinalAnswer/classify_step —
+                         the structural type split for the multi-step-reads amendment above
+    loop_detector.py     detect_stuck_loop — the read chain's loop guard
+  confirmation/
+    models.py, store.py, crypto.py, idempotency.py, confirmation_input.py, outcomes.py,
+    reply_composer.py — F6's confirmation-gated mutation state machine (data shape, CAS
+    behavior, encryption, confirm-code parsing, server-authored outcome text, and the
+    structural reply-composition fix that supersedes claim_gate.py as the primary control)
 tests/
   test_registry.py
   test_tool_decision.py
   test_claim_gate.py
+  test_turn_plan.py
+  test_loop_detector.py
+  test_flags.py
+  test_confirmation_*.py, test_outcomes.py, test_reply_composer.py, test_idempotency.py
 ```
+
+The webhook and identity→principal mapping (F7) are not in this directory yet.
