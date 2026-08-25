@@ -1,0 +1,118 @@
+task_id: garuda-arming-workflow-0825
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Build the mechanism that arms the GARUDA VOA product's BACKEND
+  configuration on Fly (`nuzantara-rag`) in production — the "exact list of
+  steps for when the Xendit keys arrive" Zero asked for, turned into one
+  auditable button instead of a hand-written checklist.
+
+  Measured facts, not assumed: `apps/backend-rag/fly.toml` has an empty
+  `[env]` block — every backend config value on `nuzantara-rag` is a Fly
+  secret. No machine in this fleet holds a Fly token scoped to
+  `nuzantara-rag` (M5: none at all, `flyctl auth whoami` fails and
+  `FLY_API_TOKEN` is absent from both env and `~/.nuzantara-secrets.env`;
+  Pro: token scoped to `nuzantara-postgres` only, `Could not find App
+  "nuzantara-rag"`). `.github/workflows/fly-deploy.yml`'s `FLY_API_TOKEN`
+  GitHub Secret is the one credential in this repo proven to reach
+  `nuzantara-rag` — it already runs `flyctl deploy`/`ssh console`/`machines
+  list` against it. No `GARUDA_*`/`XENDIT*` secret exists yet, in GitHub
+  Actions or on Fly (checked both). No workflow in this repo sets Fly
+  secrets at all today.
+
+  So CI is the only sanctioned path to arm this configuration, and this
+  task built the first workflow in the repo that does so:
+  `.github/workflows/garuda-arm.yml` (`workflow_dispatch` only, never a
+  push/schedule trigger — this changes production config and must not fire
+  by accident).
+
+  Gear 3 by PATH, not by blast radius: `.github/workflows/*` is a literal
+  HOTZONE_PATTERNS entry — the floor is deterministic, recomputed below,
+  not the author's choice.
+constraints:
+  - "Closed allowlist: every settable key begins `GARUDA_`, hard-coded as a
+    literal in the step script. No free-text key-name input — structurally
+    impossible to use this workflow to set an unrelated production secret."
+  - 'The two genuinely secret values (`GARUDA_XENDIT_SECRET_KEY`,
+    `GARUDA_XENDIT_CALLBACK_TOKEN`) come from GitHub Secrets, which do not
+    exist yet (Zero has not provisioned the Xendit sandbox account). A
+    secret that is empty must be SKIPPED, never set to `""` — the
+    service-initializer gates all order/payment wiring on
+    `GARUDA_XENDIT_SECRET_KEY` being non-empty
+    (`service_initializer.py` block "5.7"), and an empty-but-present
+    value would read as configured to anyone grepping `flyctl secrets
+    list` even though the wiring stays unconfigured either way.'
+  - "Never echo a secret value — not in a log line, summary, or error. Only
+    key NAMES and a set/skipped verdict may ever be printed."
+  - 'The GARUDA_PUBLIC_ENABLED value trap: the backend''s own
+    `_public_enabled()` (garuda_voa_public.py) accepts
+    `1`/`true`/`yes` case-insensitively; the frontend flag
+    (`apps/mouth/src/app/visa/voa/flag.ts`) accepts ONLY the literal
+    `"true"` (after trim+lowercase). Encoded as a `type: choice` input
+    restricted to exactly `true`/`false` so the ambiguous value (`1`) can
+    never be entered — it is not merely documented.'
+  - "This workflow arms the BACKEND only — the header comment says so
+    prominently. The frontend Vercel flag is a separate, GUI-only action a
+    future reader must not conflate with a green run of this workflow."
+acceptance:
+  - "`actionlint` accepts the workflow file."
+  - "The set/skip bash logic (`add_if_nonempty`), run as a standalone
+    fixture against the real 8-key argument list with the two secret
+    inputs empty, sets exactly the 6 non-secret keys and skips exactly the
+    2 secret keys — matching what the code path actually does when the
+    Xendit secrets are unset, which is the state today."
+  - "The GARUDA_PUBLIC_ENABLED choice values (`true`/`false`) are proven
+    against BOTH real acceptance functions (backend's
+    `_public_enabled()` set-membership check and frontend's
+    `isGarudaVoaPublicEnabled()` trim+lowercase-equality check, both read
+    verbatim off `origin/feature/garuda-voa`, the integration branch where
+    the VOA product code actually lives) to resolve to the SAME boolean for
+    both values — no value this input can produce leaves the two surfaces
+    disagreeing."
+  - "Every `GARUDA_*` production-config env read in the VOA payment/public
+    surfaces (service_initializer.py, garuda_voa_public.py, xendit.py,
+    magic_link_store.py) is accounted for in this workflow's allowlist, or
+    explicitly excluded with a measured reason (constant, not env-read; or
+    belongs to the unrelated GARUDA-FILIERA regulatory-watch system)."
+consumer_map:
+  - "`nuzantara-rag`'s `service_initializer.py` reads the 6 non-secret keys
+    plus the 2 secret keys at process startup (blocks 5.5/5.6/5.7) to wire
+    the magic-link store, check store, and order/payment repository —
+    setting them via this workflow is what makes that wiring active."
+  - "`garuda_voa_public.py`'s `_public_enabled()` reads
+    `GARUDA_PUBLIC_ENABLED` per-request to gate the three public routes
+    (POST/GET/DELETE `/api/visa/voa/eligibility-checks*`)."
+  - "The frontend flag (`flag.ts`) reads its OWN copy of
+    `GARUDA_PUBLIC_ENABLED` from Vercel's environment — untouched by this
+    workflow, called out explicitly in the header comment so a future
+    reader does not assume one flag arms both surfaces."
+risks:
+  - 'flyctl secrets set restarts the app by default (no `--stage`). This is
+    the workflow''s DEFAULT behaviour (input `stage_only` defaults to
+    `"false"`) — deliberate: arming is meant to take effect immediately,
+    not silently wait for an unrelated future deploy to pick it up. An
+    operator who wants to pre-stage values ahead of a deploy can pass
+    `stage_only: true`.'
+  - "Running this workflow with `GARUDA_XENDIT_SECRET_KEY` unset (today's
+    state) sets 6 keys and leaves the payment/order wiring exactly as
+    unconfigured as before — 503 fail-closed on the payment path, per
+    `service_initializer.py`'s own existing behaviour. Verified by reading
+    that file's block 5.7, not assumed."
+  - "This workflow was NOT run — per the orchestrating session's explicit
+    instruction, arming in production is Zero's call on timing. Evidence
+    below is static/fixture verification only; there is no live
+    `flyctl secrets list` receipt because the real run has not happened."
+grader: |
+  Generator == grader for the workflow YAML + fixture verification (this
+  session authored both). Generator != grader for the GATE VERDICT and for
+  the decision to actually RUN the workflow against production — per
+  CLAUDE.md §13/Agent PR Contract ("the diff's author never gates its own
+  diff") and per the orchestrating session's explicit instruction that it,
+  not this session, decides when to execute this workflow.
+budget: >-
+  1 build lane (this session), no council, no cross-family dispatch — a
+  single-file CI-workflow addition whose verification (actionlint + two
+  bash/python fixture replays against the real backend/frontend acceptance
+  logic) is fully reproducible without a Fly credential or a live run.
+pii: none
