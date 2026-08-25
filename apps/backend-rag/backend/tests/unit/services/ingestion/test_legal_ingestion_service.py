@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import httpx
 import pytest
 
 if TYPE_CHECKING:
@@ -1122,10 +1123,6 @@ class TestIdentityCollisionGuard:
         assert stored == "Permen_1_2026"
 
 
-# --------------------------------------------------------------------------- #
-# ingest_legal_document -- metadata fallback
-# --------------------------------------------------------------------------- #
-
 
     @staticmethod
     def _keys_named_by(qdrant_filter: object) -> set[str]:
@@ -1244,6 +1241,50 @@ class TestIdentityCollisionGuard:
                 "same outage in a different order"
             )
 
+
+
+    @pytest.mark.asyncio
+    async def test_a_failed_index_put_aborts_before_any_mutation(
+        self, service: MagicMock
+    ) -> None:
+        """The index call is fail-closed, and that is a deliberate choice.
+
+        `ensure_keyword_payload_index` is a bare PUT with `raise_for_status()`:
+        no tolerance, no "already exists" branch. So a 403 on a caller-supplied
+        collection, or a timeout on a first-ever index build, aborts an ingest
+        that might otherwise have succeeded. That is the correct trade -- an
+        ingest whose collision guard cannot run must not proceed -- but it is a
+        real behavioural surface this change introduces, and an untested one is
+        just a claim. What must hold is that the abort happens BEFORE anything
+        is written: no scroll, no quarantine, no indexing.
+        """
+        self._prime(service, existing=[])
+        service.vector_db.ensure_keyword_payload_index = AsyncMock(
+            side_effect=httpx.HTTPStatusError(
+                "403 Forbidden",
+                request=httpx.Request("PUT", "http://qdrant/collections/x/index"),
+                response=httpx.Response(403),
+            )
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is False
+        service.vector_db.scroll_strict.assert_not_awaited()
+        service.vector_db.set_payload_by_filter.assert_not_awaited()
+        service.vector_db.delete_by_filter.assert_not_awaited()
+        service.indexer.index_legal_document.assert_not_awaited()
+
+# --------------------------------------------------------------------------- #
+# ingest_legal_document -- metadata fallback
+# --------------------------------------------------------------------------- #
 
 class TestMetadataFallback:
     def test_incomplete_metadata_identity_is_bound_to_source_content(self) -> None:

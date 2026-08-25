@@ -422,6 +422,17 @@ class LegalIngestionService:
                 else self.vector_db
             )
 
+            # These two PUTs are FAIL-CLOSED, deliberately and not incidentally:
+            # `ensure_keyword_payload_index` is a bare PUT + raise_for_status(),
+            # so a 403 on a caller-supplied collection (`collection_name` is
+            # request-controlled) or a timeout on a first-ever index build over
+            # a large collection aborts an ingest that might otherwise have
+            # succeeded. That is the right trade -- an ingest whose collision
+            # guard cannot run must not proceed -- but it is a trade, not a
+            # free "safe and idempotent". Same-schema recreation is a no-op;
+            # a PUT of a DIFFERENT schema over an existing index is NOT
+            # verified here and is the open case.
+            #
             # Payload indexes the fail-closed filters below REQUIRE. A missing
             # index does not degrade a Qdrant filter, it makes the query an
             # ERROR: "Index required but not found for <key>". Both
