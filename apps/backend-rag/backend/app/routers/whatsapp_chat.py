@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
 from backend.channels.format import format_rich_text
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 # `notify_human_telegram` now lives in
 # `backend/services/integrations/human_escalation_notifier.py` so the WhatsApp
@@ -59,7 +60,6 @@ from backend.services.integrations.whatsapp_triage_service import (
 )
 from backend.services.whatsapp_kbli_guard import sanitize_whatsapp_kbli_reply
 from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
-from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,42 @@ MAX_HISTORY_MESSAGES = 20
 
 router = APIRouter(prefix="/webhook/whatsapp", tags=["whatsapp"])
 WHATSAPP_FAST_PATH_RECOVERY_DELAY_SECONDS = 30
+
+# Claimant names for the wa_reply_claims race gate (2026-08-25 double-reply
+# scar, migration 281). One row per Meta wamid, written BEFORE either path
+# generates or sends a reply — whichever path's INSERT lands first wins.
+WAMID_CLAIMANT_META_INBOX = "meta_inbox"
+WAMID_CLAIMANT_LEGACY = "legacy"
+
+
+async def _claim_wamid_reply(conn: Any, wamid: str, claimant: str) -> bool:
+    """Atomically claim ``wamid`` for ``claimant``; True iff this claimant owns it.
+
+    ``ON CONFLICT (wamid) DO UPDATE SET wamid = EXCLUDED.wamid`` is a no-op
+    write on the conflicting row's own primary key — deliberate, not
+    decorative. ``DO NOTHING`` would return no row at all on conflict, which
+    cannot distinguish "the OTHER path already claimed this wamid" from "I
+    already claimed it, this is a legitimate retry of my own path" — the two
+    need different handling (retry-safely proceed in the second case, never
+    in the first). ``DO UPDATE`` always returns a row via ``RETURNING``, and
+    because the update never touches ``claimed_by``, the value it returns on
+    a conflict is the FIRST claimant's — untouched. So the caller compares
+    the returned owner against its own claimant name: equal means either
+    "I just won the claim" or "I already own it" (both safe to proceed —
+    each path's own downstream inserts are independently idempotent);
+    different means the other path already claimed it — log and discard.
+    """
+    owner = await conn.fetchval(
+        """
+        INSERT INTO wa_reply_claims (wamid, claimed_by)
+        VALUES ($1, $2)
+        ON CONFLICT (wamid) DO UPDATE SET wamid = EXCLUDED.wamid
+        RETURNING claimed_by
+        """,
+        wamid,
+        claimant,
+    )
+    return owner == claimant
 
 
 class WhatsAppMessage(BaseModel):
@@ -182,45 +218,54 @@ async def process_whatsapp_message(
         # Mark message as read
         await whatsapp_service.mark_message_read(message_id)
 
-        # 0. CROSS-PATH DEDUP DEFENSE-IN-DEPTH (2026-08-25 double-reply scar).
-        # The meta-inbox pipeline (wa_outbox_worker) and this legacy inline
-        # path keep SEPARATE ledgers (meta_inbox_messages vs inbound_webhooks),
-        # so the webhook-level dedup on inbound_webhooks does not protect
-        # against a message the meta-inbox path already answered. If this
-        # wamid already has a row in meta_inbox_messages, that pipeline owns
-        # it — never generate a second reply here. Best-effort: a DB hiccup
-        # must not block a genuinely legacy message from being answered.
-        dedup_db_pool = _get_db_pool(request)
-        if dedup_db_pool is not None:
-            try:
-                async with dedup_db_pool.acquire() as dedup_conn:
-                    already_meta_inbox = await dedup_conn.fetchval(
-                        "SELECT 1 FROM meta_inbox_messages WHERE meta_message_id = $1",
-                        message_id,
-                    )
-                # Exact match on 1 (what "SELECT 1 FROM ..." actually returns
-                # when a row exists), not bare truthiness: a plain
-                # MagicMock()-backed request/pool in a unit test — unrelated
-                # to this dedup check — is itself truthy and must never be
-                # read as "row found".
-                if already_meta_inbox == 1:
-                    logger.info(
-                        "Legacy WhatsApp path skipped — wamid=%s already answered "
-                        "by the meta-inbox pipeline",
-                        message_id,
-                    )
-                    return
-            except Exception:
-                logger.exception(
-                    "Cross-path dedup check failed (non-blocking) wamid=%s", message_id
-                )
-
-        # 0.5. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
+        # 0. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
         if not whatsapp_triage_service.is_allowed(phone):
             logger.info(
                 "Ignored message from non-allowed number: %s", redact_identifier_for_log(phone)
             )
             return
+
+        # 0.5. CROSS-PATH ATOMIC CLAIM (2026-08-25 double-reply scar, hardened).
+        # The meta-inbox pipeline (wa_outbox_worker / _handle_meta_inbox_message)
+        # and this legacy inline path are two concurrent BackgroundTasks. The
+        # first fix here was a read-only SELECT against meta_inbox_messages —
+        # best-effort, but racy: it can run BEFORE the meta-inbox path's own
+        # write commits, so both paths can win the read and both reply (live
+        # 04:03-04:04Z 2026-08-25: an English abstain from one path, an
+        # Italian greeting from the other, same inbound message). Replaced
+        # with a write-before-send atomic claim on the SAME wamid — whichever
+        # path's INSERT lands first in wa_reply_claims wins and answers; the
+        # loser logs and discards. Best-effort ONLY for the "DB unreachable"
+        # case (a DB hiccup must never mute a genuinely legacy message) — once
+        # the DB responds, the claim outcome is binding.
+        #
+        # Placed AFTER the allowlist check, not before (self-review finding,
+        # cured before merge): claiming BEFORE the allowlist check let a
+        # number this legacy path will silently ignore anyway still WIN the
+        # wamid claim and then discard — if that same wamid also has a
+        # legitimate, later-arriving meta-inbox delivery (the exact
+        # double-subscription shape this PR defends against), meta-inbox's
+        # own claim attempt would then lose to a claimant that was never
+        # going to answer, leaving a real customer with silence from BOTH
+        # paths instead of one correct reply from meta-inbox. Ordering the
+        # claim after the allowlist check means legacy only ever claims a
+        # wamid it is actually going to try to answer.
+        dedup_db_pool = _get_db_pool(request)
+        if dedup_db_pool is not None:
+            try:
+                async with dedup_db_pool.acquire() as dedup_conn:
+                    won_claim = await _claim_wamid_reply(
+                        dedup_conn, message_id, WAMID_CLAIMANT_LEGACY
+                    )
+                if not won_claim:
+                    logger.info(
+                        "Legacy WhatsApp path skipped — wamid=%s already claimed "
+                        "by the meta-inbox pipeline",
+                        message_id,
+                    )
+                    return
+            except Exception:
+                logger.exception("Cross-path claim failed (non-blocking) wamid=%s", message_id)
 
         # 1. TRIAGE: Personal or Business?
         decision, reason = await whatsapp_triage_service.should_escalate(
@@ -1049,6 +1094,26 @@ async def _handle_meta_inbox_message(
         meta_ts = datetime.fromtimestamp(int(ts_raw), tz=timezone.utc) if ts_raw else None
     except (TypeError, ValueError):
         meta_ts = None
+
+    # CROSS-PATH ATOMIC CLAIM (2026-08-25 double-reply scar, migration 281).
+    # Mirrors the legacy path's claim at the top of process_whatsapp_message —
+    # whichever path's INSERT into wa_reply_claims lands first for this wamid
+    # wins and proceeds; the loser logs and discards. A legitimate Meta retry
+    # of this SAME delivery re-claims its own prior win (owner comparison, see
+    # _claim_wamid_reply) and proceeds normally into the idempotent ledger
+    # insert below. Best-effort ONLY for "DB unreachable" — a claim-query
+    # failure must never mute a genuinely meta-inbox message.
+    try:
+        won_claim = await _claim_wamid_reply(conn, wamid, WAMID_CLAIMANT_META_INBOX)
+    except Exception:
+        logger.exception("meta-inbox: cross-path claim failed (non-blocking) wamid=%s", wamid)
+        won_claim = True
+    if not won_claim:
+        logger.info(
+            "meta-inbox path skipped — wamid=%s already claimed by the legacy path",
+            wamid,
+        )
+        return
 
     is_new_inbound = False
     async with conn.transaction():
