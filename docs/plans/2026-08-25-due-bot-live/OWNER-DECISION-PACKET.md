@@ -269,6 +269,54 @@ allowlisted staff, read tools → R2 writes → R3 practice open → automatic f
    "AUTO-failover stays DARK until a staging-WABA drill proves Meta's retry semantics" — this
    rung does not open on schedule, it opens on that drill passing.
 
+## Item 8 — Model Studio API key for `qwen3.7-flash` (~$3.4/month) — NEW, directive #1
+
+**What it is.** Directive #1 reserves a slot for `qwen3.7-flash` via a Model Studio API key,
+entering as the team bot's primary brain when you authorise it. Until then the primary is
+`qwen3.7-plus` through the TP1 door, which is already armed and needs nothing from you.
+
+**Why it is on this switchboard and not in a lane.** It is a **paid per-token API key**, and
+the standing rule is that any paid per-token API outside the pre-authorised set needs your
+explicit yes — never installed autonomously "to test". The directive already gates it
+correctly; this item exists so the gate has a place to be answered rather than sitting
+implicit in a paragraph.
+
+**What you are actually deciding.** Whether ~$3.4/month buys enough over `qwen3.7-plus` to be
+worth a new credential and a new billing surface. Nobody has measured the two against each
+other on our traffic, so **there is no evidence here yet** — this item is deliberately not
+asking you to decide today. It is asking you to know it exists, so that a lane never quietly
+arms it.
+
+**Cost of saying no:** none. The chain runs on TP1 as directive #1 specifies.
+
+---
+
+## Item 9 — One sentence on the PII boundary for per-member memory — NEW, directive #1
+
+**What it is.** Directive #1 adds three-layer per-member memory, and its episodic layer has to
+resolve anaphora — *"and for the other client?"* — which requires storing enough to
+disambiguate one client from another across turns.
+
+**The tension, stated plainly.** You granted this lane a derogation for **processing**
+(documents whose client consent is already collected). The Law 2 **output** frontier is
+unchanged: no cleartext PII in any persisted memory, log, report, metric label or shared
+artifact. A per-member memory is, structurally, a persistence layer for facts about clients.
+`client_id` plus a practice reference is almost certainly sufficient for anaphora and stays
+inside the frontier.
+
+**Why you and not us.** "Almost certainly" is the orchestrator estimating your risk appetite.
+The lane has been told to build inside the frontier and to **report rather than relax** if it
+finds a layer that cannot do its job under it. What is missing is one sentence from you fixing
+where the line sits, so three lanes do not each re-derive it slightly differently and the
+loosest reading wins by accident.
+
+**What a yes looks like:** a sentence naming what episodic memory may persist about a client.
+**Cost of not answering:** the lane builds to the strictest reading — `client_id` and hashes
+only — which may make some proactivity weaker than you wanted, and you will hear about it as a
+capability report rather than as a leak.
+
+---
+
 ## See also
 
 - **Kill criterion**: `MANDATE.md` (new section, this lane's addition) — the measured conditions
