@@ -1397,7 +1397,37 @@ def evaluate_with_trace(
     review = [proof for proof in proofs if proof.status is ProductProofStatus.REVIEW]
     if review:
         review_reasons = _dedupe_reasons(reason for proof in review for reason in proof.reasons)
-        return assemble(state=DecisionState.HUMAN_REVIEW_REQUIRED, review_reasons=review_reasons)
+        # Owner ruling #5 (2026-08-25, OWNER-RULINGS-2026-08-25.md §5):
+        # "zero-risultati è vietato come schermata". REVIEW still wins
+        # precedence over SUPPORTED unconditionally — the `if
+        # global_review_reasons` block above and this `if review` gate are
+        # both untouched, the VERDICT stays HUMAN_REVIEW_REQUIRED — but any
+        # product that is ALREADY, genuinely SUPPORTED alongside the one
+        # needing review must not be silently dropped (e.g. an investor
+        # asking about E28B who is already SUPPORTED for E28A). Reuses the
+        # exact ranking call the SUPPORTED branch below makes, over the
+        # same in-scope `proofs` — no new eligibility logic. `quotes` stays
+        # `()` on this branch (frozen — `_check_state_conditionals` bans
+        # non-empty `quotes` outside SUPPORTED_CANDIDATES with no
+        # exception): contract C1 (no price without a resolved quote) is
+        # what keeps this non-actionable, not candidates' emptiness.
+        candidates: tuple[Candidate, ...] = ()
+        supported_alongside_review = [
+            proof for proof in proofs if proof.status is ProductProofStatus.SUPPORTED
+        ]
+        if supported_alongside_review:
+            candidates = _rank_supported(
+                supported_alongside_review,
+                snapshot,
+                compiled_pack,
+                effective_at=effective_at,
+                trace_sink=trace_entries,
+            )
+        return assemble(
+            state=DecisionState.HUMAN_REVIEW_REQUIRED,
+            review_reasons=review_reasons,
+            candidates=candidates,
+        )
 
     supported = [proof for proof in proofs if proof.status is ProductProofStatus.SUPPORTED]
     if supported:

@@ -1413,6 +1413,23 @@ class Decision(BaseModel):
                     "state=SUPPORTED_CANDIDATES forbids missing_facts/review_reasons/"
                     "no_path_reasons"
                 )
+        elif state is DecisionState.HUMAN_REVIEW_REQUIRED:
+            # Owner ruling #5 (2026-08-25, docs/plans/2026-08-24-visa-oracle-
+            # live/OWNER-RULINGS-2026-08-25.md §5): "zero-risultati è vietato
+            # come schermata" — HUMAN_REVIEW_REQUIRED is the ONE non-
+            # SUPPORTED_CANDIDATES state allowed to carry `candidates`: the
+            # engine may have already computed a genuinely SUPPORTED product
+            # alongside the one that actually needs a human (e.g. an
+            # investor asking about E28B who is already SUPPORTED for
+            # E28A), and losing that on the way to a review verdict is
+            # exactly the dead end this ruling forbids. `quotes` stays
+            # banned exactly like every other non-SUPPORTED state below —
+            # contract C1 (a candidate without a resolved quote cannot
+            # exhibit a price) is what actually blocks a purchase button
+            # here, not candidates' emptiness, so loosening candidates
+            # alone does not reopen the "buy next to serve a human" risk.
+            if self.quotes:
+                raise ValueError(f"state={state.value} forbids non-empty quotes")
         else:
             if self.candidates or self.quotes:
                 raise ValueError(f"state={state.value} forbids non-empty candidates/quotes")
@@ -1464,9 +1481,15 @@ class Decision(BaseModel):
         ``candidates`` are two independently-constructed arrays with no
         structural link enforced elsewhere.
 
-        A no-op for every state other than ``SUPPORTED_CANDIDATES``:
-        ``_check_state_conditionals`` above already forces
-        ``quotes == ()`` for all of them, so this loop never iterates.
+        The ``quotes``-matching loop below is a no-op for every state other
+        than ``SUPPORTED_CANDIDATES``: ``_check_state_conditionals`` above
+        forces ``quotes == ()`` on every other state (owner ruling #5,
+        2026-08-25, does not touch this — ``quotes`` stays banned outside
+        SUPPORTED_CANDIDATES with no exception), so that loop never
+        iterates there. The ``candidates`` uniqueness check just below,
+        however, is NOT a no-op on ``HUMAN_REVIEW_REQUIRED``: that is the
+        one other state allowed to carry ``candidates`` (same ruling), and
+        this check runs for real whenever it does.
 
         PR1b item 10 (GLM adversarial review): ``candidates`` itself must
         have unique ``product_version_id``s BEFORE the lookup dict below is

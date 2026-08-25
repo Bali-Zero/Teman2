@@ -204,7 +204,17 @@ class TestStatePrecedenceCascade:
         )
         assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
         assert [r.code for r in decision.review_reasons] == ["REV_REVIEW"]
-        assert decision.candidates == ()
+        # Owner ruling #5 (2026-08-25, OWNER-RULINGS-2026-08-25.md §5):
+        # "zero-risultati è vietato come schermata" — REVIEW still wins the
+        # whole decision (precedence untouched — the state/review_reasons
+        # assertions above are unchanged), but SUPP is genuinely SUPPORTED
+        # alongside REV in this same fact set and must travel WITH the
+        # decision as an honest candidate rather than be silently dropped.
+        # `quotes` stays forbidden regardless (contract C1 — no purchase
+        # path may appear next to a review verdict).
+        candidate_codes = {c.product_code for c in decision.candidates}
+        assert candidate_codes == {"SUPP"}
+        assert decision.quotes == ()
 
     def test_review_wins_over_blocked_and_excluded_when_nothing_supported(
         self, compiled_pack
@@ -222,6 +232,11 @@ class TestStatePrecedenceCascade:
         )
         assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
         assert [r.code for r in decision.review_reasons] == ["REV_REVIEW"]
+        # Owner ruling #5 innocence companion: nothing is genuinely
+        # SUPPORTED in this fact set (SUPP is UNSUPPORTED, BLK is
+        # BLOCKED_UNKNOWN, EXC is EXCLUDED) — the fix must never manufacture
+        # a candidate that was not actually computed.
+        assert decision.candidates == ()
 
     def test_needs_input_wins_over_excluded_when_nothing_supported_or_reviewed(
         self, compiled_pack
@@ -258,6 +273,12 @@ class TestStatePrecedenceCascade:
         )
         assert decision.state is DecisionState.NO_SUPPORTED_PATH
         assert [r.code for r in decision.no_path_reasons] == ["EXC_EXCLUDED"]
+        # Owner ruling #5 innocence: a case with genuinely no supported
+        # product must return NO_SUPPORTED_PATH with `candidates` EMPTY too
+        # — the fix must never manufacture a path. `candidates` is only
+        # ever populated outside SUPPORTED_CANDIDATES by the review branch
+        # in evaluator.py, and this decision never reaches it (it falls
+        # through to NO_SUPPORTED_PATH instead).
         assert decision.candidates == ()
 
 

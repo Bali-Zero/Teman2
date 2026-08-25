@@ -279,3 +279,45 @@ def test_after_the_fix_a_plausible_investor_who_names_the_code_reaches_it(
     for reason in decision.review_reasons:
         if reason.code == _PRODUCT_REASON_CODES[product_code]:
             assert reason.source_refs, f"{product_code}'s review reason must carry a citation"
+
+
+# ---------------------------------------------------------------------------
+# Owner ruling #5 (2026-08-25, docs/plans/2026-08-24-visa-oracle-live/
+# OWNER-RULINGS-2026-08-25.md §5 / option (2) of REVIEW-EMPTIES-CANDIDATES.md
+# in the same directory — the exact scenario that surfaced this disease):
+# "zero-risultati è vietato come schermata". The plausible investor above,
+# naming E28B, still reaches HUMAN_REVIEW_REQUIRED (frozen precedence
+# untouched — the assertions in the acceptance test above still hold
+# byte-for-byte) — but must NOT lose the E28A candidate the engine already
+# computed. It travels instead on `Decision.candidates` itself (the
+# adjudicated design: `_check_state_conditionals` loosens the `candidates`
+# prohibition for HUMAN_REVIEW_REQUIRED only; `quotes` stays banned there
+# with no exception, so this can never grow into a purchase path).
+# ---------------------------------------------------------------------------
+
+
+def test_owner_ruling_5_investor_named_e28b_still_carries_e28a_as_candidate(
+    active_pack: compiler.CompiledRulePack,
+) -> None:
+    facts = gf.applicant_facts(
+        overrides={
+            **_PLAUSIBLE_INVESTOR_OVERRIDES,
+            "intent.requested_product_code": _known("E28B"),
+        }
+    )
+    decision = evaluator.evaluate(
+        facts, active_pack, effective_at=AT, observed_at=AT, identity_provider=_identity
+    )
+
+    assert decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert decision.quotes == ()
+    # `in`, not exact-set equality: the real active pack may genuinely
+    # SUPPORT this investor for other products too (e.g. a loosely-scoped
+    # multi-entry visa) — same house pattern as the acceptance test above
+    # (`assert "E28A" in codes`). What owner ruling #5 requires is that
+    # E28A specifically is never lost, not an exhaustive product census.
+    candidate_codes = {c.product_code for c in decision.candidates}
+    assert "E28A" in candidate_codes
+    assert "E28B" not in candidate_codes, (
+        "the product actually under review must never appear as a candidate"
+    )

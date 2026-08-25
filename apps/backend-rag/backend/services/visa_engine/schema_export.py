@@ -286,7 +286,24 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "outage": {"type": "null"},
                 }
             },
-            "else": {"properties": {"candidates": {"maxItems": 0}, "quotes": {"maxItems": 0}}},
+            # Owner ruling #5 (2026-08-25, docs/plans/2026-08-24-visa-oracle-
+            # live/OWNER-RULINGS-2026-08-25.md §5): "zero-risultati è vietato
+            # come schermata". This `else` branch fires for EVERY state other
+            # than SUPPORTED_CANDIDATES, HUMAN_REVIEW_REQUIRED included — so
+            # it must NOT ban `candidates` here (models.py's
+            # `_check_state_conditionals` explicitly permits non-empty
+            # `candidates` on HUMAN_REVIEW_REQUIRED as of this ruling; a
+            # blanket ban here would make the exported schema reject a
+            # decision the model accepts). `quotes` stays banned with NO
+            # exception outside SUPPORTED_CANDIDATES — that is contract C1
+            # (a candidate without a resolved quote cannot exhibit a price)
+            # and the ruling does not touch it. Each OTHER state below now
+            # enumerates its own `candidates: {"maxItems": 0}` explicitly
+            # instead of inheriting a blanket ban here, so a future addition
+            # to the DecisionState enum fails loudly (no `candidates`
+            # constraint at all) rather than silently inheriting a
+            # permission nobody granted it.
+            "else": {"properties": {"quotes": {"maxItems": 0}}},
         },
         {
             "if": {"properties": {"state": {"const": "NEEDS_INPUT"}}},
@@ -296,6 +313,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
                     "rule_pack": {"$ref": "#/$defs/RulePackRef"},
                     "facts_fingerprint": {"$ref": "#/$defs/Fingerprint"},
+                    "candidates": {"maxItems": 0},
                     "missing_facts": {"minItems": 1},
                     "review_reasons": {"maxItems": 0},
                     "no_path_reasons": {"maxItems": 0},
@@ -311,6 +329,10 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
                     "rule_pack": {"$ref": "#/$defs/RulePackRef"},
                     "facts_fingerprint": {"$ref": "#/$defs/Fingerprint"},
+                    # No `candidates` constraint here — this is the ONE
+                    # non-SUPPORTED_CANDIDATES state allowed to carry
+                    # candidates (owner ruling #5 above). `quotes` still
+                    # comes from the shared `else` block's ban.
                     "missing_facts": {"maxItems": 0},
                     "review_reasons": {"minItems": 1},
                     "no_path_reasons": {"maxItems": 0},
@@ -326,6 +348,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
                     "rule_pack": {"$ref": "#/$defs/RulePackRef"},
                     "facts_fingerprint": {"$ref": "#/$defs/Fingerprint"},
+                    "candidates": {"maxItems": 0},
                     "missing_facts": {"maxItems": 0},
                     "review_reasons": {"maxItems": 0},
                     "no_path_reasons": {"minItems": 1},

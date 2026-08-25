@@ -96,10 +96,12 @@ from backend.services.visa_engine.shadow_evidence import collect_shadow_evidence
 from backend.tests.security.test_mutating_routes_are_gated import (
     INTENTIONALLY_PUBLIC_MUTATIONS,
 )
+from backend.tests.services.visa_engine import _builders as B
 from backend.tests.services.visa_engine._builders import (
     ephemeral_ed25519_keypair,
     sign_rule_pack_envelope,
 )
+from backend.tests.services.visa_engine.conftest import make_applicant_facts
 from backend.tests.services.visa_engine.gold_harness import loader as gold_loader
 from backend.tests.services.visa_engine.test_shadow_match import _seed_gold_rule_pack_row
 
@@ -1890,6 +1892,197 @@ async def test_exact_pricingtool_rows_are_signed_and_persisted_as_quotes(
         assert candidate["pricing"]["reason_code"] == "PRICE_AVAILABLE"
 
 
+async def test_human_review_required_carries_supported_candidate_with_contact_required_pricing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Defect 2 ledgered alongside owner ruling #5 (2026-08-24-visa-oracle-
+    live/OWNER-RULINGS-2026-08-25.md §5): the engine fix (models.py /
+    evaluator.py) lets HUMAN_REVIEW_REQUIRED carry an already-SUPPORTED
+    candidate (e.g. an E28A-eligible investor asking about E28B) — but
+    ``_build_display`` used to call ``resolve_candidate_pricing``
+    unconditionally for every candidate regardless of decision state. A
+    candidate with a genuinely resolvable price then made
+    ``VisaOracleEvaluateResponse._check_projection_integrity`` raise ("a
+    candidate without a quote cannot claim a price" — ``quotes`` is frozen
+    empty on HUMAN_REVIEW_REQUIRED, contract C1), which ``run_evaluation``
+    caught and degraded the WHOLE response to TEMPORARILY_UNAVAILABLE: an
+    outage screen in place of the honest "you qualify, talk to a
+    consultant" screen the ruling demands.
+
+    ``test_evaluator_state_precedence.py`` and
+    ``test_e28_investor_golden_visa_reachability.py`` stay green through
+    this exact defect because they only call ``evaluate()`` — they never
+    assemble the HTTP/projection envelope (``_build_display`` +
+    ``VisaOracleEvaluateResponse.model_validate``). This test exercises
+    exactly the layer that broke: a real ``run_evaluation()`` call, with a
+    pricing catalog that WOULD resolve an ``AVAILABLE`` price for the
+    supported candidate if asked (proving the guard is what suppresses it,
+    not an absence of anything to suppress).
+
+    Two products, one purpose, same shape as
+    ``test_evaluator_state_precedence.py``'s ``_four_product_pack`` sized
+    down to the two that matter here: SUPP (genuinely SUPPORTED, priceable)
+    and REV (PRODUCTS-scope HUMAN_REVIEW rule, unrelated fact).
+    """
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+
+    at = datetime(2026, 7, 19, tzinfo=timezone.utc)
+    source_id = B.new_uuid()
+    supp_id = B.new_uuid()
+    rev_id = B.new_uuid()
+    # canonical_url must be on the approved-HTTPS-source allowlist
+    # (api_models.py::_PUBLIC_SOURCE_HOSTS) — the builder's plain
+    # "https://example.com/source" default is rejected there.
+    src = B.source_record(source_id=source_id, canonical_url="https://www.imigrasi.go.id/")
+    products = [
+        B.product(
+            source_id=source_id,
+            product_id=supp_id,
+            product_code="SUPP",
+            covered_purposes=["TOURISM"],
+        ),
+        B.product(
+            source_id=source_id,
+            product_id=rev_id,
+            product_code="REV",
+            covered_purposes=["TOURISM"],
+        ),
+    ]
+    rules = [
+        B.rule(
+            rule_id="supp.eligibility",
+            stage="ELIGIBILITY",
+            scope="PRODUCTS",
+            product_version_ids=[supp_id],
+            when={"op": "eq", "fact": "work.employer_is_indonesian_entity", "value": True},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "SUPP_ELIGIBLE",
+                "covered_purposes": ["TOURISM"],
+            },
+            source_id=source_id,
+            required_facts=["work.employer_is_indonesian_entity"],
+        ),
+        B.rule(
+            rule_id="rev.review",
+            stage="HUMAN_REVIEW",
+            scope="PRODUCTS",
+            product_version_ids=[rev_id],
+            when={"op": "eq", "fact": "work.serves_indonesian_clients", "value": True},
+            effect={"type": "REQUIRE_REVIEW", "reason_code": "REV_REVIEW"},
+            source_id=source_id,
+            required_facts=["work.serves_indonesian_clients"],
+        ),
+    ]
+    payload = B.rule_pack_payload(rules=rules, products=products, source_records=[src])
+    envelope = B.rule_pack_envelope(payload)
+    pack_model = RulePack.model_validate(envelope)
+    compiled = build_compiled_pack(pack_model)
+
+    async def _fake_binding(
+        pool: object, *, environment: str, effective_at: datetime, observed_at: datetime
+    ):
+        return shadow._PackBinding(
+            rule_pack_id=pack_model.payload.rule_pack_id,
+            ruleset_activation_id=uuid.uuid4(),
+            environment="TEST",
+            raw_envelope=envelope,
+        )
+
+    def _fake_verify(
+        raw_envelope: object,
+        *,
+        trust_store: object,
+        observed_at: datetime,
+        allow_unsigned: bool = False,
+    ):
+        return VerifiedRulePack(
+            pack=pack_model,
+            canonical_payload=b"",
+            payload_sha256=bytes.fromhex(pack_model.payload_sha256),
+            unsigned_dev=False,
+        )
+
+    def _fake_compile(rule_pack: object, *, fact_registry: object = None):
+        return compiled
+
+    async def _recording_save(pool: object, **kwargs: object) -> None:
+        return None
+
+    async def _retention_available(*args: object, **kwargs: object) -> bool:
+        return True
+
+    class _ExactPricingCatalog:
+        """Would resolve to AVAILABLE — proves the fix actively suppresses
+        a real price rather than merely never encountering one."""
+
+        loaded = True
+
+        def get_all_prices(self) -> dict[str, object]:
+            return {
+                "version": "test-2026.1",
+                "metadata": {"last_updated": _MOCK_CATALOG_LAST_UPDATED, "currency": "IDR"},
+                "services": {},
+            }
+
+        def get_service_by_key(self, key: str) -> dict[str, object] | None:
+            if key != "c1_tourist":
+                return None
+            return {"key": key, "category": "single_entry_visas", "price": "2.300.000 IDR"}
+
+    monkeypatch.setattr(evaluate_path, "_resolve_active_pack_binding", _fake_binding)
+    monkeypatch.setattr(evaluate_path, "verify_rule_pack", _fake_verify)
+    monkeypatch.setattr(evaluate_path, "build_compiled_pack", _fake_compile)
+    monkeypatch.setattr(evaluate_path, "_save_evaluate_decision", _recording_save)
+    monkeypatch.setattr(evaluate_path, "active_retention_policy_available", _retention_available)
+    monkeypatch.setattr(evaluate_path, "get_pricing_service", _ExactPricingCatalog)
+    monkeypatch.setattr(
+        evaluate_path, "_apply_safety_critical_source_hold", lambda decision, _compiled: decision
+    )
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_decisive_source_authority_hold",
+        lambda decision, _compiled: decision,
+    )
+    monkeypatch.setenv("VISA_ENGINE_TRUST_STORE_KEYS_JSON", "[]")
+
+    base = make_applicant_facts()
+    data = base.facts.model_dump(by_alias=True, mode="json")
+    data["intent.purposes"] = {"status": "KNOWN", "value": ["TOURISM"]}
+    data["work.employer_is_indonesian_entity"] = {"status": "KNOWN", "value": True}
+    data["work.serves_indonesian_clients"] = {"status": "KNOWN", "value": True}
+    facts = ApplicantFacts(
+        schema_version="1.0.0",
+        assessment_id=base.assessment_id,
+        collected_at=base.collected_at,
+        facts=data,
+    )
+
+    body = await evaluate_path.run_evaluation(
+        object(),
+        facts=facts,
+        traffic_source="real",
+        request_category_hint=None,
+        request_trace="trace-owner-ruling-5-projection",
+        evaluation_time=at,
+    )
+
+    assert body["decision"]["state"] == "HUMAN_REVIEW_REQUIRED", body["decision"]
+    assert body["decision"]["state"] != "TEMPORARILY_UNAVAILABLE"
+    assert body["decision"]["outage"] is None
+    decision_codes = {c["product_code"] for c in body["decision"]["candidates"]}
+    assert decision_codes == {"SUPP"}
+    assert body["decision"]["quotes"] == []
+
+    assert body["display"]["candidates"]
+    display_codes = {c["product_code"] for c in body["display"]["candidates"]}
+    assert display_codes == {"SUPP"}
+    for candidate in body["display"]["candidates"]:
+        assert candidate["availability"]["legal_eligibility"] == "SUPPORTED"
+        assert candidate["pricing"]["status"] == "CONTACT_REQUIRED"
+        assert candidate["pricing"]["reason_code"] == "PRICING_PENDING_HUMAN_REVIEW"
+
+
 async def test_pricing_catalog_outage_does_not_overwrite_legal_decision(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2868,6 +3061,11 @@ def test_decision_seal_detects_tampering_of_every_top_level_field() -> None:
             candidate.model_copy(update={"score": candidate.score + 1}),
             *sealed.candidates[1:],
         ),
+        # Owner ruling #5 (2026-08-25) reuses `candidates` itself (see
+        # `evaluator.py`'s review branch / `models.py::
+        # Decision._check_state_conditionals`) rather than adding a new
+        # top-level field, so there is no additional field to seal-cover
+        # here — the `candidates` mutation above already exercises it.
         "missing_facts": (FactPath.INTENT_STAY_DAYS,),
         "review_reasons": (tamper_reason,),
         "no_path_reasons": (tamper_reason,),

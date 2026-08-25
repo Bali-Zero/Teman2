@@ -1642,9 +1642,6 @@
         {
           "else": {
             "properties": {
-              "candidates": {
-                "maxItems": 0
-              },
               "quotes": {
                 "maxItems": 0
               }
@@ -1701,6 +1698,9 @@
           },
           "then": {
             "properties": {
+              "candidates": {
+                "maxItems": 0
+              },
               "decision_id": {
                 "format": "uuid",
                 "type": "string"
@@ -1779,6 +1779,9 @@
           },
           "then": {
             "properties": {
+              "candidates": {
+                "maxItems": 0
+              },
               "decision_id": {
                 "format": "uuid",
                 "type": "string"

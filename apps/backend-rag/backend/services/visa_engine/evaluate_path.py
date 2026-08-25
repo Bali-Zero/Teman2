@@ -132,6 +132,7 @@ from backend.services.visa_engine.models import (
 )
 from backend.services.visa_engine.pricing_adapter import (
     ExactPricingCatalog,
+    PricingResolution,
     UnavailablePricingCatalog,
     build_price_quote,
     resolve_candidate_pricing,
@@ -790,11 +791,34 @@ def _build_display(
         if product is None:
             unresolved += 1
             continue
-        pricing = resolve_candidate_pricing(
-            product,
-            pricing_catalog=pricing_catalog,
-            evaluated_at=decision.evaluated_at,
-        )
+        if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+            # Owner ruling #5 (2026-08-25, docs/plans/2026-08-24-visa-
+            # oracle-live/OWNER-RULINGS-2026-08-25.md §5): "zero-risultati
+            # è vietato come schermata". A candidate carried alongside a
+            # HUMAN_REVIEW_REQUIRED verdict is INFORMATIONAL — the visitor
+            # is told plainly they qualify (``legal_eligibility`` stays
+            # "SUPPORTED" below), but no price may accompany it. `quotes`
+            # is frozen empty on this state (models.py's
+            # `_check_state_conditionals` bans it with no exception), so a
+            # real resolved price here would violate contract C1 and trip
+            # `_check_projection_integrity` ("a candidate without a quote
+            # cannot claim a price") — which previously degraded the
+            # WHOLE response to TEMPORARILY_UNAVAILABLE, an outage screen
+            # in place of the honest "you qualify, talk to a consultant"
+            # screen the ruling demands. Skip `resolve_candidate_pricing`
+            # entirely here rather than let a genuinely resolvable price
+            # leak through and reach that guard.
+            pricing = PricingResolution(
+                status="CONTACT_REQUIRED",
+                reason_code="PRICING_PENDING_HUMAN_REVIEW",
+                evaluated_at=decision.evaluated_at,
+            )
+        else:
+            pricing = resolve_candidate_pricing(
+                product,
+                pricing_catalog=pricing_catalog,
+                evaluated_at=decision.evaluated_at,
+            )
         entries.append(
             {
                 "product_code": str(candidate.product_code),

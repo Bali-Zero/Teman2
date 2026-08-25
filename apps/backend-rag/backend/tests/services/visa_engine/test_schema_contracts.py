@@ -560,6 +560,67 @@ class TestJsonSchemaGoldenInstanceValidation:
         errors = list(validator.iter_errors(instance))
         assert errors != []
 
+    def test_human_review_required_with_candidates_validates_against_exported_schema(
+        self,
+    ) -> None:
+        """Owner ruling #5 (2026-08-25, docs/plans/2026-08-24-visa-oracle-
+        live/OWNER-RULINGS-2026-08-25.md §5): "zero-risultati è vietato come
+        schermata". ``models.py``'s ``_check_state_conditionals`` now
+        permits ``HUMAN_REVIEW_REQUIRED`` to carry non-empty ``candidates``
+        (banning only ``quotes`` there) — this is the ONE non-
+        SUPPORTED_CANDIDATES state allowed to do so. Built via
+        ``model_validate`` (never ``model_copy``, which silently skips
+        validators) so this exercises a real construction path, then
+        validated against the EXPORTED schema document, never the Pydantic
+        model that produced it.
+
+        This is the axis ``TestContractSnapshotDriftTripwire`` structurally
+        cannot see: that tripwire only ever compares two outputs of the
+        SAME generator (the live export vs its own committed snapshot), so
+        a model that loosens a rule and a generator that does not both stay
+        internally self-consistent with each other and the tripwire stays
+        green — a regenerate-with-zero-diff is the symptom of exactly this
+        blind spot, not reassurance that nothing changed.
+        """
+        product_id = uuid.uuid4()
+        decision = M.Decision.model_validate(
+            {
+                "schema_version": "1.0.0",
+                "decision_id": uuid.uuid4(),
+                "public_id": "a" * 16,
+                "state": "HUMAN_REVIEW_REQUIRED",
+                "effective_at": GOLD_EFFECTIVE_AT,
+                "observed_at": GOLD_EFFECTIVE_AT,
+                "evaluated_at": GOLD_EFFECTIVE_AT,
+                "rule_pack": make_rule_pack_ref(),
+                "facts_fingerprint": make_fingerprint(),
+                "candidates": [make_candidate(product_version_id=product_id)],
+                "missing_facts": [],
+                "review_reasons": [
+                    M.Reason(
+                        code="REQUIRES_HUMAN_REVIEW",
+                        rule_ids=("rule.review.test",),
+                        source_refs=(uuid.uuid4(),),
+                    )
+                ],
+                "no_path_reasons": [],
+                "outage": None,
+                "quotes": [],
+                "notices": [],
+                "trace_sha256": "e" * 64,
+                "decision_integrity": None,
+            }
+        )
+        assert decision.state.value == "HUMAN_REVIEW_REQUIRED"
+        assert decision.candidates != ()
+        assert decision.quotes == ()
+
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "decision.schema.json")
+        instance = decision.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
 
 class TestExportedSchemaAllOfFidelity:
     """Round 3 (Codex round-2 re-review finding 2 residue, R3-D): proves the
