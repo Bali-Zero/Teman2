@@ -926,3 +926,23 @@ class TestAnonymousChatCannotQuoteAPrice:
             assert token in prompt, f"the prohibition must name {token!r} explicitly"
         # And it must route the visitor to the humans who own pricing.
         assert "team" in prompt
+
+    def test_system_prompt_carves_out_only_the_pricingtool_preamble_exception(self) -> None:
+        """Issue (2), docs/plans/2026-08-24-visa-oracle-live: commit 86ad5277a's
+        blanket 'NEVER state a price — not even one that appears in the
+        context' contradicts the match-branch preamble in
+        `visa_unified/bridge.py::augment_chat_system_prompt`, which
+        explicitly instructs the model to 'Always quote this recommended
+        visa and cost' — a cost that DOES come from PricingTool
+        (`estimated_cost_idr`, see `visa_check/repository.py`). The base
+        prompt must name that one legitimate exception rather than silently
+        re-permit every price the old bug opened."""
+        from backend.app.routers import visa_oracle as visa_oracle_module
+
+        prompt = visa_oracle_module.SYSTEM_PROMPT.lower()
+        assert "never state a price" in prompt  # the guardrail itself must still stand
+        assert "pricingtool" in prompt, (
+            "the prohibition must name the one legitimate exception — a cost "
+            "the router hands the model via the check_hash preamble, which "
+            "bridge.py's match-branch preamble instructs it to quote verbatim"
+        )

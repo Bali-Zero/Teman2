@@ -217,3 +217,74 @@ async def test_chat_augments_system_prompt_when_jwt_valid(monkeypatch):
     assert "E33G" in captured["contents"]
     assert "13,000,000" in captured["contents"] or "13000000" in captured["contents"]
     assert resp.session_id == "sess-1"
+
+
+@pytest.mark.asyncio
+async def test_chat_augments_system_prompt_for_clock_branch_and_does_not_410(monkeypatch):
+    """A clock-branch check_hash (in-country visitor, /visa/clock/<hash>) must
+    not 410 — the row's own permit/entry/expiry/extensions facts are enough
+    to build a usable preamble, and a clock row carries no cost."""
+    from datetime import date
+
+    from backend.app.routers import visa_oracle as mod
+    from backend.services.visa_unified.bridge import FunnelContext
+
+    ctx = FunnelContext(
+        check_hash="clockhash000000000",
+        branch="clock",
+        referral_mode=False,
+        visa_type="B1",
+        entry_date=date(2026, 7, 1),
+        expiry_date=date(2026, 7, 31),
+        extensions_possible=1,
+        extension_days=30,
+    )
+
+    async def _ctx(*_a, **_kw):
+        return ctx
+
+    monkeypatch.setattr(
+        "backend.services.visa_unified.bridge.get_funnel_context",
+        _ctx,
+    )
+
+    class _FakeSearch:
+        async def search_hybrid(self, **_kw):
+            return {
+                "results": [
+                    {
+                        "content": "B1 visa on arrival can be extended once for 30 days.",
+                        "score": 0.8,
+                        "source": "imigrasi.go.id",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(
+        "backend.services.rag.hybrid_search.HybridSearchService",
+        _FakeSearch,
+    )
+
+    captured: dict = {}
+
+    class _FakeGemini:
+        async def generate_content(self, *, contents, **kw):
+            captured["contents"] = contents
+            return {"text": "You can extend your B1 once, for 30 days."}
+
+    monkeypatch.setattr(
+        "backend.llm.genai_client.get_genai_client",
+        lambda: _FakeGemini(),
+    )
+
+    token = _make_jwt("clockhash000000000")
+    req = _build_request(f"Bearer {token}")
+    body = mod.ChatRequest(
+        session_id="sess-clock",
+        message="can I extend my visa?",
+        check_hash="clockhash000000000",
+    )
+    resp = await mod.chat(req, body, db_pool=None)
+
+    assert "B1" in captured["contents"]
+    assert resp.session_id == "sess-clock"

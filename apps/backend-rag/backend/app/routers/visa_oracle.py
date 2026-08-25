@@ -230,10 +230,25 @@ SYSTEM_PROMPT = (
     # behaviour (it degrades to "let's confirm the exact fee", never a
     # placeholder) — this only stops the LLM from becoming a second,
     # ungated price channel beside it.
+    #
+    # ONE named exception (corrected — the unqualified "not even one that
+    # appears in the context" landed in the same PR as the check_hash
+    # preamble below, which explicitly instructs the model to quote a
+    # PricingTool-sourced cost on the match branch (see
+    # `visa_unified/bridge.py::augment_chat_system_prompt`) — a real
+    # contradiction, not a hypothetical one). That preamble cost is the
+    # ONLY price this rule may repeat: it is handed to the model by this
+    # router itself, sourced from PricingTool via `estimated_cost_idr`
+    # (`visa_check/repository.py`), never from the Qdrant-searched context
+    # below. Any other number — from the retrieved context, from the
+    # model's own knowledge, or invented — stays banned.
     "- NEVER state a price, fee, cost or amount of money — not even one that "
-    "appears in the context, and never an estimate or a range. Pricing is "
-    "quoted only by the Bali Zero team: say the team will confirm the exact "
-    "cost and point to WhatsApp.\n"
+    "appears in the context below, and never an estimate or a range. The "
+    "ONLY exception: a Bali Zero cost handed to you explicitly at the top "
+    "of this prompt as sourced from PricingTool — you may repeat that exact "
+    "figure verbatim. Every other price stays quoted only by the Bali Zero "
+    "team: say the team will confirm the exact cost and point to "
+    "WhatsApp.\n"
     "- Skip boilerplate like 'Based on the provided context'. Just answer.\n"
     "- Never say 'you should' or 'you must'. Use 'tipicamente richiede', "
     "'il processo standard prevede', 'typically requires', 'the standard "
