@@ -515,7 +515,6 @@ def test_rewarm_GUILT_main_acts_on_the_refetched_values_not_the_blind_ones(
     assert rc == 0
     assert calls["n"] == 2, "the blind read must have been followed by exactly one refetch"
     assert "updated=1" in out, "the BEHIND PR is only visible on the refetched read"
-    assert "status_UNKNOWN" not in out or "updated=1" in out
 
 
 def test_rewarm_GUILT_the_summary_line_reports_it(monkeypatch, tmp_path, capsys):
@@ -538,8 +537,14 @@ def test_rewarm_GUILT_the_summary_line_reports_it(monkeypatch, tmp_path, capsys)
 
 
 def test_rewarm_INNOCENCE_a_warm_read_never_refetches_and_never_sleeps():
-    """3/38 UNKNOWN is the MEASURED warm baseline — it must cost nothing."""
-    warm = _blind(3, 35)
+    """A warm read must cost nothing.
+
+    Uses 6/100 rather than the measured 3/38 baseline on purpose: 3 is below
+    REWARM_UNKNOWN_MIN, so it would exit on the absolute floor and never reach
+    the ratio branch this test exists to cover. 6 clears the floor and still
+    sits far under the ratio.
+    """
+    warm = _blind(6, 94)
     extra: list[str] = []
     slept: list[int] = []
     out, info = qu.rewarm_if_blind(
@@ -628,3 +633,89 @@ def test_rewarm_threshold_separates_the_two_MEASURED_populations():
             _blind(unknown, other), "o/r", fetch=lambda repo: [], sleep=quiet
         )
         assert info["rewarmed"] is True, f"{unknown}/{unknown + other} is BLIND"
+
+
+def test_rewarm_GUILT_runs_in_PRODUCTION_not_only_in_dry_run(monkeypatch, tmp_path, capsys):
+    """The gutting a cross-family refuter found: gate the re-warm on
+    `args.dry_run` and every other test here stays green while production goes
+    back to reading blind. This is the only test that can see that."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.delenv("QUEUE_UNSTICK_REWARM", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", tmp_path / "seen.json")
+    monkeypatch.setattr(qu, "REWARM_WAIT_SECONDS", 0)
+
+    real_now = _dt.datetime.now(_dt.timezone.utc)
+    old = _iso(real_now - _dt.timedelta(minutes=30))
+
+    def stamp(prs):
+        for pr in prs:
+            pr["last_commit_date"] = old
+        return prs
+
+    blind = stamp(_blind(30, 9))
+    fresh = stamp([make_pr(100, merge_state_status="BEHIND")] + _blind(1, 8))
+
+    fetches = {"n": 0}
+
+    def fetch(repo):
+        fetches["n"] += 1
+        return blind if fetches["n"] == 1 else fresh
+
+    monkeypatch.setattr(qu, "fetch_open_prs", fetch)
+
+    # Record the real mutation instead of performing it — no network, but this
+    # is the PRODUCTION code path, not the --dry-run one.
+    updates: list[int] = []
+
+    def fake_update(number, *, repo=qu.REPO, dry_run, queue_recheck=None):
+        assert dry_run is False, "this test must exercise the production path"
+        updates.append(number)
+        return "ok", f"updated #{number}"
+
+    monkeypatch.setattr(qu, "do_update_branch", fake_update)
+
+    rc = qu.main([])  # NO --dry-run
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert fetches["n"] == 2, "production must re-warm too, not just --dry-run"
+    assert updates == [100], "the BEHIND PR is visible only on the refetched read"
+    assert "rewarmed=true" in out
+
+
+def test_rewarm_INNOCENCE_small_repo_with_one_stuck_UNKNOWN_never_pays_the_wait():
+    """A ratio alone is trivially satisfied on a small repo: 1/1 = 1.0 and
+    1/4 = 0.25 both clear the ratio, so without an absolute floor the tick
+    would sleep and refetch forever without ever converging."""
+    quiet = lambda s: None  # noqa: E731
+    never = lambda repo: (_ for _ in ()).throw(AssertionError("must not refetch"))
+
+    for unknown, other in ((1, 0), (1, 3), (2, 2), (4, 8)):
+        _, info = qu.rewarm_if_blind(
+            _blind(unknown, other), "o/r", fetch=never, sleep=quiet
+        )
+        assert info["rewarmed"] is False, f"{unknown}/{unknown + other} must not re-warm"
+        assert "below_floor" in info["reason"]
+
+
+def test_rewarm_reports_STILL_BLIND_rather_than_claiming_success():
+    """A second read that is still blind must not be reported as a warm one —
+    monitoring has to be able to tell the two apart."""
+    _, info = qu.rewarm_if_blind(
+        _blind(30, 9), "o/r", fetch=lambda repo: _blind(30, 9), sleep=lambda s: None
+    )
+    assert info["rewarmed"] is True, "a refetch DID happen — that part is honest"
+    assert info["still_blind"] is True
+    assert "STILL_BLIND" in info["reason"]
+
+
+def test_rewarm_refetch_failure_does_not_swallow_a_programming_error():
+    """`except Exception` would downgrade a GraphQL schema change (KeyError)
+    into 'network flap' and hide it behind a successful exit."""
+    import pytest
+
+    def schema_change(repo):
+        raise KeyError("mergeStateStatus")
+
+    with pytest.raises(KeyError):
+        qu.rewarm_if_blind(_blind(30, 9), "o/r", fetch=schema_change, sleep=lambda s: None)
