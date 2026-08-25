@@ -215,6 +215,12 @@ class PricingService:
                 "category": category,
                 "validity": entry.get("validity") or None,
                 "notes": entry.get("notes") or None,
+                # Per-row attestation stamp (narrower than `metadata.last_updated`)
+                # — see `garuda_flow.pricing.price_catalogue_freshness`'s `row=`
+                # argument. Absent on every row except the ones an owner has
+                # explicitly re-verified; passed through verbatim, unvalidated
+                # (the freshness module owns "is this a good stamp").
+                "verified_on": entry.get("verified_on"),
             }
         return None
 

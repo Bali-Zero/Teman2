@@ -1374,7 +1374,24 @@ components:
       properties:
         order_id:
           $ref: "#/components/schemas/OpaqueId"
-        order_state: { const: awaiting_payment }
+        # AMENDED 2026-08-25. This was `{ const: awaiting_payment }` — a contract able to
+        # express exactly one outcome, so the implementation hardcoded that literal and told
+        # a customer who had ALREADY PAID to pay again. The literal was not the lane being
+        # sloppy; it was this line, obeyed. Third instance in one day of the same disease:
+        # the contract describes a world with a single outcome, the lane implements it
+        # faithfully, and reality has more outcomes than the contract can say.
+        #
+        # `created` is deliberately absent. This operation either creates the checkout session
+        # itself — advancing the order to `awaiting_payment` before it answers — or resumes an
+        # order already past that point. A response claiming `created` would mean the funnel
+        # answered without having done either.
+        order_state:
+          type: string
+          enum: [awaiting_payment, paid, failed, expired, refunded]
+          description: >-
+            The order's REAL state at the moment of the answer, never an assumed one. A
+            provider webhook can advance an order while the customer's first attempt is
+            crashed or still in flight, so a resume may legitimately find any of these.
         price_idr:
           type: integer
           minimum: 1
@@ -1382,12 +1399,22 @@ components:
             The one all-inclusive integer IDR price from
             apps/backend-rag/backend/services/garuda_flow/pricing.py:price_for_case.
         checkout_url:
-          type: string
+          # Required but NULLABLE, and the pairing is deliberate: making it optional would let
+          # a response omit the key, and a consumer reading a missing key gets `undefined`,
+          # which renders as an enabled button just as happily as a URL does. Required-and-null
+          # forces every consumer to answer "is there something to pay?" out loud.
+          type: [string, "null"]
           format: uri
           description: >-
             Creator-bound provider capability returned only to the authenticated creator. It
             carries no personal data or stable order, payment, or result identifier and is never
             logged.
+
+
+            NULL means there is no payment action: the order has moved past payment, or reached
+            a terminal state. It is never null while `order_state` is `awaiting_payment`, and
+            never a URL for any other state — that pairing is the whole point of this field and
+            is asserted in the contract suite.
 
     PracticeView:
       type: object
