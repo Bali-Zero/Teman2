@@ -30,8 +30,8 @@
     {
       "id": 3,
       "decision": "Gold-persona rehearsal",
-      "signed": false,
-      "evidence": "criterion SIGNED by Zero 2026-08-25 (OWNER-RULINGS-2026-08-25.md §7): 'every divergence explained, and none of them a dead end' replaces the mandate's 'zero-divergence' wording. The signature itself is NOT granted: persona #15 is a measured, live dead end (work + EMPLOYER sponsor never reaches a question that can populate intent.requested_product_code)."
+      "signed": true,
+      "evidence": "criterion SIGNED by Zero 2026-08-25 (OWNER-RULINGS-2026-08-25.md §7): 'every divergence explained, and none of them a dead end' replaces the mandate's 'zero-divergence' wording. Signature GRANTED by Zero 2026-08-25 in this commit: persona #15's dead end is cured by 59cc092a0 (employment_special_employer question reaches every work-branch sponsor; seq-15 fold reverts the #4797 rule retirement, rules byte-identical to active seq-13), and Zero ran the offline signing ceremony by hand the same day (sign_pack.py, kid=prod-2026-07-1, sequence=15, payload_sha256=08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd)."
     },
     {
       "id": 4,
