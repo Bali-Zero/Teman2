@@ -292,7 +292,20 @@ async def request_magic_link(
     except Exception:
         # Refuter finding #4: an unmapped store exception must never leak as
         # a bare framework 500 — fail closed into the contract's own shape.
-        logger.exception("garuda_portal_auth: unexpected error at issue")
+        #
+        # `logger.error` (not `.exception`), deliberately, since 2026-08-25
+        # (Sentry gate #8755): `.exception` attaches `exc_info`, which Sentry's
+        # LoggingIntegration turns into a full stacktrace WITH FRAME LOCALS —
+        # and this frame holds `garuda_result_session`/the store's kwargs,
+        # which can include `result_session_secret`. Key-based redaction in
+        # `sentry_config._scrub` cannot reach a value that only exists inside
+        # a captured frame's local-variable dump, so the cheapest real
+        # mitigation for *this* handler is to never capture that dump at all.
+        # The exception type/message is still worth nothing here anyway — the
+        # contract only ever returns the same opaque INTERNAL_ERROR to the
+        # caller — so no diagnostic signal is lost that this endpoint's
+        # response shape could have used.
+        logger.error("garuda_portal_auth: unexpected error at issue")
         return _error("INTERNAL_ERROR")
 
     result.headers["Idempotency-Replayed"] = "true" if issued.idempotency_replayed else "false"
@@ -336,7 +349,12 @@ async def exchange_magic_link(
         logger.warning("garuda_portal_auth: persistence policy unavailable at exchange")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")
     except Exception:
-        logger.exception("garuda_portal_auth: unexpected error at exchange")
+        # `logger.error`, not `.exception` — see the identical rationale at
+        # the `issue` handler above: this frame can hold `payload.token` and
+        # a future adapter's `account_session_secret`, and `.exception`'s
+        # captured frame-locals dump is a leak vector key-based redaction
+        # cannot close.
+        logger.error("garuda_portal_auth: unexpected error at exchange")
         return _error("INTERNAL_ERROR")
 
     # `outcome.security_counter` is internal telemetry ONLY — logged here,
