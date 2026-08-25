@@ -303,23 +303,45 @@ the four legacy top-damage documents most relevant to this mandate
 (`UU_66_2024`, `UU_11_2020`, `UU_28_2007`, `UU_17_2008`) found **zero**
 occurrences of `"Penjelasan_Pasal"` in any of them, despite these documents
 demonstrably containing real elucidation content (per the sampled "Cukup
-jelas" fragments themselves). Two explanations are live and unresolved:
-either these legacy points were produced by an ingestion path that predates
-the current `Penjelasan_Pasal`/`Pasal` naming convention (so the convention
-never touched them), or the split fails on these documents for a different,
-uninvestigated reason. **This is reported as an open question, not a
-finding** — it is the honest state of a lead that looked promising on 792
-points and has not yet been confirmed anywhere in the 78,486-point legacy
-majority that includes this mandate's actual top-damage documents.
+jelas" fragments themselves).
 
-**Handoff, corrected**: whichever lane owns the UNMARKED BOUNDARY class
-should NOT start from `has_ayat` — that lead is retracted. It should instead
-first resolve whether `hierarchy_path`/`chunk_key`'s `Penjelasan_Pasal`
-naming convention was ever applied to legacy-shape points at all (a
-git-history / ingestion-provenance question this investigation did not have
-budget to answer), before deciding whether that field is usable on the
-documents that actually matter for this mandate. No document-ordering field
-was found to exist for a "pasal renumbering restart" boundary detector
+**This is now resolved, not open — the answer is "expected, not anomalous."**
+A follow-up code investigation (grep across the whole repo + `git log --all
+-S"Penjelasan_Pasal"`) found: (1) `hierarchy_path` is written by exactly ONE
+code path in the entire repo, `hierarchical_indexer.py`; (2) the
+`Penjelasan_Pasal`/`Pasal` prefix distinction is **one commit old** —
+`git log --all -S"Penjelasan_Pasal"` returns exactly one commit, `f0a0eab22`
+(2026-08-25 07:38:05 UTC, PR #4891), the SAME DAY as this investigation.
+Before that commit, the chunk-id builder produced only `Pasal_{n}`
+unconditionally — no elucidation/article distinction existed in
+`hierarchy_path` at all prior to that commit, for ANY point; (3) the real
+fork is a `flatten_payload` boolean in `qdrant_db.py`'s
+`_build_point_payload` — only `hierarchical_indexer.py` calls it with
+`flatten_payload=True` (producing the flat, top-level `document_id`/
+`hierarchy_path`/`chunk_key` shape); the default (`flatten_payload=False`,
+used by three OTHER ingestion callers —
+`services/ingestion/ingestion_service.py`,
+`services/ingestion/politics_ingestion.py`, `app/routers/oracle_ingest.py`,
+none of which import `HierarchicalIndexer`) nests everything under
+`metadata` instead — exactly the `legacy_metadata_text` shape that is
+78,486 of 84,283 points. Those three callers are **structurally incapable**
+of ever writing `hierarchy_path` in any naming convention — the field is not
+present-but-differently-named on legacy points, it is simply never
+constructed for them. Zero hits on the four legacy top-damage documents is
+therefore the expected result, not a mystery: `hierarchy_path`/`chunk_key`'s
+`Penjelasan_Pasal` naming convention is same-day, single-commit, and scoped
+to the 792-point `modern_full` bucket — it was never going to appear on
+points from a different, older ingestion pipeline.
+
+**Handoff, corrected and now conclusive**: whichever lane owns the UNMARKED
+BOUNDARY class should NOT start from `has_ayat` (retracted) NOR from
+`hierarchy_path`/`chunk_key` on legacy-shape points (structurally absent,
+not a lead worth chasing there). Any elucidation-vs-article signal for the
+78,486-point legacy majority — which is where this mandate's actual
+top-damage documents live — must be found elsewhere: raw chunk text, or
+`metadata.section` where it happens to be present, or a genuinely new
+signal this investigation did not attempt to build. No document-ordering
+field was found to exist for a "pasal renumbering restart" boundary detector
 either (`chunk_id` is a random per-point UUID, not a sequence number;
 `metadata.pasal_number` values come back scrambled when sorted by
 `chunk_id`) — that structural approach the mandate suggested remains
@@ -334,11 +356,15 @@ unvalidated and unbuilt, honestly, rather than shipped on a hope.
 - **No detector shipped for any Finding-3 structural signal.** The original
   `has_ayat` lead is retracted outright (confirmed confounded with ordinary
   paragraph structure and a 4,000-char chunk-size cutoff, not with
-  elucidation status — see Finding 3). The narrower `hierarchy_path`/
-  `chunk_key` lead is validated only on 792 of 84,283 points and shows zero
-  hits on the legacy documents that matter for this mandate; shipping either
-  now would repeat exactly the mistake this investigation was launched to
-  check for.
+  elucidation status — see Finding 3). The `hierarchy_path`/`chunk_key`
+  naming-convention lead is confirmed to be structurally scoped to the
+  792-point `modern_full` bucket only — a same-day, single-commit addition
+  (`f0a0eab22`, 2026-08-25) that three of the repo's four ingestion callers
+  never construct at all, in any form — so it is not usable on the
+  78,486-point legacy majority where this mandate's actual top-damage
+  documents live. Neither is a detector worth shipping; the legacy-shape
+  elucidation-vs-article problem remains genuinely unsolved by anything
+  found in this investigation.
 - **No deletions, no re-ingestion, no chunking change.** Embedding model
   (`text-embedding-3-small`, 1536 dims) untouched — nothing in this
   investigation required or would justify re-embedding.
@@ -468,10 +494,15 @@ and disposition:
   genuine elucidation. The "5.7x recall" framing assumed what it needed to
   prove. **Fixed** — Finding 3 was rewritten to retract this claim outright
   and replace it with the narrower, code-verified `hierarchy_path`/
-  `chunk_key` naming-convention lead, itself reported honestly as validated
-  on only 792/84,283 points and showing zero hits on the four legacy
-  top-damage documents this mandate actually cares about — an open question,
-  not a finding.
+  `chunk_key` naming-convention lead. That lead's zero-hits-on-legacy-
+  documents puzzle was initially reported as an open question, then CLOSED
+  within this same remediation pass by a follow-up code investigation:
+  `git log --all -S"Penjelasan_Pasal"` shows the naming convention is a
+  same-day, single-commit addition (`f0a0eab22`, 2026-08-25, PR #4891), and
+  the `flatten_payload` fork in `qdrant_db.py` means three of the repo's
+  four ingestion callers never construct `hierarchy_path` at all — the
+  field is structurally absent on legacy points, not present under a
+  different name. Zero hits was the expected result, not a mystery.
 - **E — overclaiming language** ("near-zero", "usable as-is", "undercounts...
   if anything", "5.7x recall") exceeded what 45 clustered observations plus
   an unvalidated structural lead support. **Fixed** — softened throughout:
