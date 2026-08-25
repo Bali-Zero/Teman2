@@ -491,6 +491,12 @@ def _read_migration_264() -> tuple[str, str]:
 _GARUDA_VOA_RETENTION_FK_DEPENDENTS: tuple[tuple[int, str, str, str], ...] = (
     (281, "281_garuda_voa_retention.sql", "garuda_voa_checks", "retention_policy_id"),
     (285, "285_garuda_magic_link.sql", "garuda_magic_link_tokens", "retention_policy_id"),
+    (
+        286,
+        "286_garuda_voa_check_results.sql",
+        "garuda_voa_check_results",
+        "retention_policy_id",
+    ),
 )
 
 
