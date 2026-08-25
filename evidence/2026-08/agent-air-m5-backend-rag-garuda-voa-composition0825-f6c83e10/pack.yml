@@ -132,6 +132,36 @@ receipts:
     exit: 0
     ts: "2026-08-25T14:35:00Z"
     seat: opus-5
+  - claim: >
+      Fixed all 6 CodeQL alerts on b56cec23c in one commit. The real one
+      (Log Injection, eligibility_lookup.py): result_id is now validated
+      against the same _RESULT_ID_PATTERN the migration 285/286 CHECK
+      constraints and the two router copies already enforce, before it
+      reaches either the query or the log line; new regression test
+      proves a newline-bearing payload and a too-short/wrong-charset
+      payload both resolve to None. The 2 dead-store/uninitialized-var
+      test-fixture findings use the identical `raise` convention #4910
+      already established for the same CodeQL false-positive shape. The
+      dead assignment in test_a_declined_check_cannot_become_an_order was
+      confirmed genuinely dead (would have violated the 286 CHECK
+      constraint) before deleting, not assumed. The unused `logger` in
+      check_store.py was confirmed to have no missing warning -- the
+      purge path's audit trail lives in Postgres
+      (visa_decision_retention_batches), same as the sibling
+      retention.py module which has no logger either -- before removing
+      both the global and the now-unused `import logging`. The dual
+      import in test_check_to_order_journey.py's repository fixture was
+      replaced with monkeypatch's string-target form, matching
+      test_garuda_orders_ownership.py's identical fixture verbatim.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. pytest
+      backend/tests/services/garuda_orders/test_check_to_order_journey.py
+      backend/tests/services/garuda_flow/test_check_store_purge.py
+      -v --color=no
+    exit: 0
+    ts: "2026-08-25T15:10:00Z"
+    seat: opus-5
 dissent:
   - seat: team-lead (integration-branch orchestrator, cross-review of the
       base composition commit)
@@ -183,5 +213,20 @@ dissent:
       the right reason. Also confirmed the 308 apex redirect preserves
       the query string, retracting a hazard opus-5 had not raised but
       would have needed to rule out.
+    status: CONFIRMED
+  - seat: >
+      team-lead (CodeQL scan on b56cec23c, posted after the Gear-3 PASS
+      had already been issued -- verdict voided by team-lead's own
+      admission)
+    objection: >
+      6 new CodeQL alerts, one real (medium, Log Injection,
+      eligibility_lookup.py:67): get_reviewed_check's guard tested only
+      emptiness, so a client-supplied result_id containing newlines
+      reached both the SQL query and a logger.warning call on the
+      PostgresError path -- on a product whose PII boundary explicitly
+      covers logs. The code's own comment already claimed a "malformed
+      never reaches the DB/log" guarantee it did not provide; the
+      schema's own definition of malformed is the CHECK-constraint
+      pattern in migrations 285/286, not mere non-emptiness.
     status: CONFIRMED
 pii_scan: clean

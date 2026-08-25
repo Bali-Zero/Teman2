@@ -34,6 +34,7 @@ allowed to ask" to the layer that actually holds session identity.
 from __future__ import annotations
 
 import logging
+import re
 
 import asyncpg
 
@@ -43,6 +44,24 @@ from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
 logger = logging.getLogger(__name__)
 
 __all__ = ["PostgresEligibilityCheckLookup"]
+
+# CodeQL finding (Log Injection, medium; PR #4920 review 2026-08-25): the old
+# guard here tested only emptiness, so a client-supplied result_id containing
+# newlines/control characters sailed straight through into both the query
+# and the `logger.warning` call below -- on a product whose PII boundary
+# explicitly covers logs, arbitrary client text landing in them is exactly
+# what that rule exists to prevent. This is the SAME contract already
+# enforced in four other places -- migrations 285/286's
+# `CHECK (result_id ~ '^[A-Za-z0-9_-]{22,128}$')`, and the identical
+# `_RESULT_ID_PATTERN` in `app/routers/garuda_portal_auth.py` and
+# `app/routers/garuda_voa_public.py` -- this is a local copy rather than a
+# shared import because importing a router-owned pattern into this SERVICE
+# module would be a layering violation, and creating a new shared home for
+# one regex was judged to widen this PR's diff at gate time (team-lead
+# review, 2026-08-25) more than a documented duplicate does. The migration
+# CHECK constraint is the actual SSOT; if this ever needs a fourth touch
+# point, that is the signal to extract it properly.
+_RESULT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{22,128}$")
 
 
 class PostgresEligibilityCheckLookup:
@@ -54,8 +73,12 @@ class PostgresEligibilityCheckLookup:
     async def get_reviewed_check(self, result_id: str) -> ReviewedCheckSnapshot | None:
         # Malformed input never reaches the database with a query shaped to
         # explain why -- absent and malformed both resolve to None, matching
-        # the Protocol's "None for malformed/absent/non-owned" contract.
-        if not isinstance(result_id, str) or not result_id:
+        # the Protocol's "None for malformed/absent/non-owned" contract. The
+        # schema's own definition of "malformed" is `_RESULT_ID_PATTERN`
+        # (migrations 285/286's CHECK constraint), not merely "non-empty" --
+        # a value that fails this pattern can be neither a real row nor a
+        # safe thing to interpolate into a log line.
+        if not isinstance(result_id, str) or _RESULT_ID_PATTERN.fullmatch(result_id) is None:
             return None
         try:
             row = await self._pool.fetchrow(

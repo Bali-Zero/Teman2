@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import re
 import secrets
 from datetime import UTC, date, datetime
@@ -42,7 +41,16 @@ from backend.services.garuda_flow.public_api import (
     StoredCheck,
 )
 
-logger = logging.getLogger(__name__)
+# CodeQL finding (unused global, PR #4920 review 2026-08-25): a `logger` was
+# declared here with no call site. Checked for a dropped warning before
+# removing rather than assuming dead code: the purge path this module owns
+# (`purge_expired_garuda_voa_check_results` below) delegates to
+# `public.purge_garuda_voa_check_results`, which already writes its own
+# append-only audit trail to `visa_decision_retention_batches` on every
+# successful batch (migration 286) -- the SAME pattern the sibling
+# `garuda_flow.retention` module uses for its own purge function, and that
+# module has no logger either. No warning belongs on this path; the global
+# was genuinely unused.
 
 __all__ = ["PostgresCheckStore", "purge_expired_garuda_voa_check_results"]
 

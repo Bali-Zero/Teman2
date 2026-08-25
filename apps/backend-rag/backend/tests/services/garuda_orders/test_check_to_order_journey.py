@@ -136,6 +136,12 @@ async def pool():
                 f"This journey test proves the L2<->L3 seam and must never skip in CI."
             )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
+        # Unreachable: both pytest.fail and pytest.skip raise (Failed /
+        # Skipped), so `p` is never read uninitialized below. CodeQL doesn't
+        # model those as NoReturn -- this `raise` makes the termination
+        # explicit to the analyser and re-propagates the original connection
+        # error if that assumption ever stops being true.
+        raise
 
     async with p.acquire() as conn:
         await conn.execute(
@@ -164,11 +170,16 @@ def lookup(pool):
 
 @pytest.fixture
 def repository(pool, lookup, monkeypatch):
-    import backend.services.garuda_orders.repository as repository_module
-
+    # CodeQL finding (dual-import, PR #4920 review 2026-08-25): this fixture
+    # imported `backend.services.garuda_orders.repository` fully just to
+    # reach `.pricing.price_for_case` for the line below, while the module
+    # was ALSO already imported via `from ... import GarudaOrderRepository`
+    # at the top of this file -- same module, two import statements.
+    # monkeypatch's string-target form (the convention #4910 already
+    # established in test_garuda_orders_ownership.py's identical fixture)
+    # resolves the dotted path itself, so the second import is unnecessary.
     monkeypatch.setattr(
-        repository_module.pricing,
-        "price_for_case",
+        "backend.services.garuda_orders.repository.pricing.price_for_case",
         lambda case_type, *, today: (790_000, "B1 Visa on Arrival (VOA)"),
     )
     return GarudaOrderRepository(
@@ -340,15 +351,13 @@ async def test_a_result_id_that_does_not_exist_produces_the_contracts_non_enumer
 
 @pytest.mark.asyncio
 async def test_a_declined_check_cannot_become_an_order(check_store, repository) -> None:
-    declined_outcome = EligibilityCheckOutcome(
-        accepted=False,
-        reason_codes=[],
-        published_filing_deadline=None,
-        price_idr=None,
-        price_source=None,
-    )
-    # DECLINE reason_codes must be non-empty per the 286 CHECK constraint —
-    # any real DeclineCode value exercises the same path.
+    # DECLINE reason_codes must be non-empty per the 286 CHECK constraint
+    # (`jsonb_array_length(reason_codes) >= 1` for DECLINE) — any real
+    # DeclineCode value exercises the same path. (CodeQL dead-store finding,
+    # PR #4920 review 2026-08-25: an earlier `reason_codes=[]` draft here
+    # would have violated that constraint and was already dead, shadowed by
+    # this correct assignment before it was ever read — removed rather than
+    # kept as an unreachable illustration of the wrong shape.)
     from backend.services.garuda_flow.eligibility import DeclineCode
 
     declined_outcome = EligibilityCheckOutcome(
@@ -393,6 +402,25 @@ async def test_get_with_the_wrong_session_secret_is_non_enumerating(check_store)
 async def test_lookup_returns_none_for_malformed_or_absent_result_id(lookup) -> None:
     assert await lookup.get_reviewed_check("") is None
     assert await lookup.get_reviewed_check("does-not-exist-anywhere-00") is None
+
+
+@pytest.mark.asyncio
+async def test_lookup_rejects_a_log_injection_payload_before_it_reaches_the_query_or_the_log(
+    lookup,
+) -> None:
+    """CodeQL Log Injection finding (medium, PR #4920 review 2026-08-25):
+    the old guard tested only emptiness, so a client-supplied result_id
+    containing newlines could reach both the SQL query and the
+    `logger.warning` call on a PostgresError path. `_RESULT_ID_PATTERN`
+    (the same schema contract as migrations 285/286's CHECK constraint)
+    must reject this before either happens -- this is "malformed" by the
+    schema's own definition, not merely non-empty."""
+    payload = "abc\nWARNING: <fabricated log line>"
+    assert await lookup.get_reviewed_check(payload) is None
+    # Also too short/wrong charset by the same pattern, distinct from the
+    # newline-injection shape above -- both must fail closed.
+    assert await lookup.get_reviewed_check("totally-malformed-id") is None
+    assert await lookup.get_reviewed_check("has a space in it 000000") is None
 
 
 @pytest.mark.asyncio

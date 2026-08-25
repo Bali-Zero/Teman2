@@ -124,6 +124,12 @@ async def pool():
                 f"(or GARUDA_L3_TEST_DSN override) -- {_DSN!r} unreachable: {exc}."
             )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
+        # Unreachable: both pytest.fail and pytest.skip raise (Failed /
+        # Skipped), so `p` is never read uninitialized below. CodeQL doesn't
+        # model those as NoReturn -- this `raise` makes the termination
+        # explicit to the analyser and re-propagates the original connection
+        # error if that assumption ever stops being true.
+        raise
 
     async with p.acquire() as conn:
         await conn.execute("TRUNCATE garuda_voa_check_idempotency, garuda_voa_check_results CASCADE")
