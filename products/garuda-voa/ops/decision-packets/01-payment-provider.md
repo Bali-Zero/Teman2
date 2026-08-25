@@ -68,6 +68,27 @@ Local rails are dramatically cheaper where the buyer can use them — QRIS at 0.
 IDR 5,500 on this ticket against IDR 27,650 on a foreign card, a 5x difference. Worth offering to
 buyers already in Indonesia, and worth measuring the mix once live.
 
+## Net margin per sale, added 2026-08-25 now that decision 7(b) is answered
+
+Product.yaml's own note on this decision said the government fee "is not on disk anywhere in this
+repo" — that was wrong when written and stayed wrong until corrected: it IS on disk, in
+`GROUND.md` fact F20 (sourced from imigrasi.go.id and the Ngurah Rai extension page, primary
+fetches 2026-08-23): PNBP is **IDR 500,000** for issuance and **IDR 500,000** per extension
+application. Combined with this packet's own fee figures above and decision 7(b)'s ruling that the
+790,000/850,000 catalogue price is PNBP-inclusive, the gross margin per sale is now computable:
+
+| Case type | Price   | − PNBP (F20) | − payment fee (this packet) | = Net margin | as % of price |
+| --------- | ------- | ------------ | --------------------------- | ------------ | ------------- |
+| Issuance  | 790,000 | 500,000      | 27,650                      | **262,350**  | 33.2%         |
+| Extension | 850,000 | 500,000      | 29,582                      | **320,418**  | 37.7%         |
+
+Same caveats this packet already carries, unchanged: every fee figure is **UNCONFIRMED** until
+read off Xendit's live pricing page at signup (owner-steps item below); F20's extension PNBP rests
+on a single primary source (the Ngurah Rai extension-services page) not cross-confirmed by a
+second independent fetch (AUDIT §1.2/§6). This is **gross** margin — it excludes Bali Zero's own
+labour per practice (staff time reviewing, filing, tracking) and any chargeback/refund exposure
+from packet 1's own risk section above.
+
 ## What the owner must personally do
 
 1. Create a Xendit account using the owner's email and configure Two-Factor Authentication.
