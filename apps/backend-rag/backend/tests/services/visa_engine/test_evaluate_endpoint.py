@@ -3194,6 +3194,22 @@ async def evaluate_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIter
         await restore_garuda_voa_retention_fk(conn)
     yield
     async with db_pool.acquire() as conn:
+        # SYMMETRIC with setup above (2026-08-25 fix): tearing everything down
+        # and stopping here — the ORIGINAL shape of this block — left the
+        # xdist worker's shared Postgres clone permanently missing
+        # visa_decisions/262-266/281 for whichever test file's fixture ran
+        # next in the SAME worker. Under `--dist loadfile` (this repo's CI
+        # invocation) a worker owns whole files serially, so "next" is a real
+        # scenario, not a hypothetical: a local whole-directory run in
+        # alphabetical order never exposes this (this file sorts before
+        # test_shadow_match.py, so its torn-down state was never observed)
+        # while CI's actual worker assignment can. Rebuilding forward here,
+        # mirroring setup's own forward chain, returns the worker's clone to
+        # true full-head shape for whoever shares it next — the same
+        # "restore, don't just tear down" contract `shadow_schema` (this
+        # directory's test_shadow_match.py) and the shadow-evidence fixture
+        # (test_shadow_evidence.py) already honour for their own, narrower
+        # layers.
         await unwind_garuda_voa_retention_fk(conn)
         await conn.execute(rollback_266)
         await conn.execute(rollback_265)
@@ -3204,6 +3220,16 @@ async def evaluate_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIter
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
         await conn.execute(rollback_257)
+        await conn.execute(forward_252)
+        await conn.execute(forward_255)
+        await conn.execute(forward_256)
+        await conn.execute(forward_257)
+        await conn.execute(forward_262)
+        await conn.execute(forward_263)
+        await conn.execute(forward_264)
+        await conn.execute(forward_265)
+        await conn.execute(forward_266)
+        await restore_garuda_voa_retention_fk(conn)
 
 
 async def _insert_retention_policy(
