@@ -237,6 +237,15 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         process_groups=_API,
         tags=("visa", "garuda", "public"),
     ),
+    # ── GARUDA VOA magic-link authentication (contract-frozen, L4) ──
+    # Same no-mount-time-condition posture as garuda_voa_public/
+    # garuda_orders_router above: GARUDA_PUBLIC_ENABLED is re-checked
+    # per-request by the router's own dependency, not gated at mount.
+    RouterEntry(
+        name="garuda_portal_auth",
+        process_groups=_API,
+        tags=("visa", "garuda", "public", "auth"),
+    ),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
     # ── Guardian ──

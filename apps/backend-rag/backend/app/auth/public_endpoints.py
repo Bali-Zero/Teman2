@@ -603,6 +603,28 @@ _VISA_ORACLE = (
         "Visa Check Match result page — shareable URL, the hash is the access token",
         match="template",
     ),
+    # GARUDA VOA magic-link auth (L4, routers/garuda_portal_auth.py, prefix
+    # /api/visa/voa/auth — a disjoint sub-path of L2/L3's shared /api/visa/voa,
+    # never a blanket prefix on that shared root). Anonymous by design: an
+    # eligibility-check result owner has no account until this flow mints
+    # one — see magic_link.py module docstring. Same defect class as the
+    # "Visa Check funnel dead in prod" note above, caught here the same way:
+    # a real end-to-end request through `main_api.app` (not a bare FastAPI()
+    # + include_router() test double) returned 401 before this entry existed.
+    # DISCOVERED, NOT FIXED HERE: `/api/visa/voa` itself (L2's
+    # garuda_voa_public.py + L3's garuda_orders_router.py, both already
+    # merged) has the SAME gap — no registry entry, so their public routes
+    # 401 in production today too. Out of scope for this PR (cross-lane
+    # files, and garuda_orders_router.py also mounts a staff-only
+    # /api/visa/voa/staff/... route that a careless blanket prefix here
+    # would need to carve out correctly) — flagged for the orchestrator.
+    PublicEndpoint(
+        "/api/visa/voa/auth/",
+        Category.AUTH,
+        "GARUDA VOA magic-link issue+exchange — anonymous by design, contract-frozen "
+        "(products/garuda-voa/contracts/openapi.yaml), GARUDA_PUBLIC_ENABLED re-checked "
+        "per-request by the handler itself",
+    ),
 )
 
 _BRIDGE = (
