@@ -190,6 +190,18 @@ async def run_probe(
             result = ProbeStageResult(
                 stage.name, ProbeStageStatus.BLOCKED, str(exc)
             )
+        except Exception as exc:  # deliberate broad catch, see below
+            # Corrected after cross-family refuter review (Kimi K3,
+            # 2026-08-25, finding 9): an unexpected exception used to
+            # escape `run_probe` entirely, leaving NO bound `ProbeRunResult`
+            # — SYN-01's "one signed probe result binds ALL stage outcomes"
+            # cannot be honoured for a crash if there is no result to bind.
+            # A real regression must produce a FAILED result (which flows
+            # into `all_succeeded=False`, same as any other non-success),
+            # not vanish into cron logs where nothing downstream can
+            # classify it. This is intentionally the broadest possible
+            # catch — a stage crashing for any reason is still real signal.
+            result = ProbeStageResult(stage.name, ProbeStageStatus.FAILED, repr(exc))
         results.append(result)
         if result.status != ProbeStageStatus.SUCCEEDED:
             # SYN-01 binds ALL stage outcomes into one result — a probe that

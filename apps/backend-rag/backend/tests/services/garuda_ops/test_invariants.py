@@ -6,28 +6,45 @@ suspicious (UNKNOWN, not silently HEALTHY)?
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta, timezone
+
+import pytest
 
 from backend.services.garuda_ops.invariants import (
     InvariantStatus,
     median_upload_to_ocr,
     paid_orders_24h,
 )
-from backend.services.garuda_ops.ports import EventEnvelope, UploadSample
+from backend.services.garuda_ops.ports import EventEnvelope, IdempotencyIdentity, UploadSample
 
 _NOW = datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
 
 
-def _paid_event(*, event_id: str, occurred_at: datetime, is_synthetic: bool = False) -> EventEnvelope:
+def _idempotency(seed: str) -> IdempotencyIdentity:
+    digest = hashlib.sha256(seed.encode()).hexdigest()
+    return IdempotencyIdentity(
+        kind="PROVIDER_EVENT", key_digest=digest, canonical_payload_digest=digest
+    )
+
+
+def _paid_event(
+    *,
+    event_id: str,
+    occurred_at: datetime,
+    is_synthetic: bool = False,
+    aggregate_id: str = "order-1",
+) -> EventEnvelope:
     return EventEnvelope(
         schema_version="1.0.0",
         event_id=event_id,
         event_name="payment.paid",
         occurred_at=occurred_at,
         aggregate_type="order",
-        aggregate_id="order-1",
+        aggregate_id=aggregate_id,
         transition_id="OP-02",
         customer_visible=True,
+        idempotency_identity=_idempotency(event_id),
         is_synthetic=is_synthetic,
     )
 
@@ -110,6 +127,39 @@ def test_bi01_deduplicates_retried_webhook_deliveries() -> None:
         funnel_currently_enabled=True,
     )
     assert verdict.qualifying_count == 1
+
+
+def test_bi01_two_distinct_event_ids_for_the_same_order_count_once() -> None:
+    """RED-if-wrong (refuter finding 6): M-02's unit is "one logical
+    order", not "one event_id" — a journal-level retry can mint a SECOND
+    payment.paid event_id for the same order (the same fault class the
+    crm_handoff idempotency-identity fix addresses). Before the fix this
+    inflated `qualifying_count` to 2."""
+    verdict = paid_orders_24h(
+        paid_events=[
+            _paid_event(event_id="evt-a", occurred_at=_NOW - timedelta(hours=2), aggregate_id="order-x"),
+            _paid_event(event_id="evt-b", occurred_at=_NOW - timedelta(hours=1), aggregate_id="order-x"),
+        ],
+        now=_NOW,
+        launch_activated_at=_NOW - timedelta(hours=48),
+        funnel_currently_enabled=True,
+    )
+    assert verdict.qualifying_count == 1
+
+
+def test_bi01_two_distinct_orders_each_count() -> None:
+    """Green counterpart: two REAL distinct orders must both count — the
+    order-level dedup must not collapse genuinely different orders."""
+    verdict = paid_orders_24h(
+        paid_events=[
+            _paid_event(event_id="evt-a", occurred_at=_NOW - timedelta(hours=2), aggregate_id="order-x"),
+            _paid_event(event_id="evt-b", occurred_at=_NOW - timedelta(hours=1), aggregate_id="order-y"),
+        ],
+        now=_NOW,
+        launch_activated_at=_NOW - timedelta(hours=48),
+        funnel_currently_enabled=True,
+    )
+    assert verdict.qualifying_count == 2
 
 
 def test_bi01_ignores_events_outside_the_rolling_window() -> None:
@@ -216,3 +266,33 @@ def test_bi02_synthetic_samples_are_excluded() -> None:
     ]
     verdict = median_upload_to_ocr(samples=samples, now=_NOW)
     assert verdict.status is InvariantStatus.UNKNOWN
+
+
+def test_bi02_rejects_a_future_upload_timestamp() -> None:
+    """RED-if-wrong (refuter finding 5): before the fix, a future
+    `upload_committed_at` (cross-writer clock skew) produced a NEGATIVE
+    censored age, which can only lower the median — masking the exact
+    violation M-03 exists to surface. `deadman`/`sla_timer` already reject
+    a future timestamp; this must too."""
+    samples = [
+        UploadSample(
+            upload_committed_at=_NOW + timedelta(seconds=10),
+            ocr_feedback_committed_at=None,
+        )
+    ]
+    with pytest.raises(ValueError, match="future"):
+        median_upload_to_ocr(samples=samples, now=_NOW)
+
+
+def test_bi02_rejects_ocr_feedback_that_precedes_its_own_upload() -> None:
+    """RED-if-wrong: a resolved sample whose feedback timestamp precedes its
+    upload timestamp (clock skew between two authoritative commit records,
+    M-01) would otherwise compute a negative duration and lower the median."""
+    samples = [
+        UploadSample(
+            upload_committed_at=_NOW - timedelta(seconds=10),
+            ocr_feedback_committed_at=_NOW - timedelta(seconds=20),
+        )
+    ]
+    with pytest.raises(ValueError, match="precedes"):
+        median_upload_to_ocr(samples=samples, now=_NOW)

@@ -65,8 +65,17 @@ def build_funnel_snapshot(
     `garuda_voa_public.py`'s own module docstring); callers pass 0 for both
     until that wiring lands, which correctly renders every ratio here as
     `unknown` rather than a fabricated 0%.
+
+    Known judgment call (refuter review, 2026-08-25): `checks_started`/
+    `checks_declined` are caller-supplied ints with no window attached,
+    while `paid_orders` is computed strictly within
+    `[window_start, window_end)`. Nothing in this function can detect if
+    the caller passed a denominator from a different window than the
+    numerator — that binding has to be enforced by whoever wires a
+    concrete `JournalReader`/verdict-event source, not guessed here.
     """
     seen_event_ids: set[str] = set()
+    seen_order_ids: set[str] = set()  # M-02's unit is the order, not the event
     paid_orders = 0
     for ev in order_events:
         if ev.event_name != "payment.paid" or ev.is_synthetic:
@@ -76,6 +85,9 @@ def build_funnel_snapshot(
         if ev.event_id in seen_event_ids:
             continue
         seen_event_ids.add(ev.event_id)
+        if ev.aggregate_id in seen_order_ids:
+            continue
+        seen_order_ids.add(ev.aggregate_id)
         paid_orders += 1
 
     return FunnelSnapshot(

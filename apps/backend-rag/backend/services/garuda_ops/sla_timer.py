@@ -69,18 +69,38 @@ _DEADLINE_CLEARED_STATES = frozenset({"Submitted", "Approved", "Delivered", "Rej
 
 @dataclass(frozen=True, slots=True)
 class FilingDeadlineVerdict:
-    days_remaining: int | None  # None if no deadline applies to this case/state
+    days_remaining: int | None  # None only when NOT_APPLICABLE (see status)
     should_page: bool
+    status: SlaState  # OK (cleared state) / WARNING|OVERDUE (racing D-7) /
+    # UNKNOWN (deadline missing on a state that must have one)
 
 
 def time_to_filing_deadline(
     practice: PracticeSnapshot, *, today: date
 ) -> FilingDeadlineVerdict:
-    if practice.filing_deadline is None or practice.state in _DEADLINE_CLEARED_STATES:
-        return FilingDeadlineVerdict(days_remaining=None, should_page=False)
+    if practice.state in _DEADLINE_CLEARED_STATES:
+        return FilingDeadlineVerdict(days_remaining=None, should_page=False, status=SlaState.OK)
+
+    if practice.filing_deadline is None:
+        # Corrected after cross-family refuter review (Kimi K3, 2026-08-25,
+        # finding 7): a practice still racing D-7 (not yet Submitted/
+        # Approved/Delivered/Rejected) with NO deadline recorded is a data
+        # gap upstream (L5's calendar/intake pipeline), not "no deadline
+        # applies". The old code returned `should_page=False` here — fail-
+        # open, silently letting a practice with a missing deadline sail
+        # past D-7 with nobody paged. M-06's doctrine ("a missing metric
+        # stream ... is unknown, never healthy") applies here too: unknown
+        # must page, not pass.
+        return FilingDeadlineVerdict(
+            days_remaining=None, should_page=True, status=SlaState.WARNING
+        )
+
     days_remaining = (practice.filing_deadline - today).days
     # Page while there is still time to act (<=2 days) or once it has
     # already passed (negative) — a practice must never sail past D-7 while
     # sitting in Received/In_review/Blocked with nobody paged.
     should_page = days_remaining <= 2
-    return FilingDeadlineVerdict(days_remaining=days_remaining, should_page=should_page)
+    status = SlaState.OVERDUE if should_page else SlaState.OK
+    return FilingDeadlineVerdict(
+        days_remaining=days_remaining, should_page=should_page, status=status
+    )

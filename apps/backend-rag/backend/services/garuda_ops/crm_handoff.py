@@ -4,14 +4,24 @@ Consumes exactly one transition: PR-01 (`practice.received`, STATE-MACHINE.md
 line 84) — "OP-02 committed and its outbox event is consumed". Everything the
 CRM practice row needs (client email, nationality, case type, price, filing
 commitment) comes from `OrderSnapshotProvider` (`ports.py`), never re-typed
-by staff. Idempotency mirrors PR-01's own guard: "no practice exists for the
-order" is checked via `source_event_id` (the PR-01 event id, per PR-12's
-retry-idempotent set in STATE-MACHINE.md) before any write — a duplicate
-outbox delivery of the same PR-01 event must never create a second CRM
-practice.
+by staff.
 
-No PII crosses into logs here: `logger` calls below carry only aggregate ids
-and event ids, never `customer_email` — CLAUDE.md's output-boundary rule.
+**Corrected after cross-family refuter review (Kimi K3, 2026-08-25):**
+idempotency dedups on `event.idempotency_identity.key_digest` — the
+contract-named "committed payment.paid journal event identity"
+(`events.yaml`'s `x-idempotency-source` for `PracticeReceived`) — never the
+`practice.received` event's own `event_id`, which only catches an outbox
+redelivery of one committed event and not a journal-level PR-01 retry that
+mints a fresh `event_id` for the same order. See `ports.py`'s module
+docstring for the full gap this closes.
+
+No PII crosses into logs here, and — per SLO.md M-05 and STATE-MACHINE.md
+SM-G03, which ban "order identifier"/"account identifier" as a log field
+regardless of PII status — no order/practice/account identifier either:
+`logger` calls below carry only the idempotency key digest (an opaque
+SHA-256, not an identifier the contract names) and the outcome. A previous
+version of this module logged `practice_aggregate_id` and
+`crm_practice_id`; both are removed.
 """
 
 from __future__ import annotations
@@ -65,39 +75,38 @@ class CrmHandoffService:
             msg = f"CrmHandoffService only consumes PR-01 practice events, got {event.transition_id}/{event.aggregate_type}"
             raise ValueError(msg)
 
-        existing_id = await self._crm_writer.find_practice_by_source_event(event.event_id)
+        idempotency_key = event.idempotency_identity.key_digest
+
+        existing_id = await self._crm_writer.find_practice_by_source_idempotency_key(
+            idempotency_key
+        )
         if existing_id is not None:
             logger.info(
                 "garuda_ops.crm_handoff.already_handled",
-                extra={"practice_aggregate_id": event.aggregate_id, "event_id": event.event_id},
+                extra={"idempotency_key_digest": idempotency_key},
             )
             return HandoffResult(HandoffOutcome.ALREADY_HANDLED, existing_id)
 
-        # STATE-MACHINE.md PR-01 keys off the *order* whose OP-02 committed;
-        # the practice aggregate id it names is a freshly-minted practice id,
-        # not the order id. Until L3/L4 land, aggregate_id is the only handle
-        # we have; the concrete reader is responsible for resolving it to the
-        # order it was created from before calling this method — asserted by
-        # the fake in the test suite, which always supplies a resolvable id.
+        # `event.aggregate_id` is the freshly-minted PRACTICE id (STATE-
+        # MACHINE.md: PR-01's aggregate_type is `practice`) — NOT an order
+        # id. `OrderSnapshotProvider.get` is documented to accept exactly
+        # this and resolve practice->order internally (ports.py docstring,
+        # gap 2); passing it straight through here is correct, not a stopgap.
         snapshot = await self._order_snapshots.get(event.aggregate_id)
         if snapshot is None:
             logger.error(
                 "garuda_ops.crm_handoff.order_snapshot_missing",
-                extra={"practice_aggregate_id": event.aggregate_id, "event_id": event.event_id},
+                extra={"idempotency_key_digest": idempotency_key},
             )
             return HandoffResult(HandoffOutcome.ORDER_SNAPSHOT_MISSING, None)
 
         crm_practice_id = await self._crm_writer.create_client_and_practice(
             snapshot,
-            source_event_id=event.event_id,
+            source_idempotency_key=idempotency_key,
             practice_type_code=self._practice_type_code,
         )
         logger.info(
             "garuda_ops.crm_handoff.created",
-            extra={
-                "practice_aggregate_id": event.aggregate_id,
-                "event_id": event.event_id,
-                "crm_practice_id": crm_practice_id,
-            },
+            extra={"idempotency_key_digest": idempotency_key},
         )
         return HandoffResult(HandoffOutcome.CREATED, crm_practice_id)

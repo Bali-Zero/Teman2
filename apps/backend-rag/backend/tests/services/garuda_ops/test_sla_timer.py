@@ -107,9 +107,27 @@ def test_submitted_practice_no_longer_races_the_deadline() -> None:
     assert verdict.days_remaining is None
 
 
-def test_no_filing_deadline_never_pages() -> None:
+def test_missing_filing_deadline_on_an_active_practice_pages_not_silently_passes() -> None:
+    """RED-if-wrong (refuter finding 7): a practice still racing D-7 with NO
+    deadline recorded is a data gap, not 'no deadline applies' — it must
+    page (fail-closed / M-06's unknown-is-never-healthy), not silently
+    clear. Bite: before the fix this asserted `not should_page`."""
     verdict = time_to_filing_deadline(
         _practice(state="Received", entered_ago=timedelta(hours=1), filing_deadline=None),
         today=_TODAY,
     )
+    assert verdict.should_page
+    assert verdict.days_remaining is None
+    assert verdict.status is SlaState.WARNING
+
+
+def test_cleared_state_with_no_deadline_stays_ok() -> None:
+    """Green counterpart: once the practice is Submitted/Approved/etc., the
+    absence of a filing_deadline is expected (the deadline no longer
+    applies), not a data gap — must NOT page."""
+    verdict = time_to_filing_deadline(
+        _practice(state="Delivered", entered_ago=timedelta(hours=1), filing_deadline=None),
+        today=_TODAY,
+    )
     assert not verdict.should_page
+    assert verdict.status is SlaState.OK

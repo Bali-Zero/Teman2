@@ -8,25 +8,40 @@ indistinguishable from a dead funnel, which is precisely the WhatsApp-bot
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 from backend.services.garuda_ops.funnel_dashboard import build_funnel_snapshot
-from backend.services.garuda_ops.ports import EventEnvelope
+from backend.services.garuda_ops.ports import EventEnvelope, IdempotencyIdentity
 
 _NOW = datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
 _WINDOW_START = _NOW - timedelta(days=7)
 
 
-def _paid_event(event_id: str, occurred_at: datetime, *, is_synthetic: bool = False) -> EventEnvelope:
+def _idempotency(seed: str) -> IdempotencyIdentity:
+    digest = hashlib.sha256(seed.encode()).hexdigest()
+    return IdempotencyIdentity(
+        kind="PROVIDER_EVENT", key_digest=digest, canonical_payload_digest=digest
+    )
+
+
+def _paid_event(
+    event_id: str,
+    occurred_at: datetime,
+    *,
+    is_synthetic: bool = False,
+    aggregate_id: str = "order-x",
+) -> EventEnvelope:
     return EventEnvelope(
         schema_version="1.0.0",
         event_id=event_id,
         event_name="payment.paid",
         occurred_at=occurred_at,
         aggregate_type="order",
-        aggregate_id="order-x",
+        aggregate_id=aggregate_id,
         transition_id="OP-02",
         customer_visible=True,
+        idempotency_identity=_idempotency(event_id),
         is_synthetic=is_synthetic,
     )
 
@@ -82,6 +97,22 @@ def test_duplicate_paid_event_id_counts_once() -> None:
         checks_declined=0,
         declined_whatsapp_handoffs=0,
         order_events=[dup, dup],
+        window_start=_WINDOW_START,
+        window_end=_NOW,
+    )
+    assert snapshot.paid_orders == 1
+
+
+def test_two_distinct_event_ids_for_the_same_order_count_once() -> None:
+    """Refuter finding 6 companion: M-02's unit is the order, not the event."""
+    snapshot = build_funnel_snapshot(
+        checks_started=5,
+        checks_declined=0,
+        declined_whatsapp_handoffs=0,
+        order_events=[
+            _paid_event("evt-a", _NOW - timedelta(hours=2), aggregate_id="order-shared"),
+            _paid_event("evt-b", _NOW - timedelta(hours=1), aggregate_id="order-shared"),
+        ],
         window_start=_WINDOW_START,
         window_end=_NOW,
     )

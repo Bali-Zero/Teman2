@@ -73,6 +73,81 @@ catalogue's `metadata.last_updated` stamp for `B1 Visa on Arrival (VOA)` /
 `B1 Visa on Arrival Extension`. Flagged to the orchestrator; not fixed here
 (out of L7's file ownership and out of scope for this PR).
 
+## Cross-family refuter round (Kimi K3, 2026-08-25)
+
+Kimi K3 reviewed a frozen extracted commit (per ASSEMBLY-LINE's "extract to a
+throwaway worktree, never review a live ref" rule) against the actual
+contract files in this repo, not just the diff. Verdict: FAIL, 7 findings.
+All seven were real and are fixed in this PR:
+
+1. **SM-G08 idempotency was check-then-act, racing under the contract's own
+   at-least-once delivery model.** `ports.CrmWriter`'s docstring now states
+   the concrete-adapter obligation explicitly (a DB `UNIQUE` constraint +
+   `INSERT ... ON CONFLICT`), and `test_crm_handoff.py` carries a fake that
+   reproduces the race deterministically (via a two-party barrier standing
+   in for a real DB round-trip) plus one that closes it with a lock — proof
+   that the fix is load-bearing, not merely documented.
+2. **`ports.EventEnvelope` dropped `idempotency_identity`**, which
+   `events.yaml` marks required and which STATE-MACHINE.md/`events.yaml`
+   name as PR-01's actual retry-idempotency key ("the paid journal event
+   ID" / "committed payment.paid journal event identity") — NOT the
+   `practice.received` event's own `event_id`, which the first version of
+   `crm_handoff.py` dedup'd on. Added the field + `IdempotencyIdentity`
+   dataclass; `crm_handoff.py` now dedups on
+   `event.idempotency_identity.key_digest`.
+   `test_journal_level_retry_with_a_fresh_event_id_still_dedups` proves two
+   *distinct* wire events sharing the same paid-event identity collapse to
+   one CRM practice.
+3. **The practice aggregate id was being passed to a lookup documented as
+   order-keyed.** PR-01's `aggregate_type` is `practice`, and `events.yaml`
+   carries no practice->order correlation field, so the old
+   `OrderSnapshotProvider` contract ("order id in") could never be
+   satisfied by what the caller actually has. `ports.py` now documents the
+   parameter as the practice aggregate id and states explicitly that a
+   concrete adapter resolves practice->order internally.
+4. **M-05/SM-G03 log-field violation**: `crm_handoff.py` logged
+   `practice_aggregate_id` (an order/practice identifier) and
+   `crm_practice_id` (an account identifier) in `extra={...}` — both banned
+   as log fields by SLO.md M-05 regardless of PII status. Removed; logs now
+   carry only the idempotency key digest (an opaque SHA-256 the contract
+   does not name as a banned identifier).
+5. **BI-02 accepted negative durations** — a resolved sample whose OCR
+   feedback timestamp precedes its upload timestamp, or an unresolved
+   sample with a future `upload_committed_at` (both possible under M-01's
+   multi-writer clock model), silently lowered the median: the exact
+   fail-open direction M-03's censoring rule exists to prevent.
+   `median_upload_to_ocr` now raises `ValueError` on either, matching the
+   convention `deadman.py`/`sla_timer.py` already used for future
+   timestamps.
+6. **BI-01/funnel dedup was per-event, not per-order** — M-02's stated unit
+   is "one logical order", but the code only guarded against a retried
+   *event_id*, not two distinct `payment.paid` event ids for the same order
+   (the same fault class as finding 2). Both `invariants.paid_orders_24h`
+   and `funnel_dashboard.build_funnel_snapshot` now dedup by event_id THEN
+   by order `aggregate_id`.
+7. **`filing_deadline=None` silently never paged**, conflating "no deadline
+   applies" (a cleared state) with "deadline unknown" (a data gap upstream,
+   e.g. L5's calendar pipeline failing to populate it) on an *active*
+   practice. `time_to_filing_deadline` now pages (`WARNING`) when the
+   deadline is missing on a practice that hasn't reached
+   `Submitted`/`Approved`/`Delivered`/`Rejected` — per M-06's doctrine that
+   unknown is never healthy.
+
+Also fixed, a residual gap Kimi flagged as sound-but-fragile: `run_probe`
+previously let any exception other than `StageBlockedOnDependency` escape
+uncaught, leaving no bound `ProbeRunResult` for a real stage crash. It now
+converts any exception into a `FAILED` result, so SYN-01's "one signed
+result binds ALL stage outcomes" holds even when a stage genuinely crashes.
+
+Noted but not changed (lower severity, judgment calls rather than defects):
+BI-01's activation check reads "currently enabled" rather than literally
+"remained enabled" since launch (a funnel toggled off/on within the
+window could false-page); `funnel_dashboard`'s `checks_started`/
+`checks_declined` denominators are caller-supplied ints with no window
+binding the function can verify against the windowed numerator. Both are
+documented in the modules' docstrings for whoever wires a concrete
+scheduler.
+
 ## Not built in this PR — sequencing problems, not files to edit
 
 - **Wiring the dead-man cron and the paged alerts to a real scheduler.**
