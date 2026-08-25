@@ -44,6 +44,10 @@ Design:
   onto the same bare core is delegated to the repo's canonical phone
   normalizer — see ``_fold_national_prefix`` for the reuse and its one
   honestly-documented trade-off.
+- Non-numeric identifiers (an email, the web channel's "anonymous"
+  placeholder) are handled explicitly rather than falling through
+  digit-extraction to ``MISSING_IDENTIFIER_MARKER`` — see
+  ``redact_identifier_for_log`` for the three-way split.
 - HMAC-SHA256, keyed by ``LOG_PII_HMAC_SALT`` (env, read at call time — not
   at import time — so tests can set/clear it per-case). Unset → a random
   per-process fallback salt (never a literal in this file — see
@@ -96,10 +100,21 @@ _SALT_ENV_VAR = "LOG_PII_HMAC_SALT"
 #: memory-subject digest.
 _DIGEST_HEX_LEN = 12
 
-#: Returned for ``None`` or an identifier that carries no digits at all
-#: (empty string, whitespace-only). Distinguishable at a glance from a real
-#: digest, which always starts with ``id:``.
+#: Returned for ``None`` or an identifier that carries no digits/characters
+#: at all (empty string, whitespace-only). Distinguishable at a glance from
+#: a real digest, which always starts with ``id:``, and from the
+#: ``"anonymous"`` sentinel below, which is a KNOWN non-PII placeholder, not
+#: a missing value.
 MISSING_IDENTIFIER_MARKER = "<none>"
+
+#: The web channel's unauthenticated-user placeholder
+#: (``WebChannelAdapter.receive_message``: ``raw_event.get("user_id",
+#: "anonymous")``). Not PII — it is a literal shared by every unauthenticated
+#: caller — so it is passed through unchanged rather than digested or folded
+#: into :data:`MISSING_IDENTIFIER_MARKER`. Folding it into the latter would
+#: make "no identifier was even attempted" indistinguishable from "a real,
+#: intentionally-anonymous session" in the logs.
+_ANONYMOUS_SENTINEL = "anonymous"
 
 _fallback_salt_lock = threading.Lock()
 _fallback_salt: str | None = None
@@ -212,29 +227,57 @@ def _fold_national_prefix(digits: str) -> str:
 
 
 def redact_identifier_for_log(value: str | int | None) -> str:
-    """Stable, non-reversible-without-the-salt stand-in for a phone number or
-    Telegram chat id, safe to put in a log line.
+    """Stable, non-reversible-without-the-salt stand-in for a phone number,
+    Telegram chat id, email, or the web channel's "anonymous" placeholder,
+    safe to put in a log line.
 
     Same input (any formatting) -> same digest within one process, so an
     operator can still follow one conversation across many log lines.
     Different input -> a different digest.
 
     Args:
-        value: A phone number in any formatting ("+62...", "62...", "0...")
-            or a Telegram numeric chat id. ``None``-safe.
+        value: A phone number in any formatting ("+62...", "62...", "0..."),
+            a Telegram numeric chat id, a generic channel user_id (which may
+            be an email — see ``WebChannelAdapter``), or ``"anonymous"``.
+            ``None``-safe.
 
     Returns:
-        ``"id:<12 hex>"``, or :data:`MISSING_IDENTIFIER_MARKER` if ``value``
-        is ``None`` or carries no digits.
+        ``"id:<12 hex>"`` for a digested identifier, the literal
+        ``"anonymous"`` for that non-PII sentinel, or
+        :data:`MISSING_IDENTIFIER_MARKER` if ``value`` is ``None`` or empty.
     """
     if value is None:
         return MISSING_IDENTIFIER_MARKER
 
-    digits = _NON_DIGITS_RE.sub("", str(value))
-    if not digits:
+    stripped = str(value).strip()
+    if not stripped:
         return MISSING_IDENTIFIER_MARKER
 
-    key_material = _fold_national_prefix(digits)
+    lowered = stripped.lower()
+    if lowered == _ANONYMOUS_SENTINEL:
+        # Not PII, and already meaningful on sight — passing it through
+        # keeps it visually distinct from MISSING_IDENTIFIER_MARKER (an
+        # identifier field that was never populated at all).
+        return lowered
+
+    if "@" in stripped:
+        # Email-shaped (the web channel's authenticated user_id — e.g.
+        # "user@example.com", per WebChannelAdapter.receive_message).
+        # Digit-only extraction would either destroy it entirely (most
+        # emails carry no digits -> collapses to MISSING_IDENTIFIER_MARKER,
+        # indistinguishable from a genuinely absent identifier) or, for an
+        # email that DOES contain digits, hash only those -- two different
+        # people ("alice123@a.com", "bob123@b.com") would then collide on
+        # the same "123" digest. Hash the whole normalized string instead:
+        # still non-reversible, still stable per-value, still
+        # distinguishable across different emails.
+        key_material = lowered
+    else:
+        digits = _NON_DIGITS_RE.sub("", stripped)
+        if not digits:
+            return MISSING_IDENTIFIER_MARKER
+        key_material = _fold_national_prefix(digits)
+
     key = _resolve_salt().encode("utf-8")
     digest = hmac.new(key, key_material.encode("utf-8"), sha256).hexdigest()[:_DIGEST_HEX_LEN]
     return f"id:{digest}"

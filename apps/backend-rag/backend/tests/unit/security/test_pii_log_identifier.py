@@ -23,7 +23,7 @@ from backend.security.pii_log_identifier import (
 )
 
 # Obviously-synthetic numbers only — never a shape that could be mistaken
-# for a real client'''s WhatsApp number.
+# for a real client's WhatsApp number.
 _SYNTHETIC_PHONE = "+62 000-111-2222"
 _SYNTHETIC_PHONE_DIGITS_ONLY = "620001112222"
 _SYNTHETIC_PHONE_OTHER = "+62 999-888-7777"
@@ -181,7 +181,7 @@ class TestRedactIdentifierForLogFallbackSaltSecurity:
         monkeypatch.delenv("LOG_PII_HMAC_SALT", raising=False)
         target = redact_identifier_for_log(_SYNTHETIC_PHONE)
         # The message hashed is the FOLDED key material (national/country
-        # prefix reconciled -- see _fold_national_prefix), not the bare
+        # prefix reconciled — see _fold_national_prefix), not the bare
         # digit-stripped string: "+62 000-111-2222" -> digits
         # "620001112222" -> phone_core folds the leading "62" -> the real
         # message is "0001112222". Deriving it via the module's own
@@ -334,3 +334,64 @@ class TestRedactIdentifierForLogNationalPhonePrefix:
         assert digest != redact_identifier_for_log(_SYNTHETIC_CHAT_ID + 1)
 
 
+class TestRedactIdentifierForLogGenericChannelIdentifiers:
+    """Finding 3 (adversarial review, 2026-08-25): channels/router.py logs
+    a generic ChannelMessage.user_id, which for the web channel may be an
+    email (WebChannelAdapter: raw_event.get("user_id", "anonymous")) or the
+    literal "anonymous" sentinel. Digit-only extraction destroyed both:
+    every digit-less identifier (any email without digits, "anonymous",
+    or any other non-numeric identifier) collapsed to
+    MISSING_IDENTIFIER_MARKER — indistinguishable from a genuinely missing
+    identifier — and an email that DID contain digits leaked only its
+    digits, which multiple different people could share."""
+
+    def test_anonymous_sentinel_is_not_collapsed_to_missing_marker(self) -> None:
+        """Guilt: 'anonymous' (a real, meaningful, non-PII value) must not
+        read the same as 'no identifier was ever populated'."""
+        digest = redact_identifier_for_log("anonymous")
+        assert digest != MISSING_IDENTIFIER_MARKER
+        assert digest == "anonymous"
+
+    def test_anonymous_sentinel_is_case_insensitive(self) -> None:
+        assert redact_identifier_for_log("Anonymous") == "anonymous"
+        assert redact_identifier_for_log("ANONYMOUS") == "anonymous"
+
+    def test_email_without_digits_is_not_collapsed_to_missing_marker(self) -> None:
+        """Guilt: an email carrying no digits (the common case) must not
+        collapse to MISSING_IDENTIFIER_MARKER — that is real PII being
+        rendered indistinguishable from an absent field."""
+        digest = redact_identifier_for_log("client@example.com")
+        assert digest != MISSING_IDENTIFIER_MARKER
+        assert digest.startswith("id:")
+        assert "client@example.com" not in digest
+
+    def test_two_different_digit_bearing_emails_do_not_collide(self) -> None:
+        """Guilt: an email WITH digits must not be reduced to just those
+        digits — two different people whose emails share a digit
+        substring must still be distinguishable in the logs."""
+        one = redact_identifier_for_log("alice123@example-a.com")
+        other = redact_identifier_for_log("bob123@example-b.com")
+        assert one != other
+
+    def test_same_email_case_insensitive_correlates(self) -> None:
+        """Innocence: the SAME email in different casing must still
+        correlate — an operator following one client's log lines should
+        not lose the thread over case drift upstream."""
+        assert redact_identifier_for_log("Client@Example.com") == redact_identifier_for_log(
+            "client@example.com",
+        )
+
+    def test_different_emails_remain_distinguishable(self) -> None:
+        """Innocence: correlation must not come at the cost of collapsing
+        distinct identities."""
+        assert redact_identifier_for_log("one@example.com") != redact_identifier_for_log(
+            "two@example.com",
+        )
+
+    def test_email_digest_is_never_a_bare_hash_of_only_local_part_digits(self) -> None:
+        """Guilt (defense-in-depth): confirms the email path really hashes
+        the whole string, not the digit-stripped form that the phone/chat
+        path would produce for the same raw characters."""
+        digest = redact_identifier_for_log("user2026@example.com")
+        digit_only_digest = redact_identifier_for_log("2026")
+        assert digest != digit_only_digest
