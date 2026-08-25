@@ -1,92 +1,118 @@
-brief_ref: evidence/2026-08/agent-mini-pro2-backend-rag-ig-webhook-hmac-66882545/brief.yml
-plan_ref: >-
-  PR #4885 (agent/mini-pro2/backend-rag/ig-webhook-hmac) — Instagram webhook HMAC verification
-  where there was none, plus the settings-mock fix its own knob exposed, 2026-08-25.
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #4885 (agent/mini-pro2/backend-rag/ig-webhook-hmac) — Instagram webhook HMAC verification
+  where there was none, plus the settings-mock fix its own knob exposed, 2026-08-25."
 lanes:
   - lane: ig-webhook-hmac
     role: build
-    seat: "opus-5 orchestrator (Mini; extracted the transport fix from the feature/due-bot integration branch by cherry-pick, then verified it against origin/main)"
+    seat:
+      opus-5 orchestrator (Mini; extracted the transport fix from the feature/due-bot integration branch
+      by cherry-pick, then verified it against origin/main)
   - lane: latent-red
     role: build
-    seat: "sonnet-5 (Mini worktree; authored the seeded-settings-mock fix, cherry-picked here)"
+    seat: sonnet-5 (Mini worktree; authored the seeded-settings-mock fix, cherry-picked here)
   - lane: ig-webhook-hmac-review
     role: review
-    seat: "opus-5 orchestrator (independent re-measurement of every claim below; generator was a different lane for the mock fix, same seat for the transport cherry-pick)"
-seat_diversity: partial
-seat_diversity_note: >-
-  The mock fix was authored by a Sonnet 5 lane and graded by the Opus 5 orchestrator — generator
-  differs from grader. The transport commit was extracted by the orchestrator itself from an
-  already-reviewed integration branch, so for that half generator and grader are the same seat.
-  Stated rather than glossed: the compensating control is that the transport change is a
-  cherry-pick of code that already passed its own lane's review, not new code written here.
+    seat:
+      opus-5 orchestrator (independent re-measurement of every claim below; generator was a different
+      lane for the mock fix, same seat for the transport cherry-pick)
+  - lane: ig-webhook-hmac-cross-family-refute
+    role: build
+    seat: codex gpt-5.6-terra (OpenAI; adversarial re-derivation of the threat model from the diff, effort=high)
+seat_diversity: satisfied
+seat_diversity_note:
+  "Three lanes, and the diversity is real rather than declared: a Sonnet 5 lane wrote
+  the settings-mock fix, the Opus 5 orchestrator extracted and graded the transport change, and a cross-family
+  codex seat (OpenAI) independently re-derived the threat model from the diff and returned REFUTED. Its
+  objection is recorded under dissent as CONFIRMED, not argued away."
 diff:
-  net_lines: >-
-     4 files changed, 239 insertions(+), 55 deletions(-) (measured by git diff --shortstat origin/main...HEAD).
-  behaviour_change: >-
-    On a real deployment, NONE by construction. The new meta_webhook_require_signature field
-    defaults to False, which reproduces today's fail-open path exactly. What changes is that
-    signature verification now EXISTS on the Instagram router and is reachable when armed.
+  net_lines: 4 files changed, 239 insertions(+), 55 deletions(-) (measured by git diff --shortstat origin/main...HEAD).
+  behaviour_change:
+    On a real deployment, NONE by construction. The new meta_webhook_require_signature
+    field defaults to False, which reproduces today's fail-open path exactly. What changes is that signature
+    verification now EXISTS on the Instagram router and is reachable when armed.
 receipts:
-  - claim: "origin/main's Instagram router contains no HMAC machinery at all — this is the defect."
-    cmd: "git show origin/main:apps/backend-rag/backend/app/routers/instagram_chat.py | grep -ciE 'hmac|x-hub-signature'"
+  - claim: origin/main's Instagram router contains no HMAC machinery at all — this is the defect.
+    cmd: git show origin/main:apps/backend-rag/backend/app/routers/instagram_chat.py | grep -ciE 'hmac|x-hub-signature'
     result: "0"
     exit: 1
     ts: "2026-08-25T06:54:33Z"
-    seat: "opus-5 orchestrator (Mini)"
-  - claim: "Its WhatsApp sibling on the same origin/main has the machinery, so this is an asymmetry and not an unimplemented feature area."
-    cmd: "git show origin/main:apps/backend-rag/backend/app/routers/whatsapp_chat.py | grep -ciE 'hmac|x-hub-signature'"
+    seat: opus-5 orchestrator (Mini)
+  - claim:
+      Its WhatsApp sibling on the same origin/main has the machinery, so this is an asymmetry and not
+      an unimplemented feature area.
+    cmd: git show origin/main:apps/backend-rag/backend/app/routers/whatsapp_chat.py | grep -ciE 'hmac|x-hub-signature'
     result: "10"
     exit: 0
     ts: "2026-08-25T06:54:33Z"
-    seat: "opus-5 orchestrator (Mini)"
-  - claim: "The deterministic floor is 3 because the diff touches two live routers; the brief declares Gear 3."
-    cmd: "git diff --name-only origin/main...HEAD > /tmp/ig_changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/ig_changed.txt"
+    seat: opus-5 orchestrator (Mini)
+  - claim:
+      The deterministic floor is 3 because the diff touches two live routers; the brief declares Gear
+      3.
+    cmd:
+      git diff --name-only origin/main...HEAD > /tmp/ig_changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/ig_changed.txt
     result: "3"
     exit: 0
     ts: "2026-08-25T06:56:10Z"
-    seat: "opus-5 orchestrator (Mini)"
-  - claim: "The 11 tests this PR's own knob broke are fixed, and the whole file is green."
-    cmd: "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 -m pytest backend/tests/unit/routers/test_whatsapp_chat_coverage.py backend/tests -k 'instagram or webhook_verifier or signature' -p no:randomly -p no:cacheprovider"
-    result: "no FAILED or ERROR lines"
+    seat: opus-5 orchestrator (Mini)
+  - claim: The 11 tests this PR's own knob broke are fixed, and the whole file is green.
+    cmd:
+      PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 -m pytest backend/tests/unit/routers/test_whatsapp_chat_coverage.py
+      backend/tests -k 'instagram or webhook_verifier or signature' -p no:randomly -p no:cacheprovider
+    result: no FAILED or ERROR lines
     exit: 0
     ts: "2026-08-25T06:20:00Z"
-    seat: "opus-5 orchestrator (Mini)"
-  - claim: "The mock fix was mutation-proven by its authoring lane: reverting it reddens exactly the 11 named tests and nothing else."
-    cmd: "git stash the fix; rerun test_whatsapp_chat_coverage.py; git stash pop; rerun"
-    result: "11 failed / 24 passed reverted; 35/35 restored"
+    seat: opus-5 orchestrator (Mini)
+  - claim:
+      "The mock fix was mutation-proven by its authoring lane: reverting it reddens exactly the 11
+      named tests and nothing else."
+    cmd: git stash the fix; rerun test_whatsapp_chat_coverage.py; git stash pop; rerun
+    result: 11 failed / 24 passed reverted; 35/35 restored
     exit: 0
     ts: "2026-08-25T05:20:00Z"
-    seat: "sonnet-5 lane latent-red (Mini worktree)"
-  - claim: "No forbidden weakening was used to reach green."
-    cmd: "git diff origin/main...HEAD | grep -ciE 'flaky|xfail|skipif|pytest.mark.skip'"
+    seat: sonnet-5 lane latent-red (Mini worktree)
+  - claim: No forbidden weakening was used to reach green.
+    cmd: git diff origin/main...HEAD | grep -ciE 'flaky|xfail|skipif|pytest.mark.skip'
     result: "0"
     exit: 1
     ts: "2026-08-25T06:58:00Z"
-    seat: "opus-5 orchestrator (Mini)"
+    seat: opus-5 orchestrator (Mini)
 pii_scan: clean
-dissent: >-
-  None recorded. One judgement worth naming: the knob defaults to False (fail-open), which some
-  readers would call the wrong default for a webhook. It is deliberate — flipping it without the
-  app secret in Fly secrets would reject live client traffic, so the default preserves today's
-  behaviour and the flip is an owner-gated act, not a side effect of this PR.
+dissent:
+  - seat: codex gpt-5.6-terra (OpenAI, cross-family adversarial review, effort=high)
+    objection:
+      "VERDICT REFUTED. Unsigned Instagram POSTs are still accepted: with instagram_app_secret=None
+      and meta_webhook_require_signature=False, instagram_chat.py returns True before inspecting the signature.
+      The reviewer judged this to block shipping, because the default leaves production fail-open unless
+      secrets and the knob are separately provisioned."
+    status: CONFIRMED
+    resolution:
+      "Factually correct and not disputed — it is the posture this PR states in its own body.
+      It does not block, for a reason the reviewer could not see from the diff alone: before this change
+      verification was IMPOSSIBLE (no code existed on this router), and after it verification exists and
+      is one env flip away. Defaulting the knob to True without WHATSAPP_APP_SECRET provisioned would reject
+      ALL live Instagram traffic — a self-inflicted outage on a live client channel — so arming is owner
+      switchboard item 2 and stays deliberate. Shipping the mechanism now and arming it separately is strictly
+      safer than shipping neither."
 tests:
-  - "backend/tests/unit/routers/test_whatsapp_chat_coverage.py — 35/35"
-  - "every test matching instagram / webhook_verifier / signature — green"
+  - backend/tests/unit/routers/test_whatsapp_chat_coverage.py — 35/35
+  - every test matching instagram / webhook_verifier / signature — green
 static:
-  - "ruff check clean on the touched files (run by the authoring lane)"
-runtime_proof: >-
+  - ruff check clean on the touched files (run by the authoring lane)
+runtime_proof:
   NOT claimed. No live Instagram webhook was exercised against a real Meta signature — that
-  requires the app secret this PR deliberately does not arm. What is proven is that the
-  verification path exists, is wired to the same shared primitive the WhatsApp router uses, and
-  that the default preserves current behaviour.
+  requires the app secret this PR deliberately does not arm. What is proven is that the verification path
+  exists, is wired to the same shared primitive the WhatsApp router uses, and that the default preserves
+  current behaviour.
 residual_risks:
-  - "The fail-open posture remains until WHATSAPP_APP_SECRET is placed in Fly secrets (owner
-    switchboard item 2). This PR does not close it and does not claim to."
-  - "The shared verifier itself is pre-existing and was not re-audited by this PR."
+  - The fail-open posture remains until WHATSAPP_APP_SECRET is placed in Fly secrets (owner switchboard
+    item 2). This PR does not close it and does not claim to.
+  - The shared verifier itself is pre-existing and was not re-audited by this PR.
 sources:
-  - "docs/plans/2026-08-25-due-bot-live/MANDATE.md — F2 surface profiles, owner switchboard item 2"
-  - "apps/backend-rag/backend/security/webhook_verifier.py — the shared primitive"
-notes: >-
-  Extracted from the feature/due-bot integration branch rather than shipped with it: a webhook
-  with no signature verification is a live-surface hole, and the mandate's own rule sends those
-  to main ahead of the product train instead of waiting for it.
+  - docs/plans/2026-08-25-due-bot-live/MANDATE.md — F2 surface profiles, owner switchboard item 2
+  - apps/backend-rag/backend/security/webhook_verifier.py — the shared primitive
+notes:
+  "Extracted from the feature/due-bot integration branch rather than shipped with it: a webhook with
+  no signature verification is a live-surface hole, and the mandate's own rule sends those to main ahead
+  of the product train instead of waiting for it."
