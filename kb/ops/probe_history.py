@@ -21,9 +21,9 @@ TWO SUBCOMMANDS
            invents an answer from a single record — the answer is a computed
            streak with the evidence printed alongside it, never asserted alone.
 
-SIX WAYS THIS COULD LIE, AND HOW EACH IS CLOSED (read this before touching the
+SEVEN WAYS THIS COULD LIE, AND HOW EACH IS CLOSED (read this before touching the
 streak logic — the guilt/innocence matrix in the test file exists to keep these
-six true, not merely once, forever):
+seven true, not merely once, forever):
 
 (a) THE STREAK MUST NOT SURVIVE AN EDIT TO ANY OF THE THREE ARTIFACTS MANDATE §8
     ACTUALLY NAMES. §8 defines "current" over `kb/journeys/<topic>.yaml` (the
@@ -152,8 +152,49 @@ six true, not merely once, forever):
     the job's exit code would ever notice, for as long as the version stays
     drifted.
 
-Nothing here writes to Qdrant or touches `probe_retrieval.py`'s grading — this
-file only runs that script as a subprocess and interprets its `--json` output.
+(g) `record` MUST ACTUALLY RE-MEASURE THE INVENTORY, NOT JUST HASH IT. Rule (a)
+    resets the streak the moment `kb/inventory/<topic>.yaml`'s BYTES change —
+    but a sha256 only answers "did we change our own claim", never "is our
+    claim still true". Until this rule, `cmd_record` imported
+    `probe_retrieval.py` (19 references) and never once called
+    `scripts/kb/kb_inventory_probe.py` — the one script that actually queries
+    live Qdrant and compares it to what the inventory recorded. So if
+    PRODUCTION drifted (a point count moved, a payload shape mix changed)
+    while the inventory FILE sat untouched, nothing here would ever notice:
+    the sha stays constant, the streak keeps ticking, and the "measured
+    against production" claim MANDATE §1/§8 makes about that inventory quietly
+    stops being true without a single record ever saying so. Found by a
+    completeness reviewer as the same question Guard 6 already answers for a
+    different absence — "what does `cmd_record` consider a measurement".
+    DECISION: every topic's `kb/inventory/<topic>.yaml` is now run through
+    `kb_inventory_probe.py --json` (kind: topic; kind: retired_collection has
+    no `--json` support yet, out of THIS file's scope to add — see that
+    script's own docstring) inside the SAME per-topic loop that already runs
+    `probe_retrieval.py`, and its verdict is recorded as `inventory_verdict` —
+    a SEPARATE field from `verdict`, deliberately never AND'd into one
+    collapsed value: an `at_target` retrieval verdict sitting next to a
+    `drift` inventory verdict are two different facts about the SAME topic,
+    and folding them into one boolean would lose exactly the distinction that
+    makes the failure diagnosable. `cmd_record`'s exit code goes non-zero on
+    `inventory_verdict in ("broken", "drift")` the same way it already does
+    for a broken/degraded retrieval verdict — named separately in the PARTIAL
+    message, never merged into "broken"/"degraded" language, so an operator
+    reading cron output learns WHICH half of the measurement failed.
+    NOT DONE HERE, and named honestly rather than silently left half-fixed:
+    `_streak`/`cmd_status`'s 48h certificate does not yet drop a topic's
+    streak on `inventory_verdict == "drift"` the way it already does for a
+    broken/degraded retrieval verdict — MANDATE §8's "green against
+    production, stayed green 48h" is a claim about the SAME 48h window for
+    both dimensions, and this fix closes only `record`'s own exit code, not
+    yet `status`'s certificate. A topic could therefore show
+    `AT-TARGET-48H` today while its most recent inventory_verdict is `drift`,
+    as long as the JOB itself still exited non-zero on that same run (rules
+    (e)/(g) both fire, but only (e)/(f)'s records feed the streak walk today).
+    Tracked as a residual, not a silent gap.
+
+Nothing here writes to Qdrant or touches `probe_retrieval.py`'s/
+`kb_inventory_probe.py`'s own grading — this file only runs those scripts as
+subprocesses and interprets their `--json` output.
 """
 
 from __future__ import annotations
@@ -315,14 +356,60 @@ def run_probe_json(journeys_path: Path, collection: str, timeout_s: int = 300) -
         }
 
 
+def run_inventory_probe_json(inventory_path: Path, timeout_s: int = 300) -> dict:
+    """Run scripts/kb/kb_inventory_probe.py --json as a subprocess and return
+    its parsed object — rule (g): the thing that actually re-measures an
+    inventory against LIVE production, instead of trusting a sha256 to stand
+    in for a fact about a world that moves independently of the file.
+
+    Same defensiveness as `run_probe_json`, for the identical reason: one
+    topic's inventory probe crashing (or its inventory file not existing yet)
+    must not stop every OTHER topic in the same record() run from being
+    recorded — a missing file surfaces here as `FileNotFoundError` inside the
+    subprocess (no valid JSON on stdout), caught by the same fallback as an
+    unparseable-output crash, not special-cased.
+    """
+    script = repo_root() / "scripts" / "kb" / "kb_inventory_probe.py"
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), str(inventory_path), "--json"],
+            capture_output=True, text=True, timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "inventory_file": str(inventory_path),
+            "verdict": "broken", "reason": "control_failed",
+            "detail": "kb_inventory_probe.py timed out after %ds" % timeout_s,
+            "exit_code": None, "findings": [],
+        }
+    try:
+        return json.loads(proc.stdout.strip().splitlines()[-1]) if proc.stdout.strip() else {}
+    except (ValueError, IndexError):
+        return {
+            "inventory_file": str(inventory_path),
+            "verdict": "broken", "reason": "control_failed",
+            "detail": "kb_inventory_probe.py produced no parseable JSON "
+                      "(rc=%s, stderr=%r)" % (proc.returncode, proc.stderr[-500:]),
+            "exit_code": proc.returncode, "findings": [],
+        }
+
+
 def build_record(topic: str, journeys_path: Path, shas: dict[str, str],
-                  probe_result: dict) -> dict:
+                  probe_result: dict, inventory_result: dict) -> dict:
     verdict = probe_result.get("verdict") or "broken"
     if verdict not in VERDICTS:
         # Defensive, not reachable via the real subprocess today: an unrecognized
         # verdict is closer to broken (evidence about the probe itself, not the
         # topic) than to any real grading outcome.
         verdict = "broken"
+    # Rule (g): the inventory's OWN verdict — deliberately a SEPARATE field,
+    # never merged with `verdict` above. `at_target` retrieval next to `drift`
+    # inventory are two different facts about the same topic; collapsing them
+    # into one boolean would lose exactly the distinction that makes a later
+    # failure diagnosable.
+    inventory_verdict = inventory_result.get("verdict") or "broken"
+    if inventory_verdict not in VERDICTS:
+        inventory_verdict = "broken"
     return {
         "ts": now_utc().isoformat(),
         "topic": topic,
@@ -337,6 +424,11 @@ def build_record(topic: str, journeys_path: Path, shas: dict[str, str],
         "degraded_path": bool(probe_result.get("degraded_path")),
         "journeys": probe_result.get("journeys") or [],
         "detail": probe_result.get("detail"),
+        # Rule (g): the LIVE re-measurement, distinct from the sha256 that only
+        # answers "did the file's bytes change".
+        "inventory_verdict": inventory_verdict,
+        "inventory_exit_code": inventory_result.get("exit_code"),
+        "inventory_findings": inventory_result.get("findings") or [],
     }
 
 
@@ -356,20 +448,28 @@ def cmd_record(args, root: Path) -> int:
             "verdict": NOTHING_MEASURED, "exit_code": None,
             "degraded_path": False, "journeys": [],
             "detail": "0 kb/journeys/*.yaml files found on disk",
+            "inventory_verdict": None, "inventory_exit_code": None,
+            "inventory_findings": [],
         })
     else:
         for path in files:
             topic = path.stem
             shas = artifact_shas(root, topic, path)
             result = run_probe_json(path, args.collection)
+            # Rule (g): every topic found gets its inventory RE-MEASURED against
+            # live production, independent of whether its journeys probe found
+            # anything to grade — the inventory question ("is our claim still
+            # true") is orthogonal to the retrieval question ("does the suite
+            # still pass").
+            inv_result = run_inventory_probe_json(inventory_path_for(root, topic))
             if result.get("reason") == "no_journeys":
                 # Rule (b) again, at the per-file granularity: this specific file
                 # exists but declares nothing to run.
-                rec = build_record(topic, path, shas, result)
+                rec = build_record(topic, path, shas, result, inv_result)
                 rec["verdict"] = NOTHING_MEASURED
                 rec["detail"] = result.get("detail") or "%s declares no journeys" % path.name
             else:
-                rec = build_record(topic, path, shas, result)
+                rec = build_record(topic, path, shas, result, inv_result)
             records.append(rec)
 
     history_path.parent.mkdir(parents=True, exist_ok=True)
@@ -398,6 +498,14 @@ def cmd_record(args, root: Path) -> int:
     # by construction, not by filtering it out here a second time.
     degraded = [r for r in records
                 if r["verdict"] not in (NOTHING_MEASURED, "broken") and r.get("degraded_path")]
+    # Rule (g): the inventory's OWN verdict, deliberately checked SEPARATELY
+    # from `verdict` above — never AND'd into `graded`'s own definition. A
+    # topic whose retrieval graded cleanly but whose inventory drifted still
+    # counts toward `graded` (retrieval genuinely measured something), and
+    # ALSO independently forces record()'s exit code non-zero below — two
+    # distinct facts, two distinct reasons, reported apart.
+    inventory_broken = [r for r in records if r.get("inventory_verdict") == "broken"]
+    inventory_drift = [r for r in records if r.get("inventory_verdict") == "drift"]
 
     if not graded:
         print()
@@ -409,12 +517,13 @@ def cmd_record(args, root: Path) -> int:
         )
         return 1
 
-    if broken or degraded:
-        # Rule (e)+(f), the mixed-run half: SOME topics graded cleanly, one or
-        # more came back broken and/or degraded. Exit non-zero anyway — see
-        # module docstring rules (e)/(f) for why a partially-green run must not
-        # read as a fully successful one, and why degraded gets the same
-        # treatment as broken here even though it did produce a verdict.
+    if broken or degraded or inventory_broken or inventory_drift:
+        # Rule (e)+(f)+(g), the mixed-run case: SOME topics graded cleanly, but
+        # one or more came back broken/degraded on retrieval, OR broken/drifted
+        # on the inventory re-measurement. Exit non-zero anyway — a retrieval
+        # problem and an inventory problem are named as SEPARATE reasons below,
+        # never folded into one another, so an operator reading cron output
+        # learns which half of the measurement actually failed.
         parts = []
         if broken:
             parts.append(
@@ -427,12 +536,27 @@ def cmd_record(args, root: Path) -> int:
                 "rule (f) — and not counted as clean evidence): %s"
                 % (len(degraded), ", ".join(sorted(r["topic"] or "?" for r in degraded)))
             )
+        if inventory_broken:
+            parts.append(
+                "%d inventory-broken (kb_inventory_probe.py could not measure "
+                "production for this topic — rule (g)): %s"
+                % (len(inventory_broken),
+                   ", ".join(sorted(r["topic"] or "?" for r in inventory_broken)))
+            )
+        if inventory_drift:
+            parts.append(
+                "%d inventory-drift (production has moved since the inventory's "
+                "own measured_at; the sha256 alone would never have caught this "
+                "— rule (g)): %s"
+                % (len(inventory_drift),
+                   ", ".join(sorted(r["topic"] or "?" for r in inventory_drift)))
+            )
         print()
         print(
             "PARTIAL — %d of %d topic(s) graded cleanly; %s. record() intentionally "
-            "does not exit 0 on a partial run: a broken or degraded topic hiding "
-            "behind its clean neighbours is exactly how it goes unnoticed for months "
-            "while the scheduled job stays green."
+            "does not exit 0 on a partial run: a broken, degraded, or inventory-drifted "
+            "topic hiding behind its clean neighbours is exactly how it goes unnoticed "
+            "for months while the scheduled job stays green."
             % (len(graded), len(records), "; ".join(parts))
         )
         return 1
