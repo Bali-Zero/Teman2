@@ -54,6 +54,21 @@ GEMINI_VISION_PAGE_DELAY_SECONDS = 4.0
 BLANK_PAGE_INK_RATIO = 0.0001
 BLANK_PAGE_LUMINANCE_THRESHOLD = 200
 
+# Ink is not text. A signature page, a seal, a stamped lampiran, a map or an
+# org-chart carries plenty of ink and NO transcribable text, and on Indonesian
+# legal instruments that page is routine, not exotic. Pixels cannot tell that
+# page apart from one the model simply failed on -- both are inked and silent --
+# so the question is put to the only thing that can answer it: the model is
+# asked to SAY that the page has no text. Silence keeps its old meaning, which
+# is failure, so the discrimination is fail-closed: a model that ignores the
+# instruction costs a loud refusal, never a silent hole.
+NO_TEXT_SENTINEL = "NO_TEXT_ON_THIS_PAGE"
+
+# Returned by the per-page helper to mean "the page answered, and its answer is
+# that it holds no text" -- which is neither text nor silence, and must not be
+# confusable with either.
+NO_TEXT_DECLARED = object()
+
 
 class IncompleteTranscriptionError(Exception):
     """Raised when only SOME pages of a scanned PDF could be transcribed.
@@ -213,7 +228,9 @@ class PDFVisionService:
         "Transcribe ALL visible text from this scanned document page. "
         "Output the text verbatim, preserving line breaks, ordering and table "
         "structure. Do not summarise, translate, explain or add anything. "
-        "If the page contains no text, output nothing."
+        "If the page carries no transcribable text at all -- it holds only a "
+        "seal, a signature, a photograph, a diagram or a map, or it is empty -- "
+        f"output exactly {NO_TEXT_SENTINEL} and nothing else."
     )
 
     async def transcribe_scanned_pdf(
@@ -253,8 +270,11 @@ class PDFVisionService:
         * every page gets ``page_attempts`` tries -- the first attempt against a
           cold vision model is the one that pays to load it, which is exactly
           how pages 2 and 3 were lost while page 1 warmed ``qwen2.5vl:7b`` up;
-        * a page that stays silent is measured, not assumed: a page with no ink
-          on it is legitimately blank, any other silent page is MISSING;
+        * a page that produces nothing is measured, not assumed. Three states,
+          not two: a page with no INK is blank and is never even sent to the
+          model; a page that SAYS it has no text (a seal, a signature, a
+          photograph, a map -- routine in a legal instrument, and full of ink)
+          is honoured; a page that is inked and merely SILENT is MISSING;
         * a document with missing pages RAISES ``IncompleteTranscriptionError``
           instead of returning what survived. Callers that genuinely want a
           best-effort excerpt must say so with ``allow_partial=True``, and then
@@ -277,15 +297,44 @@ class PDFVisionService:
         transcribed: list[str] = []
         missing: list[int] = []
         for page_number in range(1, page_count + 1):
-            page_text = await self._transcribe_page(pdf_path, page_number, page_attempts)
-            if page_text:
-                transcribed.append(page_text)
-            elif self._page_is_blank(pdf_path, page_number):
-                logger.info(
-                    "Page %s of %s carries no ink and is treated as blank",
+            try:
+                image = self._render_page_to_image(pdf_path, page_number)
+            except Exception as exc:
+                # An unmeasurable page is never given the benefit of the doubt.
+                logger.warning(
+                    "Page %s of %s could not be rendered: %s",
                     page_number,
                     pdf_path,
+                    exc,
                 )
+                missing.append(page_number)
+                continue
+
+            ink_ratio = self._page_ink_ratio(image)
+            if ink_ratio < BLANK_PAGE_INK_RATIO:
+                # Asked before spending anything: a page with no ink has nothing
+                # for a vision model to read, and paying two ~30s attempts per
+                # blank verso is how a double-sided scan turns into minutes of
+                # waiting for an answer that is known in advance.
+                logger.info(
+                    "Page %s of %s carries no ink (%.5f) and is treated as blank",
+                    page_number,
+                    pdf_path,
+                    ink_ratio,
+                )
+                continue
+
+            page_text = await self._transcribe_page(image, pdf_path, page_number, page_attempts)
+            if page_text is NO_TEXT_DECLARED:
+                logger.info(
+                    "Page %s of %s declared to carry no transcribable text "
+                    "(ink %.5f -- seal, signature, photograph or diagram)",
+                    page_number,
+                    pdf_path,
+                    ink_ratio,
+                )
+            elif page_text:
+                transcribed.append(page_text)
             else:
                 missing.append(page_number)
 
@@ -325,10 +374,11 @@ class PDFVisionService:
 
     async def _transcribe_page(
         self,
+        image: Image.Image,
         pdf_path: str,
         page_number: int,
         attempts: int,
-    ) -> str | None:
+    ) -> str | object | None:
         """Transcribe ONE page, retrying an attempt that failed or said nothing.
 
         The retry is not defensive decoration: on 2026-08-25 pages 2 and 3 of a
@@ -337,14 +387,13 @@ class PDFVisionService:
         call by hand -- against the now-warm model -- returned both pages in
         full. That manual gesture is what this loop performs.
         """
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        image_base64 = base64.b64encode(buffered.getvalue()).decode()
+
         for attempt in range(1, max(1, attempts) + 1):
             page_text: str | None = None
             try:
-                image = self._render_page_to_image(pdf_path, page_number)
-                buffered = io.BytesIO()
-                image.save(buffered, format="PNG")
-                image_base64 = base64.b64encode(buffered.getvalue()).decode()
-
                 page_text = await self._analyze_via_ollama(
                     self.TRANSCRIPTION_PROMPT,
                     image_base64,
@@ -371,6 +420,8 @@ class PDFVisionService:
                 continue
 
             if page_text and page_text.strip():
+                if self._declares_no_text(page_text):
+                    return NO_TEXT_DECLARED
                 return page_text.strip()
 
             logger.warning(
@@ -382,32 +433,16 @@ class PDFVisionService:
             )
         return None
 
-    def _page_is_blank(self, pdf_path: str, page_number: int) -> bool:
-        """Is this page silent because it is EMPTY, or because we failed it?
+    @staticmethod
+    def _declares_no_text(page_text: str) -> bool:
+        """Did the model SAY the page has no text, or did it just say something?
 
-        A page we cannot even render is not declared blank: an unmeasurable
-        page counts as missing, so the doubt costs a loud failure rather than a
-        quiet hole in a law.
+        Deliberately strict -- exact match on the sentinel, bar trailing
+        punctuation. A page whose real text happens to quote the sentinel inside
+        a sentence must not be silently discarded, which is the over-matching
+        failure this repository has been bitten by repeatedly.
         """
-        try:
-            image = self._render_page_to_image(pdf_path, page_number)
-        except Exception as exc:
-            logger.warning(
-                "Could not render page %s of %s to judge whether it is blank: %s",
-                page_number,
-                pdf_path,
-                exc,
-            )
-            return False
-
-        ink_ratio = self._page_ink_ratio(image)
-        logger.debug(
-            "Page %s of %s ink ratio %.5f",
-            page_number,
-            pdf_path,
-            ink_ratio,
-        )
-        return ink_ratio < BLANK_PAGE_INK_RATIO
+        return page_text.strip().rstrip(".!").strip().upper() == NO_TEXT_SENTINEL
 
     @staticmethod
     def _page_ink_ratio(image: Image.Image) -> float:
