@@ -13,8 +13,6 @@ v2: Upgraded brain — Sonnet 4.5, dynamic persona "Zan", client profile memory,
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import logging
 import re
@@ -29,6 +27,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
 from backend.channels.format import format_rich_text
+from backend.security.pii_log_identifier import redact_identifier_for_log
+from backend.security.webhook_verifier import WebhookVerificationError, verify_meta_hmac
 
 # `notify_human_telegram` now lives in
 # `backend/services/integrations/human_escalation_notifier.py` so the WhatsApp
@@ -72,6 +72,42 @@ MAX_HISTORY_MESSAGES = 20
 
 router = APIRouter(prefix="/webhook/whatsapp", tags=["whatsapp"])
 WHATSAPP_FAST_PATH_RECOVERY_DELAY_SECONDS = 30
+
+# Claimant names for the wa_reply_claims race gate (2026-08-25 double-reply
+# scar, migration 281). One row per Meta wamid, written BEFORE either path
+# generates or sends a reply — whichever path's INSERT lands first wins.
+WAMID_CLAIMANT_META_INBOX = "meta_inbox"
+WAMID_CLAIMANT_LEGACY = "legacy"
+
+
+async def _claim_wamid_reply(conn: Any, wamid: str, claimant: str) -> bool:
+    """Atomically claim ``wamid`` for ``claimant``; True iff this claimant owns it.
+
+    ``ON CONFLICT (wamid) DO UPDATE SET wamid = EXCLUDED.wamid`` is a no-op
+    write on the conflicting row's own primary key — deliberate, not
+    decorative. ``DO NOTHING`` would return no row at all on conflict, which
+    cannot distinguish "the OTHER path already claimed this wamid" from "I
+    already claimed it, this is a legitimate retry of my own path" — the two
+    need different handling (retry-safely proceed in the second case, never
+    in the first). ``DO UPDATE`` always returns a row via ``RETURNING``, and
+    because the update never touches ``claimed_by``, the value it returns on
+    a conflict is the FIRST claimant's — untouched. So the caller compares
+    the returned owner against its own claimant name: equal means either
+    "I just won the claim" or "I already own it" (both safe to proceed —
+    each path's own downstream inserts are independently idempotent);
+    different means the other path already claimed it — log and discard.
+    """
+    owner = await conn.fetchval(
+        """
+        INSERT INTO wa_reply_claims (wamid, claimed_by)
+        VALUES ($1, $2)
+        ON CONFLICT (wamid) DO UPDATE SET wamid = EXCLUDED.wamid
+        RETURNING claimed_by
+        """,
+        wamid,
+        claimant,
+    )
+    return owner == claimant
 
 
 class WhatsAppMessage(BaseModel):
@@ -181,43 +217,54 @@ async def process_whatsapp_message(
         # Mark message as read
         await whatsapp_service.mark_message_read(message_id)
 
-        # 0. CROSS-PATH DEDUP DEFENSE-IN-DEPTH (2026-08-25 double-reply scar).
-        # The meta-inbox pipeline (wa_outbox_worker) and this legacy inline
-        # path keep SEPARATE ledgers (meta_inbox_messages vs inbound_webhooks),
-        # so the webhook-level dedup on inbound_webhooks does not protect
-        # against a message the meta-inbox path already answered. If this
-        # wamid already has a row in meta_inbox_messages, that pipeline owns
-        # it — never generate a second reply here. Best-effort: a DB hiccup
-        # must not block a genuinely legacy message from being answered.
+        # 0. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
+        if not whatsapp_triage_service.is_allowed(phone):
+            logger.info(
+                "Ignored message from non-allowed number: %s", redact_identifier_for_log(phone)
+            )
+            return
+
+        # 0.5. CROSS-PATH ATOMIC CLAIM (2026-08-25 double-reply scar, hardened).
+        # The meta-inbox pipeline (wa_outbox_worker / _handle_meta_inbox_message)
+        # and this legacy inline path are two concurrent BackgroundTasks. The
+        # first fix here was a read-only SELECT against meta_inbox_messages —
+        # best-effort, but racy: it can run BEFORE the meta-inbox path's own
+        # write commits, so both paths can win the read and both reply (live
+        # 04:03-04:04Z 2026-08-25: an English abstain from one path, an
+        # Italian greeting from the other, same inbound message). Replaced
+        # with a write-before-send atomic claim on the SAME wamid — whichever
+        # path's INSERT lands first in wa_reply_claims wins and answers; the
+        # loser logs and discards. Best-effort ONLY for the "DB unreachable"
+        # case (a DB hiccup must never mute a genuinely legacy message) — once
+        # the DB responds, the claim outcome is binding.
+        #
+        # Placed AFTER the allowlist check, not before (self-review finding,
+        # cured before merge): claiming BEFORE the allowlist check let a
+        # number this legacy path will silently ignore anyway still WIN the
+        # wamid claim and then discard — if that same wamid also has a
+        # legitimate, later-arriving meta-inbox delivery (the exact
+        # double-subscription shape this PR defends against), meta-inbox's
+        # own claim attempt would then lose to a claimant that was never
+        # going to answer, leaving a real customer with silence from BOTH
+        # paths instead of one correct reply from meta-inbox. Ordering the
+        # claim after the allowlist check means legacy only ever claims a
+        # wamid it is actually going to try to answer.
         dedup_db_pool = _get_db_pool(request)
         if dedup_db_pool is not None:
             try:
                 async with dedup_db_pool.acquire() as dedup_conn:
-                    already_meta_inbox = await dedup_conn.fetchval(
-                        "SELECT 1 FROM meta_inbox_messages WHERE meta_message_id = $1",
-                        message_id,
+                    won_claim = await _claim_wamid_reply(
+                        dedup_conn, message_id, WAMID_CLAIMANT_LEGACY
                     )
-                # Exact match on 1 (what "SELECT 1 FROM ..." actually returns
-                # when a row exists), not bare truthiness: a plain
-                # MagicMock()-backed request/pool in a unit test — unrelated
-                # to this dedup check — is itself truthy and must never be
-                # read as "row found".
-                if already_meta_inbox == 1:
+                if not won_claim:
                     logger.info(
-                        "Legacy WhatsApp path skipped — wamid=%s already answered "
+                        "Legacy WhatsApp path skipped — wamid=%s already claimed "
                         "by the meta-inbox pipeline",
                         message_id,
                     )
                     return
             except Exception:
-                logger.exception(
-                    "Cross-path dedup check failed (non-blocking) wamid=%s", message_id
-                )
-
-        # 0.5. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
-        if not whatsapp_triage_service.is_allowed(phone):
-            logger.info("Ignored message from non-allowed number: %s", phone)
-            return
+                logger.exception("Cross-path claim failed (non-blocking) wamid=%s", message_id)
 
         # 1. TRIAGE: Personal or Business?
         decision, reason = await whatsapp_triage_service.should_escalate(
@@ -226,7 +273,12 @@ async def process_whatsapp_message(
             sender_name=sender_name,
         )
 
-        logger.info("Triage decision for %s: %s (reason: %s)", phone, decision, reason)
+        logger.info(
+            "Triage decision for %s: %s (reason: %s)",
+            redact_identifier_for_log(phone),
+            decision,
+            reason,
+        )
 
         # 1.5. AUTO-DETECT NEW CLIENT ONBOARDING INTENT
         # Check if message indicates new client onboarding before processing
@@ -239,7 +291,9 @@ async def process_whatsapp_message(
             )
             if onboarding_result:
                 logger.info(
-                    "🎯 Auto-triggered onboarding chain for %s: %s", phone, onboarding_result
+                    "🎯 Auto-triggered onboarding chain for %s: %s",
+                    redact_identifier_for_log(phone),
+                    onboarding_result,
                 )
                 # Send confirmation message to client
                 onboarding_confirm_msg = (
@@ -267,7 +321,12 @@ async def process_whatsapp_message(
                     )
                 return
         except Exception as e:
-            logger.error("Onboarding detection failed for %s: %s", phone, e, exc_info=True)
+            logger.error(
+                "Onboarding detection failed for %s: %s",
+                redact_identifier_for_log(phone),
+                e,
+                exc_info=True,
+            )
             # Continue with normal flow if detection fails
 
         # 2. ESCALATE TO HUMAN
@@ -311,7 +370,11 @@ async def process_whatsapp_message(
                 message_text=message_text,
                 response_text=escalation_msg,
             )
-            logger.info("Message from %s escalated to human (reason: %s)", phone, reason)
+            logger.info(
+                "Message from %s escalated to human (reason: %s)",
+                redact_identifier_for_log(phone),
+                reason,
+            )
             return
 
         # 3. OFFER CHOICE (ambiguous)
@@ -329,7 +392,7 @@ async def process_whatsapp_message(
                 message_text=message_text,
                 response_text=welcome_msg,
             )
-            logger.info("Welcome message sent to %s", phone)
+            logger.info("Welcome message sent to %s", redact_identifier_for_log(phone))
             return
 
         # 4. AI CAN HANDLE — OpenClaw bridge first, then Gemini RAG fallback.
@@ -361,9 +424,12 @@ async def process_whatsapp_message(
                         reply_to_message_id=message_id,
                     )
                     mark_acked(phone)
-                    logger.info("Concierge ack sent to %s", phone)
+                    logger.info("Concierge ack sent to %s", redact_identifier_for_log(phone))
             except Exception:
-                logger.exception("Concierge ack failed (non-blocking) phone=%s", phone)
+                logger.exception(
+                    "Concierge ack failed (non-blocking) phone=%s",
+                    redact_identifier_for_log(phone),
+                )
 
             openclaw_response = await ask_openclaw_whatsapp(
                 phone=phone,
@@ -391,7 +457,7 @@ async def process_whatsapp_message(
                     logger.warning(
                         "WhatsApp KBLI guard corrected OpenClaw reply "
                         "(phone=%s message_id=%s reason=%s)",
-                        phone,
+                        redact_identifier_for_log(phone),
                         message_id,
                         guarded_openclaw_response.reason,
                     )
@@ -462,7 +528,7 @@ async def process_whatsapp_message(
                 total_duration = time.time() - start_time
                 logger.info(
                     "✅ OpenClaw WA responded to %s in %.1fs (%d chars)",
-                    phone,
+                    redact_identifier_for_log(phone),
                     total_duration,
                     len(openclaw_response),
                 )
@@ -470,7 +536,7 @@ async def process_whatsapp_message(
 
             logger.info(
                 "🚀 Processing query from %s with Gemini 3 Flash (RAG + Zan persona)",
-                phone,
+                redact_identifier_for_log(phone),
             )
 
             from backend.prompts.whatsapp_persona import (
@@ -553,7 +619,7 @@ async def process_whatsapp_message(
                 logger.warning(
                     "WhatsApp KBLI guard corrected fallback RAG reply "
                     "(phone=%s message_id=%s reason=%s)",
-                    phone,
+                    redact_identifier_for_log(phone),
                     message_id,
                     guarded_response.reason,
                 )
@@ -595,7 +661,7 @@ async def process_whatsapp_message(
                     client_profile=ctx["client_profile"],
                     conversation_history=ctx["conversation_history"],
                 )
-                logger.info("🔔 AI escalation triggered for %s", phone)
+                logger.info("🔔 AI escalation triggered for %s", redact_identifier_for_log(phone))
 
             # Save conversation to PostgreSQL
             await _save_conversation(
@@ -618,7 +684,7 @@ async def process_whatsapp_message(
 
             total_duration = time.time() - start_time
             logger.info(
-                f"✅ Zan responded to {phone} in {total_duration:.1f}s "
+                f"✅ Zan responded to {redact_identifier_for_log(phone)} in {total_duration:.1f}s "
                 f"({len(response_text)} chars, lang={ctx['detected_language']}, "
                 f"first={ctx['is_first_message']})",
             )
@@ -639,7 +705,12 @@ async def process_whatsapp_message(
             )
 
     except Exception as e:
-        logger.error("Error processing WhatsApp message from %s: %s", phone, e, exc_info=True)
+        logger.error(
+            "Error processing WhatsApp message from %s: %s",
+            redact_identifier_for_log(phone),
+            e,
+            exc_info=True,
+        )
 
         try:
             error_msg = "Ops, errore tecnico 😬 Riprova tra un attimo!"
@@ -782,9 +853,17 @@ async def _save_conversation(
                     _conversation_jsonb_text(client_profile),
                 )
 
-        logger.info("💾 Conversation saved for %s (session: %s)", phone, session_id)
+        logger.info(
+            "💾 Conversation saved for %s (session: %s)",
+            redact_identifier_for_log(phone),
+            session_id,
+        )
     except Exception as e:
-        logger.warning("Failed to save conversation for %s: %s", phone, e)
+        logger.warning(
+            "Failed to save conversation for %s: %s",
+            redact_identifier_for_log(phone),
+            e,
+        )
 
     # Unified audit trail (COS-LAW-013): the `conversations` JSONB above is a
     # truncated history buffer (MAX_HISTORY_MESSAGES), not an audit record.
@@ -1015,6 +1094,26 @@ async def _handle_meta_inbox_message(
     except (TypeError, ValueError):
         meta_ts = None
 
+    # CROSS-PATH ATOMIC CLAIM (2026-08-25 double-reply scar, migration 281).
+    # Mirrors the legacy path's claim at the top of process_whatsapp_message —
+    # whichever path's INSERT into wa_reply_claims lands first for this wamid
+    # wins and proceeds; the loser logs and discards. A legitimate Meta retry
+    # of this SAME delivery re-claims its own prior win (owner comparison, see
+    # _claim_wamid_reply) and proceeds normally into the idempotent ledger
+    # insert below. Best-effort ONLY for "DB unreachable" — a claim-query
+    # failure must never mute a genuinely meta-inbox message.
+    try:
+        won_claim = await _claim_wamid_reply(conn, wamid, WAMID_CLAIMANT_META_INBOX)
+    except Exception:
+        logger.exception("meta-inbox: cross-path claim failed (non-blocking) wamid=%s", wamid)
+        won_claim = True
+    if not won_claim:
+        logger.info(
+            "meta-inbox path skipped — wamid=%s already claimed by the legacy path",
+            wamid,
+        )
+        return
+
     is_new_inbound = False
     async with conn.transaction():
         thread = await conn.fetchrow(
@@ -1178,7 +1277,13 @@ async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request
         logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
 
 
-async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
+async def process_meta_inbox_payload(
+    raw_payload: dict[str, Any],
+    request: Request | None,
+    *,
+    db_pool: Any | None = None,
+    mark_row: bool = True,
+) -> bool:
     """Background task: drive the meta-inbox ledger for the target number only.
 
     Runs AFTER the webhook has persisted to inbound_webhooks and ACKed 200, so
@@ -1186,19 +1291,53 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
     META_INBOX_PHONE_NUMBER_IDS (every phone_number_id known to route to this
     number, not just the canonical one); any other number is ignored here (it
     stays on the existing inline triage flow).
+
+    ``db_pool`` lets a caller that has no ``Request`` (the WebhookProcessor
+    recovery net, see ``route_whatsapp_recovery``) inject the pool directly
+    instead of going through ``_get_db_pool(request)``. The normal webhook
+    call site still passes ``request`` and leaves ``db_pool`` unset.
+
+    ``mark_row`` (default True, the webhook/BackgroundTasks call site) marks
+    the ``inbound_webhooks`` row processed itself after a message is handled
+    without raising (2026-08-25 double-reply scar prong 1) — mirroring the
+    legacy path's ``process_whatsapp_message_and_mark_processed``. The
+    recovery net (``route_whatsapp_recovery``) passes ``mark_row=False``: its
+    caller, ``WebhookProcessor._process_one``, already holds that SAME row
+    ``FOR UPDATE SKIP LOCKED`` in an open transaction and marks it itself on
+    handler success — a second ``mark_processed`` from THIS function, on a
+    different pool connection, would block against that open transaction
+    until ``statement_timeout``, stalling the shared drain loop for every
+    channel (round-2 adversarial-gate finding, proven at SQL level on
+    PG 17.10).
+
+    Returns True iff every meta-inbox message in the payload was handled
+    without ``_handle_meta_inbox_message`` raising (a parse failure or a
+    missing db pool are non-retryable — no payload to retry against — and
+    also return True). Returns False on a per-message handler failure, so
+    that a ``mark_row=False`` caller can re-raise and let the
+    WebhookProcessor's own retry ladder (backoff, MAX_ATTEMPTS, eventual
+    "GIVING UP") apply to meta-inbox rows exactly as it does to every other
+    channel — this function itself never raises (round-2 finding: silently
+    swallowing every exception made those retry semantics dead for
+    meta-inbox rows; a handler crash during recovery was permanent, silent
+    message loss). The webhook/BackgroundTasks call site (``mark_row=True``)
+    ignores the return value and must never see an exception either way —
+    unaffected by this change.
     """
-    db_pool = _get_db_pool(request)
-    if db_pool is None:
-        return
+    pool = db_pool if db_pool is not None else _get_db_pool(request)
+    if pool is None:
+        return True
 
     try:
         webhook = WhatsAppWebhook(**raw_payload)
     except Exception as exc:
         logger.warning("meta-inbox: payload parse failed: %s", exc)
-        return
+        return True
 
     try:
-        async with db_pool.acquire() as conn:
+        from backend.services.channels import inbound_webhook_repo
+
+        async with pool.acquire() as conn:
             for entry in webhook.entry:
                 for change in entry.changes:
                     if change.field != "messages":
@@ -1222,8 +1361,88 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
                         wamid = msg.get("id")
                         webhook_id = await _resolve_webhook_id(conn, wamid) if wamid else None
                         await _handle_meta_inbox_message(conn, msg, sender_name, webhook_id)
+
+                        if not mark_row or not wamid:
+                            continue
+                        try:
+                            await inbound_webhook_repo.mark_processed(
+                                pool,
+                                channel="whatsapp",
+                                dedup_key=wamid,
+                            )
+                        except Exception:
+                            logger.warning(
+                                "meta-inbox: failed to mark inbound row processed "
+                                "(wamid=%s)",
+                                wamid,
+                                exc_info=True,
+                            )
     except Exception as exc:
         logger.error("meta-inbox: processing failed: %s", exc, exc_info=True)
+        return False
+
+    return True
+
+
+async def route_whatsapp_recovery(
+    payload: dict[str, Any],
+    *,
+    db_pool: Any,
+    legacy_route: Any,
+) -> None:
+    """WebhookProcessor recovery-net dispatch for the ``whatsapp`` channel.
+
+    Keeps meta-inbox-targeted payloads out of the retired ChannelRouter
+    pipeline (2026-08-25 double-reply scar prong 2). ``ChannelRouter`` always
+    classifies intent itself and sends its own reply — it never passes
+    through ``wa_reply_claims`` — so routing a meta-inbox payload there on
+    recovery produced a second, different reply. Non-meta-inbox payloads are
+    unaffected: they still go through ``legacy_route`` exactly as before.
+
+    ``legacy_route`` is an ``Awaitable``-returning callable taking the raw
+    payload — the caller supplies its own bound ``_route_via_channel_router``
+    so this function never has to know about ``ChannelRouter``'s shape.
+
+    Calls ``process_meta_inbox_payload`` with ``mark_row=False`` — this
+    function's caller, ``WebhookProcessor._process_one``, already holds the
+    row ``FOR UPDATE SKIP LOCKED`` in an open transaction and marks it itself
+    on success; a second ``mark_processed`` from a different connection would
+    block against that open transaction until ``statement_timeout`` (round-2
+    adversarial-gate finding). On a handler failure (``process_meta_inbox_payload``
+    returns False) this function RE-RAISES, so ``_process_one``'s own retry
+    ladder (backoff, MAX_ATTEMPTS, eventual "GIVING UP") applies to
+    meta-inbox rows exactly as it does to every other channel — without this,
+    ``process_meta_inbox_payload``'s internal catch-all silently discarded
+    those retry semantics and a handler crash during recovery was permanent,
+    silent message loss (round-2 finding).
+    """
+    try:
+        webhook = WhatsAppWebhook(**payload)
+        is_meta_inbox = any(
+            change.field == "messages" and _change_belongs_to_meta_inbox(change)
+            for entry in webhook.entry
+            for change in entry.changes
+        )
+    except Exception:
+        logger.warning(
+            "whatsapp recovery: payload parse failed, defaulting to legacy route",
+            exc_info=True,
+        )
+        is_meta_inbox = False
+
+    if is_meta_inbox:
+        success = await process_meta_inbox_payload(
+            raw_payload=payload, request=None, db_pool=db_pool, mark_row=False
+        )
+        if not success:
+            raise RuntimeError(
+                "meta-inbox recovery: process_meta_inbox_payload reported a "
+                "handler failure — re-raising so the WebhookProcessor's own "
+                "retry ladder applies"
+            )
+        return
+
+    await legacy_route(payload)
 
 
 @router.get("")
@@ -1253,34 +1472,52 @@ async def verify_webhook(request: Request) -> PlainTextResponse:
 def _verify_whatsapp_signature(body: bytes, signature_header: str | None) -> bool:
     """Verify X-Hub-Signature-256 HMAC-SHA256 from Meta WhatsApp webhook.
 
+    Thin bool-returning wrapper over the shared, tested
+    ``backend.security.webhook_verifier.verify_meta_hmac`` — the actual HMAC
+    comparison lives there, once, shared with the Instagram router. This
+    function's name and its ``(body, signature_header) -> bool`` contract
+    are load-bearing: callers in this module, and every test in
+    ``backend/tests/duebot/`` and ``backend/tests/channels/``, depend on
+    both — do not rename it or change the return type.
+
     Args:
         body: Raw request body bytes
         signature_header: Value of X-Hub-Signature-256 header (format: "sha256=<hex>")
 
     Returns:
-        True if signature is valid or verification is disabled (no app secret configured)
+        True if the signature is valid, or verification was skipped because
+        no app secret is configured (dev mode) AND
+        ``settings.meta_webhook_require_signature`` is False (the default —
+        preserves today's fail-open behavior unconditionally). False on any
+        verification failure, including a missing secret when
+        ``meta_webhook_require_signature`` has been explicitly set True.
     """
     app_secret = settings.whatsapp_app_secret
-    if not app_secret:
-        # No app secret configured — skip verification (dev mode)
+    if not app_secret and not settings.meta_webhook_require_signature:
+        # Fail-open is still the configured policy and no secret exists —
+        # skip verification (dev mode), but LOUDLY: a production deploy
+        # must never sit in this state quietly (F-class landmine, see
+        # research/operations/2026-07-17-mutating-routes-authz-ledger.md).
+        logger.warning(
+            "⚠️ WhatsApp webhook: WHATSAPP_APP_SECRET not configured — "
+            "signature verification SKIPPED (fail-open). Set "
+            "WHATSAPP_APP_SECRET to enable it, or "
+            "META_WEBHOOK_REQUIRE_SIGNATURE=true to reject instead."
+        )
         return True
 
-    if not signature_header:
-        logger.warning("⚠️ WhatsApp webhook: missing X-Hub-Signature-256 header")
+    try:
+        verify_meta_hmac(
+            body,
+            signature_header,
+            app_secret,
+            provider="whatsapp",
+            require_secret=settings.meta_webhook_require_signature,
+        )
+    except WebhookVerificationError as exc:
+        logger.warning("⚠️ WhatsApp webhook signature verification failed: %s", exc.reason)
         return False
-
-    if not signature_header.startswith("sha256="):
-        logger.warning("⚠️ WhatsApp webhook: malformed signature header")
-        return False
-
-    expected_sig = signature_header[7:]  # Strip "sha256=" prefix
-    computed_sig = hmac.new(
-        app_secret.encode("utf-8"),
-        body,
-        hashlib.sha256,
-    ).hexdigest()
-
-    return hmac.compare_digest(computed_sig, expected_sig)
+    return True
 
 
 @router.post("")
@@ -1420,7 +1657,12 @@ async def whatsapp_webhook(
                 message_id = msg.get("id")
                 message_type = msg.get("type")
 
-                logger.info("Message from %s: type=%s, id=%s", phone, message_type, message_id)
+                logger.info(
+                    "Message from %s: type=%s, id=%s",
+                    redact_identifier_for_log(phone),
+                    message_type,
+                    message_id,
+                )
 
                 if message_type != "text":
                     logger.info("Ignoring non-text message type: %s", message_type)
@@ -1430,7 +1672,7 @@ async def whatsapp_webhook(
                 text = text_obj.get("body", "")
 
                 if not text:
-                    logger.warning("Empty text body from %s", phone)
+                    logger.warning("Empty text body from %s", redact_identifier_for_log(phone))
                     continue
 
                 if persisted_message_inserted.get(message_id) is False:
@@ -1449,7 +1691,10 @@ async def whatsapp_webhook(
                     request=request,
                 )
 
-                logger.info("Message from %s scheduled for processing", phone)
+                logger.info(
+                    "Message from %s scheduled for processing",
+                    redact_identifier_for_log(phone),
+                )
 
     # Record webhook metric
     try:

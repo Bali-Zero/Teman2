@@ -86,28 +86,64 @@ def _entry_display_price(entry: dict[str, Any]) -> str:
     return "Contact"
 
 
+# Namespace separator for a QUALIFIED ``get_service_by_key`` argument
+# (``"<sub_block or category>::<service_name>"``). Chosen over "/" because
+# several real catalogue display names already contain a bare "/" (e.g.
+# "Working KITAS (Altus/Onshore)") — "/" would not visibly distinguish a
+# qualifier from an ordinary display name that happens to contain one. No
+# catalogue name contains "::". Kept in sync by convention (not by import —
+# this module owns the catalogue walk, the client-bot snapshot builder does
+# not) with the identical scheme in
+# ``backend/services/client_bot/grounding.py``'s ``_KEY_QUALIFIER_SEP``.
+_KEY_QUALIFIER_SEP = "::"
+
+
+def _iter_service_entries_with_subblock(
+    services: dict[str, Any],
+) -> list[tuple[str, str | None, str, dict[str, Any]]]:
+    """Yield ``(category, sub_block, service_name, entry)`` quadruples across
+    the whole ``services`` mapping. ``sub_block`` is ``None`` for the flat
+    ``_FLAT_CATEGORIES`` and the nested sub-block name (e.g.
+    ``"monthly_tax_basic"``) for ``_NESTED_CATEGORIES`` — the one extra
+    piece of context :func:`_iter_service_entries` intentionally drops, and
+    that :meth:`PricingService.get_service_by_key` needs to tell apart two
+    entries that share the same ``service_name`` across different
+    sub-blocks of the same category."""
+    quads: list[tuple[str, str | None, str, dict[str, Any]]] = []
+    for category_name, category_payload in services.items():
+        if not isinstance(category_payload, dict):
+            continue
+        if category_name in _NESTED_CATEGORIES:
+            for sub_block_name, sub_block in category_payload.items():
+                if not isinstance(sub_block, dict):
+                    continue
+                for service_name, entry in sub_block.items():
+                    if isinstance(entry, dict):
+                        quads.append((category_name, sub_block_name, service_name, entry))
+        else:
+            for service_name, entry in category_payload.items():
+                if isinstance(entry, dict):
+                    quads.append((category_name, None, service_name, entry))
+    return quads
+
+
 def _iter_service_entries(
     services: dict[str, Any],
 ) -> list[tuple[str, str, dict[str, Any]]]:
     """Yield ``(category, service_name, entry)`` triples across the whole
     ``services`` mapping, descending one extra level for nested categories
-    such as ``tax_accounting`` so callers see a flat stream."""
-    triples: list[tuple[str, str, dict[str, Any]]] = []
-    for category_name, category_payload in services.items():
-        if not isinstance(category_payload, dict):
-            continue
-        if category_name in _NESTED_CATEGORIES:
-            for sub_block in category_payload.values():
-                if not isinstance(sub_block, dict):
-                    continue
-                for service_name, entry in sub_block.items():
-                    if isinstance(entry, dict):
-                        triples.append((category_name, service_name, entry))
-        else:
-            for service_name, entry in category_payload.items():
-                if isinstance(entry, dict):
-                    triples.append((category_name, service_name, entry))
-    return triples
+    such as ``tax_accounting`` so callers see a flat stream.
+
+    A thin projection of :func:`_iter_service_entries_with_subblock` that
+    drops the sub-block column — kept as its own function because it is the
+    load-time service-count helper's public shape and nothing outside this
+    module needs the sub-block detail."""
+    return [
+        (category, service_name, entry)
+        for category, _sub_block, service_name, entry in _iter_service_entries_with_subblock(
+            services
+        )
+    ]
 
 
 class PricingService:
@@ -201,28 +237,76 @@ class PricingService:
         Returns ``None`` when the key is unknown OR when the catalogue failed to
         load, so the caller cannot mistake "not loaded" for "no such service".
         The two are distinguished by :attr:`loaded`.
+
+        ``key`` can also be AMBIGUOUS: the live 2026 catalogue has four
+        ``service_name`` collisions — "Tier 0-50", "Tier 50-100",
+        "Tier 100-200", "Tier 200+" — each shared between
+        ``tax_accounting``'s ``monthly_tax_basic`` (a tier-range price, LKPM
+        and Annual Tax NOT included) and ``monthly_tax_bundled`` (a single
+        price, LKPM + Annual Tax included) sub-blocks, with a genuinely
+        different amount behind the identical dict key. A bare colliding key
+        now returns ``None`` rather than silently resolving to whichever
+        sub-block the catalogue walk happens to reach first — the near-miss-
+        as-real-price failure this method exists to prevent, just triggered
+        by the catalogue's own shape instead of a caller's typo. To ask for
+        ONE of the colliding rows unambiguously, qualify the key as
+        ``"<sub_block or category>::<service_name>"`` (e.g.
+        ``"monthly_tax_bundled::Tier 0-50"``) — see :data:`_KEY_QUALIFIER_SEP`.
+        Every other key (105 of the catalogue's 109) is unaffected and keeps
+        resolving on its bare, human-readable name exactly as before; the
+        returned ``"key"`` always echoes back ``key`` verbatim, qualified or
+        not, so a caller's own ``row["key"] == key`` round-trip check holds
+        either way.
         """
         if not self.loaded:
             return None
 
-        for category, service_name, entry in _iter_service_entries(self.prices.get("services", {})):
-            if service_name != key:
-                continue
-            return {
-                "key": service_name,
-                "name": entry.get("name") or service_name,
-                "price": _entry_display_price(entry),
-                "category": category,
-                "validity": entry.get("validity") or None,
-                "notes": entry.get("notes") or None,
-                # Per-row attestation stamp (narrower than `metadata.last_updated`)
-                # — see `garuda_flow.pricing.price_catalogue_freshness`'s `row=`
-                # argument. Absent on every row except the ones an owner has
-                # explicitly re-verified; passed through verbatim, unvalidated
-                # (the freshness module owns "is this a good stamp").
-                "verified_on": entry.get("verified_on"),
-            }
-        return None
+        quads = _iter_service_entries_with_subblock(self.prices.get("services", {}))
+
+        if _KEY_QUALIFIER_SEP in key:
+            qualifier, _sep, bare_name = key.partition(_KEY_QUALIFIER_SEP)
+            matches = [
+                (category, sub_block, entry)
+                for category, sub_block, service_name, entry in quads
+                if service_name == bare_name and (sub_block or category) == qualifier
+            ]
+        else:
+            bare_name = key
+            matches = [
+                (category, sub_block, entry)
+                for category, sub_block, service_name, entry in quads
+                if service_name == key
+            ]
+
+        if len(matches) != 1:
+            if len(matches) > 1:
+                qualifiers = sorted((sub_block or cat) for cat, sub_block, _e in matches)
+                logger.warning(
+                    "get_service_by_key(%r): %d entries share this key — refusing "
+                    "to guess. Ask for one unambiguously via '<qualifier>::%s' "
+                    "where <qualifier> in %s.",
+                    key,
+                    len(matches),
+                    bare_name,
+                    qualifiers,
+                )
+            return None
+
+        category, _sub_block, entry = matches[0]
+        return {
+            "key": key,
+            "name": entry.get("name") or bare_name,
+            "price": _entry_display_price(entry),
+            "category": category,
+            "validity": entry.get("validity") or None,
+            "notes": entry.get("notes") or None,
+            # Per-row attestation stamp (narrower than `metadata.last_updated`)
+            # — see `garuda_flow.pricing.price_catalogue_freshness`'s `row=`
+            # argument. Absent on every row except the ones an owner has
+            # explicitly re-verified; passed through verbatim, unvalidated
+            # (the freshness module owns "is this a good stamp").
+            "verified_on": entry.get("verified_on"),
+        }
 
     def get_all_prices(self) -> dict[str, Any]:
         """Get all official prices"""

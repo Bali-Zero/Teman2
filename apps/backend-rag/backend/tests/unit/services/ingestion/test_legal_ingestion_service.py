@@ -1250,13 +1250,19 @@ class TestIdentityCollisionGuard:
         """The index call is fail-closed, and that is a deliberate choice.
 
         `ensure_keyword_payload_index` is a bare PUT with `raise_for_status()`:
-        no tolerance, no "already exists" branch. So a 403 on a caller-supplied
-        collection, or a timeout on a first-ever index build, aborts an ingest
+        no tolerance, no "already exists" branch. So a failing PUT -- a timeout
+        on a first-ever index build, or a schema conflict -- aborts an ingest
         that might otherwise have succeeded. That is the correct trade -- an
         ingest whose collision guard cannot run must not proceed -- but it is a
-        real behavioural surface this change introduces, and an untested one is
-        just a claim. What must hold is that the abort happens BEFORE anything
-        is written: no scroll, no quarantine, no indexing.
+        real behavioural surface, and an untested one is just a claim. What must
+        hold is that the abort happens BEFORE anything is written: no scroll, no
+        quarantine, no indexing.
+
+        The earlier wording of this docstring also named "a 403 on a
+        caller-supplied collection". That case cannot arise:
+        `validate_legal_ingest_preflight` rejects any target outside
+        ALLOWED_CANONICAL_COLLECTIONS long before these PUTs. See the corrected
+        comment in the service.
         """
         self._prime(service, existing=[])
         service.vector_db.ensure_keyword_payload_index = AsyncMock(
