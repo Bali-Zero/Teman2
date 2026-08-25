@@ -1447,19 +1447,23 @@ def test_every_real_topic_has_its_journey_and_inventory_and_they_agree(path):
     assert check_agreement(topic, _load(journey_path), _load(inventory_path)) == [], stem
 
 
-def test_the_real_file_count_is_reported_not_assumed(capsys):
-    """Zero real topic artifacts is legal before the lanes land — but it must be SAID.
+def test_the_real_file_count_is_asserted_not_merely_reported(capsys):
+    """The lanes have landed, so a floor now exists and is asserted.
 
-    Every parametrisation above collects zero cases while the directories are
-    empty, and pytest reports that as passing. This test cannot fail on the count
-    (that would block the contract from landing before its lanes), so it does the
-    one thing that keeps 'empty' from reading as 'covered': it prints.
+    Originally zero real topic artifacts was legal before the lanes landed,
+    and asserting a count would have blocked the contract from landing. That
+    premise is no longer true. The counts below are now a ratchet against
+    accidental deletion, not a target: adding a fifth topic is allowed, but
+    dropping below four is loud.
     """
     counts = (len(_real(TOPICS_DIR)), len(_real(JOURNEYS_DIR)), len(_real_topic_inventories()))
     print(f"\n[kb-topic-contract] real artifacts — topics={counts[0]} "
           f"journeys={counts[1]} inventories={counts[2]} "
           f"(synthetic guilt matrix runs regardless: "
           f"{len(TOPIC_GUILT) + len(JOURNEY_GUILT) + len(INVENTORY_GUILT) + len(AGREEMENT_GUILT)} cases)")
+    assert counts[0] >= 4, f"kb/topics holds {counts[0]} real files, expected at least 4 — an artifact was deleted, or this floor is stale"
+    assert counts[1] >= 4, f"kb/journeys holds {counts[1]} real files, expected at least 4 — an artifact was deleted, or this floor is stale"
+    assert counts[2] >= 4, f"kb/inventory holds {counts[2]} real topic inventories, expected at least 4 — an artifact was deleted, or this floor is stale"
     assert isinstance(counts[0], int)
 
     # Same discipline for the §4.6 interlock's real-file exercise specifically: it
