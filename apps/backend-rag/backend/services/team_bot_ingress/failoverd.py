@@ -657,18 +657,33 @@ def main() -> None:
     config = FailoverdConfig.from_env()
 
     async def _run() -> None:
-        http_client = httpx.AsyncClient(base_url="https://graph.facebook.com")
-        pg_pool = await _create_pool_with_retry(config.database_url)
-        try:
-            deps = build_real_deps(config=config, http_client=http_client, pg_pool=pg_pool)
-            runner = FailoverdRunner(deps=deps, poll_seconds=config.poll_seconds)
-            loop = asyncio.get_running_loop()
-            for sig in (signal.SIGTERM, signal.SIGINT):
-                loop.add_signal_handler(sig, runner.request_stop)
-            await runner.run_forever()
-        finally:
-            await http_client.aclose()
-            await pg_pool.close()
+        # Golden Rule #10: one httpx.AsyncClient for the daemon's entire
+        # process lifetime (created once at startup, threaded through
+        # FailoverdDeps by injection, never re-instantiated per tick or
+        # per call — evaluate_and_act_once/_run_self_prechecks reuse this
+        # SAME client on every poll). Not hoisted to a module-level
+        # `*_http.py` singleton like email_http.py: this file's whole
+        # design (see module docstring) is explicit DI with zero hidden
+        # module-level state, precisely so test_staging_drill.py can
+        # drive the decision logic with an injected fake client — a
+        # global singleton getter would reintroduce the module-level
+        # state that design deliberately avoids, for a client this
+        # module's own single call site already owns end-to-end.
+        # `async with` (rather than manual try/finally) also closes the
+        # client if `_create_pool_with_retry` below raises, which the
+        # prior try/finally — entered only after both lines ran — did
+        # not.
+        async with httpx.AsyncClient(base_url="https://graph.facebook.com") as http_client:
+            pg_pool = await _create_pool_with_retry(config.database_url)
+            try:
+                deps = build_real_deps(config=config, http_client=http_client, pg_pool=pg_pool)
+                runner = FailoverdRunner(deps=deps, poll_seconds=config.poll_seconds)
+                loop = asyncio.get_running_loop()
+                for sig in (signal.SIGTERM, signal.SIGINT):
+                    loop.add_signal_handler(sig, runner.request_stop)
+                await runner.run_forever()
+            finally:
+                await pg_pool.close()
 
     asyncio.run(_run())
 
