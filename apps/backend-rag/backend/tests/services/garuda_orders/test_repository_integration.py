@@ -1,13 +1,16 @@
 """Real-database integration tests for GarudaOrderRepository.
 
-Requires a local throwaway Postgres reachable via `GARUDA_L3_TEST_DSN`
-(defaults to the unix-socket default DB used during this lane's build —
-see the PR description for the exact fixture SQL this test depends on:
-migration 282's forward section, plus a minimal stand-in for L1's 281
-widening of `visa_decision_retention_policies` with `policy_scope`).
-
-Skips cleanly (not a failure) if the DSN is unreachable, so this file is
-safe to collect in environments without a local Postgres.
+Requires a real Postgres. DSN resolution (gate finding, round 3): CI never
+set `GARUDA_L3_TEST_DSN` -- that name appears nowhere in `.github/` -- so
+every test here was silently `pytest.skip`ping in the ONLY run that gates
+the merge, on a suite that is nothing but the money paths (amount
+reconciliation, double-charge, late-money remediation). A skip in a gate
+is a fail-open. Falls back to `TEST_DATABASE_URL` / `DATABASE_URL` (what CI
+actually exports -- see `.github/workflows/tests.yml`'s "Run unit tests"
+step) before the local-dev unix-socket default, so CI's Postgres is found
+without anyone editing a workflow. In CI (`CI` env var set), a connection
+failure now FAILS the test run instead of skipping it -- no reachable
+database in CI is a finding, not a reason to pass.
 """
 
 from __future__ import annotations
@@ -32,7 +35,12 @@ from backend.services.payments.port import (
 )
 from backend.services.payments.terminal_taxonomy import FailureOutcome, classify
 
-_DSN = os.environ.get("GARUDA_L3_TEST_DSN", "postgresql://localhost/garuda_l3_test?host=/tmp")
+_DSN = (
+    os.environ.get("GARUDA_L3_TEST_DSN")
+    or os.environ.get("TEST_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or "postgresql://localhost/garuda_l3_test?host=/tmp"
+)
 
 
 class _FakeLookup:
@@ -77,6 +85,17 @@ async def pool():
     try:
         p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=2)
     except (OSError, asyncpg.PostgresError) as exc:
+        if os.environ.get("CI"):
+            # A skip in a gate is a fail-open (gate finding, round 3): every
+            # test in this file is a money path. If CI cannot reach the
+            # Postgres it advertises via GARUDA_L3_TEST_DSN/TEST_DATABASE_URL
+            # /DATABASE_URL, that is a red build, never a quiet skip.
+            pytest.fail(
+                f"CI has no reachable Postgres for GARUDA_L3_TEST_DSN/"
+                f"TEST_DATABASE_URL/DATABASE_URL -- {_DSN!r} unreachable: {exc}. "
+                f"This is the gate for this directory's money tests; it must "
+                f"never silently pass by skipping."
+            )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
     async with p.acquire() as conn:
         await conn.execute(
@@ -599,3 +618,69 @@ async def test_fresh_idempotency_key_against_a_still_live_order_does_not_crash(p
         "SELECT count(*) FROM garuda_orders WHERE result_id_ref = 'result-9-0000000000'"
     )
     assert count == 1  # never a duplicate live order for the same check
+
+
+@pytest.mark.asyncio
+async def test_concurrent_order_creation_race_falls_back_to_the_winner_not_a_crash(
+    pool, repository, monkeypatch
+):
+    """Gate finding: the live-order lookup and the INSERT are two separate
+    statements, not one atomic unit -- two concurrent requests with two
+    fresh keys and no live order can both read `existing=None` and both
+    attempt the insert. Reproduces the LOSER's exact race window by forcing
+    its own lookup to return None (as if it ran BEFORE the winner's insert
+    committed), so its INSERT hits the REAL unique-constraint violation the
+    winner already created -- and asserts it recovers by binding to the
+    winner's order instead of raising."""
+
+    winner_body, _ = await repository.create_order_and_checkout(
+        result_id="result-10-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=scoped_key_sha256(
+            actor="actor-10", operation="createOrderFromCheck", raw_key="idem-key-race-winner-01"
+        ),
+        canonical_payload_sha256=canonical_payload_sha256(
+            {"result_id": "result-10-0000000000", "applicant": {"e": 10}}
+        ),
+    )
+    winner_order_id = winner_body["order_id"]
+
+    # Force the LOSER's live-order lookup to see `existing=None` exactly
+    # once, as if it executed before the winner's INSERT committed. Patched
+    # at the level actually invoked through `pool.acquire()`
+    # (PoolConnectionProxy.fetchrow calls self._execute directly -- it does
+    # NOT delegate to Connection.fetchrow, so that is the wrong patch point).
+    real_fetchrow = asyncpg.pool.PoolConnectionProxy.fetchrow
+    state = {"suppressed": False}
+
+    async def _patched_fetchrow(self, query, *args, **kwargs):
+        if (
+            not state["suppressed"]
+            and "SELECT order_id FROM garuda_orders" in query
+            and "state IN ('created', 'awaiting_payment', 'paid')" in query
+        ):
+            state["suppressed"] = True
+            return None
+        return await real_fetchrow(self, query, *args, **kwargs)
+
+    monkeypatch.setattr(asyncpg.pool.PoolConnectionProxy, "fetchrow", _patched_fetchrow)
+
+    loser_body, replayed = await repository.create_order_and_checkout(
+        result_id="result-10-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=scoped_key_sha256(
+            actor="actor-10", operation="createOrderFromCheck", raw_key="idem-key-race-loser-01"
+        ),
+        canonical_payload_sha256=canonical_payload_sha256(
+            {"result_id": "result-10-0000000000", "applicant": {"e": 10}}
+        ),
+    )
+    assert replayed is False
+    assert loser_body["order_id"] == winner_order_id  # falls back to the real winner, no crash
+
+    count = await pool.fetchval(
+        "SELECT count(*) FROM garuda_orders WHERE result_id_ref = 'result-10-0000000000'"
+    )
+    assert count == 1  # the loser never created a second live order

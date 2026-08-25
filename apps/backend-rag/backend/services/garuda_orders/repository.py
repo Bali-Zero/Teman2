@@ -126,40 +126,67 @@ class GarudaOrderRepository:
                             conn, key_sha256=idempotency_key_sha256, order_id=order_id
                         )
                 else:
-                    order_id = journal.new_opaque_id("ord")
-                    async with conn.transaction():
-                        await conn.execute(
+                    # CORRECTED (gate finding): the lookup above and this
+                    # INSERT are two separate statements, not one atomic
+                    # unit -- two concurrent requests with two fresh keys
+                    # and no live order can both read `existing=None` and
+                    # both attempt the insert. Catch the loser's
+                    # UniqueViolationError on `uq_garuda_orders_result_id_
+                    # ref_live` and fall back to the same lookup-and-bind
+                    # path as the `existing is not None` branch above,
+                    # instead of letting the race surface as a 500.
+                    candidate_order_id = journal.new_opaque_id("ord")
+                    try:
+                        async with conn.transaction():
+                            await conn.execute(
+                                """
+                                INSERT INTO garuda_orders
+                                    (order_id, result_id_ref, case_type, applicant_full_name,
+                                     applicant_email, applicant_phone, applicant_passport_number,
+                                     price_idr, price_catalogue_key)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                """,
+                                candidate_order_id,
+                                result_id,
+                                check.case_type.value,
+                                applicant.full_name,
+                                applicant.email,
+                                applicant.phone,
+                                applicant.passport_number,
+                                price_idr,
+                                price_key,
+                            )
+                            await journal.append_event(
+                                conn,
+                                event_name="order.created",
+                                aggregate_type="order",
+                                aggregate_id=candidate_order_id,
+                                transition_id="OP-00",
+                                customer_visible=False,
+                                idempotency_key_digest=idempotency_key_sha256,
+                                canonical_payload_digest=canonical_payload_sha256,
+                                detail={"price_idr": price_idr, "price_catalogue_key": price_key},
+                            )
+                            await idempotency.bind_order_id(
+                                conn, key_sha256=idempotency_key_sha256, order_id=candidate_order_id
+                            )
+                        order_id = candidate_order_id
+                    except asyncpg.exceptions.UniqueViolationError:
+                        winner = await conn.fetchrow(
                             """
-                            INSERT INTO garuda_orders
-                                (order_id, result_id_ref, case_type, applicant_full_name,
-                                 applicant_email, applicant_phone, applicant_passport_number,
-                                 price_idr, price_catalogue_key)
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                            SELECT order_id FROM garuda_orders
+                             WHERE result_id_ref = $1
+                               AND state IN ('created', 'awaiting_payment', 'paid')
                             """,
-                            order_id,
                             result_id,
-                            check.case_type.value,
-                            applicant.full_name,
-                            applicant.email,
-                            applicant.phone,
-                            applicant.passport_number,
-                            price_idr,
-                            price_key,
                         )
-                        await journal.append_event(
-                            conn,
-                            event_name="order.created",
-                            aggregate_type="order",
-                            aggregate_id=order_id,
-                            transition_id="OP-00",
-                            customer_visible=False,
-                            idempotency_key_digest=idempotency_key_sha256,
-                            canonical_payload_digest=canonical_payload_sha256,
-                            detail={"price_idr": price_idr, "price_catalogue_key": price_key},
-                        )
-                        await idempotency.bind_order_id(
-                            conn, key_sha256=idempotency_key_sha256, order_id=order_id
-                        )
+                        if winner is None:  # pragma: no cover - defensive
+                            raise
+                        order_id = winner["order_id"]
+                        async with conn.transaction():
+                            await idempotency.bind_order_id(
+                                conn, key_sha256=idempotency_key_sha256, order_id=order_id
+                            )
 
             row = await conn.fetchrow(
                 "SELECT state, price_idr FROM garuda_orders WHERE order_id = $1",
@@ -212,23 +239,41 @@ class GarudaOrderRepository:
                         payload={"checkout_url": checkout.checkout_url},
                     )
             checkout_url = checkout.checkout_url
+            final_state = OrderState.AWAITING_PAYMENT.value
         else:
-            # Resume path: OP-01 already committed by a previous attempt.
-            checkout_row = await self._pool.fetchrow(
-                "SELECT provider_session_id FROM garuda_orders WHERE order_id = $1", order_id
-            )
-            # Sandbox-safe placeholder: the real checkout_url isn't persisted
-            # (it's a provider capability, never journal/DB content per
-            # SM-G03) — a genuine resume-after-crash re-fetches it from the
-            # provider by provider_session_id. Kept minimal here; flagged in
-            # the PR report as a follow-up rather than guessed.
-            checkout_url = (
-                f"pending-resume:{checkout_row['provider_session_id']}" if checkout_row else ""
-            )
+            # Resume path: `order_id` was bound to a previously-reserved
+            # idempotency key OR to a still-live order found by the
+            # result_id_ref lookup above. Either way it can be in ANY
+            # state by now -- a webhook may have advanced it past
+            # `awaiting_payment` while the original attempt was crashed or
+            # in flight. CORRECTED (gate finding): this used to hardcode
+            # `order_state: "awaiting_payment"` and always return a
+            # checkout_url regardless of the order's REAL state, so a
+            # customer whose order was already `paid` (or refunded/failed/
+            # expired) was told to pay again. Report the real state, and
+            # offer a checkout action ONLY while the order is genuinely
+            # still awaiting payment.
+            final_state = row["state"]
+            if final_state == OrderState.AWAITING_PAYMENT.value:
+                checkout_row = await self._pool.fetchrow(
+                    "SELECT provider_session_id FROM garuda_orders WHERE order_id = $1", order_id
+                )
+                # Sandbox-safe placeholder: the real checkout_url isn't
+                # persisted (it's a provider capability, never journal/DB
+                # content per SM-G03) -- a genuine resume-after-crash
+                # re-fetches it from the provider by provider_session_id.
+                # Kept minimal here; flagged in the PR report as a
+                # follow-up rather than guessed (scoped to the orchestrator
+                # per the standing "returning customer" spec).
+                checkout_url = (
+                    f"pending-resume:{checkout_row['provider_session_id']}" if checkout_row else ""
+                )
+            else:
+                checkout_url = None
 
         response_body = {
             "order_id": order_id,
-            "order_state": "awaiting_payment",
+            "order_state": final_state,
             "price_idr": row["price_idr"],
             "checkout_url": checkout_url,
         }

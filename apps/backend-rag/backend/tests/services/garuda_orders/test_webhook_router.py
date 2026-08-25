@@ -35,7 +35,12 @@ from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
 from backend.services.garuda_orders.repository import GarudaOrderRepository
 from backend.services.payments.xendit import XenditFeeConfig, XenditPaymentProvider
 
-_DSN = os.environ.get("GARUDA_L3_TEST_DSN", "postgresql://localhost/garuda_l3_test?host=/tmp")
+_DSN = (
+    os.environ.get("GARUDA_L3_TEST_DSN")
+    or os.environ.get("TEST_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or "postgresql://localhost/garuda_l3_test?host=/tmp"
+)
 _CALLBACK_TOKEN = "test-webhook-callback-token"
 
 
@@ -56,6 +61,14 @@ async def pool():
     try:
         p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=2)
     except (OSError, asyncpg.PostgresError) as exc:
+        if os.environ.get("CI"):
+            # Gate finding, round 3: a skip in a gate is a fail-open. This
+            # file is the actual HTTP-level coverage for the payment webhook
+            # -- it must never silently pass by skipping in CI.
+            pytest.fail(
+                f"CI has no reachable Postgres for GARUDA_L3_TEST_DSN/"
+                f"TEST_DATABASE_URL/DATABASE_URL -- {_DSN!r} unreachable: {exc}."
+            )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
     async with p.acquire() as conn:
         await conn.execute(
