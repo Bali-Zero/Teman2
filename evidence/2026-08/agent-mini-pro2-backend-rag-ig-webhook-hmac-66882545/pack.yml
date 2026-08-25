@@ -82,8 +82,8 @@ pii_scan: clean
 dissent:
   - seat: codex gpt-5.6-terra (OpenAI, cross-family adversarial review, effort=high)
     objection:
-      "VERDICT REFUTED. Unsigned Instagram POSTs are still accepted: with instagram_app_secret=None
-      and meta_webhook_require_signature=False, instagram_chat.py returns True before inspecting the signature.
+      "VERDICT REFUTED. Unsigned Instagram POSTs are still accepted: with no Instagram app secret configured
+      and meta_webhook_require_signature left at its default of false, instagram_chat.py returns True before inspecting the signature.
       The reviewer judged this to block shipping, because the default leaves production fail-open unless
       secrets and the knob are separately provisioned."
     status: CONFIRMED
