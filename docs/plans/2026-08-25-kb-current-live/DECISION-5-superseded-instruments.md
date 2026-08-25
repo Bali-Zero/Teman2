@@ -11,15 +11,27 @@
 >    not one document pair), plus a concrete article-level failure the original brief didn't
 >    have (below).
 > 2. **A first draft of this file recommended building a document-level MARK mechanism from
->    scratch. That was wrong, and a peer review caught it before it shipped.** The marking
->    mechanism this decision needs **already exists, is already wired into the live query path,
->    is already non-bypassable, and has been used on exactly 2 of 84,283 points.** The real
->    decision is not "which mechanism do we build" — it's "why isn't the one we have used", and
->    "mark" now means _populate an existing field on the specific chunks that need it_, not
->    _design and ship a new filter_. Every section below reflects that correction; nothing here
->    was taken on the reviewer's word — every claim was re-run independently against
->    production before being written into this revision (see inline point-ids and the
->    full-corpus scan below).
+>    scratch. That was wrong, and a peer review caught it before it shipped.** The
+>    _enforcement_ mechanism this decision needs — the filter that keeps a marked chunk out of
+>    "current law" answers — already exists, is already wired into the live query path, and is
+>    non-bypassable. That correction stands.
+> 3. **The correction above was itself half-true, and a second review caught the other half.**
+>    "The reader exists" was read as "the fix is ready" — it isn't. The 2-points-of-84,283 fact
+>    has a traceable cause: the only code path that ever writes `retrieval_scope:
+historical_only` (`_quarantine_current_points`,
+>    `legal_ingestion_service.py:341-357`) operates on a **whole document_id**, exists to
+>    quarantine an entire prior edition **before a full replacement is ingested**, and has never
+>    been exercised for a real document-vs-amendment pair in this corpus (verified below). There
+>    is **no governed path that writes this field at chunk/pasal granularity** — the low-level
+>    client call it would need (`QdrantClient.set_payload(ids, payload)`,
+>    `qdrant_db.py:993`) exists but today is called only from two unrelated one-off KBLI
+>    maintenance scripts, never from a legal-KB service. Every section below now separates "the
+>    filter is armed" (true, unconditionally) from "the write path exists" (false, at the
+>    granularity this decision needs) — the two were fused in the previous revision and that was
+>    the error. Nothing here was taken on either reviewer's word: every claim in this note was
+>    re-run independently against source and against production before this revision, and the
+>    revision history above is kept rather than silently replaced, per the discipline this
+>    campaign asks of every lane.
 
 ## The question, in three lines
 
@@ -55,20 +67,20 @@ current law", and they are not interchangeable. Verified against the live source
 (`search_filters.py`, `search_service.py`, `legal_ingestion_service.py`) and against a fresh
 full-corpus scan (84,283 points, both payload shapes, 2026-08-26):
 
-| field             | populated on                                                                       | read by                                                                                                                                                                                                                                                                             | behaves as                                                                                                   |
-| ----------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `legal_status`    | 77,539 / 84,283 pts (92.0%)                                                        | **nobody** in the live query path                                                                                                                                                                                                                                                   | inert — systemically false (50.3% `dicabut`, 7 of 9 spot-checked docs wrong) and consequence-free either way |
-| `status_vigensi`  | 0 / 84,283 pts, 0 / 14 collections                                                 | `search_filters.py:86`, wired into every `legal_unified`/`tax_genius` query via `_requires_current_law_guard`                                                                                                                                                                       | armed, but tests a key nobody ever writes — fires on every query, excludes nothing                           |
-| `retrieval_scope` | 4,697 `current` (5.57%) · **2 `historical_only`** (0.00%) · 79,584 absent (94.42%) | `search_filters.py:91`, same guard, **and re-asserted even when a caller explicitly disables other filtering** (`search_service.py:554-564`: `apply_filters is False` still rebuilds `exclude_historical=True` — comment: _"historical evidence is never eligible as current law"_) | **the only one of the three that actually bites**                                                            |
+| field             | populated on                                                                       | read by                                                                                                                                                                                                                                                                             | behaves as                                                                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `legal_status`    | 77,539 / 84,283 pts (92.0%)                                                        | **nobody** in the live query path                                                                                                                                                                                                                                                   | inert — systemically false (50.3% `dicabut`, 7 of 9 spot-checked docs wrong) and consequence-free either way                                         |
+| `status_vigensi`  | 0 / 84,283 pts, 0 / 14 collections                                                 | `search_filters.py:86`, wired into every `legal_unified`/`tax_genius` query via `_requires_current_law_guard`                                                                                                                                                                       | armed, but tests a key nobody ever writes — fires on every query, excludes nothing                                                                   |
+| `retrieval_scope` | 4,697 `current` (5.57%) · **2 `historical_only`** (0.00%) · 79,584 absent (94.42%) | `search_filters.py:91`, same guard, **and re-asserted even when a caller explicitly disables other filtering** (`search_service.py:554-564`: `apply_filters is False` still rebuilds `exclude_historical=True` — comment: _"historical evidence is never eligible as current law"_) | **read side (enforcement): the only one of the three that actually bites. Write side: no governed path writes it at chunk granularity — see below.** |
 
 `retrieval_scope: historical_only` is excluded from every `legal_unified`/`tax_genius` search
 via a hard `$ne` (Qdrant `must_not`, not a demotion), on a code path that survives even the
-`apply_filters=False` internal-caller escape hatch. It is the field this campaign needs. It has
-been used on **one document, two points** (`Perpres_43_2011__historical`) since whenever it was
-built. Confirmed independently by a full scan of all 84,283 points (both `retrieval_scope` and
-`metadata.retrieval_scope`) — not taken from the reviewer's count.
+`apply_filters=False` internal-caller escape hatch. **This is the enforcement half of what this
+campaign needs, and it is solid.** It has been used on **one document, two points**
+(`Perpres_43_2011__historical`) since whenever it was built. Confirmed independently by a full
+scan of all 84,283 points (both `retrieval_scope` and `metadata.retrieval_scope`).
 
-Two structural notes that make this more than a naming curiosity:
+Two structural notes on the read side that make it more than a naming curiosity:
 
 - Writing `retrieval_scope: historical_only` on a fresh ingest requires the ingestion service to
   call `ensure_keyword_payload_index` on **both** `retrieval_scope` and `metadata.retrieval_scope`
@@ -78,6 +90,45 @@ Two structural notes that make this more than a naming curiosity:
 - `HISTORICAL_RETRIEVAL_SCOPE` is validated at ingestion time
   (`validate_legal_retrieval_scope`, `legal_ingestion_service.py:204`) against a two-value enum
   (`current` / `historical_only`) — it is a real, tested code path, not a stub.
+
+**But the write side is missing at the granularity this decision needs, and this is the
+correction to the previous revision.** The only code that ever writes this field is
+`_quarantine_current_points` (`legal_ingestion_service.py:341-357`):
+
+```python
+async def _quarantine_current_points(vector_db, document_id) -> list[str]:
+    """Mark a previous current-law version historical before replacement."""
+    await vector_db.set_payload_by_filter(
+        metadata_filter={"document_id": document_id},
+        payload={"retrieval_scope": HISTORICAL_RETRIEVAL_SCOPE})
+```
+
+It filters on **`document_id` alone** — every point of a document, no partial selection — and
+its one caller (`legal_ingestion_service.py:1070`) invokes it only as a pre-step before ingesting
+a **full replacement edition** of the same `document_id`. It was never designed to, and cannot,
+mark one pasal inside a document that otherwise stays current. Applying it to `UU_6_2011` today
+would flip all 413 points — the entire base immigration law — to `historical_only`, removing it
+wholesale from current-law answers. That is the same class of catastrophe the 2026-08-25
+signature already warned against for `legal_status`, arrived at by a different mechanism.
+
+A per-point write **is** technically available — `QdrantClient.set_payload(ids, payload)`
+(`qdrant_db.py:993`) takes an explicit id list — but nothing in the legal-KB service layer calls
+it. Its only two callers in the whole backend are one-off KBLI maintenance scripts
+(`scripts/kbli_qdrant_risk_clear.py`, `scripts/kbli_lot10_partial_detach_93114_93191.py`),
+unrelated to this corpus and carrying none of this decision's protections (no identity check
+equivalent to `_assert_identity_unclaimed`, no audit trail, no undo path). Marking a specific
+pasal chunk today means either building that governed path, or writing an unprotected ad-hoc
+script against production — which is not a decision this file can wave through as "just data
+work."
+
+The 2-of-84,283 count is explained by this, not by neglect: `Perpres_43_2011__historical` is a
+document _ingested directly under that suffixed identity as historical_ (there is no plain
+`Perpres_43_2011` in the corpus for it to have been quarantined from — `_quarantine_current_points`
+writes onto the _same_ `document_id`, it never renames one). It is not a residue of the
+quarantine-before-replacement flow; it looks like a document loaded once, deliberately, as a
+historical reference. **A genuine quarantine-before-replacement has apparently never been
+exercised in this corpus**, despite the volume of amend-in-place cases this campaign has found
+that would have been candidates for it.
 
 ## The concrete failure REMOVE-vs-MARK does not fully answer by itself
 
@@ -122,18 +173,19 @@ amended article-by-article. A document-level MARK correctly keeps the whole docu
 retrievable (right call) but does nothing to stop Pasal 102's pre-2024 wording from being
 served as if current.
 
-**The cure for exactly this does not require a new field.** Set
-`retrieval_scope: historical_only` on the four superseded chunks identified above (`UU_6_2011`
-Pasal 102/103/137/16) and they stop answering as current law **today**, on every path that
-calls `build_search_filter` — no deletion, no touch to `legal_status`, no new code. This is the
-first cure in this whole campaign that can be shipped by populating a field the system already
-enforces, rather than by building enforcement first. The honest cost, not hidden: it is **still
-chunk/pasal-level work, one article at a time** — identifying which pasal an amendment rewrites
-across all ~66 amendment relations in the corpus (`.claude/skills/modus/PENDING-ARMS.md:1374`
-records this as the still-missing step: knowing _which_ chunk to mark). `retrieval_scope` is
-the mechanism; it does not supply the list of what to mark. And it is **binary per chunk**: a
-pasal partially amended in one ayat but not another has no way to say so — the field can only
-say "this whole chunk is/isn't current."
+**The cure for exactly this does not require a new field, but it does require a new write path.**
+Setting `retrieval_scope: historical_only` on the four superseded chunks identified above
+(`UU_6_2011` Pasal 102/103/137/16) would stop them answering as current law, on every path that
+calls `build_search_filter` — no deletion, no touch to `legal_status`, no new _filter_ code. But
+nothing in the service layer can make that write today at chunk granularity (see the write-side
+gap above): the only existing writer is document-wide and would delete the whole of `UU_6_2011`
+from current-law answers, which is worse than the defect it would fix. So the honest cost has
+three parts, not one: (a) identifying which pasal an amendment rewrites, across all ~66
+amendment relations in the corpus (`.claude/skills/modus/PENDING-ARMS.md:1374` records this as a
+missing step); (b) building a governed per-point write path — with its own identity/audit/undo
+protections, since none exists today — because the one governed writer that exists operates at
+the wrong granularity; (c) deciding what a partially amended article should express, since
+`retrieval_scope` is **binary per chunk** and cannot represent "ayat 2 changed, ayat 1 didn't."
 
 ## The two options, retrieval consequence measured
 
@@ -150,18 +202,20 @@ short of re-acquiring source PDFs (§6 already records 20 of 31 damaged document
 source-gone). Irreversible; also the harder option to test (§4.2: absence is a claim that
 needs three measurements, not a green check).
 
-### MARK — using the mechanism already armed (`retrieval_scope`), not building a new one
+### MARK — enforcement is armed, the writer at the needed granularity is not
 
-A client asking the same question gets the current article; the superseded chunk stops being
-eligible as an answer at all, on every path through `build_search_filter` — because the guard
-already runs and already excludes on this exact field. Measured facts that bound this option:
+A client asking the same question would get the current article, with the superseded chunk
+excluded, on every path through `build_search_filter` — **once the chunk is actually marked.**
+Measured facts that bound this option, split by side because the two do not carry the same
+weight:
+
+**Enforcement (read side) — solid, no work needed:**
 
 - `retrieval_scope: historical_only` is a **hard Qdrant `must_not`** (excluded from the query,
   invisible to reranking and fallback, not demoted) and it is **not disable-able**: even the
   internal `apply_filters=False` escape hatch rebuilds `exclude_historical=True` by explicit
   design (`search_service.py:554-564`, comment: "historical evidence is never eligible as
-  current law"). Nothing needs to be built to make marking bite — it already does, on the 2
-  points where it has been used.
+  current law").
 - It does **not** touch `legal_status` at all, so it carries none of the risk the earlier draft
   of this option (repair `legal_status`, wire it into `status_vigensi`) did: no chance of
   turning a 50.3%-of-corpus hard exclusion live on a field that is currently inert. The two
@@ -173,13 +227,24 @@ already runs and already excludes on this exact field. Measured facts that bound
   `prime.py:42` / `visa_oracle.py:1064` (the Visa Oracle chat endpoint) call search without
   `filters=`. MARK via `retrieval_scope` is real and non-bypassable on the path that uses it —
   and there are two production surfaces that don't use that path.
-- MARK is testable (a journey can assert "current instrument's phrase ranks, superseded
-  instrument's phrase is either absent or explicitly historical"); REMOVE is not (absence needs
-  the three-measurement standard of §4.2, on a moving 84,283→growing corpus).
-- The work this option actually requires is **identifying which chunk to mark**, article by
-  article, across the corpus's amendment relations — not designing or wiring a filter. That
-  work is real (see Pasal 102/103/137/16 above; ~66 amendment relations corpus-wide per the
-  2026-08-26 ledger entry) but it is retrieval-repair work, not retrieval-infrastructure work.
+
+**Writing the mark (write side) — the actual remaining work, not yet started:**
+
+- The only existing writer, `_quarantine_current_points`, is document-wide and exists solely to
+  quarantine a full prior edition before a full replacement — using it on `UU_6_2011` would
+  remove the entire base immigration law from current-law answers to fix four pasal. It cannot
+  be reused as-is.
+- A per-point writer (`QdrantClient.set_payload`) exists at the client-library level but has no
+  service-layer caller for this purpose and none of this decision's expected protections
+  (identity check, audit, undo). Building one is real engineering work, not a config change.
+- Deciding what a partially-amended article should express is unresolved: `retrieval_scope` is
+  binary per chunk, so "Pasal 102 fully rewritten" and "Pasal 16 one clause changed" are
+  indistinguishable to the field as it exists.
+- MARK is still testable in principle (a journey can assert "current instrument's phrase ranks,
+  superseded instrument's phrase is either absent or explicitly historical") once a write path
+  exists; REMOVE is not testable at all (absence needs the three-measurement standard of §4.2,
+  on a moving 84,283→growing corpus). That comparative advantage survives the correction — it
+  is the write-side readiness claim that does not.
 
 ## On the team's suggested third option ("record status, gate action on verification")
 
@@ -195,35 +260,46 @@ such landmine, which is exactly what makes it the option to act on now.
 
 ## Recommendation
 
-**MARK, using `retrieval_scope: historical_only` on identified superseded chunks — not REMOVE,
-and not a new mechanism.** This is the same pick 2026-08-25's signature already made, now on
-~100x the evidence, with the concrete confirmation (Pasal 102/103/137/16) that unmarked
-pasal-level staleness is a real, present failure, and — the correction that matters most in
-this revision — with the discovery that the enforcement path for this exact fix already exists,
-is already non-bypassable, and is sitting almost entirely unused (2/84,283 points). The
-remaining work is identifying which chunks to mark, not building or arming anything. Keep the
-separate, slower `legal_status` repair on its own track, gated as described above; it protects
-against a different and larger risk (document-level mislabeling) and should not block chunk-level
-marking, which can start today.
+**MARK, targeting `retrieval_scope: historical_only` at chunk granularity — not REMOVE.** This
+is the same pick 2026-08-25's signature already made, now on ~100x the evidence, with the
+concrete confirmation (Pasal 102/103/137/16) that unmarked pasal-level staleness is a real,
+present failure. Two things are true at once, and this revision's correction is keeping them
+separate rather than collapsing them into "it's basically done":
+
+1. **The enforcement this decision needs already exists and needs no work** — the filter is
+   armed, non-bypassable, and correctly scoped to exclude only what is explicitly marked
+   historical.
+2. **The writer this decision needs does not exist and is real, uncosted engineering work** —
+   the only writer in the codebase operates at document granularity and would be destructive if
+   reused here; a chunk-level writer has to be built, with its own protections, before any pasal
+   gets marked.
+
+REMOVE stays the wrong choice regardless: it is irreversible against data already shown wrong
+on 7 of 9 checkable cases, and untestable per §4.2. But "pick MARK" should not be read as "the
+fix is ready to ship" — it isn't. Recommend: (a) confirm MARK as the direction (unchanged from
+2026-08-25), (b) open the write-path build as its own scoped unit of work — not a data-entry
+task riding on the existing filter — before any pasal-level marking is attempted, (c) keep the
+`legal_status` repair on its own separate track as before.
 
 ## What we don't know
 
-- **Closed in this revision**: which field actually gates retrieval. An earlier draft of this
-  file treated `status_vigensi` as the mechanism to build and repair — that was wrong;
-  `retrieval_scope` is the field that is armed, non-bypassable, and correct by design. Recorded
-  here explicitly rather than silently overwritten, per the discipline this campaign asks of
-  every lane: we had it wrong yesterday, a peer review caught it, both the old and the corrected
-  claim were re-verified against source and against a live full-corpus scan before this file was
-  rewritten.
-- **New and still open**: _why_ `retrieval_scope: historical_only` has been used on only 2 of
-  84,283 points, given the mechanism is real, tested, and has clearly existed for some time (the
-  ingestion validator, the two required payload indexes, the non-bypassable guard are not
-  quick additions). Two live hypotheses, neither checked here: it was built for one narrow pilot
-  (`Perpres_43_2011__historical`) and never extended: or it was built as general
-  infrastructure and the identification-of-what-to-mark step never landed. The difference
-  matters for how much of "populate retrieval_scope on the superseded chunks" is genuinely new
-  work versus resuming an abandoned rollout — worth one targeted grep of the commit that
-  introduced the field before scoping lane-A2's task.
+- **Closed, round 1**: which field actually gates retrieval. An earlier draft of this file
+  treated `status_vigensi` as the mechanism to build and repair — that was wrong; `retrieval_scope`
+  is the field that is armed, non-bypassable, and correct by design.
+- **Closed, round 2**: why `retrieval_scope: historical_only` has been used on only 2 of 84,283
+  points. Answer, traced to source: **the only writer (`_quarantine_current_points`,
+  `legal_ingestion_service.py:341-357`) is document-wide and fires solely as a pre-step before a
+  full-document replacement ingest; no per-chunk writer exists anywhere in the service layer.**
+  This was the second half of the "the mechanism is armed" finding, and treating "read side
+  works" as "the fix is ready" was itself an error caught by a second review — recorded here
+  rather than silently overwritten, matching the discipline this campaign asks of every lane:
+  wrong yesterday in one way, wrong today in a narrower way, both corrections kept visible.
+- **New and still open**: _why has a quarantine-before-full-replacement never been exercised in
+  this corpus_, given how many amend-in-place cases this campaign has found (~66 amendment
+  relations, at least 3 provably alive-but-marked-dicabut documents) that would plausibly have
+  gone through a full-replacement re-ingest at some point. Not checked here: whether this
+  corpus has simply never had a document replaced wholesale, or whether replacements happened
+  through a path that bypasses `_quarantine_current_points` entirely.
 - **The dicabut-and-amended count (661 pts / 3 docs) is a lower bound**, not a census: title
   matching only reaches 185/388 documents that carry a `[CONTEXT:]` header, and only catches
   the specific `PERUBAHAN ... ATAS <TYPE> NOMOR <N> TAHUN <YEAR>` phrasing. Documents with no
