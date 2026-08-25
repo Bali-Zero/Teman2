@@ -162,10 +162,15 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
 class PostgresMagicLinkStore:
     """Concrete `MagicLinkStore` over migration 285's three tables.
 
-    Not yet wired via `app.dependency_overrides[get_garuda_magic_link_store]`
-    in `app_factory` -- see the PR body / migration 285 header. Until that
-    wiring lands, the mounted router keeps answering fail-closed via
-    `UnconfiguredMagicLinkStore`, exactly as it does today.
+    `verify_session` (below) is wired onto `app.state.garuda_magic_
+    session_verifier` in `service_initializer.py` -- that is the seam
+    `garuda_orders_router._require_magic_session_actor` reads. `issue`/
+    `exchange` themselves are NOT yet wired via
+    `app.dependency_overrides[get_garuda_magic_link_store]` in
+    `garuda_portal_auth.py` -- until that lands, the mounted magic-link
+    router keeps answering fail-closed via `UnconfiguredMagicLinkStore`,
+    exactly as it does today; only the session-verification read path is
+    live.
     """
 
     def __init__(
@@ -281,6 +286,50 @@ class PostgresMagicLinkStore:
             name="garuda-magic-link-email",
         )
         return IssueOutcome(idempotency_replayed=False)
+
+    async def verify_session(self, session_secret: str) -> str | None:
+        """Resolve a `garuda_session` cookie value to the `result_id` it
+        was minted for -- the seam `garuda_orders_router._require_magic_
+        session_actor` calls (L3's file; see migration 285's header for why
+        wiring this onto `app.state.garuda_magic_session_verifier` is the
+        orchestrator's job, not this lane's or L3's).
+
+        Hashes the presented value the SAME way `exchange` hashed the
+        secret it stored (`_hash_hex`, reused rather than reimplemented --
+        two independent sha256 call sites for the same bearer is exactly
+        the kind of drift the `MagicLinkStore` Protocol docstring warns
+        against) and looks up a row whose `expires_at` is still in the
+        future. An absent cookie, an unknown hash, and an expired row all
+        return the identical `None` -- the router turns that into one
+        401 SESSION_REQUIRED, the same non-enumerating shape `exchange`
+        already gives an invalid/expired/consumed magic-link token
+        (DECISIONS.md Q1). Lookup is by primary key (`session_secret_hash`),
+        so there is no separate index to keep in sync.
+
+        The returned `result_id` doubles as BOTH the ownership key L3's
+        routes must filter every `garuda_orders` read/write on (the
+        `garuda_account_sessions.result_id` <-> `garuda_orders.result_id_ref`
+        relation `garuda_orders_router.py`'s current queries never apply)
+        AND the `actor` identity `scoped_key_sha256` scopes idempotency
+        keys by -- these are not two facts smuggled into one string, they
+        are the SAME fact (the session's bound result_id IS this customer's
+        actor identity) read twice for two different purposes. A session
+        re-issued via a fresh magic link for the same result_id sharing an
+        idempotency namespace with the session it replaced is the correct
+        behaviour, not a collision: it is still one customer.
+        """
+        secret_hash = _hash_hex(session_secret)
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT result_id FROM garuda_account_sessions
+                 WHERE session_secret_hash = $1 AND expires_at > statement_timestamp()
+                """,
+                secret_hash,
+            )
+        if row is None:
+            return None
+        return row["result_id"]
 
     async def exchange(
         self,

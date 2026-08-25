@@ -298,21 +298,35 @@ class GarudaOrderRepository:
 
     # ---- OP-07: browser return observation ------------------------------
 
-    async def record_browser_return_observation(self, *, order_id: str, return_nonce: str) -> None:
+    async def record_browser_return_observation(
+        self, *, order_id: str, result_id: str, return_nonce: str
+    ) -> None:
+        """`result_id` is the caller's session ownership key (the router's
+        `_require_magic_session_actor`-derived value) -- both the UPDATE and
+        the not-found fallback below filter on `result_id_ref = $3` so an
+        order that exists but belongs to a different session's result_id
+        raises the SAME `OrderNotFound` a genuinely absent order_id would,
+        never a distinguishable status (`OrderNotFound`'s docstring already
+        calls this "non-enumerating" -- a caller probing another customer's
+        order_id must not learn it exists)."""
         async with self._pool.acquire() as conn, conn.transaction():
             row = await conn.fetchrow(
                 """
                 UPDATE garuda_orders
                    SET browser_observation = 'browser_return_observed', browser_return_nonce = $2
-                 WHERE order_id = $1 AND browser_return_nonce IS DISTINCT FROM $2
+                 WHERE order_id = $1 AND result_id_ref = $3
+                   AND browser_return_nonce IS DISTINCT FROM $2
                  RETURNING order_id
                 """,
                 order_id,
                 return_nonce,
+                result_id,
             )
             if row is None:
                 exists = await conn.fetchval(
-                    "SELECT 1 FROM garuda_orders WHERE order_id = $1", order_id
+                    "SELECT 1 FROM garuda_orders WHERE order_id = $1 AND result_id_ref = $2",
+                    order_id,
+                    result_id,
                 )
                 if exists is None:
                     raise OrderNotFound(order_id)

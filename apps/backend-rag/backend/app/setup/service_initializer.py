@@ -1330,6 +1330,80 @@ async def initialize_services(app: FastAPI) -> None:
     # 5. Database services
     db_pool = await initialize_database_services(app)
 
+    # 5.5 GARUDA VOA — magic-link session verifier wiring (L4).
+    # Non-critical: on failure the L3/L4 routes keep answering fail-closed
+    # (503 / 401 SESSION_REQUIRED) exactly as they do with no adapter at
+    # all — never a partial/broken auth path served to traffic.
+    if db_pool is not None:
+        try:
+            from backend.services.garuda_portal.magic_link_store import PostgresMagicLinkStore
+
+            # Same env-var-with-default convention as `visa_engine.evaluate_
+            # path.EVALUATE_ENVIRONMENT_ENV` — a domain-vocabulary string
+            # (TEST/STAGING/PRODUCTION, migration 285's CHECK constraint),
+            # distinct from `settings.environment` ("production"/"staging"/
+            # "development"), never derived from it by string-casing alone.
+            garuda_environment = os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+            garuda_magic_link_store = PostgresMagicLinkStore(db_pool, environment=garuda_environment)
+
+            # `garuda_orders_router._require_magic_session_actor` reads this
+            # directly off app.state (L3's file, LANES.md file-ownership —
+            # the orchestrator wires it, L3 never instantiates a store).
+            app.state.garuda_magic_session_verifier = garuda_magic_link_store.verify_session
+            # `get_order_and_practice` reads this directly for its raw
+            # ownership-filtered SELECT (no repository layer for that one
+            # read yet). This is the SAME pool object as `app.state.db_pool`
+            # (set just above by `initialize_database_services`) -- a
+            # domain-named alias, never a second `asyncpg.create_pool()`.
+            # Kept as its own attribute (not "read `app.state.db_pool`
+            # directly from the router") for the same reason every other
+            # domain slot here does (`app.state.ts_service`,
+            # `app.state.graph_service`, ...): `garuda_orders_router.py` is
+            # L3's file and should depend on a name that says what it's
+            # for, not on the shared RAG pool's specific attribute name,
+            # which is `service_initializer`'s internal wiring detail. If a
+            # dedicated GARUDA pool is ever split out, only this one line
+            # changes; the router is untouched either way.
+            app.state.garuda_db_pool = db_pool
+
+            # `garuda_portal_auth`'s own `issue`/`exchange` operations
+            # (requestMagicLink / exchangeMagicLink) default to
+            # `UnconfiguredMagicLinkStore` via `get_garuda_magic_link_store`
+            # — wire the SAME store instance onto app.state so a session can
+            # actually be minted, not just verified. Wiring only
+            # `verify_session` above and leaving `issue`/`exchange`
+            # unconfigured would make L3's auth check reachable in theory
+            # while no `garuda_account_sessions` row could ever exist to
+            # satisfy it.
+            #
+            # DELIBERATELY app.state, NOT `app.dependency_overrides` (an
+            # earlier version of this wiring used that dict — corrected
+            # 2026-08-25, team-lead review): `dependency_overrides` is
+            # FastAPI's TEST mechanism, one unscoped process-wide dict, and
+            # `backend/tests/unit/routers/test_dashboard_coverage.py`
+            # already calls `app.dependency_overrides.clear()`
+            # unconditionally in teardown against this SAME `main_cloud.app`
+            # object. That call is harmless today only because that test
+            # file never triggers `initialize_services`, so it never has
+            # anything of this module's to clear — but a production wiring
+            # entry placed in that dict would be exactly one unrelated
+            # test's teardown away from silently vanishing, leaving
+            # `garuda_magic_session_verifier` (a separate, unaffected
+            # app.state slot) live while minting silently reverts to
+            # `UnconfiguredMagicLinkStore` — the half-wired hazard this
+            # module already exists to avoid. `app.state` has no such
+            # global-clear call anywhere in this codebase.
+            app.state.garuda_magic_link_store = garuda_magic_link_store
+            logger.info("✅ GARUDA VOA magic-link session verifier wired")
+        except Exception as e:
+            logger.warning(
+                "⚠️ GARUDA VOA magic-link wiring failed (non-critical, L3/L4 fail closed): %s", e
+            )
+    else:
+        logger.warning(
+            "⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)"
+        )
+
     # 6. CRM & Memory
     await initialize_crm_and_memory_services(app, ai_client, db_pool)
 

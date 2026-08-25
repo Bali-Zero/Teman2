@@ -152,9 +152,32 @@ def _require_idempotency_key(value: str | None) -> str:
 _default_store = UnconfiguredMagicLinkStore()
 
 
-def get_garuda_magic_link_store() -> MagicLinkStore:
-    """Overridden by tests / a future adapter. Ships fail-closed."""
-    return _default_store
+def get_garuda_magic_link_store(request: Request) -> MagicLinkStore:
+    """Reads the orchestrator-wired store off `app.state.garuda_magic_link_
+    store`, falling back to `UnconfiguredMagicLinkStore` (fails closed) when
+    absent. `app.state` is the production wiring mechanism here, matching
+    the sibling `garuda_magic_session_verifier` / `garuda_db_pool` slots
+    `service_initializer.py` sets alongside this one -- deliberately NOT
+    `app.dependency_overrides` (an earlier version of this wiring used that
+    dict). `dependency_overrides` is FastAPI's TEST mechanism: a single
+    process-wide dict with no scoping, and `backend/tests/unit/routers/
+    test_dashboard_coverage.py` already calls
+    `app.dependency_overrides.clear()` unconditionally in its teardown
+    against the SAME `main_cloud.app` object production code shares (found
+    by team-lead review, 2026-08-25). That call is harmless today only
+    because that test file never triggers `initialize_services` and so
+    never installs anything into the dict to clear -- but the moment
+    anything DOES wire a production override there, that indiscriminate
+    `.clear()` would silently erase it, producing exactly the half-wired
+    state this module's docstring already calls out as worse than fully
+    unwired: `garuda_magic_session_verifier` (a separate app.state slot,
+    unaffected by dependency_overrides) stays live while session-MINTING
+    silently reverts to `UnconfiguredMagicLinkStore`. Tests may still use
+    `app.dependency_overrides[get_garuda_magic_link_store] = lambda: store`
+    (FastAPI replaces the callable outright, so this function's own body
+    never runs in that case) -- only the PRODUCTION wiring path moved.
+    """
+    return getattr(request.app.state, "garuda_magic_link_store", None) or _default_store
 
 
 # ============================================================
