@@ -139,19 +139,39 @@ def test_signed_webhook_paid_claim_is_still_true() -> None:
 
 
 def test_received_practice_claim_is_still_true() -> None:
-    """received_practice's reason: "no garuda_portal/practice package
-    exists yet". Still true: `services/garuda_portal/` holds
-    `magic_link.py`/`magic_link_store.py`/`idempotency.py` and no
-    practice-named module. (`garuda_ops/crm_handoff.py` exists and is
-    fully tested, but only against fakes -- `ports.py`'s own docstring
-    says nothing here may import asyncpg or a table name directly, and no
-    production file constructs `CrmHandoffService` with a real adapter --
-    so the CRM-handoff half of "one Received practice" is not wired either,
-    independent of the portal-package claim this test checks.)"""
-    garuda_portal_dir = _BACKEND_ROOT / "services" / "garuda_portal"
-    practice_modules = sorted(p.name for p in garuda_portal_dir.glob("*practice*"))
-    assert practice_modules == [], (
-        f"found {practice_modules} under services/garuda_portal/ -- "
-        "received_practice's reason is stale. Go verify end-to-end and "
-        "unblock the stage."
+    """received_practice's reason (post-L4-practice-module correction):
+    "L4's garuda_portal/practice module is real ... but this stage is
+    still unreachable ... sandbox_checkout/signed_webhook_paid block first
+    on the SAME orchestrator composition gap". The mechanically checkable
+    part of THAT claim is the second half -- the practice module's mere
+    existence is no longer the point (it exists: `services/garuda_portal/
+    practice.py`, tested against a real Postgres in
+    `tests/services/garuda_portal/test_practice.py`). What must stay true
+    is that the stage is STILL unreachable via the SAME two upstream
+    composition gaps `test_sandbox_checkout_claim_is_still_true` /
+    `test_signed_webhook_paid_claim_is_still_true` already check -- if
+    either of those goes stale (a production file starts assigning
+    `app.state.garuda_order_repository` or `app.state.garuda_payment_
+    provider`), THIS stage's reason is equally stale, because `run_probe`
+    would then be able to reach a real paid order and hand it to this
+    stage for the first time."""
+    practice_module = _BACKEND_ROOT / "services" / "garuda_portal" / "practice.py"
+    assert practice_module.is_file(), (
+        "services/garuda_portal/practice.py is gone -- received_practice's "
+        "reason claims it exists and PR-01 is real. Go verify and rewrite "
+        "the reason to whatever actually blocks this stage now."
+    )
+    order_repo_assignment = re.compile(r"garuda_order_repository\s*=(?!=)")
+    payment_provider_assignment = re.compile(r"garuda_payment_provider\s*=(?!=)")
+    assert not _any_production_file_matches(order_repo_assignment), (
+        "a production file now assigns app.state.garuda_order_repository -- "
+        "received_practice's real blocker (the SAME orchestrator composition "
+        "gap sandbox_checkout names) may be gone too. Go verify end-to-end "
+        "and unblock the stage."
+    )
+    assert not _any_production_file_matches(payment_provider_assignment), (
+        "a production file now assigns app.state.garuda_payment_provider -- "
+        "received_practice's real blocker (the SAME orchestrator composition "
+        "gap signed_webhook_paid names) may be gone too. Go verify end-to-end "
+        "and unblock the stage."
     )
