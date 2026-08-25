@@ -41,6 +41,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = get_logger(__name__)
 
@@ -105,11 +106,7 @@ def normalize_phone(raw: str | None) -> str | None:
 
 def _owner_numbers() -> set[str]:
     raw = os.getenv("WHATSAPP_OWNER_NUMBERS", _DEFAULT_OWNER_NUMBERS)
-    return {
-        norm
-        for norm in (normalize_phone(part) for part in raw.split(","))
-        if norm
-    }
+    return {norm for norm in (normalize_phone(part) for part in raw.split(",")) if norm}
 
 
 def _team_numbers() -> dict[str, str]:
@@ -175,8 +172,14 @@ async def resolve_sender_identity(
         OSError,
         TimeoutError,
     ):
-        logger.warning("Sender identity lookup failed for phone=%s", phone, exc_info=True)
+        logger.warning(
+            "Sender identity lookup failed for phone=%s",
+            redact_identifier_for_log(phone),
+            exc_info=True,
+        )
     except Exception:
-        logger.exception("Sender identity resolution failed for phone=%s", phone)
+        logger.exception(
+            "Sender identity resolution failed for phone=%s", redact_identifier_for_log(phone)
+        )
 
     return {"role": "unknown"}

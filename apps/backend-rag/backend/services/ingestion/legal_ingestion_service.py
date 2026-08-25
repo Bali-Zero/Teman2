@@ -36,6 +36,27 @@ from backend.utils.tier_classifier import TierClassifier
 
 logger = logging.getLogger(__name__)
 
+
+def _failure_stage(error: Exception) -> IngestionStage:
+    """Which stage does this failure belong to?
+
+    Was `PARSING if "parse" in str(error).lower() else COMPLETION`, which read
+    the stage off a word that happens to appear in some messages. "Incomplete
+    vision transcription of ..." contains no "parse" and was filed under
+    COMPLETION -- a document that never got past reading, recorded as having
+    reached the end. Parse failures are now recognised by TYPE.
+    """
+    from backend.core.parsers import DocumentParseError
+
+    if isinstance(error, DocumentParseError) or isinstance(
+        error.__cause__, DocumentParseError,
+    ):
+        return IngestionStage.PARSING
+    if "parse" in str(error).lower():
+        return IngestionStage.PARSING
+    return IngestionStage.COMPLETION
+
+
 LEGAL_CANONICAL_COLLECTION = "legal_unified"
 LEGAL_ENV_OVERRIDE_FLAG = "LEGAL_INGEST_ALLOW_QDRANT_ENV_OVERRIDE"
 CURRENT_RETRIEVAL_SCOPE = "current"
@@ -424,14 +445,29 @@ class LegalIngestionService:
 
             # These two PUTs are FAIL-CLOSED, deliberately and not incidentally:
             # `ensure_keyword_payload_index` is a bare PUT + raise_for_status(),
-            # so a 403 on a caller-supplied collection (`collection_name` is
-            # request-controlled) or a timeout on a first-ever index build over
-            # a large collection aborts an ingest that might otherwise have
+            # so a failing PUT aborts an ingest that might otherwise have
             # succeeded. That is the right trade -- an ingest whose collision
             # guard cannot run must not proceed -- but it is a trade, not a
-            # free "safe and idempotent". Same-schema recreation is a no-op;
-            # a PUT of a DIFFERENT schema over an existing index is NOT
-            # verified here and is the open case.
+            # free "safe and idempotent".
+            #
+            # CORRECTED 2026-08-25: an earlier revision of this comment said the
+            # risk was "a 403 on a caller-supplied collection (`collection_name`
+            # is request-controlled)". That was a refuter's claim, accepted
+            # without measuring it, and it is FALSE.
+            # `validate_legal_ingest_preflight` (:124) runs at :412, well before
+            # these PUTs, and rejects any target that does not canonicalize to
+            # ALLOWED_CANONICAL_COLLECTIONS -- today `legal_unified` or
+            # `tax_genius`. A caller cannot steer this code at an arbitrary
+            # collection, so the arbitrary-ACL scenario never reaches here.
+            # Measured by attempting exactly that: an ingest naming a scratch
+            # collection died at the preflight with
+            # "target collection must resolve to one of ['legal_unified',
+            # 'tax_genius']", never reaching the index calls.
+            #
+            # What remains genuinely open, and is the reason this stays
+            # fail-closed rather than tolerant: a timeout on a first-ever index
+            # build over a large collection, and a PUT of a DIFFERENT schema
+            # over an existing index. Neither is verified here.
             #
             # Payload indexes the fail-closed filters below REQUIRE. A missing
             # index does not degrade a Qdrant filter, it makes the query an
@@ -468,6 +504,20 @@ class LegalIngestionService:
             try:
                 raw_text = auto_detect_and_parse(file_path, use_ocr=False)
             except DocumentParseError as e:
+                from backend.services.multimodal.pdf_vision_service import (
+                    IncompleteTranscriptionError,
+                )
+
+                if isinstance(e.__cause__, IncompleteTranscriptionError):
+                    # A document read only in PART must not fall into the branch
+                    # below: that branch exists to give a scan a second, fuller
+                    # pass, and here the fuller pass has already happened and
+                    # came back short. Retrying runs the same engine over the
+                    # same pages to reach the same verdict, and -- worse -- the
+                    # decision is read off e.__cause__ rather than off a
+                    # substring of the message, so rewording the error can never
+                    # silently move a half-read law into the retry path.
+                    raise
                 if "No text extracted" in str(e):
                     # Try OCR for scanned PDFs (async version)
                     logger.info(
@@ -1167,9 +1217,7 @@ Return ONLY valid JSON, no markdown."""
                 document_id=document_id or f"failed_{int(start_time)}",
                 file_path=file_path,
                 error=e,
-                stage=IngestionStage.PARSING
-                if "parse" in str(e).lower()
-                else IngestionStage.COMPLETION,
+                stage=_failure_stage(e),
                 duration_ms=total_duration * 1000,
                 source=source,
                 trace_id=trace_id,

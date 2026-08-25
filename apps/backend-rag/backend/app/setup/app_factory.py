@@ -292,10 +292,26 @@ async def lifespan(app: FastAPI):
                         )
                     await cr.route_message(channel_name, payload)
 
+                # WhatsApp recovery is scope-aware (2026-08-25 double-reply
+                # scar prong 2): a meta-inbox-targeted payload must recover
+                # through process_meta_inbox_payload (idempotent, passes the
+                # wa_reply_claims gate), never through the retired
+                # ChannelRouter pipeline used for every other channel.
+                async def _route_whatsapp(payload: dict) -> None:
+                    from backend.app.routers.whatsapp_chat import (
+                        route_whatsapp_recovery,
+                    )
+
+                    await route_whatsapp_recovery(
+                        payload,
+                        db_pool=app.state.db_pool,
+                        legacy_route=lambda p: _route_via_channel_router("whatsapp", p),
+                    )
+
                 webhook_processor = WebhookProcessor(
                     db_pool=app.state.db_pool,
                     handlers={
-                        "whatsapp": lambda p: _route_via_channel_router("whatsapp", p),
+                        "whatsapp": _route_whatsapp,
                         "telegram": lambda p: _route_via_channel_router("telegram", p),
                         "instagram": lambda p: _route_via_channel_router("instagram", p),
                         "twitter": lambda p: _route_via_channel_router("twitter", p),
