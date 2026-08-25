@@ -603,6 +603,109 @@ _VISA_ORACLE = (
         "Visa Check Match result page — shareable URL, the hash is the access token",
         match="template",
     ),
+    # GARUDA VOA magic-link auth (L4, routers/garuda_portal_auth.py, prefix
+    # /api/visa/voa/auth — a disjoint sub-path of L2/L3's shared /api/visa/voa,
+    # never a blanket prefix on that shared root). Anonymous by design: an
+    # eligibility-check result owner has no account until this flow mints
+    # one — see magic_link.py module docstring. Same defect class as the
+    # "Visa Check funnel dead in prod" note above, caught here the same way:
+    # a real end-to-end request through `main_api.app` (not a bare FastAPI()
+    # + include_router() test double) returned 401 before this entry existed.
+    # CLOSED (orchestrator, 2026-08-25): `/api/visa/voa` itself (L2's
+    # garuda_voa_public.py + L3's garuda_orders_router.py) had the SAME gap
+    # the paragraph above used to flag — no registry entry, so every public
+    # route under this root 401'd in production even with
+    # GARUDA_PUBLIC_ENABLED=true (confirmed live: eligibility/check/orders
+    # all returned 401 against nuzantara-rag.fly.dev on 2026-08-25).
+    #
+    # `garuda_orders_router.py` ALSO mounts a STAFF-ONLY route on the same
+    # root — `/api/visa/voa/staff/orders/{order_id}/late-resolution`
+    # (`_require_staff_actor`, Authorization-header session) — so a blanket
+    # `/api/visa/voa/` prefix entry was rejected: it would make that internal
+    # surface public too, which is strictly worse than the bug being fixed.
+    # Every entry below is EXACT or TEMPLATE, never PREFIX, specifically so
+    # this file's `PublicEndpoint.matches()` cannot leak the staff path:
+    #   - `match="exact"` requires byte-for-byte path equality — the staff
+    #     path is a different literal string entirely.
+    #   - `match="template"` requires the SAME NUMBER of `/`-separated
+    #     segments as the entry (see `matches()` above) — the staff path has
+    #     7 segments (`api/visa/voa/staff/orders/{order_id}/late-resolution`);
+    #     the deepest entry below (`.../orders/{order_id}/browser-return-
+    #     observations`) has 6, `.../eligibility-checks/{result_id}` and
+    #     `.../orders/{order_id}` have 5. No entry here can ever reach 7
+    #     segments, so none can structurally match the staff route — this is
+    #     a property of segment COUNT, not of vigilance, and a future entry
+    #     added the same way (exact/template, never a bare directory prefix)
+    #     inherits the same guarantee for free.
+    # `test_garuda_voa_public_root_allowlist.py` pins both halves: every
+    # public route below answers anonymously through the REAL mounted app
+    # (`main_api.app`, not a bare `FastAPI()+include_router()` double — the
+    # note above was only caught that way), and the staff route still 401s
+    # with the middleware's OWN "Authentication required" body (never the
+    # handler's SESSION_REQUIRED) — the second assertion is what stays red
+    # if a future edit ever widens one of these entries into a prefix.
+    PublicEndpoint(
+        "/api/visa/voa/eligibility-checks",
+        Category.VISA_ORACLE,
+        "GARUDA VOA createEligibilityCheck (L2, garuda_voa_public.py) — anonymous "
+        "eligibility funnel entry point, contract-frozen, GARUDA_PUBLIC_ENABLED "
+        "re-checked per-request by the handler itself",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/eligibility-checks/{result_id}",
+        Category.VISA_ORACLE,
+        "GARUDA VOA getEligibilityResult/deleteEligibilityResult (L2, garuda_voa_"
+        "public.py) — anonymous, gated by the garuda_result_session cookie the "
+        "handler itself verifies, not by team auth",
+        match="template",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/orders",
+        Category.VISA_ORACLE,
+        "GARUDA VOA createOrderFromCheck (L3, garuda_orders_router.py) — the "
+        "customer checkout step; gated by the garuda_session magic-link cookie "
+        "(_require_magic_session_actor), not by team auth",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/orders/{order_id}",
+        Category.VISA_ORACLE,
+        "GARUDA VOA getOrderAndPractice (L3/L4) — same magic-link session gate "
+        "as createOrderFromCheck above, scoped to the caller's own order "
+        "(result_id_ref ownership predicate, #4910)",
+        match="template",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/orders/{order_id}/browser-return-observations",
+        Category.VISA_ORACLE,
+        "GARUDA VOA observePaymentBrowserReturn (L3) — same magic-link session "
+        "gate as the two entries above",
+        match="template",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/webhooks/payment",
+        Category.WEBHOOK,
+        "GARUDA VOA receivePaymentWebhook (L3, garuda_orders_router.py) — inbound "
+        "Xendit Invoices callback. Xendit authenticates it with a static "
+        "`x-callback-token` header compared constant-time against the stored "
+        "verification token (XenditPaymentProvider.verify_signature, "
+        "xendit.py — NOT an HMAC body signature; Xendit Invoices callbacks "
+        "carry none), never by team auth or Idempotency-Key. This route is "
+        "the nastiest of the GARUDA VOA public routes to get wrong: it is not "
+        "part of the visible funnel, so a 401 here fails SILENTLY — the "
+        "customer already paid, Xendit cannot tell us, and the order sits "
+        "unpaid forever while the money has moved, surfacing days later as a "
+        "support case rather than as an obvious broken page.",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/visa/voa/auth/",
+        Category.AUTH,
+        "GARUDA VOA magic-link issue+exchange — anonymous by design, contract-frozen "
+        "(products/garuda-voa/contracts/openapi.yaml), GARUDA_PUBLIC_ENABLED re-checked "
+        "per-request by the handler itself",
+    ),
 )
 
 _BRIDGE = (
