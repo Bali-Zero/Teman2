@@ -39,6 +39,51 @@ if the runner ever again names a collection the registry does not map.
 
 Open no lane before this closes. Otherwise the whole campaign lands in the same drawer.
 
+### CLOSED 2026-08-26 — and the paragraph above is wrong about the verb
+
+**Status: closed.** The measured record is `kb/inventory/legal_unified_2026.yaml`
+(`kind: retired_collection`), read by `test_kb_inventory_contract.py` and
+`scripts/kb/kb_inventory_probe.py`. Decision: **`retire_as_target`**. Enforcement:
+`scripts/ci/ingest_target_lint.py` — 16 declared ingest entrypoints, every target
+resolving through the registry, 0 undeclared; exercised by 22 tests in
+`backend/tests/unit/core/test_ingest_target_registry.py`. Nothing may name that
+collection again without failing CI.
+
+**Read the paragraph above as history, not as fact.** It says the collection is
+"written nightly." It is not, and the correction changes what the cure had to be:
+
+- The collection is **frozen, not filling** — 15,410 points / 18 documents,
+  byte-identical to the figures recorded on 2026-05-16 in
+  `research/nb-lifecycle/2026-05-16-r5-phase2-indexing-parity.md:202`. Nothing has
+  been written to it in over three months.
+- The nightly watcher **ingests nowhere at all**. `~/scripts/regulatory-watcher-run.sh`
+  contains zero occurrences of qdrant / upsert / ingest / embed; it writes a delta
+  JSON and a Telegram alert. The runner that _names_ the collection has never run
+  and could not: it builds its FileHandler at import and its log file does not
+  exist, and the ingestion service refuses any target outside
+  `ALLOWED_CANONICAL_COLLECTIONS`.
+
+So this was never "a drawer nobody opens." It is a dead 2026-05-16 artifact **plus
+a regulatory watcher whose findings have never reached the KB by any route** — which
+is the larger defect, and it is NOT cured here. It is `WIZ-1` in that inventory's
+`open_findings`, severity high, and it stays open.
+
+**Do not promote this collection wholesale.** 11 of its 18 documents carry an
+identity contradicting their own text: a Klaten regency price schedule labelled
+"Permenkumham 22/2023 — Visa dan Izin Tinggal", a Tegal office-correspondence
+manual tagged `category: visa` and titled "Golden Visa C-318". Five of those broken
+identities are **already in `legal_unified`**, the collection production reads
+(`WIZ-3`) — a live retrieval defect, not a stranded-content one.
+
+**Nothing was deleted, and nothing may be** on this evidence: the containment proof
+hashes only fragments of ≥40 normalized characters, so shorter fragments are
+unproven, and §4.6 says one uncovered fragment means do not delete.
+`deletions_authorized: false` is recorded in the file itself.
+
+Eight findings (`WIZ-1`..`WIZ-8`) were measured here and handed to lanes rather than
+cured inside this item. They are the reason this section closes without the campaign
+being over.
+
 ---
 
 ## 2. The five artifacts — nothing else survives

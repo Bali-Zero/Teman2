@@ -1,0 +1,232 @@
+# kb/inventory/company.yaml — Lane B (company & investment), kind: topic.
+#
+# What the store ACTUALLY holds, measured 2026-08-25 by direct Qdrant scroll of
+# production `legal_unified` (physically `legal_unified_hybrid_hybrid`), reusing
+# census()/payload_shape() from scripts/kb/kb_inventory_probe.py so the measurement
+# method is identical to what the CI gate imports (never a reimplementation).
+#
+# `measured_against` is scoped to THIS topic's instruments (not the whole 84,283-pt
+# collection) — points/payload_shapes here sum to exactly what lane B's 7 instrument
+# rows below account for: 9,914 points across all 7 (all `present: true` — every
+# instrument searched for was found, none absent).
+
+schema_version: 1
+kind: topic
+lane: B
+topic: company
+measured_at: "2026-08-25"
+
+measured_against:
+  collection: legal_unified
+  points: 9914
+  payload_shapes:
+    legacy_metadata_text: 9535 # UU_25_2007(65) + UU_13_2017(335) + UU_49_2021(4) + PP_7_2025(3522) + PP_28_2025(887) + Permen_5_2025(4722)
+    orphan_no_identity: 0
+    modern_id_only: 0
+    modern_id_chunk: 0
+    modern_full: 379 # UU_40_2007 (already repaired by the 2026-08-25 parser-fix lane, #4883/#4888/#4891)
+
+instruments:
+  - id: UU_40_2007
+    points: 379
+    present: true
+    complete: false
+    incomplete_because: >
+      Verified clean of the §6 'Cukup jelas' commentary-contamination signal
+      (0/379, independently re-measured by this lane, not merely inherited from the
+      repair commits). 54 distinct Pasal markers found (5 through 149). Full
+      Pasal-range coverage (no gaps in the sequence) and a closing-signature-block
+      check were NOT independently verified within this lane's time budget — same
+      limitation property.yaml records for its own already-repaired instruments.
+
+  - id: UU_25_2007
+    points: 65
+    present: true
+    complete: false
+    incomplete_because: >
+      HOLLOW, not merely incomplete — see uu_25_2007_fragment_categorisation below
+      for the full fragment-by-fragment breakdown MANDATE §7 decision 2's
+      containment order (step 1) requires. Headline: 0 of 65 points contain the
+      operative body (batang tubuh) of the law; all 65 are Penjelasan (elucidation)
+      or administrative/enactment boilerplate. The single "Pasal 33" marker
+      findable anywhere in this document's text is a citation to the 1945
+      Constitution's Article 33, not to UU 25/2007's own Pasal 33 — so the
+      instrument's own operative-article count in production is 0, not 1.
+
+  - id: UU_13_2017
+    points: 335
+    present: true
+    complete: false
+    incomplete_because: >
+      Identity resolved (kb/topics/company.yaml: this is Peraturan BKPM 13/2017,
+      SUPERSEDED 2018, stored under a UU_ prefix). Verified clean of the §6 signal
+      (0/335). Full article-range completeness against the real BKPM 13/2017 text
+      was not independently verified within budget. Superseded status makes
+      completeness secondary to the fact that the probe (journey 4) measured this
+      stale content surfacing GREEN under a live-sounding citation — see journeys
+      file.
+
+  - id: UU_49_2021
+    points: 4
+    present: true
+    complete: false
+    incomplete_because: >
+      Identity resolved (this is Perpres 49/2021 amending Perpres 10/2021, stored
+      under a UU_ prefix). Only 4 points for an amending Perpres whose real-world
+      text includes large Lampiran (annex) tables of open/closed/conditional
+      business fields — plausibly INCOMPLETE (the annex tables, if present in the
+      source PDF, would produce many more points than 4), but this was not
+      independently confirmed against an article/annex count within budget.
+
+  - id: PP_7_2025
+    points: 3522
+    present: true
+    complete: false
+    incomplete_because: >
+      Identity resolved (kb/topics/company.yaml: this is Peraturan BPS 7/2025
+      — KBLI 2025 — stored under a PP_ prefix; the REAL national PP 7/2025 is an
+      unrelated workplace-accident-insurance regulation). Verified clean of the §6
+      signal (0/3,522). KBLI 2025 defines 1,559 five-digit codes (confirmed
+      externally via BPS's own announcement, matching this repo's known-good KBLI
+      count); whether all 1,559 codes are individually represented across the
+      3,522 points was not independently counted within budget — flagged
+      unverified rather than assumed complete.
+
+  - id: PP_28_2025
+    points: 887
+    present: true
+    complete: false
+    incomplete_because: >
+      Identity consistent (declared == verified, both peraturan.go.id-confirmed).
+      MANDATE §6 damage signal measured directly by this lane: 32 of 887 points
+      match (section is not 'penjelasan' AND text contains 'Cukup jelas') — e.g.
+      point 027d5a10: "Pasal 282 Cukup jelas Pasal SK No 194488 A". NOT
+      independently re-classified fragment-by-fragment the way UU_25_2007 was (887
+      points exceeds this lane's per-instrument budget after the UU_25_2007 deep
+      read) — repair or full categorisation is this instrument's outstanding unit
+      of work, recorded here rather than assumed clean.
+
+  - id: Permen_5_2025
+    points: 4722
+    present: true
+    complete: false
+    incomplete_because: >
+      Identity resolved (kb/topics/company.yaml: this is Peraturan BKPM 5/2025,
+      stored under a Permen_ prefix). Verified clean of the §6 signal (0/4,722,
+      independently measured, the largest single clean-scan in this lane's
+      budget). 154 distinct Pasal markers found (1 through 284). Full
+      Pasal-range/Lampiran completeness against the real regulation was not
+      independently verified within budget.
+
+# ── UU_25_2007 fragment-by-fragment categorisation, MANDATE §7 decision 2's
+#    containment order STEP 1: "prove what the 65 points contain, fragment by
+#    fragment, with a printed ratio" — BEFORE writing over that document_id.
+#    Every one of the 65 points in production was read (not sampled).
+uu_25_2007_fragment_categorisation:
+  method: >
+    Full scroll of legal_unified_hybrid_hybrid filtered to document_id == UU_25_2007
+    (both top-level and metadata.document_id, per §4.1) — all 65 points retrieved
+    and read individually, categorised by content shape, cross-checked against a
+    live peraturan.go.id fetch confirming the correct title/enactment/status.
+  total_points: 65
+  categories:
+    bare_cukup_jelas: 21 # e.g. "Cukup jelas." with no other content
+    cukup_jelas_plus_more: 15 # "Cukup jelas." combined with adjacent ayat/huruf explanation in the same chunk
+    other_elucidation_narrative: 26 # explanatory prose without the literal phrase, e.g. "UMUM Salah satu tujuan pembentukan pemerintahan negara...", "Yang dimaksud dengan..."
+    administrative_boilerplate: 2 # enactment/promulgation signature block; one of these two literally contains the string "PENJELASAN ATAS UNDANG UNDANG REPUBLIK INDONESIA NOMOR 25 TAHUN 2007 TENTANG PENANAMAN MODAL", confirming these are the law's OWN Penjelasan
+    genuine_operative_article_text: 0 # zero — no point carries a direct normative provision ("Pasal N: every investor shall...")
+  ratio: "0/65 operative articles present (0.0%); 65/65 are Penjelasan or administrative boilerplate (100.0%)"
+  pasal_marker_finding: >
+    Exactly one "Pasal N" string occurs anywhere across all 65 points: "Pasal 33".
+    Read in context (point id ffe421b0): "...telah dijabarkan dalam Pasal 33
+    Undang-Undang Dasar Negara Republik Indonesia Tahun 1945 dan merupakan amanat
+    konstitusi..." — this is a citation to Article 33 of the 1945 Constitution
+    (the economy clause), NOT to UU 25/2007's own Pasal 33. UU 25/2007's own
+    operative-article count present in production is therefore 0, not 1.
+  disposition: >
+    STOPPED AT STEP 1 of the mandated three-step order (prove containment -> retire
+    -> write whole instrument). Step 1 is now complete with a decisive, fragment-
+    level printed ratio: what is stored is genuinely the law's own Penjelasan (not
+    a different document, not corrupted text — identity and content both check out
+    as UU 25/2007's own elucidation), it is simply the WRONG HALF of the
+    instrument. Steps 2 (retire the 65-point fragment) and 3 (ingest the whole
+    instrument — batang tubuh + Penjelasan, using the same section-tagged
+    hierarchical-indexer path that repaired UU_40_2007/UU_6_2011) require invoking
+    the production legal-ingestion pipeline
+    (backend/services/ingestion/legal_ingestion_service.py /
+    legal_full_ingestion_worker.py) against a freshly-fetched official PDF
+    (https://peraturan.go.id/id/uu-no-25-tahun-2007, confirmed live and %PDF-
+    fetchable) and handling the identity guard (#4869) so the new ingest is
+    recognised as the SAME document_id rather than refused as a claim collision.
+    This lane deliberately did not execute an unreviewed production write in this
+    pass — recorded as the explicit next unit of work (kb/topics/company.yaml
+    owner_decisions_log), not silently deferred. The existing 65 points must NOT be
+    deleted before the fuller instrument is written and verified (MANDATE §4.6):
+    they are genuine (if partial) content, not garbage.
+
+# ── Findings measured during this lane's investigation, OUT OF SCOPE for company/
+#    investment, recorded per MANDATE §5/§8 rather than chased. Not scoped into
+#    `instruments` above because none of these is an in-scope company/investment
+#    instrument (checked: they would fail check_agreement's scoping rule).
+out_of_scope_findings:
+  - finding: >
+      Permen_1_2026 is not a 2-way ministry collision as inherited from the team
+      brief — it is AT LEAST a 7-way collision. Full title-header census of all
+      1,506 points under this single document_id (2026-08-25):
+        652 pts — Kemenperin: "Pemberlakuan Standar Nasional Indonesia untuk Wadah
+                  Bersekat dari Baja Tahan Karat untuk Makanan" (SNI mandatory
+                  standard, stainless-steel food containers)
+        494 pts — Kemenkeu: "Perubahan Keempat atas Peraturan Menteri Keuangan
+                  Nomor 81 Tahun 2024 tentang Ketentuan Perpajakan dalam Rangka
+                  Pelaksanaan Sistem Inti Administrasi Perpajakan" (Coretax, the
+                  instrument the team brief named)
+        182 pts — no [CONTEXT] header recoverable, ministry not determined
+         73 pts — "Pedoman Pelaksanaan Kredit Usaha Rakyat" (KUR credit guideline
+                  — the only one of the 8 with a plausible business-financing
+                  adjacency to lane B, but not core PT/PMA/KBLI/OSS scope)
+         50 pts — Kemenimipas: "Perubahan atas Peraturan Menteri Imigrasi dan
+                  Pemasyarakatan Nomor 13 Tahun 2025 tentang Pelaksanaan
+                  Pencegahan dan Penangkalan" (the instrument lane A/the team
+                  brief named)
+         30 pts — "Kejadian Luar Biasa, Wabah, dan Krisis Kesehatan" (health
+                  emergency/outbreak regulation)
+         13 pts — Kemenpora: "Rencana Strategis Kementerian Pemuda dan Olahraga
+                  Tahun 2025-2029"
+         12 pts — Menko Bidang Pangan: "Perubahan atas Peraturan Menteri
+                  Koordinator Bidang Pangan Nomor 1 Tahun 2024"
+      None of these 8 sub-documents is a lane B (company/investment) instrument.
+      Recorded here as a correction/extension of the inherited 2-way framing, not
+      chased — the repair (splitting this document_id by ministry) belongs to
+      whichever lane owns the ingest identity pipeline, or a dedicated fix.
+    lane:
+      none (multi-ministry, cross-cutting; nearest single owner would be lane C
+      for the 494-pt PMK majority, lane A for the 50-pt Permenimipas piece)
+    chased: false
+
+  - finding: >
+      A 2,954-point bucket carries document_id "UU_UNKNOWN_UNKNOWN"-family content
+      (measured as literal document_id "DOC_UNKNOWN_UNKNOWN" by this lane's own
+      scan — near-identical count to the 2,953 figure lane D's property.yaml
+      already recorded for a differently-spelled bucket name, most likely the same
+      underlying UNKNOWN-identity population read by two different probes) whose
+      one recoverable title fragment is a garbled KBLI code table: "Kode
+      KBLIJudul KBLIRueng LtngkupSLala UsahaTingkat RisikoPerizinan Bcrusaha...".
+      This is plausibly a KBLI-related annex/lampiran (possibly to PP 7/2025 or a
+      related instrument) with a fully failed identity extraction, but searching
+      ~2,954 points for one instrument's worth of content is out of this lane's
+      time budget (mirrors lane D's own admission on the ~5,565-point UNKNOWN
+      buckets in property.yaml). Not chased. Recorded as UNDETERMINED, not
+      confirmed absent or confirmed present under a resolvable identity.
+    lane: none (unresolved identity)
+    chased: false
+
+  - finding: >
+      UU_16_2025 ("Perubahan Keempat atas Undang-Undang Nomor 19 Tahun 2003
+      tentang Badan Usaha Milik Negara" — BUMN/state-owned-enterprise law, 116
+      points) carries 64 damaged fragments by the §6 signal (majority of its own
+      points) — found while scanning keyword matches, not chased: BUMN
+      restructuring is adjacent to but not the same topic as PT/PMA private
+      foreign investment, KBLI, BKPM or OSS. Recorded for whichever lane (likely
+      lane F/compliance, or a dedicated public-enterprise scope) owns it.
+    lane: none (BUMN, not PT PMA/company-formation scope)
+    chased: false

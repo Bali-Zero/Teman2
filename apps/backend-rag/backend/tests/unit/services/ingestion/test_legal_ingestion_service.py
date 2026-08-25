@@ -183,6 +183,63 @@ class TestIngestSuccess:
             assert result["legal_metadata"]["type_abbrev"] == "UU"
 
     @pytest.mark.asyncio
+    async def test_base_metadata_has_no_legal_status_key(self, service: MagicMock) -> None:
+        """`legal_status` write was RETIRED 2026-08-25 (STATUS_PATTERNS was a bare
+        regex over chunk text, measured wrong at scale — see
+        backend/core/legal/constants.py's tombstone comment and
+        kb/inventory/immigration.yaml LANE-A-1). The real LegalMetadataExtractor
+        no longer produces a "status" key at all, so the mock here matches that
+        shape (no "status" key) rather than the pre-retirement fixtures elsewhere
+        in this file that still carry one. The point of this test is the
+        DOWNSTREAM effect: `base_metadata` — what actually reaches the indexer,
+        and from there the Qdrant payload — must not carry a `legal_status` key
+        either. Absence is not a new state: 15,756 legacy points already have no
+        `legal_status` field at all, so this is the shape production has always
+        been able to handle, not a novel one this retirement introduces."""
+        service.cleaner.clean.return_value = "cleaned text with enough content for testing"
+        service.metadata_extractor.extract.return_value = {
+            "type": "Undang-Undang",
+            "type_abbrev": "UU",
+            "number": "6",
+            "year": "2023",
+            "topic": "Immigration",
+            "full_title": "UU 6/2023 tentang Imigrasi",
+            # deliberately no "status" key — this is what the retired extractor
+            # actually returns now (verified directly against the real class).
+        }
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 10,
+                "parent_documents": 3,
+                "total_bab": 2,
+                "total_pasal": 8,
+            }
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "doc_002"
+
+            result = await service.ingest_legal_document(
+                file_path="/tmp/test.pdf",
+                title="UU 6/2023",
+                category="01_immigrazione",
+            )
+
+        assert result["success"] is True
+        metadata = service.indexer.index_legal_document.await_args.kwargs["metadata"]
+        assert "legal_status" not in metadata
+        # Innocence: every OTHER legal-specific field this line's neighbours
+        # write is still present and correct — the retirement touched only the
+        # one key.
+        assert metadata["legal_type"] == "UU"
+        assert metadata["legal_number"] == "6"
+        assert metadata["legal_year"] == "2023"
+        assert metadata["legal_topic"] == "Immigration"
+
+    @pytest.mark.asyncio
     async def test_archives_in_dedicated_legal_root_idempotently(
         self, service: MagicMock
     ) -> None:
