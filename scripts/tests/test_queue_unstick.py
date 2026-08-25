@@ -110,15 +110,209 @@ def test_dirty_pr_is_never_selected_for_update_and_produces_exactly_one_signal()
     assert plan["signal_dirty"] == [{"number": 6, "sha": "b" * 40}]
 
 
-def test_second_run_same_dirty_pr_and_sha_produces_zero_additional_signals():
+def test_plan_actions_no_longer_dedups_on_head_sha_alone():
+    """The dedup MOVED to main(), keyed on head_sha AND the conflict set.
+
+    Deduping here on head_sha alone was blind to the case that matters:
+    `main` advances, the conflicting files change, the PR head does not.
+    plan_actions is pure/network-free and cannot compute a conflict
+    fingerprint, so it now proposes every DIRTY candidate and main() decides.
+    """
     pr = make_pr(7, merge_state_status="DIRTY", minutes_since_commit=30, head_sha="c" * 40)
     first = qu.plan_actions([pr], NOW)
     assert first["signal_dirty"] == [{"number": 7, "sha": "c" * 40}]
 
-    seen_dirty = {"7": "c" * 40}
-    second = qu.plan_actions([pr], NOW, seen_dirty=seen_dirty)
-    assert second["signal_dirty"] == []
-    assert second["skipped"][7] == "dirty_already_signalled"
+    second = qu.plan_actions([pr], NOW, seen_dirty={"7": "c" * 40})
+    assert second["signal_dirty"] == [{"number": 7, "sha": "c" * 40}]
+
+
+# ── (b) the dedup key itself: head_sha AND conflict set ─────────────────────
+
+
+def test_fingerprint_GUILT_same_head_different_conflict_set_is_a_DIFFERENT_key():
+    """The bug this fix exists for: main moved, the conflict set changed, the
+    head did not — and the old key could not tell the two apart."""
+    sha = "c" * 40
+    before = qu._dirty_fingerprint(sha, "evidence/pack.yml")
+    after = qu._dirty_fingerprint(sha, "evidence/pack.yml, scripts/queue_unstick.py")
+    assert before != after, "a changed conflict set on an unchanged head must re-signal"
+
+
+def test_fingerprint_INNOCENCE_unchanged_state_still_dedups_against_stored_key():
+    """The dedup must still dedup — the fix must not turn this cron into a
+    per-tick spammer (the failure mode in the other direction).
+
+    Asserted against a SEPARATELY-CONSTRUCTED stored key and a non-degenerate
+    shape, not `f(x) == f(x)`: a function returning a constant would satisfy
+    determinism while destroying the dedup's ability to discriminate at all.
+    """
+    sha = "c" * 40
+    files = "evidence/pack.yml"
+
+    stored = qu._dirty_fingerprint(sha, files)          # tick N wrote this
+    recomputed = qu._dirty_fingerprint(sha, files)      # tick N+1, nothing changed
+
+    assert recomputed == stored, "an unchanged head + unchanged conflict set must not re-signal"
+    # …and the key must actually carry the state it claims to key on, so that
+    # equality above means "same state", not "constant function".
+    assert stored.startswith(sha + ":")
+    assert stored != qu._dirty_fingerprint(sha, files + ", scripts/queue_unstick.py")
+    assert stored != qu._dirty_fingerprint("d" * 40, files)
+
+
+def test_fingerprint_INNOCENCE_different_head_same_conflict_set_is_a_DIFFERENT_key():
+    same_files = "evidence/pack.yml"
+    assert qu._dirty_fingerprint("c" * 40, same_files) != qu._dirty_fingerprint(
+        "d" * 40, same_files
+    )
+
+
+def test_fingerprint_is_bounded_regardless_of_conflict_set_size():
+    """State-file hygiene: twenty conflicting paths must not write twenty
+    paths into the dedup file."""
+    huge = ", ".join(f"path/number/{i}.yml" for i in range(200))
+    key = qu._dirty_fingerprint("c" * 40, huge)
+    assert len(key) == 40 + 1 + 16
+
+
+# ── (a) the TOCTOU guard on do_update_branch ────────────────────────────────
+
+
+def test_toctou_GUILT_pr_that_entered_the_queue_after_planning_is_NOT_updated():
+    """The eviction race, reproduced. classify() saw `queued: False` from the
+    bulk read; by mutation time the PR is in the queue. Updating it now would
+    EVICT it — the most destructive action this script can take.
+
+    This test FAILS against the pre-2026-08-25 do_update_branch, which called
+    `gh pr update-branch` with no re-check at all.
+    """
+    calls = []
+
+    def _never_called(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "", ""
+
+    original_run = qu._run
+    qu._run = _never_called
+    try:
+        outcome, detail = qu.do_update_branch(
+            4242,
+            dry_run=False,
+            queue_recheck=lambda number, repo=None: (True, "in merge queue (state=AWAITING_CHECKS)"),
+        )
+    finally:
+        qu._run = original_run
+
+    assert outcome == "aborted", f"expected abort, got {outcome}: {detail}"
+    assert "EVICT" in detail
+    assert calls == [], f"no gh command may run once the PR is known queued; ran {calls}"
+
+
+def test_toctou_GUILT_unverifiable_queue_state_does_NOT_authorise_an_update():
+    """CANNOT-VERIFY must fail CLOSED here. 'I could not check' is not
+    'it is safe' when the downstream action is an eviction."""
+    calls = []
+
+    def _never_called(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "", ""
+
+    original_run = qu._run
+    qu._run = _never_called
+    try:
+        outcome, detail = qu.do_update_branch(
+            4242, dry_run=False, queue_recheck=lambda number, repo=None: (None, "network flap")
+        )
+    finally:
+        qu._run = original_run
+
+    assert outcome == "aborted"
+    assert "UNVERIFIABLE" in detail
+    assert calls == []
+
+
+def test_toctou_INNOCENCE_pr_still_not_queued_IS_updated():
+    """The guard must not block the whole point of the script."""
+    calls = []
+
+    def _fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "updated", ""
+
+    original_run = qu._run
+    qu._run = _fake_run
+    try:
+        outcome, detail = qu.do_update_branch(
+            4242, dry_run=False, queue_recheck=lambda number, repo=None: (False, "not in merge queue")
+        )
+    finally:
+        qu._run = original_run
+
+    assert outcome == "ok", detail
+    assert any("update-branch" in " ".join(c) for c in calls), f"expected the real call; got {calls}"
+
+
+def test_toctou_INNOCENCE_dry_run_never_rechecks_and_never_mutates():
+    """--dry-run must stay free of BOTH the mutation and the extra API call."""
+    rechecked = []
+    calls = []
+
+    original_run = qu._run
+    qu._run = lambda cmd, timeout=30: (calls.append(cmd), (0, "", ""))[1]
+    try:
+        outcome, detail = qu.do_update_branch(
+            4242,
+            dry_run=True,
+            queue_recheck=lambda number, repo=None: (rechecked.append(number), (False, ""))[1],
+        )
+    finally:
+        qu._run = original_run
+
+    assert outcome == "ok"
+    assert detail.startswith("[dry-run]")
+    assert rechecked == [], "dry-run must not spend an API call on the re-check"
+    assert calls == []
+
+
+def test_is_queued_now_parses_null_as_not_queued_and_garbage_as_unverifiable():
+    """The re-check's own guilt/innocence, on the entity (mergeQueueEntry),
+    never on a substring."""
+    original_run = qu._run
+    try:
+        qu._run = lambda cmd, timeout=30: (0, "null\n", "")
+        assert qu.is_queued_now(1)[0] is False
+
+        qu._run = lambda cmd, timeout=30: (0, '{"state":"AWAITING_CHECKS"}', "")
+        assert qu.is_queued_now(1)[0] is True
+
+        qu._run = lambda cmd, timeout=30: (0, "", "")
+        assert qu.is_queued_now(1)[0] is None, "empty output is UNVERIFIABLE, not 'not queued'"
+
+        qu._run = lambda cmd, timeout=30: (1, "", "boom")
+        assert qu.is_queued_now(1)[0] is None, "rc!=0 is UNVERIFIABLE, not 'not queued'"
+
+        qu._run = lambda cmd, timeout=30: (0, "<html>500</html>", "")
+        assert qu.is_queued_now(1)[0] is None, "unparseable output is UNVERIFIABLE"
+    finally:
+        qu._run = original_run
+
+
+# ── (c) the cap ─────────────────────────────────────────────────────────────
+
+
+def test_cap_default_is_one_and_is_a_placeholder_not_a_tuned_number():
+    assert qu.UPDATE_CAP == 1
+    src = Path(qu.__file__).read_text()
+    assert "PLACEHOLDER, NOT A TUNED NUMBER" in src, (
+        "the cap must stay labelled as underived — a bare 1 reads as a measured value"
+    )
+
+
+def test_cap_of_one_updates_exactly_one_behind_pr_and_defers_the_rest():
+    prs = [make_pr(n, merge_state_status="BEHIND", minutes_since_commit=30) for n in (1, 2, 3, 4, 5)]
+    plan = qu.plan_actions(prs, NOW, cap=1)
+    assert plan["update_branch"] == [1]
+    assert [plan["skipped"][n] for n in (2, 3, 4, 5)] == ["cap_reached"] * 4
 
 
 def test_dirty_pr_new_sha_after_previous_signal_signals_again():

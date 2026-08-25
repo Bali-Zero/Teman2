@@ -36,6 +36,27 @@ from backend.utils.tier_classifier import TierClassifier
 
 logger = logging.getLogger(__name__)
 
+
+def _failure_stage(error: Exception) -> IngestionStage:
+    """Which stage does this failure belong to?
+
+    Was `PARSING if "parse" in str(error).lower() else COMPLETION`, which read
+    the stage off a word that happens to appear in some messages. "Incomplete
+    vision transcription of ..." contains no "parse" and was filed under
+    COMPLETION -- a document that never got past reading, recorded as having
+    reached the end. Parse failures are now recognised by TYPE.
+    """
+    from backend.core.parsers import DocumentParseError
+
+    if isinstance(error, DocumentParseError) or isinstance(
+        error.__cause__, DocumentParseError,
+    ):
+        return IngestionStage.PARSING
+    if "parse" in str(error).lower():
+        return IngestionStage.PARSING
+    return IngestionStage.COMPLETION
+
+
 LEGAL_CANONICAL_COLLECTION = "legal_unified"
 LEGAL_ENV_OVERRIDE_FLAG = "LEGAL_INGEST_ALLOW_QDRANT_ENV_OVERRIDE"
 CURRENT_RETRIEVAL_SCOPE = "current"
@@ -274,6 +295,85 @@ class LegalIngestionService:
         )
         return [str(point["id"]) for point in points]
 
+    @staticmethod
+    async def _assert_identity_unclaimed(
+        vector_db: QdrantClient,
+        document_id: str,
+        source_basename: str,
+    ) -> None:
+        """Refuse to write onto an identity another source document already holds.
+
+        Chunk ids are ``{document_id}_Pasal_{n}`` and Qdrant point ids are
+        ``uuid5(chunk_id)``, so two documents sharing a ``document_id`` share
+        point ids and the second ingest OVERWRITES the first. Qdrant reports
+        that as a successful upsert, because it is one — which is why the
+        failure mode is silent data loss rather than an error.
+
+        Measured on 2026-08-25: ``Permen_1_2026`` held 544 points belonging to
+        PMK 1/2026 (Ministry of Finance, Coretax) *and* Permen Imipas 1/2026
+        (Ministry of Immigration). The tax regulation had upserted 544 chunks of
+        its own; 494 survived; the immigration regulation's 50 account for the
+        difference exactly.
+
+        This guard is deliberately the LOUD half of the cure. It does not decide
+        what a good identity is — it only refuses to let one document silently
+        become another. That makes every future collision, including classes
+        nobody has enumerated yet, an error at write time instead of a hole
+        discovered months later.
+
+        Re-ingesting the SAME source document is not a collision and must pass:
+        that is how a corpus is refreshed.
+
+        TWO RESIDUAL HOLES, stated rather than papered over:
+
+        1. A point carrying NEITHER ``source_basename`` NOR ``file_path``
+           yields no claimant, so an identity held only by such points is
+           unguarded. Every point written by this service has always carried
+           ``file_path``, so this is about foreign or hand-written payloads.
+           Measurement: scroll the collection grouped by ``document_id`` and
+           count points where neither key resolves; any identity that is 100%
+           keyless is unprotected.
+        2. The ``/upload`` route names its temp file from the
+           uploader-supplied filename, so on that path the comparator is only
+           as unique as what the uploader typed. Two different laws uploaded
+           as ``UU_6_2023.pdf`` would still collide. Curated corpus ingests,
+           which is where the incident happened, use repo-controlled
+           filenames.
+
+        Neither hole is a reason to withhold the guard: it converts the common
+        case from silent loss into a loud refusal, and a partial guard that
+        says so is worth more than none.
+        """
+        existing = await vector_db.scroll_strict(
+            metadata_filter={"document_id": document_id},
+        )
+        if not existing:
+            return
+
+        claimants: set[str] = set()
+        for point in existing:
+            payload = point.get("payload") or {}
+            metadata = payload.get("metadata")
+            if not isinstance(metadata, dict):
+                metadata = payload
+            claimant = metadata.get("source_basename")
+            if not claimant:
+                stored_path = metadata.get("file_path")
+                claimant = Path(str(stored_path)).name if stored_path else None
+            if claimant:
+                claimants.add(str(claimant))
+
+        foreign = claimants - {source_basename}
+        if foreign:
+            raise LegalIngestIntegrityError(
+                "Legal identity collision: document_id "
+                f"{document_id!r} is already held by {sorted(foreign)!r}; "
+                f"refusing to overwrite it with {source_basename!r}. "
+                "Two documents sharing an identity share point ids, so this "
+                "write would silently destroy the other document's chunks. "
+                "Declare a distinct document_id for one of them."
+            )
+
     async def ingest_legal_document(
         self,
         file_path: str,
@@ -301,6 +401,15 @@ class LegalIngestionService:
 
         try:
             retrieval_scope = validate_legal_retrieval_scope(retrieval_scope)
+            # The caller's document_id is the DECLARED STORAGE IDENTITY when it
+            # is given. Until 2026-08-25 this parameter reached only the
+            # ingestion logger and the log `extra` fields, while the identity
+            # actually written to Qdrant was always derived from the extracted
+            # (type, number, year) triple — so a caller who passed a
+            # document_id got a correlation id and believed they had set the
+            # storage key. Capture it here, before `start_ingestion` reassigns
+            # `document_id` to its own trace id.
+            declared_storage_id = document_id
             # Generate document ID if not provided
             if not document_id:
                 document_id = f"legal_{int(start_time)}_{Path(file_path).stem}"
@@ -334,6 +443,54 @@ class LegalIngestionService:
                 else self.vector_db
             )
 
+            # These two PUTs are FAIL-CLOSED, deliberately and not incidentally:
+            # `ensure_keyword_payload_index` is a bare PUT + raise_for_status(),
+            # so a failing PUT aborts an ingest that might otherwise have
+            # succeeded. That is the right trade -- an ingest whose collision
+            # guard cannot run must not proceed -- but it is a trade, not a
+            # free "safe and idempotent".
+            #
+            # CORRECTED 2026-08-25: an earlier revision of this comment said the
+            # risk was "a 403 on a caller-supplied collection (`collection_name`
+            # is request-controlled)". That was a refuter's claim, accepted
+            # without measuring it, and it is FALSE.
+            # `validate_legal_ingest_preflight` (:124) runs at :412, well before
+            # these PUTs, and rejects any target that does not canonicalize to
+            # ALLOWED_CANONICAL_COLLECTIONS -- today `legal_unified` or
+            # `tax_genius`. A caller cannot steer this code at an arbitrary
+            # collection, so the arbitrary-ACL scenario never reaches here.
+            # Measured by attempting exactly that: an ingest naming a scratch
+            # collection died at the preflight with
+            # "target collection must resolve to one of ['legal_unified',
+            # 'tax_genius']", never reaching the index calls.
+            #
+            # What remains genuinely open, and is the reason this stays
+            # fail-closed rather than tolerant: a timeout on a first-ever index
+            # build over a large collection, and a PUT of a DIFFERENT schema
+            # over an existing index. Neither is verified here.
+            #
+            # Payload indexes the fail-closed filters below REQUIRE. A missing
+            # index does not degrade a Qdrant filter, it makes the query an
+            # ERROR: "Index required but not found for <key>". Both
+            # representations are named because on a flat-payload collection
+            # `_convert_filter_to_qdrant_format` ADDS the bare key to the
+            # nested one (`should: [metadata.X, X]`) rather than replacing it,
+            # and a `should` member is an indexed key like any other.
+            #
+            # `document_id` is unconditional because three fail-closed filters
+            # depend on it and the first of them runs on EVERY ingest: the
+            # identity guard, the current-scope quarantine, and the historical
+            # delete. Measured 2026-08-25 against `legal_unified`, which indexes
+            # the flat `document_id` and not `metadata.document_id`: every
+            # `scroll_strict` answered HTTP 400 for every document_id, colliding
+            # or not. The guard shipped in #4865 therefore failed 100% of legal
+            # ingests rather than only the colliding ones, and the historical
+            # quarantine/delete pair had the same latent defect before it --
+            # unnoticed only because the Drive fail-closed archive check aborts
+            # that path earlier.
+            await request_vector_db.ensure_keyword_payload_index("document_id")
+            await request_vector_db.ensure_keyword_payload_index("metadata.document_id")
+
             # Historical instruments must only enter a collection once the
             # executable retrieval guard's payload indexes exist.
             if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
@@ -347,6 +504,20 @@ class LegalIngestionService:
             try:
                 raw_text = auto_detect_and_parse(file_path, use_ocr=False)
             except DocumentParseError as e:
+                from backend.services.multimodal.pdf_vision_service import (
+                    IncompleteTranscriptionError,
+                )
+
+                if isinstance(e.__cause__, IncompleteTranscriptionError):
+                    # A document read only in PART must not fall into the branch
+                    # below: that branch exists to give a scan a second, fuller
+                    # pass, and here the fuller pass has already happened and
+                    # came back short. Retrying runs the same engine over the
+                    # same pages to reach the same verdict, and -- worse -- the
+                    # decision is read off e.__cause__ rather than off a
+                    # substring of the message, so rewording the error can never
+                    # silently move a half-read law into the retry path.
+                    raise
                 if "No text extracted" in str(e):
                     # Try OCR for scanned PDFs (async version)
                     logger.info(
@@ -718,7 +889,16 @@ Return ONLY valid JSON, no markdown."""
 
             # STAGE 6: Hierarchical Indexing (Parent-Child)
             # Generate a document ID
-            current_doc_id = build_content_bound_legal_doc_id(metadata, source_sha256)
+            # A declared identity wins over the derived one. The derived triple
+            # (type, number, year) does NOT identify an Indonesian instrument:
+            # every ministry numbers its regulations from 1 each year, so PMK
+            # 1/2026 and Permen Imipas 1/2026 both reduce to `Permen_1_2026`.
+            # Declaring the identity is how a curated corpus states which
+            # instrument a file is; derivation stays the fallback for ingests
+            # that declare nothing.
+            current_doc_id = declared_storage_id or build_content_bound_legal_doc_id(
+                metadata, source_sha256
+            )
             doc_id = current_doc_id
             if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
                 doc_id = f"{doc_id}__historical"
@@ -732,6 +912,11 @@ Return ONLY valid JSON, no markdown."""
                 "min_level": min_level,
                 "language": "id",  # Indonesian
                 "file_path": file_path,
+                # Stable per-source comparator for the identity-collision guard.
+                # `file_path` is absolute and therefore machine-dependent (the
+                # same file ingested from a worktree and from the checkout
+                # differs), so the basename is what the guard compares.
+                "source_basename": Path(file_path).name,
                 "doc_type": "legal",
                 # Legal-specific metadata
                 "legal_type": metadata.get("type_abbrev"),
@@ -763,7 +948,36 @@ Return ONLY valid JSON, no markdown."""
             # Use HierarchicalIndexer
             indexing_start = time.time()
             quarantined_current_ids: list[str] = []
+            source_basename = Path(file_path).name
+            # Fail before the first mutation OF THE VECTOR STORE: the quarantine
+            # below already rewrites payloads, so a collision detected after it
+            # would leave the other document's points half-modified. (STAGE 1.5
+            # has already archived the file to Drive by this point -- that is an
+            # outward copy, not a mutation of the corpus, and a refused ingest
+            # therefore leaves an archived PDF behind. Deliberate: the archive is
+            # idempotent and a spare copy is harmless, whereas moving the guard
+            # earlier is impossible -- the identity is not known until metadata
+            # extraction, which runs after the archive step.)
+            await self._assert_identity_unclaimed(
+                request_vector_db,
+                doc_id,
+                source_basename,
+            )
             if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
+                # The historical path does not merely WRITE to `doc_id`
+                # (`X__historical`) -- it quarantines and then DELETES every
+                # point under `current_doc_id` (`X`). Guarding only `doc_id`
+                # leaves `X` uninspected, so a historical ingest whose derived
+                # identity happens to match a DIFFERENT ministry's current-law
+                # document would pass the guard and then delete that document in
+                # full. That is strictly worse than the incident this guard was
+                # written for: the incident overwrote 50 chunks, this would
+                # remove all of them, with the guard's blessing.
+                await self._assert_identity_unclaimed(
+                    request_vector_db,
+                    current_doc_id,
+                    source_basename,
+                )
                 reconciliation_state = "QUARANTINE_IN_PROGRESS"
                 quarantined_current_ids = await self._quarantine_current_points(
                     request_vector_db,
@@ -1003,9 +1217,7 @@ Return ONLY valid JSON, no markdown."""
                 document_id=document_id or f"failed_{int(start_time)}",
                 file_path=file_path,
                 error=e,
-                stage=IngestionStage.PARSING
-                if "parse" in str(e).lower()
-                else IngestionStage.COMPLETION,
+                stage=_failure_stage(e),
                 duration_ms=total_duration * 1000,
                 source=source,
                 trace_id=trace_id,

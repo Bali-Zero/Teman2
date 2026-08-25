@@ -510,8 +510,6 @@ describe("review reasons cover every code the current pack can emit", () => {
   // keys were.
   const KNOWN_UNMAPPED_REVIEW_REASON_CODES = [
     // From rulepack-prod-007+ (HUMAN_REVIEW stage):
-    "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW",
-    "E23V_TRADE_OFFICE_STAFF_REVIEW",
     "E28B_USD_THRESHOLD_MANUAL_CHECK",
     "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
     "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",

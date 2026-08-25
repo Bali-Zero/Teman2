@@ -277,6 +277,41 @@ describe("mapCurrentStatusExpiry — permit_expiry -> immigration.current_status
   });
 });
 
+describe("renewal_paid -> immigration.renewal_paid (F4, 2026-08-24 owner ruling)", () => {
+  it("yes -> KNOWN true", () => {
+    expect(
+      mapFacts({ renewal_paid: "yes" }).facts["immigration.renewal_paid"],
+    ).toEqual({
+      status: "KNOWN",
+      value: true,
+    });
+  });
+
+  it("no -> KNOWN false", () => {
+    expect(
+      mapFacts({ renewal_paid: "no" }).facts["immigration.renewal_paid"],
+    ).toEqual({
+      status: "KNOWN",
+      value: false,
+    });
+  });
+
+  it('"not sure" -> UNKNOWN UNVERIFIED, never a guessed false', () => {
+    const fact = mapFacts({ renewal_paid: "unsure" }).facts[
+      "immigration.renewal_paid"
+    ];
+    expect(fact).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+    expect(fact).not.toEqual({ status: "KNOWN", value: false });
+  });
+
+  it("never asked -> UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts["immigration.renewal_paid"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+});
+
 describe("mapCurrentStatusCode — the synthesized NO_STAY_PERMIT sentinel (2026-08-24 P0 fix)", () => {
   // mapCurrentStatusCode is not exported (internal to mapOracleFactsToApplicantFacts);
   // reached here through the same `immigration.current_status_code` wire key

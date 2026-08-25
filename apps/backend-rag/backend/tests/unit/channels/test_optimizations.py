@@ -6,7 +6,9 @@ ConnectionPool, DeliveryManager, initialize_optimizations.
 
 import asyncio
 import json
+import logging
 import os
+import re
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -692,8 +694,7 @@ class TestProcessDlqAdapterMissing:
 
         # The row must have been UPDATEd (not skipped). Find the UPDATE call.
         update_calls = [
-            c for c in pool.execute.await_args_list
-            if "UPDATE failed_messages" in c.args[0]
+            c for c in pool.execute.await_args_list if "UPDATE failed_messages" in c.args[0]
         ]
         assert update_calls, "adapter-missing row was orphaned (no UPDATE)"
         sql, *params = update_calls[0].args
@@ -708,11 +709,220 @@ class TestProcessDlqAdapterMissing:
         await self._run_one_iteration(dm, adapters={})
 
         update_calls = [
-            c for c in pool.execute.await_args_list
-            if "UPDATE failed_messages" in c.args[0]
+            c for c in pool.execute.await_args_list if "UPDATE failed_messages" in c.args[0]
         ]
         assert update_calls
         sql, *params = update_calls[0].args
         assert params[0] == "exhausted"
         assert params[1] == 5
         assert params[2] is None  # next_retry None when exhausted
+
+
+# --------------------------------------------------------------------------- #
+# F7: raw channel identifier (phone/chat_id/sender_id) must NEVER appear in a
+# log record — guilt/innocence per cicatrix-superscar.md family #3.
+# --------------------------------------------------------------------------- #
+#
+# optimizations.py is a channel-agnostic choke point: for WhatsApp traffic,
+# `channel_id` IS the raw phone number (see channels/whatsapp/adapter.py,
+# which passes the phone straight through as channel_id). Both the rate
+# limiter and the DLQ persist paths log it, so both need the same guilt +
+# innocence proof as the messaging-identity reference fix.
+
+_OPTIMIZATIONS_LOGGER_NAME = "backend.channels.optimizations"
+_NON_DIGITS_RE = re.compile(r"\D+")
+
+# Obviously-synthetic — never a shape mistakable for a real client's number.
+_SYNTHETIC_PHONE = "628000333444"
+
+
+def _digits_only(text: str) -> str:
+    return _NON_DIGITS_RE.sub("", text)
+
+
+def _all_log_text(records: list[logging.LogRecord]) -> str:
+    return "\n".join(r.getMessage() for r in records)
+
+
+class TestRateLimiterRawIdentifierNeverInLogsGuilt:
+    @pytest.mark.asyncio
+    async def test_burst_limit_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        # Deterministic, not timing-dependent: the pre-existing
+        # test_burst_exhaustion (above) already documents that acquiring
+        # twice back-to-back is NOT reliably rejected under load — the
+        # refill formula is `tokens += (now - last_refill)` in whole
+        # seconds elapsed, so a slow test runner can silently refill the
+        # single burst token between two awaits and flip this red. Force
+        # the rejected state directly, the same way
+        # test_minute_limit_in_memory (below) forces its state, instead of
+        # racing the wall clock.
+        limiter = ChannelRateLimiter(
+            RateLimitConfig(max_requests_per_minute=5, max_requests_per_hour=20, burst_size=1)
+        )
+        limiter.tokens[_SYNTHETIC_PHONE] = 0
+        limiter.last_refill[_SYNTHETIC_PHONE] = time.time()
+
+        with (
+            caplog.at_level(logging.WARNING, logger=_OPTIMIZATIONS_LOGGER_NAME),
+            patch("backend.channels.optimizations._get_redis_client", return_value=None),
+        ):
+            result = await limiter.acquire(_SYNTHETIC_PHONE)
+            assert result is False
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+        assert "id:" in text
+
+    @pytest.mark.asyncio
+    async def test_minute_limit_in_memory_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        limiter = ChannelRateLimiter(
+            RateLimitConfig(max_requests_per_minute=5, max_requests_per_hour=20, burst_size=3)
+        )
+        now = time.time()
+        limiter.minute_counts[_SYNTHETIC_PHONE] = [now] * 5
+        limiter.tokens[_SYNTHETIC_PHONE] = 10
+
+        with (
+            caplog.at_level(logging.WARNING, logger=_OPTIMIZATIONS_LOGGER_NAME),
+            patch("backend.channels.optimizations._get_redis_client", return_value=None),
+        ):
+            result = await limiter.acquire(_SYNTHETIC_PHONE)
+            assert result is False
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+        assert "id:" in text
+
+    @pytest.mark.asyncio
+    async def test_redis_minute_exceeded_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        limiter = ChannelRateLimiter(RateLimitConfig())
+        mock_redis = AsyncMock()
+        mock_redis.incr = AsyncMock(return_value=100)
+        mock_redis.decr = AsyncMock()
+
+        with (
+            caplog.at_level(logging.WARNING, logger=_OPTIMIZATIONS_LOGGER_NAME),
+            patch("backend.channels.optimizations._get_redis_client", return_value=mock_redis),
+        ):
+            result = await limiter.acquire(_SYNTHETIC_PHONE)
+            assert result is False
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+        assert "id:" in text
+
+
+class TestDeliveryManagerRawIdentifierNeverInLogsGuilt:
+    @pytest.mark.asyncio
+    async def test_both_pg_and_redis_unavailable_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        dm = DeliveryManager(db_pool=None)
+        with (
+            caplog.at_level(logging.ERROR, logger=_OPTIMIZATIONS_LOGGER_NAME),
+            patch("backend.channels.optimizations._get_redis_client", return_value=None),
+        ):
+            await dm.persist_failed(
+                channel="whatsapp",
+                channel_id=_SYNTHETIC_PHONE,
+                content="hello",
+                error="timeout",
+            )
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+        assert "id:" in text
+
+    @pytest.mark.asyncio
+    async def test_pg_success_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock()
+        dm = DeliveryManager(db_pool=mock_pool)
+
+        with caplog.at_level(logging.INFO, logger=_OPTIMIZATIONS_LOGGER_NAME):
+            await dm.persist_failed(
+                channel="whatsapp",
+                channel_id=_SYNTHETIC_PHONE,
+                content="hello",
+                error="timeout",
+            )
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+        assert "id:" in text
+
+    @pytest.mark.asyncio
+    async def test_pg_fails_redis_fallback_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock(side_effect=Exception("PG down"))
+        dm = DeliveryManager(db_pool=mock_pool)
+
+        mock_redis = AsyncMock()
+        mock_redis.lpush = AsyncMock()
+
+        with (
+            caplog.at_level(logging.INFO, logger=_OPTIMIZATIONS_LOGGER_NAME),
+            patch("backend.channels.optimizations._get_redis_client", return_value=mock_redis),
+        ):
+            await dm.persist_failed(
+                channel="whatsapp",
+                channel_id=_SYNTHETIC_PHONE,
+                content="hello",
+                error="timeout",
+            )
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+        assert "id:" in text
+
+
+class TestRedactedChannelIdStaysCorrelatable:
+    """Innocence: same channel_id -> same digest across two calls, so an
+    operator can still correlate a client's rate-limit / DLQ log lines."""
+
+    @pytest.mark.asyncio
+    async def test_same_phone_yields_same_digest_across_two_dlq_persists(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mock_pool = AsyncMock()
+        mock_pool.execute = AsyncMock()
+        dm = DeliveryManager(db_pool=mock_pool)
+
+        with caplog.at_level(logging.INFO, logger=_OPTIMIZATIONS_LOGGER_NAME):
+            await dm.persist_failed(
+                channel="whatsapp", channel_id=_SYNTHETIC_PHONE, content="a", error="e1"
+            )
+            first_text = _all_log_text(caplog.records)
+            caplog.clear()
+
+            await dm.persist_failed(
+                channel="whatsapp", channel_id=_SYNTHETIC_PHONE, content="b", error="e2"
+            )
+            second_text = _all_log_text(caplog.records)
+
+        first_digest = next(tok for tok in first_text.split() if "id:" in tok)
+        second_digest = next(tok for tok in second_text.split() if "id:" in tok)
+        assert first_digest == second_digest
