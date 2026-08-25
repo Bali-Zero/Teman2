@@ -103,3 +103,89 @@ def test_the_registry_itself_only_names_files_that_still_exist_and_still_match()
             f"{filename} is registered as an FK dependent but no longer references "
             "visa_decision_retention_policies at all"
         )
+
+
+# ---------------------------------------------------------------------------
+# Regression test for the restore-asymmetry the team-lead found (2026-08-25,
+# PR #4902 follow-up, independently converged with a Kimi K3 finding):
+# restore_garuda_voa_retention_fk used to unconditionally replay every
+# registered migration's forward SQL, while unwind_garuda_voa_retention_fk
+# only rolls back entries whose marker is present -- correct with ONE
+# registered entry (the aggregate bool was unambiguous), broken once the
+# registry generalized to two-or-more. This proves the fix: restore now
+# probes for absence per-entry (the same marker check unwind already used)
+# and only re-applies what is actually missing.
+# ---------------------------------------------------------------------------
+
+import pytest
+
+from backend.db.migration_base import split_migration_sql
+from backend.tests.services.visa_engine.conftest import (
+    restore_garuda_voa_retention_fk,
+)
+
+
+async def _marker_present(conn, marker_table: str, marker_column: str) -> bool:
+    return bool(
+        await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2",
+            marker_table,
+            marker_column,
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_restore_only_reapplies_the_entry_that_was_actually_unwound(db_pool):
+    """Manually unwind ONLY 285 (285's rollback drops garuda_magic_link_tokens
+    and friends; it does not touch anything 281 owns), leaving 281 fully
+    applied -- a deliberately SKEWED state unwind_garuda_voa_retention_fk
+    itself would never produce (it always unwinds every applied entry it
+    finds), used here purely to prove restore's OWN per-entry behaviour in
+    isolation. Before the fix, an unconditional restore would try to
+    re-apply 281's forward SQL onto a schema where 281 is already live --
+    281's forward does plain `ALTER TABLE ... ADD COLUMN policy_scope`
+    (no `IF NOT EXISTS`), so that would raise `DuplicateColumnError`, not
+    silently no-op. After the fix, restore probes 281's marker, finds it
+    present, and leaves it alone -- only 285 gets re-applied.
+    """
+    _, filename_285, marker_table_285, marker_column_285 = next(
+        e for e in _GARUDA_VOA_RETENTION_FK_DEPENDENTS if e[0] == 285
+    )
+    _, _filename_281, marker_table_281, marker_column_281 = next(
+        e for e in _GARUDA_VOA_RETENTION_FK_DEPENDENTS if e[0] == 281
+    )
+
+    async with db_pool.acquire() as conn:
+        assert await _marker_present(conn, marker_table_281, marker_column_281), (
+            "281 must be live in the deployed schema for this test's premise to hold"
+        )
+        assert await _marker_present(conn, marker_table_285, marker_column_285), (
+            "285 must be live in the deployed schema for this test's premise to hold"
+        )
+
+        # Manually unwind ONLY 285 -- deliberately bypassing
+        # unwind_garuda_voa_retention_fk (which would also unwind 281).
+        sql_285 = (
+            _MIGRATIONS_DIR / filename_285
+        ).read_text(encoding="utf-8")
+        _, rollback_285 = split_migration_sql(sql_285)
+        await conn.execute(rollback_285)
+
+        assert not await _marker_present(conn, marker_table_285, marker_column_285)
+        assert await _marker_present(conn, marker_table_281, marker_column_281), (
+            "281 must still be live -- this test only unwound 285"
+        )
+
+        # The fix under test: restore must re-apply ONLY 285. Before the fix
+        # this line raised DuplicateColumnError trying to re-add 281's
+        # policy_scope column onto a schema where it already exists.
+        await restore_garuda_voa_retention_fk(conn)
+
+        assert await _marker_present(conn, marker_table_285, marker_column_285), (
+            "285 must have been restored"
+        )
+        assert await _marker_present(conn, marker_table_281, marker_column_281), (
+            "281 must still be live and untouched by restore"
+        )

@@ -542,22 +542,42 @@ async def unwind_garuda_voa_retention_fk(conn: asyncpg.Connection) -> bool:
 
 
 async def restore_garuda_voa_retention_fk(conn: asyncpg.Connection) -> None:
-    """Re-apply every registered dependent migration's forward SQL, in
-    ASCENDING migration-number order — the companion to
+    """Re-apply ONLY the registered dependent migrations that are currently
+    MISSING, in ASCENDING migration-number order — the companion to
     ``unwind_garuda_voa_retention_fk``. Call this AFTER ``forward_264`` has
-    re-established ``visa_decision_retention_policies``. Unconditional by
-    design: every caller of this function only reaches it after
-    ``unwind_garuda_voa_retention_fk`` unwound the full registered stack (or
-    the caller otherwise knows the full stack is expected live in the
-    deployed schema this fixture must leave behind) — there is no cheap
-    "already applied" check that isn't just re-deriving the caller's own
-    bookkeeping, same as before this function covered more than one migration.
+    re-established ``visa_decision_retention_policies``.
+
+    DELIBERATE OVERRIDE (2026-08-25, team-lead finding, PR #4902 follow-up):
+    this function used to be unconditional, on the stated grounds that
+    "there is no cheap 'already applied' check that isn't just re-deriving
+    the caller's own bookkeeping" — true when the registry held ONE entry,
+    because ``unwind``'s single aggregate ``bool`` return value was then
+    unambiguous (``True`` could only mean "281 was unwound, put 281 back").
+    Generalizing the registry to TWO-OR-MORE entries broke that: the
+    aggregate bool can no longer say WHICH entries were actually unwound, so
+    an unconditional restore can re-apply a migration ``unwind`` never
+    touched (e.g. a DB where 281 is applied but 285 is not: unwind rolls
+    back only 281 and returns ``True``; an unconditional restore would then
+    apply BOTH forward SQLs, handing back a database carrying 285 though it
+    was never live going in). ``unwind``'s own per-entry ``information_schema``
+    probe already IS the cheap "already applied" check the old docstring
+    said didn't exist — it just wasn't being reused on this side. Probing
+    for absence here removes the asymmetry: restore now puts back exactly
+    what unwind actually took away, no more, no less, regardless of how many
+    entries the registry grows to.
     """
-    for _number, filename, _marker_table, _marker_column in sorted(
+    for _number, filename, marker_table, marker_column in sorted(
         _GARUDA_VOA_RETENTION_FK_DEPENDENTS, key=lambda entry: entry[0]
     ):
-        forward_sql, _ = _read_migration(filename)
-        await conn.execute(forward_sql)
+        already_present = await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2",
+            marker_table,
+            marker_column,
+        )
+        if not already_present:
+            forward_sql, _ = _read_migration(filename)
+            await conn.execute(forward_sql)
 
 
 def _read_migration_250() -> tuple[str, str]:
