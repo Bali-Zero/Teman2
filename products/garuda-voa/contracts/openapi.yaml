@@ -693,13 +693,19 @@ paths:
         Signature verification precedes inbox insertion and business reconciliation. The signed
         body remains opaque here so this contract cannot represent a monetary component or
         ungrounded provider taxonomy. Valid duplicate or out-of-order events are durably accepted
-        or quarantined, not retried into a state mutation. TODO(ground): bind the provider-specific
-        signature header and event taxonomy after the owner selects the provider.
+        or quarantined, not retried into a state mutation.
+
+
+        This path deliberately carries NO Idempotency-Key parameter, and adding one back would
+        break it. That header is a request-idempotency pattern for commands the CLIENT issues;
+        an inbound provider callback is not ours to key. Xendit sends no such header, so
+        requiring it 400s every real payment confirmation before the signature is even checked
+        — measured 2026-08-25 on `garuda_orders_router.py`, where the `$ref` this block used to
+        carry had been faithfully implemented. Webhook dedup does not need it and never did:
+        it is keyed on `(provider, provider_event_id)` in `garuda_payment_inbox`.
       x-feature-flag: GARUDA_PUBLIC_ENABLED
       security:
         - ProviderSignature: []
-      parameters:
-        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -925,10 +931,18 @@ components:
     ProviderSignature:
       type: apiKey
       in: header
-      name: X-Provider-Signature
+      name: x-callback-token
       description: >-
-        TODO(ground): replace this canonical gateway header with the selected provider's signed
-        header contract and verification algorithm before enabling GARUDA_PUBLIC_ENABLED.
+        Bound to Xendit 2026-08-25, when owner decision 1 ratified the provider. Xendit Invoices
+        callbacks are authenticated by a STATIC verification token in `x-callback-token`,
+        compared constant-time against our stored token — there is no body HMAC and no signed
+        digest, so nothing here may be described as a signature over the payload. The raw body
+        still matters and is still never logged: it is hashed into `canonical_payload_sha256`
+        for inbox dedup, not for authenticity.
+
+
+        The name of this scheme is a legacy of the placeholder it replaced; it is the provider's
+        authenticity header, whatever shape that header takes.
     StaffSession:
       type: http
       scheme: bearer
