@@ -193,6 +193,65 @@ describe("useDocumentUpload", () => {
     expect(key1).toBe(key2); // exact replay identity — the contract's safe-retry guarantee
   }, 10000);
 
+  it("does not let a LATE-arriving stale rejection clobber a newer, already-succeeded upload", async () => {
+    // Refuter finding (2026-08-25): selecting file B while file A's request is still
+    // pending aborts A's fetch, but A's rejection can still arrive on the microtask queue
+    // AFTER B has already succeeded and rendered "ready". The old code unconditionally
+    // overwrote state on any catch, so that late arrival flipped a successfully-reviewed
+    // upload back to a generic error. Deferred promises here give explicit control over
+    // settle ORDER (never left to incidental microtask timing) so the regression this
+    // guards is unambiguous: resolve B's success FIRST, only THEN reject A's stale
+    // request, and assert state is untouched by the second event.
+    let resolveA!: (v: Response) => void;
+    let rejectA!: (e: unknown) => void;
+    const pendingA = new Promise<Response>((res, rej) => {
+      resolveA = res;
+      rejectA = rej;
+    });
+    void resolveA; // unused — A never resolves successfully in this scenario, only rejects
+
+    let callCount = 0;
+    mockFetch.mockImplementation(() => {
+      callCount += 1;
+      if (callCount === 1) return pendingA;
+      return Promise.resolve(
+        jsonResponse(201, {
+          document_id: "doc-b",
+          processing_state: "READY_FOR_REVIEW",
+          review_fields: [
+            {
+              field_path: "full_name",
+              value: "JANE DOE",
+              confirmation_required: true,
+            },
+          ],
+        }),
+      );
+    });
+
+    const { result } = renderHook(() => useDocumentUpload("result-1"));
+
+    act(() => {
+      result.current.selectFile(makeFile("passport-a.jpg", 1024, "image/jpeg"));
+    });
+    expect(result.current.state.step).toBe("uploading");
+
+    act(() => {
+      result.current.selectFile(makeFile("passport-b.jpg", 1024, "image/jpeg"));
+    });
+
+    // B (the current attempt) succeeds first.
+    await waitFor(() => expect(result.current.state.step).toBe("ready"));
+
+    // Only NOW does A's aborted request's rejection actually land.
+    await act(async () => {
+      rejectA(new DOMException("Aborted", "AbortError"));
+      await pendingA.catch(() => {});
+    });
+
+    expect(result.current.state.step).toBe("ready");
+  });
+
   it("uses a NEW idempotency key when a different file is selected (not a replay)", async () => {
     mockFetch.mockResolvedValue(
       jsonResponse(422, {

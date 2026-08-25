@@ -77,10 +77,23 @@ export function useDocumentUpload(resultId: string) {
     const idempotencyKey = idempotencyKeyRef.current;
     if (!file || !idempotencyKey) return;
 
+    // A stale PROCESSING poll from a PRIOR attempt (refuter finding, 2026-08-25) must
+    // never fire alongside a fresh one — clear it before starting, not just on unmount.
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+
     setState({ step: "uploading" });
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // Identity check, not `signal.aborted` alone (refuter finding, 2026-08-25): a NEW
+    // runUpload() may already be in flight with its OWN controller by the time this one's
+    // fetch settles — comparing `abortRef.current` catches that even in the vanishingly
+    // rare case the old signal was never actually flagged aborted before the new request
+    // replaced it.
+    const isStale = () => abortRef.current !== controller;
 
     try {
       const body = await uploadIntakeDocument({
@@ -89,7 +102,7 @@ export function useDocumentUpload(resultId: string) {
         idempotencyKey,
         signal: controller.signal,
       });
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || isStale()) return;
 
       if (body.processing_state === "READY_FOR_REVIEW") {
         pollAttemptRef.current = 0;
@@ -120,7 +133,7 @@ export function useDocumentUpload(resultId: string) {
         if (mountedRef.current) void runUpload();
       }, PROCESSING_POLL_INTERVAL_MS);
     } catch (err) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || isStale()) return;
       if (err instanceof GarudaUploadError) {
         if (err.code === "UNREADABLE_DOCUMENT") {
           setState({ step: "unreadable" });
@@ -134,9 +147,16 @@ export function useDocumentUpload(resultId: string) {
         return;
       }
       if (err instanceof GarudaUploadUnexpectedError) {
+        // A malformed 5xx body (raw proxy/server error page, not the contract's
+        // ErrorResponse shape) is a backend problem, not the customer's connection
+        // (refuter finding, 2026-08-25) — `httpStatus === null` is the true network-layer
+        // case (fetch itself rejected, request never reached the server).
         setState({
           step: "error",
-          message: messageForUnknownCode("__network__"),
+          message:
+            err.httpStatus !== null && err.httpStatus >= 500
+              ? messageFor("SERVICE_UNAVAILABLE")
+              : messageForUnknownCode("__network__"),
           retryable: true,
         });
         return;
@@ -177,6 +197,11 @@ export function useDocumentUpload(resultId: string) {
   }, [runUpload]);
 
   const reset = useCallback(() => {
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+    abortRef.current?.abort();
     fileRef.current = null;
     idempotencyKeyRef.current = null;
     pollAttemptRef.current = 0;

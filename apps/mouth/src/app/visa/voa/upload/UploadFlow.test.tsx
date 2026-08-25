@@ -26,7 +26,7 @@ describe("UploadFlow", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders every checklist item and a hidden file input with the camera capture attribute", () => {
+  it("renders every checklist item and a file input accepting the allowed image types", () => {
     render(<UploadFlow resultId="result-1" />);
 
     for (const item of CHECKLIST_ITEMS) {
@@ -36,8 +36,41 @@ describe("UploadFlow", () => {
     const input = screen.getByLabelText(
       "Upload passport photo",
     ) as HTMLInputElement;
-    expect(input.getAttribute("capture")).toBe("environment");
     expect(input.getAttribute("accept")).toContain("image/jpeg");
+    // No `capture="environment"` (refuter finding, 2026-08-25): that attribute launches
+    // the camera directly and hides the OS's native photo-library option — a customer
+    // with an existing scan of their passport must be able to pick it, not just shoot a
+    // new photo.
+    expect(input.hasAttribute("capture")).toBe(false);
+  });
+
+  it("hides the checklist once a photo has moved into review", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(201, {
+        document_id: "doc-checklist",
+        processing_state: "READY_FOR_REVIEW",
+        review_fields: [
+          {
+            field_path: "full_name",
+            value: "JANE DOE",
+            confirmation_required: true,
+          },
+        ],
+      }),
+    );
+
+    render(<UploadFlow resultId="result-1" />);
+    const input = screen.getByLabelText(
+      "Upload passport photo",
+    ) as HTMLInputElement;
+    const file = new File([new Uint8Array(10)], "passport.jpg", {
+      type: "image/jpeg",
+    });
+
+    await userEvent.upload(input, file);
+    await screen.findByDisplayValue("JANE DOE");
+
+    expect(screen.queryByText(CHECKLIST_ITEMS[0])).not.toBeInTheDocument();
   });
 
   it("never pre-fills a value into a low-confidence field's input", async () => {

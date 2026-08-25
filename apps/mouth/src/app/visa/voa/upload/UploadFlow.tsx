@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDocumentUpload } from "./useDocumentUpload";
 import {
   CHECKLIST_ITEMS,
@@ -32,6 +32,15 @@ export function UploadFlow({ resultId, onConfirmed }: UploadFlowProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Refuter finding, 2026-08-25: the passport photo's object URL is only revoked on
+  // FileChange/retake — on unmount (successful confirm, navigation away) it never was,
+  // holding the raw image in memory for the tab's lifetime.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -58,7 +67,12 @@ export function UploadFlow({ resultId, onConfirmed }: UploadFlowProps) {
         Upload your passport
       </h1>
 
-      <Checklist />
+      {/* Hidden once a photo has moved into review — on a phone viewport it otherwise
+          pushes the actual review fields and confirm button below the fold (refuter
+          finding, 2026-08-25). */}
+      {(state.step === "idle" || state.step === "client_rejected") && (
+        <Checklist />
+      )}
 
       {previewUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- transient local object URL, not a remote/optimizable asset
@@ -69,11 +83,14 @@ export function UploadFlow({ resultId, onConfirmed }: UploadFlowProps) {
         />
       )}
 
+      {/* No `capture="environment"` (refuter finding, 2026-08-25): that attribute
+          bypasses the OS picker and launches the camera directly, locking out a customer
+          who already has a photo/scan of their passport saved. The native picker (which
+          still offers "Take Photo") covers both cases. */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
-        capture="environment"
         className="hidden"
         onChange={handleFileChange}
         aria-label="Upload passport photo"
@@ -122,7 +139,7 @@ function StateView({
 
     case "client_rejected":
       return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3" role="alert">
           <p className="text-sm text-red-600">{state.message}</p>
           <PickButton label="Choose a different photo" onClick={onPickFile} />
         </div>
@@ -136,7 +153,13 @@ function StateView({
       );
 
     case "ready":
-      return <ReadyReview fields={state.fields} onConfirmed={onConfirmed} />;
+      return (
+        <ReadyReview
+          fields={state.fields}
+          onConfirmed={onConfirmed}
+          onRetake={onRetake}
+        />
+      );
 
     case "low_confidence":
       return (
@@ -194,12 +217,21 @@ function PickButton({
   );
 }
 
+function fieldLabel(fieldPath: string): string {
+  // Fallback so an unrecognized field_path renders SOMETHING readable instead of an
+  // empty span (refuter finding, 2026-08-25) — a future contract field this lane's
+  // FIELD_LABELS map hasn't been updated for should still be usable, not invisible.
+  return FIELD_LABELS[fieldPath] ?? fieldPath.replace(/_/g, " ");
+}
+
 function ReadyReview({
   fields,
   onConfirmed,
+  onRetake,
 }: {
   fields: ReviewField[];
   onConfirmed?: (values: Record<string, string>) => void;
+  onRetake: () => void;
 }) {
   // Contract note: these values ARE what local OCR read with high confidence — but
   // `confirmation_required` is true for every field the server sends (service.py never
@@ -209,14 +241,19 @@ function ReadyReview({
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.field_path, f.value])),
   );
+  // A field pre-filled from a confident OCR read can still be cleared by the customer —
+  // an empty passport number must not be submittable (refuter finding, 2026-08-25),
+  // matching the same invariant LowConfidenceReview already enforced.
+  const allFilled = fields.every(
+    (f) => (values[f.field_path] ?? "").trim().length > 0,
+  );
 
   return (
     <form
       className="flex flex-col gap-4"
-      aria-live="polite"
       onSubmit={(e) => {
         e.preventDefault();
-        onConfirmed?.(values);
+        if (allFilled) onConfirmed?.(values);
       }}
     >
       <p className="text-sm text-gray-700">
@@ -225,10 +262,15 @@ function ReadyReview({
       {fields.map((field) => (
         <label key={field.field_path} className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-900">
-            {FIELD_LABELS[field.field_path]}
+            {fieldLabel(field.field_path)}
           </span>
           <input
             type="text"
+            placeholder={
+              field.field_path === "passport_expiry_date"
+                ? "YYYY-MM-DD"
+                : undefined
+            }
             value={values[field.field_path] ?? ""}
             onChange={(e) =>
               setValues((v) => ({ ...v, [field.field_path]: e.target.value }))
@@ -237,12 +279,22 @@ function ReadyReview({
           />
         </label>
       ))}
-      <button
-        type="submit"
-        className="rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white"
-      >
-        Confirm and continue
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={!allFilled}
+          className="rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
+        >
+          Confirm and continue
+        </button>
+        <button
+          type="button"
+          onClick={onRetake}
+          className="rounded-md border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700"
+        >
+          Retake photo instead
+        </button>
+      </div>
     </form>
   );
 }
@@ -268,23 +320,26 @@ function LowConfidenceReview({
   return (
     <form
       className="flex flex-col gap-4"
-      aria-live="polite"
       onSubmit={(e) => {
         e.preventDefault();
         if (allFilled) onConfirmed?.(values);
       }}
     >
-      <p className="text-sm text-amber-700">
+      <p className="text-sm text-amber-700" role="status">
         {COPY_LOW_CONFIDENCE_INSTRUCTION}
       </p>
       {uncertainFields.map((field) => (
         <label key={field.field_path} className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-gray-900">
-            {FIELD_LABELS[field.field_path]}
+            {fieldLabel(field.field_path)}
           </span>
           <input
             type="text"
-            placeholder="Enter this field"
+            placeholder={
+              field.field_path === "passport_expiry_date"
+                ? "YYYY-MM-DD"
+                : "Enter this field"
+            }
             value={values[field.field_path] ?? ""}
             onChange={(e) =>
               setValues((v) => ({ ...v, [field.field_path]: e.target.value }))
