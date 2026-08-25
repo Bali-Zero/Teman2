@@ -186,3 +186,67 @@ are the engine protecting someone.
    `contracts/packs` and logs that it did not check which pack is ACTUALLY active in production.**
    That is the honest behaviour, but it means this report describes the pack on disk, not
    necessarily the one serving traffic. A `--live` run is a different claim.
+
+### Correzione 2026-08-25 (seconda misura) — l'acceptance dichiarata qui sopra è IRRAGGIUNGIBILE
+
+La sezione precedente fissa come acceptance falsificabile: _«`NEEDS_INPUT` → `SUPPORTED_CANDIDATES
+[E23]` quando la cura atterra»_. **Misurato: quel flip non può avvenire.** Chi implementasse «poni
+la domanda» spedirebbe il lavoro e troverebbe la divergenza ancora lì, in una forma diversa, dopo
+essere stato indirizzato da questa riga ad aspettarsi una cura.
+
+Guidando `PERSONAS[14]` contro lo stesso pack firmato e fornendo a mano i fatti che l'intervista non
+sa porre, uno per volta:
+
+```
+1. NEEDS_INPUT        manca: intent.requested_product_code
+2. NEEDS_INPUT        manca: sponsor.type
+3. NO_SUPPORTED_PATH  nessun fatto mancante
+```
+
+`NO_SUPPORTED_PATH`, non `SUPPORTED_CANDIDATES [E23]` — e con tutti e sei i valori di `SponsorType`.
+Motivo, letto sulla prova per prodotto: E23 esce `UNSUPPORTED` con `missing_purposes: ['TOURISM']`.
+`evaluator.py:678` richiede che **ogni** scopo dichiarato sia coperto, ed entrambe le regole di
+idoneità di E23 dichiarano `covered_purposes: ["EMPLOYMENT"]` e basta; la persona dichiara
+`["TOURISM", "EMPLOYMENT"]`.
+
+Quindi i difetti sono **due, indipendenti**, e curare il primo non chiude la divergenza:
+
+1. l'intervista non sa scrivere `intent.requested_product_code` per quattro `sponsor_category` su
+   sei (questo documento, sopra) — e i prodotti che lo pretendono, E23U/E23V, hanno **zero** regole
+   di idoneità: non potrebbero vincere nemmeno rispondendo;
+2. il pack non sa esprimere la policy «lavoro + turismo → visto di lavoro» che l'etichetta della
+   persona enuncia.
+
+**Acceptance corretta**: la divergenza #15 si chiude quando il verdetto per quella forma diventa
+**una risposta onesta e non un muro** — che sia `SUPPORTED_CANDIDATES [E23]` (se Zero sceglie di
+insegnare la policy al pack) oppure `HUMAN_REVIEW_REQUIRED` con la mano tesa al consulente. Il solo
+passaggio a `NO_SUPPORTED_PATH` **non** è la cura: è lo stesso vicolo due schermate più avanti.
+
+Catena completa, meccanismo e le due domande per Zero: `DEADEND-PURPOSE-COVERAGE.md`.
+
+### Seguito, stesso turno — #15 NON è un vicolo cieco _del wizard_: il funnel non sa dichiarare due scopi
+
+La correzione qui sopra resta valida ma è incompleta. Misurato subito dopo, sul mapper reale:
+`fact-mapper.ts:344-350` (`mapPurposes`) è **l'unico** scrittore di `intent.purposes` in tutto
+`apps/mouth/src` (verificato per grep, un solo assegnamento non di test, `:671`), e ritorna sempre
+`known([purpose])` — **un array di un elemento** — perché `CATEGORY_TO_PURPOSE` (`:294-305`) è 1:1.
+
+**Il wizard non può produrre `["TOURISM","EMPLOYMENT"]`.** La forma di #15 non è raggiungibile dal
+funnel di produzione. Un richiedente `work` reale dichiara `["EMPLOYMENT"]` e basta, e su quella
+forma esatta il motore risponde `SUPPORTED_CANDIDATES candidates=['E23']` — **anche senza**
+`intent.requested_product_code`: E23U/E23V restano `BLOCKED_UNKNOWN`, ma un SUPPORTED batte un
+bloccato. Il sequestro descritto sopra scatta **solo quando nessun prodotto è supportato**, ed è
+per questo che morde #15 (due scopi → E23 cade) e non l'utente vero.
+
+⚠️ Precisione, non assoluzione: irraggiungibile **dal mapper del wizard**, non in assoluto — l'API
+del motore accetta due scopi, e qualunque altro consumatore (chat, integrazioni, un futuro
+selettore multi-scelta) ci finisce dentro.
+
+**Conseguenza sulla classificazione**: #15 va da «Class 4 — vicolo cieco vivo» a **divergenza
+spiegata corpus↔pack su una forma che il funnel non produce**. Il criterio firmato da Zero il
+2026-08-25 — _«ogni divergenza spiegata, e nessuna di esse un vicolo cieco»_ — risulta soddisfatto
+su questa base. **La chiamata resta di Zero**, non della lane: la divergenza va tenuta agli atti
+spiegata, mai cancellata.
+
+Censimento completo (78 combinazioni di scopi, copertura per scopo, i 52 casi strutturalmente
+impossibili) e le tre decisioni aperte: `DEADEND-PURPOSE-COVERAGE.md`.
