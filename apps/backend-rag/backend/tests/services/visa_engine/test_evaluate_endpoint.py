@@ -3141,7 +3141,27 @@ async def evaluate_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIter
     forward_264, rollback_264 = _read_migration(264, "visa_decision_retention_policy")
     forward_265, rollback_265 = _read_migration(265, "visa_decision_trace_integrity")
     forward_266, rollback_266 = _read_migration(266, "visa_retention_evidence")
+    # 281 (GARUDA-VOA retention, layered on top of this stack from the
+    # products/garuda-voa side) adds garuda_voa_checks.retention_policy_id
+    # and garuda_voa_check_legal_hold_events.retention_policy_id, both FKs
+    # onto visa_decision_retention_policies (264). It is not part of this
+    # module's own 252-266 stack and this fixture never applies its forward
+    # SQL — 281 is already live in the schema outside this fixture's control
+    # (applied like any other deployed migration). But because it sits ABOVE
+    # 264 it MUST be unwound first, or rollback_264's `DROP TABLE
+    # visa_decision_retention_policies` fails with
+    # DependentObjectsStillExistError against those two FKs. Reverse-order
+    # teardown of a shared authority table means honouring dependents added
+    # above you, even from a different product's migration — see
+    # rollback_264 below for a real occurrence of this class of failure.
+    forward_281, rollback_281 = _read_migration(281, "garuda_voa_retention")
     async with db_pool.acquire() as conn:
+        if await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'garuda_voa_checks' "
+            "AND column_name = 'retention_policy_id'"
+        ):
+            await conn.execute(rollback_281)
         if await conn.fetchval(
             "SELECT to_regprocedure('public.visa_decision_retention_evidence()') IS NOT NULL"
         ):
@@ -3170,8 +3190,19 @@ async def evaluate_schema(db_pool: asyncpg.Pool, visa_schema: None) -> AsyncIter
         await conn.execute(forward_264)
         await conn.execute(forward_265)
         await conn.execute(forward_266)
+        # Restore 281 on top — it is not this fixture's migration, and
+        # tearing it down above was only to clear its FK onto (264) long
+        # enough to rebuild 252-266 from scratch. Every test using this
+        # fixture must see the real deployed schema, 281 included.
+        await conn.execute(forward_281)
     yield
     async with db_pool.acquire() as conn:
+        if await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'garuda_voa_checks' "
+            "AND column_name = 'retention_policy_id'"
+        ):
+            await conn.execute(rollback_281)
         await conn.execute(rollback_266)
         await conn.execute(rollback_265)
         await conn.execute(rollback_264)
@@ -4770,11 +4801,26 @@ async def test_response_hmac_and_retention_migrations_refuse_legacy_replay_bindi
 ) -> None:
     forward_263, rollback_263 = _read_migration(263, "visa_evaluate_response_hmac")
     forward_264, rollback_264 = _read_migration(264, "visa_decision_retention_policy")
+    # Same DependentObjectsStillExistError class as evaluate_schema's own
+    # rollback_264 above: the `evaluate_schema` fixture this test depends on
+    # restores 281 forward after building 252-266, so garuda_voa_checks and
+    # garuda_voa_check_legal_hold_events both carry a live FK onto
+    # visa_decision_retention_policies (264) by the time this test body
+    # runs its own rollback_264 below. Unwind 281 first, and restore it
+    # after forward_264 re-establishes the table this test's own
+    # forward_264 (below) recreates.
+    forward_281, rollback_281 = _read_migration(281, "garuda_voa_retention")
     now = datetime.now(timezone.utc)
     keyring = resolve_engine_hmac_keyring(Environment.TEST, now)
     canonical_request = b'{"legacy":"bound-request"}'
     key_sha256 = b"l" * 32
     async with db_pool.acquire() as conn:
+        if await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'garuda_voa_checks' "
+            "AND column_name = 'retention_policy_id'"
+        ):
+            await conn.execute(rollback_281)
         await conn.execute(rollback_264)
         await conn.execute(rollback_263)
         legacy = await conn.fetchrow(
@@ -4805,6 +4851,9 @@ async def test_response_hmac_and_retention_migrations_refuse_legacy_replay_bindi
             == 0
         )
         await conn.execute(forward_264)
+        # Restore 281 on top of the freshly-recreated (264) table, matching
+        # the state evaluate_schema's own teardown expects to find.
+        await conn.execute(forward_281)
         await _insert_retention_policy(
             conn,
             effective_from=now - timedelta(days=1),
