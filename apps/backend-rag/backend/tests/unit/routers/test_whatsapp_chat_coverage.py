@@ -560,6 +560,7 @@ async def test_process_whatsapp_message_not_allowed():
     with (
         patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
         patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         # Should complete without error
         await process_whatsapp_message(
@@ -645,6 +646,7 @@ async def test_process_whatsapp_message_offer_choice():
             "backend.app.routers.whatsapp_chat.get_onboarding_detector",
             return_value=mock_onboarding,
         ),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         await process_whatsapp_message(
             phone="621234567890",
@@ -691,6 +693,7 @@ async def test_process_whatsapp_message_onboarding_triggered():
         ),
         patch("backend.app.routers.whatsapp_chat.telegram_bot", mock_telegram),
         patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         mock_settings.admin_telegram_chat_id = "8037989885"
         await process_whatsapp_message(
