@@ -65,8 +65,8 @@ jobs:
           COLLECTED=$(python3 -m pytest products/garuda-voa/contracts/tests/ \
             --collect-only -q --no-header -o addopts= 2>/dev/null | grep -c '::' || true)
           echo "collected: $COLLECTED"
-          if [ "$COLLECTED" -lt 10 ]; then
-            echo "::error::garuda contract suite collected $COLLECTED tests, expected at least 10 —" \
+          if [ "$COLLECTED" -lt 11 ]; then
+            echo "::error::garuda contract suite collected $COLLECTED tests, expected at least 11 —" \
                  "the suite moved, was renamed, or stopped importing. A gate that collects nothing passes."
             exit 1
           fi

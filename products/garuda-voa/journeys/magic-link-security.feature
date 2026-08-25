@@ -1,7 +1,12 @@
 @red-first @journey @magic-link @security
 Feature: Magic links expire and are single use
   # RED-FIRST: real account and email surfaces only; token validators and sessions may not be mocked.
-  # TODO(ground): approve the magic-link lifetime and single-use token authority.
+  # GROUNDED 2026-08-25 (was TODO): the lifetime and single-use authority are decided and
+  # binding — `x-magic-link` in contracts/openapi.yaml, ttl_minutes 15, single_use true,
+  # DECISIONS.md Q1. Session lifetime is a SEPARATE number and is not this one; conflating
+  # them is how a 15-minute link becomes a 15-minute portal. The scenarios below deliberately
+  # still say "the grounded lifetime policy" rather than "15 minutes" — they assert the
+  # BEHAVIOUR, so revising the number stays a one-line contract diff and does not touch them.
 
   Background:
     Given an eligible persisted result owned by a synthetic customer
