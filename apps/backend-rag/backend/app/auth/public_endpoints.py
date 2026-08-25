@@ -130,6 +130,22 @@ _INFRA = (
         "Asset upload service health probe (Tigris config check, no creds exposed)",
         match="exact",
     ),
+    # Public-endpoint matching is deliberately method-agnostic. These two
+    # paths bypass HybridAuthMiddleware only so their dedicated route key can
+    # run; the router exposes GET only, therefore POST/PUT/PATCH/DELETE still
+    # terminate at FastAPI with 405 and never reach a mutating handler.
+    PublicEndpoint(
+        "/api/workspace-marketing/news/pending",
+        Category.BRIDGE,
+        "ChatGPT Business News Room projection - dedicated route key enforced in-router",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/workspace-marketing/news/{item_id}",
+        Category.BRIDGE,
+        "ChatGPT Business single-news projection - dedicated route key enforced in-router",
+        match="template",
+    ),
     # Intel Lake Wave 1 (2026-05-12, mig 168): unified intel pipeline ingest
     # endpoint. Public to bypass HybridAuthMiddleware — but enforces its own
     # X-Producer-Token header auth in the router (env INTEL_LAKE_PRODUCER_TOKEN).

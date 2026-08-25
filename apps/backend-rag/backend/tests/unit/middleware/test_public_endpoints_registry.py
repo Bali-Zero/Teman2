@@ -225,6 +225,18 @@ class TestHelperFunctions:
         assert entry.match == "exact"
         assert entry.prefix == "/"
 
+    def test_workspace_marketing_template_matches_exactly_one_segment(self):
+        entry = next(
+            endpoint
+            for endpoint in PUBLIC_ENDPOINTS
+            if endpoint.prefix == "/api/workspace-marketing/news/{item_id}"
+        )
+        assert entry.match == "template"
+        assert entry.matches("/api/workspace-marketing/news/news_123")
+        assert not entry.matches("/api/workspace-marketing/news/")
+        assert not entry.matches("/api/workspace-marketing/news/news_123/extra")
+        assert not entry.matches("/api/workspace-marketing/news/news_123/delete")
+
 
 class TestVisaCheckPublicRegistration:
     """Guilt+innocence for the /api/visa/* Visa Check v1 funnel.
