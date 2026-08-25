@@ -20,31 +20,56 @@ Phase 2 scope (VASSAL_PLAN_V7 §7 Week 2 — "Strada B"):
       — see "Scaffolding rationale" below
 
 Out of Phase 2 scope (planned for later phases):
-    * `verify_client_access` injection for tools accepting `client_id`
-      (deferred to Strada A: requires CRM tools to be registered as
-      `BaseTool` instances inside the agentic loop, which they are NOT
-      today — see VASSAL_PHASE2_HANDOFF.md)
-    * `_force_assigned_to` filter injection for list_clients-style tools
+    * A DB-backed ownership check for tools accepting a bare `client_id` /
+      `practice_id` (e.g. `get_client(client_id=...)`) is still deferred —
+      this class is documented as stateless/no-I/O, and per F5/F7 the
+      CRM endpoint independently enforces `assigned_to` for those anyway
+      (endpoint authorization is the boundary; this authorizer is
+      early-deny only). `_check_client_scope` (below) is no longer a pure
+      no-op: it DOES enforce the `assigned_to` staff-scope filter argument
+      (F5's `list_practices`/`create_reminder`/`open_practice` shape),
+      which is verifiable in-process without touching Postgres.
+    * `_force_assigned_to`-style filter INJECTION for list_clients-style
+      tools is still not implemented — a `deny`, not a silent
+      server-side override of an LLM-chosen argument, is what this class
+      offers instead (an override risks the model believing its own
+      argument was honored when it was not; a deny is auditable and
+      round-trips back to the model as an observation it can act on).
     * Real interactive confirmation gates — Phase 3 will implement
       `confirmation_service` and flip NEEDS_CONFIRMATION from scaffold
       to active
 
 Source of truth for roles & allowlists:
-    `backend.services.agents.team_agent_config.TEAM_AGENTS`. The authorizer
-    intentionally does NOT consult `backend.app.utils.crm_utils` (which has
-    its own divergent admin lists used by the REST CRM routers). This is a
-    documented two-source-of-truth situation, tracked for resolution in
-    Phase 7 of VASSAL_PLAN_V8 ("Policy Source Unification via shared YAML").
-    Until then, the authorizer's lane is the agentic ReAct loop and only
-    that lane.
+    `backend.services.agents.team_agent_config.TEAM_AGENTS` remains the
+    source of truth for role → tool allowlist (step 1 above) and for the
+    admin bypass on `_check_client_scope` (`agent_role.client_scope ==
+    "all"`, checked FIRST and with no I/O — see that method's docstring
+    for why it must be checked before, not instead of, `crm_access.py`'s
+    own admin notion).
+
+    F5 (docs/plans/2026-08-25-due-bot-live/MANDATE.md) explicitly asks this
+    module to "reuse ... `crm_access.py` filters", so `_check_client_scope`
+    now DOES call `backend.app.deps.crm_access.get_crm_user_filter` (which
+    itself defers to `backend.app.utils.crm_utils.is_crm_admin`) for the
+    "assigned"-scope case — a deliberate, narrow crossing of the boundary
+    below, not its removal: `verify_client_access` (crm_utils.py's
+    per-record, DB-backed check used by the REST CRM routers) is still not
+    consulted, and the broader two-source-of-truth question this section
+    used to describe is NOT resolved by this change, only narrowed to the
+    one check that needed it. This is a documented two-source-of-truth
+    situation, tracked for resolution in Phase 7 of VASSAL_PLAN_V8 ("Policy
+    Source Unification via shared YAML"). Until then, the authorizer's lane
+    is the agentic ReAct loop and only that lane.
 
 Scaffolding rationale (client_scope + requires_confirmation):
     The current ReAct tool registry has 9 tools (vector_search, pricing,
     team_knowledge, knowledge_graph, calculator, vision, image_generation,
-    web_search, timesheet). NONE of them accept `client_id` and NONE of
-    them are write actions that need confirmation today. So the
-    `client_scope` and `requires_confirmation` checks are present in the
-    code path but are no-ops for the current tool set.
+    web_search, timesheet). NONE of them accept `client_id`/`practice_id`/
+    `assigned_to` and NONE of them are write actions that need confirmation
+    today. So `_check_client_scope` and `_check_requires_confirmation` are
+    both REAL checks (not stubs) whose bodies simply never fire for the
+    current tool set — every one of them returns None on the very first
+    line, `_extract_scope_filter_value(args)` finding nothing to inspect.
 
     This is INFRASTRUCTURE, not a corner cut: when Phase 3 wires real
     confirmation gates and when (eventually) CRM tools are registered into
@@ -61,10 +86,19 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from backend.services.agents.team_agent_config import AgentRole, is_tool_allowed
+from backend.app.deps.crm_access import get_crm_user_filter
+from backend.services.agents.team_agent_config import AgentRole, get_agent_role, is_tool_allowed
 from backend.services.pii.violation_store import hash_subject
 
 logger = logging.getLogger(__name__)
+
+# F5 (docs/plans/2026-08-25-due-bot-live/MANDATE.md): "complete or bypass the
+# no-op `_check_client_scope`... before any mutation arms". Argument keys
+# `_check_client_scope` inspects to decide whether a call needs scope
+# verification at all — deliberately narrow, and deliberately NOT `client_id`
+# / `practice_id` (see that method's docstring for why a bare record
+# reference is excluded on purpose, not by oversight).
+CLIENT_SCOPE_FILTER_KEYS = frozenset({"assigned_to"})
 
 # Tools that touch client/staff PII and must NEVER pass through the
 # legacy agent_role=None path (TOURNIQUET, Zero GO 2026-07-21 — see
@@ -262,11 +296,12 @@ class ToolAuthorizer:
             self._audit("deny", user_email, agent_role, tool_name, reason)
             return AuthResult.deny(reason, args)
 
-        # ── 2. Client-scope enforcement (SCAFFOLDING) ────────────────────
-        # No-op for the current 9-tool registry: none of them accept
-        # `client_id`. When CRM tools land (Strada A, future), this is
-        # where verify_client_access injection plugs in. The hook is
-        # left explicit so Phase 3+ does not need to refactor authorize().
+        # ── 2. Client-scope enforcement (F5) ──────────────────────────────
+        # Still a no-op for the current 9-tool registry — none of them
+        # carry an `assigned_to` argument — but the check itself is now
+        # real (see `_check_client_scope`'s docstring): a call carrying
+        # `args["assigned_to"]` that names a staff member other than the
+        # caller, from a non-admin caller, is denied here BEFORE step 3.
         scope_result = self._check_client_scope(user_email, agent_role, tool_name, args)
         if scope_result is not None:
             return scope_result
@@ -323,20 +358,107 @@ class ToolAuthorizer:
         args: dict[str, Any],
     ) -> AuthResult | None:
         """
-        Check client_scope constraint.
+        Early-deny a client-scope violation this authorizer can verify
+        without a database round-trip (F5: "complete or bypass the no-op
+        `_check_client_scope`... before any mutation arms").
 
-        Returns an AuthResult ONLY if a scope check fires (deny or
-        scope-injected allow). Returns None if no scope rule applies,
-        in which case the caller continues with subsequent checks.
+        Returns `AuthResult.deny(...)` ONLY when it can be CERTAIN, from
+        `args` + `agent_role` alone, that the call is out of scope. Every
+        other path returns `None` — including "no restriction applies"
+        AND "cannot verify, so don't guess". `None` never means "allowed
+        unconditionally": per F7, "CRM routes independently enforce
+        `assigned_to` (endpoint authorization is the boundary; the local
+        authorizer is early-deny only)" — this method is that early,
+        optional, no-I/O layer, not the boundary itself. A `None` here
+        just means the (still-authoritative) endpoint decides on its own.
 
-        Phase 2 scope: scaffold only. The agentic loop has zero CRM
-        tools and zero tools that accept `client_id`, so this method
-        currently always returns None. The hook stays so Phase 3+ /
-        Strada A can fill it in without modifying `authorize()`.
+        Structural extraction (never string-sniffing a value): the ONLY
+        argument key inspected is `assigned_to` (`CLIENT_SCOPE_FILTER_KEYS`
+        — see its module-level comment for why bare `client_id` /
+        `practice_id` record references are deliberately excluded: whether
+        a SPECIFIC record belongs to this caller lives in Postgres
+        (`clients.assigned_to` / `practices.assigned_to`), and this class
+        is documented as stateless/no-I/O — verifying that would mean
+        adding a DB round-trip here, which is exactly what F7 assigns to
+        the endpoint instead). `assigned_to` is different: it is a
+        staff-scoping filter/target ARGUMENT the tool itself declares
+        (F5's `list_practices`, `create_reminder`, `open_practice` in
+        `apps/team-bot/team_bot/registry/tools.py`), expressed in the same
+        identity currency as `user_email` — comparable in-process, with
+        zero I/O, exactly like `crm_access.get_crm_user_filter`'s own
+        documented "WHERE assigned_to = $N" usage.
+
+        Admin bypass (checked in this order; each is sufficient on its
+        own — the deny path below only runs if BOTH say "not an admin"):
+          1. `agent_role.client_scope == "all"` — this authorizer's own
+             role model (`team_agent_config.py`), checked FIRST and with
+             NO further I/O. Needed because `crm_access.py`'s narrower
+             CRM-admin allowlist does not recognise every role this field
+             already marks unrestricted (verified empirically: the tax
+             team — `client_scope="all"` — is absent from
+             `crm_utils.is_crm_admin`'s allowlists).
+          2. `get_crm_user_filter` (`backend.app.deps.crm_access` — F5:
+             "reuse ... `crm_access.py` filters") returns `None` — a
+             genuine CRM admin per THAT source even though this role's
+             own `client_scope` says "assigned" (e.g. `ruslana@balizero.com`,
+             role `crm_full`, recognised via
+             `crm_utils.PRACTICES_EXTRA_VIEW_EMAILS`). Reused, not
+             re-derived, per F5's explicit instruction not to compute
+             assigned_to filtering a third time (the same computation
+             already exists in `crm_access.get_crm_user_filter` and
+             `team_crm_tools.resolve_team_crm_scope`).
+
+        For everyone else, `args["assigned_to"]` (if present) must equal
+        the caller's own scope filter — case/whitespace-insensitive —
+        or the call is denied.
+
+        One more guard before that comparison ever fires: `get_agent_role
+        (user_email) == agent_role` must hold. `user_email` is a misnomer
+        (see `_principal_token`'s docstring) — on the WhatsApp channel it
+        is `whatsapp_<phone>`, not a real email, even when `agent_role`
+        was correctly resolved via a DIFFERENT, separately-trusted email
+        upstream (`agentic_rag.py::_derive_wa_agent_role`). Comparing a
+        phone-shaped principal against a real `assigned_to` email would
+        NEVER match, which would silently deny a WhatsApp-channel caller
+        referencing their OWN book. Skipping the comparison in that case
+        (deferring to the endpoint, per F7) is the safe direction: a
+        missed early-deny costs nothing (the endpoint still enforces the
+        real boundary); a wrongful deny would be a usability regression
+        with no compensating safety benefit.
         """
-        # Phase 2: no-op. Method body intentionally empty until tools
-        # that accept `client_id` are registered into the loop.
-        _ = (user_email, agent_role, tool_name, args)  # silence unused
+        identifier_value: Any = None
+        for key in CLIENT_SCOPE_FILTER_KEYS:
+            if key in args:
+                identifier_value = args[key]
+                break
+        if identifier_value is None:
+            return None  # no scope-carrying argument present — untouched
+
+        if agent_role.client_scope == "all":
+            return None
+
+        if get_agent_role(user_email or "") != agent_role:
+            # Cannot confirm `user_email` is a real, comparable identity
+            # for this `agent_role` (e.g. the WA channel's phone-shaped
+            # pseudo-id) — defer to the endpoint rather than risk a false
+            # deny for a legitimate self-reference.
+            return None
+
+        scope_filter = get_crm_user_filter(current_user={"email": user_email or ""})
+        if scope_filter is None:
+            # crm_access.py also considers this caller an admin, even
+            # though this role's own `client_scope` says "assigned".
+            return None
+
+        claimed = str(identifier_value).strip().lower()
+        if claimed != scope_filter:
+            reason = (
+                f"Tool '{tool_name}' argument 'assigned_to' names a staff "
+                f"member outside your assigned client scope."
+            )
+            self._audit("deny", user_email, agent_role, tool_name, reason)
+            return AuthResult.deny(reason, args)
+
         return None
 
     def _check_requires_confirmation(
