@@ -225,6 +225,22 @@ KILL_SWITCHES: tuple[KillSwitch, ...] = (
         "'budget exhausted' outcome (never a hang or a crash).",
     ),
     KillSwitch(
+        env_var="TEAM_BOT_BRAIN_TP1_ENABLED",
+        plane=TripwirePlane.TEAM_REPLIES,
+        default_dark=True,
+        scope="global",
+        effect_when_off="team_bot.brain.router.BrainRouter never attempts any of the "
+        "three TP1 cloud tiers (qwen3.7-plus / qwen3.6-flash / glm-5.2) and goes "
+        "straight to the local read-only Mini model (R0 tools only) — the narrower "
+        "gesture to pull the cloud brain out of rotation without touching "
+        "TEAM_BOT_REPLY_ENABLED (the master send switch). Directive#1§1 (2026-08-25).",
+        owning_lane="B4",
+        status=KillSwitchStatus.WIRED,
+        verify_command="grep TEAM_BOT_BRAIN_TP1_ENABLED apps/team-bot/team_bot/flags.py; "
+        "set it false and confirm BrainCompletion.tier == BrainTier.LOCAL_READ_ONLY on "
+        "the next call.",
+    ),
+    KillSwitch(
         env_var="TEAM_BOT_MUTATIONS_ENABLED",
         plane=TripwirePlane.TEAM_MUTATIONS,
         default_dark=True,
