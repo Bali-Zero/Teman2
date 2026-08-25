@@ -612,12 +612,23 @@ def _resolve_token_from_env() -> tuple[str, str] | None:
     return None
 
 
-async def run_from_env(*, http_client: httpx.AsyncClient | None = None) -> int:
+async def run_from_env(
+    *,
+    http_client: httpx.AsyncClient | None = None,
+    now: datetime | None = None,
+) -> int:
     """CLI body: read config from env, run one pass, persist the result.
 
     A refresh that cannot be persisted is a FAILURE (exit 2), not a warning:
     the new token would be dropped and the cron would sit green while the
     live token marches toward expiry (family #2, esiste≠armato).
+
+    `now` is forwarded to `run_watchdog` and exists so a caller can pin the
+    clock. Production never passes it — the default reaches
+    `datetime.now(timezone.utc)` exactly as before, so behaviour is unchanged.
+    It is here because this wrapper was the ONE path in this module that could
+    not be given a fixed clock, and that is precisely where a test rotted: see
+    the note on `test_cli_fresh_state_exits_zero_without_network`.
     """
     resolved = _resolve_token_from_env()
     if resolved is None:
@@ -668,6 +679,7 @@ async def run_from_env(*, http_client: httpx.AsyncClient | None = None) -> int:
             threshold_days=threshold,
             state_file=state_file,
             http_client=http_client,
+            now=now,
         )
     finally:
         if http_client is None:

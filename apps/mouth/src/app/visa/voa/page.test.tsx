@@ -125,3 +125,36 @@ describe("VoaEligibilityPage — wire contract", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("VoaEligibilityPage — customer-facing surface", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    fetchMock.mockReset();
+  });
+
+  it("never leaks an internal service/class name (PricingTool etc.) into rendered copy", () => {
+    render(<VoaEligibilityPage />);
+    const rendered = document.body.textContent ?? "";
+    // Guards the class of bug, not just the one string: any
+    // TitleCase-word-immediately-followed-by-"Tool" token (PricingTool,
+    // EligibilityTool, ...) is an internal identifier, never customer copy.
+    expect(rendered).not.toMatch(/[A-Z][a-zA-Z]*Tool\b/);
+  });
+
+  it("has no Back control on step 1 (there is nowhere to go back to)", () => {
+    render(<VoaEligibilityPage />);
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the Back control from step 2 onward", () => {
+    render(<VoaEligibilityPage />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Get a new Visa on Arrival/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+  });
+});

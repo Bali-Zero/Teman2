@@ -21,12 +21,49 @@ requires is enforced HERE, not left to a caller:
 - Unknown, expired, and already-consumed tokens all fall through the same
   "0 rows returned" branch and produce the identical `ExchangeOutcome`
   (DECISIONS.md Q1) -- there is no code path that inspects *why* the UPDATE
-  matched nothing.
+  matched nothing. This is TIMING equivalence, not just response equivalence
+  (team-lead review, 2026-08-25): `exchange` issues exactly ONE query shape
+  for every deny outcome -- the single atomic UPDATE, whether it misses
+  because the token_hash was never issued, is expired, or is already
+  consumed -- followed by exactly one `idempotency.complete()` write. No
+  branch does a cheaper "return immediately" for one deny reason and a more
+  expensive lookup+compare for another; there is nothing FOR such a branch
+  to inspect, because the adapter never determines *which* deny reason
+  occurred in the first place (`security_counter` is hardcoded to the same
+  constant for all three). The one asymmetry this does NOT attempt to
+  erase is the underlying Postgres B-tree index's own hit-vs-miss cost (an
+  index probe that finds no matching key vs. one that finds a row and then
+  evaluates the `used_at`/`expires_at` predicates against it) -- closing
+  that would require a fundamentally different storage structure
+  (constant-cost lookup, e.g. a fixed-size in-memory table or an HMAC blind
+  index) and is disproportionate for what it would defend against: the
+  "secret" here is a full 256-bit `secrets.token_urlsafe(32)` bearer, not a
+  partial value an attacker refines byte-by-byte against a comparison
+  function the way a classic timing attack on MAC verification would.
+  `test_magic_link_store_integration.py::test_deny_paths_execute_the_same_
+  query_shape` pins the STRUCTURAL invariant (identical statement count for
+  all three) that makes engine-level constancy at least possible; that same
+  file's `test_deny_path_timing_does_not_separate_under_repetition` adds an
+  empirical sample as a secondary, advisory signal and documents exactly
+  why it is not the primary gate (CI-runner jitter, not application logic,
+  dominates at this scale).
 - `PersistencePolicyUnavailable` is raised BEFORE any row is attempted (a
   pre-check against `active_garuda_magic_link_policy_available`), mirroring
   `GarudaOrderRepository._active_order_policy_available` (L3) exactly --
   never caught out of the retention trigger's own `RAISE EXCEPTION`, which
   stays as pure defense-in-depth for a caller that skips the pre-check.
+- `issue` fails closed with `RateLimited` once an email has received
+  `_MAX_ISSUES_PER_EMAIL_PER_WINDOW` links within `_ISSUE_RATE_WINDOW_
+  MINUTES` -- team-lead review, 2026-08-25: `RATE_LIMITED` (429) is
+  declared in the frozen contract for both operations but was unreachable
+  on any code path before this. Scoped by email (not IP, not session):
+  `issue`'s Protocol signature carries no client IP, and email is exactly
+  what an anti-mail-bomb throttle needs to count against -- migration 237's
+  own `idx_magic_link_email_created` comment ("rate-limit / cleanup queries
+  scan by email + recency") is the precedent this mirrors, and migration
+  285's `idx_garuda_magic_link_tokens_email_created` was already built for
+  the identical purpose on this table. `exchange`'s 429 is a SEPARATE,
+  deliberately unimplemented decision -- see that method's docstring.
 """
 
 from __future__ import annotations
@@ -48,12 +85,24 @@ from backend.services.garuda_portal.magic_link import (
     ExchangeOutcome,
     IssueOutcome,
     PersistencePolicyUnavailable,
+    RateLimited,
 )
 
 logger = logging.getLogger(__name__)
 
 #: DECISIONS.md Q1: "proposed: 30 days, re-authenticated by a new link".
 _ACCOUNT_SESSION_TTL_DAYS = 30
+
+#: Anti-mail-bomb throttle on `issue` (team-lead review, 2026-08-25) -- same
+#: window shape as `MagicLinkService.MAX_LIVE_TOKENS_PER_EMAIL` (the FASE-6
+#: portal precedent) but counting BY RECENCY, not by still-live/unused
+#: state: a fully-expired flood is exactly as much of a mailbox attack as a
+#: live one, and counting only unused rows would let an attacker exhaust
+#: nothing but this table's disk while every request still sends mail.
+#: Proposed numbers, not asserted final -- Zero's call like every other
+#: threshold in this repo.
+_MAX_ISSUES_PER_EMAIL_PER_WINDOW = 5
+_ISSUE_RATE_WINDOW_MINUTES = 15
 
 _ISSUE_OPERATION = "requestMagicLink"
 _EXCHANGE_OPERATION = "exchangeMagicLink"
@@ -171,6 +220,44 @@ class PostgresMagicLinkStore:
             if reservation.replayed:
                 return IssueOutcome(idempotency_replayed=True)
 
+            # Rate limit AFTER the replay check, BEFORE minting: an exact
+            # replay of an already-issued request must never count a
+            # second time against the window (that would let one client
+            # retrying a slow response starve out its own legitimate
+            # request), and a fresh request over the threshold must never
+            # reach the INSERT/email-send below. Counts by RECENCY
+            # (created_at within the window), not by still-unused rows --
+            # see the class docstring for why an expired flood counts too.
+            # `lower(email)` on BOTH sides (2026-08-25, Kimi K3 adversarial
+            # review of this PR): the column itself is stored exactly as
+            # submitted -- no case normalization anywhere in this store --
+            # so an unqualified `email = $1` lets a caller multiply its own
+            # window by varying case alone (`a@x.com` / `A@x.com` /
+            # `a@X.COM` all land in different buckets while every one of
+            # them is the SAME mailbox per RFC 5321's domain part and every
+            # major provider's local part). This intentionally does not use
+            # `idx_garuda_magic_link_tokens_email_created` (a plain B-tree on
+            # raw `email` can't service a `lower()` predicate) -- accepted
+            # for a low-cardinality-per-email anti-abuse check where
+            # correctness of the THROTTLE matters more than this one query's
+            # plan; a functional index is a fair follow-up if this table's
+            # per-email row count ever makes it a real cost, not a
+            # speculative one to add here.
+            recent_count = await conn.fetchval(
+                """
+                SELECT count(*) FROM garuda_magic_link_tokens
+                 WHERE lower(email) = lower($1)
+                   AND created_at > statement_timestamp() - $2::interval
+                """,
+                email,
+                timedelta(minutes=_ISSUE_RATE_WINDOW_MINUTES),
+            )
+            if recent_count >= _MAX_ISSUES_PER_EMAIL_PER_WINDOW:
+                raise RateLimited(
+                    f"more than {_MAX_ISSUES_PER_EMAIL_PER_WINDOW} magic-links issued "
+                    f"for this email in the last {_ISSUE_RATE_WINDOW_MINUTES} minutes"
+                )
+
             await conn.execute(
                 """
                 INSERT INTO garuda_magic_link_tokens (token_hash, result_id, email, environment, expires_at)
@@ -201,6 +288,19 @@ class PostgresMagicLinkStore:
         idempotency_key: str,
         token: str,
     ) -> ExchangeOutcome:
+        """Deliberately does NOT rate-limit here (team-lead review,
+        2026-08-25): a brute-force throttle on token GUESSES is inherently
+        an IP-scoped concern -- an attacker enumerating tokens uses
+        arbitrary, mostly-nonexistent strings, so there is no row and no
+        email to count against, and this Protocol's signature (frozen,
+        `magic_link.py`) carries no client IP for the store to key on.
+        That belongs at the router/middleware layer, the same place
+        `visa_check`'s per-IP `RateLimitMiddleware` bucket already lives
+        for this exact class of anonymous-POST-guessing surface
+        (`public_endpoints.py`'s Visa Check entries). Left unimplemented
+        here on purpose, not silently skipped -- flagged for the
+        orchestrator to route as its own PR.
+        """
         token_hash = _hash_hex(token)
         key_hash = idempotency.scoped_key_sha256(
             actor=_ACTOR, operation=_EXCHANGE_OPERATION, raw_key=idempotency_key

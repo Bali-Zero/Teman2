@@ -1,0 +1,60 @@
+task_id: ig-webhook-hmac-0825
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Close a live authentication hole: `app/routers/instagram_chat.py` on origin/main performs NO
+  HMAC verification on inbound webhooks. Measured, not inferred — the file contains ZERO
+  occurrences of `hmac` or `x-hub-signature` (case-insensitive), against 10 in its WhatsApp
+  sibling. It validates `hub.verify_token` on the GET handshake, which authenticates the
+  SUBSCRIPTION once, and then accepts every POST that follows on trust. Anyone who learns the
+  endpoint URL can post fabricated Instagram messages into the client bot.
+
+  The fix adds `_verify_instagram_signature`, a thin bool-returning wrapper over the shared,
+  already-tested `backend.security.webhook_verifier.verify_meta_hmac` — the same primitive the
+  WhatsApp router uses, so the comparison lives once rather than twice. It introduces
+  `meta_webhook_require_signature`, one knob covering both routers, defaulting to False so
+  today's fail-open behaviour is preserved exactly; flipping it to fail-closed is a deliberate
+  act gated on the owner placing WHATSAPP_APP_SECRET in Fly secrets.
+
+  Gear 3 by PATH, not by blast radius: the deterministic floor computes 3 because the diff
+  touches two live routers. The functional diff is 4 files, +239/-55.
+constraints:
+  - "Behaviour on a real deployment is unchanged BY CONSTRUCTION. The new knob's default is
+    False, so with no app secret configured both routers still fail open exactly as before.
+    This PR makes verification possible and correct; ARMING it is a separate, deliberate flip
+    (owner switchboard item 2)."
+  - "Two small per-router functions, not one shared helper the routers import from each other —
+    each stays independently patchable at its own module path, which is the pattern the existing
+    WhatsApp test suite already relies on for `_verify_whatsapp_signature`."
+  - "The second commit is a test-mock fix, not a production change, and it is here because this
+    PR's own knob exposed the trap. Eleven pre-existing tests patch `settings` with a bare
+    MagicMock; a bare mock answers TRUTHILY to any attribute the code has not read yet, so
+    `not settings.meta_webhook_require_signature` evaluated False and the dev-mode early-return
+    was skipped. Fixed structurally with a factory seeded from the REAL Settings defaults —
+    which disarms the trap for the NEXT config field anyone adds — rather than by setting one
+    more attribute in eleven places."
+acceptance:
+  - "origin/main's instagram_chat.py contains zero HMAC machinery (the defect), verified by grep."
+  - "test_whatsapp_chat_coverage.py green (35/35) — the 11 the knob broke are fixed."
+  - "Every test matching instagram / webhook_verifier / signature green."
+  - "No forbidden weakening: no xfail, no skip, no flaky marker anywhere in the diff."
+consumer_map:
+  - "POST /webhook/instagram — live Instagram DM channel (apps/backend-rag/backend/app/routers/instagram_chat.py)."
+  - "POST /webhook/whatsapp and its alias — live WhatsApp client bot; touched only to hoist its
+    existing HMAC comparison onto the shared verifier, no semantic change."
+  - "backend/app/core/config.py — one new field, default False; nothing else reads it yet."
+risks:
+  - "If a future change flips meta_webhook_require_signature to True while WHATSAPP_APP_SECRET
+    is unset, both webhooks would start rejecting live traffic. The default and the owner-gated
+    arming step are what keep that deliberate."
+  - "Residual, NOT closed by this PR: the fail-open posture itself. That needs the app secret in
+    Fly secrets, which is an operator[gui]+[secret] action."
+grader: >-
+  Opus 5 orchestrator (this session), independently of the lane that wrote the transport fix:
+  re-ran the tests, verified the zero-vs-ten HMAC counts against origin/main directly, confirmed
+  the config default in config.py:704, and checked the diff for forbidden weakening markers
+  (zero found).
+budget: >-
+  No paid API. Local pytest and grep only.
+pii: none
