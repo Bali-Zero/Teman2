@@ -252,7 +252,7 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "confirm at signature time — the concept is picked, the relay is not the signature"
   - id: 6
     decision: filing_office_scope
-    state: question-ready
+    state: measured-question-ready
     # Measured 2026-08-24 (GROUND.md §5): the one client-facing checkpoint is scoped to
     # Ngurah Rai in constants.py:55 and safe_clock.py:151 ("verify per office"), and the
     # intake collects no office field at all — grep for office|kanim in intake.py is empty.
@@ -261,8 +261,39 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
       Ngurah Rai / Denpasar, or can the filing office vary?
     consequence: >
       If it can vary, the published deadline we show is unsourced for those buyers.
-      Default until answered: display a deadline only when the office is known.
-    gesture: "answer the question — it is an operations fact, not a design choice"
+    # ── 2026-08-25, re-measured by the orchestrator while gating L3/L4. ──
+    # The "default until answered" this entry used to declare — display a deadline only
+    # when the office is known — is NOT what the code does, and cannot be, because the
+    # office is never known: `VoaIntakeRequest` (intake.py:115-126) carries case_type,
+    # nationality, entry_date, passport_expiry_date, purpose, travellers, self_pay,
+    # voa_expiry_date, extension_already_used — and no office, no kanim, no Indonesian
+    # address. `submit_by_date` is therefore emitted for EVERY buyer, unconditionally,
+    # from `PUBLISHED_FILING_DEADLINE_DAYS = 7` (constants.py:73), a constant whose own
+    # docstring sources it to ngurahrai.imigrasi.go.id, verified verbatim 2026-07-24.
+    # So the stated default was never in force: today every buyer already gets the
+    # Ngurah Rai number whether or not Ngurah Rai governs them.
+    #
+    # That removes the open-endedness. The question stays an operations fact only Zero
+    # or ops can answer, but it now has exactly two implementable answers:
+    #
+    #   (a) "always Bali / Ngurah Rai for anyone who buys through this funnel"
+    #       → ship as-is. Nothing to build. The constant's provenance matches every
+    #         buyer, and the D-7 line we publish is theirs.
+    #
+    #   (b) "it can vary"
+    #       → the funnel needs a fifth intake question (where in Indonesia are you
+    #         staying), and the deadline must be suppressed — not guessed — for any
+    #         answer outside Ngurah Rai's jurisdiction, until that office's own
+    #         published deadline is sourced the way D-7 was. Cost: one intake field,
+    #         one branch in the verdict, and a per-office truth source with the same
+    #         freshness attestation the price rows carry.
+    #
+    # Not blocking the dark build either way: (a) is the current behaviour and (b) is
+    # additive. It IS blocking go-live under (b), because a wrong deadline on a
+    # client-facing page is the one error class this product cannot absorb.
+    gesture: >
+      answer (a) or (b) — it is an operations fact, not a design choice. The build
+      is already consistent with (a); (b) costs one intake question and one branch.
   - id: 7
     decision: price_catalogue_currency
     state: ratified-7b-open-7a-scope
