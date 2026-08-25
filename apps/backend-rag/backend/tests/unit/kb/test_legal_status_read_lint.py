@@ -125,3 +125,20 @@ def test_the_lint_refuses_to_pass_when_it_scanned_nothing(monkeypatch, tmp_path,
     monkeypatch.setattr(LINT, "_roots", lambda repo: [tmp_path / "nowhere"])
     assert LINT.main([]) == 2
     assert "does not exist" in capsys.readouterr().err
+
+
+def test_the_summary_reports_a_measured_count_not_a_remembered_fact():
+    """The clean message used to read "The only reference is the ingestion write."
+
+    That was true when it was written and became FALSE the moment the ingestion
+    write was itself retired — a gate stating a fact it had not measured, which is
+    the small version of what this campaign exists to correct. It now counts the
+    write sites it actually saw.
+    """
+    assert LINT.count_writes('p = {"legal_status": x}') == 1
+    assert LINT.count_writes('p = {"metadata": {"legal_status": x}}') == 1
+    assert LINT.count_writes('p = {"legal_status": a, "other": b}\nq = {"legal_status": c}') == 2
+    assert LINT.count_writes('st = payload.get("legal_status")') == 0, (
+        "a READ was counted as a write site"
+    )
+    assert LINT.count_writes('def f():\n    return 1') == 0

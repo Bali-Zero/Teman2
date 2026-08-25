@@ -65,18 +65,27 @@ class _Reads(ast.NodeVisitor):
 
     def __init__(self) -> None:
         self.hits: list[tuple[int, str]] = []
+        self.writes = 0
         self._written: set[int] = set()
 
     def visit_Dict(self, node: ast.Dict) -> None:
         for key in node.keys:
             if isinstance(key, ast.Constant) and key.value in (FIELD, NESTED):
                 self._written.add(id(key))
+                self.writes += 1
         self.generic_visit(node)
 
     def visit_Constant(self, node: ast.Constant) -> None:
         if node.value in (FIELD, NESTED) and id(node) not in self._written:
             self.hits.append((node.lineno, str(node.value)))
         self.generic_visit(node)
+
+
+def count_writes(src: str) -> int:
+    """Dict-literal mentions in one module — the legal shape."""
+    finder = _Reads()
+    finder.visit(ast.parse(src))
+    return finder.writes
 
 
 def scan_source(src: str) -> list[tuple[int, str]]:
@@ -96,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
     repo = Path(__file__).resolve().parents[2]
     findings: list[str] = []
     scanned = 0
+    writes = 0
     for root in _roots(repo):
         if not root.exists():
             print("BROKEN — %s does not exist; nothing was scanned." % root,
@@ -106,7 +116,9 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             scanned += 1
             try:
-                hits = scan_source(path.read_text(encoding="utf-8"))
+                src = path.read_text(encoding="utf-8")
+                hits = scan_source(src)
+                writes += count_writes(src)
             except SyntaxError as exc:
                 print("BROKEN — %s could not be parsed: %s" % (path, exc),
                       file=sys.stderr)
@@ -132,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
         print("kb/topics/<topic>.yaml instead — sourced, gated, and decided by a "
               "person.")
         return 1
-    print("clean — 0 reads. The only reference is the ingestion write.")
+    print("clean — 0 reads, %d write site(s)." % writes)
     return 0
 
 
