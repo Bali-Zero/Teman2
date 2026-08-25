@@ -1,5 +1,20 @@
 # Owner switchboard — prepared proposals (MANDATE §7)
 
+> ## SIGNED — Zero, 2026-08-25
+>
+> Decisions **1, 2, 3 and 5** are signed as recommended. What each signature sets in
+> motion, so nobody has to reconstruct it later:
+>
+> | #   | signed                                         | what it authorises                                                                                                                                                          |
+> | --- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | 1   | the four traffic findings as build constraints | already enforced in the G3 contract (client phrasing, cross-topic, multilingual, and the behavioural citation check). No further gesture.                                   |
+> | 2   | re-acquire UU 25/2007 whole                    | **lane B opens.** Containment order applies: prove what the 65 points contain BEFORE writing over that `document_id`.                                                       |
+> | 3   | freeze `legal_unified_2026` in place           | no deletion, ever, in this campaign. The AST gate landed in #4907 already prevents a new writer from naming it.                                                             |
+> | 5   | MARK superseded instruments, do not remove     | **lane A's next unit.** Repair `legal_status` before any filter is written — a filter on that field today would remove the in-force regulation and keep the superseded one. |
+>
+> Decision **4** (team confirmation per topic) is not signed and was not asked for: it
+> waits until a topic's suite is green enough to be worth a person's time.
+
 Nothing in the campaign blocks on these. They are built, measured, and waiting for a signature.
 
 Measured 2026-08-25 by the orchestrator. Every number below was produced by a query run that
