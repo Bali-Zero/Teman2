@@ -35,8 +35,22 @@ class DocumentStorePort(Protocol):
         """
         ...
 
-    async def commit(self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome) -> None:
-        """Persists the outcome exactly once per (idempotency_key, payload_hash)."""
+    async def commit(self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome) -> bool:
+        """Atomically persists `outcome` iff no outcome is yet committed for this key —
+        a compare-and-set, not a blind write. Returns True when THIS call performed the
+        commit (the caller is the one that should fire any at-most-once side effect, like
+        a staff work-item notification); returns False when a concurrent call already won
+        (`service.py` then re-reads via `get_existing` and uses the winner's outcome
+        instead of its own).
+
+        Two same-key requests can genuinely race here: `get_existing` returning None does
+        not mean this call is exclusive owner of the key, because OCR runs as an `await`
+        in between — a second coroutine can enter the same window on the same event loop,
+        let alone a second process. A real store implements this as an
+        `INSERT ... ON CONFLICT DO NOTHING RETURNING` (or equivalent) so the atomicity is
+        the database's, not a lock this module has to hold. Still raises
+        `IdempotencyConflictError` if the key is already bound to a DIFFERENT payload hash.
+        """
         ...
 
 
@@ -47,6 +61,11 @@ class IdempotencyConflictError(Exception):
 class InMemoryDocumentStore:
     """Test-only reference implementation. NOT retention-aware — never use outside this
     lane's own unit tests.
+
+    `commit` is compare-and-set even here (a single `dict.setdefault` call, atomic with
+    respect to other coroutines because it contains no `await`) so this reference
+    implementation actually exercises the race-safety contract `DocumentStorePort.commit`
+    documents, rather than silently passing tests that a real concurrent store would fail.
     """
 
     def __init__(self) -> None:
@@ -61,5 +80,8 @@ class InMemoryDocumentStore:
             raise IdempotencyConflictError(idempotency_key)
         return outcome
 
-    async def commit(self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome) -> None:
-        self._by_key[idempotency_key] = (payload_hash, outcome)
+    async def commit(self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome) -> bool:
+        winning = self._by_key.setdefault(idempotency_key, (payload_hash, outcome))
+        if winning[0] != payload_hash:
+            raise IdempotencyConflictError(idempotency_key)
+        return winning[1] is outcome

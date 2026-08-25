@@ -31,8 +31,14 @@ from backend.services.garuda_documents.ocr_client import OcrPassResult
 CONFIDENCE_THRESHOLD = 0.80
 
 
-def _normalize(value: str | None) -> str | None:
-    if value is None:
+def _normalize(value: object) -> str | None:
+    """Accepts `object`, not `str | None`, on purpose (refuter finding, 2026-08-25):
+    `ocr_client.py` parses `format: "json"` from the model, which guarantees valid JSON
+    syntax but nothing about scalar types — a field can legally come back as a number,
+    a nested object, or a list. Anything that is not already a string is treated the
+    same as a missing field (never crashes, never silently stringified).
+    """
+    if not isinstance(value, str):
         return None
     normalized = " ".join(value.strip().split()).upper()
     return normalized or None

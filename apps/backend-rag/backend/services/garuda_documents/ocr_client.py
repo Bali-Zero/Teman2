@@ -16,6 +16,7 @@ self-rating alone.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -109,14 +110,12 @@ def _is_number(v: object) -> bool:
 async def extract_passport_biodata_dual_pass(
     image_base64: str,
 ) -> tuple[OcrPassResult, OcrPassResult] | None:
-    """Runs the extraction twice. Returns None if either pass fails outright
-    (service.py treats that as DOCUMENT_PROCESSING_UNAVAILABLE, never as a silent
-    zero-confidence result).
+    """Runs the extraction twice, concurrently (the two passes are independent — running
+    them serially only doubled request latency for no correctness benefit). Returns None
+    if either pass fails outright (service.py treats that as
+    DOCUMENT_PROCESSING_UNAVAILABLE, never as a silent zero-confidence result).
     """
-    pass_a = await _run_one_pass(image_base64)
-    if pass_a is None:
-        return None
-    pass_b = await _run_one_pass(image_base64)
-    if pass_b is None:
+    pass_a, pass_b = await asyncio.gather(_run_one_pass(image_base64), _run_one_pass(image_base64))
+    if pass_a is None or pass_b is None:
         return None
     return pass_a, pass_b

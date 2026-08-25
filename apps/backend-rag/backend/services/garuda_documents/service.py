@@ -93,9 +93,28 @@ class DocumentIntakeService:
             return existing
 
         outcome = await self._process_new_upload(raw_bytes, document_kind)
-        await self._store.commit(idempotency_key, payload_hash, outcome)
+
+        # `commit` is a compare-and-set, not a blind write (ports.py docstring): OCR ran
+        # under an `await`, so a concurrent request with the same key can have committed
+        # its own outcome in the meantime. Whoever's commit actually wins is the one
+        # outcome of record — the loser discards its own result and adopts the winner's,
+        # so two racing requests can never disagree or double-fire the work-item hook.
+        won = await self._store.commit(idempotency_key, payload_hash, outcome)
+        if not won:
+            winning_outcome = await self._store.get_existing(idempotency_key, payload_hash)
+            assert winning_outcome is not None  # commit() just told us a record exists
+            return winning_outcome
+
         if self._work_item_hook is not None and not isinstance(outcome, ReadyOutcome):
-            await self._work_item_hook(idempotency_key, outcome)
+            try:
+                await self._work_item_hook(idempotency_key, outcome)
+            except Exception:
+                # The outcome is already correctly committed and is what the customer
+                # sees either way — a downstream notification failure must not turn a
+                # successful upload into a 500. Logged so it is not silently lost; full
+                # exactly-once delivery (outbox/retry) is L7's control-tower territory,
+                # not this lane's.
+                logger.exception("garuda_documents: work_item_hook failed for %s", idempotency_key)
         return outcome
 
     async def _process_new_upload(self, raw_bytes: bytes, document_kind: DocumentKind) -> DocumentOutcome:
