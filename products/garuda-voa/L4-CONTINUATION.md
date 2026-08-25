@@ -97,6 +97,44 @@ Registration is explicit imports and calls — the manifest does not register
 anything by itself. PRs #54/#55/#60 and #422→#424 all shipped routers that
 404'd in prod because only the dev path was edited.
 
+## Added 2026-08-25 after an independent security read of the router
+
+Both verified by the orchestrator before being written here, not taken on the
+reviewer's word.
+
+### Timing-equivalence across the three deny branches
+
+Byte-identical responses are necessary and **not sufficient**. The router
+enforces indistinguishability at the type level — `ExchangeOutcome` carries no
+reason field, so nothing distinguishing can reach the wire — but the router only
+reads `outcome.authorized`. All three branches run inside the adapter, so the
+timing oracle, if one exists, belongs to the store.
+
+The naive shape leaks: "no row found → return immediately" against "row found but
+expired → hash lookup, compare, return" does measurably different work, and an
+identical response body does not hide it. Always perform the real hash lookup and
+the real comparison before branching; never short-circuit on "no row". If the
+measurement proves too noisy to assert on reliably in CI, say so explicitly and
+describe the discipline implemented instead — do not silently drop it.
+
+### Rate limiting is absent and currently owned by nobody
+
+`"RATE_LIMITED": (429, True, "garuda_voa.error.rate_limited")` is in
+`_ERROR_CATALOG` (`garuda_portal_auth.py:105`) and **no code path returns it**.
+Every other catalog entry is reachable; that one is contract vocabulary with
+nothing behind it, which reads as coverage while providing none.
+
+Once the store makes these endpoints functional — they are not today —
+`/magic-links` is a mail-bomb aimed at whoever owns the result and `/sessions` is
+a brute-force surface against a short-lived token. Migration 237 already
+anticipated the storage side: its `(email, created_at DESC)` index exists
+precisely for "rate-limit / cleanup queries scan by email + recency".
+
+The lane owes a **judgement**, not necessarily an implementation: if the throttle
+belongs in the router, say so and leave it for its own PR; if it belongs in the
+store because the counting surface is the table being written anyway, implement it
+and say why. Deciding silently is the one unacceptable outcome.
+
 ## Acceptance — what would make this RED
 
 A green suite is not the deliverable. The lane closes when:
