@@ -1,0 +1,117 @@
+brief_ref: evidence/2026-08/agent-air-m5-backend-rag-garuda-l4-store-followu-5026dd0a/brief.yml
+plan_ref: "PR #4902 (agent/air-m5/backend-rag/garuda-l4-store-followup-0825 -> feature/garuda-voa), 2026-08-25 -- team-lead's diagnosis of the 264/285 rollback regression on top of the two independently-verified spec additions (RATE_LIMITED reachability, exchange() timing-equivalence)."
+lanes:
+  - lane: garuda-l4-store-followup
+    role: build
+    seat: "claude-opus-5 (this conducting session -- authored the RATE_LIMITED/timing follow-up, diagnosed and fixed the 264/285 rollback regression, generalized the FK-dependent registry, fixed the email-case rate-limit gap found by review)"
+  - lane: garuda-l4-store-followup-review
+    role: review
+    seat: "kimi-code/k3 (Moonshot Kimi K3, cross-family, non-Anthropic -- independent adversarial review of the full 784-line diff, generator != grader)"
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Anthropic) + one review lane (Moonshot, non-Anthropic) --
+  the D3 floor (>=2 build lanes, one non-Anthropic) does not fire on a
+  single-build-lane pack, but declared explicitly rather than left to read
+  as satisfied by omission.
+diff:
+  net_lines: >-
+    8 files, +577/-48 measured by `git diff --numstat origin/feature/garuda-voa...HEAD`.
+    Touches one migration's ROLLBACK section only (285_garuda_magic_link.sql),
+    one shared test fixture (conftest.py), one new static tripwire test file,
+    and the store/router/test files from this PR's first commit (RATE_LIMITED +
+    timing-equivalence, already independently tested before the regression
+    fix was added on top).
+  behaviour_change: >-
+    Production forward-path behaviour change: the issue() rate-limit count
+    query now compares lower(email) instead of raw email (closes a real
+    throttle-bypass found by review). No other production runtime behaviour
+    changes -- the migration edit is rollback-only (285 has never been rolled
+    back in any real database) and the test/fixture changes affect only the
+    test suite's own setup/teardown, never a served request path.
+receipts:
+  - claim: "The two tests the team-lead reported red (test_evaluate_endpoint.py::test_retention_policy_is_unseeded_and_new_decision_insert_fails_closed[SHADOW/ENFORCE], test_shadow_evidence.py::test_collect_filters_environment_and_uses_half_open_window) pass after the registry+rollback fix, even against a local DB carrying 51 leftover GARUDA_MAGIC_LINK policy rows from prior runs (the append-only table's real long-run state)."
+    cmd: 'PYTHONPATH=. pytest "backend/tests/services/visa_engine/test_evaluate_endpoint.py::test_retention_policy_is_unseeded_and_new_decision_insert_fails_closed" "backend/tests/services/visa_engine/test_shadow_evidence.py::test_collect_filters_environment_and_uses_half_open_window" -v'
+    exit: 0
+    ts: "2026-08-25T17:52:00+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "New static tripwire test (scans every migrations_v2/*.sql for an FK onto visa_decision_retention_policies and asserts registration) passes."
+    cmd: "PYTHONPATH=. pytest backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py -v"
+    exit: 0
+    ts: "2026-08-25T17:47:00+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "Full garuda_portal + both garuda_portal_auth router test files + the entire visa_engine directory pass together on a database created fresh via migrate.py apply-all (dropdb/createdb, no leftover state) -- 0 failed, 0 errors, 1 pre-existing unrelated skip (visa_activation_executor role absent, documented since before this PR)."
+    cmd: "PYTHONPATH=. pytest backend/tests/services/garuda_portal/ backend/tests/app/routers/test_garuda_portal_auth.py backend/tests/app/routers/test_garuda_portal_auth_mounted.py backend/tests/services/visa_engine/ -q"
+    exit: 0
+    ts: "2026-08-25T19:08:00+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "New regression test proving the email-case rate-limit bypass Kimi K3 found is closed."
+    cmd: "PYTHONPATH=. pytest backend/tests/services/garuda_portal/test_magic_link_store_integration.py::test_issue_rate_limit_counts_across_email_case_variants -v"
+    exit: 0
+    ts: "2026-08-25T19:08:00+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "ruff clean on every Python file touched by this PR's second commit."
+    cmd: "ruff check backend/tests/services/visa_engine/conftest.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/services/garuda_portal/magic_link_store.py backend/tests/services/garuda_portal/test_magic_link_store_integration.py"
+    exit: 0
+    ts: "2026-08-25T19:08:30+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "FastAPI import chain still resolves cleanly (anti-rogue-AI smoke check)."
+    cmd: 'PYTHONPATH=. python -c "from backend.app.dependencies import get_current_user; print(''OK'')"'
+    exit: 0
+    ts: "2026-08-25T18:20:00+08:00"
+    seat: "claude-opus-5 (this session)"
+  - claim: "285_garuda_magic_link.sql's edited ROLLBACK section still parses correctly under the real migration runner's own splitter (not a hand-approximation)."
+    cmd: 'PYTHONPATH=. python3 -c "from backend.db.migration_base import split_migration_sql; from pathlib import Path; fwd, rb = split_migration_sql(Path(''backend/db/migrations_v2/285_garuda_magic_link.sql'').read_text()); assert ''garuda_285_narrow_policy_scope'' in rb; print(''OK'')"'
+    exit: 0
+    ts: "2026-08-25T19:00:00+08:00"
+    seat: "claude-opus-5 (this session)"
+dissent:
+  - seat: "kimi-code/k3"
+    objection: >-
+      The new per-email rate-limit count query used exact string equality
+      (`WHERE email = $1`) against a column that is never case-normalized on
+      write. Email local/domain parts are case-insensitive in practice for
+      every major provider and per RFC 5321's domain rules, so a caller could
+      multiply its own 5-per-15-minute throttle by varying case alone
+      (a@x.com / A@x.com / a@X.COM all land in different count buckets while
+      being the same mailbox).
+    status: CONFIRMED
+  - seat: "kimi-code/k3"
+    objection: >-
+      TOCTOU between the rate-limit COUNT and the token INSERT: two
+      concurrent issue() calls with distinct Idempotency-Keys for the same
+      email can both pass the count check under READ COMMITTED before either
+      commits its INSERT, so the limit can be exceeded by roughly the
+      concurrency factor. No advisory lock or serializing constraint enforces
+      the count.
+    status: CONFIRMED
+  - seat: "kimi-code/k3"
+    objection: >-
+      restore_garuda_voa_retention_fk() unconditionally replays the forward
+      SQL of every registered dependent migration, while
+      unwind_garuda_voa_retention_fk() rolls back only the entries whose
+      marker column is currently present, and reports success as a single
+      aggregate boolean rather than per-migration state. In a hypothetical
+      database where only SOME registered dependents are applied going in,
+      restore could re-apply a migration that unwind never actually rolled
+      back, silently mutating schema beyond the state the caller found.
+    status: PLAUSIBLE
+  - seat: "kimi-code/k3"
+    objection: >-
+      A full unwind(285-then-281)->restore(281-then-285) round trip loses
+      data: 281's rollback DROPs the policy_scope column entirely (losing any
+      row's scope value along with it), and restoring 281's forward SQL
+      re-adds the column with a default that is not 'GARUDA_MAGIC_LINK' -- so
+      a policy row scoped GARUDA_MAGIC_LINK before the cycle would read a
+      different scope value after it.
+    status: PLAUSIBLE
+  - seat: "kimi-code/k3"
+    objection: >-
+      exchangeMagicLink is deliberately not rate-limited (documented,
+      accepted in this PR), but every exchange attempt -- including an
+      unauthenticated caller submitting a random invalid token under a fresh
+      Idempotency-Key -- permanently inserts a row into
+      garuda_magic_link_idempotency. An attacker could grow that table
+      unboundedly, a disk-fill concern distinct from the RATE_LIMITED
+      contract gap this PR closes.
+    status: PLAUSIBLE
+pii_scan: clean

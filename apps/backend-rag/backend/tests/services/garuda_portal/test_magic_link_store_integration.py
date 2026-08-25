@@ -577,3 +577,30 @@ async def test_deny_path_timing_does_not_separate_under_repetition(pool, store):
         f"(unknown mean={unknown_mean * 1000:.3f}ms, consumed mean={consumed_mean * 1000:.3f}ms) "
         f"— investigate for a short-circuit branch, not just CI noise"
     )
+
+
+@pytest.mark.asyncio
+async def test_issue_rate_limit_counts_across_email_case_variants(pool, store):
+    """2026-08-25, Kimi K3 adversarial review: the rate limit must not be
+    defeatable by varying the email's case alone -- the column stores
+    exactly what was submitted, so without a case-insensitive comparison a
+    caller could multiply its own window N-for-1 against the same mailbox.
+    """
+    base = f"case-variant-{uuid.uuid4().hex[:8]}@example.com"
+    variants = [base, base.upper(), base.swapcase(), base.capitalize()]
+
+    for i in range(_MAX_ISSUES_PER_EMAIL_PER_WINDOW):
+        await store.issue(
+            idempotency_key=f"issue-key-case-variant-{i}",
+            result_id=_RESULT_ID,
+            email=variants[i % len(variants)],
+            result_session_secret="whatever",
+        )
+
+    with pytest.raises(RateLimited):
+        await store.issue(
+            idempotency_key="issue-key-case-variant-over-limit",
+            result_id=_RESULT_ID,
+            email=base.upper(),
+            result_session_secret="whatever",
+        )

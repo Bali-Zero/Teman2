@@ -228,10 +228,25 @@ class PostgresMagicLinkStore:
             # reach the INSERT/email-send below. Counts by RECENCY
             # (created_at within the window), not by still-unused rows --
             # see the class docstring for why an expired flood counts too.
+            # `lower(email)` on BOTH sides (2026-08-25, Kimi K3 adversarial
+            # review of this PR): the column itself is stored exactly as
+            # submitted -- no case normalization anywhere in this store --
+            # so an unqualified `email = $1` lets a caller multiply its own
+            # window by varying case alone (`a@x.com` / `A@x.com` /
+            # `a@X.COM` all land in different buckets while every one of
+            # them is the SAME mailbox per RFC 5321's domain part and every
+            # major provider's local part). This intentionally does not use
+            # `idx_garuda_magic_link_tokens_email_created` (a plain B-tree on
+            # raw `email` can't service a `lower()` predicate) -- accepted
+            # for a low-cardinality-per-email anti-abuse check where
+            # correctness of the THROTTLE matters more than this one query's
+            # plan; a functional index is a fair follow-up if this table's
+            # per-email row count ever makes it a real cost, not a
+            # speculative one to add here.
             recent_count = await conn.fetchval(
                 """
                 SELECT count(*) FROM garuda_magic_link_tokens
-                 WHERE email = $1
+                 WHERE lower(email) = lower($1)
                    AND created_at > statement_timestamp() - $2::interval
                 """,
                 email,
