@@ -82,8 +82,7 @@ def provider() -> XenditPaymentProvider:
     return XenditPaymentProvider(
         secret_key="xnd_development_fake_key_for_tests",
         callback_verification_token=_CALLBACK_TOKEN,
-        success_redirect_url="https://example.com/success",
-        failure_redirect_url="https://example.com/failure",
+        public_base_url="https://example.com",
         fee_config=XenditFeeConfig(percentage_bps=350, fixed_idr=6000),
         client=httpx.AsyncClient(),
     )

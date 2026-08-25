@@ -265,9 +265,21 @@ def _valid_idempotency_key(value: str | None) -> str | None:
 _default_store = UnconfiguredCheckStore()
 
 
-def get_garuda_check_store() -> CheckStore:
-    """Overridden by tests / a future adapter. Ships fail-closed (see public_api.py)."""
-    return _default_store
+def get_garuda_check_store(request: Request) -> CheckStore:
+    """Reads `app.state.garuda_check_store`, set by the orchestrator's
+    composition wiring (`service_initializer.py`) once migration 286 lands
+    and a `PersistencePolicyUnavailable`-capable adapter exists. Falls back
+    to the fail-closed default (see public_api.py module docstring) when
+    unset — the SAME `getattr(..., None) or default` shape
+    `garuda_orders_router.get_repository` uses, deliberately not
+    `app.dependency_overrides` (that dict is FastAPI's TEST mechanism and a
+    process-wide global one unrelated test's teardown can clear — see PR
+    #4910's `garuda_magic_link_store` wiring note for the concrete hazard).
+    Tests override this dependency directly via
+    `app.dependency_overrides[get_garuda_check_store]`, which remains safe
+    for test-scoped use; only a PRODUCTION wiring path avoids that dict.
+    """
+    return getattr(request.app.state, "garuda_check_store", None) or _default_store
 
 
 # ============================================================
