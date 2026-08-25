@@ -19,6 +19,15 @@ Money facts that apply to all rows:
   government fee or sits on top of it**, and that difference decides whether a refund of "the full
   price" also returns money we already handed to the state. It is now owner decision 7(b). Every
   row below that turns on PNBP is written twice where the answer changes it.
+  **ANSWERED 2026-08-25 by Zero, verbatim: "il prezzo include il PNBP".** The 790,000 / 850,000
+  rows are all-inclusive — the traveller pays the government nothing further. Re-read row by row
+  against that answer, **the disposition table below does not change**: its "PNBP status" column
+  records whether the fee had been SPENT at that point in the practice, not whether it sits inside
+  the price, and every full-refund row (1, 4, 5, 10) is a row where filing never happened and the
+  fee was never paid. The doubled rows collapse to the inclusive reading; no text below is now
+  unreachable, and this packet is signable as written. What the answer DOES move is margin, not
+  policy: 790,000 is gross of the government fee, so the absorbed provider fee is charged against
+  what remains after the state is paid.
 - The payment provider fee (~3.5%, packet 1) is **NOT returned on a refund** (UNCONFIRMED until
   read off the live provider pricing page at signup, packet 1 §owner-steps). Every refund we issue
   costs us roughly IDR 27,650 even when the customer gets 100% back.

@@ -13,12 +13,20 @@ truth-freshness gates in `openapi.yaml:x-truth-freshness-max-age-days` have no
 implementation anywhere in `garuda_flow` today), this module does not invent
 one — see the module-level TODO near `_evaluate_and_price`.
 
-Not wired into the running app. `GARUDA_PUBLIC_ENABLED` is read directly from
-the environment (never `app.core.config.settings` — that registration site is
-orchestrator-owned, LANES.md "Shared and therefore forbidden to lanes") and
-defaults OFF. Mounting this router into `router_manifest.py` /
-`router_registration.py` is the orchestrator's sequencing step, not this
-lane's.
+Wired into the running app as of 2026-08-25 (`20ef324d1`): a `RouterEntry` in
+`router_manifest.py` plus a bare `include_router` in BOTH `include_routers()`
+and `include_light_routers()`. This paragraph used to read "Not wired into the
+running app", which was true when the lane wrote it and false from the moment
+the orchestrator performed the mount — kept visible here because a docstring
+that describes a wiring state is exactly the kind that rots without failing
+anything.
+
+`GARUDA_PUBLIC_ENABLED` is read directly from the environment (never
+`app.core.config.settings` — that registration site is orchestrator-owned,
+LANES.md "Shared and therefore forbidden to lanes") and defaults OFF. It is
+read PER REQUEST, not at mount: there is deliberately no mount-time condition,
+so the flag can be flipped without a restart and there is exactly one gate to
+reason about rather than two that can disagree.
 """
 
 from __future__ import annotations
@@ -129,6 +137,113 @@ def _error(code: str) -> JSONResponse:
     )
     response.headers.update(_PRIVACY_HEADERS)
     return response
+
+
+#: Per-operation error-code membership, restricted to what THIS router's
+#: three call sites for that operation can ever raise via `_error()` — plus
+#: the two codes (`RATE_LIMITED`, `INTERNAL_ERROR`) the frozen contract
+#: declares for every operation as emitted by cross-cutting layers this
+#: module does not own (rate-limit middleware, the top-level exception
+#: handler), never by a call site here. Never hand-typed status codes: the
+#: `responses=` dict below is always derived from `_ERROR_CATALOG` through
+#: this map, so a new code added to the catalog and referenced here follows
+#: into the generated OpenAPI schema without anyone remembering to update it
+#: by hand (the drift this whole module exists to stop, one layer up).
+_OPERATION_ERROR_CODES: dict[str, tuple[str, ...]] = {
+    "createEligibilityCheck": (
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "GARUDA_PUBLIC_DISABLED",
+        "IDEMPOTENCY_CONFLICT",
+        "INVALID_REQUEST",
+        "NOTICE_ACKNOWLEDGEMENT_REQUIRED",
+        "RATE_LIMITED",
+        "INTERNAL_ERROR",
+        "PERSISTENCE_POLICY_UNAVAILABLE",
+        "PRICE_UNRESOLVABLE",
+    ),
+    "getEligibilityResult": (
+        "GARUDA_PUBLIC_DISABLED",
+        "RESULT_NOT_FOUND",
+        "INTERNAL_ERROR",
+        "SERVICE_UNAVAILABLE",
+    ),
+    "deleteEligibilityResult": (
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "GARUDA_PUBLIC_DISABLED",
+        "IDEMPOTENCY_CONFLICT",
+        "INTERNAL_ERROR",
+        "SERVICE_UNAVAILABLE",
+    ),
+}
+
+
+def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
+    """Build a FastAPI `responses=` dict for `operation_id` from
+    `_ERROR_CATALOG`, grouped by HTTP status — documentation only, changes no
+    behaviour. Two distinct codes sharing a status (e.g.
+    `PERSISTENCE_POLICY_UNAVAILABLE` and `PRICE_UNRESOLVABLE`, both 503) fold
+    into one schema entry, matching `openapi.yaml`'s own per-status
+    `x-error-codes` list shape.
+    """
+    by_status: dict[int, list[str]] = {}
+    for code in _OPERATION_ERROR_CODES[operation_id]:
+        status_code, _retryable, _message_key = _ERROR_CATALOG[code]
+        by_status.setdefault(status_code, []).append(code)
+    return {
+        status_code: {"description": " / ".join(codes)}
+        for status_code, codes in by_status.items()
+    }
+
+
+# DECIDED 2026-08-25 (Zero/team-lead, option (b) of three): `getEligibilityResult`
+# /`deleteEligibilityResult` validate `result_id` with `_RESULT_ID_PATTERN` by
+# hand, inside the handler — never as a Pydantic path constraint. FastAPI
+# nonetheless auto-documents a 422 "Validation Error" on these routes (any
+# route with parameters gets one by default — see
+# `fastapi.openapi.utils.get_openapi_path`; there is no per-route `responses=`
+# value that opts out of it, only pre-populating the "422"/"4XX"/"default" key
+# does, which would be the same misrepresentation). No code path can ever
+# raise it here.
+#
+# Rejected: (a) a per-router `install_router()` helper called from
+# `router_registration.py` instead of a bare `include_router` — an earlier
+# version of this file had exactly that, nothing ever called it, and the gate
+# built against the helper went green on a schema production never served.
+# Also rejected on the merits even after that bug was ruled out empirically
+# safe (a scoped strip touches 0 of the OTHER 423 operations in the light
+# app's 425 that declare a 422): it threads a second per-router calling
+# convention through a ~150-router registration file. (c) amending the frozen
+# contract to declare the 422 as a known-but-unreachable outcome — rejected
+# because this is a contract-first product; a promise that includes an
+# outcome which cannot happen teaches the next lane to stop trusting the
+# contract, and FastAPI's auto-422 fires on nearly every parameterized route
+# in this app, so the same argument would reopen every other endpoint's
+# schema precision, not just these two.
+#
+# Chosen: (b) — this pure, scoped function, called from BOTH app factories
+# that mount this router (`app_factory.py::create_app()` and
+# `main_api.py::create_api_app()`), chained onto `app.openapi` AFTER any
+# existing wrapper, never replacing one. `create_app()` already has exactly
+# this pattern for a different reason (`_openapi_with_visa_decision_conditionals`)
+# — this reuses that shape rather than inventing a new one.
+_NO_VALIDATION_ERROR_OPERATIONS = frozenset({"getEligibilityResult", "deleteEligibilityResult"})
+
+
+def strip_unreachable_validation_errors(schema: dict) -> dict:
+    """Remove the auto-added 422 for the two operations that cannot raise
+    one. Scoped strictly by `operationId` — every other operation's
+    `responses` dict, its legitimate 422s included, is untouched (measured
+    2026-08-25 against the full `include_light_routers` schema: 425
+    operations declared a 422, exactly 2 were removed). Mutates and returns
+    `schema` for convenient chaining onto an existing `app.openapi` wrapper.
+    """
+    for methods in schema.get("paths", {}).values():
+        if not isinstance(methods, dict):
+            continue
+        for op in methods.values():
+            if isinstance(op, dict) and op.get("operationId") in _NO_VALIDATION_ERROR_OPERATIONS:
+                op.get("responses", {}).pop("422", None)
+    return schema
 
 
 def _public_enabled() -> bool:
@@ -261,6 +376,7 @@ def _set_result_session_cookie(response: Response, secret: str) -> None:
     "/eligibility-checks",
     operation_id="createEligibilityCheck",
     status_code=201,
+    responses=_error_responses("createEligibilityCheck"),
 )
 async def create_eligibility_check(
     payload: EligibilityCheckRequest,
@@ -322,6 +438,7 @@ async def create_eligibility_check(
 @router.get(
     "/eligibility-checks/{result_id}",
     operation_id="getEligibilityResult",
+    responses=_error_responses("getEligibilityResult"),
 )
 async def get_eligibility_result(
     result_id: str,
@@ -354,6 +471,7 @@ async def get_eligibility_result(
     "/eligibility-checks/{result_id}",
     operation_id="deleteEligibilityResult",
     status_code=204,
+    responses=_error_responses("deleteEligibilityResult"),
 )
 async def delete_eligibility_result(
     result_id: str,
