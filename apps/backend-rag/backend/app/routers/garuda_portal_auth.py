@@ -195,17 +195,38 @@ def _account_session_cookie_secure(request: Request) -> bool:
     governs cross-site request behaviour, not confidentiality — neither
     substitutes for `Secure` here.
 
-    This cookie only skips `Secure` when the request is genuinely bound to
-    loopback. Every other case — including non-production environments —
-    gets `Secure=True`. `cookie_auth.get_cookie_secure()` itself is left
+    CORRECTED 2026-08-25 (round 2): the first cut of this function read
+    `request.url.hostname`, which Starlette derives from the client-supplied
+    `Host` header (`starlette.datastructures.URL.__init__`), NOT from the
+    socket. Measured: a scope with `server=("10.0.0.7", 443)` and header
+    `Host: localhost` still yields `Request(scope).url.hostname == "localhost"`.
+    That made the "loopback" check spoofable by anyone who can set a header —
+    including a MITM rewriting a request on a staging/preview deploy, exactly
+    the threat model this fix exists for. This version reads ONLY ASGI
+    transport facts the client cannot forge via any header:
+    `request.scope["scheme"]` (set by the server from the actual connection,
+    not from `X-Forwarded-*` or `Host`) and `request.scope["server"]` (the
+    socket the connection is bound to). `request.url`/`request.url.hostname`
+    must never be used in this function again.
+
+    Rule: `Secure=True` unless the connection is plain `http` AND the ASGI
+    `server` socket host is loopback (`localhost` / `127.0.0.1` / `::1`) —
+    i.e. `uvicorn --host 127.0.0.1` with no TLS, the one genuine local-dev
+    shape. An already-`https` connection is always `Secure=True` (free, and
+    correct regardless of host). Every other case — including non-production
+    environments reached over `http` on a non-loopback socket — gets
+    `Secure=True`. `cookie_auth.get_cookie_secure()` itself is left
     untouched: its existing callers (`cookie_auth.py`'s own JWT/CSRF cookies,
     `garuda_voa_public.py`) are out of scope for this fix and are pinned by
     `test_cookie_auth.py`.
     """
     if settings.environment == "production":
         return getattr(settings, "cookie_secure", True)
-    host = (request.url.hostname or "").lower()
-    return host not in _LOOPBACK_HOSTS
+    if request.scope.get("scheme") == "https":
+        return True
+    server = request.scope.get("server")
+    server_host = (server[0] if server else "") or ""
+    return server_host.lower() not in _LOOPBACK_HOSTS
 
 
 def _set_account_session_cookie(response: Response, request: Request, secret: str) -> None:

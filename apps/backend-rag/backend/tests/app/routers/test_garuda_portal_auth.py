@@ -471,15 +471,25 @@ def test_exchange_persistence_unavailable_is_visible_503(fake_store):
 # ============================================================
 # CodeQL py/clear-text-storage-sensitive-data (2026-08-25) — the account-
 # session cookie must never be issued without `Secure` outside a genuinely-
-# localhost bind. `settings.environment` in this test process is "test"
-# (`backend/tests/conftest.py`), i.e. NOT "production" — the shared
+# loopback-socket connection. `settings.environment` in this test process is
+# "test" (`backend/tests/conftest.py`), i.e. NOT "production" — the shared
 # `cookie_auth.get_cookie_secure()` would return `False` here, and the
 # `TestClient` default host is "testserver", i.e. NOT loopback either. This
 # is exactly the staging/preview/container shape the refuter flagged as
-# reachable-over-a-real-network. The RED/GREEN pair below was run against
-# the pre-fix router (`_set_account_session_cookie` calling the shared
-# `get_cookie_secure()`) and the post-fix router
-# (`_account_session_cookie_secure`), pasted verbatim in the PR description.
+# reachable-over-a-real-network.
+#
+# ROUND 2 (same day): the first fix read `request.url.hostname`, which
+# Starlette derives from the client-supplied `Host` header, not the socket —
+# so a spoofed `Host: localhost` on a MITM'd staging request would have made
+# the server drop `Secure`. `test_account_session_cookie_ignores_spoofed_host_header`
+# below is the test that catches that: it sends `Host: localhost` to a
+# non-loopback ASGI `server` socket and asserts `Secure` is still set. It was
+# run RED against the round-1 fix (`request.url.hostname`-based) and GREEN
+# against the round-2 fix (`request.scope["scheme"]`/`request.scope["server"]`
+# -based, `_account_session_cookie_secure`) — pasted verbatim in the PR
+# description. The genuine-localhost test also sends a mismatched Host header
+# to prove the relaxation fires on the ASGI socket, not on anything the
+# client can claim via a header.
 # ============================================================
 
 
@@ -505,15 +515,62 @@ def test_account_session_cookie_is_secure_on_non_production_non_localhost_host(f
     assert "Secure" in account_cookie, account_cookie
 
 
+def test_account_session_cookie_ignores_spoofed_host_header(fake_store):
+    """The Host header is client-supplied and must never drive this policy.
+    Posting to a NON-loopback ASGI socket (`example.com`) with a spoofed
+    `Host: localhost` header must still get `Secure` — this is the exact
+    shape a MITM on a staging/preview deploy could exploit against a
+    hostname-based check (measured: `Request(scope).url.hostname` reads
+    'localhost' here even though `scope['server']` is `('example.com', 80)`).
+    This test is RED against a `request.url.hostname`-based implementation
+    and GREEN against one that reads `request.scope['server']`/`['scheme']`."""
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False)
+    client = _client_with_store(fake_store)
+
+    resp = client.post(
+        "http://example.com/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY, "Host": "localhost"},
+    )
+
+    assert resp.status_code == 204
+    set_cookie_headers = resp.headers.get_list("set-cookie")
+    account_cookie = next(h for h in set_cookie_headers if h.startswith("garuda_session="))
+    assert "Secure" in account_cookie, account_cookie
+
+
 def test_account_session_cookie_relaxes_only_on_genuine_localhost(fake_store):
-    """The one legitimate relaxation: a request that actually arrives on
-    loopback (real local dev) may skip `Secure`. This pins the policy is not
-    simply "always Secure" but specifically "Secure unless loopback"."""
+    """The one legitimate relaxation: a request whose ASGI socket is
+    genuinely loopback (real local dev, `uvicorn --host 127.0.0.1`, no TLS)
+    may skip `Secure`. Sends a MISMATCHED Host header (`internal-lb`) to
+    prove the relaxation is driven by the socket-level `server` tuple, not
+    by anything the client's Host header claims — the exact opposite
+    direction of the spoofed-Host test above."""
     fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False)
     client = _client_with_store(fake_store)
 
     resp = client.post(
         "http://127.0.0.1/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY, "Host": "internal-lb"},
+    )
+
+    assert resp.status_code == 204
+    set_cookie_headers = resp.headers.get_list("set-cookie")
+    account_cookie = next(h for h in set_cookie_headers if h.startswith("garuda_session="))
+    assert "Secure" not in account_cookie, account_cookie
+
+
+def test_account_session_cookie_is_secure_on_loopback_https(fake_store):
+    """An already-`https` connection is always `Secure=True`, even on a
+    loopback socket — `Secure` costs nothing once the transport is already
+    encrypted, and the one relaxation this policy grants is scoped to plain
+    `http` on loopback only."""
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False)
+    client = _client_with_store(fake_store)
+
+    resp = client.post(
+        "https://127.0.0.1/api/visa/voa/auth/sessions",
         json={"token": VALID_TOKEN},
         headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
     )
@@ -521,4 +578,4 @@ def test_account_session_cookie_relaxes_only_on_genuine_localhost(fake_store):
     assert resp.status_code == 204
     set_cookie_headers = resp.headers.get_list("set-cookie")
     account_cookie = next(h for h in set_cookie_headers if h.startswith("garuda_session="))
-    assert "Secure" not in account_cookie, account_cookie
+    assert "Secure" in account_cookie, account_cookie
