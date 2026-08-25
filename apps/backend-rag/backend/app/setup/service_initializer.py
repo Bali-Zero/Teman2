@@ -1336,7 +1336,6 @@ async def initialize_services(app: FastAPI) -> None:
     # all — never a partial/broken auth path served to traffic.
     if db_pool is not None:
         try:
-            from backend.app.routers import garuda_portal_auth
             from backend.services.garuda_portal.magic_link_store import PostgresMagicLinkStore
 
             # Same env-var-with-default convention as `visa_engine.evaluate_
@@ -1370,15 +1369,31 @@ async def initialize_services(app: FastAPI) -> None:
             # `garuda_portal_auth`'s own `issue`/`exchange` operations
             # (requestMagicLink / exchangeMagicLink) default to
             # `UnconfiguredMagicLinkStore` via `get_garuda_magic_link_store`
-            # — override it with the SAME store instance so a session can
+            # — wire the SAME store instance onto app.state so a session can
             # actually be minted, not just verified. Wiring only
             # `verify_session` above and leaving `issue`/`exchange`
             # unconfigured would make L3's auth check reachable in theory
             # while no `garuda_account_sessions` row could ever exist to
             # satisfy it.
-            app.dependency_overrides[garuda_portal_auth.get_garuda_magic_link_store] = (
-                lambda: garuda_magic_link_store
-            )
+            #
+            # DELIBERATELY app.state, NOT `app.dependency_overrides` (an
+            # earlier version of this wiring used that dict — corrected
+            # 2026-08-25, team-lead review): `dependency_overrides` is
+            # FastAPI's TEST mechanism, one unscoped process-wide dict, and
+            # `backend/tests/unit/routers/test_dashboard_coverage.py`
+            # already calls `app.dependency_overrides.clear()`
+            # unconditionally in teardown against this SAME `main_cloud.app`
+            # object. That call is harmless today only because that test
+            # file never triggers `initialize_services`, so it never has
+            # anything of this module's to clear — but a production wiring
+            # entry placed in that dict would be exactly one unrelated
+            # test's teardown away from silently vanishing, leaving
+            # `garuda_magic_session_verifier` (a separate, unaffected
+            # app.state slot) live while minting silently reverts to
+            # `UnconfiguredMagicLinkStore` — the half-wired hazard this
+            # module already exists to avoid. `app.state` has no such
+            # global-clear call anywhere in this codebase.
+            app.state.garuda_magic_link_store = garuda_magic_link_store
             logger.info("✅ GARUDA VOA magic-link session verifier wired")
         except Exception as e:
             logger.warning(
