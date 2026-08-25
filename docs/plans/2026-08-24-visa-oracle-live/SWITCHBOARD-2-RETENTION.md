@@ -1,5 +1,11 @@
 # Switchboard #2 — ritenzione dei dati del wizard
 
+> ✅ **RISPOSTO da Zero 2026-08-25 — questo documento è STORIA, non una domanda aperta.** Ritenzione
+> **30 giorni** (non 90). E il funnel legacy a testo libero **si ritira**: «raccoglieva ambiguità che poi
+> pagavamo a mano». Conseguenza sulla raccomandazione qui sotto: non si costruisce la purge su
+> `messages` — si ferma la RACCOLTA, e resta solo smaltire l'arretrato (atto su credenziali di
+> produzione, non di una lane). Autorità: `OWNER-RULINGS-2026-08-25.md` §3.
+
 > Firma richiesta a Zero (mandato §5). Misurato 2026-08-25 su disco, non dedotto.
 > **Domanda per Zero in fondo.** Il resto è terreno, per farla decidere su fatti.
 

@@ -1,5 +1,14 @@
 # Una regola di review su UN prodotto cancella i candidati di TUTTI
 
+> ✅ **RISPOSTO da Zero 2026-08-25 — scelta l'opzione (2)**, come raccomandato: lo stato resta
+> `HUMAN_REVIEW_REQUIRED`, i candidati già calcolati viaggiano con esso. «Zero-risultati è vietato come
+> schermata — ogni vicolo cieco diventa un candidato onesto + una mano tesa.»
+> ⚠️ **Non è la riga sola descritta qui sotto**: il contratto congelato vieta `candidates` E `quotes`
+> su ogni stato ≠ SUPPORTED (3 livelli + 2 test verdi). Design adottato dopo confutazione
+> cross-family: allentare `candidates` **solo** per `HUMAN_REVIEW_REQUIRED`, `quotes` vietato ovunque —
+> perché il divieto su `quotes` **da solo** impedisce già il bottone «compra» (C1). Autorità:
+> `OWNER-RULINGS-2026-08-25.md` §5.
+
 > Misurato 2026-08-25 eseguendo il motore contro il pack **firmato** `rulepack-prod-013`
 > (firma Ed25519 verificata davvero, `payload_sha256 = b9edb809…`, mai finta).
 > Decisione richiesta a Zero: è il comportamento voluto?

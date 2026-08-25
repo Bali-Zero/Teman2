@@ -1,5 +1,11 @@
 # There are two visa funnels in production, and the public one is not the audited one
 
+> ✅ **RISPOSTO da Zero 2026-08-25 — scelta: RITIRARE la vecchia porta con 301 → `/visa-oracle`.**
+> «Mai un motore non verificato indicizzato col nostro nome sopra.» Il redirect conserva la SEO. Il
+> **noindex sulla porta nuova cade SOLO dopo il fix della riga T2** — ordine vincolante: toglierlo
+> prima indicizzerebbe una pagina che ai clienti T2 dice il contrario del vero. Autorità:
+> `OWNER-RULINGS-2026-08-25.md` §4.
+
 Measured 2026-08-24 (Pro), live against `balizero.com`. Surfaced by the V2 lane while auditing
 the wizard; the numbers below were then re-measured directly by the orchestrator.
 
