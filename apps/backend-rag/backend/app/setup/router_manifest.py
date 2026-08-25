@@ -218,6 +218,16 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         condition=_is_garuda_flow_enabled,
         tags=("visa", "internal", "garuda"),
     ),
+    # ── GARUDA VOA public eligibility funnel (contract-frozen, L2) ──
+    # No mount-time condition: the router mounts unconditionally and each of
+    # its 3 routes re-checks GARUDA_PUBLIC_ENABLED from the environment on
+    # every request (garuda_voa_public.py::_public_enabled), returning 404
+    # via the closed error vocabulary when unset/false. Default OFF.
+    RouterEntry(
+        name="garuda_voa_public",
+        process_groups=_API,
+        tags=("visa", "garuda", "public"),
+    ),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
     # ── Guardian ──

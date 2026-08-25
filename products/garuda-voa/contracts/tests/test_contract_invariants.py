@@ -406,3 +406,45 @@ def test_reason_codes_match_the_engine_enum_exactly() -> None:
         f"the contract promises codes the engine never emits: {sorted(contract - engine)} "
         "— dead vocabulary that a consumer will write handling for and never exercise"
     )
+
+
+def test_the_order_response_can_say_the_customer_already_paid(openapi: dict) -> None:
+    """A response schema that can express only one outcome forces the code to lie.
+
+    `OrderCheckout.order_state` was `const: "awaiting_payment"`. The implementation
+    hardcoded that literal — correctly, because the contract admitted nothing else — and a
+    customer whose order had already been paid was handed a payment action on resume. The
+    defect looked like sloppy code and was actually this schema, faithfully obeyed.
+
+    Two properties, and the second is the one with teeth: the state must be able to say
+    `paid`, AND the payment action must be able to be absent. Either alone still permits
+    the lie — a schema that admits `paid` but demands a non-null `checkout_url` just moves
+    the contradiction one field over.
+    """
+    checkout = openapi["components"]["schemas"]["OrderCheckout"]
+    state = checkout["properties"]["order_state"]
+
+    assert "const" not in state, (
+        "order_state is pinned to a single constant, so every response must claim that state "
+        "whatever the order is really doing. This is exactly the shape that told a paying "
+        "customer to pay again."
+    )
+    allowed = set(state.get("enum") or [])
+    assert "paid" in allowed, (
+        f"order_state cannot express `paid` (allows {sorted(allowed)}). An order can be paid "
+        "by a webhook while the customer's first attempt is still in flight; if the response "
+        "cannot say so, it must say something false."
+    )
+
+    url_type = checkout["properties"]["checkout_url"]["type"]
+    accepts_null = "null" in (url_type if isinstance(url_type, list) else [url_type])
+    assert accepts_null, (
+        "checkout_url cannot be null, so a paid order still has to carry a payment "
+        "capability. Required-and-nullable is deliberate here: optional would let the key be "
+        "omitted, and a consumer reading a missing key gets `undefined`, which renders as an "
+        "enabled button just as happily as a URL does."
+    )
+    assert "checkout_url" in checkout["required"], (
+        "checkout_url was made optional rather than nullable — see the reasoning above; the "
+        "consumer must be forced to answer 'is there anything to pay?' explicitly."
+    )
