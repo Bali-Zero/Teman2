@@ -126,10 +126,15 @@ GUILTY_SAMPLES = [
             "KERJA MENJADI UNDANG-UNDANG - Pasal 12]\n\nCukup jelas.\nAngka 4"
         ),
     },
-    {  # UU_17_2008 — the UNMARKED BOUNDARY document (471 "Cukup jelas", 0
-        # "PENJELASAN" headers); bare form is the overwhelming majority there
-        "document_id": "UU_17_2008",
-        "text": "Cukup jelas.",
+    {  # UU_66_2024 — Pelayaran (shipping) amendment, corpus-hygiene surface
+        # (no measurable client traffic per the 2026-08-25 WhatsApp-mirror
+        # census) but structurally identical pattern: boilerplate mixed with
+        # one substantive Ayat that IS informative
+        "document_id": "UU_66_2024",
+        "text": (
+            "Ayat (1)\nCukup jelas.\nAyat (2)\nCukup jelas.\nAyat (3)\n"
+            "Insentif dapat berupa insentif fiskal dan/atau nonfiskal.\nAngka 3"
+        ),
     },
     {  # environmental Perda with a long, genuinely substantive elucidation entry
         "document_id": "Perda_3_2013",
@@ -155,8 +160,12 @@ GUILTY_SAMPLES = [
 ]
 
 
-# ── INNOCENCE fixtures ───────────────────────────────────────────────────────
-INNOCENT_SAMPLES = [
+# ── TRUE INNOCENCE fixtures (expect=False, "must NOT be flagged") ───────────
+# Adversarial review (Codex, 2026-08-25) found the original single mixed list
+# labeled all 7 fixtures "INNOCENCE" when 2 actually assert the POSITIVE
+# direction — split here so the count in this comment matches what each
+# fixture actually tests.
+TRUE_INNOCENCE_SAMPLES = [
     {
         "id": "explicitly-tagged-penjelasan-top-level",
         # The one case the live sample under-represents: only 792/84,283 points
@@ -166,20 +175,17 @@ INNOCENT_SAMPLES = [
         # tagged elucidation re-enters the damaged count.
         "payload": {"document_id": "UU_6_2011", "section": "penjelasan",
                     "text": "Cukup jelas."},
-        "expect": False,
     },
     {
         "id": "explicitly-tagged-penjelasan-nested-metadata",
         # Same exclusion, legacy nested-metadata shape (78,486/84,283 points).
         "payload": {"metadata": {"document_id": "UU_40_2007", "section": "penjelasan",
                                   "text": "Cukup jelas."}},
-        "expect": False,
     },
     {
         "id": "no-phrase-at-all",
         "payload": {"document_id": "UU_1_1945",
                     "text": "Setiap warga negara berhak atas pekerjaan yang layak."},
-        "expect": False,
     },
     {
         "id": "word-boundary-should-not-fuse-unrelated-words",
@@ -191,21 +197,6 @@ INNOCENT_SAMPLES = [
         # words adjacent (whitespace-only between them), so this must be False.
         "payload": {"document_id": "UU_99_2099",
                     "text": "Ketercukupan anggaran dan kejelasan prosedur wajib dijamin."},
-        "expect": False,
-    },
-    {
-        "id": "case-insensitive-still-matches",
-        # Not an innocence case in the "should be excluded" sense — asserts the
-        # positive direction of the same word-boundary logic: case must not
-        # matter (guards against a future regex edit adding re.IGNORECASE
-        # removal as a silent regression in the guilty direction).
-        "payload": {"document_id": "UU_1_2019", "text": "Pasal 1 \nCUKUP JELAS."},
-        "expect": True,
-    },
-    {
-        "id": "multi-whitespace-between-words-still-matches",
-        "payload": {"document_id": "UU_1_2019", "text": "Cukup   \n  jelas."},
-        "expect": True,
     },
     {
         "id": "missing-text-key-does-not-crash-and-is-innocent",
@@ -213,7 +204,52 @@ INNOCENT_SAMPLES = [
         # metadata.text -> "". A point with none of those must not raise and
         # must not be flagged.
         "payload": {"document_id": "UU_0_0000"},
-        "expect": False,
+    },
+]
+
+
+# ── POSITIVE-CONTROL fixtures (expect=True) ─────────────────────────────────
+# NOT innocence cases — these assert the guilty direction still fires under
+# variations the guard could plausibly be "fixed" into over-restricting
+# (case, internal whitespace). If a future edit adding a stricter word
+# boundary silently narrowed the match, these would catch the recall loss
+# the guilt fixtures above might not exercise (none of GUILTY_SAMPLES has
+# mixed case or multi-line whitespace between the two words).
+POSITIVE_CONTROL_SAMPLES = [
+    {
+        "id": "case-insensitive-still-matches",
+        "payload": {"document_id": "UU_1_2019", "text": "Pasal 1 \nCUKUP JELAS."},
+    },
+    {
+        "id": "multi-whitespace-between-words-still-matches",
+        "payload": {"document_id": "UU_1_2019", "text": "Cukup   \n  jelas."},
+    },
+]
+
+
+# ── DOCUMENTED RESIDUAL RISK (expect=True, on purpose) ──────────────────────
+# Adversarial review (Codex) pointed out the innocence suite above never
+# tested "cukup jelas" used ADJACENT and IDIOMATICALLY in ordinary prose
+# (e.g. "informasi yang cukup jelas mengenai prosedur ini" -- "sufficiently
+# clear information about this procedure") rather than as the Penjelasan
+# boilerplate marker. This IS flagged True by design: the campaign's §6
+# signal (research/legal/2026-08-25-cukup-jelas-false-positive-rate.md) is a
+# deliberate bare substring test with no semantic-register awareness, and
+# this predicate faithfully implements that definition rather than silently
+# adding a filter the campaign never asked for. The 2026-08-25 measurement
+# (45 samples, stratified across all 34 damaged documents) found ZERO
+# fragments of this shape in the actual flagged population -- but 45 samples
+# cannot prove none exist in the other 1,974 unread fragments. Recorded here
+# as an explicit, named risk rather than a silent gap: if this pattern turns
+# out to be common, the predicate needs a smarter register check, and this
+# fixture is where that requirement would be re-verified.
+RESIDUAL_RISK_SAMPLES = [
+    {
+        "id": "ordinary-idiomatic-use-is-flagged-by-design-not-a-bug",
+        "payload": {"document_id": "UU_88_2088",
+                    "text": ("Berdasarkan penjelasan di atas, prosedur permohonan izin "
+                              "sudah cukup jelas diatur dalam Pasal 12 sehingga pemohon "
+                              "dapat langsung mengajukan berkas ke kantor terkait.")},
     },
 ]
 
@@ -222,23 +258,54 @@ INNOCENT_SAMPLES = [
 def test_guilt_real_elucidation_fragments_are_flagged(sample):
     """All 10 fixtures are verbatim text lane P manually verified as genuine
     elucidation (Penjelasan) content during the 2026-08-25 false-positive
-    read-through. If the predicate stops recognizing any of these, it has
-    lost RECALL on the exact shape the campaign is trying to measure."""
+    read-through, spanning 10 DISTINCT documents (an earlier draft repeated
+    UU_17_2008 twice under two different comments -- caught by adversarial
+    review, replaced with a UU_66_2024 sample so the "10 documents" claim in
+    the module docstring and the report is actually true). If the predicate
+    stops recognizing any of these, it has lost RECALL on the exact shape the
+    campaign is trying to measure."""
     signal = _signal()
     payload = {"document_id": sample["document_id"], "text": sample["text"]}
     assert signal.is_unmarked_penjelasan_fragment(payload) is True, (
         f"{sample['document_id']}: manually-verified genuine elucidation text "
         "was not flagged — the predicate has lost recall."
     )
+    assert len({s["document_id"] for s in GUILTY_SAMPLES}) == len(GUILTY_SAMPLES), (
+        "GUILTY_SAMPLES must span DISTINCT documents — a repeated document_id "
+        "silently shrinks the claimed sample-diversity coverage."
+    )
 
 
-@pytest.mark.parametrize("sample", INNOCENT_SAMPLES, ids=lambda s: s["id"])
-def test_innocence_constructed_edge_cases_are_not_flagged_or_are_correctly_flagged(sample):
+@pytest.mark.parametrize("sample", TRUE_INNOCENCE_SAMPLES, ids=lambda s: s["id"])
+def test_innocence_constructed_edge_cases_are_not_flagged(sample):
     signal = _signal()
     result = signal.is_unmarked_penjelasan_fragment(sample["payload"])
-    assert result is sample["expect"], (
-        f"{sample['id']}: expected is_unmarked_penjelasan_fragment()={sample['expect']}, "
-        f"got {result}"
+    assert result is False, (
+        f"{sample['id']}: expected is_unmarked_penjelasan_fragment()=False, got {result}"
+    )
+
+
+@pytest.mark.parametrize("sample", POSITIVE_CONTROL_SAMPLES, ids=lambda s: s["id"])
+def test_positive_control_variations_still_flag(sample):
+    signal = _signal()
+    result = signal.is_unmarked_penjelasan_fragment(sample["payload"])
+    assert result is True, (
+        f"{sample['id']}: expected is_unmarked_penjelasan_fragment()=True, got {result}"
+    )
+
+
+@pytest.mark.parametrize("sample", RESIDUAL_RISK_SAMPLES, ids=lambda s: s["id"])
+def test_documented_residual_risk_flags_true_by_design(sample):
+    """This is NOT asserting correctness of the campaign's own signal — it is
+    asserting FAITHFULNESS to its stated definition (bare substring, no
+    semantic-register filter). See the fixture's own comment for why this is
+    True on purpose and what would need to change for it to become False."""
+    signal = _signal()
+    result = signal.is_unmarked_penjelasan_fragment(sample["payload"])
+    assert result is True, (
+        f"{sample['id']}: expected True (faithful to the campaign's bare-substring "
+        f"definition), got {result} — if this was deliberately narrowed, update "
+        "the report's false-positive-rate claim too, not just this fixture."
     )
 
 
