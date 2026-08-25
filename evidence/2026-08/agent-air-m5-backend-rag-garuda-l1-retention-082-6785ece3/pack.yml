@@ -1,0 +1,81 @@
+brief_ref: "evidence/brief.yml"
+lanes:
+  - lane: L1
+    role: build
+    seat: sonnet-5
+receipts:
+  - claim: >
+      Migration 281 applies clean through the self-contained
+      GARUDA_MIGRATION_NUMBERS chain against a throwaway sandbox DB/role.
+    cmd: >
+      TEST_DATABASE_URL=postgresql://test@localhost:5432/nuzantara_test
+      PYTHONPATH=. pytest
+      backend/tests/scripts/visa_engine/test_garuda_voa_retention.py -q
+    exit: 0
+    ts: "2026-08-25T00:00:00Z"
+    seat: sonnet-5
+  - claim: >
+      The Python retention surface (backend/services/garuda_flow/retention.py)
+      passes its own 7-test suite against the same sandbox.
+    cmd: >
+      TEST_DATABASE_URL=postgresql://test@localhost:5432/nuzantara_test
+      PYTHONPATH=. pytest
+      backend/tests/services/garuda_flow/test_retention.py -q
+    exit: 0
+    ts: "2026-08-25T00:00:00Z"
+    seat: sonnet-5
+  - claim: >
+      squawk (the exact 13 --exclude rules from migration-lint.yml) finds
+      zero issues on 281_garuda_voa_retention.sql after the two suppression
+      comments were placed on the correct lines.
+    cmd: >
+      squawk --exclude=require-concurrent-index-creation
+      --exclude=require-timeout-settings
+      --exclude=require-concurrent-index-deletion --exclude=ban-drop-table
+      --exclude=ban-drop-column --exclude=ban-char-field
+      --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field
+      --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid
+      --exclude=prefer-bigint-over-int --exclude=prefer-identity
+      --exclude=disallowed-unique-constraint
+      apps/backend-rag/backend/db/migrations_v2/281_garuda_voa_retention.sql
+    exit: 0
+    ts: "2026-08-25T00:39:00Z"
+    seat: sonnet-5
+  - claim: >
+      A pre-fix run of the same squawk command found the 2 real issues
+      (adding-not-nullable-field, identifier-too-long) this receipt's
+      sibling shows now suppressed with reason.
+    cmd: "gh run view 32751835979 --log-failed"
+    exit: 1
+    ts: "2026-08-25T00:10:00Z"
+    seat: sonnet-5
+dissent:
+  - seat: sonnet-5 (self, bite-proof — generator!=grader holds even
+      against one's own guard code)
+    objection: >
+      test_direct_delete_is_rejected_and_only_bounded_purge_may_delete
+      still passed with the guard's deeper
+      "OLD.retention_until < clock_timestamp() AND legal_hold=FALSE"
+      branch deleted outright, because that test's connecting role is
+      never the table owner — the earlier current_user<>table_owner
+      check already blocks it, leaving the deeper branch untested and
+      effectively dead code.
+    status: RETRACTED
+  - seat: sonnet-5 (self, bite-proof)
+    objection: >
+      bind_legacy_garuda_voa_checks_retention_policy's backfill UPDATE
+      was rejected by guard_garuda_voa_checks_retention_mutation with
+      "may only change view_count/share_count or legal_hold" — the
+      guard had no carve-out for the NULL->NOT NULL retention-column
+      transition the backfill performs, so the one function the
+      migration ships specifically to backfill legacy rows could not
+      run against its own migration.
+    status: RETRACTED
+  - seat: squawk-cli (external tool, CI run 32751835979)
+    objection: >
+      adding-not-nullable-field on the environment backfill (read-blocking
+      table scan) and identifier-too-long on the rollback-only EXCLUDE
+      constraint name (truncates silently at 63 bytes) — both genuine
+      findings against the raw migration, not suppressed without reason.
+    status: RETRACTED
+pii_scan: clean

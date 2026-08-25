@@ -456,6 +456,74 @@ async def tables_exist(conn: asyncpg.Connection, *table_names: str) -> bool:
     )
 
 
+_MIGRATION_264_PATH = (
+    _BACKEND_DIR / "db" / "migrations_v2" / "264_visa_decision_retention_policy.sql"
+)
+_MIGRATION_281_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "281_garuda_voa_retention.sql"
+
+
+def _read_migration_264() -> tuple[str, str]:
+    sql = _MIGRATION_264_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 264 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
+def _read_migration_281() -> tuple[str, str]:
+    sql = _MIGRATION_281_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 281 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
+async def unwind_garuda_voa_retention_fk(conn: asyncpg.Connection) -> bool:
+    """Roll back migration 281's FK onto ``visa_decision_retention_policies`` (264),
+    if it is currently applied. Call this BEFORE any ``rollback_264`` in this
+    directory's fixtures/tests. Returns ``True`` iff it actually rolled 281 back,
+    so the caller knows whether ``restore_garuda_voa_retention_fk`` is owed later.
+
+    The rule this encodes, not just the mechanism: unwinding a migration stack in
+    reverse order means honouring dependents added ABOVE you, including from
+    another product's migration. Migration 264 (this repo's visa-engine) owns
+    ``visa_decision_retention_policies``; migration 281 (GARUDA-VOA, a different
+    product layered on top later) added FKs onto it from
+    ``garuda_voa_checks.retention_policy_id`` and
+    ``garuda_voa_check_legal_hold_events.retention_policy_id``. ``rollback_264``'s
+    ``DROP TABLE`` carries no ``CASCADE`` (deliberately — see this directory's
+    252/264 fixture docstrings on why a bare DROP is the right call), so unless
+    281 is unwound first, ``rollback_264`` fails with
+    ``asyncpg.exceptions.DependentObjectsStillExistError``. Whoever adds a NEXT
+    migration (283, or whatever number) that FKs onto this table too should add
+    its guard HERE, in this one function, instead of teaching a sixth call site
+    the same lesson by hand the way this one was found — twice, in two separate
+    CI rounds, before this helper existed.
+    """
+    if await conn.fetchval(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_schema = 'public' AND table_name = 'garuda_voa_checks' "
+        "AND column_name = 'retention_policy_id'"
+    ):
+        _, rollback_281 = _read_migration_281()
+        await conn.execute(rollback_281)
+        return True
+    return False
+
+
+async def restore_garuda_voa_retention_fk(conn: asyncpg.Connection) -> None:
+    """Re-apply migration 281's forward SQL — the companion to
+    ``unwind_garuda_voa_retention_fk``. Call this AFTER ``forward_264`` has
+    re-established ``visa_decision_retention_policies``, only when the unwind
+    actually ran (i.e. only when ``unwind_garuda_voa_retention_fk`` returned
+    ``True``, or the caller otherwise knows 281 is expected to be live in the
+    deployed schema this fixture must leave behind). Calling it when 281 was
+    never unwound raises a duplicate-object error — it is not defensively
+    guarded the way the unwind side is, because there is no cheap "already
+    applied" check that isn't just re-deriving the caller's own bookkeeping.
+    """
+    forward_281, _ = _read_migration_281()
+    await conn.execute(forward_281)
+
+
 def _read_migration_250() -> tuple[str, str]:
     """Return (forward_sql, rollback_sql) for migration 250.
 
