@@ -27,6 +27,7 @@ from backend.security.pii_log_identifier import (
 _SYNTHETIC_PHONE = "+62 000-111-2222"
 _SYNTHETIC_PHONE_DIGITS_ONLY = "620001112222"
 _SYNTHETIC_PHONE_OTHER = "+62 999-888-7777"
+_SYNTHETIC_PHONE_NATIONAL_FORM = "0000-111-2222"  # same number as _SYNTHETIC_PHONE
 _SYNTHETIC_CHAT_ID = 194920123
 
 
@@ -179,11 +180,16 @@ class TestRedactIdentifierForLogFallbackSaltSecurity:
 
         monkeypatch.delenv("LOG_PII_HMAC_SALT", raising=False)
         target = redact_identifier_for_log(_SYNTHETIC_PHONE)
-        # The message hashed is the bare digit-stripped string at this
-        # point (no national-prefix folding yet — that lands separately).
-        # Deriving it via the module's own regex (rather than hardcoding a
-        # value) keeps this test honest if that extraction logic changes.
-        digits = pii_log_identifier._NON_DIGITS_RE.sub("", _SYNTHETIC_PHONE)
+        # The message hashed is the FOLDED key material (national/country
+        # prefix reconciled -- see _fold_national_prefix), not the bare
+        # digit-stripped string: "+62 000-111-2222" -> digits
+        # "620001112222" -> phone_core folds the leading "62" -> the real
+        # message is "0001112222". Deriving it via the module's own
+        # helpers (rather than hardcoding a value) keeps this test honest
+        # if that folding logic ever changes.
+        digits = pii_log_identifier._fold_national_prefix(
+            pii_log_identifier._NON_DIGITS_RE.sub("", _SYNTHETIC_PHONE),
+        )
 
         source_path = inspect.getsourcefile(pii_log_identifier)
         assert source_path is not None
@@ -272,5 +278,59 @@ class TestRedactIdentifierForLogFallbackSaltSecurity:
         with caplog.at_level("WARNING", logger="backend.security.pii_log_identifier"):
             redact_identifier_for_log(_SYNTHETIC_PHONE)
         assert not any("LOG_PII_HMAC_SALT" in r.message for r in caplog.records)
+
+
+class TestRedactIdentifierForLogNationalPhonePrefix:
+    """Finding 2 (adversarial review, 2026-08-25): '+62...' and '082...'
+    forms of the SAME phone number produced DIFFERENT digests — the same
+    client appeared as two identities across logs. Reuses the repo's
+    canonical phone-equality rule (backend.phone_lock.phone_core) rather
+    than re-deriving normalization logic — see _fold_national_prefix's
+    docstring for the reuse and its one documented, accepted trade-off."""
+
+    def test_national_and_country_code_forms_unify(self) -> None:
+        """Guilt: the exact bug reported — '0...' vs '+62...' — must now
+        collide on the same digest."""
+        international = redact_identifier_for_log(_SYNTHETIC_PHONE)
+        national = redact_identifier_for_log(_SYNTHETIC_PHONE_NATIONAL_FORM)
+        assert international == national
+
+    def test_national_bare_and_international_forms_all_three_unify(self) -> None:
+        """Guilt: all three real-world notations of one number — bare
+        digits with country code, national with leading 0, and the
+        original '+62 ...' formatted form — must collide."""
+        bare = redact_identifier_for_log(_SYNTHETIC_PHONE_DIGITS_ONLY)
+        national = redact_identifier_for_log(_SYNTHETIC_PHONE_NATIONAL_FORM)
+        formatted = redact_identifier_for_log(_SYNTHETIC_PHONE)
+        assert bare == national == formatted
+
+    def test_genuinely_different_numbers_still_distinguishable_after_fold(self) -> None:
+        """Innocence: folding the national/country prefix must not
+        collapse everything to one digest — two DIFFERENT synthetic
+        numbers, both given in national form, must still differ."""
+        one = redact_identifier_for_log(_SYNTHETIC_PHONE_NATIONAL_FORM)
+        other = redact_identifier_for_log("0999-888-7777")  # national form of _OTHER
+        assert one != other
+        assert other == redact_identifier_for_log(_SYNTHETIC_PHONE_OTHER)
+
+    def test_short_digit_fragment_below_phone_core_floor_is_not_dropped(self) -> None:
+        """Innocence: phone_core declines to opine on fewer than 6 digits
+        (returns None) — a short numeric fragment must still get a stable
+        digest rather than silently losing its distinguishability."""
+        short_a = redact_identifier_for_log("0821")
+        short_b = redact_identifier_for_log("0822")
+        assert short_a != short_b
+        assert short_a.startswith("id:")
+
+    def test_telegram_chat_id_not_starting_with_zero_or_62_is_unaffected(self) -> None:
+        """Innocence: the documented accepted trade-off is narrow — a
+        chat id that does not coincidentally look like a phone prefix must
+        be completely unaffected by the fold (still a plain digit-string
+        digest, matching the module's original "no-op for a chat id"
+        design intent)."""
+        digest = redact_identifier_for_log(_SYNTHETIC_CHAT_ID)
+        assert digest == redact_identifier_for_log(str(_SYNTHETIC_CHAT_ID))
+        # A chat id one digit off must still be distinguishable.
+        assert digest != redact_identifier_for_log(_SYNTHETIC_CHAT_ID + 1)
 
 

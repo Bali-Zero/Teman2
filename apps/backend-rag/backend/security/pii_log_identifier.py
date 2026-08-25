@@ -37,10 +37,13 @@ module's docstring, point 4).
 
 Design:
 - Normalize to bare digits first ("+62 821-3465-159", "628213465159" and
-  "08213465159" must collapse to the same digest, or the same client gets a
-  fresh-looking identifier every time upstream formatting shifts). A
-  Telegram numeric chat id is already all-digits, so the same normalization
-  is a no-op for it — one function covers both identifier shapes safely.
+  "08213465159" must collapse to the SAME digest — a Bali Zero client is
+  the same client regardless of which notation upstream formatting hands
+  us). Digit-stripping alone only removes formatting noise (``+``, spaces,
+  dashes); reconciling the ``62...``/``0...`` country/national prefixes
+  onto the same bare core is delegated to the repo's canonical phone
+  normalizer — see ``_fold_national_prefix`` for the reuse and its one
+  honestly-documented trade-off.
 - HMAC-SHA256, keyed by ``LOG_PII_HMAC_SALT`` (env, read at call time — not
   at import time — so tests can set/clear it per-case). Unset → a random
   per-process fallback salt (never a literal in this file — see
@@ -55,8 +58,14 @@ Design:
   anchors stored rows and needs the extra headroom this does not).
 
 Importable by both the client-bot and the team-bot identity paths — this is
-shared plumbing (``backend/utils/``), not private to
-``messaging_identity_service.py``.
+shared plumbing (``backend/security/``), not private to
+``messaging_identity_service.py``. Must stay import-light: ``crm_push.py``
+and other callers are reached from ``scripts/intake_reprocess_backlog.py``,
+which must answer ``--help`` without app settings (2026-08-25, this module
+was relocated out of ``backend/utils/`` for exactly this reason — see git
+history on this file). ``backend.phone_lock`` (imported below) is safe for
+that contract: it pulls in only ``re`` and ``asyncpg`` at module scope, never
+``backend.app.core.config`` or anything that reads app settings.
 """
 
 from __future__ import annotations
@@ -68,6 +77,8 @@ import re
 import secrets
 import threading
 from hashlib import sha256
+
+from backend.phone_lock import phone_core
 
 logger = logging.getLogger(__name__)
 
@@ -152,13 +163,61 @@ def _reset_fallback_salt_state_for_tests() -> None:
         _fallback_warning_emitted = False
 
 
+def _fold_national_prefix(digits: str) -> str:
+    """Reconcile ``+62.../62...`` and the national ``0...`` phone form onto
+    the SAME core digits, so the SAME phone number produces the SAME digest
+    regardless of which notation it arrived in.
+
+    Delegates to :func:`backend.phone_lock.phone_core` — the repo's one
+    canonical "same phone" projection ("the CRM dedup helper and the
+    delivery gate both delegate here, so drift between 'the same phone'
+    definitions is structurally impossible"): real reuse of the repo's
+    existing normalizer, not a re-derived rule. ``digits`` has already had
+    every non-digit character stripped by the caller (so ``"+62 821-3465-
+    159"`` has already become ``"628213465159"``); folding the country/
+    national prefix here is what makes THAT form compare equal to
+    ``"08213465159"`` — digit-stripping alone is not enough, both forms
+    must be reduced to the SAME bare core (``phone_core`` verified directly:
+    ``phone_core("628213465159") == phone_core("08213465159") ==
+    "8213465159"``).
+
+    ``phone_core`` requires >= 6 digits to return a core; a shorter digit
+    string (a short test fixture, or genuinely truncated input) falls back
+    to the un-folded digits unchanged rather than losing its digest to a
+    normalizer that declines to opine on it.
+
+    Known, accepted trade-off (this function is shared with non-phone
+    digit-only identifiers — a Telegram chat id is already all-digits, per
+    the module docstring): ``phone_core`` strips a leading ``"62"`` as
+    unconditionally as a leading ``"0"``, and unlike the ``"0"`` case (a
+    real ``int``-typed chat id, rendered via ``str()``, can never produce a
+    leading-zero decimal string — so that branch is reachable only by
+    genuine phone-notation input), a chat id COULD coincidentally begin
+    with the digits ``"62"``. If a logged chat id happens to equal ``"62"``
+    followed by another logged chat id's digits, the two would collide on
+    the same log digest — a correlation glitch (two different Telegram
+    users would momentarily look the same in the logs), not a PII leak (no
+    raw identifier is exposed either way). This module exists specifically
+    to fix the OPPOSITE, certain, and severe bug this reviewer reported
+    (two notations of the SAME phone number failing to correlate); declining
+    to fold ``"62"`` at all would leave that bug unfixed. Accepted as the
+    right trade because it is the repo's own canonical phone-equality rule,
+    reused rather than re-invented, and the residual risk is narrow
+    (requires a very specific numeric coincidence between two DIFFERENT
+    identifiers, not just "a chat id starting with 6"), low-severity
+    (correlation only), and honestly documented here rather than silent.
+    """
+    folded = phone_core(digits)
+    return folded if folded is not None else digits
+
+
 def redact_identifier_for_log(value: str | int | None) -> str:
     """Stable, non-reversible-without-the-salt stand-in for a phone number or
     Telegram chat id, safe to put in a log line.
 
-    Same input (any formatting) -> same digest, always, so an operator can
-    still follow one conversation across many log lines. Different input ->
-    a different digest.
+    Same input (any formatting) -> same digest within one process, so an
+    operator can still follow one conversation across many log lines.
+    Different input -> a different digest.
 
     Args:
         value: A phone number in any formatting ("+62...", "62...", "0...")
@@ -175,6 +234,7 @@ def redact_identifier_for_log(value: str | int | None) -> str:
     if not digits:
         return MISSING_IDENTIFIER_MARKER
 
+    key_material = _fold_national_prefix(digits)
     key = _resolve_salt().encode("utf-8")
-    digest = hmac.new(key, digits.encode("utf-8"), sha256).hexdigest()[:_DIGEST_HEX_LEN]
+    digest = hmac.new(key, key_material.encode("utf-8"), sha256).hexdigest()[:_DIGEST_HEX_LEN]
     return f"id:{digest}"
