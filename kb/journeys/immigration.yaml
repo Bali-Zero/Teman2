@@ -30,8 +30,31 @@
 # question below was re-read against that measurement, not just tagged to satisfy
 # the gate: `client`-phrased journeys carry no statute citation; `statute`-phrased
 # ones are the technical/procedural questions a lawyer, not a walk-in client, would
-# ask. All 9 are in Indonesian (`id`) because that is the language the underlying
-# regulations and this lane's own verbatim phrases are in.
+# ask.
+#
+# SECOND PASS (2026-08-25, same day) — the orchestrator measured OWNER-SWITCHBOARD.md
+# §1.3/§1.4/§1.5 directly against 2,752 immigration question-bearing messages: real
+# clients ask via index codes (C1/C5/C12/D1/D12/E33G/E31/E28A) and colloquial handles
+# ("investor KITAS", "secondary home KITAS", "retirement KITAS", "nomad/remote-working
+# visa"), never a statute number. Lane A checked the corpus for the literal index
+# codes first, honestly: a targeted regex scroll of ALL 402 Permen_22_2023 points and
+# ALL 345 Permen_11_2024 points for `C1`/`C5`/`D12`/`E33`/`E31`/`E28`/"Indeks" found
+# ZERO hits in either instrument — the alphanumeric index table clients actually use
+# has no lexical grounding anywhere in this lane's scoped corpus (recorded as finding
+# LANE-A-5 in the inventory, not fabricated into a journey here). What the same scroll
+# DID find, genuinely present and previously unused: Pasal 185/186's "rumah kedua"
+# category (second-home KITAS, WITH an explicit "Orang Asing lanjut usia berusia 60
+# tahun atau lebih" sub-clause — the real retirement-KITAS route), and Pasal 33's
+# "pekerja jarak jauh (remote worker)" visa (the real nomad/remote-work visa, with a
+# US$60,000/year income floor). Journeys 3 and 6 were reworded from official
+# terminology ("Izin Tinggal Terbatas (ITAS)") to the colloquial "KITAS" clients
+# actually use, same instrument and verbatim_phrase, then RE-RUN — a question's
+# wording is what production embeds and searches, so this is a real re-measurement,
+# not a relabeling. Journeys 10 and 11 are new, built on the rumah-kedua/lanjut-usia
+# and remote-worker findings. 7 of 11 are in Indonesian (`id`); journey 11 is
+# deliberately `en` — OWNER-SWITCHBOARD §1.5 measured English/Indonesian/Italian/
+# Spanish mixed in one corpus, and an Indonesian-only suite would still under-certify
+# what an English-speaking client actually sends.
 
 schema_version: 1
 lane: A
@@ -64,8 +87,12 @@ journeys:
     canary: true
     canary_meaning: "green would mean the Tegal correspondence-manual poison has leaked into a Golden Visa answer — regression, not progress"
 
-  # 3 — POSITIVE, client-phrased: current ITAS duration/basis, Permen_22_2023.
-  - question: "Berapa lama masa berlaku Izin Tinggal Terbatas (ITAS) bagi WNA yang masuk dengan visa tinggal terbatas?"
+  # 3 — POSITIVE, client-phrased: current KITAS duration/basis, Permen_22_2023.
+  # REWORDED 2026-08-25 second pass: was "Izin Tinggal Terbatas (ITAS)" (official
+  # terminology); real traffic says "KITAS" (OWNER-SWITCHBOARD §1.3) — same
+  # instrument and verbatim_phrase, re-run against production with the new wording
+  # because the question is what gets embedded and searched, not a label on top of it.
+  - question: "Kalau saya pegang KITAS, itu masa berlakunya berapa lama sih?"
     verbatim_phrase: "Izin Tinggal Terbatas bagi Orang Asing yang masuk ke Wilayah Indonesia dengan Visa tinggal terbatas"
     instrument_id: Permen_22_2023
     collection: legal_unified
@@ -77,7 +104,8 @@ journeys:
     note: >-
       OUTSTANDING, not broken: this exact phrase is confirmed present in
       legal_unified's Permen_22_2023 copy (kb/topics note), but did not rank in the
-      top 10 for this exact question wording. Journey 4 below shows WHY this red
+      top 10 for this exact question wording — measured AGAIN after rewording to
+      colloquial "KITAS" phrasing, same result. Journey 4 below shows WHY this red
       matters more than an ordinary coverage gap.
 
   # 4 — NEGATIVE CANARY, client-phrased (same real question as 3), MEASURED GREEN —
@@ -129,7 +157,10 @@ journeys:
 
   # 6 — POSITIVE, client-phrased: UU 63/2024 (third amendment) — re-entry permit
   # tied to stay permit. A holder plausibly asks this directly.
-  - question: "Berapa lama masa berlaku Izin Masuk Kembali (re-entry permit) bagi pemegang Izin Tinggal Terbatas?"
+  # REWORDED 2026-08-25 second pass: was "Izin Masuk Kembali (re-entry permit)"
+  # (official terminology); real traffic says "KITAS" (OWNER-SWITCHBOARD §1.3) —
+  # same instrument and verbatim_phrase, re-run against production.
+  - question: "Kalau saya pegang KITAS terus sering keluar-masuk Indonesia, apa saya butuh izin khusus supaya KITAS-nya nggak hangus?"
     verbatim_phrase: "Izin Masuk Kembali diberikan kepada Orang Asing"
     instrument_id: UU_63_2024
     collection: legal_unified
@@ -139,18 +170,17 @@ journeys:
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
-      FLAKY AT THE BOUNDARY — measured across 4 separate runs on 2026-08-25 (this
-      is not a single-shot reading): red, green(rank 10), red, green(rank 10). This
-      phrase sits exactly at the edge of the default limit=10 retrieval window and
-      flips between runs — plausibly hybrid dense+BM25 RRF tie-breaking noise on the
-      degraded (non-multilingual-expansion) path this probe runs under (see the
-      DEGRADED PATH banner in probe_retrieval.py). Recorded as `red` (2 of 4 runs,
-      and the conservative reading — 'sometimes in the top 10' is not the same claim
-      as 'reliably retrieved') rather than averaging away the instability. UU_63_2024
-      is thin (38 points, split across two ingestion generations per kb/topics) which
-      plausibly under-competes against UU_6_2011's larger corpus for a general
-      re-entry-permit question — the flakiness and the thinness are likely the same
-      root cause. Not fixed here — a genuine coverage gap to revisit once the
+      HISTORY: with the ORIGINAL official-terminology wording ("Izin Masuk Kembali
+      (re-entry permit)"), this was FLAKY AT THE BOUNDARY — 4 runs on 2026-08-25:
+      red, green(rank 10), red, green(rank 10), sitting exactly at the edge of the
+      default limit=10 window. After rewording to the colloquial "KITAS" phrasing
+      real clients use (second pass, same day), re-measured 3 separate times:
+      red, red, red — no longer at the boundary, stably red. UU_63_2024 is thin (38
+      points, split across two ingestion generations per kb/topics) which plausibly
+      under-competes against UU_6_2011's larger corpus for a general re-entry-permit
+      question regardless of phrasing; the earlier flakiness and this stable red are
+      consistent with the same root cause (thin coverage), not contradictory
+      readings. Not fixed here — a genuine coverage gap to revisit once the
       dual-generation ingest is reconciled.
 
   # 7 — POSITIVE, statute-phrased: implementing regulation PP 31/2013 — where
@@ -202,3 +232,50 @@ journeys:
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 1
+
+  # 10 — POSITIVE, client-phrased, CROSS-TOPIC into Lane D (property). NEW, second
+  # pass (2026-08-25): OWNER-SWITCHBOARD §1.4 names "secondary-home KITAS against
+  # hak pakai and property value rather than a bank deposit" as a real A×D shape.
+  # Pasal 185/186's "rumah kedua" (second-home) category was found genuinely present
+  # in Permen_22_2023 (a targeted scroll, not assumed) — WITH an explicit 60-plus
+  # "lanjut usia" (senior/retirement) sub-clause, which is also real traffic's
+  # "retirement KITAS" handle. `hak pakai` itself was searched for directly in all
+  # 402 Permen_22_2023 points and all 345 Permen_11_2024 points: ZERO hits in
+  # either — the property-vs-deposit mechanics a client would actually ask about
+  # are NOT lexically present in this lane's scoped corpus, which is exactly the
+  # kind of gap this journey exists to surface, not paper over.
+  - question: "Saya sudah lansia dan mau pensiun tinggal di Bali sambil beli atau sewa rumah di sana — visa apa yang cocok?"
+    verbatim_phrase: "Orang Asing lanjut usia berusia 60 (enam puluh) tahun atau lebih"
+    instrument_id: Permen_22_2023
+    collection: legal_unified
+    phrasing: client
+    language: id
+    cross_topic: true
+    cross_topic_lane: D
+    probe_state: red
+    probe_run_at: "2026-08-25"
+    note: >-
+      Measured red 3 separate times on 2026-08-25 (stable, not a single-shot
+      reading). `hak pakai` absence (above) means production would likely have
+      answered the visa-eligibility half from Pasal 185/186 while staying silent on
+      the property-tenure half entirely even if this had measured green — but it did
+      not even clear the visa-eligibility half. Recorded as LANE-A-6, not chased.
+
+  # 11 — POSITIVE, client-phrased, ENGLISH (OWNER-SWITCHBOARD §1.5: traffic is not
+  # Indonesian-only). NEW, second pass: the real "nomad/remote-working visa" handle
+  # — Pasal 33 ayat (2) huruf j angka 5's "pekerja jarak jauh (remote worker)" visa,
+  # found genuinely present (a US$60,000/year income floor, not paraphrased).
+  - question: "Can I get a stay permit in Indonesia if I work remotely for a company that isn't based here?"
+    verbatim_phrase: "pekerja jarak jauh ( remote worker ) dalam hubungan pekerjaan pada perusahaan yang tidak berkedudukan di Indonesia"
+    instrument_id: Permen_22_2023
+    collection: legal_unified
+    phrasing: client
+    language: en
+    cross_topic: false
+    probe_state: green
+    probe_run_at: "2026-08-25"
+    measured_rank: 8
+    note: >-
+      Measured green 3 separate times on 2026-08-25, rank fluctuating 7-8 (always
+      top-10, unlike journey 6's true red/green flip — this is retrieval-order noise
+      within a stable green, not a boundary flake).

@@ -240,3 +240,42 @@ open_findings:
       the same shape Work Item Zero found and repaired for UU_6_2011/UU_40_2007,
       just not yet repaired for this instrument.
     severity: medium
+
+  - id: LANE-A-5
+    title: "The visa index codes real clients use (C1/C5/D12/E33/E31/E28) have zero lexical grounding in legal_unified's lane-A corpus"
+    owner: "future lane-A work, or the collection-routing question LANE-A-3 already names"
+    detail: >-
+      OWNER-SWITCHBOARD.md §1.3 (measured over 2,752 real immigration questions):
+      clients ask via bare index codes (C1, C5, C12, D1, D12, E33G, E31/E28A) or
+      colloquial handles, never a statute number. A targeted regex scroll of ALL 402
+      Permen_22_2023 points and ALL 345 Permen_11_2024 points (the two lane-A
+      instruments most likely to carry the index table) for the literal tokens
+      `C1`/`C5`/`D12`/`E33`/`E31`/`E28`/"Indeks" found ZERO hits in either — the
+      index-code vocabulary is not lexically present anywhere in this lane's scoped
+      legal_unified corpus. It IS present elsewhere: LANE-A-3 already recorded that
+      visa_oracle's 90 curated cards use index codes (C9, C13, E28C, E31H, E31E,
+      E28B — a different, non-overlapping set from OWNER-SWITCHBOARD's examples,
+      which is itself worth a second look). This sharpens LANE-A-3: a client
+      question phrased as a bare index code most likely needs visa_oracle's
+      per-visa-type cards, not legal_unified's statute text, regardless of retrieval
+      tuning — no amount of re-ranking legal_unified surfaces a token it does not
+      contain.
+    severity: medium
+
+  - id: LANE-A-6
+    title: "hak pakai / property-tenure mechanics for second-home KITAS are absent from legal_unified's lane-A corpus"
+    owner: "Lane D (property) or a joint A×D follow-up"
+    detail: >-
+      OWNER-SWITCHBOARD.md §1.4 names "secondary-home KITAS against hak pakai and
+      property value rather than a bank deposit" as a real A×D cross-lane question
+      shape. Pasal 185/186's "rumah kedua" (second-home) visa category, WITH an
+      explicit 60-plus "lanjut usia" (retirement) sub-clause, IS genuinely present
+      in Permen_22_2023 (confirmed by direct scroll, not assumed) — but a targeted
+      search for `hak pakai` and `deposit`/`deposito` across the same 402+345 points
+      found ZERO hits for either. MEASURED via kb/ops/probe_retrieval.py, journey
+      10, on 2026-08-25 (3 stable runs, all red): the retirement/second-home
+      question does not even clear the visa-eligibility half from Pasal 185/186, so
+      the property-tenure half's absence could not even be separately isolated this
+      session — both are open. Not chased here (property-tenure mechanics are Lane
+      D's domain by MANDATE.md's own lane split).
+    severity: medium

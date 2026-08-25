@@ -82,6 +82,15 @@ instruments:
       (the "Golden Visa merupakan pengelompokan terhadap Visa Tinggal terbatas..."
       definition) — confirmed present verbatim in legal_unified's own copy, not only
       in the separate immigration_circulars collection. See kb/journeys — journey 1.
+      SECOND PASS (2026-08-25, same day, per OWNER-SWITCHBOARD.md §1.3/§1.4): a
+      targeted scroll of all 402 points also found Pasal 185/186's "rumah kedua"
+      (second-home) visa category genuinely present, with an explicit 60-plus
+      "Orang Asing lanjut usia" (retirement) sub-clause and a separate Pasal 33
+      "pekerja jarak jauh (remote worker)" visa (US$60,000/year income floor) — real
+      grounding for journeys 10/11. The SAME scroll found the literal alphanumeric
+      visa index codes real clients use (C1/C5/D12/E33 etc.) NOWHERE in these 402
+      points or in Permen_11_2024's 345 — recorded as LANE-A-5, not fabricated into
+      a journey. `hak pakai` (property tenure) is also absent — LANE-A-6.
 
   - id: Permen_11_2024
     declared_identity: "Permenkumham 11/2024 — Perubahan atas Permenkumham 22/2023 tentang Visa dan Izin Tinggal"
@@ -259,6 +268,8 @@ questions_must_never_get_wrong:
   - "Where is immigration supervision (pengawasan keimigrasian) legally conducted?"
   - "Can Bali Zero quote a PNBP (government fee) figure from PP 45/2024? (It must not — revoked.)"
   - "If an investor asks about their visa and their PT PMA in the same breath, does the answer connect the investor-visa provisions to company formation (Lane B), or silently answer only the immigration half?"
+  - "Does a retiree asking about a second-home visa while also buying/renting property get an answer that at least reaches the immigration eligibility rule (Pasal 185/186), even before the property-tenure half (Lane D) is addressed?"
+  - "Does a remote-worker/digital-nomad question in English reach the actual Pasal 33 remote-worker visa provision, or only the KITAS-family provisions a Bahasa Indonesia question reaches?"
 
 # ── Primary metric, guardrails, kill criterion (G0 gate) ────────────────────
 primary_metric: >-
