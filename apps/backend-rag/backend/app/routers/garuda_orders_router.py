@@ -71,14 +71,27 @@ def get_repository(request: Request) -> GarudaOrderRepository:
     return repo
 
 
-def _require_magic_session_actor(request: Request) -> str:
-    """Placeholder seam for L4's magic-link session (LANES.md: L4 owns auth).
+async def _require_magic_session_actor(request: Request) -> str:
+    """Seam for L4's magic-link session (LANES.md: L4 owns auth).
 
     Until the orchestrator wires L4's real session verifier onto
     `app.state.garuda_magic_session_verifier`, this fails closed with
     SESSION_REQUIRED rather than accepting an unverified cookie value —
     the same "no caller wired yet, never a silent bypass" shape as
     `UnconfiguredEligibilityCheckLookup` / `UnconfiguredCheckStore`.
+
+    The verifier is `async` — a real (Postgres-backed) implementation
+    needs an `await` to look up the session row, and this dependency
+    itself is a plain `async def` FastAPI already knows how to await, so
+    there is no reason to force the verifier callable to be synchronous.
+
+    The returned value is the session's `result_id`, used by every caller
+    for TWO purposes: (1) the `actor` identity `scoped_key_sha256` scopes
+    idempotency keys by, and (2) the ownership key every `garuda_orders`
+    read/write below must filter on (`garuda_orders.result_id_ref`). See
+    `PostgresMagicLinkStore.verify_session`'s docstring for why one string
+    correctly carries both — they are the same fact, not two smuggled into
+    one field.
     """
 
     verifier = getattr(request.app.state, "garuda_magic_session_verifier", None)
@@ -87,7 +100,7 @@ def _require_magic_session_actor(request: Request) -> str:
         raise HTTPException(
             status_code=401, detail={"code": "SESSION_REQUIRED", "retryable": False}
         )
-    actor = verifier(cookie)
+    actor = await verifier(cookie)
     if actor is None:
         raise HTTPException(
             status_code=401, detail={"code": "SESSION_REQUIRED", "retryable": False}
@@ -127,7 +140,7 @@ async def create_order_from_check(
 ) -> dict:
     _require_flag()
     _privacy_headers(response)
-    actor = _require_magic_session_actor(request)
+    actor = await _require_magic_session_actor(request)
     key = _idempotency_key(idempotency_key)
 
     result_id = body.get("result_id")
@@ -135,6 +148,18 @@ async def create_order_from_check(
     review_confirmed = body.get("review_confirmed")
     if not isinstance(result_id, str) or review_confirmed is not True:
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
+    if result_id != actor:
+        # `actor` IS the session's result_id (see `_require_magic_session_
+        # actor`'s docstring) -- a body result_id that doesn't match it is
+        # a session for result A trying to create an order against result
+        # B. Same 404 RESULT_NOT_FOUND shape `ResultNotFound` already maps
+        # to below, deliberately: `ResultNotFound`'s own docstring already
+        # names "non-owned source check" as one of the cases it covers, so
+        # this is not a new error shape, just a new place that raises it —
+        # and it keeps "wrong owner" and "no such result" indistinguishable
+        # to the caller, closing the enumeration oracle a distinct status
+        # code would open.
+        raise HTTPException(status_code=404, detail={"code": "RESULT_NOT_FOUND", "retryable": False})
     try:
         applicant = Applicant(
             full_name=applicant_raw["full_name"],
@@ -197,11 +222,22 @@ async def get_order_and_practice(
 ) -> dict:
     _require_flag()
     _privacy_headers(response)
-    _require_magic_session_actor(request)
-    pool = request.app.state.garuda_db_pool
+    actor = await _require_magic_session_actor(request)
+    pool = getattr(request.app.state, "garuda_db_pool", None)
+    if pool is None:
+        raise HTTPException(
+            status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
+        )
+    # `result_id_ref = $2` is the ownership predicate: an order that exists
+    # but belongs to a different session's result_id must 404 exactly like
+    # an order that doesn't exist at all (`OrderNotFound`'s own docstring
+    # already calls this shape "non-enumerating") -- a distinct status code
+    # for "exists but not yours" is the enumeration oracle this closes.
     row = await pool.fetchrow(
-        "SELECT order_id, state, price_idr, browser_observation FROM garuda_orders WHERE order_id = $1",
+        "SELECT order_id, state, price_idr, browser_observation "
+        "FROM garuda_orders WHERE order_id = $1 AND result_id_ref = $2",
         order_id,
+        actor,
     )
     if row is None:
         raise HTTPException(status_code=404, detail={"code": "ORDER_NOT_FOUND", "retryable": False})
@@ -226,14 +262,14 @@ async def observe_payment_browser_return(
 ) -> None:
     _require_flag()
     _privacy_headers(response)
-    _require_magic_session_actor(request)
+    actor = await _require_magic_session_actor(request)
     _idempotency_key(idempotency_key)
     return_nonce = body.get("return_nonce")
     if not isinstance(return_nonce, str) or not (16 <= len(return_nonce) <= 2048):
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
     try:
         await repository.record_browser_return_observation(
-            order_id=order_id, return_nonce=return_nonce
+            order_id=order_id, result_id=actor, return_nonce=return_nonce
         )
     except OrderNotFound as exc:
         raise HTTPException(
