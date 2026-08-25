@@ -250,15 +250,78 @@ def test_the_anonymous_check_carries_no_pii(openapi: dict) -> None:
 
 
 def test_every_mutating_operation_requires_an_idempotency_key(openapi: dict) -> None:
+    """Every mutation WE issue is keyed. Inbound provider callbacks are not ours to key.
+
+    This test was written over-broad and stayed green while being wrong, because at freeze
+    time the webhook obediently carried the header too. It cost a real defect: the router
+    implemented the `$ref` faithfully and hard-400'd every genuine Xendit callback before
+    the signature check, leaving paid orders stranded in `awaiting_payment` with nothing
+    paged (measured 2026-08-25). An `Idempotency-Key` is a request-idempotency pattern for
+    commands a CLIENT issues; a payment provider POSTing an event to us sends no such
+    header and has no reason to invent one.
+
+    The exemption is by operationId and it cannot widen quietly: every exempt name must
+    still exist, and must be secured by `ProviderSignature`. That second assertion is the
+    one that matters — a customer-facing route cannot be waved through by adding its name
+    here, because it would not be provider-authenticated.
+    """
+    exempt = frozenset({"receivePaymentWebhook"})
+
+    all_operation_ids = {op["operationId"] for _route, _verb, op in _operations(openapi)}
+    stale = exempt - all_operation_ids
+    assert not stale, (
+        f"exemption names an operation the contract no longer has: {sorted(stale)} — an "
+        "exemption for a deleted operation is a hole that only ever widens. Delete it."
+    )
+
+    not_a_callback = []
+    for _route, _verb, op in _operations(openapi):
+        if op["operationId"] not in exempt:
+            continue
+        schemes = {name for req in (op.get("security") or []) for name in req}
+        if "ProviderSignature" not in schemes:
+            not_a_callback.append(op["operationId"])
+    assert not not_a_callback, (
+        f"exempted from Idempotency-Key but not provider-authenticated: {not_a_callback} — "
+        "only inbound provider callbacks may be exempt, and this one is reachable by a "
+        "client. Do not add a name here to make a diff pass."
+    )
+
     offenders = []
     for _route, verb, op in _operations(openapi):
-        if verb == "get":
+        if verb == "get" or op["operationId"] in exempt:
             continue
         params = op.get("parameters") or []
         refs = [p.get("$ref", "") for p in params if isinstance(p, dict)]
         if not any(r.endswith("/IdempotencyKey") for r in refs):
             offenders.append(op["operationId"])
     assert not offenders, f"mutating operations without Idempotency-Key: {offenders}"
+
+
+def test_the_inbound_callback_does_not_demand_a_client_header(openapi: dict) -> None:
+    """The guilt side of the exemption above: requiring the header here BREAKS the path.
+
+    Not a duplicate of the exemption — that one permits the absence, this one forbids the
+    presence. Restoring the `$ref` on this path is the exact shape of the 2026-08-25 defect,
+    and it would otherwise sail through a suite that only ever checked for a MISSING key.
+    """
+    for route, verb, op in _operations(openapi):
+        if op["operationId"] != "receivePaymentWebhook":
+            continue
+        refs = [
+            p.get("$ref", "") for p in (op.get("parameters") or []) if isinstance(p, dict)
+        ]
+        assert not any(r.endswith("/IdempotencyKey") for r in refs), (
+            f"{verb.upper()} {route} requires Idempotency-Key. The payment provider does not "
+            "send it, so this 400s every real payment confirmation before the signature is "
+            "verified. Webhook dedup is keyed on (provider, provider_event_id) in "
+            "garuda_payment_inbox and never needed this header."
+        )
+        return
+    pytest.fail(
+        "receivePaymentWebhook is gone from the contract — this guard now protects nothing. "
+        "Repoint it at the operation that replaced it rather than deleting it."
+    )
 
 
 def test_every_inbound_date_states_its_civil_day(openapi: dict) -> None:

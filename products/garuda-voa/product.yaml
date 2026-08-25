@@ -148,6 +148,37 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # answer is not knowable until 7(b) is.
     depends_on_for_margin_only: 7
     gesture: "sign up with his own credentials — the choice is made, the account is not"
+    # A RATIFICATION IS NOT DONE WHEN IT IS RECORDED HERE. It is done when every placeholder
+    # it retires has been swept out of the artifacts that were frozen while waiting for it.
+    # Ratifying this one on 2026-08-25 silently invalidated two `TODO(ground)` clauses in the
+    # frozen contract — both authored honestly ("we do not know the provider yet") and both
+    # WRONG the instant the provider was known. Nobody swept them, so the order lane built
+    # faithfully against a contract describing a world that had ended that morning: the
+    # webhook demanded an `Idempotency-Key` Xendit never sends (400 before signature check,
+    # every real payment stranded in `awaiting_payment` with nothing paged), and the security
+    # scheme still named a `X-Provider-Signature` body HMAC that does not exist. Cured in
+    # 00d6e52ee; the contract suite now guards both directions.
+    #
+    # The obligation this leaves behind, for every decision below and for the sibling
+    # products copying this switchboard: WHEN A DECISION MOVES TO `ratified`, GREP THE FROZEN
+    # ARTIFACTS FOR THE PLACEHOLDERS IT RETIRES IN THE SAME TURN. `TODO(ground)` is the
+    # marker this product uses. A placeholder is not a note — it is a lane's instruction.
+    #
+    # Sweep them by DANGER, not by count, or the obligation becomes make-work and gets
+    # ignored. The 2026-08-25 sweep found nine `TODO(ground)` markers and only the two in the
+    # contract could hurt anyone. The discriminator is whether the placeholder is OPERATIVE:
+    #   - OPERATIVE — a lane's code implements it as written. The contract's `$ref` and its
+    #     `X-Provider-Signature` scheme were operative, so going stale turned them into false
+    #     instructions that were faithfully obeyed. These are the emergency.
+    #   - INERT — a comment sitting above text that defers abstractly to whatever the answer
+    #     turns out to be. The seven journey markers are this: their scenarios say "under the
+    #     grounded lifetime policy", never "15 minutes", so deciding the number leaves every
+    #     assertion correct. They cost nothing while stale, but they DO lie about provenance —
+    #     a journey still saying "approve the magic-link lifetime" invites a lane to go ask a
+    #     question that was answered in DECISIONS.md Q1. Annotate those; do not rush them.
+    # Swept 2026-08-25: 2 operative (cured, 00d6e52ee), 2 inert annotated (magic-link,
+    # freshness), 5 inert genuinely still open and correctly marked.
+    retired_placeholders_swept: 2026-08-25
   - id: 2
     decision: terms_of_sale_and_refund
     state: proposal-ready
@@ -240,6 +271,34 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # to every real customer today. That makes this decision the top go-live blocker: no
     # other lane's work can sell anything until it is answered.
     blocks_go_live: true
+    # ── 2026-08-25, PARTIALLY ANSWERED (relay): Zero, verbatim "i prezzi sono ok". ──
+    # That answers 7(a) — 790.000 / 850.000 are attested current — and it is NOT the
+    # forbidden move recorded below. The prohibition was never against stamping; it was
+    # against stamping INSTEAD of looking. The owner looked. A stamp is a claim that a
+    # human looked, and now the claim is true.
+    #
+    # TWO REASONS THE RE-STAMP IS NOT DONE YET, both cheap to clear:
+    #
+    # (i) SCOPE. `metadata.last_updated` is ONE stamp over the WHOLE catalogue —
+    #     measured 2026-08-25 by loading the file: 9 service categories, 100 price rows
+    #     (kitas_permits 38, other_process 21, single_entry_visas 14, multiple_entry 7,
+    #     consultant 7, tax_accounting 4, kitap 3, company 3, urgent 3). GARUDA VOA is
+    #     TWO of those 100. Bumping it to today asserts owner attestation over KITAS,
+    #     tax and company prices that were never in the conversation — and the freshness
+    #     mechanism is about to be reused by sibling products, so a too-wide attestation
+    #     propagates. Needs one sentence from Zero: does "i prezzi sono ok" cover the
+    #     whole catalogue, or the VOA rows?
+    #
+    # (ii) 7(b) IS UNANSWERED AND MUST NOT BE CLOSED BY THIS. "The prices are ok" is not
+    #      "the price includes PNBP". Those are different questions and only the first
+    #      was asked. 7(b) is the one this session opened after catching its OWN
+    #      unverified claim that the row was PNBP-inclusive, and it decides whether an
+    #      absorbed ~33.650 IDR Xendit fee (decision 1) stacks on an unbudgeted
+    #      government fee. Still open. Do not let the relay's word "sciolta" close it.
+    #
+    # The fail-closed price gate the same relay asks us to "adopt" ALREADY EXISTS
+    # (pricing.py:92, built in round 4) — it is the organ that caught this, not a lesson
+    # still to be learned. Nobody should build a second one.
     # THE FORBIDDEN CURE, named explicitly because a competent lane proposed it on
     # 2026-08-25 (L7, in good faith, reading the line below): "refresh the catalogue's
     # metadata.last_updated stamp". Bumping the stamp WITHOUT re-verifying the prices is
