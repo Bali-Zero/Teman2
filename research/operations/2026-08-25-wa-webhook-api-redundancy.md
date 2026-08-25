@@ -2,7 +2,8 @@
 date: 2026-08-25
 domain: compliance
 client_case: none — infrastructure availability of the client-facing WhatsApp channel
-adversarial_review: kimi-k3 (2026-08-25, verdict FIX-FIRST(4) on draft 1 — findings applied below; §7 records what was confirmed, what was refuted, and what stays open)
+adversarial_review: kimi-k3
+adversarial_review_verdict: "FIX-FIRST(4) on draft 1, 2026-08-25 — findings applied; the Adversarial review section records what was confirmed, what was refuted, and what stays open"
 sources:
   - "flyctl machines list -a nuzantara-rag (measured 2026-08-25)"
   - "flyctl releases -a nuzantara-rag --json (measured 2026-08-25 ~12:2xZ; 25-row page spanning 2026-08-24T08:54:20Z → 2026-08-25T09:53:55Z)"
@@ -29,8 +30,8 @@ cure if anyone ever wants the window gone.
 > **Draft 1 was wrong about option B and this version says so.** A cross-family refuter
 > (Kimi K3) returned FIX-FIRST on the first draft. Its strongest finding — that draft 1
 > analysed option B against an architecture this repo does not have — was **confirmed by
-> independent re-reading of the source**, not taken on the refuter's word. §7 keeps the
-> full ledger, including the two places the refuter itself was wrong.
+> independent re-reading of the source**, not taken on the refuter's word. The Adversarial review section below keeps
+> the full ledger, including the two places the refuter itself was wrong.
 
 ---
 
@@ -230,7 +231,7 @@ discovered later and hurts more. E is how you buy A without buying (a).
   §6's probe is manual. Noted, not built — building it is a different concern and a
   different PR.
 
-## 7. Adversarial-review ledger (Kimi K3, 2026-08-25 — verdict FIX-FIRST(4))
+## Adversarial review — ledger (Kimi K3, 2026-08-25, verdict FIX-FIRST(4))
 
 Generator ≠ grader: the refuter ran on fresh context against the worktree. Recorded in full
 because a review whose misses go unrecorded is indistinguishable from one that never ran.
