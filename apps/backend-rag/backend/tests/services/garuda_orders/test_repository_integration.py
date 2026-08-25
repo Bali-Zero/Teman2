@@ -20,6 +20,7 @@ reachable database in CI is a finding, not a reason to pass.
 from __future__ import annotations
 
 import os
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -83,10 +84,10 @@ class _FakeProvider:
         return "refund-fake-1"
 
 
-async def _ensure_garuda_order_test_policy(conn: asyncpg.Connection) -> None:
+async def _ensure_garuda_order_test_policy(conn: asyncpg.Connection) -> str:
     """Install this suite's own Zero-approved GARUDA_ORDER retention policy fixture.
 
-    SM-G01/OP-F07 (migration 282, `active_garuda_order_policy_available`) fails
+    SM-G01/OP-F07 (migration 284, `active_garuda_order_policy_available`) fails
     closed by construction -- migration 281 deliberately seeds NO policy row for
     ANY scope, GARUDA_ORDER included: a policy is a Zero-approved business
     decision, never a migration default (products/garuda-voa/DECISIONS.md).
@@ -95,14 +96,83 @@ async def _ensure_garuda_order_test_policy(conn: asyncpg.Connection) -> None:
     needs, exactly like `test_retention.py` / `test_garuda_voa_retention.py`
     already do for GARUDA_CHECK via `_insert_garuda_check_policy`.
 
-    `environment='PRODUCTION'` matches the `repository` fixture below
-    (`GarudaOrderRepository(..., environment="PRODUCTION")`). Bare
-    `ON CONFLICT DO NOTHING` (no target) makes this idempotent across the
-    module's repeated per-test `pool` fixture runs against a shared DSN,
-    whether the prior insert is still present via the module's own
-    unique-key conflict or the exclusion constraint on overlapping
-    `effective_period` ranges.
+    `environment='TEST'` matches the `repository` fixture below
+    (`GarudaOrderRepository(..., environment="TEST")`) -- both were 'PRODUCTION'
+    in an earlier draft (review finding: a row that says PRODUCTION is not
+    self-evidently a test artifact from that column alone, unlike L1's own
+    fixture, which already used 'TEST'). Nothing about the code under test
+    requires 'PRODUCTION' specifically; the environment string is just the
+    scoping key the DB function filters on.
+
+    `policy_version` is a FRESH uuid4 per pool-fixture run, not a fixed
+    string (review finding, round 2): `visa_decision_retention_policies` is
+    genuinely append-only -- `guard_visa_decision_retention_policy_mutation`
+    (migration 264) unconditionally raises on DELETE, and permits an UPDATE
+    ONLY to close a still-open `effective_period` (verified against the
+    trigger source, not assumed). A DELETE-based teardown is therefore not
+    possible on this table by design, unlike a plain fixture table. The
+    correspoding `_close_garuda_order_test_policy` (below) closes this run's
+    row in the `pool` fixture's teardown -- the one mutation the guard
+    allows -- so it stops satisfying `active_garuda_order_policy_available()`
+    once the test run ends (review finding, scar W96: a fixture must not
+    leave a live, usable policy in a database other test files/CI runs also
+    write to) without violating the append-only invariant the table exists
+    to enforce. Each run's fresh `policy_version` means a later run's INSERT
+    never conflicts with an earlier run's now-closed row -- closed rows
+    accumulate harmlessly as exactly the kind of policy-history audit trail
+    this table is designed to keep. Bare `ON CONFLICT DO NOTHING` (no
+    target) still guards the INSERT itself against a same-process retry
+    racing on the same version (astronomically unlikely with a uuid4, but
+    free); it does NOT swallow anything else -- CHECK/NOT NULL violations
+    on this table (verified against migrations 264+281) are outside
+    `ON CONFLICT`'s scope and still raise, so a genuinely different insert
+    failure still fails this fixture (and every test using it) loudly.
+
+    SELF-HEAL FIRST (round 2 finding, caught live): a fresh uuid version
+    alone is not sufficient. The EXCLUDE constraint on
+    `(environment, policy_scope, effective_period WITH &&)` allows at most
+    ONE open-ended (upper bound NULL) policy per (environment, policy_scope)
+    at a time REGARDLESS of policy_version -- that is its entire purpose
+    (see `test_two_overlapping_garuda_check_policies_are_structurally_
+    impossible` for the GARUDA_CHECK analog). If any earlier run's teardown
+    never executed (crash, Ctrl-C, or -- reproduced live while building this
+    fix -- a stale row left by an earlier, buggy version of this same
+    fixture), that leftover OPEN row silently blocks this run's INSERT via
+    the same bare `ON CONFLICT DO NOTHING`: the insert is skipped, no
+    exception is raised, and every test in the file quietly runs against
+    the STALE row's (possibly wrong) shape instead of the fresh one this
+    call intended to install. So: close any dangling open GARUDA_ORDER/TEST
+    row FIRST, unconditionally, using the same guard-permitted close this
+    function's teardown counterpart uses -- a no-op if none exists (the
+    UPDATE's WHERE matches zero rows), and otherwise self-heals the mess a
+    crashed prior run left behind instead of silently reusing it.
+
+    LOWER BOUND IS `clock_timestamp()`, NOT BACKDATED (round 2 finding,
+    also caught live): L1's own `_insert_garuda_check_policy` backdates its
+    lower bound by 1 day, because its sandbox is a THROWAWAY per-test
+    database with no policy history to collide with. Copying that same
+    backdate here reintroduced the exact overlap this self-heal exists to
+    prevent: a policy just closed at `clock_timestamp()` still has a lower
+    bound from up to a day earlier, so a fresh row starting "1 day ago"
+    still overlaps it, and the EXCLUDE conflict (silently swallowed by
+    `ON CONFLICT DO NOTHING`) recurred even with the self-heal in place --
+    reproduced live, traced to this exact line. Nothing here needs a
+    lookback window: the repository call this fixture serves reads
+    `datetime.now(UTC)` in Python strictly AFTER this INSERT commits, and
+    `clock_timestamp()` evaluated in a later statement on the same
+    connection is guaranteed >= any earlier statement's close time. An
+    unbackdated lower bound therefore never overlaps a prior row this same
+    self-heal already closed, on this run or any before it.
     """
+    await conn.execute(
+        """
+        UPDATE public.visa_decision_retention_policies
+           SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+         WHERE environment = 'TEST' AND policy_scope = 'GARUDA_ORDER'
+           AND upper(effective_period) IS NULL
+        """
+    )
+    policy_version = f"l3-test-fixture-{uuid.uuid4().hex[:16]}"
     await conn.execute(
         """
         INSERT INTO public.visa_decision_retention_policies (
@@ -110,13 +180,39 @@ async def _ensure_garuda_order_test_policy(conn: asyncpg.Connection) -> None:
             idempotency_retention_interval, legal_hold_review_interval,
             retention_anchor, effective_period, approved_by, approval_reference
         ) VALUES (
-            'PRODUCTION', 'GARUDA_ORDER', 'l3-test-fixture-v1', INTERVAL '90 days',
+            'TEST', 'GARUDA_ORDER', $1, INTERVAL '90 days',
             INTERVAL '1 hour', INTERVAL '30 days',
-            'CREATED_AT', tstzrange(clock_timestamp() - INTERVAL '1 day', NULL, '[)'),
+            'CREATED_AT', tstzrange(clock_timestamp(), NULL, '[)'),
             'zero-test-approver', 'ZERO-GARUDA-ORDER-RETENTION-TEST-APPROVAL'
         )
         ON CONFLICT DO NOTHING
+        """,
+        policy_version,
+    )
+    return policy_version
+
+
+async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_version: str) -> None:
+    """Teardown counterpart to `_ensure_garuda_order_test_policy` (scar W96).
+
+    Closes (never deletes -- see that function's docstring for why DELETE is
+    structurally impossible here) exactly this run's row, scoped by its
+    unique `policy_version`: never a bare scope/environment update, which
+    could touch a row a different suite or a real approval also placed
+    under GARUDA_ORDER. `WHERE upper(effective_period) IS NULL` makes this
+    safe to call even if the row were somehow already closed -- the guard
+    trigger rejects closing an already-closed row, so the predicate must
+    exclude it rather than let the exception surface in teardown.
+    """
+    await conn.execute(
         """
+        UPDATE public.visa_decision_retention_policies
+           SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+         WHERE policy_scope = 'GARUDA_ORDER'
+           AND policy_version = $1
+           AND upper(effective_period) IS NULL
+        """,
+        policy_version,
     )
 
 
@@ -142,8 +238,10 @@ async def pool():
         await conn.execute(
             "TRUNCATE garuda_order_outbox, garuda_order_journal, garuda_payment_inbox, garuda_order_idempotency, garuda_orders CASCADE"
         )
-        await _ensure_garuda_order_test_policy(conn)
+        policy_version = await _ensure_garuda_order_test_policy(conn)
     yield p
+    async with p.acquire() as conn:
+        await _close_garuda_order_test_policy(conn, policy_version)
     await p.close()
 
 
@@ -162,7 +260,7 @@ def repository(pool, monkeypatch):
         lambda case_type, *, today: (790_000, "B1 Visa on Arrival (VOA)"),
     )
     return GarudaOrderRepository(
-        pool, eligibility_lookup=_FakeLookup(), provider=_FakeProvider(), environment="PRODUCTION"
+        pool, eligibility_lookup=_FakeLookup(), provider=_FakeProvider(), environment="TEST"
     )
 
 
