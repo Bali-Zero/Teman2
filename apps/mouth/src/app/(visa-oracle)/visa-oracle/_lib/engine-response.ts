@@ -1,9 +1,7 @@
 import type { VisaOracleEvaluateResponse } from "./visa-oracle-contract";
 
 export type VisaOracleResponseErrorCode =
-  | "MALFORMED_RESPONSE"
-  | "RESPONSE_INVARIANT"
-  | "NON_ENGINE_MODE";
+  "MALFORMED_RESPONSE" | "RESPONSE_INVARIANT" | "NON_ENGINE_MODE";
 
 export class VisaOracleResponseError extends Error {
   constructor(public readonly code: VisaOracleResponseErrorCode) {
@@ -237,7 +235,33 @@ function verifyStateInvariants(decision: JsonRecord): void {
     }
     return;
   }
-  if (candidates.length > 0 || quotes.length > 0) invariant();
+  // `quotes` stays forbidden on EVERY non-SUPPORTED_CANDIDATES state, no
+  // exception (contract C1: nothing outside SUPPORTED_CANDIDATES can ever
+  // carry a resolved price). `candidates` is relaxed ONLY for
+  // HUMAN_REVIEW_REQUIRED — owner ruling #5 (2026-08-25,
+  // OWNER-RULINGS-2026-08-25.md §5, `REVIEW-EMPTIES-CANDIDATES.md` option
+  // (2)): the products a visitor is genuinely already eligible for can now
+  // travel alongside a review verdict (state precedence is untouched — this
+  // is still HUMAN_REVIEW_REQUIRED, not a demotion to SUPPORTED_CANDIDATES).
+  // NEEDS_INPUT, NO_SUPPORTED_PATH and TEMPORARILY_UNAVAILABLE still forbid
+  // candidates entirely — none of them has a signed rule pack that populates
+  // one, and relaxing them here would be speculative, not measured.
+  //
+  // CORRECTED 2026-08-25: before this, this line unconditionally rejected
+  // ANY non-SUPPORTED_CANDIDATES response carrying a candidate — a fourth,
+  // previously unlisted site of the same "only SUPPORTED_CANDIDATES can have
+  // candidates" premise RULING5-BLAST-RADIUS-FRONTEND.md named three others
+  // for (models.py, engine-adapter.ts, OracleShell.tsx). Left unfixed, this
+  // client-side runtime guard would have thrown `RESPONSE_INVARIANT` on
+  // every real production response the backend fix produces, before it ever
+  // reached `engine-adapter.ts` — silently falling back to a degraded,
+  // candidate-less outcome and making the other three fixes unreachable.
+  // Found empirically: a RED-first `OracleShell.test.tsx` integration test
+  // driving a real HUMAN_REVIEW_REQUIRED-with-candidates response through
+  // `fetch` still asserted `tier: "T3"` even after `engine-adapter.ts` and
+  // `OracleShell.tsx` were both fixed — this was why.
+  if (quotes.length > 0) invariant();
+  if (candidates.length > 0 && state !== "HUMAN_REVIEW_REQUIRED") invariant();
   if (
     state === "NEEDS_INPUT" &&
     (missing.length === 0 ||

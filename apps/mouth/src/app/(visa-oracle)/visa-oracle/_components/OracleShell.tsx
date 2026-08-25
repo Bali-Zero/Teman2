@@ -772,17 +772,35 @@ function OracleShellRuntime({
   // given — see their own doc comments on this prop).
   const consultantOriginScreen: ConsultantAssignmentOriginScreen =
     current.kind === "verdict" ? "verdict" : "wizard";
-  // tier is an explicit, conservative placeholder: TIER-MAP.md's owner
-  // switchboard #4 (the T1/T2 business-judgment split) is unsigned as of
-  // this wiring. A SUPPORTED_CANDIDATES verdict always has a resolved price
-  // by construction (api_models.py's own quote-required invariant) and
-  // defaults to T2, never T1 — the safe-failure direction is an extra nudge
-  // to a self-service client, never silence to one who should hear from a
-  // consultant. Every other state has no supported candidate at all, so T3.
-  const consultantTier: ConsultantAssignmentTier =
-    outcome?.state === "SUPPORTED_CANDIDATES" ? "T2" : "T3";
+  // CORRECTED 2026-08-25 (RULING5-BLAST-RADIUS-FRONTEND.md site 3): this used
+  // to read "every other state has no supported candidate at all, so T3" —
+  // true of TIER-MAP.md's owner switchboard #4 while it was still unsigned,
+  // and of the gold corpus, but false in production. Owner ruling #5 means
+  // HUMAN_REVIEW_REQUIRED can now carry the products a visitor is genuinely
+  // already eligible for (measured: an E28B/C/D/F investor lands there with
+  // TWO real candidates, D12 and E28A, both T2). Routing that person as T3
+  // ("consultant-only") would be factually wrong about them.
+  //
+  // TIER-MAP.md is signed now (`product-tier-map.ts`, built from the real
+  // signed pack), so this derives from the actual TOP-ranked candidate's own
+  // `tier` — already computed once by `engine-adapter.ts` via
+  // `tierForProductCode`, reused here, never re-derived — whenever at least
+  // one candidate exists, on ANY state, not only SUPPORTED_CANDIDATES. A
+  // candidate whose product code the map doesn't (yet) cover keeps the old
+  // safe-failure direction: T2, never T1 — an extra consultant nudge to a
+  // self-service client, never silence to one who should hear from a
+  // consultant. T3 stays reserved for the genuinely candidate-less case.
+  const topCandidateTier =
+    outcome?.provenance === "ENGINE" && outcome.candidates.length > 0
+      ? (outcome.candidates[0]?.tier ?? "T2")
+      : undefined;
+  const consultantTier: ConsultantAssignmentTier = topCandidateTier ?? "T3";
+  // Shares the same premise as `consultantTier` above (same comment block,
+  // same false "SUPPORTED_CANDIDATES-only" assumption) — widened alongside
+  // it so a HUMAN_REVIEW_REQUIRED visitor's consultant handoff references
+  // the actual candidate they qualify for, not nothing.
   const consultantProductVersionId =
-    outcome?.provenance === "ENGINE" && outcome.state === "SUPPORTED_CANDIDATES"
+    outcome?.provenance === "ENGINE" && outcome.candidates.length > 0
       ? outcome.candidates[0]?.id
       : undefined;
   const guardianConsentRequired = isMinorForHandoff(

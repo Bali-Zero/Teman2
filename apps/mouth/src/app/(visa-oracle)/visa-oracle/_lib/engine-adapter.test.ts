@@ -8,7 +8,11 @@ import {
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
 } from "./engine-adapter";
-import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import {
+  TEST_NOW,
+  makeHumanReviewWithEligibleCandidates,
+  makeVisaOracleResponse,
+} from "./visa-oracle-test-fixture";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
@@ -408,16 +412,41 @@ describe("owner ruling #1 — the next-steps line is tier-aware (2026-08-25)", (
     }
   });
 
-  it("stays tier-agnostic (unchanged NEXT_STEPS) for every non-SUPPORTED_CANDIDATES state", () => {
+  /**
+   * CHANGED 2026-08-25 (ruling #5 blast radius): this loop used to include
+   * "HUMAN_REVIEW_REQUIRED" as an unconditional member of "every
+   * non-SUPPORTED_CANDIDATES state" — which read as a structural guarantee
+   * that state can never carry a candidate. That premise is FALSE in
+   * production (RULING5-BLAST-RADIUS-FRONTEND.md): it just happened to be
+   * true of every fixture this loop exercised, because the default
+   * `makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED")` fixture (like every
+   * gold-oracle persona) carries zero candidates. NEEDS_INPUT,
+   * NO_SUPPORTED_PATH and TEMPORARILY_UNAVAILABLE stay here unconditionally
+   * — their `candidates` type is a fixed empty tuple, they can NEVER carry
+   * one. HUMAN_REVIEW_REQUIRED moves to its own test below, spelling out
+   * that the guarantee only holds for the zero-candidate case; the
+   * non-zero case is pinned by "owner ruling #5" further down.
+   */
+  it("stays tier-agnostic (unchanged NEXT_STEPS) for every state that can never carry a candidate", () => {
     for (const state of [
       "NEEDS_INPUT",
-      "HUMAN_REVIEW_REQUIRED",
       "NO_SUPPORTED_PATH",
       "TEMPORARILY_UNAVAILABLE",
     ] as const) {
       const outcome = buildEngineOutcome(makeVisaOracleResponse(state));
       expect(outcome.nextSteps).toEqual(NEXT_STEPS);
     }
+  });
+
+  it("stays tier-agnostic for HUMAN_REVIEW_REQUIRED too, but ONLY when it carries zero candidates (the gold-corpus case)", () => {
+    const outcome = buildEngineOutcome(
+      makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED"),
+    );
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.candidates).toHaveLength(0);
+    expect(outcome.nextSteps).toEqual(NEXT_STEPS);
   });
 
   it("leaves an unmapped product code's tier undefined, never guessed", () => {
@@ -432,6 +461,91 @@ describe("owner ruling #1 — the next-steps line is tier-aware (2026-08-25)", (
     // framing — it never claims "included" or "only route" for a product
     // this map does not (yet) cover.
     expect(outcome.nextSteps[2].id).toBe("consented-advice");
+  });
+});
+
+/**
+ * Owner ruling #5 (2026-08-25, OWNER-RULINGS-2026-08-25.md §5, verbatim):
+ * "zero-risultati è vietato come schermata ... per E28B serve una persona,
+ * ma con il tuo profilo E28A è supportato: eccolo" + consultant button.
+ * "Ogni vicolo cieco diventa un candidato onesto + una mano tesa."
+ *
+ * Before this change `buildEngineOutcome`'s HUMAN_REVIEW_REQUIRED branch
+ * hardcoded `candidates: []` — RULING5-BLAST-RADIUS-FRONTEND.md's site 2:
+ * a real T2-eligible visitor who lands here saw the generic, tier-agnostic
+ * `NEXT_STEPS` and nothing naming what they already qualify for, exactly
+ * like a candidate-less review. Watched RED against the adapter before this
+ * fix (reverted locally): every assertion below failed because
+ * `outcome.candidates` was always `[]` on this branch and `outcome.nextSteps`
+ * was always the flat `NEXT_STEPS` regardless of what the response carried.
+ */
+describe("owner ruling #5 — HUMAN_REVIEW_REQUIRED can carry honest candidates (2026-08-25)", () => {
+  it("carries the products the visitor is genuinely already eligible for, not an empty list", () => {
+    const outcome = buildEngineOutcome(makeHumanReviewWithEligibleCandidates());
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    // TWO, never one (constraint (c)) — the measured production case.
+    expect(outcome.candidates).toHaveLength(2);
+    expect(outcome.candidates.map((c) => c.code)).toEqual(["D12", "E28A"]);
+    // The review verdict itself is untouched by carrying candidates
+    // (constraint (d)): precedence stays HUMAN_REVIEW_REQUIRED and the
+    // review reason is still there.
+    expect(outcome.reviewReasons.length).toBeGreaterThan(0);
+  });
+
+  it("never resolves a price for a candidate riding along on a review verdict (constraint (a))", () => {
+    const outcome = buildEngineOutcome(makeHumanReviewWithEligibleCandidates());
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    // Guard the guard: an empty list would make the loop below vacuously
+    // true without proving anything.
+    expect(outcome.candidates.length).toBeGreaterThan(0);
+    for (const candidate of outcome.candidates) {
+      expect(candidate.price.status).toBe("CONTACT_REQUIRED");
+    }
+    // No candidate here is ever purchasable in this response: `quotes` is
+    // empty by contract (C1), matching the backend invariant this branch
+    // must never violate even now that it carries candidates.
+    expect(makeHumanReviewWithEligibleCandidates().decision.quotes).toEqual([]);
+  });
+
+  it("names BOTH eligible candidates in the next-steps line, never assuming a singular (constraint (b)+(c))", () => {
+    const outcome = buildEngineOutcome(makeHumanReviewWithEligibleCandidates());
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    const eligibleStep = outcome.nextSteps[1];
+    expect(eligibleStep.body?.en).toContain("Multiple-Entry Business Visa");
+    expect(eligibleStep.body?.en).toContain("Investor KITAS (E28A)");
+    expect(eligibleStep.body?.en).toContain("D12");
+    expect(eligibleStep.body?.en).toContain("E28A");
+    // States eligibility plainly — never softened into "you might".
+    expect(eligibleStep.body?.en.toLowerCase()).not.toContain("you might");
+    expect(eligibleStep.body?.en.toLowerCase()).toContain("already");
+    // No price on this line either — "talk to us about cost", never a number.
+    expect(eligibleStep.body?.en).not.toMatch(/idr|rp\s?\d|\$\s?\d/i);
+    // EN and ID both present (constraint (e)).
+    expect(eligibleStep.body?.id).toContain("D12");
+    expect(eligibleStep.body?.id).toContain("E28A");
+  });
+
+  it("keys the consultant step off the top candidate's own tier, same convention as SUPPORTED_CANDIDATES", () => {
+    const outcome = buildEngineOutcome(makeHumanReviewWithEligibleCandidates());
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    // D12 and E28A are both T2 in product-tier-map.ts.
+    expect(outcome.candidates[0].tier).toBe("T2");
+    expect(outcome.nextSteps[2].id).toBe("consultant-included");
+  });
+
+  it("stays exactly the tier-agnostic NEXT_STEPS when the branch carries zero candidates", () => {
+    const outcome = buildEngineOutcome(
+      makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED"),
+    );
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.candidates).toHaveLength(0);
+    expect(outcome.nextSteps).toEqual(NEXT_STEPS);
   });
 });
 

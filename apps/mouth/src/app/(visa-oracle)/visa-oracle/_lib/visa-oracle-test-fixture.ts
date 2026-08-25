@@ -165,3 +165,115 @@ export function makeVisaOracleResponse(
     display: { candidates: supported ? [displayCandidate] : [] },
   };
 }
+
+const REVIEW_D12_ID = "55555555-5555-4555-8555-555555555551";
+const REVIEW_E28A_ID = "55555555-5555-4555-8555-555555555552";
+
+/**
+ * Reproduces the MEASURED production case from
+ * `docs/plans/2026-08-24-visa-oracle-live/RULING5-BLAST-RADIUS-FRONTEND.md`:
+ * a plausible investor (PT PMA committed, capital above E28A minimums)
+ * naming E28B/C/D/F as the requested product comes back
+ * `HUMAN_REVIEW_REQUIRED` carrying TWO real candidates — `D12` and `E28A` —
+ * with `quotes` empty and, at the display layer, `pricing.status ==
+ * "CONTACT_REQUIRED"` / `pricing.reason_code ==
+ * "PRICING_PENDING_HUMAN_REVIEW"` (backend: `evaluate_path.py:813`,
+ * `test_evaluate_endpoint.py:2083`).
+ *
+ * Deliberately TWO, never one: `REVIEW-EMPTIES-CANDIDATES.md` measured only
+ * `E28A` because it exercised a different gold persona — a fixture that pins
+ * a single candidate here would hide exactly the bug (a UI that assumes a
+ * singular) this fixture exists to catch.
+ */
+export function makeHumanReviewWithEligibleCandidates(): VisaOracleEvaluateResponse {
+  const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+
+  const decisionCandidate = (
+    code: string,
+    rank: number,
+    versionId: string,
+  ) => ({
+    rank,
+    product_version_id: versionId,
+    product_code: code,
+    score: 90,
+    covered_purposes: ["INVESTMENT"],
+    support_rule_ids: [`support-${code.toLowerCase()}`],
+    source_refs: [TEST_SOURCE_ID],
+    reason_codes: ["E28A_INVESTMENT_ELIGIBLE"],
+  });
+
+  const displayCandidate = (
+    code: string,
+    rank: number,
+    versionId: string,
+    name: string,
+  ) => ({
+    product_code: code,
+    product_version_id: versionId,
+    rank,
+    name: { en: name, id: name },
+    tagline: null,
+    stay_policy: {
+      stay: {
+        kind: "FIXED_DAYS" as const,
+        minimum_days: 365,
+        maximum_days: 365,
+      },
+      extension: {
+        allowed: true,
+        maximum_extensions: 1,
+        days_per_extension: 365,
+      },
+    },
+    documentation: {
+      status: "UNKNOWN" as const,
+      reason_code: "DOCUMENTATION_NOT_VERIFIED",
+      observed_at: TEST_NOW,
+      requirements: [],
+      checklist: [],
+    },
+    processing_timeline: {
+      status: "UNKNOWN" as const,
+      reason_code: "TIMELINE_NOT_VERIFIED",
+      observed_at: TEST_NOW,
+      anchor_date: null,
+      estimated_completion_from: null,
+      estimated_completion_to: null,
+    },
+    availability: {
+      legal_eligibility: "SUPPORTED" as const,
+      operational_availability: {
+        status: "UNKNOWN" as const,
+        reason_code: "OPERATIONAL_AVAILABILITY_UNKNOWN",
+        observed_at: TEST_NOW,
+        source_refs: [],
+      },
+      bali_zero_service_availability: {
+        status: "UNKNOWN" as const,
+        reason_code: "SERVICE_AVAILABILITY_UNKNOWN",
+        observed_at: TEST_NOW,
+        source_refs: [],
+      },
+    },
+    pricing: {
+      status: "CONTACT_REQUIRED" as const,
+      reason_code: "PRICING_PENDING_HUMAN_REVIEW",
+      evaluated_at: TEST_NOW,
+      catalog_last_updated: null,
+      catalog_sha256: null,
+      row_sha256: null,
+    },
+  });
+
+  response.decision.candidates = [
+    decisionCandidate("D12", 1, REVIEW_D12_ID),
+    decisionCandidate("E28A", 2, REVIEW_E28A_ID),
+  ];
+  response.display.candidates = [
+    displayCandidate("D12", 1, REVIEW_D12_ID, "Multiple-Entry Business Visa"),
+    displayCandidate("E28A", 2, REVIEW_E28A_ID, "Investor KITAS (E28A)"),
+  ];
+  response.decision.quotes = [];
+  return response;
+}

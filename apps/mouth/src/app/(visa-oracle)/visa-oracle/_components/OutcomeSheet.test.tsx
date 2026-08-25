@@ -11,7 +11,9 @@ import type {
 import {
   T2_CONSULTANT_TERMS,
   T2_CONSULTANT_TERMS_TITLE,
+  buildEngineOutcome,
 } from "../_lib/engine-adapter";
+import { makeHumanReviewWithEligibleCandidates } from "../_lib/visa-oracle-test-fixture";
 
 const FACTS = { in_indonesia: "yes", category: "tourism" };
 
@@ -382,6 +384,52 @@ describe("OutcomeSheet — honest five-state rendering", () => {
       screen.getByText("Document requirements unknown — not verified"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/26 July 2026/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Owner ruling #5 (2026-08-25, OWNER-RULINGS-2026-08-25.md §5) — the
+   * danger-pinning test the task explicitly calls for: even though a
+   * HUMAN_REVIEW_REQUIRED outcome can now carry real `OutcomeCandidate`
+   * objects (each with its own `price` field, per the type), NOTHING on this
+   * screen may ever render a price, a currency string, or a purchase
+   * affordance — `OutcomeSheet`'s `SUPPORTED_CANDIDATES`-only
+   * `CandidateCard` list (the only place `Price` renders) never mounts for
+   * this state; the candidates only feed the next-steps line's text.
+   * Precedence stays HUMAN_REVIEW_REQUIRED throughout — the review reason
+   * itself is untouched by carrying a candidate.
+   */
+  it("renders no price/currency and no purchase affordance on a HUMAN_REVIEW_REQUIRED screen that carries candidates", () => {
+    const outcome = buildEngineOutcome(makeHumanReviewWithEligibleCandidates());
+    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    // Guard the guard: an empty candidate list would make every assertion
+    // below vacuously true.
+    expect(outcome.candidates.length).toBeGreaterThan(0);
+
+    const { container } = render(
+      <OutcomeSheet language="en" outcome={outcome} facts={FACTS} />,
+    );
+
+    // No price/currency string anywhere on this screen.
+    expect(screen.queryByText(/IDR/)).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/Rp\s?\d/);
+    expect(container.textContent).not.toMatch(/\$\s?\d/);
+    expect(container.querySelector(".oracle-price__value")).toBeNull();
+    // No purchase affordance — no "buy"-shaped control anywhere.
+    expect(screen.queryByRole("button", { name: /buy/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /buy/i })).toBeNull();
+
+    // The review verdict itself stays visible — carrying a candidate never
+    // hides or demotes it (constraint (d)).
+    expect(
+      screen.getByText(outcome.reviewReasons[0].message.en),
+    ).toBeInTheDocument();
+
+    // The visitor is told plainly they qualify, and BOTH candidates are
+    // named — never a singular (constraints (b)+(c)).
+    expect(container.textContent).toContain("D12");
+    expect(container.textContent).toContain("E28A");
   });
 
   it("keeps print/copy/share controls and print anatomy on abstention", () => {

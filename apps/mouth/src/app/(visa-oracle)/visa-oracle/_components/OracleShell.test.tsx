@@ -1,5 +1,11 @@
 import { StrictMode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const emitVisaOracleTelemetry = vi.hoisted(() => vi.fn());
@@ -38,7 +44,10 @@ import {
   VISA_ORACLE_RESUME_KEY,
   saveInterviewResume,
 } from "../_lib/resume-store";
-import { makeVisaOracleResponse } from "../_lib/visa-oracle-test-fixture";
+import {
+  makeHumanReviewWithEligibleCandidates,
+  makeVisaOracleResponse,
+} from "../_lib/visa-oracle-test-fixture";
 import { translate } from "../_lib/i18n";
 import { OracleShell } from "./OracleShell";
 
@@ -806,5 +815,64 @@ describe("OracleShell ever-present consultant control", () => {
     expect(
       document.querySelector("[data-oracle-consultant-trigger]"),
     ).not.toBeNull();
+  });
+
+  /**
+   * Owner ruling #5 (2026-08-25, RULING5-BLAST-RADIUS-FRONTEND.md site 3):
+   * before this fix, `consultantTier` was hardcoded
+   * `outcome?.state === "SUPPORTED_CANDIDATES" ? "T2" : "T3"` — a
+   * HUMAN_REVIEW_REQUIRED visitor who already qualifies for a real T2
+   * candidate (measured: an E28B/C/D/F investor lands there with D12 +
+   * E28A, both T2) was routed to the consultant assignment API as T3
+   * ("consultant-only"), which is factually wrong about that person. Watched
+   * RED against the pre-fix line (reverted locally): this test failed with
+   * `tier: "T3"` in the captured call.
+   */
+  it("routes a HUMAN_REVIEW_REQUIRED visitor who already qualifies for a T2 candidate as T2, not the old blanket T3", async () => {
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER", "628123456789");
+    const response = makeHumanReviewWithEligibleCandidates();
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
+      true,
+    );
+    render(<OracleShell />);
+    await expectStateHeading("HUMAN_REVIEW_REQUIRED");
+
+    // C3 stays present on this screen exactly as on every other tier. The
+    // verdict screen also mounts its own `ConsentHandoff` (via
+    // `OutcomeSheet`'s `handoffSlot`) with the SAME consent copy, so the
+    // topbar's `ConsultantAccess` panel — the only one with `role="dialog"`,
+    // `ConsentHandoff` itself is a plain `<section>` — has to be scoped
+    // explicitly or the checkbox query matches two elements.
+    fireEvent.click(
+      screen.getByRole("button", { name: /^talk to a consultant/i }),
+    );
+    const topbarPanel = within(screen.getByRole("dialog"));
+    fireEvent.click(
+      topbarPanel.getByRole("checkbox", {
+        name: /i consent to open whatsapp/i,
+      }),
+    );
+    await waitFor(() =>
+      expect(requestConsultantAssignment).toHaveBeenCalledTimes(1),
+    );
+    expect(requestConsultantAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tier: "T2",
+        // The top-ranked candidate (D12, rank 1) — not left undefined the
+        // way the pre-fix code left it for any non-SUPPORTED_CANDIDATES
+        // state.
+        productVersionId: response.display.candidates[0]!.product_version_id,
+      }),
+    );
+    expect(requestConsultantAssignment).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tier: "T3" }),
+    );
   });
 });

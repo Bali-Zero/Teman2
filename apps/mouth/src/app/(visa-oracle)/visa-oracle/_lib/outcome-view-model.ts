@@ -191,7 +191,22 @@ export type NeedsInputOutcome = OutcomeBase &
 export type HumanReviewOutcome = OutcomeBase &
   OutcomeOrigin & {
     state: "HUMAN_REVIEW_REQUIRED";
-    candidates: readonly [];
+    /**
+     * Owner ruling #5 (2026-08-25, OWNER-RULINGS-2026-08-25.md §5, verbatim):
+     * "zero-risultati è vietato come schermata" — a HUMAN_REVIEW_REQUIRED
+     * verdict can now carry the products the visitor is genuinely already
+     * eligible for (measured on the signed pack,
+     * RULING5-BLAST-RADIUS-FRONTEND.md: an investor naming E28B/C/D/F comes
+     * back with TWO candidates, D12 and E28A). Usually empty — every
+     * gold-oracle persona this repo's test corpus pins still predicts zero,
+     * because the gold harness compiles a fixture pack that doesn't contain
+     * those four rules at all — but production is not the gold corpus, and
+     * this field must never be assumed to hold at most one entry. `quotes`
+     * stays forbidden on this branch regardless (contract C1): every
+     * candidate's own `price` here is CONTACT_REQUIRED by construction
+     * (`PRICING_PENDING_HUMAN_REVIEW`), never `AVAILABLE`.
+     */
+    candidates: readonly OutcomeCandidate[];
     reviewReasons: readonly [OutcomeReason, ...OutcomeReason[]];
   };
 

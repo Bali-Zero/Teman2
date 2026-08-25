@@ -141,6 +141,72 @@ function nextStepsForTier(tier: ProductTier | undefined): OutcomeNextSteps {
 }
 
 /**
+ * Owner ruling #5 (2026-08-25, OWNER-RULINGS-2026-08-25.md §5, verbatim):
+ * "zero-risultati è vietato come schermata ... per E28B serve una persona,
+ * ma con il tuo profilo E28A è supportato: eccolo ... Ogni vicolo cieco
+ * diventa un candidato onesto + una mano tesa." Built ONLY when the
+ * HUMAN_REVIEW_REQUIRED branch actually carries candidates — measured on
+ * the signed pack for an investor naming E28B/C/D/F
+ * (RULING5-BLAST-RADIUS-FRONTEND.md): TWO candidates, `D12` and `E28A`, not
+ * one. Every gold-oracle persona this repo's test corpus pins still
+ * predicts zero candidates here, because the gold harness compiles a
+ * fixture pack that doesn't contain those four rules at all — that is why
+ * this step is never reached by the gold corpus, not because it can't be.
+ *
+ * Renders as a LIST, deliberately — this must never read as if only one
+ * candidate exists (constraint (c) of the frontend handoff). It never
+ * states or implies a price: pricing on this branch is `CONTACT_REQUIRED`
+ * by construction (`evaluate_path.py`'s `PRICING_PENDING_HUMAN_REVIEW`), so
+ * "talk to us about cost" is the honest claim, never a number (constraint
+ * (a)). The visitor is told PLAINLY they qualify (constraint (b)) — never
+ * softened into "you might". The review verdict itself stays visible
+ * regardless: `OutcomeSheet.tsx` still renders `outcome.reviewReasons`
+ * unconditionally for this state, and this step never hides or replaces
+ * that (constraint (d)).
+ */
+function eligibleCandidatesStep(
+  candidates: readonly OutcomeCandidate[],
+): OutcomeStep {
+  const namesEn = candidates
+    .map((candidate) => `${candidate.name.en} (${candidate.code})`)
+    .join(", ");
+  const namesId = candidates
+    .map((candidate) => `${candidate.name.id} (${candidate.code})`)
+    .join(", ");
+  return {
+    id: "already-eligible-candidates",
+    title: text(
+      "You already qualify for something else",
+      "Anda sudah memenuhi syarat untuk jalur lain",
+    ),
+    body: text(
+      `A person still needs to review what you asked about, but you're already verified as eligible for: ${namesEn}. Talk to us about the cost and next steps for these — no price is shown here yet.`,
+      `Seseorang masih perlu meninjau permintaan yang Anda ajukan, tetapi Anda sudah terverifikasi memenuhi syarat untuk: ${namesId}. Hubungi kami untuk membahas biaya dan langkah selanjutnya — belum ada harga yang ditampilkan di sini.`,
+    ),
+  };
+}
+
+/**
+ * The HUMAN_REVIEW_REQUIRED counterpart of `nextStepsForTier`. Zero
+ * candidates (the gold-corpus case, still true of every persona that
+ * repo's tests pin) keeps the exact tier-agnostic `NEXT_STEPS` constant —
+ * byte-for-byte, so nothing regresses for the case this fix doesn't touch.
+ * One or more candidates reuses `nextStepsForTier`'s own tier->consultant-
+ * step mapping (top-ranked candidate's tier, same convention
+ * `OracleShell.tsx` and the SUPPORTED_CANDIDATES branch already use) and
+ * swaps its middle, generic "prepare only verified documents" step — never
+ * true here, since no product is actually confirmed on a review verdict —
+ * for the honest eligibility statement above.
+ */
+function nextStepsForReview(
+  candidates: readonly OutcomeCandidate[],
+): OutcomeNextSteps {
+  if (candidates.length === 0) return NEXT_STEPS;
+  const [reviewStep, , consultantStep] = nextStepsForTier(candidates[0]?.tier);
+  return [reviewStep, eligibleCandidatesStep(candidates), consultantStep];
+}
+
+/**
  * Owner ruling #2 (2026-08-25, OWNER-RULINGS-2026-08-25.md §2, verbatim
  * intent): "Un consulente ti contatta entro 24 ore lavorative, in inglese o
  * nella tua lingua (IT/ID disponibili)" — the owner's own phrasing of the
@@ -815,56 +881,65 @@ function buildValidatedOutcome(
     nextSteps: NEXT_STEPS,
   };
 
-  switch (response.decision.state) {
-    case "SUPPORTED_CANDIDATES": {
-      const candidates = response.display.candidates.map((projected, index) => {
-        const decisionCandidate = response.decision.candidates[index];
-        requireDecisiveRefs(decisionCandidate.source_refs);
-        const operational = projected.availability.operational_availability;
-        const service = projected.availability.bali_zero_service_availability;
-        if (operational.status !== "UNKNOWN") {
-          requireDecisiveRefs(operational.source_refs);
-        }
-        if (service.status !== "UNKNOWN") {
-          requireDecisiveRefs(service.source_refs);
-        }
-        return {
-          id: projected.product_version_id,
-          code: projected.product_code,
-          rank: projected.rank,
-          name: projected.name,
-          ...(projected.tagline ? { tagline: projected.tagline } : {}),
-          tier: tierForProductCode(projected.product_code),
-          legal: {
-            status: "SUPPORTED" as const,
-            reasons: decisionCandidate.reason_codes.map((code) =>
-              reason(code, decisionCandidate.source_refs, trustedIds),
-            ),
-          },
-          operational: {
-            status: operationalStatus(operational.status),
-            reasons: [
-              reason(
-                operational.reason_code,
-                operational.source_refs,
-                trustedIds,
-              ),
-            ],
-          },
-          service: {
-            status: serviceStatus(service.status),
-            reasons: [
-              reason(service.reason_code, service.source_refs, trustedIds),
-            ],
-          },
-          decisionReasons: decisionCandidate.reason_codes.map((code) =>
+  // Shared by SUPPORTED_CANDIDATES and HUMAN_REVIEW_REQUIRED (owner ruling
+  // #5): both branches can carry `display.candidates`/`decision.candidates`
+  // on the wire (`VisaOracleDisplayDTO`/`Decision` are flat, non-discriminated
+  // on `state` — verified against `schema.d.ts`), so both build the exact
+  // same `OutcomeCandidate` shape from them. Candidate order and membership
+  // are copied verbatim; this adapter contains no ranking or rules.
+  const buildCandidates = (): OutcomeCandidate[] =>
+    response.display.candidates.map((projected, index) => {
+      const decisionCandidate = response.decision.candidates[index];
+      requireDecisiveRefs(decisionCandidate.source_refs);
+      const operational = projected.availability.operational_availability;
+      const service = projected.availability.bali_zero_service_availability;
+      if (operational.status !== "UNKNOWN") {
+        requireDecisiveRefs(operational.source_refs);
+      }
+      if (service.status !== "UNKNOWN") {
+        requireDecisiveRefs(service.source_refs);
+      }
+      return {
+        id: projected.product_version_id,
+        code: projected.product_code,
+        rank: projected.rank,
+        name: projected.name,
+        ...(projected.tagline ? { tagline: projected.tagline } : {}),
+        tier: tierForProductCode(projected.product_code),
+        legal: {
+          status: "SUPPORTED" as const,
+          reasons: decisionCandidate.reason_codes.map((code) =>
             reason(code, decisionCandidate.source_refs, trustedIds),
           ),
-          timeline: timeline(projected),
-          price: price(projected, response),
-          documents: documents(projected),
-        } satisfies OutcomeCandidate;
-      });
+        },
+        operational: {
+          status: operationalStatus(operational.status),
+          reasons: [
+            reason(
+              operational.reason_code,
+              operational.source_refs,
+              trustedIds,
+            ),
+          ],
+        },
+        service: {
+          status: serviceStatus(service.status),
+          reasons: [
+            reason(service.reason_code, service.source_refs, trustedIds),
+          ],
+        },
+        decisionReasons: decisionCandidate.reason_codes.map((code) =>
+          reason(code, decisionCandidate.source_refs, trustedIds),
+        ),
+        timeline: timeline(projected),
+        price: price(projected, response),
+        documents: documents(projected),
+      } satisfies OutcomeCandidate;
+    });
+
+  switch (response.decision.state) {
+    case "SUPPORTED_CANDIDATES": {
+      const candidates = buildCandidates();
       if (candidates.length === 0) {
         throw new VisaOracleResponseError("RESPONSE_INVARIANT");
       }
@@ -904,17 +979,27 @@ function buildValidatedOutcome(
           })),
         ),
       };
-    case "HUMAN_REVIEW_REQUIRED":
+    case "HUMAN_REVIEW_REQUIRED": {
+      // Owner ruling #5: this branch is no longer structurally candidate-
+      // less — it carries whatever `display.candidates` the response
+      // actually has (usually none, per the gold corpus; occasionally more
+      // than one, per the measured production case). The precedence rule
+      // itself is untouched: `state` still resolves to
+      // HUMAN_REVIEW_REQUIRED and `reviewReasons` is still required below —
+      // carrying a candidate never demotes or hides the review verdict.
+      const candidates = buildCandidates();
       return {
         ...base,
+        nextSteps: nextStepsForReview(candidates),
         state: "HUMAN_REVIEW_REQUIRED",
-        candidates: [],
+        candidates,
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         reviewReasons: response.decision.review_reasons.map((item) => {
           requireReviewHoldRefs(item.source_refs);
           return reviewReason(item.code, item.source_refs, trustedIds);
         }) as [OutcomeReason, ...OutcomeReason[]],
       };
+    }
     case "NO_SUPPORTED_PATH":
       return {
         ...base,
