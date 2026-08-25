@@ -646,6 +646,75 @@ class Settings(BaseSettings):
         ),
     )
 
+    # I DUE BOT (docs/plans/2026-08-25-due-bot-live/MANDATE.md) — one client-bot
+    # send gate per surface, F11 plane=client_send, registry entry in
+    # services/client_bot/kill_switches.py. default_dark=True per that
+    # registry: OFF ships the effect off. When False, ClientBotEngine still
+    # evaluates FinalPolicyGate and records the verdict — only the outbound
+    # send is suppressed (shadow mode). No production code reads these yet;
+    # the engine that will is dark (not wired to any adapter's default
+    # config) — see services/client_bot/engine.py.
+    client_bot_wa_send_enabled: bool = Field(
+        default=False,
+        description="Allow ClientBotEngine to send on WhatsApp. Default False "
+        "(shadow). Set via CLIENT_BOT_WA_SEND_ENABLED env var.",
+    )
+    client_bot_ig_send_enabled: bool = Field(
+        default=False,
+        description="Allow ClientBotEngine to send on Instagram DM. Default "
+        "False (shadow). Set via CLIENT_BOT_IG_SEND_ENABLED env var.",
+    )
+    client_bot_portal_send_enabled: bool = Field(
+        default=False,
+        description="Allow ClientBotEngine to return an answer on the portal "
+        "chat surface. Default False (shadow). Set via "
+        "CLIENT_BOT_PORTAL_SEND_ENABLED env var.",
+    )
+    client_bot_kbli_send_enabled: bool = Field(
+        default=False,
+        description="Allow ClientBotEngine to return a classification on the "
+        "KBLI widget surface. Default False (shadow). Set via "
+        "CLIENT_BOT_KBLI_SEND_ENABLED env var.",
+    )
+
+    # ClientBrainProviderRouter config (research capture Sol §1.5) — the
+    # ONLY component that reads these. "gemini" as the default primary/
+    # fallback matches MANDATE.md F1: "Gemini ... is the working spine
+    # today." codex_broker/future_metered default OFF (F3/routing rule 4).
+    client_bot_primary_provider: str = Field(
+        default="gemini",
+        description="gemini|codex_broker|future_metered. Set via "
+        "CLIENT_BOT_PRIMARY_PROVIDER env var.",
+    )
+    client_bot_fallback_provider: str = Field(
+        default="gemini",
+        description="gemini|none. Set via CLIENT_BOT_FALLBACK_PROVIDER env var.",
+    )
+    client_bot_shadow_provider: str = Field(
+        default="none",
+        description="codex_broker|none — evaluated and recorded, never "
+        "delivered. Set via CLIENT_BOT_SHADOW_PROVIDER env var.",
+    )
+    client_bot_codex_broker_enabled: bool = Field(
+        default=False,
+        description="F3: codex broker leg kill switch, owning_lane B2 in "
+        "services/client_bot/kill_switches.py. Default False (dark). Set "
+        "via CLIENT_BOT_CODEX_BROKER_ENABLED env var.",
+    )
+    client_bot_future_metered_enabled: bool = Field(
+        default=False,
+        description="Stage-2 metered leg flag. Necessary but NOT sufficient "
+        "to route here — routing rule 4 also requires a persisted, "
+        "owner-approved approval_id verified by a real verifier; this flag "
+        "alone can never authorize it. Set via "
+        "CLIENT_BOT_FUTURE_METERED_ENABLED env var.",
+    )
+    client_bot_future_metered_approval_id: str | None = Field(
+        default=None,
+        description="Owner decision-packet approval id. Set via "
+        "CLIENT_BOT_FUTURE_METERED_APPROVAL_ID env var.",
+    )
+
     # ========================================
     # NOTIFICATION SERVICES
     # ========================================

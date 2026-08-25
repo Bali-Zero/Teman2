@@ -966,6 +966,9 @@ _EXPECTED_GATE_REASONS = {
     "model_requested_handoff",
     "out_of_scope_regulated_request",
     "human_decision_required",
+    # Engine-level (B1b) — not one of the 11 checks; no candidate exists to
+    # check because every ClientBrainProvider failed before generation.
+    "providers_exhausted",
     # Check 5 — surface/domain boundary
     "domain_out_of_surface_scope",
     "unauthenticated_portal_context_leak",
@@ -997,10 +1000,13 @@ _EXPECTED_GATE_REASONS = {
 }
 
 
-def test_gate_reason_has_exactly_the_frozen_forty_members() -> None:
+def test_gate_reason_has_exactly_the_frozen_forty_one_members() -> None:
+    """40 from the original freeze + 1 (``providers_exhausted``, B1b) — see
+    ``policy/types.py``'s member docstring for why this is a new member and
+    not a reuse of ``human_decision_required``."""
     actual = {r.value for r in GateReason}
     assert actual == _EXPECTED_GATE_REASONS
-    assert len(GateReason) == 40 == len(_EXPECTED_GATE_REASONS)
+    assert len(GateReason) == 41 == len(_EXPECTED_GATE_REASONS)
 
 
 _EXPECTED_PROFILE_TABLE: dict[str, dict[str, object]] = {

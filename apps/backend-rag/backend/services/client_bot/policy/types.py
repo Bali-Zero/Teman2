@@ -90,6 +90,23 @@ class GateReason(StrEnum):
     OUT_OF_SCOPE_REGULATED_REQUEST = "out_of_scope_regulated_request"
     HUMAN_DECISION_REQUIRED = "human_decision_required"
 
+    # Engine-level — not one of the 11 ordered FinalPolicyGate checks against
+    # a candidate, because no candidate exists to check (-> HANDOFF). Added
+    # B1b: the B6b golden fixture 16 ("client.both-providers-unavailable")
+    # originally stood this case in with HUMAN_DECISION_REQUIRED (check 4)
+    # for lack of a dedicated member, and said so in its own notes — a
+    # deliberate placeholder, not an oversight. The two are NOT the same
+    # failure: HUMAN_DECISION_REQUIRED means the model produced a candidate
+    # that a human must judge; PROVIDERS_EXHAUSTED means the machinery never
+    # produced a candidate at all (every ClientBrainProvider failed before
+    # generation). Sharing one code made it impossible for a tripwire to
+    # distinguish "we hand off a lot because the questions are hard" from
+    # "we hand off a lot because the brain is down" — exactly the split the
+    # F11 tripwires need. Raised only by the engine/provider-router path
+    # (never by FinalPolicyGate.evaluate() itself, which always receives a
+    # real candidate).
+    PROVIDERS_EXHAUSTED = "providers_exhausted"
+
     # Check 5 — surface/domain boundary (-> ABSTAIN or surface redirect)
     DOMAIN_OUT_OF_SURFACE_SCOPE = "domain_out_of_surface_scope"
     UNAUTHENTICATED_PORTAL_CONTEXT_LEAK = "unauthenticated_portal_context_leak"
