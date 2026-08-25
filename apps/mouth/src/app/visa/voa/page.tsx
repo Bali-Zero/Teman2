@@ -483,7 +483,7 @@ export default function VoaEligibilityPage() {
           items={[
             { value: "4", label: "quick questions" },
             { value: "1", label: "all-inclusive price" },
-            { value: "0", label: "prices invented (all from PricingTool)" },
+            { value: "0", label: "extra to pay the government after" },
           ]}
         />
       }
