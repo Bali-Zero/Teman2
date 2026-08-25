@@ -124,10 +124,32 @@ Across sixty-five chunks and twenty-one thousand characters, exactly one article
 appears anywhere in this law's text. Its healthy peers carry forty-three and fifty-four.
 Whatever those 65 points are, they are not the articulated body of the Investment Law.
 
-The consequence is the campaign's whole reason for existing: a question about foreign
-investment retrieves _something_ under the right name, with the right title, and answers
-from a sixth of a statute — with no signal to the reader that the other five sixths were
-never there. An absent law abstains. This one speaks.
+**Sharpened 2026-08-25 by lane B, and it corrects the paragraph the orchestrator wrote
+above.** Lane B read all 65 points individually rather than counting markers, and the
+printed ratio is not "a sixth of a statute". It is:
+
+| what the 65 points are                                   | count |
+| -------------------------------------------------------- | ----: |
+| bare "Cukup jelas."                                      |    21 |
+| "Cukup jelas." plus an adjacent ayat/huruf explanation   |    15 |
+| other elucidation narrative (the law's own UMUM section) |    26 |
+| administrative / enactment boilerplate                   |     2 |
+| **genuine operative article text**                       | **0** |
+
+**0 of 65. The corpus holds the commentary on the Investment Law and none of the
+Investment Law.** One of those points literally opens "PENJELASAN ATAS UNDANG-UNDANG
+REPUBLIK INDONESIA NOMOR 25 TAHUN 2007 TENTANG PENANAMAN MODAL" — it is the elucidation
+document, filed under the statute's identity.
+
+And the single `Pasal 33` marker the orchestrator's scan found is not this law's own
+Article 33 at all. Verified by reading the point: "...dijabarkan dalam Pasal 33
+Undang-Undang Dasar Negara Republik Indonesia Tahun 1945..." — a citation to the **1945
+Constitution**. The law's genuine self-referential article count is **zero, not one**.
+
+The consequence is the campaign's whole reason for existing, and it is worse than the
+original wording said: a question about foreign investment retrieves _something_ under the
+right name and the right title, and answers **from the explanation of articles that are not
+there** — with no signal to the reader. An absent law abstains. This one explains itself.
 
 **Recommendation:** re-acquire UU 25/2007 whole, under the containment order the campaign
 already uses — prove what the 65 points contain BEFORE writing anything over that
