@@ -1,0 +1,92 @@
+# L7 control tower — what's built, what makes each alarm go RED
+
+Owner: lane L7 (`products/garuda-voa/LANES.md`). Code lives in
+`apps/backend-rag/backend/services/garuda_ops/`; tests in
+`apps/backend-rag/backend/tests/services/garuda_ops/`.
+
+## Why this looks like ports instead of a live dashboard
+
+At the time this lane was built, **L1 (retention/migrations), L3
+(orders/payments) and L4 (portal) had not merged** into `feature/garuda-voa`
+(LANES.md: L3 `blocked (owner decision 1)`; no `garuda_orders` /
+`garuda_portal` package existed; no order/practice journal table migration
+existed under `apps/backend-rag/backend/db/migrations_v2/` — the only
+GARUDA table present was the unrelated legacy `garuda_voa_checks`, and L2's
+own public router is explicitly "not wired into the running app"). There was
+no live journal to read a funnel dashboard from.
+
+Rather than fake a dashboard against data that doesn't exist, every module
+in `garuda_ops/` is written against `ports.py` — `Protocol`s that mirror the
+FROZEN contract (`contracts/events.yaml`, `journeys/STATE-MACHINE.md`,
+`journeys/SLO.md`) field for field. Every alarm and the CRM handoff are
+fully exercised today with fakes; wiring a concrete Postgres-backed adapter
+once L1/L3/L4 land is a pure implementation task with zero change to this
+package's public functions.
+
+## Each alarm, and what makes it RED
+
+| Module                    | What it answers                            | What makes it RED                                                                                                                    | Bite-proof                                              |
+| -------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `deadman.py`               | Is the SYN-01 synthetic probe still alive?  | No success recorded within `max_silence` of the last success (or of monitoring start, for a probe that never succeeded) → `DEAD`, pages, and signals flag-off | `test_deadman.py` — pushes the last success 1s past the window, asserts DEAD+page+disable; restores it, asserts HEALTHY again |
+| `invariants.py` BI-01      | Are paid orders happening at all?           | Zero qualifying (real, deduped, post-activation) `payment.paid` events in the rolling 24h → `PAGE`. Synthetic traffic never clears a real page. | `test_bi01_pages_when_zero_qualifying_orders...` / `test_bi01_synthetic_orders_never_count_toward_the_page_clear` |
+| `invariants.py` BI-02      | Is upload→OCR feedback fast enough?         | Median (including unresolved uploads counted at their **current age**, never dropped) ≥ 60s → `PAGE`                                    | `test_bi02_pages_when_median_exceeds_60s` / `test_bi02_a_stuck_upload_cannot_be_hidden_by_many_fast_resolved_ones` |
+| `sla_timer.py` (work-item) | Is staff sitting on a practice too long?    | Time in `Received`/`In_review`/`Blocked`/`Submitted` exceeds its threshold → `OVERDUE`                                                   | `test_blocked_practice_past_threshold_is_overdue`       |
+| `sla_timer.py` (filing)    | Will a practice miss the D-7 deadline?      | ≤2 days remaining (or already passed) and the practice hasn't reached `Submitted`/`Approved`/`Delivered`/`Rejected` → pages              | `test_filing_deadline_pages_when_two_days_or_fewer_remain` |
+| `crm_handoff.py`           | Did PR-01 create exactly one CRM practice?  | A duplicate `practice.received` delivery creates a SECOND practice (SM-G08 violation) — the test breaks this by delivering the same event twice and asserting only one write happened | `test_duplicate_pr01_delivery_never_creates_a_second_practice` |
+| `funnel_dashboard.py`      | Is the funnel converting, or silently dead? | A zero denominator renders `unknown`, never `0%` — the WhatsApp-bot 24-day-silent-failure shape (a dead funnel and an empty-but-fine funnel must never look identical) | `test_zero_checks_started_renders_conversion_as_unknown_not_zero` |
+| `synthetic_probe.py`       | Can a real purchase journey complete today? | Today, honestly, **no** — see below                                                                                                      | `test_full_probe_today_is_honestly_incomplete_not_falsely_green` |
+
+## The synthetic probe (SYN-01) is honestly incomplete today
+
+SLO.md's SYN-01 path is: *eligibility → local OCR feedback → sandbox
+checkout → signed sandbox webhook → paid → one Received practice*, every 15
+minutes, dead-man 15 minutes.
+
+Only stage 1 (`EligibilityVerdictStage`, the pure verdict+price computation)
+runs against real code today. Stages 2-5 are `_blocked_stage` placeholders
+that report `BLOCKED` and name the lane they wait on (L1 persistence policy,
+L3 checkout/webhook, L4 portal receipt). `run_probe` stops at the first
+non-`SUCCEEDED` stage — it does not attempt stages whose precondition never
+held. Faking success here would be exactly the "esiste != armato" failure
+this lane was warned against (`cicatrix-superscar.md` family #2): a probe
+that always reports green would mask the fact that no purchase can complete
+in production yet.
+
+**Consequence, stated plainly**: wiring `evaluate_deadman()` to this probe's
+result today would correctly report `DEAD` forever, because the full journey
+genuinely cannot complete. That is not a bug in the alarm — the product is
+"ship dark, flag off" (MANDATE.md §7) and has not shipped. The dead-man
+switch becomes meaningful the moment L1/L3/L4/L5 land and each `_blocked_stage`
+is replaced by a real implementation; `run_probe`/`evaluate_deadman` need no
+change when that happens.
+
+## Real, independent finding: the price catalogue is stale right now
+
+Running `EligibilityVerdictStage` against the real `PricingService` (no
+mocking) on 2026-08-25 raised `PriceUnresolvable` because
+`price_catalogue_freshness` found the catalogue's `metadata.last_updated`
+stamp **111 days old against a 90-day max** (SM-G05 fail-closed). This means
+**any real customer hitting the public funnel today would get a 503
+`PRICE_UNRESOLVABLE`**, independent of anything L1-L7 build. This is not
+owned by any GARUDA VOA lane — it is whoever maintains the `PricingTool`
+catalogue's `metadata.last_updated` stamp for `B1 Visa on Arrival (VOA)` /
+`B1 Visa on Arrival Extension`. Flagged to the orchestrator; not fixed here
+(out of L7's file ownership and out of scope for this PR).
+
+## Not built in this PR — sequencing problems, not files to edit
+
+- **Wiring the dead-man cron and the paged alerts to a real scheduler.**
+  `.github/workflows/**` is explicitly "shared and forbidden to lanes"
+  (`LANES.md`); L2's own router is deliberately left unregistered for the
+  same reason ("mounting this router ... is the orchestrator's sequencing
+  step, not this lane's"). The evaluators (`deadman.py`, `invariants.py`)
+  are ready to be invoked by whatever scheduler the orchestrator chooses at
+  landing time.
+- **A concrete Postgres `JournalReader`/`OrderSnapshotProvider`/`CrmWriter`.**
+  Depends on L1's migrations and L3's order/practice schema, neither of
+  which exist on this branch yet. The `Protocol`s in `ports.py` are the
+  frozen interface a future adapter implements.
+- **Seeding `practice_types.code = 'garuda_voa'`.** `migrations_v2/` is L1's
+  exclusive path (`LANES.md` file-ownership table); `crm_handoff.py` names
+  the expected code as a constant and fails closed via
+  `HandoffOutcome.ORDER_SNAPSHOT_MISSING`-style errors rather than guessing.
