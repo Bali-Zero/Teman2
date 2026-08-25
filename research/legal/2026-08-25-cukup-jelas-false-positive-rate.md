@@ -8,6 +8,10 @@ sources:
   - kb/inventory/legal_unified_2026.yaml (campaign context, measured_at 2026-08-25)
   - apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py
   - apps/backend-rag/backend/core/legal/metadata_extractor.py
+  - orchestrator's WhatsApp-mirror traffic census (60,004 inbound 2022-12→2026-08-24,
+    10,929 question-bearing: immigration 2,752 / company 656 / tax 298 / property 187),
+    relayed 2026-08-25, added to this report as an addendum after the initial
+    measurement was already complete and shipped
 ---
 
 # The §6 "Cukup jelas" damage signal: measured false-positive rate, and three
@@ -271,3 +275,68 @@ that this investigation did not attempt.
 - **No deletions, no re-ingestion, no chunking change.** Embedding model
   (`text-embedding-3-small`, 1536 dims) untouched — nothing in this
   investigation required or would justify re-embedding.
+
+## Addendum — client-facing surface vs. corpus hygiene, and a language note
+
+Added after the measurement above was already complete and shipped, once the
+orchestrator relayed a WhatsApp-mirror traffic census (60,004 inbound client
+messages, 2022-12→2026-08-24; 10,929 question-bearing; immigration 2,752 /
+company 656 / tax 298 / property 187). This section separates which of the
+34 damaged documents sit on a surface clients actually reach from which are
+corpus hygiene that happens to be structurally identical — the campaign's
+deliverable is answers to real questions, not a clean-looking count.
+
+Checked all 10 of the top-10-by-damage documents' `topic` metadata directly
+against Qdrant (not guessed from the `document_id` alone):
+
+| document | topic | fragments | client-facing? |
+|---|---|---:|---|
+| `UU_6_2023` | Cipta Kerja (conversion act, carries the annex) | 726 | **yes** — company + property |
+| `UU_17_2008` | Pelayaran (shipping) | 337 | no |
+| `PP_1_2011` | Perumahan dan Kawasan Permukiman (housing) | 137 | **yes** — property |
+| `UU_43_2009` | Kearsipan (archives) | 84 | no |
+| `UU_14_2025` | Ibadah Haji dan Umrah (hajj/umrah) | 83 | no |
+| `UU_16_2025` | BUMN (state-owned enterprises), 4th amendment | 64 | marginal |
+| `UU_66_2024` | Pelayaran, 3rd amendment (same family as `UU_17_2008`) | 61 | no |
+| `UU_11_2020` | **Cipta Kerja** (the ORIGINAL omnibus law, not the carrier) | 53 | **yes** — company + property |
+| `UU_28_2007` | Ketentuan Umum dan Tata Cara Perpajakan (KUP — tax procedure) | 52 | **yes** — tax |
+| `Perda_7_2015` | Pendidikan Diniyah dan Pesantren (Islamic education) | 47 | no |
+
+`UU_11_2020` matters beyond its own 53 fragments: it is the ORIGINAL Cipta
+Kerja omnibus law (before Perpu 2/2022 → `UU_6_2023` re-ratified it) —
+finding it independently in the top 10, on the SAME topic as `UU_6_2023`,
+means the two client-facing findings are not one lucky hit but a pattern:
+the corpus's single most cited business-law topic is also its single largest
+damage source.
+
+**Client-facing total among the top 10: `UU_6_2023` + `PP_1_2011` +
+`UU_11_2020` + `UU_28_2007` = 968 fragments (48% of the full 2,019), against
+company (656) + property (187) + tax (298) = 1,141 question-bearing messages
+in the traffic census.** Corpus-hygiene total among the same top 10 (shipping
+law, archives, hajj/umrah, BUMN, Islamic education): 676 fragments, against
+traffic this investigation has no evidence clients ever generate.
+
+This changes the priority ordering the mandate implied. `UU_17_2008`
+(Pelayaran) is still the cleanest available SPECIMEN for developing the
+UNMARKED BOUNDARY detector (471 "Cukup jelas" occurrences, zero "PENJELASAN"
+headers, so it isolates the structural problem from every other document's
+noise) — but it is corpus hygiene, not a client-facing fix. Whoever builds
+that detector next should validate it on `UU_17_2008` for the clean signal,
+then PROVE it on `UU_6_2023` / `UU_11_2020` / `PP_1_2011` / `UU_28_2007`
+before calling the work done, because those four are where a client
+question actually lands.
+
+**Language note, since the team asked directly**: `is_unmarked_penjelasan_fragment`
+and the `has_ayat` structural lead (Finding 3) both classify STORED KB
+CONTENT — the Indonesian statute text sitting in Qdrant — never the client's
+QUERY. Every document in `legal_unified` is an official Indonesian legal
+instrument regardless of what language a client asks in (English, Indonesian,
+Italian, Spanish, per the census); "Cukup jelas" and the `has_ayat` payload
+shape are properties of that Indonesian source text, not of anything
+query-side. Neither signal reads, tokenizes, or makes any assumption about
+the client's question language, so there is no query-language surface for
+either to break on. This is a genuine non-issue for THESE two signals
+specifically — it would become a real issue only for a downstream component
+that tries to MATCH a client's non-Indonesian question against Indonesian
+statute phrasing (retrieval/embedding quality across that language gap), which
+is outside what this lane measured or built.
