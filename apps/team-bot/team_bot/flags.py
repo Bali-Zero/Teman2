@@ -40,6 +40,7 @@ __all__ = [
     "DEFAULT_MAX_READ_STEPS",
     "SINGLE_STEP",
     "is_team_bot_enabled",
+    "is_team_bot_memory_enabled",
     "is_team_bot_multistep_reads_enabled",
     "max_read_steps",
 ]
@@ -99,3 +100,24 @@ def max_read_steps() -> int:
     except ValueError:
         configured = DEFAULT_MAX_READ_STEPS
     return max(SINGLE_STEP, min(configured, ABSOLUTE_MAX_READ_STEPS_ENV_CEILING))
+
+
+def is_team_bot_memory_enabled() -> bool:
+    """True only when ``TEAM_BOT_MEMORY_ENABLED`` is truthy. Default OFF.
+
+    Lane B8, owner directive #1 §3. Registered in the F11/B7 kill-switch
+    registry, plane ``team_replies`` — the memory card only ever feeds reply
+    generation and never touches CRM, so it is not ``team_mutations``.
+    Nothing in ``team_bot.memory`` reads this flag itself (the store has no
+    I/O-gating opinion of its own, same as ``SqlitePendingActionStore``); a
+    future loop-wiring caller checks it before ``record_episodic_event`` /
+    ``render_member_card``. ``forget_member`` / ``forget_target`` are
+    deliberately NOT gated by it anywhere — a member's right to have their
+    own data deleted does not depend on whether writes are currently on.
+
+    Uses the shared ``_truthy`` helper rather than re-inlining the accepted
+    spellings: B8 wrote the tuple inline because the helper did not exist on
+    the base it branched from, and two independently-maintained copies of
+    "is this on" is the exact drift class this module already learned about.
+    """
+    return _truthy(os.getenv("TEAM_BOT_MEMORY_ENABLED", "false"))

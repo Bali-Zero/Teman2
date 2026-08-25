@@ -240,6 +240,27 @@ KILL_SWITCHES: tuple[KillSwitch, ...] = (
         "stay at 0.",
     ),
     KillSwitch(
+        env_var="TEAM_BOT_MEMORY_ENABLED",
+        plane=TripwirePlane.TEAM_REPLIES,
+        default_dark=True,
+        scope="global",
+        effect_when_off="team_bot.memory writes (episodic events, learned-"
+        "pattern counters, profile upserts) never happen and "
+        "render_member_card renders an empty/profile-less card — the loop "
+        "behaves exactly as it did before per-member memory existed. Not "
+        "one of F11's five named planes 1:1; mapped to team_replies "
+        "because the memory card only ever feeds reply generation and "
+        "never touches CRM (owner directive #1 §3, lane B8). "
+        "forget_member/forget_target are NOT gated by this flag — a "
+        "member's own deletion request is honored regardless.",
+        owning_lane="B8",
+        status=KillSwitchStatus.PLANNED,
+        verify_command="ask the bot a question that would normally record "
+        "an episodic event with this flag false; confirm "
+        "count_rows_for_principal stays at zero and the injected card has "
+        "no RECENT/PATTERNS line.",
+    ),
+    KillSwitch(
         env_var="TEAM_BOT_FAILOVER_AUTO_ENABLED",
         plane=TripwirePlane.FAILOVER_AUTOMATION,
         default_dark=True,
