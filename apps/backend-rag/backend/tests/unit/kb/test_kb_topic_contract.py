@@ -20,6 +20,7 @@ honest after.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -65,6 +66,31 @@ LANES = frozenset("ABCDEFP")
 # production today); `untested` means the probe has never been run, which is NOT
 # the same thing and must not be allowed to masquerade as red.
 PROBE_STATES = frozenset({"red", "green", "untested"})
+
+# How the question is worded. Measured 2026-08-25 over 10,929 question-bearing
+# client messages in the Pro-bound WhatsApp mirror: NOT ONE named an instrument.
+# Clients write index codes ("C5", "D12", "E33G") and colloquial handles
+# ("investor KITAS", "hak pakai", "coretax"). A suite phrased entirely in statute
+# language proves the corpus is indexed; it does not prove a client can reach it.
+PHRASINGS = frozenset({"client", "statute"})
+
+# The same measurement found four languages in one corpus, frequently mixed inside
+# a single message. An English-only suite certifies a path most traffic never takes.
+LANGUAGES = frozenset({"en", "id", "it", "es"})
+
+# A citation, not a mention: "22/2023", "Nomor 22 Tahun 2023", "No. 6 of 2011".
+# Deliberately narrow — the cost of a false positive is one rephrased journey,
+# and the cost of a loose rule is a check that objects to honest questions.
+_CITATION = re.compile(
+    r"\b\d{1,3}\s*/\s*(?:19|20)\d{2}\b"
+    r"|\b(?:no\.?|nomor|n[.\u00ba\u00b0])\s*\d{1,3}\s+(?:tahun|of|year|del)\s+(?:19|20)\d{2}\b",
+    re.IGNORECASE,
+)
+
+
+def cites_an_instrument(question: str) -> bool:
+    """True when the question carries a statute citation rather than a mention."""
+    return bool(_CITATION.search(question or ""))
 
 OWNED_KIND = "topic"
 
@@ -217,6 +243,71 @@ def check_journey(data: dict) -> list[str]:
                 f"{where}: probe_state is {state!r} but probe_run_at is missing — a "
                 f"verdict with no run behind it is 'untested' wearing a costume"
             )
+
+        phrasing = j.get("phrasing")
+        if phrasing not in PHRASINGS:
+            problems.append(
+                f"{where}: phrasing must be one of {sorted(PHRASINGS)}, got {phrasing!r}"
+            )
+        # Declaring 'client' is cheap; the check is behavioural, not a promise.
+        if phrasing == "client" and cites_an_instrument(j.get("question") or ""):
+            problems.append(
+                f"{where}: phrasing is 'client' but the question carries a statute "
+                f"citation. Measured over 10,929 real client questions, not one "
+                f"named an instrument — this is statute phrasing wearing a label"
+            )
+
+        lang = j.get("language")
+        if lang not in LANGUAGES:
+            problems.append(
+                f"{where}: language must be one of {sorted(LANGUAGES)}, got {lang!r}"
+            )
+
+        cross = j.get("cross_topic")
+        if cross not in (True, False, None):
+            problems.append(f"{where}: cross_topic must be true or false, got {cross!r}")
+        if cross is True:
+            other = j.get("cross_topic_lane")
+            if other not in LANES:
+                problems.append(
+                    f"{where}: cross_topic is true but cross_topic_lane is {other!r} — "
+                    f"name the lane that owns the other instrument"
+                )
+            elif other == data.get("lane"):
+                problems.append(
+                    f"{where}: cross_topic_lane names its own lane {other!r} — that is "
+                    f"not a boundary crossing"
+                )
+
+    # ── set-level rules ──────────────────────────────────────────────────────
+    # Each of these was bought with a measurement, not an opinion. A per-journey
+    # rule cannot express them: the defect is in the SHAPE of the whole suite.
+    client_phrased = sum(1 for j in journeys if j.get("phrasing") == "client")
+    if client_phrased < 3:
+        problems.append(
+            f"only {client_phrased} journey(s) are phrased the way a client phrases "
+            f"it; at least 3 are required. A suite written in statute language "
+            f"measures indexing, not reachability"
+        )
+
+    if not any(j.get("cross_topic") is True for j in journeys):
+        problems.append(
+            "no journey is marked cross_topic. Real client questions cross lane "
+            "boundaries — a secondary-home KITAS asked against hak pakai, an "
+            "investor KITAS whose sponsor is the client's own PMA — and a per-topic "
+            "suite misses exactly those unless it is made to carry one"
+        )
+
+    non_english = sum(
+        1 for j in journeys
+        if j.get("language") in LANGUAGES and j.get("language") != "en"
+    )
+    if non_english < 2:
+        problems.append(
+            f"only {non_english} journey(s) are in a language other than English; at "
+            f"least 2 are required. The traffic is English, Indonesian, Italian and "
+            f"Spanish, often mixed inside one message"
+        )
     return problems
 
 
@@ -367,17 +458,56 @@ def _good_topic() -> dict:
 
 
 def _good_journey() -> dict:
+    """A suite shaped like the measured traffic: mostly client-phrased, multilingual,
+    carrying one boundary crossing, and red on the day it was written."""
     return {
         "schema_version": 1,
         "lane": "A",
         "journeys": [
             {
+                "question": "Berapa lama izin tinggal terbatas berlaku?",
+                "verbatim_phrase": "izin tinggal terbatas berlaku paling lama",
+                "instrument_id": "Permenkumham_22_2023",
+                "phrasing": "client",
+                "language": "id",
+                "cross_topic": False,
+                "probe_state": "red",
+                "probe_run_at": "2026-08-25",
+            },
+            {
+                "question": "What is the C5 visa for, and what does it cost?",
+                "verbatim_phrase": "izin tinggal terbatas berlaku paling lama",
+                "instrument_id": "Permenkumham_22_2023",
+                "phrasing": "client",
+                "language": "en",
+                "cross_topic": False,
+                "probe_state": "red",
+                "probe_run_at": "2026-08-25",
+            },
+            {
                 "question": "Quanto dura un KITAS investor e si rinnova?",
                 "verbatim_phrase": "izin tinggal terbatas berlaku paling lama",
                 "instrument_id": "Permenkumham_22_2023",
+                "phrasing": "client",
+                "language": "it",
+                "cross_topic": False,
                 "probe_state": "red",
                 "probe_run_at": "2026-08-25",
-            }
+            },
+            {
+                "question": (
+                    "Does Permenkumham 22/2023 allow hak pakai and the value of the "
+                    "house in place of a bank deposit?"
+                ),
+                "verbatim_phrase": "izin tinggal terbatas berlaku paling lama",
+                "instrument_id": "Permenkumham_22_2023",
+                "phrasing": "statute",
+                "language": "en",
+                "cross_topic": True,
+                "cross_topic_lane": "D",
+                "probe_state": "red",
+                "probe_run_at": "2026-08-25",
+            },
         ],
     }
 
@@ -465,6 +595,43 @@ JOURNEY_GUILT = [
      lambda d: d["journeys"][0].update(probe_state="probably red"), "probe_state must be one of"),
     ("verdict with no run behind it",
      lambda d: d["journeys"][0].pop("probe_run_at"), "wearing a costume"),
+    ("phrasing outside the closed vocabulary",
+     lambda d: d["journeys"][0].update(phrasing="colloquial-ish"),
+     "phrasing must be one of"),
+    ("phrasing missing entirely",
+     lambda d: d["journeys"][0].pop("phrasing"), "phrasing must be one of"),
+    ("a statute citation wearing the 'client' label",
+     lambda d: d["journeys"][0].update(question="Apa isi Permenkumham 22/2023?"),
+     "wearing a label"),
+    ("the same trick in the No.-Tahun form",
+     lambda d: d["journeys"][0].update(question="Apa isi Permenkumham Nomor 22 Tahun 2023?"),
+     "wearing a label"),
+    ("language outside the closed vocabulary",
+     lambda d: d["journeys"][0].update(language="bahasa"), "language must be one of"),
+    ("language missing entirely",
+     lambda d: d["journeys"][0].pop("language"), "language must be one of"),
+    ("cross_topic is neither true nor false",
+     lambda d: d["journeys"][0].update(cross_topic="maybe"), "must be true or false"),
+    ("cross_topic true with no lane named",
+     lambda d: d["journeys"][3].pop("cross_topic_lane"), "name the lane that owns"),
+    ("cross_topic pointing at its own lane",
+     lambda d: d["journeys"][3].update(cross_topic_lane="A"),
+     "not a boundary crossing"),
+    ("suite written entirely in statute language",
+     lambda d: [x.update(phrasing="statute") for x in d["journeys"]],
+     "measures indexing, not reachability"),
+    ("one client-phrased journey short",
+     lambda d: d["journeys"][0].update(phrasing="statute"),
+     "measures indexing, not reachability"),
+    ("no journey crosses a lane boundary",
+     lambda d: d["journeys"][3].update(cross_topic=False),
+     "a per-topic suite misses exactly those"),
+    ("suite written entirely in English",
+     lambda d: [x.update(language="en") for x in d["journeys"]],
+     "often mixed inside one message"),
+    ("one non-English journey short",
+     lambda d: d["journeys"][0].update(language="en"),
+     "often mixed inside one message"),
 ]
 
 
@@ -609,10 +776,10 @@ AGREEMENT_GUILT = [
      lambda t, j, v: v["instruments"][0].update(id="UU_Invented_99_2099"),
      "a corpus the topic never claimed"),
     ("all probes green on day one",
-     lambda t, j, v: j["journeys"][0].update(probe_state="green"),
+     lambda t, j, v: [x.update(probe_state="green") for x in j["journeys"]],
      "not reaching production"),
     ("all probes never run",
-     lambda t, j, v: j["journeys"][0].update(probe_state="untested"),
+     lambda t, j, v: [x.update(probe_state="untested") for x in j["journeys"]],
      "it is no suite"),
 ]
 
