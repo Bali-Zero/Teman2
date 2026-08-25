@@ -1,5 +1,14 @@
 # MANDATE — I DUE BOT (client bot multi-surface + agentic team bot)
 
+> ⚡ **AMENDED 2026-08-25 by owner directive #1** (Zero). Verbatim: `DIRECTIVE-1-owner.md`.
+> Integration into the lane plan, with the impact map: `DIRECTIVE-1-INTEGRATION.md`.
+> It overrides **F8-primary** (the team bot's brain is `qwen3.7-plus` via the TP1 door, with a
+> fallback chain ending in a read-only local Qwen) and **F4/F5 scope** (one-tool-per-turn now
+> binds MUTATIONS only; reads chain multi-step), and adds a **new requirement**: three-layer
+> per-member memory. v1 grows from the F5 tool set to **domains 1-4**, with documents-in-chat
+> first-class. Everything else in this file stands frozen. Where this file and the directive
+> disagree, the directive wins — do not reconcile by editing the frozen decisions below.
+
 > Home machine: **Mini** (H24, office). Integration branch: **`feature/due-bot`** — LOCAL-FIRST per
 > `docs/factory/ASSEMBLY-LINE.md`: no per-commit PR ceremony, tests local, nightly push of the
 > integration branch, final landing as a short PR train. PRs to main mid-race ONLY for: live
