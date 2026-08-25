@@ -1277,7 +1277,13 @@ async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request
         logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
 
 
-async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Request) -> None:
+async def process_meta_inbox_payload(
+    raw_payload: dict[str, Any],
+    request: Request | None,
+    *,
+    db_pool: Any | None = None,
+    mark_row: bool = True,
+) -> bool:
     """Background task: drive the meta-inbox ledger for the target number only.
 
     Runs AFTER the webhook has persisted to inbound_webhooks and ACKed 200, so
@@ -1285,19 +1291,53 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
     META_INBOX_PHONE_NUMBER_IDS (every phone_number_id known to route to this
     number, not just the canonical one); any other number is ignored here (it
     stays on the existing inline triage flow).
+
+    ``db_pool`` lets a caller that has no ``Request`` (the WebhookProcessor
+    recovery net, see ``route_whatsapp_recovery``) inject the pool directly
+    instead of going through ``_get_db_pool(request)``. The normal webhook
+    call site still passes ``request`` and leaves ``db_pool`` unset.
+
+    ``mark_row`` (default True, the webhook/BackgroundTasks call site) marks
+    the ``inbound_webhooks`` row processed itself after a message is handled
+    without raising (2026-08-25 double-reply scar prong 1) — mirroring the
+    legacy path's ``process_whatsapp_message_and_mark_processed``. The
+    recovery net (``route_whatsapp_recovery``) passes ``mark_row=False``: its
+    caller, ``WebhookProcessor._process_one``, already holds that SAME row
+    ``FOR UPDATE SKIP LOCKED`` in an open transaction and marks it itself on
+    handler success — a second ``mark_processed`` from THIS function, on a
+    different pool connection, would block against that open transaction
+    until ``statement_timeout``, stalling the shared drain loop for every
+    channel (round-2 adversarial-gate finding, proven at SQL level on
+    PG 17.10).
+
+    Returns True iff every meta-inbox message in the payload was handled
+    without ``_handle_meta_inbox_message`` raising (a parse failure or a
+    missing db pool are non-retryable — no payload to retry against — and
+    also return True). Returns False on a per-message handler failure, so
+    that a ``mark_row=False`` caller can re-raise and let the
+    WebhookProcessor's own retry ladder (backoff, MAX_ATTEMPTS, eventual
+    "GIVING UP") apply to meta-inbox rows exactly as it does to every other
+    channel — this function itself never raises (round-2 finding: silently
+    swallowing every exception made those retry semantics dead for
+    meta-inbox rows; a handler crash during recovery was permanent, silent
+    message loss). The webhook/BackgroundTasks call site (``mark_row=True``)
+    ignores the return value and must never see an exception either way —
+    unaffected by this change.
     """
-    db_pool = _get_db_pool(request)
-    if db_pool is None:
-        return
+    pool = db_pool if db_pool is not None else _get_db_pool(request)
+    if pool is None:
+        return True
 
     try:
         webhook = WhatsAppWebhook(**raw_payload)
     except Exception as exc:
         logger.warning("meta-inbox: payload parse failed: %s", exc)
-        return
+        return True
 
     try:
-        async with db_pool.acquire() as conn:
+        from backend.services.channels import inbound_webhook_repo
+
+        async with pool.acquire() as conn:
             for entry in webhook.entry:
                 for change in entry.changes:
                     if change.field != "messages":
@@ -1321,8 +1361,88 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
                         wamid = msg.get("id")
                         webhook_id = await _resolve_webhook_id(conn, wamid) if wamid else None
                         await _handle_meta_inbox_message(conn, msg, sender_name, webhook_id)
+
+                        if not mark_row or not wamid:
+                            continue
+                        try:
+                            await inbound_webhook_repo.mark_processed(
+                                pool,
+                                channel="whatsapp",
+                                dedup_key=wamid,
+                            )
+                        except Exception:
+                            logger.warning(
+                                "meta-inbox: failed to mark inbound row processed "
+                                "(wamid=%s)",
+                                wamid,
+                                exc_info=True,
+                            )
     except Exception as exc:
         logger.error("meta-inbox: processing failed: %s", exc, exc_info=True)
+        return False
+
+    return True
+
+
+async def route_whatsapp_recovery(
+    payload: dict[str, Any],
+    *,
+    db_pool: Any,
+    legacy_route: Any,
+) -> None:
+    """WebhookProcessor recovery-net dispatch for the ``whatsapp`` channel.
+
+    Keeps meta-inbox-targeted payloads out of the retired ChannelRouter
+    pipeline (2026-08-25 double-reply scar prong 2). ``ChannelRouter`` always
+    classifies intent itself and sends its own reply — it never passes
+    through ``wa_reply_claims`` — so routing a meta-inbox payload there on
+    recovery produced a second, different reply. Non-meta-inbox payloads are
+    unaffected: they still go through ``legacy_route`` exactly as before.
+
+    ``legacy_route`` is an ``Awaitable``-returning callable taking the raw
+    payload — the caller supplies its own bound ``_route_via_channel_router``
+    so this function never has to know about ``ChannelRouter``'s shape.
+
+    Calls ``process_meta_inbox_payload`` with ``mark_row=False`` — this
+    function's caller, ``WebhookProcessor._process_one``, already holds the
+    row ``FOR UPDATE SKIP LOCKED`` in an open transaction and marks it itself
+    on success; a second ``mark_processed`` from a different connection would
+    block against that open transaction until ``statement_timeout`` (round-2
+    adversarial-gate finding). On a handler failure (``process_meta_inbox_payload``
+    returns False) this function RE-RAISES, so ``_process_one``'s own retry
+    ladder (backoff, MAX_ATTEMPTS, eventual "GIVING UP") applies to
+    meta-inbox rows exactly as it does to every other channel — without this,
+    ``process_meta_inbox_payload``'s internal catch-all silently discarded
+    those retry semantics and a handler crash during recovery was permanent,
+    silent message loss (round-2 finding).
+    """
+    try:
+        webhook = WhatsAppWebhook(**payload)
+        is_meta_inbox = any(
+            change.field == "messages" and _change_belongs_to_meta_inbox(change)
+            for entry in webhook.entry
+            for change in entry.changes
+        )
+    except Exception:
+        logger.warning(
+            "whatsapp recovery: payload parse failed, defaulting to legacy route",
+            exc_info=True,
+        )
+        is_meta_inbox = False
+
+    if is_meta_inbox:
+        success = await process_meta_inbox_payload(
+            raw_payload=payload, request=None, db_pool=db_pool, mark_row=False
+        )
+        if not success:
+            raise RuntimeError(
+                "meta-inbox recovery: process_meta_inbox_payload reported a "
+                "handler failure — re-raising so the WebhookProcessor's own "
+                "retry ladder applies"
+            )
+        return
+
+    await legacy_route(payload)
 
 
 @router.get("")
