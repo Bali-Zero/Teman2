@@ -42,7 +42,12 @@ def _force_fresh_catalogue(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         pricing_module,
         "price_catalogue_freshness",
-        lambda *, today, service=None: FreshnessReport(
+        # `**_` absorbs `key`/`row`: `price_catalogue_freshness` grew per-row
+        # attestation kwargs (owner decision 7, `verified_on`) after this helper
+        # was written, and `price_for_case` now always calls it with `key=`/`row=`.
+        # Matches the same absorption in
+        # `backend/tests/services/garuda_flow/conftest.py`.
+        lambda *, today, service=None, **_: FreshnessReport(
             source="price_catalogue",
             verdict=FreshnessVerdict.FRESH,
             stamp=today.isoformat(),
