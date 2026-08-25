@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { mapOracleFactsToApplicantFacts } from "./fact-mapper";
 import { CATEGORY_KEYS, getLane, QUESTIONS, type OracleFacts } from "./tree";
 import {
   INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
@@ -863,6 +864,102 @@ describe("V1/E33 (2026-08-25): sponsor-gated E33A/B/C question reachability", ()
       const hasNone = ids.includes("employment_product_code_none");
       expect(hasGovt && hasNone).toBe(false);
     }
+  });
+});
+
+describe("V1 dead end PERSISTS: persona #15 (GOLD-DIVERGENCE-TRIAGE.md Class 4, switchboard-3 rehearsal 2026-08-25)", () => {
+  // Persona #15 in the gold corpus ("tourism + employment purposes -> E23
+  // only, never C1", `test_evaluator_gold.py` id=15) drives the ENGINE
+  // directly with `intent.purposes=[TOURISM, EMPLOYMENT]` and
+  // `work.employer_is_indonesian_entity`/`work.indonesian_work_sponsor_
+  // confirmed` both KNOWN true — an ordinary EMPLOYER-sponsored applicant.
+  // `gold_replay_driver.py --offline` against the real signed pack
+  // (rulepack-prod-013) still returns NEEDS_INPUT
+  // missing_facts=['intent.requested_product_code'] for this shape, not the
+  // corpus's expected SUPPORTED_CANDIDATES=[E23], because
+  // `review.e23{u,v}.requested-product` (HUMAN_REVIEW, on_unknown:
+  // NEEDS_INPUT, both `required_facts: [..., "intent.requested_product_
+  // code"]`) cannot resolve while that fact is unknown.
+  //
+  // The V1/E28 and V1/E33 cures above (this file) made
+  // `intent.requested_product_code` askable — but ONLY unconditionally on
+  // the "invest" branch, and on the "work" branch only when
+  // `sponsor_category` is GOVERNMENT or NONE
+  // (`employment_product_code_govt`/`employment_product_code_none` — see
+  // the "if and only if" tests above, and fact-mapper.test.ts's
+  // TEAM-LEAD-MANDATED INNOCENCE TEST which already proves EMPLOYER is one
+  // of the untouched sponsor categories). An ORDINARY EMPLOYER-sponsored
+  // applicant — which is exactly what `work.employer_is_indonesian_entity`
+  // + `work.indonesian_work_sponsor_confirmed` both KNOWN true maps back to
+  // on the real UI (`work_payer`/`work_sponsor_confirmed`, both only
+  // reachable on the "work" branch — fact-mapper.ts's
+  // `mapEmployerIsIndonesianEntity`/`booleanFact(facts.work_sponsor_
+  // confirmed)`) — has `sponsor_category === "EMPLOYER"`, which hits
+  // neither gate. That is persona #15's real shape, and it is STILL a live
+  // dead end: `flowReducer` never gets stuck (the interview reaches a
+  // verdict screen — no UI navigation dead-end) while silently never
+  // offering the one question that would let the real engine answer
+  // SUPPORTED_CANDIDATES instead of "more information needed" for a fact
+  // the visitor was never asked and cannot supply.
+  //
+  // This drives the REAL reducer through the exact "work" branch used by
+  // the CATEGORY_CASES fixture above (sponsor_category=EMPLOYER), then
+  // feeds the resulting facts through the real fact-mapper.ts to the wire —
+  // "drive the tree/flow, not the mapper" per the mandate. It PINS the
+  // current (broken) behavior: it goes RED the day either (a) a question
+  // ships that can set `intent.requested_product_code` for an
+  // EMPLOYER-sponsored applicant, or (b)
+  // `review.e23{u,v}.requested-product` stops gating on that fact for
+  // non-GOVERNMENT/non-NONE sponsors — at which point this test should be
+  // rewritten to assert the cured behavior and GOLD-DIVERGENCE-TRIAGE.md's
+  // persona #15 entry moved out of Class 4. Designing that fix (which
+  // product-code options, if any, an EMPLOYER-sponsored applicant should
+  // even be offered) is a product decision and is deliberately OUT OF SCOPE
+  // here — see the triage doc.
+  it("never asks a question that can populate intent.requested_product_code, and the wire fact reaches UNKNOWN NOT_ASKED", () => {
+    let state = startOffshore("work");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "sponsor_category", "EMPLOYER");
+    state = answer(state, "work_payer", "yes");
+    state = answer(state, "work_indonesia_compensation", "yes");
+    state = answer(state, "work_sponsor_confirmed", "yes");
+    state = answer(state, "work_role", "specialist");
+    state = answer(state, "stay_days", "365");
+    expectQuestion(state, "review_gate");
+    state = answer(state, "review_gate", "none");
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "confirmation",
+    });
+    state = reduce(state, { type: "ADVANCE" });
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "verdict",
+    });
+
+    // The reported question path: exactly what the visitor was asked, in
+    // order — none of the four product-code questions ever appear.
+    const askedQuestionIds = state.history
+      .filter(
+        (entry): entry is { kind: "question"; questionId: string } =>
+          entry.kind === "question",
+      )
+      .map((entry) => entry.questionId);
+    expect(askedQuestionIds).not.toContain("employment_product_code_govt");
+    expect(askedQuestionIds).not.toContain("employment_product_code_none");
+    expect(askedQuestionIds).not.toContain("investment_product_code");
+    expect(askedQuestionIds).not.toContain("investment_product_code_govt");
+
+    const mapped = mapOracleFactsToApplicantFacts(state.facts, {
+      assessmentId: "11111111-1111-4111-8111-111111111111",
+      collectedAt: new Date("2026-07-27T00:00:00.000Z"),
+    });
+    expect(mapped.facts["intent.purposes"]).toEqual({
+      status: "KNOWN",
+      value: ["EMPLOYMENT"],
+    });
+    expect(mapped.facts["intent.requested_product_code"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
   });
 });
 

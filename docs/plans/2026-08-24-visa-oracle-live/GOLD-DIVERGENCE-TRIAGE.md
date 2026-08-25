@@ -12,12 +12,12 @@ one defect and fifteen explanations**, and the explanations matter more than the
 
 ## The headline
 
-| Class                                                        | N     | What it means                                             |
-| ------------------------------------------------------------ | ----- | --------------------------------------------------------- |
-| The corpus tests a smaller catalogue than the engine has     | 7     | Not a defect                                              |
-| The engine is deliberately MORE conservative than the corpus | 5     | Not a defect — a later safety rule firing                 |
-| The engine asks a different question first                   | 2     | Not a defect — reachable either way                       |
-| **A real dead end**                                          | **1** | **#15 — and it is the disease lane V1 is already curing** |
+| Class                                                        | N     | What it means                                                                                                             |
+| ------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------- |
+| The corpus tests a smaller catalogue than the engine has     | 7     | Not a defect                                                                                                              |
+| The engine is deliberately MORE conservative than the corpus | 5     | Not a defect — a later safety rule firing                                                                                 |
+| The engine asks a different question first                   | 2     | Not a defect — reachable either way                                                                                       |
+| **A real dead end**                                          | **1** | **#15 — V1 cured the E28/E33 shape of this disease, but not persona #15's own branch (2026-08-25: measured, still open)** |
 
 ## Class 1 — the corpus tests five products; the engine has thirty-eight (7 personas)
 
@@ -86,6 +86,54 @@ proposed T2. Lane V1 is curing it. This persona is its regression test — it mu
 `NEEDS_INPUT` to `SUPPORTED_CANDIDATES [E23]` when the cure lands, and that flip is the
 falsifiable acceptance.
 
+### Update 2026-08-25 — re-measured after V1/E28 + V1/E33 shipped. Still a dead end for #15.
+
+Re-ran the driver on this turn, same command, same active signed pack (`rulepack-prod-013.signed.
+json`, verified sequence=13, kid=`prod-2026-07-1` — same pack this doc's header names):
+**matches 4/20, unexplained 16 — byte-identical to the numbers above.** `intent.requested_product_code` is no longer unconditionally hard-coded to
+`unknownFact(NOT_ASKED)` — V1 shipped and made it askable on two branches
+(`fact-mapper.ts`/`tree.ts`/`flow.ts`, both merged since this doc's first pass): unconditionally
+on the "invest" category (`investment_product_code`, every vehicle), and on the "work" category
+only when `sponsor_category` is `GOVERNMENT` (`employment_product_code_govt`) or `NONE`
+(`employment_product_code_none`). Persona #15's shape does not land on either gate.
+
+**The correction to the paragraph above:** it is not that "the interview can never populate" this
+fact anymore — it now can, for some applicants. Persona #15 is not one of them. Its raw engine
+facts (`work.employer_is_indonesian_entity=true`, `work.indonesian_work_sponsor_confirmed=true`)
+map back, on the real UI, to `category: "work"` with `sponsor_category: "EMPLOYER"` — an ordinary
+private-employer-sponsored applicant, which is the common case E23 exists for, not an edge case.
+Measured directly against the real reducer (`flow.ts`'s `getCategoryQuestionIds`, `category ===
+"work"` branch — the ternary there has exactly two arms, `GOVERNMENT` and `NONE`; every other
+`sponsor_category` value, including `EMPLOYER`, falls through to `[]`): the interview walks such
+an applicant straight through `sponsor_category → work_payer → work_indonesia_compensation →
+work_sponsor_confirmed → work_role → stay_days` to a verdict screen without ever presenting a
+question that can set `intent.requested_product_code`. No UI navigation dead-end — the interview
+completes normally — but the wire fact reaches `UNKNOWN NOT_ASKED`, and `review.e23{u,v}.
+requested-product` (`on_unknown: NEEDS_INPUT`, both `required_facts` include this key) then
+returns exactly the NEEDS_INPUT above. **The visitor still cannot supply the fact the engine is
+asking for.**
+
+This is now pinned by two independent, currently-passing tests (both go RED if this ever changes,
+which is the signal to revisit this entry):
+
+- `fact-mapper.test.ts`, describe `"V1/E33 (2026-08-25): sponsor-gated E33A/B/C -> intent.
+requested_product_code"`, the TEAM-LEAD-MANDATED INNOCENCE TEST — already proves EMPLOYER (with
+  INDIVIDUAL/EDUCATION/INVESTMENT) never reaches the product-code questions and the mapped fact
+  stays `NOT_ASKED`, for a different original purpose (an `el.bridging.destination-stated`
+  unreachability proof) that happens to cover this exact shape.
+- `flow.test.ts`, new describe `"V1 dead end PERSISTS: persona #15 (GOLD-DIVERGENCE-TRIAGE.md
+Class 4, switchboard-3 rehearsal 2026-08-25)"` — drives the real reducer end-to-end through
+  persona #15's shape (the `CATEGORY_CASES` "work"/EMPLOYER branch), confirms no
+  product-code-setting question is ever asked, and confirms the mapped wire fact.
+
+**Persona #15 stays in Class 4, open, a live dead end.** Signature #3 ("zero-divergence
+rehearsal... acknowledge, sign") is **not earnable yet**. The fix is a product decision, not an
+engine or mapper bug: whether/what product-code question(s) an ordinary EMPLOYER-sponsored
+applicant should be asked at all (E23 itself needs no code; only the two review carve-outs
+`E23U`/`E23V` — diplomatic household staff, trade-office staff — do), and that decision was
+explicitly out of scope for this turn (per the mandate: "do not redesign the interview tree
+without a spec; that is a product decision").
+
 ## What this means for switchboard #3
 
 The mandate asks for a "gold-persona rehearsal — zero-divergence report engine<->consultants" for
@@ -100,8 +148,12 @@ The target that means something:
 
 > **Every divergence explained, and none of them a dead end.**
 
-Today: 16 explained (this document), 1 dead end (#15, cure in flight). When #15 flips, the report
-is signable — with the divergences intact and accounted for, not erased.
+Today: 16 explained (this document), 1 dead end (#15). **Update 2026-08-25:** re-measured after
+V1/E28 and V1/E33 shipped — #15 did not flip, and per the Class 4 update above it is not a cure
+already "in flight" that will land on its own: the branch that would have to change (an
+EMPLOYER-sponsored applicant on the "work" category) needs an explicit product decision that has
+not been scoped yet. When #15 flips, the report is signable — with the divergences intact and
+accounted for, not erased.
 
 ## What must happen to the corpus, and what must not
 
