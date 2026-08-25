@@ -229,6 +229,66 @@ def resolve_collection(journey: dict, default: str) -> str:
     return override if isinstance(override, str) and override.strip() else default
 
 
+# The G3 contract already refuses a verbatim_phrase under 12 characters, but that
+# is a DIFFERENT PROGRAM: it runs when someone runs the topic-contract test. A lane
+# iterating with this probe by hand never touches it. Measured live 2026-08-25 by an
+# adversarial pass: verbatim_phrase "" / "a" / "   " / "." / "dan" ALL reported GREEN
+# at rank 1 — "" is a substring of every string in Python, so such a journey greens
+# against any corpus, for any question. A probe that can be made to say green without
+# reading anything is not a probe, so the floor lives here too.
+MIN_PHRASE_CHARS = 12
+
+
+def unusable_phrase(phrase: str) -> str | None:
+    """Why this phrase can grade nothing — or None when it can."""
+    norm = normalize(phrase)
+    if not norm:
+        return (
+            "empty after normalisation. '' is a substring of every string, so this "
+            "journey would report green against any corpus, for any question"
+        )
+    if len(norm) < MIN_PHRASE_CHARS:
+        return (
+            "%d characters after normalisation, floor is %d. A phrase this short "
+            "matches by accident and measures nothing" % (len(norm), MIN_PHRASE_CHARS)
+        )
+    return None
+
+
+def unknown_collections(names) -> list[str]:
+    """Names this repo's registry does not define, sorted.
+
+    Kept pure and I/O-free so its guilt case is provable without Qdrant. The reason
+    it exists is NOT tidiness: `search_service.py:522-531` answers an unrecognised
+    collection name by logging to stderr and silently searching `legal_unified`
+    instead. Reproduced live — `--collection this_collection_does_not_exist_zzz999`
+    exits 0 "AT TARGET" against a corpus the caller never asked for. A typo in a
+    collection name must not be able to produce a green.
+    """
+    from backend.core.collection_registry import is_known_collection
+
+    return sorted({n for n in names if not is_known_collection(n)})
+
+
+def refuse(args, reason: str, detail: str, human: list[str]) -> int:
+    """Emit a BROKEN verdict on whichever output path is active, and grade nothing."""
+    if args.json:
+        print(json.dumps({
+            "journeys_file": str(args.journeys),
+            "collection": args.collection,
+            "verdict": VERDICT_BY_EXIT[3],
+            "reason": reason,
+            "detail": detail,
+            "exit_code": 3,
+            "degraded_path": False,
+            "journeys": [],
+        }))
+    else:
+        for line in human:
+            print(line)
+    return 3
+
+
 async def run(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("journeys", type=Path, help="kb/journeys/<topic>.yaml")
@@ -264,9 +324,73 @@ async def run(argv=None) -> int:
             print("%s declares no journeys — nothing to run" % args.journeys.name)
         return 3
 
+    # Both refusals happen BEFORE SearchService is constructed: neither needs
+    # production, and a run that cannot be trusted should not spend a query.
+    unusable = [
+        (i, j.get("question", ""), why)
+        for i, j in enumerate(journeys, start=1)
+        if (why := unusable_phrase(j.get("verbatim_phrase", "")))
+    ]
+    if unusable:
+        return refuse(
+            args,
+            "unusable_phrase",
+            "; ".join("journey %d: %s" % (i, why) for i, _, why in unusable),
+            ["BROKEN — %d journey(s) carry a phrase that cannot grade anything:"
+             % len(unusable)]
+            + ["  - journey %d (%s): %s" % (i, (q[:40] or "?"), why)
+               for i, q, why in unusable]
+            + ["",
+               "Nothing was graded. A green from such a phrase would say only that "
+               "some chunk came back,",
+               "never that this instrument's text did."],
+        )
+
+    asked = {resolve_collection(j, args.collection) for j in journeys}
+    asked.add(args.collection)
+    strangers = unknown_collections(asked)
+    if strangers:
+        return refuse(
+            args,
+            "unknown_collection",
+            "not in LOGICAL_TO_PHYSICAL_COLLECTIONS: " + ", ".join(strangers),
+            ["BROKEN — %d collection name(s) this repo's registry does not define:"
+             % len(strangers)]
+            + ["  - %r" % n for n in strangers]
+            + ["",
+               "Nothing was graded. search_service.py:522-531 answers an unknown "
+               "collection by",
+               "silently searching legal_unified instead, so a typo here does not "
+               "error — it grades",
+               "a corpus you did not ask for and can report AT TARGET. Check the "
+               "spelling against",
+               "backend/core/collection_registry.py."],
+        )
+
     from backend.services.search.search_service import SearchService
 
     service = SearchService()
+
+    # The registry check above catches a name nobody defined. This one catches the
+    # other half: a name the registry knows but the running manager cannot hand back
+    # — which is the EXACT predicate (`if not vector_db`) that triggers the silent
+    # substitution downstream. Checking the same condition ourselves closes it by
+    # construction rather than by hoping the two stay in agreement.
+    absent = sorted(n for n in asked if not service.collection_manager.get_collection(n))
+    if absent:
+        return refuse(
+            args,
+            "unknown_collection",
+            "registered but not served by this collection manager: " + ", ".join(absent),
+            ["BROKEN — %d collection(s) the registry defines but this manager does "
+             "not serve:" % len(absent)]
+            + ["  - %r" % n for n in absent]
+            + ["",
+               "Nothing was graded. This is the condition search_service.py checks "
+               "before silently",
+               "falling back to legal_unified; refusing on it here is what keeps a "
+               "green honest."],
+        )
 
     # ── the control, before anything is graded ──────────────────────────────
     try:
