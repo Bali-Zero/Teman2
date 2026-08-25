@@ -148,6 +148,22 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # answer is not knowable until 7(b) is.
     depends_on_for_margin_only: 7
     gesture: "sign up with his own credentials — the choice is made, the account is not"
+    # A RATIFICATION IS NOT DONE WHEN IT IS RECORDED HERE. It is done when every placeholder
+    # it retires has been swept out of the artifacts that were frozen while waiting for it.
+    # Ratifying this one on 2026-08-25 silently invalidated two `TODO(ground)` clauses in the
+    # frozen contract — both authored honestly ("we do not know the provider yet") and both
+    # WRONG the instant the provider was known. Nobody swept them, so the order lane built
+    # faithfully against a contract describing a world that had ended that morning: the
+    # webhook demanded an `Idempotency-Key` Xendit never sends (400 before signature check,
+    # every real payment stranded in `awaiting_payment` with nothing paged), and the security
+    # scheme still named a `X-Provider-Signature` body HMAC that does not exist. Cured in
+    # 00d6e52ee; the contract suite now guards both directions.
+    #
+    # The obligation this leaves behind, for every decision below and for the sibling
+    # products copying this switchboard: WHEN A DECISION MOVES TO `ratified`, GREP THE FROZEN
+    # ARTIFACTS FOR THE PLACEHOLDERS IT RETIRES IN THE SAME TURN. `TODO(ground)` is the
+    # marker this product uses. A placeholder is not a note — it is a lane's instruction.
+    retired_placeholders_swept: 2026-08-25
   - id: 2
     decision: terms_of_sale_and_refund
     state: proposal-ready
