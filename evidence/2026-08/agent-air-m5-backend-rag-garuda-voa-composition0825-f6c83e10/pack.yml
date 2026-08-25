@@ -1,0 +1,109 @@
+brief_ref: "evidence/2026-08/agent-air-m5-backend-rag-garuda-voa-composition0825-f6c83e10/brief.yml"
+lanes:
+  - lane: L2-composition
+    role: build
+    seat: opus-5
+receipts:
+  - claim: >
+      The L2<->L3 seam (a check created through PostgresCheckStore fetched
+      by PostgresEligibilityCheckLookup and turned into an order) actually
+      executes end-to-end against real Postgres, migrations applied
+      through 286 -- the seam that had never once run before this PR.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. pytest
+      backend/tests/services/garuda_orders/test_check_to_order_journey.py -v
+    exit: 0
+    ts: "2026-08-25T12:10:00Z"
+    seat: opus-5
+  - claim: >
+      Non-existent, wrong-session, and malformed result_id each produce
+      the contract's non-enumerating shape (None, never a distinguishing
+      exception) across both the CheckStore.get() and
+      EligibilityCheckLookup.get_reviewed_check() paths.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. pytest
+      backend/tests/services/garuda_orders/test_check_to_order_journey.py::test_a_result_id_that_does_not_exist_produces_the_contracts_non_enumerating_shape
+      backend/tests/services/garuda_orders/test_check_to_order_journey.py::test_get_with_the_wrong_session_secret_is_non_enumerating
+      backend/tests/services/garuda_orders/test_check_to_order_journey.py::test_lookup_returns_none_for_malformed_or_absent_result_id
+      -v
+    exit: 0
+    ts: "2026-08-25T12:12:00Z"
+    seat: opus-5
+  - claim: >
+      Dissent-fix receipt: purge_expired_garuda_voa_check_results rejects
+      out-of-range input, deletes an expired row via the bounded DB
+      primitive, and stays inert (0 rows) with no signed GARUDA_CHECK
+      policy -- the fail-closed state today.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. pytest
+      backend/tests/services/garuda_flow/test_check_store_purge.py -v
+    exit: 0
+    ts: "2026-08-25T13:05:00Z"
+    seat: opus-5
+  - claim: >
+      Full relevant suite (journey + purge + router + orders) is green
+      together, 74 tests total, no regressions from either the base
+      composition commit or the dissent-fix follow-up.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://balizero@localhost:5432/nuzantara_test
+      PYTHONPATH=. pytest
+      backend/tests/services/garuda_flow/test_check_store_purge.py
+      backend/tests/services/garuda_orders/test_check_to_order_journey.py
+      backend/tests/app/routers/test_garuda_voa_public.py
+      backend/tests/services/garuda_orders/ -q
+    exit: 0
+    ts: "2026-08-25T13:08:00Z"
+    seat: opus-5
+  - claim: >
+      No async-without-await auth-bypass pattern (team-lead's landmine
+      warning) exists anywhere in this PR's diff -- every call site that
+      invokes an async CheckStore/EligibilityCheckLookup method is itself
+      `await`ed, verified by direct grep against the call sites, not by
+      assertion.
+    cmd: >
+      grep -n "\.create(\|\.get(\|\.delete(\|get_reviewed_check("
+      backend/app/routers/garuda_voa_public.py
+      backend/app/routers/garuda_orders_router.py
+      backend/services/garuda_orders/repository.py
+    exit: 0
+    ts: "2026-08-25T11:50:00Z"
+    seat: opus-5
+  - claim: >
+      ruff is clean on every Python file touched by this PR, including the
+      dissent-fix follow-up commit.
+    cmd: >
+      ruff check backend/services/garuda_flow/check_store.py
+      backend/services/garuda_orders/eligibility_lookup.py
+      backend/tests/services/garuda_flow/test_check_store_purge.py
+      backend/tests/services/garuda_orders/test_check_to_order_journey.py
+    exit: 0
+    ts: "2026-08-25T13:10:00Z"
+    seat: opus-5
+dissent:
+  - seat: team-lead (integration-branch orchestrator, cross-review of the
+      base composition commit)
+    objection: >
+      purge_garuda_voa_check_results (migration 286) shipped with ZERO
+      Python callers, while the sibling archive table's purge primitive
+      (purge_garuda_voa_checks) already had one wired in
+      garuda_flow.retention -- family #2, esiste != armato. The erasure
+      path for the table that will actually receive live traffic was less
+      wired than the archive table that receives none.
+    status: CONFIRMED
+  - seat: opus-5 (self, responding to team-lead's separate
+      async-without-await auth-bypass warning -- generator != grader holds
+      even against one's own new adapters)
+    objection: >
+      Checked whether this PR introduces any async callable assigned to
+      app.state (or any port) whose reader calls it without `await`,
+      matching the exact class of bug found live in
+      garuda_orders_router.py's _require_staff_actor. Grepped every call
+      site this diff touches (store.create/get/delete,
+      get_reviewed_check) -- all four are correctly awaited, and this
+      diff never touches _require_staff_actor or
+      garuda_staff_session_verifier.
+    status: RETRACTED
+pii_scan: clean
