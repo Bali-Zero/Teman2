@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import secrets
 from datetime import UTC, date, datetime
 from typing import Any
@@ -43,7 +44,14 @@ from backend.services.garuda_flow.public_api import (
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["PostgresCheckStore"]
+__all__ = ["PostgresCheckStore", "purge_expired_garuda_voa_check_results"]
+
+# Mirrors `garuda_flow.retention._REQUESTED_BY_RE` exactly (same shape as the
+# legacy archive table's actor-format guard) -- duplicated rather than
+# imported because that module is L1-owned (retention.py header) and this
+# table's purge path is L2's, not a reason to reach into a sibling lane's
+# private regex.
+_REQUESTED_BY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$")
 
 # Bytes of entropy for the opaque ids this adapter mints. 24 raw bytes ->
 # 32 base64url chars (no padding), inside the contract's ResultId
@@ -295,3 +303,42 @@ class PostgresCheckStore:
                 payload_sha256,
             )
             return deleted
+
+
+async def purge_expired_garuda_voa_check_results(
+    db_pool: asyncpg.Pool,
+    *,
+    limit: int,
+    requested_by: str,
+) -> int:
+    """Run one bounded, DB-enforced purge batch and return deleted rows.
+
+    Mirrors ``garuda_flow.retention.purge_expired_garuda_checks`` exactly
+    (same limit bound, same actor-format guard, same append-only evidence
+    trail via ``visa_decision_retention_batches`` inside migration 286's
+    ``purge_garuda_voa_check_results`` function) -- this is the erasure path
+    for the table that actually receives live traffic, so it cannot be left
+    unwired the way the archive table's caller-less primitive briefly was:
+    the ``garuda_voa_check_idempotency`` guard trigger and the ``GARUDA_CHECK``
+    scope's ``INTO STRICT`` binding trigger both fail closed until Zero signs
+    a policy row (no migration seeds one), so this stays inert in every
+    environment today -- but the instant that signature lands, real rows
+    start accumulating and this is the only thing that can erase them.
+
+    No scheduler calls this yet -- wiring the cadence (cron/synthetic-probe
+    stage) is an operator/orchestrator decision, same as
+    ``purge_expired_garuda_checks`` before it, not something this adapter
+    should invent.
+    """
+
+    if type(limit) is not int or not 1 <= limit <= 1_000:
+        raise ValueError("limit must be an integer between 1 and 1000")
+    if not isinstance(requested_by, str) or _REQUESTED_BY_RE.fullmatch(requested_by) is None:
+        raise ValueError("requested_by has an invalid format")
+    async with db_pool.acquire() as conn:
+        deleted = await conn.fetchval(
+            "SELECT public.purge_garuda_voa_check_results($1, $2)",
+            limit,
+            requested_by,
+        )
+    return int(deleted)
