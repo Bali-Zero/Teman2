@@ -94,7 +94,29 @@ import type { OracleFacts } from "./tree";
 
 /** Identifies the pinned evaluator source this baseline was verified
  * against — the disclosed-review-flags policy is pack-independent (see file
- * doc comment), so this is a source digest, not a RulePack id. */
+ * doc comment), so this is a source digest, not a RulePack id.
+ *
+ * ⚠️ STALE AS OF 2026-08-25, AND NOTHING NOTICED — read this before trusting
+ * the digest. Two separate facts:
+ *
+ *   1. `_apply_disclosed_review_flags` CHANGED on 2026-08-25: it no longer
+ *      erases `candidates`, it retains them (owner ruling #5; see
+ *      `docs/plans/2026-08-24-visa-oracle-live/RULING5-HALF-APPLIED.md`).
+ *      The digest below therefore no longer identifies the live source.
+ *   2. The only consumer of this constant, `gold-oracle-baseline.test.ts`,
+ *      asserts it equals a HARDCODED COPY OF ITSELF. It never recomputes a
+ *      sha256 from `evaluate_path.py`, so it cannot detect (1) — or any
+ *      future change. The pin is decorative: it records an intent that no
+ *      check enforces.
+ *
+ * The baseline's PREDICTIONS are unaffected and still correct: both pinned
+ * personas have an underlying (pre-disclosure) state of `NEEDS_INPUT`, which
+ * the frozen contract already forces to `candidates == ()`, so retaining
+ * candidates is a no-op for exactly this shape. Only the provenance claim
+ * went stale. The digest is left untouched deliberately — the recipe that
+ * produced it (which symbols, in what order) lives in prose above and in no
+ * code, so recomputing it would be inventing a number, not verifying one.
+ * Arming this for real means writing the generator first. */
 export const GOLD_ORACLE_PACK_HASH =
   "evaluate_path.py@8ee131a989fc786f1fc54ad531ddefaa9614756361f284b6412ee8a23120e569";
 

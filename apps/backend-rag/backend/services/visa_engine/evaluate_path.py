@@ -1265,10 +1265,38 @@ def _apply_disclosed_review_flags(
 ) -> Decision:
     """Monotone abstention adapter for review disclosures outside the pack.
 
-    This adapter cannot create or retain candidates.  Empty ``source_refs``
-    is intentional: these codes describe an applicant disclosure requiring
-    a human workflow, not a legal eligibility claim.  They must not borrow a
-    regulatory citation that the signed RulePack did not declare.
+    This adapter cannot CREATE a candidate — it only ever lowers a legal
+    outcome to ``HUMAN_REVIEW_REQUIRED``.  It does, however, **retain** the
+    candidates the engine had already computed (owner ruling #5, 2026-08-25,
+    ``docs/plans/2026-08-24-visa-oracle-live/OWNER-RULINGS-2026-08-25.md``
+    §5: *"zero-risultati è vietato come schermata — ogni vicolo cieco diventa
+    un candidato onesto + una mano tesa"*).
+
+    Erasing them here was the ruling applied to one branch out of two: the
+    in-pack review branch in ``evaluator.py`` was updated, this adapter —
+    which predates the ruling and runs on EVERY public evaluation — was not,
+    and it is the one that actually fires (measured 2026-08-25: every ``work``
+    and every ``business`` applicant raises ``ACTIVITY_BOUNDARY`` through
+    ``fact-mapper.ts``'s always-asked ``work_role``/``business_activity``,
+    so no applicant in those categories could ever be shown a candidate).
+    See ``RULING5-HALF-APPLIED.md`` in that same directory.
+
+    Monotonicity is unchanged and is what the retention rests on: the
+    candidate list is copied verbatim, never extended or re-ranked, and
+    ``quotes`` stays ``()`` — contract C1 (a candidate without a resolved
+    quote cannot exhibit a price) is what blocks a purchase button here, not
+    the emptiness of ``candidates``.  A retained candidate is therefore
+    priceless and unbuyable by construction, exactly as ruling #5 intends.
+
+    Retention is self-scoping: ``_check_state_conditionals`` already forces
+    ``candidates == ()`` on ``NEEDS_INPUT``/``NO_SUPPORTED_PATH``, so only a
+    ``SUPPORTED_CANDIDATES`` or ``HUMAN_REVIEW_REQUIRED`` baseline has
+    anything to carry.
+
+    Empty ``source_refs`` is intentional: these codes describe an applicant
+    disclosure requiring a human workflow, not a legal eligibility claim.
+    They must not borrow a regulatory citation that the signed RulePack did
+    not declare.
     """
 
     if not flags:
@@ -1296,7 +1324,11 @@ def _apply_disclosed_review_flags(
             "decision_id": decision_id,
             "public_id": public_id,
             "state": "HUMAN_REVIEW_REQUIRED",
-            "candidates": (),
+            # Owner ruling #5: the candidates ride along, verbatim from the
+            # underlying decision. `payload` already carries them, and this
+            # adapter deliberately does NOT overwrite the key — which is how
+            # "cannot create a candidate" and "does retain one" are both true
+            # at once. `quotes` is still forced to () below.
             "missing_facts": (),
             "review_reasons": (*existing_reasons, *disclosed_reasons),
             "no_path_reasons": (),

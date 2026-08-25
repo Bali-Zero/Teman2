@@ -2256,11 +2256,41 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
         (DisclosedReviewFlag.CRIMINAL_RECORD,),
     )
     assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
-    assert reviewed.candidates == ()
+    # Owner ruling #5 (2026-08-25): the candidates the engine already computed
+    # ride along with the review verdict — verbatim, never re-ranked. Until
+    # 2026-08-25 this line asserted `reviewed.candidates == ()`, which
+    # conflated the adapter's real invariant ("can never CREATE a candidate",
+    # pinned by the innocence half below) with an erasure the ruling forbids.
+    assert reviewed.candidates == baseline.candidates
+    # ...and C1 is what actually keeps the purchase button off, not the
+    # emptiness of `candidates`: a retained candidate is priceless.
+    assert reviewed.quotes == ()
     assert [reason.code for reason in reviewed.review_reasons] == [
         "DISCLOSED_CRIMINAL_RECORD_REVIEW"
     ]
     assert reviewed.review_reasons[0].source_refs == ()
+
+    # INNOCENCE: the adapter must never CONJURE a candidate. Driven from a
+    # baseline that legitimately has none, it must still have none — this is
+    # the half of the monotonicity contract that the retention above does not
+    # weaken, and it fails loudly if anyone ever "helpfully" backfills here.
+    blocked_facts = gold_loader.load_persona(
+        gold_loader.PERSONAS_DIR / "10_student_blocked_unknown_eligibility.json"
+    ).facts
+    blocked = evaluate(
+        blocked_facts,
+        compiled,
+        effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+    assert blocked.candidates == ()
+    blocked_reviewed = evaluate_path._apply_disclosed_review_flags(
+        blocked,
+        (DisclosedReviewFlag.ACTIVITY_BOUNDARY,),
+    )
+    assert blocked_reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert blocked_reviewed.candidates == ()
+    assert blocked_reviewed.missing_facts == ()
 
 
 def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
