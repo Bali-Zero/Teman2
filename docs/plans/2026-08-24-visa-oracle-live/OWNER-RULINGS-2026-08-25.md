@@ -92,3 +92,38 @@ loro attese per far tornare un numero.
 criterio con cui sarà valutata. La #15 resta aperta — un vicolo cieco vivo, misurato — e finché non è
 chiusa il registro d'accensione (`contracts/ignition_signatures.json`) tiene `signed: false` sulla
 #3. Istruzione contestuale di Zero, stesso messaggio: **«vai avanti col vicolo cieco.»**
+
+---
+
+## Addendum — Rulings collected 2026-08-25 evening (switchboard #4/#5 + DPIA, via the orchestrating session)
+
+Zero answered the distilled questionnaire live in the interactive session on M5. Verbatim
+answers recorded by the session; the questionnaire's numbering follows the distilled list
+(A/B/C/D grouping from TIER-MAP.md / SWITCHBOARD-5-PRICES-AND-TERMS.md / DPIA-DELTA).
+
+1. **No-price products → T3 automatically: YES** («si»). The 12 unpriced products stay
+   consultant-routed until they carry a price.
+2. **T1 direct purchase: YES, with an always-visible escape hatch** — verbatim: «il percorso
+   può portarli all'acquisto diretto, certo. ma c'è sempre un bottone, un qualcosa se si
+   sentono smarriti per contattare il consulente». The "talk to a consultant" control is a
+   REQUIREMENT on every tier's screen, not an option to design away.
+3. **T2 model confirmed** — verbatim: «creare sempre il percorso e dare le info giuste, ma va
+   bene incanalarlo al consulente». Full path + correct information, then channel to the
+   consultant (contact included, 24h working-hours promise stands).
+4. **E33A/B/C stay pull, never automated** — verbatim: «lasciamoli contattare un consulente.
+   Sono per la strategia pull no push». The client reaches out; the system never pushes.
+5. **E31D stays human-operator: YES** («si»).
+6. **T2 verdict-screen copy change APPROVED** («confermo»): "un consulente ti contatta, è
+   compreso" replaces "scegli se contattare un consulente" on the 19 T2 products.
+9. **DPIA delta: one-page signed addendum APPROVED** («si») in place of a full new DPIA for
+   the consultant-request table.
+
+Items 8 (renewals/KITAP out of catalog v1), 10 (wizard retention 30 days), 11 (retire the
+free-text funnel), 12 (proceed with dead end #15) were already ruled earlier on 2026-08-25 in
+this document and were re-presented for courtesy only — they stand unchanged; no new answer
+was required or recorded.
+
+Note on #3 ignition: signature #3 WAS granted later the same day — Zero ran the seq-15
+signing ceremony by hand and instructed the flip (commit on this branch: "feat(visa-oracle):
+seq-15 signed bundle + ignition signature #3 granted by Zero"). The paragraph above this
+addendum describes the earlier state and is superseded on that single point.
