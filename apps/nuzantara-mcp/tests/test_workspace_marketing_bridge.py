@@ -290,8 +290,9 @@ async def test_flow_generation_has_fixed_tier_no_paths_and_idempotency(
     assert first["media_id"] == "media-safe-1"
     assert "local_path" not in first
     assert "stderr" not in first
-    assert len(captured) == 1
-    args = captured[0]
+    assert captured[0] == ["health"]
+    assert len(captured) == 2
+    args = captured[1]
     assert args[args.index("--project") + 1] == marketing.FLOW_PROJECT_NAME
     assert args[args.index("--paygate-tier") + 1] == marketing.FLOW_PAYGATE_TIER
     assert "--dest" not in args
@@ -331,7 +332,12 @@ async def test_flow_failure_is_recorded_and_replayed_without_retry(
 ) -> None:
     monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
     monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
-    failing_flow = AsyncMock(side_effect=RuntimeError("/Users/private/token"))
+    failing_flow = AsyncMock(
+        side_effect=[
+            {"ok": True},
+            RuntimeError("/Users/private/token"),
+        ]
+    )
     monkeypatch.setattr(marketing, "_run_flowkit_cli", failing_flow)
     tools, _ = _capture_tools(AsyncMock())
 
@@ -348,7 +354,7 @@ async def test_flow_failure_is_recorded_and_replayed_without_retry(
     )
 
     assert replay == {"ok": False, "status": "failed"}
-    assert failing_flow.await_count == 1
+    assert failing_flow.await_count == 2
     assert "/Users/" not in json.dumps(replay)
 
 
@@ -531,13 +537,26 @@ def test_team_input_rejects_oversize_instead_of_truncating_before_scan() -> None
 
 
 def test_indonesian_grouped_currency_is_public_editorial_data() -> None:
-    text = "Modal disetor PT PMA naik ke Rp 2.500.000.000 per KBLI"
+    values = (
+        "Modal disetor PT PMA naik ke Rp 2.500.000.000 per KBLI",
+        "Biaya KITAS Rp 25000000 all-in",
+        "Investment threshold IDR 10000000000",
+        "PMK 44 Tahun 2026 berlaku 2026-09-01",
+    )
 
-    assert marketing._public_team_input(text, field="topic", limit=500) == text
-    assert marketing._clean_text(text) == text
-    article = marketing._public_news_article({"title": text, "content": text})
-    assert article["title"] == text
-    assert article["content"] == text
+    for text in values:
+        assert marketing._public_team_input(text, field="topic", limit=500) == text
+        assert marketing._clean_text(text) == text
+    article = marketing._public_news_article(
+        {
+            "title": values[0],
+            "content": values[1],
+            "published_at": "2026-08-25",
+        }
+    )
+    assert article["title"] == values[0]
+    assert article["content"] == values[1]
+    assert article["published_at"] == "2026-08-25"
 
 
 def test_workspace_flowkit_runner_rejects_unapproved_argv_shapes() -> None:
@@ -637,7 +656,7 @@ async def test_cancelled_flow_operation_is_replayable_as_cancelled(
 ) -> None:
     monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
     monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
-    runner = AsyncMock(side_effect=asyncio.CancelledError)
+    runner = AsyncMock(side_effect=[{"ok": True}, asyncio.CancelledError])
     monkeypatch.setattr(marketing, "_run_flowkit_cli", runner)
     tools, _ = _capture_tools(AsyncMock())
 
@@ -655,7 +674,45 @@ async def test_cancelled_flow_operation_is_replayable_as_cancelled(
     )
 
     assert replay == {"ok": False, "status": "cancelled"}
-    runner.assert_awaited_once()
+    assert runner.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_flow_outage_does_not_claim_idempotency_or_daily_quota(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    monkeypatch.setenv("WORKSPACE_MARKETING_FLOW_DAILY_LIMIT", "1")
+    runner = AsyncMock(
+        side_effect=[
+            {"ok": False, "status": "unavailable", "error_kind": "flowkit_unavailable"},
+            {"ok": True},
+            {"ok": True, "media_id": "media-safe-1"},
+        ]
+    )
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", runner)
+    tools, _ = _capture_tools(AsyncMock())
+
+    outage = await tools["flow_generate_image"](
+        "Public Bali Zero editorial image treatment",
+        "flow-outage-0001",
+        "SETUJU",
+    )
+    success = await tools["flow_generate_image"](
+        "A second public Bali Zero editorial treatment",
+        "flow-outage-0002",
+        "SETUJU",
+    )
+
+    assert outage["ok"] is False
+    assert outage["status"] == "unavailable"
+    assert success["ok"] is True
+    assert success["media_id"] == "media-safe-1"
+    assert success["executed_on"] == "Pro"
+    assert not marketing._operation_path("flow-image", "flow-outage-0001").exists()
+    assert marketing._operation_path("flow-image", "flow-outage-0002").exists()
 
 
 def test_workspace_flowkit_environment_drops_server_credentials(monkeypatch) -> None:

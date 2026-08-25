@@ -53,7 +53,13 @@ _EMAIL_RE = re.compile(
     r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])",
     re.IGNORECASE,
 )
-_PHONE_RE = re.compile(r"(?<!\w)(?:\+\d{1,3}[\s()-]*)?(?:\d[\s()-]*){8,14}(?!\w)")
+_PHONE_RE = re.compile(
+    r"(?<!\w)(?:\+\d{1,3}[\s()-]*(?:\d[\s()-]*){7,13}|0(?:\d[\s()-]*){8,13})(?!\w)"
+)
+_CURRENCY_RE = re.compile(
+    r"(?<!\w)(?:Rp|IDR)\s*\d(?:[\d.,]*\d)?(?!\w)",
+    re.IGNORECASE,
+)
 _IDENTIFIER_RE = re.compile(
     r"\b(NIK|KTP|NPWP|passport(?:\s+number)?|nomor\s+paspor|tax\s+id|id\s+number)"
     r"\b\s*[:#-]?\s*[A-Z0-9.-]{6,}",
@@ -103,14 +109,27 @@ def _clean_text(value: Any, *, limit: int = MAX_PUBLIC_TEXT) -> str:
     """Return bounded public text with common direct identifiers removed."""
 
     text = str(value or "").replace("\x00", " ").strip()
-    text = _IDENTIFIER_RE.sub(lambda match: f"{match.group(1)} [identifier removed]", text)
-    text = _EMAIL_RE.sub("[email removed]", text)
-    text = _PHONE_RE.sub("[phone removed]", text)
-    text = _LONG_DIGIT_RE.sub("[number removed]", text)
-    text = _PASSPORT_LIKE_RE.sub("[identifier removed]", text)
-    text = _LOCAL_PATH_RE.sub("[local path removed]", text)
-    text = _SECRET_VALUE_RE.sub("[secret removed]", text)
-    return text[:limit]
+
+    def redact_non_currency(segment: str) -> str:
+        segment = _IDENTIFIER_RE.sub(
+            lambda match: f"{match.group(1)} [identifier removed]",
+            segment,
+        )
+        segment = _EMAIL_RE.sub("[email removed]", segment)
+        segment = _PHONE_RE.sub("[phone removed]", segment)
+        segment = _LONG_DIGIT_RE.sub("[number removed]", segment)
+        segment = _PASSPORT_LIKE_RE.sub("[identifier removed]", segment)
+        segment = _LOCAL_PATH_RE.sub("[local path removed]", segment)
+        return _SECRET_VALUE_RE.sub("[secret removed]", segment)
+
+    public_parts: list[str] = []
+    cursor = 0
+    for currency_match in _CURRENCY_RE.finditer(text):
+        public_parts.append(redact_non_currency(text[cursor : currency_match.start()]))
+        public_parts.append(currency_match.group(0))
+        cursor = currency_match.end()
+    public_parts.append(redact_non_currency(text[cursor:]))
+    return "".join(public_parts)[:limit]
 
 
 def _public_team_input(value: Any, *, field: str, limit: int) -> str:
@@ -498,6 +517,39 @@ def _claim_flow_operation(
         if not existing_path.is_file() and not _flow_daily_limit_available():
             raise RuntimeError("Daily Flow generation limit reached")
         return _claim_operation(kind, request_key, fingerprint_payload, {})
+
+
+def _existing_flow_operation(
+    kind: str,
+    request_key: str,
+    fingerprint_payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Return a prior idempotent claim without creating or consuming quota."""
+
+    with _flow_claim_lock():
+        path = _operation_path(kind, request_key)
+        if not path.is_file():
+            return None
+        try:
+            operation = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError("Flow operation record is invalid") from exc
+        if operation.get("fingerprint") != _operation_fingerprint(fingerprint_payload):
+            raise ValueError("request_key was already used for different inputs")
+        return operation
+
+
+async def _flow_preflight() -> dict[str, Any] | None:
+    """Return a sanitized outage result before reserving quota, or None if ready."""
+
+    try:
+        payload = await _run_flowkit_cli(["health"], timeout_s=60)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        raise RuntimeError("FlowKit preflight failed on Pro") from exc
+    result = _safe_flow_result(payload)
+    return None if result.get("ok") is True else result
 
 
 def _claim_sol_operation(
@@ -910,10 +962,25 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         if safe_orientation not in ALLOWED_ORIENTATIONS:
             raise ValueError("Unsupported image orientation")
         safe_request_key = _validated_request_key(request_key)
+        fingerprint_payload = {
+            "prompt": safe_prompt,
+            "orientation": safe_orientation,
+        }
+        existing = _existing_flow_operation(
+            "flow-image",
+            safe_request_key,
+            fingerprint_payload,
+        )
+        if existing is not None:
+            result = existing.get("result")
+            return result if isinstance(result, dict) else {"ok": False, "status": "pending"}
+        preflight_failure = await _flow_preflight()
+        if preflight_failure is not None:
+            return preflight_failure
         operation_path, operation, created = _claim_flow_operation(
             "flow-image",
             safe_request_key,
-            {"prompt": safe_prompt, "orientation": safe_orientation},
+            fingerprint_payload,
         )
         if not created:
             result = operation.get("result")
@@ -952,7 +1019,12 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             _write_json_atomic(operation_path, operation)
             raise RuntimeError("Flow image generation failed on Pro") from exc
         result = _safe_flow_result(payload)
-        operation.update({"status": "completed", "result": result})
+        operation.update(
+            {
+                "status": "completed" if result.get("ok") is True else "failed",
+                "result": result,
+            }
+        )
         _write_json_atomic(operation_path, operation)
         return result
 
@@ -988,15 +1060,27 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         if safe_orientation not in ALLOWED_ORIENTATIONS:
             raise ValueError("Unsupported video orientation")
         safe_request_key = _validated_request_key(request_key)
+        fingerprint_payload = {
+            "prompt": safe_prompt,
+            "orientation": safe_orientation,
+            "start_image_media_id": safe_media_id,
+            "scene_id": safe_scene_id,
+        }
+        existing = _existing_flow_operation(
+            "flow-video",
+            safe_request_key,
+            fingerprint_payload,
+        )
+        if existing is not None:
+            result = existing.get("result")
+            return result if isinstance(result, dict) else {"ok": False, "status": "pending"}
+        preflight_failure = await _flow_preflight()
+        if preflight_failure is not None:
+            return preflight_failure
         operation_path, operation, created = _claim_flow_operation(
             "flow-video",
             safe_request_key,
-            {
-                "prompt": safe_prompt,
-                "orientation": safe_orientation,
-                "start_image_media_id": safe_media_id,
-                "scene_id": safe_scene_id,
-            },
+            fingerprint_payload,
         )
         if not created:
             result = operation.get("result")
@@ -1037,6 +1121,11 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             _write_json_atomic(operation_path, operation)
             raise RuntimeError("Flow video generation failed on Pro") from exc
         result = _safe_flow_result(payload)
-        operation.update({"status": "completed", "result": result})
+        operation.update(
+            {
+                "status": "completed" if result.get("ok") is True else "failed",
+                "result": result,
+            }
+        )
         _write_json_atomic(operation_path, operation)
         return result
