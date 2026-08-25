@@ -1,0 +1,52 @@
+task_id: backend-rag-wa-race2
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >
+  Cure the WhatsApp double-reply race (P0, still reproducing after PR #4878):
+  two concurrent BackgroundTasks — the legacy inline path
+  (process_whatsapp_message) and the meta-inbox pipeline
+  (_handle_meta_inbox_message / wa_outbox_worker) — can both answer the same
+  inbound wamid, because #4878's cross-path dedup was a read-only SELECT that
+  can run before the other path's own write commits. Replace it with a
+  write-before-send atomic claim (INSERT ... ON CONFLICT ... RETURNING
+  claimed_by) on a new wa_reply_claims table, executed in BOTH paths before
+  any reply is generated or sent, with best-effort (never-mute) behavior
+  preserved only for the DB-unreachable case.
+constraints:
+  - "One concern only — atomic claim + display_phone_number normalization check, no unrelated refactor."
+  - "Preserve deliberate #4878 behavior — a DB hiccup on the claim must never silence a genuinely-legacy message (best-effort exception, not a hard fail)."
+  - "Once the DB responds, the claim outcome is binding — no soft-fail on a real conflict."
+  - "New migration must carry exactly one ROLLBACK marker and pass squawk with the repo's standard --exclude set (.github/workflows/migration-lint.yml)."
+  - "Claim must run AFTER the allowlist check in the legacy path, not before — see the self-review finding in this PR's dissent entry."
+acceptance:
+  - "Unit suite green: PYTHONPATH=. pytest backend/tests/unit/routers/
+    --deselect backend/tests/unit/routers/test_wa_meta_inbox_onconflict.py
+    (pre-existing local-Postgres-role gap, unrelated to this change,
+    reproduces identically on pre-change code via git stash)."
+  - "A simulated race test proves exactly one of two concurrent claimants
+    wins on the same wamid, and the same claimant retrying reaffirms its own
+    win (test_claim_race_exactly_one_winner,
+    test_claim_same_path_retry_reaffirms_its_own_win)."
+  - "ruff check clean on the two touched Python files."
+  - "squawk clean (0 issues) on the new migration with the repo's standard
+    exclusion set."
+consumer_map:
+  - "WhatsApp Business webhook (Meta Cloud API) — both process_whatsapp_message
+    (legacy inline BackgroundTask) and _handle_meta_inbox_message
+    (wa_outbox_worker pipeline) on nuzantara-rag (Fly.io)."
+risks:
+  - "A claim ordered before the allowlist check could let a will-be-ignored
+    number poison the wamid claim, starving a legitimate later meta-inbox
+    delivery of the same wamid — found and cured during self-review before
+    this evidence pack was written (see dissent)."
+  - "AsyncMock auto-promotion on unconfigured mock attributes silently masks
+    claim-comparison bugs in tests that never explicitly configure
+    conn.fetchval — several previously-passing tests required explicit
+    fetchval configuration after the comparison logic changed from `== 1` to
+    `owner == claimant`."
+grader: opus-5-session
+budget:
+  seats: [sonnet-5]
+  fable_gate_est_tokens: not-applicable-gate-class-opus
+pii: none
