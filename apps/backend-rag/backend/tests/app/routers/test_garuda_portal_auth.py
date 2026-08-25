@@ -56,6 +56,11 @@ class _FakeStore:
         self.issued: list[dict[str, object]] = []
         self.tokens: dict[str, dict[str, object]] = {}
         self.exchanged_keys: dict[str, ExchangeOutcome] = {}
+        # Refuter finding #9: a real adapter binds an Idempotency-Key to the
+        # CANONICAL REQUEST (here, the token) it was first used with — reusing
+        # the same key with a different token must be IDEMPOTENCY_CONFLICT,
+        # never treated as a replay of the first token's outcome.
+        self._exchanged_key_tokens: dict[str, str] = {}
         self.raise_on_issue: Exception | None = None
         self.raise_on_exchange: Exception | None = None
 
@@ -87,6 +92,10 @@ class _FakeStore:
             raise self.raise_on_exchange
 
         if idempotency_key in self.exchanged_keys:
+            if self._exchanged_key_tokens[idempotency_key] != token:
+                raise IdempotencyConflict(
+                    f"key {idempotency_key!r} already bound to a different token"
+                )
             original = self.exchanged_keys[idempotency_key]
             return ExchangeOutcome(
                 authorized=original.authorized,
@@ -112,6 +121,7 @@ class _FakeStore:
                 account_session_secret="acct-" + token,
             )
         self.exchanged_keys[idempotency_key] = outcome
+        self._exchanged_key_tokens[idempotency_key] = token
         return outcome
 
 
@@ -163,6 +173,28 @@ def test_exchange_missing_idempotency_key_400():
     )
     assert resp.status_code == 400
     assert resp.json()["code"] == "IDEMPOTENCY_KEY_REQUIRED"
+
+
+def test_request_malformed_idempotency_key_is_422_not_400():
+    """Refuter finding #6: present-but-invalid must be 422 INVALID_REQUEST,
+    the contract reserves 400 for an ABSENT key only."""
+    resp = _client().post(
+        "/api/visa/voa/auth/magic-links",
+        json={"result_id": VALID_RESULT_ID, "email": "a@example.com"},
+        headers={"Idempotency-Key": "too-short"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["code"] == "INVALID_REQUEST"
+
+
+def test_exchange_malformed_idempotency_key_is_422_not_400():
+    resp = _client().post(
+        "/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": "too-short"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["code"] == "INVALID_REQUEST"
 
 
 # ============================================================
@@ -342,6 +374,85 @@ async def test_router_suppresses_cookie_on_replay_even_if_store_misbehaves(fake_
         headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
     )
     assert resp.status_code == 204
+    assert "Set-Cookie" not in resp.headers
+
+
+def test_request_unexpected_store_exception_is_contract_shaped_500(fake_store):
+    """Refuter finding #4: any exception the store raises beyond the two
+    named ones must still come back as the frozen INTERNAL_ERROR shape, never
+    a bare framework 500."""
+    fake_store.raise_on_issue = RuntimeError("boom")
+    client = _client_with_store(fake_store)
+    resp = client.post(
+        "/api/visa/voa/auth/magic-links",
+        json={"result_id": VALID_RESULT_ID, "email": "a@example.com"},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+        cookies={"garuda_result_session": VALID_RESULT_SESSION},
+    )
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
+
+
+def test_exchange_unexpected_store_exception_is_contract_shaped_500(fake_store):
+    fake_store.raise_on_exchange = RuntimeError("boom")
+    client = _client_with_store(fake_store)
+    resp = client.post(
+        "/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
+
+
+def test_exchange_same_key_different_token_is_conflict_not_replay(fake_store):
+    """Refuter finding #9: an Idempotency-Key is bound to the request that
+    first used it — reusing it with a DIFFERENT token must never be treated
+    as a replay of the first token's outcome."""
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False)
+    other_token = "u" * 43
+    fake_store.seed_token(other_token, expired=False, consumed=False)
+    client = _client_with_store(fake_store)
+
+    first = client.post(
+        "/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+    assert first.status_code == 204
+
+    second = client.post(
+        "/api/visa/voa/auth/sessions",
+        json={"token": other_token},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+    assert second.status_code == 409
+    assert second.json()["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+def test_exchange_impossible_outcome_fails_closed(fake_store):
+    """Refuter finding #8: `authorized=True`, not a replay, and no session
+    secret is an inconsistent adapter state — the router must refuse to
+    honour it as a real 204 rather than silently establish no session."""
+
+    class _InconsistentStore(_FakeStore):
+        async def exchange(self, *, idempotency_key: str, token: str) -> ExchangeOutcome:
+            return ExchangeOutcome(
+                authorized=True,
+                security_counter="magic_link_authorized",
+                result_id=VALID_RESULT_ID,
+                account_session_secret=None,
+                idempotency_replayed=False,
+            )
+
+    client = _client_with_store(_InconsistentStore())
+    resp = client.post(
+        "/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
     assert "Set-Cookie" not in resp.headers
 
 

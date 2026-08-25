@@ -124,11 +124,23 @@ def _public_enabled() -> bool:
     return os.environ.get(_FEATURE_FLAG_ENV, "").strip().lower() in {"1", "true", "yes"}
 
 
-def _valid_idempotency_key(value: str | None) -> str | None:
+class _IdempotencyKeyAbsent(Exception):
+    """Sentinel: the header was not sent at all. Maps to 400
+    IDEMPOTENCY_KEY_REQUIRED — the contract reserves that status to this ONE
+    case, distinct from a present-but-malformed key (422 INVALID_REQUEST,
+    refuter finding #6: both used to collapse into the same 400)."""
+
+
+class _IdempotencyKeyMalformed(Exception):
+    """Sentinel: the header was sent but does not match the contract's
+    pattern. Maps to 422 INVALID_REQUEST, never 400."""
+
+
+def _require_idempotency_key(value: str | None) -> str:
     if value is None:
-        return None
+        raise _IdempotencyKeyAbsent
     if _IDEMPOTENCY_KEY_PATTERN.fullmatch(value) is None:
-        return None
+        raise _IdempotencyKeyMalformed
     return value
 
 
@@ -195,9 +207,12 @@ async def request_magic_link(
     if not _public_enabled():
         return _error("GARUDA_PUBLIC_DISABLED")
 
-    key = _valid_idempotency_key(idempotency_key)
-    if key is None:
+    try:
+        key = _require_idempotency_key(idempotency_key)
+    except _IdempotencyKeyAbsent:
         return _error("IDEMPOTENCY_KEY_REQUIRED")
+    except _IdempotencyKeyMalformed:
+        return _error("INVALID_REQUEST")
 
     result = JSONResponse(status_code=202, content={})
     result.headers.update(_PRIVACY_HEADERS)
@@ -223,6 +238,11 @@ async def request_magic_link(
     except PersistencePolicyUnavailable:
         logger.warning("garuda_portal_auth: persistence policy unavailable at issue")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")
+    except Exception:
+        # Refuter finding #4: an unmapped store exception must never leak as
+        # a bare framework 500 — fail closed into the contract's own shape.
+        logger.exception("garuda_portal_auth: unexpected error at issue")
+        return _error("INTERNAL_ERROR")
 
     result.headers["Idempotency-Replayed"] = "true" if issued.idempotency_replayed else "false"
     return result
@@ -246,9 +266,12 @@ async def exchange_magic_link(
     if not _public_enabled():
         return _error("GARUDA_PUBLIC_DISABLED")
 
-    key = _valid_idempotency_key(idempotency_key)
-    if key is None:
+    try:
+        key = _require_idempotency_key(idempotency_key)
+    except _IdempotencyKeyAbsent:
         return _error("IDEMPOTENCY_KEY_REQUIRED")
+    except _IdempotencyKeyMalformed:
+        return _error("INVALID_REQUEST")
 
     try:
         outcome: ExchangeOutcome = await store.exchange(
@@ -260,6 +283,9 @@ async def exchange_magic_link(
     except PersistencePolicyUnavailable:
         logger.warning("garuda_portal_auth: persistence policy unavailable at exchange")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")
+    except Exception:
+        logger.exception("garuda_portal_auth: unexpected error at exchange")
+        return _error("INTERNAL_ERROR")
 
     # `outcome.security_counter` is internal telemetry ONLY — logged here,
     # never serialized into the response. Whether the counter reads
@@ -270,6 +296,17 @@ async def exchange_magic_link(
             "garuda_portal_auth: exchange denied (counter=%s)", outcome.security_counter
         )
         return _error("MAGIC_LINK_INVALID")
+
+    # Refuter finding #8: a store MUST NOT report authorized=True on a FRESH
+    # exchange (not a replay) without a session secret — that combination is
+    # an impossible/inconsistent adapter state, not a valid "no cookie"
+    # outcome. Fail closed rather than silently return 204 with no session.
+    if not outcome.idempotency_replayed and not outcome.account_session_secret:
+        logger.error(
+            "garuda_portal_auth: store reported authorized fresh exchange with no "
+            "session secret — refusing to honour an inconsistent outcome"
+        )
+        return _error("INTERNAL_ERROR")
 
     logger.info(
         "garuda_portal_auth: exchange authorized (counter=%s)", outcome.security_counter
