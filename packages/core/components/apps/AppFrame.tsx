@@ -39,6 +39,15 @@ export const AppFrame: FC<AppFrameProps> = ({
         padding: "var(--space-5, 2rem) var(--space-4, 1.5rem)",
         display: "grid",
         gap: "var(--space-5, 2rem)",
+        // Without this, the 3 implicit rows (header / trust strip / main)
+        // stretch to fill the leftover space that `minHeight: 100vh` creates
+        // once content is shorter than the viewport — CSS Grid's default
+        // `align-content: normal` behaves as `stretch` for auto row tracks.
+        // That silently pushed every funnel's first interactive step below
+        // the fold (measured on GARUDA VOA: ~260px of dead stretch at
+        // 1280x900). `start` makes rows size to content; minHeight still
+        // guarantees a full-height page.
+        alignContent: "start",
         minHeight: "100vh",
         background: "var(--surface-base)",
         color: "var(--text-primary, rgba(255, 255, 255, 0.96))",
