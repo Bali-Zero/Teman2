@@ -278,7 +278,9 @@ def test_accept_create_then_get_then_delete_round_trip(monkeypatch) -> None:
     app = _app()
     store = _FakeStore()
     _override_store(app, store)
-    client = TestClient(app)
+    # The result-session bearer is Secure-by-default. Exercise the real
+    # browser contract: a Secure cookie is sent back only over HTTPS.
+    client = TestClient(app, base_url="https://testserver")
 
     create_response = client.post(
         "/api/visa/voa/eligibility-checks",
