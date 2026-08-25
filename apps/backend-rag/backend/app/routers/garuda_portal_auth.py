@@ -198,7 +198,7 @@ def _set_account_session_cookie(response: Response, secret: str) -> None:
 async def request_magic_link(
     payload: MagicLinkRequest,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
-    garuda_result_session: Annotated[str | None, Cookie()] = None,
+    garuda_result_session: Annotated[str | None, Cookie(alias=_RESULT_SESSION_COOKIE)] = None,
     store: MagicLinkStore = Depends(get_garuda_magic_link_store),
 ) -> Response:
     """Always 202 for an unknown or non-owned result and never returns the
