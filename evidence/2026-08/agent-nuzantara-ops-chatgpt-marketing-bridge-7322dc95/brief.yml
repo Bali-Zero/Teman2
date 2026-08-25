@@ -1,0 +1,69 @@
+task_id: chatgpt-business-marketing-bridge-0825
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Connect the private Bali Zero ChatGPT Business marketing workspace to a
+  dedicated Nuzantara MCP surface through OpenAI Secure MCP Tunnel. Damar and
+  the marketing team must be able to review pending News Room material, inspect
+  governed WR2 review state, request bounded SOL 5.6 creative direction, and
+  generate bounded Flow image/video assets without receiving the full
+  Nuzantara MCP catalog, client data, local paths, or any publication ability.
+constraints:
+  - "No CRM, client records, documents, raw OSINT, admin, email, WhatsApp,
+    arbitrary filesystem access, social publishing, or full-MCP import path."
+  - "News Room is GET-only and uses a dedicated route-scoped key; final
+    approval remains a manual action in Kita."
+  - "SOL runs outside the repository in a read-only ephemeral sandbox with
+    tools disabled and an enum-only output schema."
+  - "Flow generation is Pro-only, preflighted before quota reservation,
+    idempotent, capped, fixed to the Bali Zero project and paygate tier, and
+    accepts no local path."
+  - "The MCP server is private and connected through outbound-only OpenAI
+    Secure MCP Tunnel; no public proxy or inbound firewall port."
+  - "No deploy, merge, tunnel association, secret provisioning, or external
+    publication by this generator."
+acceptance:
+  - "The dedicated FastMCP server registers exactly 10 expected tools and no
+    forbidden-domain tool."
+  - "Both News Room projections are reachable in the split Fly api-to-rag
+    topology, require the exact dedicated key, and reject every mutating
+    method."
+  - "MCP and backend security suites pass, including cancellation cleanup,
+    outage-before-claim, IDR and ISO-date preservation, PII/path rejection,
+    route authorization, and manifest parity."
+  - "A fresh Opus max-effort hostile review of the final code commit returns
+    PASS with zero critical, high, or medium findings."
+  - "The runtime remains unavailable until owner-only key, tunnel, workspace
+    association, app restriction, independent review, merge, and deployment
+    gates complete."
+consumer_map:
+  - "ChatGPT Business app `Nuzantara Marketing Bridge` restricted to the Bali
+    Zero marketing group."
+  - "Workspace agent `Nuzantara — Bali Zero Desk`, with Italian owner protocol
+    and Bahasa Indonesia team protocol."
+  - "Fly api process and internal rag process for the two News Room GET
+    projections."
+  - "Pro-local WR2 human-review queue and isolated SOL strategy worker."
+  - "Pro-local FlowKit bridge and Google Flow subscription credits."
+  - "Kita News Room approval UI and WR2 Control remain the human action gates."
+risks:
+  - "A stale SOL job can remain active after an abnormal worker death and
+    requires operator cleanup; it fails closed by blocking further SOL work."
+  - "Some optional News summary fields can remain empty because the backend
+    projection intentionally withholds body text from list responses."
+  - "PII filters are defense in depth, not authorization to enter private data;
+    only public campaign subjects are permitted."
+  - "A Flow cancellation can stop the local poller after a remote Google job
+    was accepted; quotas bound the residual credit risk."
+  - "The live connection depends on owner-controlled secrets and workspace
+    associations that do not exist at authoring time."
+grader: >-
+  Claude Opus, MAX OAuth on Air-M5, effort=max, fresh detached worktree at the
+  exact remote commit. The grader was independent from the Codex builder,
+  read the complete diff, reproduced prior defects, ran its own probes and
+  tests, and was not allowed to edit the worktree.
+budget: >-
+  Existing flat subscriptions only: ChatGPT Pro for the builder and Claude MAX
+  OAuth for the mandatory Opus gate. No paid per-token API and no client PII.
+pii: none

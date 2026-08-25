@@ -1,0 +1,199 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #4925, agent/nuzantara/ops/chatgpt-marketing-bridge; private allowlisted
+  marketing MCP plus owner-only OpenAI Secure MCP Tunnel activation runbook.
+lanes:
+  - lane: chatgpt-marketing-bridge
+    role: build
+    seat: Codex GPT-5.6, Pro worktree, implementation and verification
+  - lane: chatgpt-marketing-bridge-hostile-gate
+    role: review
+    seat: Claude Opus, MAX OAuth, effort=max, detached Air-M5 review worktree
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane and one independent review lane from a different model family;
+  no second build lane exists, so the multi-build non-Anthropic diversity rule
+  does not fire.
+diff:
+  net_lines: >-
+    16 files, 3643 insertions and 0 deletions at reviewed commit
+    8358370379a35885a38bff8b64f5e5a0a54bd061, measured with git diff
+    --shortstat and --numstat origin/main...HEAD.
+  behaviour_change: >-
+    Adds two authenticated GET-only News Room projections, one fresh
+    allowlisted FastMCP server with exactly 10 tools, bounded read-only queue
+    projections, isolated SOL strategy jobs, bounded Flow image/video
+    generation, and an owner-run outbound-only tunnel installer. It adds no
+    approve, send, publish, CRM, document, OSINT, or arbitrary-path capability.
+receipts:
+  - claim: "The deterministic floor for the code diff is Gear 3."
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/chatgpt-marketing-changed.txt
+      && python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/chatgpt-marketing-changed.txt
+    result: "3"
+    exit: 0
+    ts: "2026-08-25T14:35:53Z"
+    seat: Codex builder on Pro
+  - claim: "The complete dedicated MCP suite is green after both hostile-review fix loops."
+    cmd: >-
+      cd apps/nuzantara-mcp && .venv/bin/python -m pytest -q
+    result: "377 passed in 1.22s"
+    exit: 0
+    ts: "2026-08-25T14:35:53Z"
+    seat: Codex builder on Pro
+  - claim: >-
+      Backend projection, public registry, split-route proxy, route-authz, and
+      manifest-parity checks all completed successfully.
+    cmd: >-
+      cd apps/backend-rag && .venv/bin/python -m pytest
+      backend/tests/unit/routers/test_workspace_marketing_bridge.py
+      backend/tests/unit/middleware/test_public_endpoints_registry.py
+      backend/tests/unit/app/test_rag_proxy_intake_split.py
+      backend/tests/security/test_route_authz_coverage.py
+      backend/tests/setup/test_manifest_registration_parity.py -q
+    result: >-
+      exit 0; all collected tests passed. The independent grader separately
+      measured 39 bridge/registry tests and 347 authz/manifest tests.
+    exit: 0
+    ts: "2026-08-25T14:35:53Z"
+    seat: Codex builder on Pro and independent Opus grader on Air-M5
+  - claim: >-
+      The first hostile review found one high and three medium defects instead
+      of accepting the initial green unit tests.
+    cmd: >-
+      claude --print --model opus --effort max --permission-mode plan
+      <hostile full-diff security gate at f2cda3f57>
+    result: >-
+      FAIL: News routes unreachable in split production topology; Flow
+      cancellation orphaned the child and bricked replay; SQUARE was accepted
+      but rejected by the CLI; dot-grouped IDR was misclassified as a phone.
+    exit: 0
+    ts: "2026-08-25T13:50:31Z"
+    seat: Independent Claude Opus grader on Air-M5
+  - claim: >-
+      The second hostile review independently reproduced the fixes and found
+      two further medium defects.
+    cmd: >-
+      claude --print --model opus --effort max --permission-mode plan
+      <hostile full-diff security gate at e6c5e346e>
+    result: >-
+      FAIL: bare ISO dates and ungrouped IDR were still misclassified; a
+      FlowKit outage was recorded as completed and consumed quota.
+    exit: 0
+    ts: "2026-08-25T14:12:33Z"
+    seat: Independent Claude Opus grader on Air-M5
+  - claim: >-
+      The mandatory final hostile review of the corrected code commit passed
+      with no critical, high, or medium findings.
+    cmd: >-
+      claude --print --model opus --effort max --permission-mode plan
+      <full-diff final gate at 8358370379a35885a38bff8b64f5e5a0a54bd061>
+    result: >-
+      VERDICT: PASS; all five prior defect classes reproduced and confirmed
+      fixed; CRITICAL none, HIGH none, MEDIUM none; five LOW residual notes.
+    exit: 0
+    ts: "2026-08-25T14:35:24Z"
+    seat: Independent Claude Opus grader on Air-M5
+  - claim: >-
+      The public marketing redactor preserves grouped and ungrouped IDR and ISO
+      dates while still redacting ordinary email, Indonesian mobile, and
+      identity-labelled values.
+    cmd: >-
+      pytest tests/test_workspace_marketing_bridge.py -q plus independent
+      _clean_text and _public_team_input probes on 16 editorial strings
+    result: >-
+      Public currency/date strings preserved; private-looking strings rejected
+      or redacted; final MCP suite green.
+    exit: 0
+    ts: "2026-08-25T14:35:24Z"
+    seat: Codex builder on Pro and independent Opus grader on Air-M5
+  - claim: >-
+      A Flow outage returns before operation claim, while cancellation kills
+      the local process group and records a replayable cancelled result.
+    cmd: >-
+      pytest tests/test_workspace_marketing_bridge.py -k
+      'flow_outage or flowkit_cancellation or cancelled_flow_operation' -q
+    result: >-
+      Tests pass; outage key has no operation file, next ready request can use
+      the daily slot, cancellation sends SIGTERM to the process group, replay
+      returns cancelled without a second generation.
+    exit: 0
+    ts: "2026-08-25T14:35:53Z"
+    seat: Codex builder on Pro
+  - claim: "The live bridge is honestly still gated, while FlowKit itself is ready."
+    cmd: >-
+      tunnel-client runtimes status nuzantara-marketing --json; grep only the
+      dedicated key variable name in ~/.nuzantara-secrets.env; python
+      scripts/flowkit_cli.py health
+    result: >-
+      Tunnel alias unknown; projection key missing; FlowKit health ok with an
+      authenticated extension connection. No key values were printed.
+    exit: 0
+    ts: "2026-08-25T13:30:00Z"
+    seat: Codex builder on Pro
+pii_scan: clean
+dissent:
+  - seat: Independent Claude Opus grader, first hostile pass
+    objection: >-
+      Green monolithic tests concealed a production 404, and three Flow or
+      redaction contracts were unsafe.
+    status: RETRACTED
+    note: >-
+      The objection was confirmed against the initial commit, fixed in
+      e6c5e346e, re-tested, and then independently re-audited. It no longer
+      applies to the reviewed final code commit.
+  - seat: Independent Claude Opus grader, second hostile pass
+    objection: >-
+      The first fix still corrupted bare dates/ungrouped IDR and reserved Flow
+      quota during an outage.
+    status: RETRACTED
+    note: >-
+      Confirmed against e6c5e346e, fixed in 835837037, covered by new guilt
+      tests, and independently reproduced as fixed by the final Opus gate.
+  - seat: Godel read-only architecture audit
+    objection: >-
+      Exposing the existing full Nuzantara MCP or privileged WR2 runner would
+      leak broad tools and mutation authority into the team workspace.
+    status: CONFIRMED
+    note: >-
+      The implemented architecture accepts this objection: it creates a fresh
+      server with an exact 10-tool allowlist, no full-server import, and no WR2
+      queue mutation or publication tool.
+tests:
+  - "Full dedicated MCP suite: 377 passed."
+  - "Backend bridge, registry, proxy, authz, and manifest suites: exit 0."
+  - "Ruff on all touched Python: clean."
+  - "Shell syntax for the tunnel installer: clean."
+  - "FastAPI critical import chain: clean."
+static:
+  - "Exact live tool inventory: 10 expected names, no forbidden name."
+  - "Secret literal scan: no credential literal in the diff."
+  - "git diff --check: clean."
+  - "OpenAI tunnel-client 0.0.12 present on Pro and managed-runtime commands verified."
+runtime_proof: >-
+  Not live by design. The current Pro measurement has no workspace projection
+  key and no `nuzantara-marketing` tunnel runtime, so the owner-only OpenAI
+  association and post-merge secret/deploy gate remain. FlowKit itself was
+  healthy and extension-connected at the latest measurement. The PR is draft,
+  not armed, not merged, and not deployed.
+residual_risks:
+  - "Some list-summary fields remain empty because the list projector withholds article body text."
+  - "A worker killed outside its managed timeout/cancellation path can leave a stale SOL active record and fail closed until operator cleanup."
+  - "The currency carve-out trusts an explicit IDR/Rp prefix; the operating rule still forbids private identifiers in all prompts."
+  - "The secrets parser accepts the normal `export NAME=value` form; unusual tab-separated export syntax can pass installer preflight and then fail closed at runtime."
+  - "Pro-specific local binary paths are deployment assumptions in this Pro-only bridge."
+sources:
+  - "OpenAI Secure MCP Tunnel guide: https://developers.openai.com/api/docs/guides/secure-mcp-tunnels"
+  - "docs/runbooks/chatgpt-business-marketing-bridge.md"
+  - "research/operations/2026-08-09-harness-v2-teman2.md"
+notes:
+  - >-
+    No client PII, credential value, CRM row, private document, or raw OSINT was
+    used in implementation, tests, reviews, or this pack.
+  - >-
+    This pack records both independent FAIL verdicts and their fixes. It does
+    not treat an early green test run as final evidence.
+  - >-
+    Generator contract is preserved: a separate Claude session must review and
+    merge; the generator did not arm auto-merge or deploy.
