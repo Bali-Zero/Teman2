@@ -11,6 +11,7 @@ two outputs of one generator, and this repo has already paid for that.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -48,6 +49,89 @@ def _probe():
     sys.modules["kb_inventory_probe"] = module
     spec.loader.exec_module(module)
     return module
+
+
+# ── AST helpers: a definition/call is a real node, never a textual coincidence ─
+#
+# `"shape_drift(" in source` and `source.count("shape_drift(") >= 3` are both
+# guard-over-match (cicatrix-superscar family #3): a comment naming a function
+# three times satisfies either check with zero real definitions or call sites.
+# `kb/ops/probe_retrieval.py:648-654`'s own comment documents this exact family
+# exploding in this repo's face already. These parse the SOURCE, not grep it.
+
+
+def _defines_function(tree: ast.AST, name: str) -> bool:
+    """True only for a REAL `def name(...)` / `async def name(...)` — never a
+    comment or docstring that merely mentions the name."""
+    return any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
+        for node in ast.walk(tree)
+    )
+
+
+def _call_count(tree: ast.AST, name: str) -> int:
+    """Real `ast.Call` nodes invoking a bare-name function called `name` — not
+    textual occurrences of the string `"name("`, which a comment or a fenced
+    code block in a docstring can inflate for free."""
+    return sum(
+        1
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == name
+    )
+
+
+def _assigns_string_constant(tree: ast.AST, target: str, value: str) -> bool:
+    """True only for a REAL `target = "value"` module-level assignment."""
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(t, ast.Name) and t.id == target for t in node.targets):
+            continue
+        if isinstance(node.value, ast.Constant) and node.value.value == value:
+            return True
+    return False
+
+
+def test_guilt_a_comment_mentioning_a_function_three_times_defines_nothing():
+    tree = ast.parse(
+        "# def check_topic( is mentioned here, and again: def check_topic( "
+        "and once more: def check_topic(\n"
+    )
+    assert _defines_function(tree, "check_topic") is False
+
+
+def test_innocence_a_real_function_definition_is_detected():
+    tree = ast.parse("def check_topic(x):\n    return x\n")
+    assert _defines_function(tree, "check_topic") is True
+
+
+def test_guilt_a_comment_naming_a_call_three_times_is_zero_real_calls():
+    tree = ast.parse(
+        "# shape_drift( shape_drift( shape_drift(\n"
+        "def shape_drift(a, b, c):\n    return []\n"
+    )
+    assert _call_count(tree, "shape_drift") == 0
+
+
+def test_innocence_two_real_call_sites_are_counted():
+    tree = ast.parse(
+        "def shape_drift(a, b, c):\n    return []\n"
+        "shape_drift('topic', {}, {})\n"
+        "shape_drift('read', {}, {})\n"
+    )
+    assert _call_count(tree, "shape_drift") == 2
+
+
+def test_guilt_a_comment_naming_an_assignment_is_not_the_assignment():
+    tree = ast.parse('# the real value used to be OWNED_KIND = "topic" before a rename\n')
+    assert _assigns_string_constant(tree, "OWNED_KIND", "topic") is False
+
+
+def test_innocence_a_real_assignment_is_detected():
+    tree = ast.parse('OWNED_KIND = "topic"\n')
+    assert _assigns_string_constant(tree, "OWNED_KIND", "topic") is True
 
 
 IDENTITY_VERDICTS = frozenset({"consistent", "mistyped", "contradictory", "lost"})
@@ -221,13 +305,67 @@ def test_a_proven_duplicate_is_not_left_untriaged(inventory):
             )
 
 
+def _proof_is_incomplete(proof: dict | None) -> bool:
+    """True when a `containment_proof` fails to affirmatively declare `complete: true`.
+
+    Replaces `.get("complete") is False` — an identity comparison against a literal
+    — which reads a MISSING `complete` key as complete: `None is False` is `False`,
+    so `{"distinct_fragments_covered": 40, "distinct_fragments_total": 65}` (no
+    `complete` key at all) was never flagged. §4.6's interlock is written for the
+    case where a gap is DECLARED; a proof that is merely silent about completeness
+    is not evidence of completeness, and this campaign's own rule (§4.6, "one
+    uncovered fragment means do not delete") means unknown must fail closed, not
+    open. `None` — no containment_proof at all — is deliberately NOT incomplete
+    by this predicate: a document that never claimed containment in the first
+    place (e.g. disposition=promote_after_repair) is a different question, owned
+    by test_nothing_is_discarded_without_a_containment_proof for
+    disposition == discard_duplicate.
+    """
+    if proof is None:
+        return False
+    return proof.get("complete") is not True
+
+
+def test_guilt_a_containment_proof_missing_complete_is_treated_as_a_gap():
+    """The exact shape measured live: `complete` is a MISSING key, not a declared
+    `false`, sitting next to `decision.deletions_authorized: true`. The old
+    `is False` predicate called this complete; §4.6 says an unproven fragment
+    blocks deletion, so this must be a gap."""
+    assert _proof_is_incomplete(
+        {"distinct_fragments_covered": 40, "distinct_fragments_total": 65}
+    )
+
+
+def test_guilt_a_containment_proof_declaring_false_is_still_a_gap():
+    """The case the old predicate already caught — must not regress."""
+    assert _proof_is_incomplete({"complete": False})
+
+
+def test_innocence_no_containment_proof_at_all_is_not_this_rules_business():
+    """A document that never claimed containment (promote_after_repair,
+    catalogue_only, blocked_identity) is not a gap by THIS predicate — it is the
+    ordinary shape of most rows in a retired_collection inventory, and flagging
+    it would make deletions_authorized:true fail on files with zero discard
+    candidates."""
+    assert _proof_is_incomplete(None) is False
+
+
+def test_innocence_a_containment_proof_declaring_complete_true_is_not_a_gap():
+    assert (
+        _proof_is_incomplete(
+            {"distinct_fragments_covered": 65, "distinct_fragments_total": 65, "complete": True}
+        )
+        is False
+    )
+
+
 def test_deletion_is_interlocked_on_a_complete_proof(inventory):
     """No deletion may be authorized while any containment proof declares a gap."""
     path, data = inventory
     incomplete = [
         doc["document_id"]
         for doc in data["documents"]
-        if (doc.get("containment_proof") or {}).get("complete") is False
+        if _proof_is_incomplete(doc.get("containment_proof"))
     ]
     if incomplete:
         assert data["decision"]["deletions_authorized"] is False, (
@@ -428,9 +566,16 @@ def test_decision_choice_is_from_the_mandates_three(inventory):
 
 # ── The two cross-source rules ───────────────────────────────────────────────
 
-def test_registry_mapped_claims_match_the_real_registry(inventory):
-    """Cross-source: check the claim against collection_registry.py itself."""
-    sys.path.insert(0, str(ROOT / "apps" / "backend-rag"))
+def test_registry_mapped_claims_match_the_real_registry(inventory, monkeypatch):
+    """Cross-source: check the claim against collection_registry.py itself.
+
+    `monkeypatch.syspath_prepend` (not a bare `sys.path.insert`): pytest restores
+    `sys.path` to its pre-test state automatically at teardown, whichever entry a
+    parametrised run leaves — a bare `sys.path.insert` with no matching `.remove`/
+    `.pop` leaks a path entry into every test that runs after this one, for the
+    rest of the process.
+    """
+    monkeypatch.syspath_prepend(str(ROOT / "apps" / "backend-rag"))
     from backend.core.collection_registry import is_known_collection
 
     path, data = inventory
@@ -470,6 +615,36 @@ def test_a_retired_collection_is_named_by_no_ingest_entrypoint(inventory):
     assert offenders == [], (
         f"{path.name} declares {retired!r} retired as an ingest target, but these entrypoints still "
         f"name it: {offenders}"
+    )
+
+
+def test_the_retirement_lint_check_is_not_examining_zero_inventories():
+    """Anti-vacuity for the test above, same pattern as
+    test_the_ledger_mirror_check_is_not_examining_zero_findings below.
+
+    The cross-source check above SKIPS twice — once for `kind != retired_collection`
+    (defence in depth; the `inventory` fixture already filters this), once for
+    `decision.choice != retire_as_target`. Nothing forces at least one real file to
+    take the second branch. If none ever did, the lint would never run against a
+    real ingest entrypoint list and every parametrisation would read green while
+    checking nothing — exactly the shape MANDATE.md §4.9 warns against, and the
+    same failure class `test_the_ledger_mirror_check_is_not_examining_zero_findings`
+    already guards for `open_findings`.
+    """
+    retired_as_target = []
+    for path in _inventories():
+        data = _load(path)
+        if data.get("kind") != OWNED_KIND:
+            continue
+        if (data.get("decision") or {}).get("choice") == "retire_as_target":
+            retired_as_target.append(path.name)
+    assert retired_as_target, (
+        "no kb/inventory/*.yaml with kind=retired_collection declares "
+        "decision.choice=retire_as_target, so "
+        "test_a_retired_collection_is_named_by_no_ingest_entrypoint skips on every "
+        "parametrisation and is passing over an empty set. Either no collection is "
+        "currently queued for retirement — delete this pair of tests and say so — "
+        "or the field has been renamed and the gate now points at nothing"
     )
 
 
@@ -534,9 +709,17 @@ def test_the_probe_actually_compares_the_recorded_shapes(inventory):
     """
     del inventory  # gate on the probe source, once per parametrisation
     source = (ROOT / "scripts" / "kb" / "kb_inventory_probe.py").read_text(encoding="utf-8")
-    assert source.count("shape_drift(") >= 3, (
-        "kb_inventory_probe.py must DEFINE shape_drift and CALL it for the topic "
-        "collection and the read collection — found fewer than 3 occurrences"
+    tree = ast.parse(source)
+    assert _defines_function(tree, "shape_drift"), (
+        "kb_inventory_probe.py must DEFINE shape_drift — no real `def shape_drift` "
+        "found (a comment naming it does not count — see _defines_function)"
+    )
+    calls = _call_count(tree, "shape_drift")
+    assert calls >= 2, (
+        f"kb_inventory_probe.py must CALL shape_drift for both the topic collection "
+        f"and the read collection — found {calls} real ast.Call site(s). A comment "
+        f"naming the string three times used to satisfy this check with zero real "
+        f"calls; this counts actual Call nodes, not text occurrences."
     )
     probe = _probe()
     findings = probe.shape_drift("c", {"modern_full": 5}, {"modern_full": 4})
@@ -572,12 +755,18 @@ def test_the_gate_this_module_defers_topic_inventories_to_actually_exists():
         f"judged by nobody"
     )
     source = owner.read_text(encoding="utf-8")
-    assert 'OWNED_KIND = "topic"' in source, (
-        f"{owner.name} exists but no longer claims kind='topic' — the deferral in this "
-        f"module now points at a gate that has stopped owning what it defers"
+    tree = ast.parse(source)
+    assert _assigns_string_constant(tree, "OWNED_KIND", "topic"), (
+        f"{owner.name} exists but no real `OWNED_KIND = \"topic\"` assignment was "
+        f"found — the deferral in this module now points at a gate that has "
+        f"stopped owning what it defers (a comment mentioning the assignment does "
+        f"not count — see _assigns_string_constant)"
     )
-    for rule in ("def check_topic(", "def check_journey(", "def check_topic_inventory("):
-        assert rule in source, f"{owner.name} no longer defines {rule!r}"
+    for rule in ("check_topic", "check_journey", "check_topic_inventory"):
+        assert _defines_function(tree, rule), (
+            f"{owner.name} no longer defines def {rule}( — a comment naming it "
+            f"does not count"
+        )
 
 
 GATED_DIRS = ("topics", "journeys", "inventory")
