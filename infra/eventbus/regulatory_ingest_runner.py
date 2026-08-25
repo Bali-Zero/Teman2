@@ -422,7 +422,7 @@ load_dotenv('{backend_dir}/.env', override=True)
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 async def main():
-    service = LegalIngestionService(collection_name="legal_unified_2026")
+    service = LegalIngestionService(collection_name="legal_unified")
     try:
         result = await service.ingest_legal_document(
             file_path={pdf_path!r},
@@ -476,7 +476,7 @@ def step7_kg_extract(domain: str, limit: int = 200) -> dict:
     try:
         result = subprocess.run(
             [str(venv_python), str(script),
-             "--collection", "legal_unified_2026",
+             "--collection", "legal_unified",
              "--limit", str(limit)],
             capture_output=True, text=True, timeout=900,
             cwd=str(backend_dir),

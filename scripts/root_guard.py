@@ -146,6 +146,21 @@ WHITELIST_DIRS: set[str] = {
     # ops/ — the contract-and-decision artifacts the factory doctrine defines,
     # not code. One directory per product. First tenant: products/garuda-voa/.
     "products",
+    # Knowledge-base artifacts (docs/plans/2026-08-25-kb-current-live/MANDATE.md
+    # §2): kb/topics/, kb/journeys/, kb/inventory/, kb/ops/. Data files a gate
+    # reads — the catalogue AS DATA, not prose — deliberately kept out of docs/
+    # and research/, which is where the previous draft of that mandate put them
+    # and precisely what the assembly line forbids.
+    #
+    # A new top-level directory needs TWO things, and the whitelist is only the
+    # first: MEASURED 2026-08-25, `products/` was whitelisted here but globbed by
+    # no workflow, so ten contract invariants under it ran nowhere and the defect
+    # they existed to catch shipped (MANDATE §4.9). The tests that read kb/ live
+    # under apps/backend-rag/backend/tests/, which scripts/ci/shard_tests.py's
+    # DEFAULT_TARGETS names, so they do run — verified by collection count, not
+    # by assumption. Anything added under kb/ that carries its own tests must
+    # check the same thing before trusting them.
+    "kb",
 }
 
 # Allowed tracked dotfiles directories.
