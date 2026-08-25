@@ -66,3 +66,29 @@ che lo tocca (la cicatrice la conosciamo) per un caso raro e sfumato.» E31D va 
   sono un difetto da chiudere: sono un confine di prodotto, ora dichiarato.
 - **DPIA delta: annotato ora, firmato nel pacchetto unico d'accensione.** «Una cerimonia di firme,
   non gocce.»
+
+---
+
+## §7 — Il criterio della firma #3 (Zero, 2026-08-25, verbatim: «ok firma il criterio»)
+
+**Contesto della richiesta.** Il mandato (§5) chiedeva per lo switchboard #3 una _«zero-divergence
+report engine↔consultants»_. La misura sul pack **firmato** `rulepack-prod-013` dà 4/20 corrispondenze
+e 16 divergenze. Aperte una per una: **quindici non sono difetti** — il corpus di prova è più vecchio
+e più piccolo del motore (7), oppure il motore è deliberatamente **più prudente** delle attese (5),
+oppure fa una domanda diversa ma arriva comunque (2). Una sola è un difetto: la #15.
+
+**Il criterio è stato cambiato, e Zero l'ha firmato sapendolo.** Non si firma più «zero divergenze»,
+si firma:
+
+> **Ogni divergenza spiegata, e nessuna di esse un vicolo cieco.**
+
+**Perché il vecchio criterio era la trappola, non l'obiettivo.** Portare le divergenze a zero
+significherebbe riscrivere le attese del corpus per farle combaciare col motore — cioè **truccare la
+prova**, e distruggere per giunta la testimonianza di cinque regole di sicurezza che stanno
+funzionando. Il corpus è evidenza, non una manopola: resta vietato toccare le persone di prova o le
+loro attese per far tornare un numero.
+
+**Cosa NON è stato firmato.** La firma #3 **non** è concessa da questo ruling: è concesso il
+criterio con cui sarà valutata. La #15 resta aperta — un vicolo cieco vivo, misurato — e finché non è
+chiusa il registro d'accensione (`contracts/ignition_signatures.json`) tiene `signed: false` sulla
+#3. Istruzione contestuale di Zero, stesso messaggio: **«vai avanti col vicolo cieco.»**

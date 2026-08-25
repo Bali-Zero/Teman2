@@ -31,7 +31,7 @@
       "id": 3,
       "decision": "Gold-persona rehearsal",
       "signed": false,
-      "evidence": "GOLD-DIVERGENCE-TRIAGE.md: 15 of 16 divergences explained and not defects; persona #15 open"
+      "evidence": "criterion SIGNED by Zero 2026-08-25 (OWNER-RULINGS-2026-08-25.md §7): 'every divergence explained, and none of them a dead end' replaces the mandate's 'zero-divergence' wording. The signature itself is NOT granted: persona #15 is a measured, live dead end (work + EMPLOYER sponsor never reaches a question that can populate intent.requested_product_code)."
     },
     {
       "id": 4,
