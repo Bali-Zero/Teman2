@@ -211,11 +211,38 @@ TOPIC_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
-# Status indicators
-STATUS_PATTERNS = {
-    "dicabut": re.compile(r"DICABUT|TIDAK BERLAKU|DIGANTI", re.IGNORECASE),
-    "berlaku": re.compile(r"BERLAKU|MASIH BERLAKU", re.IGNORECASE),
-}
+# Status indicators — RETIRED 2026-08-25 (Lane P, kb-p2-status-retire-0825).
+# `STATUS_PATTERNS` used to derive a document-level "berlaku"/"dicabut" fact
+# from a bare regex over CHUNK text (DICABUT|TIDAK BERLAKU|DIGANTI vs
+# BERLAKU|MASIH BERLAKU, dict-order first match wins). The two patterns
+# OVERLAP — "TIDAK BERLAKU" contains "BERLAKU" — and neither has any way to
+# tell what the matched words refer to. Measured against all 84,283 points of
+# legal_unified_hybrid_hybrid, sampled directly against production text: it
+# fired on a provision not applying to a class of PERSON ("tidak berlaku bagi
+# warga negara asing"), on a guarantor being substituted ("digantikan"), on an
+# individual permit expiring, and — the mechanism behind a live production
+# defect — on a law's OWN closing clause revoking its PREDECESSOR, which read
+# the CURRENT, still-valid law as revoked (kb/inventory/immigration.yaml,
+# finding LANE-A-1).
+#
+# This is a retirement, not a repair, because no fix at this layer can be
+# correct for the revoked direction: whether instrument X is CURRENTLY
+# revoked is always established by a LATER, DIFFERENT instrument (the one
+# that revokes X) — X's own text, written before its own repeal existed,
+# cannot attest to it. The one shape that looks like a counter-example — a
+# commencement clause such as "Peraturan Menteri ini mulai berlaku pada
+# tanggal diundangkan" — is a true statement about the document's own
+# commencement and a false inference about its PRESENT status: a law that
+# commenced in 2011 may well be dead by the time anyone asks. There is no
+# guilt/innocence split to preserve here, because the innocent-looking case
+# is exactly the trap.
+#
+# The one place a document's current status IS trustworthy: `kb/topics/
+# <topic>.yaml` — per document, sourced, `source_verified`, gated by the KB
+# current-live campaign's G3 contract. `scripts/ci/legal_status_read_lint.py`
+# refuses any code that reads the `legal_status` payload field this pattern
+# used to write (writing is still legal — nothing reads it, per the same
+# audit, so nothing downstream needed updating).
 
 # ============================================================================
 # STRUCTURE MARKERS - Indonesian Legal Hierarchy
