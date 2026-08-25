@@ -1,0 +1,179 @@
+# kb/journeys/company.yaml — Lane B (company & investment) probe set.
+#
+# MANDATE §3 G2: written BEFORE any ingestion/repair work, RUN against production
+# TODAY. Every verbatim_phrase below was copied character-for-character from an
+# actual chunk returned by a direct full-scroll of production
+# `legal_unified_hybrid_hybrid` on 2026-08-25 (never invented) — see
+# research/legal/_lane_b_investigation.json and _lane_b_investigation2.json for the
+# raw scroll output each phrase was lifted from.
+#
+# Traffic-driven (OWNER-SWITCHBOARD.md decision 1): lane B is 656 of 10,929
+# question-bearing WhatsApp messages sampled 2026-08-25 (more than tax+property
+# combined) and the hub of cross-topic questions. Findings applied: (1) not one real
+# client question in the sample named an instrument, so 8 of 11 journeys below are
+# phrasing: client; (2) two journeys mark the real B×D (company×property) and one
+# marks B×C (company×tax) cross-topic shapes the orchestrator's traffic sample
+# surfaced verbatim ("which KBLI covers land sub-lease", "tax under the accommodation
+# NIB"); (3) four journeys are non-English (2 Indonesian, 1 Italian, 1 Spanish).
+#
+# First probe run against production (2026-08-25), `kb/ops/probe_retrieval.py
+# kb/journeys/company.yaml`, control query 'peraturan perundang-undangan' found at
+# rank 2 of 5 — production reachable. Same DEGRADED PATH as lane D/A/C: installed
+# google-genai 1.75.0 vs repo pin 2.18.1, so Gemini multilingual query expansion
+# raised and was swallowed on every question below — retrieval ran WITHOUT
+# expansion. Every red below is therefore a measured LOWER BOUND, not a final
+# verdict. Verdict: 2 green (4, 10), 9 red (1, 2, 3, 5, 6, 7, 8, 9, 11).
+#   #  RECORDED  MEASURED  RANK
+#   1  red       red       -
+#   2  red       red       -
+#   3  red       red       -
+#   4  red       GREEN     2
+#   5  red       red       -
+#   6  red       red       -
+#   7  red       red       -
+#   8  red       red       -
+#   9  red       red       -
+#  10  red       GREEN     4
+#  11  red       red       -
+# Journeys 4 and 10 updated below to the measured state per the probe's own refusal
+# to write its own expected value back ("update probe_state / probe_run_at by hand").
+
+schema_version: 1
+lane: B
+
+journeys:
+  # ── 1: real traffic shape — PT PMA conversion/sale. UU 40/2007's own
+  #      merger/acquisition/spin-off protections are the closest operative concept.
+  - question: "Can a PT PMA be converted into a local PT — or sold to someone else?"
+    verbatim_phrase: "Penggabungan, Peleburan, Pengambilalihan, atau Pemisahan wajib memperhatikan kepentingan"
+    instrument_id: UU_40_2007
+    phrasing: client
+    language: en
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 2: real traffic shape — reclassifying KBLI after formation. Indonesian,
+  #      client-phrased, anchored on the actual KBLI 2025 code text.
+  - question: "Bisakah saya mengubah KBLI dari real estat ke jasa manajemen properti?"
+    verbatim_phrase: "penyewaan dan pengoperasian real estat milik sendiri maupun sewa, seperti bangunan apartemen dan bangunan tempat tinggal"
+    instrument_id: PP_7_2025
+    phrasing: client
+    language: id
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 3: CROSS-TOPIC (B x D). Real traffic shape from the orchestrator's brief:
+  #      "which KBLI covers land sub-lease and short-stay rental". Lane D owns the
+  #      land-right side; this lane's own KBLI code group anchors the assertion.
+  - question: "Which KBLI code covers renting out land or a villa short-term?"
+    verbatim_phrase: "AKTIVITAS REAL ESTAT (BANGUNAN DAN LAHAN) HUNIAN MILIK SENDIRI ATAU SEWA"
+    instrument_id: PP_7_2025
+    phrasing: client
+    language: en
+    cross_topic: true
+    cross_topic_lane: D
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 4: the identity-defect journey, deliberately phrased as statute (testing
+  #      whether the mislabeled UU_13_2017 / real BKPM 13/2017 — SUPERSEDED 2018 —
+  #      surfaces its fast-track licensing threshold under this stale citation).
+  #      MEASURED GREEN 2026-08-25, rank 2 — the superseded/mislabeled BKPM 13/2017
+  #      threshold text IS retrievable under the stale "UU 13/2017" citation. This is
+  #      exactly the Decision-5 risk (superseded instrument answering as current):
+  #      the number this returns dates to 2017 and was replaced by Perka BKPM 6/2018.
+  - question: "What is the statutory investment-value or labour-absorption threshold for a fast-track (3-hour) business licence?"
+    verbatim_phrase: "nilai investasi paling sedikit Rp100.000.000.000,00 (seratus miliar rupiah)"
+    instrument_id: UU_13_2017
+    phrasing: statute
+    language: en
+    cross_topic: false
+    probe_state: green
+    probe_run_at: "2026-08-25"
+
+  # ── 5: Italian, client-phrased. The Positive Investment List default-open rule
+  #      (Perpres 49/2021 amending Perpres 10/2021, stored as UU_49_2021).
+  - question: "Il mio settore di investimento è aperto agli stranieri o è nella lista chiusa?"
+    verbatim_phrase: "Semua Bidang Usaha terbuka bagi kegiatan Penanaman Modal, kecuali Bidang Usaha"
+    instrument_id: UU_49_2021
+    phrasing: client
+    language: it
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 6: the HOLLOW-INSTRUMENT diagnostic journey (MANDATE §7 decision 2). Statute
+  #      phrasing, testing whether UU 25/2007 surfaces ANY of its own text — it does
+  #      (this is genuine UU 25/2007 content), but only its Penjelasan, never the
+  #      operative articles. A green here does NOT mean the instrument is whole.
+  - question: "Does UU 25/2007 on Investment set out who administers foreign-investment approvals, in its own text?"
+    verbatim_phrase: "Badan Koordinasi Penanaman Modal dipimpin oleh seorang kepala yang bertanggung jawab langsung kepada Presiden."
+    instrument_id: UU_25_2007
+    phrasing: statute
+    language: en
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 7: CROSS-TOPIC (B x D). Spanish, client-phrased. Zoning suitability (KKPR) as
+  #      a precondition for OSS risk-based licensing.
+  - question: "¿Necesito aprobación de zonificación antes de solicitar mi licencia de negocio de riesgo?"
+    verbatim_phrase: "sebagai dasar pemrosesan Perizinan Berusaha Berba sis Risiko sesuai ketentuan peraturan perundang-undangan"
+    instrument_id: Permen_5_2025
+    phrasing: client
+    language: es
+    cross_topic: true
+    cross_topic_lane: D
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 8: real traffic shape — dormant KBLI line on an existing PMA. UU 40/2007's
+  #      own requirement that business purpose/activity sit in the articles of
+  #      association is the closest operative anchor.
+  - question: "I have a PMA licensed for real estate and retail but never opened a shop — can I open one now without a new permit?"
+    verbatim_phrase: "Perseroan harus mempunyai maksud dan tujuan serta kegiatan usaha yang dicantumkan dalam anggaran dasar"
+    instrument_id: UU_40_2007
+    phrasing: client
+    language: en
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 9: CROSS-TOPIC (B x C). Real traffic shape from the orchestrator's brief:
+  #      "reporting tax under the accommodation NIB". The phrase itself cross-
+  #      references PMK 81/2024 — the SAME regulation entangled in the Permen_1_2026
+  #      collision this lane found and did not chase.
+  - question: "Apakah saya tetap kena pajak untuk unit yang disewakan meskipun NIB saya untuk akomodasi?"
+    verbatim_phrase: "Fasilitas Pajak Penghasilan sebagaimana dimaksud pada Diktum KEDUA butir d berlaku ketentuan Pasal 418 Peraturan Menteri Keuangan Nomor 81 Tahun 2024"
+    instrument_id: Permen_5_2025
+    phrasing: client
+    language: id
+    cross_topic: true
+    cross_topic_lane: C
+    probe_state: red
+    probe_run_at: "2026-08-25"
+
+  # ── 10: capital-rules journey, statute register (MANDATE-named topic: "capital
+  #      rules"). UU 40/2007's own paid-up-capital-in-kind provision.
+  #      MEASURED GREEN 2026-08-25, rank 4.
+  - question: "What form can satisfy a company's paid-up share capital besides cash?"
+    verbatim_phrase: "Penyetoran atas modal saham dapat dilakukan dalam bentuk uang dan/atau dalam bentuk lainnya"
+    instrument_id: UU_40_2007
+    phrasing: statute
+    language: en
+    cross_topic: false
+    probe_state: green
+    probe_run_at: "2026-08-25"
+
+  # ── 11: PP_28_2025 coverage journey — real traffic shape (a client asking
+  #      whether a missing detailed zoning plan blocks their OSS licence).
+  - question: "If there is no detailed zoning plan for my area yet, can I still get my business permit approved?"
+    verbatim_phrase: "Persetujuan KKPR sebagaimana dimaksud dalam Pasal 15 ayat (2) huruf b diberikan dalam hal RDTR belum tersedia"
+    instrument_id: PP_28_2025
+    phrasing: client
+    language: en
+    cross_topic: false
+    probe_state: red
+    probe_run_at: "2026-08-25"
