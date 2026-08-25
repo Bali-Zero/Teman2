@@ -9,6 +9,7 @@ green either way is worthless (contract: modus VERIFY discipline).
 from __future__ import annotations
 
 from datetime import timedelta
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
@@ -235,7 +236,10 @@ def test_notice_acknowledgement_required_when_false(monkeypatch) -> None:
 
 def test_default_store_is_unconfigured_and_fails_closed(monkeypatch) -> None:
     monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
-    assert isinstance(router_mod.get_garuda_check_store(), UnconfiguredCheckStore)
+    no_state_request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace()))
+    assert isinstance(
+        router_mod.get_garuda_check_store(no_state_request), UnconfiguredCheckStore
+    )
     client = _client()
     response = client.post(
         "/api/visa/voa/eligibility-checks",
