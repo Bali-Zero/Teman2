@@ -511,6 +511,77 @@ describe("V1/E33 (2026-08-25): sponsor-gated E33A/B/C -> intent.requested_produc
     ).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
   });
 
+  // V1/E23UV (2026-08-25). These four exist because the integration test in
+  // flow.test.ts caught, at the reducer level, a defect that belonged at the
+  // unit level: a non-E23 answer was being collapsed to `undefined`, so the
+  // wire said NOT_ASKED for a question the applicant had been asked and had
+  // answered "neither of these". The sibling questions above each carry this
+  // pair; the new one did not, which is exactly why it shipped uncaught until
+  // an independent review ran the full reducer.
+  it.each([["E23U"], ["E23V"]])(
+    'employment_special_employer="%s" -> KNOWN, for an EMPLOYER sponsor that no other question serves',
+    (code) => {
+      expect(
+        mapFacts({
+          category: "work",
+          sponsor_category: "EMPLOYER",
+          employment_special_employer: code,
+        } as OracleFacts).facts["intent.requested_product_code"],
+      ).toEqual({ status: "KNOWN", value: code });
+    },
+  );
+
+  it('employment_special_employer="STANDARD" -> UNKNOWN NOT_PROVIDED, never NOT_ASKED', () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "EMPLOYER",
+        employment_special_employer: "STANDARD",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
+  });
+
+  it("employment_special_employer=unsure -> UNKNOWN UNVERIFIED", () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "EMPLOYER",
+        employment_special_employer: "unsure",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "UNKNOWN", reason: "UNVERIFIED" });
+  });
+
+  // The collision the new question creates, pinned in both directions: it is
+  // NOT sponsor-gated, so for a GOVERNMENT sponsor it can co-occur with
+  // `employment_product_code_govt` — which the plain `??` chain never had to
+  // handle, because the four legacy questions are mutually exclusive by
+  // construction. "STANDARD" is a non-nullish string, so a naive prepend
+  // would have let "neither of these" SWALLOW a real E33A answer.
+  it('employment_special_employer="STANDARD" never swallows a genuine E33A answer', () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "GOVERNMENT",
+        employment_special_employer: "STANDARD",
+        employment_product_code_govt: "E33A",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "KNOWN", value: "E33A" });
+  });
+
+  it("a genuine E23U answer wins over a co-occurring E33A answer", () => {
+    // Both route to HUMAN_REVIEW_REQUIRED, so the OUTCOME is unchanged; what
+    // this pins is WHICH reason the consultant reads. The employer-identity
+    // route is the more specific of the two.
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "GOVERNMENT",
+        employment_special_employer: "E23U",
+        employment_product_code_govt: "E33A",
+      } as OracleFacts).facts["intent.requested_product_code"],
+    ).toEqual({ status: "KNOWN", value: "E23U" });
+  });
+
   it("never asked (no V1/E33 UI fact set at all) -> UNKNOWN NOT_ASKED", () => {
     expect(mapFacts({}).facts["intent.requested_product_code"]).toEqual({
       status: "UNKNOWN",

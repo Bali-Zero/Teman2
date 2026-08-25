@@ -201,6 +201,16 @@ const en = {
   "why.sponsor_category":
     "The sponsor category is recorded as its own exact fact. It decides whether specific government-sponsored or no-sponsor visa routes can even be shown to you.",
 
+  "q.employment_special_employer":
+    "Is your employer a foreign diplomat's household, or a foreign chamber of commerce?",
+  "q.employment_special_employer.opt.E23U":
+    "Yes — I work in the household of a foreign diplomat",
+  "q.employment_special_employer.opt.E23V":
+    "Yes — I work for a foreign chamber of commerce",
+  "q.employment_special_employer.opt.STANDARD": "No — neither of these",
+  "why.employment_special_employer":
+    "These two work routes are defined by who the employer is, not by what the job is. Naming one sends your case to a consultant for manual verification — it never selects a visa path on its own.",
+
   "q.employment_product_code_govt":
     "Do you already know if your case is a central-government-invitation or expertise-qualification work visa (E33A/E33B)?",
   "q.employment_product_code_govt.opt.E33A":
@@ -1061,6 +1071,16 @@ const id: Record<Keys, string> = {
   "q.sponsor_category.opt.GOVERNMENT": "Instansi pemerintah",
   "why.sponsor_category":
     "Kategori sponsor dicatat sebagai fakta tersendiri. Kategori ini menentukan apakah jalur visa khusus sponsor-pemerintah atau tanpa-sponsor bahkan dapat ditampilkan kepada Anda.",
+
+  "q.employment_special_employer":
+    "Apakah pemberi kerja Anda adalah rumah tangga seorang diplomat asing, atau kamar dagang asing?",
+  "q.employment_special_employer.opt.E23U":
+    "Ya — saya bekerja di rumah tangga seorang diplomat asing",
+  "q.employment_special_employer.opt.E23V":
+    "Ya — saya bekerja pada kamar dagang asing",
+  "q.employment_special_employer.opt.STANDARD": "Tidak — bukan keduanya",
+  "why.employment_special_employer":
+    "Kedua jalur kerja ini ditentukan oleh siapa pemberi kerjanya, bukan oleh jenis pekerjaannya. Menyebutkan salah satunya mengirimkan kasus Anda ke konsultan untuk verifikasi manual — ini tidak pernah dipakai untuk memilih jalur visa sendiri.",
 
   "q.employment_product_code_govt":
     "Apakah Anda sudah tahu apakah kasus Anda adalah visa kerja undangan-pemerintah-pusat atau kualifikasi-keahlian (E33A/E33B)?",

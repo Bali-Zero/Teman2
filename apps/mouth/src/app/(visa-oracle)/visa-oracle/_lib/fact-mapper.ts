@@ -205,6 +205,15 @@ const PROPOSED_ROLES = [
 // for the missing-arming-step and proof-of-armed condition, not a footnote
 // buried in this comment.
 const REQUESTED_PRODUCT_CODES = [
+  // V1/E23UV (2026-08-25, owner ruling (A)): E23U/E23V join the list because
+  // `employment_special_employer` (tree.ts) can now name them. Until this
+  // turn they were the ONLY two codes the pack's rules checked that no UI
+  // question could ever produce — which is exactly why PR #4797 read those
+  // two rules as "permanently UNKNOWN" and folded them out of seq-14. That
+  // premise was correct when written and stops being true here; the opposite
+  // cure (make the fact obtainable) is the one the owner chose.
+  "E23U",
+  "E23V",
   "E28B",
   "E28C",
   "E28D",
@@ -736,11 +745,44 @@ export function mapOracleFactsToApplicantFacts(
     // `INVESTMENT`) never inserts any of the three E33-bearing questions,
     // so none of these three UI facts can ever be set for those applicants
     // — see the corresponding test in fact-mapper.test.ts.
+    // V1/E23UV (2026-08-25): the four questions above are mutually exclusive
+    // BY CONSTRUCTION (each is gated on a distinct `sponsor_category`), and
+    // the plain `??` chain relied on that. `employment_special_employer` is
+    // deliberately NOT sponsor-gated (see flow.ts), so it CAN co-occur with
+    // `employment_product_code_govt`/`_none` for a GOVERNMENT/NONE sponsor —
+    // the `??` invariant no longer holds on its own and is restored here
+    // EXPLICITLY rather than left to answer order.
+    //
+    // Two things this shape gets right that a bare `??` prepend would not:
+    //   1. `"STANDARD"` is not nullish, so putting the raw answer first in a
+    //      `??` chain would make "No — neither of these" SWALLOW a real
+    //      E33A/E33B answer. Only a genuine E23U/E23V value participates.
+    //   2. When both are genuinely answered, the E23U/E23V code wins. Both
+    //      route to HUMAN_REVIEW_REQUIRED either way, so the outcome does not
+    //      change — what changes is WHICH reason the consultant reads, and
+    //      the employer-identity route is the more specific of the two.
+    //   3. The new answer appears TWICE in the chain, and the second
+    //      appearance is not redundant — it is the whole NOT_ASKED/
+    //      NOT_PROVIDED distinction. Collapsing a non-E23 answer to
+    //      `undefined` and stopping there made `enumFact` report
+    //      `NOT_ASKED` for a question that WAS asked and answered
+    //      "neither of these" — a false statement on the wire, and the
+    //      majority path (every sponsor category except GOVERNMENT/NONE
+    //      answers no legacy question either). Keeping the raw answer as
+    //      the chain's TAIL lets `enumFact` classify it honestly:
+    //      "STANDARD" -> NOT_PROVIDED, "unsure" -> UNVERIFIED, genuinely
+    //      never asked -> NOT_ASKED. Caught by an independent adversarial
+    //      review, 2026-08-25, before merge.
     "intent.requested_product_code": enumFact(
-      facts.investment_product_code ??
+      (facts.employment_special_employer === "E23U" ||
+      facts.employment_special_employer === "E23V"
+        ? facts.employment_special_employer
+        : undefined) ??
+        facts.investment_product_code ??
         facts.investment_product_code_govt ??
         facts.employment_product_code_govt ??
-        facts.employment_product_code_none,
+        facts.employment_product_code_none ??
+        facts.employment_special_employer,
       REQUESTED_PRODUCT_CODES,
     ),
     // V1 (2026-08-25, team-lead ruling): the `remote_employer_country`

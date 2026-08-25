@@ -81,6 +81,7 @@ const CATEGORY_CASES: ReadonlyArray<{
     category: "work",
     branch: [
       ["sponsor_category", "EMPLOYER"],
+      ["employment_special_employer", "STANDARD"],
       ["work_payer", "yes"],
       ["work_indonesia_compensation", "yes"],
       ["work_sponsor_confirmed", "yes"],
@@ -916,10 +917,11 @@ describe("V1 dead end PERSISTS: persona #15 (GOLD-DIVERGENCE-TRIAGE.md Class 4, 
   // product-code options, if any, an EMPLOYER-sponsored applicant should
   // even be offered) is a product decision and is deliberately OUT OF SCOPE
   // here — see the triage doc.
-  it("never asks a question that can populate intent.requested_product_code, and the wire fact reaches UNKNOWN NOT_ASKED", () => {
+  it("CURED: an EMPLOYER-sponsored applicant is now asked who the employer is, and can name E23U/E23V", () => {
     let state = startOffshore("work");
     state = answer(state, "trip_scope", "single");
     state = answer(state, "sponsor_category", "EMPLOYER");
+    state = answer(state, "employment_special_employer", "STANDARD");
     state = answer(state, "work_payer", "yes");
     state = answer(state, "work_indonesia_compensation", "yes");
     state = answer(state, "work_sponsor_confirmed", "yes");
@@ -943,11 +945,19 @@ describe("V1 dead end PERSISTS: persona #15 (GOLD-DIVERGENCE-TRIAGE.md Class 4, 
           entry.kind === "question",
       )
       .map((entry) => entry.questionId);
+    // The four sponsor-gated product-code questions are STILL not offered to
+    // an EMPLOYER sponsor — that gating was correct and is untouched here.
     expect(askedQuestionIds).not.toContain("employment_product_code_govt");
     expect(askedQuestionIds).not.toContain("employment_product_code_none");
     expect(askedQuestionIds).not.toContain("investment_product_code");
     expect(askedQuestionIds).not.toContain("investment_product_code_govt");
+    // What changed: the employer-identity question IS offered, to this and to
+    // every other sponsor category (flow.ts deliberately does not gate it).
+    expect(askedQuestionIds).toContain("employment_special_employer");
 
+    // INNOCENCE — answering "neither of these" must NOT invent a code. The
+    // fact stays UNKNOWN, so nothing about an ordinary employed applicant's
+    // evaluation changes: `review.e23{u,v}.requested-product` cannot fire.
     const mapped = mapOracleFactsToApplicantFacts(state.facts, {
       assessmentId: "11111111-1111-4111-8111-111111111111",
       collectedAt: new Date("2026-07-27T00:00:00.000Z"),
@@ -958,7 +968,70 @@ describe("V1 dead end PERSISTS: persona #15 (GOLD-DIVERGENCE-TRIAGE.md Class 4, 
     });
     expect(mapped.facts["intent.requested_product_code"]).toEqual({
       status: "UNKNOWN",
-      reason: "NOT_ASKED",
+      reason: "NOT_PROVIDED",
+    });
+  });
+
+  // GUILT — the half that closes the defect. A foreign diplomat's household
+  // worker has exactly the shape of the walk above (offshore, "work",
+  // EMPLOYER sponsor, paid by an Indonesian entity); before this question
+  // existed she reached the verdict screen with
+  // `intent.requested_product_code` permanently NOT_ASKED, E23 resolved
+  // SUPPORTED and won, and the Oracle told her "E23" with confidence while
+  // her real case is E23U. Now she can say so, and the fact reaches the wire.
+  it("CURED: naming E23U reaches the wire as a KNOWN fact, which is what arms review.e23u.requested-product", () => {
+    let state = startOffshore("work");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "sponsor_category", "EMPLOYER");
+    state = answer(state, "employment_special_employer", "E23U");
+    state = answer(state, "work_payer", "yes");
+    state = answer(state, "work_indonesia_compensation", "yes");
+    state = answer(state, "work_sponsor_confirmed", "yes");
+    state = answer(state, "work_role", "specialist");
+    state = answer(state, "stay_days", "365");
+    state = answer(state, "review_gate", "none");
+
+    const mapped = mapOracleFactsToApplicantFacts(state.facts, {
+      assessmentId: "11111111-1111-4111-8111-111111111111",
+      collectedAt: new Date("2026-07-27T00:00:00.000Z"),
+    });
+    // Both conjuncts of the pack rule's `when`, and nothing else is needed:
+    // `intent.purposes intersects [EMPLOYMENT]` AND
+    // `intent.requested_product_code eq "E23U"` (rulepack-prod-015, restored
+    // from seq-13 by fold_pack_seq15.py — seq-14 had folded it out).
+    expect(mapped.facts["intent.purposes"]).toEqual({
+      status: "KNOWN",
+      value: ["EMPLOYMENT"],
+    });
+    expect(mapped.facts["intent.requested_product_code"]).toEqual({
+      status: "KNOWN",
+      value: "E23U",
+    });
+  });
+
+  // The same, for the other half of the question — and note the wording the
+  // applicant reads says "foreign chamber of commerce" (Kepmen
+  // M.IP-08.GR.01.01/2025: `kamar dagang asing`), not the pack's own
+  // "Trade and Economic Office" product name, which is a misreading.
+  it("CURED: naming E23V reaches the wire as a KNOWN fact", () => {
+    let state = startOffshore("work");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "sponsor_category", "EMPLOYER");
+    state = answer(state, "employment_special_employer", "E23V");
+    state = answer(state, "work_payer", "yes");
+    state = answer(state, "work_indonesia_compensation", "yes");
+    state = answer(state, "work_sponsor_confirmed", "yes");
+    state = answer(state, "work_role", "specialist");
+    state = answer(state, "stay_days", "365");
+    state = answer(state, "review_gate", "none");
+
+    const mapped = mapOracleFactsToApplicantFacts(state.facts, {
+      assessmentId: "11111111-1111-4111-8111-111111111111",
+      collectedAt: new Date("2026-07-27T00:00:00.000Z"),
+    });
+    expect(mapped.facts["intent.requested_product_code"]).toEqual({
+      status: "KNOWN",
+      value: "E23V",
     });
   });
 });
@@ -968,6 +1041,7 @@ describe("editing, pruning and branch projection", () => {
     let state = startOffshore("work");
     state = answer(state, "trip_scope", "single");
     state = answer(state, "sponsor_category", "EMPLOYER");
+    state = answer(state, "employment_special_employer", "STANDARD");
     state = answer(state, "work_payer", "yes");
     state = answer(state, "work_indonesia_compensation", "yes");
     expect(state.facts.work_payer).toBe("yes");
@@ -1384,6 +1458,7 @@ describe("attempt and verdict navigation", () => {
     let state = startOffshore("work");
     state = answer(state, "trip_scope", "single");
     state = answer(state, "sponsor_category", "EMPLOYER");
+    state = answer(state, "employment_special_employer", "STANDARD");
     state = answer(state, "work_payer", "yes");
     state = reduce(state, { type: "SELECT_CATEGORY", category: "study" });
     expect(state.facts.category).toBe("study");

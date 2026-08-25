@@ -655,8 +655,20 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
     // `employment_product_code_govt`/`employment_product_code_none`
     // comments for why these are two separate questions rather than one
     // shared question with a union gate.
+    // V1/E23UV (2026-08-25, owner ruling (A)): `employment_special_employer`
+    // is deliberately NOT sponsor-gated, unlike the two E33 questions right
+    // below it. That asymmetry mirrors the pack: `review.e23u.
+    // requested-product` / `review.e23v.requested-product` gate on
+    // `intent.purposes ∩ {EMPLOYMENT}` AND the product code, and on NOTHING
+    // ELSE — no `sponsor.type` conjunct at all (read off
+    // rulepack-prod-013.source.json, the active pack). Gating this question
+    // on a sponsor category would re-create, one layer up, the exact hole it
+    // exists to close: a diplomat's household worker can plausibly answer
+    // INDIVIDUAL, EMPLOYER or GOVERNMENT for their sponsor, and any gate
+    // would silently drop two of those three.
     return [
       "sponsor_category",
+      "employment_special_employer",
       ...(facts.sponsor_category === "GOVERNMENT"
         ? ["employment_product_code_govt"]
         : facts.sponsor_category === "NONE"

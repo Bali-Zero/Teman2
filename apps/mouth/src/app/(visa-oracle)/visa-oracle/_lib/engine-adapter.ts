@@ -649,6 +649,22 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     "For an applicant under 18 we involve a parent or guardian before confirming anything, so a person handles this case.",
     "Untuk pemohon di bawah 18 tahun, kami melibatkan orang tua atau wali sebelum mengonfirmasi apa pun, jadi kasus ini ditangani oleh seseorang.",
   ),
+  // V1/E23UV (2026-08-25). Both codes became REACHABLE this turn — until now
+  // no question could name E23U/E23V, so these two sat in the test's
+  // KNOWN_UNMAPPED list and a firing rule would have rendered the GENERIC
+  // fallback. The wording follows the source, not the pack's product names:
+  // E23V's `reason_code` says TRADE_OFFICE, but Kepmen M.IP-08.GR.01.01/2025
+  // Lampiran B.1 says `kamar dagang asing` — a foreign CHAMBER OF COMMERCE.
+  // The code is internal; the sentence is what the applicant reads, so the
+  // sentence follows the Kepmen.
+  E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW: text(
+    "Domestic work in a foreign diplomat's household is a separate visa route with its own conditions, so a consultant confirms it before we quote anything.",
+    "Pekerjaan rumah tangga di kediaman diplomat asing adalah jalur visa tersendiri dengan ketentuannya sendiri, jadi seorang konsultan memastikannya sebelum kami memberikan penawaran.",
+  ),
+  E23V_TRADE_OFFICE_STAFF_REVIEW: text(
+    "Working for a foreign chamber of commerce is a separate visa route with its own conditions, so a consultant confirms it before we quote anything.",
+    "Bekerja pada kamar dagang asing adalah jalur visa tersendiri dengan ketentuannya sendiri, jadi seorang konsultan memastikannya sebelum kami memberikan penawaran.",
+  ),
 };
 
 /**

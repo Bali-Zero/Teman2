@@ -721,6 +721,55 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
   // (GOVERNMENT vs NONE are the only two values `getCategoryQuestionIds`'s
   // "work" branch, flow.ts, ever routes to either one of) rather than one
   // shared question.
+  // V1/E23UV (2026-08-25, owner ruling (A) — docs/plans/2026-08-24-visa-oracle
+  // -live/DEADEND-PURPOSE-COVERAGE.md). This question asks WHO THE EMPLOYER
+  // IS, never "do you know your visa code", because that is the attribute the
+  // governing text uses to define both products. Kepmen M.IP-08.GR.01.01/2025
+  // (Klasifikasi Visa), Lampiran B.1: E23U = "Melakukan pekerjaan sebagai
+  // asisten rumah tangga diplomat asing"; E23V = "...pejabat atau staf pada
+  // kamar dagang asing" — a foreign CHAMBER OF COMMERCE, not a "Trade and
+  // Economic Office"/KDEI, which is a misreading the pack itself froze into
+  // E23V's English product name and which
+  // research/visa/2026-08-11-w3-sponsor-rules-factbase.md corrects.
+  //
+  // WHY THIS QUESTION IS ALLOWED TO OVER-CAPTURE. It does not classify; it
+  // raises a HUMAN review (`review.e23{u,v}.requested-product`, effect
+  // REQUIRE_REVIEW). PR #4797 rightly refused to author SUPPORT rules here —
+  // no predicate over the current fact vocabulary separates "a diplomat's
+  // household" from "any individual employer", so an auto-approval would have
+  // told a nanny hired by an ordinary expat family that she qualifies. That
+  // objection is fatal to a SUPPORT rule and does NOT bind a REVIEW rule: for
+  // review, over-capturing costs a consultant reading an ordinary case, while
+  // under-capturing leaves the applicant a confidently WRONG "E23". Where the
+  // primary text is ambiguous this wording must err toward review, never
+  // toward silence.
+  employment_special_employer: {
+    id: "employment_special_employer",
+    i18nKey: "q.employment_special_employer",
+    kind: "choice",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["intent.requested_product_code"],
+    },
+    sensitive: false,
+    options: [
+      {
+        key: "E23U",
+        labelI18nKey: "q.employment_special_employer.opt.E23U",
+      },
+      {
+        key: "E23V",
+        labelI18nKey: "q.employment_special_employer.opt.E23V",
+      },
+      {
+        key: "STANDARD",
+        labelI18nKey: "q.employment_special_employer.opt.STANDARD",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.employment_special_employer" },
+    notSure: { mode: "human-review" },
+  },
   employment_product_code_govt: {
     id: "employment_product_code_govt",
     i18nKey: "q.employment_product_code_govt",
