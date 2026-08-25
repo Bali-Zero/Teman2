@@ -69,15 +69,15 @@ receipts:
     exit: 0
     ts: "2026-08-25T19:00:00+08:00"
     seat: "claude-opus-5 (this session)"
-  - claim: "test_mutating_routes_are_gated.py (the whole-app public-mutation accounting security gate) passes with the two new GARUDA VOA magic-link routes declared in INTENTIONALLY_PUBLIC_MUTATIONS, reasons written against the actual handler source (garuda_portal_auth.py) rather than copied from the neighbouring FASE-6 row."
+  - claim: "test_mutating_routes_are_gated.py (the whole-app public-mutation accounting security gate) passes with the two new GARUDA VOA magic-link routes declared in INTENTIONALLY_PUBLIC_MUTATIONS -- re-run after correcting the /magic-links reason text per the team-lead's finding below."
     cmd: "PYTHONPATH=. pytest backend/tests/security/test_mutating_routes_are_gated.py -v"
     exit: 0
-    ts: "2026-08-25T19:40:00+08:00"
+    ts: "2026-08-25T20:05:00+08:00"
     seat: "claude-opus-5 (this session)"
   - claim: "ruff clean on the security registry test file."
     cmd: "ruff check backend/tests/security/test_mutating_routes_are_gated.py"
     exit: 0
-    ts: "2026-08-25T19:40:30+08:00"
+    ts: "2026-08-25T20:05:15+08:00"
     seat: "claude-opus-5 (this session)"
 dissent:
   - seat: "kimi-code/k3"
@@ -129,4 +129,20 @@ dissent:
       unboundedly, a disk-fill concern distinct from the RATE_LIMITED
       contract gap this PR closes.
     status: PLAUSIBLE
+  - seat: "team-lead (human-conducted session, verified against handler source)"
+    objection: >-
+      The first draft of the INTENTIONALLY_PUBLIC_MUTATIONS reason for
+      POST /api/visa/voa/auth/magic-links asserted the unknown/not-owned
+      case "returns before the store is ever touched, so it costs the same
+      as the real path" -- self-contradictory (an early return costs LESS,
+      not the same) and factually wrong: the router's only early return
+      fires on "no ResultSession cookie" or "malformed result_id", both
+      caller-known facts requiring no server lookup. A well-formed but
+      unknown/not-owned result_id does NOT short-circuit -- it reaches
+      store.issue() exactly like a real match. Enumeration safety rests on
+      the STORE returning an identical outcome for unknown/not-owned/real,
+      not on the router skipping work for the unknown case; the original
+      text would have misled a future reviewer into trusting a property the
+      code does not actually provide by itself.
+    status: CONFIRMED
 pii_scan: clean

@@ -136,15 +136,24 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "/api/visa/voa/auth/magic-links",
         "GARUDA VOA magic-link request (L4, PR #4901/#4902) — precedes any "
         "credential by construction, same shape as the FASE-6 row above: an "
-        "unauthenticated visitor asks for a login link. Enumeration-safe: "
-        "always 202 with an identical body whether the result is unknown, not "
-        "owned by the caller's session, or a real match — the unknown/not-owned "
-        "case returns before the store is ever touched, so it costs the same "
-        "as the real path. Reviewed 2026-08-25 against the handler "
-        "(request_magic_link in garuda_portal_auth.py): also throttled "
-        "email-scoped, 5 issues per 15 minutes (PostgresMagicLinkStore.issue), "
-        "closing the one abuse vector this route has (mailbox flooding) — "
-        "verified against the handler source, not copied from the row above.",
+        "unauthenticated visitor asks for a login link. Reviewed 2026-08-25 "
+        "against the handler (request_magic_link in garuda_portal_auth.py), "
+        "corrected same day after a team-lead finding that an earlier draft "
+        "of this reason misdescribed the short-circuit: the ONLY early "
+        "return (before the 202 that always follows) fires on 'no "
+        "ResultSession cookie' or 'malformed result_id' — both facts the "
+        "CALLER already knows about its own request, requiring no server "
+        "lookup, so neither can leak server-side existence. A well-formed "
+        "result_id that is simply UNKNOWN or NOT OWNED does not short-circuit "
+        "at all: it reaches store.issue() exactly like a real match does, and "
+        "both emerge as the identical 202. Enumeration safety therefore rests "
+        "on the STORE returning the same shape for unknown/not-owned/real "
+        "alike, not on the router skipping work for the unknown case -- a "
+        "property PostgresMagicLinkStore (same branch) must keep preserving, "
+        "not one this route's early return provides by itself. Also "
+        "throttled email-scoped, 5 issues per 15 minutes "
+        "(PostgresMagicLinkStore.issue), closing the one abuse vector this "
+        "route has (mailbox flooding).",
     ),
     IntentionalPublicMutation(
         "POST",
