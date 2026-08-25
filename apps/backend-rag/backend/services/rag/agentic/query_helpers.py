@@ -146,6 +146,40 @@ def _whole_word_matcher(markers: list[str], suffix: str = "") -> re.Pattern[str]
 
 INDONESIAN_MARKER_RE = _whole_word_matcher(INDONESIAN_MARKERS, _INDONESIAN_ENCLITICS)
 
+# WhatsApp openers are elongated more often than they are spelled. Every
+# matcher in this file is whole-word by design, so "ciaooo" and "grazieee" are
+# unknown tokens that score ZERO for every language — and a zero score is not
+# "unknown", it is the ENGLISH default, which the wrapper below renders to the
+# model as a hard order to answer in English. That is the IT-in/EN-out drift
+# this detector exists to prevent, reached through spelling rather than through
+# vocabulary.
+#
+# The floor is THREE identical characters, not two, and that is load-bearing:
+# Italian doubles constantly ("soggiorno", "permesso", "sarebbe") and folding a
+# legitimate double would silently break markers this file already relies on.
+# No marker in any list here contains a run of three.
+_ELONGATION_RE = re.compile(r"(.)\1{2,}")
+
+# The 3-character floor above leaves "graziee" and "ciaoo" — a doubled vowel is
+# the commonest elongation of all, and the floor cannot be lowered globally
+# without destroying real markers.
+#
+# It CAN be lowered for a doubled vowel at the END of a word, and the exact
+# reason the rule is written this narrowly is German "muss": it is a decisive
+# marker in the row below and it ends in a doubled CONSONANT, so a blanket
+# trailing-double fold would silently delete it. Restricting to vowels also
+# cannot invent a marker — no entry in any list here ends in a doubled vowel,
+# so this fold can only recover a marker, never manufacture one. Checked
+# against English words that do ("free", "three", "coffee", "committee"): each
+# folds to a non-marker and changes no verdict.
+_TRAILING_VOWEL_RUN_RE = re.compile(r"([aeiou])\1+\b")
+
+
+def _collapse_elongation(text: str) -> str:
+    """Fold elongation, so "ciaooo" and "graziee" both read as their word."""
+    return _TRAILING_VOWEL_RUN_RE.sub(r"\1", _ELONGATION_RE.sub(r"\1", text))
+
+
 # The same bare-substring defect lived in every Latin-script branch, and it is
 # not theoretical: "in(come) tax" reads as ITALIAN and "com(merci)al licence" as
 # FRENCH. The team beta test of 2026-07-28 recorded two English questions
@@ -194,8 +228,45 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
             "funziona",
             "essere",
             "ottenere",
+            # Greetings and courtesies, added 2026-08-25. A WhatsApp thread
+            # opens with one far more often than with a business question, and
+            # the row above carried exactly ONE ("ciao") — so "Buongiorno",
+            # "Salve" and "Buonasera" each scored zero and were answered in
+            # English. Measured on 16 real Italian openers before this change:
+            # 10 returned ENGLISH.
+            "buongiorno",
+            "buonasera",
+            "buonanotte",
+            "arrivederci",
+            "prego",
+            "scusa",
+            "scusi",
+            "scusate",
+            # "salve" is an English noun too (an ointment). It is DECISIVE here
+            # anyway, deliberately: in an immigration/company bot the Italian
+            # greeting is common and the English noun is close to unheard-of,
+            # and the cost is asymmetric — a missed greeting mislabels the whole
+            # reply, a stolen "salve" mislabels one query nobody sends. This is
+            # the one entry in this row that knowingly breaks the shared-marker
+            # rule stated above; do not read it as a licence to add more.
+            "salve",
+            # Question words and function words a real Italian question brings
+            # along. "qual" is absent from the Spanish row ("cuál") and the
+            # French row ("quel"), and bare "è" exists in neither.
+            "qual",
+            "è",
+            "tra",
+            "sapere",
+            "aiuto",
+            "bisogno",
+            "soggiorno",
+            "informazioni",
+            "potete",
+            "puoi",
+            "volevo",
         ],
-        ["come"],  # homograph: English "come"
+        # homographs: English "come", and English "dove" (the bird)
+        ["come", "dove"],
     ),
     (
         "FRENCH",
@@ -219,6 +290,10 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
             "dans",
             "être",
             "obtenir",
+            # Greetings, same 2026-08-25 reason as the Italian row: this row
+            # carried "bonjour" alone, so "Bonsoir" and "Salut" fell through.
+            "bonsoir",
+            "salut",
         ],
         ["comment"],  # homograph: English "comment"
     ),
@@ -260,6 +335,14 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
             "abrir",
             "están",
             "también",
+            # Greetings, 2026-08-25. "hola" was the only one, so "Buenos días"
+            # — the ordinary Spanish opener — scored zero and read as ENGLISH.
+            # Both the accented and the bare spellings, because WhatsApp
+            # clients send both.
+            "buenos días",
+            "buenos dias",
+            "buenas tardes",
+            "buenas noches",
         ],
         [],
     ),
@@ -293,6 +376,12 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
             "unternehmen",
             "gründen",
             "wie",
+            # Greetings, 2026-08-25. "hallo" was the only one; "Guten Tag" and
+            # its siblings scored zero and read as ENGLISH.
+            "guten tag",
+            "guten morgen",
+            "guten abend",
+            "tschüss",
         ],
         [],
     ),
@@ -349,7 +438,11 @@ def detect_query_language(query: str) -> str:
     if not query or len(query.strip()) < 2:
         return "UNKNOWN"
 
-    query_lower = query.lower()
+    # Elongation is folded BEFORE any marker match — Indonesian included — so a
+    # WhatsApp opener is scored on its word, not on its spelling. The non-Latin
+    # script checks below deliberately keep reading the ORIGINAL `query`: they
+    # test code points, and folding cannot help them.
+    query_lower = _collapse_elongation(query.lower())
 
     # Check Indonesian first — WHOLE WORDS (+ enclitics) only, never substrings.
     if INDONESIAN_MARKER_RE.search(query_lower):
