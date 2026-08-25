@@ -1868,6 +1868,118 @@ class TestAddRequiredDocument:
         assert exc_info.value.status_code == 404
 
 
+class TestDeleteRequiredDocument:
+    @pytest.mark.asyncio
+    async def test_delete_required_document_admin_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other@balizero.com"}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await delete_required_document(
+                practice_id=1,
+                doc_id=5,
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_owner_created_by_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's creator (non-admin) may delete a required doc."""
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": team_user["email"], "assigned_to": "other@balizero.com"}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await delete_required_document(
+                practice_id=1,
+                doc_id=5,
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_owner_assigned_to_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's assignee (non-admin) may delete a required doc."""
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": "other@balizero.com", "assigned_to": team_user["email"]}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await delete_required_document(
+                practice_id=1,
+                doc_id=5,
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_denied_non_owner(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict, caplog
+    ) -> None:
+        """GUILT: a non-admin who neither created nor is assigned to the
+        practice gets 403, no delete happens, and the attempt is logged
+        (auditable)."""
+        import logging
+
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other-owner@balizero.com"}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.crm_practices"):
+            with pytest.raises(HTTPException) as exc_info:
+                await delete_required_document(
+                    practice_id=1,
+                    doc_id=5,
+                    current_user=team_user,
+                    db_pool=mock_db_pool,
+                )
+        assert exc_info.value.status_code == 403
+        mock_db_conn.execute.assert_not_awaited()
+        assert any("crm.rbac_practice_write_denied" in r.message for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_practice_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """A nonexistent practice_id 404s before any ownership check or
+        delete attempt runs."""
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import delete_required_document
+
+        mock_db_conn.fetchrow = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await delete_required_document(
+                practice_id=999,
+                doc_id=5,
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert exc_info.value.status_code == 404
+        mock_db_conn.execute.assert_not_awaited()
+
+
 # ---------------------------------------------------------------------------
 # Helper: _create_hr_bonus_on_completed
 # ---------------------------------------------------------------------------

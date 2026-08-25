@@ -2338,9 +2338,34 @@ async def delete_required_document(
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Delete a required document from a practice."""
+    """Delete a required document from a practice.
+
+    Access Control:
+    - Admin users: can delete required documents on any practice
+    - Team members: can only delete required documents on practices they
+      created or are assigned to (mirrors update_practice; crm-mutation-scope)
+    """
     try:
         async with db_pool.acquire() as conn:
+            practice_row = await conn.fetchrow(
+                "SELECT created_by, assigned_to FROM practices WHERE id = $1",
+                practice_id,
+            )
+            if not practice_row:
+                raise HTTPException(status_code=404, detail="Practice not found")
+
+            user_is_admin, created_by_match, assigned_to_match = _practice_ownership_flags(
+                current_user,
+                practice_row.get("created_by"),
+                practice_row.get("assigned_to"),
+            )
+            if not user_is_admin and not (created_by_match or assigned_to_match):
+                _deny_practice_mutation(
+                    practice_id,
+                    current_user,
+                    "You don't have permission to delete required documents on this practice",
+                )
+
             result = await conn.execute(
                 "DELETE FROM practice_required_documents WHERE id = $1 AND practice_id = $2",
                 doc_id,
