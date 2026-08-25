@@ -209,7 +209,7 @@ model-visible env.
 
 ---
 
-## Local Ollama — Pro/Mini, $0, PII-safe (SSOT: `MODEL_TOPOLOGY.json`)
+## Local Ollama — door: `ollama run <model>` (Pro/Mini, $0, PII-safe; SSOT: `MODEL_TOPOLOGY.json`)
 
 Roster is **not auto-replicated cross-machine** — always `ollama list` per machine before assuming
 presence. Known-live lanes (CLAUDE.md §9 data invariants + machine facts):
