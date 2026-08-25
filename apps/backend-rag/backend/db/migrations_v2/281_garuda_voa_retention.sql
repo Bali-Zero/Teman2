@@ -220,7 +220,15 @@ ALTER TABLE public.garuda_voa_checks
 -- touched here.
 UPDATE public.garuda_voa_checks SET environment = 'PRODUCTION' WHERE environment IS NULL;
 
+-- garuda_voa_checks is the retired historical archive (migration 276): a
+-- handful of rows, no live writer, no production traffic touches this
+-- table today. The scan SET NOT NULL performs is momentary at this size —
+-- same reasoning the workflow's blanket constraint-missing-not-valid
+-- exclusion already applies to every other near-empty table in this repo.
+-- A NOT VALID CHECK (squawk's suggested alternative) would still need a
+-- separate VALIDATE pass to ever become enforced, which buys nothing here.
 ALTER TABLE public.garuda_voa_checks
+    -- squawk-ignore adding-not-nullable-field
     ALTER COLUMN environment SET NOT NULL;
 
 ALTER TABLE public.garuda_voa_checks
@@ -932,7 +940,14 @@ EXCEPTION
 END;
 $garuda_281_restore_constraints$;
 
+-- Rollback-only, never executed forward (migration_base.py runs only the
+-- forward DDL — same family as this file's own disallowed-unique-constraint
+-- exclusion precedent, migration 175). This name is byte-for-byte 264's
+-- original identifier: Postgres already truncated it to the identical 63
+-- bytes the first time 264 ran, so a rollback re-creating it truncates the
+-- same way and restores the exact prior state — not a new defect.
 ALTER TABLE public.visa_decision_retention_policies
+    -- squawk-ignore identifier-too-long
     ADD CONSTRAINT visa_decision_retention_policies_environment_effective_period_excl
         EXCLUDE USING gist (environment WITH =, effective_period WITH &&);
 
