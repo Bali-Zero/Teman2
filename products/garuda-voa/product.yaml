@@ -118,9 +118,36 @@ risk_tier_map: # ASSEMBLY-LINE verification economics: set once, here
 owner_decisions: # §3 switchboard — filled with prepared proposals, signed at the end
   - id: 1
     decision: payment_provider
-    state: proposal-ready
+    state: ratified
     packet: products/garuda-voa/ops/decision-packets/01-payment-provider.md
-    gesture: "pick + sign up with his own credentials"
+    # RATIFIED 2026-08-25: Xendit. International card 3.5% + Rp6k, VA Rp13k, no monthly
+    # fee, payment links included. Same provenance caveat as decision 5: this reached the
+    # orchestrator by RELAY, not from Zero in-session. Enough to build dark and reversible;
+    # not enough to skip the signature. Confirm directly at go-live.
+    ratified: Xendit
+    # Zero attached a TIERED routing rule. Only tier (a) is in scope for THIS product, and
+    # that scoping is load-bearing — without it a lane builds the whole Bali Zero payment
+    # strategy into a VOA funnel that has no ticket above Rp 850k:
+    #   (a) small tickets (<= ~Rp 3jt) -> card in checkout, fee ABSORBED into the one
+    #       all-inclusive price, never a separate line. GARUDA VOA is entirely this tier
+    #       (issuance 790k, extension 850k). BUILD THIS.
+    #   (b) heavy T2 tickets (10-30jt) -> contained card deposit in checkout, balance by
+    #       international transfer/Wise in the consultant thread. NO SUCH TICKET EXISTS in
+    #       this product. Recorded for the sibling products; do NOT build it here.
+    #   (c) VA for customers holding an Indonesian account. Out of scope for a funnel whose
+    #       buyer is by definition a foreign tourist who has not yet entered the country.
+    fee_config_is_a_parameter: >
+      Zero's note: the card fee is negotiable at volume, so L3 wires it as configuration,
+      never a constant.
+    # MEASURED CONSEQUENCE, recorded because Zero is deciding fees while 7(b) is open:
+    # 3.5% + Rp6k on the 790k issuance is ~33.650 IDR, i.e. ~4.3% of the ticket, and it is
+    # ABSORBED. Whether that is affordable depends on a number nobody has yet confirmed —
+    # question 7(b) asks whether the 790k catalogue row is inclusive of PNBP. If it is not,
+    # the absorbed payment fee stacks on top of an unbudgeted government fee. This does not
+    # block L3 (the port is provider-neutral and the fee is configuration), but the margin
+    # answer is not knowable until 7(b) is.
+    depends_on_for_margin_only: 7
+    gesture: "sign up with his own credentials — the choice is made, the account is not"
   - id: 2
     decision: terms_of_sale_and_refund
     state: proposal-ready
