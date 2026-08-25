@@ -946,3 +946,99 @@ class TestAnonymousChatCannotQuoteAPrice:
             "the router hands the model via the check_hash preamble, which "
             "bridge.py's match-branch preamble instructs it to quote verbatim"
         )
+
+
+class TestNoSqlAnywhereWritesTheFreeTextColumn:
+    """The ledgered proof-of-armed for Owner ruling #3 (2026-08-25): "un test
+    rende ROSSO qualunque reintroduzione di una scrittura su
+    `visa_oracle_sessions.messages`".
+
+    `TestFreeTextCollectionRetired` above already guards the retirement, and
+    is honest in its own docstring about how: three literal spellings, inside
+    `chat()`'s source only. That is substring-shaped, and this repo has a
+    whole scar family about guards that judge text instead of entities
+    (cicatrix #3). It would miss a write added in ANY other function of the
+    module, and inside `chat()` it would miss `messages=messages||`,
+    `SET  messages` (two spaces), an INSERT that simply lists the column, or
+    `jsonb_set(messages, ...)`.
+
+    This one scans EVERY string literal in the module with `ast`, finds the
+    ones that are SQL touching `visa_oracle_sessions`, and asserts that none
+    of the WRITING ones (INSERT/UPDATE) mentions the `messages` column at
+    all — whatever the spelling.
+    """
+
+    @staticmethod
+    def _sql_literals() -> list[str]:
+        import ast
+        import inspect
+
+        import backend.app.routers.visa_oracle as visa_oracle_module
+
+        tree = ast.parse(inspect.getsource(visa_oracle_module))
+        return [
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        ]
+
+    @classmethod
+    def _writes_to_the_session_table(cls) -> list[str]:
+        import re
+
+        table = re.compile(r"\bvisa_oracle_sessions\b", re.IGNORECASE)
+        writing = re.compile(r"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\b", re.IGNORECASE)
+        return [s for s in cls._sql_literals() if table.search(s) and writing.search(s)]
+
+    def test_the_scanner_actually_finds_the_known_writes(self) -> None:
+        """Guard the guard. A scanner that finds NO statements would make the
+        real assertion below vacuously true — the single most common way a
+        test like this ships green and proves nothing."""
+        writes = self._writes_to_the_session_table()
+        assert len(writes) >= 2, (
+            "expected to find at least the session INSERT and the handoff "
+            f"UPDATE in visa_oracle.py; found {len(writes)} — the scanner is "
+            "broken, not the module"
+        )
+
+    def test_no_write_statement_mentions_the_messages_column(self) -> None:
+        import re
+
+        column = re.compile(r"\bmessages\b", re.IGNORECASE)
+        offenders = [s for s in self._writes_to_the_session_table() if column.search(s)]
+        assert offenders == [], (
+            "a SQL statement writing `visa_oracle_sessions` references the "
+            "`messages` column. Owner ruling #3 (2026-08-25) retired free-text "
+            "collection: the column stays only for the existing backlog, and "
+            "nothing may write it again. Offending statement(s): "
+            f"{offenders}"
+        )
+
+    def test_the_detector_would_catch_a_reintroduction(self) -> None:
+        """GUILT for the detector itself, on synthetic SQL in every spelling
+        the substring guard above would miss. Without this, a regex typo would
+        make the real test silently unable to fail."""
+        import re
+
+        table = re.compile(r"\bvisa_oracle_sessions\b", re.IGNORECASE)
+        writing = re.compile(r"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\b", re.IGNORECASE)
+        column = re.compile(r"\bmessages\b", re.IGNORECASE)
+        smuggled = [
+            "UPDATE visa_oracle_sessions SET messages=messages||$2 WHERE session_id=$1",
+            "UPDATE  visa_oracle_sessions  SET   messages = $2",
+            "INSERT INTO visa_oracle_sessions (session_id, messages) VALUES ($1, $2)",
+            "update visa_oracle_sessions set messages = jsonb_set(messages, '{0}', $2)",
+        ]
+        for sql in smuggled:
+            assert table.search(sql) and writing.search(sql) and column.search(sql), sql
+
+    def test_reads_of_the_column_are_still_allowed(self) -> None:
+        """INNOCENCE: the ruling stops COLLECTION, not access. A SELECT of the
+        existing backlog must not be flagged, or the guard would block the
+        very disposal work that is still owed."""
+        import re
+
+        table = re.compile(r"\bvisa_oracle_sessions\b", re.IGNORECASE)
+        writing = re.compile(r"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\b", re.IGNORECASE)
+        select = "SELECT messages FROM visa_oracle_sessions WHERE session_id = $1"
+        assert table.search(select) and not writing.search(select)
