@@ -143,16 +143,189 @@ uu_25_2007_fragment_categorisation:
     konstitusi..." — this is a citation to Article 33 of the 1945 Constitution
     (the economy clause), NOT to UU 25/2007's own Pasal 33. UU 25/2007's own
     operative-article count present in production is therefore 0, not 1.
+    CORRECTED 2026-08-26 by the containment lane below: this substring-only method
+    under-matches as well as over-matches — it missed that a GENUINE elucidation of
+    UU 25/2007's own Pasal 33 (point c6c114ba, 1,208 chars, ayat 1-3) is present in
+    this same corpus, findable only because its text never repeats the literal
+    string "Pasal 33" in its own body. A bare substring scan is not a substitute
+    for the structured pasal_number field re-check immediately below.
+
+  # ── 2026-08-26 independent re-verification, MANDATE §7 decision 2's containment
+  #    order STEP 1 — dispatched to re-prove uu_25_2007_fragment_categorisation
+  #    above using the payload's OWN structured `pasal_number` metadata field
+  #    (present in production, confirmed on this scan) rather than a substring
+  #    match on the chunk text, per this lane's mandate: a naive "Pasal N" text
+  #    scan measured the same night on a different document pair produced mostly
+  #    spurious hits (cross-references from inside other articles), so a field
+  #    that names WHICH pasal a fragment belongs to is the higher-fidelity signal
+  #    when it exists. Read-only: full scroll of all 84,283 legal_unified points,
+  #    zero writes, zero re-ingestion, zero deletion.
+  pasal_number_field_cross_check:
+    method: >
+      Every one of the 65 points carries `metadata.pasal_number` (a field this
+      lane did not know existed until this scan — company.yaml's original
+      categorisation above was built by reading chunk text, not this field).
+      Grouped all 65 points by pasal_number and read the full text of every
+      distinct group (not sampled) to check whether the field's claim ("this
+      fragment explains Pasal N") is trustworthy.
+    distinct_pasal_number_values_present: 39 # "1".."4","6".."40" — every integer 1-40 except "5"
+    pasal_5_elucidation: >
+      ABSENT. No point in production carries pasal_number "5" — a genuine gap in
+      the elucidation, not a mislabelling artefact (every other single-appearance
+      value 1-4/6-39 resolves to exactly one point each, so this is not an
+      off-by-one in counting).
+    the_pasal_40_bucket_is_a_mislabelled_catch_all: >
+      27 of the 65 points carry pasal_number "40", but reading all 27 in document
+      order (their chunk_index runs 1-29 with two gaps) shows this is NOT 27
+      redundant explanations of Pasal 40. It is: 3 points of the operative law's
+      own enactment/signature block ("Disahkan di Jakarta ... PRESIDEN REPUBLIK
+      INDONESIA, DR." / "H." / "SUSILO BAMBANG YUDHOYONO ... PENJELASAN ATAS
+      UNDANG UNDANG ... NOMOR 25 TAHUN 2007"), 1 point that is only the section
+      header "PASAL DEMI PASAL." (the elucidation's own table-of-contents marker
+      for "article by article", not an article's content), and 23 points that are
+      the elucidation's "I. UMUM" (general/preamble) narrative — including the
+      point (chunk_id ffe421b0) already identified above as the 1945-Constitution
+      citation. None of the 27 is itself an explanation of Pasal 40. The
+      hierarchical indexer's own `hierarchy_path` confirms the defect structurally:
+      every one of these 27 is filed as a numbered child of
+      "UU_25_2007/BAB_XVIII/Pasal_40/<chunk_index>" instead of under separate
+      UMUM/administrative nodes — the parser's "current heading" state appears to
+      have stalled on the last real Pasal_N node (40) and swept everything after
+      it into that same bucket. The same stall explains why ALL 65 points,
+      including the 38 genuine single-Pasal nodes, carry `bab_title: "BAB XVIII -
+      KETENTUAN PENUTUP"` even for pasal_number "1" — BAB XVIII is the real law's
+      LAST chapter (confirmed below), so a point tagged pasal_number "1" AND
+      bab_title "BAB XVIII" is internally contradictory metadata, not evidence
+      about the law's real structure.
+    single_appearance_pasal_nodes_recategorised: >
+      Independently re-derived the categories above from all 38 single-appearance
+      pasal_number nodes (1-4, 6-39) by testing each point's own text for the
+      literal phrase "cukup jelas" (case-insensitive): 21 are the bare phrase alone
+      ("Cukup jelas." with nothing else, matching bare_cukup_jelas exactly), 15
+      combine it with adjacent ayat/huruf explanation (matching
+      cukup_jelas_plus_more exactly), and 2 (Pasal 2 and Pasal 17) are narrative
+      explanation that never uses the phrase at all. Adding those 2 to the 23 UMUM
+      points + the 1 "PASAL DEMI PASAL." header from the pasal_number "40" bucket
+      reproduces other_elucidation_narrative: 26 exactly. The two independent
+      methods (read-all-65-by-eye, done 2026-08-25; group-by-structured-field,
+      done 2026-08-26) agree to within the single 2-character OCR fragment ("H.")
+      whose bucket boundary is genuinely ambiguous either way. Nothing here
+      overturns the headline finding — it sharpens it: the field confirms 0
+      operative-article text exists under ANY pasal_number, including "40".
+
+  # ── 2026-08-26 — the real instrument's size, cited so the ratio has a
+  #    denominator instead of "~40" (company.yaml's OWNER-SWITCHBOARD table above
+  #    already estimated ~40; this replaces the estimate with a citation).
+  real_instrument_structure:
+    source: >
+      https://jdih.kemenkeu.go.id/api/download/fulltext/2007/25TAHUN2007UU.htm
+      (Ministry of Finance's own legal database, full text) — corroborated by an
+      independent web search returning the same figure from OJK's regulatory
+      listing and catatanhukum.com's UU 25/2007 mirror. Not fetched via the
+      production ingestion pipeline and nothing from it was written anywhere;
+      read purely to establish the denominator below.
+    bab_count: 18
+    pasal_count: 40
+    pasal_40_is: >
+      The law's own closing/enactment clause: "Undang-Undang ini mulai berlaku
+      pada tanggal diundangkan." — filed under BAB XVIII KETENTUAN PENUTUP, which
+      matches the bab_title every one of the 65 production points carries
+      (confirming the parser's stall point above is real: it stalled exactly on
+      the true final chapter, then kept stamping that chapter onto everything
+      after it, including points that belong to Pasal 1).
+  coverage_against_the_real_law:
+    operative_articles_present: "0/40 (0.0%)" # unchanged from the original ratio — reconfirmed, not merely repeated
+    elucidation_per_pasal_present: >
+      38/40 distinct Pasal have their own elucidation fragment (1-4, 6-39).
+      Pasal 5 has none. Pasal 40 has no CLEAN elucidation fragment of its own
+      either — its pasal_number slot exists only as the mislabelled catch-all
+      described above, so a stricter count is 37/40 Pasal cleanly and correctly
+      explained, 1 (Pasal 5) missing outright, and 1 (Pasal 40) present only as
+      administrative/UMUM noise wearing its label. Recorded as a secondary metric
+      only: this is elucidation coverage, not law coverage — the number that
+      matters for a client's question is operative_articles_present, and that one
+      is 0/40 regardless of how the elucidation is scored.
+
+  # ── 2026-08-26 — contested-identity check, MANDATE §7 decision 2's specific ask
+  #    ("would a rewrite also overwrite a different document?"). Checked against
+  #    the FULL collection (84,283 points / 388 documents), not sampled.
+  identity_contention_check:
+    method: >
+      (1) Searched every OTHER document_id's title census
+      (legal_unified_census.json, full scroll, all 388 documents) for any title
+      mentioning "25"+"2007" or "PENANAMAN MODAL" — three near-misses found
+      (Permen_5_2025, UU_13_2017, UU_28_2007), none an exact match to UU_25_2007's
+      own title string. (2) Full unfiltered scroll of all 84,283 points (no
+      payload index exists on metadata.file_path — a filtered Qdrant query on it
+      returns HTTP 400, not zero results, so this was done client-side to avoid
+      creating an index, which would be a write) grouped by file_path, to check
+      whether any OTHER document_id's points share UU_25_2007's exact source PDF.
+    verdict: >
+      NOT CONTESTED. UU_25_2007's title ("UU - NO 25 - TAHUN 2007 - TENTANG
+      PENANAMAN MODAL") is carried by 27 of its own 65 points and by zero points
+      of any other document_id. Its file_path
+      ("apps/kb/data/04_aziende/UU Nomor 25 Tahun 2007_20251122_163034_6c0809.pdf")
+      is carried by exactly 65 points, all 65 under document_id UU_25_2007 and no
+      other. UU_25_2007 is NOT among the corpus's known 11 title-contested (7,681
+      pts) or 22 claimant-contested (12,926 pts) identities. A future re-ingest
+      under this document_id would overwrite ONLY this document — the single
+      biggest open question this lane was asked to answer, and the answer is no.
+
+  retrieval_scope_on_these_points:
+    method: "Checked both top-level payload.retrieval_scope and metadata.retrieval_scope on all 65 points, full scroll."
+    result: "65/65 absent (0 current, 0 historical_only)"
+    context: >
+      Matches the corpus-wide split measured on the same scan (84,283 points:
+      79,584 absent [94.4%], 4,697 current [5.6%], 2 historical_only) — UU_25_2007
+      falls entirely in the majority "never scoped" bucket, neither protected nor
+      excluded by whatever consumer reads that field today.
+
+  containment_proof:
+    # Schema per apps/backend-rag/backend/tests/unit/kb/test_kb_inventory_contract.py
+    # ::test_deletion_is_interlocked_on_a_complete_proof / ::test_nothing_is_discarded_without_a_containment_proof
+    # — that gate governs kind: retired_collection documents and explicitly SKIPS
+    # kind: topic files (this file's own `kind: topic` at the top), so nothing
+    # below is read by any CI gate TODAY. It is filled in anyway, with `complete`
+    # always an explicit true/false per this lane's mandate (a proof that omits
+    # `complete` passes that gate's `is False` check by accident — measured
+    # 2026-08-25 night, cure in flight elsewhere) so a future Step-2/3 executor,
+    # or a widened gate, has a real answer to read rather than an absent key.
+    distinct_fragments_covered: 65
+    distinct_fragments_total: 65
+    ratio: 1.0
+    complete: true
+    complete_because: >
+      This proof answers ONE question: has every one of the 65 fragments
+      currently stored under document_id UU_25_2007 been individually read and
+      accounted for, so that overwriting this document_id would lose nothing
+      undocumented? Yes — all 65, not a sample, cross-verified by two independent
+      methods (manual read 2026-08-25, structured pasal_number field 2026-08-26)
+      that agree on every fragment. This is DELIBERATELY A DIFFERENT QUESTION from
+      the instrument-level `complete: false` above (which answers "is the whole
+      LAW indexed?" — no, 0/40 operative articles). A complete proof of a hollow
+      document is not a complete document; §4.6 requires the former before any
+      write, never claims it substitutes for the latter.
   disposition: >
-    STOPPED AT STEP 1 of the mandated three-step order (prove containment -> retire
-    -> write whole instrument). Step 1 is now complete with a decisive, fragment-
-    level printed ratio: what is stored is genuinely the law's own Penjelasan (not
-    a different document, not corrupted text — identity and content both check out
-    as UU 25/2007's own elucidation), it is simply the WRONG HALF of the
-    instrument. Steps 2 (retire the 65-point fragment) and 3 (ingest the whole
-    instrument — batang tubuh + Penjelasan, using the same section-tagged
-    hierarchical-indexer path that repaired UU_40_2007/UU_6_2011) require invoking
-    the production legal-ingestion pipeline
+    STOPPED AT STEP 1 of the mandated order, WORDED HERE AS SIGNED: prove
+    containment (this section) -> write the whole instrument -> retire the
+    65-point fragment (docs/plans/2026-08-25-kb-current-live/OWNER-SWITCHBOARD.md
+    Decision 2, signed by Zero 2026-08-25: "prove what the 65 points contain
+    BEFORE writing anything over that document_id, then write the full
+    instrument, then retire the fragment"). CORRECTED 2026-08-26: this file's own
+    disposition text previously read "retire the fragment" as step 2 and "ingest
+    the whole instrument" as step 3 — the REVERSE of the signed order above, which
+    exists precisely so the corpus is never left holding NEITHER the fragment NOR
+    the full instrument. That wording error is fixed here; nothing was executed
+    under the wrong order. Step 1 is now complete with a decisive, fragment-level
+    printed ratio, re-confirmed by a second independent method: what is stored is
+    genuinely the law's own Penjelasan (not a different document, not corrupted
+    text — identity and content both check out as UU 25/2007's own elucidation,
+    and its identity is confirmed NOT contested with any other document in the
+    corpus), it is simply the WRONG HALF of the instrument. Re-acquisition (write
+    the whole instrument, then retire this fragment) is a SEPARATE unit of work,
+    owned by whoever opens it next — this lane did not download, fetch, or
+    re-ingest anything toward it, per its own mandate boundary. That unit requires
+    invoking the production legal-ingestion pipeline
     (backend/services/ingestion/legal_ingestion_service.py /
     legal_full_ingestion_worker.py) against a freshly-fetched official PDF
     (https://peraturan.go.id/id/uu-no-25-tahun-2007, confirmed live and %PDF-
