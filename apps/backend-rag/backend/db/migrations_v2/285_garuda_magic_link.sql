@@ -413,8 +413,38 @@ DROP TRIGGER IF EXISTS garuda_magic_link_tokens_retention_binding ON public.garu
 DROP FUNCTION IF EXISTS public.bind_garuda_magic_link_token_retention_policy();
 DROP FUNCTION IF EXISTS public.active_garuda_magic_link_policy_available(TEXT, TIMESTAMPTZ);
 DROP TABLE IF EXISTS public.garuda_magic_link_tokens;
-ALTER TABLE public.visa_decision_retention_policies
-    DROP CONSTRAINT IF EXISTS visa_decision_retention_policies_policy_scope_check;
-ALTER TABLE public.visa_decision_retention_policies
-    ADD CONSTRAINT visa_decision_retention_policies_policy_scope_check
-        CHECK (policy_scope IN ('VISA_DECISION', 'GARUDA_CHECK', 'GARUDA_ORDER'));
+
+-- Narrowing the policy_scope CHECK back to pre-285's list is only safe if
+-- no row has ever used the value being removed -- visa_decision_retention_
+-- policies is append-only (264's guard trigger blocks UPDATE/DELETE/
+-- TRUNCATE unconditionally), so a 'GARUDA_MAGIC_LINK'-scoped row, once
+-- inserted, can never be removed to make room for a narrower constraint.
+-- Bug found 2026-08-25 (PR #4902 follow-up): the original unconditional
+-- DROP/ADD CONSTRAINT pair here always fails with CheckViolationError the
+-- moment this rollback runs in any database where a GARUDA_MAGIC_LINK
+-- policy was ever seeded -- which every test exercising the issue()/
+-- exchange() path does. 281's own rollback avoids this same trap a
+-- different way: it DROPS the whole policy_scope column instead of
+-- narrowing its CHECK, so there is no remaining column for stale values to
+-- violate. This migration cannot do the same (264 already owns
+-- policy_scope; 285 only widened its CHECK, it did not add the column) --
+-- so the correct, honest rollback is: narrow the CHECK when it is safe to,
+-- and otherwise leave it widened rather than fail the whole rollback. A
+-- one-way widening once the value has been used even once is the correct
+-- semantics for an append-only table, not a workaround.
+DO $garuda_285_narrow_policy_scope$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM public.visa_decision_retention_policies
+         WHERE policy_scope = 'GARUDA_MAGIC_LINK'
+    ) THEN
+        RAISE NOTICE 'garuda 285 rollback: visa_decision_retention_policies has row(s) with policy_scope = ''GARUDA_MAGIC_LINK'' -- the append-only guard makes them impossible to remove, so the policy_scope CHECK is left WIDENED (285''s state) rather than narrowed back to pre-285''s list. This is a one-way widening, same as any append-only enum on this table.';
+    ELSE
+        ALTER TABLE public.visa_decision_retention_policies
+            DROP CONSTRAINT IF EXISTS visa_decision_retention_policies_policy_scope_check;
+        ALTER TABLE public.visa_decision_retention_policies
+            ADD CONSTRAINT visa_decision_retention_policies_policy_scope_check
+                CHECK (policy_scope IN ('VISA_DECISION', 'GARUDA_CHECK', 'GARUDA_ORDER'));
+    END IF;
+END;
+$garuda_285_narrow_policy_scope$;
