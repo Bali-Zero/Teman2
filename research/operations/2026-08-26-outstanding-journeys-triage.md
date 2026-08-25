@@ -8,6 +8,7 @@ sources:
   - kb/ops/probe_retrieval.py (read-only, re-run against production 2026-08-26 — not modified)
   - scripts/kb/kb_inventory_probe.py (read-only, method reused for the census pattern — not modified)
   - /tmp/triage_scan.py, /tmp/triage_scan2.py (this session's own read-only verification scripts, not committed)
+  - team-lead's isolated-overlay expansion re-measurement (2026-08-26, verbal report via teammate message — google-genai==2.18.1 pip-installed --target, PYTHONPATH-prepended for the probe process only, shared venv unmodified)
   - production Qdrant `legal_unified_hybrid_hybrid` (84,283 points, single full scroll, 2026-08-26)
 ---
 
@@ -40,6 +41,26 @@ sources:
    method 3, content search, done once for all 24 phrases rather than 24 separate scrolls.
 4. One follow-up targeted script (`/tmp/triage_scan2.py`) for a single row (company-J7) where the
    full-scan result needed a closer read to explain, below.
+5. **The degraded-path caveat below was retracted the same day, by measurement, not argument.**
+   The team lead ran the pinned `google-genai==2.18.1` in an **isolated overlay**
+   (`pip install --target`, prepended to `PYTHONPATH` for the probe's process only) rather than
+   touching the shared venv this and other lanes were measuring against concurrently — verified
+   afterward that the shared venv stayed at `1.75.0`. Result, compared by **journey index**, not
+   just cardinality (two different index sets can share a count, which would have read as
+   "identical" falsely):
+
+   | topic | degraded | with overlay (no DEGRADED banner) |
+   |---|---|---|
+   | immigration | 5 of 11 | 5 of 11 — same indices |
+   | company | 9 of 11 | 9 of 11 — same indices |
+   | property | 3 of 9 | 3 of 9 — same indices |
+   | tax | 7 of 10 | 7 of 10 — same indices |
+
+   **No red in this table is a false negative produced by the restricted/expansion-broken search
+   path.** The venv itself is still mispinned (a standing ledger item — every run without the
+   overlay is degraded again), but that no longer qualifies any of the 24 verdicts below. Per-row
+   "would this hold under expansion" hedging is therefore removed from the table; see the closing
+   note in place of the old per-class breakdown.
 
 Full raw output of both scripts is not reproduced verbatim here for space; the specific hits cited
 per row below are real point IDs from that scan, quotable on request.
@@ -71,46 +92,33 @@ production write (Qdrant upsert/payload-patch) or not.
 | tax | 6 | UU_36_2008 | **B** | Full scroll: phrase found, attributed to `UU_36_2008` (correct), **also** under `TASSE_7_1983` and `UU_6_2023` — three editions/citations of the same evolving PPh-subject provision. Journey's own note: manual top-10 inspection shows `TASSE_7_1983` and `Permen_1_2026` (the 1,506-pt contaminated document, `LANE-A-1`/out-of-scope finding) dominating instead — a genuine ranking miss, not an ingestion gap. | Ranking / possibly de-weighting `Permen_1_2026`'s outsized, partly-contaminated footprint generally (it is independently flagged in `company.yaml`'s out-of-scope findings as a 7-8-way ministry collision). | No |
 | tax | 7 | PER_7_PJ_2025 | **A** | `instrument_counts["PER_7_PJ_2025"] = 0`. Phrase **is** found elsewhere in the corpus — under `Permen_81_2024` (the Coretax base reg, in-scope and green on J3) and `UU_7_1945` (the garbled-identity HPP fragment `TAXC-5` already documents) — but never under the journey's actual target, `PER_7_PJ_2025` (the specific implementing DJP regulation), confirmed absent by 4 independent methods in `kb/inventory/tax.yaml` (id variants, the retracted `Permen_32_2022` lead, category scan, WebSearch). The underlying *legal fact* (NIK=NPWP) is answerable from Permen_81_2024/UU_7_1945; this specific *instrument* is not in the KB under any identity. | Acquire PER-7/PJ/2025 specifically — the general fact is already present elsewhere, but this journey is deliberately scoped to the implementing regulation itself (the journey file says so explicitly), so a broader-instrument workaround is not what was asked for. | **Yes** |
 | tax | 8 | UU_7_2021 (HPP) | **A** | `instrument_counts["UU_7_2021"] = 0`; phrase (the 11%-VAT-rate provision) not found **anywhere** in 84,283 points — including not under `UU_7_1945`, the garbled HPP fragment `TAXC-5` found for a *different* HPP provision (NIK-NPWP, Pasal 2 ayat 1a). So the mislabeled fragment does not cover this journey's specific need; it is a different slice of HPP, not the whole law. | A full acquisition of UU 7/2021 is the honest cure — the existing `UU_7_1945` fragment is not a shortcut for THIS provision, only for the NIK-NPWP one (which is tax-J7's territory in spirit, though a different target instrument). Worth checking, before any fresh download, whether `UU_7_1945`'s 31 points can be *expanded* (same source, more pages) rather than acquiring a second, separate ingest of the same law under two identities. | **Yes** |
-| tax | 9 | Permen_1_2026 | **B** | Full scroll: phrase found, attributed to `Permen_1_2026` (3 hits) — the **identical** instrument+phrase as tax-J4, which measures GREEN at rank 1 under Indonesian statute-phrasing. J9 asks the same underlying fact in colloquial English and measures RED. Journey's own note names this a "phrasing-sensitivity gap," not an ingestion gap. | Ranking / cross-lingual retrieval — see the degraded-path discussion below; this is the single cleanest same-fact minimal-pair in the whole set (J4 green, J9 red, nothing else changed but question language). | No |
+| tax | 9 | Permen_1_2026 | **B** | Full scroll: phrase found, attributed to `Permen_1_2026` (3 hits) — the **identical** instrument+phrase as tax-J4, which measures GREEN at rank 1 under Indonesian statute-phrasing. J9 asks the same underlying fact in colloquial English and measures RED. Journey's own note names this a "phrasing-sensitivity gap," not an ingestion gap. **Confirmed NOT a query-expansion artifact** (see below) — the single cleanest same-fact minimal-pair in the whole set (J4 green, J9 red, nothing else changed but question language) is a genuine ranking gap. | Ranking / cross-lingual retrieval. | No |
 | tax | 10 | UU_36_2008 | **B** | Same evidence as tax-J6 (identical phrase, identical attribution) — measured red, consistent with J6, "reinforcing this is a genuine ranking issue rather than one query's bad luck" per the journey's own note. | Same as J6. | No |
-| property | 1 | UU_5_1960 | **B** | Full scroll: phrase found, attributed to `UU_5_1960` (point `7ebdcd3b-…`), the 216-point clean-of-§6-signal instrument. `property.yaml`'s own header states every phrase in the file was pulled character-for-character from a real chunk. | Ranking — see degraded-path note (English question, Indonesian statute). | No |
-| property | 2 | UU_5_1960 | **B** | Full scroll: phrase found, attributed to `UU_5_1960` (point `c7e9ae7c-…`). | Ranking — same caveat as property-J1. | No |
+| property | 1 | UU_5_1960 | **B** | Full scroll: phrase found, attributed to `UU_5_1960` (point `7ebdcd3b-…`), the 216-point clean-of-§6-signal instrument. `property.yaml`'s own header states every phrase in the file was pulled character-for-character from a real chunk. | Ranking (confirmed genuine — not a query-expansion artifact, see below). | No |
+| property | 2 | UU_5_1960 | **B** | Full scroll: phrase found, attributed to `UU_5_1960` (point `c7e9ae7c-…`). | Ranking (same as property-J1). | No |
 | property | 9 | PP_6630_2021 | **B** | Full scroll: phrase found, attributed to **both** `PP_6630_2021` and `Permen_18_2021` — the identical phrase as property-J4, which measures GREEN at rank 2. Journey's own note: "the KB has no bridge between lane A's KITAS-deposit rule and lane D's Hak Pakai duration clause, so a compound cross-lane question retrieves neither half coherently... This red is the finding, not a defect in the journey." | Ranking is unlikely to be the whole story here — a compound A×D question may need multi-hop synthesis this single-collection retrieval doesn't attempt, which is a different (and larger) unit of work than a rerank tweak. Recorded as the orchestrator's own designed finding, not re-litigated here. | No (not a corpus write; may not even be a pure-retrieval fix) |
 
-## The degraded-path question, answered per class
+## The degraded-path question — retracted, measured
 
-**Class A (3 rows: tax-5, tax-7, tax-8) — the verdict holds regardless of query expansion.**
-Absence-of-document is a fact about what was ingested, not about how a query is embedded or
-expanded. Multilingual query expansion changes what gets *retrieved* from what exists; it cannot
-retrieve content that was never written to the collection. All three were independently confirmed
-absent by a **4th** method today (full-collection content scan) on top of the 3-4 methods
-`kb/inventory/tax.yaml` already ran. This is the one class where "cannot know" does not apply.
+Every row in the table above was independently checked against production with working
+multilingual query expansion (the isolated-overlay measurement in Method step 5): **the outstanding
+set is identical, index for index, degraded or not.** So the class-by-class hedge this section used
+to carry is gone — none of it was ever a real possibility once the same-day measurement landed:
 
-**Class B (18 rows) — genuinely mixed, and the language of the question is the strongest signal
-available without running a working expansion path myself (forbidden — shared venv).**
+- **Class A (3 rows)** was already unaffected by construction — absence-of-document is a fact about
+  what was ingested, not about query-side expansion — and the overlay measurement confirms the same
+  outstanding set regardless.
+- **Class B (18 rows)**, including the ones that most looked like cross-lingual gaps (company
+  J1/J3/J5/J6/J8/J11, tax J9, property J1/J2/J9 — client questions in EN/IT/ES against Indonesian
+  statute text; tax-J9 in particular is the identical instrument+phrase as green tax-J4, differing
+  only by question language) — none of them flip. The ranking/chunking cures proposed per row still
+  stand, undiluted by any "but maybe expansion fixes it for free" possibility.
+- **Class D (1 row)** and **Class E (2 rows)** were never expansion-dependent to begin with (a
+  metadata defect and two malformed journeys, respectively) — consistent with the measurement.
 
-- **Same-language (Indonesian question, Indonesian statute) ranking competitions** — immigration
-  J3/J5/J6/J10, company J2/J9 (both `id`), tax J6/J10 (`id`) — multilingual expansion targets
-  cross-lingual gaps specifically; I cannot rule out that Indonesian synonym expansion (e.g.
-  official "Izin Tinggal Terbatas" vs colloquial "KITAS") also helps here, but the mechanism the
-  degraded-path banner names (Gemini *multilingual* expansion) is not obviously the lever for these.
-  **Cannot fully know; plausible but not the most likely single fix.**
-- **Cross-lingual client questions (EN/IT/ES) against Indonesian statute text** — company
-  J1/J3/J5/J6/J8/J11, tax J9, property J1/J2/J9 — this is exactly the shape
-  `property.yaml`'s own header already calls out ("an English question about foreign land
-  ownership may need multilingual query expansion... to surface the Indonesian-language text").
-  Tax-J9 is the cleanest evidence in the whole set: the **identical** instrument+phrase as tax-J4
-  measures green in Indonesian and red in English, with nothing else different. **Plausibly
-  resolved by expansion; I cannot verify without a working google-genai, which I was told not to
-  touch.**
-
-**Class D (1 row: immigration-J4) — expansion is irrelevant.** The root cause is a `legal_status`
-metadata defect (a bare-regex mismarking, `LANE-A-1`), not a query-side phenomenon. Fixing
-expansion would not change which document a `legal_status`-blind ranking prefers.
-
-**Class E (2 rows) — not a retrieval question at all.** company-J7's phrase cannot match under any
-retrieval quality, expanded or not, because it is missing a word. tax-J2's dissatisfaction is a
-contract-semantics mismatch, orthogonal to what gets retrieved.
+The venv mismatch remains a real, open fact (google-genai `1.75.0` installed vs `2.18.1` pinned;
+qdrant-client `1.13.3` vs server-reported `1.16.3` vs lock-pinned `1.19.0`) and every run against
+the shared venv is still degraded — but it no longer casts doubt on any verdict in this table.
 
 ## Aggregate
 
@@ -128,11 +136,11 @@ worth fixing before anyone spends effort "curing the corpus" against a miswritte
 
 **Groupable into single units of work:**
 
-1. **Re-run all four probes once the venv's `google-genai`/`qdrant-client` mismatch is resolved,
-   before touching ranking code.** This is a zero-corpus-write, zero-code-change experiment that
-   could resolve some unknown subset of the 9 cross-lingual Class-B rows "for free." Not done here
-   — the venv is shared with other agents running today and I was told not to touch it. Highest
-   leverage-per-cost action on the whole list; do it first.
+1. ~~Re-run all four probes once the venv's `google-genai`/`qdrant-client` mismatch is resolved,
+   before touching ranking code.~~ **Already done** (isolated overlay, Method step 5) — result: no
+   change, identical outstanding set. Not a gate on any of the work below; drop it from the plan.
+   The venv mispin itself is still worth fixing as a standing hygiene item (every un-overlaid run
+   is degraded again), but it no longer blocks or de-risks anything in this table.
 2. **immigration-J4's `legal_status` repair** — one already-written, already-dry-run script,
    4 document_ids / 1,484 points, fully sourced. Ready to execute as its own PR.
 3. **tax-J5 + tax-J7 acquisition** — both DJP-issued (Kepdirjen / Perdirjen), both confirmed
