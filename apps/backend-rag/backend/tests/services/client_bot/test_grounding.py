@@ -4,7 +4,8 @@ DomainNotSpecifiedError guard are the two behaviors most load-bearing for
 FinalPolicyGate's own downstream checks — see grounding.py's own module
 docstring.
 
-Author: Claude Opus 5 (lane B1b — client-bot engine).
+Author: Claude Opus 5 (lane B1b — client-bot engine; lane B1c —
+per-service pricing items + domain scoping, 2026-08-25).
 """
 
 from __future__ import annotations
@@ -103,3 +104,54 @@ async def test_package_sha256_changes_when_query_changes() -> None:
     bundle_a = await builder.build(query="Apa itu KBLI 47190?", profile=CLIENT_KBLI_V1)
     bundle_b = await builder.build(query="Apa itu KBLI lain?", profile=CLIENT_KBLI_V1)
     assert bundle_a.package_sha256 != bundle_b.package_sha256
+
+
+# ---------------------------------------------------------------------------
+# SPEC-price-service-binding.md P1 + P4 — per-service items, domain-scoped.
+# These run against the REAL, live PricingTool catalogue on disk (no mock),
+# because P4's whole point is a real constraint against real data:
+# PricingSnapshot.items caps at max_length=100 and the live 2026 catalogue
+# has ~113 services — an unscoped one-item-per-service snapshot would raise
+# ValidationError building a bundle for ANY non-KBLI domain.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_pricing_snapshot_items_each_carry_a_first_class_service_key() -> None:
+    builder = GroundingBundleBuilder()
+    bundle = await builder.build(query="Berapa biaya KITAS?", profile=CLIENT_WA_V1, domain="immigration")
+    assert bundle.pricing is not None
+    assert len(bundle.pricing.items) > 0
+    for item in bundle.pricing.items:
+        assert isinstance(item.get("key"), str) and item["key"]
+
+
+@pytest.mark.asyncio
+async def test_pricing_snapshot_scoped_to_any_domain_stays_under_the_item_cap() -> None:
+    builder = GroundingBundleBuilder()
+    for domain in ("immigration", "company", "tax", "property"):
+        bundle = await builder.build(query="q", profile=CLIENT_WA_V1, domain=domain)
+        assert bundle.pricing is not None
+        assert len(bundle.pricing.items) <= 100, f"domain={domain!r} exceeded PricingSnapshot's cap"
+
+
+@pytest.mark.asyncio
+async def test_pricing_snapshot_scoping_is_domain_specific() -> None:
+    builder = GroundingBundleBuilder()
+    tax_bundle = await builder.build(query="q", profile=CLIENT_WA_V1, domain="tax")
+    categories = {item["category"] for item in tax_bundle.pricing.items}
+    assert categories, "expected the tax domain to carry at least one priced category"
+    assert categories <= {"tax_accounting", "consultant_services"}
+    assert "kitas_permits" not in categories
+
+
+@pytest.mark.asyncio
+async def test_property_domain_has_no_mapped_pricing_categories_today() -> None:
+    # Documents the P4 judgment call explicitly, rather than leaving an
+    # empty snapshot unexplained: the 2026 catalogue has no property/
+    # real-estate pricing rows, so this domain's snapshot is legitimately
+    # empty, not a bug.
+    builder = GroundingBundleBuilder()
+    bundle = await builder.build(query="q", profile=CLIENT_WA_V1, domain="property")
+    assert bundle.pricing is not None
+    assert bundle.pricing.items == ()

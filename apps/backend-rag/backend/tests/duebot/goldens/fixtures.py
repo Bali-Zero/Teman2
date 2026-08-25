@@ -158,7 +158,14 @@ _grounding = make_grounding_bundle(
     _CASE, query="Berapa biaya KITAS investor?", domain="immigration", pricing=_pricing
 )
 _claim = make_claim(
-    suffix="price-correct", text="Biaya KITAS investor adalah IDR 15.000.000.", kind="price", evidence_ids=()
+    suffix="price-correct",
+    text="Biaya KITAS investor adalah IDR 15.000.000.",
+    kind="price",
+    evidence_ids=(),
+    # SPEC-price-service-binding.md P2 (orchestrator ruling, 2026-08-25):
+    # mirrors the identity the snapshot item above already declares under
+    # its own "service" field — invents nothing.
+    price_service_key="kitas_investor",
 )
 _answer = "Biaya KITAS investor adalah IDR 15.000.000."
 _candidate = make_answer_candidate(_CASE, answer=_answer, claims=(_claim,))
@@ -187,6 +194,12 @@ _claim = make_claim(
     text="Biaya KITAS investor adalah IDR 25.000.000.",
     kind="price",
     evidence_ids=(),
+    # Same authorized identity as PRICING_CORRECT above — the service the
+    # claim is about did not change, only the (invented) amount did. That
+    # is exactly what layer-1's catalogue-wide amount check already catches
+    # (25,000,000 is nowhere in this snapshot); the service-key binding
+    # agrees for the same reason.
+    price_service_key="kitas_investor",
 )
 _candidate = make_answer_candidate(
     _CASE, answer="Biaya KITAS investor adalah IDR 25.000.000.", claims=(_claim,)

@@ -302,8 +302,15 @@ def make_claim(
     text: str = "claim text",
     kind: str = "regulatory",
     evidence_ids: tuple[str, ...] = (),
+    price_service_key: str | None = None,
 ) -> Claim:
-    return Claim(claim_id=f"claim-{suffix}", text=text, kind=kind, evidence_ids=evidence_ids)
+    return Claim(
+        claim_id=f"claim-{suffix}",
+        text=text,
+        kind=kind,
+        evidence_ids=evidence_ids,
+        price_service_key=price_service_key,
+    )
 
 
 def make_answer_candidate(

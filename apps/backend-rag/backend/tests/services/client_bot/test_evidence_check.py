@@ -48,7 +48,7 @@ def test_currency_without_price_claim_is_uninventoried_numeric() -> None:
 
 
 def test_currency_with_price_claim_passes() -> None:
-    claim = make_claim(suffix="p1", text="Rp 5.000.000", kind="price")
+    claim = make_claim(suffix="p1", text="Rp 5.000.000", kind="price", price_service_key="svc_1")
     candidate = make_answer_candidate("inv", answer="Biayanya sekitar Rp 5.000.000.", claims=(claim,))
     assert check_claim_inventory(candidate) is None
 
@@ -81,7 +81,7 @@ def test_plain_answer_with_no_claims_passes() -> None:
 
 @pytest.mark.asyncio
 async def test_kind_not_in_required_set_skips_evidence_entirely() -> None:
-    claim = make_claim(suffix="p1", text="price note", kind="price", evidence_ids=())
+    claim = make_claim(suffix="p1", text="price note", kind="price", evidence_ids=(), price_service_key="svc_1")
     candidate = make_answer_candidate("sup", answer="text", claims=(claim,))
     grounding = make_grounding_bundle("sup")
     outcome = await check_evidence_support(
@@ -92,7 +92,7 @@ async def test_kind_not_in_required_set_skips_evidence_entirely() -> None:
 
 @pytest.mark.asyncio
 async def test_all_factual_widens_to_every_claim_kind() -> None:
-    claim = make_claim(suffix="p1", text="price note", kind="price", evidence_ids=())
+    claim = make_claim(suffix="p1", text="price note", kind="price", evidence_ids=(), price_service_key="svc_1")
     candidate = make_answer_candidate("sup", answer="text", claims=(claim,))
     grounding = make_grounding_bundle("sup")
     outcome = await check_evidence_support(
