@@ -8,7 +8,7 @@ export LC_ALL=C
 
 STATE_DIR="$HOME/.local/state/nuzantara-radar"
 INCIDENT_DIR="$STATE_DIR/incidents"
-LOCK_DIR="$STATE_DIR/.receive.lock"
+LOCK_FILE="$STATE_DIR/.receive.lock"
 MAX_BYTES=8192
 MAX_INCIDENTS=250
 
@@ -17,6 +17,15 @@ reject() {
     exit 64
 }
 
+dependency_missing() {
+    printf 'RADAR_DEPENDENCY_MISSING\n'
+    exit 69
+}
+
+for required_command in jq head ln readlink; do
+    command -v "$required_command" >/dev/null 2>&1 || dependency_missing
+done
+
 # A relay key is forced to this executable. It must send JSON on stdin and may
 # never smuggle a shell command through SSH_ORIGINAL_COMMAND.
 [ "$#" -eq 0 ] || reject
@@ -24,28 +33,50 @@ reject() {
 
 mkdir -p "$INCIDENT_DIR"
 chmod 700 "$STATE_DIR" "$INCIDENT_DIR"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    printf 'RADAR_BUSY\n'
-    exit 75
+
+# An atomic symlink lock survives normal concurrency and can recover from an
+# Android SIGKILL. A live owner remains authoritative; only a dead/malformed
+# owner is removed before one bounded retry.
+if ! ln -s "$$" "$LOCK_FILE" 2>/dev/null; then
+    LOCK_OWNER=$(readlink "$LOCK_FILE" 2>/dev/null || true)
+    case "$LOCK_OWNER" in
+        ''|*[!0-9]*) LOCK_OWNER='' ;;
+    esac
+    if [ -n "$LOCK_OWNER" ] && kill -0 "$LOCK_OWNER" 2>/dev/null; then
+        printf 'RADAR_BUSY\n'
+        exit 75
+    fi
+    rm -f -- "$LOCK_FILE"
+    if ! ln -s "$$" "$LOCK_FILE" 2>/dev/null; then
+        printf 'RADAR_BUSY\n'
+        exit 75
+    fi
 fi
 
 PAYLOAD_FILE="$STATE_DIR/.incoming.$$"
 NORMALIZED_FILE="$STATE_DIR/.normalized.$$"
 cleanup() {
     rm -f -- "$PAYLOAD_FILE" "$NORMALIZED_FILE"
-    rmdir "$LOCK_DIR" 2>/dev/null || true
+    if [ "$(readlink "$LOCK_FILE" 2>/dev/null || true)" = "$$" ]; then
+        rm -f -- "$LOCK_FILE"
+    fi
 }
 trap cleanup EXIT HUP INT TERM
 
 # Read one byte beyond the contract ceiling so oversized input is detectable.
-dd bs=$((MAX_BYTES + 1)) count=1 of="$PAYLOAD_FILE" 2>/dev/null || reject
+# `head -c` fills the requested byte count across fragmented SSH reads; a
+# single large-block `dd` read is allowed to return short.
+head -c $((MAX_BYTES + 1)) > "$PAYLOAD_FILE" || reject
 BYTES=$(wc -c < "$PAYLOAD_FILE" | tr -d '[:space:]')
 [ "$BYTES" -gt 0 ] || reject
 [ "$BYTES" -le "$MAX_BYTES" ] || reject
 
 # Exact keys + finite enums are load-bearing. The phone cannot be turned into
 # a covert raw-log/PII sink because there is no arbitrary string field.
-jq -ceS '
+jq -ceS -s '
+  select(length == 1)
+  | .[0]
+  |
   select(
   type == "object"
   and (keys | sort) == ([

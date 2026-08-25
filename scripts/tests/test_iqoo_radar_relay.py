@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import stat
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -227,3 +229,124 @@ def test_unexpected_sender_exception_remains_retry_safe(tmp_path: Path) -> None:
         sender=delivered.append,
     )
     assert second.delivered == 1
+
+
+def test_incomplete_trailing_line_is_retried_after_producer_finishes(
+    tmp_path: Path,
+) -> None:
+    spool = tmp_path / "spool"
+    state = tmp_path / "state"
+    spool.mkdir()
+    archive = spool / "archive-p0.jsonl"
+    archive.write_text(json.dumps(_record()), encoding="utf-8")
+    sent: list[dict[str, Any]] = []
+
+    incomplete = radar.relay_once(
+        spool_dir=spool,
+        state_dir=state,
+        sender=sent.append,
+        replay_existing=True,
+    )
+    assert incomplete.delivered == 0
+    assert incomplete.malformed == 0
+    assert sent == []
+
+    with archive.open("a", encoding="utf-8") as handle:
+        handle.write("\n")
+    completed = radar.relay_once(
+        spool_dir=spool,
+        state_dir=state,
+        sender=sent.append,
+    )
+    assert completed.delivered == 1
+    assert len(sent) == 1
+
+
+def test_cursor_state_permissions_are_private(tmp_path: Path) -> None:
+    spool = tmp_path / "spool"
+    state = tmp_path / "state"
+    spool.mkdir()
+    _append(spool / "archive-p0.jsonl", _record())
+
+    radar.relay_once(spool_dir=spool, state_dir=state, sender=lambda _item: None)
+
+    assert stat.S_IMODE(state.stat().st_mode) == 0o700
+    assert stat.S_IMODE((state / "cursor.json").stat().st_mode) == 0o600
+
+
+def test_ssh_transport_uses_only_dedicated_pins_and_option_terminator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity = tmp_path / "identity"
+    known_hosts = tmp_path / "known_hosts"
+    identity.touch()
+    known_hosts.touch()
+    capsule = radar.build_capsule(
+        _record(), spool_name="archive-p0.jsonl", byte_offset=0
+    )
+    captured: list[str] = []
+
+    def fake_run(
+        command: list[str], **_kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        captured.extend(command)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=f"RADAR_OK {capsule['incident_id']}\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(radar.subprocess, "run", fake_run)
+    radar._send_via_ssh(
+        capsule,
+        target="radar@100.64.134.94",
+        port=8022,
+        identity=identity,
+        known_hosts=known_hosts,
+        timeout_seconds=5,
+    )
+
+    assert "GlobalKnownHostsFile=/dev/null" in captured
+    assert "StrictHostKeyChecking=yes" in captured
+    assert captured[-2:] == ["--", "radar@100.64.134.94"]
+
+    with pytest.raises(radar.RelayError, match="option prefix"):
+        radar._send_via_ssh(
+            capsule,
+            target="-malformed",
+            port=8022,
+            identity=identity,
+            known_hosts=known_hosts,
+            timeout_seconds=5,
+        )
+
+
+def test_main_distinguishes_retryable_delivery_from_local_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        radar,
+        "relay_once",
+        lambda **_kwargs: radar.DeliveryResult(failed=1),
+    )
+    assert radar.main(["--state-dir", str(tmp_path)]) == radar.EXIT_TEMPFAIL
+
+    def local_failure(**_kwargs: Any) -> radar.DeliveryResult:
+        raise radar.RelayError("synthetic local failure")
+
+    monkeypatch.setattr(radar, "relay_once", local_failure)
+    assert radar.main(["--state-dir", str(tmp_path)]) == radar.EXIT_SOFTWARE
+
+
+@pytest.mark.parametrize(
+    "wrapper_name",
+    ["pro-iqoo-radar-relay.sh", "mini-iqoo-radar-relay.sh"],
+)
+def test_wrapper_marks_mobile_delivery_deferral_as_healthy(wrapper_name: str) -> None:
+    wrapper = (
+        REPO_ROOT / "infra" / "launchagents" / "wrappers" / wrapper_name
+    ).read_text(encoding="utf-8")
+    assert "75)\n        # A mobile pager" in wrapper
+    assert 'heartbeat "ok" "delivery deferred rc=75"' in wrapper
+    assert 'PYTHON="$REPO/apps/backend-rag/.venv/bin/python"' in wrapper

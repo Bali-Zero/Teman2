@@ -83,8 +83,27 @@ health() {
     if pgrep -x sshd >/dev/null 2>&1; then SSH_STATE=attivo; else SSH_STATE=spento; fi
     if [ -f "$STATE_DIR/wake-lock.requested" ]; then WAKE_STATE=richiesto_a_Termux; else WAKE_STATE=non_richiesto; fi
     if command -v termux-notification >/dev/null 2>&1; then NOTIFY_STATE=disponibile; else NOTIFY_STATE=non_installato; fi
-    printf 'SSH: %s\nWake-lock: %s\nNotifiche Android: %s\n' \
-        "$SSH_STATE" "$WAKE_STATE" "$NOTIFY_STATE"
+    MISSING=''
+    for required_command in jq head sshd; do
+        if ! command -v "$required_command" >/dev/null 2>&1; then
+            MISSING="$MISSING $required_command"
+        fi
+    done
+    LOCK_STATE=libero
+    if [ -L "$STATE_DIR/.receive.lock" ]; then
+        LOCK_OWNER=$(readlink "$STATE_DIR/.receive.lock" 2>/dev/null || true)
+        if [ -n "$LOCK_OWNER" ] && kill -0 "$LOCK_OWNER" 2>/dev/null; then
+            LOCK_STATE="occupato_pid_$LOCK_OWNER"
+        else
+            LOCK_STATE=stantio_recuperabile
+        fi
+    elif [ -e "$STATE_DIR/.receive.lock" ]; then
+        LOCK_STATE=non_valido_recuperabile
+    fi
+    if [ -n "$MISSING" ]; then DEPENDENCIES="mancano:$MISSING"; else DEPENDENCIES=ok; fi
+    printf 'Processo SSH: %s\nWake-lock: %s\nNotifiche Android: %s\nRicevitore lock: %s\nDipendenze: %s\n' \
+        "$SSH_STATE" "$WAKE_STATE" "$NOTIFY_STATE" "$LOCK_STATE" "$DEPENDENCIES"
+    [ -z "$MISSING" ]
 }
 
 mkdir -p "$INCIDENT_DIR"

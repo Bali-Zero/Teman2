@@ -1,8 +1,8 @@
 #!/bin/bash
 # mini.iqoo_radar_relay — Relay P0 Incident Capsules to the iQOO RADAR node
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
-# Canon: infra/launchagents/wrappers/mini-iqoo_radar_relay.sh
-# Live:  ~/scripts/mini-iqoo_radar_relay.sh (declared pair, node=mini)
+# Canon: infra/launchagents/wrappers/mini-iqoo-radar-relay.sh
+# Live:  ~/scripts/mini-iqoo-radar-relay.sh (declared pair, node=mini)
 
 set -u   # G9_fail_visible: unset vars crash, they do not expand empty
 
@@ -50,7 +50,7 @@ trap 'rm -f "$PIDFILE"' EXIT
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
 REPO="$HOME/nuzantara"
-PYTHON="$REPO/.venv/bin/python"
+PYTHON="$REPO/apps/backend-rag/.venv/bin/python"
 RELAY="$REPO/scripts/iqoo_radar_relay.py"
 TARGET="${MINI_IQOO_RADAR_RELAY_TARGET:-u0_a345@100.64.134.94}"
 PORT="${MINI_IQOO_RADAR_RELAY_PORT:-8022}"
@@ -76,10 +76,14 @@ else
     RC=$?
 fi
 
-if [ $RC -eq 0 ]; then
-    heartbeat "ok" "run done"
-else
-    heartbeat "error" "rc=$RC"   # G9: failure is VISIBLE in the sidecar too
-fi
+case "$RC" in
+    0) heartbeat "ok" "run done" ;;
+    75)
+        # A mobile pager being asleep/offline is a retryable delivery state,
+        # not proof that this source-side organ is dead.
+        heartbeat "ok" "delivery deferred rc=75"
+        ;;
+    *) heartbeat "error" "rc=$RC" ;;
+esac
 log "run done rc=$RC"
 exit 0

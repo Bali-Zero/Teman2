@@ -41,6 +41,16 @@ def _capsule(**overrides: Any) -> dict[str, Any]:
 def _run(
     home: Path, capsule: dict[str, Any], *, original_command: str = ""
 ) -> subprocess.CompletedProcess[str]:
+    return _run_payload(
+        home,
+        json.dumps(capsule) + "\n",
+        original_command=original_command,
+    )
+
+
+def _run_payload(
+    home: Path, payload: str, *, original_command: str = ""
+) -> subprocess.CompletedProcess[str]:
     env = {
         **os.environ,
         "HOME": str(home),
@@ -49,7 +59,7 @@ def _run(
     }
     return subprocess.run(
         ["bash", str(RECEIVER)],
-        input=json.dumps(capsule) + "\n",
+        input=payload,
         text=True,
         capture_output=True,
         env=env,
@@ -93,5 +103,45 @@ def test_invalid_enum_and_oversized_payload_are_rejected(tmp_path: Path) -> None
     invalid = _run(tmp_path, _capsule(category="PRIVATE_CATEGORY_TOKEN"))
     assert invalid.returncode == 64
 
-    oversized = _run(tmp_path, _capsule(extra="x" * 9_000))
+    oversized = _run_payload(
+        tmp_path,
+        json.dumps(_capsule()) + (" " * 9_000),
+    )
     assert oversized.returncode == 64
+
+
+def test_multiple_json_documents_are_rejected(tmp_path: Path) -> None:
+    payload = json.dumps(_capsule()) + "\n" + json.dumps(_capsule()) + "\n"
+    result = _run_payload(tmp_path, payload)
+
+    assert result.returncode == 64
+    assert result.stdout.strip() == "RADAR_REJECTED"
+    assert not list(
+        (tmp_path / ".local/state/nuzantara-radar/incidents").glob("*.json")
+    )
+
+
+def test_stale_lock_is_recovered_after_android_process_kill(tmp_path: Path) -> None:
+    state = tmp_path / ".local/state/nuzantara-radar"
+    state.mkdir(parents=True)
+    (state / ".receive.lock").symlink_to("999999999")
+
+    result = _run(tmp_path, _capsule())
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == f"RADAR_OK {'a' * 32}"
+    assert not (state / ".receive.lock").exists()
+    assert not (state / ".receive.lock").is_symlink()
+
+
+def test_live_lock_owner_is_not_stolen(tmp_path: Path) -> None:
+    state = tmp_path / ".local/state/nuzantara-radar"
+    state.mkdir(parents=True)
+    lock = state / ".receive.lock"
+    lock.symlink_to(str(os.getpid()))
+
+    result = _run(tmp_path, _capsule())
+
+    assert result.returncode == 75
+    assert result.stdout.strip() == "RADAR_BUSY"
+    assert lock.is_symlink()

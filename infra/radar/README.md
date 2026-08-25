@@ -64,7 +64,9 @@ restrict,command="/data/data/com.termux/files/home/.local/libexec/nuzantara-rada
 
 The private key never leaves its Mac. Pin the phone host key in
 `~/.ssh/known_hosts_iqoo_radar`; the production relay uses
-`StrictHostKeyChecking=yes`, never `accept-new`.
+`StrictHostKeyChecking=yes`, disables the global host-key file and never uses
+`accept-new`. A source node can therefore reach only the explicitly pinned
+iQOO receiver through this path.
 
 ## Relay behavior
 
@@ -76,3 +78,19 @@ The private key never leaves its Mac. Pin the phone host key in
 The first run places each cursor at EOF, preventing a historic alert flood.
 Afterward, a cursor advances only after a valid receiver receipt. Delivery
 retries use the same incident ID, and the phone treats duplicates idempotently.
+An unfinished final JSONL line is left for the next pass instead of being lost.
+
+The relay distinguishes two failure classes:
+
+- exit `75`: the mobile receiver is busy, sleeping or temporarily unreachable;
+  the cursor stays in place and the source heartbeat records healthy deferred
+  delivery, so the healer does not restart a healthy relay in a loop;
+- exit `70`: a local software/state/configuration fault; the source heartbeat is
+  an error and remains eligible for investigation.
+
+The receiver accepts exactly one JSON document per SSH stream, reads across
+fragmented SSH packets up to the 8 KiB ceiling and recovers a lock left behind
+when Android kills Termux. Missing runtime dependencies fail closed. `radar
+health` reports the local Termux/SSHD/wake-lock/dependency state only; end-to-end
+Mac-to-phone reachability is proven by the source relay receipt, not by that
+local command.

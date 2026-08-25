@@ -10,6 +10,18 @@ BIN_DIR="$HOME/.local/bin"
 BOOT_DIR="$HOME/.termux/boot"
 STATE_DIR="$HOME/.local/state/nuzantara-radar/incidents"
 
+MISSING=''
+for required_command in jq head sshd; do
+    if ! command -v "$required_command" >/dev/null 2>&1; then
+        MISSING="$MISSING $required_command"
+    fi
+done
+if [ -n "$MISSING" ]; then
+    printf 'RADAR_INSTALL_MISSING:%s\n' "$MISSING" >&2
+    printf 'Installa i pacchetti Termux richiesti prima di riprovare.\n' >&2
+    exit 69
+fi
+
 mkdir -p "$LIBEXEC_DIR" "$BIN_DIR" "$BOOT_DIR" "$STATE_DIR"
 chmod 700 "$HOME/.local" "$LIBEXEC_DIR" "$BIN_DIR" "$HOME/.local/state" \
     "$HOME/.local/state/nuzantara-radar" "$STATE_DIR" "$HOME/.termux" "$BOOT_DIR"

@@ -35,6 +35,8 @@ STATE_VERSION = 1
 MAX_LINE_BYTES = 65_536
 MAX_RECORDS_PER_RUN = 100
 DEFAULT_PORT = 8022
+EXIT_SOFTWARE = 70
+EXIT_TEMPFAIL = 75
 SPOOL_FILES = ("archive-p0.jsonl", "pending.jsonl")
 
 ALLOWED_CATEGORIES = frozenset(
@@ -313,6 +315,8 @@ def _send_via_ssh(
 ) -> None:
     if not target or re.fullmatch(r"[A-Za-z0-9_.@:-]{3,255}", target) is None:
         raise RelayError("SSH target is missing or malformed")
+    if target.startswith("-"):
+        raise RelayError("SSH target may not begin with an option prefix")
     if not identity.is_file():
         raise RelayError("dedicated SSH identity is missing")
     if not known_hosts.is_file():
@@ -336,10 +340,13 @@ def _send_via_ssh(
         "StrictHostKeyChecking=yes",
         "-o",
         f"UserKnownHostsFile={known_hosts}",
+        "-o",
+        "GlobalKnownHostsFile=/dev/null",
         "-i",
         str(identity),
         "-p",
         str(port),
+        "--",
         target,
     ]
     try:
@@ -447,11 +454,16 @@ def relay_once(
                     next_offset = handle.tell()
                     remaining -= 1
 
-                    if len(raw_line) > MAX_LINE_BYTES or not raw_line.endswith(b"\n"):
+                    if len(raw_line) > MAX_LINE_BYTES:
                         next_offset = _drain_oversized_line(handle, raw_line)
                         result = result.add(malformed=1)
                         files_state[spool_name]["offset"] = next_offset
                         continue
+                    if not raw_line.endswith(b"\n"):
+                        # The producer may still be appending this physical
+                        # line. Keep the cursor at its start and retry on the
+                        # next run instead of permanently losing a P0.
+                        break
                     try:
                         record = json.loads(raw_line.decode("utf-8"))
                     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -561,7 +573,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     except RelayError as exc:
         logger.error("relay stopped reason=%s", type(exc).__name__)
-        return 1
+        return EXIT_SOFTWARE
     logger.info(
         "run complete bootstrapped=%d delivered=%d ignored=%d malformed=%d failed=%d",
         outcome.bootstrapped,
@@ -570,7 +582,10 @@ def main(argv: list[str] | None = None) -> int:
         outcome.malformed,
         outcome.failed,
     )
-    return 1 if outcome.failed else 0
+    # A sleeping/offline phone is normal for a mobile pager.  Distinguish that
+    # retryable transport state from a broken local relay so the source-node
+    # healer does not enter a pointless kickstart loop.
+    return EXIT_TEMPFAIL if outcome.failed else 0
 
 
 if __name__ == "__main__":
