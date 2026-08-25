@@ -14,7 +14,7 @@ constraints:
   - "Pro/Mini LaunchAgents and dedicated forced-command keys remain unarmed until independent Opus 5 review; no merge, deploy, or auto-merge is part of this PR."
   - "The Termux receiver must fail closed on unknown fields, remote commands, invalid enums, malformed JSON, and payloads larger than 8 KiB."
 acceptance:
-  - "The relay and receiver hermetic test suites pass: 27 tests, including PII exclusion, EOF bootstrap, retry safety, replay idempotence, incomplete-line preservation, stale/live lock behavior, exact-one-document input, oversize rejection, and remote-command rejection."
+  - "The relay and receiver hermetic test suites pass: 30 tests, including PII exclusion, EOF bootstrap, retry safety, replay idempotence, incomplete-line preservation, stale/live/recycled-PID lock behavior, bounded SSH output, temporary-versus-software failure classification, exact-one-document input, oversize rejection, and remote-command rejection."
   - "Ruff, Ruff format, ShellCheck, plutil, git diff check, organ conformance, and organs-registry validation are clean."
   - "A live synthetic capsule sent to the iQOO is accepted once, recognized as a duplicate on replay, and rejected when an extra free-text field is added; all synthetic phone state is then removed and `radar status` reports zero capsules."
   - "The branch is pushed as a draft PR with auto-merge absent; the source-side relays remain recorded in PENDING-ARMS instead of being loaded."
