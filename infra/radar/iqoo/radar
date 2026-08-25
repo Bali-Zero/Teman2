@@ -16,6 +16,19 @@ usage() {
         '     radar health'
 }
 
+process_start_token() {
+    PROCESS_PID="$1"
+    case "$PROCESS_PID" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    if [ -r "/proc/$PROCESS_PID/stat" ]; then
+        sed 's/^[^)]*) //' "/proc/$PROCESS_PID/stat" 2>/dev/null \
+            | awk '{print $20}'
+    else
+        ps -o lstart= -p "$PROCESS_PID" 2>/dev/null | tr -cd '[:alnum:]'
+    fi
+}
+
 status() {
     COUNT=$(find "$INCIDENT_DIR" -maxdepth 1 -type f -name '*.json' 2>/dev/null | wc -l | tr -d '[:space:]')
     printf 'RADAR iQOO · %s capsule sicure\n' "$COUNT"
@@ -84,7 +97,7 @@ health() {
     if [ -f "$STATE_DIR/wake-lock.requested" ]; then WAKE_STATE=richiesto_a_Termux; else WAKE_STATE=non_richiesto; fi
     if command -v termux-notification >/dev/null 2>&1; then NOTIFY_STATE=disponibile; else NOTIFY_STATE=non_installato; fi
     MISSING=''
-    for required_command in jq head sshd; do
+    for required_command in awk head jq pgrep ps readlink sed sshd tr; do
         if ! command -v "$required_command" >/dev/null 2>&1; then
             MISSING="$MISSING $required_command"
         fi
@@ -92,8 +105,25 @@ health() {
     LOCK_STATE=libero
     if [ -L "$STATE_DIR/.receive.lock" ]; then
         LOCK_OWNER=$(readlink "$STATE_DIR/.receive.lock" 2>/dev/null || true)
-        if [ -n "$LOCK_OWNER" ] && kill -0 "$LOCK_OWNER" 2>/dev/null; then
-            LOCK_STATE="occupato_pid_$LOCK_OWNER"
+        LOCK_PID=${LOCK_OWNER%%:*}
+        LOCK_START=${LOCK_OWNER#*:}
+        case "$LOCK_OWNER" in
+            *:*:*) LOCK_PID=''; LOCK_START='' ;;
+        esac
+        case "$LOCK_PID" in
+            ''|*[!0-9]*) LOCK_PID='' ;;
+        esac
+        case "$LOCK_START" in
+            ''|*[![:alnum:]]*) LOCK_START='' ;;
+        esac
+        CURRENT_START=''
+        if [ -n "$LOCK_PID" ] && [ -n "$LOCK_START" ]; then
+            CURRENT_START=$(process_start_token "$LOCK_PID" || true)
+        fi
+        if [ -n "$CURRENT_START" ] \
+            && [ "$CURRENT_START" = "$LOCK_START" ] \
+            && kill -0 "$LOCK_PID" 2>/dev/null; then
+            LOCK_STATE="occupato_pid_$LOCK_PID"
         else
             LOCK_STATE=stantio_recuperabile
         fi

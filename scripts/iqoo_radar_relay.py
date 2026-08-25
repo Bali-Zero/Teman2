@@ -22,6 +22,7 @@ import math
 import os
 import re
 import subprocess
+import tempfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -34,6 +35,7 @@ SCHEMA_VERSION = 1
 STATE_VERSION = 1
 MAX_LINE_BYTES = 65_536
 MAX_RECORDS_PER_RUN = 100
+MAX_SSH_OUTPUT_BYTES = 4096
 DEFAULT_PORT = 8022
 EXIT_SOFTWARE = 70
 EXIT_TEMPFAIL = 75
@@ -121,6 +123,10 @@ class RelayError(RuntimeError):
     """Raised when a capsule cannot be delivered safely."""
 
 
+class RetryableDeliveryError(RelayError):
+    """Raised when the mobile receiver is temporarily unavailable or busy."""
+
+
 @dataclass(frozen=True)
 class DeliveryResult:
     """Bounded relay outcome used by the CLI and unit tests."""
@@ -130,6 +136,7 @@ class DeliveryResult:
     ignored: int = 0
     malformed: int = 0
     failed: int = 0
+    software_failed: int = 0
 
     def add(self, **changes: int) -> "DeliveryResult":
         values = {
@@ -138,6 +145,7 @@ class DeliveryResult:
             "ignored": self.ignored,
             "malformed": self.malformed,
             "failed": self.failed,
+            "software_failed": self.software_failed,
         }
         for name, delta in changes.items():
             values[name] += delta
@@ -304,15 +312,14 @@ def _write_state(path: Path, state: Mapping[str, Any]) -> None:
             pass
 
 
-def _send_via_ssh(
-    capsule: Mapping[str, Any],
+def _validate_ssh_configuration(
     *,
     target: str,
     port: int,
     identity: Path,
     known_hosts: Path,
-    timeout_seconds: int,
 ) -> None:
+    """Fail before spool processing when the source-side SSH setup is invalid."""
     if not target or re.fullmatch(r"[A-Za-z0-9_.@:-]{3,255}", target) is None:
         raise RelayError("SSH target is missing or malformed")
     if target.startswith("-"):
@@ -324,9 +331,27 @@ def _send_via_ssh(
     if not 1 <= port <= 65_535:
         raise RelayError("SSH port is outside the valid range")
 
+
+def _send_via_ssh(
+    capsule: Mapping[str, Any],
+    *,
+    target: str,
+    port: int,
+    identity: Path,
+    known_hosts: Path,
+    timeout_seconds: int,
+) -> None:
+    _validate_ssh_configuration(
+        target=target,
+        port=port,
+        identity=identity,
+        known_hosts=known_hosts,
+    )
     payload = json.dumps(capsule, sort_keys=True, separators=(",", ":")) + "\n"
     command = [
         "ssh",
+        "-F",
+        "/dev/null",
         "-T",
         "-o",
         "BatchMode=yes",
@@ -350,24 +375,61 @@ def _send_via_ssh(
         target,
     ]
     try:
-        result = subprocess.run(
-            command,
-            input=payload,
-            text=True,
-            capture_output=True,
-            timeout=timeout_seconds,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise RelayError(f"SSH transport failed: {type(exc).__name__}") from exc
+        # File-backed capture places a hard memory ceiling on a hostile or broken
+        # receiver.  Only a bounded prefix is ever read back into this process.
+        with (
+            tempfile.TemporaryFile() as stdout_file,
+            tempfile.TemporaryFile() as stderr_file,
+        ):
+            result = subprocess.run(
+                command,
+                input=payload,
+                text=True,
+                stdout=stdout_file,
+                stderr=stderr_file,
+                timeout=timeout_seconds,
+                check=False,
+            )
+            stdout_file.seek(0)
+            stderr_file.seek(0)
+            stdout_bytes = stdout_file.read(MAX_SSH_OUTPUT_BYTES + 1)
+            stderr_bytes = stderr_file.read(MAX_SSH_OUTPUT_BYTES + 1)
+    except subprocess.TimeoutExpired as exc:
+        raise RetryableDeliveryError("SSH transport timed out") from exc
+    except OSError as exc:
+        raise RelayError(f"SSH launch failed: {type(exc).__name__}") from exc
+
+    if (
+        len(stdout_bytes) > MAX_SSH_OUTPUT_BYTES
+        or len(stderr_bytes) > MAX_SSH_OUTPUT_BYTES
+    ):
+        raise RelayError("receiver output exceeded the bounded capture limit")
 
     expected = {
         f"RADAR_OK {capsule['incident_id']}",
         f"RADAR_DUPLICATE {capsule['incident_id']}",
     }
-    receipt = result.stdout.strip()
-    if result.returncode != 0 or receipt not in expected:
-        raise RelayError(f"receiver rejected capsule (ssh_rc={result.returncode})")
+    receipt = stdout_bytes.decode("utf-8", errors="replace").strip()
+    if result.returncode == 0 and receipt in expected:
+        return
+
+    stderr_lower = stderr_bytes.lower()
+    fatal_ssh_markers = (
+        b"host key verification failed",
+        b"remote host identification has changed",
+        b"bad configuration option",
+        b"no such identity",
+        b"identity file",
+    )
+    if result.returncode == 255 and any(
+        marker in stderr_lower for marker in fatal_ssh_markers
+    ):
+        raise RelayError("SSH security/configuration failure (ssh_rc=255)")
+    if result.returncode in {75, 255}:
+        raise RetryableDeliveryError(
+            f"receiver temporarily unavailable (ssh_rc={result.returncode})"
+        )
+    raise RelayError(f"receiver rejected capsule (ssh_rc={result.returncode})")
 
 
 def _drain_oversized_line(handle: BinaryIO, raw_line: bytes) -> int:
@@ -483,16 +545,36 @@ def relay_once(
                             byte_offset=byte_offset,
                         )
                         sender(capsule)
-                    except Exception as exc:
+                    except RetryableDeliveryError as exc:
                         logger.error(
                             "capsule delivery failed file=%s offset=%d reason=%s",
                             spool_name,
                             byte_offset,
-                            type(exc).__name__,
+                            str(exc),
                         )
                         result = result.add(failed=1)
                         # Do not advance: the same deterministic incident ID will
                         # be retried, and the phone receiver is idempotent.
+                        break
+                    except RelayError as exc:
+                        logger.error(
+                            "capsule delivery blocked file=%s offset=%d reason=%s",
+                            spool_name,
+                            byte_offset,
+                            str(exc),
+                        )
+                        result = result.add(software_failed=1)
+                        break
+                    except Exception as exc:
+                        # Unknown exception messages may contain producer data.
+                        # Log only their type while still preserving the cursor.
+                        logger.error(
+                            "capsule delivery crashed file=%s offset=%d reason=%s",
+                            spool_name,
+                            byte_offset,
+                            type(exc).__name__,
+                        )
+                        result = result.add(software_failed=1)
                         break
                     files_state[spool_name]["offset"] = next_offset
                     result = result.add(delivered=1)
@@ -553,13 +635,26 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s iqoo-radar-relay: %(message)s",
     )
 
+    identity = args.identity.expanduser()
+    known_hosts = args.known_hosts.expanduser()
+    try:
+        _validate_ssh_configuration(
+            target=args.target,
+            port=args.port,
+            identity=identity,
+            known_hosts=known_hosts,
+        )
+    except RelayError as exc:
+        logger.error("relay configuration invalid reason=%s", str(exc))
+        return EXIT_SOFTWARE
+
     def sender(capsule: dict[str, Any]) -> None:
         _send_via_ssh(
             capsule,
             target=args.target,
             port=args.port,
-            identity=args.identity.expanduser(),
-            known_hosts=args.known_hosts.expanduser(),
+            identity=identity,
+            known_hosts=known_hosts,
             timeout_seconds=args.timeout,
         )
 
@@ -575,16 +670,19 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("relay stopped reason=%s", type(exc).__name__)
         return EXIT_SOFTWARE
     logger.info(
-        "run complete bootstrapped=%d delivered=%d ignored=%d malformed=%d failed=%d",
+        "run complete bootstrapped=%d delivered=%d ignored=%d malformed=%d failed=%d software_failed=%d",
         outcome.bootstrapped,
         outcome.delivered,
         outcome.ignored,
         outcome.malformed,
         outcome.failed,
+        outcome.software_failed,
     )
     # A sleeping/offline phone is normal for a mobile pager.  Distinguish that
     # retryable transport state from a broken local relay so the source-node
     # healer does not enter a pointless kickstart loop.
+    if outcome.software_failed:
+        return EXIT_SOFTWARE
     return EXIT_TEMPFAIL if outcome.failed else 0
 
 

@@ -22,9 +22,22 @@ dependency_missing() {
     exit 69
 }
 
-for required_command in jq head ln readlink; do
+for required_command in awk head jq ln ps readlink sed tr; do
     command -v "$required_command" >/dev/null 2>&1 || dependency_missing
 done
+
+process_start_token() {
+    PROCESS_PID="$1"
+    case "$PROCESS_PID" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    if [ -r "/proc/$PROCESS_PID/stat" ]; then
+        sed 's/^[^)]*) //' "/proc/$PROCESS_PID/stat" 2>/dev/null \
+            | awk '{print $20}'
+    else
+        ps -o lstart= -p "$PROCESS_PID" 2>/dev/null | tr -cd '[:alnum:]'
+    fi
+}
 
 # A relay key is forced to this executable. It must send JSON on stdin and may
 # never smuggle a shell command through SSH_ORIGINAL_COMMAND.
@@ -35,19 +48,38 @@ mkdir -p "$INCIDENT_DIR"
 chmod 700 "$STATE_DIR" "$INCIDENT_DIR"
 
 # An atomic symlink lock survives normal concurrency and can recover from an
-# Android SIGKILL. A live owner remains authoritative; only a dead/malformed
-# owner is removed before one bounded retry.
-if ! ln -s "$$" "$LOCK_FILE" 2>/dev/null; then
+# Android SIGKILL. PID plus process-start token prevents PID reuse from making
+# a dead lock look live. Only a dead/malformed/mismatched owner is removed.
+SELF_START=$(process_start_token "$$" || true)
+case "$SELF_START" in
+    ''|*[![:alnum:]]*) dependency_missing ;;
+esac
+LOCK_TOKEN="$$:$SELF_START"
+if ! ln -s "$LOCK_TOKEN" "$LOCK_FILE" 2>/dev/null; then
     LOCK_OWNER=$(readlink "$LOCK_FILE" 2>/dev/null || true)
+    LOCK_PID=${LOCK_OWNER%%:*}
+    LOCK_START=${LOCK_OWNER#*:}
     case "$LOCK_OWNER" in
-        ''|*[!0-9]*) LOCK_OWNER='' ;;
+        *:*:*) LOCK_PID=''; LOCK_START='' ;;
     esac
-    if [ -n "$LOCK_OWNER" ] && kill -0 "$LOCK_OWNER" 2>/dev/null; then
+    case "$LOCK_PID" in
+        ''|*[!0-9]*) LOCK_PID='' ;;
+    esac
+    case "$LOCK_START" in
+        ''|*[![:alnum:]]*) LOCK_START='' ;;
+    esac
+    CURRENT_START=''
+    if [ -n "$LOCK_PID" ] && [ -n "$LOCK_START" ]; then
+        CURRENT_START=$(process_start_token "$LOCK_PID" || true)
+    fi
+    if [ -n "$CURRENT_START" ] \
+        && [ "$CURRENT_START" = "$LOCK_START" ] \
+        && kill -0 "$LOCK_PID" 2>/dev/null; then
         printf 'RADAR_BUSY\n'
         exit 75
     fi
     rm -f -- "$LOCK_FILE"
-    if ! ln -s "$$" "$LOCK_FILE" 2>/dev/null; then
+    if ! ln -s "$LOCK_TOKEN" "$LOCK_FILE" 2>/dev/null; then
         printf 'RADAR_BUSY\n'
         exit 75
     fi
@@ -57,7 +89,7 @@ PAYLOAD_FILE="$STATE_DIR/.incoming.$$"
 NORMALIZED_FILE="$STATE_DIR/.normalized.$$"
 cleanup() {
     rm -f -- "$PAYLOAD_FILE" "$NORMALIZED_FILE"
-    if [ "$(readlink "$LOCK_FILE" 2>/dev/null || true)" = "$$" ]; then
+    if [ "$(readlink "$LOCK_FILE" 2>/dev/null || true)" = "$LOCK_TOKEN" ]; then
         rm -f -- "$LOCK_FILE"
     fi
 }

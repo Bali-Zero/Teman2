@@ -62,11 +62,19 @@ the placeholder key):
 restrict,command="/data/data/com.termux/files/home/.local/libexec/nuzantara-radar-receive" ssh-ed25519 AAAA... nuzantara-radar-pro
 ```
 
+Before arming, audit every existing line in `authorized_keys`. Every relay key
+must carry both `restrict` and the exact forced command above. Inventory any
+separate unrestricted administrator key explicitly; never point a relay wrapper
+at that key. Pro and Mini use distinct restricted keys, so either source can be
+revoked without affecting the other.
+
 The private key never leaves its Mac. Pin the phone host key in
 `~/.ssh/known_hosts_iqoo_radar`; the production relay uses
 `StrictHostKeyChecking=yes`, disables the global host-key file and never uses
-`accept-new`. A source node can therefore reach only the explicitly pinned
-iQOO receiver through this path.
+`accept-new`. It invokes OpenSSH with `-F /dev/null`, so user-level SSH config
+cannot inject a proxy, alternate identity or another host-key policy. A source
+node can therefore reach only the explicitly pinned iQOO receiver through this
+path.
 
 ## Relay behavior
 
@@ -74,6 +82,12 @@ iQOO receiver through this path.
 
 - sent P0 records from `archive-p0.jsonl`;
 - unsent/budget-held P0 records from `pending.jsonl`.
+
+`archive-p0.jsonl` is the append-only primary source. `pending.jsonl` is a
+best-effort secondary view that the Telegram gateway may replace by atomic
+rename; a relay holding the previous inode can finish that snapshot and sees
+the replacement on its next run. A pending-only item can therefore be delayed
+one interval, never treated as durable evidence in place of the archive.
 
 The first run places each cursor at EOF, preventing a historic alert flood.
 Afterward, a cursor advances only after a valid receiver receipt. Delivery
@@ -85,12 +99,14 @@ The relay distinguishes two failure classes:
 - exit `75`: the mobile receiver is busy, sleeping or temporarily unreachable;
   the cursor stays in place and the source heartbeat records healthy deferred
   delivery, so the healer does not restart a healthy relay in a loop;
-- exit `70`: a local software/state/configuration fault; the source heartbeat is
-  an error and remains eligible for investigation.
+- exit `70`: receiver rejection or a local software/state/security/configuration
+  fault; the source heartbeat is an error and remains eligible for
+  investigation.
 
 The receiver accepts exactly one JSON document per SSH stream, reads across
 fragmented SSH packets up to the 8 KiB ceiling and recovers a lock left behind
-when Android kills Termux. Missing runtime dependencies fail closed. `radar
-health` reports the local Termux/SSHD/wake-lock/dependency state only; end-to-end
-Mac-to-phone reachability is proven by the source relay receipt, not by that
-local command.
+when Android kills Termux, even if Android later recycles its PID. SSH receipts
+are captured in temporary files and at most 4 KiB per stream is read into relay
+memory. Missing runtime dependencies fail closed. `radar health` reports the
+local Termux/SSHD/wake-lock/dependency state only; end-to-end Mac-to-phone
+reachability is proven by the source relay receipt, not by that local command.

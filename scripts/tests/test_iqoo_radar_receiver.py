@@ -4,12 +4,28 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RECEIVER = REPO_ROOT / "infra" / "radar" / "iqoo" / "nuzantara-radar-receive"
+
+
+def _process_start_token(pid: int) -> str:
+    proc_stat = Path(f"/proc/{pid}/stat")
+    if proc_stat.is_file():
+        raw = proc_stat.read_text(encoding="utf-8")
+        after_name = raw[raw.rfind(")") + 2 :].split()
+        return after_name[19]
+    result = subprocess.run(
+        ["ps", "-o", "lstart=", "-p", str(pid)],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return re.sub(r"[^A-Za-z0-9]", "", result.stdout)
 
 
 def _capsule(**overrides: Any) -> dict[str, Any]:
@@ -124,7 +140,7 @@ def test_multiple_json_documents_are_rejected(tmp_path: Path) -> None:
 def test_stale_lock_is_recovered_after_android_process_kill(tmp_path: Path) -> None:
     state = tmp_path / ".local/state/nuzantara-radar"
     state.mkdir(parents=True)
-    (state / ".receive.lock").symlink_to("999999999")
+    (state / ".receive.lock").symlink_to("999999999:1")
 
     result = _run(tmp_path, _capsule())
 
@@ -138,10 +154,24 @@ def test_live_lock_owner_is_not_stolen(tmp_path: Path) -> None:
     state = tmp_path / ".local/state/nuzantara-radar"
     state.mkdir(parents=True)
     lock = state / ".receive.lock"
-    lock.symlink_to(str(os.getpid()))
+    lock.symlink_to(f"{os.getpid()}:{_process_start_token(os.getpid())}")
 
     result = _run(tmp_path, _capsule())
 
     assert result.returncode == 75
     assert result.stdout.strip() == "RADAR_BUSY"
     assert lock.is_symlink()
+
+
+def test_recycled_pid_lock_is_recovered(tmp_path: Path) -> None:
+    state = tmp_path / ".local/state/nuzantara-radar"
+    state.mkdir(parents=True)
+    lock = state / ".receive.lock"
+    lock.symlink_to(f"{os.getpid()}:{_process_start_token(os.getpid())}mismatch")
+
+    result = _run(tmp_path, _capsule())
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == f"RADAR_OK {'a' * 32}"
+    assert not lock.exists()
+    assert not lock.is_symlink()

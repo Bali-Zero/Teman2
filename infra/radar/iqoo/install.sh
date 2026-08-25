@@ -11,7 +11,7 @@ BOOT_DIR="$HOME/.termux/boot"
 STATE_DIR="$HOME/.local/state/nuzantara-radar/incidents"
 
 MISSING=''
-for required_command in jq head sshd; do
+for required_command in awk head jq pgrep ps readlink sed sshd tr; do
     if ! command -v "$required_command" >/dev/null 2>&1; then
         MISSING="$MISSING $required_command"
     fi

@@ -118,7 +118,7 @@ def test_failed_delivery_retries_same_incident_without_advancing(
 
     def fail(capsule: dict[str, Any]) -> None:
         attempts.append(capsule["incident_id"])
-        raise radar.RelayError("synthetic transport failure")
+        raise radar.RetryableDeliveryError("synthetic transport failure")
 
     first = radar.relay_once(
         spool_dir=spool,
@@ -220,7 +220,7 @@ def test_unexpected_sender_exception_remains_retry_safe(tmp_path: Path) -> None:
         sender=fail_unexpected,
         replay_existing=True,
     )
-    assert first.failed == 1
+    assert first.software_failed == 1
 
     delivered: list[dict[str, Any]] = []
     second = radar.relay_once(
@@ -286,16 +286,11 @@ def test_ssh_transport_uses_only_dedicated_pins_and_option_terminator(
     )
     captured: list[str] = []
 
-    def fake_run(
-        command: list[str], **_kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
+    def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
         captured.extend(command)
-        return subprocess.CompletedProcess(
-            command,
-            0,
-            stdout=f"RADAR_OK {capsule['incident_id']}\n",
-            stderr="",
-        )
+        kwargs["stdout"].write(f"RADAR_OK {capsule['incident_id']}\n".encode())
+        kwargs["stdout"].flush()
+        return subprocess.CompletedProcess(command, 0)
 
     monkeypatch.setattr(radar.subprocess, "run", fake_run)
     radar._send_via_ssh(
@@ -307,6 +302,7 @@ def test_ssh_transport_uses_only_dedicated_pins_and_option_terminator(
         timeout_seconds=5,
     )
 
+    assert captured[:3] == ["ssh", "-F", "/dev/null"]
     assert "GlobalKnownHostsFile=/dev/null" in captured
     assert "StrictHostKeyChecking=yes" in captured
     assert captured[-2:] == ["--", "radar@100.64.134.94"]
@@ -322,20 +318,120 @@ def test_ssh_transport_uses_only_dedicated_pins_and_option_terminator(
         )
 
 
+def test_ssh_output_is_bounded_and_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity = tmp_path / "identity"
+    known_hosts = tmp_path / "known_hosts"
+    identity.touch()
+    known_hosts.touch()
+    capsule = radar.build_capsule(
+        _record(), spool_name="archive-p0.jsonl", byte_offset=0
+    )
+
+    def noisy_receiver(
+        command: list[str], **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        kwargs["stdout"].write(b"x" * (radar.MAX_SSH_OUTPUT_BYTES + 1))
+        kwargs["stdout"].flush()
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(radar.subprocess, "run", noisy_receiver)
+    with pytest.raises(radar.RelayError, match="bounded capture"):
+        radar._send_via_ssh(
+            capsule,
+            target="radar@100.64.134.94",
+            port=8022,
+            identity=identity,
+            known_hosts=known_hosts,
+            timeout_seconds=5,
+        )
+
+
+def test_ssh_result_distinguishes_temporary_and_permanent_remote_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity = tmp_path / "identity"
+    known_hosts = tmp_path / "known_hosts"
+    identity.touch()
+    known_hosts.touch()
+    capsule = radar.build_capsule(
+        _record(), spool_name="archive-p0.jsonl", byte_offset=0
+    )
+
+    def disconnected(
+        command: list[str], **_kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 255)
+
+    monkeypatch.setattr(radar.subprocess, "run", disconnected)
+    with pytest.raises(radar.RetryableDeliveryError, match="temporarily"):
+        radar._send_via_ssh(
+            capsule,
+            target="radar@100.64.134.94",
+            port=8022,
+            identity=identity,
+            known_hosts=known_hosts,
+            timeout_seconds=5,
+        )
+
+    def dependency_missing(
+        command: list[str], **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        kwargs["stdout"].write(b"RADAR_DEPENDENCY_MISSING\n")
+        kwargs["stdout"].flush()
+        return subprocess.CompletedProcess(command, 69)
+
+    monkeypatch.setattr(radar.subprocess, "run", dependency_missing)
+    with pytest.raises(radar.RelayError, match="ssh_rc=69") as error:
+        radar._send_via_ssh(
+            capsule,
+            target="radar@100.64.134.94",
+            port=8022,
+            identity=identity,
+            known_hosts=known_hosts,
+            timeout_seconds=5,
+        )
+    assert not isinstance(error.value, radar.RetryableDeliveryError)
+
+
 def test_main_distinguishes_retryable_delivery_from_local_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    identity = tmp_path / "identity"
+    known_hosts = tmp_path / "known_hosts"
+    identity.touch()
+    known_hosts.touch()
+    args = [
+        "--state-dir",
+        str(tmp_path / "state"),
+        "--target",
+        "radar@100.64.134.94",
+        "--identity",
+        str(identity),
+        "--known-hosts",
+        str(known_hosts),
+    ]
     monkeypatch.setattr(
         radar,
         "relay_once",
         lambda **_kwargs: radar.DeliveryResult(failed=1),
     )
-    assert radar.main(["--state-dir", str(tmp_path)]) == radar.EXIT_TEMPFAIL
+    assert radar.main(args) == radar.EXIT_TEMPFAIL
+
+    monkeypatch.setattr(
+        radar,
+        "relay_once",
+        lambda **_kwargs: radar.DeliveryResult(software_failed=1),
+    )
+    assert radar.main(args) == radar.EXIT_SOFTWARE
 
     def local_failure(**_kwargs: Any) -> radar.DeliveryResult:
         raise radar.RelayError("synthetic local failure")
 
     monkeypatch.setattr(radar, "relay_once", local_failure)
+    assert radar.main(args) == radar.EXIT_SOFTWARE
+
     assert radar.main(["--state-dir", str(tmp_path)]) == radar.EXIT_SOFTWARE
 
 
