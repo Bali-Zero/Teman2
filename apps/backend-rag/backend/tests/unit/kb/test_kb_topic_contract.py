@@ -1414,6 +1414,20 @@ def _real_topic_inventories() -> list[Path]:
     return [p for p in _real(INVENTORY_DIR) if _load(p).get("kind") == OWNED_KIND]
 
 
+def _real_containment_proofs() -> list[tuple[str, dict]]:
+    """Every (filename, containment_proof dict) pair found across every REAL
+    kind=topic inventory. Factored out so the informational printer and the
+    anti-vacuity assertion below read the exact same scan — two independent
+    counts of "the same thing" that could silently diverge is the family #6/#9
+    shape this whole interlock exists to avoid, and it applies just as much to
+    this module's own test helpers as to the inventories they check."""
+    return [
+        (p.name, proof)
+        for p in _real_topic_inventories()
+        for proof in _find_containment_proofs(_load(p))
+    ]
+
+
 @pytest.mark.parametrize("path", _real(TOPICS_DIR), ids=lambda p: p.stem)
 def test_real_topic_files_obey_the_contract(path):
     assert check_topic(_load(path)) == [], path.name
@@ -1462,23 +1476,56 @@ def test_the_real_file_count_is_reported_not_assumed(capsys):
           f"{len(TOPIC_GUILT) + len(JOURNEY_GUILT) + len(INVENTORY_GUILT) + len(AGREEMENT_GUILT)} cases)")
     assert isinstance(counts[0], int)
 
-    # Same discipline for the §4.6 interlock's real-file exercise specifically: it
-    # is legal (today) for zero real topic inventories to carry a containment_proof
-    # at all — the synthetic guilt/innocence cases above are what keep the
-    # predicate honest before any real file reaches this branch, same reasoning as
-    # the module docstring gives for the contract as a whole. Say the count rather
-    # than assume it either way.
-    real_proofs = [
-        (p.name, proof)
-        for p in _real_topic_inventories()
-        for proof in _find_containment_proofs(_load(p))
-    ]
+    # Informational detail for the §4.6 interlock specifically: WHICH real proofs
+    # were found and which are incomplete. The non-zero FACT itself is asserted
+    # separately below (test_the_containment_interlock_is_not_examining_zero_real_proofs)
+    # now that real coverage exists — this print stays for the per-file detail a
+    # bare count doesn't carry.
+    real_proofs = _real_containment_proofs()
     incomplete_real = [
         name for name, proof in real_proofs if _sibling_gate()._proof_is_incomplete(proof)
     ]
     print(f"[kb-topic-contract] real containment_proof(s) found: {len(real_proofs)} "
           f"({[n for n, _ in real_proofs]}), incomplete: {len(incomplete_real)} "
           f"({incomplete_real})")
+
+
+def test_the_containment_interlock_is_not_examining_zero_real_proofs():
+    """Anti-vacuity for the §4.6 interlock, TIGHTENED 2026-08-26 from a print to
+    an assertion now that real coverage exists.
+
+    When the interlock rule was first added, zero real kind=topic inventories
+    carried a containment_proof anywhere, so a hard non-zero assertion here would
+    have gone red for a reason unrelated to the rule itself — the exact same
+    reasoning this module's docstring gives for real topic artifacts being legal
+    to be absent before their lanes land. It was deliberately left as a print
+    (test_the_real_file_count_is_reported_not_assumed, above) rather than an
+    assertion for that reason.
+
+    `feature/kb-current` has since merged the UU_25_2007 containment lane
+    (kb/inventory/company.yaml's uu_25_2007_fragment_categorisation.containment_proof),
+    so that real coverage now exists and asserting it is honest rather than
+    premature. Leaving it as a print past this point would be the SOFT version of
+    the disease this whole interlock exists to cure — a count that reads as
+    coverage without being enforced as coverage: if that block were ever removed
+    from the real file, this rule would silently fall back to being exercised by
+    the synthetic guilt/innocence cases alone, with nothing here to say so.
+
+    Deliberately asserts the count of real containment_proof INSTANCES
+    (_real_containment_proofs()), not the count of real topic inventory FILES —
+    those are different facts, and file-count would stay green even if every
+    containment_proof were stripped out of every real file's content.
+    """
+    real_proofs = _real_containment_proofs()
+    assert real_proofs, (
+        "no real kb/inventory/*.yaml with kind=topic carries a containment_proof "
+        "anywhere in its structure, so the §4.6 interlock in check_topic_inventory "
+        "is exercised only by synthetic fixtures and never by a real file. Either "
+        "kb/inventory/company.yaml's uu_25_2007_fragment_categorisation."
+        "containment_proof has been removed — restore it, or say explicitly that "
+        "real coverage is intentionally gone and loosen this back to a print — "
+        "or this assertion has been pointed at the wrong directory"
+    )
 
 
 def test_the_other_gate_still_defers_topic_inventories_to_this_one():
