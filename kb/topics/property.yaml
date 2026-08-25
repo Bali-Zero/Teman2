@@ -42,6 +42,10 @@ guardrails:
     fragment-containment ratio first (MANDATE §4.4/§4.6) — see the Permen_18_2021 row.
   - Never report "missing" from a single document_id lookup (MANDATE §4.2) — three
     distinct methods, or it is not a finding.
+  - Zoning (RTRW) has ZERO substantive Bali-specific coverage in production (see
+    Perda_RTRW_Bali_2023_or_2009 below, three-method absence proof) — the KB must
+    abstain on villa/leasehold zoning-restriction questions, never invent or borrow a
+    Perda citation it does not actually have indexed.
 
 kill_criterion: >
   If, after G4 build, the corpus still cannot distinguish a national UU from a
@@ -161,3 +165,47 @@ instruments:
     status: unknown
     source_url: "https://peraturan.go.id/uu?tahun=2010"
     source_verified: false
+
+  # ── Absent: three-method §4.2 proof, orchestrator-invited follow-up unit ────────
+  - id: Perda_RTRW_Bali_2023_or_2009
+    declared_identity: >
+      No such id exists in production. Candidate real-world identities, both
+      confirmed by external source: CURRENT — Peraturan Daerah Provinsi Bali Nomor 2
+      Tahun 2023 tentang Rencana Tata Ruang Wilayah (RTRW) Provinsi Bali Tahun
+      2023-2043, enacted 9 March 2023; SUPERSEDED — Peraturan Daerah Provinsi Bali
+      Nomor 16 Tahun 2009 tentang RTRW Provinsi Bali Tahun 2009-2029. This is the
+      zoning instrument that answers whether Bali provincial zoning restricts
+      villa/leasehold use in a given area (see must_never_get_wrong above) — the
+      single largest measured gap in this lane's scope.
+    verified_identity: >
+      ABSENT. Three independent methods run against production legal_unified
+      (84,283 pts / 388 document_ids), none found it: (1) id near-match sweep across
+      all 388 distinct document_ids for perda_2_2023/perda_16_2009/rtrw and
+      garbled-prefix variants (uu_/pp_/permen_ + 2_2023/16_2009, following this
+      corpus's own established garbling pattern) — one hit, UU_16_2009, independently
+      read in full (2 points, 663 + 413 chars) and confirmed to be the REAL national
+      UU 16/2009 (the tax-procedure enactment law: closing clause names Perpu 5/2008
+      amending UU 6/1983 KUP, signed by SBY 25 March 2009, published in Lembaran
+      Negara RI 2009/62 — a national, not provincial, citation) — genuinely a
+      different instrument, not this one under a wrong prefix; (2) full-text keyword
+      scan ("rencana tata ruang wilayah" / "rtrw provinsi bali" / "tata ruang wilayah
+      provinsi bali"), UNFILTERED by id, across all 84,283 points — 82 hits across 11
+      document_ids, all either the NATIONAL spatial-planning law (UU_26_2007), the
+      Cipta Kerja omnibus and its amendments (UU_6_2023, the same content also
+      mislabeled UU_11_1945 — a different lane's identity defect, not chased here),
+      OTHER-PROVINCE Perdas (Kalimantan Utara Perda_20_2012, Sumbawa Barat
+      Perda_30_2003), or passing generic mentions in unrelated national PP/Permen —
+      zero Bali-specific RTRW substantive content; (3) targeted read of the four
+      UNKNOWN-identity buckets (~5,565 pts, the exact budget gap left open by the
+      UU_31_2010_or_Perda_15_2019 finding above) for tata-ruang/zonasi/kawasan-lindung
+      signals — 5 distinct UNKNOWN ids matched, all read and confirmed unrelated
+      (aviation certification, factory-layout planning ["tata letak", not "tata
+      ruang"], visa classification revocation, constitutional-court/DPD lawmaking
+      procedure). Full enumeration: of 388 document_ids, 23 contain "perda" (none
+      Bali, none matching 2_2023/16_2009 by number — closest is Perda_2_2016,
+      different year), and 0 contain "rtrw". This is a genuine absence, not a
+      wrong-identity case like PP_6630_2021 or UU_14_2023 above.
+    identity_verdict: lost
+    status: unknown
+    source_url: "https://tarubali.baliprov.go.id/rtrwp-bali/"
+    source_verified: true

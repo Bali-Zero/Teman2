@@ -83,6 +83,14 @@ instruments:
       - "exact document_id match for 'Perda_15_2019' against the same 388-id enumeration — 0 hits"
       - "near-match sweep on number+year ('*_31_2010', '*_15_2019') across the full enumeration — the only hit was UU_15_2019 (4 pts), whose retrieved chunk text was read and confirmed to be a DIFFERENT, unrelated law (post-enactment legislative review procedure — 'Pemantauan dan Peninjauan terhadap Undang-Undang'), not this instrument"
 
+  - id: Perda_RTRW_Bali_2023_or_2009
+    points: 0
+    present: false
+    lookup_attempts:
+      - "id near-match sweep across all 388 distinct document_ids for 11 candidate substrings (perda_2_2023, perda_16_2009, perda_bali_2_2023, perda_bali_16_2009, rtrw, uu_2_2023, uu_16_2009, pp_2_2023, pp_16_2009, permen_2_2023, permen_16_2009) — one hit, UU_16_2009 (2 pts), independently read in full and confirmed to be the REAL national UU 16/2009 tax-procedure law (closing clause names Perpu 5/2008 amending UU 6/1983 KUP, Lembaran Negara RI 2009/62 — a national, not provincial, citation), not this instrument under a garbled prefix"
+      - "full-text keyword scan ('rencana tata ruang wilayah' / 'rtrw provinsi bali' / 'tata ruang wilayah provinsi bali') across the ENTIRE production collection (all 84,283 points, unfiltered by id) — 82 hits across 11 document_ids (UU_26_2007 national spatial-planning law, UU_6_2023 Cipta Kerja omnibus, other-province Perdas, passing mentions in unrelated PP/Permen) — zero Bali-specific RTRW substantive content among them"
+      - "targeted read of the four UNKNOWN-identity buckets (~5,565 pts) for tata-ruang/zonasi/kawasan-lindung signals — 5 distinct UNKNOWN ids matched a loose substring, all read and confirmed unrelated (aviation certification, factory-layout planning, visa classification revocation, constitutional-court lawmaking procedure)"
+
 # ── Fragment-containment proof, MANDATE §4.4/§4.6 (mandatory order: prove
 #    containment FIRST, only then retire/promote) — Permen_18_2021 / production
 #    534 pts vs legal_unified_2026 (retired) 10,266 pts for the same document_id.
