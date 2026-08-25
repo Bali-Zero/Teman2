@@ -115,7 +115,16 @@ class DeclineCode(str, Enum):
     # `contracts/openapi.yaml`'s `x-error-codes` already names for the
     # (currently unwired) 503 shape of the same guardrail — same vocabulary,
     # different layer, deliberately not two invented words for one concept.
-    TRUTH_SHEET_STALE = "TRUTH_SHEET_STALE"
+    # Named for what the CUSTOMER learns, not for our filing cabinet. The freshness
+    # authority raised this as `TRUTH_SHEET_STALE`; that string names an internal
+    # artefact (the GARUDA B1 truth-sheet), and Q3 forbids internal vocabulary on the
+    # wire. It also collided with a 503 of the same name, so one string meant both
+    # "the service refused" and "your case was declined" depending on the surface.
+    # This code says the honest thing instead: we cannot confirm eligibility right
+    # now — the same register as ARRIVAL_DATE_UNCONFIRMED, and deliberately NOT
+    # NATIONALITY_NOT_ELIGIBLE, which would tell someone they do not qualify when
+    # the truth is that we did not look recently enough to know.
+    ELIGIBILITY_UNCONFIRMED = "ELIGIBILITY_UNCONFIRMED"
 
 
 @dataclass(frozen=True)

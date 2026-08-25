@@ -399,3 +399,54 @@ def test_privacy_headers_present_on_successful_create(monkeypatch) -> None:
     assert response.headers["Cache-Control"] == "no-store, private"
     assert response.headers["Referrer-Policy"] == "no-referrer"
     assert response.headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+
+def test_a_stale_price_catalogue_reaches_the_wire_as_503_price_unresolvable(
+    monkeypatch,
+) -> None:
+    """The router's half of G-FRESHNESS-FAIL-CLOSED.
+
+    The package conftest pins every truth source fresh, because a test that reads the
+    real catalogue against the real clock is a clock, not a test — the real catalogue
+    is stale today (owner decision 7) and four tests here went red for a reason none of
+    them was about. But pinning it away everywhere would leave the router's own
+    behaviour uncovered, so this test deliberately re-patches on top of the fixture and
+    forces STALE with a synthetic stamp.
+
+    What it asserts is the thing that matters on the wire: a stale catalogue does not
+    quote a remembered price, does not quote zero, and does not 500. It fails closed as
+    the same 503 the router already emits when a price cannot be resolved for any other
+    reason — one behaviour, one code, nothing new for a client to learn.
+    """
+    from backend.services.garuda_flow import freshness, pricing
+
+    def _stale(*, today: object, **_: object) -> freshness.FreshnessReport:
+        return freshness.FreshnessReport(
+            source="price_catalogue",
+            verdict=freshness.FreshnessVerdict.STALE,
+            stamp="2020-01-01",
+            age_days=9_999,
+            max_age_days=freshness.MAX_AGE_DAYS["price_catalogue"],
+            detail="synthetic: forced stale for this test only",
+        )
+
+    monkeypatch.setattr(pricing, "price_catalogue_freshness", _stale)
+    monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
+    app = _app()
+    _override_store(app, _FakeStore())
+
+    response = TestClient(app).post(
+        "/api/visa/voa/eligibility-checks",
+        json=VALID_ISSUANCE_BODY,
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+
+    assert response.status_code == 503, (
+        f"a stale price catalogue answered {response.status_code} — the funnel quoted "
+        "from a source it knows it has not re-verified"
+    )
+    assert response.json()["code"] == "PRICE_UNRESOLVABLE"
+    body = response.text
+    assert "790" not in body and "850" not in body, (
+        "a price leaked into a fail-closed response"
+    )

@@ -213,7 +213,7 @@ _MAX_STAY_EXCEEDED_REASON_TEMPLATE = (
     "hand off to the ordinary channel"
 )
 
-_TRUTH_SHEET_STALE_REASON_TEMPLATE = (
+_ELIGIBILITY_UNCONFIRMED_REASON_TEMPLATE = (
     "truth source '{source}' has not been re-verified within its "
     "{max_age_days}-day window (last stamp: {stamp}, age: {age_days}d) — "
     "declining to sell on data nobody has looked at recently, hand off to "
@@ -345,14 +345,14 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
         if report.stale:
             decision = Decision.DECLINE
             reasons.append(
-                _TRUTH_SHEET_STALE_REASON_TEMPLATE.format(
+                _ELIGIBILITY_UNCONFIRMED_REASON_TEMPLATE.format(
                     source=report.source,
                     max_age_days=report.max_age_days,
                     stamp=report.stamp,
                     age_days=report.age_days,
                 )
             )
-            codes.append(DeclineCode.TRUTH_SHEET_STALE.value)
+            codes.append(DeclineCode.ELIGIBILITY_UNCONFIRMED.value)
 
     # Computed up front (moved ahead of the layered checks below, 2026-08-23)
     # so the max-total-stay guard can reuse `max_total_days` — the same

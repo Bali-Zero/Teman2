@@ -561,7 +561,7 @@ class TestTruthFreshnessGate:
         )
         verdict = build_verdict(_issuance(), today=_TODAY)
         assert verdict.decision is Decision.DECLINE
-        assert "TRUTH_SHEET_STALE" in verdict.decline_codes
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
 
     def test_stale_rule_constants_declines_an_otherwise_accepted_case(
         self, monkeypatch: pytest.MonkeyPatch
@@ -576,7 +576,7 @@ class TestTruthFreshnessGate:
         )
         verdict = build_verdict(_issuance(), today=_TODAY)
         assert verdict.decision is Decision.DECLINE
-        assert "TRUTH_SHEET_STALE" in verdict.decline_codes
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
 
     def test_restoring_freshness_restores_the_original_verdict(
         self, monkeypatch: pytest.MonkeyPatch
@@ -609,7 +609,7 @@ class TestTruthFreshnessGate:
         )
         verdict = build_verdict(_issuance(nationality="PRK"), today=_TODAY)
         assert verdict.decision is Decision.DECLINE
-        assert "TRUTH_SHEET_STALE" in verdict.decline_codes
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
         assert "NATIONALITY_NOT_ELIGIBLE" in verdict.decline_codes
 
     def test_extension_path_is_also_covered_by_the_gate(
@@ -627,4 +627,4 @@ class TestTruthFreshnessGate:
         )
         verdict = build_verdict(_extension(), today=_TODAY)
         assert verdict.decision is Decision.DECLINE
-        assert "TRUTH_SHEET_STALE" in verdict.decline_codes
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes

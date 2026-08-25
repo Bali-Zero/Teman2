@@ -232,7 +232,7 @@ def _set_result_session_cookie(response: Response, secret: str) -> None:
 # UPDATE (orchestrator, `freshness.py`, G-FRESHNESS-FAIL-CLOSED): the reader
 # now exists. `intake.build_verdict` checks nationality_eligibility and
 # rule_constants freshness unconditionally and DECLINEs with the new
-# `DeclineCode.TRUTH_SHEET_STALE` when either is past its window — the SAME
+# `DeclineCode.ELIGIBILITY_UNCONFIRMED` when either is past its window — the SAME
 # shape as the calendar precedent immediately below (a 201 DECLINE via the
 # closed vocabulary, never a bare error), which is why the outcome reaches
 # this router exactly like any other DECLINE and needs no new branch here.
@@ -241,7 +241,7 @@ def _set_result_session_cookie(response: Response, secret: str) -> None:
 # already turns into 503 PRICE_UNRESOLVABLE via `PriceUnresolvable` below —
 # also no new branch needed.
 #
-# Net effect: neither `TRUTH_SHEET_STALE` nor `TRUTH_AUTHORITY_UNAVAILABLE`
+# Net effect: neither `ELIGIBILITY_UNCONFIRMED` nor `TRUTH_AUTHORITY_UNAVAILABLE`
 # in `contracts/openapi.yaml`'s `x-error-codes` (503 shape) is ever emitted
 # by this design — they are now the SAME dead-declared-code situation the
 # paragraph below already resolved once for CALENDAR_COVERAGE_EXCEEDED.

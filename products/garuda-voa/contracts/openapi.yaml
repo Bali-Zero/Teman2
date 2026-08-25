@@ -43,8 +43,12 @@ x-magic-link:
   # attacker holding a leaked link. Session lifetime is a SEPARATE number and is not this
   # one — conflating them is how a 15-minute link becomes a 15-minute portal.
 x-truth-freshness-max-age-days:
-  # DECISIONS.md Q9. Past the age the funnel declines to sell rather than quote, via
-  # TRUTH_SHEET_STALE. Engineering safety margins, revisable with a one-line diff and a test.
+  # DECISIONS.md Q9. Past the age the funnel declines to sell rather than quote. The wire
+  # outcome differs by source and BOTH are load-bearing: a stale nationality list or rule
+  # constant DECLINES the check with reason code ELIGIBILITY_UNCONFIRMED, while a stale price
+  # catalogue is a 503 PRICE_UNRESOLVABLE — the customer is never told a price we cannot
+  # stand behind, and never told "not eligible" when the truth is "we have not re-verified".
+  # Engineering safety margins, revisable with a one-line diff and a test.
   nationality_eligibility: 90
   rule_constants: 180
   price_catalogue: 90
@@ -157,8 +161,6 @@ paths:
           x-error-codes:
             - PERSISTENCE_POLICY_UNAVAILABLE
             - PRICE_UNRESOLVABLE
-            - TRUTH_SHEET_STALE
-            - TRUTH_AUTHORITY_UNAVAILABLE
             - SERVICE_UNAVAILABLE
           headers: *publicPrivacyHeaders
           content: *errorContent
@@ -572,8 +574,6 @@ paths:
           x-error-codes:
             - PERSISTENCE_POLICY_UNAVAILABLE
             - PRICE_UNRESOLVABLE
-            - TRUTH_SHEET_STALE
-            - TRUTH_AUTHORITY_UNAVAILABLE
             - PAYMENT_PROVIDER_UNAVAILABLE
             - SERVICE_UNAVAILABLE
           headers: *publicPrivacyHeaders

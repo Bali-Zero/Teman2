@@ -260,3 +260,52 @@ that it is not L2-scoped: it needs a stamp next to each truth source and a reade
 `build_verdict` and `price_for_case`, which crosses lanes. It stays on the orchestrator, in
 PENDING-ARMS, and **no lane may implement a freshness check locally** — a per-lane version is how
 one surface declines and another sells the same stale price.
+
+---
+
+## Round 4 — the guardrail round 3 assigned now exists, and it exposed what the suite never pinned
+
+Round 3 closed with `G-FRESHNESS-FAIL-CLOSED` declared-and-absent: the windows were binding
+numbers with no reader. That is no longer true, and the paragraph above is left standing as the
+record of when it was.
+
+### Fixed here — the windows have a reader, on both surfaces
+
+`freshness.py` compares each truth source's stamp against its window, and two call sites act on it.
+`build_verdict` DECLINES on a stale nationality list or rule constant; `price_for_case` refuses to
+return a price on a stale catalogue, which the router already turns into `503 PRICE_UNRESOLVABLE`.
+The two outcomes are deliberately different shapes: a customer is never quoted a price we cannot
+stand behind, and never told "not eligible" when the honest answer is "we have not re-verified".
+
+The decline code is **`ELIGIBILITY_UNCONFIRMED`**, not `TRUTH_SHEET_STALE` as rounds 2 and 3
+assumed. Two reasons, and the second is the one that mattered: it is named for what the customer
+learns rather than the state of our filing cabinet, and `TRUTH_SHEET_STALE` had meanwhile been
+taken by a 503 in the error catalogue — the same string on two different wire mechanisms. It is
+also deliberately not `NATIONALITY_NOT_ELIGIBLE`: we do not know that, and saying it would be a
+lie told to fail closed.
+
+### What this round actually found — a parity check that three passes had verified by hand
+
+Reason-code parity between the contract and `eligibility.py::DeclineCode` was checked by hand
+during the freeze, agreed by the refuter, written into this file as 18/18 — and pinned by nobody.
+When this round legitimately added a nineteenth member, the contract could not express it and
+**all nine tests in `tests/test_contract_invariants.py` stayed green**. A customer-facing wire
+vocabulary had silently diverged from what the engine emits, past a suite built to prevent exactly
+that class of drift.
+
+`test_reason_codes_match_the_engine_enum_exactly` now pins it, imported rather than regexed, and
+proven red in both directions (drop a code the engine emits; add one it never emits). This file's
+own opening line — _a property established by hand once is a property that decays_ — collected on
+itself, three rounds after it was written.
+
+### One more thing the suite could not see, and the shape of the trap
+
+The new router test proving the funnel fails closed on a stale catalogue appeared not to bite: the
+gate was disabled and the test stayed green. It was not the test. Stale `__pycache__` under
+`garuda_flow` was serving the pre-mutation module, so the bite never reached the interpreter — the
+repo's own W121. Re-run with `PYTHONDONTWRITEBYTECODE=1` and the cache cleared, the test goes red
+on the disabled gate and green on restore.
+
+Worth stating plainly because the failure mode is inverted from the usual one: a poisoned bytecode
+cache does not make a good test look broken, it makes a **broken test look proven**. Every mutation
+result in this document was re-run under those conditions.
