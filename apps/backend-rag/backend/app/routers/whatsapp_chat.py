@@ -15,6 +15,7 @@ v2: Upgraded brain — Sonnet 4.5, dynamic persona "Zan", client profile memory,
 import asyncio
 import json
 import logging
+import re
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -47,7 +48,7 @@ from backend.services.integrations.human_escalation_notifier import (
 from backend.services.integrations.openclaw_whatsapp_bridge import ask_openclaw_whatsapp
 from backend.services.integrations.telegram_bot_service import telegram_bot
 from backend.services.integrations.wa_outbox_worker import (
-    META_INBOX_PHONE_NUMBER_ID,
+    META_INBOX_PHONE_NUMBER_IDS,
     _manners_enabled,
 )
 from backend.services.integrations.whatsapp_service import whatsapp_service
@@ -179,7 +180,40 @@ async def process_whatsapp_message(
         # Mark message as read
         await whatsapp_service.mark_message_read(message_id)
 
-        # 0. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
+        # 0. CROSS-PATH DEDUP DEFENSE-IN-DEPTH (2026-08-25 double-reply scar).
+        # The meta-inbox pipeline (wa_outbox_worker) and this legacy inline
+        # path keep SEPARATE ledgers (meta_inbox_messages vs inbound_webhooks),
+        # so the webhook-level dedup on inbound_webhooks does not protect
+        # against a message the meta-inbox path already answered. If this
+        # wamid already has a row in meta_inbox_messages, that pipeline owns
+        # it — never generate a second reply here. Best-effort: a DB hiccup
+        # must not block a genuinely legacy message from being answered.
+        dedup_db_pool = _get_db_pool(request)
+        if dedup_db_pool is not None:
+            try:
+                async with dedup_db_pool.acquire() as dedup_conn:
+                    already_meta_inbox = await dedup_conn.fetchval(
+                        "SELECT 1 FROM meta_inbox_messages WHERE meta_message_id = $1",
+                        message_id,
+                    )
+                # Exact match on 1 (what "SELECT 1 FROM ..." actually returns
+                # when a row exists), not bare truthiness: a plain
+                # MagicMock()-backed request/pool in a unit test — unrelated
+                # to this dedup check — is itself truthy and must never be
+                # read as "row found".
+                if already_meta_inbox == 1:
+                    logger.info(
+                        "Legacy WhatsApp path skipped — wamid=%s already answered "
+                        "by the meta-inbox pipeline",
+                        message_id,
+                    )
+                    return
+            except Exception:
+                logger.exception(
+                    "Cross-path dedup check failed (non-blocking) wamid=%s", message_id
+                )
+
+        # 0.5. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
         if not whatsapp_triage_service.is_allowed(phone):
             logger.info("Ignored message from non-allowed number: %s", phone)
             return
@@ -825,6 +859,65 @@ def _change_phone_number_id(change: WhatsAppChange) -> str | None:
     return str(pnid) if pnid is not None else None
 
 
+# Digits-only comparator for phone numbers: "+62 821-3465-159", "62821-3465159"
+# and "628213465159" must all compare equal, mirroring the normalisation
+# already used for WA memory subjects (_memory_identity.py).
+_WA_NON_DIGITS_RE = re.compile(r"\D+")
+
+
+def _change_display_phone_number(change: WhatsAppChange) -> str | None:
+    """Extract value.metadata.display_phone_number from a webhook change."""
+    metadata = change.value.get("metadata") or {}
+    dpn = metadata.get("display_phone_number")
+    return str(dpn) if dpn is not None else None
+
+
+def _is_meta_inbox_public_number(display_phone_number: str | None) -> bool:
+    """True if display_phone_number is the bot's public WA number.
+
+    Defense-in-depth (2026-08-25 double-reply scar): a Meta webhook
+    re-registration can arm a SECOND subscription for the SAME underlying
+    business number, delivered with a phone_number_id that
+    META_INBOX_PHONE_NUMBER_IDS does not (yet) recognise. Such a delivery
+    still carries the real, public display number, so this catches it even
+    when the id-based check in META_INBOX_PHONE_NUMBER_IDS misses it —
+    it must never fall through to the legacy inline reply path.
+    """
+    if not display_phone_number:
+        return False
+    try:
+        public_number = settings.SUPPORT_WHATSAPP
+    except AttributeError:
+        return False
+    if not isinstance(public_number, str):
+        # Defensive: a test/mocked settings object without SUPPORT_WHATSAPP
+        # configured must never crash webhook parsing over this optional
+        # extra check — fail closed (not a match), the id-based check in
+        # META_INBOX_PHONE_NUMBER_IDS still applies.
+        return False
+    return _WA_NON_DIGITS_RE.sub("", display_phone_number) == _WA_NON_DIGITS_RE.sub(
+        "", public_number
+    )
+
+
+def _change_belongs_to_meta_inbox(change: WhatsAppChange) -> bool:
+    """True if this webhook change targets the meta-inbox business number.
+
+    Two independent signals, either sufficient (2026-08-25 double-reply
+    scar — a Meta webhook re-registration armed a second subscription for
+    the same underlying number, delivered with a phone_number_id nobody had
+    listed, and its messages fell into the legacy inline reply path beside
+    the meta-inbox pipeline's own answer):
+      1. phone_number_id is a KNOWN meta-inbox id (META_INBOX_PHONE_NUMBER_IDS).
+      2. display_phone_number matches the bot's public WA number — this
+         catches a second subscription for the SAME visible number even
+         when its phone_number_id has not been added to the set yet.
+    """
+    if _change_phone_number_id(change) in META_INBOX_PHONE_NUMBER_IDS:
+        return True
+    return _is_meta_inbox_public_number(_change_display_phone_number(change))
+
+
 async def _apply_status_callback(conn: Any, status_obj: dict[str, Any]) -> None:
     """Apply one Meta status receipt to the ledger (or stage it if orphan).
 
@@ -1040,7 +1133,7 @@ async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request
     from backend.channels.whatsapp.media_webhook_parse import parse_media_webhook
 
     parsed = parse_media_webhook(raw_payload)
-    official = [m for m in parsed.media if m.phone_number_id == META_INBOX_PHONE_NUMBER_ID]
+    official = [m for m in parsed.media if m.phone_number_id in META_INBOX_PHONE_NUMBER_IDS]
     if not official:
         return
 
@@ -1089,8 +1182,9 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
 
     Runs AFTER the webhook has persisted to inbound_webhooks and ACKed 200, so
     it never delays the Meta ACK. Scoped strictly to
-    META_INBOX_PHONE_NUMBER_ID; any other number is ignored here (it stays on
-    the existing inline triage flow).
+    META_INBOX_PHONE_NUMBER_IDS (every phone_number_id known to route to this
+    number, not just the canonical one); any other number is ignored here (it
+    stays on the existing inline triage flow).
     """
     db_pool = _get_db_pool(request)
     if db_pool is None:
@@ -1108,7 +1202,7 @@ async def process_meta_inbox_payload(raw_payload: dict[str, Any], request: Reque
                 for change in entry.changes:
                     if change.field != "messages":
                         continue
-                    if _change_phone_number_id(change) != META_INBOX_PHONE_NUMBER_ID:
+                    if not _change_belongs_to_meta_inbox(change):
                         continue
 
                     value = change.value
@@ -1292,7 +1386,7 @@ async def whatsapp_webhook(
     # 200 is never delayed). The target number does NOT use the inline triage
     # flow below — its bot replies are generated by the wa_outbox worker.
     meta_inbox_in_payload = any(
-        change.field == "messages" and _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID
+        change.field == "messages" and _change_belongs_to_meta_inbox(change)
         for entry in webhook.entry
         for change in entry.changes
     )
@@ -1319,7 +1413,11 @@ async def whatsapp_webhook(
 
             # Target Business number → handled by the meta-inbox task above.
             # Do NOT run the inline triage flow for it (would double-reply).
-            if _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID:
+            # _change_belongs_to_meta_inbox checks BOTH phone_number_id and
+            # display_phone_number (2026-08-25 double-reply scar), so neither
+            # an unlisted id nor a same-number resubscribe can re-arm this
+            # legacy path.
+            if _change_belongs_to_meta_inbox(change):
                 continue
 
             value = change.value
