@@ -258,6 +258,7 @@ questions_must_never_get_wrong:
   - "What is a re-entry permit (Izin Masuk Kembali) and how long is it valid relative to the stay permit it attaches to?"
   - "Where is immigration supervision (pengawasan keimigrasian) legally conducted?"
   - "Can Bali Zero quote a PNBP (government fee) figure from PP 45/2024? (It must not — revoked.)"
+  - "If an investor asks about their visa and their PT PMA in the same breath, does the answer connect the investor-visa provisions to company formation (Lane B), or silently answer only the immigration half?"
 
 # ── Primary metric, guardrails, kill criterion (G0 gate) ────────────────────
 primary_metric: >-

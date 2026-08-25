@@ -6,9 +6,9 @@
 # `kb/ops/probe_retrieval.py kb/journeys/immigration.yaml` against PRODUCTION on
 # 2026-08-25 — not a prediction. First run (before this file was corrected) reported
 # DRIFT on journeys 1, 4 and 7: recorded 'red', production measured 'green'. Values
-# below are the corrected, re-verified state — a second run against the corrected
-# file exits 0/2 (AT TARGET / OUTSTANDING), never 1 (DRIFT), or this file is lying
-# about itself again.
+# below are the corrected, re-verified state — a re-run against the corrected file
+# exits 0/2 (AT TARGET / OUTSTANDING), never 1 (DRIFT), or this file is lying about
+# itself again.
 #
 # `collection:` is explicit on every entry (MANDATE §5 routing note): production's
 # own router sends "visa"/"kitas"/"imigrasi" questions to visa_oracle first, with
@@ -23,37 +23,55 @@
 # red` (phrase NOT found) is the SAFE, CORRECT, permanent state. If either ever
 # measures green, that is a regression — the poison has leaked into production —
 # and MANDATE.md §7 decision-log / this topic's kill_criterion both name it directly.
+#
+# `phrasing`/`language`/`cross_topic` were added to the contract by another lane's
+# landing on feature/kb-current after this file's first draft (measured over 10,929
+# real client WhatsApp messages: not one named an instrument by citation). Every
+# question below was re-read against that measurement, not just tagged to satisfy
+# the gate: `client`-phrased journeys carry no statute citation; `statute`-phrased
+# ones are the technical/procedural questions a lawyer, not a walk-in client, would
+# ask. All 9 are in Indonesian (`id`) because that is the language the underlying
+# regulations and this lane's own verbatim phrases are in.
 
 schema_version: 1
 lane: A
 
 journeys:
-  # 1 — POSITIVE: Golden Visa definition, sourced from Permen_22_2023 itself.
+  # 1 — POSITIVE, client-phrased: Golden Visa definition, sourced from Permen_22_2023.
   - question: "Apa itu Golden Visa dan apa syarat yang harus tetap dipenuhi pemegangnya?"
     verbatim_phrase: "Golden Visa merupakan pengelompokan terhadap Visa Tinggal"
     instrument_id: Permen_22_2023
     collection: legal_unified
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 2
 
-  # 2 — NEGATIVE CANARY: the orchestrator's named sad path. Does a Golden Visa
-  # question ever retrieve the Permen_35_2012 municipal-correspondence poison?
-  # `red` here means SAFE (poison not found) and is the state that must persist.
+  # 2 — NEGATIVE CANARY, client-phrased (same real question as 1). The orchestrator's
+  # named sad path: does a Golden Visa question ever retrieve the Permen_35_2012
+  # municipal-correspondence poison? `red` here means SAFE and must persist.
   - question: "Apa itu Golden Visa dan apa syarat yang harus tetap dipenuhi pemegangnya?"
     verbatim_phrase: "TATA NASKAH DINAS DI LINGKUNGAN PEMERINTAH KABUPATEN TEGAL"
     instrument_id: Permen_35_2012
     collection: legal_unified
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     canary: true
     canary_meaning: "green would mean the Tegal correspondence-manual poison has leaked into a Golden Visa answer — regression, not progress"
 
-  # 3 — POSITIVE: current ITAS (limited stay permit) duration/basis, Permen_22_2023.
+  # 3 — POSITIVE, client-phrased: current ITAS duration/basis, Permen_22_2023.
   - question: "Berapa lama masa berlaku Izin Tinggal Terbatas (ITAS) bagi WNA yang masuk dengan visa tinggal terbatas?"
     verbatim_phrase: "Izin Tinggal Terbatas bagi Orang Asing yang masuk ke Wilayah Indonesia dengan Visa tinggal terbatas"
     instrument_id: Permen_22_2023
     collection: legal_unified
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -62,35 +80,44 @@ journeys:
       top 10 for this exact question wording. Journey 4 below shows WHY this red
       matters more than an ordinary coverage gap.
 
-  # 4 — NEGATIVE CANARY, MEASURED GREEN — a live defect, not a hypothetical.
-  # Asking about CURRENT ITAS duration surfaces the superseded Permen_29_2021 text
-  # (which lists a DIFFERENT duration structure: 5y/2y/1y/180d/90d) at rank 3, while
-  # journey 3's phrase from the CURRENT Permen_22_2023 does not rank in the top 10
-  # for the identical question. This is exactly MANDATE.md §7 decision 5: "an
-  # amended article still answering with its old text is worse than silence."
+  # 4 — NEGATIVE CANARY, client-phrased (same real question as 3), MEASURED GREEN —
+  # a live defect, not a hypothetical. Asking about CURRENT ITAS duration surfaces
+  # the superseded Permen_29_2021 text (a DIFFERENT duration structure:
+  # 5y/2y/1y/180d/90d) at rank 3, while journey 3's phrase from the CURRENT
+  # Permen_22_2023 does not rank in the top 10 for the identical question. This is
+  # exactly MANDATE.md §7 decision 5: "an amended article still answering with its
+  # old text is worse than silence."
   # ROOT CAUSE FOUND, not yet fixed (out of lane A's ingest-repair scope for this
   # PR): both Permen_29_2021 AND Permen_22_2023 carry `legal_status: dicabut`
   # ("revoked") in their own payload — Permen_29_2021 correctly, Permen_22_2023
   # WRONGLY (it is the current in-force regulation). So `SearchService.search(...,
   # apply_filters=True)`'s exclude_repealed path — if pointed at this field — could
   # not fix this: it would either do nothing (both flagged the same way) or exclude
-  # the WRONG document. Recorded as an inventory finding; the fix is a corpus-wide
-  # `legal_status` re-derivation, not a lane-A ingest edit.
+  # the WRONG document. Recorded as an inventory finding (LANE-A-1/2); the fix is a
+  # corpus-wide `legal_status` re-derivation, not a lane-A ingest edit.
   - question: "Berapa lama masa berlaku Izin Tinggal Terbatas (ITAS) bagi WNA yang masuk dengan visa tinggal terbatas?"
     verbatim_phrase: "Izin Tinggal Terbatas diberikan untuk jangka waktu paling lama"
     instrument_id: Permen_29_2021
     collection: legal_unified
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 3
     canary: true
     canary_meaning: "green means a question about CURRENT stay-permit duration surfaces a regulation officially revoked by Permen_22_2023 — MEASURED TRUE on 2026-08-25, not a hypothetical. See the note above."
 
-  # 5 — POSITIVE: core UU 6/2011 procedural provision (Pencegahan/exit-ban notice duty).
+  # 5 — POSITIVE, statute-phrased: core UU 6/2011 procedural provision (Pencegahan
+  # exit-ban notice duty). Not marked client — no real client asks who has the
+  # notification DUTY for an exit ban; this is a compliance-officer question.
   - question: "Siapa yang wajib menerbitkan dan memberitahukan keputusan Pencegahan (larangan keluar wilayah) terhadap Orang Asing?"
     verbatim_phrase: "Keputusan Pencegahan secara tertulis diterbitkan oleh instansi yang memintanya"
     instrument_id: UU_6_2011
     collection: legal_unified
+    phrasing: statute
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -100,11 +127,15 @@ journeys:
       operative-article text for this question's embedding — worth a lane-A repair
       look (re-rank weighting or a dedicated penjelasan-boost), not fixed here.
 
-  # 6 — POSITIVE: UU 63/2024 (third amendment) — re-entry permit tied to stay permit.
+  # 6 — POSITIVE, client-phrased: UU 63/2024 (third amendment) — re-entry permit
+  # tied to stay permit. A holder plausibly asks this directly.
   - question: "Berapa lama masa berlaku Izin Masuk Kembali (re-entry permit) bagi pemegang Izin Tinggal Terbatas?"
     verbatim_phrase: "Izin Masuk Kembali diberikan kepada Orang Asing"
     instrument_id: UU_63_2024
     collection: legal_unified
+    phrasing: client
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -122,22 +153,52 @@ journeys:
       root cause. Not fixed here — a genuine coverage gap to revisit once the
       dual-generation ingest is reconciled.
 
-  # 7 — POSITIVE: implementing regulation PP 31/2013 — where immigration supervision happens.
+  # 7 — POSITIVE, statute-phrased: implementing regulation PP 31/2013 — where
+  # immigration supervision happens. A compliance/procedural question, not typical
+  # client wording.
   - question: "Di mana dilaksanakan pengawasan keimigrasian terhadap orang asing yang masuk atau keluar wilayah Indonesia?"
     verbatim_phrase: "terhadap Orang Asing yang masuk atau keluar Wilayah Indonesia"
     instrument_id: PP_31_2013
     collection: legal_unified
+    phrasing: statute
+    language: id
+    cross_topic: false
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 8
 
-  # 8 — NEGATIVE CANARY: the second poisoned identity. Does a Visa dan Izin Tinggal
-  # question ever retrieve the UU_14_2024 Klaten regency price-schedule poison?
+  # 8 — NEGATIVE CANARY, statute-phrased (the question itself cites "Permenkumham
+  # 22/2023", which is exactly why it cannot be phrasing:client — measured over real
+  # client traffic, nobody cites an instrument number). Second poisoned identity:
+  # does a Visa dan Izin Tinggal question ever retrieve the UU_14_2024 Klaten
+  # regency price-schedule poison?
   - question: "Apa dasar hukum Visa dan Izin Tinggal (Permenkumham 22/2023) di Indonesia?"
     verbatim_phrase: "STANDAR HARGA SATUAN BARANG DAN JASA PEMERINTAH KABUPATEN KLATEN"
     instrument_id: UU_14_2024
     collection: legal_unified
+    phrasing: statute
+    language: id
+    cross_topic: false
     probe_state: red
     probe_run_at: "2026-08-25"
     canary: true
     canary_meaning: "green would mean a regency price-schedule PDF has leaked into an answer about the visa/stay-permit regulation — regression, not progress"
+
+  # 9 — POSITIVE, client-phrased, CROSS-TOPIC into Lane B (company & KBLI). A real
+  # client question: an investor deciding whether to found a PT PMA asks about the
+  # visa route in the SAME breath as the company. Permen_22_2023 Pasal 185/186
+  # explicitly ties the investor visa category to "Orang Asing sebagai investor
+  # perorangan yang bermaksud mendirikan perusahaan di Indonesia" — this journey is
+  # exactly the boundary the contract's cross_topic rule exists to force onto the
+  # suite (§ comment: "an investor KITAS whose sponsor is the client's own PMA").
+  - question: "Kalau saya investor asing dan mau dirikan PT di Indonesia, visa apa yang saya perlukan?"
+    verbatim_phrase: "investor perorangan yang bermaksud mendirikan perusahaan di Indonesia"
+    instrument_id: Permen_22_2023
+    collection: legal_unified
+    phrasing: client
+    language: id
+    cross_topic: true
+    cross_topic_lane: B
+    probe_state: green
+    probe_run_at: "2026-08-25"
+    measured_rank: 1
