@@ -228,10 +228,16 @@ class IngestionCLI:
             if file_path:
                 logger.info(f"Ingesting legal document: {file_path}")
                 result = await self.legal_ingestion_service.ingest_legal_document(file_path)
+                # Was a hardcoded True. `ingest_legal_document` signals failure by
+                # RETURNING {"success": False, "error": ...} rather than raising,
+                # so this path printed "✅ Ingestion successful!" and exited 0 for
+                # a document that had just been refused.
+                ingested_ok = bool(result.get("success")) if isinstance(result, dict) else False
                 return {
-                    "success": True,
-                    "ingested": 1,
+                    "success": ingested_ok,
+                    "ingested": 1 if ingested_ok else 0,
                     "collection": "legal_intelligence",
+                    "error": None if ingested_ok else (result or {}).get("error"),
                     "details": result,
                 }
             elif directory:
