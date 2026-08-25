@@ -317,6 +317,46 @@ capability report rather than as a leak.
 
 ---
 
+## Item 10 — Four duplicate keys in the client-facing price list — NEW, found 2026-08-25
+
+**What it is.** `bali_zero_official_prices_2026.json` names four services twice, with
+different prices each time. It is the entire monthly tax product line:
+
+| key | basic (without LKPM & Annual) | bundled (including them) | spread |
+|---|---|---|---|
+| `Tier 0-50` | 1.800.000 – 2.000.000 IDR | 2.500.000 IDR | up to 700k |
+| `Tier 50-100` | 2.500.000 – 3.000.000 IDR | 3.500.000 IDR | up to 1.0M |
+| `Tier 100-200` | 3.500.000 – 4.500.000 IDR | 4.500.000 IDR | up to 1.0M |
+| `Tier 200+` | 5.000.000 IDR | 6.500.000 IDR | 1.5M |
+
+Census run over the live catalogue: 109 service keys, 4 of them duplicated, all four in
+`tax_accounting`, all four with a different price on each side. So this is not an edge
+case — it is *every* monthly-tax price the bot could quote.
+
+**What does NOT need you.** The bot path is being closed in code (lane B1d): the pricing
+snapshot gets keys that are unique by construction, so a claim naming `Tier 0-50` can no
+longer bind to whichever of the two amounts happens to be indexed. That fix needs no
+decision from you and is in flight.
+
+**What might.** The ambiguity is not only the bot's. The list is client-facing, and a human
+reading it has exactly the same problem: two rows called `Tier 0-50`, 700k apart, where the
+distinguishing fact ("without" vs "including LKPM & Annual") lives only in the long name.
+Quote the basic price to a bundled client and Bali Zero absorbs the difference; quote the
+bundled price to a basic client and the client is overcharged. That has presumably already
+happened at least once, by a person, without a bot involved.
+
+**Why you and not us.** Renaming a service in a client-facing price list is a commercial
+decision — what customers see something called, and whether an already-quoted client now
+reads a different word. The lane was explicitly forbidden from touching the data for that
+reason.
+
+**What a yes looks like:** disambiguated keys in the source list (e.g. `Tier 0-50 (basic)`
+/ `Tier 0-50 (bundled)`), which also makes the code fix simpler rather than redundant.
+**Cost of not answering:** none for the bot, which is being fixed regardless. The residual
+risk stays where it already is — on humans reading the list.
+
+---
+
 ## See also
 
 - **Kill criterion**: `MANDATE.md` (new section, this lane's addition) — the measured conditions
