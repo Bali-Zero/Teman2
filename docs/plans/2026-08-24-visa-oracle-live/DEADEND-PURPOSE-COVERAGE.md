@@ -48,9 +48,25 @@ chiedendo un fatto che non li renderebbe comunque mai una risposta.
 
 ## Il difetto VIVO, e non è un vicolo cieco: è una risposta sbagliata detta con sicurezza
 
-Cercando il vicolo se n'è trovato uno peggiore. **E23U** (personale domestico di diplomatico
-stranieri) ed **E23V** (personale di ufficio commerciale) hanno una regola di review che si accende
-solo se il richiedente li **nomina** — e nessuno può nominarli.
+Cercando il vicolo se n'è trovato uno peggiore. **E23U** (assistente domestico di un diplomatico
+straniero) ed **E23V** (lavoro presso una **camera di commercio estera**) hanno una regola di review
+che si accende solo se il richiedente li **nomina** — e nessuno può nominarli.
+
+> **Provenienza delle due caratterizzazioni, e una correzione (2026-08-25).** Non vengono dai nomi
+> di prodotto del pack: quelli, per E23V, sono essi stessi sbagliati. La fonte è
+> `research/visa/2026-08-11-w3-sponsor-rules-factbase.md`, che estrae il Lampiran del Kepmen
+> M.IP-08.GR.01.01/2025 (pag. 37-38) e conferma E23U alla lettera — _«Melakukan pekerjaan sebagai
+> asisten rumah tangga [diplomat asing]»_. Per E23V invece il testo primario dice _«…pejabat atau
+> staf pada **kamar dagang asing**»_, cioè **camera di commercio estera**: il factbase corregge
+> esplicitamente la lettura «Kantor Dagang dan Ekonomi»/KDEI, che il pack ha invece cristallizzato
+> nel nome inglese «Trade and Economic Office». Una camera di commercio estera può benissimo essere
+> un'associazione privata — il factbase lascia infatti `sponsor.type` **UNRESOLVED** per E23V, e
+> segnala che la scelta `GOVERNMENT` nel pack è un giudizio non difeso da nessuna fonte. Nessuno dei
+> due prodotti ha un Pasal dedicato in Permenkumham 22/2023 jo. 11/2024 (ricerca full-text nel
+> factbase). Questo NON è stato chiesto a NB-2 — la porta NotebookLM è morta (auth scaduta); è
+> invece una fonte primaria già su disco, con citazioni a livello di Pasal/Lampiran, che per questo
+> vale più di un verdetto NB (cicatrice W90: un verdetto NB è una PISTA finché non ne confronti la
+> data-fonte).
 
 Misurato enumerando ogni domanda dell'albero la cui `decisionMapping.factPaths` contiene
 `intent.requested_product_code`. Sono **quattro**, e queste sono tutte le loro opzioni:
@@ -179,9 +195,28 @@ spiegata, non cancellata. È una tua chiamata, non mia.
 È l'unico difetto qui dentro che tocca un visitatore vero **oggi**, e produce una risposta sbagliata
 detta con sicurezza, non un errore visibile. Tre strade, in ordine di quanto mi convincono:
 
-1. **Una domanda onesta nel ramo `work`**, per ogni categoria di sponsor: «lavori per una
-   rappresentanza diplomatica o un ufficio commerciale estero?» → se sì, `E23U`/`E23V` e la review
-   scatta. È piccola, tutta frontend, nessuna firma, e cura la miscategorizzazione alla radice.
+1. **Una domanda onesta nel ramo `work`**, per ogni categoria di sponsor: «il tuo datore di lavoro
+   è **un diplomatico straniero** (lavoro domestico presso la sua residenza), oppure **una camera di
+   commercio estera**?» → se sì, `E23U`/`E23V` e la review scatta. È piccola, tutta frontend,
+   nessuna firma, e cura la miscategorizzazione alla radice.
+
+   **Formulazione corretta il 2026-08-25, due volte, e la seconda volta conta più della prima.**
+   Diceva «rappresentanza diplomatica o ufficio commerciale estero». Un seat indipendente ha
+   verificato entrambe le metà contro il Lampiran e le ha bocciate **in direzioni opposte**:
+   «rappresentanza diplomatica» _sovra-cattura_ — la fonte nomina solo `asisten rumah tangga
+diplomat asing`, un rapporto personale con **un** diplomatico, non l'impiego presso la missione
+   come istituzione (e il factbase lascia esplicitamente irrisolto quale dei due sia il Penjamin);
+   «ufficio commerciale estero» _sostituisce_ al termine della fonte (`kamar dagang asing`, camera di
+   commercio estera) la lettura KDEI che il factbase ha già corretto via, catturando un
+   sottoinsieme reale e perdendo il resto della classe. È lo stesso errore che il pack ha nel nome
+   inglese di E23V: l'avrei riprodotto un livello più a monte, dentro la cura.
+
+   **Nota su cosa deve fare questa domanda.** Non deve classificare: deve **accendere una review
+   umana**. L'asimmetria è quindi voluta e va detta — sovra-catturare manda in review qualcuno in
+   più (costo: un consulente legge un caso ordinario), sotto-catturare lascia in piedi la risposta
+   sbagliata detta con sicurezza, che è il difetto. Dove il testo primario è ambiguo, la
+   formulazione deve sbagliare **verso la review**, mai verso il silenzio.
+
 2. **Regola di review su un fatto che l'intervista già raccoglie** (chi paga, che ruolo) invece che
    sul nome del prodotto — non chiede al cliente di conoscere il codice del proprio visto, il che è
    comunque la forma giusta. Costo: pack firmato.
