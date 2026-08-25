@@ -12,7 +12,7 @@ from .crypto import ArgsCipher, ArgsIntegrityError, canonicalize_args, load_ciph
 from .idempotency import compute_idempotency_key
 from .models import PRINCIPAL_ID_PATTERN, SHORT_CODE_PATTERN, PendingAction, PendingActionStatus, is_valid_short_code
 from .outcomes import DEFAULT_LOCALE, ConfirmationOutcome, ConfirmationStage, Locale, render_outcome
-from .reply_composer import ComposedReply, TurnIntent, compose_reply
+from .reply_composer import ComposedReply, ReadChainOutcome, TurnIntent, compose_reply
 from .store import (
     DEFAULT_TTL_SECONDS,
     CancelOutcome,
@@ -47,6 +47,7 @@ __all__ = [
     "PendingActionStatus",
     "ProposeOutcome",
     "ProposeResult",
+    "ReadChainOutcome",
     "SqlitePendingActionStore",
     "TurnIntent",
     "canonicalize_args",

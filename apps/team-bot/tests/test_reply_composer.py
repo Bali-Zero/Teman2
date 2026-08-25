@@ -15,7 +15,7 @@ from pydantic import ValidationError
 
 from team_bot.confirmation.models import PendingAction, PendingActionStatus
 from team_bot.confirmation.outcomes import ConfirmationOutcome, Locale
-from team_bot.confirmation.reply_composer import ComposedReply, TurnIntent, compose_reply
+from team_bot.confirmation.reply_composer import ComposedReply, ReadChainOutcome, TurnIntent, compose_reply
 from team_bot.confirmation.store import ProposeOutcome
 from team_bot.loop.execution_record import ExecutionRecord, ExecutionSource
 from team_bot.loop.tool_decision import ToolDecision
@@ -284,6 +284,113 @@ def test_read_or_none_with_model_content_none_falls_back_without_calling_the_gat
         action=None,
     )
     assert reply.source == "fallback"
+
+
+# ── the 4th template: ReadChainOutcome (directive #1 §2 follow-up) ──────
+
+
+def test_budget_exhausted_gets_its_own_dedicated_text_not_the_claim_gate_fallback() -> None:
+    """The whole point of this fix: reporting the CORRECT reason. A chain
+    that ran out of steps must not say 'I want to make sure I get this
+    right' (that sentence is for an ActionClaimGate BLOCK, a different
+    fact) — it must say it ran out of steps."""
+    reply = compose_reply(
+        turn_intent=TurnIntent.READ_OR_NONE,
+        model_content=None,
+        confirmation_outcome=None,
+        action=None,
+        read_chain_outcome=ReadChainOutcome.BUDGET_EXHAUSTED,
+    )
+    assert reply.source == "template"
+    assert "steps" in reply.text
+    assert reply.text != (
+        "I want to make sure I get this right — could you tell me a bit more about what you need?"
+    )
+
+
+def test_stuck_loop_gets_different_text_from_budget_exhausted() -> None:
+    """Two distinct true causes must not collapse into one reported
+    reason — the exact mistake this fix exists to stop making, applied to
+    its own two new cases."""
+    budget = compose_reply(
+        turn_intent=TurnIntent.READ_OR_NONE,
+        model_content=None,
+        confirmation_outcome=None,
+        action=None,
+        read_chain_outcome=ReadChainOutcome.BUDGET_EXHAUSTED,
+    )
+    stuck = compose_reply(
+        turn_intent=TurnIntent.READ_OR_NONE,
+        model_content=None,
+        confirmation_outcome=None,
+        action=None,
+        read_chain_outcome=ReadChainOutcome.STUCK_LOOP,
+    )
+    assert budget.text != stuck.text
+    assert "repeating" in stuck.text
+
+
+def test_read_chain_outcome_wins_over_model_content() -> None:
+    """A definitive, structurally-known termination reason must not be
+    overridden by whatever (if anything) the model's raw content says —
+    same "strongest grounding wins" principle as confirmation_outcome and
+    execution_record."""
+    reply = compose_reply(
+        turn_intent=TurnIntent.READ_OR_NONE,
+        model_content="Here is what I found: ...",
+        confirmation_outcome=None,
+        action=None,
+        read_chain_outcome=ReadChainOutcome.BUDGET_EXHAUSTED,
+    )
+    assert reply.source == "template"
+    assert "Here is what I found" not in reply.text
+
+
+def test_confirmation_outcome_still_wins_over_read_chain_outcome() -> None:
+    """Branch order: confirmation_outcome (F6's own state machine) is
+    still the single strongest signal, even paired with a read_chain
+    termination reason."""
+    action = _action()
+    outcome = ConfirmationOutcome.from_propose(ProposeOutcome.CREATED)
+    reply = compose_reply(
+        turn_intent=TurnIntent.READ_OR_NONE,
+        model_content=None,
+        confirmation_outcome=outcome,
+        action=action,
+        read_chain_outcome=ReadChainOutcome.STUCK_LOOP,
+    )
+    assert reply.source == "template"
+    assert reply.text == "Got it — reply CONFERMA 7F3K within 5 minutes to run create_reminder."
+
+
+def test_read_chain_outcome_rejects_mutation_intent_as_a_contract_violation() -> None:
+    """A chain that ended via budget exhaustion or a stuck-loop verdict
+    never reached a mutation proposal this turn by construction — pairing
+    the two is a caller bug, not a real shape to render text for."""
+    with pytest.raises(ValueError, match="are contradictory"):
+        compose_reply(
+            turn_intent=TurnIntent.MUTATION,
+            model_content=None,
+            confirmation_outcome=None,
+            action=None,
+            read_chain_outcome=ReadChainOutcome.BUDGET_EXHAUSTED,
+        )
+
+
+def test_read_chain_outcome_respects_locale() -> None:
+    reply = compose_reply(
+        turn_intent=TurnIntent.READ_OR_NONE,
+        model_content=None,
+        confirmation_outcome=None,
+        action=None,
+        read_chain_outcome=ReadChainOutcome.BUDGET_EXHAUSTED,
+        locale=Locale.IT,
+    )
+    assert "passaggi" in reply.text
+
+
+def test_read_chain_outcome_has_exactly_the_two_documented_members() -> None:
+    assert {member.value for member in ReadChainOutcome} == {"budget_exhausted", "stuck_loop"}
 
 
 # ── ComposedReply itself ─────────────────────────────────────────────────
