@@ -63,6 +63,7 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     note: >-
@@ -78,6 +79,7 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -95,6 +97,7 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     note: >-
@@ -112,6 +115,7 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     note: >-
@@ -132,6 +136,7 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -148,6 +153,7 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -166,6 +172,7 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -188,6 +195,7 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -229,6 +237,7 @@ journeys:
     phrasing: client
     language: en
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -251,6 +260,7 @@ journeys:
     language: en
     cross_topic: true
     cross_topic_lane: B
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-

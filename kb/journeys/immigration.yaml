@@ -24,6 +24,15 @@
 # measures green, that is a regression — the poison has leaked into production —
 # and MANDATE.md §7 decision-log / this topic's kill_criterion both name it directly.
 #
+# `expectation` (2026-08-25, cross-family review finding — MANDATE §8 vs a canary's
+# forever-red state contradicted each other with no valid resolution before this):
+# journeys 2 and 8 carry `expectation: must_not_retrieve` plus a `reason` — for them,
+# `probe_state: red` is SATISFIED, not outstanding, and `at_target` no longer requires
+# them to turn green (they never should). Every other journey here keeps the implicit
+# default, `expectation: retrieves`, which is what `probe_state` always meant before
+# this field existed. `probe_state` itself is UNCHANGED semantics for every journey —
+# it still records exactly what production measured, never what was hoped for.
+#
 # `phrasing`/`language`/`cross_topic` were added to the contract by another lane's
 # landing on feature/kb-current after this file's first draft (measured over 10,929
 # real client WhatsApp messages: not one named an instrument by citation). Every
@@ -68,6 +77,7 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 2
@@ -82,10 +92,11 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: must_not_retrieve
     probe_state: red
     probe_run_at: "2026-08-25"
     canary: true
-    canary_meaning: "green would mean the Tegal correspondence-manual poison has leaked into a Golden Visa answer — regression, not progress"
+    reason: "green would mean the Tegal correspondence-manual poison has leaked into a Golden Visa answer — regression, not progress"
 
   # 3 — POSITIVE, client-phrased: current KITAS duration/basis, Permen_22_2023.
   # REWORDED 2026-08-25 second pass: was "Izin Tinggal Terbatas (ITAS)" (official
@@ -99,6 +110,7 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -130,6 +142,7 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 3
@@ -146,6 +159,7 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -167,6 +181,7 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -193,6 +208,7 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 8
@@ -209,10 +225,11 @@ journeys:
     phrasing: statute
     language: id
     cross_topic: false
+    expectation: must_not_retrieve
     probe_state: red
     probe_run_at: "2026-08-25"
     canary: true
-    canary_meaning: "green would mean a regency price-schedule PDF has leaked into an answer about the visa/stay-permit regulation — regression, not progress"
+    reason: "green would mean a regency price-schedule PDF has leaked into an answer about the visa/stay-permit regulation — regression, not progress"
 
   # 9 — POSITIVE, client-phrased, CROSS-TOPIC into Lane B (company & KBLI). A real
   # client question: an investor deciding whether to found a PT PMA asks about the
@@ -229,6 +246,7 @@ journeys:
     language: id
     cross_topic: true
     cross_topic_lane: B
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 1
@@ -252,6 +270,7 @@ journeys:
     language: id
     cross_topic: true
     cross_topic_lane: D
+    expectation: retrieves
     probe_state: red
     probe_run_at: "2026-08-25"
     note: >-
@@ -272,6 +291,7 @@ journeys:
     phrasing: client
     language: en
     cross_topic: false
+    expectation: retrieves
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 8
