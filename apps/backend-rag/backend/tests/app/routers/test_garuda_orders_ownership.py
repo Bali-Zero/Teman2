@@ -156,6 +156,12 @@ async def pool():
                 f"never silently pass by skipping."
             )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
+        # Unreachable: both pytest.fail and pytest.skip raise (Failed /
+        # Skipped), so `p` is never read uninitialized below. CodeQL doesn't
+        # model those as NoReturn -- this `raise` makes the termination
+        # explicit to the analyser and re-propagates the original connection
+        # error if that assumption ever stops being true.
+        raise
     async with p.acquire() as conn:
         await conn.execute(
             "TRUNCATE garuda_order_outbox, garuda_order_journal, garuda_payment_inbox, "
@@ -173,11 +179,8 @@ def repository(pool, monkeypatch):
     # Same pricing-freshness pin as test_repository_integration.py's
     # `repository` fixture -- G-FRESHNESS-FAIL-CLOSED is garuda_flow's own
     # tested concern, not this file's.
-    import backend.services.garuda_orders.repository as repository_module
-
     monkeypatch.setattr(
-        repository_module.pricing,
-        "price_for_case",
+        "backend.services.garuda_orders.repository.pricing.price_for_case",
         lambda case_type, *, today: (790_000, "B1 Visa on Arrival (VOA)"),
     )
     return GarudaOrderRepository(
