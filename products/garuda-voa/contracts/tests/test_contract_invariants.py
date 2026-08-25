@@ -19,6 +19,7 @@ what it says.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,32 @@ import pytest
 yaml = pytest.importorskip("yaml")
 
 CONTRACTS = Path(__file__).resolve().parents[1]
+REPO_ROOT = CONTRACTS.parents[2]
+BACKEND_ROOT = REPO_ROOT / "apps" / "backend-rag"
+
+
+def _import_engine_decline_code():
+    """Import the live `DeclineCode` enum, from any working directory.
+
+    This suite lives under `products/` and the engine under `apps/backend-rag/`, so the
+    import only resolves when pytest happens to run with the backend on `sys.path`. It
+    did, once, from one directory — and the same assertion was a `ModuleNotFoundError`
+    from the repo root, which is where CI runs it.
+
+    Deliberately NOT `pytest.importorskip`: a skip here is green, and a green skip on a
+    parity check is precisely the failure this test exists to catch. If the engine cannot
+    be imported, that IS the finding — the path assertion below says so out loud.
+    """
+    assert BACKEND_ROOT.is_dir(), (
+        f"{BACKEND_ROOT} is not a directory — the contract test can no longer reach the "
+        "engine it is asserting parity against, so this suite is no longer checking "
+        "anything. Repoint it rather than skipping it."
+    )
+    if str(BACKEND_ROOT) not in sys.path:
+        sys.path.insert(0, str(BACKEND_ROOT))
+    from backend.services.garuda_flow.eligibility import DeclineCode  # noqa: PLC0415
+
+    return DeclineCode
 PUBLIC_FLAG = "GARUDA_PUBLIC_ENABLED"
 PRIVACY_HEADERS = ("Cache-Control", "Referrer-Policy", "X-Robots-Tag")
 HTTP_VERBS = ("get", "post", "put", "patch", "delete")
@@ -272,8 +299,47 @@ def test_the_prose_decisions_are_machine_readable(openapi: dict) -> None:
         "price_catalogue": 90,
     }, f"Q9's freshness windows changed to {fresh} — revisable, but not silently"
 
-    codes: set = set()
-    _collect(openapi, "x-error-codes", codes)
-    assert "TRUTH_SHEET_STALE" in codes, (
-        "the windows exist but nothing declines on them — the guardrail is prose again"
+    # NOT asserted here any more: that some 503 error code exists for staleness.
+    # It used to check `TRUTH_SHEET_STALE`, and that turned out to be the wrong shape —
+    # a stale nationality list means we cannot CONFIRM eligibility, which is a 201
+    # DECLINE carrying `ELIGIBILITY_UNCONFIRMED`, not an outage. The 503 was removed for
+    # the same reason `CALENDAR_COVERAGE_EXCEEDED` was. The decline code itself is
+    # pinned by `test_reason_codes_match_the_engine_enum_exactly` below, which is the
+    # assertion that actually keeps this guardrail honest.
+    from_engine: set = set()
+    _collect(openapi, "x-error-codes", from_engine)
+    assert "PRICE_UNRESOLVABLE" in from_engine, (
+        "nothing fails closed on a stale price catalogue any more — the windows are "
+        "back to being numbers nobody reads"
+    )
+
+
+def test_reason_codes_match_the_engine_enum_exactly() -> None:
+    """The parity this suite was missing — and the gap was found by it being missing.
+
+    During the freeze I diffed `reason-codes.yaml` against `eligibility.py::DeclineCode`
+    by hand, got an exact 18/18, and wrote that down in REVIEW.md. The refuter did the
+    same by hand and agreed. Neither of us pinned it. Two rounds later the freshness lane
+    legitimately added a nineteenth member, the contract could not express it, and all
+    nine tests here stayed green — a customer-facing wire vocabulary silently diverging
+    from what the engine emits, past a suite built to prevent exactly that.
+
+    REVIEW.md's own opening says "a property established by hand once is a property that
+    decays". This is that sentence collecting on itself.
+
+    Imported, never regexed: a pattern over the source agrees with a file that does not
+    mean what it says.
+    """
+    DeclineCode = _import_engine_decline_code()
+
+    engine = {member.value for member in DeclineCode}
+    contract = set(_load("reason-codes.yaml")["$defs"]["DeclineCode"]["enum"])
+
+    assert engine - contract == set(), (
+        f"the engine can emit codes the contract cannot express: {sorted(engine - contract)} "
+        "— a client parsing this contract would receive a reason code it has no case for"
+    )
+    assert contract - engine == set(), (
+        f"the contract promises codes the engine never emits: {sorted(contract - engine)} "
+        "— dead vocabulary that a consumer will write handling for and never exercise"
     )

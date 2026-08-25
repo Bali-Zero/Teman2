@@ -158,7 +158,7 @@ def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> Non
     assert seq7_report.required_facts_ast_mismatches == ()
 
 
-def test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper() -> None:
+def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
     assert DEFAULT_FACT_MAPPER_PATH.exists(), (
         "the default fact-mapper path is stale — the live interview moved "
         "and this script's default needs updating"
@@ -167,16 +167,17 @@ def test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper() -> None:
     # Independent extraction: a plain unconditional-assignment regex, not the
     # module's own compiled pattern.
     found = sorted(set(re.findall(r'"([a-z_]+\.[a-z_]+)":\s*unknownFact\(NOT_ASKED\),', text)))
-    # Was five; 2026-08-24 F4 (D12 active-stay-permit exclusion) adds the
-    # sixth, `immigration.renewal_paid` — the fact-mapper placeholder that
-    # emits it as NOT_ASKED until the interview question (Item 1, its own
-    # PR) collects it. Same "vocabulary before the question exists" shape
-    # as the other five.
+    # `immigration.renewal_paid` used to be a sixth entry here, but 2026-08-24
+    # F4 (D12 active-stay-permit exclusion) shipped the real interview
+    # question for it (tree.ts, gated in flow.ts's
+    # `computeNextNode`/`shouldAskRenewalPaid`), so fact-mapper.ts:591 now
+    # maps it through `booleanFact(facts.renewal_paid)` — a real answered
+    # fact, not an unconditional NOT_ASKED placeholder. It correctly drops
+    # out of this list; this file just hadn't caught up.
     assert found == [
         "commercial.service_fee_budget_idr",
         "commercial.wants_quote",
         "immigration.last_entry_date",
-        "immigration.renewal_paid",
         "intent.desired_entry_date",
         "intent.requested_product_code",
     ]

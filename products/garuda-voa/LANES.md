@@ -31,15 +31,15 @@ L1 merges has built a table nobody may legally keep.
 
 ## Lanes
 
-| Lane                       | Scope                                                                                                                                                                                                                                                                              | Builder                   | Refuter                                                           | Risk tier                    | Status                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------- | ---------------------------- | ------------------------------------- |
-| **L1** retention + archive | extend the retention primitive to garuda tables, purge, coarse aggregates, self-service deletion                                                                                                                                                                                   | Sonnet 5                  | Codex Sol                                                         | full adversarial             | blocked (contract)                    |
-| **L2** public API          | `POST /evaluate` + result `GET`, opaque id ≥128 bit, rate limit, full headers, allowlisted reason codes only, behind the flag                                                                                                                                                      | Sonnet 5                  | Kimi K3                                                           | full adversarial             | blocked (contract)                    |
-| **L3** checkout + orders   | order model, provider-agnostic payment port (sandbox), idempotency keys, signed webhooks + inbox dedup, transactional outbox, append-only payment journal, reconciliation job                                                                                                      | Sonnet 5 or Codex Terra   | DeepSeek V4 Pro (re-derives every money/date figure from scratch) | full adversarial             | blocked (contract + owner decision 1) |
-| **L4** account + portal    | magic-link auth from the website, portal practice view + tracker, visa delivery page. **Prerequisite inside the lane**: cure the open kita↔my audit findings (`verify_client_access` skipped, `get_current_client` ignoring `deleted_at`) before adding any surface on top of them | Codex Terra               | Codex Sol                                                         | full adversarial             | blocked (contract)                    |
-| **L5** documents + OCR     | upload UX, local qwen2.5vl read, quality feedback loop, checklist, field pre-fill                                                                                                                                                                                                  | Kimi-for-coding           | Gemini (visual QA)                                                | full adversarial (PII)       | blocked (contract)                    |
-| **L6** frontend + design   | `/visa/voa` pages restored then redesigned, tracker UI, Brevo emails from `zantara@`, imagegen assets                                                                                                                                                                              | Codex Terra + Haiku grunt | Opus 5 critic gate (screenshots, mobile-first, WCAG AA)           | contract tests + visual diff | blocked (contract + owner decision 5) |
-| **L7** control tower       | practice→CRM handoff with zero re-typing, SLA timer, state-change emails, funnel dashboard, business-invariant alerts, daily synthetic purchase probe with dead-man switch                                                                                                         | Sonnet 5                  | Kimi K3                                                           | full adversarial             | blocked (contract)                    |
+| Lane                       | Scope                                                                                                                                                                                                                                                                              | Builder                   | Refuter                                                           | Risk tier                    | Status                     |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------- | ---------------------------- | -------------------------- |
+| **L1** retention + archive | extend the retention primitive to garuda tables, purge, coarse aggregates, self-service deletion                                                                                                                                                                                   | Sonnet 5                  | Codex Sol                                                         | full adversarial             | ready                      |
+| **L2** public API          | `POST /evaluate` + result `GET`, opaque id ≥128 bit, rate limit, full headers, allowlisted reason codes only, behind the flag                                                                                                                                                      | Sonnet 5                  | Kimi K3                                                           | full adversarial             | ready                      |
+| **L3** checkout + orders   | order model, provider-agnostic payment port (sandbox), idempotency keys, signed webhooks + inbox dedup, transactional outbox, append-only payment journal, reconciliation job                                                                                                      | Sonnet 5 or Codex Terra   | DeepSeek V4 Pro (re-derives every money/date figure from scratch) | full adversarial             | blocked (owner decision 1) |
+| **L4** account + portal    | magic-link auth from the website, portal practice view + tracker, visa delivery page. **Prerequisite inside the lane**: cure the open kita↔my audit findings (`verify_client_access` skipped, `get_current_client` ignoring `deleted_at`) before adding any surface on top of them | Codex Terra               | Codex Sol                                                         | full adversarial             | ready                      |
+| **L5** documents + OCR     | upload UX, local qwen2.5vl read, quality feedback loop, checklist, field pre-fill                                                                                                                                                                                                  | Kimi-for-coding           | Gemini (visual QA)                                                | full adversarial (PII)       | ready                      |
+| **L6** frontend + design   | `/visa/voa` pages restored then redesigned, tracker UI, Brevo emails from `zantara@`, imagegen assets                                                                                                                                                                              | Codex Terra + Haiku grunt | Opus 5 critic gate (screenshots, mobile-first, WCAG AA)           | contract tests + visual diff | blocked (owner decision 5) |
+| **L7** control tower       | practice→CRM handoff with zero re-typing, SLA timer, state-change emails, funnel dashboard, business-invariant alerts, daily synthetic purchase probe with dead-man switch                                                                                                         | Sonnet 5                  | Kimi K3                                                           | full adversarial             | ready                      |
 
 Refuter rule (ASSEMBLY-LINE verification economics, as corrected on 2026-08-24): **one**
 cross-family refuter per PR **by default**, and the family that built a lane is excluded from its
@@ -85,3 +85,29 @@ sequencing problem, not a file to edit.
 5. Three reds for the same cause ⇒ suspend the lane, one PENDING-ARMS line naming the cause, move on.
 6. No status PRs, no handoff prose, no ledger commits. If no gate consumes it, it does not get
    written — the merge queue and the tests are the work-state.
+
+## Freeze log
+
+**2026-08-24 — CONTRACT FREEZE, final after two rounds.** `contracts/` (openapi, events, errors,
+reason-codes) is frozen on the integration branch and held by
+`contracts/tests/test_contract_invariants.py` — nine tests, four of them added because a review
+found the property broken, and every one of those four proven to bite by mutating the contract and
+watching only its own test go red.
+
+The freeze released L1-L7 from the contract prerequisite. Two lanes keep an owner prerequisite that
+the freeze does not touch: L3 still waits on decision 1 (payment provider) and L6 on decision 5
+(visual identity). Everything else is `ready`.
+
+Two process rules were learned the hard way during the freeze and bind every lane from here:
+
+1. **A refuter is never dispatched over a live generator.** The round-1 refuter reviewed a tree that
+   was still being written — which invalidated its line numbers and, less obviously, meant three of
+   its findings had already been cured underneath it. Unreliable in both directions. The Visa Oracle
+   orchestrator on Pro, hitting the same trap the same day, added the stronger form: **hand the
+   refuter an extracted artifact at a fixed commit, never a live ref.** That works even when the
+   generator cannot be killed, and it is the version to use.
+2. **A gate does not close until every leg of its pass has reported.** Round 1 was declared FINAL on
+   the refuter alone while the money/date re-derivation was still running; that leg then found four
+   real defects, including two decided numbers that bound nobody. A pass is three legs — refuter,
+   attack session, independent money/date re-derivation — and a verdict on one of them is an
+   interim, whatever it feels like at the time.

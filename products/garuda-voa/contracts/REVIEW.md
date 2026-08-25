@@ -207,7 +207,7 @@ be Ngurah Rai, and otherwise suppresses it and routes to WhatsApp.
 ### Carried forward, not fixed
 
 - **The 2027 cliff has a date on it.** `COVERAGE_END = 2026-12-31`. From 2027-01-02 no open day is
-  certifiable and every arrival declines with `CALENDAR_COVERAGE_EXCEEDED`. Correct-by-design and
+  certifiable and every arrival declines with `ARRIVAL_DATE_UNCONFIRMED`. Correct-by-design and
   already pinned by a test — but it is a hard product cliff, and the 2027 SKB is expected around
   September 2026. It belongs in the ledger, not in a contract fix.
 - **A JSON-Schema nit**: under 2020-12, `790000.0` satisfies `type: integer`. Not worth a `multipleOf`
@@ -219,3 +219,93 @@ mutation — change the TTL, strip a civil zone, blank a response's headers, dro
 its own test red and only its own.
 
 **FREEZE: FINAL — this time with all three legs reported.**
+
+---
+
+## Round 3 — the first lane read the contract and found it wrong twice
+
+L2 implemented the three public operations as a literal translation of the frozen contract and,
+correctly, refused to paper over two places where the contract and the engine disagree. It flagged
+both rather than inventing an implementation to satisfy the document, which is the behaviour a
+frozen contract is supposed to produce.
+
+### Fixed here — `CALENDAR_COVERAGE_EXCEEDED` is gone, because the engine was right
+
+The contract declared it a **503**. The engine does something different and better: past
+`COVERAGE_END`, `intake.py:236-238` returns a **201 DECLINE** carrying `ARRIVAL_DATE_UNCONFIRMED`,
+and `nationality_eligibility.py:53-56` sets out the reasoning explicitly — the 2027 Cuti Bersama
+decree does not exist yet, so a 2027 date is "a real unknown, not a decline in disguise", and the
+engine "routes to a human rather than publishing a guessed date".
+
+A 503 would have said something false in two directions at once: that we are unavailable when we
+are not, and that coming back later would help when the thing that must change is a government
+decree expected around September 2026. An automated client would have retried it for months. The
+code is removed from both files; the parity test would have caught the dangling half.
+
+Note what stopped this: the contract was frozen, so the lane could not quietly implement a 503 that
+did not exist to make its own tests pass. The freeze is doing its job in the direction that is easy
+to overlook — not preventing a lane from being wrong, but preventing a lane from silently making the
+document right about itself.
+
+### Not fixed here — the freshness numbers still have no reader, and that is now assigned
+
+Round 2 put Q9's windows into the contract as `x-truth-freshness-max-age-days`. L2 confirms what
+that round already suspected: **nothing in `garuda_flow` reads them**, because no dated-source
+tracking exists to compare against. So `TRUTH_SHEET_STALE` is declared, the numbers are declared,
+and no code path can currently emit it.
+
+That is still `G-FRESHNESS-FAIL-CLOSED` declared-and-absent, one layer up from where it started —
+better, because the numbers are now binding rather than prose, but not yet a guardrail. L2 was right
+that it is not L2-scoped: it needs a stamp next to each truth source and a reader in front of
+`build_verdict` and `price_for_case`, which crosses lanes. It stays on the orchestrator, in
+PENDING-ARMS, and **no lane may implement a freshness check locally** — a per-lane version is how
+one surface declines and another sells the same stale price.
+
+---
+
+## Round 4 — the guardrail round 3 assigned now exists, and it exposed what the suite never pinned
+
+Round 3 closed with `G-FRESHNESS-FAIL-CLOSED` declared-and-absent: the windows were binding
+numbers with no reader. That is no longer true, and the paragraph above is left standing as the
+record of when it was.
+
+### Fixed here — the windows have a reader, on both surfaces
+
+`freshness.py` compares each truth source's stamp against its window, and two call sites act on it.
+`build_verdict` DECLINES on a stale nationality list or rule constant; `price_for_case` refuses to
+return a price on a stale catalogue, which the router already turns into `503 PRICE_UNRESOLVABLE`.
+The two outcomes are deliberately different shapes: a customer is never quoted a price we cannot
+stand behind, and never told "not eligible" when the honest answer is "we have not re-verified".
+
+The decline code is **`ELIGIBILITY_UNCONFIRMED`**, not `TRUTH_SHEET_STALE` as rounds 2 and 3
+assumed. Two reasons, and the second is the one that mattered: it is named for what the customer
+learns rather than the state of our filing cabinet, and `TRUTH_SHEET_STALE` had meanwhile been
+taken by a 503 in the error catalogue — the same string on two different wire mechanisms. It is
+also deliberately not `NATIONALITY_NOT_ELIGIBLE`: we do not know that, and saying it would be a
+lie told to fail closed.
+
+### What this round actually found — a parity check that three passes had verified by hand
+
+Reason-code parity between the contract and `eligibility.py::DeclineCode` was checked by hand
+during the freeze, agreed by the refuter, written into this file as 18/18 — and pinned by nobody.
+When this round legitimately added a nineteenth member, the contract could not express it and
+**all nine tests in `tests/test_contract_invariants.py` stayed green**. A customer-facing wire
+vocabulary had silently diverged from what the engine emits, past a suite built to prevent exactly
+that class of drift.
+
+`test_reason_codes_match_the_engine_enum_exactly` now pins it, imported rather than regexed, and
+proven red in both directions (drop a code the engine emits; add one it never emits). This file's
+own opening line — _a property established by hand once is a property that decays_ — collected on
+itself, three rounds after it was written.
+
+### One more thing the suite could not see, and the shape of the trap
+
+The new router test proving the funnel fails closed on a stale catalogue appeared not to bite: the
+gate was disabled and the test stayed green. It was not the test. Stale `__pycache__` under
+`garuda_flow` was serving the pre-mutation module, so the bite never reached the interpreter — the
+repo's own W121. Re-run with `PYTHONDONTWRITEBYTECODE=1` and the cache cleared, the test goes red
+on the disabled gate and green on restore.
+
+Worth stating plainly because the failure mode is inverted from the usual one: a poisoned bytecode
+cache does not make a good test look broken, it makes a **broken test look proven**. Every mutation
+result in this document was re-run under those conditions.

@@ -433,6 +433,27 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "triple-derived at run time; exact value pinned, never a "
         "credential",
     ),
+    # fold_pack_seq14.py: _EXPECTED_SEQ13_PAYLOAD_SHA256 is the chain anchor —
+    # the content-derived sha256 of the PUBLIC signed seq-13 RulePack payload.
+    # The fold pins it so the seq-14 chain link is triple-derived at run time
+    # (declared == anchor == recomputed from the seq-13 source bytes), and any
+    # mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits, so any
+    # different 64-hex value in the file stays flagged. Only the bare
+    # continuation-string line is approved, end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq14\.py$"
+        ),
+        re.compile(
+            r'^\s*"b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"\s*$'
+        ),
+        "fold_pack_seq14.py: seq-13 chain anchor — content-derived sha256 "
+        "of the public signed seq-13 RulePack payload, triple-derived at "
+        "run time; exact value pinned, never a credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the

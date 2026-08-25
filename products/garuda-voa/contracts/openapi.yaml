@@ -43,8 +43,12 @@ x-magic-link:
   # attacker holding a leaked link. Session lifetime is a SEPARATE number and is not this
   # one — conflating them is how a 15-minute link becomes a 15-minute portal.
 x-truth-freshness-max-age-days:
-  # DECISIONS.md Q9. Past the age the funnel declines to sell rather than quote, via
-  # TRUTH_SHEET_STALE. Engineering safety margins, revisable with a one-line diff and a test.
+  # DECISIONS.md Q9. Past the age the funnel declines to sell rather than quote. The wire
+  # outcome differs by source and BOTH are load-bearing: a stale nationality list or rule
+  # constant DECLINES the check with reason code ELIGIBILITY_UNCONFIRMED, while a stale price
+  # catalogue is a 503 PRICE_UNRESOLVABLE — the customer is never told a price we cannot
+  # stand behind, and never told "not eligible" when the truth is "we have not re-verified".
+  # Engineering safety margins, revisable with a one-line diff and a test.
   nationality_eligibility: 90
   rule_constants: 180
   price_catalogue: 90
@@ -145,13 +149,18 @@ paths:
         "503":
           description: >-
             Sale fails closed before persistence. The distinct code identifies unavailable
-            retention authority, price, truth freshness, truth authority, calendar coverage, or service.
+            retention authority, price, truth freshness, truth authority, or service.
+
+            The operating calendar is deliberately NOT among these. Past `COVERAGE_END` the
+            engine returns a 201 DECLINE carrying `ARRIVAL_DATE_UNCONFIRMED`, and that is the
+            correct answer rather than an outage: we are not unavailable, we simply cannot
+            confirm a date the 2027 decree has not yet fixed, and `intake.py` says so in as
+            many words — it "routes to a human rather than publishing a guessed date". A 503
+            would tell a 2027 traveller to come back later about something that will not
+            change for months, and an automated client would retry it forever.
           x-error-codes:
             - PERSISTENCE_POLICY_UNAVAILABLE
             - PRICE_UNRESOLVABLE
-            - TRUTH_SHEET_STALE
-            - TRUTH_AUTHORITY_UNAVAILABLE
-            - CALENDAR_COVERAGE_EXCEEDED
             - SERVICE_UNAVAILABLE
           headers: *publicPrivacyHeaders
           content: *errorContent
@@ -565,8 +574,6 @@ paths:
           x-error-codes:
             - PERSISTENCE_POLICY_UNAVAILABLE
             - PRICE_UNRESOLVABLE
-            - TRUTH_SHEET_STALE
-            - TRUTH_AUTHORITY_UNAVAILABLE
             - PAYMENT_PROVIDER_UNAVAILABLE
             - SERVICE_UNAVAILABLE
           headers: *publicPrivacyHeaders

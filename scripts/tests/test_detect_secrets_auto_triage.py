@@ -267,8 +267,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 18, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 18. "
+    assert len(CONTENT_KEYED_RULES) == 19, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 19. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -288,6 +288,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: fold_pack_seq13_rules.py seq-12 chain anchor exact-value pin (2026-08-23, #4660)
     # +1: fold_pack_seq13_source.py seq-12 chain anchor exact-value pin (2026-08-23, #4667)
     # +1: research/visa/doctrine-factory/e5/inc8-pack-edits/d12-active-stay-permit-rule-and-source.json content_sha256 (2026-08-24, #4719)
+    # +1: fold_pack_seq14.py seq-13 chain anchor exact-value pin (2026-08-24, #4797)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1398,6 +1399,69 @@ def test_fold_seq13_source_rule_does_not_launder_via_seq13_rules_path() -> None:
     assert not path_pat.search(  # ...but path must not, for the sibling file
         "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules.py"
     )
+
+
+FOLD_PACK_SEQ14 = "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq14.py"
+FOLD_PACK_SEQ14_ANCHOR = (
+    "b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"
+)
+
+
+def test_fold_seq14_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    assert path_pat.search(FOLD_PACK_SEQ14)
+    assert not path_pat.search(FOLD_PACK_SEQ13_SOURCE)
+    assert not path_pat.search("scripts/fold_pack_seq14.py")
+    assert "credential" in reason
+
+
+def test_guilt_fold_seq14_real_finding_approved() -> None:
+    """The exact real anchor line must be approved from the live fold file."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    matching_lines = [
+        line
+        for line in Path(FOLD_PACK_SEQ14).read_text(encoding="utf-8").splitlines()
+        if FOLD_PACK_SEQ14_ANCHOR in line
+    ]
+    assert matching_lines == [f'    "{FOLD_PACK_SEQ14_ANCHOR}"']
+    assert content_pat.match(matching_lines[0])
+
+
+def test_innocence_fold_seq14_other_hex_value_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    assert content_pat.match('    "' + "a" * 64 + '"') is None
+
+
+def test_innocence_fold_seq14_uppercase_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    assert content_pat.match(f'    "{FOLD_PACK_SEQ14_ANCHOR.upper()}"') is None
+
+
+def test_innocence_fold_seq14_ride_along_statement_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    for compound in (
+        f'    "{FOLD_PACK_SEQ14_ANCHOR}"; import os',
+        f'    "{FOLD_PACK_SEQ14_ANCHOR}" "second_token"',
+    ):
+        assert content_pat.match(compound) is None
+
+
+def test_innocence_fold_seq14_keyed_assignment_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ14_ANCHOR}",'
+    assert content_pat.match(keyed_line) is None
 
 
 GOOGLE_OAUTH_LINT = "scripts/lint_google_oauth_credentials.py"

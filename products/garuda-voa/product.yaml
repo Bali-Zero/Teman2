@@ -30,9 +30,21 @@ price:
   # CORRECTED 2026-08-24 by the orchestrator, against the mandate's own seed text.
   # The mandate seeded `PNBP + 3jt`. That formula is NOT the VOA price and must not be
   # applied here: `services/garuda_flow/pricing.py` resolves TWO exact catalogue keys and
-  # fails closed on any mismatch, and those rows are all-inclusive (PNBP included) —
-  # test-owned at `apps/mouth/e2e/book-pricing.spec.ts:126`. Applying PNBP+3jt would quote
-  # ~3.5jt against a real catalogue price of 790k: a 4.4x overcharge on a live funnel.
+  # fails closed on any mismatch. Applying PNBP+3jt would quote ~3.5jt against a real
+  # catalogue price of 790k: a 4.4x overcharge on a live funnel.
+  #
+  # SELF-CORRECTION, same day, same file. An earlier version of this comment added
+  # "and those rows are all-inclusive (PNBP included) — test-owned at
+  # apps/mouth/e2e/book-pricing.spec.ts:126". Re-measured: that test is named "public
+  # visa service cards expose only exact all-inclusive PricingTool rows" and owns
+  # "show the catalogue row, unsplit" — it says nothing about what the amount contains.
+  # And the catalogue itself is silent: the VOA row is
+  # {key, name, category, validity, price: "790.000 IDR", notes: None}, and the string
+  # "PNBP" appears ZERO times in the whole prices file and zero times in pricing.py or
+  # garuda_flow. So "PNBP is inside the 790k" was an INFERENCE wearing a citation.
+  # It may well be true — but whether the customer still pays a government fee at the
+  # airport on top of what we charge is a client-facing money promise, and it now sits
+  # in owner_decisions id 7 as a question instead of in a comment as a fact.
   rule: >
     The price is whatever PricingTool returns for the case's exact catalogue key.
     It is never computed, never a formula, and never a literal in code.
@@ -111,8 +123,13 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "pick + sign up with his own credentials"
   - id: 2
     decision: terms_of_sale_and_refund
-    state: proposal-pending
-    gesture: "read, approve"
+    state: proposal-ready
+    packet: products/garuda-voa/ops/decision-packets/02-terms-and-refunds.md
+    # The packet existed since 21:57 and nobody could have found it: it was written into an
+    # abandoned worktree and never committed, so the switchboard read "proposal-pending" while
+    # the proposal sat finished on disk. Adopted here with one correction — see 7(b).
+    depends_on: 7
+    gesture: "read, approve — but 7(b) changes several rows, so answer that first"
   - id: 3
     decision: data_retention_days
     state: proposal-ready
@@ -146,7 +163,50 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
       If it can vary, the published deadline we show is unsourced for those buyers.
       Default until answered: display a deadline only when the office is known.
     gesture: "answer the question — it is an operations fact, not a design choice"
+  - id: 7
+    decision: price_catalogue_currency
+    state: measured-question-ready
+    # Measured 2026-08-24 by importing the loader, not by reading the file:
+    #   backend/data/bali_zero_official_prices_2026.json  metadata.last_updated = 2026-05-06
+    #   garuda_today() = 2026-08-24  ->  age 110 days,  Q9 price window = 90 days  ->  STALE
+    #   price_for_case(issuance)  = (790000, "B1 Visa on Arrival (VOA)")
+    #   price_for_case(extension) = (850000, "B1 Visa on Arrival Extension")
+    # These are the exact amounts the funnel would charge, from a file last touched in May.
+    measured_catalogue_age_days: 110
+    question: >
+      Two things, and the second is the one nobody has answered. (a) Are 790.000 and
+      850.000 IDR still the correct prices today? The catalogue that supplies them has
+      not been touched in 110 days, and Q9's own freshness window is 90. (b) Does that
+      amount INCLUDE the PNBP the traveller would otherwise pay the government, or is it
+      our fee on top of it? Measured 2026-08-24: "PNBP" appears zero times in the prices
+      file, zero times in pricing.py, zero times in garuda_flow; the catalogue row carries
+      no note. Nothing on disk answers (b), and this product's whole promise is ONE
+      all-inclusive price.
+    consequence: >
+      The freshness guardrail now being built will, correctly, refuse to sell on the day it
+      ships — the catalogue is already past its window. There are only two honest exits:
+      re-verify and re-stamp the catalogue, or rule that 90 days is the wrong window for a
+      list Bali Zero republishes on its own schedule. Quietly widening the window to make the
+      guard green is the one move that is not available: that turns the guardrail back into
+      the sentence it has been all along.
+    gesture: "confirm the two amounts, or re-stamp the catalogue, or rule on the window"
   - id: 0
     decision: go_live
-    state: blocked-on-all-above
+    state: blocked-on-all-above-and-on-the-parent-page
+    # Consumer-map item, measured live 2026-08-24 (curl, four surfaces):
+    #   /visa        200  index, follow     "24 visa types. One fits you. We know which."
+    #                                       "Answer 4 short questions ... and show the cost."
+    #   /visa/match  200  index, follow
+    #   /visa-oracle 200  noindex, nofollow  <- the surface with the SIGNED rule pack
+    #   /visa/voa    404  (our tombstone, correct)
+    # "Merged is not live" runs the other way too: a surface we never touch can still promise
+    # on our behalf. /visa/voa is correctly noindex, but its INDEXED parent offers a cost in
+    # four questions for a product we intend to sell through our own funnel — so go-live would
+    # put a public page in competition with the sale it points at.
+    # The price on that page is NOT fabricated (verified: visa_oracle.py:751-754 sources it
+    # from PricingTool and degrades to "contact for pricing"). The defect is the CLAIMS —
+    # 24 against a 38-product catalogue, "we know which" against nine contractual abstentions.
+    # Owned by the Visa Oracle orchestrator on Pro, who is taking it to Zero as a Legge 5
+    # call. This entry closes by itself if that lands; it is recorded here so go-live cannot
+    # be declared while it is open.
     gesture: "flip GARUDA_PUBLIC_ENABLED=true + merge the prepared sitemap/robots PR"
