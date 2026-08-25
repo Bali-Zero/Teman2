@@ -9,7 +9,13 @@ Coverage:
     * Backwards-compat: agent_role=None → ALLOWED (legacy /stream path)
     * Audit log emitted on every decision (allow + deny)
     * Scaffolding methods (`_check_client_scope`, `_check_requires_confirmation`)
-      currently return None (no-op for Phase 2)
+      currently return None for the current 9-tool registry (no tool
+      carries an `assigned_to`/`client_id` argument) — but
+      `_check_client_scope` is no longer a no-op stub: F5's real
+      `assigned_to` staff-scope enforcement (see
+      `TestClientScopeEnforcement`) is exercised via synthetic
+      tool/args pairs that stand in for the not-yet-wired F5 registry
+      (docs/plans/2026-08-25-due-bot-live/MANDATE.md F5/F7)
     * Integration with execute_tool: denied tools never reach tool.execute(),
       allowed tools execute normally, legacy callers (agent_role=None)
       bypass enforcement
@@ -24,9 +30,11 @@ import pytest
 from backend.services.agents.team_agent_config import (
     ROLE_ADMIN,
     ROLE_EXECUTIVE_CONSULTANT,
+    ROLE_TAX_SPECIALIST,
     ROLE_VISA_SPECIALIST,
 )
 from backend.services.agents.tool_authorizer import (
+    CLIENT_SCOPE_FILTER_KEYS,
     SENSITIVE_TOOLS,
     AuthDecision,
     AuthResult,
@@ -506,7 +514,14 @@ class TestScaffoldingNoOps:
         self,
         authorizer: ToolAuthorizer,
     ) -> None:
-        """Phase 2: client_scope check is a hook for Strada A, returns None."""
+        """A bare `client_id` (a record REFERENCE, not a staff-scope filter)
+        is deliberately excluded from `_check_client_scope`'s recognised
+        keys (`CLIENT_SCOPE_FILTER_KEYS` — see that method's docstring):
+        verifying whether client 42 belongs to `damar` would need a DB
+        read this stateless authorizer intentionally does not perform, so
+        this stays `None` even after F5's `assigned_to` enforcement landed
+        (see `TestClientScopeEnforcement` for the part that IS enforced
+        now)."""
         result = authorizer._check_client_scope(
             user_email="damar@balizero.com",
             agent_role=ROLE_VISA_SPECIALIST,
@@ -525,6 +540,204 @@ class TestScaffoldingNoOps:
             agent_role=ROLE_VISA_SPECIALIST,
             tool_name="delete_client",
             args={"client_id": 42},
+        )
+        assert result is None
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# F5 client-scope enforcement — the `assigned_to` staff-scope filter
+# ─────────────────────────────────────────────────────────────────────────
+#
+# `list_practices`, `create_reminder`, `open_practice` (F5's ten-tool
+# registry, apps/team-bot/team_bot/registry/tools.py) declare an OPTIONAL
+# `assigned_to` argument (a staff-scope filter/target). None of those
+# tools are wired into THIS authorizer's registry yet (team-bot is a
+# standalone app with no executor today), so every scenario below uses a
+# synthetic `tool_name`/`args` pair that stands in for that future shape
+# — exactly the scaffold-completion F5 asks for ("complete... before any
+# mutation arms").
+
+
+class TestClientScopeEnforcement:
+    NON_ADMIN_EMAIL = "damar@balizero.com"  # ROLE_VISA_SPECIALIST, client_scope="assigned"
+
+    def test_recognised_key_is_assigned_to_only(self) -> None:
+        """Pin the recognised-key set so a future edit that widens it
+        (e.g. adding `client_id`) is a deliberate, reviewed change, not a
+        silent one — see `_check_client_scope`'s docstring for why a bare
+        record reference stays excluded."""
+        assert CLIENT_SCOPE_FILTER_KEYS == frozenset({"assigned_to"})
+
+    # ── Guilt: a non-admin actor referencing SOMEONE ELSE'S book ────────
+
+    @pytest.mark.asyncio
+    async def test_assigned_to_someone_else_denied(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        result = await authorizer.authorize(
+            user_email=self.NON_ADMIN_EMAIL,
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="list_practices",  # in ROLE_VISA_SPECIALIST.allowed_read_tools
+            args={"assigned_to": "krisna@balizero.com"},
+        )
+        assert result.is_denied
+        assert "assigned_to" in result.reason
+        assert "list_practices" in result.reason
+
+    @pytest.mark.asyncio
+    async def test_deny_is_audited(
+        self,
+        authorizer: ToolAuthorizer,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """The scope-violation deny goes through `self._audit(...)`, same
+        as every other denial — the guilt case must be traceable, not a
+        silent refusal."""
+        with caplog.at_level("WARNING", logger="backend.services.agents.tool_authorizer"):
+            result = await authorizer.authorize(
+                user_email=self.NON_ADMIN_EMAIL,
+                agent_role=ROLE_VISA_SPECIALIST,
+                tool_name="list_practices",
+                args={"assigned_to": "krisna@balizero.com"},
+            )
+        assert result.is_denied
+        assert any(
+            "tool_authz decision=deny" in r.message and "tool=list_practices" in r.message
+            for r in caplog.records
+        )
+        # PII boundary: neither raw email appears in the log line.
+        joined = "\n".join(r.message for r in caplog.records)
+        assert "damar@balizero.com" not in joined
+        assert "krisna@balizero.com" not in joined
+
+    # ── Innocence: own scope, admin scope, and untouched tools ──────────
+
+    @pytest.mark.asyncio
+    async def test_assigned_to_own_email_allowed(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """The half that matters most: a non-admin actor referencing
+        THEIR OWN book must pass exactly as before."""
+        result = await authorizer.authorize(
+            user_email=self.NON_ADMIN_EMAIL,
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="list_practices",
+            args={"assigned_to": self.NON_ADMIN_EMAIL},
+        )
+        assert result.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_assigned_to_own_email_case_and_whitespace_insensitive(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        result = await authorizer.authorize(
+            user_email=self.NON_ADMIN_EMAIL,
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="list_practices",
+            args={"assigned_to": "  DAMAR@BaliZero.com  "},
+        )
+        assert result.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_admin_role_client_scope_all_unaffected(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """`agent_role.client_scope == "all"` bypasses the scope check
+        entirely — an admin referencing someone else's book is fine."""
+        result = await authorizer.authorize(
+            user_email="zero@balizero.com",
+            agent_role=ROLE_ADMIN,
+            tool_name="list_practices",
+            args={"assigned_to": "krisna@balizero.com"},
+        )
+        assert result.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_tax_specialist_client_scope_all_unaffected_even_though_crm_access_disagrees(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """Empirically verified: `tax@balizero.com` is NOT recognised as a
+        CRM admin by `crm_access.get_crm_user_filter` (it is absent from
+        `crm_utils`'s admin allowlists), yet `ROLE_TAX_SPECIALIST.client_scope
+        == "all"`. `agent_role.client_scope` must be consulted FIRST — if
+        this authorizer relied on `get_crm_user_filter` alone, the tax team
+        would be wrongly scope-restricted."""
+        assert ROLE_TAX_SPECIALIST.client_scope == "all"
+        result = await authorizer.authorize(
+            user_email="tax@balizero.com",
+            agent_role=ROLE_TAX_SPECIALIST,
+            tool_name="list_practices",
+            args={"assigned_to": "someone-else@balizero.com"},
+        )
+        assert result.is_allowed
+
+    @pytest.mark.asyncio
+    async def test_no_client_identifier_untouched(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """A tool call with no `assigned_to` (every one of the 9
+        pre-existing tools) must not start failing."""
+        result = await authorizer.authorize(
+            user_email=self.NON_ADMIN_EMAIL,
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="vector_search",  # existing tool, no scope-carrying arg
+            args={"query": "visa requirements"},
+        )
+        assert result.is_allowed
+
+    def test_existing_nine_tools_all_pass_through_unaffected(
+        self,
+        authorizer: ToolAuthorizer,
+    ) -> None:
+        """Direct, synchronous sweep of `_check_client_scope` over the
+        exact 9-tool registry named in the module docstring — none of
+        them carry `assigned_to`, so every one must still resolve to
+        `None` (untouched)."""
+        existing_tools_and_args = {
+            "vector_search": {"query": "x"},
+            "pricing": {"service": "kitas"},
+            "team_knowledge": {"search_term": ""},
+            "knowledge_graph": {"entity": "x"},
+            "calculator": {"expression": "1+1"},
+            "vision": {"image_url": "https://example.com/x.png"},
+            "image_generation": {"prompt": "x"},
+            "web_search": {"query": "x"},
+            "timesheet": {"action": "clock_in"},
+        }
+        for tool_name, args in existing_tools_and_args.items():
+            result = authorizer._check_client_scope(
+                user_email=self.NON_ADMIN_EMAIL,
+                agent_role=ROLE_VISA_SPECIALIST,
+                tool_name=tool_name,
+                args=args,
+            )
+            assert result is None, f"{tool_name} unexpectedly scope-restricted"
+
+    # ── WhatsApp-channel identity guard ──────────────────────────────────
+
+    def test_whatsapp_pseudo_id_defers_rather_than_false_denies(self) -> None:
+        """`user_email` on the WA channel is `whatsapp_<phone>`
+        (`wa_inbox_bot.generate_bot_reply`), not a real email, even when
+        `agent_role` was correctly resolved via a separately-trusted
+        email upstream (`agentic_rag.py::_derive_wa_agent_role`). Without
+        the `get_agent_role(user_email) == agent_role` guard, a WA-channel
+        caller referencing their OWN book (by real email, since that is
+        what CRM data stores) would be wrongly denied because the phone
+        pseudo-id can never equal a real email. Confirm the guard fires:
+        no deny, even though the argument names a DIFFERENT person, because
+        this authorizer cannot confirm the caller's identity at all."""
+        authorizer = ToolAuthorizer()
+        result = authorizer._check_client_scope(
+            user_email="whatsapp_+628123456789",
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="list_practices",
+            args={"assigned_to": "krisna@balizero.com"},
         )
         assert result is None
 
@@ -609,9 +822,7 @@ class TestPrincipalPseudonymisation:
     WA_PHONE = "620000000000"
 
     @pytest.mark.asyncio
-    async def test_wa_phone_not_in_log_on_allow(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_wa_phone_not_in_log_on_allow(self, authorizer: ToolAuthorizer, caplog) -> None:
         """GUILT (allow path — the high-volume one, easiest to forget)."""
         with caplog.at_level("INFO", logger="backend.services.agents.tool_authorizer"):
             await authorizer.authorize(
@@ -629,9 +840,7 @@ class TestPrincipalPseudonymisation:
         assert f"user=h:{hash_subject(self.WA_USER)}" in msg
 
     @pytest.mark.asyncio
-    async def test_wa_phone_not_in_log_on_deny(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_wa_phone_not_in_log_on_deny(self, authorizer: ToolAuthorizer, caplog) -> None:
         """GUILT (deny path — SENSITIVE_TOOLS tourniquet, agent_role=None)."""
         with caplog.at_level("WARNING", logger="backend.services.agents.tool_authorizer"):
             await authorizer.authorize(
@@ -677,9 +886,7 @@ class TestPrincipalPseudonymisation:
                 assert f"user=h:{hash_subject(p)}" in msg
 
     @pytest.mark.asyncio
-    async def test_anonymous_stays_anonymous(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_anonymous_stays_anonymous(self, authorizer: ToolAuthorizer, caplog) -> None:
         """A genuinely absent principal must stay the literal 'anonymous' —
         never hashed, so it's still visibly distinct from a redacted one."""
         with caplog.at_level("INFO", logger="backend.services.agents.tool_authorizer"):
@@ -694,9 +901,7 @@ class TestPrincipalPseudonymisation:
         assert "user=anonymous" in msg
 
     @pytest.mark.asyncio
-    async def test_stable_and_distinct_tokens(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_stable_and_distinct_tokens(self, authorizer: ToolAuthorizer, caplog) -> None:
         """STABILITY: same principal -> same token twice; different
         principals -> different tokens. An operator holding a known
         identifier reproduces the token via hash_subject(identifier)."""
