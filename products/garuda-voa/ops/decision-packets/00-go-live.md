@@ -1,0 +1,71 @@
+# Owner decision 0 — go live
+
+> Prepared for Zero. This is not a decision on its own — it is the checklist of everything else on
+> this switchboard, plus two preconditions that live outside the switchboard entirely. Read every
+> row for what it actually says, not for the label alone; several "ratified" rows still carry an
+> open confirmation step. Every state below is read directly from `product.yaml`'s `state:` field
+> as of 2026-08-25, not summarized from memory.
+
+## Decisions 1–8, as they actually stand today
+
+| #   | Decision                        | `state` in product.yaml     | What is actually still open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --- | ------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Payment provider                | `ratified`                  | Xendit chosen; two contract placeholders it retired have been swept and cured. **Still open**: the ratification reached this session by relay, not from Zero directly — confirm it at signature time (see packet 1). Margin math depends on decision 7(b), which is now answered.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 2   | Terms of sale & refund          | `proposal-ready`            | The cancellation cut-off and disposition table are drafted and unaffected by decision 7's answer. **Still open**: counsel has not drafted or reviewed the actual terms/refund/privacy text (`TODO(legal)` items in packet 2 — PNBP refundability, UU PDP article numbering, tax-record retention, sensitive-data classification), and the Art. 56 cross-border posture has not been chosen. Packet 2 is not signable as customer-facing text until those close.                                                                                                                                                                                                                                                                                                                                            |
+| 3   | Data retention (days)           | `proposal-ready`            | 90 days proposed; owner has not approved the number or the delete-button design.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 4   | Legacy `garuda_voa_checks` rows | `measured-proposal-ready`   | 25 pilot rows measured; purge-on-signature proposed. **Open**: owner yes/no (packet 4).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 5   | Visual identity                 | `ratified`                  | Concept A ("The Stamp") chosen, with two binding copy constraints. **Still open**: same relay-provenance caveat as decision 1 — confirm directly with Zero at signature time; the un-inked decline card is a genuinely untested new visual and should be the first thing built and shown to a real phone.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 6   | Filing office scope             | `measured-question-ready`   | **Open**: does every buyer file at Ngurah Rai, or can it vary (packet 6)? The build today matches "always Ngurah Rai"; if that is wrong, one intake field and one branch are needed before go-live specifically (not before the dark build).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 7   | Price catalogue & PNBP          | `ratified-7b-open-7a-scope` | 7(b) — is the price PNBP-inclusive — is **RATIFIED**: yes, inclusive. 7(a) — are 790,000/850,000 IDR still correct — is **attested by Zero**, but its **scope is unresolved**: does the attestation cover the whole 100-row price catalogue or only the two VOA rows? Until that one sentence is answered, this session will not bump the catalogue-wide freshness stamp (doing so would claim owner attestation over 98 rows nobody looked at). **`blocks_go_live: true`** — the freshness guardrail is live and, measured 2026-08-25, the catalogue is already past its 90-day window: `price_for_case(ISSUANCE)` returns `(None, None)` today, meaning the funnel would answer every real customer with a hard decline-to-sell right now. This is the single decision most directly gating a live sale. |
+| 8   | OCR calibration corpus          | `proposal-ready`            | **Open**: owner yes/no on using the already-existing M5 specimens under the local-only protocol (packet 8). Not a go-live blocker on its own (a human confirms every OCR field regardless of the threshold), but it is the only path to an honestly measured number instead of an argued-for default.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+**Reading the table plainly: decision 7's scope question is the only thing standing between the
+already-built freshness guardrail and a sellable price.** Everything else on this table can be
+signed independently and in any order.
+
+## Non-decision preconditions — things that block go-live but are not owner decisions
+
+These are operational/engineering facts, not choices for Zero to make; listed here because
+go-live is blocked on them exactly as it is blocked on the decisions above, and this is the one
+place both kinds of blocker are supposed to be visible together.
+
+1. **The parent `/visa` page problem (consumer-map, measured live 2026-08-24).** Four surfaces
+   were checked directly: `/visa` (200, indexed, follows) advertises "24 visa types. One fits
+   you. We know which." and "answer 4 short questions... and show the cost." `/visa/match` (200,
+   indexed) is the same claim's landing point. `/visa-oracle` (200, `noindex`) carries the signed
+   rule pack. `/visa/voa` — this product's own old surface — is correctly a 404 tombstone. The
+   defect: `/visa` is **indexed** and makes a claim ("we know which," "24 visa types") that this
+   product's own build does not support — the catalogue has 38 products, not 24, and the Visa
+   Oracle rule pack records nine contractual abstentions where "we know which" is not actually
+   true. Flipping `GARUDA_PUBLIC_ENABLED` would put a public page that already over-promises in
+   direct competition with the very funnel it should be pointing customers toward. The price shown
+   on that page is not itself fabricated (it degrades to "contact for pricing" via PricingTool),
+   so this is a claims problem, not a pricing problem. **Owned by the Visa Oracle orchestrator on
+   Pro**, who is taking it to Zero as a separate Legge 5 call — this entry closes by itself when
+   that lands, and go-live should not be declared while it is still open, because "merged is not
+   live" runs in both directions: a surface this product never touched can still make a promise on
+   its behalf.
+2. **The flag flip and the sitemap/robots PR.** Mechanical once every decision above is closed:
+   flip `GARUDA_PUBLIC_ENABLED=true` and merge the prepared sitemap/robots change so the new
+   surface is discoverable on the terms actually decided (not indexed by accident before terms/
+   privacy text exists, per decision 2).
+
+## What "go live" requires, in one line
+
+Every row in the first table reads either `ratified` with its confirmation step done, or
+`proposal-ready`/`measured-*` with the owner's signature — **and** both non-decision preconditions
+above are cleared. As of 2026-08-25, neither condition is met: decision 7's scope question is open
+and directly blocks selling, and the `/visa` consumer-map defect is open and pending a separate
+Legge 5 call.
+
+## What the owner must personally do
+
+Nothing new is invented by this packet — it exists only to make the dependency visible in one
+place. The actionable items are the gestures in packets 2, 3, 4, 6, 7's 7(a)-scope sentence, and
+8, plus confirming decisions 1 and 5 directly (their relay provenance), plus the Visa Oracle
+Legge 5 call when it reaches you.
+
+## Your gesture
+
+- [ ] Flip `GARUDA_PUBLIC_ENABLED=true` and merge the prepared sitemap/robots PR — **only after**
+      every row above reads fully closed, not merely "ratified" or "proposal-ready" on this page.
