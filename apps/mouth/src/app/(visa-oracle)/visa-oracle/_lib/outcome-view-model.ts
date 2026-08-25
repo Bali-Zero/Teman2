@@ -9,6 +9,7 @@
  */
 
 import type { CategoryKey } from "./tree";
+import type { ProductTier } from "./product-tier-map";
 
 export type OutcomeState =
   | "SUPPORTED_CANDIDATES"
@@ -71,21 +72,13 @@ export interface OutcomeMissingInput extends OutcomeReason {
 }
 
 export type LegalSupportStatus =
-  | "SUPPORTED"
-  | "CONDITIONAL"
-  | "NOT_SUPPORTED"
-  | "UNKNOWN";
+  "SUPPORTED" | "CONDITIONAL" | "NOT_SUPPORTED" | "UNKNOWN";
 
 export type OperationalAvailabilityStatus =
-  | "AVAILABLE"
-  | "TEMPORARILY_UNAVAILABLE"
-  | "UNKNOWN";
+  "AVAILABLE" | "TEMPORARILY_UNAVAILABLE" | "UNKNOWN";
 
 export type ServiceAvailabilityStatus =
-  | "AVAILABLE"
-  | "CONTACT_REQUIRED"
-  | "NOT_OFFERED"
-  | "UNKNOWN";
+  "AVAILABLE" | "CONTACT_REQUIRED" | "NOT_OFFERED" | "UNKNOWN";
 
 export interface OutcomeStatusAxis<Status extends string> {
   status: Status;
@@ -134,6 +127,16 @@ export interface OutcomeCandidate {
   rank: number;
   name: LocalizedText;
   tagline?: LocalizedText;
+  /**
+   * Owner ruling #1 (2026-08-25, OWNER-RULINGS-2026-08-25.md §1): governs
+   * whether this candidate's own product-page copy states the consultant
+   * contact as included/automatic (T2) — never whether it is offered at
+   * all, since the C3 "talk to a consultant" control stays on every screen
+   * and every tier regardless of this field (frozen contract C3).
+   * `undefined` for a product code `product-tier-map.ts` does not (yet)
+   * cover — never guessed as T1/T2/T3.
+   */
+  tier?: ProductTier;
   /** These three axes must never be collapsed into one badge. */
   legal: OutcomeStatusAxis<LegalSupportStatus>;
   operational: OutcomeStatusAxis<OperationalAvailabilityStatus>;

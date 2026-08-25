@@ -8,6 +8,10 @@ import type {
   OutcomeState,
   OutcomeViewModel,
 } from "../_lib/outcome-view-model";
+import {
+  T2_CONSULTANT_TERMS,
+  T2_CONSULTANT_TERMS_TITLE,
+} from "../_lib/engine-adapter";
 
 const FACTS = { in_indonesia: "yes", category: "tourism" };
 
@@ -148,6 +152,19 @@ function outcomeFor(state: OutcomeState): OutcomeViewModel {
   }
 }
 
+/** Same "SUPPORTED_CANDIDATES" shape `outcomeFor` builds, but with a
+ * caller-supplied candidate — needed to exercise a specific `tier` without
+ * fighting `outcomeFor`'s `OutcomeViewModel` return type (a union that
+ * doesn't expose `candidates` until narrowed on `state`). */
+function outcomeWithCandidate(candidate: OutcomeCandidate): OutcomeViewModel {
+  return {
+    ...common(),
+    state: "SUPPORTED_CANDIDATES",
+    pathsRemaining: 1,
+    candidates: [candidate],
+  };
+}
+
 const ALL_STATES: OutcomeState[] = [
   "SUPPORTED_CANDIDATES",
   "NEEDS_INPUT",
@@ -206,6 +223,44 @@ describe("OutcomeSheet — honest five-state rendering", () => {
       /IDR.*1,000,000/,
     );
     expect(screen.getAllByText("Primary source fixture")).toHaveLength(2);
+  });
+
+  /**
+   * Owner ruling #2 (2026-08-25, OWNER-RULINGS-2026-08-25.md §2): the T2
+   * terms text must appear on the "product page" surface — this candidate
+   * card is the only per-product client-facing surface this route has
+   * (there is no separate checkout page yet). Watched RED: with
+   * `CandidateCard` reverted to before this change, `candidate.tier` was
+   * never read at all and this block did not exist for any tier.
+   */
+  it("shows the T2 product-page consultant terms for a T2-tier candidate", () => {
+    render(
+      <OutcomeSheet
+        language="en"
+        outcome={outcomeWithCandidate({ ...CANDIDATE, tier: "T2" })}
+        facts={FACTS}
+      />,
+    );
+    expect(screen.getByText(T2_CONSULTANT_TERMS_TITLE.en)).toBeInTheDocument();
+    expect(screen.getByText(T2_CONSULTANT_TERMS.en)).toBeInTheDocument();
+  });
+
+  it("omits the T2 consultant terms for a T1-tier candidate", () => {
+    render(
+      <OutcomeSheet
+        language="en"
+        outcome={outcomeWithCandidate({ ...CANDIDATE, tier: "T1" })}
+        facts={FACTS}
+      />,
+    );
+    expect(screen.queryByText(T2_CONSULTANT_TERMS_TITLE.en)).toBeNull();
+    expect(screen.queryByText(T2_CONSULTANT_TERMS.en)).toBeNull();
+  });
+
+  it("omits the T2 consultant terms for a candidate with no mapped tier (the fixture default)", () => {
+    renderSheet("SUPPORTED_CANDIDATES"); // CANDIDATE fixture carries no `tier`
+    expect(screen.queryByText(T2_CONSULTANT_TERMS_TITLE.en)).toBeNull();
+    expect(screen.queryByText(T2_CONSULTANT_TERMS.en)).toBeNull();
   });
 
   it("NEEDS_INPUT exposes the mapped edit action", () => {

@@ -749,4 +749,62 @@ describe("OracleShell ever-present consultant control", () => {
       expect.objectContaining({ originScreen: "wizard" }),
     );
   });
+
+  /**
+   * Owner ruling #1 (2026-08-25, OWNER-RULINGS-2026-08-25.md §1): the two
+   * things the ruling says must stay DISTINCT, proven together in one test
+   * so a future edit can't quietly re-conflate them — the C3 topbar control
+   * (this describe block's whole subject) keeps rendering on the verdict
+   * screen exactly as it does for every other tier, while the next-steps
+   * line's THIRD item is the one thing that changes.
+   */
+  it("states the T2 consultant contact as included, never as a choice, and keeps C3 present", async () => {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    // E23 (Working Visa) is T2 per product-tier-map.ts.
+    response.decision.candidates[0].product_code = "E23";
+    response.display.candidates[0].product_code = "E23";
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
+      true,
+    );
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+
+    expect(
+      screen.getByText("A consultant contacts you — included in your purchase"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Choose whether to contact a Bali Zero advisor"),
+    ).toBeNull();
+    expect(
+      document.querySelector("[data-oracle-consultant-trigger]"),
+    ).not.toBeNull();
+  });
+
+  it("keeps the T1 optional consultant phrasing for a self-service product, with C3 still present", async () => {
+    global.fetch = engineFetch(); // default fixture product_code "C1" — T1
+    expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
+      true,
+    );
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+
+    expect(
+      screen.getByText("Choose whether to contact a Bali Zero advisor"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "A consultant contacts you — included in your purchase",
+      ),
+    ).toBeNull();
+    expect(
+      document.querySelector("[data-oracle-consultant-trigger]"),
+    ).not.toBeNull();
+  });
 });

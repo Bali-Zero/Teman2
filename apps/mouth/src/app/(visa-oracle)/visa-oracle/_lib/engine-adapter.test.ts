@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import {
+  NEXT_STEPS,
   REVIEW_REASON_COPY,
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
@@ -315,6 +316,122 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       code: "intent.stay_days",
       questionId: "stay_days",
     });
+  });
+});
+
+/**
+ * Owner ruling #1 (2026-08-25, OWNER-RULINGS-2026-08-25.md §1, verbatim):
+ * "sui T2 il consulente è incluso — lo schermo deve dirlo come valore ...
+ * non offrirlo come opzione; ... sui T2 il contatto è promessa, non
+ * scelta." Before this, `tier` did not appear anywhere in
+ * `engine-adapter.ts` (SWITCHBOARD-5-PRICES-AND-TERMS.md's own finding) and
+ * every SUPPORTED_CANDIDATES verdict — T1, T2 or T3 alike — rendered the
+ * single flat "Choose whether to contact a Bali Zero advisor" line. Watched
+ * RED against that flat `NEXT_STEPS` array (reverted locally) before
+ * `nextStepsForTier` existed: every test below failed because
+ * `outcome.nextSteps[2]` was always the T1 "consented-advice" step
+ * regardless of `product_code`.
+ */
+describe("owner ruling #1 — the next-steps line is tier-aware (2026-08-25)", () => {
+  it("keeps the T1 optional phrasing for a self-service product (default fixture product_code C1)", () => {
+    const outcome = buildEngineOutcome(makeVisaOracleResponse());
+    expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
+    if (outcome.state !== "SUPPORTED_CANDIDATES")
+      throw new Error("unexpected state");
+    expect(outcome.candidates[0].tier).toBe("T1");
+    expect(outcome.nextSteps[2]).toEqual({
+      id: "consented-advice",
+      title: {
+        en: "Choose whether to contact a Bali Zero advisor",
+        id: "Pilih apakah akan menghubungi konsultan Bali Zero",
+      },
+    });
+  });
+
+  it("states the T2 consultant contact as included and automatic, never as a choice", () => {
+    const response = makeVisaOracleResponse();
+    response.decision.candidates[0].product_code = "E23";
+    response.display.candidates[0].product_code = "E23";
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
+    if (outcome.state !== "SUPPORTED_CANDIDATES")
+      throw new Error("unexpected state");
+    expect(outcome.candidates[0].tier).toBe("T2");
+    expect(outcome.nextSteps[2].id).toBe("consultant-included");
+    expect(outcome.nextSteps[2].title.en).toBe(
+      "A consultant contacts you — included in your purchase",
+    );
+    expect(outcome.nextSteps[2].title.id).toBe(
+      "Konsultan akan menghubungi Anda — sudah termasuk dalam pembelian Anda",
+    );
+    // Never the T1/optional framing, on either axis.
+    expect(outcome.nextSteps[2].id).not.toBe("consented-advice");
+    expect(outcome.nextSteps[2].title.en.toLowerCase()).not.toContain(
+      "choose whether",
+    );
+    expect(outcome.nextSteps[2].body?.en).toContain("not an optional extra");
+  });
+
+  it("states the T3 consultant contact as the only route", () => {
+    const response = makeVisaOracleResponse();
+    // E28B (Investor Golden Visa — Company Establishment): 0 eligibility
+    // rules, no pricing_key — T3 by construction (TIER-MAP.md).
+    response.decision.candidates[0].product_code = "E28B";
+    response.display.candidates[0].product_code = "E28B";
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
+    if (outcome.state !== "SUPPORTED_CANDIDATES")
+      throw new Error("unexpected state");
+    expect(outcome.candidates[0].tier).toBe("T3");
+    expect(outcome.nextSteps[2].id).toBe("consultant-only-route");
+    expect(outcome.nextSteps[2].title.en).toBe(
+      "A consultant is the only way to proceed",
+    );
+    // T3 is also CONTACT_REQUIRED at the price level (2026-08-25 cross-lane
+    // fix, tested above) — this pins the two never contradicting each
+    // other: both say "talk to a consultant", neither claims self-service.
+    expect(outcome.candidates[0].price).toMatchObject({
+      status: "CONTACT_REQUIRED",
+    });
+  });
+
+  it("leaves the first two next-steps items identical across every tier", () => {
+    for (const code of ["C1", "E23", "E28B"]) {
+      const response = makeVisaOracleResponse();
+      response.decision.candidates[0].product_code = code;
+      response.display.candidates[0].product_code = code;
+      const outcome = buildEngineOutcome(response);
+      if (outcome.state !== "SUPPORTED_CANDIDATES")
+        throw new Error("unexpected state");
+      expect(outcome.nextSteps[0]).toEqual(NEXT_STEPS[0]);
+      expect(outcome.nextSteps[1]).toEqual(NEXT_STEPS[1]);
+    }
+  });
+
+  it("stays tier-agnostic (unchanged NEXT_STEPS) for every non-SUPPORTED_CANDIDATES state", () => {
+    for (const state of [
+      "NEEDS_INPUT",
+      "HUMAN_REVIEW_REQUIRED",
+      "NO_SUPPORTED_PATH",
+      "TEMPORARILY_UNAVAILABLE",
+    ] as const) {
+      const outcome = buildEngineOutcome(makeVisaOracleResponse(state));
+      expect(outcome.nextSteps).toEqual(NEXT_STEPS);
+    }
+  });
+
+  it("leaves an unmapped product code's tier undefined, never guessed", () => {
+    const response = makeVisaOracleResponse();
+    response.decision.candidates[0].product_code = "NOT-A-REAL-CODE";
+    response.display.candidates[0].product_code = "NOT-A-REAL-CODE";
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "SUPPORTED_CANDIDATES")
+      throw new Error("unexpected state");
+    expect(outcome.candidates[0].tier).toBeUndefined();
+    // Safe-failure direction: an unmapped code falls back to the T1/optional
+    // framing — it never claims "included" or "only route" for a product
+    // this map does not (yet) cover.
+    expect(outcome.nextSteps[2].id).toBe("consented-advice");
   });
 });
 

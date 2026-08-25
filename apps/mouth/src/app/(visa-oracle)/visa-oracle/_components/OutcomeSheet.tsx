@@ -35,6 +35,10 @@ import {
   type ServiceAvailabilityStatus,
 } from "../_lib/outcome-view-model";
 import { translate, type I18nKey } from "../_lib/i18n";
+import {
+  T2_CONSULTANT_TERMS,
+  T2_CONSULTANT_TERMS_TITLE,
+} from "../_lib/engine-adapter";
 import { DISPLAY_ORDER, formatFactDisplay } from "./ConfirmationCard";
 
 export interface OutcomeSheetProps {
@@ -341,6 +345,25 @@ function CandidateCard({
           <Price language={language} price={candidate.price} />
         </section>
       </div>
+
+      {/* Owner ruling #2 (OWNER-RULINGS-2026-08-25.md §2): this candidate's
+       * own "product page" surface — one of the two places the T2 terms
+       * text must appear (the other is the post-purchase email, which does
+       * not exist yet in this repo — see engine-adapter.ts's doc comment on
+       * `T2_CONSULTANT_TERMS`). Rendered per-candidate off THIS candidate's
+       * own `tier`, not the outcome's top-ranked one, so a mixed-tier
+       * candidate list never mislabels a card. */}
+      {candidate.tier === "T2" && (
+        <section
+          className="oracle-candidate-card__consultant-terms"
+          role="note"
+        >
+          <h3 className="oracle-outcome__section-title">
+            {localized(T2_CONSULTANT_TERMS_TITLE, language)}
+          </h3>
+          <p>{localized(T2_CONSULTANT_TERMS, language)}</p>
+        </section>
+      )}
 
       <section>
         <h3 className="oracle-outcome__section-title">

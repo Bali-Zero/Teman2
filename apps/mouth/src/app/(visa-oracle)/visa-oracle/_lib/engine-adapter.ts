@@ -2,6 +2,7 @@ import {
   requireEngineResponse,
   VisaOracleResponseError,
 } from "./engine-response";
+import { tierForProductCode, type ProductTier } from "./product-tier-map";
 import { QUESTIONS, type OracleFacts } from "./tree";
 import { trustedPrimarySourceUrl } from "./trusted-source-url";
 import type {
@@ -14,6 +15,7 @@ import type {
   OutcomePrice,
   OutcomeReason,
   OutcomeSource,
+  OutcomeStep,
   OutcomeTimeline,
   OutcomeViewModel,
   ServiceAvailabilityStatus,
@@ -36,6 +38,76 @@ const KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY = text(
   "Pasal 60 ayat (2) UU 6/2011 mensyaratkan usia perkawinan mencapai dua tahun dan Pernyataan Integrasi yang ditandatangani untuk KITAP perkawinan campur. Penilaian ini belum memverifikasi kedua prasyarat tersebut.",
 );
 
+const REVIEW_DECISION_STEP: OutcomeStep = {
+  id: "review-decision",
+  title: text(
+    "Review the verified decision and its assumptions",
+    "Tinjau keputusan terverifikasi dan asumsinya",
+  ),
+};
+
+const PREPARE_VERIFIED_ITEMS_STEP: OutcomeStep = {
+  id: "prepare-verified-items",
+  title: text(
+    "Prepare only documents marked as verified",
+    "Siapkan hanya dokumen yang ditandai terverifikasi",
+  ),
+};
+
+/**
+ * T1 (self-purchase, no consultant needed) — unchanged copy, the historical
+ * third next-step. The consultant contact stays genuinely optional here:
+ * C3 (the ever-present "talk to a consultant" control) is always available,
+ * this step only frames whether reaching for it is a choice or a promise.
+ */
+const CONSULTANT_STEP_T1: OutcomeStep = {
+  id: "consented-advice",
+  title: text(
+    "Choose whether to contact a Bali Zero advisor",
+    "Pilih apakah akan menghubungi konsultan Bali Zero",
+  ),
+};
+
+/**
+ * Owner ruling #1 (2026-08-25, OWNER-RULINGS-2026-08-25.md §1, verbatim):
+ * "sui T2 il consulente è incluso — lo schermo deve dirlo come valore ...
+ * non offrirlo come opzione". T2 states the contact as a promise already
+ * kept, never a decision left to the visitor — the C3 button underneath it
+ * still reads "talk to a consultant" (frozen contract C3, untouched), so a
+ * T2 visitor is never told contact is unavailable, only that it is not
+ * something they need to opt into.
+ */
+const CONSULTANT_STEP_T2: OutcomeStep = {
+  id: "consultant-included",
+  title: text(
+    "A consultant contacts you — included in your purchase",
+    "Konsultan akan menghubungi Anda — sudah termasuk dalam pembelian Anda",
+  ),
+  body: text(
+    "This is part of the service you've already paid for, not an optional extra — our assigned consultant reaches out to you after purchase.",
+    "Ini bagian dari layanan yang sudah Anda bayar, bukan tambahan opsional — konsultan yang ditugaskan akan menghubungi Anda setelah pembelian.",
+  ),
+};
+
+/**
+ * Owner ruling #1, T3 half: TIER-MAP.md's assisted-only set is never sold
+ * self-service (no `pricing_key` -> no quote -> C1/C2 forbid a price on
+ * screen), so for these products the consultant is not one path among
+ * several — it is the only one, and the copy says so plainly rather than
+ * padding it as a suggestion.
+ */
+const CONSULTANT_STEP_T3: OutcomeStep = {
+  id: "consultant-only-route",
+  title: text(
+    "A consultant is the only way to proceed",
+    "Konsultan adalah satu-satunya cara untuk melanjutkan",
+  ),
+  body: text(
+    "This path isn't sold self-service. Talk to a Bali Zero consultant and they'll take it from here.",
+    "Jalur ini tidak dijual secara mandiri. Bicaralah dengan konsultan Bali Zero dan mereka akan melanjutkan prosesnya.",
+  ),
+};
+
 /**
  * Exported so the gold-oracle SHADOW baseline (`preview-adapter.ts`'s
  * `buildGoldOraclePreviewOutcome`) reproduces the SAME public next-steps
@@ -43,30 +115,54 @@ const KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY = text(
  * `semanticProjection` compares `nextSteps` verbatim (id/title/body), so an
  * independently-worded preview copy would read as a permanent mismatch on
  * this axis alone, even when state and missing facts agree exactly.
+ *
+ * This constant's VALUE is deliberately untouched by owner ruling #1: every
+ * gold-oracle persona this baseline pins predicts `HUMAN_REVIEW_REQUIRED`
+ * (no candidate, hence no tier), and every non-`SUPPORTED_CANDIDATES` state
+ * below keeps this T1-shaped, tier-agnostic copy — tier only has a product
+ * to be about once a candidate exists. `nextStepsForTier` below is the ONLY
+ * thing that varies by tier, and it is used solely inside the
+ * `SUPPORTED_CANDIDATES` branch.
  */
 export const NEXT_STEPS: OutcomeNextSteps = [
-  {
-    id: "review-decision",
-    title: text(
-      "Review the verified decision and its assumptions",
-      "Tinjau keputusan terverifikasi dan asumsinya",
-    ),
-  },
-  {
-    id: "prepare-verified-items",
-    title: text(
-      "Prepare only documents marked as verified",
-      "Siapkan hanya dokumen yang ditandai terverifikasi",
-    ),
-  },
-  {
-    id: "consented-advice",
-    title: text(
-      "Choose whether to contact a Bali Zero advisor",
-      "Pilih apakah akan menghubungi konsultan Bali Zero",
-    ),
-  },
+  REVIEW_DECISION_STEP,
+  PREPARE_VERIFIED_ITEMS_STEP,
+  CONSULTANT_STEP_T1,
 ];
+
+function nextStepsForTier(tier: ProductTier | undefined): OutcomeNextSteps {
+  const consultantStep =
+    tier === "T2"
+      ? CONSULTANT_STEP_T2
+      : tier === "T3"
+        ? CONSULTANT_STEP_T3
+        : CONSULTANT_STEP_T1;
+  return [REVIEW_DECISION_STEP, PREPARE_VERIFIED_ITEMS_STEP, consultantStep];
+}
+
+/**
+ * Owner ruling #2 (2026-08-25, OWNER-RULINGS-2026-08-25.md §2, verbatim
+ * intent): "Un consulente ti contatta entro 24 ore lavorative, in inglese o
+ * nella tua lingua (IT/ID disponibili)" — the owner's own phrasing of the
+ * promise, rendered here in EN/ID rather than shipped as Italian (this
+ * route ships EN/ID only, matching every other string in this file).
+ *
+ * Must render on TWO client-facing surfaces per the ruling ("va scritta in
+ * due posti, non uno"): the product surface (`CandidateCard` in
+ * `OutcomeSheet.tsx`, for a T2 candidate) and the post-purchase email.
+ * `SWITCHBOARD-5-PRICES-AND-TERMS.md` §"Le domande per te" Q2 found ZERO
+ * existing T2-terms copy anywhere in `apps/mouth`, `apps/backend-rag`, or
+ * `docs/` before this — there is no prior string to reconcile with.
+ */
+export const T2_CONSULTANT_TERMS_TITLE: LocalizedText = text(
+  "Your consultant contact — included",
+  "Kontak konsultan Anda — sudah termasuk",
+);
+
+export const T2_CONSULTANT_TERMS: LocalizedText = text(
+  "A consultant will contact you within 24 business hours, in English or your language — Italian and Indonesian available.",
+  "Konsultan akan menghubungi Anda dalam 24 jam kerja, dalam bahasa Inggris atau bahasa Anda — tersedia bahasa Italia dan Indonesia.",
+);
 
 const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
 
@@ -738,6 +834,7 @@ function buildValidatedOutcome(
           rank: projected.rank,
           name: projected.name,
           ...(projected.tagline ? { tagline: projected.tagline } : {}),
+          tier: tierForProductCode(projected.product_code),
           legal: {
             status: "SUPPORTED" as const,
             reasons: decisionCandidate.reason_codes.map((code) =>
@@ -773,6 +870,15 @@ function buildValidatedOutcome(
       }
       return {
         ...base,
+        // Owner ruling #1: the next-steps line is keyed off the TOP-ranked
+        // candidate's tier — the same convention `OracleShell.tsx` already
+        // uses for `VerdictReveal`'s `legalStatus` and
+        // `consultantProductVersionId` ("Candidate order ... copied
+        // verbatim", this adapter's own doc comment above). Each
+        // candidate's OWN `tier` (set above) still drives its own card, so a
+        // lower-ranked candidate of a different tier is never mislabeled by
+        // this global line — see `T2_CONSULTANT_TERMS` in `OutcomeSheet.tsx`.
+        nextSteps: nextStepsForTier(candidates[0]?.tier),
         state: "SUPPORTED_CANDIDATES",
         pathsRemaining: candidates.length,
         candidates: nonEmpty(candidates),
