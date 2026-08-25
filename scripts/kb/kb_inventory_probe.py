@@ -35,19 +35,41 @@ This is the half that touches production. Dispatches on `data["kind"]`:
   Any other `kind` (or none) -> exit 3, BROKEN, nothing measured — same vocabulary
   as the missing-`.env` case below and as `kb/ops/probe_retrieval.py`.
 
+--json (additive, 2026-08-26): emits ONE JSON object on stdout instead of the
+human report, for a caller (`kb/ops/probe_history.py`) that needs to RECORD a
+verdict rather than have a human read one — the same contract, and the same
+reason, as `kb/ops/probe_retrieval.py`'s own `--json` (grading is identical
+either way; this only serializes it). Wired for `kind: topic` only today
+(`_run_topic`) — `kind: retired_collection` has no `documents:`/disposition
+JSON shape yet, and `main()` refuses with a `broken` JSON object rather than
+silently falling back to the human report a caller that asked for JSON did
+not request. `VERDICT_BY_EXIT` below mirrors `probe_retrieval.py`'s own dict
+by convention (same four strings), not by import — that file belongs to a
+different lane's PR at the moment this was written.
+
 Run it: PYTHONPATH unnecessary; it reads apps/backend-rag/.env for credentials.
     python3 scripts/kb/kb_inventory_probe.py kb/inventory/legal_unified_2026.yaml
     python3 scripts/kb/kb_inventory_probe.py kb/inventory/immigration.yaml
+    python3 scripts/kb/kb_inventory_probe.py kb/inventory/immigration.yaml --json
 """
 from __future__ import annotations
 
 import argparse
 import collections
 import hashlib
+import json
 import os
 import re
 import sys
 from pathlib import Path
+
+# Closed vocabulary for --json's "verdict" field. Matches kb/ops/probe_retrieval.py's
+# own VERDICT_BY_EXIT string-for-string (documented equivalence, not a shared import —
+# see the --json paragraph above). `_run_topic` only ever produces 0/1/3; 2
+# ("outstanding") is `_run_retired_collection`'s disposition concept, which --json
+# does not cover yet — kept here anyway so the full script's exit-code vocabulary is
+# named in one place rather than half of it living only in exit codes nobody strings.
+VERDICT_BY_EXIT = {0: "at_target", 1: "drift", 2: "outstanding", 3: "broken"}
 
 WS = re.compile(r"\s+")
 CTX = re.compile(r"^\[CONTEXT:[^\]]*\]\s*", re.S)
@@ -434,7 +456,9 @@ def _run_retired_collection(client, data: dict) -> int:
     return 0
 
 
-def _run_topic(client, data: dict) -> int:
+def _run_topic(
+    client, data: dict, inventory_path: Path | None = None, *, as_json: bool = False
+) -> int:
     """`kind: topic` — measure ONE collection against the instruments a lane scoped.
 
     No `documents`/`disposition` machinery here: a topic inventory has no target
@@ -445,34 +469,69 @@ def _run_topic(client, data: dict) -> int:
     (exit 1) when production has moved since `measured_at`, AT TARGET (exit 0)
     otherwise — the same two states `shape_drift` already reports for, reused via
     `topic_drift` rather than reimplemented.
+
+    `as_json=True` (module docstring's --json paragraph): suppresses every human
+    print and emits ONE `json.dumps(...)` object on stdout instead, built from the
+    exact same `topic_drift`/`by_doc` data the human report reads — grading does
+    not branch on `as_json` anywhere in this function, only presentation does.
+    `inventory_path` is optional and cosmetic (the `inventory_file` field a
+    caller correlating multiple runs wants) — `topic_drift`'s grading never
+    touches it, so a direct unit-test call omitting it grades identically.
     """
     collection = data["measured_against"]["collection"]
     physical = resolve_physical(collection)
     live = {c.name for c in client.get_collections().collections}
+    collection_live = physical in live
 
-    if physical not in live:
-        print("[live] %s: ABSENT from Qdrant" % collection)
+    if not collection_live:
+        if not as_json:
+            print("[live] %s: ABSENT from Qdrant" % collection)
         by_doc, shapes_by_doc = collections.Counter(), collections.defaultdict(collections.Counter)
     else:
         points, by_doc, _hashes_by_doc, _all_hashes, shapes, shapes_by_doc = census(client, physical)
         # Whole-collection totals, printed for context ONLY — `legal_unified` is
         # SHARED across every lane, so these numbers are never compared against
         # this topic's own `measured_against` (see `topic_drift`'s docstring).
-        print("[live] %-28s %6d points total  %3d docs total  shapes=%s"
-              % (collection, points, len(by_doc), dict(shapes)))
+        if not as_json:
+            print("[live] %-28s %6d points total  %3d docs total  shapes=%s"
+                  % (collection, points, len(by_doc), dict(shapes)))
 
     findings = topic_drift(data, by_doc, shapes_by_doc)
 
-    print()
-    header = "%-28s %10s %10s  %s" % ("INSTRUMENT", "declared", "live", "STATE")
-    print(header)
-    print("-" * len(header))
+    if not as_json:
+        print()
+        header = "%-28s %10s %10s  %s" % ("INSTRUMENT", "declared", "live", "STATE")
+        print(header)
+        print("-" * len(header))
+
+    instruments = []
     for inst in data.get("instruments") or []:
         iid = inst.get("id")
         declared = inst.get("points", 0)
         live_n = by_doc.get(iid, 0)
-        state = "AT TARGET" if live_n == declared else "DRIFT"
-        print("%-28s %10d %10d  %s" % (iid, declared, live_n, state))
+        at_target = live_n == declared
+        instruments.append(
+            {"id": iid, "declared": declared, "live": live_n, "at_target": at_target}
+        )
+        if not as_json:
+            print("%-28s %10d %10d  %s"
+                  % (iid, declared, live_n, "AT TARGET" if at_target else "DRIFT"))
+
+    exit_code = 1 if findings else 0
+
+    if as_json:
+        print(json.dumps({
+            "inventory_file": str(inventory_path) if inventory_path else None,
+            "collection": collection,
+            "physical_collection": physical,
+            "collection_live": collection_live,
+            "measured_at": data.get("measured_at"),
+            "verdict": VERDICT_BY_EXIT[exit_code],
+            "exit_code": exit_code,
+            "instruments": instruments,
+            "findings": findings,
+        }))
+        return exit_code
 
     print()
     if findings:
@@ -493,6 +552,15 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("inventory", type=Path)
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument(
+        "--json", action="store_true",
+        help="Emit one JSON object on stdout instead of the human report (additive; "
+             "grading is identical either way — see the module docstring's --json "
+             "paragraph). Only wired for kind: topic today; any other kind still "
+             "emits ONE JSON object — a 'broken' verdict explaining why — rather "
+             "than silently falling back to the human report a caller that asked "
+             "for JSON did not request.",
+    )
     args = parser.parse_args(argv)
 
     import yaml
@@ -509,7 +577,27 @@ def main(argv=None) -> int:
     )
 
     if kind == "topic":
-        return _run_topic(client, data)
+        return _run_topic(client, data, args.inventory, as_json=args.json)
+
+    if args.json:
+        # --json was requested but this kind has no JSON output yet
+        # (_run_retired_collection's documents:/disposition shape is out of THIS
+        # change's scope). Refuse with a JSON object, not human prose on stdout —
+        # a caller that asked for one JSON object and got two different output
+        # shapes depending on `kind` is the exact silent-divergence class this
+        # probe already refuses for a missing .env / an unrecognised kind.
+        print(json.dumps({
+            "inventory_file": str(args.inventory),
+            "kind": kind,
+            "verdict": VERDICT_BY_EXIT[3],
+            "exit_code": 3,
+            "reason": "json_only_implemented_for_topic",
+            "detail": "--json is only wired for kind: topic; kind=%r has no JSON "
+                      "output yet — rerun without --json for the human report."
+                      % kind,
+        }))
+        return 3
+
     if kind == "retired_collection":
         return _run_retired_collection(client, data)
 

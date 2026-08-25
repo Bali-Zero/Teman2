@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import collections
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -298,18 +299,25 @@ def test_innocence_an_instrument_declared_zero_and_absent_live_is_not_drift():
     assert findings == [], findings
 
 
-TOPIC_DRIFT_GUILT_COUNT = 5  # the five test_guilt_* cases above
+TOPIC_DRIFT_GUILT_COUNT = 5  # the five test_guilt_topic_drift_* cases above
 
 
 def test_the_guilt_matrix_is_not_empty():
     """Anti-vacuity: this file's guilt cases are plain functions, not a
     `pytest.mark.parametrize` table, so nothing collects them automatically —
-    assert the count by hand so deleting a case is loud."""
+    assert the count by hand so deleting a case is loud.
+
+    Scoped to `test_guilt_topic_drift_*` specifically (not the bare
+    `test_guilt_` prefix) because the --json section below adds its own,
+    separately-counted guilt case (`test_guilt_json_*`,
+    `test_the_json_guilt_matrix_is_not_empty`) — a shared bare prefix would
+    make this count silently absorb that unrelated section's cases (or vice
+    versa) the next time either grows."""
     import inspect
 
     guilt_fns = [
         name for name, obj in inspect.getmembers(sys.modules[__name__])
-        if name.startswith("test_guilt_") and inspect.isfunction(obj)
+        if name.startswith("test_guilt_topic_drift_") and inspect.isfunction(obj)
     ]
     assert len(guilt_fns) == TOPIC_DRIFT_GUILT_COUNT, guilt_fns
 
@@ -550,3 +558,214 @@ def test_main_runs_a_real_topic_yaml_end_to_end(monkeypatch, tmp_path, capsys):
     out = capsys.readouterr().out
     assert rc == 0, out
     assert "AT TARGET" in out
+
+
+# ── --json (2026-08-26): one JSON object, same verdict, nothing else on stdout ──
+#
+# Team lead's ask, verbatim reasoning: without --json nothing can make
+# kb/ops/probe_history.py (out of THIS PR's scope — a different lane owns it
+# right now) record a topic inventory's drift rather than just its file's
+# sha256. "Same structure as kb/ops/probe_retrieval.py --json" — proven below
+# by cross-checking the actual VERDICT_BY_EXIT vocabulary in that file, not by
+# import (this module does not depend on probe_retrieval.py at runtime; the
+# two dicts are kept string-identical by convention, and this test is what
+# would catch them drifting apart).
+
+
+def _load_probe_retrieval_for_vocabulary_check():
+    """Test-only import of kb/ops/probe_retrieval.py, same out-of-package
+    pattern kb/ops/probe_history.py itself uses at runtime (`_probe_retrieval_module`)
+    and `test_probe_retrieval_collection_override.py` uses in this same test suite.
+    This is a TEST dependency only — kb_inventory_probe.py itself never imports
+    this file; see the module docstring's --json paragraph for why."""
+    cached = sys.modules.get("kb_probe_retrieval_for_vocab_check")
+    if cached is not None:
+        return cached
+    path = ROOT / "kb" / "ops" / "probe_retrieval.py"
+    assert path.is_file(), f"{path} is missing"
+    spec = importlib.util.spec_from_file_location("kb_probe_retrieval_for_vocab_check", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["kb_probe_retrieval_for_vocab_check"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_verdict_by_exit_matches_probe_retrieval_pys_vocabulary_string_for_string():
+    """"Coherent with kb/ops/probe_retrieval.py" (team lead's requirement) means
+    the same four strings, not just a superficially similar shape. If this ever
+    fails because probe_retrieval.py's dict changed, kb_inventory_probe.py's
+    copy needs a matching edit — that is the point of keeping this asserted
+    rather than only documented in a comment."""
+    probe_retrieval = _load_probe_retrieval_for_vocabulary_check()
+    for exit_code, word in probe_retrieval.VERDICT_BY_EXIT.items():
+        assert PROBE.VERDICT_BY_EXIT[exit_code] == word, (
+            exit_code, PROBE.VERDICT_BY_EXIT[exit_code], word,
+        )
+
+
+def test_run_topic_json_at_target_emits_exactly_one_json_object_and_nothing_else(capsys):
+    client = FakeQdrantClient({
+        "acme_legal_topic": [_modern_id_only("UU_6_2011")] * 7 + [_legacy("Permen_22_2023")] * 3,
+    })
+    rc = PROBE._run_topic(client, _good_topic_inventory(), as_json=True)
+    out = capsys.readouterr().out
+    assert rc == 0
+    payload = json.loads(out)  # raises if anything besides the JSON object was printed
+    assert payload["verdict"] == "at_target"
+    assert payload["exit_code"] == 0
+    assert payload["collection"] == "acme_legal_topic"
+    assert payload["collection_live"] is True
+    assert payload["findings"] == []
+    assert {i["id"] for i in payload["instruments"]} == {"UU_6_2011", "Permen_22_2023"}
+    assert all(i["at_target"] for i in payload["instruments"])
+
+
+def test_run_topic_json_drift_case_reports_findings_and_per_instrument_detail(capsys):
+    client = FakeQdrantClient({
+        "acme_legal_topic": [_modern_id_only("UU_6_2011")] * 7,  # Permen_22_2023 is GONE
+    })
+    rc = PROBE._run_topic(client, _good_topic_inventory(), as_json=True)
+    out = capsys.readouterr().out
+    assert rc == 1
+    payload = json.loads(out)
+    assert payload["verdict"] == "drift"
+    assert payload["exit_code"] == 1
+    assert len(payload["findings"]) >= 1
+    assert any("Permen_22_2023" in f for f in payload["findings"])
+    by_id = {i["id"]: i for i in payload["instruments"]}
+    assert by_id["Permen_22_2023"]["live"] == 0
+    assert by_id["Permen_22_2023"]["at_target"] is False
+    assert by_id["UU_6_2011"]["at_target"] is True
+
+
+def test_run_topic_json_absent_collection_reports_collection_live_false(capsys):
+    client = FakeQdrantClient({"some_other_collection": []})
+    rc = PROBE._run_topic(client, _good_topic_inventory(), as_json=True)
+    payload = json.loads(capsys.readouterr().out)
+    assert rc == 1
+    assert payload["collection_live"] is False
+    assert payload["verdict"] == "drift"
+
+
+def test_run_topic_json_inventory_file_is_present_when_given_and_null_when_omitted(capsys):
+    client = FakeQdrantClient({
+        "acme_legal_topic": [_modern_id_only("UU_6_2011")] * 7 + [_legacy("Permen_22_2023")] * 3,
+    })
+    PROBE._run_topic(client, _good_topic_inventory(), Path("kb/inventory/immigration.yaml"), as_json=True)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["inventory_file"] == "kb/inventory/immigration.yaml"
+
+    PROBE._run_topic(client, _good_topic_inventory(), as_json=True)  # inventory_path omitted
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["inventory_file"] is None
+
+
+def test_guilt_json_mode_actually_suppresses_the_human_report(capsys):
+    """Mutation-tested: comment out any `if not as_json:` guard around a human
+    `print()` in `_run_topic` and this goes red — `json.loads` raises on the
+    extra text sharing stdout with the JSON object. Proves as_json is WIRED,
+    not merely accepted and ignored."""
+    client = FakeQdrantClient({
+        "acme_legal_topic": [_modern_id_only("UU_6_2011")] * 7 + [_legacy("Permen_22_2023")] * 3,
+    })
+    PROBE._run_topic(client, _good_topic_inventory(), as_json=True)
+    out = capsys.readouterr().out
+    json.loads(out)  # must not raise
+    assert "[live]" not in out
+    assert "INSTRUMENT" not in out
+    assert "AT TARGET" not in out  # the human closing line — JSON says "at_target"
+
+
+JSON_GUILT_COUNT = 1  # test_guilt_json_mode_actually_suppresses_the_human_report
+
+
+def test_the_json_guilt_matrix_is_not_empty():
+    import inspect
+
+    guilt_fns = [
+        name for name, obj in inspect.getmembers(sys.modules[__name__])
+        if name.startswith("test_guilt_json") and inspect.isfunction(obj)
+    ]
+    assert len(guilt_fns) == JSON_GUILT_COUNT, guilt_fns
+
+
+def test_main_json_flag_is_wired_into_the_run_topic_call():
+    import inspect
+
+    src = inspect.getsource(PROBE.main)
+    assert "as_json=args.json" in src
+
+
+def test_main_json_end_to_end_at_target(monkeypatch, tmp_path, capsys):
+    import qdrant_client
+    import yaml
+
+    monkeypatch.setattr(PROBE, "load_env", lambda root: None)
+    monkeypatch.setenv("QDRANT_URL", "http://fake")
+    monkeypatch.setenv("QDRANT_API_KEY", "fake")
+
+    data = _good_topic_inventory()
+    client = FakeQdrantClient({
+        "acme_legal_topic": [_modern_id_only("UU_6_2011")] * 7 + [_legacy("Permen_22_2023")] * 3,
+    })
+    monkeypatch.setattr(qdrant_client, "QdrantClient", lambda *a, **k: client)
+
+    path = tmp_path / "topic.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    rc = PROBE.main([str(path), "--json"])
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    payload = json.loads(out)
+    assert payload["verdict"] == "at_target"
+    assert payload["inventory_file"] == str(path)
+
+
+def test_main_json_refuses_retired_collection_kind_with_a_broken_json_object(
+    monkeypatch, tmp_path, capsys
+):
+    """`--json` combined with `kind: retired_collection` must still print ONE
+    valid JSON object (verdict=broken) — never the human report this flag was
+    explicitly asked NOT to produce, and never a crash."""
+    import qdrant_client
+    import yaml
+
+    monkeypatch.setattr(PROBE, "load_env", lambda root: None)
+    monkeypatch.setenv("QDRANT_URL", "http://fake")
+    monkeypatch.setenv("QDRANT_API_KEY", "fake")
+    monkeypatch.setattr(qdrant_client, "QdrantClient", lambda *a, **k: FakeQdrantClient({}))
+
+    path = tmp_path / "retired.yaml"
+    path.write_text(yaml.safe_dump(_good_retired_inventory()), encoding="utf-8")
+
+    rc = PROBE.main([str(path), "--json"])
+    out = capsys.readouterr().out
+    assert rc == 3, out
+    payload = json.loads(out)
+    assert payload["verdict"] == "broken"
+    assert payload["exit_code"] == 3
+    assert payload["kind"] == "retired_collection"
+    assert payload["reason"] == "json_only_implemented_for_topic"
+
+
+def test_main_json_refuses_unrecognised_kind_with_a_broken_json_object(
+    monkeypatch, tmp_path, capsys
+):
+    import qdrant_client
+    import yaml
+
+    monkeypatch.setattr(PROBE, "load_env", lambda root: None)
+    monkeypatch.setenv("QDRANT_URL", "http://fake")
+    monkeypatch.setenv("QDRANT_API_KEY", "fake")
+    monkeypatch.setattr(qdrant_client, "QdrantClient", lambda *a, **k: FakeQdrantClient({}))
+
+    path = tmp_path / "mystery.yaml"
+    path.write_text(yaml.safe_dump({"schema_version": 1, "kind": "nonsense"}), encoding="utf-8")
+
+    rc = PROBE.main([str(path), "--json"])
+    captured = capsys.readouterr()  # ONE snapshot — a second call would always read "" for both
+    assert rc == 3, captured.out
+    assert captured.err == ""  # the human BROKEN message must NOT also print alongside JSON
+    payload = json.loads(captured.out)
+    assert payload["verdict"] == "broken"
+    assert payload["kind"] == "nonsense"
