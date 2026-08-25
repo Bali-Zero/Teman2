@@ -12,6 +12,9 @@ sources:
   - team-lead's `scripts/ci/legal_status_read_lint.py` AST read/write-site census (2026-08-26, verbal report — 0 reads of `legal_status` outside diagnostics, scope apps/+scripts/+kb/)
   - apps/backend-rag/backend/services/search/{search_filters,search_service}.py, apps/backend-rag/backend/services/ingestion/ingestion_service.py (read-only, this session — traced the one live exclusion filter to `status_vigensi`, a different field, and confirmed it 0/84,283-populated on legal_unified)
   - production Qdrant `legal_unified_hybrid_hybrid` (84,283 points, single full scroll, 2026-08-26)
+  - team-lead's own read-only same-value measurement on J4 (2026-08-26, verbal report — `legal_status` absent from both documents' embedded text; identical `dicabut` value on winner and loser, 402/402 vs 340/340), independently reproduced this session (/tmp/j4investigate/measure1_same_field.py)
+  - team-lead's own corpus-wide `legal_status` ground-truth measurement (2026-08-26, verbal report — 9 documents with independently known status, 7 contradicted by their own marking, including two self-consistent proofs needing no external source: `UU_63_2024` titled "PERUBAHAN KETIGA ATAS UU NOMOR 6 TAHUN 2011" yet marked `berlaku` while `UU_6_2011` itself is marked `dicabut`; `Permen_11_2024` titled as amending `Permen_22_2023`) — primary source for the corpus-wide verdict below; this session's own aggregate scroll (/tmp/j4investigate/aggregate_and_perdoc.py, same 84,283-point totals) is corroboration only
+  - apps/backend-rag/backend/core/legal/constants.py (read-only, this session — `STATUS_PATTERNS` comment block confirms the write-side mechanism is RETIRED as of 2026-08-25, Lane P kb-p2-status-retire-0825, already merged to `feature/kb-current`)
 ---
 
 # Outstanding-journeys triage — 24 reds, classified and costed, zero writes
@@ -76,7 +79,7 @@ production write (Qdrant upsert/payload-patch) or not.
 | Topic | # | instrument_id | Classe | Prova (comando/risultato reale) | Cura proposta | Scrittura? |
 |---|---|---|---|---|---|---|
 | immigration | 3 | Permen_22_2023 | **B** | Full scroll: phrase found, attributed to `Permen_22_2023` (point `013faf15-…`). `kb/inventory/immigration.yaml` independently scanned all 402 points and confirms Golden Visa provisions present verbatim. Reworded from official term → colloquial "KITAS" and re-run twice; stably red both times, not a boundary flicker. | Retrieval ranking (penjelasan/competing-article weighting or a de-dup pass) — not an ingest gap. | No |
-| immigration | 4 | Permen_29_2021 (canary, target Permen_22_2023) | **D** | `kb/ops/probe_retrieval.py`: measured GREEN, rank 3 — the **revoked** Permen_29_2021 text outranks the current Permen_22_2023 for a live ITAS-duration question. **CORRECTED 2026-08-26, after the team lead's own read-only lint contradicted my first write-up — re-verified, they are right, I was wrong.** `LANE-A-1`'s framing ("this is exactly Decision 5's concern") led me to state `legal_status` as the *cause* of the ranking; that is a correlation, not a proven mechanism, and it does not survive an actual causal check. Verified myself, independently, in two ways: (1) full-repo grep + the team lead's AST lint (`legal_status_read_lint.py`, scope widened to `apps/`/`scripts/`/`kb/`) — the only reads of `legal_status` anywhere outside tests are in diagnostic/repair scripts (`kb/ops/probe_history.py`, `scripts/kb/{audit,probe_legal_status_marking,propose_legal_status_repair}.py`, `scripts/ci/legal_status_read_lint.py`) and the ingestion writer itself (`metadata_extractor.py`) — **zero** reads in `backend/services/search/` or `backend/services/rag/`. (2) The **one** live exclusion filter that IS wired into every `SearchService.search()` call regardless of `apply_filters` (`_prepare_search_context` builds `chroma_filter` with `exclude_repealed=True` by default — the docstring claiming "filters disabled by default" is itself wrong, but that is a separate, smaller bug) is `build_search_filter()` in `search_filters.py:12/28/55-86`, and it excludes `status_vigensi == "dicabut"` — a **different field name** than `legal_status`. A fresh full-collection scroll (84,283 points, this session) found `status_vigensi` on **0** points, top-level or nested, anywhere in `legal_unified` — it is written only by the unrelated general-book ingestion path (`services/ingestion/ingestion_service.py`, distinct from `legal_ingestion_service.py`), never by the legal pipeline. So the code's only live filter is permanently a no-op for this collection, for a reason that has nothing to do with `legal_status`'s wrong marking. **`legal_status` is inert. My root-cause claim was wrong.** The actual cause of Permen_29_2021 outranking Permen_22_2023 here is **not established** — a plausible, unverified hypothesis is plain lexical/semantic relevance (Permen_29_2021's indexed chunk states a duration figure directly; Permen_22_2023's competing chunk for this exact question is a definitional clause) — but this is a hypothesis, not a measurement, and no further investigation was done here. | **Retracted.** `scripts/kb/propose_legal_status_repair.py` would not change what this journey measures — confirmed, not merely doubted, since the field it patches is never read at query time. Do not run it to "fix" J4. It may still be worth doing as an independent DATA-QUALITY correction (1,484 points are simply mismarked, and a naming-mismatch dead filter is itself worth a ticket so nobody assumes `exclude_repealed` protects anything today), but that is decoupled from this canary. J4's actual cure needs its actual cause found first — not scoped in this triage. | **No** — not for this defect. (The metadata patch is a separate, smaller, still-valid data-quality fix with no bearing on retrieval.) |
+| immigration | 4 | Permen_29_2021 (canary, target Permen_22_2023) | **D** | `kb/ops/probe_retrieval.py`: measured GREEN, rank 3 — the **revoked** Permen_29_2021 text outranks the current Permen_22_2023 for a live ITAS-duration question. **CORRECTED 2026-08-26, after the team lead's own read-only lint contradicted my first write-up — re-verified, they are right, I was wrong.** `LANE-A-1`'s framing ("this is exactly Decision 5's concern") led me to state `legal_status` as the *cause* of the ranking; that is a correlation, not a proven mechanism, and it does not survive an actual causal check. Verified myself, independently, in two ways: (1) full-repo grep + the team lead's AST lint (`legal_status_read_lint.py`, scope widened to `apps/`/`scripts/`/`kb/`) — the only reads of `legal_status` anywhere outside tests are in diagnostic/repair scripts (`kb/ops/probe_history.py`, `scripts/kb/{audit,probe_legal_status_marking,propose_legal_status_repair}.py`, `scripts/ci/legal_status_read_lint.py`) and the ingestion writer itself (`metadata_extractor.py`) — **zero** reads in `backend/services/search/` or `backend/services/rag/`. (2) The **one** live exclusion filter that IS wired into every `SearchService.search()` call regardless of `apply_filters` (`_prepare_search_context` builds `chroma_filter` with `exclude_repealed=True` by default — the docstring claiming "filters disabled by default" is itself wrong, but that is a separate, smaller bug) is `build_search_filter()` in `search_filters.py:12/28/55-86`, and it excludes `status_vigensi == "dicabut"` — a **different field name** than `legal_status`. A fresh full-collection scroll (84,283 points, this session) found `status_vigensi` on **0** points, top-level or nested, anywhere in `legal_unified` — it is written only by the unrelated general-book ingestion path (`services/ingestion/ingestion_service.py`, distinct from `legal_ingestion_service.py`), never by the legal pipeline. So the code's only live filter is permanently a no-op for this collection, for a reason that has nothing to do with `legal_status`'s wrong marking. **`legal_status` is inert. My root-cause claim was wrong.** The actual cause of Permen_29_2021 outranking Permen_22_2023 here is **not established** — a plausible, unverified hypothesis is plain lexical/semantic relevance (Permen_29_2021's indexed chunk states a duration figure directly; Permen_22_2023's competing chunk for this exact question is a definitional clause) — but this is a hypothesis, not a measurement, and no further investigation was done here. **STRENGTHENED 2026-08-26** — the team lead ran their own read-only measurement rather than wait for a file:line rebuttal, and it closes the question harder than the argument above: on a real chunk from each document, `legal_status` is **absent from the embedded text itself** (so it cannot be shaping the vector either — closes option (b) of the team lead's original three-way question), and — the fact that actually decides this — **the field carries the identical value on both sides**: `Permen_22_2023` 402/402 `dicabut`, `Permen_29_2021` 340/340 `dicabut` (independently reproduced this session, `/tmp/j4investigate/measure1_same_field.py`, same full-scroll method). A field with the same value on the winner and the loser cannot be what orders one above the other, regardless of whether anything ever reads it — this is now a stronger claim than "inert," it's "constant, hence uninformative." Direct consequence for the repair: patching only `Permen_22_2023` to `berlaku` leaves `Permen_29_2021` at `dicabut` unchanged and is *provably* incapable of moving this ranking; the only repair shape that could even in principle touch it — also flipping `Permen_29_2021` — has never been proposed and is not authorized on this basis (`Permen_29_2021` genuinely is superseded; there is no ground-truth source to flip it to). | **Retracted.** `scripts/kb/propose_legal_status_repair.py` would not change what this journey measures — confirmed, not merely doubted, since the field it patches is never read at query time. Do not run it to "fix" J4. It may still be worth doing as an independent DATA-QUALITY correction (1,484 points are simply mismarked, and a naming-mismatch dead filter is itself worth a ticket so nobody assumes `exclude_repealed` protects anything today), but that is decoupled from this canary. J4's actual cure needs its actual cause found first — not scoped in this triage. | **No** — not for this defect. (The metadata patch is a separate, smaller, still-valid data-quality fix with no bearing on retrieval.) |
 | immigration | 5 | UU_6_2011 | **B** | Full scroll: phrase found, attributed to `UU_6_2011` (point `00aa451d-…`). Journey's own note: phrase is in a `section: penjelasan` chunk (commentary), not the operative Pasal — plausible cause is a penjelasan chunk out-competing denser operative text for this question's embedding. | Re-rank weighting / a penjelasan de-boost — not an ingest gap. | No |
 | immigration | 6 | UU_63_2024 | **B** | Full scroll: phrase found, attributed to `UU_63_2024` (2 hits, both correctly attributed). `LANE-A-4`: the instrument's 38 points are split across **two unreconciled ingestion generations** (10 `modern_id_only` + 28 `legacy_metadata_text`) for the same 10-article law, plausibly under-competing against `UU_6_2011`'s 413 points for a general re-entry question. History: flaky red/green at the rank-10 boundary under the *original* official-terminology wording; **stably red** across 3 runs after rewording to colloquial "KITAS" phrasing. | Reconcile the two ingestion generations into one (a re-ingest/consolidation), which is more than a pure ranking tweak — this is a write, unlike the other B rows in this table. | **Yes** (reconciliation write), unlike most B rows here |
 | immigration | 10 | Permen_22_2023 | **B** | Full scroll: phrase found under **both** `Permen_22_2023` and `Permen_11_2024` (3 hits total). `LANE-A-6` confirms the Pasal 185/186 "lanjut usia" (60+) clause is genuinely present by direct scroll — but a targeted search of all 402+345 points for `hak pakai`/`deposit`/`deposito` found **zero** hits either. Measured red 3 stable runs. | Two separate needs bundled in one journey: (1) ranking — the visa-eligibility half alone doesn't even clear top-10; (2) a genuine content gap on the property-tenure half (`hak pakai`), which is Lane D's domain per `LANE-A-6`, not a ranking fix. | No for (1); the (2) half needs Lane D content that may not exist anywhere yet — not scoped here |
@@ -122,6 +125,52 @@ The venv mismatch remains a real, open fact (google-genai `1.75.0` installed vs 
 qdrant-client `1.13.3` vs server-reported `1.16.3` vs lock-pinned `1.19.0`) and every run against
 the shared venv is still degraded — but it no longer casts doubt on any verdict in this table.
 
+## The corpus-wide `legal_status` question — answered by the team lead, ownership moved to lane-A2
+
+While this session was mid-investigation on immigration-J4, the team lead independently measured
+the aggregate `legal_status` distribution across all 84,283 points of `legal_unified_hybrid_hybrid`
+(`dicabut` 50.3% / 42,420 pts, `berlaku` 31.0% / 26,107, `None`/absent the remaining 18.7%) and
+asked whether this is a real corpus fact or a systemic mismarking, with an explicit instruction not
+to open any write PR until it had a measured answer. **This session reproduced the same aggregate
+independently** (`/tmp/j4investigate/aggregate_and_perdoc.py` — identical totals; also found 202
+distinct `document_id`s carry any `dicabut` point, 190 of those wholly so — a document-level signal,
+not per-chunk noise) — but the team lead answered the actual question themselves, with a stronger,
+self-contained proof that needs no external source: **on 9 documents with independently known
+status, 7 are contradicted by their own `legal_status` marking** — including `UU_6_2011`
+(Immigration Law), `UU_40_2007` (Company Law), `UU_6_2023` (Cipta Kerja), and `UU_13_2003`
+(Ketenagakerjaan), all four marked `dicabut` on 100% of their own chunks. And the corpus
+contradicts itself without leaving the collection: it holds `UU_63_2024`, marked `berlaku`, titled
+*"PERUBAHAN KETIGA ATAS UU NOMOR 6 TAHUN 2011 TENTANG KEIMIGRASIAN"* (third amendment to UU
+6/2011) — an in-force amendment to a supposedly-revoked law does not hold together. The same shape
+closes immigration-J4's own pair: `Permen_11_2024` is titled as amending `Permen_22_2023` directly.
+
+**Verdict: confirmed systemic mismarking, not a real corpus fact** — measured by the team lead,
+reproduced in aggregate by this session, not merely plausible. This corroborates
+`kb/inventory/immigration.yaml`'s pre-existing `LANE-A-1` finding (dated 2026-08-25, already in
+`feature/kb-current` before this triage started), which named the same root cause: `STATUS_PATTERNS`
+in `apps/backend-rag/backend/core/legal/constants.py`, a bare regex with zero disambiguation of
+what or whom a `dicabut`/`berlaku` match refers to — read this session, that mechanism is already
+**RETIRED** (2026-08-25, "Lane P, kb-p2-status-retire-0825", merged into `feature/kb-current`
+before this triage's tip). Nothing writes fresh `legal_status` values any more;
+`scripts/ci/legal_status_read_lint.py` gates reads of the stale ones already on disk.
+
+**Ownership and scope, per the team lead's explicit instruction**: the `legal_status` corpus-wide
+remediation is now **lane-A2's** — they have the full census and the artefact spec. **This triage
+does not open, and will not open, any write PR on this field.** Nothing here is proposing a repair;
+the direction the original (retracted) J4 hypothesis pointed in was right (`Permen_22_2023` should
+not read `dicabut`) even though the specific cause and scale attributed to it were wrong — lane-A2
+owns getting that corrected, gated by its own invariant probe (red-before/green-after), not by
+anything in this document.
+
+**Answer to "which other red journeys shared J4's retracted cause": none.** All 24 rows were
+searched for `legal_status`/`LANE-A-1` mentions — three matches total. Immigration-J4 (above, the
+only causal use — retracted). Company-J5 cites `LANE-A-1` only for `UU_6_2023`'s point-count scale
+(a ranking-competitor-size fact, not a status value). Tax-J6/J10 cite `LANE-A-1` only for
+`Permen_1_2026`'s point-count/contamination scale — same, no status causation. Immigration is also
+the only topic carrying any `must_not_retrieve` canary (`immigration.yaml` lines 95/145/228 — J2
+and J8 are green; J4 is the only outstanding one). No other row needs the winner-vs-loser
+re-measurement the team lead specified.
+
 ## Aggregate
 
 | Classe | Count | Requires production write |
@@ -143,13 +192,15 @@ worth fixing before anyone spends effort "curing the corpus" against a miswritte
    change, identical outstanding set. Not a gate on any of the work below; drop it from the plan.
    The venv mispin itself is still worth fixing as a standing hygiene item (every un-overlaid run
    is degraded again), but it no longer blocks or de-risks anything in this table.
-2. ~~immigration-J4's `legal_status` repair~~ — **RETRACTED, causally disproven 2026-08-26**
-   (see the J4 row above): the field it patches is never read at retrieval time (confirmed by
-   AST lint + a full-collection scroll finding its actual filter target, `status_vigensi`, on
-   0/84,283 points). Running it would not change J4's measured state. It may still be worth doing
-   as an independent, decoupled data-quality fix (1,484 mismarked points, plus a naming-mismatch
-   dead filter worth its own ticket) — but not as a cure for this journey, and not bundled with
-   it. J4's real cause is unestablished and needs separate investigation before any write.
+2. ~~immigration-J4's `legal_status` repair~~ — **RETRACTED, causally disproven twice over,
+   2026-08-26** (see the J4 row above): first because the field is never read at retrieval time
+   (AST lint + `status_vigensi` being the actual, unpopulated filter target), second and more
+   decisively because the team lead measured `legal_status` as *identical* on both the winner and
+   the loser (402/402 vs 340/340 `dicabut`) — a constant cannot explain a ranking. Do not run
+   `propose_legal_status_repair.py` for this journey; it cannot move J4's outcome under any
+   reading. The field's corpus-wide mismarking (see the new section above) is real — confirmed by
+   the team lead, not this triage — but its remediation now belongs to **lane-A2**, not to any unit
+   of work this triage proposes. This triage opens no write PR on that field.
 3. **tax-J5 + tax-J7 acquisition** — both DJP-issued (Kepdirjen / Perdirjen), both confirmed
    absent by convergent methods, both candidates for the *same* "recover from `legal_unified_2026`
    or re-acquire from pajak.go.id" workflow the mandate's §1 already describes for other
