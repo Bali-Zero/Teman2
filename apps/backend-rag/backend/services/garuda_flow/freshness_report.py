@@ -61,12 +61,12 @@ def collect_real_reports() -> list[freshness.FreshnessReport]:
 def main() -> int:
     reports = collect_real_reports()
     today = garuda_today()
-    print(f"GARUDA VOA truth-freshness — as of {today.isoformat()} (Asia/Makassar)\n")
-    print(freshness.render_report(reports))
+    print(f"GARUDA VOA truth-freshness — as of {today.isoformat()} (Asia/Makassar)\n")  # noqa: T201
+    print(freshness.render_report(reports))  # noqa: T201
     stale = [r for r in reports if r.stale]
     if stale:
         stale_sources = ", ".join(r.source for r in stale)
-        print(
+        print(  # noqa: T201
             f"\n{len(stale)} of {len(reports)} truth source(s) STALE: {stale_sources}."
         )
         # The unscoped `price_catalogue` line is the catalogue-wide stamp — it
@@ -78,12 +78,12 @@ def main() -> int:
         if any(r.source == "price_catalogue" and r.stale for r in reports) and not any(
             r.source.startswith("price_catalogue.row[") and r.stale for r in reports
         ):
-            print(
+            print(  # noqa: T201
                 "  (the catalogue-wide stamp is stale but both sellable rows carry "
                 "their own fresh attestation — this is expected, not urgent)"
             )
         return 1
-    print(f"\nAll {len(reports)} truth sources FRESH.")
+    print(f"\nAll {len(reports)} truth sources FRESH.")  # noqa: T201
     return 0
 
 
