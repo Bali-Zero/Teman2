@@ -1289,6 +1289,161 @@ class TestIdentityCollisionGuard:
         service.indexer.index_legal_document.assert_not_awaited()
 
 # --------------------------------------------------------------------------- #
+# identity_source payload signal (WIZ-1/WIZ-2, kb-current-live 2026-08-26)
+# --------------------------------------------------------------------------- #
+
+
+class TestIdentitySourcePayloadSignal:
+    """`identity_source` on the stored payload -- the observable counterpart
+    to `build_content_bound_legal_doc_id`'s hash-fallback suffix.
+
+    Measured by lane-R (research/operations/2026-08-26-wiz1-regulatory-ingest-route.md):
+    roughly two-thirds of real regulatory-watcher deltas land on an id whose
+    (type_abbrev, number, year) triple was incomplete -- safe from collision,
+    but unreachable by document_id or citation lookup, findable only by
+    vector similarity. That fact was computed and thrown away. These tests
+    assert it now reaches the stored payload, so a census can filter on it
+    instead of it being an unlabeled hash suffix nobody queries for.
+    """
+
+    @staticmethod
+    def _clean_metadata() -> dict:
+        return {
+            "type": "Undang-Undang",
+            "type_abbrev": "UU",
+            "number": "6",
+            "year": "2023",
+            "topic": "Immigration",
+            "status": "active",
+            "full_title": "UU 6/2023 tentang Imigrasi",
+        }
+
+    @staticmethod
+    def _incomplete_metadata() -> dict:
+        """Shaped like the real watcher-delta samples: type found, number and
+        year not -- e.g. `SE-9/PJ/2026` in the lane-R report."""
+        return {
+            "type": "Surat Edaran",
+            "type_abbrev": "SE",
+            "number": "UNKNOWN",
+            "year": "UNKNOWN",
+            "topic": "UNKNOWN",
+            "status": None,
+            "full_title": "SE UNKNOWN",
+        }
+
+    def _prime(self, service: MagicMock, metadata: dict) -> None:
+        service.cleaner.clean.return_value = "cleaned legal text"
+        service.metadata_extractor.extract.return_value = metadata
+        service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
+        service.classifier.get_min_access_level.return_value = "member"
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 2,
+                "chunks_upserted": 2,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 2,
+            }
+        )
+        service.vector_db.scroll_strict = AsyncMock(return_value=[])
+        service.vector_db.set_payload_by_filter = AsyncMock()
+        service.vector_db.delete_by_filter = AsyncMock()
+        service.vector_db.ensure_keyword_payload_index = AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_a_clean_extraction_is_recorded_as_extracted(
+        self, service: MagicMock
+    ) -> None:
+        self._prime(service, self._clean_metadata())
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/UU_6_2023.pdf",
+                title="UU 6/2023",
+                category="01_immigrazione",
+            )
+
+        assert result["success"] is True
+        metadata = service.indexer.index_legal_document.await_args.kwargs["metadata"]
+        assert metadata["identity_source"] == "extracted"
+
+    @pytest.mark.asyncio
+    async def test_an_incomplete_extraction_is_recorded_as_hash_fallback(
+        self, service: MagicMock
+    ) -> None:
+        """The case lane-R measured on ~2/3 of real watcher deltas: the
+        derived id is collision-safe but not citable, and that must be
+        VISIBLE on the payload, not just present as an opaque hash suffix."""
+        self._prime(service, self._incomplete_metadata())
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/SE-9-PJ-2026.pdf",
+                title="SE-9/PJ/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is True
+        metadata = service.indexer.index_legal_document.await_args.kwargs["metadata"]
+        assert metadata["identity_source"] == "hash_fallback"
+
+    @pytest.mark.asyncio
+    async def test_a_declared_identity_is_recorded_as_declared_even_if_extraction_failed(
+        self, service: MagicMock
+    ) -> None:
+        """A curated corpus that DECLARES a document_id is citable by
+        construction. The signal must reflect what actually decided the
+        storage id (the declaration), not merely re-run the extractor's
+        verdict on text the declaration already overrode."""
+        self._prime(service, self._incomplete_metadata())
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/SE-9-PJ-2026.pdf",
+                title="SE-9/PJ/2026",
+                category="04_fiscale",
+                document_id="SE_9_PJ_2026",
+            )
+
+        assert result["success"] is True
+        metadata = service.indexer.index_legal_document.await_args.kwargs["metadata"]
+        assert metadata["identity_source"] == "declared"
+
+    @pytest.mark.asyncio
+    async def test_identity_source_payload_index_is_ensured(
+        self, service: MagicMock
+    ) -> None:
+        """A census filtering on `identity_source` must be answerable, not
+        merely well-formed: on this Qdrant deployment an unindexed filter key
+        errors rather than returning zero results (see the identical
+        rationale already proven for `document_id` at
+        test_every_key_the_identity_filter_names_has_an_index)."""
+        self._prime(service, self._incomplete_metadata())
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            await service.ingest_legal_document(
+                file_path="/tmp/SE-9-PJ-2026.pdf",
+                title="SE-9/PJ/2026",
+                category="04_fiscale",
+            )
+
+        ensured = {
+            (c.args[0] if c.args else c.kwargs["field_name"])
+            for c in service.vector_db.ensure_keyword_payload_index.call_args_list
+        }
+        assert "identity_source" in ensured
+
+
+# --------------------------------------------------------------------------- #
 # ingest_legal_document -- metadata fallback
 # --------------------------------------------------------------------------- #
 
@@ -1314,6 +1469,216 @@ class TestMetadataFallback:
         assert build_content_bound_legal_doc_id(type_unknown, "c" * 64) == (
             "DOC_43_2011_cccccccccccccccc"
         )
+
+    # ----------------------------------------------------------------- #
+    # identity_triple_is_incomplete -- guilt/innocence (cicatrix family #3:
+    # a guard proven only on guilty inputs over-matches and starts flagging
+    # sound identities as uncitable, which here would make a healthy ingest
+    # look broken to a census reading identity_source).
+    # ----------------------------------------------------------------- #
+
+    def test_guilt_missing_number_is_incomplete(self) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            identity_triple_is_incomplete,
+        )
+
+        assert identity_triple_is_incomplete(
+            {"type_abbrev": "SE", "number": "UNKNOWN", "year": "UNKNOWN"}
+        ) is True
+
+    def test_guilt_missing_type_is_incomplete(self) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            identity_triple_is_incomplete,
+        )
+
+        assert identity_triple_is_incomplete(
+            {"type_abbrev": "UNKNOWN", "number": "29", "year": "2026"}
+        ) is True
+
+    def test_guilt_missing_year_is_incomplete(self) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            identity_triple_is_incomplete,
+        )
+
+        assert identity_triple_is_incomplete(
+            {"type_abbrev": "Kepmen", "number": "29", "year": "UNKNOWN"}
+        ) is True
+
+    def test_guilt_category_fallback_doc_placeholder_is_incomplete(self) -> None:
+        """STAGE 3's category-fallback (legal_ingestion_service.py, when both
+        pattern and AI extraction fail) writes the literal `type_abbrev="DOC"`
+        -- a placeholder distinct from "UNKNOWN" that the guard must catch
+        too, or the most-broken extraction outcome would be the one that
+        silently reads as citable."""
+        from backend.services.ingestion.legal_ingestion_service import (
+            identity_triple_is_incomplete,
+        )
+
+        assert identity_triple_is_incomplete(
+            {"type_abbrev": "DOC", "number": "43", "year": "2011"}
+        ) is True
+
+    def test_innocence_a_complete_triple_is_not_incomplete(self) -> None:
+        """The guard's real cost lives on this side: a false positive here
+        pushes a perfectly citable law into the hash-fallback bucket for no
+        reason, which would make a healthy ingest look broken to a census."""
+        from backend.services.ingestion.legal_ingestion_service import (
+            identity_triple_is_incomplete,
+        )
+
+        assert identity_triple_is_incomplete(
+            {"type_abbrev": "UU", "number": "6", "year": "2023"}
+        ) is False
+
+    def test_innocence_alphanumeric_ministerial_number_is_not_incomplete(self) -> None:
+        """Ministerial decrees are numbered alphanumerically
+        (metadata_extractor.py's own docstring: "M.IP-19.GR.01.01" must be
+        kept verbatim) -- a real, non-numeric number must not be misread as
+        a missing one."""
+        from backend.services.ingestion.legal_ingestion_service import (
+            identity_triple_is_incomplete,
+        )
+
+        assert identity_triple_is_incomplete(
+            {"type_abbrev": "Kepmen", "number": "M.IP-19.GR.01.01", "year": "2026"}
+        ) is False
+
+    # ----------------------------------------------------------------- #
+    # classify_identity_source
+    # ----------------------------------------------------------------- #
+
+    def test_declared_id_wins_even_over_an_incomplete_triple(self) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            classify_identity_source,
+        )
+
+        metadata = {"type_abbrev": "UNKNOWN", "number": "UNKNOWN", "year": "UNKNOWN"}
+        assert (
+            classify_identity_source(metadata, declared_storage_id="PP_1_2026")
+            == "declared"
+        )
+
+    def test_empty_string_declared_id_is_not_treated_as_declared(self) -> None:
+        """`current_doc_id = declared_storage_id or build_content_bound_legal_doc_id(...)`
+        in the caller treats an empty string as falsy -- this classifier must
+        agree, or the two would disagree about which branch actually produced
+        the id written to Qdrant."""
+        from backend.services.ingestion.legal_ingestion_service import (
+            classify_identity_source,
+        )
+
+        metadata = {"type_abbrev": "UU", "number": "6", "year": "2023"}
+        assert classify_identity_source(metadata, declared_storage_id="") == "extracted"
+
+    def test_clean_triple_without_declaration_is_extracted(self) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            classify_identity_source,
+        )
+
+        metadata = {"type_abbrev": "UU", "number": "6", "year": "2023"}
+        assert (
+            classify_identity_source(metadata, declared_storage_id=None) == "extracted"
+        )
+
+    def test_incomplete_triple_without_declaration_is_hash_fallback(self) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            classify_identity_source,
+        )
+
+        metadata = {"type_abbrev": "SE", "number": "UNKNOWN", "year": "UNKNOWN"}
+        assert (
+            classify_identity_source(metadata, declared_storage_id=None)
+            == "hash_fallback"
+        )
+
+    # ----------------------------------------------------------------- #
+    # The 12-sample bench, reproduced from real production data.
+    #
+    # Each (citation, type_abbrev, number, year) row below is NOT copied
+    # from research/operations/2026-08-26-wiz1-regulatory-ingest-route.md's
+    # table -- this session independently reconstructed the document text
+    # ("title_id + citation + summary + verbatim_excerpt", the exact formula
+    # that report states) from the REAL, on-disk
+    # research/regulatory/<date>-delta.json files that report sampled, ran
+    # the LIVE LegalMetadataExtractor against each one, and got these 12
+    # triples back. All 12/12 reproduced exactly, including the KMK->Kepmen
+    # abbreviation mismatch and the two Pasal-56/57 citations correctly
+    # collapsing onto one PP_20_2026 id (source_file column below is the
+    # exact delta file each row was verified against).
+    #
+    # Correction to the source report's own prose while reproducing it: its
+    # narrative says "the other 8 rows fall into the hash-suffixed safety
+    # net", but its own 12-row table -- and this independent reproduction --
+    # sums to 5 clean + 7 fallback = 12, not 5 + 8. A narrative miscount in
+    # the source document, not a defect in this guard; flagged rather than
+    # silently propagated.
+    # ----------------------------------------------------------------- #
+
+    REAL_WATCHER_SAMPLES = [
+        # (citation, type_abbrev, number, year, expected identity_source, source_file)
+        ("SE-9/PJ/2026", "SE", "UNKNOWN", "UNKNOWN", "hash_fallback",
+         "research/regulatory/2026-07-21-delta.json"),
+        ("KEP-71/PJ/2026", "UNKNOWN", "UNKNOWN", "UNKNOWN", "hash_fallback",
+         "research/regulatory/2026-05-28-delta.json"),
+        ("UU 2/2026", "UU", "2", "2026", "extracted",
+         "research/regulatory/2026-05-28-delta.json"),
+        ("KBLI 2025 (implementasi AHU Online dan OSS...)", "UNKNOWN", "UNKNOWN",
+         "UNKNOWN", "hash_fallback", "research/regulatory/2026-06-14-delta.json"),
+        ("PP 20/2026, ketentuan peralihan (...SPT 2025...)", "UNKNOWN", "UNKNOWN",
+         "2025", "hash_fallback", "research/regulatory/2026-06-12-delta.json"),
+        ("PP 20/2026 (DJP klarifikasi...)", "UNKNOWN", "UNKNOWN", "UNKNOWN",
+         "hash_fallback", "research/regulatory/2026-06-11-delta.json"),
+        ("PP 20/2026; PP 55/2022; PP 23/2018", "UNKNOWN", "UNKNOWN", "UNKNOWN",
+         "hash_fallback", "research/regulatory/2026-05-31-delta.json"),
+        ("PP 20/2026, Pasal 57 ayat (2) huruf e", "PP", "20", "2026",
+         "extracted", "research/regulatory/2026-05-31-delta.json"),
+        ("KMK 29/MK/EF.2/2026", "Kepmen", "29", "UNKNOWN", "hash_fallback",
+         "research/regulatory/2026-07-06-delta.json"),
+        ("PP 20/2026, Pasal 56 ayat (3) huruf a", "PP", "20", "2026",
+         "extracted", "research/regulatory/2026-05-31-delta.json"),
+        ("PP 30/2026", "PP", "30", "2026", "extracted",
+         "research/regulatory/2026-07-19-delta.json"),
+        ("UU 4/2026", "UU", "4", "2026", "extracted",
+         "research/regulatory/2026-06-28-delta.json"),
+    ]
+
+    @pytest.mark.parametrize(
+        "citation,type_abbrev,number,year,expected_source,source_file",
+        REAL_WATCHER_SAMPLES,
+        ids=[s[0][:40] for s in REAL_WATCHER_SAMPLES],
+    )
+    def test_real_watcher_sample_classifies_correctly(
+        self, citation, type_abbrev, number, year, expected_source, source_file
+    ) -> None:
+        from backend.services.ingestion.legal_ingestion_service import (
+            classify_identity_source,
+        )
+
+        metadata = {"type_abbrev": type_abbrev, "number": number, "year": year}
+        got = classify_identity_source(metadata, declared_storage_id=None)
+        assert got == expected_source, (
+            f"{citation!r} (verified against {source_file}) expected "
+            f"{expected_source!r}, got {got!r}"
+        )
+
+    def test_real_watcher_sample_bucket_counts_match_reproduction(self) -> None:
+        """Guards the TALLY, not just each row: a test that only checks rows
+        individually could still drift silently if a future edit moved a
+        borderline case to a different bucket without anyone re-summing.
+        7 hash_fallback + 5 extracted + 0 declared = 12."""
+        from backend.services.ingestion.legal_ingestion_service import (
+            classify_identity_source,
+        )
+
+        buckets = [
+            classify_identity_source(
+                {"type_abbrev": t, "number": n, "year": y}, declared_storage_id=None
+            )
+            for _citation, t, n, y, _expected, _source_file in self.REAL_WATCHER_SAMPLES
+        ]
+        assert buckets.count("hash_fallback") == 7
+        assert buckets.count("extracted") == 5
+        assert buckets.count("declared") == 0
 
     @pytest.mark.asyncio
     async def test_metadata_unknown_with_category(self, service: MagicMock) -> None:
