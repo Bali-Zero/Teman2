@@ -179,11 +179,19 @@ async def test_wamid_already_claimed_by_meta_inbox_skips_legacy_generation(
         whatsapp_chat.whatsapp_service, "mark_message_read", AsyncMock(return_value=None)
     )
 
+    # The claim gate runs AFTER the allowlist check (self-review finding,
+    # cured in this PR — claiming before the allowlist let a
+    # will-be-ignored number still poison the wamid for a legitimate
+    # later meta-inbox delivery), so is_allowed must return True to reach
+    # it; the guard is on the NEXT stage (triage), which must never run.
+    monkeypatch.setattr(whatsapp_chat.whatsapp_triage_service, "is_allowed", lambda *a, **k: True)
     monkeypatch.setattr(
         whatsapp_chat.whatsapp_triage_service,
-        "is_allowed",
-        lambda *a, **k: (_ for _ in ()).throw(
-            AssertionError("legacy triage must not run — the claim should have returned early")
+        "should_escalate",
+        AsyncMock(
+            side_effect=AssertionError(
+                "legacy triage must not run — the claim should have returned early"
+            )
         ),
     )
 
@@ -221,7 +229,18 @@ async def test_wamid_claimed_by_legacy_proceeds_to_legacy_flow(
     monkeypatch.setattr(
         whatsapp_chat.whatsapp_triage_service,
         "is_allowed",
-        lambda phone, *a, **k: is_allowed_calls.append(phone) or False,
+        # Must return True: the claim gate runs AFTER the allowlist check, so
+        # this test needs to actually reach it, not stop here.
+        lambda phone, *a, **k: is_allowed_calls.append(phone) or True,
+    )
+    # Stop the flow right after the claim gate — should_escalate is real
+    # triage logic this test has no business exercising. The outer
+    # try/except in process_whatsapp_message swallows this and returns
+    # None, which is exactly the assertion below.
+    monkeypatch.setattr(
+        whatsapp_chat.whatsapp_triage_service,
+        "should_escalate",
+        AsyncMock(side_effect=RuntimeError("stop here — claim gate already proven passed")),
     )
 
     result = await whatsapp_chat.process_whatsapp_message(
@@ -232,8 +251,8 @@ async def test_wamid_claimed_by_legacy_proceeds_to_legacy_flow(
         request=request,
     )
 
-    # The claim let it through to the allowlist stage — proof it did not
-    # early-return at the claim gate.
+    # Reached the allowlist stage (which runs BEFORE the claim) and then
+    # won the claim itself — proof neither gate early-returned.
     assert is_allowed_calls == ["628111"]
     assert conn.fetchval.await_args[0][1] == "wamid.LEGACY-ONLY"
     assert result is None
@@ -254,7 +273,21 @@ async def test_dedup_db_error_is_non_blocking(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(
         whatsapp_chat.whatsapp_triage_service,
         "is_allowed",
-        lambda phone, *a, **k: is_allowed_calls.append(phone) or False,
+        # Must return True: the claim gate runs AFTER the allowlist check
+        # (self-review finding, cured in this PR), so this test needs to
+        # actually reach the claim's DB call — not stop at the allowlist,
+        # which would make this "DB error is non-blocking" test pass
+        # vacuously without ever touching pool.acquire.
+        lambda phone, *a, **k: is_allowed_calls.append(phone) or True,
+    )
+    # Stop the flow right after the (failed) claim attempt — should_escalate
+    # is real triage logic this test has no business exercising. The outer
+    # try/except in process_whatsapp_message swallows this and returns None,
+    # which is exactly the assertion below.
+    monkeypatch.setattr(
+        whatsapp_chat.whatsapp_triage_service,
+        "should_escalate",
+        AsyncMock(side_effect=RuntimeError("stop here — claim gate already proven passed")),
     )
 
     # Must not raise despite the claim's DB call failing.
@@ -266,6 +299,7 @@ async def test_dedup_db_error_is_non_blocking(monkeypatch: pytest.MonkeyPatch) -
         request=request,
     )
     assert is_allowed_calls == ["628111"]
+    assert pool.acquire.called
     assert result is None
 
 

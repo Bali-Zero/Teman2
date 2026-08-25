@@ -217,7 +217,12 @@ async def process_whatsapp_message(
         # Mark message as read
         await whatsapp_service.mark_message_read(message_id)
 
-        # 0. CROSS-PATH ATOMIC CLAIM (2026-08-25 double-reply scar, hardened).
+        # 0. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
+        if not whatsapp_triage_service.is_allowed(phone):
+            logger.info("Ignored message from non-allowed number: %s", phone)
+            return
+
+        # 0.5. CROSS-PATH ATOMIC CLAIM (2026-08-25 double-reply scar, hardened).
         # The meta-inbox pipeline (wa_outbox_worker / _handle_meta_inbox_message)
         # and this legacy inline path are two concurrent BackgroundTasks. The
         # first fix here was a read-only SELECT against meta_inbox_messages —
@@ -230,6 +235,18 @@ async def process_whatsapp_message(
         # loser logs and discards. Best-effort ONLY for the "DB unreachable"
         # case (a DB hiccup must never mute a genuinely legacy message) — once
         # the DB responds, the claim outcome is binding.
+        #
+        # Placed AFTER the allowlist check, not before (self-review finding,
+        # cured before merge): claiming BEFORE the allowlist check let a
+        # number this legacy path will silently ignore anyway still WIN the
+        # wamid claim and then discard — if that same wamid also has a
+        # legitimate, later-arriving meta-inbox delivery (the exact
+        # double-subscription shape this PR defends against), meta-inbox's
+        # own claim attempt would then lose to a claimant that was never
+        # going to answer, leaving a real customer with silence from BOTH
+        # paths instead of one correct reply from meta-inbox. Ordering the
+        # claim after the allowlist check means legacy only ever claims a
+        # wamid it is actually going to try to answer.
         dedup_db_pool = _get_db_pool(request)
         if dedup_db_pool is not None:
             try:
@@ -248,11 +265,6 @@ async def process_whatsapp_message(
                 logger.exception(
                     "Cross-path claim failed (non-blocking) wamid=%s", message_id
                 )
-
-        # 0.5. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
-        if not whatsapp_triage_service.is_allowed(phone):
-            logger.info("Ignored message from non-allowed number: %s", phone)
-            return
 
         # 1. TRIAGE: Personal or Business?
         decision, reason = await whatsapp_triage_service.should_escalate(
