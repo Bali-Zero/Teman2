@@ -108,13 +108,29 @@ async def _require_magic_session_actor(request: Request) -> str:
     return actor
 
 
-def _require_staff_actor(request: Request, authorization: str | None) -> str:
+async def _require_staff_actor(request: Request, authorization: str | None) -> str:
+    """Twin of `_require_magic_session_actor` for the staff late-resolution
+    route — same shape, deliberately kept `async def` even though
+    `garuda_staff_session_verifier` is wired nowhere today.
+
+    Converting this at the SAME time the slot gets wired (rather than now,
+    while it is inert) is precisely the moment this class of bug gets
+    introduced: `verifier(authorization)` on an async verifier returns a
+    coroutine object, not `None` — `if actor is None` is False, the coroutine
+    is never awaited, and the request proceeds AUTHENTICATED for any
+    non-empty `Authorization` header. No exception is raised; the only trace
+    is a `RuntimeWarning: coroutine ... was never awaited` in logs, easy to
+    miss. Keeping this function's signature identical to its sibling now,
+    while the verifier is still `None` (a no-op change — both versions 401
+    today), removes that landmine before anyone is under the pressure of
+    wiring a real verifier and can make the mistake live.
+    """
     verifier = getattr(request.app.state, "garuda_staff_session_verifier", None)
     if verifier is None or not authorization:
         raise HTTPException(
             status_code=401, detail={"code": "SESSION_REQUIRED", "retryable": False}
         )
-    actor = verifier(authorization)
+    actor = await verifier(authorization)
     if actor is None:
         raise HTTPException(
             status_code=401, detail={"code": "SESSION_REQUIRED", "retryable": False}
@@ -346,7 +362,7 @@ async def resolve_late_order(
 ) -> dict:
     _require_flag()
     _privacy_headers(response)
-    actor = _require_staff_actor(request, authorization)
+    actor = await _require_staff_actor(request, authorization)
     key = _idempotency_key(idempotency_key)
 
     resolution = body.get("resolution")
