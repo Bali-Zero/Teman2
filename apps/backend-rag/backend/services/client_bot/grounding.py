@@ -43,7 +43,24 @@ constructed (the bundle cannot hash itself) — the exact same canonical
 serialization ``BrainCandidate.package_sha256`` must echo back verbatim
 for check 2 (``final_gate.py``) to pass.
 
-Author: Claude Opus 5 (lane B1b — client-bot engine).
+SPEC-price-service-binding.md (2026-08-25), P1 + P4 — ``_build_pricing_snapshot``
+no longer calls ``PricingService.get_pricing("all")`` (the entire nested
+catalogue folded into one opaque item, which is what let check 7 only ever
+ask "is this amount A real price anywhere", never "the price of THIS
+service"). It now builds ONE ``PricingSnapshot`` item PER SERVICE via
+``_iter_service_entries()``, each item carrying its catalogue key as a
+first-class ``"key"`` field — the identity ``Claim.price_service_key``
+(``contracts.py`` P2) and ``pricing_check.py``'s per-claim binding (P3)
+need. This is also why the snapshot is now DOMAIN-SCOPED rather than
+exhaustive (P4): the live 2026 catalogue has ~113 services, well over
+``PricingSnapshot.items``'s own ``max_length=100`` — an unscoped
+one-item-per-service snapshot would raise ``ValidationError`` on
+construction for every non-KBLI query. ``_DOMAIN_PRICING_CATEGORIES``
+below is the scoping heuristic; see its own comment for what it is (and is
+not) a claim about.
+
+Author: Claude Opus 5 (lane B1b — client-bot engine; lane B1c —
+service-identity binding + domain-scoped snapshot, 2026-08-25).
 """
 
 from __future__ import annotations
@@ -62,7 +79,11 @@ from backend.services.client_bot.contracts import (
     HistoryTurn,
     PricingSnapshot,
 )
-from backend.services.pricing.pricing_service import get_pricing_service
+from backend.services.pricing.pricing_service import (
+    _entry_display_price,
+    _iter_service_entries,
+    get_pricing_service,
+)
 
 logger = logging.getLogger("zantara.backend")
 
@@ -82,6 +103,45 @@ _STUBBED_EVIDENCE_WARNING = (
 )
 
 _PRICING_TOOL_VERSION = "pricing-service-2026"
+
+# SPEC-price-service-binding.md P4 — which pricing-catalogue categories a
+# domain "plausibly concerns" (a retrieval/filter step, never an
+# exhaustive dump). This is a DELIBERATE JUDGMENT CALL, not a mapping
+# ``PricingService`` itself exposes: the live 2026 catalogue's category
+# names (see ``bali_zero_official_prices_2026.json``) do not line up 1:1
+# with this channel layer's domain vocabulary
+# (``backend.channels.profiles._REGULATED_DOMAINS``). Chosen to err toward
+# OVER-inclusion, not precision: an under-scoped domain would make
+# check_pricing wrongly HANDOFF a genuinely correct price (its service key
+# would be entirely missing from the snapshot); an over-scoped one only
+# widens the candidate pool a provider sees, which P1-P3's per-key binding
+# still verifies correctly no matter how many unrelated items sit
+# alongside the one actually claimed. "property" maps to zero categories
+# on purpose — the 2026 catalogue carries no real-estate/property pricing
+# rows at all, so a property-domain price claim always fails, correctly:
+# this business has no PricingTool-backed property price to quote.
+# "kbli" is intentionally absent — ``build()`` never calls
+# ``_build_pricing_snapshot`` for that domain at all (see its own branch).
+_DOMAIN_PRICING_CATEGORIES: dict[str, tuple[str, ...]] = {
+    "immigration": (
+        "single_entry_visas",
+        "multiple_entry_visas",
+        "kitas_permits",
+        "kitap_permits",
+        "urgent_processing",
+        # Passport/SKTT/SKCK/Molina — civil-registry documents that come up
+        # in the same immigration conversations as visas/KITAS.
+        "other_process",
+    ),
+    "company": ("company_services", "consultant_services"),
+    # consultant_services (NPWPD/BPJS/Coretax/EFIN registration) sits in
+    # BOTH company and tax on purpose — it is genuinely a mix of
+    # company-closure and tax-registration services, and duplicating a
+    # category across two domain groups costs nothing but candidate-pool
+    # size (see the "over-scoped" reasoning above).
+    "tax": ("tax_accounting", "consultant_services"),
+    "property": (),
+}
 
 
 class DomainNotSpecifiedError(ValueError):
@@ -161,7 +221,7 @@ class GroundingBundleBuilder:
         else:
             logger.warning(_STUBBED_EVIDENCE_WARNING, resolved_domain)
 
-        pricing = self._build_pricing_snapshot() if resolved_domain != "kbli" else None
+        pricing = self._build_pricing_snapshot(resolved_domain) if resolved_domain != "kbli" else None
 
         package_sha256 = _compute_package_sha256(
             query=query,
@@ -201,26 +261,66 @@ class GroundingBundleBuilder:
             "an explicit domain is required, none was inferred"
         )
 
-    def _build_pricing_snapshot(self) -> PricingSnapshot | None:
+    def _build_pricing_snapshot(self, domain: str) -> PricingSnapshot | None:
         """Real PricingTool integration (Golden Rule 11) — never a
         hardcoded price. ``get_pricing_service()`` returns the same
         process-wide singleton ``PricingTool`` (services/rag/agentic/
         tools.py) already uses, so this builder and the existing RAG path
         can never disagree about what "the frozen pricing snapshot" means.
+
+        SPEC-price-service-binding.md P1 + P4: ONE item PER SERVICE (never
+        ``get_pricing("all")``'s single opaque catalogue blob), each
+        carrying its catalogue key as a first-class ``"key"`` field, scoped
+        to the categories ``_DOMAIN_PRICING_CATEGORIES`` maps this
+        ``domain`` to. ``None`` still means "no snapshot at all" (tool not
+        loaded / bad payload) — an empty ``items`` tuple for a domain that
+        maps to zero categories (or an unrecognized domain) is a different,
+        valid state: the tool IS working, there is simply nothing priced
+        for this domain to quote.
         """
         service = get_pricing_service()
         if not getattr(service, "loaded", False):
             logger.warning("grounding: PricingService not loaded — no PricingSnapshot built")
             return None
-        raw = service.get_pricing("all")
-        if not isinstance(raw, dict) or raw.get("error"):
-            logger.warning("grounding: PricingService.get_pricing('all') returned an error payload")
-            return None
-        snapshot_sha256 = hashlib.sha256(_canonical_json(raw).encode("utf-8")).hexdigest()
+
+        categories = _DOMAIN_PRICING_CATEGORIES.get(domain)
+        if categories is None:
+            logger.warning(
+                "grounding: no pricing-category mapping for domain=%r — pricing snapshot "
+                "will carry zero items (safe default, see _DOMAIN_PRICING_CATEGORIES)",
+                domain,
+            )
+            categories = ()
+
+        services_root = service.prices.get("services", {})
+        if not isinstance(services_root, dict):
+            logger.warning(
+                "grounding: PricingService.prices['services'] is not a dict — no items built"
+            )
+            services_root = {}
+
+        items: list[dict[str, object]] = []
+        for category, service_name, entry in _iter_service_entries(services_root):
+            if category not in categories:
+                continue
+            items.append(
+                {
+                    "key": service_name,
+                    "name": entry.get("name") or service_name,
+                    "price": _entry_display_price(entry),
+                    "category": category,
+                    "validity": entry.get("validity") or None,
+                    "notes": entry.get("notes") or None,
+                }
+            )
+
+        snapshot_sha256 = hashlib.sha256(
+            _canonical_json({"domain": domain, "items": items}).encode("utf-8")
+        ).hexdigest()
         return PricingSnapshot(
             snapshot_id=uuid.uuid4(),
             pricing_tool_version=_PRICING_TOOL_VERSION,
             generated_at=datetime.now(timezone.utc),
-            items=(raw,),
+            items=tuple(items),
             snapshot_sha256=snapshot_sha256,
         )

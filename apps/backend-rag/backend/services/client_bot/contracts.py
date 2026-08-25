@@ -145,9 +145,41 @@ class Claim(BaseModel):
     claim_id: Annotated[str, Field(pattern=_SIMPLE_ID)]
     text: Annotated[str, Field(min_length=1, max_length=2_000)]
     kind: Literal["regulatory", "eligibility", "deadline", "price", "procedural", "other"]
+    # SPEC-price-service-binding.md, P2: a "price" claim's ``text`` is a bare
+    # number until something names WHICH service it prices. This is that
+    # something — a structural pointer to the exact key
+    # ``PricingService.get_service_by_key()`` accepts / the identity a
+    # ``PricingSnapshot`` item carries (see ``grounding.py::
+    # _build_pricing_snapshot``), never free prose a downstream regex has
+    # to re-associate by guessing. Deliberately NOT ``_SIMPLE_ID``-patterned:
+    # the live 2026 catalogue's real service keys are human-readable display
+    # names ("Working KITAS (Altus/Onshore)") — spaces, parens, slashes,
+    # uppercase — not lowercase slugs, so a slug pattern would reject every
+    # real key this field is meant to carry.
+    price_service_key: Annotated[str, Field(min_length=1, max_length=200)] | None = None
     evidence_ids: tuple[Annotated[str, Field(pattern=_SIMPLE_ID)], ...] = Field(
         default=(), max_length=20
     )
+
+    @model_validator(mode="after")
+    def _price_kind_requires_a_service_key(self) -> Claim:
+        """SPEC-price-service-binding.md P2 + the orchestrator's 2026-08-25
+        ruling on the frozen-fixture collision: ``price_service_key`` is
+        required if and only if ``kind == "price"``, enforced at
+        CONSTRUCTION time (not deferred to a gate-level HANDOFF on a missing
+        key). The ruling's own reasoning: making the field optional and
+        having ``check_pricing`` HANDOFF on a missing key looks less
+        invasive and is worse — it would silently flip the B6b
+        ``PRICING_CORRECT`` golden from ALLOW to HANDOFF with no diff
+        anyone reviews. A ``ValidationError`` here is loud, immediate, and
+        impossible to mistake for a passing test.
+        """
+        is_price = self.kind == "price"
+        if is_price and self.price_service_key is None:
+            raise ValueError("price_service_key is required when kind is 'price'")
+        if not is_price and self.price_service_key is not None:
+            raise ValueError("price_service_key must be unset unless kind is 'price'")
+        return self
 
 
 # The brain contract serves all four surfaces through ONE schema, so its bound
