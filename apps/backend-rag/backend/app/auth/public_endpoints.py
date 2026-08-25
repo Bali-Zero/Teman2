@@ -687,8 +687,16 @@ _VISA_ORACLE = (
         "/api/visa/voa/webhooks/payment",
         Category.WEBHOOK,
         "GARUDA VOA receivePaymentWebhook (L3, garuda_orders_router.py) — inbound "
-        "Xendit callback, authenticated by the provider's own signature header "
-        "(provider.verify_signature), never by team auth or Idempotency-Key",
+        "Xendit Invoices callback. Xendit authenticates it with a static "
+        "`x-callback-token` header compared constant-time against the stored "
+        "verification token (XenditPaymentProvider.verify_signature, "
+        "xendit.py — NOT an HMAC body signature; Xendit Invoices callbacks "
+        "carry none), never by team auth or Idempotency-Key. This route is "
+        "the nastiest of the GARUDA VOA public routes to get wrong: it is not "
+        "part of the visible funnel, so a 401 here fails SILENTLY — the "
+        "customer already paid, Xendit cannot tell us, and the order sits "
+        "unpaid forever while the money has moved, surfacing days later as a "
+        "support case rather than as an obvious broken page.",
         match="exact",
     ),
     PublicEndpoint(
