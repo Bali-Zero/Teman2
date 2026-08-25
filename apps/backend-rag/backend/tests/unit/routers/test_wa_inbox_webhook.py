@@ -103,7 +103,8 @@ async def test_new_inbound_bot_handled_enqueues_bot_reply() -> None:
             {"thread_id": 7, "human_handling": False},  # thread upsert
             {"id": 100},  # inbound ledger insert (new)
             {"id": 101},  # bot queued ledger insert
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     await whatsapp_chat._handle_meta_inbox_message(conn, _msg(), "Mario", webhook_id=5)
 
@@ -126,7 +127,8 @@ async def test_duplicate_inbound_does_not_enqueue_bot() -> None:
         fetchrow_results=[
             {"thread_id": 7, "human_handling": False},  # thread upsert
             None,  # inbound insert → ON CONFLICT DO NOTHING → no row
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     await whatsapp_chat._handle_meta_inbox_message(conn, _msg(), "Mario", webhook_id=5)
 
@@ -141,7 +143,8 @@ async def test_new_inbound_human_handling_no_bot() -> None:
         fetchrow_results=[
             {"thread_id": 7, "human_handling": True},  # thread upsert (human owns it)
             {"id": 100},  # inbound ledger insert (new)
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     await whatsapp_chat._handle_meta_inbox_message(conn, _msg(), "Mario", webhook_id=5)
 
@@ -221,7 +224,8 @@ async def test_new_inbound_marks_message_read(monkeypatch: pytest.MonkeyPatch) -
             {"thread_id": 7, "human_handling": False},  # thread upsert
             {"id": 100},  # inbound ledger insert (new)
             {"id": 101},  # bot queued ledger insert
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     mark_read = AsyncMock(return_value=True)
     monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)
@@ -244,7 +248,8 @@ async def test_new_inbound_human_handling_still_marks_read(
         fetchrow_results=[
             {"thread_id": 7, "human_handling": True},  # human owns the thread
             {"id": 100},  # inbound ledger insert (new)
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     mark_read = AsyncMock(return_value=True)
     monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)
@@ -268,7 +273,8 @@ async def test_duplicate_inbound_does_not_mark_read(
         fetchrow_results=[
             {"thread_id": 7, "human_handling": False},  # thread upsert
             None,  # inbound insert → ON CONFLICT DO NOTHING → no row
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     mark_read = AsyncMock(return_value=True)
     monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)
@@ -288,7 +294,8 @@ async def test_mark_read_failure_does_not_raise(monkeypatch: pytest.MonkeyPatch)
             {"thread_id": 7, "human_handling": False},
             {"id": 100},
             {"id": 101},
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     mark_read = AsyncMock(side_effect=RuntimeError("graph down"))
     monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)
@@ -314,7 +321,8 @@ async def test_read_receipt_disabled_by_default_flag_off(
             {"thread_id": 7, "human_handling": False},
             {"id": 100},
             {"id": 101},
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     mark_read = AsyncMock(return_value=True)
     monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)
@@ -338,7 +346,8 @@ async def test_read_receipt_disabled_by_default_flag_explicit_false(
             {"thread_id": 7, "human_handling": False},
             {"id": 100},
             {"id": 101},
-        ]
+        ],
+        fetchval_results=[whatsapp_chat.WAMID_CLAIMANT_META_INBOX],  # wins the claim
     )
     mark_read = AsyncMock(return_value=True)
     monkeypatch.setattr(whatsapp_chat.whatsapp_service, "mark_message_read", mark_read)

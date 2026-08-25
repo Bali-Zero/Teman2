@@ -1858,8 +1858,25 @@ class TestProcessGroupKill:
         This pins BOTH halves of the cure: without `start_new_session=True`
         the guard in `_kill_and_reap` skips the group-kill (shared pgid),
         and without the `os.killpg` the group is never signalled — either
-        mutation leaves the grandchild alive and turns this test red."""
-        client = _make_available_client(tmp_path, timeout_s=1.0)
+        mutation leaves the grandchild alive and turns this test red.
+
+        W-KILLTEST-FLAKE harness fix: `timeout_s` used to be `1.0`, racing
+        `generate()`'s wall-clock deadline against the REAL `/bin/sh` fork
+        + exec + inner `sleep 300 &` fork needed before the fake binary
+        writes `pid_file`. Measured directly (700 trials, idle AND under
+        2x-oversubscribed CPU load, `/tmp/probe_pid_timing.py`-shape
+        harness): that write lands at a median ~410ms after subprocess
+        creation with a fat right tail — max observed 1.83s, several
+        samples past 1.0s. At `timeout_s=1.0` the SUT's own kill could (and
+        reproducibly did — 1 failure in 40 serial re-runs on an otherwise
+        idle machine, zero external load, and 15/15 forced failures at an
+        artificially tight `timeout_s=0.05` confirming the mechanism) fire
+        BEFORE the grandchild was ever forked, so `pid_file` never gets
+        written and this test asserts on a harness precondition, not the
+        group-kill property. `8.0` leaves >4x headroom over the worst
+        latency this probe ever measured — 0 failures in 80 re-runs after
+        the bump (60 serial + 20 under concurrent `-n auto` suite load)."""
+        client = _make_available_client(tmp_path, timeout_s=8.0)
         pid_file = tmp_path / "grandchild.pid"
         binary = tmp_path / "codex"
         binary.write_text(
@@ -1873,8 +1890,22 @@ class TestProcessGroupKill:
         with pytest.raises(CodexExecTimeoutError):
             await client.generate("hello")
 
-        assert pid_file.exists(), "fake binary never ran — harness broken, not a verdict"
-        grandchild_pid = int(pid_file.read_text().strip())
+        # Defense in depth, not the primary fix: by the time generate() has
+        # raised, the SUT's own 8.0s timeout has already elapsed, which is
+        # comfortably past the write above — so this loop should resolve on
+        # its first iteration. It exists only to absorb any residual
+        # filesystem-visibility jitter, never as a substitute for the
+        # timeout_s headroom that actually closes the race.
+        setup_deadline = time.monotonic() + 2.0
+        pid_text = ""
+        while time.monotonic() < setup_deadline:
+            if pid_file.exists():
+                pid_text = pid_file.read_text().strip()
+                if pid_text:
+                    break
+            await asyncio.sleep(0.05)
+        assert pid_text, "fake binary never ran — harness broken, not a verdict"
+        grandchild_pid = int(pid_text)
         assert grandchild_pid > 1
 
         deadline = time.monotonic() + 5.0

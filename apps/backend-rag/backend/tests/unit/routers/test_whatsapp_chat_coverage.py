@@ -8,6 +8,8 @@ X-Hub-Signature-256 HMAC verification.
 import hashlib
 import hmac
 import json
+import logging
+import re
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -637,6 +639,7 @@ async def test_process_whatsapp_message_not_allowed():
     with (
         patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
         patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         # Should complete without error
         await process_whatsapp_message(
@@ -724,6 +727,7 @@ async def test_process_whatsapp_message_offer_choice():
             "backend.app.routers.whatsapp_chat.get_onboarding_detector",
             return_value=mock_onboarding,
         ),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         await process_whatsapp_message(
             phone="621234567890",
@@ -772,6 +776,7 @@ async def test_process_whatsapp_message_onboarding_triggered():
         patch(
             "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
         ) as mock_settings,
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         mock_settings.admin_telegram_chat_id = "8037989885"
         await process_whatsapp_message(
@@ -1036,3 +1041,214 @@ async def test_notify_human_telegram_with_context():
         )
 
     mock_telegram.send_message.assert_called_once()
+
+
+# ============================================================
+# F7: raw phone must NEVER appear in a log record (guilt/innocence)
+# ============================================================
+#
+# whatsapp_chat.py is the LIVE client-bot WhatsApp path — 20 raw-phone log
+# sites, all now routed through backend.security.pii_log_identifier.
+# redact_identifier_for_log. Per cicatrix-superscar.md family #3, a guard
+# (here: a redaction) needs both a guilt test (the raw value never survives)
+# and an innocence test (the digest stays present/stable, so an operator can
+# still correlate lines across one client's conversation).
+
+_LOGGER_NAME = "backend.app.routers.whatsapp_chat"
+_NON_DIGITS_RE = re.compile(r"\D+")
+
+# Obviously-synthetic — never a shape mistakable for a real client's number.
+_SYNTHETIC_PHONE = "628000111222"
+
+
+def _digits_only(text: str) -> str:
+    """Collapse a log line to its bare digit run.
+
+    Load-bearing: several sites in whatsapp_chat.py build f-strings that
+    interpolate ``phone`` directly, so an exact-string check against the raw
+    literal can miss a leak that survives in a slightly different textual
+    form (e.g. wrapped, or with adjacent characters). Comparing digit runs
+    is robust to that — see the same discipline in
+    test_messaging_identity_service.py (F7 reference fix, PR 43bb93e11).
+    """
+    return _NON_DIGITS_RE.sub("", text)
+
+
+def _all_log_text(records: list[logging.LogRecord]) -> str:
+    """Every rendered message across every captured record, concatenated —
+    guilt must be checked across ALL lines, not just the one line a fix
+    happened to target."""
+    return "\n".join(r.getMessage() for r in records)
+
+
+class TestRawPhoneNeverInLogsGuilt:
+    """Guilt: the synthetic phone must never survive into ANY log record
+    emitted while processing a message, across two independent branches of
+    process_whatsapp_message (non-allowed-number short-circuit, and the
+    escalate-to-human path — both log the phone at least once)."""
+
+    @pytest.mark.asyncio
+    async def test_non_allowed_number_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = False
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+        ):
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello",
+                sender_name="Unknown",
+                message_id="msg_test",
+                request=mock_request,
+            )
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+
+    @pytest.mark.asyncio
+    async def test_escalate_to_human_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+        from backend.services.integrations.whatsapp_triage_service import TriageDecision
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = True
+        mock_triage_service.should_escalate = AsyncMock(
+            return_value=(TriageDecision.ESCALATE_PERSONAL, "personal_contact")
+        )
+        mock_triage_service.get_escalation_message.return_value = "Transferring to team..."
+
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+        mock_wa_service.send_message = AsyncMock()
+
+        mock_onboarding = MagicMock()
+        mock_onboarding.detect_and_trigger = AsyncMock(return_value=None)
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+            patch(
+                "backend.app.routers.whatsapp_chat.get_onboarding_detector",
+                return_value=mock_onboarding,
+            ),
+            patch("backend.app.routers.whatsapp_chat.notify_human_telegram", new=AsyncMock()),
+            patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
+            patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        ):
+            mock_settings.admin_telegram_chat_id = "123456"
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="This is personal",
+                sender_name="Test Client",
+                message_id="msg_001",
+                request=mock_request,
+            )
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+
+
+class TestRedactedPhoneStaysCorrelatable:
+    """Innocence: the fix must not collapse every line to the same opaque
+    placeholder — a stable digest must appear, so an operator can still
+    follow one client's conversation across log lines."""
+
+    @pytest.mark.asyncio
+    async def test_digest_present_for_non_allowed_number(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = False
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+        ):
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello",
+                sender_name="Unknown",
+                message_id="msg_test",
+                request=mock_request,
+            )
+
+        text = _all_log_text(caplog.records)
+        assert "id:" in text
+
+    @pytest.mark.asyncio
+    async def test_same_phone_yields_same_digest_across_two_calls(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = False
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+        ):
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello",
+                sender_name="Unknown",
+                message_id="msg_test_1",
+                request=mock_request,
+            )
+            first_text = _all_log_text(caplog.records)
+            caplog.clear()
+
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello again",
+                sender_name="Unknown",
+                message_id="msg_test_2",
+                request=mock_request,
+            )
+            second_text = _all_log_text(caplog.records)
+
+        first_digest = next(tok for tok in first_text.split() if "id:" in tok)
+        second_digest = next(tok for tok in second_text.split() if "id:" in tok)
+        assert first_digest == second_digest

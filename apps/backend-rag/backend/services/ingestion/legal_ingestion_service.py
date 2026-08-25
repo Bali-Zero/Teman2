@@ -36,6 +36,27 @@ from backend.utils.tier_classifier import TierClassifier
 
 logger = logging.getLogger(__name__)
 
+
+def _failure_stage(error: Exception) -> IngestionStage:
+    """Which stage does this failure belong to?
+
+    Was `PARSING if "parse" in str(error).lower() else COMPLETION`, which read
+    the stage off a word that happens to appear in some messages. "Incomplete
+    vision transcription of ..." contains no "parse" and was filed under
+    COMPLETION -- a document that never got past reading, recorded as having
+    reached the end. Parse failures are now recognised by TYPE.
+    """
+    from backend.core.parsers import DocumentParseError
+
+    if isinstance(error, DocumentParseError) or isinstance(
+        error.__cause__, DocumentParseError,
+    ):
+        return IngestionStage.PARSING
+    if "parse" in str(error).lower():
+        return IngestionStage.PARSING
+    return IngestionStage.COMPLETION
+
+
 LEGAL_CANONICAL_COLLECTION = "legal_unified"
 LEGAL_ENV_OVERRIDE_FLAG = "LEGAL_INGEST_ALLOW_QDRANT_ENV_OVERRIDE"
 CURRENT_RETRIEVAL_SCOPE = "current"
@@ -483,6 +504,20 @@ class LegalIngestionService:
             try:
                 raw_text = auto_detect_and_parse(file_path, use_ocr=False)
             except DocumentParseError as e:
+                from backend.services.multimodal.pdf_vision_service import (
+                    IncompleteTranscriptionError,
+                )
+
+                if isinstance(e.__cause__, IncompleteTranscriptionError):
+                    # A document read only in PART must not fall into the branch
+                    # below: that branch exists to give a scan a second, fuller
+                    # pass, and here the fuller pass has already happened and
+                    # came back short. Retrying runs the same engine over the
+                    # same pages to reach the same verdict, and -- worse -- the
+                    # decision is read off e.__cause__ rather than off a
+                    # substring of the message, so rewording the error can never
+                    # silently move a half-read law into the retry path.
+                    raise
                 if "No text extracted" in str(e):
                     # Try OCR for scanned PDFs (async version)
                     logger.info(
@@ -1182,9 +1217,7 @@ Return ONLY valid JSON, no markdown."""
                 document_id=document_id or f"failed_{int(start_time)}",
                 file_path=file_path,
                 error=e,
-                stage=IngestionStage.PARSING
-                if "parse" in str(e).lower()
-                else IngestionStage.COMPLETION,
+                stage=_failure_stage(e),
                 duration_ms=total_duration * 1000,
                 source=source,
                 trace_id=trace_id,
