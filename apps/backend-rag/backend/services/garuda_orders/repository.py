@@ -6,6 +6,29 @@ transaction. `garuda_orders`'s own trigger (`guard_garuda_order_state_
 transition`) is defense-in-depth behind the CAS `WHERE state = $expected`,
 not a substitute for it — the CAS is what makes a concurrent duplicate
 webhook see 0 rows updated instead of racing the trigger.
+
+One deliberate cross-lane call (team-lead directive, 2026-08-25, gate on
+PR #4928): `handle_paid_event`'s `awaiting_payment -> paid` branch calls
+L4's `garuda_portal.practice.mint_received_practice` directly, inside THIS
+transaction, right after appending `payment.paid`/OP-02. Measured
+reachability before this fix: the only production call site that ever
+inserted a `garuda_practices` row was the customer's own GET (lazy-on-
+read) — a paid order the customer never looked at again left Bali Zero
+holding the money with no work item ever recorded, and the synthetic
+probe cannot catch it (it always opens the tracker, same as a curious
+customer). Minting PR-01 inside OP-02's own transaction — rather than via
+the `practice_release` outbox job this branch also still enqueues, which
+NO production code consumes for any job_type — means the whole payment
+event is atomic with its resulting practice: if the practice INSERT ever
+fails, `garuda_orders` never reaches `paid` and `garuda_payment_inbox`'s
+dedup row never commits either, so the provider's webhook retry gets a
+clean second attempt instead of a half-completed payment. The customer-
+facing lazy-on-read path (`PracticeRepository._create_received_practice`)
+is UNCHANGED and stays live as an idempotent safety net for any order
+paid before this fix landed — both paths mint through the same
+`mint_received_practice`, guarded by the same `source_paid_journal_
+event_id` UNIQUE constraint (migration 287), so neither path can ever
+double-create.
 """
 
 from __future__ import annotations
@@ -30,6 +53,7 @@ from backend.services.garuda_orders.errors import (
 from backend.services.garuda_orders.models import Applicant
 from backend.services.garuda_orders.ports import EligibilityCheckLookup
 from backend.services.garuda_orders.state_machine import OrderState
+from backend.services.garuda_portal.practice import mint_received_practice
 from backend.services.payments.port import (
     NormalizedFailureEvent,
     NormalizedPaidEvent,
@@ -410,6 +434,13 @@ class GarudaOrderRepository:
                 )
                 await journal.enqueue_outbox(
                     conn, order_id=order_id, journal_event_id=event_id, job_type="practice_release"
+                )
+                # PR-01, eagerly, in the SAME transaction as the payment.paid
+                # event above -- see this module's own docstring for why
+                # (team-lead directive: a paid order must never depend on the
+                # customer opening their tracker to get a work item).
+                await mint_received_practice(
+                    conn, order_id=order_id, paid_journal_event_id=event_id
                 )
             elif state == OrderState.PAID.value:
                 transition_id = "OP-08"

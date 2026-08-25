@@ -1,9 +1,15 @@
 """HTTP shell for GARUDA VOA L3 — checkout + orders.
 
 Implements exactly the operations `products/garuda-voa/LANES.md` scopes to
-L3: `createOrderFromCheck`, `getOrderAndPractice` (order half only — the
-`practice` field is served null here until L4/L7 wire their part),
-`observePaymentBrowserReturn`, `receivePaymentWebhook`, `resolveLateOrder`.
+L3: `createOrderFromCheck`, `getOrderAndPractice`, `observePaymentBrowserReturn`,
+`receivePaymentWebhook`, `resolveLateOrder`.
+
+`getOrderAndPractice`'s `practice` field is served by L4's
+`PracticeRepository` (services/garuda_portal/practice.py) — the order half
+stays this file's own ownership-filtered query, but the practice half is no
+longer hardcoded `None` (corrected once L4's practice module shipped;
+`practice.py`'s own docstring covers PR-01's scope and lazy-materialization
+design in full).
 
 Registered in `router_manifest.py` / `router_registration.py` (_API, mirrors
 L2's `garuda_voa_public` — mount unconditionally, GARUDA_PUBLIC_ENABLED
@@ -36,6 +42,7 @@ from backend.services.garuda_orders.idempotency import (
 )
 from backend.services.garuda_orders.models import Applicant
 from backend.services.garuda_orders.repository import GarudaOrderRepository
+from backend.services.garuda_portal.practice import PracticeRepository
 from backend.services.payments.port import WebhookSignatureInvalid, WebhookUnparseable
 
 router = APIRouter(prefix="/api/visa/voa", tags=["garuda-orders"])
@@ -244,27 +251,21 @@ async def get_order_and_practice(
         raise HTTPException(
             status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
         )
-    # `result_id_ref = $2` is the ownership predicate: an order that exists
-    # but belongs to a different session's result_id must 404 exactly like
-    # an order that doesn't exist at all (`OrderNotFound`'s own docstring
-    # already calls this shape "non-enumerating") -- a distinct status code
-    # for "exists but not yours" is the enumeration oracle this closes.
-    row = await pool.fetchrow(
-        "SELECT order_id, state, price_idr, browser_observation "
-        "FROM garuda_orders WHERE order_id = $1 AND result_id_ref = $2",
-        order_id,
-        actor,
+    # `result_id_ref = actor` is the ownership predicate (#4910): an order
+    # that exists but belongs to a different session's result_id must 404
+    # exactly like an order that doesn't exist at all (`OrderNotFound`'s own
+    # docstring already calls this shape "non-enumerating") -- a distinct
+    # status code for "exists but not yours" is the enumeration oracle this
+    # closes. `PracticeRepository` (L4, services/garuda_portal/practice.py)
+    # applies the SAME predicate in its own query and serves the real
+    # practice view (lazily materializing PR-01 for a paid order on first
+    # read) instead of the `None` this route used to hardcode.
+    body_out = await PracticeRepository(pool).get_order_and_practice_view(
+        order_id=order_id, result_id_ref=actor
     )
-    if row is None:
+    if body_out is None:
         raise HTTPException(status_code=404, detail={"code": "ORDER_NOT_FOUND", "retryable": False})
-    return {
-        "order_id": row["order_id"],
-        "order_state": row["state"],
-        "price_idr": row["price_idr"],
-        "browser_observation": row["browser_observation"],
-        # Practice is L4/L7 territory — served null here rather than guessed.
-        "practice": None,
-    }
+    return body_out
 
 
 @router.post("/orders/{order_id}/browser-return-observations", status_code=204)
