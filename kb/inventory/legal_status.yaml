@@ -1,0 +1,447 @@
+# kb/inventory/legal_status.yaml — field-integrity audit of `legal_status`.
+#
+# This is NOT a topic inventory (kind: topic — MANDATE.md §2) and NOT a
+# retired-collection triage (kind: retired_collection — the schema
+# kb/inventory/legal_unified_2026.yaml uses). It is a THIRD kind,
+# `field_integrity`: a census of one payload field's own trustworthiness,
+# corpus-wide, with a live drift gate (scripts/kb/legal_status_drift_gate.py)
+# and a self-contained structural probe (kb/ops/probe_amendment_invariant.py)
+# that require no domain knowledge to trust.
+#
+# Read by:
+#   * apps/backend-rag/backend/tests/unit/kb/test_kb_inventory_contract.py
+#     (only test_every_inventory_declares_a_known_kind — `field_integrity` is a
+#     known kind there; every OTHER test in that module is scoped to
+#     kind=retired_collection and skips this file, same as it skips kind=topic)
+#   * apps/backend-rag/backend/tests/unit/kb/test_legal_status_field_integrity_contract.py
+#     (this kind's own dedicated gate — internal-consistency arithmetic)
+#   * scripts/kb/legal_status_drift_gate.py (rule (g) — re-measures `measured_against`
+#     against LIVE production, never trusts this file's own numbers to still be true)
+#
+# Chronology this file closes out: scripts/kb/audit_legal_status.py (first
+# whole-scroll audit, 2026-08-25) → propose_legal_status_repair.py (a narrow
+# 4-document repair, REFUSED — nobody reads the field, so repairing 1,484/84,283
+# points changes nothing observable while falsely authorizing a subset) →
+# apps/backend-rag/backend/core/legal/constants.py::STATUS_PATTERNS RETIRED
+# (2026-08-25/26 — the derivation mechanism cannot be correct at this layer for
+# the revoked direction, full reasoning in that file's tombstone comment) → THIS
+# FILE (2026-08-26 — a full-corpus census taken to gate a proposed 1,484-point
+# write found the field is wrong on 7 of 9 externally-verifiable documents, and
+# — self-provably, no external truth required — the corpus contradicts its own
+# citations). PENDING-ARMS.md carries the full narrative row (search "systemically
+# FALSE") this file's measurements were taken to back with numbers.
+
+schema_version: 1
+topic: legal_status
+kind: field_integrity
+measured_at: "2026-08-26"
+
+# ── THE BAN ───────────────────────────────────────────────────────────────────
+#
+# legal_status must not be READ by any production code path until this artifact
+# is superseded by a repaired field. The amendment-invariant violations below are
+# corpus-internal and require no domain knowledge to trust — the corpus
+# contradicts its own citations regardless of who is asking.
+#
+# This is not a hypothetical caution. `status_vigensi` — see that section below —
+# is a DIFFERENT field name that a production filter ALREADY excludes `dicabut`
+# on, corpus-wide, on every SearchService-routed query. It happens to be 0/84,283
+# on `legal_unified` today, which is the ONLY thing standing between this corpus
+# and an instant, code-change-free suppression of 50.3% of it — including every
+# one of Keimigrasian, Perseroan Terbatas, Cipta Kerja and Ketenagakerjaan — the
+# moment anyone treats "unify legal_status and status_vigensi" as a field cleanup.
+
+# ── §1 Per-point and per-document distribution ─────────────────────────────────
+#
+# Whole-scroll, both payload shapes read (top-level AND metadata.legal_status —
+# a probe reading only one reports damage as zero on the shape it never looked
+# at). Completeness is arithmetic: per-point buckets sum to `points`, and
+# per-document buckets sum to `distinct_documents`.
+#
+# `none` and `absent` are DIFFERENT facts, not two names for one: `none` is the
+# key PRESENT with an explicit JSON null; `absent` is the key MISSING entirely.
+# Collapsing them (the drift gate's first draft did exactly this — see that
+# script's `_status_of` docstring) silently moved 9,012 points from one bucket
+# to another with the point TOTAL unchanged, which is precisely the kind of
+# error a total-only sanity check cannot catch.
+measured_against:
+  collection: legal_unified_hybrid_hybrid
+  points: 84283
+  distinct_documents: 388
+  per_point:
+    dicabut: 42420 # 50.3%
+    berlaku: 26107 # 31.0%
+    none: 9012 # 10.7% — key present, value null
+    absent: 6744 # 8.0%  — key missing entirely
+  per_document:
+    dicabut: 190 # every point on the document says dicabut
+    berlaku: 157 # every point on the document says berlaku
+    none: 19 # every point on the document has legal_status: null
+    absent: 8 # every point on the document has no legal_status key
+    mixed: 14 # the document's own points disagree
+  # Payload-key split (cross-checked independently against a second, whole-scroll
+  # measurement — both parties' numbers agree exactly):
+  legal_status_key_location:
+    flat_top_level_only: 5797
+    nested_metadata_only: 71742
+    both_locations: 0
+    neither_present: 6744
+  # `[CONTEXT: <TYPE> - NO <N> - TAHUN <Y> - TENTANG <topic>]` header coverage —
+  # see §3's caveat below for why this bounds EVERY title-dependent count in
+  # this file, not just the amendment invariant.
+  no_context_points: 25832 # 30.6% of points carry no CONTEXT header at all
+  zero_header_documents: 185 # of 388 documents, NONE of whose points has one
+  # The declared exception (see §4) — measured 0 on every scroll this campaign
+  # has taken of this collection, and re-measured every time the drift gate runs.
+  status_vigensi_hits: 0
+
+# ── §2 Domain-knowledge verification (REVISABLE — not corpus-proof) ───────────
+#
+# This section rests on knowledge OUTSIDE the corpus (what these instruments
+# actually are under Indonesian law), cross-checked where possible against
+# kb/topics/immigration.yaml's own sourced, peraturan.go.id-verified entries
+# (UU_6_2011, Permen_22_2023, Permen_29_2021 — all three agree with the row
+# below). It is NOT self-proving the way §3 is, and a future session with
+# better sourcing may revise any single row here without touching §3 at all —
+# the two sections are kept structurally separate for exactly that reason.
+domain_knowledge_verification:
+  method: >
+    Nine document_ids independently identifiable by their [CONTEXT:] title as a
+    specific, real Indonesian instrument this session (or kb/topics/immigration.yaml,
+    where cross-referenced) already has sourced knowledge of. Cross-checked against
+    each document's OWN recorded legal_status in this corpus, measured live above.
+    This is a LOWER BOUND on the damage, not an estimate of its total extent — most
+    of the corpus's 388 documents are not on this list simply because verifying each
+    one against external truth is a per-instrument research task, not a Qdrant scroll.
+  documents:
+    - document_id: UU_6_2011
+      instrument: "UU 6/2011 — Keimigrasian (Immigration Law)"
+      recorded: { dicabut: 413 }
+      expected: in_force
+      match: false
+      cross_check: "kb/topics/immigration.yaml (source_verified against peraturan.go.id, 2026-08-25): status=amended, not revoked"
+    - document_id: UU_40_2007
+      instrument: "UU 40/2007 — Perseroan Terbatas (Limited Liability Company Law)"
+      recorded: { dicabut: 379 }
+      expected: in_force
+      match: false
+      cross_check: "not independently re-verified against peraturan.go.id this session; general knowledge only"
+    - document_id: UU_6_2023
+      instrument: "UU 6/2023 — Cipta Kerja (ratified from Perpu 2/2022, the Job Creation omnibus law)"
+      recorded: { dicabut: 4685 }
+      expected: in_force
+      match: false
+      cross_check: "not independently re-verified against peraturan.go.id this session; general knowledge only"
+    - document_id: UU_13_2003
+      instrument: "UU 13/2003 — Ketenagakerjaan (Labor Law)"
+      recorded: { dicabut: 215 }
+      expected: in_force
+      match: false
+      cross_check: "not independently re-verified against peraturan.go.id this session; general knowledge only"
+    - document_id: Permen_22_2023
+      instrument: "Permenkumham 22/2023 — Visa dan Izin Tinggal (Visa and Stay Permit)"
+      recorded: { dicabut: 402 }
+      expected: in_force
+      match: false
+      cross_check: "kb/topics/immigration.yaml (source_verified against peraturan.go.id, 2026-08-25): status=amended (by Permen 11/2024), not revoked. Also the golden-visa J4 canary defect (kb/inventory/immigration.yaml LANE-A-1) — NOTE the correction below."
+    - document_id: UU_1_2024
+      instrument: "UU 1/2024 — Second Amendment to the ITE Law"
+      recorded: { dicabut: 13, none: 1 }
+      expected: in_force
+      match: false
+      cross_check: "not independently re-verified against peraturan.go.id this session; general knowledge only"
+    - document_id: PP_28_2025
+      instrument: "PP 28/2025 — risk-based business licensing (replacing PP 5/2021), also referenced in backend/prompts/zantara_core_v4.py:139"
+      recorded: { dicabut: 721, berlaku: 159, absent: 7 }
+      expected: in_force
+      match: false
+      note: >
+        MIXED, not uniform — 81.3% of its own points say dicabut. Recorded as-is
+        rather than rounded to a single value: a document majority-wrong is still
+        wrong, but reporting it as "721/721 dicabut" the way a uniform row would be
+        reported here would overstate the corpus's own internal agreement on it.
+      cross_check: "not independently re-verified against peraturan.go.id this session; general knowledge only"
+    - document_id: UU_11_2020
+      instrument: "UU 11/2020 — Cipta Kerja (original omnibus law, ruled conditionally unconstitutional 2021, superseded by Perpu 2/2022 -> UU 6/2023)"
+      recorded: { dicabut: 122, absent: 2 }
+      expected: dicabut
+      match: true
+      cross_check: "general knowledge — this is the one genuinely superseded instrument on this list"
+    - document_id: Permen_29_2021
+      instrument: "Permenkumham 29/2021 — the visa/stay-permit regulation Permen 22/2023 replaced"
+      recorded: { dicabut: 340 }
+      expected: dicabut
+      match: true
+      cross_check: "kb/topics/immigration.yaml (source_verified against peraturan.go.id, 2026-08-25): status=superseded"
+  summary:
+    checked: 9
+    contradicted: 7
+    confirmed_correct: 2
+  correction_to_an_earlier_claim: >
+    legal_status CANNOT be the cause of the immigration journey-4 ranking defect
+    (kb/inventory/immigration.yaml LANE-A-1, kb/journeys/immigration.yaml journey 4):
+    the winner (Permen_29_2021, superseded, correctly dicabut) and the loser
+    (Permen_22_2023, in force, wrongly dicabut) carry the IDENTICAL legal_status
+    value. A field with the same value on both sides of a ranking cannot be what
+    orders one above the other, whether or not any code reads it. The originally
+    attributed cause was a correlation, not this field's fault.
+
+# ── §3 Amendment invariant (SELF-CONTAINED — no domain knowledge required) ─────
+#
+# If document A's own title reads "PERUBAHAN ... ATAS B" (an amendment TO B), B
+# cannot be revoked -- a legislature does not amend a repealed instrument. This
+# is provable from the corpus's OWN text and OWN legal_status field, with no
+# external source needed -- the corpus is checked against itself.
+#
+# CAVEAT (do not drop this reading this section): every count below is a LOWER
+# BOUND, not a total. Title parsing depends entirely on a [CONTEXT:] header, and
+# 30.6% of points / 185 of 388 documents (measured_against, above) carry NONE —
+# a document with no header contributes zero evidence here in EITHER direction,
+# not "assumed clean". A weaker, independent signal (kb/inventory/immigration.yaml's
+# own source_basename census, 22 contested identities / 12,926 points / 57 files)
+# already recorded a larger collision count by a different method; this section
+# does not supersede that measurement, only corroborates it from title text.
+amendment_invariant:
+  method: >
+    kb/ops/probe_amendment_invariant.py, run live against production
+    2026-08-26. Resolves a document's own amendment target by requiring
+    "PERUBAHAN [ordinal] ATAS" to open IMMEDIATELY after "TENTANG" in a
+    [CONTEXT:] header found on any of that document's points (never scavenging a
+    match from a citation-history sentence elsewhere in the chunk text — a real
+    failure mode caught live on UU_23_2002, whose own body text quotes "UU 35/2014
+    tentang Perubahan atas UU 23/2002" and would otherwise resolve to itself), then
+    parses the referenced (type, number, year) with the SAME
+    `LEGAL_TITLE_PATTERN`/`LEGAL_TYPE_ABBREV`/`normalize_document_number` production
+    ingestion uses to build every OTHER document_id in this corpus. One disclosed,
+    scoped text normalization is applied before matching (never to anything stored
+    or reported as payload): whitespace touching a hyphen is collapsed
+    ("UNDANG -UNDANG" -> "UNDANG-UNDANG"), a real OCR line-wrap artifact confirmed
+    on PP_1_2014's own citation of UU 27/2007.
+  resolved_own_title_amendment_relationships: 30
+  resolved_targets_present_in_this_corpus: 14
+  resolved_targets_outside_this_corpus: 14
+  resolved_targets_outside_this_corpus_list:
+    - PP_14_2016
+    - Perbup_84_2016
+    - Perda_17_2001
+    - Perda_5_2011
+    - Permen_110_2023
+    - Permen_13_2025
+    - Permen_1_2024
+    - Perpres_70_2023
+    - UU_11_1995
+    - UU_28_2003
+    - UU_29_2002
+    - UU_32_2004
+    - UU_35_2000
+    - UU_4_2023
+  unresolved_ocr_or_unmapped_type: 7
+  unresolved_ocr_or_unmapped_type_list:
+    # Every one of these is an amendment reference this session's own eyes
+    # confirmed exists in the header text, blocked by a specific, named defect —
+    # not a silent parser failure:
+    - document_id: Permen_2_2010
+      reason: "citation window exceeds LEGAL_TITLE_PATTERN's bounded gap"
+    - document_id: Permen_3_2014
+      reason: "year token itself OCR-corrupted with an embedded space (2014 -> '20 14')"
+    - document_id: UU_16_2025
+      reason: "year token OCR-corrupted: letter O for digit 0 ('2OO1')"
+    - document_id: UU_19_2016
+      reason: "citation window exceeds LEGAL_TITLE_PATTERN's bounded gap"
+    - document_id: UU_2_2008
+      reason: "year token OCR-corrupted: letter O for digit 0 ('2OO1')"
+    - document_id: UU_65_2024
+      reason: "citation window exceeds LEGAL_TITLE_PATTERN's bounded gap"
+    - document_id: UU_66_2024
+      reason: "year token OCR-corrupted: letter O for digit 0 ('2OO8')"
+  strict_violations:
+    # amending document uniformly `berlaku`, amended document uniformly `dicabut`
+    # -- an outright logical impossibility, requiring no domain knowledge.
+    - amending: UU_63_2024
+      amending_title_fragment: "PERUBAHAN KETIGA ATAS UU NOMOR 6 TAHUN 2011 TENTANG KEIMIGRASIAN"
+      amending_status: { berlaku: 38 }
+      amended: UU_6_2011
+      amended_status: { dicabut: 413 }
+    - amending: PP_1_2014
+      amending_title_fragment: "PERUBAHAN ATAS UNDANG-UNDANG NOMOR 27 TAHUN 2007 TENTANG PENGELOLAAN WILAYAH PESISIR DAN PULAU-PULAU KECIL"
+      amending_status: { berlaku: 122 }
+      amended: UU_27_2007
+      amended_status: { dicabut: 70 }
+  weak_violations:
+    # amended document uniformly `dicabut`, amender's OWN status not required to
+    # be berlaku -- weaker evidence (an amender that is itself dicabut proves
+    # less about the amended instrument's true status), kept SEPARATE, never
+    # merged into strict_violations' count. Includes both strict violations above.
+    - amending: Permen_1_2026
+      amending_status: { mixed: true, berlaku: 575, dicabut: 931 }
+      amended: Permen_81_2024
+      amended_status: { dicabut: 430 }
+    - amending: Permen_11_2024
+      amending_title_fragment: "PERUBAHAN ATAS PERMENKUMHAM NOMOR 22 TAHUN 2023 TENTANG VISA DAN IZIN TINGGAL"
+      amending_status: { dicabut: 345 }
+      amended: Permen_22_2023
+      amended_status: { dicabut: 402 }
+      note: "independently corroborates the domain-knowledge finding on Permen_22_2023 above, from the corpus's own text alone"
+    - amending: UU_63_2024
+      amending_status: { berlaku: 38 }
+      amended: UU_6_2011
+      amended_status: { dicabut: 413 }
+    - amending: UU_36_2008
+      amending_status: { dicabut: 271 }
+      amended: UU_7_1983
+      amended_status: { dicabut: unspecified_uniform }
+    - amending: PP_1_2014
+      amending_status: { berlaku: 122 }
+      amended: UU_27_2007
+      amended_status: { dicabut: 70 }
+  discrepancy_note: >
+    An earlier message in this campaign cited "66 resolved / 2 strict / 6 weak"
+    from an independent measurement. This session's own resolution (documented
+    method above, live 2026-08-26) found 30 resolved / 2 strict / 5 weak. The
+    STRICT count and both named strict pairs match exactly. The other counts
+    differ because resolution methodology (title-anchoring rule, OCR-normalization
+    scope, corpus content at time of measurement — this collection is NOT static;
+    it grew from 83,969 to 84,283 points between two audits taken one day apart)
+    legitimately differs between independent implementations. Both are corpus-scale
+    lower bounds, not exact totals; neither claims to be the other's audit.
+
+# ── §4 The three search-time-suppression fields — only one of them is dead ────
+#
+# `legal_status` (everything above) is not the only field this campaign found
+# that names a document's legal validity. `build_search_filter()`
+# (apps/backend-rag/backend/services/search/search_filters.py) reads TWO OTHER,
+# DIFFERENT keys and builds a live Qdrant `must_not` clause from each — spot-checked
+# against the live source, both confirmed:
+#
+#   filters["status_vigensi"]  = {"$ne": "dicabut"}          (line 86, always, unless
+#                                                              already narrowed above it)
+#   filters["retrieval_scope"] = {"$ne": "historical_only"}  (line 91, whenever
+#                                                              exclude_historical=True)
+#
+# These three fields are NOT interchangeable and must never be read as "the same
+# finding measured three ways" — this table is the artifact's single most
+# important fact, because it is the one a future reader is most likely to
+# reconstruct wrong from partial evidence (an earlier pass on this exact chain
+# read only line 86 and concluded the guard "never bites" — true of
+# status_vigensi, false of the guard as a whole):
+#
+#   field            | populated on legal_unified      | read by the guard | outcome
+#   -----------------|----------------------------------|-------------------|---------------------------
+#   legal_status     | 77,539 pt (42,420 dicabut/26,107 berlaku/9,012 none) | NO — 0 resolvable reads (§ read-lint) | full, and systemically FALSE (§2/§3)
+#   status_vigensi   | 0 pt, everywhere, corpus-wide     | yes               | never bites (armed, inert)
+#   retrieval_scope  | 4,699 pt (2 historical_only)      | yes, not disable-able | WORKS — a real, live, already-armed supersession mechanism, just almost never used
+#
+# The third row is a plain measurement, stated here without a recommendation:
+# `retrieval_scope=historical_only` is a genuinely working alternative to any
+# `legal_status` repair for the specific "supersede/mark as historical" need
+# Decision 5 (MANDATE.md §7 — mark vs remove) was choosing between, and it is
+# used on exactly one document today (`Perpres_43_2011__historical`, 2 points).
+# Whether that changes what Decision 5 should do next is for Zero to weigh, not
+# for this inventory to argue.
+status_vigensi:
+  measured_on_legal_unified:
+    collection: legal_unified_hybrid_hybrid
+    points_scanned: 84283
+    hits_flat_or_nested: 0
+  measured_instance_wide:
+    collections_scanned: 14
+    points_scanned: 124213
+    hits: 0
+    note: >
+      Independently measured twice: once by this lane's own read-only scroll,
+      once by a separate grader dispatched by team-lead on the same code chain.
+      Both measurements agree exactly (0/84,283 on legal_unified; 0 across all
+      14 collections instance-wide) — two independent measurements agreeing is
+      stronger evidence than either alone.
+  filter_chain:
+    - "apps/backend-rag/backend/services/search/search_service.py `_prepare_search_context` (~lines 546-566): builds the filter UNCONDITIONALLY via build_search_filter(exclude_repealed=True); only an explicit apply_filters=False disables it — a caller passing None inherits it ACTIVE"
+    - "apps/backend-rag/backend/services/search/search_filters.py `build_search_filter` (exclude_repealed default True): sets filters['status_vigensi'] = {'$ne': 'dicabut'} — spot-checked against the live source, matches exactly"
+    - "apps/backend-rag/backend/core/qdrant_db.py `_convert_filter_to_qdrant_format` (~line 367) converts that into a Qdrant must_not clause"
+    - "apps/backend-rag/backend/core/qdrant_db.py `_FLAT_PAYLOAD_COLLECTIONS` (~line 448) lists `legal_unified` by name — a flat top-level status_vigensi key on this collection would be read directly, not just under metadata"
+  retrieval_scope:
+    # The THIRD field (see §4's table above) — unlike status_vigensi, this one is
+    # populated, read, and already working. Recorded here as a plain measurement.
+    measured_on_legal_unified:
+      collection: legal_unified_hybrid_hybrid
+      points_scanned: 84283
+      absent: 79584
+      current: 4697
+      historical_only: 2
+      historical_only_documents: ["Perpres_43_2011__historical"]
+    filter_chain:
+      - "search_filters.py:91 — filters['retrieval_scope'] = {'$ne': 'historical_only'}, set whenever exclude_historical=True"
+      - "search_service.py `_requires_current_law_guard` (~lines 247-253): true exactly for {'legal_unified', 'tax_genius'} — this guard is ON for this collection"
+      - "search_service.py `_prepare_search_context` (~lines 546-566): the apply_filters=False branch rebuilds with exclude_historical=True UNCONDITIONALLY (comment: 'historical evidence is never eligible as current law') — this clause is not disable-able the way status_vigensi's is"
+      - "legal_ingestion_service.py: HISTORICAL_RETRIEVAL_SCOPE/CURRENT_RETRIEVAL_SCOPE constants, validate_legal_retrieval_scope (line 204), and a guaranteed keyword payload index on BOTH the flat and metadata-nested key (lines 567-569) — necessary because a Qdrant filter on a non-indexed key returns HTTP 400, not '0 results', so this mechanism could not silently no-op the way an unindexed field would"
+    note: >
+      A real, live, already-armed supersession mechanism exists and works today —
+      it is simply used on 2 of 84,283 points. Whether this changes Decision 5
+      (MANDATE.md §7, mark vs remove for superseded instruments) is for Zero to
+      weigh; this row states the measurement, not a recommendation.
+  consequence_if_populated: >
+    Qdrant's must_not is a HARD exclusion at the query layer — matching points are
+    removed from the result set itself, invisible even to a reranker or any
+    downstream fallback (not a demotion). If status_vigensi were populated on
+    legal_unified with the SAME value distribution legal_status carries today
+    (e.g. by an apparent "field cleanup" that copies legal_status into
+    status_vigensi), 42,420 points (50.3% of this corpus) would vanish from every
+    SearchService-routed query instantly, with no code change and no review —
+    including every one of Keimigrasian, Perseroan Terbatas, Cipta Kerja and
+    Ketenagakerjaan (the §2 domain-knowledge table above).
+  coverage_gap_finding_a: >
+    The filter chain above runs on every query that goes through SearchService —
+    NOT on every backend query, and NOT for either field it builds. `HybridSearchService`
+    (apps/backend-rag/backend/services/rag/hybrid_search.py) is a separate class
+    whose `search_hybrid()` never calls build_search_filter or _prepare_search_context
+    at all (spot-checked: zero occurrences of either name, or of status_vigensi/
+    retrieval_scope, in that file) — so on this path NEITHER status_vigensi-suppression
+    NOR retrieval_scope-marking protects anything, for the identical reason (the
+    function that builds both clauses is simply never invoked here). `app/routers/
+    prime.py:42` calls it with collection="legal_unified_hybrid_hybrid" directly and
+    unfiltered TODAY. `app/routers/visa_oracle.py:1064` (the Visa Oracle chat
+    endpoint) also calls it unfiltered, but against collection="visa_oracle", not
+    legal_unified — the SAME structural gap (HybridSearchService never filters, on
+    whatever collection it is pointed at), not a second example currently touching
+    legal_unified. The inverse framing matters more than the current gap: if
+    status_vigensi were repaired, or if a document were correctly marked
+    retrieval_scope=historical_only, these two routers would STILL serve it as
+    current law, because they never reach either filter at all — this is a coverage
+    fact recorded for the inventory, not an alarm about either field's own state.
+  dead_config_finding_b: >
+    app/core/config.py declares `search_enable_filters: bool = Field(default=False,
+    description="...When False (default), filters are disabled for backward
+    compatibility with chat path...")`. Repo-wide grep of apps/backend-rag/backend
+    (excluding tests) finds this flag in exactly ONE place: its own declaration.
+    Nothing reads it. The real code hardcodes exclude_repealed=True in
+    _prepare_search_context regardless of this setting, and — separately — the
+    `apply_filters is False` path (search_service.py, the comment "historical
+    evidence is never eligible as current law") rebuilds with exclude_historical=True
+    unconditionally, so retrieval_scope's clause is not disable-able via this flag
+    or via apply_filters either. A future reader who trusts this docstring will
+    conclude the opposite of current behavior for both mechanisms it claims to gate.
+  dependency: >
+    Do NOT populate status_vigensi on legal_unified, and do NOT unify or merge
+    legal_status and status_vigensi into one field, until the legal_status repair
+    (item 4 of the PENDING-ARMS "systemically FALSE" row) has landed. This is
+    tighter than "no reader may be armed": status_vigensi already HAS a reader —
+    the danger is not arming a new one, it is populating the field an existing
+    one already watches.
+  must_stay_green_exception: >
+    Unlike every other check in this campaign (which must be RED today to prove
+    it measures anything), the status_vigensi check in
+    scripts/kb/legal_status_drift_gate.py is a DECLARED, INTENTIONAL exception:
+    it must be, and stay, GREEN. The danger it guards against is a future,
+    innocent-looking data operation ("these two fields mean the same thing, let's
+    unify them") — not a currently-broken state. A green check that has never been
+    proven capable of going red is indistinguishable from a check nobody wired up,
+    so its guilt-test proof (write status_vigensi onto a point in an ISOLATED
+    in-memory scratch collection — never legal_unified, never any production
+    collection — confirm the check goes RED, then confirm clean again once removed)
+    is required and lives in
+    test_legal_status_field_integrity_contract.py::test_status_vigensi_regression_guilt_and_innocence.
+
+# ── §5 Open items this artifact does not resolve ──────────────────────────────
+open_items:
+  - "The corpus is not static during audit: 84,283 points measured 2026-08-26 vs 83,969 recorded in an audit one day earlier (+314, unexplained — most plausibly the 2026-08-25 parser-repair lanes, but not confirmed). Any two measurements taken on different days may legitimately disagree by more than these numbers alone would suggest."
+  - "The repair itself (item 4 of the PENDING-ARMS row) is corpus-scale, not a per-document patch, and is explicitly OUT OF SCOPE for this artifact."
+  - "No production reader for legal_status may be armed until that repair lands (item 5 of the same row) — this is a dependency ORDERING constraint, not a suggestion, and status_vigensi's own dependency above is separate from and in addition to it."

@@ -151,7 +151,15 @@ PAYLOAD_SHAPES = frozenset(_probe().PAYLOAD_SHAPES)
 # in-force/superseded/revoked, official URL). They are validated by their own gate
 # when lane A opens; this module owns `retired_collection` and must not judge a
 # topic inventory by a schema that was never meant for it.
-KINDS = frozenset({"retired_collection", "topic"})
+#
+# `field_integrity` (added 2026-08-26, kb/inventory/legal_status.yaml) is a third
+# kind for the same reason `topic` is: a census of one payload field's own
+# trustworthiness has a different shape than either a retirement triage or a
+# topic's instrument list. Its own dedicated gate is
+# test_legal_status_field_integrity_contract.py; the generic `inventory` fixture
+# below already skips it here (kind != OWNED_KIND), same mechanism that already
+# defers `topic` — no new skip logic needed, only this membership.
+KINDS = frozenset({"retired_collection", "topic", "field_integrity"})
 # MANDATE.md §5 — the seven lanes. Every document must be owned by one of them,
 # so a finding cannot be recorded with nobody on the hook for it.
 LANES = frozenset("ABCDEFP")
