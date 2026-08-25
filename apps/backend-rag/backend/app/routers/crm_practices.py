@@ -2239,16 +2239,32 @@ async def add_required_document(
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Add a required document to a practice (team member only)."""
+    """Add a required document to a practice (team member only).
+
+    Access Control:
+    - Admin users: can add required documents to any practice
+    - Team members: can only add required documents to practices they
+      created or are assigned to (mirrors update_practice; crm-mutation-scope)
+    """
     try:
         async with db_pool.acquire() as conn:
-            # Check if practice exists
+            # Check if practice exists + fetch ownership fields for the RBAC gate below
             practice = await conn.fetchrow(
-                "SELECT id, client_id FROM practices WHERE id = $1",
+                "SELECT id, client_id, created_by, assigned_to FROM practices WHERE id = $1",
                 practice_id,
             )
             if not practice:
                 raise HTTPException(status_code=404, detail="Practice not found")
+
+            user_is_admin, created_by_match, assigned_to_match = _practice_ownership_flags(
+                current_user, practice.get("created_by"), practice.get("assigned_to")
+            )
+            if not user_is_admin and not (created_by_match or assigned_to_match):
+                _deny_practice_mutation(
+                    practice_id,
+                    current_user,
+                    "You don't have permission to add required documents to this practice",
+                )
 
             # Insert required document
             row = await conn.fetchrow(
