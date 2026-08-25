@@ -424,14 +424,29 @@ class LegalIngestionService:
 
             # These two PUTs are FAIL-CLOSED, deliberately and not incidentally:
             # `ensure_keyword_payload_index` is a bare PUT + raise_for_status(),
-            # so a 403 on a caller-supplied collection (`collection_name` is
-            # request-controlled) or a timeout on a first-ever index build over
-            # a large collection aborts an ingest that might otherwise have
+            # so a failing PUT aborts an ingest that might otherwise have
             # succeeded. That is the right trade -- an ingest whose collision
             # guard cannot run must not proceed -- but it is a trade, not a
-            # free "safe and idempotent". Same-schema recreation is a no-op;
-            # a PUT of a DIFFERENT schema over an existing index is NOT
-            # verified here and is the open case.
+            # free "safe and idempotent".
+            #
+            # CORRECTED 2026-08-25: an earlier revision of this comment said the
+            # risk was "a 403 on a caller-supplied collection (`collection_name`
+            # is request-controlled)". That was a refuter's claim, accepted
+            # without measuring it, and it is FALSE.
+            # `validate_legal_ingest_preflight` (:124) runs at :412, well before
+            # these PUTs, and rejects any target that does not canonicalize to
+            # ALLOWED_CANONICAL_COLLECTIONS -- today `legal_unified` or
+            # `tax_genius`. A caller cannot steer this code at an arbitrary
+            # collection, so the arbitrary-ACL scenario never reaches here.
+            # Measured by attempting exactly that: an ingest naming a scratch
+            # collection died at the preflight with
+            # "target collection must resolve to one of ['legal_unified',
+            # 'tax_genius']", never reaching the index calls.
+            #
+            # What remains genuinely open, and is the reason this stays
+            # fail-closed rather than tolerant: a timeout on a first-ever index
+            # build over a large collection, and a PUT of a DIFFERENT schema
+            # over an existing index. Neither is verified here.
             #
             # Payload indexes the fail-closed filters below REQUIRE. A missing
             # index does not degrade a Qdrant filter, it makes the query an
