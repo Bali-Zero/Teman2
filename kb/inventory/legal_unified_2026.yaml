@@ -511,3 +511,46 @@ open_findings:
       so the cure is a decision, not a rename. Held in
       scripts/ci/ingest_target_lint.py::DISCOVERY_ALLOWLIST with this reason.
     severity: medium
+
+  - id: WIZ-5
+    title: "`kbli_tka` is a LIVE alias the registry does not map"
+    owner: "lane E (employment & HR)"
+    detail: >-
+      backend/scripts/generate_tka_embeddings.py writes to `kbli_tka`, which
+      resolves in live Qdrant to kbli_tka_hybrid (246 points, measured
+      2026-08-25) but is absent from collection_registry.py. The write lands
+      somewhere real; the registry simply does not know the name, so
+      is_known_collection() is False and no code path can resolve it. The cure is
+      a registry addition, not a script edit, which is why it is not made here.
+    severity: medium
+
+  - id: WIZ-6
+    title: "`intel_authoritative_sources` is aliased but not mapped"
+    owner: "lane F (compliance & reporting)"
+    detail: >-
+      Two bali-intel-scraper loaders write to it (525 live points). It appears in
+      CANONICAL_COLLECTION_ALIASES mapped to `balizero_news`, but not in
+      LOGICAL_TO_PHYSICAL_COLLECTIONS — so it canonicalizes yet does not resolve.
+      Adding it changes how an existing alias behaves for every reader, which is
+      not a drive-by change inside Work Item Zero.
+    severity: medium
+
+  - id: WIZ-7
+    title: "`nlm_shadow_hybrid` is in the registry and not in Qdrant"
+    owner: "lane B (company & KBLI)"
+    detail: >-
+      scripts/nlm_shadow_extractor.py writes to it, and the registry maps it — but
+      it is not among the 14 collections live on 2026-08-25. The mirror image of
+      every other finding here: the name is known and the store is missing.
+    severity: medium
+
+  - id: WIZ-8
+    title: "Four write entrypoints target collections that exist nowhere"
+    owner: "lane P (parser capability)"
+    detail: >-
+      migration_020.py creates `collective_memories`; migration_031b names a
+      collection literally called `test`; init_news_collection.py creates
+      `balizero_news_history`; run_hier_eval.py writes `kb_politics_hier_v1`.
+      None is in the registry, none is live. Each is either dead code or a store
+      nobody provisioned — retire or explain, one row each.
+    severity: low

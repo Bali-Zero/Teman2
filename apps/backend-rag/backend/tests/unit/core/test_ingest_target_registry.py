@@ -100,27 +100,27 @@ def test_no_undeclared_ingest_entrypoint_exists():
     )
 
 
-def test_the_literal_scanner_is_not_silently_finding_nothing():
-    """Anti-vacuity: a broken regex must go red, not quietly pass everything.
+def test_the_target_scanner_is_not_silently_finding_nothing():
+    """Anti-vacuity: a broken scanner must go red, not quietly pass everything.
 
-    `test_declared_*` is an assertion over a list. If the pattern set stopped
+    `test_declared_*` is an assertion over a list. If the AST rules stopped
     matching, that list would be empty and the gate would be green while
     inspecting nothing — the exact failure mode this repo calls a probe that
     agrees with itself.
     """
     per_file = {
-        rel: LINT.extract_collection_literals((ROOT / rel).read_text(encoding="utf-8"))
+        rel: LINT.collection_targets((ROOT / rel).read_text(encoding="utf-8"))
         for rel in LINT.DECLARED_ENTRYPOINTS
     }
-    empty = sorted(rel for rel, lits in per_file.items() if not lits)
+    empty = sorted(rel for rel, targets in per_file.items() if not targets)
     assert empty == [], (
-        "declared as ingest entrypoints but no collection literal was extracted — "
-        "the pattern set in ingest_target_lint.py has drifted away from how these "
-        "call sites are written:\n  " + "\n  ".join(empty)
+        "declared as ingest entrypoints but no collection target was found — the "
+        "AST rules in ingest_target_lint.py have drifted away from how these call "
+        "sites are written:\n  " + "\n  ".join(empty)
     )
-    total = sum(len(lits) for lits in per_file.values())
+    total = sum(len(t) for t in per_file.values())
     assert total >= len(LINT.DECLARED_ENTRYPOINTS), (
-        f"extracted {total} literals across {len(LINT.DECLARED_ENTRYPOINTS)} declared "
+        f"found {total} targets across {len(LINT.DECLARED_ENTRYPOINTS)} declared "
         "entrypoints — fewer than one each is not a corpus, it is a broken scanner"
     )
 
@@ -162,13 +162,85 @@ def test_a_declared_entrypoint_that_vanishes_is_a_violation_not_a_skip(tmp_path)
 @pytest.mark.parametrize(
     "source,expected",
     [
+        # shapes real call sites in this repo use
         ('LegalIngestionService(collection_name="legal_unified")', ["legal_unified"]),
-        ('COLLECTION_NAME = "tax_genius"', ["tax_genius"]),
-        ('["--collection", "legal_unified", "--limit"]', ["legal_unified"]),
-        ('search(collection="visa_oracle")', ["visa_oracle"]),
-        ("collection_name=some_variable", []),
+        ('COLLECTION_NAME = "tax_genius"\nx = QdrantClient(collection_name=COLLECTION_NAME)',
+         ["tax_genius", "tax_genius"]),
+        ('upsert(collection_name="legal_unified", points=p)', ["legal_unified"]),
+        ('subprocess.run(["--collection", "legal_unified", "--limit"])', ["legal_unified"]),
+        # the six forms a cross-family refuter used to walk straight past the
+        # regex version on 2026-08-25 — two of them GREEN over a live defect
+        ('LegalIngestionService(collection_name="legal_unified" + "_2026")',
+         ["legal_unified_2026"]),
+        ('LegalIngestionService(collection_name="legal_unified" "_2026")',
+         ["legal_unified_2026"]),
+        ('LegalIngestionService("legal_unified_2026")', ["legal_unified_2026"]),
+        ('cfg = {"collection": "legal_unified_2026"}', ["legal_unified_2026"]),
+        ('DEAD = "legal_unified_2026"\nLegalIngestionService(collection_name=DEAD)',
+         ["legal_unified_2026"]),
+        # not resolvable -> reported as such, never guessed and never dropped
+        ('LegalIngestionService(collection_name=f"legal_unified_{y}")', [LINT.UNRESOLVED]),
+        ('LegalIngestionService(collection_name=argv[1])', [LINT.UNRESOLVED]),
     ],
 )
-def test_literal_extraction_shapes(source, expected):
-    """Each shape is one that a real call site in this repo uses."""
-    assert LINT.extract_collection_literals(source) == expected
+def test_target_extraction_shapes(source, expected):
+    assert [value for value, _, _ in LINT.collection_targets(source)] == expected
+
+
+def test_a_runtime_assembled_target_is_a_violation_not_a_silence(tmp_path):
+    """The refuter's strongest finding, pinned.
+
+    `collection_name="legal_unified" + "_2026"` extracted a MAPPED name under the
+    regex scanner and passed clean while writing to the dead collection. Green over
+    a live defect is worse than no gate; both halves are asserted here.
+    """
+    concat = tmp_path / "concat.py"
+    concat.write_text(
+        'LegalIngestionService(collection_name="legal_unified" + "_2026")\n',
+        encoding="utf-8",
+    )
+    violations = LINT.check(ROOT, entrypoints=("concat.py",), source_root=tmp_path)
+    assert len(violations) == 1 and "legal_unified_2026" in violations[0], violations
+
+    dynamic = tmp_path / "dynamic.py"
+    dynamic.write_text(
+        'LegalIngestionService(collection_name=os.environ["C"])\n', encoding="utf-8"
+    )
+    violations = LINT.check(ROOT, entrypoints=("dynamic.py",), source_root=tmp_path)
+    assert len(violations) == 1 and "assembled at runtime" in violations[0], violations
+
+
+def test_qdrant_client_first_positional_is_a_url_not_a_collection():
+    """A rule that INVENTS a target is as bad as one that misses it: reading
+    QdrantClient's first positional as a collection produced a phantom `:memory:`
+    on this checker's first run over the tree."""
+    assert LINT.collection_targets('QdrantClient(":memory:")') == []
+
+
+def test_every_discovery_allowlist_entry_carries_a_reason():
+    empty = sorted(k for k, v in LINT.DISCOVERY_ALLOWLIST.items() if not (v or "").strip())
+    assert empty == [], (
+        "an allowlist entry with no reason is how this list becomes the whole "
+        f"tree: {empty}"
+    )
+
+
+def test_an_allowlisted_open_finding_has_a_row_in_the_inventory():
+    """Cross-source. An entry parked here as an OPEN FINDING must be recorded as
+    one where the campaign can see it — otherwise the allowlist is a graveyard."""
+    import re
+
+    import yaml
+
+    inventory = yaml.safe_load(
+        (ROOT / "kb/inventory/legal_unified_2026.yaml").read_text(encoding="utf-8")
+    )
+    recorded = {f["id"] for f in inventory.get("open_findings", [])}
+    cited = set()
+    for reason in LINT.DISCOVERY_ALLOWLIST.values():
+        cited.update(re.findall(r"\bWIZ-\d+\b", reason or ""))
+    missing = sorted(cited - recorded)
+    assert missing == [], (
+        "allowlisted as OPEN FINDINGs but absent from "
+        f"kb/inventory/legal_unified_2026.yaml -> open_findings: {missing}"
+    )

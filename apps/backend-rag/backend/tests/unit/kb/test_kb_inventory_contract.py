@@ -268,9 +268,8 @@ def test_a_retired_collection_is_named_by_no_ingest_entrypoint(inventory):
     retired = data["measured_against"]["collection"]
     offenders = []
     for rel in lint.DECLARED_ENTRYPOINTS:
-        if retired in lint.extract_collection_literals(
-            (ROOT / rel).read_text(encoding="utf-8")
-        ):
+        targets = lint.collection_targets((ROOT / rel).read_text(encoding="utf-8"))
+        if any(value == retired for value, _, _ in targets):
             offenders.append(rel)
     assert offenders == [], (
         f"{path.name} declares {retired!r} retired as an ingest target, but these entrypoints still "
