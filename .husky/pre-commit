@@ -415,10 +415,26 @@ fi
 PY_BACKEND_CHANGED=$(git diff --cached --name-only | grep '^apps/backend-rag/backend/' || true)
 if [ -n "$PY_BACKEND_CHANGED" ]; then
     echo "🔗 Testing FastAPI import chain (anti-rogue-AI check)..."
+    # Candidate interpreters, in order. The last two are the fix for a blind
+    # spot measured 2026-08-25: an AGENT WORKTREE has no venv of its own (the
+    # repo mandates one worktree per agent, and `agent_start.py` does not
+    # create a venv), so this fell straight through to system `python3`, which
+    # lacks the deps -> "ModuleNotFoundError" -> the block below reported
+    # "Skipping import chain check" and the hook still printed "All pre-commit
+    # checks passed". The anti-rogue-AI guard was therefore disarmed in exactly
+    # the environment the repo requires agents to work in, and announced itself
+    # green while checking nothing (cicatrix family #2, esiste != armato).
+    # `--git-common-dir` resolves to the MAIN checkout's .git from inside any
+    # worktree, so its parent is the main checkout, where the venv lives.
+    MAIN_CHECKOUT="$(cd "$(git rev-parse --git-common-dir)/.." 2>/dev/null && pwd || true)"
     if [ -f "apps/backend-rag/venv/bin/python" ]; then
         VENV_PYTHON="apps/backend-rag/venv/bin/python"
     elif [ -f "apps/backend-rag/.venv/bin/python" ]; then
         VENV_PYTHON="apps/backend-rag/.venv/bin/python"
+    elif [ -n "$MAIN_CHECKOUT" ] && [ -f "$MAIN_CHECKOUT/apps/backend-rag/.venv/bin/python" ]; then
+        VENV_PYTHON="$MAIN_CHECKOUT/apps/backend-rag/.venv/bin/python"
+    elif [ -n "$MAIN_CHECKOUT" ] && [ -f "$MAIN_CHECKOUT/apps/backend-rag/venv/bin/python" ]; then
+        VENV_PYTHON="$MAIN_CHECKOUT/apps/backend-rag/venv/bin/python"
     else
         VENV_PYTHON="python3"
     fi
