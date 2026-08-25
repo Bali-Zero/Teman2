@@ -1,16 +1,20 @@
 """Real-database integration tests for GarudaOrderRepository.
 
-Requires a real Postgres. DSN resolution (gate finding, round 3): CI never
-set `GARUDA_L3_TEST_DSN` -- that name appears nowhere in `.github/` -- so
-every test here was silently `pytest.skip`ping in the ONLY run that gates
-the merge, on a suite that is nothing but the money paths (amount
-reconciliation, double-charge, late-money remediation). A skip in a gate
-is a fail-open. Falls back to `TEST_DATABASE_URL` / `DATABASE_URL` (what CI
-actually exports -- see `.github/workflows/tests.yml`'s "Run unit tests"
-step) before the local-dev unix-socket default, so CI's Postgres is found
-without anyone editing a workflow. In CI (`CI` env var set), a connection
-failure now FAILS the test run instead of skipping it -- no reachable
-database in CI is a finding, not a reason to pass.
+Requires a real Postgres. DSN resolution (gate finding, round 3, corrected):
+CI never set `GARUDA_L3_TEST_DSN` -- that name appears nowhere in
+`.github/` -- so every test here was silently `pytest.skip`ping in the ONLY
+run that gates the merge, on a suite that is nothing but the money paths
+(amount reconciliation, double-charge, late-money remediation). A skip in a
+gate is a fail-open.
+
+Every other garuda lane reaches Postgres through `INTAKE_TEST_DSN` -- a
+variable this repo already established and CI already sets (see
+`.github/workflows/tests.yml`). This module now reads it the same way, so
+it joins the pattern the rest of the product already uses instead of being
+the one branch nobody wired. `GARUDA_L3_TEST_DSN` remains as an optional
+override for a local throwaway database. In CI (`CI` env var set), a
+connection failure now FAILS the test run instead of skipping it -- no
+reachable database in CI is a finding, not a reason to pass.
 """
 
 from __future__ import annotations
@@ -37,9 +41,8 @@ from backend.services.payments.terminal_taxonomy import FailureOutcome, classify
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
-    or os.environ.get("TEST_DATABASE_URL")
-    or os.environ.get("DATABASE_URL")
-    or "postgresql://localhost/garuda_l3_test?host=/tmp"
+    or os.environ.get("INTAKE_TEST_DSN")
+    or "postgresql://localhost:5432/nuzantara_test"
 )
 
 
@@ -88,11 +91,12 @@ async def pool():
         if os.environ.get("CI"):
             # A skip in a gate is a fail-open (gate finding, round 3): every
             # test in this file is a money path. If CI cannot reach the
-            # Postgres it advertises via GARUDA_L3_TEST_DSN/TEST_DATABASE_URL
-            # /DATABASE_URL, that is a red build, never a quiet skip.
+            # Postgres it advertises via INTAKE_TEST_DSN (or a
+            # GARUDA_L3_TEST_DSN override), that is a red build, never a
+            # quiet skip.
             pytest.fail(
-                f"CI has no reachable Postgres for GARUDA_L3_TEST_DSN/"
-                f"TEST_DATABASE_URL/DATABASE_URL -- {_DSN!r} unreachable: {exc}. "
+                f"CI has no reachable Postgres for INTAKE_TEST_DSN "
+                f"(or GARUDA_L3_TEST_DSN override) -- {_DSN!r} unreachable: {exc}. "
                 f"This is the gate for this directory's money tests; it must "
                 f"never silently pass by skipping."
             )

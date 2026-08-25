@@ -37,9 +37,8 @@ from backend.services.payments.xendit import XenditFeeConfig, XenditPaymentProvi
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
-    or os.environ.get("TEST_DATABASE_URL")
-    or os.environ.get("DATABASE_URL")
-    or "postgresql://localhost/garuda_l3_test?host=/tmp"
+    or os.environ.get("INTAKE_TEST_DSN")
+    or "postgresql://localhost:5432/nuzantara_test"
 )
 _CALLBACK_TOKEN = "test-webhook-callback-token"
 
@@ -66,8 +65,8 @@ async def pool():
             # file is the actual HTTP-level coverage for the payment webhook
             # -- it must never silently pass by skipping in CI.
             pytest.fail(
-                f"CI has no reachable Postgres for GARUDA_L3_TEST_DSN/"
-                f"TEST_DATABASE_URL/DATABASE_URL -- {_DSN!r} unreachable: {exc}."
+                f"CI has no reachable Postgres for INTAKE_TEST_DSN "
+                f"(or GARUDA_L3_TEST_DSN override) -- {_DSN!r} unreachable: {exc}."
             )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
     async with p.acquire() as conn:
