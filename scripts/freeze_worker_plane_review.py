@@ -43,8 +43,8 @@ DEFAULT_VALIDATOR_PATH = "scripts/check_worker_plane_review.py"
 DEFAULT_ROUTE_CONFIG_PATH = "scripts/review_routes/worker-plane-council-v3.json"
 LEGACY_ROUTE_CONFIG_PATH = "scripts/review_routes/glm-5.2-v1.json"
 EXPECTED_GLM_ROUTE_CONFIG = (
-    b'{"api_timeout_ms":"3000000","base_url":"https://api.z.ai/api/anthropic",'
-    b'"model_map":{"haiku":"glm-4.7","opus":"glm-5.2","sonnet":"glm-5.2"},'
+    b'{"api_timeout_ms":"3000000","base_url":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",'
+    b'"model_map":{"haiku":"glm-5.2","opus":"glm-5.2","sonnet":"glm-5.2"},'
     b'"schema_version":1}\n'
 )
 EXPECTED_COUNCIL_ROUTE_CONFIG = (

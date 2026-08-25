@@ -1,0 +1,73 @@
+{
+  "story_cluster_id": "60000000-0000-4000-8000-000000000004",
+  "story_cluster_family_id": "60000000-0000-4000-8000-000000100004",
+  "revision": 1,
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "predecessor_refs": [],
+  "canonical_event_ref": {
+    "event_id": "30000000-0000-4000-8000-000000000008",
+    "object_hash": "0000000000000000000000000000000000000000000000000000000000000150"
+  },
+  "members": [
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000008",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000150"
+      },
+      "relationship": "same_event",
+      "source_group_id": "com.example.source_group_f",
+      "relation_score": 1.0
+    },
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000009",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000151"
+      },
+      "relationship": "translation",
+      "source_group_id": "com.example.source_group_g",
+      "relation_score": 0.4
+    },
+    {
+      "event_ref": {
+        "event_id": "30000000-0000-4000-8000-000000000010",
+        "object_hash": "0000000000000000000000000000000000000000000000000000000000000152"
+      },
+      "relationship": "update",
+      "source_group_id": "com.example.source_group_h",
+      "relation_score": 0.6
+    }
+  ],
+  "independent_source_groups": [
+    "com.example.source_group_f",
+    "com.example.source_group_g",
+    "com.example.source_group_h"
+  ],
+  "decision": {
+    "layers_run": ["exact", "normalized", "near"],
+    "thresholds_version": "2026.1",
+    "verdict": "merged",
+    "reasons": ["com.example.translation_and_update_attest"],
+    "decided_by": "deterministic",
+    "decided_at": "2026-01-18T00:00:00Z"
+  },
+  "recorded_at": "2026-01-18T00:05:00Z",
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public"
+  },
+  "producer": {
+    "name": "com.example.story_clusterer",
+    "version": "1.1.0"
+  },
+  "lineage": {
+    "run_id": "60000000-0000-4000-8000-000000900005",
+    "code_version": "1.1.0",
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "ee1dccda549aadac9eec18890855e1d6718dbff07710cdce8a854accdf958200"
+}

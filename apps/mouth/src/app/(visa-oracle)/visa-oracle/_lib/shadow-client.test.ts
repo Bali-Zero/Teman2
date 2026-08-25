@@ -58,7 +58,7 @@ describe("sendShadowEvaluation — the ONE network call site for SHADOW mode", (
     expect(init.headers).toMatchObject({ "Content-Type": "application/json" });
   });
 
-  it("the POST body is the full 41-key ApplicantFacts envelope, built from the given facts + frozen today", () => {
+  it("the POST body is the full 45-key ApplicantFacts envelope, built from the given facts + frozen today", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response("{}", { status: 200 }));
@@ -73,7 +73,7 @@ describe("sendShadowEvaluation — the ONE network call site for SHADOW mode", (
     // Reuses the caller's frozen clock — never an independent `new Date()`
     // (hook-point contract, Finding #9).
     expect(body.collected_at).toBe(TODAY.toISOString());
-    expect(Object.keys(body.facts)).toHaveLength(41);
+    expect(Object.keys(body.facts)).toHaveLength(45);
     expect(body.facts["immigration.currently_in_indonesia"]).toEqual({
       status: "KNOWN",
       value: false,
@@ -139,7 +139,7 @@ describe("sendShadowEvaluation — the ONE network call site for SHADOW mode", (
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
-    expect(Object.keys(body.facts)).toHaveLength(41);
+    expect(Object.keys(body.facts)).toHaveLength(45);
     expect(body.facts["person.birth_date"]).toEqual({
       status: "UNKNOWN",
       reason: "NOT_ASKED",

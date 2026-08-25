@@ -1,0 +1,238 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #4866 (agent/air-m5/infra/iqoo-radar-node) — PII-safe iQOO 15 reactive
+  radar node, source relays, forced-command receiver, tests, and deliberate
+  PENDING-ARMS boundary, 2026-08-25.
+lanes:
+  - lane: infra-iqoo-radar-node
+    role: build
+    seat: "codex (Air-M5 worktree; implementation and verification)"
+  - lane: infra-iqoo-radar-node-final-review
+    role: review
+    seat: "opus-5 (three prior immutable SHAs reviewed; fresh review of final evidence head pending; sole gate/arming authority)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  There is one build lane, so the two-build-lane diversity rule does not fire.
+  The independent Opus 5 lane is a reviewer, not a second builder. It emitted a
+  PASS on the initial SHA and PASS-WITH-CONDITIONS on two successive hardened
+  SHAs. The third review's six LOW findings changed the code again, so a fresh
+  verdict on the final evidence head is still required and is not represented
+  here as already complete.
+diff:
+  net_lines: >-
+    Final functional diff through `1cb51becf7460a5ec7e8e9d8b7fedef72a21da6c`:
+    17 files, 2517 insertions and 1 deletion (net +2516), measured by `git diff
+    --stat` and `git diff --numstat origin/main...1cb51bec`. The evidence pair is
+    additive gate metadata.
+  behaviour_change: >-
+    Adds a source-side P0 spool relay, two staged LaunchAgent definitions and
+    wrappers, two organism entries, a closed-schema Termux receiver, phone CLI,
+    install/boot hooks, and hermetic tests. Pro/Mini relay jobs remain unarmed;
+    the only live mutation is the receiver/CLI/boot-hook installation inside the
+    authorized iQOO Termux home.
+receipts:
+  - claim: "The final branch still computes Gear 3, its branch-specific Evidence Pack is conformant, and the PENDING-ARMS ledger parses without phantom rows."
+    cmd: >-
+      Stage this branch's pack and brief under canonical evidence/{pack,brief}.yml;
+      run evidence_pack_lint.py with the origin/main changed-file and numstat sets;
+      run --print-floor and pending_arms_report.py --strict-phantom.
+    result: "Evidence Pack clean; deterministic floor 3; strict phantom check exit 0"
+    exit: 0
+    ts: "2026-08-25T03:17:38Z"
+    seat: "codex (Air-M5 worktree)"
+  - claim: "The deterministic floor is 3 because this diff touches `infra/launchagents/*`; the brief declares Gear 3."
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/iqoo-radar-changed-files.txt && apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/iqoo-radar-changed-files.txt"
+    result: "3"
+    exit: 0
+    ts: "2026-08-24T19:46:30Z"
+    seat: "codex (Air-M5 worktree)"
+  - claim: "Relay, closed-schema receiver and private CLI behavior are covered by the complete targeted test set."
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_iqoo_radar_relay.py scripts/tests/test_iqoo_radar_receiver.py -q"
+    result: "37 passed in 0.38s"
+    exit: 0
+    ts: "2026-08-25T03:17:38Z"
+    seat: "codex (Air-M5 worktree)"
+  - claim: "Python source and tests pass Ruff lint and formatting checks."
+    cmd: "apps/backend-rag/.venv/bin/ruff check scripts/iqoo_radar_relay.py scripts/tests/test_iqoo_radar_relay.py scripts/tests/test_iqoo_radar_receiver.py && apps/backend-rag/.venv/bin/ruff format --check scripts/iqoo_radar_relay.py scripts/tests/test_iqoo_radar_relay.py scripts/tests/test_iqoo_radar_receiver.py"
+    result: "All checks passed; 3 files already formatted"
+    exit: 0
+    ts: "2026-08-25T03:17:51Z"
+    seat: "codex (Air-M5 worktree)"
+  - claim: "All new phone/install/relay shell surfaces pass ShellCheck, and both LaunchAgent plists parse."
+    cmd: "shellcheck infra/radar/iqoo/10-nuzantara-radar infra/radar/iqoo/install.sh infra/radar/iqoo/nuzantara-radar-receive infra/radar/iqoo/radar infra/launchagents/wrappers/mini-iqoo-radar-relay.sh infra/launchagents/wrappers/pro-iqoo-radar-relay.sh && plutil -lint infra/launchagents/com.nuzantara.iqoo-radar-relay.plist infra/launchagents/com.nuzantara.mini-iqoo-radar-relay.plist"
+    result: "ShellCheck emitted no findings; both plist files reported OK"
+    exit: 0
+    ts: "2026-08-25T03:17:51Z"
+    seat: "codex (Air-M5 worktree)"
+  - claim: "The two new organs satisfy the repository genome and registry contract."
+    cmd: "apps/backend-rag/.venv/bin/python infra/organ-conformance/check_organ_conformance.py && PYTHONPATH=apps/organism apps/backend-rag/.venv/bin/python -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml"
+    result: "180 plists scanned, 0 regressions, 0 non-conformant births; organs_registry.yaml valid"
+    exit: 0
+    ts: "2026-08-25T03:17:51Z"
+    seat: "codex (Air-M5 worktree)"
+  - claim: "Both source wrappers use the canonical backend Python that exists on their real target machines."
+    cmd: >-
+      Over read-only SSH to `pro` and `mini`, require
+      `$HOME/nuzantara/apps/backend-rag/.venv/bin/python` to be executable and
+      print its version.
+    result: "Pro: Python 3.11.11; Mini: Python 3.11.15"
+    exit: 0
+    ts: "2026-08-25T02:37:19Z"
+    seat: "codex (Air-M5 worktree; read-only source-host verification)"
+  - claim: "The real iQOO receiver is fail-closed and idempotent, and the synthetic state was removed after proof."
+    cmd: >-
+      Send one exact-schema synthetic capsule twice to the installed forced-command
+      receiver over the existing Termux SSH link; send a third copy with an extra
+      `text` field; remove only the named synthetic incident and latest pointer;
+      run `$HOME/.local/bin/radar status`.
+    result: >-
+      RADAR_OK cccccccccccccccccccccccccccccccc; RADAR_DUPLICATE
+      cccccccccccccccccccccccccccccccc; forbidden-field copy exit 64 with
+      RADAR_REJECTED; final status: 0 safe capsules and no alarm.
+    exit: 0
+    ts: "2026-08-24T19:47:35Z"
+    seat: "codex (Air-M5 controlling authorized iQOO Termux)"
+  - claim: "The phone remains reachable and Termux holds the wake lock after cleanup; Android notification integration is truthfully reported absent."
+    cmd: "ssh <iqoo-termux> '$HOME/.local/bin/radar health'"
+    result: "SSH active; wake-lock requested by Termux; Android notifications not installed"
+    exit: 0
+    ts: "2026-08-24T19:47:35Z"
+    seat: "codex (Air-M5 controlling authorized iQOO Termux)"
+  - claim: "Before the hardening pass, the source branch and draft PR pointed at the same immutable implementation commit and auto-merge was absent."
+    cmd: "git rev-parse HEAD; git rev-parse '@{u}'; gh pr view 4866 --json state,isDraft,headRefOid,autoMergeRequest"
+    result: "local=remote=05874a7dde3164c07ef6b3c6c6f5d1213b9bdc67; PR OPEN and draft; autoMergeRequest null"
+    exit: 0
+    ts: "2026-08-24T19:45:55Z"
+    seat: "codex (Air-M5 worktree)"
+  - claim: "Independent Opus 5 reviewed the prior immutable SHA and posted its real GitHub gate verdict."
+    cmd: "gh api repos/:owner/:repo/commits/d68749886cb6be95889eb827445a201faa6ef5ac/status"
+    result: >-
+      harness/fable-gate=success at 2026-08-25T02:29:33Z with PASS; the review
+      also identified mobile-sleep retry loops, receiver stream/lock/read hazards,
+      incomplete JSONL loss, SSH pinning, wrapper header and Python-path findings.
+    exit: 0
+    ts: "2026-08-25T02:36:22Z"
+    seat: "opus-5 (independent fresh-context Gear-3 review; verdict), re-read by codex"
+  - claim: "A second independent Opus 5 session reviewed the first hardened immutable SHA and posted its real conditional verdict."
+    cmd: "gh api repos/:owner/:repo/commits/0c03ef4772e840debdd194cd0bd4508a83c5d0ad/status"
+    result: >-
+      harness/fable-gate=success at 2026-08-25T02:48:21Z with
+      PASS-WITH-CONDITIONS; relays remain unarmed. It confirmed all initial
+      hardening and identified six LOW residuals: local-config classification,
+      safe SSH return-code visibility, pending-file rename semantics, bounded
+      SSH output memory, user SSH-config isolation, and PID-recycle lock safety.
+    exit: 0
+    ts: "2026-08-25T02:48:21Z"
+    seat: "opus-5 (second independent fresh-context Gear-3 review; verdict), re-read by codex"
+  - claim: "A third independent Opus 5 session reviewed the second hardened immutable evidence SHA and posted its real conditional verdict."
+    cmd: "gh api repos/:owner/:repo/commits/2072bb4b4f79a7581f053334a3f15b009c5971ac/status"
+    result: >-
+      harness/fable-gate=success at 2026-08-25T03:09:32Z with
+      PASS-WITH-CONDITIONS; relays remain unarmed. It independently reran the
+      30-test suite and static/organ/evidence gates, confirmed all prior findings
+      closed, and identified six LOW residuals: permanent public-key failure
+      classification, pending re-append ID stability, missing fatal-marker test,
+      PID-reused cursor-temp collision, CLI umask, and public wrapper endpoint
+      defaults.
+    exit: 0
+    ts: "2026-08-25T03:09:32Z"
+    seat: "opus-5 (third independent fresh-context Gear-3 review; verdict), re-read by codex"
+pii_scan: clean
+dissent:
+  - seat: "Harness floor recompute (GitHub CI, deterministic)"
+    objection: >-
+      The first PR run correctly rejected this hot-zone diff because it carried no
+      per-PR evidence brief and pack, even though local tests were green.
+    status: CONFIRMED
+    note: >-
+      Recomputed independently from the real changed-file set and obtained floor 3.
+      The answer is this per-branch brief+pack pair; no gate, workflow, or protection
+      was weakened.
+  - seat: "codex red-team self-check"
+    objection: >-
+      The staged boot hook alone does not prove that Android will execute it after a
+      physical reboot, and the phone currently cannot raise native notifications or
+      vibration because Termux:API is absent.
+    status: CONFIRMED
+    note: >-
+      Kept as a residual limitation instead of being hidden: Termux:Boot needs its
+      separate official add-on/open-once/reboot proof, while Termux:API is optional.
+      Neither limitation weakens closed-schema receipt storage or CLI inspection.
+  - seat: "opus-5 (independent Gear-3 review of d6874988)"
+    objection: >-
+      A sleeping phone was treated as an organ failure and could trigger a healer
+      restart loop; the receiver could lose an incomplete spool line, short-read a
+      fragmented SSH stream, retain a stale Android-kill lock or accept multiple
+      JSON documents; SSH/runtime/wrapper assumptions also needed tightening.
+    status: CONFIRMED
+    note: >-
+      `cc53c4c3` classifies delivery unavailability as retryable exit 75 with a
+      healthy deferred heartbeat, preserves incomplete lines, reads with `head -c`,
+      accepts exactly one document, recovers stale locks, disables global host keys,
+      rejects option-prefixed targets, uses the real backend venv on both Macs and
+      expands the hermetic suite from 18 to 27 tests. A fresh Opus verdict on the
+      hardened evidence head remains mandatory.
+  - seat: "opus-5 (independent Gear-3 review of 0c03ef47)"
+    objection: >-
+      Source-side configuration failures still shared the temporary-offline path;
+      the sender did not preserve a safe SSH return code, output capture was
+      memory-unbounded, user SSH config was not fully ignored, pending-file atomic
+      rename semantics were undocumented, and a recycled Android PID could keep a
+      stale receiver lock alive.
+    status: CONFIRMED
+    note: >-
+      `2cb293ec` preflights local SSH state before spool processing, separates
+      retryable delivery from software/security failures, logs only bounded safe
+      reason strings with `ssh_rc`, uses file-backed 4 KiB receipt reads plus
+      `ssh -F /dev/null`, documents the pending secondary-view race and dedicated
+      restricted-key audit, and binds locks to PID plus process-start token. The
+      suite is now 30 tests. Because these fixes changed code, a third fresh Opus
+      verdict remains mandatory.
+  - seat: "opus-5 (independent Gear-3 review of 2072bb4b)"
+    objection: >-
+      A rejected public key could remain healthy-deferred indefinitely; Telegram
+      pending restoration could change byte offsets and create duplicate incident
+      IDs; fatal SSH markers lacked an automated test; a stale cursor temporary
+      could collide after PID reuse; the operator CLI inherited a permissive umask;
+      and wrapper defaults exposed the private Tailnet endpoint and Termux UID.
+    status: CONFIRMED
+    note: >-
+      `1cb51bec` classifies public-key and host-key/configuration failures as
+      permanent, removes byte offsets/storage location from the allow-listed event
+      identity, adds direct fatal-marker and stale-temp tests, uses random private
+      cursor temporaries, sets CLI umask 077, and moves the private target into a
+      mode-0600 source-local file. The suite is now 37 tests. Because these fixes
+      changed code, a fourth fresh Opus verdict on the evidence head remains
+      mandatory.
+tests:
+  - "37 targeted pytest cases passed, including PII exclusion, retry/deferred-versus-software failure handling, pending re-append ID stability, incomplete-line preservation, malformed/oversized/multi-document input, stale cursor-temp and stale/live/recycled-PID receiver locks, bounded SSH output, fatal SSH-marker classification, remote-command rejection, SSH pinning/config isolation, replay idempotence, restrictive CLI umask, and private file modes."
+  - "Live phone guilt/innocence proof: exact capsule accepted, duplicate idempotent, extra free-text field rejected, explicit cleanup verified."
+static:
+  - "Ruff lint and formatting clean."
+  - "ShellCheck clean across all six new shell surfaces."
+  - "Both LaunchAgent plists parse with plutil."
+  - "Organ conformance and organs-registry checksum/schema validation clean."
+  - "git diff --check clean before evidence authoring."
+runtime_proof:
+  - "iQOO `radar status`: 0 safe capsules, no alarm after synthetic cleanup."
+  - "iQOO `radar health`: SSH active, Termux wake-lock requested, Android notifications absent."
+  - "Pro/Mini automatic relay intentionally not live; both jobs remain PENDING-ARMS for Opus 5."
+residual_risks:
+  - "Three prior immutable SHAs received independent Opus 5 verdicts, but the third review's LOW findings changed the code; a fourth fresh Opus 5 verdict on the final hardened evidence head is still pending."
+  - "Termux:Boot post-reboot execution is not yet proven."
+  - "Native Android notification/vibration remains optional and unavailable until Termux:API is installed."
+  - "No real P0 source alert has been forwarded because source LaunchAgents are deliberately unarmed."
+sources:
+  - "Local repository contracts: research/operations/2026-08-09-harness-v2-teman2.md and scripts/ci/evidence_paths.py."
+  - "Implementation/runbook: infra/radar/README.md."
+notes:
+  - >-
+    This evidence lives at the branch-specific path produced by
+    `scripts/ci/evidence_paths.py`; it does not rewrite the shared root evidence
+    files. `brief_ref` remains the canonical literal `evidence/brief.yml` because CI
+    stages the pair under canonical names before linting.
+  - >-
+    This pack records evidence, not a verdict. The builder records the independently
+    observable prior-SHA verdict but does not claim the hardened evidence head has
+    passed, does not post its own `harness/fable-gate`, and does not merge, deploy,
+    or load the two source LaunchAgents.

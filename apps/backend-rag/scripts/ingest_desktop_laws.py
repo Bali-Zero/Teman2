@@ -43,7 +43,12 @@ async def run_ingestion():
         return
 
     DESKTOP_PATH = Path("/Users/nuzantara/Desktop/leggi")
-    COLLECTION_NAME = "legal_unified_2026"
+    # "legal_unified_2026" was a dead end and is retired as an ingest target:
+    # absent from collection_registry.py, so no retrieval path reads it AND
+    # LegalIngestionService's preflight refuses it outright. The live collection
+    # of that name is a frozen 2026-05-16 artifact (15,410 pts / 18 docs, counts
+    # unchanged since). Enforced by scripts/ci/ingest_target_lint.py.
+    COLLECTION_NAME = "legal_unified"
 
     if not DESKTOP_PATH.exists():
         logger.error(f"Directory not found: {DESKTOP_PATH}")

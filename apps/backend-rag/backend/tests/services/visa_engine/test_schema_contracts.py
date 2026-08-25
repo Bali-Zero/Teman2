@@ -183,7 +183,7 @@ class TestAliasOnlyConstruction:
         assert tr.from_ == GOLD_EFFECTIVE_AT
 
     def test_applicant_facts_data_python_name_rejected(self) -> None:
-        # Isolate the populate_by_name effect: 40 of 41 keys stay correctly
+        # Isolate the populate_by_name effect: 43 of 44 keys stay correctly
         # alias-keyed, only "person.birth_date" is swapped for its Python
         # name. With populate_by_name=True this would have been accepted
         # (matched by name); alias-only construction must reject it as an

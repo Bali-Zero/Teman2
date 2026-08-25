@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 777b7925ba3ee804cf9814836a6ebcc0cc48bfe804868a9f08e69c48de237dc0
+checksum: cba698c30d771a942e0db3142c52eb077582444543cd4b4d1614880cec2ed745
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2575,10 +2575,76 @@ organs:
     host: mini
     label: com.nuzantara.vercel-autopromote
   severity_on_silence: warning
-  notes: 'promote the READY-but-STAGED Vercel production build so a merge reaches balizero.com without a human (born via organ_birth.py, genes imprinted 2026+)'
+  notes: promote the READY-but-STAGED Vercel production build so a merge reaches balizero.com
+    without a human (born via organ_birth.py, genes imprinted 2026+)
   cicatrix_refs: []
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.vercel_autopromote.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wa_bot_throughput_sentinel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/wa_bot_throughput_sentinel.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.wa-bot-throughput-sentinel
+  severity_on_silence: warning
+  notes: 'Watches whether the WA bot SERVES ANYONE, not whether its parts are alive
+    — the 2026-07-30 outage ran 24 days with /health 200, the broker gauge advancing
+    and the breaker closed, because no organ read traffic. SELECT-only max() over
+    inbound_webhooks (channel=whatsapp) and wa_outbox (status=done) on prod via the
+    local tunnel, every 900s; expected_hb 1350 = 1.5x the interval, so ordinary launchd
+    jitter is not read as silence. Three conditions: bot_broken (inbound fresh, outbound
+    stale) --tier p0; dead_channel (raw age, 24/7) --tier p0; and inbound_stale --tier
+    digest, deliberately NOT p0 — quiet is not the same as broken. Short-circuits
+    to a wrong-database alert when BOTH tables are empty, so a mispointed DSN can
+    never masquerade as a 24-day outage. Never writes DB.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wa_bot_throughput_sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.iqoo_radar_relay
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 60
+  owner_module: infra/launchagents/wrappers/pro-iqoo-radar-relay.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.iqoo-radar-relay
+  severity_on_silence: warning
+  notes: Relay P0 Incident Capsules to the iQOO RADAR node (born via organ_birth.py,
+    genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.iqoo_radar_relay.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.iqoo_radar_relay
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 60
+  owner_module: infra/launchagents/wrappers/mini-iqoo-radar-relay.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mini-iqoo-radar-relay
+  severity_on_silence: warning
+  notes: Relay P0 Incident Capsules to the iQOO RADAR node (born via organ_birth.py,
+    genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.iqoo_radar_relay.json
     timestamp_field: ts
     status_field: status

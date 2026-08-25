@@ -1,0 +1,68 @@
+{
+  "claim_id": "50000000-0000-4000-8000-000000000001",
+  "claim_family_id": "50000000-0000-4000-8000-000000100001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "statement": {
+    "subject_ref": {
+      "object_kind": "com.example.kbli_code",
+      "object_id": "kbli-70209",
+      "object_hash": "00000000000000000000000000000000000000000000000000000000000000c9"
+    },
+    "predicate": "com.example.requires_minimum_capital",
+    "object_ref_or_value": "2500000000",
+    "unit": "idr",
+    "currency": "IDR",
+    "modality": "must"
+  },
+  "scope": {
+    "jurisdiction": "id",
+    "audience": "pma_investors",
+    "domain": "company"
+  },
+  "time": {
+    "valid_from": "2026-01-01T00:00:00Z",
+    "valid_to": "2027-01-01T00:00:00Z",
+    "recorded_at": "2026-01-10T00:00:00Z"
+  },
+  "status": "supported",
+  "evidence_refs": [
+    {
+      "evidence_id": "40000000-0000-4000-8000-000000000001",
+      "object_hash": "00000000000000000000000000000000000000000000000000000000000000ca",
+      "stance": "supports"
+    }
+  ],
+  "confidence": {
+    "score": 0.92,
+    "method": "human_review",
+    "calibrated_on": "2026-01-09T00:00:00Z"
+  },
+  "classification": {
+    "risk_class": "amber",
+    "sensitivity": "internal"
+  },
+  "review": {
+    "state": "human_approved",
+    "reviewer_ref": {
+      "scheme": "hmac-sha256",
+      "key_version": "synthetic-key-v1",
+      "purpose": "verification",
+      "pseudonym": "00000000000000000000000000000000000000000000000000000000000000cb"
+    },
+    "reviewed_at": "2026-01-10T00:00:00Z",
+    "rationale_code": "com.example.matches_bkpm_5_2025"
+  },
+  "lineage": {
+    "run_id": "50000000-0000-4000-8000-000000900001",
+    "extractor": "com.example.claim_extractor",
+    "model_version": "1.0.0",
+    "prompt_version": "1.0.0",
+    "input_claim_refs": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "object_hash": "000000000000000000000000000000000000000000000000000000000087a238"
+}

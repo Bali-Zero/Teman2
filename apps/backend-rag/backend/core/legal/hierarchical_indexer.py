@@ -20,6 +20,10 @@ from backend.core.legal.quality_validators import (
 logger = logging.getLogger(__name__)
 
 
+class LegalIndexIntegrityError(RuntimeError):
+    """Raised when two chunks of one document would occupy the same point id."""
+
+
 @dataclass
 class HierarchicalChunk:
     """Chunk con riferimenti gerarchici"""
@@ -188,6 +192,44 @@ class HierarchicalIndexer:
                 )
                 chunks_to_index.append(h_chunk)
 
+        # 5bis. The PENJELASAN: the official article-by-article commentary
+        # published with the law. Until 2026-08-25 the section boundary was
+        # never found, so these entries were parsed AS the law and their chunk
+        # ids destroyed the real articles. Now that the boundary is found they
+        # must still be INDEXED -- an elucidation is authoritative
+        # interpretation, and simply dropping it would trade one data loss for
+        # another -- but under their own ids and labelled as commentary.
+        for pasal in structure.get("penjelasan_pasal_list") or []:
+            await self._add_pasal_to_chunks(
+                pasal=pasal,
+                document_id=document_id,
+                bab_id=None,
+                bab_title=None,
+                metadata=metadata,
+                chunks_to_index=chunks_to_index,
+                section="penjelasan",
+            )
+
+        penjelasan_umum = structure.get("penjelasan_umum")
+        if penjelasan_umum:
+            chunks_to_index.append(
+                HierarchicalChunk(
+                    chunk_id=f"{document_id}_Penjelasan_Umum",
+                    text=penjelasan_umum,
+                    document_id=document_id,
+                    chapter_id=None,
+                    section_id=None,
+                    article_id=None,
+                    hierarchy_path=f"{document_id}/Penjelasan_Umum",
+                    hierarchy_level=1,
+                    parent_chunk_ids=[document_id],
+                    sibling_chunk_ids=[],
+                    bab_title=None,
+                    bab_full_text=None,
+                    metadata={**metadata, "section": "penjelasan"},
+                ),
+            )
+
         # 6. Genera embeddings solo per i chunk (Pasal)
         chunks_upserted = 0
         if chunks_to_index:
@@ -229,16 +271,27 @@ class HierarchicalIndexer:
         bab_title,
         metadata,
         chunks_to_index,
+        section: str = "batang_tubuh",
     ):
-        """Helper to process a single Pasal and add it to chunks list"""
-        pasal_id = f"{document_id}_Pasal_{pasal['number']}"
+        """Helper to process a single Pasal and add it to chunks list.
+
+        `section` distinguishes the operative article ("batang_tubuh") from the
+        official commentary on it ("penjelasan"). It is load-bearing in two
+        ways: it keeps their ids apart, and it lets retrieval tell a RULE from a
+        NOTE ABOUT a rule -- which was impossible while both were stored under
+        the same key and one silently destroyed the other.
+        """
+        prefix = "Pasal" if section == "batang_tubuh" else "Penjelasan_Pasal"
+        pasal_id = f"{document_id}_{prefix}_{pasal['number']}"
 
         if bab_id:
             hierarchy_path = (
-                f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/Pasal_{pasal['number']}"
+                f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/{prefix}_{pasal['number']}"
             )
         else:
-            hierarchy_path = f"{document_id}/Pasal_{pasal['number']}"
+            hierarchy_path = f"{document_id}/{prefix}_{pasal['number']}"
+
+        metadata = {**metadata, "section": section}
 
         # SAFE SPLITTING: If Pasal is too large, split it using the chunker
         char_limit = 4000  # ~1000 tokens
@@ -302,6 +355,53 @@ class HierarchicalIndexer:
         )
         chunks_to_index.append(chunk)
 
+    @staticmethod
+    def _disambiguate_chunk_ids(chunks: list[HierarchicalChunk]) -> int:
+        """Make every chunk_id unique WITHIN this document. Returns how many were renamed.
+
+        Why this exists, measured on 2026-08-25. A chunk's point id is
+        ``uuid5(NAMESPACE_LEGAL, chunk_id)`` and a chunk_id is
+        ``f"{document_id}_Pasal_{number}"``. An Indonesian law is published
+        together with its PENJELASAN, the official article-by-article
+        commentary, which repeats the SAME article numbers. Both therefore
+        produced the same chunk_id, the same point id, and the second write --
+        the commentary, since it comes later in the PDF -- silently replaced the
+        first: the article itself.
+
+        Ingesting UU 40/2007 (Perseroan Terbatas) reported 378 chunks created
+        and left 202 points in Qdrant. 176 articles were destroyed by their own
+        commentary. What remained under Pasal 1, 7, 32, 33 and 109 -- including
+        the minimum-capital and paid-up-capital rules a PT PMA is founded on --
+        was the commentary text, in several cases the literal words
+        "Cukup jelas" ("self-explanatory"). An overwrite is a SUCCESSFUL upsert:
+        nothing failed, nothing was logged, and the count in the ingest result
+        was the number of chunks BUILT, never the number that survived.
+
+        Occurrences after the first get a ``#dupN`` suffix, deterministic in
+        document order, so re-ingesting the same PDF reproduces the same ids.
+        ``#`` cannot occur in a generated id, so the suffix cannot collide with
+        a real one -- and the function still asserts that afterwards rather than
+        trusting the argument.
+        """
+        seen: dict[str, int] = {}
+        renamed = 0
+        for chunk in chunks:
+            base = chunk.chunk_id
+            occurrence = seen.get(base, 0) + 1
+            seen[base] = occurrence
+            if occurrence > 1:
+                chunk.chunk_id = f"{base}#dup{occurrence}"
+                renamed += 1
+
+        identifiers = [chunk.chunk_id for chunk in chunks]
+        if len(set(identifiers)) != len(identifiers):
+            duplicates = sorted({i for i in identifiers if identifiers.count(i) > 1})
+            raise LegalIndexIntegrityError(
+                "Chunk ids remain ambiguous after disambiguation; refusing to "
+                f"upsert because a write would destroy a sibling: {duplicates[:5]}",
+            )
+        return renamed
+
     async def _upsert_hierarchical_chunks(
         self,
         chunks: list[HierarchicalChunk],
@@ -313,6 +413,16 @@ class HierarchicalIndexer:
         import uuid
 
         qdrant = qdrant_client or self.qdrant
+
+        # No chunk may silently destroy a sibling. See _disambiguate_chunk_ids.
+        renamed = self._disambiguate_chunk_ids(chunks)
+        if renamed:
+            logger.warning(
+                "Disambiguated %s of %s chunk ids that would have overwritten a sibling "
+                "(a law published with its Penjelasan repeats its article numbers)",
+                renamed,
+                len(chunks),
+            )
 
         # Namespace UUID per generare ID deterministici (stesso chunk_id → stesso UUID)
         NAMESPACE_LEGAL = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
@@ -331,6 +441,10 @@ class HierarchicalIndexer:
                 "hierarchy_level": chunk.hierarchy_level,
                 "parent_chunk_ids": chunk.parent_chunk_ids,
                 "bab_title": chunk.bab_title,
+                # The readable key the point id is derived from. `chunk_id` below
+                # is overwritten with the uuid5, which is unreadable and made this
+                # class of collision undiagnosable from the stored payload alone.
+                "chunk_key": chunk.chunk_id,
             }
 
             chunk_texts.append(chunk.text)

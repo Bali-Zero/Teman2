@@ -26,7 +26,7 @@
 2. `max_concurrent_builders = 2` across all machines (Amendment A2, 2026-08-23 — reduced from four). A reviewer that only reads may overlap if it does not contend for a saturated host. A reviewer repair consumes a builder slot.
 3. One Conductor places lanes sequentially. Execution fans out only after reservations, worktrees, exact heads, scopes, and leases are verified.
 4. One packet or explicitly split sub-packet per builder. One writer per path/registry/resource.
-5. The migration integration order is exactly `270 → 271 → 272 → 273 → 274 → 275 → 276`.
+5. The migration integration order is exactly `research_os_contract_core → 271 → 272 → 273 → 274 → 275 → 276`. The first link is a symbolic name, not a fixed integer — the original `270` was found entirely void on 2026-08-23; see `research/operations/execution/research-os-v1.0.0/SESSION-BOARD.md` §0 (Migration-ledger decision 001).
 6. The serial integrator is different from the builder and reviewer. It integrates one approved SHA at a time.
 7. A technical PASS grants eligibility only. It never grants production migration, deploy, publish, message, scheduler, service, flag, secret, CRM, OSINT, or paid-render authority.
 8. Raw client PII and restricted OSINT stay on their authorized Pro boundary. Commit artifacts contain only synthetic/public/redacted/aggregate/hash-addressed evidence.
@@ -257,7 +257,7 @@ Dispatch independent reviewers without waiting for the entire wave. A repair rec
 
 **Step 4: Integrate only P04/P03 candidates**
 
-- Integrate P04 first through I1 after its semantic PASS; migration 270 is test-only in this program branch until separately authorized for any real environment.
+- Integrate P04 first through I1 after its semantic PASS; its `research_os_contract_core` migration (integer bound at integration time, not 270 — see invariant 5 above) is test-only in this program branch until separately authorized for any real environment.
 - P03 may integrate only after a P04 compatibility review and only with zero-spend behavior.
 - P01 remains a shadow candidate; its five production effects are not part of Wave 0.
 - P05/P06 preparation bundles are evidence inputs, not runtime branches.

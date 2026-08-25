@@ -1,0 +1,444 @@
+{
+  "$defs": {
+    "EventRef": {
+      "additionalProperties": false,
+      "description": "Exact reference to one immutable ``IntelEvent`` revision.\n\nReused verbatim (same two fields) wherever section 4/5/11 reference an\n``IntelEvent`` by ``{event_id, object_hash}`` -- ``IntelEvent.lineage.\ninput_event_refs``, ``Evidence.source_event_ref``, and ``StoryCluster.\ncanonical_event_ref``/``members[].event_ref``.",
+      "properties": {
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["event_id", "object_hash"],
+      "title": "EventRef",
+      "type": "object"
+    },
+    "EvidenceClassification": {
+      "additionalProperties": false,
+      "description": "``classification: {risk_class, sensitivity, rights}`` -- ``rights`` is required here.",
+      "properties": {
+        "rights": {
+          "minLength": 1,
+          "title": "Rights",
+          "type": "string"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity", "rights"],
+      "title": "EvidenceClassification",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "Exact reference to one immutable ``Evidence`` revision: ``{evidence_id, object_hash}``.",
+      "properties": {
+        "evidence_id": {
+          "format": "uuid",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["evidence_id", "object_hash"],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "EvidenceStance": {
+      "enum": ["supports", "contradicts", "contextualizes", "inconclusive"],
+      "title": "EvidenceStance",
+      "type": "string"
+    },
+    "EvidenceTimes": {
+      "additionalProperties": false,
+      "description": "``times: {published_at?, observed_at, valid_from?, valid_to?, recorded_at}``.",
+      "properties": {
+        "observed_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid To"
+        }
+      },
+      "required": ["observed_at", "recorded_at"],
+      "title": "EvidenceTimes",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "``provenance: {extractor, extractor_version, run_id, extraction_input_hash}``.",
+      "properties": {
+        "extraction_input_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Extraction Input Hash",
+          "type": "string"
+        },
+        "extractor": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Extractor",
+          "type": "string"
+        },
+        "extractor_version": {
+          "minLength": 1,
+          "title": "Extractor Version",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "extractor",
+        "extractor_version",
+        "run_id",
+        "extraction_input_hash"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "ReviewState": {
+      "enum": [
+        "unreviewed",
+        "machine_checked",
+        "human_approved",
+        "human_rejected",
+        "superseded"
+      ],
+      "title": "ReviewState",
+      "type": "string"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "SourceSpan": {
+      "additionalProperties": false,
+      "description": "``source_span: {locator, start?, end?, page?, section?, quote_hash}``.",
+      "properties": {
+        "end": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "locator": {
+          "minLength": 1,
+          "title": "Locator",
+          "type": "string"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "quote_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Quote Hash",
+          "type": "string"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        }
+      },
+      "required": ["locator", "quote_hash"],
+      "title": "SourceSpan",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "classification": {
+      "$ref": "#/$defs/EvidenceClassification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "document_content_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Document Content Hash",
+      "type": "string"
+    },
+    "document_id": {
+      "minLength": 1,
+      "title": "Document Id",
+      "type": "string"
+    },
+    "document_version_id": {
+      "minLength": 1,
+      "title": "Document Version Id",
+      "type": "string"
+    },
+    "evidence_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Evidence Family Id",
+      "type": "string"
+    },
+    "evidence_id": {
+      "format": "uuid",
+      "title": "Evidence Id",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "review_state": {
+      "$ref": "#/$defs/ReviewState"
+    },
+    "source_event_ref": {
+      "$ref": "#/$defs/EventRef"
+    },
+    "source_span": {
+      "$ref": "#/$defs/SourceSpan"
+    },
+    "source_tier": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Source Tier",
+      "type": "string"
+    },
+    "stance": {
+      "$ref": "#/$defs/EvidenceStance"
+    },
+    "supersedes_evidence_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "times": {
+      "$ref": "#/$defs/EvidenceTimes"
+    }
+  },
+  "required": [
+    "evidence_id",
+    "evidence_family_id",
+    "contract_version",
+    "tenant",
+    "source_event_ref",
+    "document_id",
+    "document_version_id",
+    "document_content_hash",
+    "source_span",
+    "source_tier",
+    "stance",
+    "times",
+    "provenance",
+    "classification",
+    "review_state",
+    "retention",
+    "object_hash"
+  ],
+  "title": "Evidence",
+  "type": "object"
+}

@@ -17,13 +17,24 @@ only) · ``extension_already_used`` (bool) · ``purpose`` (enum) ·
 field that could carry a name.
 
 Some of ``EligibilityInput``'s SOP §1 criteria have no matching field in
-this 9-field wizard (no nationality-eligibility dataset shipped yet, no
-interview-only signals like "clean ordinary passport" or "prior
-overstay/blacklist" — those are things a human staff member reads off a
-document or a conversation, not something this synthetic preview can ask).
-This engine therefore gives a PRELIMINARY verdict built only from what it
-mechanically can derive; see ``_build_eligibility_input`` for the exact
+this 9-field wizard (interview-only signals like "clean ordinary passport"
+or "prior overstay/blacklist" — those are things a human staff member reads
+off a document or a conversation, not something this synthetic preview can
+ask). This engine therefore gives a PRELIMINARY verdict built only from what
+it mechanically can derive; see ``_build_eligibility_input`` for the exact
 mapping and the documented defaults for the rest.
+
+Nationality eligibility (closed 2026-08-23): ``nationality_entry_eligible``
+is now DERIVED from ``request.nationality`` via
+``nationality_eligibility.is_voa_eligible_nationality`` — a decree-sourced,
+independently-verified dataset (see that module's docstring for provenance
+and its fail-closed "unknown-code" decision). This used to be an
+unconditional ``True`` because no dataset existed; a nationality absent
+from the verified list now DECLINEs via the existing
+``DeclineCode.NATIONALITY_NOT_ELIGIBLE``, same as any other SOP §1
+criterion — a DECLINE here always still routes to WhatsApp (SOP amendment,
+never a bare no), and an ACCEPT still goes through the human pilot intake
+before travel.
 
 Serialization boundary (spec §6, charter — non-negotiable): D-14 is never
 serialized. D-10/D-3/D-1 may be serialized only by the authenticated
@@ -56,17 +67,22 @@ rule — and is ``None`` when it cannot be computed (see
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from enum import Enum
 
 from backend.services.garuda_flow import operating_calendar
-from backend.services.garuda_flow.constants import MIN_PASSPORT_VALIDITY_DAYS
+from backend.services.garuda_flow.constants import (
+    EVOA_USABILITY_WINDOW_DAYS,
+    MIN_PASSPORT_VALIDITY_DAYS,
+    b1_max_total_stay_exceeded,
+)
 from backend.services.garuda_flow.eligibility import (
     Decision,
     DeclineCode,
     EligibilityInput,
     screen,
 )
+from backend.services.garuda_flow.nationality_eligibility import is_voa_eligible_nationality
 from backend.services.garuda_flow.safe_clock import (
     SafeCheckpoint,
     StayWindow,
@@ -186,6 +202,17 @@ _ARRIVAL_DATE_UNCONFIRMED_REASON = (
     "computed without guessing; hand off to a human"
 )
 
+_ARRIVAL_TOO_FAR_REASON = (
+    "arrival date is beyond the eVOA usability window from today — "
+    "hand off to the ordinary channel"
+)
+
+_MAX_STAY_EXCEEDED_REASON_TEMPLATE = (
+    "printed extension expiry implies a stay beyond the legal B1 maximum "
+    "of {max_total_stay_days} days total (arrival day counted as day 1) — "
+    "hand off to the ordinary channel"
+)
+
 
 def _issuance_submission_verdict(
     *, entry_date: date, today: date
@@ -214,6 +241,29 @@ def _issuance_submission_verdict(
     return submit_by, None, None
 
 
+def _issuance_usability_window_verdict(
+    *, entry_date: date, today: date
+) -> tuple[DeclineCode | None, str | None]:
+    """Issuance-only eVOA usability-window gate (GARUDA B1 truth-sheet,
+    line 41, verified 14 Jul 2026): an eVOA is usable for
+    ``EVOA_USABILITY_WINDOW_DAYS`` from issuance.
+
+    There is no ``issuance_date`` input, and an eVOA for this request cannot
+    be issued before ``today``; the window therefore cannot start before
+    today. ``entry_date`` strictly later than ``today + window`` is outside
+    the window under the most generous possible assumption. The gate is
+    conservative by construction: it can only ever decline arrivals that
+    genuinely cannot be covered.
+
+    Never called for an extension case — the visa already exists and its
+    printed expiry is read directly.
+    """
+    last_covered_day = today + timedelta(days=EVOA_USABILITY_WINDOW_DAYS)
+    if entry_date > last_covered_day:
+        return DeclineCode.ARRIVAL_TOO_FAR, _ARRIVAL_TOO_FAR_REASON
+    return None, None
+
+
 def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> EligibilityInput:
     """Map the 9-field intake contract onto ``EligibilityInput``.
 
@@ -225,11 +275,13 @@ def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> Eligi
       extension-only (``screen()`` itself already declines a missing value
       on an extension case — see eligibility.py).
 
-    Criteria this wizard cannot mechanically ask (no nationality-eligibility
-    dataset yet; "clean ordinary passport" / "prior overstay" are
-    interview-only signals) get the ACCEPT-compatible default — a DECLINE
-    here always still routes to WhatsApp (SOP amendment, never a bare no),
-    and an ACCEPT still goes through the human pilot intake before travel.
+    Criteria this wizard still cannot mechanically ask ("clean ordinary
+    passport" / "prior overstay" are interview-only signals) get the
+    ACCEPT-compatible default — a DECLINE here always still routes to
+    WhatsApp (SOP amendment, never a bare no), and an ACCEPT still goes
+    through the human pilot intake before travel. Nationality eligibility is
+    NO LONGER one of these defaults (closed 2026-08-23) — it is derived
+    below from the verified dataset.
     """
     days_left: int | None = None
     if request.case_type is CaseType.EXTENSION and request.voa_expiry_date is not None:
@@ -240,7 +292,7 @@ def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> Eligi
     ).days >= MIN_PASSPORT_VALIDITY_DAYS
 
     return EligibilityInput(
-        nationality_entry_eligible=True,
+        nationality_entry_eligible=is_voa_eligible_nationality(request.nationality),
         simple_tourism=request.purpose is Purpose.TOURISM,
         single_adult_traveler=request.travellers == 1,
         clean_ordinary_passport=True,
@@ -268,6 +320,17 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
     reasons = list(result.decline_reasons)
     codes = list(result.decline_codes)
 
+    # Computed up front (moved ahead of the layered checks below, 2026-08-23)
+    # so the max-total-stay guard can reuse `max_total_days` — the same
+    # VISA_META-derived figure the CLI derives locally — instead of
+    # re-deriving it a second time.
+    printed_expiry = request.voa_expiry_date if request.case_type is CaseType.EXTENSION else None
+    stay_window = compute_stay(
+        entry_date=request.entry_date,
+        visa_type=VisaType.B1,
+        printed_expiry=printed_expiry,
+    )
+
     # SOP/catalogue fact (VisaType.B1 extensions=(1, 30)): only ONE extension
     # is possible. `screen()` doesn't know about this — it's a VOA/B1-shape
     # rule, not a generic pilot-intake criterion — so it's layered on here.
@@ -276,12 +339,37 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
         reasons.append(_EXTENSION_LIMIT_REASON)
         codes.append(DeclineCode.EXTENSION_ALREADY_USED.value)
 
-    # Issuance-only submission-window gate (owner ruling 2026-07-27) — see
-    # `_issuance_submission_verdict` and the module docstring. `screen()`
-    # doesn't know about this either — it's a B1 operational rule,
-    # not a generic pilot-intake criterion — so it's layered on here,
-    # exactly like the extension-limit rule above. Never runs for an
-    # extension case.
+    # B1 max-total-stay boundary (`constants.b1_max_total_stay_exceeded`,
+    # promoted 2026-08-23 from the owner-local `internal_preview_cli` guard,
+    # its sole caller — PR #4685). `screen()` doesn't know about this
+    # either — it's a B1/VOA-shape fact from the catalogue, not a generic
+    # pilot-intake criterion — so it's layered on here exactly like the
+    # extension-limit rule above. The CLI still validates this up front and
+    # raises `PreviewInputError` before ever calling `build_verdict()`, so
+    # this branch is unreachable for it (its behaviour is unchanged); THIS
+    # is the never-a-bare-error form for any caller — e.g. a future public
+    # funnel — that must always DECLINE + WhatsApp-handoff rather than
+    # reject the request outright.
+    if (
+        request.case_type is CaseType.EXTENSION
+        and request.voa_expiry_date is not None
+        and b1_max_total_stay_exceeded(
+            (request.voa_expiry_date - request.entry_date).days,
+            stay_window.max_total_days,
+        )
+    ):
+        decision = Decision.DECLINE
+        reasons.append(
+            _MAX_STAY_EXCEEDED_REASON_TEMPLATE.format(
+                max_total_stay_days=stay_window.max_total_days
+            )
+        )
+        codes.append(DeclineCode.EXTENSION_EXCEEDS_MAX_STAY.value)
+
+    # Issuance-only gates. `screen()` doesn't know about these — they are
+    # B1 operational / catalogue rules, not generic pilot-intake criteria —
+    # so they are layered on here exactly like the extension-limit rule above.
+    # Never run for an extension case.
     submit_by_date: date | None = None
     if request.case_type is CaseType.ISSUANCE:
         submit_by_date, issuance_code, issuance_reason = _issuance_submission_verdict(
@@ -292,12 +380,13 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
             reasons.append(issuance_reason)  # type: ignore[arg-type]
             codes.append(issuance_code.value)
 
-    printed_expiry = request.voa_expiry_date if request.case_type is CaseType.EXTENSION else None
-    stay_window = compute_stay(
-        entry_date=request.entry_date,
-        visa_type=VisaType.B1,
-        printed_expiry=printed_expiry,
-    )
+        usability_code, usability_reason = _issuance_usability_window_verdict(
+            entry_date=request.entry_date, today=today
+        )
+        if usability_code is not None:
+            decision = Decision.DECLINE
+            reasons.append(usability_reason)  # type: ignore[arg-type]
+            codes.append(usability_code.value)
 
     return VoaVerdict(
         decision=decision,

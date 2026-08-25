@@ -1,0 +1,258 @@
+# STAGING PATH, NOT THE REAL ONE — documented contract, not an oversight. harness-floor.yml
+# copies both files into a synthetic tree at /tmp/evidence-check/evidence/{brief,pack}.yml under
+# their CANONICAL names, whatever their real location, and evidence_pack_lint.py resolves
+# brief_ref against THAT root. This field must always read the literal evidence/brief.yml even
+# though the real brief for this PR lives at
+# evidence/2026-08/agent-nuzantara-backend-rag-ros-v1-p04-d1-outcom-4bc9112b/brief.yml.
+# Writing the per-PR path here is the exact trap scripts/ci/evidence_paths.py's module docstring
+# warns about. Do not "fix" this back.
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D1 remainder — PR #4653, 'feat(research-os): P04-D1 canonical OutcomeEvent (section 16)', https://github.com/Bali-Zero/Teman2/pull/4653"
+lanes:
+  - lane: outcome-event-build
+    role: build
+    seat: "session (this diff's author — model, schema, fixtures, cli/registry wiring, test module)"
+  - lane: outcome-event-review
+    role: review
+    seat: "independent reviewer, fresh context, not this diff's author — adversarial pass, returned DEFECTIVE with 3 findings"
+  - lane: outcome-event-review-xfamily
+    role: review
+    seat: "second reviewer, different model family — cross-checked the independent reviewer's findings, converged on the same file:line for each"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single BUILD lane, so the D3 rule's own floor (>=2 build lanes) does not fire and seat
+  diversity is not asserted on this basis. The review side already crosses model families
+  (two independent reviewers, different families, convergent findings) — the argument for
+  cross-family review is made on the grading side, not the building side, for this PR.
+diff:
+  net_lines: >-
+    AS OF 6f0967ac41ee80bc9d0e5972c95ac37ba6ee40fd (this PR's own branch tip immediately before
+    this evidence-migration merge; pinned deliberately — the working tree changes after this
+    commit, and a byte count stated unqualified inside a file every subsequent commit changes
+    decays by construction): 21 files, +2619/-139, measured THREE-DOT
+    (`git diff --shortstat $(git merge-base origin/main <branch-tip>) <branch-tip>`) against the
+    merge base, never two-dot (W102 — a moved base blames this PR for files that landed on main
+    after the branch point). Two of the 21 are evidence/brief.yml and evidence/pack.yml at the
+    fixed root path — REWRITTEN by this diff, not created, and the exact fixed-path collision
+    hazard this evidence migration exists to remove. Deterministic gear floor recomputed from
+    this diff (scripts/evidence_pack_lint.py::compute_floor) = 1 — no HOTZONE_PATTERNS hit; gear
+    3 is declared by mandate convention (see brief.yml), not by the floor.
+  behaviour_change: >-
+    Additive only. One new frozen Pydantic contract kind (`outcome_event`) registered alongside
+    the 14 already on `main`; nothing existing is modified in shape or behaviour. No runtime
+    consumer of research-os-core exists yet in this repo outside its own CLI/tests — merging
+    this changes nothing for any running service.
+receipts:
+  - claim: "The three registration files (cli.py, models/__init__.py, schemas/__init__.py) lost nothing against origin/main — outcome_event is the ONLY addition, checked by set diff with a verified non-zero hit count on both sides, not by a pattern that could silently match zero"
+    cmd: 'for f in cli.py models/__init__.py schemas/__init__.py; do grep -c ''^from research_os.models'' "$f"; done   — run against the post-merge worktree AND against `git show origin/main:<f>` for the same three files, then `diff <(sorted names on main) <(sorted names on branch)`'
+    result: >-
+      All three files: 14 hits on origin/main, 15 hits on the merged branch — non-zero on both
+      sides, so the count itself is trustworthy (an earlier probe in this same session matched
+      `from .` against a file using absolute imports and got 0/0, which read as "no loss" while
+      proving nothing; this receipt exists specifically to not repeat that). Set diff of the
+      sanitized kind names: exactly one line added, `outcome_event`; zero lines removed.
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "research_os.cli fixtures --check passes on the full corpus including this kind's 13 fixtures"
+    cmd: "PYTHONPATH=packages/research-os-core python3 -m research_os.cli fixtures --check"
+    result: '{"checked": 119, "failures": [], "valid": true}, rc=0. (Higher than this PR''s own description''s "102 checked" — the corpus grew as sibling P04-D1 kinds landed on main between when that description was written and this merge; the count here is measured on the current merged worktree, not copied from the PR body.)'
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "The full research_os unit suite passes on the merged worktree"
+    cmd: "PYTHONPATH=packages/research-os-core python3 -m pytest apps/backend-rag/backend/tests/unit/research_os -q -rA"
+    result: >-
+      266 PASSED, 1 SKIPPED (test_schemas.py:278 — node/prettier not available in this
+      environment, pre-existing and unrelated to this kind), 0 FAILED. rc=0. (Higher than this
+      PR's own description's "232 passed" for the same reason as the fixtures-check receipt
+      above — more sibling kinds' test files are now on main.)
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "test_outcome_event.py itself is 13/13, matching the PR description exactly"
+    cmd: "PYTHONPATH=packages/research-os-core python3 -m pytest apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py -q"
+    result: "13 collected, 13 passed, 0 failed. rc=0."
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "The checked-in schema is byte-identical to fresh regeneration, and every shipped schema (including outcome_event's) is a structurally valid Draft 2020-12 document"
+    cmd: 'PYTHONPATH=packages/research-os-core python3 -c "from research_os.schemas import checked_in_schemas_match, validate_schema_artifacts; print(checked_in_schemas_match()); print(validate_schema_artifacts())"'
+    result: "checked_in_schemas_match() == (), validate_schema_artifacts() == () — both empty tuples, no mismatch, no invalid schema. rc=0."
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "mypy --strict is clean on the model file itself"
+    cmd: "python3 -m mypy --strict packages/research-os-core/research_os/models/outcome_event.py"
+    result: "Success: no issues found in 1 source file. rc=0."
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "mypy --strict is RED on test_outcome_event.py, and this is disclosed rather than swept — a single unused type:ignore, not a real defect"
+    cmd: "MYPYPATH=packages/research-os-core python3 -m mypy --strict apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py"
+    result: >-
+      1 error: "test_outcome_event.py:73: error: Unused \"type: ignore\" comment
+      [unused-ignore]" on `event.outcome_type = "com.example.other"  # type:
+      ignore[misc]`. rc=1, matching the PR description's claim exactly. Non-blocking: no
+      mypy invocation anywhere in this repo loads the pydantic plugin, so the
+      frozen-field-reassignment diagnostic the ignore was written for never fires here; CI's own
+      mypy job covers backend/core and backend/app/models only, never packages/research-os-core.
+    exit: 1
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "ruff format has two conflicting answers for this package depending on invocation, and the checked-in files mostly already conform to the 100-width config, not the bare 88-width default — measured, not assumed"
+    cmd: 'for f in cli.py primitives.py hashing.py graph.py; do ruff format --check "$f"; ruff format --check --config apps/backend-rag/pyproject.toml "$f"; done'
+    result: >-
+      cli.py: bare(88) rc=0, --config(100) rc=1. primitives.py/hashing.py/graph.py: bare(88)
+      rc=1, --config(100) rc=0 for all three. 3 of 4 conform to 100; cli.py alone conforms to
+      88. Nothing reformatted here — cli.py is the file every sibling P04-D1 kind PR also edits
+      for registration, so reformatting it would collide with all of them. Ledgered separately:
+      packages/research-os-core/ is covered by no lint/format gate at all (pre-commit's ruff
+      hooks scope to ^apps/backend-rag/, CI's ruff check scopes to backend/app/).
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "The supersedes-chain fixture is CURRENT in the real graph resolver — both arms proved, not just the passing one"
+    cmd: "grep -n 'def test_supersedes_fixture_is_current_in_the_real_graph_resolver' apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py, then re-run the full test_outcome_event.py suite this test lives in"
+    result: >-
+      Test present at line 179, exercises the real GraphMember/ObjectSuccessorEdge/
+      select_current_member path with both arms (fixed timestamp -> Current; deliberately-tied
+      timestamp -> Quarantined(reason_codes=('successor_recorded_at_not_later',))) and passes in
+      the 13/13 run above.
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+  - claim: "Fixtures carry zero PII — synthetic domains only, and the object_hash-looking digit runs a naive grep flags are placeholder repeated-digit hashes, not real identifiers"
+    cmd: "grep -riE '@gmail|@balizero|passport|npwp|ktp|[0-9]{16}' packages/research-os-core/fixtures/outcome_event/*.json; grep -l com.example packages/research-os-core/fixtures/outcome_event/*.json | wc -l"
+    result: >-
+      Grep hits are all `\"object_hash\": \"0000...\"/\"1111...\"/...\"6666...\"` placeholder
+      values — not real identifiers, no email/passport/NPWP/KTP pattern anywhere. 8 of 13
+      fixture files use `com.example` domains explicitly; the remaining 5 are metric-profile/
+      metric-result reference fixtures with generic synthetic IDs, same corpus convention as
+      every sibling kind's fixtures.
+    exit: 0
+    ts: "2026-08-24T00:00Z"
+    seat: "session (build lane, post-merge verification)"
+pii_scan: clean
+tests:
+  - "apps/backend-rag/backend/tests/unit/research_os/test_outcome_event.py — 13 tests, this PR's own new module, 13/13 rc=0 (receipt above)."
+  - "apps/backend-rag/backend/tests/unit/research_os/ (full package) — 266 passed / 1 pre-existing skip / 0 failed, rc=0 (receipt above)."
+static:
+  - "mypy --strict on the model file: clean (receipt above)."
+  - "mypy --strict on the test file: 1 disclosed non-blocking finding (receipt above), not swept."
+  - "checked_in_schemas_match() / validate_schema_artifacts(): both empty (receipt above)."
+notes:
+  - >-
+    THIS PACK REPLACES INHERITED, UNRELATED CONTENT. Before this evidence-path migration, this
+    branch's own root evidence/brief.yml and evidence/pack.yml carried a DIFFERENT task's
+    content entirely (task_id ci-backend-test-sharding-0823 / a fleet_sessions.py pack) —
+    inherited from whatever the last "Merge branch main" commit on this branch happened to bring
+    in, at the fixed root path. This is the exact "a pack lint verde does not say the pack
+    describes YOUR PR" hazard another lane measured live on 2026-08-23. This per-PR pack is
+    written fresh against this PR's own actual diff, not derived from that inherited file.
+  - >-
+    THE ROOT evidence/brief.yml AND evidence/pack.yml IN THIS PR'S DIFF ARE main's, UNCHANGED BY
+    THIS PR'S OWN CONTENT. The merge conflict on those two fixed-root files was resolved by
+    taking origin/main's side whole (`git checkout --theirs`) — verified byte-identical to
+    `origin/main`'s copies before this pack was written. This PR's own evidence lives
+    exclusively at the per-PR path this file is written to.
+dissent:
+  - seat:
+      "independent reviewer (fresh context, not this diff's author), cross-checked by a
+      second reviewer from a different model family converging on the same file:line"
+    objection: >-
+      fixtures/outcome_event/valid_with_supersedes_and_extension.json supersedes
+      valid_minimal.json with a byte-identical recorded_at (2026-04-15T00:05:01Z on
+      both). graph.py:124 quarantines exactly that condition
+      (successor.recorded_at <= predecessor.recorded_at ->
+      successor_recorded_at_not_later, CONTRACTS.md:863 requires strictly later).
+      The one fixture whose entire purpose is to demonstrate a working supersedes
+      chain was rejected by the resolver it exists to exercise.
+    status: CONFIRMED
+    note: >-
+      FIXED. Timestamp bumped to ...:02Z, object_hash recomputed through the real
+      object_hash(). The cure is not the value edit:
+      test_supersedes_fixture_is_current_in_the_real_graph_resolver drives the actual
+      GraphMember/ObjectSuccessorEdge/select_current_member and proves BOTH arms with
+      returned values recorded, not asserted-and-forgotten — ARM 1 (fixed):
+      Current(member=GraphMember(..., recorded_at=2026-04-15 00:05:02+00:00)). ARM 2
+      (tied, reproduced on purpose): Quarantined(reason_codes=('successor_recorded_at_not_later',)).
+      Re-verified this session: present at line 179, passing in the 13/13
+      test_outcome_event.py run (receipt above).
+  - seat: "independent reviewer (fresh context)"
+    objection: >-
+      outcome_event.schema.json contained zero conditional constructs (no
+      if/then/allOf/oneOf/dependentRequired, only pydantic's nullable anyOf). The
+      metric_profile_ref/metric_result_ref joint-presence rule (CONTRACTS.md:865)
+      lived only in outcome_event.py's validator, in prose in the spec — a consumer
+      validating against the published schema alone accepts documents the model
+      rejects.
+    status: CONFIRMED
+    note: >-
+      FIXED, following the precedent an existing sibling kind in this package already
+      set (bidirectional if/then via ConfigDict(json_schema_extra=...)). The obvious
+      fix (dependentRequired) would have been wrong: it tests key presence while the
+      model's is-None check tests value, and this contract uses presence-preserving
+      null semantics — a present-and-explicitly-null key hashes as a different
+      document from an absent key, so dependentRequired alone would accept a
+      present-but-null field the model still rejects. Verified by enumeration, not by
+      example: all nine combinations of {absent, explicit null, value} x {profile,
+      result} checked against an independently derived expected verdict (never
+      schema==model, which would be an identity check, not a guard) — all nine agree.
+      Schema regenerated through the real schema_bytes() generator, never
+      hand-edited; re-verified this session: checked_in_schemas_match() == () and
+      validate_schema_artifacts() == () (receipt above).
+  - seat: "independent reviewer (fresh context)"
+    objection: >-
+      V1_RESERVED_EXTENSION_FIELD_NAMES (primitives.py) is a flat, top-level-only set,
+      so a core field name nested inside extensions.<ns>.payload is accepted although
+      the field's own docstring and CONTRACTS.md:46 both say a reserved name "cannot
+      be smuggled ... at ANY DEPTH". Real, and repo-wide rather than specific to this
+      kind.
+    status: CONFIRMED
+    note: >-
+      NOT FIXED here, deliberately. Already recorded in
+      .claude/skills/modus/PENDING-ARMS.md (opened 2026-08-23, "The extension jail
+      ... protects only TOP-LEVEL core field names"): re-deriving the reserved set
+      from every model field across all 9 registered kinds finds ~51 unreserved
+      names, about half bare common English words (count, name, size, type, kind,
+      role, threshold, ...) — jailing those rejects legitimate extension payloads
+      wholesale, superscar #3 (over-match on a bare token). The real fix is
+      path-aware, a design decision, not a patch. primitives.py is genuinely absent
+      from this PR's own three-dot diff against origin/main (re-verified this
+      session); a third correcting PR on that file here would be a fix-of-a-fix at
+      depth 2, forbidden by the Agent PR Contract rule 8.
+  - seat: "independent reviewer (fresh context)"
+    objection: >-
+      Both fixture-loading loops in test_outcome_event.py iterate a glob with no
+      assertion that the glob matched anything — rename or empty the fixtures
+      directory and the tests pass having validated zero fixtures, the identical
+      green as a run that validated all of them.
+    status: CONFIRMED
+    note: >-
+      FIXED. Both loops (test_valid_fixtures_round_trip,
+      test_invalid_fixtures_reject_with_exact_expected_reason) now assert non-empty
+      (assert fixture_paths, f"expected at least one ... fixture for
+      {CONTRACT_KIND}"), matching the shape three sibling test files already use
+      rather than inventing a fourth. Re-verified this session by reading the
+      current file: both asserts present at lines 31 and 46. The remaining
+      vulnerable sibling test files are ledgered separately, not fixed here — out of
+      this PR's one concern.
+  - seat: "session (this evidence migration, against its own merge)"
+    objection: >-
+      Merging origin/main into a 47-commits-behind branch and resolving the two
+      fixed-root evidence files by taking main's side whole is exactly the kind of
+      wide, mechanical merge where a union-style resolution can drop a line silently
+      and look identical to a correct one (W125) — a real risk worth naming even
+      though this merge's only two conflicts were on files this PR does not need to
+      keep any content from.
+    status: CONFIRMED
+    note: >-
+      Checked, not assumed: `git show origin/main:evidence/brief.yml | diff -q -
+      evidence/brief.yml` and the same for pack.yml both report identical — the
+      resolved files are byte-for-byte main's, zero silent loss possible on a file
+      that was supposed to end up byte-identical. The three registration files
+      (cli.py, models/__init__.py, schemas/__init__.py), which DID need a real
+      three-way merge of both sides' changes, are checked separately by the set-diff
+      receipt above (14->15, outcome_event the only addition) rather than by a
+      diff-against-one-side check, since both sides of that merge were live.

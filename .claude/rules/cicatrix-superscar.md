@@ -64,7 +64,10 @@ access-wall, dev identity su proxy PROD) · W97 (display-cap `[:40]` letto come 
 W101-recidiva-fly-backup (PARTIAL: Fase 2 mai parte) · W104 (`redis-cli` esce 0 con NOAUTH su stdout) ·
 W107 (curato 1 wrapper su 5) · W108 (19/20 cron muti, 2 cause) · W110 (heartbeat sull'organo sbagliato)
 · W116 (allarme su esito giusto, cura codice morto) · W118 (11h fermo, nessun check rosso) · W120
-(sentinella della famiglia stessa disarmata) · W121 (mutation testing su bytecode avvelenato) · W122 (rosso mente: lavoro fatto, SIGINT→130).
+(sentinella della famiglia stessa disarmata) · W121 (mutation testing su bytecode avvelenato) · W122 (rosso mente: lavoro fatto, SIGINT→130) · W123 (hold disarmato si ri-arma al push)
+· W126 (draft non espelle dalla coda)
+· W124
+(PR DIRTY: check-suite `completed` su un sottoinsieme, non su zero corse).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W34/W32/W64/W69/W71/W74/503)
 
 ---
@@ -91,7 +94,7 @@ traduzioni) · W83 (3 falsi BLOCK ssh/cd/quote) · W84 (`[^q]*` matcha newline, 
 font-inject) · W105 (troncatura primo segmento `.worktrees/`) · W109 (esenzione per collocazione non
 contenuto) · W112 (Prettier riscrive i propri record di cicatrice) · W115 (veto post-selezione, non
 filtro pre) · W117 (`_strip_noise` svuota payload prima dell'esenzione) · W119 (`\s` separatore
-attraversa il newline).
+attraversa il newline) · W127 (guardia confronta `levelname` reso, non `levelno` stabile).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W68/W72)
 **PR-1 landing** (corpo in `PENDING-ARMS.md`): `git branch -D` da worktree è repo-wide, la guardia giudica il cwd.
 
@@ -203,7 +206,7 @@ CONTENUTO (diff vuoto/subset), mai patch-equivalenza/SHA-ancestor/timestamp.
 contenuto post-squash) · W102 (two-dot diff accusa PR dei file di main) · W106 (proxy congelato sceglie
 credenziale morta) · W106b (il checkout stesso è il proxy) · W109b (2 PR che si bloccano a vicenda) ·
 W111 (`gh run rerun` rigioca merge-ref stantio) · W114 (fake e codice condividono l'immaginazione) ·
-W118 (3 proxy merge-queue che mentono).
+W118 (3 proxy merge-queue che mentono) · W125 (fusione pulita senza marker, la resa a mano la tiene).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61)
 **PR-1 landing** (corpo in `PENDING-ARMS.md`): la mergeability GitHub non onora `merge=union`;
 `autoMergeRequest` non sopravvive a un transito CONFLICTING — va riarmato via GraphQL.
@@ -230,10 +233,11 @@ feeder split-brain.
 ## Orfane (uniche per natura, non forzate in un cluster)
 
 - **W38** — `backend_rag_v2` NOSUPERUSER (hardening, non un bug)
-- **P3 FLAKY** — clock-race in un test — **CURATA 2026-08-02**: orologio congelato, non un iteratore di
-  tick; mutation ha trovato di peggio (test asseriva un CONTEGGIO, verde con la dedup cancellata).
+- **P3 FLAKY** (CURATA 2026-08-02) + **W129** — test e produttore non condividono «adesso»: là un
+  tick reale non congelato, qui un orologio congelato nel test che il codice sotto test non legge.
 - **W33** — kill-switch operatore su auto-remediation
 - **W40** — collisione numerazione migrazioni
+- **W128** — collisione numero cicatrice (sibling W40) — antidoto `lint_scar_number_collision.py`
 - **W39** — Dependabot bump (routine)
 - **Atlas migrate-lint paywall** — costo terze-parti, non bug
 - **Deploy crash / Dockerfile cell-core** — ordering promozione monorepo CI

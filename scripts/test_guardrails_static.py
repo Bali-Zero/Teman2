@@ -450,6 +450,52 @@ CASES: list[tuple[str, dict, bool]] = [
         },
         False,
     ),
+    # ---------- Edit/Write: TRUNCATE-trigger-event guard-over-match (cicatrix #3)
+    # `TRUNCATE\s+\w+` (added to catch `TRUNCATE foo` — the TABLE keyword is
+    # optional in PostgreSQL) also matched the word `ON` inside a legitimate
+    # `CREATE TRIGGER ... BEFORE TRUNCATE ON <table> ...` statement — the
+    # PROTECTIVE convention this repo uses in migrations 250/251, 252/253,
+    # 264 and 280. Live audit against the running tier-1 daemon on Pro
+    # reproduced a real BLOCK on migration 280's actual content.
+    (
+        "innocence: CREATE TRIGGER ... BEFORE TRUNCATE ON <table> (regression)",
+        {
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "/tmp/new_mig.sql",
+                "content": (
+                    "CREATE TRIGGER x BEFORE TRUNCATE ON public.foo "
+                    "FOR EACH STATEMENT EXECUTE FUNCTION f();"
+                ),
+            },
+        },
+        False,
+    ),
+    (
+        "guilt: TRUNCATE TABLE public.foo (must still block)",
+        {
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "/tmp/new_mig.sql",
+                "content": "TRUNCATE TABLE public.foo;",
+            },
+        },
+        True,
+    ),
+    (
+        # This is the one the narrowing could accidentally kill: TABLE is
+        # optional in PostgreSQL's TRUNCATE syntax, so `TRUNCATE\s+\w+` must
+        # SURVIVE the trigger-event exclusion.
+        "guilt: TRUNCATE public.foo without TABLE keyword (must still block)",
+        {
+            "tool_name": "Write",
+            "tool_input": {
+                "file_path": "/tmp/new_mig.sql",
+                "content": "TRUNCATE public.foo;",
+            },
+        },
+        True,
+    ),
     # ---------- Edit/Write: non-protected, non-sql (MUST ALLOW) ----------
     (
         "write normal py",

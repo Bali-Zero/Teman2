@@ -270,11 +270,84 @@ class ApplicationChannel(str, Enum):
 
 
 class RelationType(str, Enum):
+    """The applicant's relationship to the family sponsor (``family.relation_to_sponsor``).
+
+    ``STEPCHILD`` added 2026-08-23 (owner ruling, verbatim: "figliastro =
+    figlio del coniuge, serve akta nikah + akta lahir"): E31D ("Family Visa —
+    Stepchild of Foreigner in Legal Mixed Marriage") is a distinct product
+    from CHILD (a couple's own biological/adopted child) and from SPOUSE, but
+    every one of its three ELIGIBILITY rules could previously only test bare
+    ``intent.purposes intersects ["FAMILY"]`` — the vocabulary had no way to
+    say "stepchild" at all (`research/visa/2026-08-15-gold-family-refuter.md`,
+    which reproduced this as fail-open product manufacture on sequence 7 and
+    explicitly blocked a rule-only repair, demanding this vocabulary
+    extension first). Grounded independently in Permenkumham 11/2024's
+    Pasal 33 ayat (2) huruf h angka 4: "anak dari Orang Asing yang kawin
+    secara sah dengan warga negara Indonesia" ("child OF A FOREIGNER who is
+    legally married to an Indonesian citizen") — exactly the stepchild-of-a-
+    lawful-mixed-marriage shape E31D names. The two evidence facts the owner
+    named for this relation — the parents' marriage certificate and the
+    child's birth certificate — are ``FactPath.FAMILY_STEPCHILD_MARRIAGE_
+    CERTIFICATE_CONFIRMED`` / ``FAMILY_STEPCHILD_BIRTH_CERTIFICATE_CONFIRMED``
+    below. This PR adds the vocabulary only; the rules that consume it
+    (a real STEPCHILD/evidence-gated E31D ELIGIBILITY rule, replacing the
+    three purpose-only ones) land in a separate, later PR.
+    """
+
     SPOUSE = "SPOUSE"
     CHILD = "CHILD"
     PARENT = "PARENT"
     SIBLING = "SIBLING"
     DEPENDENT = "DEPENDENT"
+    STEPCHILD = "STEPCHILD"
+    OTHER = "OTHER"
+
+
+class SponsorPermitBasis(str, Enum):
+    """What activity BASIS the sponsor's own stay permit (ITAS/ITAP) was
+    granted under — added 2026-08-23 so a rule can express Permenkumham
+    11/2024's Pasal 33 ayat (7) exclusion (verbatim, re-extracted from the
+    primary PDF ``data/source_documents/t0_regulations/
+    permenkumham_11_2024_perubahan_visa.pdf``, item 10):
+
+        "Visa tinggal terbatas sebagaimana dimaksud pada ayat (2) huruf h
+        angka 2, angka 5, angka 8, dan angka 9 tidak dapat diajukan untuk
+        penyatuan kepada pemegang Izin Tinggal Penyatuan Keluarga."
+
+    Those four angka are exactly the four family-reunification products
+    whose sponsor must already hold an ITAS/ITAP — E31B (spouse of ITAS/ITAP
+    holder), E31E (minor child of ITAS/ITAP-holder parent), E31H (parent of
+    ITAS/ITAP-holder child) and E31J (minor sibling of ITAS/ITAP holder). The
+    law forbids chaining one of those four onto a sponsor whose OWN permit
+    was itself granted under huruf h (penyatuan keluarga / family
+    reunification) — no daisy-chaining family-reunification permits across
+    generations. ``family.sponsor_status_code`` (a free-form product-code
+    STRING, no ``allowed_values``) can express whether the sponsor's permit
+    is merely *valid*; it cannot express *what it is for*, which is the gap
+    this fact closes.
+
+    The value domain is transcribed directly from Pasal 33 ayat (2) huruf
+    a-l — the complete, exhaustive list of limited-stay-visa activity
+    categories in the regulation, not a guessed binary. ``FAMILY_REUNIFICATION``
+    (huruf h) is the one basis ayat (7) excludes; every other member is a
+    real, distinct huruf. ``OTHER`` is the closed-vocabulary escape hatch for
+    a sponsor permit that predates this classification or does not cleanly
+    map to a single huruf — it is deliberately NOT the same value as
+    ``FAMILY_REUNIFICATION`` and must never be used as a proxy for it.
+    """
+
+    EXPERT = "EXPERT"  # huruf a: tenaga ahli
+    WORKER = "WORKER"  # huruf b: pekerja
+    MARITIME_CREW = "MARITIME_CREW"  # huruf c: kapal/instalasi lepas pantai
+    CLERGY = "CLERGY"  # huruf d: rohaniwan
+    FOREIGN_INVESTMENT = "FOREIGN_INVESTMENT"  # huruf e: penanaman modal asing
+    SCIENTIFIC_RESEARCH = "SCIENTIFIC_RESEARCH"  # huruf f: penelitian ilmiah
+    EDUCATION = "EDUCATION"  # huruf g: mengikuti pendidikan
+    FAMILY_REUNIFICATION = "FAMILY_REUNIFICATION"  # huruf h: penyatuan keluarga
+    REPATRIATION = "REPATRIATION"  # huruf i: repatriasi
+    SECOND_HOME = "SECOND_HOME"  # huruf j: rumah kedua
+    MEDICAL_TREATMENT = "MEDICAL_TREATMENT"  # huruf k: menjalani pengobatan
+    WORKING_HOLIDAY = "WORKING_HOLIDAY"  # huruf l: kemudahan bekerja sambil berlibur
     OTHER = "OTHER"
 
 
@@ -434,15 +507,19 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 44-path fact vocabulary (41 applicant + 3 derived; spec §2 ``FactPath``)
+# FactPath — the closed 49-path fact vocabulary (45 applicant + 4 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 41 applicant-collected
-    + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
-    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and
-    by ``sponsor.type`` for the sponsor-category question, 2026-08-10).
+    """Every fact path the engine may ever reference — 45 applicant-collected
+    + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
+    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
+    ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
+    two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
+    and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
+    and by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
+    comment for the grounding).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -463,6 +540,19 @@ class FactPath(str, Enum):
     IMMIGRATION_LAST_ENTRY_DATE = "immigration.last_entry_date"
     IMMIGRATION_OVERSTAY_DAYS = "immigration.overstay_days"
     IMMIGRATION_VIOLATION_HISTORY = "immigration.violation_history"
+    # immigration.renewal_paid — added 2026-08-24 (F4, owner ruling on a
+    # renewal-in-process KITAS holder — verbatim: "chi ha un kitas scaduto e
+    # il pagamento del rinnovo e' avvenuto prima della scadenza... resta sul
+    # visa che ha esteso, non va su un altro", clarified further: "il rinno
+    # si considera depositato se ce stato pagamento" — payment is what makes
+    # a renewal "filed" at all, not a separate, weaker signal). Tri-state
+    # boolean: KNOWN True only once the applicant confirms the renewal FEE
+    # was paid — a lodged-but-unpaid submission does not count, and the
+    # interview question wording must ask about payment explicitly for
+    # exactly this reason (see ``apps/mouth``'s question copy). Consumed by
+    # ``FactRegistry._derive_has_active_stay_permit`` as an early
+    # short-circuit — see that method's docstring.
+    IMMIGRATION_RENEWAL_PAID = "immigration.renewal_paid"
     # intent.*
     INTENT_PURPOSES = "intent.purposes"
     INTENT_STAY_DAYS = "intent.stay_days"
@@ -486,6 +576,35 @@ class FactPath(str, Enum):
     FAMILY_SPONSOR_STATUS_CODE = "family.sponsor_status_code"
     FAMILY_MARRIAGE_REGISTERED = "family.marriage_registered"
     FAMILY_SPONSOR_CONFIRMED = "family.sponsor_confirmed"
+    # family.stepchild_* — evidence facts for RelationType.STEPCHILD
+    # (2026-08-23 owner ruling, see that enum member's docstring for the full
+    # citation trail). Modeled the same way as `family.marriage_registered`/
+    # `family.sponsor_confirmed`: a boolean, PERSONAL-tier, "has this piece
+    # of evidence been confirmed" fact — not a document upload, not a legal
+    # conclusion, matching this codebase's existing `*_confirmed` idiom
+    # (`work.indonesian_work_sponsor_confirmed`, `study.sponsor_confirmed`).
+    # Two facts, not one, because the owner named two distinct documents:
+    # "akta nikah" (the parents' marriage certificate — evidences the lawful
+    # WNA-WNI mixed marriage E31D requires) and "akta lahir" (the child's
+    # birth certificate — evidences the child's parentage). Vocabulary only:
+    # no rule references either yet.
+    FAMILY_STEPCHILD_MARRIAGE_CERTIFICATE_CONFIRMED = (
+        "family.stepchild_marriage_certificate_confirmed"
+    )
+    FAMILY_STEPCHILD_BIRTH_CERTIFICATE_CONFIRMED = "family.stepchild_birth_certificate_confirmed"
+    # family.sponsor_permit_basis — the sponsor's OWN stay-permit BASIS,
+    # closed-enum (`enums.SponsorPermitBasis`), added 2026-08-23 so a rule can
+    # express Permenkumham 11/2024 Pasal 33 ayat (7)'s no-chaining-family-
+    # reunification-permits exclusion. See `SponsorPermitBasis`'s docstring
+    # for the verbatim Pasal text and the four excluded products
+    # (E31B/E31E/E31H/E31J). Deliberately distinct from
+    # `FAMILY_SPONSOR_STATUS_CODE` (a free-form product-code STRING that can
+    # only say the permit is *valid*, never *what it is for* — the exact
+    # defect this fact exists to cure) and from `SPONSOR_TYPE` (WHO the
+    # sponsor is — a person/employer/institution category — not what basis
+    # THEIR OWN permit was granted under). Vocabulary only: no rule
+    # references it yet.
+    FAMILY_SPONSOR_PERMIT_BASIS = "family.sponsor_permit_basis"
     # study.*
     STUDY_LEVEL = "study.level"
     STUDY_ADMISSION_CONFIRMED = "study.admission_confirmed"
@@ -550,14 +669,24 @@ class FactPath(str, Enum):
     DERIVED_AGE_YEARS = "derived.age_years"
     DERIVED_IS_MINOR = "derived.is_minor"
     DERIVED_HAS_INDONESIAN_CITIZENSHIP = "derived.has_indonesian_citizenship"
+    # derived.has_active_stay_permit — added 2026-08-23 (owner ruling: an
+    # applicant WITH an active KITAS is excluded from D12). Computed by
+    # `FactRegistry.derive()` from `immigration.current_status_code` +
+    # `immigration.current_status_expiry` + the evaluator's `effective_at`.
+    # Tri-state by construction: UNKNOWN unless BOTH inputs are KNOWN and the
+    # status code is one this registry can positively classify — see that
+    # method's docstring for the closed classification and why an
+    # unclassifiable code stays UNKNOWN rather than guessing FALSE (which
+    # would wrongly ADMIT an applicant to D12).
+    DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 41 applicant-collected paths (everything except ``derived.*``).
+#: The 45 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )
 
-#: The 3 engine-computed paths, never collected from the applicant directly.
+#: The 4 engine-computed paths, never collected from the applicant directly.
 DERIVED_FACT_PATHS: frozenset[FactPath] = frozenset(FactPath) - APPLICANT_FACT_PATHS
 
 #: Facts that describe commercial willingness/budget, never legal eligibility.

@@ -1,0 +1,572 @@
+# WORK ITEM ZERO (MANDATE.md §1) — the disposition of `legal_unified_2026`.
+#
+# This file is not prose. It is read by:
+#   * apps/backend-rag/backend/tests/unit/kb/test_kb_inventory_contract.py  (CI gate)
+#   * scripts/kb/kb_inventory_probe.py                                      (production probe)
+# `kind: retired_collection` selects this schema. A topic lane's inventory is
+# `kind: topic` and follows MANDATE.md §2 instead; the gate dispatches on `kind`.
+#
+# Every number below was measured against production Qdrant on 2026-08-25 by
+# scrolling both collections in full. Nothing here is inherited from the mandate.
+
+schema_version: 1
+topic: legal_unified_2026
+kind: retired_collection
+measured_at: "2026-08-25"
+
+# ── What the mandate assumed, and what is actually true ──────────────────────
+#
+# The mandate opens: "the nightly regulatory watcher has been depositing
+# regulations into a collection no query reaches". Three measurements contradict
+# that, and they change the cure:
+#
+#  1. The collection is FROZEN, not filling. 15,410 points / 18 documents, with
+#     `Permen_18_2021` at 10,266 and `Permen_35_2012` at 1,240 — byte-identical
+#     to the figures recorded on 2026-05-16 in
+#     research/nb-lifecycle/2026-05-16-r5-phase2-indexing-parity.md:202.
+#     Nothing has been written to it in over three months.
+#  2. The nightly watcher does not ingest ANYWHERE. The only launchd job is
+#     com.balizero.regulatory-watcher.daily -> ~/scripts/regulatory-watcher-run.sh,
+#     which contains zero occurrences of qdrant / upsert / ingest / embed. It
+#     writes a delta JSON and a Telegram alert. There is no ingest path at all.
+#  3. The runner that names the collection has never run, and could not. It
+#     creates its FileHandler at module import, and ~/logs/regulatory-ingest.log
+#     does not exist on Pro. Even if invoked, LegalIngestionService's preflight
+#     raises LegalIngestIntegrityError for any target outside
+#     ALLOWED_CANONICAL_COLLECTIONS, and this name is outside it.
+#
+# So the defect is not "a drawer nobody opens". It is a dead 2026-05-16 artifact,
+# plus a regulatory watcher whose findings have never reached the KB by any route.
+
+verified_premises:
+  - claim: "legal_unified_2026 point count is unchanged since 2026-05-16"
+    method: "full scroll today (15410) vs research/nb-lifecycle/2026-05-16-r5-phase2-indexing-parity.md:202 (15.410); same top-2 documents at the same counts"
+    verdict: confirmed
+  - claim: "the nightly watcher ingests into this collection"
+    method: "grep -iE 'qdrant|upsert|ingest|embed' ~/scripts/regulatory-watcher-run.sh"
+    verdict: refuted
+    detail: "zero matches; the only launchd regulatory job never touches Qdrant"
+  - claim: "the regulatory ingest runner has run"
+    method: "the module builds logging.FileHandler(~/logs/regulatory-ingest.log) at import; the file does not exist"
+    verdict: refuted
+  - claim: "a write to legal_unified_2026 is possible today"
+    method: "legal_ingestion_service.py:169 raises unless canonicalize(target) in ALLOWED_CANONICAL_COLLECTIONS = {legal_unified, tax_genius}"
+    verdict: refuted
+
+# ── The decision (mandate §1) ──────────────────────────────────────────────
+decision:
+  choice: retire_as_target
+  # NOT "promote wholesale": 5 of 18 documents carry a contradictory identity and
+  # 2 have lost theirs entirely. Promoting them would inject a Klaten regency price
+  # schedule labelled "Permenkumham 22/2023 — Visa dan Izin Tinggal" into the one
+  # collection every legal query reads.
+  # NOT "point a reader at it": same reason, plus the payload is 100% legacy shape
+  # with no top-level document_id, which the modern retrieval path does not index.
+  rationale: >-
+    Nothing may write to this collection again — enforced by
+    scripts/ci/ingest_target_lint.py and its pytest gate, not by a comment. The
+    content itself is triaged per document below: what is genuinely new AND
+    correctly identified is handed to its topic lane for promotion under §4.4;
+    what is duplicated is marked for discard but NOT deleted today (§4.6 needs a
+    complete containment proof this measurement cannot yet give); what carries a
+    broken identity is blocked and must be re-acquired from the official source.
+  deletions_authorized: false
+  deletions_blocked_because: >-
+    The containment proof below hashes only fragments of >=40 normalized
+    characters. Shorter fragments are unproven, so no deletion may proceed on this
+    evidence alone. §4.6 says one uncovered fragment means do not delete.
+
+measured_against:
+  collection: legal_unified_2026
+  registry_mapped: false
+  points: 15410
+  distinct_documents: 18
+  payload_shapes: # measured by kb_inventory_probe.py::payload_shape — see compared_with
+    legacy_metadata_text: 15410
+    orphan_no_identity: 0
+    modern_id_only: 0
+    modern_id_chunk: 0
+    modern_full: 0
+  distinct_content_fragments: 7343 # normalized sha1, >=40 chars, CONTEXT header stripped
+
+compared_with:
+  collection: legal_unified
+  physical: legal_unified_hybrid_hybrid
+  registry_mapped: true
+  points: 84283
+  distinct_documents: 388
+  # §4.1 calls the modern payload a triple (document_id + chunk_key + section).
+  # Measured 2026-08-25, that triple is THREE shapes, not one: of the 5,797
+  # points carrying a top-level document_id, only 792 carry all three — and
+  # those 792 are exactly UU_6_2011 (413) and UU_40_2007 (379), the two
+  # documents repaired that day. 4,992 carry document_id ALONE and 13 stop at
+  # chunk_key. So a reader written as `if payload.get("document_id"): <use
+  # section>` is wrong on 86% of the points it calls modern, and the corpus is
+  # not "two generations" but one generation plus two repaired exceptions.
+  # Recorded here because the probe compares these counts against production:
+  # a re-ingest that shifts the mix goes RED as DRIFT.
+  payload_shapes:
+    legacy_metadata_text: 78486
+    orphan_no_identity: 0
+    modern_id_only: 4992
+    modern_id_chunk: 13
+    modern_full: 792
+  distinct_content_fragments: 56691
+  fragments_shared_with_topic: 2334 # 31.8% of this collection's content already there
+  fragments_only_in_topic: 5009
+  # 5,009 is the count of GLOBALLY distinct fragments absent from the read
+  # collection. Summing the per-document `fragments_absent_there` below gives
+  # 5,010, because exactly one fragment is shared between two documents in this
+  # collection and is therefore counted once globally and twice per-document.
+  # Both numbers are correct for their own question; the probe uses the
+  # per-document one, which is why that is the figure recorded per document.
+
+# ── The 18 documents ─────────────────────────────────────────────────────────
+# identity.verdict vocabulary:
+#   consistent    — text, metadata and filename name the same instrument
+#   mistyped      — same instrument, wrong TYPE in the document_id (a Pergub filed as UU)
+#   contradictory — metadata and text name DIFFERENT instruments
+#   lost          — the identity was never extracted (UNKNOWN placeholders)
+#
+# disposition vocabulary:
+#   promote_after_repair — genuinely new content under a sound identity; hand to a lane
+#   discard_duplicate    — content proven present in legal_unified; delete only on a complete proof
+#   blocked_identity     — must NOT be promoted; re-acquire officially (§4.3)
+#   catalogue_only       — too partial to be a document (§4.5); becomes a catalogue entry
+
+documents:
+  - document_id: Permen_18_2021
+    points: 10266
+    identity:
+      verdict: consistent
+      real_identity: "Permen ATR/BPN 18/2021 — Tata Cara Penetapan Hak Pengelolaan dan Hak Atas Tanah"
+      stated_in_text: "Permen - NO 18 - TAHUN 2021 - TENTANG TATA CARA PENETAPAN HAK PENGELOLAAN DAN HAK ATAS TANAH"
+      stated_in_metadata: "Permen ATR/BPN 18/2021 — Hak Pengelolaan"
+    presence_in_legal_unified:
+      by_document_id: 534
+      distinct_fragments: 3857
+      fragments_absent_there: 3725
+    disposition: promote_after_repair
+    lane: D
+    reason: >-
+      The single real find in this collection. legal_unified holds 534 points of
+      the same document_id; this copy carries 3,724 distinct fragments that are
+      not there. That is the §4.4 "replace an edition with a fuller one" case:
+      prove containment of the 534 first, retire them, then write. Do not merge
+      the two editions in place.
+
+  - document_id: Permen_35_2012
+    points: 1240
+    identity:
+      verdict: contradictory
+      real_identity: null
+      stated_in_text: "Permen - NO 35 - TAHUN 2012 - TENTANG TATA NASKAH DINAS DI LINGKUNGAN PEMERINTAH KABUPATEN TEGAL"
+      stated_in_metadata: "Permenkumham 11/2024 — Golden Visa C-318"
+      metadata_category: visa
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 403
+      fragments_absent_there: 401
+    disposition: blocked_identity
+    lane: A
+    reason: >-
+      1,240 points of a Tegal regency office-correspondence manual, tagged
+      category=visa and titled "Golden Visa C-318". Had this reached retrieval, a
+      Golden Visa question could have been answered with municipal letterhead
+      rules. It is not a visa instrument at all and must never be promoted.
+
+  - document_id: UU_14_2023
+    points: 955
+    identity:
+      verdict: mistyped
+      real_identity: "Pergub Bali 14/2023 — Rencana Pembangunan Daerah Provinsi Bali 2024-2026"
+      stated_in_text: "UU - NO 14 - TAHUN 2023 - TENTANG RENCANA PEMBANGUNAN DAERAH PROVINSI BALI TAHUN 2024-2026"
+      stated_in_metadata: "Pergub Bali 14/2023 - Rencana Pembangunan Daerah Provinsi Bali Tahun 2024-2026"
+    presence_in_legal_unified:
+      by_document_id: 954
+      distinct_fragments: 804
+      fragments_absent_there: 4
+    disposition: blocked_identity
+    lane: D
+    leaked_to_production: true
+    reason: >-
+      A provincial governor's regulation filed as a national statute — and 954 of
+      its 955 points are ALREADY in legal_unified under the same wrong id. This is
+      not a stranded-content problem, it is a live production defect: the read
+      collection answers "UU 14/2023" with a Bali development plan. Owned by
+      lane D as a repair, not by this item.
+
+  - document_id: UU_14_2024
+    points: 632
+    identity:
+      verdict: contradictory
+      real_identity: null
+      stated_in_text: "UU - NO 14 - TAHUN 2024 - TENTANG STANDAR HARGA SATUAN BARANG DAN JASA PEMERINTAH KABUPATEN KLATEN TAHUN ANGGARAN 2025"
+      stated_in_metadata: "Permenkumham 22/2023 — Visa Dan Izin Tinggal"
+      metadata_category: visa
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 555
+      fragments_absent_there: 555
+    disposition: blocked_identity
+    lane: A
+    reason: >-
+      A Klaten regency unit-price schedule for fiscal 2025, labelled as the visa
+      and stay-permit regulation. 100% absent from legal_unified, and it must stay
+      absent.
+
+  - document_id: Permen_1_2026
+    points: 544
+    identity:
+      verdict: mistyped
+      real_identity: "PMK 1/2026 — Perubahan Keempat atas PMK 81/2024 (Coretax)"
+      stated_in_text: "Permen - NO 1 - TAHUN 2026 - TENTANG PERUBAHAN KEEMPAT ATAS PERATURAN MENTERI KEUANGAN NOMOR 81 TAHUN 2024"
+      stated_in_metadata: "PMK 1/2026 - Perubahan Keempat atas PMK 81/2024"
+    presence_in_legal_unified:
+      by_document_id: 1506
+      distinct_fragments: 303
+      fragments_absent_there: 29
+    disposition: blocked_identity
+    lane: C
+    reason: >-
+      A Ministry of Finance regulation filed under the generic "Permen" type.
+      legal_unified already holds 1,506 points of this id — nearly three times as
+      many — so the fuller edition is already in production and this one is the
+      lesser copy. 29 orphan fragments are a lane C question, not a promotion.
+
+  - document_id: UU_1_2023
+    points: 537
+    identity:
+      verdict: consistent
+      real_identity: "UU 1/2023 — Kitab Undang-Undang Hukum Pidana (KUHP Baru)"
+      stated_in_text: "UU - NO 1 - TAHUN 2023 - TENTANG KITAB UNDANG-UNDANG HUKUM PIDANA"
+      stated_in_metadata: "UU 1/2023 - Kitab Undang-Undang Hukum Pidana (KUHP Baru)"
+    presence_in_legal_unified:
+      by_document_id: 537
+      distinct_fragments: 508
+      fragments_absent_there: 0
+    disposition: discard_duplicate
+    lane: F
+    containment_proof:
+      method: normalized_sha1_per_distinct_fragment
+      distinct_fragments_covered: 508
+      distinct_fragments_total: 508
+      ratio: 1.0
+      complete: false
+      gap: "fragments under 40 normalized characters were not hashed"
+    reason: "Identical point count and zero unshared fragments — a straight duplicate."
+
+  - document_id: Permen_22_2023
+    points: 402
+    identity:
+      verdict: consistent
+      real_identity: "Permenkumham 22/2023 — Visa dan Izin Tinggal"
+      stated_in_text: "Permen - NO 22 - TAHUN 2023 - TENTANG VISA DAN IZIN TINGGAL"
+      stated_in_metadata: "Permen No 22 Tahun 2023 Tentang VISA DAN IZIN TINGGAL"
+    presence_in_legal_unified:
+      by_document_id: 402
+      distinct_fragments: 295
+      fragments_absent_there: 0
+    disposition: discard_duplicate
+    lane: A
+    containment_proof:
+      method: normalized_sha1_per_distinct_fragment
+      distinct_fragments_covered: 295
+      distinct_fragments_total: 295
+      ratio: 1.0
+      complete: false
+      gap: "fragments under 40 normalized characters were not hashed"
+    reason: "Straight duplicate of the production copy."
+
+  - document_id: Permen_11_2024
+    points: 345
+    identity:
+      verdict: consistent
+      real_identity: "Permenkumham 11/2024 — Perubahan atas Permenkumham 22/2023"
+      stated_in_text: "Permen - NO 11 - TAHUN 2024 - TENTANG PERUBAHAN ATAS PERATURAN MENTERI HUKUM DAN HAK ASASI MANUSIA NOMOR 22 TAHUN 2023"
+      stated_in_metadata: "Permen No 11 Tahun 2024"
+    presence_in_legal_unified:
+      by_document_id: 345
+      distinct_fragments: 188
+      fragments_absent_there: 0
+    disposition: discard_duplicate
+    lane: A
+    containment_proof:
+      method: normalized_sha1_per_distinct_fragment
+      distinct_fragments_covered: 188
+      distinct_fragments_total: 188
+      ratio: 1.0
+      complete: false
+      gap: "fragments under 40 normalized characters were not hashed"
+    reason: "Straight duplicate of the production copy."
+
+  - document_id: 2026_UNKNOWN_UNKNOWN
+    points: 189
+    identity:
+      verdict: lost
+      real_identity: "PP 34/2021 — Penggunaan Tenaga Kerja Asing (English translation)"
+      stated_in_text: "2026 - NO UNKNOWN - TAHUN UNKNOWN - TENTANG pp_34_2021_english_translation"
+      stated_in_metadata: "Unknown Legal Document"
+    presence_in_legal_unified:
+      by_document_id: 37
+      distinct_fragments: 155
+      fragments_absent_there: 155
+    disposition: blocked_identity
+    lane: E
+    reason: >-
+      The real instrument is recoverable from the filename fragment, but 37 points
+      of "2026_UNKNOWN_UNKNOWN" are ALREADY in legal_unified — an unnamed document
+      in the production corpus. lane E re-acquires PP 34/2021 officially and the
+      placeholder id is retired; it is not repaired in place.
+
+  - document_id: PP_18_2025
+    points: 114
+    identity:
+      verdict: mistyped
+      real_identity: "SE Gubernur Bali 09/2025 — Gerakan Bali Bersih Sampah"
+      stated_in_text: "PP - NO 18 - TAHUN 2025 - TENTANG GERAKAN BALI BERSIH SAMPAH"
+      stated_in_metadata: "SE Gubernur Bali 09/2025 - Gerakan Bali Bersih Sampah"
+    presence_in_legal_unified:
+      by_document_id: 114
+      distinct_fragments: 99
+      fragments_absent_there: 1
+    disposition: blocked_identity
+    lane: F
+    leaked_to_production: true
+    reason: >-
+      A governor's circular filed as a government regulation, and all 114 points
+      are already in production under that wrong type. Repair belongs to lane F.
+
+  - document_id: UU_17_2026
+    points: 58
+    identity:
+      verdict: mistyped
+      real_identity: "PP 9/2026 — Tunjangan Hari Raya dan Gaji Ketiga Belas"
+      stated_in_text: "UU - NO 17 - TAHUN 2026 - TENTANG Pemberian Tunjangan Hari Raya dan Gaji Ketiga Belas"
+      stated_in_metadata: "PP 9/2026 - Pemberian Tunjangan Hari Raya dan Gaji Ketiga Belas"
+    presence_in_legal_unified:
+      by_document_id: 58
+      distinct_fragments: 49
+      fragments_absent_there: 13
+    disposition: blocked_identity
+    lane: E
+    leaked_to_production: true
+    reason: "A government regulation filed as a statute, already in production under the wrong identity."
+
+  - document_id: PP_6646_2021
+    points: 48
+    identity:
+      verdict: contradictory
+      real_identity: "PP 34/2021 — Penggunaan Tenaga Kerja Asing"
+      stated_in_text: "PP No 6646 Tahun 2021 Tentang PENGGUNAAN TENAGA KERJA ASING"
+      stated_in_metadata: "legal_number=6646"
+      stated_in_filename: "pp_34_2021_penggunaan_tka.pdf"
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 48
+      fragments_absent_there: 48
+    disposition: blocked_identity
+    lane: E
+    reason: >-
+      No Indonesian PP is numbered 6646; the parser lifted digits out of the body.
+      The filename gives the true instrument, PP 34/2021 — the same one hiding
+      behind 2026_UNKNOWN_UNKNOWN. Two broken ids, one real regulation.
+
+  - document_id: Permen_32_2022
+    points: 26
+    identity:
+      verdict: contradictory
+      real_identity: "PER-7/PJ/2025 — NIK-NPWP Coretax"
+      stated_in_text: "(1) Penentuan dan penetapan pembeli ..."
+      stated_in_metadata: "PER-7/PJ/2025 — NIK-NPWP Coretax"
+      stated_in_filename: "PER-7-PJ-2025.pdf"
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 26
+      fragments_absent_there: 26
+    disposition: blocked_identity
+    lane: C
+    reason: "A 2025 DJP regulation carrying a 2022 ministerial id. 26 points cannot be the whole instrument either."
+
+  - document_id: TAX_UNKNOWN_UNKNOWN
+    points: 21
+    identity:
+      verdict: lost
+      real_identity: "KEP-55/PJ/2026 — Penundaan Sanksi SPT Tahunan 2025"
+      stated_in_text: "TAX - NO UNKNOWN - TAHUN UNKNOWN"
+      stated_in_metadata: "Keputusan Direktur Jenderal Pajak Nomor KEP-55/PJ/2026"
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 20
+      fragments_absent_there: 20
+    disposition: blocked_identity
+    lane: C
+    reason: >-
+      A live 2026 tax-penalty deferral whose identity was never extracted. lane C
+      re-acquires it officially — this is exactly the class of instrument the KB
+      should be current on.
+
+  - document_id: UU_31_2010
+    points: 12
+    identity:
+      verdict: contradictory
+      real_identity: null
+      stated_in_text: "Pada saat MT Polowijo/Sayuran, petani harus membuat got drainase ..."
+      stated_in_metadata: "PP 41/1996 — Foreign Residential Ownership"
+      stated_in_filename: "PP_41-1996.pdf"
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 12
+      fragments_absent_there: 12
+    disposition: blocked_identity
+    lane: D
+    reason: >-
+      The sharpest proof that the fragments themselves are cross-contaminated, not
+      merely mislabelled: the id says UU 31/2010, the metadata and filename say
+      PP 41/1996 on foreign residential ownership, and the text is agricultural
+      extension material about drainage ditches for the vegetable planting season.
+      Four different answers, none of which can be trusted.
+
+  - document_id: PP_45_2024
+    points: 12
+    identity:
+      verdict: consistent
+      real_identity: "PP 45/2024 — Jenis dan Tarif PNBP pada Kementerian Hukum dan HAM"
+      stated_in_text: "(1) Jenis Penerimaan Negara Bukan Pajak ... biaya beban orang asing"
+      stated_in_metadata: "PP No 45 Tahun 2024 Tentang JENIS DAN TARIF ATAS JENIS PENERIMAAN NEGARA BUKAN PAJAK"
+      legal_status: dicabut
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 12
+      fragments_absent_there: 12
+    disposition: catalogue_only
+    lane: A
+    reason: >-
+      The only sound identity among the fragments, but 12 points cannot be a whole
+      PNBP tariff schedule — §4.5 says a partial document is a catalogue entry, not
+      an ingest. It is also marked `dicabut` (revoked), so §8 wants it marked
+      superseded rather than promoted.
+
+  - document_id: UU_13_2016
+    points: 7
+    identity:
+      verdict: contradictory
+      real_identity: null
+      stated_in_text: "(1) Perhitungan Persentase Penerimaan bagi hasil PBB-KB ... Lampiran Peraturan Gubernur"
+      stated_in_metadata: "PMK 9/PMK.03/2018 — SPT Filing Periods"
+      stated_in_filename: "PMK_9-PMK.03-2018.pdf"
+    presence_in_legal_unified:
+      by_document_id: 118
+      distinct_fragments: 7
+      fragments_absent_there: 7
+    disposition: blocked_identity
+    lane: C
+    leaked_to_production: true
+    reason: >-
+      Id says a 2016 statute, metadata a 2018 PMK on SPT filing, text a governor's
+      annex on fuel-tax revenue sharing. And 118 points of `UU_13_2016` are already
+      in production.
+
+  - document_id: Perda_15_2019
+    points: 2
+    identity:
+      verdict: contradictory
+      real_identity: null
+      stated_in_text: "Peraturan Wali Kota ini mulai berlaku pada tanggal diundangkan"
+      stated_in_metadata: "PP 13/2017 — RTRWN Amendment"
+      stated_in_filename: "PP_13-2017.pdf"
+    presence_in_legal_unified:
+      by_document_id: 0
+      distinct_fragments: 2
+      fragments_absent_there: 2
+    disposition: blocked_identity
+    lane: D
+    reason: "Id says a regional bylaw, metadata a national spatial-planning regulation, text a mayoral regulation."
+
+# ── Findings this item measured but does NOT cure (mandate §8) ───────────────
+open_findings:
+  - id: WIZ-1
+    title: "The regulatory watcher has no ingest path to any collection"
+    owner: "lane F (compliance) + the regulatory-watcher lane"
+    detail: >-
+      com.balizero.regulatory-watcher.daily is the only regulatory job on Pro. It
+      writes research/regulatory/<date>-delta.json and a Telegram alert, and
+      contains no Qdrant call. Repointing the ingest runner (done here) makes a
+      correct target exist; it does not connect the watcher to it. Until something
+      does, every delta the watcher has ever found is still outside the KB.
+    severity: high
+
+  - id: WIZ-2
+    title: "document_id is derived from the filename, not the title block"
+    owner: "lane G (repair)"
+    detail: >-
+      11 of 18 documents carry an identity that contradicts their own text,
+      metadata or filename, including an impossible PP number (6646) lifted out of
+      body digits. Mandate §4.3 already states the rule; nothing enforces it at
+      ingest time. The repair is a title-block extractor with guilt AND innocence
+      tests, not a rename pass.
+    severity: high
+
+  - id: WIZ-3
+    title: "Broken identities have already leaked into legal_unified"
+    owner: "lane D, C, E, F per document"
+    detail: >-
+      UU_14_2023 (954 pts), PP_18_2025 (114), UU_17_2026 (58), UU_13_2016 (118)
+      and 2026_UNKNOWN_UNKNOWN (37) are in the collection production reads, under
+      identities their own text contradicts. This is a live retrieval defect, not a
+      stranded-content one.
+    severity: high
+
+  - id: WIZ-4
+    title: "ingest_kbli_notebook_expert.py targets a collection that does not exist, and deletes it first"
+    owner: "lane B (company & KBLI)"
+    detail: >-
+      It names `kbli_notebook_expert`, absent from the registry AND from the 14
+      live collections, and its first act is delete_collection(). Repointing it at
+      a live KBLI collection would arm a destructive rebuild of 1,873 real points,
+      so the cure is a decision, not a rename. Held in
+      scripts/ci/ingest_target_lint.py::DISCOVERY_ALLOWLIST with this reason.
+    severity: medium
+
+  - id: WIZ-5
+    title: "`kbli_tka` is a LIVE alias the registry does not map"
+    owner: "lane E (employment & HR)"
+    detail: >-
+      backend/scripts/generate_tka_embeddings.py writes to `kbli_tka`, which
+      resolves in live Qdrant to kbli_tka_hybrid (246 points, measured
+      2026-08-25) but is absent from collection_registry.py. The write lands
+      somewhere real; the registry simply does not know the name, so
+      is_known_collection() is False and no code path can resolve it. The cure is
+      a registry addition, not a script edit, which is why it is not made here.
+    severity: medium
+
+  - id: WIZ-6
+    title: "`intel_authoritative_sources` is aliased but not mapped"
+    owner: "lane F (compliance & reporting)"
+    detail: >-
+      Two bali-intel-scraper loaders write to it (525 live points). It appears in
+      CANONICAL_COLLECTION_ALIASES mapped to `balizero_news`, but not in
+      LOGICAL_TO_PHYSICAL_COLLECTIONS — so it canonicalizes yet does not resolve.
+      Adding it changes how an existing alias behaves for every reader, which is
+      not a drive-by change inside Work Item Zero.
+    severity: medium
+
+  - id: WIZ-7
+    title: "`nlm_shadow_hybrid` is in the registry and not in Qdrant"
+    owner: "lane B (company & KBLI)"
+    detail: >-
+      scripts/nlm_shadow_extractor.py writes to it, and the registry maps it — but
+      it is not among the 14 collections live on 2026-08-25. The mirror image of
+      every other finding here: the name is known and the store is missing.
+    severity: medium
+
+  - id: WIZ-8
+    title: "Four write entrypoints target collections that exist nowhere"
+    owner: "lane P (parser capability)"
+    detail: >-
+      migration_020.py creates `collective_memories`; migration_031b names a
+      collection literally called `test`; init_news_collection.py creates
+      `balizero_news_history`; run_hier_eval.py writes `kb_politics_hier_v1`.
+      None is in the registry, none is live. Each is either dead code or a store
+      nobody provisioned — retire or explain, one row each.
+    severity: low

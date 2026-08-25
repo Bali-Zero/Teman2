@@ -111,6 +111,24 @@ logger = logging.getLogger(__name__)
 # existing whatsapp_service sends from the correct number without parametrising.
 META_INBOX_PHONE_NUMBER_ID = "1104946272705747"
 
+# 2026-08-25 double-reply scar: a Meta webhook re-registration can arm a
+# SECOND subscription for the same underlying business number, delivered
+# with a DIFFERENT phone_number_id. Every consumer that gates on
+# "is this the meta-inbox number" must check membership in this set, never
+# equality against the single canonical id above — an unrecognised id falls
+# through to the legacy inline reply path in whatsapp_chat.py, which then
+# answers a message the meta-inbox pipeline already answered.
+# Extra ids come from META_INBOX_PHONE_NUMBER_IDS (comma-separated); the
+# canonical id is always included even if the env var is unset or empty.
+META_INBOX_PHONE_NUMBER_IDS: frozenset[str] = frozenset(
+    {META_INBOX_PHONE_NUMBER_ID}
+    | {
+        pid.strip()
+        for pid in os.environ.get("META_INBOX_PHONE_NUMBER_IDS", "").split(",")
+        if pid.strip()
+    }
+)
+
 # Lease window for a claimed outbox row. P6 (spec 2026-07-17): the previous
 # 120s == the RAG read-timeout (120s in wa_inbox_bot._get_rag_client), so a
 # slow-but-legitimate generation could outlive its own lease and get reclaimed

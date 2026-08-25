@@ -598,7 +598,7 @@ def build_gold_compiled_pack() -> CompiledRulePack:
 
 _UNKNOWN_NOT_ASKED = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
 
-#: Every one of the 41 fact paths defaulted to a KNOWN, "safe/neutral" value —
+#: Every one of the 45 fact paths defaulted to a KNOWN, "safe/neutral" value —
 #: a fully-answered, boring baseline applicant (adult, non-calling-country,
 #: no violations, offshore, non-onshore-conversion) that no rule in
 #: ``_build_rules`` flags. Every persona overrides only its OWN distinguishing
@@ -647,6 +647,16 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     # asks it to be (persona 6 still overrides it to test the CHILD path).
     "family.sponsor_status_code": {"status": "KNOWN", "value": "NONE"},
     "family.marriage_registered": {"status": "KNOWN", "value": False},
+    # family.stepchild_*/sponsor_permit_basis (2026-08-23 vocabulary
+    # extension): UNKNOWN by default — no rule in ``_build_rules``
+    # references these paths yet (this PR adds vocabulary only, no new
+    # rule), so they never influence the evaluator-suite personas; they
+    # exist here only for the same explicit-completeness reason as
+    # ``sponsor.type``/``secondhome.*`` below.
+    "family.stepchild_marriage_certificate_confirmed": _UNKNOWN_NOT_ASKED,
+    "family.stepchild_birth_certificate_confirmed": _UNKNOWN_NOT_ASKED,
+    "family.sponsor_permit_basis": _UNKNOWN_NOT_ASKED,
+    "immigration.renewal_paid": _UNKNOWN_NOT_ASKED,
     "family.sponsor_confirmed": {"status": "KNOWN", "value": False},
     "study.level": _UNKNOWN_NOT_ASKED,
     "study.admission_confirmed": _UNKNOWN_NOT_ASKED,
@@ -654,12 +664,12 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     # sponsor.type: UNKNOWN by default — no rule in ``_build_rules``
     # references this path yet, so it never influences the evaluator-suite
     # personas; it exists here only because ``ApplicantFactsData`` requires
-    # all 41 keys.
+    # all 44 keys.
     "sponsor.type": _UNKNOWN_NOT_ASKED,
     # secondhome.* (E33 vertical): UNKNOWN by default — no rule in
     # ``_build_rules`` references these paths, so they never influence the
     # evaluator-suite personas; they exist here only because
-    # ``ApplicantFactsData`` requires all 41 keys.
+    # ``ApplicantFactsData`` requires all 44 keys.
     "secondhome.bank_deposit_usd": _UNKNOWN_NOT_ASKED,
     "secondhome.bank_deposit_at_state_bank": _UNKNOWN_NOT_ASKED,
     "secondhome.bank_deposit_in_own_name": _UNKNOWN_NOT_ASKED,

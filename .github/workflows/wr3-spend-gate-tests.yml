@@ -41,6 +41,28 @@ name: WR3 spend gate tests
 # broken the workflow on arrival). NOT added to branch-protection required checks
 # here: that is a repo-settings change, made separately and only once this has
 # been observed green on main (see PENDING-ARMS).
+#
+# 2026-08-23 fix (Zero: "make it enforce"): this workflow's own name says
+# "spend gate" but it never named scripts/tests/test_wr3_zero_spend.py or
+# scripts/tests/test_wr3_render_episode_zero_spend.py -- the guilt+innocence
+# corpus for wr3_spend_authority.py's assert_spend_authorized(), the actual
+# runtime check that refuses a real Veo spend without a logged
+# WR3_SPEND_DECISION. `grep -rl test_wr3_zero_spend .github/workflows/`
+# returned nothing before this commit: same defect the rest of this file is
+# about, one file over. The runtime gate itself was already correct --
+# assert_spend_authorized runs first in both _generate_start_image and
+# _generate_video, before any socket opens (PR #4606) -- and the 27 tests in
+# those two files already proved it locally; this closes the gap between "the
+# gate works" and "a regression to it is caught by something that runs".
+# wr3_flowkit_client.py and wr3_render_episode.py (the modules the new tests
+# import/exercise) join `paths:` and the sanity-compile step for the same
+# reason wr3_credit_ledger.py is scoped above. `pytest-asyncio` (both new
+# files use `@pytest.mark.asyncio`) and `Pillow` (wr3_placeholder_clip.py
+# imports PIL at module level, reached transitively by both) join the install
+# line -- verified against a bare venv on py3.11 AND py3.14: omitting either
+# turns a real ImportError into a false red on arrival, which would have
+# looked exactly like the "guard exists, nobody armed it" defect this whole
+# workflow was written to catch.
 
 on:
   pull_request:
@@ -48,9 +70,13 @@ on:
       - "scripts/wr3_gatekeeper_check.py"
       - "scripts/wr3_credit_ledger.py"
       - "scripts/wr3_spend_authority.py"
+      - "scripts/wr3_flowkit_client.py"
+      - "scripts/wr3_render_episode.py"
       - "scripts/tests/test_wr3_gatekeeper_cost.py"
       - "scripts/tests/test_wr3_ledger_isolation.py"
       - "scripts/tests/test_wr3_credit_ledger.py"
+      - "scripts/tests/test_wr3_zero_spend.py"
+      - "scripts/tests/test_wr3_render_episode_zero_spend.py"
       - "scripts/tests/conftest.py"
       - ".github/workflows/wr3-spend-gate-tests.yml"
   merge_group:
@@ -61,9 +87,13 @@ on:
       - "scripts/wr3_gatekeeper_check.py"
       - "scripts/wr3_credit_ledger.py"
       - "scripts/wr3_spend_authority.py"
+      - "scripts/wr3_flowkit_client.py"
+      - "scripts/wr3_render_episode.py"
       - "scripts/tests/test_wr3_gatekeeper_cost.py"
       - "scripts/tests/test_wr3_ledger_isolation.py"
       - "scripts/tests/test_wr3_credit_ledger.py"
+      - "scripts/tests/test_wr3_zero_spend.py"
+      - "scripts/tests/test_wr3_render_episode_zero_spend.py"
       - "scripts/tests/conftest.py"
 
 permissions:
@@ -91,14 +121,18 @@ jobs:
         run: python -VV
       - name: Run the spend-gate guilt + innocence corpus
         run: |
-          python -m pip install --quiet --disable-pip-version-check pytest
+          python -m pip install --quiet --disable-pip-version-check pytest pytest-asyncio Pillow
           PYTHONPATH=. python -m pytest \
             scripts/tests/test_wr3_gatekeeper_cost.py \
             scripts/tests/test_wr3_ledger_isolation.py \
-            scripts/tests/test_wr3_credit_ledger.py -v
+            scripts/tests/test_wr3_credit_ledger.py \
+            scripts/tests/test_wr3_zero_spend.py \
+            scripts/tests/test_wr3_render_episode_zero_spend.py -v
       - name: Sanity-compile the gate and the modules it reads spend through
         run: |
           python -m py_compile \
             scripts/wr3_gatekeeper_check.py \
             scripts/wr3_credit_ledger.py \
-            scripts/wr3_spend_authority.py
+            scripts/wr3_spend_authority.py \
+            scripts/wr3_flowkit_client.py \
+            scripts/wr3_render_episode.py
