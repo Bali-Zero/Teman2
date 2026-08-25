@@ -120,8 +120,12 @@ def _modern_full(doc_id: str) -> dict:
 # to that table cannot silently desync from what this test expects.
 
 
-def test_resolve_physical_maps_the_logical_alias_to_the_live_collection():
-    sys.path.insert(0, str(ROOT / "apps" / "backend-rag"))
+def test_resolve_physical_maps_the_logical_alias_to_the_live_collection(monkeypatch):
+    # monkeypatch.syspath_prepend, not a bare sys.path.insert with no matching
+    # .remove/.pop: pytest restores sys.path at teardown, so this cannot leak a
+    # path entry into every test collected after this one for the rest of the
+    # process (the defect this same cure closes in test_kb_inventory_contract.py).
+    monkeypatch.syspath_prepend(str(ROOT / "apps" / "backend-rag"))
     from backend.core.collection_registry import LOGICAL_TO_PHYSICAL_COLLECTIONS
 
     assert PROBE.resolve_physical("legal_unified") == LOGICAL_TO_PHYSICAL_COLLECTIONS["legal_unified"]
