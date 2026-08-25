@@ -1,0 +1,119 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-slice2-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D3 (legacy-to-canonical adapters, no
+  silent field dropping): SLICE 2 of 3 of the Magazine `ops_intents`/`ops_receipts` "action
+  chain" adapter subsystem under `apps/backend-rag/backend/services/research_os/`.
+
+  Slice 1 (shared infrastructure + `ActionItem` adapter, PR #4749, corrected in PR #4758) is
+  already merged on `origin/main`. This PR ships the second canonical kind:
+  `ops_intents` row -> canonical `ActionIntent` (CONTRACTS.md §13.2).
+
+  DESIGN DECISION (structural, not a convenience): this adapter COMPOSES the already-merged
+  `action_item_adapter.adapt_ops_intent_to_action_item` on the same row rather than
+  re-deriving the paired `ActionItem` independently. `action_intent.py`'s own
+  `verify_action_intent_matches_action_item` requires `action_item_ref` to pin the exact
+  `ActionItem.object_hash`, and `requested_action_spec_ref`/`risk_class`/`sensitivity` to be
+  byte-identical across both objects -- composing the sibling adapter is the only way to
+  satisfy that without either duplicating its logic (drift risk) or leaving `action_item_ref`
+  as yet another synthesized-unbacked placeholder when the referenced object in fact exists.
+
+  SCOPE FINDING (re-verified against the CORRECTED D3 matrix, now merged on `origin/main` as
+  PR #4756 -- not the stale FROZEN version this deliverable started from): §1.1's own table
+  grades `action_intent_id`, `action_item_ref`, `target{system,object_ref,surface}`,
+  `input_revision_hash`, and `authority_required{scope,expires_after_seconds}` all
+  🔴 "unmappable as-is -- needs a ruling", a materially harder field mix than slice 1's
+  `ActionItem` faced. Of these: `action_intent_id`/`action_item_ref` are resolved by this
+  adapter's own composition argument above (disclosed, not treated as matrix-endorsed);
+  `target`/`input_revision_hash`/`authority_required.scope`/`.expires_after_seconds` remain
+  genuinely open and are disclosed via BOTH a loss-report warning (prose) AND a
+  machine-checkable `pending_ruling` marker in the object's own
+  `extensions['com.balizero.research-os-adapters'].payload['pending_ruling']` -- the exact
+  two-channel discipline PR #4758 established for slice 1's own open rulings, applied here
+  from the start rather than retrofitted after a REFUSE verdict.
+
+  A pre-existing draft of this adapter (stacked branch
+  `ros-v1-p04-d3-adapters-2-action-intent`, written before the matrix correction landed) was
+  read as a REFERENCE ONLY and discarded rather than reused: it silently resolved several of
+  these same 🔴 rows as ordinary 🟢/🟡 mapped/approximated fates in its own loss-report field
+  list, without the pending_ruling disclosure -- exactly the "matrix as approval" defect
+  PR #4758 fixed on the sibling `ActionItem` adapter. This PR is a from-scratch rewrite
+  against the corrected matrix, not that draft with patches applied.
+constraints:
+  - "Additive only: two new files (adapter + its test file) under
+    apps/backend-rag/backend/services/research_os/ and
+    apps/backend-rag/backend/tests/services/research_os/ (both directories already exist,
+    populated by the merged slice 1). Touches zero existing file. Does not modify
+    packages/research-os-core/ or any domain model."
+  - "Fresh worktree cut from origin/main AFTER both PR #4758 (ActionItem correction) and
+    PR #4756 (corrected D3 matrix) merged -- NOT a rebase of the stale pre-correction stacked
+    branch (`ros-v1-p04-d3-adapters-2-action-intent`), per an explicit conductor instruction to
+    avoid building on facts nine commits stale."
+  - "Does NOT touch scripts/wr3_*, docs/wr3/contracts/, apps/backend-rag/backend/tests/conftest.py,
+    or test_xdist_worker_isolation.py (other lanes' leases)."
+  - "No PII: every row is a synthetic, fabricated fixture (conftest.py, already merged by slice
+    1) -- no real Magazine row is read, pasted, or referenced."
+  - "Arming is DEFERRED per an explicit conductor instruction: two ledger-touching PRs (#4756,
+    #4772) precede this one in the merge queue's serialization order, and this PR's own
+    PENDING-ARMS row means at most one of {this PR, its two siblings} may be queued at a time.
+    PR stays with auto-merge NOT armed until the conductor signals the queue is clear."
+acceptance:
+  - "Every one of ops_intents' 27 legacy columns has an entry in the adapter's loss report with
+    a fate in {mapped, approximated, synthesized_unbacked, omitted, rejected} and a reason --
+    enforced by assert_every_legacy_field_accounted_for, called both inside the adapter and
+    independently from the test suite."
+  - "A row the sibling ActionItem adapter rejects (unrecognized status, clock skew) is ALSO
+    rejected here, via delegation rather than a duplicated check -- verified by
+    test_unrecognized_status_is_rejected_with_full_field_ledger and
+    test_clock_skew_row_is_rejected_not_silently_coerced."
+  - "The package's OWN cross-object invariant function, action_intent.verify_action_intent_matches_action_item,
+    is called directly against a real (item, intent) pair produced by the two sibling adapters
+    on the same row and raises nothing -- not a hand-rolled assertion about what SHOULD hold,
+    the actual invariant the frozen contract enforces."
+  - "pending_ruling and unbacked_refs are disclosed twice: in loss_report.warnings (prose) AND
+    in extensions['com.balizero.research-os-adapters'].payload (machine-checkable) -- from the
+    first version of this adapter, not retrofitted after review."
+  - "PYTHONPATH=. pytest backend/tests/services/research_os/ backend/tests/unit/research_os/ -q
+    exits 0 in full (this PR's 13 new tests + the 24 pre-existing tests in the same
+    directories, none regressed)."
+consumer_map:
+  - "GitHub PR's `Harness floor recompute` required check -- Gear-2 evidence pack, floor=1
+    (neither changed file matches HOTZONE_PATTERNS, verified against
+    scripts/evidence_pack_lint.py's own list directly, not assumed)."
+  - "A future slice-3 (OperationalReceipt + shadow dual-write + parity probe, staged as
+    `ros-v1-p04-d3-adapters-3-operational-receipt`/`-4-shadow-parity` in the pre-correction
+    worktree, NOT yet rebuilt against the corrected matrix): shadow.py would import both this
+    adapter and action_item_adapter.py."
+  - "Work Packet 04 Deliverable 5 (research_os_contract_core persistence, PR #4740, merged): the
+    future canonical repository this adapter's output would eventually be written into via a
+    shadow flag -- not built here."
+risks:
+  - "target{system,object_ref,surface} and authority_required.scope/.expires_after_seconds are
+    disclosed placeholders for fields the corrected matrix flags as having NO usable legacy
+    analogue at all -- unlike slice 1's placeholders (which reused a real, if mis-slotted,
+    legacy value), target's object_ref.object_id/object_hash and authority_required.scope
+    resolve to nothing Magazine's own system would recognize. See the Kimi K3 adversarial
+    review below for whether this crosses from 'disclosed gap' into 'actively misleading'."
+  - "request_hash is reused across THREE canonical slots (arguments_hash, input_revision_hash,
+    lineage.input_hashes) -- the matrix's own words call this an open ruling on which ONE slot
+    the value actually satisfies; populating all three is this adapter's own placeholder
+    pending that ruling, not a settled 1:many mapping."
+  - "Composing action_item_adapter from within this adapter creates a real (if currently
+    one-directional) coupling between the two sibling adapters: a future change to
+    ActionItem's own construction logic silently changes what this adapter's action_item_ref/
+    requested_action_spec_ref/risk_class/sensitivity carry, without this file's own diff
+    showing it. No test currently pins that coupling explicitly beyond re-running both
+    adapters together."
+grader: |
+  session (BUILD-lane subagent, Pro, worktree backend-rag-ros-v1-p04-d3-slice2-action-intent)
+  wrote the adapter, tests, and evidence pack; a cross-family adversarial pass (Kimi K3,
+  kimi-code/k3, this session, dispatched via a separate agent invocation to capture its raw
+  stdout) reviewed the 4 design decisions flagged as risks above (generator != grader) --
+  self-graded findings are marked as such, never presented as independent review.
+budget: |
+  1 build lane (this session) + 1 adversarial review lane (Kimi K3) -- no full multi-LLM
+  council convened; same Gear-2 scope as slice 1, one canonical kind, additive, zero live
+  consumers.
+pii: none

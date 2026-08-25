@@ -16,9 +16,19 @@ Why this file exists (P1 STRATO-0 / verify-the-verifiers):
 
     This module extracts the matching logic byte-identically into a pure
     function ``is_dangerous(payload) -> (bool, reason)`` so a repo test
-    (``scripts/test_guardrails_static.py``) can gate it in CI, and the
-    ``~/.claude`` hook imports it (with a vendored fallback so it still works
-    standalone if the repo is not on the box).
+    (``scripts/test_guardrails_static.py``) can gate it in CI.
+
+    CORRECTED (guard-over-match cicatrix #3 investigation): the ``~/.claude``
+    hook does NOT import this module. ``~/.claude/hooks/guardrails-static.py``
+    imports only ``json, re, sys`` and carries its own standalone copy of the
+    matching logic; ``~/.claude/daemons/guardrails.py`` (the live tier-1
+    daemon on Pro, socket ``~/.claude/daemons/guardrails.sock``, LaunchAgent
+    ``com.balizero.guardrails-daemon``) likewise imports no repo core. There
+    are **three independent copies** — this repo-vendored/CI-tested core, the
+    HOME hook, and the HOME daemon — kept in sync by discipline
+    (``scripts/guardrails_sync_check.py``), not by a shared import. A fix
+    landed here does NOT reach the two HOME copies automatically; propagating
+    it is a separate, operator-gated step (see PENDING-ARMS.md).
 
 Contract (do NOT change without re-running scripts/test_guardrails_static.py):
     Patterns MUST stay byte-identical to the live daemon's BLOCK_PATTERNS /
@@ -174,8 +184,19 @@ PROTECTED_PATH_PATTERNS: list[re.Pattern[str]] = [
     )
 ]
 SQL_FILE_PATTERN = re.compile(r"\.sql$")
+# `TRUNCATE\s+\w+` exists because PostgreSQL's TABLE keyword is optional
+# (`TRUNCATE foo;` is valid destructive SQL, not just `TRUNCATE TABLE foo;`)
+# — that alternative MUST keep matching `TRUNCATE foo` / `TRUNCATE ONLY foo`.
+# The `(?!ON\b)` negative lookahead excludes only the one shape that is never
+# destructive SQL: PostgreSQL's `CREATE TRIGGER ... BEFORE TRUNCATE ON <table>`
+# trigger-event syntax, where the event keyword TRUNCATE is always followed by
+# the literal keyword ON (cicatrix #3 guard-over-match — this repo's own
+# `BEFORE TRUNCATE ON <table>` protective-trigger convention in migrations
+# 250/251, 252/253, 264, 280 was tripping this alternative). `\b` after ON
+# means `ONLY` (a real TRUNCATE modifier) is untouched: "ON" followed by "LY"
+# has no word boundary there, so the lookahead only excludes the bare word ON.
 SQL_DESTRUCTIVE_IN_CONTENT = re.compile(
-    r"\b(DROP\s+TABLE|TRUNCATE\s+TABLE|TRUNCATE\s+\w+|DROP\s+DATABASE|"
+    r"\b(DROP\s+TABLE|TRUNCATE\s+TABLE|TRUNCATE\s+(?!ON\b)\w+|DROP\s+DATABASE|"
     r"DELETE\s+FROM\s+\w+|UPDATE\s+\w+\s+SET|INSERT\s+INTO\s+\w+)\b",
     re.IGNORECASE,
 )

@@ -1,0 +1,189 @@
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D5: research_os_objects TRUNCATE-guard (migration 280), hot-zone hardening on top of 279's row-level append-only trigger"
+diff:
+  net_lines: >-
+    Two files, +300/-0, measured this session via `git diff --numstat origin/main..HEAD`
+    against origin/main re-fetched fresh (83f5f61d091743a234397b0f413645cbcc977f71):
+    280_research_os_objects_truncate_guard.sql (+103) and
+    test_migration_280_research_os_objects_truncate_guard.py (+197). No existing file touched.
+  behaviour_change: >-
+    Before this migration, `TRUNCATE research_os_objects` succeeded silently (rc 0, table
+    emptied) despite 279's row-level append-only trigger, because PostgreSQL never fires
+    row-level triggers on TRUNCATE. After this migration, a new statement-level
+    `BEFORE TRUNCATE` trigger reuses 279's existing `reject_research_os_objects_mutation()`
+    function verbatim and rejects TRUNCATE the same way UPDATE/DELETE were already rejected.
+    INSERT is unaffected either way.
+receipts:
+  - claim: "Base sha re-measured fresh this session, not copied from any document/prompt"
+    cmd: "git fetch origin main && git rev-parse origin/main"
+    exit: 0
+    ts: "2026-08-24T07:34:04Z"
+    seat: "session (nuzantara)"
+  - claim: "Diff against origin/main is +300/-0 across exactly 2 new files, zero existing file touched"
+    cmd: "git diff --numstat origin/main..HEAD"
+    exit: 0
+    ts: "2026-08-24T07:34:04Z"
+    seat: "session (nuzantara)"
+  - claim: "Migration integer 280 is free on origin/main (highest present is 279) and no other open PR touches migrations_v2/ besides this one"
+    cmd: "git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/db/migrations_v2/ | sed -E 's#.*/([0-9]+)_.*#\\1#' | sort -n | tail; gh pr list --state open --json number,files"
+    exit: 0
+    ts: "2026-08-24T07:29:00Z"
+    seat: "session (nuzantara)"
+  - claim: "Guilt-arm step 1/6 -- INSERT succeeds on a fresh postgres:15 (measured 15.19) container with 279+280 forward SQL applied"
+    cmd: 'docker run -d public.ecr.aws/docker/library/postgres:15 ... ; psql -c "INSERT INTO research_os_objects (object_kind, object_id, object_hash, contract_version, payload) VALUES (''workflow_run'',''evpack-proof-1'', repeat(''a'',64), ''research-os/v1.0.0'', ''{}''::jsonb);"'
+    exit: 0
+    ts: "2026-08-24T07:28:07Z"
+    seat: "session (nuzantara)"
+  - claim: "Guilt-arm step 2/6 -- UPDATE is rejected by 279's pre-existing row-level trigger, unchanged, 'append-only' error"
+    cmd: "psql -c \"UPDATE research_os_objects SET payload='{\\\"x\\\":1}'::jsonb WHERE object_id='evpack-proof-1';\""
+    exit: 1
+    ts: "2026-08-24T07:28:07Z"
+    seat: "session (nuzantara)"
+  - claim: "Guilt-arm step 3/6 -- DELETE is rejected the same way"
+    cmd: 'psql -c "DELETE FROM research_os_objects WHERE object_id=''evpack-proof-1'';"'
+    exit: 1
+    ts: "2026-08-24T07:28:07Z"
+    seat: "session (nuzantara)"
+  - claim: "Guilt-arm step 4/6, THE FIX -- TRUNCATE is now rejected (rc 0/silent-wipe before 280, per the PR's own claim); row count confirmed still 1 after the attempt"
+    cmd: 'psql -c "TRUNCATE research_os_objects;"; psql -tAc "SELECT count(*) FROM research_os_objects;"'
+    exit: 1
+    ts: "2026-08-24T07:28:07Z"
+    seat: "session (nuzantara)"
+  - claim: "Guilt-arm step 5/6 -- applying 280's own ROLLBACK section (DROP TRIGGER research_os_objects_no_wipe) restores TRUNCATE to succeeding again; row count 0 confirmed after"
+    cmd: 'psql -c "DROP TRIGGER IF EXISTS research_os_objects_no_wipe ON public.research_os_objects;"; psql -c "TRUNCATE research_os_objects;"; psql -tAc "SELECT count(*) FROM research_os_objects;"'
+    exit: 0
+    ts: "2026-08-24T07:28:14Z"
+    seat: "session (nuzantara)"
+  - claim: "Guilt-arm step 6/6 -- re-applying 280's forward SQL rejects TRUNCATE again, proving the NEW trigger (not something else) was the blocker in step 4"
+    cmd: 'psql < 280_forward.sql; psql -c "TRUNCATE research_os_objects;"'
+    exit: 1
+    ts: "2026-08-24T07:28:14Z"
+    seat: "session (nuzantara)"
+  - claim: "PostgreSQL version on the throwaway proof container matches the PR's own claimed target exactly, and the container was removed after use (confirmed gone, not left running)"
+    cmd: 'psql -tAc "SELECT version();"; docker rm -f evpack-proof-280; docker ps -a | grep evpack-proof-280'
+    exit: 0
+    ts: "2026-08-24T07:28:20Z"
+    seat: "session (nuzantara)"
+  - claim: "New migration test file passes in full, 8/8, exit 0"
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py -v"
+    exit: 0
+    ts: "2026-08-24T07:29:30Z"
+    seat: "session (nuzantara)"
+  - claim: "Broader migration-infra suite unaffected: 25 passed, 19 skipped (pre-existing DB-unavailable/legacy-migration skips, unrelated to this PR), 0 failed"
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_uniqueness.py backend/tests/db/test_migrations.py backend/tests/db/test_migration_sql_validator.py backend/tests/db/test_migration_contract.py -q"
+    exit: 0
+    ts: "2026-08-24T07:30:09Z"
+    seat: "session (nuzantara)"
+  - claim: "Squawk lint: 2 warnings bare (require-lock-timeout, require-statement-timeout), 0 issues under this repo's exact CI exclude list (migration-lint.yml)"
+    cmd: "squawk apps/backend-rag/backend/db/migrations_v2/280_research_os_objects_truncate_guard.sql --pg-version=15.0 [+ 13 CI --exclude flags read fresh from migration-lint.yml]"
+    exit: 0
+    ts: "2026-08-24T07:30:40Z"
+    seat: "session (nuzantara)"
+  - claim: "ruff check and ruff format --check both pass clean on the new test file"
+    cmd: "ruff check backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py && ruff format --check backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py"
+    exit: 0
+    ts: "2026-08-24T07:36:00Z"
+    seat: "session (nuzantara)"
+  - claim: "Evidence directory slug matches scripts/ci/evidence_paths.py's own computation for this exact branch ref, not hand-typed"
+    cmd: "python3 scripts/ci/evidence_paths.py --ref agent/nuzantara/backend-rag/ros-v1-p04-d5-truncate-guard --json"
+    exit: 0
+    ts: "2026-08-24T07:34:04Z"
+    seat: "session (nuzantara)"
+  - claim: "Independent adversarial review dispatched against migration 280 + its tests, on a FRESH context (never saw this session's own reasoning), which independently spun up its own postgres:15 container and reproduced the guilt-arm sequence rather than trusting this pack's claims"
+    cmd: "Agent(subagent_type=devils-advocate, task='adversarial review of migration 280 truncate guard')"
+    exit: 0
+    ts: "2026-08-24T07:41:00Z"
+    seat: "devils-advocate (subagent)"
+tests:
+  - "backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py -- 8 tests: 6
+    static file-content assertions (rollback-marker count via the real ROLLBACK_MARKER_RE, not
+    a naive substring count; non-empty forward/rollback sections; the new trigger statement
+    present and reusing 279's function; additive-only, no ALTER/DROP TABLE, doesn't touch 279's
+    row-level trigger) + 2 live-DB integration tests (innocence: INSERT still works; guilt-arm:
+    the 6-step rollback/reapply sequence above)."
+  - "backend/tests/db/{test_migration_uniqueness,test_migrations,test_migration_sql_validator,
+    test_migration_contract}.py -- 25 passed, 19 skipped (DB-unavailable / legacy
+    non-BaseMigration migrations, pre-existing and unrelated), 0 failed."
+static:
+  - "ruff check: 0 issues on the new test file."
+  - "ruff format --check: already formatted, 0 issues."
+  - "Squawk (this repo's exact CI invocation, 13 excludes read fresh from migration-lint.yml):
+    0 issues. Bare invocation: 2 warnings (require-lock-timeout, require-statement-timeout),
+    both pre-existing, established suppressions for near-empty tables in this repo (per the
+    workflow's own comment block) -- not new to this migration."
+runtime_proof:
+  - >-
+    The guilt-arm sequence (receipts above, steps 1-6) is the functional proof: a fresh
+    postgres:15 (measured PostgreSQL 15.19, matching the migration's own claimed CI target
+    exactly) container had 279's and 280's forward SQL applied, then INSERT/UPDATE/DELETE/
+    TRUNCATE were each exercised, then 280's own ROLLBACK section was applied to show TRUNCATE
+    reverting to success (proving causation, not correlation), then 280's forward SQL was
+    reapplied to show TRUNCATE rejected again. Container confirmed removed after use. This was
+    re-run independently in THIS session (not copied from a prior document) and reproduced a
+    second time, independently, by the devils-advocate subagent below with its own container.
+dissent:
+  - seat:
+      "devils-advocate (subagent, fresh context, independently re-ran the guilt-arm proof
+      in its own postgres:15.19 container rather than trusting this pack's claims)"
+    objection: >-
+      Migration 280's own header comment (lines ~92-95) claims migration 279 has the
+      "=== ROLLBACK ===" marker string appearing twice, "each on its own line -- a real trap
+      for any naive split() that is not anchored to a whole line." Verified directly against
+      279's real file content with the actual ROLLBACK_MARKER_RE regex: the anchored marker
+      matches exactly ONCE in 279 (line 273). The bare substring does appear a second time
+      (line 169), but embedded mid-sentence in prose ("...the `-- === ROLLBACK ===` marker
+      below is mandatory..."), NOT on its own line as the comment claims. The characterization
+      "each on its own line" is factually wrong about a sibling file.
+    status: CONFIRMED
+    # Outcome: NOT fixed in this PR -- out of scope (team-lead's instruction for this PR was
+    # to add the evidence pack, not edit the migration's own SQL/comments). Zero effect on
+    # correctness: 280's claim about ITS OWN marker count (exactly once) is independently
+    # verified true, and the migration's actual regex-extraction behavior (split_migration_sql)
+    # is unaffected either way -- this is a documentation inaccuracy about a DIFFERENT file's
+    # history, not a functional defect. Flagged here rather than silently dropped; a follow-up
+    # PR can correct the comment.
+  - seat: "devils-advocate (subagent, same review)"
+    objection: >-
+      Two residual bypass paths exist for the append-only guarantee that neither 279 nor 280
+      close, and both were independently REPRODUCED LIVE (not merely theorized): (1)
+      `SET session_replication_role = replica; TRUNCATE research_os_objects;` inside a
+      transaction bypasses BOTH triggers silently; (2)
+      `ALTER TABLE research_os_objects DISABLE TRIGGER ALL` then TRUNCATE does the same. Both
+      require a stronger privilege than bare TRUNCATE grant (superuser/SET-on-GUC for the
+      first, table-owner/ALTER for the second) -- a narrower threat model than the one 280's
+      own comment describes closing ("any role holding TRUNCATE privilege"). Neither is new:
+      both were already true of 279's row-level guard before 280 existed.
+    status: CONFIRMED
+    # Outcome: NOT a defect in this PR -- explicitly disclosed as residual risk in this pack's
+    # own brief.yml (`risks:` section) BEFORE this review ran, and this independent reproduction
+    # confirms that disclosure was accurate rather than contradicting it. No code change; the
+    # scope this migration claims (closing the specific TRUNCATE-via-row-trigger-gap 279 left
+    # open) is unaffected by these pre-existing, structurally-different bypass classes.
+lanes:
+  - lane: "p04-d5-truncate-guard-evidence-pack"
+    role: build
+    seat: "claude-sonnet-5"
+  - lane: "p04-d5-truncate-guard-adversarial-review"
+    role: review
+    seat: "devils-advocate-subagent"
+residual_risks:
+  - >-
+    session_replication_role=replica and ALTER TABLE ... DISABLE TRIGGER ALL both bypass this
+    guard (and 279's), independently reproduced live by the adversarial review above. Both
+    require a stronger grant than bare TRUNCATE privilege and are pre-existing, not introduced
+    by this PR -- named here so a future reader does not mistake "TRUNCATE guard shipped" for
+    "every wholesale-wipe path is closed."
+  - >-
+    280's own header comment misdescribes how many times the ROLLBACK marker string appears in
+    279 (claims twice-each-on-its-own-line; actually once anchored + once mid-sentence prose).
+    Zero functional effect -- flagged for a follow-up doc fix, not corrected in this PR per
+    scope.
+sources:
+  - "279_research_os_contract_core.sql and 280_research_os_objects_truncate_guard.sql, both
+    read in full this session."
+  - "Migrations 252/253/264 (visa engine write substrate) as the established precedent for
+    reusing a row-level trigger's function at statement level."
+  - "Independent adversarial review (devils-advocate subagent, fresh context) -- full report
+    recorded in the dissent entries above, verbatim reasoning preserved."
+pii_scan: clean
+size_tokens: 2400

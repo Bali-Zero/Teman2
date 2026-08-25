@@ -8,6 +8,8 @@ X-Hub-Signature-256 HMAC verification.
 import hashlib
 import hmac
 import json
+import logging
+import re
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,6 +17,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from backend.app.core.config import settings as real_settings
 from backend.app.routers.whatsapp_chat import alias_router, router
 
 # ============================================================
@@ -35,6 +38,34 @@ def client(app):
     return TestClient(app)
 
 
+def _seeded_settings_mock() -> MagicMock:
+    """Build the ``MagicMock`` this file's ``patch("...settings")`` blocks
+    install in place of the real settings singleton — pre-seeded with the
+    REAL ``Settings`` field defaults, not left bare.
+
+    A bare ``MagicMock()`` answers truthily to *any* attribute the router
+    code reads, including ones no test in this file ever set. That is
+    silently wrong whenever the code does a falsy/negative check on an
+    unmentioned field — e.g. ``not settings.meta_webhook_require_signature``
+    (real default: ``False``) reads as ``not <MagicMock>`` = ``False`` on a
+    bare mock, flipping the router's documented fail-open dev-mode branch
+    into fail-closed and turning every test that only sets
+    ``whatsapp_app_secret = None`` into a spurious 401. Seeding from
+    ``real_settings.model_dump()`` means any field a test does not
+    explicitly override — today's or a future one nobody added a line for
+    here — carries the actual configured default instead of a Mock, so
+    this class of failure cannot recur when the config grows.
+
+    Used via ``patch(..., new_callable=_seeded_settings_mock)`` so every
+    ``as mock_settings`` binding in this file gets one for free without a
+    per-block edit.
+    """
+    mock = MagicMock()
+    for field_name, value in real_settings.model_dump().items():
+        setattr(mock, field_name, value)
+    return mock
+
+
 # ============================================================
 # GET /webhook/whatsapp — Verification
 # ============================================================
@@ -42,7 +73,9 @@ def client(app):
 
 def test_verify_webhook_success(client):
     """Should return hub.challenge when mode=subscribe and token matches."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_verify_token = "test_whatsapp_verify_token"
         response = client.get(
             "/webhook/whatsapp"
@@ -56,7 +89,9 @@ def test_verify_webhook_success(client):
 
 def test_verify_webhook_wrong_token(client):
     """Should return 403 when verify token doesn't match."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_verify_token = "correct_token"
         response = client.get(
             "/webhook/whatsapp"
@@ -69,7 +104,9 @@ def test_verify_webhook_wrong_token(client):
 
 def test_verify_webhook_wrong_mode(client):
     """Should return 403 when mode is not 'subscribe'."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_verify_token = "test_token"
         response = client.get(
             "/webhook/whatsapp"
@@ -82,7 +119,9 @@ def test_verify_webhook_wrong_mode(client):
 
 def test_verify_webhook_missing_params(client):
     """Should return 403 when params are missing."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_verify_token = "test_token"
         response = client.get("/webhook/whatsapp")
     assert response.status_code == 403
@@ -90,7 +129,9 @@ def test_verify_webhook_missing_params(client):
 
 def test_verify_webhook_empty_challenge(client):
     """Should return empty challenge string when challenge is empty."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_verify_token = "test_whatsapp_verify_token"
         response = client.get(
             "/webhook/whatsapp"
@@ -155,7 +196,9 @@ def _make_webhook_payload(
 def test_whatsapp_webhook_returns_ok(client):
     """Should return status=ok immediately without processing."""
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
         patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
     ):
         mock_settings.whatsapp_app_secret = None
@@ -170,7 +213,9 @@ def test_whatsapp_webhook_non_text_message_ignored(client):
     # Remove text field from payload since type is image
     payload["entry"][0]["changes"][0]["value"]["messages"][0]["text"] = None
 
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
@@ -193,7 +238,9 @@ def test_whatsapp_webhook_non_message_change_ignored(client):
             }
         ],
     }
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
@@ -215,7 +262,9 @@ def test_whatsapp_webhook_empty_messages(client):
             }
         ],
     }
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
@@ -224,7 +273,9 @@ def test_whatsapp_webhook_empty_messages(client):
 def test_whatsapp_webhook_empty_text_body(client):
     """Should skip messages with empty text body."""
     payload = _make_webhook_payload(text="")
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
@@ -265,7 +316,9 @@ def test_whatsapp_webhook_multiple_messages(client):
         ],
     }
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
         patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
     ):
         mock_settings.whatsapp_app_secret = None
@@ -300,7 +353,9 @@ def test_whatsapp_webhook_no_contacts(client):
         ],
     }
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
         patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
     ):
         mock_settings.whatsapp_app_secret = None
@@ -310,7 +365,9 @@ def test_whatsapp_webhook_no_contacts(client):
 
 def test_whatsapp_webhook_invalid_payload(client):
     """Should return 400 for invalid payload structure (now parsed internally)."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json={"invalid": "payload"})
     assert response.status_code == 400
@@ -318,7 +375,9 @@ def test_whatsapp_webhook_invalid_payload(client):
 
 def test_whatsapp_webhook_missing_object_field(client):
     """Should return 400 when 'object' field is missing."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json={"entry": []})
     assert response.status_code == 400
@@ -331,7 +390,9 @@ def test_whatsapp_webhook_missing_object_field(client):
 
 def test_whatsapp_status_configured(client):
     """Should return configured=True when tokens are set."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_api_token = "test_token"
         mock_settings.whatsapp_phone_number_id = "12345678"
         mock_settings.admin_telegram_chat_id = None
@@ -354,7 +415,9 @@ def test_whatsapp_status_configured(client):
 
 def test_whatsapp_status_not_configured(client):
     """Should return configured=False when tokens are missing."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_api_token = None
         mock_settings.whatsapp_phone_number_id = None
 
@@ -380,7 +443,9 @@ def test_whatsapp_status_not_configured(client):
 
 def test_verify_webhook_alias_success(client):
     """Alias GET /api/whatsapp/webhook should behave like primary."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_verify_token = "test_whatsapp_verify_token"
         response = client.get(
             "/api/whatsapp/webhook"
@@ -394,7 +459,9 @@ def test_verify_webhook_alias_success(client):
 
 def test_verify_webhook_alias_wrong_token(client):
     """Alias GET should also return 403 for wrong token."""
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_verify_token = "correct_token"
         response = client.get(
             "/api/whatsapp/webhook"
@@ -408,7 +475,9 @@ def test_verify_webhook_alias_wrong_token(client):
 def test_webhook_alias_post_returns_ok(client):
     """Alias POST /api/whatsapp/webhook should return ok."""
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
         patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
     ):
         mock_settings.whatsapp_app_secret = None
@@ -434,7 +503,9 @@ def _sign_payload(payload: dict, secret: str = _TEST_APP_SECRET) -> str:
 def test_hmac_unsigned_request_rejected_when_secret_configured(client):
     """POST without signature should return 401 when WHATSAPP_APP_SECRET is set."""
     payload = _make_webhook_payload()
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
         response = client.post(
             "/webhook/whatsapp",
@@ -447,7 +518,9 @@ def test_hmac_unsigned_request_rejected_when_secret_configured(client):
 def test_hmac_wrong_signature_rejected(client):
     """POST with wrong signature should return 401."""
     payload = _make_webhook_payload()
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
         response = client.post(
             "/webhook/whatsapp",
@@ -467,7 +540,9 @@ def test_hmac_valid_signature_accepted(client):
     signature = _sign_payload(payload)
 
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
         patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
     ):
         mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
@@ -486,7 +561,9 @@ def test_hmac_valid_signature_accepted(client):
 def test_hmac_skipped_when_no_secret(client):
     """POST without signature should pass when WHATSAPP_APP_SECRET is not configured."""
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
         patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
     ):
         mock_settings.whatsapp_app_secret = None
@@ -497,7 +574,9 @@ def test_hmac_skipped_when_no_secret(client):
 def test_hmac_malformed_signature_rejected(client):
     """POST with malformed signature (no sha256= prefix) should return 401."""
     payload = _make_webhook_payload()
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
         response = client.post(
             "/webhook/whatsapp",
@@ -560,6 +639,7 @@ async def test_process_whatsapp_message_not_allowed():
     with (
         patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
         patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         # Should complete without error
         await process_whatsapp_message(
@@ -603,7 +683,9 @@ async def test_process_whatsapp_message_escalate_to_human():
         ),
         patch("backend.app.routers.whatsapp_chat.notify_human_telegram", new=AsyncMock()),
         patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
     ):
         mock_settings.admin_telegram_chat_id = "123456"
         await process_whatsapp_message(
@@ -645,6 +727,7 @@ async def test_process_whatsapp_message_offer_choice():
             "backend.app.routers.whatsapp_chat.get_onboarding_detector",
             return_value=mock_onboarding,
         ),
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         await process_whatsapp_message(
             phone="621234567890",
@@ -690,7 +773,10 @@ async def test_process_whatsapp_message_onboarding_triggered():
             return_value=mock_onboarding,
         ),
         patch("backend.app.routers.whatsapp_chat.telegram_bot", mock_telegram),
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
+        patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
     ):
         mock_settings.admin_telegram_chat_id = "8037989885"
         await process_whatsapp_message(
@@ -846,7 +932,9 @@ async def test_notify_zero_conversation_log_no_chat_id():
     """Should return early when no admin_telegram_chat_id configured."""
     from backend.app.routers.whatsapp_chat import notify_zero_conversation_log
 
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    with patch(
+        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+    ) as mock_settings:
         mock_settings.admin_telegram_chat_id = None
         # Should not raise
         await notify_zero_conversation_log(
@@ -867,7 +955,9 @@ async def test_notify_zero_conversation_log_sends_message():
     mock_telegram.send_message = AsyncMock()
 
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
         patch("backend.app.routers.whatsapp_chat.telegram_bot", mock_telegram),
     ):
         mock_settings.admin_telegram_chat_id = "8847435604"
@@ -900,9 +990,7 @@ async def test_notify_human_telegram_no_chat_id():
     mock_telegram.send_message = AsyncMock()
 
     with (
-        patch(
-            "backend.services.integrations.human_escalation_notifier.settings"
-        ) as mock_settings,
+        patch("backend.services.integrations.human_escalation_notifier.settings") as mock_settings,
         patch(
             "backend.services.integrations.human_escalation_notifier.telegram_bot",
             mock_telegram,
@@ -926,9 +1014,7 @@ async def test_notify_human_telegram_with_context():
     mock_telegram.send_message = AsyncMock()
 
     with (
-        patch(
-            "backend.services.integrations.human_escalation_notifier.settings"
-        ) as mock_settings,
+        patch("backend.services.integrations.human_escalation_notifier.settings") as mock_settings,
         patch(
             "backend.services.integrations.human_escalation_notifier.telegram_bot",
             mock_telegram,
@@ -955,3 +1041,214 @@ async def test_notify_human_telegram_with_context():
         )
 
     mock_telegram.send_message.assert_called_once()
+
+
+# ============================================================
+# F7: raw phone must NEVER appear in a log record (guilt/innocence)
+# ============================================================
+#
+# whatsapp_chat.py is the LIVE client-bot WhatsApp path — 20 raw-phone log
+# sites, all now routed through backend.security.pii_log_identifier.
+# redact_identifier_for_log. Per cicatrix-superscar.md family #3, a guard
+# (here: a redaction) needs both a guilt test (the raw value never survives)
+# and an innocence test (the digest stays present/stable, so an operator can
+# still correlate lines across one client's conversation).
+
+_LOGGER_NAME = "backend.app.routers.whatsapp_chat"
+_NON_DIGITS_RE = re.compile(r"\D+")
+
+# Obviously-synthetic — never a shape mistakable for a real client's number.
+_SYNTHETIC_PHONE = "628000111222"
+
+
+def _digits_only(text: str) -> str:
+    """Collapse a log line to its bare digit run.
+
+    Load-bearing: several sites in whatsapp_chat.py build f-strings that
+    interpolate ``phone`` directly, so an exact-string check against the raw
+    literal can miss a leak that survives in a slightly different textual
+    form (e.g. wrapped, or with adjacent characters). Comparing digit runs
+    is robust to that — see the same discipline in
+    test_messaging_identity_service.py (F7 reference fix, PR 43bb93e11).
+    """
+    return _NON_DIGITS_RE.sub("", text)
+
+
+def _all_log_text(records: list[logging.LogRecord]) -> str:
+    """Every rendered message across every captured record, concatenated —
+    guilt must be checked across ALL lines, not just the one line a fix
+    happened to target."""
+    return "\n".join(r.getMessage() for r in records)
+
+
+class TestRawPhoneNeverInLogsGuilt:
+    """Guilt: the synthetic phone must never survive into ANY log record
+    emitted while processing a message, across two independent branches of
+    process_whatsapp_message (non-allowed-number short-circuit, and the
+    escalate-to-human path — both log the phone at least once)."""
+
+    @pytest.mark.asyncio
+    async def test_non_allowed_number_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = False
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+        ):
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello",
+                sender_name="Unknown",
+                message_id="msg_test",
+                request=mock_request,
+            )
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+
+    @pytest.mark.asyncio
+    async def test_escalate_to_human_never_logs_raw_phone(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+        from backend.services.integrations.whatsapp_triage_service import TriageDecision
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = True
+        mock_triage_service.should_escalate = AsyncMock(
+            return_value=(TriageDecision.ESCALATE_PERSONAL, "personal_contact")
+        )
+        mock_triage_service.get_escalation_message.return_value = "Transferring to team..."
+
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+        mock_wa_service.send_message = AsyncMock()
+
+        mock_onboarding = MagicMock()
+        mock_onboarding.detect_and_trigger = AsyncMock(return_value=None)
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+            patch(
+                "backend.app.routers.whatsapp_chat.get_onboarding_detector",
+                return_value=mock_onboarding,
+            ),
+            patch("backend.app.routers.whatsapp_chat.notify_human_telegram", new=AsyncMock()),
+            patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
+            patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        ):
+            mock_settings.admin_telegram_chat_id = "123456"
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="This is personal",
+                sender_name="Test Client",
+                message_id="msg_001",
+                request=mock_request,
+            )
+
+        text = _all_log_text(caplog.records)
+        assert _SYNTHETIC_PHONE not in text
+        assert _SYNTHETIC_PHONE not in _digits_only(text)
+
+
+class TestRedactedPhoneStaysCorrelatable:
+    """Innocence: the fix must not collapse every line to the same opaque
+    placeholder — a stable digest must appear, so an operator can still
+    follow one client's conversation across log lines."""
+
+    @pytest.mark.asyncio
+    async def test_digest_present_for_non_allowed_number(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = False
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+        ):
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello",
+                sender_name="Unknown",
+                message_id="msg_test",
+                request=mock_request,
+            )
+
+        text = _all_log_text(caplog.records)
+        assert "id:" in text
+
+    @pytest.mark.asyncio
+    async def test_same_phone_yields_same_digest_across_two_calls(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        from backend.app.routers.whatsapp_chat import process_whatsapp_message
+
+        mock_request = MagicMock()
+        mock_triage_service = MagicMock()
+        mock_triage_service.is_allowed.return_value = False
+        mock_wa_service = MagicMock()
+        mock_wa_service.mark_message_read = AsyncMock()
+
+        with (
+            caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+            patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
+            patch(
+                "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                mock_triage_service,
+            ),
+        ):
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello",
+                sender_name="Unknown",
+                message_id="msg_test_1",
+                request=mock_request,
+            )
+            first_text = _all_log_text(caplog.records)
+            caplog.clear()
+
+            await process_whatsapp_message(
+                phone=_SYNTHETIC_PHONE,
+                message_text="Hello again",
+                sender_name="Unknown",
+                message_id="msg_test_2",
+                request=mock_request,
+            )
+            second_text = _all_log_text(caplog.records)
+
+        first_digest = next(tok for tok in first_text.split() if "id:" in tok)
+        second_digest = next(tok for tok in second_text.split() if "id:" in tok)
+        assert first_digest == second_digest

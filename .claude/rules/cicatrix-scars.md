@@ -1326,6 +1326,42 @@ Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di
 
 **GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) ma non ancora adottato dai produttori dei pack, e finché non lo è la finestra si riapre a ogni PR Gear≥2.
 
+---
+
+### 🐛 W126 (2026-08-23): convertire una PR in DRAFT non la espelle dalla merge queue — il hold durevole di W123 vale solo PRIMA dell'ingresso
+
+_Scoperto 2026-08-23 su PR #4681, leggendo la timeline API di GitHub dopo che una review avversariale aveva appena fallito il research capture con 2 CRITICAL._
+
+**TRAUMA.** La PR era stata convertita in draft per fermarla, ma dieci minuti dopo è finita su `main`. La sequenza è misurata dalla timeline API, non ricostruita per inferenza:
+
+```
+13:10:47Z  auto_merge_enabled
+13:16:50Z  added_to_merge_queue
+13:21:24Z  convert_to_draft
+13:31:20Z  merged
+13:31:21Z  head_ref_deleted
+```
+
+Il draft era reale e il hold era stato applicato; non aveva però rimosso l'entry che la coda aveva già accettato. `gh pr ready --undo` cambia `isDraft` in `true` e non cambia la queued entry.
+
+**MECCANISMO.** `.github/workflows/auto-merge-whitelist.yml` controlla `draft == false` quando decide se armare una PR. La merge queue non riconsulta quel campo per un'entry già accettata. W123 dice quindi la verità solo prima dell'ingresso in coda: il draft impedisce al workflow di ri-armare una PR non ancora accodata, ma non è un eject della coda.
+
+**IL VERO ERRORE È TEMPORALE.** `isInMergeQueue` era stato letto verso le 13:05 e valeva `false`. Era il campo giusto e la misura era vera in quell'istante. Alle 13:16 è diventato `true`; nessuno l'ha riletto, e il draft delle 13:21 è stato applicato sulla forza di un dato vecchio di sedici minuti. Non il campo sbagliato: **il campo giusto al momento sbagliato** — gemello temporale dell'errore registrato la stessa mattina da wr3/P03, dove il dato giusto era in mano ma veniva letto l'altro campo.
+
+**Perché costa, realmente.** È atterrato su `main` un research capture che la review aveva appena bocciato e che descriveva IDR 790.000 come _service fee_ Bali Zero da tenere separata dal PNBP governativo. È falso: le righe PricingTool sono all-inclusive e contengono già il PNBP (`apps/mouth/e2e/book-pricing.spec.ts:126`, test `public visa service cards expose only exact all-inclusive PricingTool rows`; conferma diretta del proprietario). Un lettore che agisse su quella frase potrebbe addebitare due volte un cliente. Una PR correttiva è in volo.
+
+**CURA.** Su una PR già accodata, il hold che funziona è **DEQUEUING** via GraphQL `dequeuePullRequest`. Prima dell'ingresso funziona anche `gh pr merge --disable-auto`; il draft resta il freno durevole contro il riarmo automatico solo finché la PR non è nella coda. Dopo qualunque gesto, la prova è una lettura GraphQL NUOVA di `isInMergeQueue` / `mergeQueueEntry`: `isDraft: true` non è prova di hold.
+
+**COMPLEMENTO (2026-08-23, riscoperto su PR #4713 di questa stessa cicatrice, tentando di pushare un fix mentre la PR era in coda).** GitHub applica "armare è congelare" anche a livello di ref, non solo per disciplina di repo: `git push` su un branch accodato viene RIFIUTATO da GitHub stesso — `GH006: ... A pull request for this branch has been added to a merge queue. Branches that are queued for merging cannot be updated` — quindi l'unica via per correggere una PR già in coda è dequeue-poi-push, mai un push diretto sperando che aggiorni l'entry.
+
+**GOTCHA.** Stato e prova devono essere contemporanei. Una lettura corretta di `isInMergeQueue` non autorizza un'azione minuti dopo senza una rilettura immediatamente precedente e una verifica immediatamente successiva; in mezzo, la coda può cambiare il fatto senza cambiare il branch.
+
+**GOTCHA-NEL-GOTCHA.** Il numero di questa stessa cicatrice è caduto nel difetto che descrive. Mentre veniva scritta, un'altra PR (#4714, lane diversa) leggeva anch'essa `origin/main`, vedeva W125 come il numero più alto e reclamava W126 per un difetto scollegato (un `Formatter` che muta `record.levelname` in place) — una lettura del ledger vera nel momento in cui è stata presa, stale nel momento in cui è stata agita: la stessa forma esatta dell'`isInMergeQueue` vecchio di sedici minuti descritto sopra, applicata al contatore invece che alla coda. «Questo numero è libero?» non si risponde da `main`: un contatore monotono con più scrittori concorrenti non ha una lettura sicura del prossimo valore senza controllare anche le PR aperte (`gh pr list --search "W12"`, o un grep sui loro diff), non solo il registro già atterrato. Risolto per precedenza di rivendicazione, misurata non dedotta — primo commit di questa PR alle 16:02:56Z (scoperta al merge delle 13:31Z di #4681) contro il primo commit di #4714 alle 16:06:03Z: #4714 ha accettato e si è rinumerata a W127.
+
+**Famiglia: superscar #2 (Esiste ≠ Armato), continuazione e correzione di W123.** La PR sembra fermata perché porta la forma del draft, mentre l'organo che decide il merge — la queued entry — è ancora armato.
+
+---
+
 ### 🐛 W127 (2026-08-23): un `Formatter` mutava `record.levelname` IN PLACE — il test confrontava la stringa RESA (ANSI-colorata), non l'IDENTITÀ stabile del livello
 
 _Scoperto 2026-08-23, lane P04, diagnosticando la CI flake `test_prompt_manager.py::TestPromptManagerFailLoudOnUnknownVersion::test_unrecognized_explicit_value_logs_error`, che aveva espulso PR #4643 dalla merge queue due volte e sospeso PR #4653. La premessa "non riproducibile in locale" (5 tentativi) era falsa per assenza di corpus, non per assenza del difetto: riproducibile deterministicamente non appena il file giusto condivideva la sessione pytest._
@@ -1362,3 +1398,39 @@ La lettura più probabile del MECCANISMO — dedotta dalle due misure sopra, non
 **CURA.** La cura strutturale è a livello di classe — far sì che `ColoredFormatter.format()` operi su una COPIA del record (come fa `uvicorn.logging.ColourizedFormatter` per lo stesso motivo: non deve mai mutare ciò che vedono gli altri handler) — non una patch sul singolo sink: patchare solo il consumer che se n'è accorto cura questo test e lascia la trappola armata per il prossimo lettore per-riferimento dello stesso record.
 
 **Famiglia: superscar #3 (guard-over-match / gemello under-match).** Forma nuova per la famiglia: la guardia non ha sovra/sotto-matchato una substring — ha confrontato una STRINGA RESA (`levelname`, mutabile, di proprietà del formatter) dove l'IDENTITÀ STABILE (`levelno`, o `logging.getLevelName(levelno)` ricalcolato) era il confronto corretto. Ogni codice che confronta `record.levelname == "QUALCOSA"` dopo che un formatter colorante/decorante ha toccato il record nello stesso processo è esposto alla stessa classe di guasto.
+
+---
+
+### 🐛 W128 (2026-08-24): un numero di cicatrice è CLAIMED all'apertura della PR e RISOLTO solo al merge — leggere il solo `origin/main` sottoconta ogni claim in volo
+
+_Scoperto 2026-08-23, sibling di **W40** (collisione numerazione migrazioni) in un dominio diverso — stessa malattia: una riserva che vive solo in un documento nessuno ri-legge decade in modo monotòno._
+
+**TRAUMA, misurato non dedotto.** 15:20Z una sessione Mini trasmette in flotta "W125 è preso, si parte da W126". 16:03:33Z la PR #4713 reclama **W126**. 16:06:32Z la PR #4714 reclama **W126** indipendentemente — tre minuti dopo, stessa base. Collisione: #4714 si rinumera a **W127**. Per tutto l'intervallo `origin/main` era fermo a **W125**: un `git show origin/main:.claude/rules/cicatrix-scars.md | grep -oE 'W[0-9]+' | sort -n | tail -1` avrebbe detto «W126 libero» — ed era vero, per i tre minuti che sono bastati a farlo reclamare due volte.
+
+**MECCANISMO.** Il numero è un contatore monotono con **più scrittori concorrenti**, e la fonte di verità che chiunque legge (`origin/main`) è aggiornata SOLO al merge, non all'apertura della PR. Tra "PR aperta" e "PR mersa" un claim esiste ma è invisibile a chi guarda solo main — la stessa forma di superscar #2 (esiste ≠ armato) applicata a un contatore invece che a un demone: il numero "sembra libero" perché la sua unica fonte osservata non registra ancora chi lo sta già usando.
+
+**GOTCHA (a) — `sort -n` da solo non basta, e non nel modo in cui sembra.** Il trap noto è «`sort -n`, mai `sort` nudo, perché lessicalmente W99 finisce dopo W124». Vero ma INCOMPLETO per questo comando esatto: `grep -oE 'W[0-9]+' | sort -n` mantiene la lettera `W` davanti al numero, e `sort -n` legge solo un prefisso NUMERICO a inizio riga — una riga che comincia con una lettera vale `0` ai suoi occhi, quindi **tutte** le righe `W<n>` pareggiano a zero e la rottura è la stessa dell'ordinamento lessicale puro. Riprodotto ora: `printf 'W125\nW99\nW9\n' | sort -n` dà `W125 / W9 / W99` — identico, carattere per carattere, a `sort` nudo. La cura vera è togliere la lettera prima di ordinare (`sed 's/^W//' | sort -n`, o estrarre solo le cifre), non aggiungere `-n` a un grep che le lascia attaccate.
+
+**GOTCHA (b) — l'intestazione ha un'emoji tra `#` e `W`.** `### 🐛 W127 (2026-08-23): ...` — un pattern `^#+\s*W[0-9]+` non matcha MAI (il primo grep di questo stesso mandato ha fallito esattamente così). Bisogna riconoscere l'intestazione dal solo prefisso `#`/`##`/`###`/`####` e poi cercare il primo token `W<cifre>` ovunque nella riga.
+
+**GOTCHA (c) — il claim set non è solo `origin/main`.** «Questo numero è libero?» non si risponde da `main`: serve l'unione delle intestazioni su main CON le intestazioni AGGIUNTE (`+` nel diff) da ogni PR aperta sullo stesso file — `gh pr list --search "W12"` da solo non basta, va letto il diff di ogni PR aperta.
+
+**GOTCHA (d) — non ogni ripetizione dello stesso numero è una collisione.** `W81` (FIXED, 2026-06-14), `W81-armamento-sospeso` e `W81b-dlq-blind-heal-loop` convivono su `main` con lo stesso numero base: è la disambiguazione a suffisso, già risolta in storia (cicatrix-superscar.md #1), non un difetto nuovo. La collisione vera è quando **due sorgenti diverse, NESSUNA delle quali è `origin/main`**, reclamano lo stesso numero — o quando una PR reclama un numero che main ha già, entrambe da nomi bare senza suffisso.
+
+**CURA — antidoto eseguibile.** `scripts/lint_scar_number_collision.py`: calcola il claim set (main + ogni PR aperta via `gh api repos/.../pulls/{n}/files --jq '...select(.filename==...).patch'` — `gh pr diff <N> -- <path>` non accetta un pathspec, "accepts at most 1 arg(s)"), riporta il prossimo numero libero, ed esce non-zero se un numero è reclamato da 2+ fonti non-main o da una PR contro un numero già su main. Guilt test: due fixture che reclamano lo stesso W126 → rc=1 (`scripts/tests/test_lint_scar_number_collision.py`, verificato: con `find_collisions` svuotato a mano i due test di colpa falliscono, gli altri 12 restano verdi — non è un arm decorativo). `--fixture PATH` lo rende testabile offline; senza, gira live contro `origin/main` + PR aperte come pre-flight ("che numero prendo?") o come check.
+
+**Famiglia: orfana, sibling W40.** Stessa malattia di W40 (collisione numerazione migrazioni) — una riserva scritta in un documento che nessuno ri-legge in tempo reale decade in modo monotòno con il numero di scrittori concorrenti. Dominio diverso (scar counter vs migration counter), stesso antidoto strutturale: calcolare il claim set dalle FONTI VIVE (PR aperte), mai da un solo documento statico.
+
+### 🐛 W129 (2026-08-25): un test congela un orologio che il codice sotto test NON legge — il margine di sicurezza della fixture è un conto alla rovescia che inizia il giorno in cui è scritto
+
+_Scoperto 2026-08-25, sibling di **P3 FLAKY** (orologio-vs-test, CURATA 2026-08-02) in forma opposta: là il difetto era un TICK reale non congelato nel test; qui il difetto è un orologio congelato nel TEST che il PRODUTTORE ignora — il codice sotto test resta sul clock reale._
+
+**TRAUMA, misurato non dedotto.** `apps/backend-rag/backend/tests/services/measurer/test_ig_token_watchdog.py::test_cli_fresh_state_exits_zero_without_network` scriveva un file di stato con expiry `NOW + timedelta(days=50)`, `NOW = datetime(2026, 7, 13, ...)` — una costante ASSOLUTA fissata il giorno in cui il test fu scritto. Il codice sotto test, `ig_token_watchdog.py::run_from_env` → `run_watchdog`, non accettava alcun parametro `now` dal chiamante CLI: calcolava `days_remaining` contro `datetime.now(timezone.utc)` REALE. Il test è rimasto verde per 43 giorni per puro caso di calendario, poi ha attraversato la soglia di refresh (`DEFAULT_REFRESH_THRESHOLD_DAYS = 7.0`) il 2026-08-25 e ha iniziato a rosseggiare per chiunque lo girasse, ovunque, senza che nessuno avesse toccato una riga di codice.
+
+**MECCANISMO.** Due orologi nello stesso test: quello che COSTRUISCE la fixture (`NOW`, congelato) e quello che il PRODUTTORE consulta per giudicarla (`datetime.now()`, reale). Finché la distanza fra i due resta sotto la soglia di business logic, il test è verde per un motivo che non ha nulla a che fare con la sua asserzione — sta solo misurando "quanti giorni sono passati da quando ho scritto questo file". Non è un flake (non dipende da ordine/concorrenza, cf. P3): è deterministico E degradante, la forma più subdola perché la CI locale del giorno in cui viene scritto e mesi di CI successive concordano tutte, finché non concordano più — tutte insieme, nello stesso giorno.
+
+**GOTCHA — il resto del file era già corretto, e questo mascherava il buco.** Ogni altra chiamata a `run_watchdog`/`inspect_token`/`refresh_*` nello stesso file passava `now=NOW` esplicitamente — il seam esisteva già a livello di libreria (`civil_clock.py::garuda_today()` nel motore visa usa lo stesso pattern). Il buco era in UN SOLO punto di ingresso, `run_from_env` (il livello CLI/env-var), che non esponeva il parametro ai chiamanti — un audit che si fosse fermato al primo `now=NOW` trovato avrebbe concluso "il file è pattern-conforme" senza notare che l'unico varco reale (il CLI path, quello che il cron invoca davvero) non lo era.
+
+**CURA — in due mani, e la prima da sola non bastava.** Il seam è atterrato con **#4914** (un'altra sessione, stesso giorno, indipendentemente: il rosso ha colpito tutti insieme, che è la firma di questa malattia): `now: datetime | None = None` su `run_from_env`, inoltrato a `run_watchdog`; la produzione non cambia (nessun chiamante reale passa `now`, il fallback resta `datetime.now(timezone.utc)`), e il test guasto ora pinna `now=NOW` come ogni suo fratello. **Ma pinnare non è curare: è ri-armare il conto alla rovescia.** Con l'inoltro rimosso, `run_watchdog` ricade sull'orologio reale e il test tornerebbe verde *per coincidenza* in qualunque finestra di giorni attorno all'expiry della fixture — la coincidenza esatta che ha armato W129. Il guard che chiude il buco è quindi il secondo: `test_cli_injected_clock_governs_not_the_real_clock` — STESSA fixture da 50 giorni, `now` iniettato +1 giorno → fresh (exit 0), `now` iniettato +365 → stale (exit 2). Nessun orologio a muro può soddisfare entrambe nella stessa esecuzione, quindi un inoltro rotto fallisce in QUALUNQUE giorno di calendario invece di aspettarne uno. Verificato rosso-prima per exit code, non per parole: intatto 0 → inoltro sabotato 1 → ripristinato 0.
+
+**Famiglia: orfana, sibling P3 FLAKY.** Stessa malattia radice di P3 (un test e il suo produttore non condividono la stessa nozione di "adesso"), meccanismo opposto: P3 era un TICK reale che il test non congelava; qui è un CONGELAMENTO nel test che il produttore non legge. Entrambi i sensi della stessa asimmetria vanno cercati insieme: ogni `datetime(...)`/`NOW =` costante in un file di test è un candidato, e la domanda diagnostica è sempre "il codice sotto test consulta LO STESSO orologio della fixture, o il proprio?".

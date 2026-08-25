@@ -193,21 +193,23 @@ class TestBuildShadowFacts:
         assert f1 is not None and f2 is not None
         assert f1.assessment_id != f2.assessment_id
 
-    def test_exactly_3_known_and_41_unknown_fields(self) -> None:
+    def test_exactly_3_known_and_42_unknown_fields(self) -> None:
         # Widened 2026-08-23: `family.stepchild_marriage_certificate_confirmed`,
         # `family.stepchild_birth_certificate_confirmed` and
         # `family.sponsor_permit_basis` joined the applicant fact vocabulary
-        # (44 total now), all rolling out UNKNOWN/NOT_ASKED by default —
+        # (44 total then), all rolling out UNKNOWN/NOT_ASKED by default —
         # `build_shadow_facts` still only ever sets nationality/purpose/duration
-        # KNOWN, so the 3/38 split becomes 3/41.
+        # KNOWN, so the 3/38 split became 3/41. Widened again 2026-08-24:
+        # `immigration.renewal_paid` (F4) joined the same way (45 total now),
+        # same rollout-default treatment, so 3/41 becomes 3/42.
         facts = shadow.build_shadow_facts(
             nationality="US", purpose=Purpose.LONG_TOURISM, duration_months=2, match_hash="h5"
         )
         assert facts is not None
         statuses = [getattr(facts.facts, name).status for name in type(facts.facts).model_fields]
-        assert len(statuses) == 44
+        assert len(statuses) == 45
         assert statuses.count("KNOWN") == 3
-        assert statuses.count("UNKNOWN") == 41
+        assert statuses.count("UNKNOWN") == 42
 
 
 # ---------------------------------------------------------------------------

@@ -7,15 +7,25 @@
 #   fleet_mail.sh <host> <session_id|broadcast> "<message text>"
 #   fleet_mail.sh <host> <session_id|broadcast> -        # message on stdin
 #
-# <host> is local|pro|mini. local runs directly; pro/mini go via
+# <host> is local|pro|mini|air. local runs directly; the rest go via
 # `ssh -o BatchMode=yes <host>`. Exits non-zero with a one-line reason on
 # any failure. Honors NUZ_MAILBOX_DIR (mailbox root override) for tests.
+#
+# `air` is M5. The fleet has been three nodes since 2026-05-31, and this
+# allowlist was still two — so no Pro or Mini session could reach M5 with the
+# fleet tool at all, and the one that needed to on 2026-08-24 hand-delivered
+# over raw ssh instead. The name is `air` and not `m5` deliberately: measured
+# from both peers this turn, `ssh air` resolves to Air-M5 from Pro AND from
+# Mini, while `ssh m5` resolves only from Pro and dies on Mini with "could not
+# resolve hostname". An alias that works from one peer and not the other is a
+# lane that fails on exactly one machine — the shape this repo already has a
+# scar family for.
 set -uo pipefail
 die() { echo "fleet_mail.sh: $*" >&2; exit 1; }
 HOST="${1:-}"
 case "$HOST" in
-    local|pro|mini) ;;
-    *) die "unknown host '$HOST' (want local|pro|mini)" ;;
+    local|pro|mini|air) ;;
+    *) die "unknown host '$HOST' (want local|pro|mini|air)" ;;
 esac
 shift || die "missing <host>"
 SESSION_ID_RE='^([A-Za-z0-9_-]{8,80}|broadcast)$'

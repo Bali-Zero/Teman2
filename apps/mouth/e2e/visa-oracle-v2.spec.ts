@@ -12,6 +12,12 @@ const SCREENSHOT_DIR = path.resolve(
 );
 const VERDICT_FACTS = {
   in_indonesia: "no",
+  // Added 2026-08-24 (P0 offshore-reachability fix, PR #4727): offshore now
+  // gates on this question before converging on overstay_days — see
+  // flow.ts::computeNextNode's "in_indonesia" case. "no" here means the
+  // synthesized NO_STAY_PERMIT sentinel resolves the derived fact without a
+  // further question (fact-mapper.ts::mapCurrentStatusCode).
+  holds_stay_permit: "no",
   overstay_days: "0",
   nationalities: "US",
   birth_date: "1990-01-01",
@@ -24,6 +30,9 @@ const VERDICT_FACTS = {
 const VERDICT_HISTORY = [
   { kind: "framing" },
   { kind: "question", questionId: "in_indonesia" },
+  // Added 2026-08-24 alongside VERDICT_FACTS.holds_stay_permit above — see
+  // that constant's comment.
+  { kind: "question", questionId: "holds_stay_permit" },
   { kind: "question", questionId: "overstay_days" },
   { kind: "question", questionId: "nationalities" },
   { kind: "question", questionId: "birth_date" },
@@ -169,10 +178,13 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         facts?: Record<string, unknown>;
       };
       expect(body.assessment_id).toMatch(/^[0-9a-f-]{36}$/);
-      // 44, not 45: `derived.has_active_stay_permit` is server-derived and
-      // never sent on the wire — 41 + the 3 new applicant-collected facts
-      // (2026-08-23 vocabulary extension, PR #4650) is the correct count.
-      expect(Object.keys(body.facts ?? {})).toHaveLength(44);
+      // 45, not 46: `derived.has_active_stay_permit` is server-derived and
+      // never sent on the wire — 41 + the 3 applicant-collected facts
+      // (2026-08-23 vocabulary extension, PR #4650) + `immigration.renewal_paid`
+      // (2026-08-24 F4, question now shipped in tree.ts/flow.ts — this
+      // seed never answers `renewal_paid`, so the key is still present but
+      // UNKNOWN NOT_ASKED, same count as before) is the correct count.
+      expect(Object.keys(body.facts ?? {})).toHaveLength(45);
 
       if (state === "SUPPORTED_CANDIDATES") {
         await expect(page.getByText("Visit Visa C1")).toBeVisible();
@@ -335,6 +347,11 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await page.getByRole("button", { name: /^start$/i }).click();
     await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
 
+    // Added 2026-08-24 (P0 offshore-reachability fix, PR #4727): offshore
+    // now gates on holds_stay_permit before overstay_days — see
+    // VERDICT_FACTS.holds_stay_permit's comment above for the mechanism.
+    await page.getByRole("button", { name: "No", exact: true }).click();
+
     await page.getByRole("spinbutton").fill("0");
     await page.getByRole("button", { name: /^continue$/i }).click();
 
@@ -455,6 +472,20 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         page,
         page.getByRole("button", {
           name: translate(language, "q.in_indonesia.opt.no"),
+          exact: true,
+        }),
+      );
+      // Added 2026-08-24 (P0 offshore-reachability fix, PR #4727) — see
+      // VERDICT_FACTS.holds_stay_permit's comment above for the mechanism.
+      await expectFocusedHeading(
+        page,
+        translate(language, "q.holds_stay_permit"),
+      );
+
+      await keyboardActivate(
+        page,
+        page.getByRole("button", {
+          name: translate(language, "q.boolean.no"),
           exact: true,
         }),
       );

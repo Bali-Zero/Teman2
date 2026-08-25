@@ -84,6 +84,25 @@ class DeclineCode(str, Enum):
     # genuinely cannot compute this yet — a human will confirm":
     ARRIVAL_TOO_SOON = "ARRIVAL_TOO_SOON"
     ARRIVAL_DATE_UNCONFIRMED = "ARRIVAL_DATE_UNCONFIRMED"
+    # Not emitted by `screen()` either — layered on by
+    # `intake.build_verdict` for the issuance-only eVOA usability-window
+    # gate (GARUDA B1 truth-sheet, line 41, verified 14 Jul 2026):
+    # an eVOA is usable for EVOA_USABILITY_WINDOW_DAYS from issuance.
+    # With no issuance_date input, `today` is the earliest possible issuance
+    # date, so an arrival strictly later than today + that window cannot be
+    # covered. This is the other end of the same axis as ARRIVAL_TOO_SOON.
+    ARRIVAL_TOO_FAR = "ARRIVAL_TOO_FAR"
+    # Not emitted by `screen()` either — layered on by `intake.build_verdict`
+    # for the B1 max-total-stay boundary (`constants.b1_max_total_stay_exceeded`,
+    # 2026-08-23): a printed extension expiry whose day-DIFFERENCE from entry
+    # is >= the legal max (60 for B1) is already one day past it, because the
+    # arrival day counts as day 1. Promoted from the owner-local
+    # `internal_preview_cli` guard (its sole caller, PR #4685) into the
+    # shared engine so a future public-funnel restore built on
+    # `build_verdict()` cannot silently reintroduce that ACCEPT-on-the-
+    # boundary bug on the client-facing surface — here it is a DECLINE with
+    # this neutral code, never a bare error.
+    EXTENSION_EXCEEDS_MAX_STAY = "EXTENSION_EXCEEDS_MAX_STAY"
 
 
 @dataclass(frozen=True)

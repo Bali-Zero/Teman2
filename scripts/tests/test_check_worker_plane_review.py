@@ -516,7 +516,7 @@ def make_bundle(tmp_path: Path) -> Bundle:
         provider_session_id = None if index == 1 else f"session-{index + 1}"
         reported_model = None if index == 1 else route
         raw_envelope = {
-            "modelUsage": ({route: {}} if index == 0 else {"glm-4.7": {}, route: {}}),
+            "modelUsage": ({route: {}} if index == 0 else {"some-other-model": {}, route: {}}),
             "result": body,
             "session_id": provider_session_id,
         }
