@@ -155,11 +155,55 @@ describe("SavePlanBar clear-plan two-step confirm", () => {
     expect(restingRule).toContain("color: var(--text-secondary)");
     expect(restingRule).not.toContain("--accent-funnel");
     expect(restingRule).not.toContain("--color-error");
-    // The armed rule itself is scoped to the compound `.bz-shs-clear-armed`
-    // class and never applies at rest.
-    expect(css).toMatch(
-      /\.bz-shs-clear-plan\.bz-shs-clear-armed\s*\{[^}]*border-color:\s*var\(--accent-funnel\)[^}]*color:\s*var\(--bz-shs-clear-armed-active\)/s,
+  });
+
+  // Regression guard (#4826, revised round c): round b pinned the armed
+  // state to --state-warning (amber) to escape a red collision with the
+  // price panel — but --state-warning is ALSO VerdictPanel's `edge_case`
+  // band accent (same outline + light-tint structure), so that just moved
+  // the same defect onto a different hue. The actual fix changes the
+  // CHANNEL: a solid, opaque fill (the darkened --accent-funnel mix
+  // StudioApp.tsx's primaryNavButtonStyle already uses) instead of a thin
+  // outline over a light tint — no verdict band or the price panel ever
+  // paints a solid fill, so this is safe regardless of hue. The boundary
+  // (border-color + focus outline) is deliberately a DIFFERENT token from
+  // the fill — --text-on-accent, not the fill color — because the dark
+  // fill that keeps text at >=4.5:1 only measures ~2.78:1 against the page
+  // surface, short of the 3:1 non-text-UI floor; a lighter fill would flip
+  // that trade the other way and fail the text floor instead. Guards all
+  // three collisions/failures seen across both rounds: never a bare/light
+  // --accent-funnel outline (the original bug), never --state-warning
+  // (round b's bug), and never a border/outline drawn in the low-contrast
+  // fill color.
+  it("arms the clear button with a solid fill and a separate high-contrast boundary, never a bare accent outline or the warning accent (regression guard, #4826)", () => {
+    const { container } = render(
+      <SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />,
     );
+    const css = Array.from(container.querySelectorAll("style"))
+      .map((style) => style.textContent ?? "")
+      .join("\n");
+    const armedRule = css.match(
+      /\.bz-shs-clear-plan\.bz-shs-clear-armed\s*\{([^}]*)\}/,
+    )?.[1];
+
+    // Solid, opaque fill — not a light color-mix tint like every verdict
+    // band and the price panel use.
+    expect(armedRule).toContain("background: var(--bz-shs-clear-armed-fill)");
+    expect(armedRule).toMatch(
+      /--bz-shs-clear-armed-fill:\s*color-mix\(\s*in srgb,\s*var\(--accent-funnel\)\s*85%,\s*black\s*\)/,
+    );
+    // Boundary is --text-on-accent, NOT the (low-contrast-vs-surface) fill
+    // token — this is what keeps the 3:1 UI-boundary floor met without
+    // breaking the 4.5:1 text-vs-fill floor.
+    expect(armedRule).toContain("border-color: var(--text-on-accent, #fff)");
+    const focusRule = css.match(
+      /\.bz-shs-clear-plan\.bz-shs-clear-armed:focus-visible\s*\{([^}]*)\}/,
+    )?.[1];
+    expect(focusRule).toContain(
+      "outline: 3px solid var(--text-on-accent, #fff)",
+    );
+    // Never regress to round b's warning-amber collision with edge_case.
+    expect(armedRule).not.toContain("--state-warning");
   });
 
   it("disarms on blur — a subsequent single activation does not clear", () => {

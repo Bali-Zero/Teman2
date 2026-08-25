@@ -103,6 +103,30 @@ is admitted only for an irreversible decision (embedding-model-freeze class).
   out-of-order, spoofed signature, boundary dates), PLUS an independent re-derivation of every
   money and date figure by a seat that did not build it. Three things, not one reviewer working
   harder.
+  **The refuter is dispatched only after the generator is confirmed dead, and only once the
+  artifact's hashes hold stable across a settling window.** A refuter set loose over a live
+  writer is reviewing a moving target, and a moving target is unreliable in both directions at
+  once: it can miss a defect introduced after it looked, and it can just as easily report a
+  defect the still-running generator has already cured, handing the orchestrator a stale finding
+  dressed as a current one. Measured 2026-08-24 during the GARUDA VOA contract freeze: a refuter
+  dispatched while the generator process was still writing watched the contract file's hash
+  change twice under it before it froze its own read, and three of its findings — two dead error
+  codes, an invalid `discriminator` block, and a security tightening on an authentication route —
+  had already been fixed by the live writer by the time the report landed. This is a process
+  check, not a file check: `git status` clean proves nothing, because the generator writes
+  untracked files. The measurement is no live writer process rooted in the worktree, AND the
+  artifact hashes unchanged across a settling window. A report produced over a live writer must
+  be re-measured line by line before any finding is accepted or rejected — which costs more than
+  waiting for the writer to finish would have.
+  **Waiting for the generator to die is not always available, and there is a stronger form that
+  works whether or not it is: hand the refuter an extracted artifact at a fixed commit, never a
+  live ref.** The Visa Oracle orchestrator hit the same trap the same day, on a generator it had
+  no authority to stop — another lane's long-running job — and got past it by extracting the diff
+  it cared about into a throwaway worktree pinned to a fixed merge commit, so the refuter read a
+  frozen snapshot while the branch underneath kept moving. Two independent lanes finding the same
+  structural trap within hours of each other is a property of the process, not of one team's bad
+  afternoon. Prefer extraction; fall back to waiting for the writer to die only when extraction is
+  impractical.
 - **Queueing discipline**: WIP ≤2 PRs per lane; merge-queue utilization <70%; a lane blocked
   over 2h gets split or re-scoped by the orchestrator, not pushed harder.
 
@@ -154,3 +178,8 @@ total simplicity is the instrument that decides what qualifies.
    monthly kill-criterion check, the money/date re-derivation duty, and "every incident ends in a
    changed contract, test, monitor or runbook". Each either gets a named checker or moves here.
    (Finding 4.)
+7. **Live-writer check on refuter dispatch, armed as a gate.** Today "confirm the generator is
+   dead before dispatching the refuter" is a convention stated in the verification-economics
+   section above, not something CI enforces. Until a checker exists (process-liveness in the
+   worktree, plus hash-stability across a settling window), the dispatcher must do this by hand
+   every time. (Raised by the 2026-08-24 GARUDA VOA contract-freeze incident.)

@@ -12,6 +12,7 @@ UPDATED 2026-03-09: Switched to qwen2.5vl:7b (confirmed passport OCR working)
 UPDATED 2026-04-06: Local fleet now gemma4:26b + qwen3.5:9b + deepseek-r1:32b + qwen2.5vl:7b
 """
 
+import asyncio
 import base64
 import io
 import logging
@@ -28,6 +29,11 @@ from backend.llm.ollama_client import is_ollama_available
 from backend.services.oracle.smart_oracle import download_pdf_from_drive
 
 logger = logging.getLogger(__name__)
+
+# Gemini free tier allows 15 requests/minute. This paces the CLOUD path only:
+# the local Ollama path has no such limit and sleeping on it turned a 100-page
+# scan into 400 seconds of doing nothing.
+GEMINI_VISION_PAGE_DELAY_SECONDS = 4.0
 
 
 class PDFVisionService:
@@ -142,6 +148,112 @@ class PDFVisionService:
         except Exception as e:
             logger.error("❌ Vision analysis failed: %s", e)
             return f"Error analyzing page: {e!s}"
+
+    # Deliberately literal. A vision model asked to "extract" or "describe" a
+    # page will paraphrase it, and a paraphrase entering the corpus AS the
+    # document's text is worse than no text: unattributable, and authoritative
+    # in tone.
+    TRANSCRIPTION_PROMPT = (
+        "Transcribe ALL visible text from this scanned document page. "
+        "Output the text verbatim, preserving line breaks, ordering and table "
+        "structure. Do not summarise, translate, explain or add anything. "
+        "If the page contains no text, output nothing."
+    )
+
+    async def transcribe_scanned_pdf(
+        self,
+        pdf_path: str,
+        max_pages: int | None = None,
+    ) -> str | None:
+        """Transcribe a PDF that carries no text layer, page by page.
+
+        This is the ONE implementation of scanned-PDF reading. Until 2026-08-25
+        there were two callers in `backend.core.parsers` and NEITHER could ever
+        succeed:
+
+        * the synchronous last resort in ``extract_text_from_pdf`` called
+          ``extract_text()`` -- a method whose own docstring reads "(for test
+          compatibility)" and which, absent an AI client, re-reads the PDF with
+          PyMuPDF: precisely the step that had just returned nothing. It never
+          rendered a page and never reached a vision model, so it could only
+          ever return "". The failure then surfaced as "No text extracted from
+          PDF (even with OCR/Vision)", which reads as "everything was tried";
+        * ``extract_text_from_pdf_ocr_async`` gated itself on ``_available``,
+          which consults the GEMINI client ONLY. With cloud vision unconfigured
+          -- the default, since cross-border vision is gated under UU PDP
+          Art. 56 -- it returned "" without ever asking the local Ollama engine,
+          which was armed and working the whole time.
+
+        Measured 2026-08-25 on a 3-page scanned ministerial decree: the two
+        callers yielded 0 characters; this path yields 6,109.
+
+        Returns None when NO page could be transcribed, so callers raise rather
+        than store an empty document. Individually failing pages are skipped and
+        logged -- most of a decree beats none of it.
+        """
+        try:
+            document = fitz.open(pdf_path)
+            page_count = document.page_count
+            document.close()
+        except Exception as exc:
+            logger.error("Could not open PDF for transcription: %s", exc)
+            return None
+
+        if max_pages is not None:
+            page_count = min(page_count, max_pages)
+
+        transcribed: list[str] = []
+        for page_number in range(1, page_count + 1):
+            page_text: str | None = None
+            try:
+                image = self._render_page_to_image(pdf_path, page_number)
+                buffered = io.BytesIO()
+                image.save(buffered, format="PNG")
+                image_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+                page_text = await self._analyze_via_ollama(
+                    self.TRANSCRIPTION_PROMPT,
+                    image_base64,
+                )
+                if not page_text:
+                    # Cross-border fallback. Returns None when the sovereignty
+                    # gate is shut, which is a degradation to report, not an
+                    # error to raise.
+                    page_text = await self._analyze_via_gemini(
+                        self.TRANSCRIPTION_PROMPT,
+                        image_base64,
+                    )
+                    if page_text:
+                        await asyncio.sleep(GEMINI_VISION_PAGE_DELAY_SECONDS)
+            except Exception as exc:
+                logger.warning(
+                    "Page %s of %s could not be transcribed: %s",
+                    page_number,
+                    pdf_path,
+                    exc,
+                )
+                continue
+
+            if page_text and page_text.strip():
+                transcribed.append(page_text.strip())
+            else:
+                logger.warning("Page %s of %s produced no text", page_number, pdf_path)
+
+        if not transcribed:
+            logger.warning(
+                "Vision transcription produced nothing for %s (%s pages attempted)",
+                pdf_path,
+                page_count,
+            )
+            return None
+
+        logger.info(
+            "Vision transcription: %s/%s pages from %s",
+            len(transcribed),
+            page_count,
+            pdf_path,
+        )
+        return "\n\n".join(transcribed)
 
     async def _analyze_via_ollama(self, prompt: str, image_base64: str) -> str | None:
         """Analyze image using local Ollama qwen2.5vl:7b vision."""

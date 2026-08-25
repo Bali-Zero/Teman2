@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: e888ff9748e5cea8db11d3a1544a9f17d98938453c97f995c2e4d1bb3ffaabec
+checksum: cba698c30d771a942e0db3142c52eb077582444543cd4b4d1614880cec2ed745
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2608,5 +2608,43 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wa_bot_throughput_sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.iqoo_radar_relay
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 60
+  owner_module: infra/launchagents/wrappers/pro-iqoo-radar-relay.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.iqoo-radar-relay
+  severity_on_silence: warning
+  notes: Relay P0 Incident Capsules to the iQOO RADAR node (born via organ_birth.py,
+    genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.iqoo_radar_relay.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.iqoo_radar_relay
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 60
+  owner_module: infra/launchagents/wrappers/mini-iqoo-radar-relay.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mini-iqoo-radar-relay
+  severity_on_silence: warning
+  notes: Relay P0 Incident Capsules to the iQOO RADAR node (born via organ_birth.py,
+    genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.iqoo_radar_relay.json
     timestamp_field: ts
     status_field: status
