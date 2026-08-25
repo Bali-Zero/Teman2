@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 from backend.channels.base import BaseChannel
 from backend.channels.optimizations import message_deduplicator
 from backend.core.cache import invalidate_cache
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +122,8 @@ class ChannelRouter:
 
             logger.info(
                 f"📨 Received message from {message.channel} "
-                f"(user={message.user_id}, text_length={len(message.text)})",
+                f"(user={redact_identifier_for_log(message.user_id)}, "
+                f"text_length={len(message.text)})",
             )
 
             # 2.5 Deduplication check BEFORE persist (prevents duplicate DB rows)
@@ -131,7 +133,8 @@ class ChannelRouter:
                 message.text,
             ):
                 logger.warning(
-                    f"🔁 Duplicate message dropped: channel={channel}, user={message.user_id}",
+                    f"🔁 Duplicate message dropped: channel={channel}, "
+                    f"user={redact_identifier_for_log(message.user_id)}",
                 )
                 return
 

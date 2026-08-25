@@ -36,6 +36,7 @@ from typing import Any
 import httpx
 
 from backend.phone_lock import phone_core
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,11 @@ async def _ensure_client_on_fly(
     try:
         resp = await client.post(url, json=body, headers=headers)
     except (httpx.TimeoutException, httpx.TransportError) as exc:
-        logger.warning("intake.crm_push.upsert_unreachable phone=*** err=%s", type(exc).__name__)
+        logger.warning(
+            "intake.crm_push.upsert_unreachable phone=%s err=%s",
+            redact_identifier_for_log(digits),
+            type(exc).__name__,
+        )
         return None
     if resp.status_code >= 400:
         logger.warning(
@@ -266,9 +271,7 @@ async def push_committed_document(
     try:
         raw = await asyncio.to_thread(path.read_bytes)
     except (FileNotFoundError, IsADirectoryError, PermissionError, OSError) as exc:
-        return CrmPushResult(
-            ok=False, status="missing_blob", detail=f"{type(exc).__name__}: {exc}"
-        )
+        return CrmPushResult(ok=False, status="missing_blob", detail=f"{type(exc).__name__}: {exc}")
 
     max_bytes = _max_push_bytes()
     if len(raw) > max_bytes:

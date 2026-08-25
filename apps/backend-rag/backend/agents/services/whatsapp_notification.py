@@ -9,6 +9,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from backend.utils.pii_log_identifier import redact_identifier_for_log
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,7 +84,8 @@ class WhatsAppNotificationService:
                     if attempt < max_retries - 1:
                         wait_time = 2**attempt  # Exponential backoff
                         logger.warning(
-                            f"Attempt {attempt + 1}/{max_retries} failed for {phone}, retrying in {wait_time}s: {e}",
+                            f"Attempt {attempt + 1}/{max_retries} failed for "
+                            f"{redact_identifier_for_log(phone)}, retrying in {wait_time}s: {e}",
                         )
                         await asyncio.sleep(wait_time)
                     else:
@@ -91,8 +94,13 @@ class WhatsAppNotificationService:
         try:
             return await asyncio.wait_for(_send_with_retry(), timeout=timeout)
         except asyncio.TimeoutError:
-            logger.error("Timeout sending WhatsApp message to %s", phone)
+            logger.error("Timeout sending WhatsApp message to %s", redact_identifier_for_log(phone))
             return None
         except Exception as e:
-            logger.error("Error sending WhatsApp message to %s: %s", phone, e, exc_info=True)
+            logger.error(
+                "Error sending WhatsApp message to %s: %s",
+                redact_identifier_for_log(phone),
+                e,
+                exc_info=True,
+            )
             return None

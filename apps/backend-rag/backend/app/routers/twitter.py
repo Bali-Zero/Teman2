@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from backend.app.core.config import settings
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/twitter", tags=["twitter"])
@@ -162,8 +163,8 @@ async def twitter_webhook(request: Request) -> dict:
 
         logger.info(
             "X DM received: sender=%s, recipient=%s, text_len=%d, bot_id=%s",
-            sender_id,
-            target_recipient,
+            redact_identifier_for_log(sender_id),
+            redact_identifier_for_log(target_recipient),
             text_len,
             bot_user_id,
         )

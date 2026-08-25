@@ -15,6 +15,7 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ class InstagramService:
                 logger.error("Instagram API error [%s]: %s", error_code, error_msg)
                 raise ValueError(f"Instagram API error [{error_code}]: {error_msg}")
 
-            logger.info("Instagram message sent to %s", recipient_id)
+            logger.info("Instagram message sent to %s", redact_identifier_for_log(recipient_id))
             return result
 
         except httpx.HTTPError as e:

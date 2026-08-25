@@ -14,6 +14,8 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from backend.utils.pii_log_identifier import redact_identifier_for_log
+
 logger = logging.getLogger(__name__)
 
 
@@ -203,7 +205,8 @@ class BaseChannel(ABC):
             return True
         except Exception as e:
             logger.error(
-                f"Send failed on {self.channel_name} to {channel_id}, routing to DLQ: {e}",
+                f"Send failed on {self.channel_name} to "
+                f"{redact_identifier_for_log(channel_id)}, routing to DLQ: {e}",
             )
             try:
                 from backend.channels.optimizations import delivery_manager

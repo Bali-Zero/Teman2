@@ -49,6 +49,7 @@ import time
 
 from backend.app.core.config import settings
 from backend.services.integrations.telegram_bot_service import telegram_bot
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +217,10 @@ Rispondi direttamente su WhatsApp!
             text=notification_text,
             parse_mode="Markdown",
         )
-        logger.info("Telegram notification sent for WhatsApp escalation from %s", phone)
+        logger.info(
+            "Telegram notification sent for WhatsApp escalation from %s",
+            redact_identifier_for_log(phone),
+        )
     except Exception as e:
         logger.error("Failed to send Telegram notification: %s", e)
         return False
@@ -226,5 +230,3 @@ Rispondi direttamente su WhatsApp!
         # start a window that suppresses the retry.
         _recent_escalations[thread_ref] = time.monotonic()
     return True
-
-

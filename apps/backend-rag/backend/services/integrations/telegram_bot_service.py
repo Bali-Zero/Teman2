@@ -11,6 +11,7 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
 from backend.core.secret_log_redaction import install_telegram_token_redaction
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 install_telegram_token_redaction()
 
@@ -100,7 +101,7 @@ class TelegramBotService:
                 logger.error("Telegram API error [%s]: %s", error_code, description)
                 raise ValueError(f"Telegram API error [{error_code}]: {description}")
 
-            logger.info("Message sent to chat %s", chat_id)
+            logger.info("Message sent to chat %s", redact_identifier_for_log(chat_id))
             return result
 
         except httpx.HTTPError as e:
@@ -160,7 +161,7 @@ class TelegramBotService:
                 logger.error("Telegram API error [%s]: %s", error_code, description)
                 raise ValueError(f"Telegram API error [{error_code}]: {description}")
 
-            logger.info("Photo sent to chat %s", chat_id)
+            logger.info("Photo sent to chat %s", redact_identifier_for_log(chat_id))
             return result
 
         except httpx.HTTPError as e:
@@ -428,7 +429,9 @@ class TelegramBotService:
                 description = result.get("description", "Unknown error")
                 logger.error("Telegram API error [%s]: %s", error_code, description)
 
-            logger.debug("Edited message %s in chat %s", message_id, chat_id)
+            logger.debug(
+                "Edited message %s in chat %s", message_id, redact_identifier_for_log(chat_id)
+            )
             return result
 
         except httpx.HTTPError as e:

@@ -59,6 +59,7 @@ from backend.services.integrations.whatsapp_triage_service import (
 )
 from backend.services.whatsapp_kbli_guard import sanitize_whatsapp_kbli_reply
 from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +217,9 @@ async def process_whatsapp_message(
 
         # 0.5. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
         if not whatsapp_triage_service.is_allowed(phone):
-            logger.info("Ignored message from non-allowed number: %s", phone)
+            logger.info(
+                "Ignored message from non-allowed number: %s", redact_identifier_for_log(phone)
+            )
             return
 
         # 1. TRIAGE: Personal or Business?
@@ -226,7 +229,12 @@ async def process_whatsapp_message(
             sender_name=sender_name,
         )
 
-        logger.info("Triage decision for %s: %s (reason: %s)", phone, decision, reason)
+        logger.info(
+            "Triage decision for %s: %s (reason: %s)",
+            redact_identifier_for_log(phone),
+            decision,
+            reason,
+        )
 
         # 1.5. AUTO-DETECT NEW CLIENT ONBOARDING INTENT
         # Check if message indicates new client onboarding before processing
@@ -239,7 +247,9 @@ async def process_whatsapp_message(
             )
             if onboarding_result:
                 logger.info(
-                    "🎯 Auto-triggered onboarding chain for %s: %s", phone, onboarding_result
+                    "🎯 Auto-triggered onboarding chain for %s: %s",
+                    redact_identifier_for_log(phone),
+                    onboarding_result,
                 )
                 # Send confirmation message to client
                 onboarding_confirm_msg = (
@@ -267,7 +277,12 @@ async def process_whatsapp_message(
                     )
                 return
         except Exception as e:
-            logger.error("Onboarding detection failed for %s: %s", phone, e, exc_info=True)
+            logger.error(
+                "Onboarding detection failed for %s: %s",
+                redact_identifier_for_log(phone),
+                e,
+                exc_info=True,
+            )
             # Continue with normal flow if detection fails
 
         # 2. ESCALATE TO HUMAN
@@ -311,7 +326,11 @@ async def process_whatsapp_message(
                 message_text=message_text,
                 response_text=escalation_msg,
             )
-            logger.info("Message from %s escalated to human (reason: %s)", phone, reason)
+            logger.info(
+                "Message from %s escalated to human (reason: %s)",
+                redact_identifier_for_log(phone),
+                reason,
+            )
             return
 
         # 3. OFFER CHOICE (ambiguous)
@@ -329,7 +348,7 @@ async def process_whatsapp_message(
                 message_text=message_text,
                 response_text=welcome_msg,
             )
-            logger.info("Welcome message sent to %s", phone)
+            logger.info("Welcome message sent to %s", redact_identifier_for_log(phone))
             return
 
         # 4. AI CAN HANDLE — OpenClaw bridge first, then Gemini RAG fallback.
@@ -361,9 +380,12 @@ async def process_whatsapp_message(
                         reply_to_message_id=message_id,
                     )
                     mark_acked(phone)
-                    logger.info("Concierge ack sent to %s", phone)
+                    logger.info("Concierge ack sent to %s", redact_identifier_for_log(phone))
             except Exception:
-                logger.exception("Concierge ack failed (non-blocking) phone=%s", phone)
+                logger.exception(
+                    "Concierge ack failed (non-blocking) phone=%s",
+                    redact_identifier_for_log(phone),
+                )
 
             openclaw_response = await ask_openclaw_whatsapp(
                 phone=phone,
@@ -391,7 +413,7 @@ async def process_whatsapp_message(
                     logger.warning(
                         "WhatsApp KBLI guard corrected OpenClaw reply "
                         "(phone=%s message_id=%s reason=%s)",
-                        phone,
+                        redact_identifier_for_log(phone),
                         message_id,
                         guarded_openclaw_response.reason,
                     )
@@ -462,7 +484,7 @@ async def process_whatsapp_message(
                 total_duration = time.time() - start_time
                 logger.info(
                     "✅ OpenClaw WA responded to %s in %.1fs (%d chars)",
-                    phone,
+                    redact_identifier_for_log(phone),
                     total_duration,
                     len(openclaw_response),
                 )
@@ -470,7 +492,7 @@ async def process_whatsapp_message(
 
             logger.info(
                 "🚀 Processing query from %s with Gemini 3 Flash (RAG + Zan persona)",
-                phone,
+                redact_identifier_for_log(phone),
             )
 
             from backend.prompts.whatsapp_persona import (
@@ -553,7 +575,7 @@ async def process_whatsapp_message(
                 logger.warning(
                     "WhatsApp KBLI guard corrected fallback RAG reply "
                     "(phone=%s message_id=%s reason=%s)",
-                    phone,
+                    redact_identifier_for_log(phone),
                     message_id,
                     guarded_response.reason,
                 )
@@ -595,7 +617,7 @@ async def process_whatsapp_message(
                     client_profile=ctx["client_profile"],
                     conversation_history=ctx["conversation_history"],
                 )
-                logger.info("🔔 AI escalation triggered for %s", phone)
+                logger.info("🔔 AI escalation triggered for %s", redact_identifier_for_log(phone))
 
             # Save conversation to PostgreSQL
             await _save_conversation(
@@ -618,7 +640,7 @@ async def process_whatsapp_message(
 
             total_duration = time.time() - start_time
             logger.info(
-                f"✅ Zan responded to {phone} in {total_duration:.1f}s "
+                f"✅ Zan responded to {redact_identifier_for_log(phone)} in {total_duration:.1f}s "
                 f"({len(response_text)} chars, lang={ctx['detected_language']}, "
                 f"first={ctx['is_first_message']})",
             )
@@ -639,7 +661,12 @@ async def process_whatsapp_message(
             )
 
     except Exception as e:
-        logger.error("Error processing WhatsApp message from %s: %s", phone, e, exc_info=True)
+        logger.error(
+            "Error processing WhatsApp message from %s: %s",
+            redact_identifier_for_log(phone),
+            e,
+            exc_info=True,
+        )
 
         try:
             error_msg = "Ops, errore tecnico 😬 Riprova tra un attimo!"
@@ -782,9 +809,17 @@ async def _save_conversation(
                     _conversation_jsonb_text(client_profile),
                 )
 
-        logger.info("💾 Conversation saved for %s (session: %s)", phone, session_id)
+        logger.info(
+            "💾 Conversation saved for %s (session: %s)",
+            redact_identifier_for_log(phone),
+            session_id,
+        )
     except Exception as e:
-        logger.warning("Failed to save conversation for %s: %s", phone, e)
+        logger.warning(
+            "Failed to save conversation for %s: %s",
+            redact_identifier_for_log(phone),
+            e,
+        )
 
     # Unified audit trail (COS-LAW-013): the `conversations` JSONB above is a
     # truncated history buffer (MAX_HISTORY_MESSAGES), not an audit record.
@@ -1420,7 +1455,12 @@ async def whatsapp_webhook(
                 message_id = msg.get("id")
                 message_type = msg.get("type")
 
-                logger.info("Message from %s: type=%s, id=%s", phone, message_type, message_id)
+                logger.info(
+                    "Message from %s: type=%s, id=%s",
+                    redact_identifier_for_log(phone),
+                    message_type,
+                    message_id,
+                )
 
                 if message_type != "text":
                     logger.info("Ignoring non-text message type: %s", message_type)
@@ -1430,7 +1470,7 @@ async def whatsapp_webhook(
                 text = text_obj.get("body", "")
 
                 if not text:
-                    logger.warning("Empty text body from %s", phone)
+                    logger.warning("Empty text body from %s", redact_identifier_for_log(phone))
                     continue
 
                 if persisted_message_inserted.get(message_id) is False:
@@ -1449,7 +1489,10 @@ async def whatsapp_webhook(
                     request=request,
                 )
 
-                logger.info("Message from %s scheduled for processing", phone)
+                logger.info(
+                    "Message from %s scheduled for processing",
+                    redact_identifier_for_log(phone),
+                )
 
     # Record webhook metric
     try:

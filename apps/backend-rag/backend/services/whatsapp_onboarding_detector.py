@@ -14,6 +14,8 @@ from typing import Any
 
 import httpx
 
+from backend.utils.pii_log_identifier import redact_identifier_for_log
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,13 +97,18 @@ class OnboardingIntentDetector:
         if not self._has_onboarding_intent(message_text):
             return None
 
-        logger.info("🎯 New client onboarding intent detected from %s", phone)
+        logger.info(
+            "🎯 New client onboarding intent detected from %s", redact_identifier_for_log(phone)
+        )
 
         # Extract information from message
         extracted = self._extract_info(message_text, sender_name)
 
         if not extracted.get("name"):
-            logger.warning("Cannot trigger onboarding: missing name for %s", phone)
+            logger.warning(
+                "Cannot trigger onboarding: missing name for %s",
+                redact_identifier_for_log(phone),
+            )
             return None
 
         # Trigger chain_new_client_onboarding via MCP
@@ -113,10 +120,17 @@ class OnboardingIntentDetector:
                 business_description=extracted.get("business_description", "General business"),
                 phone=phone,
             )
-            logger.info(f"✅ Onboarding chain triggered for {phone}: {result.get('client_id')}")
+            logger.info(
+                f"✅ Onboarding chain triggered for {redact_identifier_for_log(phone)}: "
+                f"{result.get('client_id')}"
+            )
             return result
         except Exception as e:
-            logger.error("Failed to trigger onboarding chain for %s: %s", phone, e)
+            logger.error(
+                "Failed to trigger onboarding chain for %s: %s",
+                redact_identifier_for_log(phone),
+                e,
+            )
             return None
 
     def _has_onboarding_intent(self, message_text: str) -> bool:

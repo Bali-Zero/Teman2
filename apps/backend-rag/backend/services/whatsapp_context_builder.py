@@ -18,6 +18,8 @@ from typing import Any
 
 import asyncpg
 
+from backend.utils.pii_log_identifier import redact_identifier_for_log
+
 logger = logging.getLogger(__name__)
 
 # Visa/service codes to detect in messages
@@ -298,7 +300,7 @@ async def build_context(
                         client_profile = meta
 
         except Exception as e:
-            logger.warning("Failed to load context for %s: %s", phone, e)
+            logger.warning("Failed to load context for %s: %s", redact_identifier_for_log(phone), e)
 
     # Resolve sender identity (owner / team / CRM client / unknown) so the
     # reply pipeline can stop treating Zero, the team, and known clients as
@@ -308,7 +310,9 @@ async def build_context(
 
         sender_identity = await resolve_sender_identity(phone, db_pool)
     except Exception:
-        logger.exception("Sender identity resolution crashed for %s", phone)
+        logger.exception(
+            "Sender identity resolution crashed for %s", redact_identifier_for_log(phone)
+        )
         sender_identity = {"role": "unknown"}
 
     # Detect language from current message + history
@@ -366,7 +370,7 @@ async def build_context(
                     )
                 # If no existing row, it will be created when we save the conversation later
         except Exception as e:
-            logger.warning("Failed to save profile for %s: %s", phone, e)
+            logger.warning("Failed to save profile for %s: %s", redact_identifier_for_log(phone), e)
 
     return {
         "client_name": sender_name,

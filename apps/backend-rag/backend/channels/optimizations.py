@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from backend.core.secret_log_redaction import install_telegram_token_redaction
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 install_telegram_token_redaction()
 
@@ -90,7 +91,7 @@ class ChannelRateLimiter:
         self.last_refill[channel_id] = now
 
         if self.tokens[channel_id] < 1:
-            logger.warning("Rate limit (burst): %s", channel_id)
+            logger.warning("Rate limit (burst): %s", redact_identifier_for_log(channel_id))
             return False
 
         # --- Per-minute / per-hour: try Redis first ---
@@ -106,10 +107,14 @@ class ChannelRateLimiter:
         # --- Fallback: in-memory counters ---
         self._cleanup_old_counts(channel_id, now)
         if len(self.minute_counts[channel_id]) >= self.config.max_requests_per_minute:
-            logger.warning("Rate limit (minute, in-memory): %s", channel_id)
+            logger.warning(
+                "Rate limit (minute, in-memory): %s", redact_identifier_for_log(channel_id)
+            )
             return False
         if len(self.hour_counts[channel_id]) >= self.config.max_requests_per_hour:
-            logger.warning("Rate limit (hour, in-memory): %s", channel_id)
+            logger.warning(
+                "Rate limit (hour, in-memory): %s", redact_identifier_for_log(channel_id)
+            )
             return False
 
         # Consume
@@ -141,7 +146,11 @@ class ChannelRateLimiter:
                 await redis.expire(minute_key, 60)
 
             if minute_count > self.config.max_requests_per_minute:
-                logger.warning("Rate limit (minute, Redis): %s count=%s", channel_id, minute_count)
+                logger.warning(
+                    "Rate limit (minute, Redis): %s count=%s",
+                    redact_identifier_for_log(channel_id),
+                    minute_count,
+                )
                 # Decrement back since we're rejecting
                 await redis.decr(minute_key)
                 return False
@@ -152,7 +161,11 @@ class ChannelRateLimiter:
                 await redis.expire(hour_key, 3600)
 
             if hour_count > self.config.max_requests_per_hour:
-                logger.warning("Rate limit (hour, Redis): %s count=%s", channel_id, hour_count)
+                logger.warning(
+                    "Rate limit (hour, Redis): %s count=%s",
+                    redact_identifier_for_log(channel_id),
+                    hour_count,
+                )
                 await redis.decr(hour_key)
                 # Also undo the minute increment
                 await redis.decr(minute_key)
@@ -383,7 +396,8 @@ class DeliveryManager:
                 next_retry,
             )
             logger.info(
-                f"DLQ: persisted failed message to PG ({record['channel']}:{record['channel_id']})"
+                f"DLQ: persisted failed message to PG "
+                f"({record['channel']}:{redact_identifier_for_log(record['channel_id'])})"
             )
             return True
         except Exception as e:
@@ -395,14 +409,16 @@ class DeliveryManager:
         redis = _get_redis_client()
         if redis is None:
             logger.error(
-                f"DLQ: BOTH PG and Redis unavailable — message LOST: {record['channel']}:{record['channel_id']}"
+                f"DLQ: BOTH PG and Redis unavailable — message LOST: "
+                f"{record['channel']}:{redact_identifier_for_log(record['channel_id'])}"
             )
             return False
         try:
             payload = json.dumps({**record, "queued_at": time.time()})
             await redis.lpush(self.REDIS_DLQ_KEY, payload)
             logger.info(
-                f"DLQ: persisted to Redis fallback ({record['channel']}:{record['channel_id']})"
+                f"DLQ: persisted to Redis fallback "
+                f"({record['channel']}:{redact_identifier_for_log(record['channel_id'])})"
             )
             return True
         except Exception as e:
@@ -503,12 +519,9 @@ class DeliveryManager:
                             row["id"],
                         )
                         if new_status == "exhausted":
-                            await self._alert_exhausted(
-                                row, f"no adapter for channel '{ch}'"
-                            )
+                            await self._alert_exhausted(row, f"no adapter for channel '{ch}'")
                         logger.warning(
-                            "DLQ: no adapter for channel '%s' (msg %s) — "
-                            "attempt %d/%d, status=%s",
+                            "DLQ: no adapter for channel '%s' (msg %s) — attempt %d/%d, status=%s",
                             ch,
                             row["id"],
                             attempt,

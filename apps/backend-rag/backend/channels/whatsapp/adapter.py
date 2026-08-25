@@ -16,6 +16,7 @@ import httpx
 from backend.channels.base import BaseChannel, ChannelMessage, ChannelResponse
 from backend.channels.whatsapp.config import WhatsAppChannelConfig
 from backend.channels.whatsapp.formatter import WhatsAppMessageFormatter
+from backend.utils.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,8 @@ class WhatsAppChannelAdapter(BaseChannel):
             }
 
             logger.info(
-                f"📨 WhatsApp message: phone={from_phone}, name={sender_name}, text={text[:50]}...",
+                f"📨 WhatsApp message: phone={redact_identifier_for_log(from_phone)}, "
+                f"name={sender_name}, text={text[:50]}...",
             )
 
             return ChannelMessage(
@@ -183,7 +185,7 @@ class WhatsAppChannelAdapter(BaseChannel):
             result = await self.client.post(url, json=payload, headers=headers)
             result.raise_for_status()
 
-            logger.info("✅ Sent WhatsApp message to %s", channel_id)
+            logger.info("✅ Sent WhatsApp message to %s", redact_identifier_for_log(channel_id))
 
         except Exception as e:
             logger.error("Error sending WhatsApp response: %s", e, exc_info=True)
@@ -194,7 +196,11 @@ class WhatsAppChannelAdapter(BaseChannel):
         WhatsApp doesn't support typing indicators.
         This method is a no-op for compatibility.
         """
-        logger.debug("WhatsApp status update (no-op): %s for %s", status, channel_id)
+        logger.debug(
+            "WhatsApp status update (no-op): %s for %s",
+            status,
+            redact_identifier_for_log(channel_id),
+        )
 
     async def stream_response(
         self,
