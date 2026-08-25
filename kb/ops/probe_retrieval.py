@@ -278,6 +278,31 @@ def chunk_instrument(chunk: dict) -> str | None:
     return chunk.get("document_id") or meta.get("document_id") or None
 
 
+def journey_satisfaction(measured_state: str, expectation: str) -> bool:
+    """Whether a journey's measurement meets what the journey asked for.
+
+    The two expectations are NOT mirror images, and treating them as one was a
+    real defect. `retrieves` asks a question about ATTRIBUTION: did the right
+    instrument answer? A phrase found under some other document is not evidence
+    for this instrument, so `misattributed` fails it.
+
+    `must_not_retrieve` asks a question about REACHABILITY: can a user be shown
+    this text at all? Immigration journey 2's poison is the body of a Tegal
+    regency correspondence manual; if that text comes back attributed to some
+    OTHER document, the reader still gets municipal letterhead rules in a Golden
+    Visa answer. The harm is identical, and a poison phrase floating loose under
+    someone else's identity is a MORE broken corpus, not a less broken one.
+
+    So a canary is violated by any retrieval, `green` or `misattributed`. The
+    earlier rule derived both from `hit == (expectation == "retrieves")`, which
+    made `misattributed` SATISFY a canary — the guard went quiet in precisely
+    the case where the corpus was worse.
+    """
+    if expectation == "retrieves":
+        return measured_state == "green"
+    return measured_state not in ("green", "misattributed")
+
+
 def locate_phrase(chunks: list[dict], phrase: str, instrument_id: str) -> dict:
     """Where the phrase is, and — the point of this function — WHOSE it is.
 
@@ -681,7 +706,7 @@ async def run(argv=None) -> int:
         found_instrument = located["found_instrument"]
         hit = measured_state == "green"
         graded = "green" if hit else "red"  # what a human should write into probe_state
-        satisfied = hit == (expectation == "retrieves")
+        satisfied = journey_satisfaction(measured_state, expectation)
 
         if not args.json:
             print("%-4d %-9s %-10s %-6s %-4s %-16s  %s"

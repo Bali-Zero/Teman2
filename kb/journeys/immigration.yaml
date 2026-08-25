@@ -142,12 +142,12 @@ journeys:
     phrasing: client
     language: id
     cross_topic: false
-    expectation: retrieves
+    expectation: must_not_retrieve
     probe_state: green
     probe_run_at: "2026-08-25"
     measured_rank: 3
     canary: true
-    canary_meaning: "green means a question about CURRENT stay-permit duration surfaces a regulation officially revoked by Permen_22_2023 — MEASURED TRUE on 2026-08-25, not a hypothetical. See the note above."
+    reason: "green means a question about the CURRENT stay-permit duration surfaces Permen_29_2021, a regulation officially revoked by Permen_22_2023 — MEASURED TRUE on 2026-08-25, not a hypothetical. This journey is an INVERTED canary: retrieving the revoked instrument IS the defect, so green is a violation and red is the cure. It was graded `retrieves` until 2026-08-26, which meant the suite counted a documented live defect as a success."
 
   # 5 — POSITIVE, statute-phrased: core UU 6/2011 procedural provision (Pencegahan
   # exit-ban notice duty). Not marked client — no real client asks who has the

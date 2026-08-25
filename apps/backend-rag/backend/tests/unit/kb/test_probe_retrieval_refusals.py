@@ -355,3 +355,64 @@ def test_the_two_collection_floors_are_different_checks():
     assert PROBE.unknown_collections(["immigration_circulars"]) == []
     assert PROBE.unserved_collections(["immigration_circulars"], _lookup) == [
         "immigration_circulars"]
+
+
+# ── Section F: the two expectations are not mirror images ────────────────────
+#
+# `retrieves` asks about ATTRIBUTION — did the RIGHT instrument answer? A phrase
+# found under another document is not evidence for this one.
+#
+# `must_not_retrieve` asks about REACHABILITY — can a reader be shown this text
+# at all? Immigration journey 2's poison is the body of a Tegal regency
+# correspondence manual; if it comes back attributed to some OTHER document, the
+# reader still gets municipal letterhead rules inside a Golden Visa answer.
+#
+# Until 2026-08-26 both were derived from `hit == (expectation == "retrieves")`
+# with `hit = measured_state == "green"`, which made `misattributed` SATISFY a
+# canary: the guard fell silent in exactly the case where the corpus was worse,
+# because a poison phrase floating loose under someone else's identity is a more
+# broken corpus, not a less broken one.
+
+
+def test_retrieves_is_satisfied_only_by_the_right_instrument():
+    assert PROBE.journey_satisfaction("green", "retrieves") is True
+
+
+def test_retrieves_is_not_satisfied_by_a_hit_on_the_wrong_instrument():
+    assert PROBE.journey_satisfaction("misattributed", "retrieves") is False
+
+
+def test_retrieves_is_not_satisfied_when_nothing_came_back():
+    assert PROBE.journey_satisfaction("red", "retrieves") is False
+
+
+def test_a_canary_is_satisfied_only_when_the_poison_is_unreachable():
+    assert PROBE.journey_satisfaction("red", "must_not_retrieve") is True
+
+
+def test_guilt_a_canary_is_violated_by_a_correctly_attributed_hit():
+    assert PROBE.journey_satisfaction("green", "must_not_retrieve") is False
+
+
+def test_guilt_a_canary_is_violated_by_a_misattributed_hit_too():
+    """The regression this section exists for.
+
+    The reader is harmed by seeing the poison text, not by the label attached to
+    it. A rule that clears the canary here would go quiet on a corpus where the
+    poison has ALSO lost its identity.
+    """
+    assert PROBE.journey_satisfaction("misattributed", "must_not_retrieve") is False
+
+
+def test_the_two_expectations_disagree_on_misattributed_and_that_is_the_point():
+    """Guards the asymmetry itself, not either half of it.
+
+    A future simplification back to one symmetric formula makes both sides equal
+    and this fails — which is the only way the asymmetry survives someone tidying
+    it up without reading why it is there.
+    """
+    assert PROBE.journey_satisfaction("misattributed", "retrieves") is False
+    assert PROBE.journey_satisfaction("misattributed", "must_not_retrieve") is False
+    assert PROBE.journey_satisfaction("green", "retrieves") != PROBE.journey_satisfaction(
+        "green", "must_not_retrieve"
+    )
