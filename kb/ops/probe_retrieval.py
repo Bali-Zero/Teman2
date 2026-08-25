@@ -323,6 +323,36 @@ def journey_satisfaction(measured_state: str, expectation: str) -> bool:
     return False  # an unrecognised expectation satisfies nothing, ever
 
 
+def canary_unverifiable_under_degradation(
+    expectation: str, satisfied: bool, degraded: bool
+) -> bool:
+    """True when a SATISFIED canary's result is not trustworthy proof of safety.
+
+    `warn_if_degraded`'s own docstring calls a degraded-path verdict "a LOWER
+    BOUND on what production retrieves — never an upper one," because disabled
+    query expansion can only NARROW what comes back. That direction is correct
+    for `expectation: retrieves` (a red measured here may be green in
+    production — the file already prints exactly that caveat). For
+    `must_not_retrieve` it is inverted: a NARROWER search can only make a
+    poisoned instrument HARDER to find, so a canary that stayed red under a
+    degraded path is an UPPER bound on safety, not a lower one — production's
+    wider search could still surface what this run could not. Refuter finding
+    R2 (2026-08-26): the run's final verdict and its `AT TARGET ... canaries
+    stayed red` banner did not carry this distinction at all, so a degraded run
+    could declare a topic safe on evidence that, by this module's own stated
+    logic, proves the opposite of what it is being read as.
+
+    Only a SATISFIED canary is unverifiable this way — a VIOLATED canary
+    (`satisfied=False`) under degradation is still real evidence: the poison
+    came back despite a narrower search, which is if anything stronger proof of
+    a live regression, and that branch already lands in `outstanding`
+    regardless of `degraded`. A `retrieves` journey is never affected, at any
+    value of `satisfied` or `degraded` — the lower-bound direction for it was
+    always sound and is untouched by this predicate.
+    """
+    return expectation == "must_not_retrieve" and satisfied and degraded
+
+
 def locate_phrase(chunks: list[dict], phrase: str, instrument_id: str) -> dict:
     """Where the phrase is, and — the point of this function — WHOSE it is.
 
@@ -840,6 +870,21 @@ async def run(argv=None) -> int:
                     "journey %d: %r is not in the retrieved context for %r"
                     % (i, phrase[:48], question[:48])
                 )
+        elif canary_unverifiable_under_degradation(expectation, satisfied, degraded):
+            # R2 (refuter finding, 2026-08-26): a canary that measured 'safe' while
+            # this run took the DEGRADED path (see warn_if_degraded's docstring) is
+            # not proof of safety — a narrower search can only make a poisoned
+            # instrument HARDER to find, so this is an upper bound, not a lower
+            # one. Landing this in `outstanding` (not silently accepted) is what
+            # stops the AT TARGET banner below from affirming a safety this run
+            # did not actually measure.
+            outstanding.append(
+                "journey %d: CANARY UNVERIFIABLE — %r stayed red, but retrieval ran "
+                "the DEGRADED path (see the banner above): a narrower search can only "
+                "make a poisoned instrument HARDER to find, so this is an upper bound "
+                "on safety, not proof of it. Re-verify on the production retrieval "
+                "path before trusting this canary." % (i, phrase[:48])
+            )
 
     exit_code = 0
     if drift:
@@ -847,6 +892,18 @@ async def run(argv=None) -> int:
     elif outstanding:
         exit_code = 2
 
+    # R3 (refuter finding, 2026-08-26): `drift` and `outstanding` are two
+    # independent facts about this run, and collapsing them into one exit code
+    # was already this campaign's own diagnosed mistake once — see
+    # test_kb_probe_history_contract.py's rule (g), "build_record keeps the two
+    # verdicts DISTINCT, never AND'd". Applying that same lesson here: the exit
+    # code (and therefore VERDICT_BY_EXIT, which kb_inventory_probe.py's --json
+    # mirrors string-for-string, and which probe_history.py's closed vocabulary
+    # is built from) keeps DRIFT's historical priority over OUTSTANDING for
+    # backward compatibility — no consumer's vocabulary changes. What changes is
+    # that a live regression no longer goes INVISIBLE just because drift also
+    # fired this run: both raw lists are reported, in the JSON and in the human
+    # text, regardless of which one decided the exit code.
     if args.json:
         print(json.dumps({
             "journeys_file": str(args.journeys),
@@ -854,6 +911,8 @@ async def run(argv=None) -> int:
             "verdict": VERDICT_BY_EXIT[exit_code],
             "exit_code": exit_code,
             "degraded_path": degraded,
+            "drift": drift,
+            "outstanding": outstanding,
             "journeys": reported,
         }))
         return exit_code
@@ -866,7 +925,6 @@ async def run(argv=None) -> int:
         print()
         print("The journey file is STALE. Update probe_state / probe_run_at by hand —")
         print("this tool deliberately will not write its own expected value back.")
-        return 1
 
     if outstanding:
         print("OUTSTANDING — %d of %d journeys are not satisfied:"
@@ -876,9 +934,14 @@ async def run(argv=None) -> int:
         print()
         print("For a plain 'retrieves' journey, red is the state it is SUPPOSED to be")
         print("in on the day it is written (§3) — work still to do, not a bug in this")
-        print("run. A line above naming a CANARY VIOLATED, or a WRONG instrument, is")
-        print("not routine coverage — it is a live regression the campaign exists to")
+        print("run. A line above naming a CANARY VIOLATED, a WRONG instrument, or a")
+        print("CANARY UNVERIFIABLE (degraded path), is not routine coverage — it is a")
+        print("live regression, or an untrustworthy proof, the campaign exists to")
         print("catch. Read which kind each line is before treating it as expected.")
+
+    if drift:
+        return 1
+    if outstanding:
         return 2
 
     print("AT TARGET — every journey is satisfied: 'retrieves' journeys found their")

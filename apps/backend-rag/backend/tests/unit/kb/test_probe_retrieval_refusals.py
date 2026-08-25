@@ -562,3 +562,250 @@ def test_innocence_the_three_real_measured_states_are_unchanged_by_the_fail_clos
     the six individual tests above it, so a future edit that silently narrows
     ANY one of the six is caught by name, not just by absence of an exception."""
     assert PROBE.journey_satisfaction(state, expectation) is expected
+
+
+# ── Section G: a degraded path cannot certify a canary's safety (R2/R3) ───────
+#
+# `warn_if_degraded`'s own docstring says a degraded-path verdict is "a LOWER
+# BOUND on what production retrieves — never an upper one," because disabled
+# query expansion can only narrow what comes back. That is the right direction
+# for `expectation: retrieves`. For `must_not_retrieve` it is inverted: a
+# narrower search can only make a poisoned instrument HARDER to find, so a
+# canary that stayed red under degradation is an UPPER bound on safety, not
+# proof of it. Before this fix a satisfied canary was accepted unconditionally
+# and could feed straight into "AT TARGET ... canaries stayed red" — a positive
+# safety claim the measurement did not support. R3, same finding batch: a
+# `drift` verdict used to make an independent `outstanding` fact (a live
+# regression, or now an unverifiable canary) disappear from both the JSON and
+# the human report, because the two were collapsed into one ordinal exit code.
+
+
+def test_innocence_a_retrieves_journey_is_never_flagged_regardless_of_degradation():
+    assert PROBE.canary_unverifiable_under_degradation("retrieves", True, True) is False
+    assert PROBE.canary_unverifiable_under_degradation("retrieves", False, True) is False
+
+
+def test_innocence_a_canary_is_trusted_when_the_path_is_not_degraded():
+    assert PROBE.canary_unverifiable_under_degradation("must_not_retrieve", True, False) is False
+
+
+def test_innocence_a_violated_canary_is_not_unverifiable_it_is_just_violated():
+    """satisfied=False under degradation is still real evidence — the poison came
+    back despite a narrower search. That branch is handled by the `if not
+    satisfied` arm in run(), never by this predicate."""
+    assert PROBE.canary_unverifiable_under_degradation("must_not_retrieve", False, True) is False
+
+
+def test_guilt_a_satisfied_canary_under_a_degraded_path_is_unverifiable():
+    """The exact shape this fix exists for: the poison stayed red, but the run
+    that measured it was not running production's retrieval path."""
+    assert PROBE.canary_unverifiable_under_degradation("must_not_retrieve", True, True) is True
+
+
+CANARY_DEGRADATION_TABLE = [
+    ("retrieves", True, True, False),
+    ("retrieves", True, False, False),
+    ("retrieves", False, True, False),
+    ("retrieves", False, False, False),
+    ("must_not_retrieve", True, True, True),
+    ("must_not_retrieve", True, False, False),
+    ("must_not_retrieve", False, True, False),
+    ("must_not_retrieve", False, False, False),
+    (None, True, True, False),
+    ("", True, True, False),
+]
+
+
+@pytest.mark.parametrize(
+    "expectation,satisfied,degraded,expected", CANARY_DEGRADATION_TABLE,
+    ids=[f"{e}+sat={s}+deg={d}" for e, s, d, _ in CANARY_DEGRADATION_TABLE],
+)
+def test_the_full_truth_table_has_exactly_one_true_cell(expectation, satisfied, degraded, expected):
+    """Only expectation=must_not_retrieve, satisfied=True, degraded=True is
+    unverifiable — every other combination, including an unrecognised or empty
+    expectation, must fall through False rather than raise or default open."""
+    assert PROBE.canary_unverifiable_under_degradation(expectation, satisfied, degraded) is expected
+
+
+def test_the_predicate_is_wired_into_run_between_grading_and_the_final_verdict():
+    """A predicate nobody calls is decoration (same discipline as Section A/C's
+    wiring tests). It must run inside the per-journey loop, after
+    journey_satisfaction has decided `satisfied`, and its result must land in
+    `outstanding` before the exit code is derived."""
+    import inspect
+
+    src = inspect.getsource(PROBE.run)
+    assert "canary_unverifiable_under_degradation(" in src, (
+        "the degraded-canary predicate is defined but never called from run()"
+    )
+    before_exit_code = src.split("exit_code = 0")[0]
+    assert "canary_unverifiable_under_degradation(" in before_exit_code, (
+        "the predicate must be consulted before exit_code is derived from "
+        "drift/outstanding, or its result cannot affect the verdict"
+    )
+    after_satisfaction = src.split("satisfied = journey_satisfaction(")[1]
+    assert "canary_unverifiable_under_degradation(" in after_satisfaction, (
+        "the predicate needs `satisfied`, computed by journey_satisfaction — it "
+        "must run after that call, not before"
+    )
+
+
+# ── full run() integration, mocked retrieval (no Qdrant) ──────────────────────
+# Section D already establishes the pattern: monkeypatch SearchService so run()
+# never touches production, and drive the real async function end to end. That
+# proves the wiring survives refactors a source-inspection test cannot catch —
+# e.g. the predicate's result computed but never appended to `outstanding`.
+
+
+class _FakeCollectionManager:
+    def get_collection(self, name):  # noqa: D401 - trivial fake
+        return object()
+
+
+class _FakeSearchService:
+    """Answers CONTROL_QUERY with a chunk containing CONTROL_PHRASE, and every
+    other query from a caller-supplied map — the same shape SearchService.search()
+    returns (a dict with a "results" list of chunk dicts)."""
+
+    def __init__(self, hits_by_query):
+        self._hits_by_query = hits_by_query
+        self.collection_manager = _FakeCollectionManager()
+
+    async def search(self, *, query, user_level, limit, collection_override):
+        if query == PROBE.CONTROL_QUERY:
+            return {"results": [{"text": "ketentuan " + PROBE.CONTROL_PHRASE}]}
+        return {"results": self._hits_by_query.get(query, [])}
+
+
+def _install_fake_search_service(monkeypatch, hits_by_query):
+    monkeypatch.setattr(
+        "backend.services.search.search_service.SearchService",
+        lambda: _FakeSearchService(hits_by_query),
+    )
+
+
+def _canary_journeys_file(tmp_path, *, recorded="red"):
+    """One must_not_retrieve canary whose poison phrase is never retrieved."""
+    entry = {
+        "question": "apakah dokumen ini membahas properti",
+        "verbatim_phrase": "klausa properti yang tidak boleh muncul di sini",
+        "instrument_id": "POISON_1_2026",
+        "expectation": "must_not_retrieve",
+        "probe_state": recorded,
+        "probe_run_at": "2026-08-25",
+        "reason": "synthetic poison for the degraded-canary test",
+    }
+    path = tmp_path / "canary.yaml"
+    path.write_text(
+        _json.dumps({"schema_version": 1, "lane": "A", "journeys": [entry]}),
+        encoding="utf-8",
+    )
+    return path, entry["question"]
+
+
+def test_guilt_a_satisfied_canary_under_a_degraded_run_does_not_reach_at_target(
+    tmp_path, monkeypatch, capsys
+):
+    """R2, end to end: the poison never comes back, but the run is degraded — the
+    old code exited 0 with an 'AT TARGET ... canaries stayed red' banner. This
+    must now exit non-zero and name the canary UNVERIFIABLE, in both output
+    modes."""
+    path, question = _canary_journeys_file(tmp_path)
+    _install_fake_search_service(monkeypatch, {question: []})
+    monkeypatch.setattr(PROBE, "detect_degraded", lambda root: "google-genai installed 1.75.0, repo pins 2.18.1")
+    monkeypatch.setattr(PROBE, "warn_if_degraded", lambda root: True)
+
+    json_exit = asyncio.run(PROBE.run([str(path), "--json"]))
+    payload = _json.loads(capsys.readouterr().out.strip())
+    assert json_exit == 2, payload
+    assert payload["verdict"] == "outstanding"
+    assert payload["degraded_path"] is True
+    assert any("CANARY UNVERIFIABLE" in item for item in payload["outstanding"])
+
+    human_exit = asyncio.run(PROBE.run([str(path)]))
+    out = capsys.readouterr().out
+    assert human_exit == 2
+    assert "AT TARGET" not in out, "a degraded canary must not reach the safety banner"
+    assert "CANARY UNVERIFIABLE" in out
+
+
+def test_innocence_a_satisfied_canary_on_the_production_path_still_reaches_at_target(
+    tmp_path, monkeypatch, capsys
+):
+    """The cure must not punish the ordinary case — a canary satisfied while the
+    path is NOT degraded is exactly what 'AT TARGET' has always meant."""
+    path, question = _canary_journeys_file(tmp_path)
+    _install_fake_search_service(monkeypatch, {question: []})
+    monkeypatch.setattr(PROBE, "detect_degraded", lambda root: None)
+    monkeypatch.setattr(PROBE, "warn_if_degraded", lambda root: False)
+
+    json_exit = asyncio.run(PROBE.run([str(path), "--json"]))
+    payload = _json.loads(capsys.readouterr().out.strip())
+    assert json_exit == 0, payload
+    assert payload["verdict"] == "at_target"
+    assert payload["outstanding"] == []
+
+    human_exit = asyncio.run(PROBE.run([str(path)]))
+    out = capsys.readouterr().out
+    assert human_exit == 0
+    assert "AT TARGET" in out
+
+
+def test_a_drift_verdict_no_longer_hides_a_live_regression(tmp_path, monkeypatch, capsys):
+    """R3, end to end: one journey drifts (recorded state disagrees with
+    production) alongside a canary that is unverifiable under degradation. The
+    exit code stays 1 (drift keeps its historical priority — no consumer's
+    vocabulary changes), but both facts must be visible in the JSON's
+    `outstanding` list and in the human text, not just the collapsed verdict."""
+    stale_question = "berapa lama izin tinggal berlaku untuk pemegang KITAS"
+    canary_path, canary_question = _canary_journeys_file(tmp_path)
+    entries = [
+        {
+            "question": stale_question,
+            "verbatim_phrase": "izin tinggal terbatas berlaku paling lama",
+            "instrument_id": "UU_X_2026",
+            "expectation": "retrieves",
+            # recorded 'red', production now measures 'green' -> DRIFT
+            "probe_state": "red",
+            "probe_run_at": "2026-08-01",
+        },
+        {
+            "question": canary_question,
+            "verbatim_phrase": "klausa properti yang tidak boleh muncul di sini",
+            "instrument_id": "POISON_1_2026",
+            "expectation": "must_not_retrieve",
+            "probe_state": "red",
+            "probe_run_at": "2026-08-25",
+            "reason": "synthetic poison for the drift+outstanding test",
+        },
+    ]
+    path = tmp_path / "drift_and_canary.yaml"
+    path.write_text(
+        _json.dumps({"schema_version": 1, "lane": "A", "journeys": entries}),
+        encoding="utf-8",
+    )
+    hits = {
+        stale_question: [{"text": "izin tinggal terbatas berlaku paling lama dua tahun",
+                           "document_id": "UU_X_2026"}],
+        canary_question: [],
+    }
+    _install_fake_search_service(monkeypatch, hits)
+    monkeypatch.setattr(PROBE, "detect_degraded", lambda root: "mismatch")
+    monkeypatch.setattr(PROBE, "warn_if_degraded", lambda root: True)
+
+    json_exit = asyncio.run(PROBE.run([str(path), "--json"]))
+    payload = _json.loads(capsys.readouterr().out.strip())
+    assert json_exit == 1
+    assert payload["verdict"] == "drift"
+    assert payload["drift"], "the drift list itself must not be dropped"
+    assert any("CANARY UNVERIFIABLE" in item for item in payload["outstanding"]), (
+        "the live outstanding fact must survive next to a 'drift' verdict, not "
+        "be masked by it"
+    )
+
+    human_exit = asyncio.run(PROBE.run([str(path)]))
+    out = capsys.readouterr().out
+    assert human_exit == 1
+    assert "DRIFT" in out
+    assert "OUTSTANDING" in out, "outstanding must print even when drift decides the exit code"
+    assert "CANARY UNVERIFIABLE" in out
