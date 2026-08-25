@@ -238,11 +238,12 @@ def build_capsule(
     if category not in ALLOWED_CATEGORIES or source_class not in ALLOWED_SOURCE_CLASSES:
         raise RelayError("classifier produced a value outside the capsule vocabulary")
 
-    # The IDs contain only coarse allow-listed labels, timestamp and file offset.
-    # They do NOT hash raw text, a dedup key, a client name, phone or email.
-    event_material = (
-        f"{node}|{source_class}|{category}|{stamp:.6f}|{spool_name}|{byte_offset}"
-    )
+    # The event ID deliberately excludes spool name and byte offset. The
+    # Telegram spool may atomically rewrite/re-append a pending record; the
+    # source timestamp plus the finite classification must remain stable across
+    # that storage move so the phone can reject the replay idempotently.
+    # IDs never hash raw text, a dedup key, client name, phone or email.
+    event_material = f"{node}|{source_class}|{category}|{stamp:.6f}"
     condition_material = f"{node}|{source_class}|{category}"
     incident_id = hashlib.sha256(event_material.encode("utf-8")).hexdigest()[:32]
     condition_id = hashlib.sha256(condition_material.encode("utf-8")).hexdigest()[:16]
@@ -295,21 +296,37 @@ def _read_state(path: Path) -> dict[str, Any]:
 
 def _write_state(path: Path, state: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     payload = json.dumps(state, sort_keys=True, separators=(",", ":")) + "\n"
+    fd: int | None = None
+    tmp: Path | None = None
     try:
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        fd, raw_tmp = tempfile.mkstemp(
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        )
+        tmp = Path(raw_tmp)
+        os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = None
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp, path)
+        tmp = None
         path.chmod(0o600)
+    except OSError as exc:
+        raise RelayError(f"cursor state write failed: {type(exc).__name__}") from exc
     finally:
-        try:
-            tmp.unlink()
-        except FileNotFoundError:
-            pass
+        if fd is not None:
+            os.close(fd)
+        if tmp is not None:
+            try:
+                tmp.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError:
+                logger.warning("cursor temporary cleanup failed reason=OSError")
 
 
 def _validate_ssh_configuration(
@@ -420,6 +437,8 @@ def _send_via_ssh(
         b"bad configuration option",
         b"no such identity",
         b"identity file",
+        b"permission denied (publickey",
+        b"too many authentication failures",
     )
     if result.returncode == 255 and any(
         marker in stderr_lower for marker in fatal_ssh_markers

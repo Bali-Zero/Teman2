@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import stat
 import subprocess
 import sys
@@ -64,6 +65,29 @@ def test_capsule_contains_no_raw_or_pseudonymized_pii() -> None:
     assert capsule["source_class"] == "backup"
     assert capsule["route"]["supervisor"] == "opus5_for_high_risk"
     assert capsule["pii_policy"] == "no_raw_logs_no_free_text"
+
+
+def test_incident_id_survives_pending_reappend_or_spool_move() -> None:
+    record = _record()
+
+    pending = radar.build_capsule(
+        record,
+        spool_name="pending.jsonl",
+        byte_offset=12,
+    )
+    restored = radar.build_capsule(
+        record,
+        spool_name="pending.jsonl",
+        byte_offset=98_765,
+    )
+    archived = radar.build_capsule(
+        record,
+        spool_name="archive-p0.jsonl",
+        byte_offset=42,
+    )
+
+    assert pending["incident_id"] == restored["incident_id"]
+    assert pending["incident_id"] == archived["incident_id"]
 
 
 @pytest.mark.parametrize(
@@ -274,6 +298,27 @@ def test_cursor_state_permissions_are_private(tmp_path: Path) -> None:
     assert stat.S_IMODE((state / "cursor.json").stat().st_mode) == 0o600
 
 
+def test_stale_pid_named_cursor_temporary_does_not_block_state_write(
+    tmp_path: Path,
+) -> None:
+    spool = tmp_path / "spool"
+    state = tmp_path / "state"
+    spool.mkdir()
+    state.mkdir()
+    stale = state / f".cursor.json.{os.getpid()}.tmp"
+    stale.write_text("stale", encoding="utf-8")
+    _append(spool / "archive-p0.jsonl", _record())
+
+    result = radar.relay_once(
+        spool_dir=spool,
+        state_dir=state,
+        sender=lambda _item: None,
+    )
+
+    assert result.bootstrapped == 1
+    assert (state / "cursor.json").is_file()
+
+
 def test_ssh_transport_uses_only_dedicated_pins_and_option_terminator(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -295,7 +340,7 @@ def test_ssh_transport_uses_only_dedicated_pins_and_option_terminator(
     monkeypatch.setattr(radar.subprocess, "run", fake_run)
     radar._send_via_ssh(
         capsule,
-        target="radar@100.64.134.94",
+        target="radar@iqoo.tailnet.invalid",
         port=8022,
         identity=identity,
         known_hosts=known_hosts,
@@ -305,7 +350,7 @@ def test_ssh_transport_uses_only_dedicated_pins_and_option_terminator(
     assert captured[:3] == ["ssh", "-F", "/dev/null"]
     assert "GlobalKnownHostsFile=/dev/null" in captured
     assert "StrictHostKeyChecking=yes" in captured
-    assert captured[-2:] == ["--", "radar@100.64.134.94"]
+    assert captured[-2:] == ["--", "radar@iqoo.tailnet.invalid"]
 
     with pytest.raises(radar.RelayError, match="option prefix"):
         radar._send_via_ssh(
@@ -340,7 +385,7 @@ def test_ssh_output_is_bounded_and_fail_closed(
     with pytest.raises(radar.RelayError, match="bounded capture"):
         radar._send_via_ssh(
             capsule,
-            target="radar@100.64.134.94",
+            target="radar@iqoo.tailnet.invalid",
             port=8022,
             identity=identity,
             known_hosts=known_hosts,
@@ -368,7 +413,7 @@ def test_ssh_result_distinguishes_temporary_and_permanent_remote_failure(
     with pytest.raises(radar.RetryableDeliveryError, match="temporarily"):
         radar._send_via_ssh(
             capsule,
-            target="radar@100.64.134.94",
+            target="radar@iqoo.tailnet.invalid",
             port=8022,
             identity=identity,
             known_hosts=known_hosts,
@@ -386,7 +431,49 @@ def test_ssh_result_distinguishes_temporary_and_permanent_remote_failure(
     with pytest.raises(radar.RelayError, match="ssh_rc=69") as error:
         radar._send_via_ssh(
             capsule,
-            target="radar@100.64.134.94",
+            target="radar@iqoo.tailnet.invalid",
+            port=8022,
+            identity=identity,
+            known_hosts=known_hosts,
+            timeout_seconds=5,
+        )
+    assert not isinstance(error.value, radar.RetryableDeliveryError)
+
+
+@pytest.mark.parametrize(
+    "stderr_message",
+    [
+        b"Host key verification failed.\n",
+        b"WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n",
+        b"Permission denied (publickey).\n",
+        b"Too many authentication failures\n",
+    ],
+)
+def test_fatal_ssh_markers_are_not_misclassified_as_phone_sleep(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stderr_message: bytes,
+) -> None:
+    identity = tmp_path / "identity"
+    known_hosts = tmp_path / "known_hosts"
+    identity.touch()
+    known_hosts.touch()
+    capsule = radar.build_capsule(
+        _record(), spool_name="archive-p0.jsonl", byte_offset=0
+    )
+
+    def fatal_auth(
+        command: list[str], **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        kwargs["stderr"].write(stderr_message)
+        kwargs["stderr"].flush()
+        return subprocess.CompletedProcess(command, 255)
+
+    monkeypatch.setattr(radar.subprocess, "run", fatal_auth)
+    with pytest.raises(radar.RelayError, match="security/configuration") as error:
+        radar._send_via_ssh(
+            capsule,
+            target="radar@iqoo.tailnet.invalid",
             port=8022,
             identity=identity,
             known_hosts=known_hosts,
@@ -406,7 +493,7 @@ def test_main_distinguishes_retryable_delivery_from_local_failure(
         "--state-dir",
         str(tmp_path / "state"),
         "--target",
-        "radar@100.64.134.94",
+        "radar@iqoo.tailnet.invalid",
         "--identity",
         str(identity),
         "--known-hosts",
@@ -446,3 +533,6 @@ def test_wrapper_marks_mobile_delivery_deferral_as_healthy(wrapper_name: str) ->
     assert "75)\n        # A mobile pager" in wrapper
     assert 'heartbeat "ok" "delivery deferred rc=75"' in wrapper
     assert 'PYTHON="$REPO/apps/backend-rag/.venv/bin/python"' in wrapper
+    assert ".config/nuzantara/iqoo-radar-target" in wrapper
+    assert "100.64." not in wrapper
+    assert "u0_a" not in wrapper

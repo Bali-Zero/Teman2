@@ -52,12 +52,30 @@ log "run start"
 REPO="$HOME/nuzantara"
 PYTHON="$REPO/apps/backend-rag/.venv/bin/python"
 RELAY="$REPO/scripts/iqoo_radar_relay.py"
-TARGET="${MINI_IQOO_RADAR_RELAY_TARGET:-u0_a345@100.64.134.94}"
+TARGET="${MINI_IQOO_RADAR_RELAY_TARGET:-}"
+TARGET_FILE="${MINI_IQOO_RADAR_RELAY_TARGET_FILE:-$HOME/.config/nuzantara/iqoo-radar-target}"
 PORT="${MINI_IQOO_RADAR_RELAY_PORT:-8022}"
 IDENTITY="${MINI_IQOO_RADAR_RELAY_IDENTITY:-$HOME/.ssh/nuzantara_iqoo_radar}"
 KNOWN_HOSTS="${MINI_IQOO_RADAR_RELAY_KNOWN_HOSTS:-$HOME/.ssh/known_hosts_iqoo_radar}"
 
-if [ ! -x "$PYTHON" ] || [ ! -f "$RELAY" ]; then
+TARGET_FILE_INVALID=false
+if [ -z "$TARGET" ] && [ -f "$TARGET_FILE" ]; then
+    if [ "$(stat -f '%Lp' "$TARGET_FILE" 2>/dev/null)" = "600" ]; then
+        TARGET=$(head -n 1 "$TARGET_FILE")
+    else
+        TARGET_FILE_INVALID=true
+    fi
+fi
+
+if [ "$TARGET_FILE_INVALID" = "true" ]; then
+    log "FATAL: relay target file permissions must be 0600"
+    RC=78
+elif [ -z "$TARGET" ]; then
+    # The private Tailnet endpoint belongs in the local LaunchAgent environment,
+    # not in public repository defaults.
+    log "FATAL: dedicated relay target missing"
+    RC=78
+elif [ ! -x "$PYTHON" ] || [ ! -f "$RELAY" ]; then
     log "FATAL: relay runtime missing"
     RC=66
 elif [ ! -f "$IDENTITY" ] || [ ! -f "$KNOWN_HOSTS" ]; then

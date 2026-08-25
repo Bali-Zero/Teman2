@@ -11,6 +11,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RECEIVER = REPO_ROOT / "infra" / "radar" / "iqoo" / "nuzantara-radar-receive"
+RADAR_CLI = REPO_ROOT / "infra" / "radar" / "iqoo" / "radar"
 
 
 def _process_start_token(pid: int) -> str:
@@ -26,6 +27,10 @@ def _process_start_token(pid: int) -> str:
         check=True,
     )
     return re.sub(r"[^A-Za-z0-9]", "", result.stdout)
+
+
+def _permissive_umask() -> None:
+    os.umask(0)
 
 
 def _capsule(**overrides: Any) -> dict[str, Any]:
@@ -175,3 +180,22 @@ def test_recycled_pid_lock_is_recovered(tmp_path: Path) -> None:
     assert result.stdout.strip() == f"RADAR_OK {'a' * 32}"
     assert not lock.exists()
     assert not lock.is_symlink()
+
+
+def test_radar_cli_creates_private_state_under_permissive_parent_umask(
+    tmp_path: Path,
+) -> None:
+    result = subprocess.run(
+        ["bash", str(RADAR_CLI), "status"],
+        text=True,
+        capture_output=True,
+        env={**os.environ, "HOME": str(tmp_path), "PATH": os.environ["PATH"]},
+        preexec_fn=_permissive_umask,
+        timeout=10,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    state = tmp_path / ".local/state/nuzantara-radar"
+    assert state.stat().st_mode & 0o777 == 0o700
+    assert (state / "incidents").stat().st_mode & 0o777 == 0o700

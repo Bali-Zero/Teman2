@@ -2,6 +2,7 @@
 # Small operator console for the PII-safe iQOO RADAR queue.
 
 set -eu
+umask 077
 export LC_ALL=C
 
 STATE_DIR="$HOME/.local/state/nuzantara-radar"

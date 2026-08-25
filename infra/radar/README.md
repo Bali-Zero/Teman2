@@ -13,7 +13,7 @@ vocabulary:
 - node: `pro`, `mini`, `other`;
 - category/source class: allow-listed enums;
 - timestamp, repeat count, transport state;
-- deterministic IDs derived from enum labels, timestamp and byte offset;
+- deterministic IDs derived only from enum labels and the source timestamp;
 - the response route and approval policy.
 
 It never serializes or hashes `text`, `key`, a raw producer name, a phone,
@@ -76,6 +76,14 @@ cannot inject a proxy, alternate identity or another host-key policy. A source
 node can therefore reach only the explicitly pinned iQOO receiver through this
 path.
 
+The private Tailnet `user@host` target is also local configuration, not a
+repository default. During independent arming, write it as the only line of
+`~/.config/nuzantara/iqoo-radar-target` with mode `0600` on each source node.
+The corresponding `PRO_IQOO_RADAR_RELAY_TARGET` or
+`MINI_IQOO_RADAR_RELAY_TARGET` environment variable can override that file for
+a controlled diagnostic. A missing target is a visible configuration error;
+the wrapper never guesses an account or endpoint.
+
 ## Relay behavior
 
 `scripts/iqoo_radar_relay.py` consumes only:
@@ -91,8 +99,10 @@ one interval, never treated as durable evidence in place of the archive.
 
 The first run places each cursor at EOF, preventing a historic alert flood.
 Afterward, a cursor advances only after a valid receiver receipt. Delivery
-retries use the same incident ID, and the phone treats duplicates idempotently.
-An unfinished final JSONL line is left for the next pass instead of being lost.
+retries use the same incident ID, and the ID remains stable if Telegram
+re-appends the same source event at a different pending-file offset or moves it
+to the archive. The phone treats those duplicates idempotently. An unfinished
+final JSONL line is left for the next pass instead of being lost.
 
 The relay distinguishes two failure classes:
 
@@ -100,8 +110,8 @@ The relay distinguishes two failure classes:
   the cursor stays in place and the source heartbeat records healthy deferred
   delivery, so the healer does not restart a healthy relay in a loop;
 - exit `70`: receiver rejection or a local software/state/security/configuration
-  fault; the source heartbeat is an error and remains eligible for
-  investigation.
+  fault, including a rejected dedicated public key; the source heartbeat is an
+  error and remains eligible for investigation.
 
 The receiver accepts exactly one JSON document per SSH stream, reads across
 fragmented SSH packets up to the 8 KiB ceiling and recovers a lock left behind
