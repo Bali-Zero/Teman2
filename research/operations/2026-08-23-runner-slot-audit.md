@@ -2,6 +2,7 @@
 date: 2026-08-23
 domain: operations
 client_case: none
+adversarial_review: agy
 sources:
   - gh api "repos/Bali-Zero/Teman2/actions/runs?created=2026-08-23&per_page=100" --paginate
   - gh api "repos/Bali-Zero/Teman2/actions/runs?created=2026-08-23T<H>:00:00..<H+1>:00:00&per_page=100" --paginate (hourly buckets, hours 00-11 UTC)
@@ -249,7 +250,7 @@ ineffective; it isn't enough data either way.
 
 | Candidate | Runs/day removed | Job-min/day removed | Touches a REQUIRED context? |
 |---|---|---|---|
-| **None of the sampled workflows are strong runner-slot trim candidates at current volume.** The two workflows that actually cost slot-time (Tests & Coverage ~7,895 min/day, Security Scanning ~6,235 min/day) are both **majority required** (Backend/Frontend/E2E/MCP tests; CodeQL×2/Bandit/Detect-Secrets) — trimming them means trimming required gates, out of scope for a measure-only Gear-1 pass. | — | — | **DO-NOT-TOUCH** (both workflows carry required contexts; see §2) |
+| **No workflow should be REMOVED at current volume — but see the Adversarial review below: this is not the same as "nothing to optimize", and an earlier draft of this row conflated the two.** The two workflows that actually cost slot-time (Tests & Coverage ~7,895 min/day, Security Scanning ~6,235 min/day) are both **majority required** (Backend/Frontend/E2E/MCP tests; CodeQL×2/Bandit/Detect-Secrets), so removing them is out of scope. What was NOT examined, and is the real opportunity: caching, `paths-ignore`, and matrix scope INSIDE those required checks — optimizing a required check is not trimming it. | — | — | **DO-NOT-TOUCH** (both workflows carry required contexts; see §2) |
 | Reduce/mute `merge-gate-integrity-watch` on-push firing (currently fires on every `push`, 110 runs today, was 100% red for the whole 00:00–11:00 UTC window before recovering) | ~110 runs/day (if collapsed to e.g. once per hour) | ~71 min/day → trivial (~60 min/day saved at most) | **Not required** (absent from the 27-context list) — but this is a *signal-quality* fix, not a slot-savings one; the fleet's own C1 concern already targets the root cause (squash-SHA), not the trigger frequency. Listed here only because it's explicitly cheap and safe to touch. |
 | Tighten `npm audit (advisory)`'s non-PR/merge_group branch (currently unconditional on `schedule`/`workflow_dispatch`) | ~7 runs/day in the AM sample (≈3% of Tests & Coverage's 221 AM runs) × 28s ≈ **~3 min/day** | negligible | **Not required** (explicitly excluded from `infra/required.d/contexts.json` per the workflow's own comment, verified absent from the 27-list) — but the removed volume is too small to justify the churn of a PR. **Not worth doing** on the numbers measured here. |
 | CodeQL Analysis (python) bimodal long tail (33% of sampled runs at 8–14 min vs 20–60s for the rest) | Not a run-count trim — a per-run duration issue on a **required** context | Potentially several hundred min/day if the ~33%-slow pattern holds repo-wide (520 runs/day × ~33% × ~(700s − 40s) ≈ **~64 hours/day** if extrapolated naively — **not verified**, sample is n=15, and the slow/fast split by event/path was not fully characterized) | **DO-NOT-TOUCH the check itself** — it's required (both `CodeQL Analysis (python)` and `(javascript)` are in the 27-context list). Candidate is *investigating why some runs are slow* (paths-ignore, language-split, bigger runner — options already surfaced independently by the fleet's own S12/C5 tip), not removing the check. Flagging as the single largest **unquantified** opportunity in this audit — needs a dedicated follow-up with a much bigger CodeQL-specific sample before any number here should be trusted past "probably real, size unknown." |
@@ -285,6 +286,86 @@ matches §5.
 completeness, not in the headline findings — the two cost centres, their majority-required
 status, and the "no trim justified at current volume" verdict all rest on §1/§2/§3 figures
 that reproduced exactly.
+
+## Adversarial review
+
+Seat: **`agy` (Gemini 3.1 Pro)** — a different model family from both the author and
+the grading session, which are both Claude. This section exists because the R1 gate
+caught that: the first grading pass was a fresh-context Claude subagent, and
+**fresh context is not a different family**. It re-measured every number correctly
+(see Gate corrections) but could not be a generator≠grader seat by the gate's own
+definition. The gate was stricter than the session, and was right.
+
+Five attacks were requested. **All five land**, and two change what this document is
+allowed to conclude:
+
+1. **The ~20-workflows-per-trigger fan-out is circular — confirmed. The refuter's
+   stated MECHANISM for it is wrong, and the true one is sharper.** The circularity is
+   real: 11,261 ÷ ~560 assumed trigger events derives the trigger count from an assumed
+   fan-out and then uses it to justify that fan-out. But the refuter attributed this to
+   `types:` and `paths:` filters shrinking the set of workflows that fire, and a direct
+   read of `.github/workflows/` (100 active files) says otherwise on both counts:
+
+   - **`types:` does not shrink anything here.** Only 9 of the 70 PR-triggered
+     workflows set `types:` explicitly, and **all 9 include `synchronize`**; the other
+     61 take GitHub's default, which also includes it. **No workflow excludes
+     `synchronize`** — so a `gh pr update-branch`, which is exactly what produces that
+     event, fires all 70.
+   - **`paths:` does not protect the expensive ones.** 40 of 70 carry a path filter,
+     but the 30 that fire unconditionally include **`tests.yml` and `security.yml`** —
+     the two workflows this audit identifies as ~94% of the cost.
+
+   **The real mechanism is job-level, not workflow-level.** Both heavy workflows gate
+   inside themselves: a `changes` job (`tests.yml:103`, `security.yml:91`) runs
+   `scripts/ci/change_map.py`, and every heavy job downstream gates on
+   `needs.changes.outputs.run_* != 'false'` (`tests.yml:519,748,1442,1890,1944`;
+   `security.yml:310,375,440,617,654,732`). So the workflow **run always fires and
+   always counts** in an `actions/runs` tally, while most of its ~15 (tests) and ~7
+   (security) job slots **skip** on a typical single-area PR.
+
+   Consequence, and it cuts against this session's own envelope harder than the
+   refuter's version did: the *run* count is roughly sound, but the **heavy-JOB count
+   per PR is materially lower than a naive multiply** — so ">=13 concurrent heavy jobs
+   per updated PR" is an over-estimate, and the "5 PRs ≈ 65 jobs against a cap of 60"
+   alarm is weaker than it was written. What survives is finding 4's point, which does
+   not depend on the multiplier at all: without a baseline, no cap number is calibrated
+   in either direction.
+
+2. **"Majority required" ≠ "nothing to optimize" — and job-minutes may be the wrong
+   metric.** Required checks routinely carry uncached dependencies, missing
+   `paths-ignore`, and matrices that run on markdown-only diffs; optimizing a required
+   check is not trimming it. Worse, aggregate job-minutes prices billing/CPU, whereas
+   what actually blocks a human is **queue latency at peak**. A long job off-peak is
+   harmless; a short job at 14:00 UTC is not. The §3 table answers the question it
+   asked, which may not be the question worth asking. The trim table above was
+   corrected to say REMOVED rather than trimmed as a result.
+
+3. **The n=11 / n=15 extrapolations are statistically indefensible, and this document
+   proves it against itself.** CI durations are right-skewed and often bimodal — and
+   §6 *documents* exactly that for CodeQL (5 of 15 runs at 8-14 min against 20-60s for
+   the rest). Extrapolating a sample mean from n=11 across 532 runs assumes a
+   concentration this dataset is shown not to have. One cold-cache or timeout run
+   moves the daily total materially. Treat ~132h and ~104h as order-of-magnitude, not
+   as figures, and note that this does NOT disturb the ranking, which is what §3's
+   conclusion actually rests on.
+
+4. **A per-tick cap of "1-2" was picked, not derived.** By the envelope's own
+   arithmetic (~13 heavy jobs/PR) four PRs is ~52 against a cap of 60. Worse in the
+   other direction: with no measurement of **baseline** concurrent load, if the repo
+   already sits near the cap then updating even ONE PR breaches it. The envelope
+   constrains nothing without a baseline; any specific cap number is currently
+   uncalibrated in both directions.
+
+5. **The single fatal blind spot: queued-to-start latency.** A concurrency cap only
+   matters if jobs are actually queuing. If median queue wait is ~0s the cap is not
+   binding and throttling is pointless; if it spikes at 14:00 UTC then the answer is
+   *when* to run, not *how many* to update. **This is the measurement the next lane
+   should take first** — ahead of peak concurrency, which is expensive and, on this
+   argument, less decisive.
+
+What survives unchanged: every exactly-measured figure in §1 and §2 (run totals, event
+shares, the 27 required contexts, the rulesets-API trap), the §3 *ranking*, and the
+finding that cost does not follow run-count.
 
 ## Honest gaps (stated per the mandate's hard rule — not filled in)
 
