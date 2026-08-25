@@ -142,24 +142,54 @@ def test_received_practice_claim_is_still_true() -> None:
     """received_practice's reason (post-L4-practice-module correction):
     "L4's garuda_portal/practice module is real ... but this stage is
     still unreachable ... sandbox_checkout/signed_webhook_paid block first
-    on the SAME orchestrator composition gap". The mechanically checkable
-    part of THAT claim is the second half -- the practice module's mere
-    existence is no longer the point (it exists: `services/garuda_portal/
-    practice.py`, tested against a real Postgres in
-    `tests/services/garuda_portal/test_practice.py`). What must stay true
-    is that the stage is STILL unreachable via the SAME two upstream
-    composition gaps `test_sandbox_checkout_claim_is_still_true` /
+    on the SAME orchestrator composition gap".
+
+    CORRECTED (team-lead review, 2026-08-25): the first version of this
+    predicate checked `services/garuda_portal/practice.py`'s mere
+    existence by FIXED PATH -- one step better than the glob it replaced
+    (`sorted(p.name for p in garuda_portal_dir.glob("*practice*"))`,
+    #4912's own recorded dissent on that PR), but still a filename check,
+    not a behavioural one: a refactor that renamed `practice.py` to
+    `progress.py` while keeping the class/wiring intact would fail this
+    test for the WRONG reason (file missing) even though the capability
+    is fully alive, and a refactor that gutted the wiring but left the
+    file's name untouched would pass it for the WRONG reason too. Two
+    behavioural predicates replace it, mirroring the shape
+    `test_sandbox_checkout_claim_is_still_true` /
+    `test_signed_webhook_paid_claim_is_still_true` already use (a
+    regex over ACTUAL CODE BEHAVIOUR, immune to which file it lives in):
+
+    1. A production file still calls `PracticeRepository(...).
+       get_order_and_practice_view(...)` -- the wiring `garuda_orders_
+       router.py::get_order_and_practice` actually performs, independent
+       of which module defines the class or what it is named on disk.
+    2. No production file still returns the OLD hardcoded
+       `"practice": None` literal `get_order_and_practice` used to answer
+       unconditionally before this wiring existed -- a direct regression
+       guard: if that literal ever comes back, this assertion (not just
+       the router's own tests) catches it.
+
+    What must ALSO stay true (unchanged from the prior version): the
+    stage is STILL unreachable via the SAME two upstream composition gaps
+    `test_sandbox_checkout_claim_is_still_true` /
     `test_signed_webhook_paid_claim_is_still_true` already check -- if
-    either of those goes stale (a production file starts assigning
+    either goes stale (a production file starts assigning
     `app.state.garuda_order_repository` or `app.state.garuda_payment_
     provider`), THIS stage's reason is equally stale, because `run_probe`
     would then be able to reach a real paid order and hand it to this
     stage for the first time."""
-    practice_module = _BACKEND_ROOT / "services" / "garuda_portal" / "practice.py"
-    assert practice_module.is_file(), (
-        "services/garuda_portal/practice.py is gone -- received_practice's "
-        "reason claims it exists and PR-01 is real. Go verify and rewrite "
-        "the reason to whatever actually blocks this stage now."
+    wiring_call = re.compile(r"PracticeRepository\([^)]*\)\.get_order_and_practice_view\(")
+    assert _any_production_file_matches(wiring_call), (
+        "no production file calls PracticeRepository(...).get_order_and_practice_view(...) "
+        "-- received_practice's reason claims this wiring is real and answers "
+        "get_order_and_practice. Go verify and rewrite the reason to whatever "
+        "actually serves (or fails to serve) practice now."
+    )
+    hardcoded_null_practice = re.compile(r'"practice"\s*:\s*None')
+    assert not _any_production_file_matches(hardcoded_null_practice), (
+        'a production file still returns the literal "practice": None -- '
+        "received_practice's reason claims that hardcode was replaced by real "
+        "PR-01 serving. Regression: go verify get_order_and_practice again."
     )
     order_repo_assignment = re.compile(r"garuda_order_repository\s*=(?!=)")
     payment_provider_assignment = re.compile(r"garuda_payment_provider\s*=(?!=)")
