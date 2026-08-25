@@ -167,11 +167,22 @@ _ELONGATION_RE = re.compile(r"(.)\1{2,}")
 # It CAN be lowered for a doubled vowel at the END of a word, and the exact
 # reason the rule is written this narrowly is German "muss": it is a decisive
 # marker in the row below and it ends in a doubled CONSONANT, so a blanket
-# trailing-double fold would silently delete it. Restricting to vowels also
-# cannot invent a marker — no entry in any list here ends in a doubled vowel,
-# so this fold can only recover a marker, never manufacture one. Checked
-# against English words that do ("free", "three", "coffee", "committee"): each
-# folds to a non-marker and changes no verdict.
+# trailing-double fold would silently delete it.
+#
+# The fold has two failure directions and they need different arguments —
+# an adversarial pass caught the first draft of this comment proving only one
+# of them and claiming both:
+#   DESTROY a marker — cannot happen: the fold is a no-op on every entry in
+#     every list here, asserted directly rather than inferred.
+#   MANUFACTURE a marker — a NON-marker word ending in a doubled vowel folds
+#     ONTO a marker. This does NOT follow from "no marker ends in a doubled
+#     vowel"; it depends on whether some marker ends in a SINGLE vowel that a
+#     foreign word doubles, and several do ("come", "tra", "hola", "eine").
+#     It is empty for today's corpus — checked against the English words that
+#     end that way ("see", "free", "three", "too", "coffee", "committee",
+#     "agree", "employee"): each folds to a non-marker. That is a property of
+#     the CORPUS, not of the rule, so it is guarded by a test that folds those
+#     words and looks for a marker, not by the invariant that does not imply it.
 _TRAILING_VOWEL_RUN_RE = re.compile(r"([aeiou])\1+\b")
 
 
@@ -238,7 +249,6 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
             "buonasera",
             "buonanotte",
             "arrivederci",
-            "prego",
             "scusa",
             "scusi",
             "scusate",
@@ -250,10 +260,10 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
             # the one entry in this row that knowingly breaks the shared-marker
             # rule stated above; do not read it as a licence to add more.
             "salve",
-            # Question words and function words a real Italian question brings
-            # along. "qual" is absent from the Spanish row ("cuál") and the
-            # French row ("quel"), and bare "è" exists in neither.
-            "qual",
+            # Function words a real Italian question brings along. Bare "è"
+            # (grave) belongs to Italian alone here: Spanish writes "es",
+            # French "est", and Portuguese "é" with an ACUTE accent, which is
+            # a different code point.
             "è",
             "tra",
             "sapere",
@@ -265,8 +275,23 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
             "puoi",
             "volevo",
         ],
-        # homographs: English "come", and English "dove" (the bird)
-        ["come", "dove"],
+        # homographs: English "come"; English "dove" (the bird); and "prego",
+        # which is not an English word but IS a supermarket pasta-sauce brand —
+        # and this bot advises on food-import KBLI, so "Prego sauce import
+        # licence" is a message it actually receives. Demoted after an
+        # adversarial pass found it, on the same reasoning the row's own rule
+        # states: a token that names a language only by coincidence must not
+        # decide one alone. It still contributes once real Italian is present.
+        # "qual" is a HOMOGRAPH, not a marker, and the first draft had it
+        # decisive with the justification "absent from the Spanish row
+        # (cuál) and the French row (quel)". That checked the wrong two
+        # languages: "qual" is THE standard question word in PORTUGUESE, and
+        # Brazilians are a real client demographic here. Decisive, it took
+        # "Qual é o custo do visto?" from ENGLISH (wrong, but readable) to
+        # ITALIAN (wrong AND unreadable) — a regression in a language this
+        # detector does not serve. As a homograph it costs nothing: an
+        # Italian "Qual è ..." is already carried by "è".
+        ["come", "dove", "prego", "qual"],
     ),
     (
         "FRENCH",
@@ -439,9 +464,16 @@ def detect_query_language(query: str) -> str:
         return "UNKNOWN"
 
     # Elongation is folded BEFORE any marker match — Indonesian included — so a
-    # WhatsApp opener is scored on its word, not on its spelling. The non-Latin
-    # script checks below deliberately keep reading the ORIGINAL `query`: they
-    # test code points, and folding cannot help them.
+    # WhatsApp opener is scored on its word, not on its spelling.
+    #
+    # The three SCRIPT-PRESENCE tests below (CJK, Arabic, Cyrillic) read the
+    # ORIGINAL `query` on purpose: they test code points, and folding cannot
+    # help them. The Ukrainian sub-check inside the Cyrillic branch does NOT —
+    # it is a word test, so it reads the folded `query_lower` like every other
+    # word test here. An earlier version of this comment claimed all of them
+    # read the original; that was false, and it mattered enough to correct
+    # even though it is behaviourally inert today (no Ukrainian word in that
+    # list carries a run of three or a trailing doubled vowel).
     query_lower = _collapse_elongation(query.lower())
 
     # Check Indonesian first — WHOLE WORDS (+ enclitics) only, never substrings.

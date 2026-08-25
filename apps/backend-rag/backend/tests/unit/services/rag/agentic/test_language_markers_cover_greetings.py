@@ -28,6 +28,7 @@ from backend.services.rag.agentic.query_helpers import (
     _LATIN_MARKERS,
     INDONESIAN_MARKERS,
     LANGUAGE_DISPLAY_NAMES,
+    _collapse_elongation,
     detect_query_language,
     wrap_query_with_language_instruction,
 )
@@ -170,16 +171,171 @@ def test_no_marker_contains_a_run_of_three_identical_characters() -> None:
     assert not offenders, f"markers the elongation fold would rewrite: {offenders}"
 
 
-def test_no_marker_ends_in_a_doubled_vowel() -> None:
-    """The trailing-vowel rule may only recover a marker, never manufacture one.
+def test_the_fold_is_a_no_op_on_every_marker() -> None:
+    """DESTROY direction: the fold must not rewrite any marker out of its list.
 
-    Restricting the 2-character fold to VOWELS is what keeps German "muss"
-    alive. This asserts the other half: that no marker in any row ENDS in a
-    doubled vowel, so the rule cannot fold a real marker into something else.
+    ``_collapse_elongation`` runs BEFORE every marker match, so a marker the
+    fold rewrites can never be matched again — its row would go quietly dead:
+    green tests, silent loss of recall. Asserting the fold directly (rather
+    than asserting the two regex shapes it happens to be built from) is what
+    keeps this true if the fold's rules are ever widened. German "muss" is the
+    entry that makes the trailing rule vowel-only; it is checked here by being
+    in the corpus, not by being named.
     """
-    trailing = re.compile(r"([aeiou])\1+$")
-    offenders = [(lang, m) for lang, m in _every_marker() if trailing.search(m)]
-    assert not offenders, f"markers the trailing-vowel fold would rewrite: {offenders}"
+    rewritten = [(lang, m, _collapse_elongation(m)) for lang, m in _every_marker()]
+    offenders = [(lang, m, f) for lang, m, f in rewritten if f != m]
+    assert not offenders, f"the fold rewrites these markers: {offenders}"
+
+
+# Words that end in a doubled vowel and are NOT markers. If any of them folded
+# ONTO a marker, the fold would manufacture a language out of ordinary English.
+FOREIGN_WORDS_ENDING_IN_A_DOUBLED_VOWEL: list[str] = [
+    "see",
+    "free",
+    "three",
+    "agree",
+    "coffee",
+    "committee",
+    "employee",
+    "guarantee",
+    "fee",
+    "tee",
+    "too",
+    "zoo",
+    "bee",
+]
+
+
+@pytest.mark.parametrize("word", FOREIGN_WORDS_ENDING_IN_A_DOUBLED_VOWEL)
+def test_the_fold_does_not_manufacture_a_marker(word: str) -> None:
+    """MANUFACTURE direction — and it needs its OWN test, which is the point.
+
+    The first draft of this file asserted "no marker ends in a doubled vowel"
+    and called that proof the fold cannot manufacture one. It is not: an
+    adversarial pass pointed out that manufacture runs the other way — a
+    NON-marker word ending in a doubled vowel folding ONTO a marker — which
+    depends on markers ending in a SINGLE vowel, and several do ("come",
+    "tra", "hola", "eine"). The invariant was true and irrelevant; a short
+    vowel-final marker like "se" added tomorrow would let "see" manufacture it
+    with that invariant still green.
+
+    So this checks the thing itself: fold the words that actually have the
+    shape, and assert none of them lands on a marker.
+    """
+    markers = {m for _lang, m in _every_marker()}
+    folded = _collapse_elongation(word)
+    assert folded not in markers, (
+        f"{word!r} folds to {folded!r}, which IS a marker — the fold would "
+        f"manufacture a language out of an ordinary English word"
+    )
+
+
+# ── The fold is INTERNAL: it may decide, it may never reach the model ──
+
+
+def test_the_folded_string_never_reaches_the_prompt() -> None:
+    """The worst thing this fold could do is not misdetect — it is CORRUPT.
+
+    ``_collapse_elongation`` rewrites digits as readily as letters: measured,
+    "rp 2.500.000.000" folds to "rp 2.500.0.0" and "kbli 55111" to "kbli 551".
+    Those are a paid-up capital figure and a business classification code — if
+    the folded text were ever the text handed to the model instead of merely
+    the text scored for language, this change would silently falsify the
+    client's own numbers. It is not, and this pins that.
+
+    Note on the probe: the obvious check — ``"kbli 551" not in output`` — is
+    VACUOUS, because "kbli 551" is a substring of the correct "kbli 55111".
+    It reports success on a corrupted prompt too. The assertion below compares
+    the full numeric tokens instead, which cannot pass by coincidence.
+    """
+    query = "Serve Rp 2.500.000.000 di capitale per KBLI 55111? Buongiorno"
+    wrapped = wrap_query_with_language_instruction(query)
+
+    assert query in wrapped, "the original query must be forwarded byte-identical"
+    numbers_in = re.findall(r"[\d.]{3,}", query)
+    numbers_out = re.findall(r"[\d.]{3,}", wrapped)
+    assert sorted(set(numbers_out)) == sorted(set(numbers_in)), (
+        f"a folded numeric token reached the prompt: {numbers_out} != {numbers_in}"
+    )
+    # And the detection still had to work on this input, or the test is proving
+    # the fold is harmless by proving it never ran.
+    assert detect_query_language(query) == "ITALIAN"
+
+
+# ── Collisions found by an adversarial pass, and the one that was ACCEPTED ──
+
+
+ADVERSARIAL_ENGLISH: list[str] = [
+    # "prego" was originally added as a DECISIVE Italian marker. It is not an
+    # English word — it is a supermarket pasta-sauce brand, and this bot
+    # advises on food-import KBLI, so these are messages it actually receives.
+    # Demoted to a homograph, which is what the row's own rule already
+    # required: a token that names a language by coincidence decides nothing
+    # alone.
+    "Prego sauce import licence",
+    "Is Prego pasta sauce importable under KBLI 46331?",
+]
+
+
+@pytest.mark.parametrize("query", ADVERSARIAL_ENGLISH)
+def test_a_brand_name_that_looks_italian_does_not_decide(query: str) -> None:
+    assert detect_query_language(query) == "ENGLISH"
+
+
+# Portuguese is NOT a language this detector serves — it has no row, so it can
+# only ever land on the ENGLISH default. That default is the LEAST wrong answer
+# available, and the first draft of this diff took it away: "qual" was decisive
+# for Italian, and "qual" is THE standard Portuguese question word. A Brazilian
+# — a real client demographic in Bali — went from being answered in English
+# (wrong, but readable) to being answered entirely in Italian (wrong AND
+# unreadable). Demoting "qual" to a homograph restores the default at no cost,
+# because Italian "Qual è ..." is already carried by "è" (grave accent; the
+# Portuguese "é" is acute, a different code point).
+PORTUGUESE_MUST_NOT_BECOME_ITALIAN: list[str] = [
+    "Qual é o custo do visto de investidor em Bali?",
+    "Qual é o prazo para o KITAS?",
+    "Qual documento preciso?",
+]
+
+
+@pytest.mark.parametrize("query", PORTUGUESE_MUST_NOT_BECOME_ITALIAN)
+def test_an_unserved_language_falls_to_english_not_to_italian(query: str) -> None:
+    assert detect_query_language(query) != "ITALIAN"
+
+
+def test_qual_still_counts_for_a_real_italian_question() -> None:
+    """The demotion must not make it inert."""
+    assert detect_query_language("Qual è la differenza tra KITAS e KITAP") == "ITALIAN"
+
+
+def test_prego_still_counts_once_real_italian_is_present() -> None:
+    """Demoting it must not make it inert — that would be a silent loss."""
+    assert detect_query_language("Prego, mi dica quanto costa il KITAS") == "ITALIAN"
+
+
+# Inputs this detector KNOWINGLY gets wrong. Asserting the wrong answer is
+# deliberate: it is the only way a trade-off stays visible. Whoever later
+# removes "salve" will see this test go red and be sent to this docstring
+# instead of discovering the reasoning by rediscovering the bug.
+DECLARED_ACCEPTED_MISSES: list[str] = [
+    # "salve" IS an ordinary English noun (an ointment), so by this module's
+    # own anti-homograph rule it should not be decisive. It is anyway, and the
+    # justification is the DOMAIN, not the word: this is an immigration,
+    # company-setup, tax and property bot. An Italian client opening with
+    # "Salve, avrei una domanda" is routine; a client asking about ointment is
+    # not a client. The cost is asymmetric — the first mislabels a whole
+    # conversation, the second mislabels a message nobody sends.
+    "Please apply the salve twice daily",
+    # "tra" collides only with the English interjection "tra la la", which is
+    # likewise not a message this bot receives, while "differenza tra KITAS e
+    # KITAP" is.
+    "Tra la la, just testing",
+]
+
+
+@pytest.mark.parametrize("query", DECLARED_ACCEPTED_MISSES)
+def test_the_accepted_over_matches_are_declared_not_hidden(query: str) -> None:
+    assert detect_query_language(query) == "ITALIAN"
 
 
 def test_the_marker_corpus_this_file_guards_is_not_empty() -> None:
