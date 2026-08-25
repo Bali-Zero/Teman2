@@ -110,7 +110,32 @@ class ExchangeOutcome:
 class MagicLinkStore(Protocol):
     """Persistence port L4 depends on and does not implement (see module
     docstring). A real adapter binds a magic-link table to the SAME
-    retention-policy machinery L1 builds for `garuda_voa_checks`."""
+    retention-policy machinery L1 builds for `garuda_voa_checks`.
+
+    SERVER-SIDE HASHING IS PART OF THIS CONTRACT, NOT AN IMPLEMENTATION
+    DETAIL LEFT TO TASTE (CodeQL `py/clear-text-storage-sensitive-data`,
+    2026-08-25, refuter-confirmed REAL_DEFECT on the router's cookie sink —
+    `UnconfiguredMagicLinkStore` fails closed today so the sink is currently
+    unreachable, but this port exists precisely so a future adapter makes it
+    reachable, and it must not do so with a plaintext bearer at rest):
+
+    - `issue`'s `result_session_secret` and `exchange`'s `token` are
+      high-entropy bearers the BROWSER holds and presents back — the adapter
+      must persist and match on a hash of each, never the raw value, and
+      hash the presented value before every lookup. Same posture for the
+      `account_session_secret` an adapter mints inside `ExchangeOutcome`:
+      the router puts it straight into a cookie the browser must hold in
+      the clear, but nothing server-side may hold a stored value equal to
+      it — persist a hash (or a keyed digest) and verify by hashing what
+      the client presents on each request.
+    - This is the EXACT convention already shipped for the sibling client-
+      portal login: `backend/services/portal/magic_link_service.py` mints a
+      32-byte urlsafe token, stores `hashlib.sha256(raw_token).hexdigest()`
+      (`_hash_token`, module docstring point 2: "store ONLY its sha256
+      hash"), and never writes the raw token to any table. A `MagicLinkStore`
+      adapter for this port must follow the same shape rather than inventing
+      a second convention.
+    """
 
     async def issue(
         self,

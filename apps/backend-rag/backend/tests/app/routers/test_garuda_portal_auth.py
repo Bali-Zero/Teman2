@@ -466,3 +466,59 @@ def test_exchange_persistence_unavailable_is_visible_503(fake_store):
     )
     assert resp.status_code == 503
     assert resp.json()["code"] == "PERSISTENCE_POLICY_UNAVAILABLE"
+
+
+# ============================================================
+# CodeQL py/clear-text-storage-sensitive-data (2026-08-25) — the account-
+# session cookie must never be issued without `Secure` outside a genuinely-
+# localhost bind. `settings.environment` in this test process is "test"
+# (`backend/tests/conftest.py`), i.e. NOT "production" — the shared
+# `cookie_auth.get_cookie_secure()` would return `False` here, and the
+# `TestClient` default host is "testserver", i.e. NOT loopback either. This
+# is exactly the staging/preview/container shape the refuter flagged as
+# reachable-over-a-real-network. The RED/GREEN pair below was run against
+# the pre-fix router (`_set_account_session_cookie` calling the shared
+# `get_cookie_secure()`) and the post-fix router
+# (`_account_session_cookie_secure`), pasted verbatim in the PR description.
+# ============================================================
+
+
+def test_account_session_cookie_is_secure_on_non_production_non_localhost_host(fake_store):
+    """A non-production environment reached over a non-loopback host (the
+    staging/preview/container shape) must still get `Secure` on the account-
+    session cookie. This is the exact CodeQL
+    `py/clear-text-storage-sensitive-data` regression at
+    `_set_account_session_cookie` — asserting `Secure` is present is what
+    would have caught it."""
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False)
+    client = _client_with_store(fake_store)
+
+    resp = client.post(
+        "/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+
+    assert resp.status_code == 204
+    set_cookie_headers = resp.headers.get_list("set-cookie")
+    account_cookie = next(h for h in set_cookie_headers if h.startswith("garuda_session="))
+    assert "Secure" in account_cookie, account_cookie
+
+
+def test_account_session_cookie_relaxes_only_on_genuine_localhost(fake_store):
+    """The one legitimate relaxation: a request that actually arrives on
+    loopback (real local dev) may skip `Secure`. This pins the policy is not
+    simply "always Secure" but specifically "Secure unless loopback"."""
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False)
+    client = _client_with_store(fake_store)
+
+    resp = client.post(
+        "http://127.0.0.1/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+
+    assert resp.status_code == 204
+    set_cookie_headers = resp.headers.get_list("set-cookie")
+    account_cookie = next(h for h in set_cookie_headers if h.startswith("garuda_session="))
+    assert "Secure" not in account_cookie, account_cookie

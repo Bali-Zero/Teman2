@@ -34,9 +34,9 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from backend.app.core.config import settings
 from backend.app.utils.cookie_auth import (
     get_cookie_domain,
-    get_cookie_secure,
     get_samesite_policy,
 )
 from backend.app.utils.logging_utils import get_logger
@@ -178,12 +178,42 @@ class MagicLinkExchange(BaseModel):
     token: str = Field(min_length=32, max_length=2048)
 
 
-def _set_account_session_cookie(response: Response, secret: str) -> None:
+#: Loopback hostnames a request can genuinely arrive on during local dev.
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _account_session_cookie_secure(request: Request) -> bool:
+    """Secure-by-default transport policy for `garuda_session` (L4 only).
+
+    Deliberately NOT `cookie_auth.get_cookie_secure()`. That shared helper
+    returns `False` for every `settings.environment != "production"` —
+    staging, preview, container networks, anything reachable over a real
+    network that merely isn't the prod env string — which sends this
+    session bearer in the clear (CodeQL `py/clear-text-storage-sensitive-data`,
+    2026-08-25, refuter-confirmed REAL_DEFECT at `_set_account_session_cookie`).
+    `HttpOnly` blocks JS access, not network interception, and `SameSite`
+    governs cross-site request behaviour, not confidentiality — neither
+    substitutes for `Secure` here.
+
+    This cookie only skips `Secure` when the request is genuinely bound to
+    loopback. Every other case — including non-production environments —
+    gets `Secure=True`. `cookie_auth.get_cookie_secure()` itself is left
+    untouched: its existing callers (`cookie_auth.py`'s own JWT/CSRF cookies,
+    `garuda_voa_public.py`) are out of scope for this fix and are pinned by
+    `test_cookie_auth.py`.
+    """
+    if settings.environment == "production":
+        return getattr(settings, "cookie_secure", True)
+    host = (request.url.hostname or "").lower()
+    return host not in _LOOPBACK_HOSTS
+
+
+def _set_account_session_cookie(response: Response, request: Request, secret: str) -> None:
     response.set_cookie(
         key=_ACCOUNT_SESSION_COOKIE,
         value=secret,
         httponly=True,
-        secure=get_cookie_secure(),
+        secure=_account_session_cookie_secure(request),
         samesite=get_samesite_policy(),
         path="/",
         domain=get_cookie_domain(),
@@ -254,6 +284,7 @@ async def request_magic_link(
     status_code=204,
 )
 async def exchange_magic_link(
+    request: Request,
     payload: MagicLinkExchange,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
     store: MagicLinkStore = Depends(get_garuda_magic_link_store),
@@ -315,5 +346,5 @@ async def exchange_magic_link(
     result.headers.update(_PRIVACY_HEADERS)
     result.headers["Idempotency-Replayed"] = "true" if outcome.idempotency_replayed else "false"
     if not outcome.idempotency_replayed and outcome.account_session_secret is not None:
-        _set_account_session_cookie(result, outcome.account_session_secret)
+        _set_account_session_cookie(result, request, outcome.account_session_secret)
     return result
