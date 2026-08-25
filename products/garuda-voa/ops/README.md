@@ -6,22 +6,36 @@ Owner: lane L7 (`products/garuda-voa/LANES.md`). Code lives in
 
 ## Why this looks like ports instead of a live dashboard
 
-At the time this lane was built, **L1 (retention/migrations), L3
+At the time this lane was first built, **L1 (retention/migrations), L3
 (orders/payments) and L4 (portal) had not merged** into `feature/garuda-voa`
 (LANES.md: L3 `blocked (owner decision 1)`; no `garuda_orders` /
 `garuda_portal` package existed; no order/practice journal table migration
 existed under `apps/backend-rag/backend/db/migrations_v2/` — the only
 GARUDA table present was the unrelated legacy `garuda_voa_checks`, and L2's
-own public router is explicitly "not wired into the running app"). There was
-no live journal to read a funnel dashboard from.
+own public router was explicitly "not wired into the running app"). There
+was no live journal to read a funnel dashboard from.
+
+**Corrected 2026-08-25 (staleness tripwire finding)**: that description is
+now stale for L1/L3. L1's retention-policy migration (281) merged, and L3
+merged as `#4893` — `garuda_orders/` (8 modules) and `payments/xendit.py`
+both exist, and `garuda_orders_router.py` is mounted. Neither has actually
+unblocked persistence or checkout, though: L1 seeds no GARUDA_CHECK policy
+row (fail-closed by design until Zero signs one), and no production code
+wires a real adapter onto `app.state.garuda_order_repository` /
+`app.state.garuda_payment_provider` yet — every request still 503s. L4 is
+`PARTIAL (#4871)` with no practice-serving module under `garuda_portal/`
+yet.
 
 Rather than fake a dashboard against data that doesn't exist, every module
 in `garuda_ops/` is written against `ports.py` — `Protocol`s that mirror the
 FROZEN contract (`contracts/events.yaml`, `journeys/STATE-MACHINE.md`,
 `journeys/SLO.md`) field for field. Every alarm and the CRM handoff are
 fully exercised today with fakes; wiring a concrete Postgres-backed adapter
-once L1/L3/L4 land is a pure implementation task with zero change to this
-package's public functions.
+once L1/L3/L4 land — and the orchestrator wires the result onto `app.state`
+— is a pure implementation task with zero change to this package's public
+functions. `test_blocked_stage_staleness.py` is the tripwire that keeps
+this paragraph (and `synthetic_probe.py`'s own reasons) from drifting out
+of sync with the codebase again.
 
 ## Each alarm, and what makes it RED
 
@@ -44,13 +58,15 @@ minutes, dead-man 15 minutes.
 
 Only stage 1 (`EligibilityVerdictStage`, the pure verdict+price computation)
 runs against real code today. Stages 2-5 are `_blocked_stage` placeholders
-that report `BLOCKED` and name the lane they wait on (L1 persistence policy,
-L3 checkout/webhook, L4 portal receipt). `run_probe` stops at the first
-non-`SUCCEEDED` stage — it does not attempt stages whose precondition never
-held. Faking success here would be exactly the "esiste != armato" failure
-this lane was warned against (`cicatrix-superscar.md` family #2): a probe
-that always reports green would mask the fact that no purchase can complete
-in production yet.
+that report `BLOCKED` and name the real remaining blocker (L1's unsigned
+GARUDA_CHECK retention policy; the orchestrator's not-yet-done composition
+wiring for L3's checkout/webhook, corrected 2026-08-25 — L3's code itself
+is merged; L4's missing portal practice module). `run_probe` stops at the
+first non-`SUCCEEDED` stage — it does not attempt stages whose precondition
+never held. Faking success here would be exactly the "esiste != armato"
+failure this lane was warned against (`cicatrix-superscar.md` family #2): a
+probe that always reports green would mask the fact that no purchase can
+complete in production yet.
 
 **Consequence, stated plainly**: wiring `evaluate_deadman()` to this probe's
 result today would correctly report `DEAD` forever, because the full journey
@@ -158,9 +174,11 @@ scheduler.
   are ready to be invoked by whatever scheduler the orchestrator chooses at
   landing time.
 - **A concrete Postgres `JournalReader`/`OrderSnapshotProvider`/`CrmWriter`.**
-  Depends on L1's migrations and L3's order/practice schema, neither of
-  which exist on this branch yet. The `Protocol`s in `ports.py` are the
-  frozen interface a future adapter implements.
+  Corrected 2026-08-25: L1's migrations and L3's order schema now exist on
+  this branch (migration 281, `garuda_orders/`) — what's still missing is
+  the concrete adapter implementation and the orchestrator wiring it onto
+  the running app. The `Protocol`s in `ports.py` are the frozen interface a
+  future adapter implements.
 - **Seeding `practice_types.code = 'garuda_voa'`.** `migrations_v2/` is L1's
   exclusive path (`LANES.md` file-ownership table); `crm_handoff.py` names
   the expected code as a constant and fails closed via

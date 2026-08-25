@@ -6,25 +6,38 @@
     start, set the public flag off and alert the owner. A late probe cannot
     auto-enable the flag."
 
-**Honest state at the time this lane was built**: only the first stage can
-run for real. L1 (retention policy, prerequisite for ANY persistence per
-`garuda_flow/public_api.py`'s own docstring), L3 (checkout/orders/payments)
-and L4/L5 (portal/documents) had not merged (LANES.md: L3 `blocked (owner
-decision 1)`; no `garuda_orders`/`garuda_portal`/`garuda_documents` package
-existed). Faking success for stages 2-5 would be exactly the "green
-mascherava organi morti" failure this lane was explicitly warned against
-(cicatrix-superscar.md family #2). Each stage below either runs for real or
-raises `StageBlockedOnDependency` naming the blocking lane — the runner
-records that distinction and the dead-man verdict (`deadman.py`) is computed
-honestly from it: **a probe that cannot complete end-to-end is correctly
-DEAD**, not a passing green with an asterisk. This matches the product's own
-current state ("ship dark, flag off") — the probe is not lying about a live
-system, it is accurately reporting a system not yet capable of the journey
-it must eventually run.
+**Honest state, corrected 2026-08-25 (staleness tripwire finding)**: only
+the first stage can run for real. L1's retention-policy migration (281)
+merged, but seeds no GARUDA_CHECK policy row -- `garuda_flow/public_api.py`
+fails closed by construction until Zero signs one
+(`get_garuda_check_store()` still returns `UnconfiguredCheckStore`). L3's
+order/payment-port package (`garuda_orders/`, `payments/xendit.py`) and its
+router are merged and mounted, but the orchestrator's composition step has
+not yet wired a real `GarudaOrderRepository`/`PaymentProvider` onto
+`app.state` -- every request 503s by design
+(`test_blocked_stage_staleness.py` holds the mechanical proxy for each of
+these). L4's portal has no practice-serving module yet, and no production
+code wires `garuda_ops/crm_handoff.py`'s `CrmHandoffService` to a real
+event journal either. Faking success for stages 2-5 would be exactly the
+"green mascherava organi morti" failure this lane was explicitly warned
+against (cicatrix-superscar.md family #2). Each stage below either runs for
+real or raises `StageBlockedOnDependency` naming the blocking lane — the
+runner records that distinction and the dead-man verdict (`deadman.py`) is
+computed honestly from it: **a probe that cannot complete end-to-end is
+correctly DEAD**, not a passing green with an asterisk. This matches the
+product's own current state ("ship dark, flag off") — the probe is not
+lying about a live system, it is accurately reporting a system not yet
+capable of the journey it must eventually run.
 
-The runner is otherwise stage-agnostic: once L1/L3/L4/L5 land, each
-`StageBlockedOnDependency` stage is replaced by a real implementation with
-no change to `run_probe` or to the dead-man wiring.
+**A prose reason has no mechanism keeping it in sync with the codebase it
+describes** — `test_blocked_stage_staleness.py` is that mechanism: it
+expresses each `_blocked_stage` reason below as a mechanically checkable
+predicate and goes RED the moment the predicate stops holding, rather than
+leaving a stage BLOCKED on a stale sentence nobody is looking at.
+
+The runner is otherwise stage-agnostic: once each stage's real precondition
+is met, its `_blocked_stage` placeholder is replaced by a real
+implementation with no change to `run_probe` or to the dead-man wiring.
 """
 
 from __future__ import annotations
@@ -134,13 +147,32 @@ PersistenceStage = _blocked_stage(
 )
 SandboxCheckoutStage = _blocked_stage(
     "sandbox_checkout",
-    "L3",
-    "no order/payment-port package exists (owner decision 1: payment provider)",
+    "orchestrator",
+    # CORRECTED 2026-08-25 (staleness tripwire finding): L3 merged (#4893) --
+    # services/garuda_orders/ (8 modules) and services/payments/xendit.py
+    # both exist, and garuda_orders_router.py is mounted. The REAL remaining
+    # blocker is the orchestrator's own composition step: get_repository()
+    # in garuda_orders_router.py fails closed with 503 until a real
+    # GarudaOrderRepository is assigned onto
+    # app.state.garuda_order_repository, which no production file does yet
+    # (see test_blocked_stage_staleness.py::test_sandbox_checkout_claim_is_still_true).
+    "L3's order/payment-port package is merged, but no production code "
+    "wires a real GarudaOrderRepository onto app.state.garuda_order_repository "
+    "yet -- get_repository() in garuda_orders_router.py fails closed with 503",
 )
 SignedWebhookStage = _blocked_stage(
     "signed_webhook_paid",
-    "L3",
-    "no payment-port/webhook implementation exists yet",
+    "orchestrator",
+    # CORRECTED 2026-08-25 (staleness tripwire finding): the Xendit
+    # sandbox adapter (services/payments/xendit.py) and the webhook route
+    # (garuda_orders_router.py:receive_payment_webhook) both exist and are
+    # mounted. The REAL remaining blocker, same composition gap as
+    # sandbox_checkout: no production code assigns
+    # app.state.garuda_payment_provider, so the route 503s before it can
+    # ever call verify_signature/parse_event.
+    "the Xendit sandbox webhook adapter and route are merged, but no "
+    "production code wires a real PaymentProvider onto "
+    "app.state.garuda_payment_provider yet -- the route fails closed with 503",
 )
 ReceivedPracticeStage = _blocked_stage(
     "received_practice",
