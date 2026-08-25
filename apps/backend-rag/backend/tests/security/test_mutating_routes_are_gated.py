@@ -496,6 +496,113 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "(preview.py:46) is a real in-router dependency, independent of the "
         "middleware's public-path skip.",
     ),
+    # ── GARUDA VOA L2/L3 (PR #4946 allowlist additions) — reviewed 2026-08-26,
+    #    against the handlers in garuda_voa_public.py / garuda_orders_router.py,
+    #    NOT copied from either module's own docstrings. ──
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/eligibility-checks",
+        "GARUDA VOA public eligibility-check creation "
+        "(garuda_voa_public.py::create_eligibility_check) — the anonymous "
+        "eligibility-funnel entrypoint the product exists to serve; the "
+        "module's own docstring names this one of the three operations this "
+        "lane owns. No credential can be required here because none exists "
+        "yet — same 'must be reachable before a credential exists' category "
+        "as /api/auth/request-magic-link above. Verified 2026-08-26: requires "
+        "a caller-supplied Idempotency-Key matching `_IDEMPOTENCY_KEY_PATTERN` "
+        "(400 IDEMPOTENCY_KEY_REQUIRED otherwise) and an explicit "
+        "`retention_notice_acknowledged=True` (422 otherwise); a replay under "
+        "the same key with a different payload raises IdempotencyConflict "
+        "rather than silently re-running eligibility/pricing logic. The "
+        "result is bound to a freshly-minted, server-only `session_secret` "
+        "delivered EXCLUSIVELY via an httponly Set-Cookie to the creator "
+        "(`_set_result_session_cookie`) — that secret is the sole credential "
+        "the GET/DELETE routes below accept, so this call is the root of "
+        "trust the rest of the funnel is built on, not an unprotected write. "
+        "Feature-flagged off by default (`GARUDA_PUBLIC_ENABLED`) and behind "
+        "the app's shared rate-limit middleware.",
+    ),
+    IntentionalPublicMutation(
+        "DELETE",
+        "/api/visa/voa/eligibility-checks/{result_id}",
+        "GARUDA VOA eligibility-check self-deletion "
+        "(garuda_voa_public.py::delete_eligibility_result). Verified "
+        "2026-08-26 against the store (`check_store.py::delete`, ~line 263): "
+        "a row is erased ONLY when the caller's `garuda_result_session` "
+        "cookie hashes (`_hash_secret`) to the SAME `session_secret_hash` "
+        "stored at creation — a missing, mismatched, or malformed-result_id "
+        "cookie makes the router pass `session_secret=None`, and the store "
+        "then skips the DELETE entirely (`deleted=False`) without ever "
+        "touching the row. The route still answers 204 either way (contract, "
+        "verbatim: 'the response reveals no existence oracle'), so a caller "
+        "without the secret cannot even distinguish 'not yours' from 'does "
+        "not exist'. The session secret is server-minted and never exposed "
+        "except as an httponly cookie to the original creator — same "
+        "self-service-with-unforgeable-bearer-secret shape as the magic-link "
+        "exchange row above, not an open hole. Also requires a valid "
+        "Idempotency-Key (double-submit guard against replay).",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/orders",
+        "GARUDA VOA order creation from a completed eligibility check "
+        "(garuda_orders_router.py::create_order_from_check). Public per "
+        "PUBLIC_ENDPOINTS/HybridAuthMiddleware, but independently re-gated "
+        "in-router by `_require_magic_session_actor` (verified 2026-08-26): "
+        "the dependency reads the `garuda_session` cookie and awaits "
+        "`app.state.garuda_magic_session_verifier`, raising 401 "
+        "SESSION_REQUIRED before any mutation runs if either is missing — "
+        "and today the verifier is unwired, so the route is closed to EVERY "
+        "caller (fail-closed-by-construction, the same 'no caller wired yet, "
+        "never a silent bypass' shape documented on `UnconfiguredCheckStore`). "
+        "Once wired, the verified session's own `result_id` becomes `actor`, "
+        "and the handler additionally requires the request body's `result_id` "
+        "to equal `actor` — a session for one eligibility check cannot open "
+        "an order against a different one; a mismatch collapses to the same "
+        "404 RESULT_NOT_FOUND used for 'no such result' (non-enumerating, "
+        "per `ResultNotFound`'s own docstring). Same class of "
+        "middleware-invisible, real in-router auth Depends as the existing "
+        "`/api/knowledge/visa/` rows above.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/orders/{order_id}/browser-return-observations",
+        "Twin of the /api/visa/voa/orders row above — same "
+        "`_require_magic_session_actor` in-router gate "
+        "(garuda_orders_router.py::observe_payment_browser_return, verified "
+        "2026-08-26), fails closed 401 SESSION_REQUIRED until the session "
+        "verifier is wired. The mutation itself (recording a one-time "
+        "`return_nonce`) is additionally scoped to the caller's own "
+        "`order_id` via `record_browser_return_observation(order_id=..., "
+        "result_id=actor, ...)`; an order that is not the caller's raises "
+        "`OrderNotFound` -> 404, never written.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/webhooks/payment",
+        "Xendit Invoices payment-callback webhook "
+        "(garuda_orders_router.py::receive_payment_webhook). A provider "
+        "callback, not a user action — identity is proven by a signature, "
+        "the same category this registry already grants `/webhook/whatsapp` "
+        "and `/webhook/instagram` above. Verified 2026-08-26, and verified "
+        "STRICTER than those two siblings: `provider.verify_signature()` "
+        "(`XenditPaymentProvider.verify_signature`, xendit.py:164-175) runs "
+        "and can raise `WebhookSignatureInvalid` -> 401 BEFORE `parse_event()` "
+        "or any of the three `repository.handle_*_event()` mutation calls — "
+        "no code path reaches persistence without a valid token. The check "
+        "is a constant-time `hmac.compare_digest` against "
+        "`GARUDA_XENDIT_CALLBACK_TOKEN` (wired in "
+        "`service_initializer.py:1490-1493`) and is fail-closed even if that "
+        "env var is left unset: `compare_digest(received, \"\")` only "
+        "succeeds for `received == ''`, and an empty/missing header is "
+        "already rejected by the preceding `if not received` branch — so a "
+        "misconfiguration cannot silently open this route the way the "
+        "WhatsApp entry's missing-secret fail-open can. (An earlier draft of "
+        "the frozen contract required an `Idempotency-Key` header here too; "
+        "that broke real Xendit callbacks, which never send one, and 400'd "
+        "them before signature verification ran — the contract's own `$ref` "
+        "is the orchestrator's fix, this router no longer requires it.)",
+    ),
 )
 
 
