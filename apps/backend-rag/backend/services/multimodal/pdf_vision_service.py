@@ -35,6 +35,77 @@ logger = logging.getLogger(__name__)
 # scan into 400 seconds of doing nothing.
 GEMINI_VISION_PAGE_DELAY_SECONDS = 4.0
 
+# A page whose rendered image carries essentially no ink is legitimately blank
+# -- the empty verso of a two-sided scan -- and its silence is not a failure to
+# transcribe. Anything above this ratio that came back empty IS a failure.
+#
+# The threshold is measured, not guessed (2026-08-25, this renderer at 2x zoom,
+# luminance < 200 counted as ink):
+#
+#   real scanned decree pages ....... 4.7% - 8.4%
+#   ONE short line on A4 ............ 0.049%   <- must NOT be called blank
+#   a page bearing only its number .. 0.003%
+#   a truly empty page .............. 0.000%
+#
+# 0.01% sits ~5x below the shortest line that carries law and ~3x above a bare
+# page number. The bias is deliberate: misjudging a written page as blank hides
+# a hole in a law, while misjudging a blank page as missing merely refuses the
+# document out loud, which is recoverable.
+BLANK_PAGE_INK_RATIO = 0.0001
+BLANK_PAGE_LUMINANCE_THRESHOLD = 200
+
+# Ink is not text. A signature page, a seal, a stamped lampiran, a map or an
+# org-chart carries plenty of ink and NO transcribable text, and on Indonesian
+# legal instruments that page is routine, not exotic. Pixels cannot tell that
+# page apart from one the model simply failed on -- both are inked and silent --
+# so the question is put to the only thing that can answer it: the model is
+# asked to SAY that the page has no text. Silence keeps its old meaning, which
+# is failure, so the discrimination is fail-closed: a model that ignores the
+# instruction costs a loud refusal, never a silent hole.
+NO_TEXT_SENTINEL = "NO_TEXT_ON_THIS_PAGE"
+
+# Returned by the per-page helper to mean "the page answered, and its answer is
+# that it holds no text" -- which is neither text nor silence, and must not be
+# confusable with either.
+NO_TEXT_DECLARED = object()
+
+
+class IncompleteTranscriptionError(Exception):
+    """Raised when only SOME pages of a scanned PDF could be transcribed.
+
+    Deliberately NOT a ``RuntimeError``: `backend.core.parsers` uses
+    ``except RuntimeError`` to mean "there is no running event loop", and a
+    partially transcribed decree caught by that handler would be silently
+    mistaken for an asyncio condition.
+
+    Measured 2026-08-25: a three-page ministerial decree returned 1,204 of its
+    6,109 characters because pages 2 and 3 timed out against a cold vision
+    model, and the only trace was a warning in a log nobody reads. The document
+    was stored looking whole. For a legal corpus that is the worst of the three
+    outcomes -- worse than an error, and worse than nothing -- because every
+    downstream reader, human or machine, treats an amputated decree as the
+    decree. A partial transcription must therefore be a refusal, not a value.
+    """
+
+    def __init__(
+        self,
+        pdf_path: str,
+        missing_pages: list[int],
+        page_count: int,
+        transcribed_chars: int,
+    ) -> None:
+        self.pdf_path = pdf_path
+        self.missing_pages = list(missing_pages)
+        self.page_count = page_count
+        self.transcribed_chars = transcribed_chars
+        super().__init__(
+            f"Incomplete vision transcription of {pdf_path}: "
+            f"{len(self.missing_pages)} of {page_count} pages produced no text "
+            f"(pages {self.missing_pages}). "
+            f"{transcribed_chars} characters were discarded rather than stored "
+            "as if they were the whole document.",
+        )
+
 
 class PDFVisionService:
     """
@@ -157,13 +228,18 @@ class PDFVisionService:
         "Transcribe ALL visible text from this scanned document page. "
         "Output the text verbatim, preserving line breaks, ordering and table "
         "structure. Do not summarise, translate, explain or add anything. "
-        "If the page contains no text, output nothing."
+        "If the page carries no transcribable text at all -- it holds only a "
+        "seal, a signature, a photograph, a diagram or a map, or it is empty -- "
+        f"output exactly {NO_TEXT_SENTINEL} and nothing else."
     )
 
     async def transcribe_scanned_pdf(
         self,
         pdf_path: str,
         max_pages: int | None = None,
+        *,
+        page_attempts: int = 2,
+        allow_partial: bool = False,
     ) -> str | None:
         """Transcribe a PDF that carries no text layer, page by page.
 
@@ -187,9 +263,25 @@ class PDFVisionService:
         Measured 2026-08-25 on a 3-page scanned ministerial decree: the two
         callers yielded 0 characters; this path yields 6,109.
 
+        The completeness contract, added the same day after this method's OWN
+        first live run returned 1,204 of those 6,109 characters with nothing
+        but a warning to say so:
+
+        * every page gets ``page_attempts`` tries -- the first attempt against a
+          cold vision model is the one that pays to load it, which is exactly
+          how pages 2 and 3 were lost while page 1 warmed ``qwen2.5vl:7b`` up;
+        * a page that produces nothing is measured, not assumed. Three states,
+          not two: a page with no INK is blank and is never even sent to the
+          model; a page that SAYS it has no text (a seal, a signature, a
+          photograph, a map -- routine in a legal instrument, and full of ink)
+          is honoured; a page that is inked and merely SILENT is MISSING;
+        * a document with missing pages RAISES ``IncompleteTranscriptionError``
+          instead of returning what survived. Callers that genuinely want a
+          best-effort excerpt must say so with ``allow_partial=True``, and then
+          the partiality is theirs to carry.
+
         Returns None when NO page could be transcribed, so callers raise rather
-        than store an empty document. Individually failing pages are skipped and
-        logged -- most of a decree beats none of it.
+        than store an empty document.
         """
         try:
             document = fitz.open(pdf_path)
@@ -203,14 +295,105 @@ class PDFVisionService:
             page_count = min(page_count, max_pages)
 
         transcribed: list[str] = []
+        missing: list[int] = []
         for page_number in range(1, page_count + 1):
-            page_text: str | None = None
             try:
                 image = self._render_page_to_image(pdf_path, page_number)
-                buffered = io.BytesIO()
-                image.save(buffered, format="PNG")
-                image_base64 = base64.b64encode(buffered.getvalue()).decode()
+            except Exception as exc:
+                # An unmeasurable page is never given the benefit of the doubt.
+                logger.warning(
+                    "Page %s of %s could not be rendered: %s",
+                    page_number,
+                    pdf_path,
+                    exc,
+                )
+                missing.append(page_number)
+                continue
 
+            ink_ratio = self._page_ink_ratio(image)
+            if ink_ratio < BLANK_PAGE_INK_RATIO:
+                # Asked before spending anything: a page with no ink has nothing
+                # for a vision model to read, and paying two ~30s attempts per
+                # blank verso is how a double-sided scan turns into minutes of
+                # waiting for an answer that is known in advance.
+                logger.info(
+                    "Page %s of %s carries no ink (%.5f) and is treated as blank",
+                    page_number,
+                    pdf_path,
+                    ink_ratio,
+                )
+                continue
+
+            page_text = await self._transcribe_page(image, pdf_path, page_number, page_attempts)
+            if page_text is NO_TEXT_DECLARED:
+                logger.info(
+                    "Page %s of %s declared to carry no transcribable text "
+                    "(ink %.5f -- seal, signature, photograph or diagram)",
+                    page_number,
+                    pdf_path,
+                    ink_ratio,
+                )
+            elif page_text:
+                transcribed.append(page_text)
+            else:
+                missing.append(page_number)
+
+        if not transcribed:
+            logger.warning(
+                "Vision transcription produced nothing for %s (%s pages attempted)",
+                pdf_path,
+                page_count,
+            )
+            return None
+
+        text = "\n\n".join(transcribed)
+
+        if missing:
+            if not allow_partial:
+                raise IncompleteTranscriptionError(
+                    pdf_path,
+                    missing,
+                    page_count,
+                    len(text),
+                )
+            logger.warning(
+                "PARTIAL vision transcription of %s: pages %s are missing and the "
+                "caller asked for best-effort; %s characters returned",
+                pdf_path,
+                missing,
+                len(text),
+            )
+
+        logger.info(
+            "Vision transcription: %s/%s pages from %s",
+            len(transcribed),
+            page_count,
+            pdf_path,
+        )
+        return text
+
+    async def _transcribe_page(
+        self,
+        image: Image.Image,
+        pdf_path: str,
+        page_number: int,
+        attempts: int,
+    ) -> str | object | None:
+        """Transcribe ONE page, retrying an attempt that failed or said nothing.
+
+        The retry is not defensive decoration: on 2026-08-25 pages 2 and 3 of a
+        three-page decree both hit the 120s client timeout while page 1 was
+        still loading ``qwen2.5vl:7b`` into memory, and re-running the very same
+        call by hand -- against the now-warm model -- returned both pages in
+        full. That manual gesture is what this loop performs.
+        """
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        image_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+        for attempt in range(1, max(1, attempts) + 1):
+            page_text: str | None = None
+            try:
                 page_text = await self._analyze_via_ollama(
                     self.TRANSCRIPTION_PROMPT,
                     image_base64,
@@ -227,33 +410,49 @@ class PDFVisionService:
                         await asyncio.sleep(GEMINI_VISION_PAGE_DELAY_SECONDS)
             except Exception as exc:
                 logger.warning(
-                    "Page %s of %s could not be transcribed: %s",
+                    "Page %s of %s could not be transcribed (attempt %s/%s): %s",
                     page_number,
                     pdf_path,
+                    attempt,
+                    attempts,
                     exc,
                 )
                 continue
 
             if page_text and page_text.strip():
-                transcribed.append(page_text.strip())
-            else:
-                logger.warning("Page %s of %s produced no text", page_number, pdf_path)
+                if self._declares_no_text(page_text):
+                    return NO_TEXT_DECLARED
+                return page_text.strip()
 
-        if not transcribed:
             logger.warning(
-                "Vision transcription produced nothing for %s (%s pages attempted)",
+                "Page %s of %s produced no text (attempt %s/%s)",
+                page_number,
                 pdf_path,
-                page_count,
+                attempt,
+                attempts,
             )
-            return None
+        return None
 
-        logger.info(
-            "Vision transcription: %s/%s pages from %s",
-            len(transcribed),
-            page_count,
-            pdf_path,
-        )
-        return "\n\n".join(transcribed)
+    @staticmethod
+    def _declares_no_text(page_text: str) -> bool:
+        """Did the model SAY the page has no text, or did it just say something?
+
+        Deliberately strict -- exact match on the sentinel, bar trailing
+        punctuation. A page whose real text happens to quote the sentinel inside
+        a sentence must not be silently discarded, which is the over-matching
+        failure this repository has been bitten by repeatedly.
+        """
+        return page_text.strip().rstrip(".!").strip().upper() == NO_TEXT_SENTINEL
+
+    @staticmethod
+    def _page_ink_ratio(image: Image.Image) -> float:
+        """Fraction of pixels dark enough to be ink rather than paper."""
+        histogram = image.convert("L").histogram()
+        total = sum(histogram)
+        if not total:
+            return 0.0
+        dark = sum(histogram[:BLANK_PAGE_LUMINANCE_THRESHOLD])
+        return dark / total
 
     async def _analyze_via_ollama(self, prompt: str, image_base64: str) -> str | None:
         """Analyze image using local Ollama qwen2.5vl:7b vision."""
