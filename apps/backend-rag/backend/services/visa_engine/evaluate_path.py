@@ -72,6 +72,8 @@ import secrets
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
 from types import MappingProxyType
 from typing import TypeAlias
 from urllib.parse import urlsplit
@@ -210,14 +212,76 @@ _VISA_PURPOSE_TO_REQUEST_CATEGORY: MappingProxyType[VisaPurpose, str] = MappingP
 )
 
 
+#: The owner switchboard signature manifest (MANDATE.md 2026-08-24 §5).
+#: Build-time data, not runtime state — a signature is a deliberate, reviewable,
+#: committed act — so it is read once and cached, unlike ``EVALUATE_MODE_ENV``
+#: which must stay live-flippable.
+_IGNITION_SIGNATURES_PATH = Path(__file__).resolve().parent / "contracts" / "ignition_signatures.json"
+
+
+@lru_cache(maxsize=1)
+def unsigned_ignition_decisions() -> tuple[str, ...]:
+    """Names of the §5 switchboard decisions the owner has NOT yet signed.
+
+    Empty tuple == ignition is authorised. A missing/unreadable/malformed
+    manifest fails CLOSED (reports every decision as unsigned): the safe
+    direction for a consent record is to assume consent was NOT given.
+    """
+
+    try:
+        raw = json.loads(_IGNITION_SIGNATURES_PATH.read_text(encoding="utf-8"))
+        entries = raw["signatures"]
+        if not entries:
+            raise ValueError("empty signature manifest")
+        return tuple(
+            str(entry["decision"]) for entry in entries if entry.get("signed") is not True
+        )
+    except Exception:
+        logger.error(
+            "visa-engine ignition: signature manifest unreadable at %s — "
+            "treating every owner signature as MISSING (fail-closed)",
+            _IGNITION_SIGNATURES_PATH,
+        )
+        return ("<manifest unreadable — all signatures assumed missing>",)
+
+
 def resolve_evaluate_mode() -> EngineMode:
-    """Resolve the public authority lever; unknown values fail closed to OFF."""
+    """Resolve the public authority lever; unknown values fail closed to OFF.
+
+    ENFORCE additionally requires every owner switchboard signature
+    (MANDATE.md 2026-08-24 §5, verbatim: "ENFORCE stays OFF until every §5
+    signature exists — no exception, no partial ignition"). Until 2026-08-25
+    that sentence lived only in prose, so a single env flip would have made
+    the engine the product authority for real visitors with zero signatures
+    collected — the repo's own rule applies ("se una regola critica è
+    violabile, scrivi un hook; la documentazione non basta").
+
+    An unsigned ENFORCE degrades to SHADOW, deliberately NOT to OFF: SHADOW
+    is the state the mandate says to build in, so a premature flip loses the
+    authority it was not entitled to while keeping the observation it was.
+    It is loud about it — silence here would reproduce the exact failure this
+    guard exists to prevent (a surface that looks armed and is not).
+    """
 
     raw = os.environ.get(EVALUATE_MODE_ENV, EngineMode.OFF.value).strip().upper()
     try:
-        return EngineMode(raw)
+        mode = EngineMode(raw)
     except ValueError:
         return EngineMode.OFF
+    if mode is EngineMode.ENFORCE:
+        missing = unsigned_ignition_decisions()
+        if missing:
+            logger.error(
+                "visa-engine ignition REFUSED: %s requested ENFORCE but %d owner "
+                "signature(s) are missing (%s) — serving SHADOW. Ignition needs "
+                "the owner's decision recorded in %s, not an env flip.",
+                EVALUATE_MODE_ENV,
+                len(missing),
+                ", ".join(missing),
+                _IGNITION_SIGNATURES_PATH.name,
+            )
+            return EngineMode.SHADOW
+    return mode
 
 
 def resolve_evaluate_shadow_enabled() -> bool:

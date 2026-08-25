@@ -636,3 +636,48 @@ async def repo_codec(db_pool_codec: asyncpg.Pool, visa_schema: None) -> VisaEngi
     tables once per test regardless of which pool fixture pulls it in), but
     reads/writes go through the codec-registered pool instead."""
     return VisaEngineRepository(db_pool_codec)
+
+
+# ---------------------------------------------------------------------------
+# Ignition presumption for the existing suite
+# ---------------------------------------------------------------------------
+#
+# `evaluate_path.resolve_evaluate_mode()` refuses ENFORCE unless every owner
+# switchboard signature exists (MANDATE.md 2026-08-24 §5/§6, "no exception, no
+# partial ignition") — added 2026-08-25 because that rule previously lived only
+# in prose and a lone env flip could buy full product authority.
+#
+# The suite predates that gate and contains ~27 tests whose subject is what
+# ENFORCE *does*, not whether ignition is authorised. This fixture grants them
+# a fully-signed manifest so they keep testing their own subject. It is a
+# TEST-ONLY presumption and must never be read as the real signature state:
+# `test_ignition_signature_gate.py` opts out and asserts against the REAL
+# committed manifest, which is deliberately not fully signed.
+_ALL_SIGNED_MANIFEST = {
+    "signatures": [
+        {"id": 1, "decision": "DPIA", "signed": True},
+        {"id": 2, "decision": "Wizard-data retention", "signed": True},
+        {"id": 3, "decision": "Gold-persona rehearsal", "signed": True},
+        {"id": 4, "decision": "Product to tier map", "signed": True},
+        {"id": 5, "decision": "Prices and terms per tier", "signed": True},
+    ]
+}
+
+
+@pytest.fixture(autouse=True)
+def _presume_ignition_signed(request, tmp_path_factory, monkeypatch):
+    """Autouse: every visa_engine test runs as if the owner had signed, EXCEPT
+    the gate's own module, which needs the real manifest to have meaning."""
+
+    if request.module.__name__.endswith("test_ignition_signature_gate"):
+        yield
+        return
+
+    from backend.services.visa_engine import evaluate_path as _ep
+
+    path = tmp_path_factory.mktemp("ignition") / "ignition_signatures.json"
+    path.write_text(json.dumps(_ALL_SIGNED_MANIFEST), encoding="utf-8")
+    monkeypatch.setattr(_ep, "_IGNITION_SIGNATURES_PATH", path)
+    _ep.unsigned_ignition_decisions.cache_clear()
+    yield
+    _ep.unsigned_ignition_decisions.cache_clear()

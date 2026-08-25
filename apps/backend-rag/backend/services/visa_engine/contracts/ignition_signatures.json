@@ -1,0 +1,49 @@
+{
+  "_comment": [
+    "Owner switchboard signatures (MANDATE.md 2026-08-24 §5). The mandate's",
+    "hardest constraint, verbatim: 'ENFORCE stays OFF until every §5 signature",
+    "exists — no exception, no partial ignition.' Until 2026-08-25 that rule",
+    "lived only in prose: a single env flip (VISA_ENGINE_EVALUATE_MODE=ENFORCE)",
+    "would have made the engine the product authority with zero signatures.",
+    "This file is what `evaluate_path.resolve_evaluate_mode()` reads to refuse.",
+    "",
+    "It is build-time data, not runtime state: a signature is a deliberate,",
+    "reviewable, committed act by the owner. Flipping one here without the",
+    "owner's actual decision is falsifying a consent record — do not.",
+    "Zero (and only Zero) turns a `signed` to true, in a commit that also",
+    "records where the decision was given."
+  ],
+  "signatures": [
+    {
+      "id": 1,
+      "decision": "DPIA",
+      "signed": true,
+      "evidence": "DPIA V2 §8 signed 2026-08-23; a delta since signature is open — see DPIA-DELTA-SINCE-SIGNATURE.md",
+      "caveat": "delta unsigned: migration 281's consultant table is not covered by the signed DPIA"
+    },
+    {
+      "id": 2,
+      "decision": "Wizard-data retention",
+      "signed": true,
+      "evidence": "Owner ruling 2026-08-25 §3 (OWNER-RULINGS-2026-08-25.md): 30 days, and retire the free-text funnel"
+    },
+    {
+      "id": 3,
+      "decision": "Gold-persona rehearsal",
+      "signed": false,
+      "evidence": "GOLD-DIVERGENCE-TRIAGE.md: 15 of 16 divergences explained and not defects; persona #15 open"
+    },
+    {
+      "id": 4,
+      "decision": "Product to tier map",
+      "signed": false,
+      "evidence": "TIER-MAP.md prepared; owner has not approved row by row"
+    },
+    {
+      "id": 5,
+      "decision": "Prices and terms per tier",
+      "signed": false,
+      "evidence": "SWITCHBOARD-5-PRICES-AND-TERMS.md prepared; owner has not approved"
+    }
+  ]
+}
