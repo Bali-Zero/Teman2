@@ -31,6 +31,7 @@ import collections
 import hashlib
 import os
 import re
+import sys
 from pathlib import Path
 
 WS = re.compile(r"\s+")
@@ -49,7 +50,18 @@ def repo_root(start: Path | None = None) -> Path:
 def load_env(root: Path) -> None:
     env = root / "apps" / "backend-rag" / ".env"
     if not env.is_file():
-        raise SystemExit("kb_inventory_probe: %s not found — no credentials" % env)
+        # Exit 3, NOT 1. `SystemExit("...")` with a string exits 1, which is this
+        # probe's code for DRIFT — "production has moved and the inventory is
+        # stale". Those two states demand opposite actions: DRIFT is cured by
+        # re-measuring, a missing .env is cured by configuring, and an operator
+        # who reads the wrong one re-measures nothing against nothing. Measured
+        # 2026-08-25 in a throwaway worktree, where .env is gitignored and absent:
+        # the probe reported the same code as a genuine drift. Same vocabulary as
+        # kb/ops/probe_retrieval.py — 3 means BROKEN, and nothing was graded.
+        print("BROKEN — %s not found, so there are no credentials to reach Qdrant "
+              "with.\nNothing was measured. This is NOT drift: the inventory has "
+              "not been checked at all." % env, file=sys.stderr)
+        raise SystemExit(3)
     for line in env.read_text().splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
