@@ -144,6 +144,32 @@ def _probe():
 PAYLOAD_SHAPES = frozenset(_probe().PAYLOAD_SHAPES)
 
 
+def _sibling_gate():
+    """Load test_kb_inventory_contract.py once (it lives outside any package).
+
+    Same technique as `_probe()` above, same reason: `_proof_is_incomplete` — the
+    predicate that decides whether a `containment_proof` declares a gap — is
+    IMPORTED below, never reimplemented. Two independent restatements of "is this
+    proof complete?" are exactly the shape this repo has already been bitten by
+    (cicatrix-superscar family #6/#9): they drift, and the drift is invisible
+    until the two disagree on a real file. Reading the same function keeps that
+    impossible by construction.
+    """
+    cached = sys.modules.get("kb_inventory_contract_sibling")
+    if cached is not None:
+        return cached
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "kb_inventory_contract_sibling",
+        Path(__file__).with_name("test_kb_inventory_contract.py"),
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["kb_inventory_contract_sibling"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 # ── the rules, as pure functions over already-parsed data ────────────────────
 # Written as functions rather than inline asserts so the SAME rule can be run
 # against the synthetic tree and against real files. A gate whose guilt proof
@@ -387,6 +413,36 @@ def check_journey(data: dict) -> list[str]:
     return problems
 
 
+def _find_containment_proofs(node) -> list[dict]:
+    """Every dict value keyed `containment_proof`, found anywhere in `node`.
+
+    A `kind: retired_collection` inventory has ONE fixed place a containment proof
+    lives: `documents[].containment_proof` (MANDATE §4.6, enforced by
+    `test_kb_inventory_contract.py::test_deletion_is_interlocked_on_a_complete_proof`).
+    A `kind: topic` inventory has no such fixed location — MANDATE §2 gives topics
+    a free-form investigative shape, and the one real proof measured so far
+    (kb/inventory/company.yaml) sits at
+    `uu_25_2007_fragment_categorisation.containment_proof`, a path no schema
+    names and `instruments[]`'s own per-entry fields (`present`/`complete`) do
+    not cover. A rule that only checked `instruments[]`, or one fixed key, would
+    be exactly the theatre this interlock exists to end — correct on the shape it
+    expects, blind to the shape production actually uses. This walks the whole
+    parsed structure instead of trusting a location, so §4.6's interlock below
+    applies wherever a topic lane chooses to record its proof.
+    """
+    found: list[dict] = []
+    if isinstance(node, dict):
+        proof = node.get("containment_proof")
+        if isinstance(proof, dict):
+            found.append(proof)
+        for value in node.values():
+            found.extend(_find_containment_proofs(value))
+    elif isinstance(node, list):
+        for item in node:
+            found.extend(_find_containment_proofs(item))
+    return found
+
+
 def check_topic_inventory(data: dict) -> list[str]:
     """Rules for kb/inventory/<t>.yaml with kind: topic — what is ACTUALLY in the store."""
     problems: list[str] = []
@@ -581,6 +637,32 @@ def check_topic_inventory(data: dict) -> list[str]:
             f"instruments sum to {total} points but measured_against.points is {points} — "
             f"the inventory does not cover the collection it claims to"
         )
+
+    # §4.6's interlock, ported to the topic schema. Measured 2026-08-26: a
+    # `kind: topic` inventory can carry a `containment_proof` (kb/inventory/
+    # company.yaml's uu_25_2007_fragment_categorisation block is the real case)
+    # AND a `decision.deletions_authorized` flag, and NOTHING checked the two
+    # against each other — `test_kb_inventory_contract.py`'s interlock only
+    # walks `documents[]` on `kind: retired_collection` files, and this module's
+    # own `check_topic_inventory` had never heard of either field. A topic
+    # inventory that declared deletions authorized next to a proof missing
+    # `complete` (the exact shape the sibling gate's own guilt case is built on
+    # — a MISSING key, not a declared `false`) would pass every rule above and
+    # every rule in the sibling module, since the sibling explicitly skips
+    # `kind != retired_collection`.
+    incomplete = [
+        proof
+        for proof in _find_containment_proofs(data)
+        if _sibling_gate()._proof_is_incomplete(proof)
+    ]
+    if incomplete:
+        decision = data.get("decision")
+        if isinstance(decision, dict) and decision.get("deletions_authorized") is True:
+            problems.append(
+                f"{len(incomplete)} containment_proof(s) in this file are incomplete "
+                f"(missing or false `complete`), yet decision.deletions_authorized is "
+                f"true — §4.6: one uncovered fragment means do not delete"
+            )
     return problems
 
 
@@ -896,6 +978,20 @@ INVENTORY_GUILT = [
      lambda d: d["instruments"][0].update(present=False, points=0)
      or d["measured_against"].update(points=0, payload_shapes={"legacy_metadata_text": 0}),
      "at least THREE distinct methods"),
+    # §4.6's interlock, ported to the topic schema (measured 2026-08-26 against
+    # kb/inventory/company.yaml: a topic inventory can carry a containment_proof
+    # ANYWHERE in its free-form structure — this fixture puts it on an instrument,
+    # mirroring where the retired_collection schema keeps it, but
+    # _find_containment_proofs does not care where it lives). The proof below is
+    # missing `complete` entirely — not a declared `false` — which is the exact
+    # shape that defeated the naive `.get("complete") is False` predicate on the
+    # sibling gate before 2026-08-26; `_proof_is_incomplete` is imported from that
+    # fix, not reimplemented.
+    ("containment proof missing `complete` but deletions are authorized anyway",
+     lambda d: d["instruments"][0].update(
+         containment_proof={"distinct_fragments_covered": 40, "distinct_fragments_total": 65})
+     or d.update(decision={"deletions_authorized": True}),
+     "one uncovered fragment means do not delete"),
 ]
 
 
@@ -927,12 +1023,87 @@ def test_innocence_three_genuinely_distinct_lookup_methods_pass():
     assert check_topic_inventory(data) == []
 
 
+# ── _find_containment_proofs: proven directly, because it is the part of this
+#    interlock that is NEW rather than imported. `_proof_is_incomplete` itself is
+#    already proven guilty/innocent in test_kb_inventory_contract.py — reproving it
+#    here would be the reimplementation this module's own docstring warns against.
+#    What is NOT already proven anywhere is that the walker actually reaches a
+#    proof sitting several levels deep in a free-form section, which is exactly
+#    the shape kb/inventory/company.yaml uses in production
+#    (uu_25_2007_fragment_categorisation.containment_proof) and exactly the shape
+#    a walker scoped to instruments[] alone would miss.
+
+
+def test_find_containment_proofs_reaches_a_proof_nested_under_a_freeform_section():
+    """The company.yaml shape: containment_proof lives under an arbitrary
+    top-level key, not inside instruments[] and not under a fixed name."""
+    nested = {
+        "uu_25_2007_fragment_categorisation": {
+            "method": "full scroll",
+            "containment_proof": {"complete": True},
+        },
+    }
+    assert _find_containment_proofs(nested) == [{"complete": True}]
+
+
+def test_find_containment_proofs_reaches_a_proof_inside_a_list_of_instruments():
+    """The retired_collection shape, for comparison: containment_proof inside a
+    list item. The walker must handle both without being told which is coming."""
+    nested = {"instruments": [{"id": "x", "containment_proof": {"complete": False}}]}
+    assert _find_containment_proofs(nested) == [{"complete": False}]
+
+
+def test_find_containment_proofs_finds_more_than_one_and_ignores_lookalikes():
+    nested = {
+        "a": {"containment_proof": {"complete": True}},
+        "b": [{"containment_proof": {"complete": False}}],
+        # A bare `complete` key with no `containment_proof` wrapper must NOT be
+        # picked up — that would be exactly the guard-over-match this repo's
+        # cicatrix-superscar family #3 already catalogues.
+        "c": {"complete": False},
+    }
+    found = _find_containment_proofs(nested)
+    assert len(found) == 2
+    assert {"complete": True} in found and {"complete": False} in found
+
+
+def test_find_containment_proofs_returns_nothing_when_absent():
+    assert _find_containment_proofs({"instruments": [{"id": "x", "present": True}]}) == []
+
+
+# ── the interlock itself, on check_topic_inventory: complete proof stays clean,
+#    absent proof is not this rule's business (innocence 2 above already proves
+#    "no containment_proof at all" for the pre-existing rules; these two add the
+#    decision.deletions_authorized axis this interlock introduces).
+
+
+def test_innocence_a_complete_containment_proof_permits_deletion_authorization():
+    data = _good_inventory()
+    data["instruments"][0]["containment_proof"] = {
+        "distinct_fragments_covered": 65,
+        "distinct_fragments_total": 65,
+        "complete": True,
+    }
+    data["decision"] = {"deletions_authorized": True}
+    assert check_topic_inventory(data) == []
+
+
+def test_innocence_no_containment_proof_at_all_leaves_deletion_authorization_alone():
+    """A topic inventory with no containment_proof anywhere is not this rule's
+    business, regardless of what decision.deletions_authorized says — the shape
+    of most rows in this schema, which has no discard-triage vocabulary at all
+    (MANDATE §2)."""
+    data = _good_inventory()
+    data["decision"] = {"deletions_authorized": True}
+    assert check_topic_inventory(data) == []
+
+
 def test_the_guilt_matrix_is_not_empty():
     """Anti-vacuity on the anti-vacuity: an emptied parametrisation collects zero
     cases and pytest exits 0. Assert the COUNT, so deleting the cases is loud."""
     assert len(TOPIC_GUILT) >= 11, len(TOPIC_GUILT)
     assert len(JOURNEY_GUILT) >= 27, len(JOURNEY_GUILT)
-    assert len(INVENTORY_GUILT) >= 16, len(INVENTORY_GUILT)
+    assert len(INVENTORY_GUILT) >= 17, len(INVENTORY_GUILT)
 
 
 # ── cites_an_instrument: the pure function, proven directly ──────────────────
@@ -1290,6 +1461,24 @@ def test_the_real_file_count_is_reported_not_assumed(capsys):
           f"(synthetic guilt matrix runs regardless: "
           f"{len(TOPIC_GUILT) + len(JOURNEY_GUILT) + len(INVENTORY_GUILT) + len(AGREEMENT_GUILT)} cases)")
     assert isinstance(counts[0], int)
+
+    # Same discipline for the §4.6 interlock's real-file exercise specifically: it
+    # is legal (today) for zero real topic inventories to carry a containment_proof
+    # at all — the synthetic guilt/innocence cases above are what keep the
+    # predicate honest before any real file reaches this branch, same reasoning as
+    # the module docstring gives for the contract as a whole. Say the count rather
+    # than assume it either way.
+    real_proofs = [
+        (p.name, proof)
+        for p in _real_topic_inventories()
+        for proof in _find_containment_proofs(_load(p))
+    ]
+    incomplete_real = [
+        name for name, proof in real_proofs if _sibling_gate()._proof_is_incomplete(proof)
+    ]
+    print(f"[kb-topic-contract] real containment_proof(s) found: {len(real_proofs)} "
+          f"({[n for n, _ in real_proofs]}), incomplete: {len(incomplete_real)} "
+          f"({incomplete_real})")
 
 
 def test_the_other_gate_still_defers_topic_inventories_to_this_one():
