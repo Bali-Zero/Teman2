@@ -1,5 +1,27 @@
 # Switchboard #3 — la prova a zero divergenze non è ottenibile così com'è strumentata
 
+> ## ⛔ RITRATTATO IN GRAN PARTE, 2026-08-25 — leggere questo prima del resto
+>
+> Questo documento presentava come nuova un'istruttoria **già fatta il giorno prima** in
+> `GOLD-DIVERGENCE-TRIAGE.md`, che apre le 16 divergenze una per una e le classifica. Le due
+> affermazioni da cancellare:
+>
+> 1. **«quattro divergenze permissive, la direzione che fa danno» (#8, #9, #10, #16).** Sono tutte
+>    e quattro **Classe 1** nella triage: il corpus prova 5 prodotti, il motore ne ha 38. La #16 in
+>    particolare — «investitore 1 IDR sotto il minimo, il motore offre D12» — è nominata lì
+>    testualmente come _«the one most likely to be misread as a scandal»_, con la spiegazione: **D12
+>    è il visto di visita multipla PRE-investimento**, e offrirlo a chi sta appena sotto la soglia
+>    KITAS è plausibilmente la risposta **commercialmente giusta**. Il corpus non poteva dirlo
+>    perché D12 non esiste nel suo mondo. Io l'ho riletta come scandalo: è l'errore che la triage
+>    aveva previsto per iscritto.
+> 2. **«zero divergenze non è raggiungibile, quindi #3 non è firmabile».** Il criterio non è più
+>    quello: `OWNER-RULINGS-2026-08-25.md §7` lo ha cambiato, **firmato da Zero**, in _«ogni
+>    divergenza spiegata, e nessuna di esse un vicolo cieco»_. La firma #3 è legittima.
+>
+> **Cosa resta valido di questo file:** il metodo di misura, il fatto che le spiegazioni vivono in
+> prosa e non nel driver (§ «il criterio è firmato e non armato», sotto), e il limite dichiarato in
+> fondo. Il resto è rumore che ho aggiunto io.
+
 > Misurato 2026-08-25 su `feature/visa-oracle` allineato a main, con
 > `gold_replay_driver --offline`. Pack usato: **seq-13 firmato**
 > (`payload_sha256 b9edb809…`, il più alto FIRMATO su disco — seq-14 e seq-15 sono

@@ -15,7 +15,7 @@ one defect and fifteen explanations**, and the explanations matter more than the
 | Class                                                        | N     | What it means                                                                                                             |
 | ------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------- |
 | The corpus tests a smaller catalogue than the engine has     | 7     | Not a defect                                                                                                              |
-| The engine is deliberately MORE conservative than the corpus | 5     | Not a defect — a later safety rule firing                                                                                 |
+| The engine is deliberately MORE conservative than the corpus | 6     | Not a defect — a later safety rule firing (was 5; persona #5 was missing, see below)                                      |
 | The engine asks a different question first                   | 2     | Not a defect — reachable either way                                                                                       |
 | **A real dead end**                                          | **1** | **#15 — V1 cured the E28/E33 shape of this disease, but not persona #15's own branch (2026-08-25: measured, still open)** |
 
@@ -43,13 +43,14 @@ simply never been re-based.
 
 Each of these is a safety rule that was added AFTER the corpus was written, now correctly firing:
 
-| #   | Persona                                        | The engine adds                                                                   |
-| --- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
-| 1   | ID citizen excluded outright                   | `CITIZENSHIP_LIST_DIVERGENCE` — escalates to a human instead of refusing outright |
-| 6   | minor child with confirmed family sponsor      | `MINOR_GUARDIAN_PRIVACY_REVIEW`                                                   |
-| 11  | clean remote worker, no local footprint        | `E33G_INCOME_EVIDENCE_REVIEW`                                                     |
-| 14  | tourism + remote-work purposes                 | `E33G_INCOME_EVIDENCE_REVIEW`                                                     |
-| 20  | onshore conversion, status+overstay unprovided | `BRIDGING_FROM_VISIT_ITK_PROHIBITED`, `BRIDGING_TO_BRIDGING_PROHIBITED`           |
+| #   | Persona                                        | The engine adds                                                                      |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 1   | ID citizen excluded outright                   | `CITIZENSHIP_LIST_DIVERGENCE` — escalates to a human instead of refusing outright    |
+| 5   | minor without confirmed guardian               | `MINOR_GUARDIAN_PRIVACY_REVIEW` **added 2026-08-25** — see the arithmetic note below |
+| 6   | minor child with confirmed family sponsor      | `MINOR_GUARDIAN_PRIVACY_REVIEW`                                                      |
+| 11  | clean remote worker, no local footprint        | `E33G_INCOME_EVIDENCE_REVIEW`                                                        |
+| 14  | tourism + remote-work purposes                 | `E33G_INCOME_EVIDENCE_REVIEW`                                                        |
+| 20  | onshore conversion, status+overstay unprovided | `BRIDGING_FROM_VISIT_ITK_PROHIBITED`, `BRIDGING_TO_BRIDGING_PROHIBITED`              |
 
 **Persona 20 is worth naming: that is Zero's bridging ruling of 2026-08-23 being enforced.** The
 corpus expected the engine to ask for more facts; the engine instead recognises a prohibited
@@ -309,3 +310,56 @@ L'acceptance corretta più sopra («una risposta onesta e non un muro») **resta
 vincitore indicato dalla norma**: la cura giusta è `SUPPORTED_CANDIDATES [E23]`, cioè insegnare al
 pack ciò che il Kepmen già dice, non `HUMAN_REVIEW_REQUIRED` come ripiego. Il ripiego resta
 accettabile solo finché la riga non è stata riletta alla fonte.
+
+---
+
+## Nota aritmetica, 2026-08-25 — la sedicesima divergenza mancava dalla tassonomia
+
+Le classi qui sopra sommavano 7 + 5 + 2 + 1 = **15**, contro **16** divergenze misurate. Il totale
+di `OWNER-RULINGS §7` («quindici non sono difetti», più la #15) era invece **giusto**: era la riga
+della Classe 2 a essere corta di uno.
+
+La mancante è la **persona #5** («minor without confirmed guardian»), e non cambia nessuna
+conclusione: stesso stato (`HUMAN_REVIEW_REQUIRED`), stessi candidati (nessuno), il motore aggiunge
+una ragione di review **in più** rispetto all'attesa — `MINOR_GUARDIAN_PRIVACY_REVIEW` accanto a
+`MINOR_WITHOUT_CONFIRMED_GUARDIAN`. È esattamente la forma già assegnata alla persona #6 per la
+stessa regola. Classificata qui, Classe 2, dalla sessione — non da un ruling.
+
+## ⚠️ L'accettazione falsificabile della #15 NON è ancora soddisfatta (misurato 2026-08-25, su seq-15)
+
+Questo documento fissa, per la persona #15, un test che si può far fallire:
+
+> _«it must flip from `NEEDS_INPUT` to `SUPPORTED_CANDIDATES [E23]` when the cure lands, and that
+> flip is the falsifiable acceptance.»_
+
+Ri-eseguito il driver **dopo** la cura (`59cc092a0`) e **contro il pack seq-15 appena firmato**
+(`payload_sha256 08ba8b09…`, `sequence 15` — il driver l'ha raccolto da solo, il che prova per
+inciso che il bundle firmato è valido e consumabile):
+
+```
+persona #15  atteso  SUPPORTED_CANDIDATES ['E23']
+             ADESSO  NEEDS_INPUT  missing_facts=['intent.requested_product_code']
+             flippata: NO
+summary      matches 4/20 · divergenze 16 · explained 0 · unexplained 16   (identico a seq-13)
+```
+
+**Perché la cura non la flippa, e non è un difetto della cura.** `59cc092a0` ha curato il **funnel**:
+un visitatore vero sul ramo `work` può ora nominare E23U/E23V, e quel vicolo cieco è chiuso. La
+persona #15 però non passa dal funnel — alimenta il motore direttamente, e la sua forma è un'altra:
+**due scopi** (`TOURISM` + `EMPLOYMENT`) che vogliono E23. La sua radice non è la nominabilità del
+prodotto: è la **copertura degli scopi** — nel pack firmato `E23.covered_purposes = ["EMPLOYMENT"]`,
+e `evaluator.py:678` pretende che **ogni** scopo dichiarato sia coperto.
+
+E quella radice ora ha una risposta normativa, che prima non c'era: NB-2 cita il **Kepmen
+M.IP-08.GR.01.01/2025, Lampiran B.1, riga E23, colonna Hak** — _«Melakukan kegiatan yang berhubungan
+dengan **wisata**…»_. Il titolare di E23 ha diritto esplicito al turismo: è il **pack firmato** a
+sotto-dichiarare, non la fixture a sbagliare. La cura della #15 è quindi un **seq-16** che insegna
+`E23.covered_purposes ⊇ {EMPLOYMENT, TOURISM}` — nuova firma, e prima va riletta la riga alla fonte
+(il PDF del Kepmen non è su disco).
+
+**Conseguenza sul registro d'accensione.** L'evidenza della firma #3 dice _«persona #15's dead end is
+cured by 59cc092a0»_. Metà vera: il vicolo cieco **del funnel** è chiuso. Ma il test che questo
+documento aveva designato come prova della cura **non è passato**, e continua a non passare. Non è
+una ragione per ritirare la firma — il criterio firmato in §7 chiede «nessun vicolo cieco», e per un
+visitatore reale non ce n'è più uno — ma è una ragione perché il registro non dica che una prova è
+passata quando è misurabilmente rossa.
