@@ -103,9 +103,11 @@ def test_innocence_4464_cli_exits_zero():
 
 def test_innocence_real_1s_overshoot_on_a_non_required_job_does_not_taint_the_verdict():
     """The real fixture already contains a 1s-after-merge completion: the
-    'Test Summary' job. It happens NOT to be one of the 27 required contexts
-    on this repo (aggregator/summary jobs sit alongside the required ones,
-    not in place of them) — so it does not by itself prove the grace window
+    'Test Summary' job. It happens NOT to be one of the required contexts
+    on this repo (27 at fixture-recording time, cut to 9 then reinstated to
+    11 by 2026-08-27 — either way, aggregator/summary jobs sit alongside the
+    required ones, not in place of them) — so it does not by itself prove
+    the grace window
     is exercised. This pins that specific, measured fact instead of assuming
     it: a required-context probe must never be tripped by timing on a
     non-required job, no matter how it completes."""
@@ -359,9 +361,19 @@ def test_skipped_does_not_substitute_for_a_missing_job():
 
 def test_snapshot_file_is_present_and_non_empty():
     """The fallback is only a fallback if it exists. Pins the file this probe
-    now depends on in CI."""
+    now depends on in CI.
+
+    The floor was 20 when main required 27 contexts; Zero's 2026-08-27 ruling
+    cut that to 9, then the 30-day reinstatement rule fired twice within the
+    hour (actionlint ← #5050, guard-conformance ← #5045), bringing live
+    required back to 11 — the other 16 stayed advisory
+    (docs/runbooks/merge-queue-discipline.md "Required vs advisory checks —
+    reinstatement rule"). 5 is a truncation tripwire, not a target count: it
+    still fails loud on a snapshot gutted to a handful of entries, without
+    hardcoding today's real count into a test that must keep passing as the
+    SSOT legitimately drifts."""
     names, generated_at = probe._required_contexts_from_snapshot(str(REPO_ROOT))
-    assert len(names) >= 20, f"snapshot looks truncated: {len(names)} contexts"
+    assert len(names) >= 5, f"snapshot looks truncated: {len(names)} contexts"
     assert all(isinstance(n, str) and n for n in names)
     assert generated_at and generated_at != "unknown", (
         "the snapshot must carry its own generation date — it is what makes the "
@@ -388,7 +400,10 @@ def test_snapshot_is_used_when_the_api_is_denied(monkeypatch):
 
     monkeypatch.setattr(probe, "_gh_api_json", _denied)
     contexts, source = probe.fetch_required_contexts("o/r", str(REPO_ROOT))
-    assert len(contexts) >= 20
+    # Same truncation tripwire as test_snapshot_file_is_present_and_non_empty —
+    # 5, not today's real count (11: 27 cut to 9 on 2026-08-27, then 2
+    # reinstated within the hour — see that test's docstring).
+    assert len(contexts) >= 5
     assert source.startswith("snapshot:")
 
 

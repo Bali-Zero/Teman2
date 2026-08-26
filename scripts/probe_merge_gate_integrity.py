@@ -121,7 +121,12 @@ SILENT_PASS_CONCLUSIONS = {"skipped"}
 # CANNOT-VERIFY (26 consecutive failed runs on 2026-08-23 alone). The repo
 # already checks in the same list at infra/required.d/contexts.json
 # (scripts/ci/snapshot_required_contexts.py writes it); verified content-
-# identical to the live API on 2026-08-23 — 27 contexts, same names, no diff.
+# identical to the live API on 2026-08-27 — 11 contexts, same names, no diff
+# (Zero's ruling that day cut 27 to 9, then the 30-day reinstatement rule
+# fired twice within the hour on real catches — actionlint on #5050,
+# guard-conformance on #5045 — bringing live required back up to 11; the
+# other 16 stayed advisory. See docs/runbooks/merge-queue-discipline.md
+# "Required vs advisory checks — reinstatement rule").
 # Advisory-but-present beats authoritative-but-unreadable: the live API is
 # still tried FIRST, so a privileged caller keeps ground truth, and the
 # verdict records which source was used.

@@ -495,7 +495,10 @@ jobs:
   #
   # WHY THE THIRD JOB EXISTS AT ALL (do not "simplify" it away)
   # `Backend Tests (Python)` is a REQUIRED context in classic branch protection
-  # (27 contexts, verified 2026-08-23). A matrix renames its check runs to
+  # (27 contexts verified 2026-08-23; cut to 9 then reinstated to 11 by Zero's
+  # 2026-08-27 ruling — this context stayed required throughout, see
+  # docs/runbooks/merge-queue-discipline.md "Required vs advisory checks —
+  # reinstatement rule"). A matrix renames its check runs to
   # "... (1)", "... (2)" — the bare required context would then never report
   # again, every queue entry would wait out `checkResponseTimeout` and fail.
   # That is superscar #2 / W69 (required-checks silently disarmed). So the fan-in
@@ -1024,8 +1027,10 @@ jobs:
 
   # ── THE REQUIRED CONTEXT ─────────────────────────────────────────────────────
   # This job's `name:` is load-bearing infrastructure, not a label. "Backend
-  # Tests (Python)" is one of the 27 required status contexts in classic branch
-  # protection on `main`. Rename it, matrix it, or delete it and every merge
+  # Tests (Python)" is one of the required status contexts in classic branch
+  # protection on `main` (11 as of Zero's 2026-08-27 ruling, down from 27 —
+  # docs/runbooks/merge-queue-discipline.md "Required vs advisory checks —
+  # reinstatement rule"). Rename it, matrix it, or delete it and every merge
   # queue entry from that moment on waits out `checkResponseTimeout` (5400s) and
   # fails with nothing red to fix — superscar #2 / W69. It reports the verdict;
   # the three shards and the static job do the work.
