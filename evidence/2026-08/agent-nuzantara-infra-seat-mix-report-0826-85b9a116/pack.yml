@@ -7,18 +7,24 @@ plan_ref: >-
 lanes:
   - lane: seat-mix-report-implementation
     role: build
-    seat: claude-sonnet-5 (this session -- script, tests, plist, doc, real run)
+    seat: claude-sonnet-5 (this session -- script, tests, plist, doc, real runs, and the fix round below)
+  - lane: seat-mix-adversarial-review
+    role: review
+    seat: kimi-code/k3 (cross-family refuter on the real shipping PR diff, gh pr diff 5047)
 
 diff:
-  files: 4
-  net_lines: 1125
-  measured_at: 85b9a1162
+  files: 6
+  net_lines: 1533
+  measured_at: c89706c69
   note: >-
-    git diff --no-renames --numstat against merge-base 63bfa19ec5 (origin/main
-    at dispatch time): docs/factory/SEAT-MIX.md +161, infra/launchagents/
-    com.nuzantara.seat-mix.daily.plist +25, scripts/seat_mix_report.py +536,
-    scripts/tests/test_seat_mix_report.py +403 -- 0 deletions, matching the
-    commit's own "4 files changed, 1125 insertions(+)".
+    git diff --no-renames --numstat against merge-base 63bfa19ec5872519 (origin/main
+    at dispatch time), cumulative across all 3 commits on this branch (feature +
+    evidence pack + refuter-fix round): docs/factory/SEAT-MIX.md +190,
+    evidence/.../brief.yml +83, evidence/.../pack.yml +193 (this file, self-counted
+    per the existing convention), infra/launchagents/com.nuzantara.seat-mix.daily.plist
+    +25, scripts/seat_mix_report.py +595, scripts/tests/test_seat_mix_report.py +447
+    -- 0 net deletions (every file is new relative to origin/main, so intra-branch
+    edits collapse to pure addition against the merge-base).
 
 pii_scan: clean
 
@@ -135,6 +141,25 @@ receipts:
     ts: 2026-08-27T00:24Z
     seat: session (Pro, implementer lane)
 
+  - claim: >-
+      Both Kimi K3 findings (secret-shaped flag values, over-count on
+      read/edit references to vocabulary scripts) are actually fixed, with
+      new guilt+innocence coverage, and the fix did not regress anything.
+    cmd: >-
+      ./apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_seat_mix_report.py -q
+      && python3 scripts/seat_mix_report.py --since 48
+    result: >-
+      52 passed (was 40; +12 for this round: 6 read-verb innocence cases,
+      1 compound-command non-blinding case, 5 redaction guilt cases). Real
+      re-run against real transcripts still rc=0, 118 sessions, 148 Agent
+      dispatches, 112 non-Anthropic seat calls (0.76/dispatch) -- plausible,
+      no crash, no PII in the reviewed output. Pasted into the PR body and
+      docs/factory/SEAT-MIX.md as the post-review baseline, replacing the
+      pre-review numbers.
+    exit: 0
+    ts: 2026-08-27T00:39Z
+    seat: session (Pro, implementer lane)
+
 dissent:
   - seat: session self-refutation (own test suite, caught before any external review)
     objection: >-
@@ -169,8 +194,40 @@ dissent:
       comment to a single hyphen; re-verified plutil, plistlib, and
       lint_plist_keepalive.py all agree (clean) after the fix.
 
+  - seat: kimi-code/k3 (cross-family refuter, on the real PR #5047 diff via gh pr diff)
+    objection: >-
+      (1) The output-safety charset is a superset of common secret shapes --
+      an sk-...-style key or a bare-digit phone number sitting in a matching
+      --model/--seat/--tier/ollama-model flag value is made entirely of
+      letters/digits/hyphens and would survive sanitize_str's charset check
+      intact, contradicting the module's own overstated docstring claim.
+      (2) classify_bash_seat over-matches when a vocabulary script is merely
+      READ or EDITED (cat/grep/git log/vim on seat_build.sh,
+      jules_dispatch.py, review_routes), not invoked -- a systematic
+      inflation risk given this repo's own daily work is editing these
+      scripts, demonstrated with concrete examples the existing test suite
+      did not cover.
+    status: CONFIRMED
+    note: >-
+      Both re-measured against the code, not accepted on the refuter's
+      word: reproduced (1) by hand-tracing `agy --model sk-abc123secretvalue`
+      through _AGY_MODEL_RE + sanitize_str pre-fix and confirming it would
+      have passed both the charset check and assert_all_strings_safe
+      unredacted; reproduced (2) by running `cat scripts/seat_build.sh`
+      through the pre-fix classifier and confirming it returned
+      "seat_build:default" instead of None. Fixed in commit c89706c69:
+      _redact_if_sensitive() (secret-prefix match, or >=7 digits) gates
+      every free-captured flag value before sanitization; a per-segment
+      first-token check against a fixed read/inspect/edit-verb set skips
+      any shell-separator-delimited segment that only references a
+      vocabulary name rather than running it. 12 new guilt+innocence tests
+      added for both, full suite re-run green (52/52), real transcripts
+      re-run rc=0 with plausible output. Not found independently by the
+      session before the refuter ran -- recorded as external, not
+      self-refutation, unlike the two entries above.
+
 tests:
-  - "scripts/tests/test_seat_mix_report.py -- 40 collected, 40 passed, rc=0 (backend-rag venv python)."
+  - "scripts/tests/test_seat_mix_report.py -- 52 collected, 52 passed, rc=0 (backend-rag venv python)."
 
 static:
   - "pre-commit hooks passed on the feature commit (anti-reward-hacking test lint, print()
