@@ -1,0 +1,95 @@
+task_id: garuda-crm-adapters-0826
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  The GARUDA order pipeline declares two ports it has never had an implementation for —
+  `OrderSnapshotProvider` (read an order's facts) and `CrmWriter` (land a paying customer in the
+  CRM). Until they exist, a tourist who pays for a VOA has an order row and no client record: the
+  order lives in `garuda_orders`/`garuda_practices` and never crosses into `clients`/`practices`,
+  which is the table the portal, the CRM and every downstream deadline read from.
+
+  This diff adds the concrete Postgres adapters plus the one schema change they require.
+
+  The schema change is the load-bearing part. `CrmWriter`'s contract demands DATABASE-LEVEL
+  idempotency: the same order retried must produce the same practice, not a second one. Measured
+  on a live schema built from this repo's own migrations, `practices` had exactly two unique
+  indexes before this diff — `practices_pkey` (the integer surrogate PK) and `ix_practices_uuid`
+  (a generated UUID). Both are produced BY the insert, so neither can be used as a
+  caller-supplied idempotency key: there was nothing for `ON CONFLICT` to arbitrate on, and the
+  port's central promise rested on nothing.
+
+  Correction recorded deliberately: PR #5020's own description says `practices` had "no unique
+  constraint of any kind". That is FALSE — the two above exist. The true and narrower statement
+  is "no unique constraint on any caller-supplied business key". The overstatement was found by
+  re-measuring `pg_index.indisunique` while writing this brief, not by a reviewer, and it is
+  written down here rather than quietly fixed because a durable artifact that overstates its own
+  motivation is the W113 shape.
+
+  Migration 288 adds `practices.source_idempotency_key TEXT` and a PARTIAL unique index
+  (`WHERE source_idempotency_key IS NOT NULL`), so every pre-existing row — all of which have
+  NULL there — stays outside the index and the migration cannot fail on legacy data.
+
+  Gear 3 by PATH: `scripts/evidence_pack_lint.py --print-floor` returns 3 because
+  `apps/backend-rag/backend/db/migrations_v2/288_practices_source_idempotency_key.sql` is a
+  hot-zone path. Functional diff: 4 files, +824/-0.
+constraints:
+  - "The partial index predicate and the ON CONFLICT predicate must match VERBATIM. Postgres
+    infers a partial unique index as an arbiter only when the clause's predicate matches the
+    index's; a near-miss does not error at DDL time and does not error at INSERT time either —
+    it raises at runtime on the first conflict, in production, on a paying customer's order."
+  - "The migration runner here is TRANSACTIONAL (migration_base.py), so CREATE INDEX
+    CONCURRENTLY is structurally unavailable and Squawk's require-concurrent-index-creation is
+    excluded repo-wide in migration-lint.yml. The index is therefore built under a lock; it is
+    acceptable only because the column is brand new and every existing row is NULL, so the build
+    scans an empty predicate set. This is a property of THIS migration, not a general licence."
+  - "No PII in any durable artifact. The adapters carry a customer name and email in memory to
+    write the CRM row; nothing logs them, and the test fixtures use example.invalid addresses and
+    a placeholder name."
+  - "Additive only on ports.py: `customer_full_name` is added as an OPTIONAL field so no existing
+    caller of OrderSnapshot breaks."
+acceptance:
+  - "A write creates exactly one client and exactly one practice, and the practice carries the
+    caller's idempotency key."
+  - "A SEQUENTIAL retry with the same key returns the SAME practice id — no second row."
+  - "Two CONCURRENT writers racing the same key create exactly one practice."
+  - "Two concurrent orders from one customer create exactly one client."
+  - "Email case and surrounding whitespace resolve to the same client (the CRM lookup is not
+    literal-string equality)."
+  - "A snapshot with no customer name is REFUSED and writes nothing — no half-written client."
+  - "The provider walks practice -> order -> check result, and refuses to invent fields when the
+    check row is gone rather than returning a plausible blank."
+  - "Mutation-proved: deleting the ON CONFLICT clause reddens the two idempotency tests and
+    NOTHING else. A green suite with the clause removed would have meant the tests were asserting
+    something true regardless of the code."
+consumer_map:
+  - "apps/backend-rag/backend/services/garuda_ops/ports.py — the two Protocols these adapters
+    satisfy. No runtime consumer wires them yet: this diff supplies the implementation, the
+    wiring is the NEXT step (order paid -> clients row -> portal invite)."
+  - "practices / clients — the CRM tables the portal and every deadline consumer read. The new
+    column is additive and NULL for every existing row, so no current reader changes behaviour."
+  - "garuda_practices / garuda_orders / garuda_voa_check_results — read-only for the provider."
+  - "No API route, no cron, no LaunchAgent consumes this yet. Stated explicitly so 'merged' is
+    not mistaken for 'live': nothing in production calls these adapters after this PR lands."
+risks:
+  - "The adapters are DARK on merge. Landing them changes no running behaviour, which is the
+    intent, but it also means CI green here is not evidence that the paid-order handoff works
+    end to end — that proof belongs to the wiring PR."
+  - "`IdempotencyRaceLost` is unreachable under READ COMMITTED (asyncpg's default) and is raised,
+    not swallowed, so an adapter accidentally run under REPEATABLE READ fails loudly. It is
+    therefore an exception that the test suite can only reach by construction, not by simulating
+    the real isolation level."
+  - "A caller passing source_idempotency_key=NULL gets no idempotency at all — by design, since
+    the index is partial. Nothing in the type system prevents it."
+grader: >-
+  Independent adversarial seat, fresh context, not the seat that wrote the diff, instructed to
+  REFUTE and to default to SUSPECT. Six named attacks: ON CONFLICT arbiter-predicate matching and
+  the NULL escape; whether IdempotencyRaceLost is genuinely unreachable under READ COMMITTED for
+  DO NOTHING specifically; whether the client-lookup path is race-safe or only appears so because
+  the "concurrent" test is sequential; whether MissingCustomerName is raised for a missing EMAIL
+  (in which case its name lies); the lock profile of a non-concurrent index build on a large live
+  table; and which mutation would redden each load-bearing test. Verdicts in pack.yml.
+budget: >-
+  No paid API. Local psql, python3, git, gh, and Claude MAX OAuth seats only. No
+  ANTHROPIC_API_KEY at any point.
+pii: none

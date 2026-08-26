@@ -24,7 +24,7 @@ only level this adapter is written for): `ON CONFLICT DO NOTHING` waits on a
 concurrent inserter's speculative lock rather than skipping past it blindly, and
 the following statement takes a fresh snapshot, so the committed winner IS
 visible. Under REPEATABLE READ the re-read could legitimately find nothing —
-hence `_IdempotencyRaceLost`, which says exactly that instead of pretending a
+hence `IdempotencyRaceLost`, which says exactly that instead of pretending a
 row vanished.
 
 WHAT IT WILL NOT DO. `clients.full_name` is NOT NULL. If the snapshot carries
@@ -51,8 +51,30 @@ from backend.services.garuda_ops.ports import OrderSnapshot
 logger = logging.getLogger("garuda.ops.adapters_pg")
 
 
-class MissingCustomerName(ValueError):
+class MissingCustomerIdentity(ValueError):
+    """The snapshot lacks a field the CRM needs to identify the customer.
+
+    Split into cause-specific subclasses on purpose. A single exception raised
+    for BOTH a missing name and a missing email cannot be branched on: a caller
+    or an alert would have to parse the message string to learn which field was
+    absent, and the class name itself would be lying about half its raise sites.
+    Catch this base to mean "the snapshot is not identifiable"; catch a subclass
+    to act on the specific gap.
+    """
+
+
+class MissingCustomerName(MissingCustomerIdentity):
     """The snapshot had no `customer_full_name` and the CRM requires one."""
+
+
+class MissingCustomerEmail(MissingCustomerIdentity):
+    """The snapshot had no usable `customer_email` to key the CRM client on.
+
+    "Usable" is what migration 166's partial unique index accepts: a non-NULL,
+    non-blank address. A snapshot failing that cannot be deduplicated against an
+    existing client, so it is refused rather than written as a fresh row that
+    would silently double the customer.
+    """
 
 
 class IdempotencyRaceLost(RuntimeError):
@@ -73,8 +95,18 @@ def _normalized_email(raw: str) -> str:
     Python. This adapter normalizes identically so the three agree; a lookup
     that used bare `LOWER(email)` would miss a stored address with trailing
     whitespace and cheerfully create a duplicate client.
+
+    `raw` is typed `str`, and `garuda_orders.applicant_email` is `TEXT NOT NULL`
+    (migration 284), so today's only real caller cannot pass None. The guard is
+    here anyway because `OrderSnapshot.customer_email: str` is a hint rather than
+    an enforced invariant: without it a None would surface as a bare
+    `AttributeError` from deep inside the adapter, which the caller could not
+    distinguish from a genuine bug in the SQL. Returning "" routes it to the same
+    `MissingCustomerEmail` a blank address gets — one failure, one name.
     """
 
+    if raw is None:
+        return ""
     return raw.strip().lower()
 
 
@@ -177,6 +209,20 @@ class PostgresCrmWriter:
         source_idempotency_key: str,
         practice_type_code: str,
     ) -> int:
+        # `source_idempotency_key: str` is a HINT, not a check, and this one
+        # cannot be left to the type checker: the unique index behind the
+        # ON CONFLICT below is PARTIAL (`WHERE source_idempotency_key IS NOT
+        # NULL`), so a falsy key does not conflict with anything — it inserts,
+        # every single time, silently defeating the exact-once guarantee this
+        # whole adapter exists to provide. It would not raise, would not log,
+        # and would look identical to success.
+        if not source_idempotency_key or not source_idempotency_key.strip():
+            raise ValueError(
+                f"order {snapshot.order_aggregate_id}: source_idempotency_key is "
+                "empty; the partial unique index cannot arbitrate a NULL/blank "
+                "key, so this write would duplicate on every retry"
+            )
+
         if not snapshot.customer_full_name or not snapshot.customer_full_name.strip():
             raise MissingCustomerName(
                 f"order {snapshot.order_aggregate_id} has no customer_full_name; "
@@ -245,7 +291,7 @@ class PostgresCrmWriter:
 
         email = _normalized_email(snapshot.customer_email)
         if not email:
-            raise MissingCustomerName(
+            raise MissingCustomerEmail(
                 f"order {snapshot.order_aggregate_id} has no usable customer email"
             )
 
@@ -277,6 +323,8 @@ class PostgresCrmWriter:
 
 __all__ = [
     "IdempotencyRaceLost",
+    "MissingCustomerEmail",
+    "MissingCustomerIdentity",
     "MissingCustomerName",
     "PostgresCrmWriter",
     "PostgresOrderSnapshotProvider",

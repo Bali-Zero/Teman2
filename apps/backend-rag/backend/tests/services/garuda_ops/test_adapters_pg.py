@@ -27,6 +27,8 @@ import pytest
 asyncpg = pytest.importorskip("asyncpg")
 
 from backend.services.garuda_ops.adapters_pg import (
+    MissingCustomerEmail,
+    MissingCustomerIdentity,
     MissingCustomerName,
     PostgresCrmWriter,
     PostgresOrderSnapshotProvider,
@@ -59,7 +61,20 @@ async def pool():
                 "garuda_order_journal, garuda_orders, garuda_voa_check_results "
                 "CASCADE"
             )
+            # Two deletes, in this order, and the SECOND is not redundant.
+            # The first clears rows this suite's adapter wrote (they all carry a
+            # key). The second clears rows a test wrote with a NULL key — which
+            # the first cannot see — and it must run BEFORE the client delete or
+            # `practices_client_id_fkey` rejects it. Found the hard way: a test
+            # that inserts a NULL-key practice to demonstrate what the partial
+            # index does NOT constrain left the client undeletable, and every
+            # later test in the file errored in teardown rather than in its own
+            # body, which points the blame at the wrong test.
             await conn.execute("DELETE FROM practices WHERE source_idempotency_key IS NOT NULL")
+            await conn.execute(
+                "DELETE FROM practices WHERE client_id IN "
+                "(SELECT id FROM clients WHERE email LIKE '%@example.invalid')"
+            )
             await conn.execute("DELETE FROM clients WHERE email LIKE '%@example.invalid'")
         yield p
     finally:
@@ -443,6 +458,97 @@ async def test_a_blank_name_is_refused_too(pool):
             source_idempotency_key=f"evt_{uuid.uuid4().hex}",
             practice_type_code=PRACTICE_TYPE,
         )
+
+
+async def test_a_missing_email_raises_its_OWN_exception_not_the_name_one(pool):
+    """The exception must name the field that is actually absent.
+
+    Both refusals used to raise `MissingCustomerName`, including the one for a
+    missing EMAIL — so a caller or an alert branching on the class could not
+    tell the two apart without parsing the message string, and the class name
+    was false at half its raise sites. The assertion that carries the weight is
+    the NEGATIVE one: raising the base class alone would satisfy `pytest.raises`
+    on a subclass check, but not `not isinstance(..., MissingCustomerName)`.
+    """
+
+    key = f"evt_{uuid.uuid4().hex}"
+
+    with pytest.raises(MissingCustomerEmail) as caught:
+        await PostgresCrmWriter(pool).create_client_and_practice(
+            _snapshot(customer_full_name="SPECIMEN TRAVELLER", customer_email="   "),
+            source_idempotency_key=key,
+            practice_type_code=PRACTICE_TYPE,
+        )
+
+    assert not isinstance(caught.value, MissingCustomerName), (
+        "a missing email must not be reported as a missing name"
+    )
+    assert isinstance(caught.value, MissingCustomerIdentity), (
+        "both refusals must stay catchable as one 'snapshot not identifiable' class"
+    )
+
+    async with pool.acquire() as conn:
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM practices WHERE source_idempotency_key = $1", key
+            )
+            == 0
+        ), "a refused snapshot must leave no half-written practice"
+
+
+@pytest.mark.parametrize("bad_key", ["", "   "])
+async def test_an_empty_idempotency_key_is_refused_before_it_can_duplicate(pool, bad_key):
+    """A blank key defeats the whole point of the adapter, silently.
+
+    The unique index behind the ON CONFLICT is PARTIAL (`WHERE
+    source_idempotency_key IS NOT NULL`), so a NULL or blank key conflicts with
+    nothing: the INSERT succeeds every single time, with no error and no log,
+    and one payment retried three times becomes three CRM practices. The `str`
+    annotation on the parameter cannot catch this — it is a hint, not a check —
+    which is exactly why the guard is a runtime raise and why this test exists.
+    """
+
+    with pytest.raises(ValueError, match="source_idempotency_key"):
+        await PostgresCrmWriter(pool).create_client_and_practice(
+            _snapshot(),
+            source_idempotency_key=bad_key,
+            practice_type_code=PRACTICE_TYPE,
+        )
+
+
+async def test_a_blank_key_would_otherwise_duplicate_which_is_why_it_is_refused(pool):
+    """The damage the guard above prevents, demonstrated against the real index.
+
+    Written directly in SQL rather than through the adapter, because the adapter
+    now refuses. If a future change relaxes that guard, this test still states
+    the consequence: the partial index does NOT deduplicate blank keys.
+    """
+
+    async with pool.acquire() as conn:
+        client_id = await conn.fetchval(
+            "INSERT INTO clients (full_name, email) VALUES ($1, $2) RETURNING id",
+            "SPECIMEN TRAVELLER",
+            f"blank-key-{uuid.uuid4().hex}@example.invalid",
+        )
+        for _ in range(2):
+            await conn.execute(
+                """
+                INSERT INTO practices
+                    (client_id, practice_type_code, title, quoted_price, currency,
+                     source_idempotency_key)
+                VALUES ($1, $2, 'duplicate probe', 1, 'IDR', NULL)
+                """,
+                client_id,
+                PRACTICE_TYPE,
+            )
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM practices "
+                "WHERE client_id = $1 AND source_idempotency_key IS NULL",
+                client_id,
+            )
+            == 2
+        ), "the partial index deliberately does not constrain NULL keys"
 
 
 async def test_find_returns_none_for_an_unknown_key(pool):

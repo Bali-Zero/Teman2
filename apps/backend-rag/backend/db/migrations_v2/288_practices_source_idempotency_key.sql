@@ -32,8 +32,24 @@
 -- WHY NOT `CONCURRENTLY`. `db/migration_base.py:511` runs every migration
 -- inside `async with conn.transaction()`, and `CREATE INDEX CONCURRENTLY`
 -- cannot run inside a transaction block — the same constraint migration 279
--- already records for itself. This index is therefore created plainly and
--- holds a write lock on `practices` for its duration.
+-- already records for itself.
+--
+-- WHAT THAT ACTUALLY LOCKS — stated precisely, because an earlier draft of
+-- this comment said "a write lock ... for its duration" and that was wrong on
+-- BOTH counts. `ALTER TABLE ... ADD COLUMN` takes ACCESS EXCLUSIVE, which
+-- blocks SELECTs too, not merely writes; and Postgres holds a lock to the END
+-- OF THE TRANSACTION, so because the runner wraps this whole file in one
+-- transaction the ACCESS EXCLUSIVE taken by the ALTER is still held through
+-- the COMMENT and through the index build. For the duration of this migration
+-- `practices` is UNREADABLE, not just unwritable.
+--
+-- Why that is acceptable HERE, and why this is not a general licence: the
+-- column is created empty in the same transaction, so at index-build time
+-- every row has `source_idempotency_key IS NULL` and the partial predicate
+-- matches ZERO rows. The build is a scan with nothing to insert, not a sort
+-- proportional to the live table. The exposure is short — but it is a read
+-- outage, so run this against a busy `practices` in a low-traffic window
+-- rather than assuming the CRM and the portal can read through it.
 -- ============================================================================
 
 ALTER TABLE public.practices

@@ -1,0 +1,239 @@
+# brief_ref is the LITERAL 'evidence/brief.yml' even though this pack lives in a per-PR
+# directory: harness-floor.yml stages BOTH files flat into /tmp/evidence-check/evidence/ and
+# lints with --repo-root /tmp/evidence-check, so the real per-PR path does not resolve there.
+# Linting this pack in place passes and tells you nothing — reproduce the staging.
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #5020 (agent/air-m5/ops/garuda-crm-adapters-0826) — the GARUDA order pipeline declares two
+  ports with no Postgres implementation, so a paying customer never becomes a CRM client.
+  2026-08-26."
+lanes:
+  - lane: garuda-crm-adapters
+    role: build
+    seat: opus-5 orchestrator (M5 worktree; adapters, migration 288, suite, mutation proofs)
+  - lane: garuda-crm-adapters-refute
+    role: review
+    seat: sonnet-5 adversarial subagent (fresh context; six named attacks, told to default to SUSPECT)
+seat_diversity: satisfied
+seat_diversity_note:
+  "One build lane, one review lane, different seats and different contexts. The grader was not
+  asked to confirm: it was handed six specific author claims to attack by measurement, and it
+  REFUTED or PARTIALLY REFUTED three of them. All three were fixed before this pack was written
+  — see dissent."
+diff:
+  net_lines:
+    "4 files changed, +824/-0 at first push (git diff --shortstat origin/main...HEAD); the
+    corrections below add to that. No deletions: every file is new except a 9-line additive
+    field on ports.py."
+  behaviour_change:
+    "Additive and DARK. Two adapter classes and one migration are added; nothing constructs them.
+    The migration adds a nullable column plus a PARTIAL unique index, so every existing practice
+    row is outside the index and no current reader changes behaviour."
+receipts:
+  - claim: The deterministic floor for this diff is 3, so this pack is required.
+    cmd:
+      git diff --name-only origin/main...HEAD > /tmp/c5020.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/c5020.txt
+    result: "3 (migrations_v2/288_... is a hot-zone path)"
+    exit: 0
+    ts: "2026-08-26T11:05:00Z"
+    seat: opus-5 orchestrator (M5)
+  - claim:
+      "`practices` had no unique constraint on any CALLER-SUPPLIED key before this diff — and the
+      PR description's stronger claim ('no unique constraint of any kind') is FALSE."
+    cmd:
+      "psql: select i.relname, x.indisunique from pg_index x join pg_class i on i.oid=x.indexrelid
+      where x.indrelid='public.practices'::regclass and x.indisunique"
+    result:
+      "TWO unique indexes existed: practices_pkey (integer surrogate PK) and ix_practices_uuid
+      (generated UUID). Both are produced BY the insert, so neither can arbitrate a key the caller
+      supplies — the narrow claim holds, the broad one does not. Corrected in the brief rather
+      than quietly dropped."
+    exit: 0
+    ts: "2026-08-26T11:02:00Z"
+    seat: opus-5 orchestrator (M5)
+  - claim: The suite passes against a real Postgres built from this repo's own migrations.
+    cmd:
+      INTAKE_TEST_DSN=... pytest backend/tests/services/garuda_ops/test_adapters_pg.py
+      (schema via ci_bootstrap_schema.py + backend.db.migrate apply-all)
+    result: "18 passed in 0.58s (14 at first push, +4 added by the corrections below)"
+    exit: 0
+    ts: "2026-08-26T11:40:00Z"
+    seat: opus-5 orchestrator (M5)
+  - claim:
+      "Mutation A — the ON CONFLICT clause is load-bearing, and reddens ONLY the two idempotency
+      tests."
+    cmd: delete the `ON CONFLICT ... DO NOTHING` clause from the practice INSERT; run the suite
+    result:
+      "2 failed, 12 passed — test_a_sequential_retry_returns_the_same_practice and
+      test_two_concurrent_writers_racing_the_same_key_create_exactly_one_practice. Restored, green."
+    exit: 1 then 0
+    ts: "2026-08-26T11:12:00Z"
+    seat: opus-5 orchestrator (M5)
+  - claim:
+      "Mutation B — the new empty-key guard is load-bearing: without it the write is accepted and
+      would duplicate."
+    cmd: delete the `if not source_idempotency_key` raise; run the suite
+    result: "2 failed, 16 passed — both parametrizations of the empty-key test. Restored, green."
+    exit: 1 then 0
+    ts: "2026-08-26T11:50:00Z"
+    seat: opus-5 orchestrator (M5)
+  - claim:
+      "Mutation C — the cause-specific email exception is load-bearing, not cosmetic: reverting it
+      to MissingCustomerName reddens the test that asserts the two are distinguishable."
+    cmd: change `raise MissingCustomerEmail(` back to `raise MissingCustomerName(`; run the suite
+    result: "1 failed, 17 passed — test_a_missing_email_raises_its_OWN_exception_not_the_name_one."
+    exit: 1 then 0
+    ts: "2026-08-26T11:51:00Z"
+    seat: opus-5 orchestrator (M5)
+  - claim:
+      "GRADER VERDICT: three of six author claims did NOT survive measurement, and all three were
+      real defects in this diff."
+    cmd:
+      adversarial subagent on origin/<branch> with fresh context, six named attacks (arbiter
+      predicate match + the NULL escape; DO NOTHING under READ COMMITTED; client-lookup race
+      safety; whether MissingCustomerName is raised for a missing EMAIL; the lock profile of a
+      non-concurrent index build; which mutation reddens each load-bearing test)
+    result:
+      "3 UPHELD (predicate match is byte-identical; IdempotencyRaceLost genuinely unreachable
+      under READ COMMITTED, corroborated against the Postgres manual 13.2.1; the client lookup is
+      insert-first/ON CONFLICT against migration 166's uq_clients_email_lower_not_blank with a
+      matching predicate, and the concurrency test really does use two live connections).
+      3 findings: the undocumented NULL-key escape, MissingCustomerName raised for a missing
+      email, and the migration comment understating its own lock. All fixed — see dissent."
+    exit: 0
+    ts: "2026-08-26T11:35:00Z"
+    seat: sonnet-5 adversarial grader (fresh context)
+tests:
+  - "backend/tests/services/garuda_ops/test_adapters_pg.py — 18 pass / 0 fail against real
+    Postgres. Covers: one client + one practice per write; sequential retry returns the SAME
+    practice; two concurrent writers on one key produce one practice; two concurrent orders from
+    one customer produce one client; email case/whitespace resolve to the same client; a nameless
+    and a blank-named snapshot are refused writing nothing; a missing email raises its own
+    exception and not the name one; an empty or blank idempotency key is refused; the provider
+    walks practice -> order -> check and returns None rather than inventing fields when the check
+    is gone."
+static:
+  - "pre-commit: anti-reward-hacking test lint, secret scan, ruff, FastAPI import chain — clean."
+  - "detect-secrets against the changed-file set: no findings."
+  - "Squawk migration lint: green in CI on the first push (62 checks pass at that SHA)."
+runtime_proof:
+  "Local only, and stated as such. The adapters were exercised against a real Postgres built from
+  this repo's own migration chain, including 288. NOT claimed: no production run, no wiring, and
+  no proof that a paid order reaches the CRM end to end — nothing constructs these classes yet,
+  which is the point of the next PR, not this one."
+pii_scan: clean
+dissent:
+  - seat: "sonnet-5 adversarial grader (fresh context)"
+    objection: >-
+      A falsy `source_idempotency_key` silently defeats the exact-once guarantee this PR exists to
+      build. The unique index is PARTIAL (`WHERE source_idempotency_key IS NOT NULL`), so a NULL or
+      blank key conflicts with nothing: the INSERT succeeds every time, no error, no log, and one
+      payment retried three times becomes three CRM practices. `source_idempotency_key: str` is a
+      hint, not a check — and unlike `customer_full_name` and `customer_email`, which BOTH have
+      runtime guards, this parameter had none and no test covering the path.
+    status: CONFIRMED
+    resolution: >-
+      Accepted and fixed in this diff. `create_client_and_practice` now raises ValueError on an
+      empty or whitespace key, before touching the database, with a message that names the
+      partial-index reason rather than just the field. Two parametrized tests ("" and "   ") plus
+      a third that demonstrates in raw SQL what the index does NOT constrain, so the consequence
+      survives even if the guard is ever relaxed. Mutation-proved (receipt "Mutation B").
+  - seat: "sonnet-5 adversarial grader (fresh context)"
+    objection: >-
+      `MissingCustomerName` was raised at TWO sites: once for a blank name, and once — inside
+      `_ensure_client` — for a blank EMAIL, with a message reading "no usable customer email". The
+      class docstring says the snapshot had no `customer_full_name`, which is simply false at the
+      second site. Anything branching or alerting on `except MissingCustomerName` could not tell
+      the two apart without parsing the message string, and there was no test for the
+      missing-email-with-name-present path at all.
+    status: CONFIRMED
+    resolution: >-
+      Accepted and fixed. Introduced `MissingCustomerIdentity` as a common base with
+      `MissingCustomerName` and `MissingCustomerEmail` as cause-specific subclasses; the email site
+      now raises its own class. Additive by construction — nothing outside `garuda_ops` referenced
+      either name (verified by git grep), and a caller wanting the old breadth catches the base.
+      The test asserts the NEGATIVE (`not isinstance(..., MissingCustomerName)`), because raising
+      the base alone would satisfy a naive `pytest.raises` check. Mutation-proved (receipt
+      "Mutation C").
+  - seat: "sonnet-5 adversarial grader (fresh context)"
+    objection: >-
+      The migration's own comment said the index "holds a write lock on `practices` for its
+      duration". Wrong on both counts. `ALTER TABLE ... ADD COLUMN` takes ACCESS EXCLUSIVE, which
+      blocks SELECTs and not merely writes; and Postgres holds a lock to the END OF THE
+      TRANSACTION, and `migration_base.py:511` wraps the whole file in one transaction — so that
+      ACCESS EXCLUSIVE is still held through the COMMENT and through the index build. For the
+      duration of the migration `practices` is UNREADABLE. A false severity claim in a durable
+      artifact is the W113 shape: the next reader plans a deploy window around it.
+    status: CONFIRMED
+    resolution: >-
+      Accepted and corrected in the migration file itself, naming ACCESS EXCLUSIVE, naming the
+      end-of-transaction hold, and saying plainly that reads are blocked too. The mitigating fact
+      the grader independently verified is recorded alongside rather than used to soften the
+      claim: the column is created empty in the same transaction, so the partial predicate matches
+      zero rows at build time and the exposure is short. The comment now ends with the operational
+      consequence — run it against a busy `practices` in a low-traffic window — instead of implying
+      there is none.
+  - seat: "Harness floor recompute (GitHub CI, deterministic)"
+    objection: >-
+      The first PR run rejected this diff: "hot-zone diff with no evidence/brief.yml (deterministic
+      floor 3)". Touching migrations_v2 floors at Gear 3 by path, regardless of the diff being four
+      files and mostly a test file.
+    status: CONFIRMED
+    resolution: >-
+      The gate is right and was not worked around. The floor was re-derived independently
+      (`evidence_pack_lint.py --print-floor` = 3) and this brief+pack is the answer to it. The
+      migration was NOT split into its own PR to dodge the floor: the adapter's central promise is
+      database-level idempotency, and without the index that promise rests on nothing — they are
+      one concern.
+  - seat: "sonnet-5 adversarial grader (fresh context)"
+    objection: >-
+      `test_pre_existing_human_created_practices_are_untouched_by_the_index` never touches
+      `PostgresCrmWriter` or `PostgresOrderSnapshotProvider` — it is a raw-SQL check of migration
+      288's partial-index behaviour. Legitimate coverage, but it would not catch a regression in
+      `adapters_pg.py`, and its placement in this file invites the reader to count it as adapter
+      coverage.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as accurate and deliberately NOT changed. It tests the migration, which is half of
+      this PR, and moving it would separate the index from the only test that states what the index
+      does to legacy rows. Recorded here so the count is honest: of the 18 tests, two are
+      migration-level rather than adapter-level.
+  - seat: "sonnet-5 adversarial grader (fresh context)"
+    objection: >-
+      Could not run pytest (no Postgres reachable in its sandbox), so its "only those two tests go
+      red" conclusion for the ON CONFLICT mutation is a static trace of the SQL and exception path,
+      not an execution.
+    status: PLAUSIBLE
+    resolution: >-
+      Named rather than glossed. The execution was performed by the author's seat instead (receipt
+      "Mutation A": 2 failed / 12 passed, the two named tests), which means that specific proof is
+      NOT generator-independent. The grader's contribution on that question is corroborating
+      reasoning, not an independent measurement, and it is counted as such.
+residual_risks:
+  - "The adapters are DARK on merge — nothing constructs them. CI green here is not evidence that
+    a paid order reaches the CRM; that proof belongs to the wiring PR."
+  - "`IdempotencyRaceLost` is unreachable under READ COMMITTED and is therefore reachable in tests
+    only by construction, never by simulating the real isolation level."
+  - "The migration takes ACCESS EXCLUSIVE on `practices` for its duration. Short, because the new
+    column is empty, but it is a read outage and not merely a write pause."
+  - "`_normalized_email` now returns \"\" for None instead of raising AttributeError, routing it to
+    MissingCustomerEmail. That is defensive: no current caller can pass None, since
+    garuda_orders.applicant_email is TEXT NOT NULL."
+sources:
+  - "apps/backend-rag/backend/services/garuda_ops/ports.py — the CrmWriter contract that demands
+    database-level idempotency, which is what migration 288 supplies."
+  - "apps/backend-rag/backend/db/migrations_v2/166_reconcile_client_email_duplicates.sql — the
+    uq_clients_email_lower_not_blank index the client insert arbitrates on."
+  - "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql — garuda_orders and the soft
+    result_id_ref the provider LEFT JOINs through."
+  - "postgresql.org/docs/current/transaction-iso.html 13.2.1 — the ON CONFLICT DO NOTHING /
+    READ COMMITTED behaviour the adapter's re-read depends on."
+  - ".claude/rules/cicatrix-superscar.md — W113 (the correction itself lies), family #3
+    (guard over/under-match), family #9 (state-schema drift)."
+notes: >-
+  The order of events matters for reading this pack. The diff was written, pushed and armed first;
+  the CI floor then demanded evidence; writing that evidence produced one correction (the "no
+  unique constraint of any kind" overstatement), and the refuter dispatched alongside it produced
+  three more. Three of the four corrections are in the code and the migration, not in prose —
+  which is the argument for the gate: none of them would have been found by re-reading the diff.
