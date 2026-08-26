@@ -16,6 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/seat_watchdog.sh
 source "$SCRIPT_DIR/lib/seat_watchdog.sh"
+source "$SCRIPT_DIR/seat_build_tp1.sh"
 
 quota_output_exhausted() {
     local output_file="$1"
@@ -135,6 +136,7 @@ main() {
         codex) binary_name="codex"; MODEL="codex-default" ;;
         kimi) binary_name="kimi"; MODEL="kimi-code/kimi-for-coding" ;;
         qwen) binary_name="qwen"; MODEL="qwen-default" ;;
+        tp1) binary_name="$(tp1_binary_path)"; MODEL="${TP1_MODEL:-$TP1_DEFAULT_MODEL}" ;;
         "") refuse 64 "missing --seat" ;;
         *) refuse 64 "unknown seat: $SEAT" ;;
     esac
@@ -172,6 +174,7 @@ main() {
             ;;
         kimi) seat_argv=("$seat_binary" -p "$task_text" -m kimi-code/kimi-for-coding); task_index=2 ;;
         qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;
+        tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
     esac
     strip_env_args=()
     stripped_names=()
