@@ -72,14 +72,18 @@ def build_body(model: str, prompt: str, max_tokens: int, effort: Optional[str]) 
 
 
 def extract_answer(
-    status_code: Optional[int], full_body: str
+    full_body: str,
 ) -> tuple[Optional[str], Optional[str], Optional[str]]:
-    """Returns (answer_text, warning, error) — never a bare LIVE/dead bool, a
-    build seat needs the ANSWER, a probe (arsenal_probe.py) only needs a
-    verdict. Mirrors _tp1_has_live_answer's content/reasoning_content/
-    finish_reason="length" handling; ports the reasoning, not the boolean."""
-    if status_code != 200:
-        return None, None, f"HTTP {status_code}: {full_body[-200:]}"
+    """Returns (answer_text, warning, error) for an HTTP-200 response body —
+    callers must check status_code == 200 themselves before calling this (a
+    non-200 status is a transport-level error, exit code 1, never routed
+    through here: kimi refuter round 1 caught an earlier version that folded
+    both cases into this function and returned exit 3 for a bare 401/500,
+    contradicting this script's own documented exit-code contract). Never a
+    bare LIVE/dead bool — a build seat needs the ANSWER, a probe
+    (arsenal_probe.py) only needs a verdict. Mirrors _tp1_has_live_answer's
+    content/reasoning_content/finish_reason="length" handling; ports the
+    reasoning, not the boolean."""
     try:
         parsed = json.loads(full_body)
         choice = parsed["choices"][0]
@@ -149,8 +153,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     if status_code is None:
         sys.stderr.write(f"tp1_call: {ev}\n")
         return 1
+    if status_code != 200:
+        sys.stderr.write(f"tp1_call: HTTP {status_code}: {full_body[-200:]}\n")
+        return 1
 
-    answer, warning, error = extract_answer(status_code, full_body)
+    answer, warning, error = extract_answer(full_body)
     if error:
         sys.stderr.write(f"tp1_call: {error}\n")
         return 3

@@ -139,6 +139,31 @@ def test_unreadable_fixture_is_an_operational_error(tmp_path):
     assert result.returncode == 2
 
 
+# ---------------------------------------------------------------- drift guard (kimi refuter round 1)
+
+def test_route_files_base_url_matches_arsenal_probe_constant():
+    """kimi refuter round 1: the review_routes/*.json files and tp1_call.py
+    (via its arsenal_probe import) are two independently-editable sources for
+    the same TP1 endpoint. The lint only proves a route FILE exists, never
+    that its content agrees with the constant the actual door uses — so a
+    future edit to one could silently drift from the other with nothing red.
+    This closes that gap directly: every live TP1 slug's route file must
+    declare the exact base_url arsenal_probe.py (and therefore tp1_call.py)
+    actually calls."""
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from arsenal_probe import TP1_BASE_URL, TP1_SEAT_MODELS  # noqa: E402
+
+    route_dir = REPO_ROOT / "scripts" / "review_routes"
+    for slug in TP1_SEAT_MODELS.values():
+        route_path = route_dir / f"{slug}-v1.json"
+        assert route_path.exists(), f"missing route file for live TP1 slug {slug}"
+        doc = json.loads(route_path.read_text(encoding="utf-8"))
+        assert doc.get("base_url") == TP1_BASE_URL, (
+            f"{route_path.name} base_url {doc.get('base_url')!r} has drifted "
+            f"from arsenal_probe.TP1_BASE_URL {TP1_BASE_URL!r}"
+        )
+
+
 # ---------------------------------------------------------------- ground truth: the real repo file
 
 def test_real_model_roster_is_clean():
