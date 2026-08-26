@@ -28,6 +28,13 @@ created 2026-08-19 00:26 on Pro and on M5 (Mini's checkout was clean). One of th
 copies — the `modus` one — did in fact say "Fable 5 first, rotating", which is where the
 Fable-routing claim came from; it was true of that stray file and false of the repo.
 
+Verified now: `git ls-tree origin/main -- .agents/skills/` returns 8 directories (`bot`,
+`bz-video-production`, `google-flow-video`, `kbli-navigator`, `secondhome`, `subhi`, `visaoracle`,
+`wr2`) plus `README.md`. 8 tracked directories + 12 untracked copies = 20, not the dispatched 21 —
+the extra 1 in the original count is not reconciled here and is left declared-unknown rather than
+silently dropped; it does not change the conclusion (the "21/11 divergent" picture was working-tree
+noise, not repo drift), but a precise headcount of the original wrong measurement was not redone.
+
 Cure already landed: PR #5041 (a tripwire test plus the `NUZ_SKILLS_ROOT` local door), proven RED
 on the Pro main checkout before the fix (2 failed / 9 passed) and green after. The remaining step
 is an operator one-liner cleanup, not a code change:
@@ -65,10 +72,13 @@ commit for no reason.
 ### (3) Dispatch burst: 14 parallel `Agent` spawns → 13 `fork failed`, not a quota problem
 
 Dispatching 14 subagents in one burst on Pro produced 13 failures of the shape `fork failed:
-Device not configured` — a macOS pty-allocation race (measured against a pool of 511 ptys, with
-file descriptors themselves not exhausted), not a model-quota exhaustion. The same class of
-failure has been observed independently on Mini under similar burst load.
+Device not configured` (ENXIO), against a pty pool measured at 31/511 in use at the time — file
+descriptors themselves were fine. Because only 31 of 511 ptys were allocated, this is NOT capacity
+exhaustion; it is a macOS pty-**allocation race** under a burst of near-simultaneous `forkpty`
+calls, not a model-quota problem. The same class of failure has been observed independently under
+similar burst load on other machines in the fleet.
 
 **Lesson**: cap parallel `Agent`/subagent dispatch at roughly 3 per message on this fleet's current
-hardware. Burst higher than that and the loss is not "some agents ran out of quota" — it is pty
-exhaustion, and the fix is to stagger the dispatch, not to add cascade fallback.
+hardware. Burst higher than that and the loss is not "some agents ran out of quota" and not "the
+pty pool filled up" — it is a race in pty allocation that bites well below the pool's ceiling, and
+the fix is to stagger the dispatch, not to add cascade fallback.
