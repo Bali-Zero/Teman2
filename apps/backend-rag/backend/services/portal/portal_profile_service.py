@@ -91,8 +91,9 @@ class PortalProfileService:
 
         except Exception as e:
             logger.error(
-                "Failed to create portal profile for client %s: %s",
+                "Failed to create portal profile for client %s: %s (sqlstate=%s)",
                 client_id,
-                e,
+                type(e).__name__,
+                getattr(e, "sqlstate", None),
             )
             return None
