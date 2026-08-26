@@ -25,18 +25,18 @@ receipts:
     ts: "2026-08-26T09:05:00Z"
     seat: "session (evidence-pack task)"
   - claim: "The PR's own declared 5-file test set (78 tests) passes clean on a fresh dedicated worktree checked out at the PR's real head sha, independent of the PR author's own worktree"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py backend/tests/unit/routers/test_whatsapp_chat_coverage.py backend/tests/channels/test_instagram_ack_first.py backend/tests/channels/test_whatsapp_ack_first.py backend/tests/security/test_webhook_verifier.py -p no:randomly -o addopts=\"\" --color=no -q"
+    cmd: 'PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py backend/tests/unit/routers/test_whatsapp_chat_coverage.py backend/tests/channels/test_instagram_ack_first.py backend/tests/channels/test_whatsapp_ack_first.py backend/tests/security/test_webhook_verifier.py -p no:randomly -o addopts="" --color=no -q'
     exit: 0
     ts: "2026-08-26T09:07:00Z"
     seat: "session (evidence-pack task)"
   - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: reverting meta_webhook_require_signature's default back to False turns test_meta_webhook_require_signature_default_is_true RED, proving the pinning test actually guards the fail-closed default"
-    cmd: "python3 one-liner replacing 'default=True,' with 'default=False,' in config.py; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py -p no:randomly -o addopts=\"\" --color=no -q"
+    cmd: 'python3 one-liner replacing ''default=True,'' with ''default=False,'' in config.py; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py -p no:randomly -o addopts="" --color=no -q'
     result: "1 failed (test_meta_webhook_require_signature_default_is_true), 12 passed"
     exit: 1
     ts: "2026-08-26T09:09:00Z"
     seat: "session (evidence-pack task)"
   - claim: "File restored byte-identical after the mutation probe, and the same test file is clean+green again — no residual diff from the probe"
-    cmd: "cp <backup> backend/app/core/config.py && git status --porcelain -- backend/app/core/config.py && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py -p no:randomly -o addopts=\"\" --color=no -q"
+    cmd: 'cp <backup> backend/app/core/config.py && git status --porcelain -- backend/app/core/config.py && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py -p no:randomly -o addopts="" --color=no -q'
     result: "git status --porcelain: empty (clean). 13 passed"
     exit: 0
     ts: "2026-08-26T09:10:00Z"
