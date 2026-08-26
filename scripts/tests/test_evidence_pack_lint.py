@@ -1115,6 +1115,34 @@ def test_ground_truth_innocence_no_hit_skipped():
     assert viol == [] and notice is None
 
 
+def test_ground_truth_guilt_kbli_filiera_dataset_rejected_post_flip():
+    """GUILT (regression, refuter round 1 2026-08-26): a real, on-disk KBLI
+    regulatory dataset outside data/source_documents/ — data/kbli-filiera/
+    perpres-foreign-caps.json — was an under-match: no pattern covered it."""
+    viol, notice = check_ground_truth_lane(
+        {"lanes": []},
+        ["data/kbli-filiera/perpres-foreign-caps.json"],
+        today=_POST_FLIP,
+    )
+    assert viol and "ground_truth" in viol[0]
+    assert notice is None
+
+
+def test_ground_truth_innocence_page_own_test_file_skipped():
+    """INNOCENCE (regression, refuter round 1 2026-08-26): fnmatch's `*`
+    crosses `/`, so `apps/mouth/src/app/kbli-explorer/*` also matched the
+    page's own test scaffolding — an innocuous UI test making no
+    regulatory claim of its own. `_is_test_path` excludes it; the page
+    file itself (test_ground_truth_guilt_hit_no_lane_rejected_post_flip)
+    is still covered directly."""
+    viol, notice = check_ground_truth_lane(
+        {"lanes": []},
+        ["apps/mouth/src/app/kbli-explorer/hooks/__tests__/useTypewriter.test.ts"],
+        today=_POST_FLIP,
+    )
+    assert viol == [] and notice is None
+
+
 def test_ground_truth_innocence_well_formed_lane_passes():
     """INNOCENCE: a {role: ground_truth, seat, nb, query_hash} lane with
     all three fields non-empty clears the rule."""
@@ -1200,6 +1228,29 @@ def test_pii_local_innocence_no_hit_skipped():
     assert viol == [] and notice is None
     viol, notice = check_pii_local_seat(pack, None, today=_POST_FLIP)
     assert viol == [] and notice is None
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "apps/backend-rag/backend/app/routers/crm_clients.py",
+        "apps/backend-rag/backend/app/routers/whatsapp_conversations.py",
+        "apps/backend-rag/backend/app/routers/admin_crm_kg.py",
+        "apps/backend-rag/backend/app/routers/admin_pii.py",
+        "apps/backend-rag/backend/app/routers/guardian.py",
+        "apps/backend-rag/backend/app/routers/intake_gate.py",
+    ],
+)
+def test_pii_local_guilt_router_layer_rejected_post_flip(path):
+    """GUILT (regression, refuter round 1 2026-08-26): the services/* PII
+    patterns missed the app/routers/* layer that actually exposes CRM/
+    WhatsApp/intake client data over HTTP — e.g. app/routers/crm_clients.py
+    and app/routers/whatsapp_conversations.py both read/serve phone
+    numbers and names, and matched neither pattern before this fix."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}]}
+    viol, notice = check_pii_local_seat(pack, [path], today=_POST_FLIP)
+    assert viol and "pii_local" in viol[0]
+    assert notice is None
 
 
 def test_pii_local_innocence_all_ollama_seats_passes():

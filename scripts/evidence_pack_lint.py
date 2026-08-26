@@ -798,6 +798,7 @@ GROUND_TRUTH_PATH_PATTERNS: tuple[str, ...] = (
     "apps/backend-rag/backend/kb/*",
     "*/visa_engine/*",
     "data/source_documents/KBLI*.json",
+    "data/kbli-filiera/*",
     "apps/mouth/data/KBLI*.json",
     "apps/mouth/data/kbli*.json",
     "apps/backend-rag/backend/data/bali_zero_official_prices_*.json",
@@ -813,6 +814,28 @@ GROUND_TRUTH_PATH_PATTERNS: tuple[str, ...] = (
     "apps/mouth/src/app/property/*",
 )
 
+#: R8/R10 shared guard — `fnmatch`'s `*` crosses `/`, so every
+#: `.../<claim-page-dir>/*` pattern above also matches that page's own test
+#: scaffolding (found live 2026-08-26 by the R8/R10 refuter round: the
+#: `apps/mouth/src/app/kbli-explorer/*` pattern matches
+#: `apps/mouth/src/app/kbli-explorer/hooks/__tests__/useTypewriter.test.ts`,
+#: an innocuous UI test with no regulatory claim of its own). A test file
+#: makes no public claim by itself — the page it tests does, and the page
+#: file is still covered directly. Family #3 (guard-over-match) doctrine:
+#: narrow the trigger to entities/intent, never leave a bare glob to decide.
+_TEST_PATH_MARKERS: tuple[str, ...] = ("__tests__/", "/tests/", ".test.", ".spec.")
+
+
+def _is_test_path(path: str) -> bool:
+    """True for test scaffolding nested under a matched directory — see
+    _TEST_PATH_MARKERS above. Matches on the lowercased full path (path
+    separators are always `/` in git-diff-style changed-files lists) plus
+    a `test_`-prefixed basename (pytest convention)."""
+    lowered = path.lower()
+    if any(marker in lowered for marker in _TEST_PATH_MARKERS):
+        return True
+    return lowered.rsplit("/", 1)[-1].startswith("test_")
+
 #: R8 — the lane role this rule requires; a member of VALID_LANE_ROLES
 #: (above) so it coexists with rule 8's own lane-shape check on the same
 #: `lanes:` list rather than fighting it.
@@ -823,19 +846,39 @@ GROUND_TRUTH_LANE_REQUIRED_FIELDS = ("seat", "nb", "query_hash")
 #: services, the WhatsApp channel, and the yield-optimizer pitch gate
 #: (grepped 2026-08-26: scripts/yield_optimizer_pitch_gate.py is the real
 #: script — there is no bare yield_optimizer.py).
+#: The `services/*` layer above is where the PII-bearing logic lives, but
+#: the FastAPI `app/routers/*` layer that exposes it over HTTP was missing
+#: entirely (found live 2026-08-26 by the same refuter round:
+#: `app/routers/crm_clients.py` and `app/routers/whatsapp_conversations.py`
+#: — both read/serve client phone numbers and names — matched neither
+#: pattern). Router filenames verified on disk against the real tree
+#: (`ls apps/backend-rag/backend/app/routers/`), not guessed.
 PII_PATH_PATTERNS: tuple[str, ...] = (
     "apps/backend-rag/backend/services/intake/*",
     "apps/backend-rag/backend/services/crm/*",
     "apps/backend-rag/backend/services/crm_guardian/*",
     "apps/backend-rag/backend/channels/whatsapp/*",
+    "apps/backend-rag/backend/app/routers/crm_*.py",
+    "apps/backend-rag/backend/app/routers/admin_crm_kg.py",
+    "apps/backend-rag/backend/app/routers/admin_pii.py",
+    "apps/backend-rag/backend/app/routers/guardian.py",
+    "apps/backend-rag/backend/app/routers/intake_*.py",
+    "apps/backend-rag/backend/app/routers/whatsapp_*.py",
     "scripts/yield_optimizer_pitch_gate.py",
 )
 
 
 def _any_path_matches(changed_files: list[str], patterns: tuple[str, ...]) -> bool:
     """True if ANY changed file matches ANY pattern — the trigger shape for
-    R8/R10 (a single hit is enough to require the lane/seat discipline)."""
-    return any(fnmatch.fnmatchcase(f, pat) for f in changed_files for pat in patterns)
+    R8/R10 (a single hit is enough to require the lane/seat discipline).
+    Test scaffolding is excluded first (see _is_test_path) — a test asserts
+    behavior, it does not itself carry a regulatory claim or client PII."""
+    return any(
+        fnmatch.fnmatchcase(f, pat)
+        for f in changed_files
+        if not _is_test_path(f)
+        for pat in patterns
+    )
 
 
 def _seat_rule_verdict(
