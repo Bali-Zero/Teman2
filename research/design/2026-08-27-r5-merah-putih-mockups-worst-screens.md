@@ -7,7 +7,8 @@ sources:
   - R4 identity contract — research/design/2026-08-27-r4-identity-merah-putih-token-spec.md (PR #5078; tokens, contrast law, component contracts, application map, §8 acceptance split)
   - R3 autopsy — research/design/2026-08-27-r3-heuristic-autopsy-defect-inventory-axis-gap.md (PR #5074; the worst-screen selection below is its severity table)
   - Zero's rulings + STANDING pre-confirmation — loop memory project_design_study_loop_garuda_visa_oracle_2026_08_27.md
-adversarial_review: codex gpt-5.6-sol xhigh (25) + kimi-k3 (18) + agy gemini-3.1-pro (20) — qwen3.8-max TP1 seat FAILED twice (connection reset, then read timeout on a small payload; the door itself was degraded — recorded honestly)
+adversarial_review: codex
+adversarial_review_detail: gpt-5.6-sol xhigh (25) + kimi-k3 (18) + agy gemini-3.1-pro (20) — qwen3.8-max TP1 seat FAILED twice (connection reset, then read timeout on a small payload; the door itself was degraded — recorded honestly)
 ---
 
 # R5 — Merah Putih mockups on the screens R3 rated worst
@@ -99,7 +100,7 @@ Eye-checked in this session: question above the fold at 360px for M2a/M3 — the
 - **Nesting-law amendment proposed to R4**: «inner radius = outer − padding» yields negative radii for realistic paddings; the CSS uses a declared floor (`--radius-nested: 8px` = max(8, outer−padding)) — R4 should absorb this amendment at the next touch.
 - **`.ph` markers are meta-markup of the mockup**, exempt from the product shape law (their 4px radius and dashed border are the honesty flag, not a product component).
 
-## §7 Adversarial review
+## Adversarial review (§7)
 
 Seats and counts: **codex gpt-5.6-sol xhigh 25** (13 HIGH — all 25 applied; the price finding applied as masked numerals rather than live prices) · **kimi-k3 18** (17 applied, 1 partial: the `.ph` radius stays, declared exempt; kimi's recomputation calibrated against R4's pair list exactly) · **agy gemini-3.1-pro 20** (19 applied, 1 rejected: «Visa on Arrival» keeps its proper-noun capitals — sentence case governs the sentence, not the noun) · **qwen3.8-max TP1 seat FAILED** — connection reset, then a read timeout on a small payload at retry; the door itself was degraded (the same probe cycle showed codex/kimi seat timeouts earlier today). Recorded honestly: zero findings ingested. Per-finding dispositions ship in the artifact's R5 `adversarial.json`.
 
