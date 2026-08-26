@@ -80,6 +80,73 @@ def test_requested_action_spec_ref_and_risk_fields_match_sibling_exactly(ops_int
     assert intent.sensitivity == item.sensitivity
 
 
+def test_a_field_shared_by_invariant_is_declared_pending_by_both_siblings_or_neither(
+    ops_intent_row,
+):
+    """The structural half of the test above, and the reason it exists.
+
+    `test_requested_action_spec_ref_and_risk_fields_match_sibling_exactly`
+    proves the two objects carry the SAME VALUE. It says nothing about
+    whether they make the same CLAIM about that value -- and for eight
+    weeks they did not. `action_intent_adapter` declared `risk_class` and
+    `sensitivity` in its `pending_ruling` (a Kimi K3 review, 2026-08-24,
+    found an inherited placeholder disclosed only in prose is invisible to
+    a consumer reading the machine-checkable channel); `action_item_adapter`
+    -- the object that ORIGINATES both values, from which the intent
+    inherits them precisely to satisfy the invariant above -- did not. The
+    cure had landed on the heir and not on the source.
+
+    The observable consequence was a contradiction, not an untidiness: for
+    ONE legacy row, a consumer branching on `pending_ruling` distrusted the
+    ActionIntent's classification and trusted the ActionItem's, for the two
+    same fields holding the two same values by invariant. Whichever way it
+    resolved that, one of the two answers was wrong.
+
+    This test is deliberately NOT a hardcoded list of the two field names:
+    a list would have to be remembered on the day a third shared placeholder
+    appears, which is the same forgetting that produced the defect. It
+    derives the shared set from the invariant itself, so any future field
+    that becomes cross-object-equal is covered the moment it is added.
+
+    GUILT: drop `risk_class`/`sensitivity` from either adapter's
+    `pending_ruling` tuple and this goes red. INNOCENCE: it passes when both
+    declare them, and equally when NEITHER does -- it forbids divergence,
+    not any particular resolution, because the resolution is a ruling that
+    is genuinely still open (`contract-pass-001.md` §9).
+    """
+
+    item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
+    intent = adapt_ops_intent_to_action_intent(ops_intent_row).canonical
+    assert item is not None and intent is not None
+
+    ns = "com.balizero.research-os-adapters"
+    item_pending = set(item.extensions[ns].payload.get("pending_ruling", []))
+    intent_pending = set(intent.extensions[ns].payload.get("pending_ruling", []))
+
+    # The fields the two siblings are REQUIRED to hold identically, per
+    # `action_intent.py`'s cross-object invariant. Derived by comparison, not
+    # asserted from a remembered list.
+    shared_by_invariant = {
+        name
+        for name in ("risk_class", "sensitivity")
+        if getattr(item, name) == getattr(intent, name)
+    }
+    assert shared_by_invariant, (
+        "guard is vacuous: no cross-object-equal field was found, so this test "
+        "would pass no matter what either adapter declares"
+    )
+
+    diverged = {
+        name for name in shared_by_invariant if (name in item_pending) != (name in intent_pending)
+    }
+    assert not diverged, (
+        f"{sorted(diverged)}: these fields are equal across the two sibling objects by "
+        "invariant, but only one adapter declares them in pending_ruling. A consumer "
+        "branching on the machine-checkable channel gets two different answers about "
+        "the same value. Declare them on BOTH adapters, or on neither."
+    )
+
+
 def test_unbacked_refs_are_machine_checkable_not_only_prose(ops_intent_row):
     intent = adapt_ops_intent_to_action_intent(ops_intent_row).canonical
     marker = intent.extensions["com.balizero.research-os-adapters"]

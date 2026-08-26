@@ -182,7 +182,25 @@ def adapt_ops_intent_to_action_item(row: OpsIntentRow) -> AdapterResult[ActionIt
         extensions=unbacked_refs_extension(
             "decision_packet_ref",
             "requested_action_spec_ref",
-            pending_ruling=("priority", "sla.due_at", "current_intent_ref"),
+            pending_ruling=(
+                "priority",
+                "sla.due_at",
+                "current_intent_ref",
+                # `risk_class`/`sensitivity` added 2026-08-26 (D3 residue audit).
+                # They were already declared by the SIBLING adapter
+                # (`action_intent_adapter.py`, after a Kimi K3 review on
+                # 2026-08-24) which INHERITS them from this object to satisfy
+                # `verify_action_intent_matches_action_item`'s cross-object
+                # equality invariant -- while THIS adapter, the object that
+                # ORIGINATES both values, did not declare them. That review's
+                # cure landed on the heir and not on the source, so for one
+                # legacy row a consumer branching on the machine-checkable
+                # channel distrusted the ActionIntent's classification and
+                # trusted the ActionItem's -- for the two same fields carrying
+                # the two same values, by invariant.
+                "risk_class",
+                "sensitivity",
+            ),
         ),
     )
 
@@ -370,7 +388,22 @@ def adapt_ops_intent_to_action_item(row: OpsIntentRow) -> AdapterResult[ActionIt
             "pending that ruling, not a matrix-approved value. Do not trust this value for triage "
             "ordering.",
             "risk_class/sensitivity defaulted to green/internal: no legacy classification signal "
-            "exists; inert while the shadow dual-write flag defaults off (see shadow.py).",
+            "exists. CORRECTED (D3 residue audit, 2026-08-26): the previous wording claimed these "
+            "defaults were 'inert while the shadow dual-write flag defaults off (see shadow.py)'. "
+            "There is no such flag and no such module -- `shadow.py` has never existed in this "
+            "package (verified against origin/main, not inferred), and the phased dual-write/read "
+            "plan that would introduce it is D8, an OPEN condition on "
+            "`evidence/p04/contract-pass-001.md` §9 owned by another lane. So that sentence "
+            "asserted a SAFETY property resting on a switch nobody had built. What actually makes "
+            "these defaults inert today is narrower, and verifiable: this package has ZERO "
+            "production consumers (every importer is a test), so no adapter output reaches any "
+            "store. Read that as an absence of a write path, never as a guarantee from a flag. "
+            "GREEN/INTERNAL is the LEAST restrictive pair the contract can express, and it is "
+            "chosen here for absence of signal, not by assessment: whoever builds the write path "
+            "must resolve classification FIRST, or every Magazine-sourced ActionItem lands in the "
+            "canonical store under-classified. Both fields are now in pending_ruling too (not "
+            "just this prose) -- see the call site for why declaring them only on the sibling "
+            "ActionIntent left the originating object looking trustworthy.",
             "current_intent_ref is always None for Magazine-sourced items: the fused row means there "
             "was never a moment the queue-side and execution-side objects existed independently. "
             "CORRECTED (independent review, REFUSE verdict, claim #12): matrix item 6 presents "
