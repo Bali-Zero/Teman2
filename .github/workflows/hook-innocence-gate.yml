@@ -43,8 +43,12 @@ on:
       - ".github/workflows/hook-innocence-gate.yml"
 
 concurrency:
-  group: hook-innocence-gate-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+  # per-ref), so their runs queue and drain serially instead of piling up in
+  # parallel (Agent PR Contract rule 5). Non-Dependabot branch is byte-for-byte
+  # the pre-existing expression — untouched.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('hook-innocence-gate-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'merge_group' }}
 
 jobs:
   innocence:

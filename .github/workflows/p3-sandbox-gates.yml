@@ -25,6 +25,16 @@ on:
   merge_group:
   workflow_dispatch:
 
+# Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+# per-run), so their runs queue and drain serially instead of piling up in
+# parallel (Agent PR Contract rule 5). Non-Dependabot branch is suffixed by
+# github.run_id, which is unique per run and therefore never collides — the
+# prior no-concurrency-block behavior (every run fully independent) is
+# preserved exactly.
+concurrency:
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('p3-sandbox-gates-{0}-{1}', github.ref, github.run_id) }}
+  cancel-in-progress: false
+
 jobs:
   p3-static-validation:
     name: P3 static validation (enforcing)
