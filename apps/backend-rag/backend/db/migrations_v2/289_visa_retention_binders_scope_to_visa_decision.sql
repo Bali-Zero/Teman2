@@ -111,6 +111,29 @@
 --   catalog, not this file, so it cannot be satisfied by having merged 289 —
 --   only by 289 having actually run.
 --
+--   THE COST OF THIS SHAPE, MEASURED — READ BEFORE COPYING IT.
+--   Moving the definitions inside `EXECUTE` makes them a dynamic SQL STRING:
+--   they are parsed when the branch runs, not when the migration is read. So
+--   on the declining path a syntactically broken body is not merely unapplied,
+--   it is UNSEEN. Measured on a real Postgres, same statement, two roles:
+--
+--     non-owner (guard declines)  ->  no exception at all; a body containing
+--                                     `THIS IS NOT VALID PLPGSQL (((` was
+--                                     accepted in silence
+--     able role (guard fires)     ->  PostgresSyntaxError, immediately
+--
+--   That is survivable HERE only because something always exercises the able
+--   path before this reaches production: CI applies migrations to an ephemeral
+--   Postgres where the connecting role owns everything it created, and the
+--   innocence leg of the test named below applies 289 as an able role. Either
+--   would turn a typo in these bodies red at review time.
+--
+--   It is NOT survivable for a future migration that copies this pattern with
+--   no test exercising the able path — there, a broken body would be recorded
+--   APPLIED and never parsed by anyone. If you reuse this shape, bring a test
+--   that applies it as a role which CAN own the object; the guard is only safe
+--   with that test standing behind it.
+--
 --   Guilt and innocence are both proven, against a real Postgres reproducing
 --   the ownership split, in
 --   `backend/tests/scripts/visa_engine/test_retention_binder_scope_survives_a_non_owner_runner.py`
