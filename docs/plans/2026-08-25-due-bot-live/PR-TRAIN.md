@@ -156,6 +156,24 @@ observability signal that works end-to-end while trying to add the one that is m
    that is the failure this whole PR exists to remove, so accepting `ok` alone would close the
    loop on nothing.
 
+**Step 4 is not executable today — measured 2026-08-26.** Read live from Pro,
+`/usr/local/var/wa-codex-broker/seat-status.json` carries exactly four keys — `verdict`,
+`login_status_rc`, `exec_rc`, `checked_at` — and none of them names how the probe resolved its
+detectors. The module computes `_AUTH_DEATH_SOURCE` (`"import"` vs `"fallback-copy"`) and then
+only writes it to the log. So the status file cannot distinguish a healthy probe from a blind
+one, and the instruction above asks a future session to prove something against a file that
+cannot say it.
+
+Until the probe publishes that field, step 4 has to be satisfied out of band: load the deployed
+probe module and read `_AUTH_DEATH_SOURCE` directly, rather than reading the status JSON. The
+field has been requested as part of the PR that carries the probe; when it lands, delete this
+paragraph and step 4 becomes a one-line check again.
+
+For the record, the same read confirmed the promotion constraint against the LIVE tree rather
+than against `origin/main`: `grep -c "class CodexExecQuotaError"` on
+`/usr/local/lib/wa-codex-broker/backend/llm/codex_exec_client.py` returns **0**. Production's
+client really does not have the class the new daemon imports.
+
 A note on the ordering the refuter proposed (`probe → client → daemon`): the probe-first half is
 not useful. The probe imports its private symbols from the client and swallows a miss in a broad
 `except ImportError`, so a probe promoted ahead of the client silently runs on fallback copies
