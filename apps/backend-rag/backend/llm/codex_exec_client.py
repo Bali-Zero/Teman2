@@ -272,9 +272,9 @@ Binding invariants (R24-1, mandate 2026-08-15):
     no auth material (not even a file path's existence bit beyond the
     boolean `available` result) ever reaches an exception message or a log
     line. `CodexExecProcessError` carries only the numeric exit code;
-    `CodexExecAuthError`/`CodexExecOutputShapeError`/`CodexExecTimeoutError`/
-    `CodexExecCommunicationError` carry only fixed local literals. Full type
-    hints throughout; `logger` never `print`.
+    `CodexExecAuthError`/`CodexExecQuotaError`/`CodexExecOutputShapeError`/
+    `CodexExecTimeoutError`/`CodexExecCommunicationError` carry only fixed
+    local literals. Full type hints throughout; `logger` never `print`.
 
 7.  **GROUNDING PROBE.** One designated live call was run from this session
     in the original R24 round (`printf 'Reply with exactly PONG' | codex
@@ -463,6 +463,48 @@ _AUTH_DEATH_RE: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
+# Quota-exhaustion detection (closes the gap `scripts/wa_codex_seat_probe.py`
+# names as "S1.5 owns sharpening that bucket": until this, a quota-dead seat
+# and a genuine crash both fell into the generic `CodexExecProcessError` /
+# `cli_failure` bucket, indistinguishable from each other). Same
+# word-boundary shape as `_AUTH_DEATH_RE`, DERIVED — never invented — from
+# real `codex exec` output captured elsewhere in this repo:
+#   - "You've hit your usage limit... try again at Aug 19th, 2026" — measured
+#     live, `gpt-5.6-terra` via `codex exec`
+#     (research/operations/2026-07-20-kbli-batch-a-lot8-conductor-gate.md §5b)
+#   - "ERROR: You've hit your usage limit" — measured live, codex CLI
+#     v0.147.0 (research/operations/2026-08-21-world-patterns-import-map.md)
+#   - "ERROR: You've hit your usage limit for GPT-5.3-Codex-Spark. Switch to
+#     another model now, or try again at Aug 31st, 2026 8:06 PM." — measured
+#     live 2026-08-26/27 (scripts/army/spark_lane.sh)
+#   - "ERROR: You've hit your usage limit. Upgrade to Plus to continue using
+#     Codex..." — captured codex transcripts
+#     (docs/design-palettes/funnels/research/tax-codex-brainstorm.md and its
+#     archived twin)
+# Cross-checked against the fleet's own codex-specific cascade grep
+# (`~/scripts/regulatory-watcher-run.sh` tier 3, run against real
+# `codex exec` output in production: `usage.limit|quota|exhausted`) and this
+# repo's own codex-reviewer quota classifier
+# (`scripts/codex_tri_llm_review.py`'s `("hit your weekly limit", "hit your
+# usage limit", "usage limit", "weekly limit", ..., "quota exceeded")`,
+# which scans a `codex` reviewer subprocess's output for exactly this
+# purpose). Deliberately narrower than either: `out of extra usage` is the
+# Claude CLI's own phrasing (`claude_oauth_client.py`'s
+# `_QUOTA_DIAGNOSTIC_PATTERN`) and never appears in a measured `codex`
+# transcript, so it is NOT included here — and a bare `quota`/`429`/`limit`
+# would over-match ordinary Bali Zero domain talk about a client's KITAS
+# "limit of stay" or an investor/worker "quota" (RPTKA), so every
+# alternative below requires the specific multi-word framing actually
+# observed, never a lone word (cicatrix family #3 discipline).
+_QUOTA_RE: re.Pattern[str] = re.compile(
+    r"\b(?:"
+    r"usage\s+limit|"
+    r"weekly\s+limit|"
+    r"quota\s+(?:exceeded|exhausted)"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+
 
 class CodexExecUnavailableError(RuntimeError):
     """Raised by `generate()` when `available` is `False` (binary missing,
@@ -486,6 +528,19 @@ class CodexExecAuthError(RuntimeError):
     re-login (`codex login`) is needed. Distinct from
     `CodexExecProcessError` so a caller can page a human for THIS class and
     silently retry-later for a generic failure.
+    """
+
+
+class CodexExecQuotaError(RuntimeError):
+    """The subprocess exited non-zero and its STDERR — same scan discipline
+    as `CodexExecAuthError` (stderr-only, known prompt/stdout LINES
+    stripped) — matched a known quota-exhaustion word class (see
+    `_QUOTA_RE`). Distinct from both `CodexExecAuthError` (no re-login can
+    fix this; the seat's usage window must reset) and the generic
+    `CodexExecProcessError` (a caller can page a DEDICATED, time-bound
+    condition for THIS class instead of folding it into an undifferentiated
+    CLI failure — see `wa_codex_daemon.py`'s `error_class="quota_exhausted"`
+    mapping and `scripts/wa_codex_seat_probe.py`'s `VERDICT_QUOTA_DEAD`).
     """
 
 
@@ -749,6 +804,13 @@ def _auth_death_detected(*texts: str) -> bool:
     return any(_AUTH_DEATH_RE.search(t) for t in texts if t)
 
 
+def _quota_exhaustion_detected(*texts: str) -> bool:
+    """Same independent-per-argument scan discipline as
+    `_auth_death_detected` (see its docstring for why concatenation is
+    unsafe), against `_QUOTA_RE` instead."""
+    return any(_QUOTA_RE.search(t) for t in texts if t)
+
+
 class CodexExecClient:
     """Thin async wrapper spawning `codex exec` as a subprocess.
 
@@ -933,6 +995,10 @@ class CodexExecClient:
                 was killed and reaped and the raw exception was suppressed.
             CodexExecAuthError: the subprocess exited non-zero with output
                 matching a known auth-failure word class (point 5).
+            CodexExecQuotaError: the subprocess exited non-zero with output
+                matching a known quota-exhaustion word class (`_QUOTA_RE`),
+                checked after the auth-failure class and before the generic
+                fallback.
             CodexExecProcessError: the subprocess exited non-zero for any
                 other reason.
             CodexExecOutputShapeError: `exit_code == 0` but stdout was
@@ -1114,6 +1180,17 @@ class CodexExecClient:
                     raise CodexExecAuthError(
                         "codex exec reported an authentication failure — operator re-login "
                         "(`codex login`) needed",
+                    )
+                if _quota_exhaustion_detected(stripped_stderr):
+                    logger.warning(
+                        "codex_exec: quota exhaustion detected (exit_code=%d, model=%s) — "
+                        "seat usage window must reset",
+                        exit_code,
+                        resolved_model,
+                    )
+                    raise CodexExecQuotaError(
+                        "codex exec reported quota exhaustion — the seat's usage window "
+                        "must reset before this model can be used again",
                     )
                 logger.warning(
                     "codex_exec: process failed (exit_code=%d, model=%s)",
