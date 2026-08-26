@@ -306,11 +306,28 @@ class PostgresCrmWriter:
             # `scripts/ci_bootstrap_schema.py` adds it, so relying on it is
             # relying on the test harness.
             #
-            # NOT set here, deliberately, because both are business calls and
-            # not this adapter's to invent — see PENDING-ARMS: `status` (a paid
-            # VOA is not an "inquiry", but which state the ops workflow wants it
-            # to enter at is Zero's call) and `payment_status` (defaults to
-            # 'unpaid' on a row created FROM a committed payment.paid event).
+            # RULED by Zero, 2026-08-26 — the two business calls the previous
+            # version of this comment deferred to PENDING-ARMS are now answered,
+            # and both use vocabulary the CRM ALREADY has (no new state coined):
+            #
+            #   status         = 'on_process'  (in STATUS_VALUES, crm_practices.py:283)
+            #   payment_status = 'paid'        (in PAYMENT_STATUS_VALUES, :292)
+            #
+            # `on_process` and not `inquiry`: this row is born from a COMMITTED
+            # payment.paid event, after documents were uploaded and money taken.
+            # It is also the value the workload queries in `crm/assignment.py`
+            # (:520, :559) count as active, so a GARUDA practice correctly loads
+            # the person who gets it.
+            #
+            # `actual_price` and `paid_amount` are set for a reason the ruling
+            # implies but does not say, and getting it wrong is silent: the
+            # revenue report at `crm_practices.py:1878` ends
+            # `WHERE actual_price IS NOT NULL`, so a practice marked `paid` with
+            # a NULL actual price is not merely inconsistent — it DISAPPEARS
+            # from revenue entirely. The order carries exactly one all-inclusive
+            # figure (SM-G04: written once at OP-00, never recomputed or
+            # decomposed) and it was collected in full, so quoted, actual and
+            # paid are the same number here. That is a copy, not arithmetic.
             assigned_to = snapshot.assigned_to or await conn.fetchval(
                 "SELECT assigned_to FROM clients WHERE id = $1", client_id
             )
@@ -319,9 +336,11 @@ class PostgresCrmWriter:
                 """
                 INSERT INTO practices
                     (client_id, practice_type_id, practice_type_code, title,
-                     quoted_price, currency, assigned_to, created_by,
+                     quoted_price, actual_price, paid_amount, currency,
+                     status, payment_status, assigned_to, created_by,
                      inquiry_date, source_idempotency_key)
-                VALUES ($1, $2, $3, $4, $5, 'IDR', $6, $7, now(), $8)
+                VALUES ($1, $2, $3, $4, $5, $5, $5, 'IDR',
+                        'on_process', 'paid', $6, $7, now(), $8)
                 ON CONFLICT (source_idempotency_key)
                     WHERE source_idempotency_key IS NOT NULL
                     DO NOTHING
@@ -421,6 +440,6 @@ __all__ = [
     "MissingCustomerIdentity",
     "MissingCustomerName",
     "PostgresCrmWriter",
-    "UnknownPracticeType",
     "PostgresOrderSnapshotProvider",
+    "UnknownPracticeType",
 ]

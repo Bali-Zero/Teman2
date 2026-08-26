@@ -250,3 +250,41 @@ def test_the_garuda_codes_match_the_handoff_mapping_exactly() -> None:
 
     unrouted = set(PRACTICE_TYPE_CODE_BY_CASE_TYPE.values()) - PRACTICE_DEPARTMENT_MAP.keys()
     assert unrouted == set(), f"GARUDA practice types with no department: {sorted(unrouted)}"
+
+
+def test_setup_is_a_real_department_with_assignable_people_behind_it() -> None:
+    """Turns the open question this lane carried into a measured one.
+
+    Mapping a practice type to a department only helps if someone IS in that
+    department with an assignable role — otherwise `assign_lead`'s Strategy 1
+    finds nobody and falls through to the same round-robin the mapping was
+    meant to replace, making the entry inert rather than wrong.
+
+    `team_members.department` is populated out-of-band (no migration writes it),
+    so the closest checkable source is the seeded roster the loader reads:
+    `backend/data/team_members.json` via `backend/scripts/seed_users.py`. RED if
+    the `setup` department disappears from that roster, or if everyone left in
+    it holds a role `assign_lead` will not assign to.
+    """
+
+    import json
+    from pathlib import Path as _Path
+
+    import backend
+    from backend.services.crm.assignment import ASSIGNABLE_ROLES
+
+    # Anchored on the package, not on `__file__`'s parent count: this suite is
+    # run from several worktrees and a miscounted `parents[n]` fails as a
+    # FileNotFoundError that reads like a missing roster.
+    roster_path = _Path(backend.__file__).resolve().parent / "data" / "team_members.json"
+    assert roster_path.is_file(), f"seeded roster not where expected: {roster_path}"
+    roster = json.loads(roster_path.read_text())
+    setup_assignable = [
+        m
+        for m in roster
+        if m.get("department") == "setup" and m.get("role") in ASSIGNABLE_ROLES
+    ]
+    assert setup_assignable, (
+        "no seeded team member is in department 'setup' with an assignable role — "
+        "the GARUDA VOA department mapping would resolve to nobody"
+    )

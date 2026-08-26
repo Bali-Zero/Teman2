@@ -463,26 +463,38 @@ ASSIGNABLE_ROLES = {
 
 # Map practice types to departments for specialty routing.
 #
-# MEASURED 2026-08-26, and the lookup below is EXACT (`.get(practice_type_code)`,
-# no prefix or substring match): NONE of the twelve legacy keys under this
-# comment — `kitas`, `kitap`, `pt_pma`, `investor_visa`, `work_permit`,
-# `company_setup`, `visa`, `immigration`, `tax`, `tax_reporting`,
-# `tax_registration`, `npwp` — is seeded as a `practice_types.code` by ANY
-# migration in `db/migrations_v2/`. The real catalogue codes are shaped
-# `visa_*` / `ext_*` / `tax_*` / `other_*` / `merp_*` (e.g. `visa_bridging`,
-# `ext_c1_tourism`, `tax_annual_pkg_a`). So for every catalogue practice the
-# department branch below has been dead and assignment has silently fallen
-# through to the round-robin least-workload fallback — which draws from ALL
-# assignable roles, tax included.
+# THIS TABLE SPANS TWO CATALOGUE GENERATIONS, and the lookup below is EXACT
+# (`.get(practice_type_code)`, no prefix or substring match), so a key from the
+# wrong generation simply never fires. Measured 2026-08-26 across BOTH migration
+# systems — 135 legacy `backend/migrations/*.py` and 169 `db/migrations_v2/*.sql`:
 #
-# Stated narrowly on purpose: this says no MIGRATION seeds those keys. Whether
-# prod holds out-of-band rows with those codes is a separate question this
-# lane did not measure, and the twelve keys are therefore left in place rather
-# than deleted. Curing the other ~51 codes is a CRM-lane job with a real
-# business call behind it (which department owns `other_lapor_lahir_under`?),
-# tracked in `.claude/skills/modus/PENDING-ARMS.md`; do NOT "fix" it here with
-# a prefix match — `visa_*`->setup and `tax_*`->tax would look right and
-# `other_*` would still be a guess.
+#   SEEDED, so these four keys DO route:
+#     `visa`, `kitas`, `tax`   -> migration_044_seed_practice_types.py:23/:40/:57
+#     `tax_registration`       -> migration_066_populate_practice_types_from_pricing.py:614
+#   NOT SEEDED ANYWHERE, so these eight are dead weight:
+#     `kitap`, `pt_pma`, `investor_visa`, `work_permit`, `company_setup`,
+#     `immigration`, `tax_reporting`, `npwp`
+#
+# The four live ones are all LEGACY short codes. Not one key here is seeded by
+# `migrations_v2/`, which is where today's catalogue lives and whose codes are
+# shaped `visa_*` / `ext_*` / `tax_*` / `other_*` / `merp_*` (`visa_bridging`,
+# `ext_c1_tourism`, `tax_annual_pkg_a`). So the department branch fires for the
+# old generation and is dead for the whole new one, which silently falls through
+# to the round-robin least-workload fallback — drawing from ALL assignable
+# roles, tax included.
+#
+# An earlier version of this comment claimed no migration seeded ANY of the
+# twelve. That was measured against `migrations_v2/` only and read as "the map
+# is entirely dead", which is wrong for four keys and for whatever practices
+# still carry them. The correction cost one broken probe: the first census
+# grepped for single-quoted `'visa'` while the legacy seeds are Python dicts
+# writing `"code": "visa"`, so it reported ABSENT and was believed.
+#
+# Curing the ~51 modern codes is a CRM-lane job with a real business call behind
+# it (which department owns `other_lapor_lahir_under`?), tracked in
+# `.claude/skills/modus/PENDING-ARMS.md`. Do NOT "fix" it here with a prefix
+# match: `visa_*`->setup and `tax_*`->tax would look right and `other_*` would
+# still be a guess.
 #
 # The two GARUDA VOA entries below are this lane's own obligation and are
 # catalogue-real: both are seeded by
