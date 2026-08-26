@@ -18,6 +18,7 @@ from types import ModuleType
 import pytest
 
 _MODULE_PATH = Path(__file__).parents[1] / "wa_codex_seat_sentinel.py"
+_PROBE_MODULE_PATH = Path(__file__).parents[1] / "wa_codex_seat_probe.py"
 NOW = datetime(2026, 8, 20, 12, 0, tzinfo=timezone.utc)
 
 
@@ -30,7 +31,25 @@ def _load() -> ModuleType:
     return module
 
 
+def _load_probe() -> ModuleType:
+    """Loaded under a name distinct from both `wa_codex_seat_probe.py`'s
+    own test file (`wa_codex_seat_probe`) and the dotted
+    `scripts.wa_codex_seat_probe` the sentinel module imports internally
+    — an independent module object, purely so this test can assert the
+    sentinel's imported constants EQUAL the probe's own, not merely that
+    they are the same Python object by import-caching accident."""
+    spec = importlib.util.spec_from_file_location(
+        "wa_codex_seat_probe_coupling_check", _PROBE_MODULE_PATH
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 wa = _load()
+probe = _load_probe()
 
 
 def _gauge(
@@ -88,6 +107,46 @@ def test_guilt_quota_exhausted_message_names_wait_or_switch_not_relogin() -> Non
     seat wastes an operator's time chasing the wrong fix)."""
     verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
     assert "wait" in verdicts[0].message.lower() or "switch" in verdicts[0].message.lower()
+
+
+def test_guilt_probe_module_verdict_constants_still_drive_red() -> None:
+    """Round-4 addendum (team-lead review of PR #5028, 2026-08-26): the
+    writer (scripts/wa_codex_seat_probe.py) emits `verdict` via named
+    `Final[str]` constants; this reader used to compare against bare
+    string literals — a rename on the write side would have silently
+    stopped matching (RED degrades to WARN, zero visible signal). The
+    sentinel module now imports the SAME constants
+    (`from scripts.wa_codex_seat_probe import VERDICT_AUTH_DEATH,
+    VERDICT_OK, VERDICT_QUOTA_EXHAUSTED`) instead of hardcoding the
+    strings, so this test feeds the PROBE's own constants — loaded as an
+    independent module, not typed as literals here — through the
+    sentinel's real `evaluate()` and asserts the RED classification
+    still fires for both. This is the behavioral half of the fix; the
+    import itself is the structural half (a rename now raises
+    ImportError in this module rather than drifting silently)."""
+    verdicts = wa.evaluate(_probe(probe.VERDICT_AUTH_DEATH, 1, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    assert verdicts[0].level == wa.RED
+    assert verdicts[0].condition == probe.VERDICT_AUTH_DEATH
+
+    verdicts = wa.evaluate(_probe(probe.VERDICT_QUOTA_EXHAUSTED, 0, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    assert verdicts[0].level == wa.RED
+    assert verdicts[0].condition == probe.VERDICT_QUOTA_EXHAUSTED
+
+    # And the healthy value produces no verdict at all — proves the
+    # coupling isn't accidentally satisfied by a permissive `!=` on
+    # every branch.
+    verdicts = wa.evaluate(_probe(probe.VERDICT_OK, 0, 0), 10.0, _gauge(), NOW)
+    assert verdicts == []
+
+    # The sentinel module's OWN imported names must be the identical
+    # values the probe module defines — not a re-typed guess that
+    # happens to match today. If either side is ever renamed without
+    # the other, this equality (or the import at module load) breaks.
+    assert wa.VERDICT_AUTH_DEATH == probe.VERDICT_AUTH_DEATH
+    assert wa.VERDICT_QUOTA_EXHAUSTED == probe.VERDICT_QUOTA_EXHAUSTED
+    assert wa.VERDICT_OK == probe.VERDICT_OK
 
 
 def test_guilt_missing_probe_file_is_red_naming_probe_silent() -> None:

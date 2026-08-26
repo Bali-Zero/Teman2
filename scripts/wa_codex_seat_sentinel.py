@@ -57,6 +57,24 @@ sys.path.insert(0, str(REPO))
 
 from scripts.tg_gateway_verdict import extract_gateway_verdict  # noqa: E402
 
+# S1.5 addendum (2026-08-26, team-lead review of PR #5028): the WRITE side
+# (scripts/wa_codex_seat_probe.py) emits `verdict` via named `Final[str]`
+# constants; this reader used to compare against bare string literals
+# (`"auth_death"`, `"quota_exhausted"`, `"ok"`) instead of importing those
+# same constants — the identical protocol-drift shape as the private-symbol
+# import that started this whole PR, one layer up (a rename on the write
+# side would silently stop matching here, degrading a RED seat-death alarm
+# to a WARN "other_failure" with zero visible signal that anything broke).
+# Importing the probe module is safe at IMPORT time — the user-boundary
+# concern in the probe's own docstring is about RUNTIME execution
+# (`codex login status` runs as zantara-codex), not about reading its
+# Final[str] constants, which are plain module attributes with no I/O.
+from scripts.wa_codex_seat_probe import (  # noqa: E402
+    VERDICT_AUTH_DEATH,
+    VERDICT_OK,
+    VERDICT_QUOTA_EXHAUSTED,
+)
+
 _ENV_STATUS_FILE: Final[str] = "WA_CODEX_SEAT_STATUS_FILE"
 _DEFAULT_STATUS_FILE: Final[str] = "/usr/local/var/wa-codex-broker/seat-status.json"
 _ENV_PROBE_INTERVAL_S: Final[str] = "WA_CODEX_PROBE_INTERVAL_S"
@@ -126,9 +144,9 @@ def _probe_side(
         verdicts.append(Verdict(RED, "probe_silent", PROBE_SILENT_MSG))
     else:
         probe_verdict = probe_status.get("verdict")
-        if probe_verdict == "auth_death":
-            verdicts.append(Verdict(RED, "auth_death", AUTH_DEATH_MSG))
-        elif probe_verdict == "quota_exhausted":
+        if probe_verdict == VERDICT_AUTH_DEATH:
+            verdicts.append(Verdict(RED, VERDICT_AUTH_DEATH, AUTH_DEATH_MSG))
+        elif probe_verdict == VERDICT_QUOTA_EXHAUSTED:
             # S1.5 (2026-08-26): distinct from auth_death (fix = re-login)
             # and from the generic other_failure bucket below (fix = wait /
             # switch seats) — twin, on the read side, of the daemon's own
@@ -136,8 +154,8 @@ def _probe_side(
             # severity as auth_death: either way the OpenAI/Codex leg is
             # fully blocked for every subsequent job, even though the
             # remedy differs.
-            verdicts.append(Verdict(RED, "quota_exhausted", QUOTA_EXHAUSTED_MSG))
-        elif probe_verdict != "ok":
+            verdicts.append(Verdict(RED, VERDICT_QUOTA_EXHAUSTED, QUOTA_EXHAUSTED_MSG))
+        elif probe_verdict != VERDICT_OK:
             # other_failure, probe_error, AND any vocabulary this reader does
             # not know yet (e.g. a future probe adding a POLICY_BLOCKED
             # verdict) must fall somewhere VISIBLE, never into silence —
@@ -156,7 +174,8 @@ def _probe_side(
                     ),
                 )
             )
-        # probe_verdict == "ok": the only value that produces no verdict.
+        # probe_verdict == VERDICT_OK ("ok"): the only value that produces
+        # no verdict.
     return verdicts
 
 
