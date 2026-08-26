@@ -147,6 +147,7 @@ on:
       - Fly.io Secrets Health Check
       - Frontend Live Sentinel
       - Frontend typecheck (apps/mouth)
+      - garuda-contract-parity
       - Guard conformance (superscar
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement

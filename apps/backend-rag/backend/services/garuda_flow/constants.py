@@ -31,6 +31,24 @@ Every number here is traceable to a governance document, NOT invented:
 - ``INTERNAL_ESCALATION_DAYS`` (D-3) / ``FINAL_CHECK_DAYS`` (D-1): internal
   Bali Zero checkpoints only (SOP §6) — never quoted to clients.
 - ``MIN_PASSPORT_VALIDITY_DAYS`` (≥6 months from entry): SOP §1 + §4 checklist.
+- ``RULES_VERIFIED_ON``: the single machine-read stamp `freshness.py` reads for
+  the "rule constants" truth source (DECISIONS.md Q9 / GROUND.md §2 — D-7,
+  D-14, the eVOA usability window, and the max-total-stay convention). This
+  bundle has THREE different dates already in this docstring above —
+  2026-07-14 (eVOA usability window, ``## GARUDA B1 — fatti chiave`` line 41),
+  2026-07-24 (D-7/D-10, verified verbatim on ngurahrai.imigrasi.go.id), and
+  2026-08-23 (the max-total-stay day-counting CONVENTION, a code-correctness
+  verification, not a re-read of a regulation page). The stamp takes the
+  OLDEST of the two genuine source-verification dates — 2026-07-14 — never
+  the newest: a single stamp covering several facts is only honest if it
+  reports how long the WEAKEST-verified fact in the bundle has gone
+  unchecked, and taking the newest date would let one freshly-touched fact
+  (or, worse, an unrelated code fix like the 2026-08-23 entry) hide that the
+  others have not been looked at in longer. On a future re-verification pass,
+  bump this the same way ``nationality_eligibility.RETRIEVED_ON`` already
+  mandates in prose: re-source, re-check every constant this bundle covers,
+  and only then move the date — never hand-edit one constant and carry the
+  old stamp forward.
 - ``b1_max_total_stay_exceeded()``: B1 stay is counted with the arrival day AS
   DAY 1 — imigrasi.go.id's own B1 page states the initial stay is "maksimal 30
   hari, dihitung sejak tanggal kedatangan" (max 30 days, counted FROM the
@@ -66,6 +84,12 @@ MIN_PASSPORT_VALIDITY_DAYS: int = 180  # >= 6 months from entry (SOP §1/§4)
 # possible issuance date; the gate is therefore conservative.
 EVOA_USABILITY_WINDOW_DAYS: int = 90
 
+# G-FRESHNESS-FAIL-CLOSED (DECISIONS.md Q9) — see the module docstring entry
+# above for why this is 2026-07-14, the OLDEST of the bundle's dates, not the
+# newest. Read by `freshness.rule_constants_freshness`; never compared to
+# `today` anywhere else.
+RULES_VERIFIED_ON: str = "2026-07-14"
+
 
 def b1_max_total_stay_exceeded(day_difference: int, max_total_stay_days: int) -> bool:
     """Whether a B1 printed-expiry day-difference exceeds the legal max stay.
@@ -88,5 +112,6 @@ __all__ = [
     "MIN_PASSPORT_VALIDITY_DAYS",
     "PILOT_INTAKE_THRESHOLD_DAYS",
     "PUBLISHED_FILING_DEADLINE_DAYS",
+    "RULES_VERIFIED_ON",
     "b1_max_total_stay_exceeded",
 ]

@@ -1,0 +1,83 @@
+name: garuda-contract-parity
+
+# Arms products/garuda-voa/contracts/tests/ — the frozen contract's invariant
+# suite. Cicatrix #2 consumer ("esiste != armato"): the suite existed and was
+# run by hand for four adversarial rounds while NO workflow named it, and
+# nothing globs products/ in CI. A pytest file that no workflow NAMES does not
+# execute, so every invariant in it was a manual habit wearing a test's clothes.
+#
+# What it actually guards, and why by-hand was not enough (contracts/REVIEW.md
+# round 4): reason-code parity between the wire contract and the engine enum
+# `garuda_flow.eligibility.DeclineCode` was verified by hand three times, agreed
+# by a refuter, written down as 18/18 — and pinned by nobody. The freshness lane
+# then legitimately added a nineteenth member, the contract could not express
+# it, and all nine other tests stayed green. A customer-facing decline
+# vocabulary had silently diverged from what the engine emits.
+#
+# NO paths filter, deliberately. The drift this catches lives BETWEEN two trees
+# (products/garuda-voa/contracts/ and apps/backend-rag/backend/services/
+# garuda_flow/), so a filter on either one misses the case where only the other
+# moves — which is precisely how the nineteenth code got through. It also keeps
+# the job safe as a required status check: a filtered workflow that never runs
+# leaves a required check pending forever (W69).
+#
+# Triggers pull_request AND push-to-main (W41/W42: pull_request-only is false
+# safety under L2 autonomous direct-push).
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: garuda-contract-parity-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  garuda-contract-parity:
+    name: garuda-contract-parity
+    runs-on: ubuntu-latest
+    # Floor is the CHECKOUT, not the suite (scripts/lint_workflow_timeout_floor.py).
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the suite's only two dependencies
+        run: python3 -m pip install --quiet --disable-pip-version-check pytest pyyaml
+
+      # The suite opens with `pytest.importorskip("yaml")`. That is right for a
+      # developer laptop and WRONG for a gate: without PyYAML every invariant
+      # here SKIPS, and a full skip reports green. Fail loudly on the missing
+      # dependency instead of shipping a workflow that guards nothing.
+      - name: Refuse to run green without PyYAML
+        run: python3 -c "import yaml; print('PyYAML', yaml.__version__)"
+
+      # A suite that collects zero tests also exits 0. Assert the count BEFORE
+      # trusting the run — same reason as the step above: the failure mode of
+      # this whole workflow is silence, not a red X.
+      - name: Refuse to run green on an empty collection
+        run: |
+          COLLECTED=$(python3 -m pytest products/garuda-voa/contracts/tests/ \
+            --collect-only -q --no-header -o addopts= 2>/dev/null | grep -c '::' || true)
+          echo "collected: $COLLECTED"
+          if [ "$COLLECTED" -lt 12 ]; then
+            echo "::error::garuda contract suite collected $COLLECTED tests, expected at least 12 —" \
+                 "the suite moved, was renamed, or stopped importing. A gate that collects nothing passes."
+            exit 1
+          fi
+
+      # PYTHONDONTWRITEBYTECODE: W121 — a stale __pycache__ serves the
+      # pre-change module, which does not make a good test look broken, it makes
+      # a broken test look proven. Cheap insurance on a fresh runner, and the
+      # habit is the point.
+      - name: Run the frozen contract's invariants
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 -m pytest products/garuda-voa/contracts/tests/ \
+            -q --no-header -o addopts= -p no:cacheprovider

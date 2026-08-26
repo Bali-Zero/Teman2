@@ -1330,6 +1330,200 @@ async def initialize_services(app: FastAPI) -> None:
     # 5. Database services
     db_pool = await initialize_database_services(app)
 
+    # 5.5 GARUDA VOA — magic-link session verifier wiring (L4).
+    # Non-critical: on failure the L3/L4 routes keep answering fail-closed
+    # (503 / 401 SESSION_REQUIRED) exactly as they do with no adapter at
+    # all — never a partial/broken auth path served to traffic.
+    if db_pool is not None:
+        try:
+            from backend.services.garuda_portal.magic_link_store import PostgresMagicLinkStore
+
+            # Same env-var-with-default convention as `visa_engine.evaluate_
+            # path.EVALUATE_ENVIRONMENT_ENV` — a domain-vocabulary string
+            # (TEST/STAGING/PRODUCTION, migration 285's CHECK constraint),
+            # distinct from `settings.environment` ("production"/"staging"/
+            # "development"), never derived from it by string-casing alone.
+            garuda_environment = os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+            garuda_magic_link_store = PostgresMagicLinkStore(db_pool, environment=garuda_environment)
+
+            # `garuda_orders_router._require_magic_session_actor` reads this
+            # directly off app.state (L3's file, LANES.md file-ownership —
+            # the orchestrator wires it, L3 never instantiates a store).
+            app.state.garuda_magic_session_verifier = garuda_magic_link_store.verify_session
+            # `get_order_and_practice` reads this directly for its raw
+            # ownership-filtered SELECT (no repository layer for that one
+            # read yet). This is the SAME pool object as `app.state.db_pool`
+            # (set just above by `initialize_database_services`) -- a
+            # domain-named alias, never a second `asyncpg.create_pool()`.
+            # Kept as its own attribute (not "read `app.state.db_pool`
+            # directly from the router") for the same reason every other
+            # domain slot here does (`app.state.ts_service`,
+            # `app.state.graph_service`, ...): `garuda_orders_router.py` is
+            # L3's file and should depend on a name that says what it's
+            # for, not on the shared RAG pool's specific attribute name,
+            # which is `service_initializer`'s internal wiring detail. If a
+            # dedicated GARUDA pool is ever split out, only this one line
+            # changes; the router is untouched either way.
+            app.state.garuda_db_pool = db_pool
+
+            # `garuda_portal_auth`'s own `issue`/`exchange` operations
+            # (requestMagicLink / exchangeMagicLink) default to
+            # `UnconfiguredMagicLinkStore` via `get_garuda_magic_link_store`
+            # — wire the SAME store instance onto app.state so a session can
+            # actually be minted, not just verified. Wiring only
+            # `verify_session` above and leaving `issue`/`exchange`
+            # unconfigured would make L3's auth check reachable in theory
+            # while no `garuda_account_sessions` row could ever exist to
+            # satisfy it.
+            #
+            # DELIBERATELY app.state, NOT `app.dependency_overrides` (an
+            # earlier version of this wiring used that dict — corrected
+            # 2026-08-25, team-lead review): `dependency_overrides` is
+            # FastAPI's TEST mechanism, one unscoped process-wide dict, and
+            # `backend/tests/unit/routers/test_dashboard_coverage.py`
+            # already calls `app.dependency_overrides.clear()`
+            # unconditionally in teardown against this SAME `main_cloud.app`
+            # object. That call is harmless today only because that test
+            # file never triggers `initialize_services`, so it never has
+            # anything of this module's to clear — but a production wiring
+            # entry placed in that dict would be exactly one unrelated
+            # test's teardown away from silently vanishing, leaving
+            # `garuda_magic_session_verifier` (a separate, unaffected
+            # app.state slot) live while minting silently reverts to
+            # `UnconfiguredMagicLinkStore` — the half-wired hazard this
+            # module already exists to avoid. `app.state` has no such
+            # global-clear call anywhere in this codebase.
+            app.state.garuda_magic_link_store = garuda_magic_link_store
+            logger.info("✅ GARUDA VOA magic-link session verifier wired")
+        except Exception as e:
+            logger.warning(
+                "⚠️ GARUDA VOA magic-link wiring failed (non-critical, L3/L4 fail closed): %s", e
+            )
+    else:
+        logger.warning(
+            "⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)"
+        )
+
+    # 5.6 GARUDA VOA — CheckStore wiring (L2). Unconditional, unlike the
+    # order/payment wiring below: `PostgresCheckStore.create()` runs its
+    # OWN pre-check (`retention.active_garuda_check_policy_available`)
+    # before ever touching the INSERT, so it raises the contract's
+    # `PersistencePolicyUnavailable` -> clean 503 in exactly the same
+    # shape as `UnconfiguredCheckStore` today, whether or not Zero has
+    # signed a GARUDA_CHECK retention policy yet — the database's own
+    # `INTO STRICT` trigger (migration 286) never fires through this path.
+    # Verified empirically, not assumed:
+    # test_create_with_no_signed_policy_fails_closed_cleanly_not_a_raw_
+    # db_exception (test_check_to_order_journey.py) proves this with a
+    # real Postgres and no active policy. Wiring it now means the store
+    # starts working for real the instant that signature lands, with zero
+    # further code change — the alternative (wiring it only after the
+    # signature exists) would need a second deploy for no safety benefit.
+    if db_pool is not None:
+        try:
+            from backend.services.garuda_flow.check_store import PostgresCheckStore
+
+            # Read independently rather than reusing 5.5's local
+            # `garuda_environment` -- that name only exists if 5.5's own
+            # try block ran far enough to set it, and this block must not
+            # silently no-op just because a DIFFERENT domain's wiring
+            # (magic-link) failed first.
+            garuda_environment_for_check_store = (
+                os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+            )
+            app.state.garuda_check_store = PostgresCheckStore(
+                db_pool, environment=garuda_environment_for_check_store
+            )
+            logger.info("✅ GARUDA VOA check store wired (fail-closed until L1 policy signed)")
+        except Exception as e:
+            logger.warning("⚠️ GARUDA VOA check store wiring failed (non-critical): %s", e)
+
+    # 5.7 GARUDA VOA — order repository + payment provider wiring (L3).
+    # Gated on GARUDA_XENDIT_SECRET_KEY (sandbox-only, ASSEMBLY-LINE G5 —
+    # XenditPaymentProvider itself refuses a non-`xnd_development_` key):
+    # nobody has configured a Xendit sandbox account for this product yet
+    # (owner decision, "GARUDA VOA MANDATE" — not a code gap), so on every
+    # environment today this block logs one line and leaves
+    # `app.state.garuda_order_repository`/`garuda_payment_provider` unset,
+    # which is `get_repository()`/the webhook route's existing fail-closed
+    # 503 — the exact same shape as before this PR. The moment Zero
+    # provisions a sandbox account and sets the four env vars below, this
+    # starts working with no further code change. A persistent
+    # `httpx.AsyncClient` (Golden Rule #10 — never per-request) is stored
+    # under `garuda_payment_http_client` so `app_factory.py`'s generic
+    # "close anything with `client`/`service` in its attribute name"
+    # shutdown loop closes it — no new cleanup plumbing needed.
+    #
+    # `GARUDA_PUBLIC_BASE_URL` (single base, no success/failure split —
+    # Dissent #3, 2026-08-25 review of PR #4920): the return route lives on
+    # the public site apps/mouth actually deploys to. Default is the CANONICAL
+    # apex origin, `https://balizero.com` -- not `www.`, which 308-redirects
+    # to the apex (measured live: `www.` -> 308 -> apex, query string
+    # preserved across the hop). Sourced from the app's own canonical-URL
+    # emitters, `apps/mouth/src/app/sitemap.ts` (`const baseUrl =
+    # "https://balizero.com"`) and `layout.tsx`'s `NEXT_PUBLIC_PUBLIC_URL`
+    # fallback -- a README "Live:" badge is a claim, these are declarations.
+    # Deliberately NOT reading `NEXT_PUBLIC_PUBLIC_URL` itself here: it is a
+    # frontend build-time var baked into the Vercel bundle, and this is a
+    # backend runtime env read on Fly -- coupling the two platforms' configs
+    # by variable name would look wired but silently drift the moment either
+    # deploy sets it differently, which is worse than a plainly independent
+    # default with the SSOT named in this comment.
+    # `XenditPaymentProvider.create_checkout_session` builds the real
+    # per-order, per-nonce return URL from this base — a static
+    # success/failure pair could never carry the order id the return route
+    # requires, and the product's own return-page contract forbids a
+    # success/failure split anyway (browser return is an OBSERVATION, not a
+    # truth).
+    garuda_xendit_secret_key = os.environ.get("GARUDA_XENDIT_SECRET_KEY", "").strip()
+    if db_pool is not None and garuda_xendit_secret_key:
+        try:
+            import httpx as _garuda_httpx
+
+            from backend.services.garuda_orders.eligibility_lookup import (
+                PostgresEligibilityCheckLookup,
+            )
+            from backend.services.garuda_orders.repository import GarudaOrderRepository
+            from backend.services.payments.xendit import XenditFeeConfig, XenditPaymentProvider
+
+            garuda_payment_http_client = _garuda_httpx.AsyncClient(timeout=30.0)
+            garuda_payment_provider = XenditPaymentProvider(
+                secret_key=garuda_xendit_secret_key,
+                callback_verification_token=os.environ.get(
+                    "GARUDA_XENDIT_CALLBACK_TOKEN", ""
+                ).strip(),
+                public_base_url=os.environ.get(
+                    "GARUDA_PUBLIC_BASE_URL", "https://balizero.com"
+                ).strip(),
+                fee_config=XenditFeeConfig(
+                    percentage_bps=int(os.environ.get("GARUDA_XENDIT_FEE_BPS", "0") or "0"),
+                    fixed_idr=int(os.environ.get("GARUDA_XENDIT_FEE_FIXED_IDR", "0") or "0"),
+                ),
+                client=garuda_payment_http_client,
+            )
+            garuda_eligibility_lookup = PostgresEligibilityCheckLookup(db_pool)
+            garuda_environment_for_orders = (
+                os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+            )
+            app.state.garuda_payment_http_client = garuda_payment_http_client
+            app.state.garuda_payment_provider = garuda_payment_provider
+            app.state.garuda_order_repository = GarudaOrderRepository(
+                db_pool,
+                eligibility_lookup=garuda_eligibility_lookup,
+                provider=garuda_payment_provider,
+                environment=garuda_environment_for_orders,
+            )
+            logger.info("✅ GARUDA VOA order repository + Xendit sandbox payment provider wired")
+        except Exception as e:
+            logger.warning(
+                "⚠️ GARUDA VOA order/payment wiring failed (non-critical, L3 fail closed): %s", e
+            )
+    else:
+        logger.info(
+            "ℹ️ GARUDA VOA order/payment wiring skipped: GARUDA_XENDIT_SECRET_KEY not set "
+            "(expected until Zero provisions a Xendit sandbox account — L3 fail closed)"
+        )
+
     # 6. CRM & Memory
     await initialize_crm_and_memory_services(app, ai_client, db_pool)
 
