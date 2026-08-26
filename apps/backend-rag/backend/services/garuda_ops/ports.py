@@ -113,6 +113,15 @@ class OrderSnapshot:
     price_idr: int
     submit_by_date: date | None  # garuda_flow.operating_calendar commitment
     assigned_to: str | None = None  # team member email, if pre-assigned
+    # Added when the first CONCRETE `CrmWriter` was built: `clients.full_name`
+    # is NOT NULL, and this snapshot carried no name at all. The alternatives
+    # were both worse than one additive optional field — deriving a name from
+    # the email local-part would write invented data into the CRM, and having
+    # the writer re-read `garuda_orders` itself would give the CRM-side adapter
+    # a second, undeclared dependency on GARUDA's own tables. Optional with a
+    # default so every existing fake and caller keeps working unchanged; a
+    # writer that receives None must refuse rather than substitute a placeholder.
+    customer_full_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
