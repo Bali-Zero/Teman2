@@ -209,12 +209,20 @@ premise from the original design, see the script's own module docstring).
 Still open, and deliberately NOT done by this check (repo-settings mutation is
 an operator[control-plane] action): actually creating the `feature/*` ruleset
 — `scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern 'feature/*'
---apply` (print-only without `--apply`) — and confirming the CI job's own
-`gh api .../rulesets` call can authenticate at all, since the ambient
-`GITHUB_TOKEN` has no grantable "administration" scope (confirmed via
-actionlint's own valid-permissions list) and will likely report the check as
-BLIND (fail-closed, not a false pass) on every non-default-base PR until an
-admin-scoped PAT is wired in as a secret.
+--apply` (print-only without `--apply`) — and confirming whether the CI job's
+own `gh api .../rulesets` call can authenticate at all with the ambient
+`GITHUB_TOKEN`. Corrected 2026-08-27 after a cross-family refuter round: the
+PR's first draft asserted this would "likely 403" because "administration"
+isn't a grantable Actions `permissions:` scope; the refuter countered that the
+real requirement is "Metadata: read", not Administration. Neither claim could
+be confirmed — GitHub's REST rulesets docs don't publish a permissions table
+for the endpoint, and "metadata" is ALSO absent from actionlint's own
+valid-scopes list, so whichever name is correct in GitHub's model, this job's
+`permissions:` block cannot express it either way. Left as an honestly
+UNTESTED open question (base==main never exercises this call, so this PR
+never observed it either succeed or 403) rather than a confident claim in
+either direction — the first real `feature/*` PR after the ARM-half lands
+will settle it empirically.
 
 ## Enforcement backlog (not yet armed — tracked, per superscar #2 "esiste ≠ armato")
 

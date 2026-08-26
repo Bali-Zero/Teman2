@@ -69,17 +69,27 @@ Usage: setup_merge_queue_ruleset.sh --status | --enable | --disable | --apply
               infra/required.d/integration-branch-minimum-contexts.json.
               WITHOUT --apply this only PRINTS the `gh api` body + command it
               would run — no mutation, safe to call from a CI check or a
-              read-only session. WITH --apply it actually creates it
-              (enforcement=disabled, same "activation is a separate step"
-              posture as --apply above — there is no --branch-pattern
-              --enable in this version; flip enforcement by hand once ready:
-              reconcile with --apply again after editing this script's
-              INTEGRATION_RULESET_NAME lookup, or extend cmd_set_enforcement
-              to take a ruleset name). One pattern per invocation — running
-              it again with a different pattern REPLACES the include list
-              (whole-object PUT, see the canonical_body() comment above).
-              This is a repo-settings mutation: --apply is operator[control-
-              plane], never run by the CI check itself.
+              read-only session. WITH --apply it actually creates it, and
+              creates it enforcement=active IMMEDIATELY (deliberately NOT the
+              --apply-above posture of "disabled by default, --enable is a
+              separate step") — a cross-family refuter caught this asymmetry
+              2026-08-27: the check's own printed remediation command already
+              includes --apply, so if creation defaulted to disabled the
+              printed command would leave the PR red anyway, silently. Unlike
+              $RULESET_NAME (an always-on object protecting ALL of main, where
+              an accidental instant activation via drift-reconciliation would
+              be the dangerous direction), this ruleset is created only when
+              an operator explicitly typed --branch-pattern '<pattern>'
+              --apply — arming coverage IS the point of that command, not a
+              side effect of something else. To reconcile WITHOUT touching
+              enforcement, run it again without --apply first to preview, or
+              hand-edit enforcement via `gh api --method PATCH
+              repos/<repo>/rulesets/<id> -f enforcement=disabled`. One pattern
+              per invocation — running it again with a different pattern
+              REPLACES the include list (whole-object PUT, see the
+              canonical_body() comment above). This is a repo-settings
+              mutation: --apply is operator[control-plane], never run by the
+              CI check itself.
 
 Every subcommand resolves the repo slug live via `gh repo view` and never
 echoes a secret. Any real GitHub API error (as opposed to "ruleset not found
@@ -288,8 +298,8 @@ cmd_branch_pattern() {
     echo "DRY RUN — nothing executed. Add --apply to actually create/reconcile this ruleset."
     echo
     if [[ -z "$id" ]]; then
-      body="$(integration_body "$pattern" "disabled")"
-      echo "Would run (ruleset does not exist yet):"
+      body="$(integration_body "$pattern" "active")"
+      echo "Would run (ruleset does not exist yet — created ACTIVE immediately, see below):"
       echo "  gh api --method POST repos/${repo}/rulesets --input - <<'JSON'"
       echo "$body"
       echo "JSON"
@@ -304,15 +314,26 @@ cmd_branch_pattern() {
     return 0
   fi
 
-  # --apply: mirrors cmd_apply()'s idempotent create-or-reconcile posture —
-  # a NEW ruleset is created with enforcement=disabled (activation stays a
-  # deliberate, separate, manual step: edit the enforcement value by hand and
-  # re-run --apply, or extend cmd_set_enforcement to take a ruleset name —
-  # not built here, out of this PR's scope).
+  # --apply: a NEW integration ruleset is created enforcement=ACTIVE
+  # immediately — DELIBERATELY NOT $RULESET_NAME's "disabled by default,
+  # --enable is a separate step" posture (cmd_apply above). A cross-family
+  # refuter flagged this asymmetry, correctly: check_base_protected.py's own
+  # failure message prints this exact --apply command as the fix, so if
+  # creation defaulted to disabled, running the EXACT printed command would
+  # leave the PR just as red as before — a silent dead end. The difference
+  # from $RULESET_NAME that justifies immediate activation: that object
+  # protects ALL of main, always-on, where accidentally flipping it active as
+  # a side effect of routine drift-reconciliation would be the dangerous
+  # direction; THIS one is created only when an operator explicitly typed
+  # --branch-pattern '<pattern>' --apply, and arming coverage for that
+  # pattern is the entire point of the command they just ran, not a side
+  # effect of something else. Reconciling an EXISTING ruleset still preserves
+  # whatever enforcement it already has (below) — only first-creation jumps
+  # straight to active.
   if [[ -z "$id" ]]; then
-    echo "Ruleset '${INTEGRATION_RULESET_NAME}' not found in ${repo} — creating (enforcement=disabled by default)..."
-    integration_body "$pattern" "disabled" | gh api --method POST "repos/${repo}/rulesets" --input - >/dev/null
-    echo "OK: created, enforcement=disabled. Flip it active only once ready (deliberate, manual)."
+    echo "Ruleset '${INTEGRATION_RULESET_NAME}' not found in ${repo} — creating (enforcement=active immediately)..."
+    integration_body "$pattern" "active" | gh api --method POST "repos/${repo}/rulesets" --input - >/dev/null
+    echo "OK: created and ACTIVE. PRs into refs/heads/${pattern} are gated starting now."
   else
     enforcement="$(gh api "repos/${repo}/rulesets/${id}" --jq '.enforcement')"
     echo "Ruleset '${INTEGRATION_RULESET_NAME}' exists (id ${id}, enforcement=${enforcement}) — reconciling rule content via PUT, enforcement unchanged..."

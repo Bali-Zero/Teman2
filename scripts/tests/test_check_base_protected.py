@@ -100,6 +100,34 @@ def test_guilt_glob_does_not_match_unrelated_ref():
     assert mod._pattern_matches("refs/heads/feature/*", "ops/seat6", "main") is False
 
 
+def test_guilt_single_star_does_not_cross_a_slash():
+    # The real bug a cross-family refuter found (2026-08-27), verified
+    # against GitHub's own docs: a single `*` does NOT cross `/` (Ruby
+    # File.fnmatch with FNM_PATHNAME). Python's stdlib `fnmatch` module has no
+    # such mode — its `*` crosses `/` freely — so using it directly made a
+    # ruleset scoped to `refs/heads/feature/*` falsely appear to cover a
+    # NESTED branch `feature/a/b`, which GitHub itself would NOT apply that
+    # ruleset to. This must be False, not True.
+    assert mod._pattern_matches("refs/heads/feature/*", "feature/a/b", "main") is False
+
+
+def test_innocence_github_docs_own_example_single_star():
+    # GitHub's own documented example, verbatim: "qa/* will match all
+    # branches beginning with qa/ and containing a single slash, but will
+    # not match qa/foo/bar."
+    assert mod._pattern_matches("refs/heads/qa/*", "qa/foo", "main") is True
+    assert mod._pattern_matches("refs/heads/qa/*", "qa/foo/bar", "main") is False
+
+
+def test_innocence_github_docs_own_example_double_star():
+    # GitHub's own documented example, verbatim: "qa/**/* ... would match,
+    # for example, qa/foo/bar/foobar/hello-world."
+    assert (
+        mod._pattern_matches("refs/heads/qa/**/*", "qa/foo/bar/foobar/hello-world", "main")
+        is True
+    )
+
+
 # ------------------------------------------------------------- ruleset_covers_ref
 
 
@@ -162,12 +190,25 @@ def test_innocence_ruleset_with_the_rule_returns_its_contexts():
 # --------------------------------------------------------- normalize_ref / suggest_pattern
 
 
-def test_innocence_normalize_ref_strips_full_ref_prefix():
-    assert mod.normalize_ref("refs/heads/main") == "main"
+def test_innocence_normalize_ref_strips_full_ref_prefix_when_asserted_full():
+    assert mod.normalize_ref("refs/heads/main", is_full_ref=True) == "main"
 
 
 def test_innocence_normalize_ref_passes_through_short_name():
-    assert mod.normalize_ref("feature/kb-current") == "feature/kb-current"
+    assert mod.normalize_ref("feature/kb-current", is_full_ref=False) == "feature/kb-current"
+
+
+def test_guilt_normalize_ref_never_strips_a_short_name_that_looks_like_a_full_ref():
+    # The real bypass a cross-family refuter found (2026-08-27): a branch can
+    # legitimately be NAMED 'refs/heads/main' (git allows slashes in branch
+    # names). When the caller correctly asserts this is a SHORT name
+    # (is_full_ref=False, e.g. it came from pull_request's base.ref, which
+    # GitHub always populates as a short name), it must be used verbatim —
+    # never silently collapsed into 'main' just because it starts with that
+    # literal text.
+    assert (
+        mod.normalize_ref("refs/heads/main", is_full_ref=False) == "refs/heads/main"
+    )
 
 
 def test_innocence_suggest_pattern_widens_to_the_branch_family():
@@ -209,9 +250,41 @@ def test_innocence_base_feature_x_with_a_covering_ruleset():
 
 
 def test_guilt_evaluate_via_merge_group_full_ref_form():
-    # merge_group's base_ref is a FULL ref, not a short name.
-    code, _ = mod.evaluate("refs/heads/feature/kb-current", "main", REAL_RULESETS_TODAY, MIN_CONTEXTS)
+    # merge_group's base_ref is a FULL ref, not a short name — asserted via
+    # is_full_ref=True, never guessed from the string.
+    code, _ = mod.evaluate(
+        "refs/heads/feature/kb-current",
+        "main",
+        REAL_RULESETS_TODAY,
+        MIN_CONTEXTS,
+        is_full_ref=True,
+    )
     assert code == 1
+
+
+def test_innocence_evaluate_merge_group_full_ref_main_short_circuits():
+    code, message = mod.evaluate(
+        "refs/heads/main", "main", REAL_RULESETS_TODAY, MIN_CONTEXTS, is_full_ref=True
+    )
+    assert code == 0
+    assert "OK" in message
+
+
+def test_guilt_evaluate_a_branch_literally_named_refs_heads_main_is_not_exempted():
+    # The real bypass, at the evaluate() level: a PULL_REQUEST base (always a
+    # SHORT name per GitHub's contract, is_full_ref=False) whose short name
+    # happens to literally BE the text 'refs/heads/main' must still be
+    # treated as a non-default base needing real coverage — not silently
+    # exempted as if it were main itself.
+    code, message = mod.evaluate(
+        "refs/heads/main",
+        "main",
+        REAL_RULESETS_TODAY,
+        MIN_CONTEXTS,
+        is_full_ref=False,
+    )
+    assert code == 1
+    assert message.startswith("UNPROTECTED:")
 
 
 # ---------------------------------------------------- partial coverage (declared, not obvious)
@@ -274,13 +347,36 @@ def _write_rulesets(tmp_path: Path, rulesets: list[dict]) -> Path:
     return path
 
 
-def test_main_cli_exits_zero_for_the_default_branch_with_no_network_call(capsys):
+def test_main_cli_exits_zero_for_the_default_branch_with_no_network_call(monkeypatch, capsys):
     # base == default branch short-circuits BEFORE ever calling `gh` — this
     # is real end-to-end CLI + the REAL shipped minimum-contexts file, and it
-    # must stay deterministic in CI with zero network access.
+    # must stay deterministic in CI with zero network access. Proven, not
+    # just claimed: `_gh` is monkeypatched to explode if it's ever invoked.
+    def _gh_must_not_be_called(args):
+        raise AssertionError(f"_gh() was called for the default-branch base: {args}")
+
+    monkeypatch.setattr(mod, "_gh", _gh_must_not_be_called)
     rc = mod.main(["--base-ref", "main", "--repo", "Bali-Zero/Teman2", "--default-branch", "main"])
     captured = capsys.readouterr()
     assert rc == 0, captured.out
+
+
+def test_guilt_fetch_live_rulesets_returns_none_on_a_partial_list_detail_failure(monkeypatch):
+    # list succeeds (2 summaries), but the SECOND detail GET fails — must
+    # return None (BLIND), never a partial 1-item list that could silently
+    # drop a real covering ruleset from consideration.
+    calls = {"n": 0}
+
+    def _gh_partial_failure(args):
+        if args == ["api", "repos/Bali-Zero/Teman2/rulesets"]:
+            return True, json.dumps([{"id": 1}, {"id": 2}])
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return True, json.dumps({"id": 1, "name": "a"})
+        return False, ""  # second detail GET fails
+
+    monkeypatch.setattr(mod, "_gh", _gh_partial_failure)
+    assert mod.fetch_live_rulesets("Bali-Zero/Teman2") is None
 
 
 def test_main_cli_guilt_feature_base_with_no_covering_ruleset(tmp_path, capsys):
@@ -346,6 +442,39 @@ def test_main_cli_blind_on_unreadable_min_contexts_json(tmp_path, capsys):
     captured = capsys.readouterr()
     assert rc == 1
     assert "BLIND" in captured.out
+
+
+def test_main_cli_base_ref_full_strips_the_merge_group_style_ref(capsys):
+    rc = mod.main(
+        [
+            "--base-ref", "refs/heads/main",
+            "--base-ref-full",
+            "--repo", "Bali-Zero/Teman2",
+            "--default-branch", "main",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 0, captured.out
+
+
+def test_main_cli_without_base_ref_full_a_branch_named_refs_heads_main_is_not_exempted(
+    tmp_path, capsys
+):
+    # End-to-end CLI proof of the fixed bypass: omitting --base-ref-full (the
+    # pull_request/default shape) means 'refs/heads/main' is a literal SHORT
+    # branch name, not main itself, and must require real coverage.
+    rulesets_path = _write_rulesets(tmp_path, REAL_RULESETS_TODAY)
+    rc = mod.main(
+        [
+            "--base-ref", "refs/heads/main",
+            "--repo", "Bali-Zero/Teman2",
+            "--default-branch", "main",
+            "--rulesets-json", str(rulesets_path),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "UNPROTECTED" in captured.out
 
 
 def test_main_cli_blind_on_rulesets_json_not_an_array(tmp_path, capsys):
