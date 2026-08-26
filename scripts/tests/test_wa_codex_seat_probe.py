@@ -409,6 +409,19 @@ def test_guilt_detector_source_reports_import_when_daemon_client_resolves() -> N
 # session (W96-class module/path leakage).
 # ---------------------------------------------------------------------------
 
+# LIMITATION (team-lead review, PR #5028, 2026-08-26 — documented, not
+# fixed, per explicit ask): every case below is driven through `classify()`
+# as `exec_err` only (`login_err=""` in `test_cross_classifier_agreement_corpus`
+# and `test_flagship_string_is_in_the_corpus_and_now_agrees_with_the_daemon`
+# below) — matching the real-world shape the probe was built for, since a
+# login-leg failure that also carries an auth/quota-shaped stderr is the
+# rarer case in practice. A divergence that ONLY manifests when the guilty
+# text arrives via `login_err` (or via BOTH legs at once, exercising
+# `guilty_texts`' multi-element path together) is outside what a green run
+# of this corpus can see. Not a defect in the corpus's design — the daemon's
+# own P2 per-line-isolation property this probe borrows does not care which
+# leg a line came from — but a real boundary of what "this test is green"
+# proves, worth knowing before treating it as exhaustive.
 _CROSS_CLASSIFIER_CORPUS: list[tuple[str, str]] = [
     ("A-auth-structured-only", "error 401: unauthorized"),
     ("B-quota-structured-only", "429 too many requests"),
