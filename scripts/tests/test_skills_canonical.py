@@ -4,26 +4,46 @@ the wrong way.
 
 CORRECTION (2026-08-26/27, this file's own authoring turn): the mandate that
 requested this file ("Q0") was dispatched on a premise this turn falsified
-by direct, repeated measurement — `git status`/`ls -la`/`find -type d`/
-`git log`, not inference. It claimed `.agents/skills/` held 21 dirs with 11
-`SKILL.md` files "DIVERGENT" from `.claude/skills/` counterparts (naming
-`modus`/`workflow` as two of them), and that
-`.agents/skills/modus/SKILL.md:149` still routed the Gear-3 harness verdict
-gate to "Fable 5 first", contradicting the 2026-08-20 Fable-out ruling.
+against TRACKED repo state by direct, repeated measurement —
+`git status`/`ls -la`/`find -type d`/`git log`, not inference. It claimed
+`.agents/skills/` held 21 dirs with 11 `SKILL.md` files "DIVERGENT" from
+`.claude/skills/` counterparts (naming `modus`/`workflow` as two of them),
+and that `.agents/skills/modus/SKILL.md:149` still routed the Gear-3
+harness verdict gate to "Fable 5 first", contradicting the 2026-08-20
+Fable-out ruling.
 
-None of that holds. Measured instead:
+**Correction to the correction (team-lead finding, 2026-08-27): not "none
+of that holds" — "none of that is in git", which is a narrower and truer
+claim.** Against tracked state, on every machine:
   - `.agents/skills/` has 8 top-level skill dirs total (bot,
     bz-video-production, google-flow-video, kbli-navigator, secondhome,
     subhi, visaoracle, wr2) plus README.md — not 21.
-  - `.agents/skills/modus/` does not exist AT ALL (no file, no line 149).
-  - `.claude/skills/modus/SKILL.md` (the file that DOES exist) already
-    correctly reflects the 2026-08-20 ruling — every "Fable 5 first"
-    occurrence there is explicitly historical ("RULED 2026-08-20 — was
-    'Fable 5 first, degrade to Opus on exhaustion' ... now moot").
+  - `.agents/skills/modus/` does not exist AT ALL as a TRACKED file (no
+    committed file, no committed line 149).
+  - `.claude/skills/modus/SKILL.md` (the file that DOES exist, tracked)
+    already correctly reflects the 2026-08-20 ruling — every "Fable 5
+    first" occurrence there is explicitly historical ("RULED 2026-08-20 —
+    was 'Fable 5 first, degrade to Opus on exhaustion' ... now moot").
   - The 11 skills that exist only under `.claude/skills/` are not
-    "diverged" from an `.agents/skills/` counterpart — no such counterpart
-    exists, or ever did (`git log --diff-filter=D` on
-    `.agents/skills/modus*` and `.agents/skills/workflow*` returns nothing).
+    "diverged" from a TRACKED `.agents/skills/` counterpart — no such
+    committed counterpart exists, or ever did (`git log --diff-filter=D`
+    on `.agents/skills/modus*` and `.agents/skills/workflow*` returns
+    nothing).
+
+But on DISK, untracked, stale copies of exactly these names DO exist on 2
+of the fleet's 3 machines (Pro, M5 — Mini clean), all mtime 2026-08-19
+00:26, one one-shot copy git never saw (see the NUZ_SKILLS_ROOT block
+below). On Pro, this session independently read the untracked
+`.agents/skills/modus/SKILL.md` directly and confirmed its Gear-3 row
+verbatim: "Fable 5 first, rotating AZ->A2->A3->A1" — the exact text the
+original Q0 mandate described. So Q0's author almost certainly observed
+something real on their own disk; the specific counted claims (21 dirs, a
+tracked file:line, "DIVERGENT" framing implying two committed versions
+disagree) did not survive re-measurement, but "stale untracked Fable-first
+copies exist and should be removed" was correct all along, just not where
+Q0 said to look for it (tracked git state) or how Q0 said to fix it
+(copying MORE content into `.agents/skills/`, the opposite of the correct
+fix here, which is deleting the untracked copies).
 
 `.agents/skills/README.md` (established 2026-07-23, PR #3019 "chore(skills):
 unify cross-agent skill stores") states why, and it is the actual contract
@@ -68,19 +88,30 @@ from pathlib import Path
 # NUZ_SKILLS_ROOT (added 2026-08-27, team-lead finding): the real-repo tests
 # below only ever inspected the checkout THIS file lives in — a clean git
 # worktree/checkout never has untracked cruft, so it could never reproduce
-# the actual failure mode. Measured independently on the Pro MAIN checkout
-# (~/nuzantara, not a worktree): `git status --porcelain -- .agents/skills`
-# shows 12 UNTRACKED dirs (11 exact Tier-B names + `source-command-resume`),
-# all mtime 2026-08-19 00:26 — a one-shot manual/tool copy that git never
-# saw. `.agents/skills/modus/SKILL.md` there is a genuinely stale 271-line
-# copy (271 vs the tracked file's 280) whose Gear-3 row still reads "Fable 5
-# first, rotating AZ->A2->A3->A1" — the exact text the original Q0 mandate
-# described, just on the untracked file, not the tracked one this test
-# suite was built against. No CI check can ever see this class of drift
-# (CI only ever clones a specific commit; untracked files by construction
-# never travel with it) — the override below lets this same suite be
-# pointed at an arbitrary on-disk tree, so a LOCAL pre-push hook can run it
-# against the real working directory instead.
+# the actual failure mode. Fleet state, per-machine (Pro measured directly
+# by this session; M5/Mini reported by team-lead, not independently
+# re-verified here — different machine):
+#   - Pro (~/nuzantara, main checkout, not a worktree): `git status
+#     --porcelain -- .agents/skills` shows 12 UNTRACKED dirs (11 exact
+#     Tier-B names + `source-command-resume`), all mtime 2026-08-19 00:26 —
+#     one one-shot copy git never saw. This session read
+#     .agents/skills/modus/SKILL.md there directly: its Gear-3 row says
+#     "Fable 5 first, rotating AZ->A2->A3->A1" verbatim — the exact text
+#     the original Q0 mandate described, just on the untracked file, not
+#     the tracked one this test suite was built against.
+#   - M5: team-lead reports the same 11-name set plus `source-command-
+#     resume` (21 entries total incl. subdirectories), PLUS a locally
+#     MODIFIED tracked file — `M .agents/skills/subhi/SKILL.md` — which is
+#     a different failure class (a real edit to a committed file, not
+#     untracked cruft) that `git clean -fd` does not and must not touch;
+#     it needs its own `git diff`/decision, tracked separately (PR body).
+#   - Mini: team-lead reports clean.
+# No CI check can ever see either class of drift (CI only ever clones a
+# specific commit; untracked files by construction never travel with it,
+# and an uncommitted local edit is invisible until someone pushes it) —
+# the override below lets this same suite be pointed at an arbitrary
+# on-disk tree, so a LOCAL pre-push hook can run it against the real
+# working directory instead.
 _root_override = os.environ.get("NUZ_SKILLS_ROOT")
 REPO_ROOT = Path(_root_override).resolve() if _root_override else Path(__file__).resolve().parents[2]
 CLAUDE_SKILLS = REPO_ROOT / ".claude" / "skills"

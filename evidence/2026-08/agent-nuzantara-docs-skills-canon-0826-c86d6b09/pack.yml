@@ -16,24 +16,29 @@ lanes:
 
 diff:
   files: 6
-  net_lines: 754
+  net_lines: 998
   measured_at: 63bfa19e
   note: >-
-    Round 2 (team-lead's three asks, post-first-push): `git diff --stat
-    $(git merge-base HEAD origin/main)` — 6 files changed, 754 insertions(+),
-    0 deletions. The 4 files from the first push (test 288 lines,
-    check-skills-canonical.yml 56 lines, pack.yml, brief.yml) plus 2 more this
-    round: scripts/quickcheck.sh (+58, new run_skills_canonical_check
-    function) and .claude/skills/modus/PENDING-ARMS.md (+2, new
-    source-command-resume ledger line). test_skills_canonical.py itself grew
-    288->306 (+18 net) for the NUZ_SKILLS_ROOT override + docstring addendum.
-    This exceeds the repo's ~400-net-line PR soft target
-    (CLAUDE.md "Agent PR Contract" rule 1: "when the nature of the work
-    permits it") — flagged, not trimmed: team-lead's explicit instruction was
-    to land all three asks on this SAME PR/branch rather than open a new one,
-    and a large share of the total (332 lines) is evidence-pack YAML, not
-    production code. measured_at is unchanged from the first push (merge-base
-    with origin/main at investigation time).
+    Round 3 final (team-lead's gate conditions, post-second-push): `git diff
+    --stat $(git merge-base HEAD origin/main)` — 6 files changed, 998
+    insertions(+), 0 deletions vs origin/main (nothing pre-existed for any
+    of these files, so round-3's internal edit-then-replace churn nets to
+    pure insertions against main). Breakdown: test_skills_canonical.py 337
+    lines (was 288 after round 1, +49 across rounds 2-3: NUZ_SKILLS_ROOT
+    override + fleet-state comment + softened docstring wording),
+    check-skills-canonical.yml 56, quickcheck.sh 58,
+    .claude/skills/modus/PENDING-ARMS.md +2, pack.yml/brief.yml the
+    remainder (evidence growing with each round's receipts). This exceeds
+    the repo's ~400-net-line PR soft target (CLAUDE.md "Agent PR Contract"
+    rule 1: "when the nature of the work permits it") — flagged, not
+    trimmed: team-lead's explicit instruction across two follow-up messages
+    was to land every ask on this SAME PR/branch rather than open a new
+    one, and a large share of the total is evidence-pack YAML plus
+    docstring/comment prose, not executable logic (the actual runtime
+    surface — find_canonicity_violations, the pinned name sets, the
+    quickcheck function — is under 120 lines total). measured_at is
+    unchanged from the first push (merge-base with origin/main at
+    investigation time).
 
 pii_scan: clean
 
@@ -192,6 +197,46 @@ receipts:
     seat: session (Pro, implementer lane)
 
   - claim: >-
+      The untracked Pro copy of .agents/skills/modus/SKILL.md is genuinely
+      stale and still routes the Gear-3 harness verdict gate to Fable —
+      confirmed by reading the file directly, not by trusting team-lead's
+      citation alone.
+    cmd: >-
+      Read tool on /Users/nuzantara/nuzantara/.agents/skills/modus/SKILL.md,
+      lines 140-154
+    result: >-
+      Line 149 verbatim: "**Gear-3 harness verdict gate** | the Evidence
+      Pack of a Gear-3 task (PASS/PWC/REWORK/BLOCK) | Fable 5 first,
+      rotating AZ->A2->A3->A1 | **Ruling Zero 2026-08-09**: only when NO
+      account can run Fable -> Opus 5 effort=max ...". Matches team-lead's
+      citation exactly. This is the untracked file — the TRACKED
+      .claude/skills/modus/SKILL.md (verified earlier in this pack) already
+      reads Opus 5 xhigh/max per the 2026-08-20 ruling; this is the
+      contradiction the original Q0 mandate was pointing at, just on the
+      wrong (untracked) copy.
+    exit: 0
+    ts: 2026-08-27T03:05Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Fleet state beyond Pro (M5 has a TRACKED-file modification `git
+      clean` cannot touch; Mini is clean) — reported by team-lead, NOT
+      independently re-verified by this session (different machine,
+      outside this lane's reach).
+    cmd: team-lead teammate message, 2026-08-27
+    result: >-
+      M5: same 11 Tier-B names + source-command-resume untracked (21
+      entries counting subdirs), PLUS `M .agents/skills/subhi/SKILL.md` —
+      a locally modified TRACKED file, a different failure class from the
+      other 11 (git clean -fd does not and must not remove local edits to
+      a tracked file; it needs its own git diff + a keep/discard/commit
+      decision, not bundled into the untracked-cleanup one-liner). Mini:
+      clean, zero entries under .agents/skills drift.
+    exit: n/a
+    ts: 2026-08-27T02:45Z
+    seat: team-lead (not this session — attribution only, unverified by build lane)
+
+  - claim: >-
       test_skills_canonical.py, pointed at the Pro main checkout via the new
       NUZ_SKILLS_ROOT override, actually goes RED against that untracked
       drift — with the exact 11 Tier-B names named in the failure output —
@@ -344,5 +389,14 @@ notes:
     .agents/skills/skill-catalog .agents/skills/slhs
     .agents/skills/sota-architecture-loop .agents/skills/workflow`.
     Team-lead additionally reported (not independently re-verified by this
-    session — different machine) the same class of drift on M5, 21 entries;
-    same one-liner shape applies there against that machine's own file list."
+    session — different machine) the same 11-name untracked set on M5 (plus
+    source-command-resume, 21 entries counting subdirs) — same one-liner
+    shape applies there. M5 ALSO has a locally-modified TRACKED file,
+    `.agents/skills/subhi/SKILL.md` — `git clean -fd` does not touch
+    modified tracked files, so this is a SEPARATE, undecided item: someone
+    needs to `git -C ~/nuzantara diff -- .agents/skills/subhi/SKILL.md` and
+    either keep+commit or discard the edit before/independent of the
+    untracked cleanup. Mini-Pro2 is reported clean (no action needed there).
+    `source-command-resume`'s own keep/adopt/delete decision is tracked as
+    its own PENDING-ARMS.md entry (opened 2026-08-27), deliberately NOT
+    included in the cleanup one-liner above."

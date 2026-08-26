@@ -10,13 +10,33 @@ objective: |
   verdict gate to "Fable 5 first" — contradicting the 2026-08-20 ruling.
 
   This turn re-measured every one of those claims directly (`ls -la`,
-  `find -type d`, `git log --diff-filter=D`, full-text `grep`) and all
-  three are false: `.agents/skills/` has 8 top-level skill dirs, not 21;
-  `.agents/skills/modus/` does not exist at all (no file, no line 149);
-  and `.claude/skills/modus/SKILL.md` (the file that DOES exist) already
-  correctly documents the 2026-08-20 ruling as current, with every
+  `find -type d`, `git log --diff-filter=D`, full-text `grep`) against
+  TRACKED repo state, and all three are false there: `.agents/skills/` has
+  8 top-level skill dirs, not 21; `.agents/skills/modus/` does not exist as
+  a committed file at all (no file, no line 149); and
+  `.claude/skills/modus/SKILL.md` (the file that DOES exist, tracked)
+  already correctly documents the 2026-08-20 ruling as current, with every
   "Fable 5 first" occurrence explicitly framed as historical ("was ...
   per the 2026-08-09 ruling ... now moot").
+
+  CORRECTION, round 2 (team-lead finding, 2026-08-27): "false" described
+  only the tracked/git state, on every machine — it did not describe disk
+  state on the whole fleet. Untracked, never-`git add`-ed copies of
+  exactly the 11 Tier-B names (plus a 12th, `source-command-resume`, which
+  has no `.claude` twin) exist on 2 of 3 machines: Pro (verified directly
+  by this session — `git status --porcelain -- .agents/skills`, 12 `??`
+  entries, all mtime 2026-08-19 00:26) and M5 (team-lead's report, not
+  independently re-verified here: same 11-name set + `source-command-
+  resume`, PLUS a separately-modified TRACKED file `.agents/skills/subhi/
+  SKILL.md` that `git clean` cannot touch). Mini is clean (team-lead's
+  report). This session read the untracked Pro copy of
+  `.agents/skills/modus/SKILL.md` directly and confirmed its Gear-3 row
+  reads "Fable 5 first, rotating AZ->A2->A3->A1" verbatim — the exact text
+  Q0 described, just on the untracked file rather than the tracked one.
+  Net: Q0's specific counted claims did not survive re-measurement, but
+  its underlying observation (stale Fable-first copies exist and need
+  removing) was real — just misattributed to tracked state, and its
+  proposed fix (copy MORE into `.agents/skills/`) was backwards regardless.
 
   `.agents/skills/README.md` (2026-07-23, PR #3019) explains why there is
   nothing to reconcile: `.agents/skills/` is the canonical CROSS-AGENT
