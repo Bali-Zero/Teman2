@@ -139,7 +139,7 @@ receipts:
     ts: "2026-08-26T08:18:00Z"
     seat: sonnet-5 grader (Pro, fresh context)
 tests:
-  - "scripts/tests/test_proprioception_finding_count.sh — 12 pass / 0 fail under BOTH sh and bash.
+  - "scripts/tests/test_proprioception_finding_count.sh — 14 pass / 0 fail under BOTH sh and bash.
     Guilt (a 55-finding probe names it), innocence (n=1 gains nothing; empty-evidence fallback
     intact; the 2026-07-26 re-verify framing survives), behavioural cases on finding_label
     including the bool/None/str/absent-key edges, and a drift matrix across n in {0,1,2,5,55,999}."
@@ -195,11 +195,36 @@ dissent:
       producer rather than surface it, and raising would turn a rendering nicety into a way for the
       SessionStart hook to fail closed on every session. Recorded as a residual risk rather than
       silently coerced.
+  - seat: "opus-5 Gear-3 gate (Pro, fresh context, independent of the author)"
+    objection: >-
+      The corpus proved the FUNCTION and not its two CALLERS. Measured by the gate: reverting
+      `finding_label(r)` back to `r['id']` at the CLI print site left the whole corpus 12/0 GREEN,
+      and the new fleet line "(+N more diverged probes on {host} not listed)" had zero references
+      anywhere outside its own source. Meanwhile acceptance said "mutation-proved in both
+      directions" and consumer_map listed three surfaces, so a reader infers coverage that does not
+      exist. Same W113 over-declaration the earlier round caught in a comment, missed here.
+    status: CONFIRMED
+    resolution: >-
+      Accepted, and CLOSED rather than declared out of scope. Case 6 asserts by AST that both main()
+      and fleet_probe() call finding_label, and it is mutation-proved against the gate's OWN
+      mutation: unplugging the CLI call site yields "NO main -> does not call finding_label (call
+      site unplugged)", unplugging the fleet one yields the same for fleet_probe, 13/1 each, 14/0
+      restored. AST and not grep, because a grep for the name also matches the definition and the
+      comments and would pass on a file with both callers unplugged. The residual weakness (it
+      proves the call exists, not that its output is rendered correctly) is now in residual_risks
+      and in the brief's acceptance rather than left for the next reader to find. The gate's two
+      smaller conditions are applied too: the dead no-op at corpus line 244 is removed, and
+      acceptance no longer lets "mutation-proved" stand in for call-site coverage.
 residual_risks:
   - "The four repaired worktrees were repaired ON DISK. Nothing stops the next bare `git worktree
     add` from recreating the hole — scripts/agent_start.py symlinks .husky/_ but a hand-made
     worktree bypasses it. This diff improves DETECTION honesty, not prevention."
   - "A stringy n_findings renders no count — see the third dissent entry."
+  - "The two call sites are guarded by an AST check (they CALL finding_label), not a behavioural
+    one (they render its output correctly). Both sit inline in functions that first run a live probe
+    sweep or ssh to a peer, so a behavioural test there would assert about this machine rather than
+    about the code. Reverting either call site does now redden the corpus — measured — but a call
+    site that called finding_label and then mangled its result would still pass."
   - "The receptor and finding_label remain two implementations of one rule. The drift case makes
     divergence visible; it does not make it impossible."
 sources:

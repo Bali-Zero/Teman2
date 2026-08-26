@@ -241,7 +241,6 @@ for probe, must, label in cases:
     print(("OK " if ok else "NO ") + label + " -> " + repr(got))
 PYEOF
 )"
-printf '%s\n' "$cli_out" | while IFS= read -r line; do :; done
 for label in guilt-many innocence-one innocence-no-evidence innocence-null-count; do
   if printf '%s\n' "$cli_out" | grep -q "^OK $label"; then
     note_pass "cli — finding_label $label"
@@ -316,6 +315,59 @@ done
 if [ "$drift_fail" -eq 0 ]; then
   note_pass "drift — receptor and finding_label agree on n in {0,1,2,5,55,999}"
 fi
+
+# ---------------------------------------------------------------------------
+# Case 6 (CALL SITES): the Gear-3 gate measured that this corpus proved the
+# FUNCTION and not its two CALLERS — it reverted `finding_label(r)` back to
+# `r['id']` at the CLI print site and the whole corpus stayed 12/0 GREEN. A
+# corpus that cannot see its own subject being unplugged is the same
+# over-declared-coverage shape the adversarial round caught in a comment.
+#
+# Closing it behaviourally is not available at a proportionate cost: both call
+# sites live inline in functions that first run a live probe sweep against this
+# machine (main()) or ssh to a peer (fleet_probe()), so exercising them for real
+# would assert about Pro rather than about the code.
+#
+# So this is an AST check, and its limit is stated rather than implied: it
+# proves the two call sites CALL finding_label, not that they render correctly.
+# AST and not grep, because a grep for the name also matches the definition, the
+# docstring and this very comment — it would pass on a file where both callers
+# were unplugged. Mutation-proved: reverting either call site reddens it.
+# ---------------------------------------------------------------------------
+callsites="$(python3 - "$REPO_ROOT" <<'PYEOF'
+import ast, sys
+from pathlib import Path
+
+src = (Path(sys.argv[1]) / "scripts" / "proprioception.py").read_text(encoding="utf-8")
+tree = ast.parse(src)
+
+def calls_finding_label(fn_name):
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == fn_name:
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name) \
+                        and sub.func.id == "finding_label":
+                    return True
+            return False
+    return None  # function itself is gone
+
+for fn in ("main", "fleet_probe"):
+    got = calls_finding_label(fn)
+    if got is None:
+        print("NO " + fn + " -> function not found in proprioception.py")
+    elif got:
+        print("OK " + fn)
+    else:
+        print("NO " + fn + " -> does not call finding_label (call site unplugged)")
+PYEOF
+)"
+for fn in main fleet_probe; do
+  if printf '%s\n' "$callsites" | grep -q "^OK $fn$"; then
+    note_pass "callsite — $fn() calls finding_label"
+  else
+    note_fail "callsite — $(printf '%s\n' "$callsites" | grep "$fn")"
+  fi
+done
 
 echo
 echo "passed: $pass  failed: $fail"

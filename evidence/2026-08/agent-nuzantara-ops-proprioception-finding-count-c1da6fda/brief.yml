@@ -47,7 +47,13 @@ acceptance:
   - "A probe carrying findings but NO evidence keeps the pre-existing 'N findings' fallback."
   - "finding_label is exercised BEHAVIOURALLY (imported and called), not asserted about by grepping
     its source — including the bool/None/absent-key edges."
-  - "Mutation-proved in both directions: green on the fix, red on the reverted source."
+  - "Mutation-proved in both directions: green on the fix, red on the reverted source. That
+    covers finding_label ITSELF and the receptor rendering. Its two CALL SITES are covered
+    separately and more weakly: an AST check that main() and fleet_probe() call it at all, NOT
+    that they render its output correctly. Spelled out because the first version of this brief
+    let 'mutation-proved' plus a three-surface consumer_map read as call-site coverage that did
+    not exist — the Gear-3 gate proved the gap by unplugging one call site and watching the
+    corpus stay green."
   - "The two shell corpora actually RUN in CI, and the receptor file is in the path filter that
     triggers the job."
 consumer_map:
