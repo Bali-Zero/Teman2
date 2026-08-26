@@ -109,6 +109,7 @@ observation to widen it with.
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -205,8 +206,39 @@ _TABLE_REF = {
 # as top level and convict statements that are already guarded.
 _DOLLAR_TAG = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$")
 
+# An ALTER anywhere in a string, not just at the front of a statement: inside a
+# DO block the statement lives inside a quoted `EXECUTE '...'`, so the anchored
+# pattern above never sees it.
+_ALTER_ANYWHERE = re.compile(
+    r"ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?"
+    r'(?:public\s*\.\s*)?"?(?P<name>[A-Za-z_][A-Za-z0-9_]*)"?',
+    re.IGNORECASE,
+)
+# What makes a DO block a GUARD rather than a wrapper: it can DECLINE to run.
+# The test is deliberately the coarsest coherent one — does the body contain a
+# conditional at all — rather than "does it read the catalog". The first draft
+# of this rule keyed on catalog reads and was incoherent: a body that
+# interrogates `information_schema` and then EXECUTEs unconditionally fails in
+# production exactly like a bare statement, so that predicate acquitted one
+# broken shape while convicting another for no principled reason. Keying on
+# `END IF` cannot produce a false positive, because a body with no conditional
+# anywhere always runs its ALTER.
+#
+# NOT verified, and deliberately so: that the ALTER sits INSIDE that
+# conditional. Deciding that needs PL/pgSQL control-flow analysis, which does
+# not belong in a test file. So a body carrying an unrelated `IF ... END IF`
+# plus an unconditional ALTER still passes — 285's DROP CONSTRAINT is exactly
+# that shape. Written down because a limit on paper can be closed later; an
+# implied one is discovered in production.
+_HAS_CONDITIONAL = re.compile(r"\bEND\s+IF\b", re.IGNORECASE)
+# `DO` as the last token before the opening delimiter, allowing the optional
+# `LANGUAGE <name>` that PostgreSQL permits between them.
+_DO_KEYWORD = re.compile(r"\bDO\s*(?:LANGUAGE\s+[A-Za-z_][A-Za-z0-9_]*\s*)?$", re.IGNORECASE)
 
-def _executable_text(sql: str) -> tuple[list[str], list[int]]:
+
+def _executable_text(
+    sql: str,
+) -> tuple[list[str], list[int], list[tuple[int, str, bool]]]:
     """Reduce SQL to the characters PostgreSQL would actually execute.
 
     A single left-to-right lexer, written once, instead of a pile of regex
@@ -236,6 +268,7 @@ def _executable_text(sql: str) -> tuple[list[str], list[int]]:
     """
     chars: list[str] = []
     origin: list[int] = []
+    bodies: list[tuple[int, str, bool]] = []
     i, lineno, n = 0, 1, len(sql)
     while i < n:
         ch = sql[i]
@@ -280,6 +313,15 @@ def _executable_text(sql: str) -> tuple[list[str], list[int]]:
                 origin.extend([lineno] * len(tag))
                 i = m.end()
                 continue
+            # WHOSE body is this? `DO $$ ... $$` runs at apply time, so an
+            # ALTER inside it hits the ownership check now. A routine body
+            # (`CREATE FUNCTION ... AS $$ ... $$`) is only stored — it runs
+            # when something CALLS it, under whatever role calls it, which is
+            # exactly the shape 268 used to deliver its cure. Convicting a
+            # function body would convict 268's own remedy.
+            preceding = " ".join("".join(chars[-160:]).split())
+            is_do = _DO_KEYWORD.search(preceding) is not None
+            bodies.append((lineno, sql[m.end() : j], is_do))
             lineno += sql.count("\n", i, j + len(tag))
             i = j + len(tag)
             chars.append(" ")
@@ -288,7 +330,7 @@ def _executable_text(sql: str) -> tuple[list[str], list[int]]:
             chars.append(ch)
             origin.append(lineno)
             i += 1
-    return chars, origin
+    return chars, origin, bodies
 
 
 def find_unguarded_alters(sql: str) -> list[tuple[int, str, str]]:
@@ -309,7 +351,7 @@ def find_unguarded_alters(sql: str) -> list[tuple[int, str, str]]:
     ``ALTER TABLE public.visa_decision_retention_policies`` in prose, as this
     file's own docstring does repeatedly.
     """
-    chars, origin = _executable_text(sql)
+    chars, origin, bodies = _executable_text(sql)
     findings: list[tuple[int, str, str]] = []
 
     start = 0
@@ -339,11 +381,105 @@ def find_unguarded_alters(sql: str) -> list[tuple[int, str, str]]:
             if pattern.search(collapsed):
                 findings.append((lineno, table, "references", collapsed[:110]))
                 break
-    return findings
+
+    # A dollar-quoted body is exempt only if it is actually a GUARD. Being
+    # inside `$$` proves the author typed two dollar signs, nothing more:
+    #     DO $$ BEGIN EXECUTE 'ALTER TABLE public.visa_decisions ADD ...'; END $$;
+    # fails in production identically to the bare statement, and the earlier
+    # version of this scanner acquitted it — a false negative in the exact
+    # class the file exists to catch. Someone copying the remediation template
+    # below and dropping the IF would have shipped the incident again.
+    for body_lineno, body, is_do in bodies:
+        if not is_do or _HAS_CONDITIONAL.search(body):
+            continue
+        for m in _ALTER_ANYWHERE.finditer(body):
+            target = m.group("name").lower()
+            if target not in NON_APP_OWNED_TABLES:
+                continue
+            findings.append((
+                body_lineno + body.count("\n", 0, m.start()),
+                target,
+                "unguarded-do",
+                " ".join(body[m.start() : m.start() + 110].split()),
+            ))
+            break
+
+    return sorted(findings)
 
 
 def _migration_number(path: Path) -> int:
-    return int(path.name.split("_", 1)[0])
+    """A filename with no leading number is a defect, not a reason to crash.
+
+    `int()` on it raised ValueError, which pytest reports as a suite ERROR
+    with a traceback into this helper — the reader is sent to debug the guard
+    instead of to the misnamed file. -1 keeps such a file out of the post-D1
+    window, and the test below names it plainly instead.
+    """
+    head = path.name.split("_", 1)[0]
+    return int(head) if head.isdigit() else -1
+
+
+def test_every_migration_filename_carries_a_number() -> None:
+    """Because -1 above would otherwise hide a file from the scan in silence."""
+    unnumbered = [p.name for p in sorted(_MIG_DIR.glob("*.sql")) if _migration_number(p) < 0]
+    assert not unnumbered, (
+        f"migration files with no leading number: {unnumbered}. The D1 boundary is "
+        f"drawn on that number, so an unnumbered file is invisible to this guard."
+    )
+
+
+def test_every_snapshot_table_is_still_named_somewhere_in_the_repository() -> None:
+    """The snapshot can rot in BOTH directions; this catches one of them.
+
+    A table renamed or dropped since 2026-08-26 leaves a name here that the
+    guard watches forever and that can never match — dead weight that reads
+    like coverage.
+
+    The corpus is the whole tracked tree, NOT `migrations_v2/`. Measured while
+    writing this: scanning only that directory reported `collective_memory`,
+    `team_employees` and `user_stats` as dead, and all three are alive —
+    `user_stats` is created by the OLDER migration system under
+    `backend/migrations/`, and a table can exist in production having never
+    passed through any migration directory at all (CLAUDE.md records
+    `kbli_documents` as seeded out-of-band with no migration and no ORM model).
+    "Absent from migrations_v2" and "does not exist" are different claims.
+
+    The OTHER direction — a table transferred to a non-app role AFTER the
+    snapshot — is not detectable from the repository at any scope: it lives in
+    `pg_class.relowner` on the production leader, and only re-running the
+    provenance query at the top of this file can see it. Deliberately not
+    faked with a date-based expiry, because a test that turns red on a
+    calendar day, on a commit nobody touched, ejects innocent PRs from the
+    merge queue (cicatrix `W129`). What would close it is a scheduled job that
+    re-runs the query and diffs it against this list.
+    """
+    repo_root = Path(__file__).resolve().parents[5]
+    # ONE invocation: `git grep -o` prints the matched text itself, so the
+    # union of its output is exactly the set of names present. Asking per name
+    # instead cost 10s on this repo (22 index scans) for the same answer.
+    names = sorted(NON_APP_OWNED_TABLES)
+    patterns: list[str] = []
+    for table in names:
+        patterns += ["-e", table]
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "grep", "-h", "-o", "-w", "-F", *patterns,
+         "--", ":!*test_post_d1_migrations_guard_ledger_owned_ddl.py"],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode not in (0, 1):
+        raise AssertionError(
+            f"git grep failed ({proc.returncode}): {proc.stderr.strip()[:200]}. Failing "
+            f"closed rather than reporting a clean snapshot on a broken instrument."
+        )
+    seen = {line.strip() for line in proc.stdout.splitlines()}
+    ghosts = [t for t in names if t not in seen]
+    assert not ghosts, (
+        f"tables in the NON_APP_OWNED_TABLES snapshot named nowhere in the tracked "
+        f"tree: {ghosts}. Either they were renamed/dropped and the entry is dead, or "
+        f"the snapshot names something this repository never created. Re-run the "
+        f"provenance query in this file's header against the production leader."
+    )
 
 
 def test_no_post_d1_migration_alters_a_table_the_app_role_cannot_own() -> None:
@@ -362,6 +498,21 @@ def test_no_post_d1_migration_alters_a_table_the_app_role_cannot_own() -> None:
                     f"production. A catalog guard does NOT fix it: the cure is a one-time "
                     f"`GRANT REFERENCES ON public.{table} TO backend_rag_v2;` run by the "
                     f"table's owner.\n    {statement}"
+                )
+                continue
+            if kind == "unguarded-do":
+                offenders.append(
+                    f"{path.name}:{lineno} runs an ALTER on `{table}` inside a `DO` block "
+                    f"that contains no conditional at all — so it EXECUTEs unconditionally "
+                    f"and fails in production exactly like a bare statement. Being inside "
+                    f"`$$` is not a guard; being able to DECLINE is.\n    {statement}\n"
+                    f"    Wrap the EXECUTE in the existence test:\n"
+                    f"        IF NOT EXISTS (SELECT 1 FROM information_schema.columns\n"
+                    f"                       WHERE table_schema='public' "
+                    f"AND table_name='{table}'\n"
+                    f"                         AND column_name='<the column>') THEN\n"
+                    f"          EXECUTE 'ALTER TABLE public.{table} ...';\n"
+                    f"        END IF;"
                 )
                 continue
             offenders.append(
@@ -412,9 +563,24 @@ def test_the_incident_files_are_exactly_the_post_d1_violations() -> None:
         for p in sorted(_MIG_DIR.glob("*.sql"))
         if _migration_number(p) > D1_BOUNDARY and find_unguarded_alters(p.read_text())
     }
+    new = sorted(post_d1 - set(GRANDFATHERED))
+    healed = sorted(set(GRANDFATHERED) - post_d1)
     assert post_d1 == set(GRANDFATHERED), (
-        f"post-D1 files with a top-level ALTER on a non-app-owned table: {sorted(post_d1)}; "
-        f"grandfathered: {sorted(GRANDFATHERED)}"
+        (
+            f"NEW violation(s) after the D1 boundary: {new}. Either the migration is "
+            f"genuinely unguarded — the test above says how to fix it — or it was applied "
+            f"to production under a temporary `GRANT visa_ledger_owner`, the same "
+            f"emergency path 281/285 took. In THAT case the fix is not to weaken this "
+            f"test: add the number to GRANDFATHERED with the date and the reason, exactly "
+            f"as its two existing entries do.\n"
+            if new else ""
+        )
+        + (
+            f"Grandfathered file(s) that no longer violate: {healed}. Delete their "
+            f"GRANDFATHERED entries — an exemption that outlives its reason is a lie.\n"
+            if healed else ""
+        )
+        + f"observed={sorted(post_d1)} grandfathered={sorted(GRANDFATHERED)}"
     )
 
 
@@ -477,6 +643,16 @@ GUILTY = [
         id="alter-table-if-exists",
     ),
     pytest.param(
+        f"DO $blk$ BEGIN\nALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\nEND\n$blk$;\n",
+        id="bare-alter-inside-a-TAGGED-do-block",
+    ),
+    pytest.param(
+        "DO $$ BEGIN\n"
+        f"  EXECUTE 'ALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT';\n"
+        "END $$;\n",
+        id="unconditional-EXECUTE-in-a-DO-block-is-not-a-guard",
+    ),
+    pytest.param(
         f"ALTER TABLE ONLY public.{_LEDGER} ADD COLUMN x TEXT;\n",
         id="alter-table-only",
     ),
@@ -519,14 +695,18 @@ INNOCENT = [
         id="create-trigger-is-out-of-scope-on-purpose",
     ),
     pytest.param(
-        f"DO $blk$ BEGIN\nALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\nEND\n$blk$;\n",
-        id="bare-alter-inside-a-TAGGED-do-block",
-    ),
-    pytest.param(
         f"CREATE FUNCTION g() RETURNS void AS $func$\nBEGIN\n"
         f"  EXECUTE 'ALTER TABLE public.{_LEDGER} ADD COLUMN x';\nEND;\n"
         f"$func$ LANGUAGE plpgsql;\n",
         id="inside-a-TAGGED-function-body",
+    ),
+    pytest.param(
+        "DO $g$ BEGIN\n"
+        f"  IF to_regclass('public.{_LEDGER}') IS NOT NULL THEN\n"
+        f"    EXECUTE 'ALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT';\n"
+        "  END IF;\n"
+        "END $g$;\n",
+        id="conditional-EXECUTE-in-a-TAGGED-do-block",
     ),
     pytest.param(
         f"SELECT 'ALTER TABLE public.{_LEDGER} ADD COLUMN x';\n",
