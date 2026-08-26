@@ -228,7 +228,8 @@ will settle it empirically.
 
 1. CI rule: PR touching only `docs/`/`research/` requires an explicit owner-initialed label
    (kills standalone ledger PRs at the gate, not by exhortation).
-2. Quarterly gate audit: **a gate that has never blocked anything is deleted.**
+2. Quarterly gate audit: **a gate that has never blocked anything is deleted.** — armed via X3 gate
+   lifecycle — see `docs/plans/2026-08-26-receptor-live/MANDATE.md` §3.
 3. Silence-on-output detection: an active lane with no merged PR in 48h escalates (replaces
    status reports and heartbeat chatter).
 4. Typed-contract toolchain (OpenAPI → TS client generation) wired into CI for the first
