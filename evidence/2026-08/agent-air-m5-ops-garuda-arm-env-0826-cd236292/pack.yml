@@ -1,0 +1,203 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #4982 (agent/air-m5/ops/garuda-arm-env-0826) — fixes the
+  garuda_environment SANDBOX-default trap in
+  .github/workflows/garuda-arm.yml, adds a live dual-source pytest
+  tripwire, wires it into a named per-PR workflow, and registers that
+  workflow with main-push-failure-watch.yml per the gate's
+  REWORK-BUILD verdict on the first head SHA.
+lanes:
+  - lane: garuda-arm-env-fix
+    role: build
+    seat: >-
+      session (dispatched by team-lead per CLAUDE.md §5 implementer
+      routing)
+  - lane: garuda-arm-env-gate
+    role: review
+    seat: >-
+      independent Gear-3 on-disk gate — REWORK-BUILD on the first
+      head SHA (generator != grader, CLAUDE.md §13/Agent PR Contract)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — a workflow-value fix plus one test file, not a
+  cross-family council dispatch. The D3 seat-diversity floor (>=2
+  build lanes) does not fire.
+diff:
+  net_lines: >-
+    4 files changed across 2 commits, measured by
+    `git diff --numstat origin/main...HEAD`: garuda-arm.yml (+16/-5),
+    lint-garuda-environment-values.yml (+71/-0),
+    main-push-failure-watch.yml (+1/-0),
+    test_garuda_environment_matches_schema.py (+190/-0). Net +278/-5.
+  behaviour_change: >-
+    garuda_environment's workflow_dispatch options change from
+    SANDBOX/PRODUCTION (default SANDBOX) to TEST/STAGING/PRODUCTION
+    (default PRODUCTION) — no other step in the arm job is touched.
+    Two new files: a pytest tripwire and the CI workflow that runs it
+    per-PR. One line added to an existing file registering that new
+    workflow with the meta-watcher.
+receipts:
+  - claim: >-
+      Deterministic gear floor recomputed from this PR's real 3-dot
+      diff (origin/main...HEAD, not a stale two-dot diff — W102) is 3:
+      .github/workflows/* is hot-zone by path.
+    cmd: >-
+      git diff --name-only origin/main...HEAD >
+      /tmp/garuda-changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/garuda-changed.txt
+    result: "3"
+    exit: 0
+    ts: "2026-08-26T00:45:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      actionlint accepts all three touched/new workflow files
+      together.
+    cmd: >-
+      actionlint -color -shellcheck= .github/workflows/garuda-arm.yml
+      .github/workflows/lint-garuda-environment-values.yml
+      .github/workflows/main-push-failure-watch.yml
+    result: "no output (clean)"
+    exit: 0
+    ts: "2026-08-26T00:45:05Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      Tripwire proven RED before proven GREEN. With SANDBOX
+      reintroduced into both `options:` and `default:` on the real
+      workflow file, 2 of 4 tests fail with a precise diagnostic
+      naming the illegal value and the schema-legal set; both other
+      tests still pass (the sweep itself is not broken).
+    cmd: >-
+      (SANDBOX temporarily reintroduced) cd apps/backend-rag &&
+      PYTHONPATH=. python -m pytest
+      backend/tests/app/setup/test_garuda_environment_matches_schema.py
+      -v --tb=short
+    result: >-
+      collected 4 items; ....FF; FAILED
+      test_garuda_environment_workflow_options_are_schema_legal -
+      AssertionError: options include values the database's
+      `environment` CHECK constraints reject: ['SANDBOX']. Schema-legal
+      values: ['PRODUCTION', 'STAGING', 'TEST']. FAILED
+      test_garuda_environment_default_is_schema_legal - AssertionError:
+      default='SANDBOX' is not in the schema-legal set. 2 failed, 2
+      passed in 0.12s
+    exit: 1
+    ts: "2026-08-26T00:15:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "Tripwire GREEN on the actual fix, real fresh run."
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. python -m pytest
+      backend/tests/app/setup/test_garuda_environment_matches_schema.py
+      -v --tb=short
+    result: "collected 4 items; ....; 4 passed in 0.11s"
+    exit: 0
+    ts: "2026-08-26T00:45:10Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      main-push-failure-watch.yml registration for the new workflow
+      is present and correctly formed — the exact gap the gate's
+      REWORK-BUILD verdict on the first head SHA did NOT ask about
+      (that verdict was about the missing evidence pack), but which
+      `scripts/check_watcher_coverage.py` (a separate required check)
+      caught on the same PR's `check` job before this pack was
+      written, and which is now fixed on this branch.
+    cmd: python3 scripts/check_watcher_coverage.py
+    result: >-
+      ::warning::stale entry in watcher's workflows: list, no matching
+      workflow: `AI PR review (advisory)` (pre-existing, out of scope
+      — see notes below) | ✓ watcher-coverage: all 102 live
+      workflow(s) covered by main-push-failure-watch.yml
+    exit: 0
+    ts: "2026-08-26T00:45:15Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: >-
+      The GARUDA backend wiring the original mandate cited
+      (`PostgresMagicLinkStore`/`PostgresCheckStore`/
+      `GarudaOrderRepository`, migrations 285/286) did NOT exist on
+      `main` when this branch was created — confirmed at the exact
+      base commit, not assumed from the mandate's description.
+    cmd: >-
+      git show 92ca871e51540361e315182f83ecac927c33bad9:apps/backend-
+      rag/backend/app/setup/service_initializer.py | grep -ic garuda
+    result: "0"
+    exit: 0
+    ts: "2026-08-26T00:00:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+pii_scan: clean
+dissent:
+  - seat: "independent Gear-3 on-disk gate (first pass, head d7b52539)"
+    objection: >-
+      REWORK-BUILD: floor-3 diff carries no evidence/brief.yml+pack.yml.
+      Code and tripwire independently verified sound (6 mutations run
+      against the tripwire, none survived).
+    status: CONFIRMED
+    note: >-
+      The pack was genuinely absent on that head — not a false
+      finding. Answered by adding this brief.yml + pack.yml at this
+      PR's own per-branch evidence path
+      (evidence/2026-08/agent-air-m5-ops-garuda-arm-env-0826-cd236292/),
+      obtained from `scripts/ci/evidence_paths.py`, never constructed
+      by hand.
+  - seat: "session, self-check on scope creep"
+    objection: >-
+      The GARUDA backend wiring landed on `main` via PR #4959 mid-task
+      — should this PR now also add the fail-closed guard at
+      service_initializer.py's three GARUDA read-sites, since the code
+      to guard now exists?
+    status: RETRACTED
+    note: >-
+      Investigated rather than assumed out of scope by default: those
+      three call sites are not part of THIS branch's diff (it is based
+      on the pre-#4959 `main`, and rebasing onto post-#4959 `main` to
+      pull them in was not requested and would silently widen a
+      Gear-3 PR the gate is already grading). One PR, one concern
+      (CLAUDE.md Agent PR Contract #1) — flagged to the orchestrating
+      session as a named follow-up (see brief.yml risks) rather than
+      folded into this diff.
+  - seat: "session, self-check on the intersection design"
+    objection: >-
+      Does scanning ALL `CHECK (environment IN (...))` clauses
+      repo-wide (not scoped to GARUDA tables) risk a false pass if an
+      unrelated table's `environment` column legitimately uses a
+      DIFFERENT vocabulary?
+    status: RETRACTED
+    note: >-
+      Checked, not assumed safe: `test_environment_check_clauses_are_
+      internally_consistent` asserts the intersection across every
+      clause found is non-empty as its OWN standalone check — if a
+      future migration narrowed or widened the set incompatibly, that
+      test fails first with a message naming the disagreement, before
+      the workflow-vs-schema assertion even runs. Re-verified live: as
+      of this pack, migrations 250/252/264 (pre-existing, visa_engine)
+      and 285/286 (GARUDA, landed via #4959) all declare the identical
+      {'TEST','STAGING','PRODUCTION'} set — confirmed by grep, not
+      assumed from the migration authors' intent.
+tests:
+  - >-
+    Tripwire RED/GREEN pair on the real workflow file — receipts
+    above.
+  - >-
+    actionlint on all three touched/new workflow files together —
+    receipt above.
+  - "check_watcher_coverage.py exit 0 — receipt above."
+static:
+  - "actionlint -shellcheck= -> clean (binary at /opt/homebrew/bin/actionlint)"
+notes:
+  - >-
+    `brief_ref:` names the literal `evidence/brief.yml` (not this
+    pack's own real per-PR path) because `harness-floor.yml` stages
+    both files under canonical names before linting — same pattern as
+    `evidence/2026-08/agent-air-m5-ops-garuda-arming-workflow-0825-
+    a4279106/pack.yml`.
+  - >-
+    The stale `AI PR review (advisory)` entry in
+    `main-push-failure-watch.yml`'s `workflows:` list (surfaced by
+    `check_watcher_coverage.py`'s warning line, receipt above) was
+    reported to the team-lead and deliberately NOT removed here — it
+    names a workflow deliberately disabled 2026-08-20
+    (`ai-pr-review.yml.disabled-2026-08-20-...`), and touching it is a
+    separate, unrelated concern from this PR's fix (Agent PR Contract
+    #1, one PR one concern).
+  - >-
+    This pack does not post a `harness/fable-gate` commit status —
+    that is the gate's own next action after re-reading this pack
+    (generator != grader).
