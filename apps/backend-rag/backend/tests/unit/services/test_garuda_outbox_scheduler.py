@@ -220,21 +220,36 @@ async def test_a_bad_poll_interval_does_not_crash_startup(monkeypatch) -> None:
 async def test_the_http_client_is_closed_on_cancellation(monkeypatch) -> None:
     """The sender takes an INJECTED client so it is not rebuilt per call
     (Golden Rule #10), which makes closing it this loop's job. RED if the
-    `finally` is dropped: a cancelled scheduler would leak the connection pool
-    on every restart."""
+    client is built and never closed: a cancelled scheduler would leak the
+    connection pool on every restart.
+
+    THIS ASSERTS ON `is_closed`, NOT ON A COUNT OF `aclose()` CALLS, and the
+    difference is not cosmetic. The first version of this test counted calls to
+    `httpx.AsyncClient.aclose`, which is exactly right for a `try/finally` that
+    calls it by name and exactly WRONG for `async with`: httpx's `__aexit__`
+    sets the state to CLOSED and closes the transport and mounts DIRECTLY
+    (`_client.py`, verified on the pinned version in this venv), never routing
+    through `self.aclose()`. So the old probe read 0 against an implementation
+    that closes the client perfectly — a red that accused correct code. Chasing
+    it would have argued for tagging the line `# golden-rule-10-exempt` to keep
+    a shape the guard already sanctions. The state is the property we actually
+    care about; the method name was a proxy for it.
+    """
 
     import httpx
 
-    closed = {"n": 0}
-    real_aclose = httpx.AsyncClient.aclose
+    built: list[httpx.AsyncClient] = []
+    real_cls = httpx.AsyncClient
 
-    async def counting_aclose(self):
-        closed["n"] += 1
-        await real_aclose(self)
+    class RecordingAsyncClient(real_cls):  # type: ignore[misc, valid-type]
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            built.append(self)
 
-    monkeypatch.setattr(httpx.AsyncClient, "aclose", counting_aclose)
+    monkeypatch.setattr(httpx, "AsyncClient", RecordingAsyncClient)
     await _drive(monkeypatch, [])
-    assert closed["n"] == 1
+    assert len(built) == 1, "the loop must build exactly one shared client"
+    assert built[0].is_closed is True
 
 
 def test_the_lifespan_ITSELF_still_spawns_the_drain() -> None:

@@ -154,10 +154,16 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
     There is deliberately no leader election, because adding one would be a
     second, weaker guarantee layered over a structural one.
 
-    THE HTTP CLIENT IS OWNED HERE. `BrevoEmailSender` takes an injected
-    `httpx.AsyncClient` precisely so it is not built per call (Golden Rule #10),
-    which means somebody has to own and close it — that is this loop, in a
-    `finally`, including on cancellation.
+    THE HTTP CLIENT IS OWNED HERE, VIA `async with`. `BrevoEmailSender` takes an
+    injected `httpx.AsyncClient` precisely so it is not built per call (Golden
+    Rule #10), which means somebody has to own and close it. The first draft did
+    that with an explicit `try/finally`, which is behaviourally identical and
+    still FAILED `test_no_httpx_violators_outside_http_files`: that guard
+    recognises `async with httpx.AsyncClient(...)` and a lazy-singleton
+    `is_closed` getter, and nothing else outside `*_http.py`. Taking the
+    sanctioned shape is better than claiming `# golden-rule-10-exempt` — the
+    exemption would have been true and would still have removed this line from
+    every future audit of the rule.
     """
 
     import httpx
@@ -170,10 +176,9 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
 
     interval = _garuda_outbox_poll_seconds()
     pool = app.state.db_pool
-    client = httpx.AsyncClient(timeout=30.0)
-    handlers = build_handlers(pool, BrevoEmailSender(client))
     logger.info("✅ GARUDA outbox scheduler started (poll=%ss)", interval)
-    try:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        handlers = build_handlers(pool, BrevoEmailSender(client))
         while True:
             try:
                 async with pool.acquire() as conn:
@@ -191,8 +196,6 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
             except Exception:
                 logger.exception("GARUDA outbox scheduler tick failed; backing off")
                 await asyncio.sleep(interval)
-    finally:
-        await client.aclose()
 
 
 @asynccontextmanager
