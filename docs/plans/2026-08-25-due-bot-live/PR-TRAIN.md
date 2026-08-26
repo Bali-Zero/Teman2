@@ -107,6 +107,57 @@ while trying to add the one that is missing.** That is a strictly worse state th
    neither is blocked on more code, and neither is unblocked by a single deploy step.
 3. After that PR merges, the promotion is **one action over three payloads**, with `cmp -s`
    byte-verification on all three (or `scripts/lint_home_fork.py`), not a per-file copy. A
-   promotion nobody diffed is how HOME-fork drift starts — superscar #1.
+   promotion nobody diffed is how HOME-fork drift starts — superscar #1. **But "one action" is
+   not enough on its own, and the canonical installer does not provide it — see the subsection
+   below before running anything.**
 4. Only then can the rung-1b harness be re-run to obtain its first real model output. Until
    then, its 20/20 green remains a statement about transport only.
+
+### The promotion is ordered, and `provision_zantara_codex.sh` does not honour that order
+
+Added 2026-08-26 after an adversarial cross-family pass on PR #5028, then re-verified by hand
+against the tree at that PR's head (`9ab6606c8`). Point 3 above said "one action over three
+payloads" and stopped there. That is right about _atomicity_ and silent about _sequence_, and
+sequence is the part that bites.
+
+**The constraint.** `wa_codex_daemon.py` imports `CodexExecQuotaError` (line 78, and catches it
+at 511). Measured on `origin/main`: `grep -c "class CodexExecQuotaError"` on the production
+client returns **0**. So a daemon that restarts against the old client raises `ImportError`
+before it polls or touches the gauge — and under `KeepAlive` that is a restart loop, not a
+visible crash. The client is not merely coupled to the daemon; it must be **in place before the
+daemon process restarts**. Copy order among the files is irrelevant; the restart is the fence.
+
+**Why the installer cannot be used as-is for this promotion.** Read in file order:
+
+| line    | action                                                                    |
+| ------- | ------------------------------------------------------------------------- |
+| 142     | installs `codex_exec_client.py`                                           |
+| 144-145 | installs `wa_codex_daemon.py`                                             |
+| ~158    | `pip install httpx` — fallible, rc captured into `PIP_RC`                 |
+| ~249    | `launchctl bootstrap` — **the daemon starts here**                        |
+| ~274    | installs `wa_codex_seat_probe.py` — _after_ the daemon is already running |
+
+The probe is refreshed last, after a fallible step and after the daemon has been restarted. Any
+failure in between leaves **new daemon + new client + old, quota-blind probe** running. That is
+precisely the state this document already names as strictly worse than today: it blinds the one
+observability signal that works end-to-end while trying to add the one that is missing.
+
+**The promotion procedure, corrected.**
+
+1. Copy **all three** payloads into the runtime root first — client, daemon, probe — with the
+   daemon still running on its old code. Nothing has restarted yet, so nothing can be caught
+   half-updated.
+2. `cmp -s` each of the three against its repo source, plus `scripts/lint_home_fork.py --check`.
+   Abort on any mismatch — do not restart into an unverified tree.
+3. Only then restart the daemon (`bootout` + `bootstrap`, not `kickstart -k`: the installer's
+   own log at line ~246 records that `kickstart -k` does **not** re-read the plist).
+4. Re-run the seat probe and confirm it is still green AND that it reports its primary import,
+   not its fallback. A probe on fallback copies can still print `verdict=ok` while being blind —
+   that is the failure this whole PR exists to remove, so accepting `ok` alone would close the
+   loop on nothing.
+
+A note on the ordering the refuter proposed (`probe → client → daemon`): the probe-first half is
+not useful. The probe imports its private symbols from the client and swallows a miss in a broad
+`except ImportError`, so a probe promoted ahead of the client silently runs on fallback copies
+and reports green. Promoting it first buys observability that is not actually observing. What
+matters is only that **everything is on disk before the daemon restarts**.
