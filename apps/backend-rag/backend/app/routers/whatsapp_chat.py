@@ -1075,10 +1075,18 @@ async def _handle_team_bot_ingress_payload(change: WhatsAppChange) -> None:
     rungs (``TEAM_BOT_REPLY_ENABLED`` etc.) gate what happens *after*
     ingress, not whether ingress itself runs.
     """
+    # The id itself is deliberately NOT logged. It is a value WE configure
+    # (our own business number), so it carries no information this line does
+    # not already state — and CodeQL raises a HIGH clear-text-logging alert on
+    # it. The alert is a false positive: the same helper wraps a real client
+    # `phone` on 21 other lines of this file, none of them flagged, and it
+    # returns a salted digest ("id:<12 hex>"), never the value. Rather than
+    # argue with the scanner over a field that says nothing, drop the field.
+    # If TEAM_BOT_PHONE_NUMBER_IDS ever holds more than one id, log the INDEX
+    # that matched — not the id.
     logger.info(
-        "Team-bot webhook message recognised (phone_number_id=%s) — no "
-        "ingress handler built yet (lane B3); dropping without processing.",
-        redact_identifier_for_log(_change_phone_number_id(change)),
+        "Team-bot webhook message recognised — no ingress handler built yet "
+        "(lane B3); dropping without processing."
     )
 
 
@@ -1826,9 +1834,8 @@ async def whatsapp_webhook(
                     background_tasks.add_task(_handle_team_bot_ingress_payload, change)
                 else:
                     logger.info(
-                        "Team-bot webhook message recognised (phone_number_id=%s) "
-                        "but TEAM_BOT_INGRESS_ENABLED is off — dropping.",
-                        redact_identifier_for_log(_change_phone_number_id(change)),
+                        "Team-bot webhook message recognised but "
+                        "TEAM_BOT_INGRESS_ENABLED is off — dropping."
                     )
                 continue
 
