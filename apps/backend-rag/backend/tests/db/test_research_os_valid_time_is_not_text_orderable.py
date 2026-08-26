@@ -43,10 +43,16 @@ touched a payload.
 
 LATENT, NOT LIVE — measured, and load-bearing on how urgent this is. There are ZERO
 production writers of `research_os_objects` in the tree: the only `INSERT INTO
-research_os_objects` anywhere is inside migration 280's own test, there is no ORM
-declaration over it, no `COPY` writer, no dynamically-built table name, and no non-test
-caller of the Research OS adapters. No stored row can be mis-ordered today because no
-stored row exists. This is a defect waiting at the entrance of the lane that will write
+research_os_objects` in EXECUTABLE code is inside migration 280's own test, there is no
+ORM declaration over it, no `COPY` writer, no dynamically-built table name, and no
+non-test caller of the Research OS adapters. Stated precisely because a reviewer caught
+the loose version: four further occurrences of that string DO exist in the tree, as text
+inside `evidence/2026-08/**/pack.yml` records of past ad-hoc runs — one of them an
+executed `cmd:` against a throwaway docker Postgres. Those are logs of what was done, not
+code paths that run. Scoped equally precisely: this measures THE TREE, not a live
+database. It does not exclude an external producer or a manual insert, and no live count
+was taken. What it does establish is that no code path in this repository can produce a
+mis-ordered row — so this is a defect waiting at the entrance of the lane that will write
 the first one, which is exactly when it is cheapest to fix.
 
 **Third (round 2, and it narrows the promise rather than widening the code).** An earlier
