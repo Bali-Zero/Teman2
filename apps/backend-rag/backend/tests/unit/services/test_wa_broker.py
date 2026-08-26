@@ -378,6 +378,160 @@ async def test_offer_job_already_spent_on_insert_unique_violation() -> None:
     assert conn.sql_with_args(_REVERT_CANARY_WHERE)
 
 
+# ── offer_client_job (I DUE BOT F1/F3, migration 290) ───────────────────────
+# Same admission order as offer_job (gauge -> depth -> breaker), but NO
+# wa_outbox fencing UPDATE and no savepoint — a client-bot request has no
+# outbox row and no retry ladder to protect against (see the function's own
+# docstring). An INSERT failure here must propagate rather than being
+# swallowed into a typed OfferResult, since there is no "already spent"
+# collision this call site is meant to recover from.
+
+REQUEST_ID = uuid.uuid4()
+SURFACE = "whatsapp"
+CLIENT_PACKAGE = '{"query": "hello"}'
+CLIENT_PACKAGE_HASH = "hash-client-abc123"
+OUTPUT_SCHEMA_VERSION = "1.0"
+
+
+def _offer_client_kwargs(**overrides: Any) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "request_id": REQUEST_ID,
+        "surface": SURFACE,
+        "package": CLIENT_PACKAGE,
+        "package_hash": CLIENT_PACKAGE_HASH,
+        "output_schema_version": OUTPUT_SCHEMA_VERSION,
+    }
+    kwargs.update(overrides)
+    return kwargs
+
+
+@pytest.mark.asyncio
+async def test_offer_client_job_happy_path_inserts_no_outbox_fence() -> None:
+    job_id = uuid.uuid4()
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"broker_alive": True},  # gauge liveness
+            {"breaker_state": "closed"},  # breaker_admits -> True, no CAS
+        ],
+        fetchval_results=[
+            0,  # admission depth
+            job_id,  # INSERT ... RETURNING job_id
+        ],
+    )
+
+    result = await wa_broker.offer_client_job(conn, **_offer_client_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.OFFERED
+    assert result.job_id == job_id
+
+    # No wa_outbox fencing UPDATE — this leg has no outbox row to fence.
+    assert not conn.sql_contains("UPDATE wa_outbox")
+
+    insert_calls = conn.sql_with_args("INSERT INTO broker_jobs")
+    assert insert_calls, "expected the job INSERT to run"
+    insert_sql, insert_args = insert_calls[0]
+    assert "'client_answer_v1'" in insert_sql
+    assert insert_args == (
+        SURFACE,
+        REQUEST_ID,
+        CLIENT_PACKAGE,
+        CLIENT_PACKAGE_HASH,
+        OUTPUT_SCHEMA_VERSION,
+        wa_broker.deadline_seconds(),
+    )
+
+
+@pytest.mark.asyncio
+async def test_offer_client_job_respects_explicit_deadline_s() -> None:
+    job_id = uuid.uuid4()
+    conn = ScriptedConn(
+        fetchrow_results=[{"broker_alive": True}, {"breaker_state": "closed"}],
+        fetchval_results=[0, job_id],
+    )
+
+    result = await wa_broker.offer_client_job(
+        conn, **_offer_client_kwargs(deadline_s=5)
+    )
+
+    assert result.outcome is wa_broker.OfferOutcome.OFFERED
+    insert_sql, insert_args = conn.sql_with_args("INSERT INTO broker_jobs")[0]
+    assert insert_args[-1] == 5
+
+
+@pytest.mark.asyncio
+async def test_offer_client_job_broker_absent_when_gauge_stale() -> None:
+    """Behavioral requirement (research capture §2.5):
+    codex_broker_heartbeat_age_seconds > 45s -> mark host offline, never
+    offer. Shares the exact same gauge-liveness query as offer_job."""
+    conn = ScriptedConn(fetchrow_results=[{"broker_alive": False}])
+
+    result = await wa_broker.offer_client_job(conn, **_offer_client_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.BROKER_ABSENT
+    assert result.job_id is None
+    assert not conn.sql_contains("INSERT INTO broker_jobs")
+
+
+@pytest.mark.asyncio
+async def test_offer_client_job_broker_absent_when_gauge_missing() -> None:
+    conn = ScriptedConn(fetchrow_results=[None])
+
+    result = await wa_broker.offer_client_job(conn, **_offer_client_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.BROKER_ABSENT
+
+
+@pytest.mark.asyncio
+async def test_offer_client_job_queue_full_when_depth_at_cap() -> None:
+    """Behavioral requirement (research capture §2.5):
+    codex_broker_queue_depth >= 1 -> bypass Codex, never grow the queue.
+    Shares the exact same MAX_DEPTH admission check as offer_job — a
+    client-bot job and a WA job compete for the SAME single-flight slot
+    (F3: 'queue depth 1' is a broker-wide budget)."""
+    conn = ScriptedConn(
+        fetchrow_results=[{"broker_alive": True}],
+        fetchval_results=[wa_broker.MAX_DEPTH],
+    )
+
+    result = await wa_broker.offer_client_job(conn, **_offer_client_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.QUEUE_FULL
+    assert not conn.sql_contains("INSERT INTO broker_jobs")
+
+
+@pytest.mark.asyncio
+async def test_offer_client_job_breaker_open_blocks_offer() -> None:
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"broker_alive": True},  # gauge
+            {"breaker_state": "open"},  # breaker_admits: state check
+            None,  # breaker_admits: CAS fails (not cooled)
+        ],
+        fetchval_results=[0],
+    )
+
+    result = await wa_broker.offer_client_job(conn, **_offer_client_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.BREAKER_OPEN
+    assert not conn.sql_contains("INSERT INTO broker_jobs")
+
+
+@pytest.mark.asyncio
+async def test_offer_client_job_insert_failure_propagates_not_swallowed() -> None:
+    """No savepoint, no ALREADY_SPENT recovery path for this leg (unlike
+    offer_job): an INSERT failure here is a genuine, uncertain fault and
+    must propagate so the caller (the provider adapter) can classify it as
+    such, rather than being silently absorbed into a typed OfferResult that
+    would mis-imply a normal, recoverable outcome."""
+    conn = ScriptedConn(
+        fetchrow_results=[{"broker_alive": True}, {"breaker_state": "closed"}],
+        fetchval_results=[0, RuntimeError("db exploded")],
+    )
+
+    with pytest.raises(RuntimeError, match="db exploded"):
+        await wa_broker.offer_client_job(conn, **_offer_client_kwargs())
+
+
 # ── wait_for_job ─────────────────────────────────────────────────────────
 
 
