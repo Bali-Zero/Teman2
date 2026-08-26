@@ -266,6 +266,13 @@ async def test_289_does_not_abort_the_deploy_when_the_runner_does_not_own_the_bi
             f"{binder} already carries the scope predicate BEFORE 289 -- "
             "this test could not tell a no-op from a real apply"
         )
+        # The other half of the W114 bridge: the preflight probe must call the
+        # REAL pre-289 body unscoped. Without this the probe could be a
+        # constant `True` and the post-289 assertion below would still pass.
+        assert not operational_preflight._active_lookups_are_scoped(body), (
+            f"the preflight probe calls the REAL pre-289 {binder} SCOPED -- "
+            "it cannot detect the very state it exists to detect"
+        )
 
     connection = await asyncpg.connect(split_ownership_sandbox.runtime_dsn)
     notices: list[str] = []
@@ -395,7 +402,7 @@ async def test_289_really_does_apply_when_the_runner_can_own_the_binders(
     # migration. If 289's predicate is ever reworded, this fails and the fake
     # does not.
     for binder, body in after.items():
-        assert operational_preflight._SCOPE_PREDICATE_RE.search(body), (
+        assert operational_preflight._active_lookups_are_scoped(body), (
             f"the preflight probe would call the REAL post-289 {binder} unscoped: "
-            "the shipped predicate and the pattern that looks for it have drifted"
+            "the shipped predicate and the probe that looks for it have drifted"
         )

@@ -100,6 +100,17 @@
 --   perform it (owner, member of the owner, or superuser — `pg_has_role`
 --   covers all three), and otherwise emits a NOTICE and returns.
 --
+--   `pg_has_role(..., 'USAGE')` is the right test and not a complete one, and
+--   the gap is deliberate. It matches how PostgreSQL itself decides ownership
+--   (`has_privs_of_role`, i.e. INHERIT semantics), but replacing a function
+--   also needs USAGE on its language and its types. Revoke USAGE on `plpgsql`
+--   and the guard says yes while the DDL still fails. That failure lands in the
+--   SAFE direction — the statement raises exactly as it did before this guard
+--   existed — so widening the condition would add a branch that can only ever
+--   turn a loud failure into a silent skip. A NOINHERIT member goes the other
+--   way (declines though `SET ROLE` would work), which is also safe: a false
+--   decline is visible in the preflight, a false attempt is not.
+--
 --   THE OBJECTION TO THAT SHAPE IS CORRECT, AND IS ANSWERED ELSEWHERE.
 --   A migration that declines is still recorded APPLIED and is never retried,
 --   so on its own this would be scar #2 (esiste != armato): a green deploy over
@@ -285,6 +296,29 @@ $guard2$;
 
 -- === ROLLBACK ===
 
+-- KNOWN ASYMMETRY, NAMED RATHER THAN HIDDEN (cross-family refuter, 2026-08-27;
+-- verified against the runner afterwards, not taken on trust).
+--   These two blocks carry the SAME catalog guard as the forward half, and the
+--   runner deletes the ledger row after a successful execute
+--   (`migration_manager.py:250-260`). A guard that DECLINES raises nothing, so
+--   the execute counts as successful. Roll 289 back from a role that cannot own
+--   the binders and you get: catalog still holding the forward (scoped) bodies,
+--   `_schema_versions` row gone.
+--
+--   Consequence, stated exactly: the DATABASE stays correct and
+--   `binder:retention-policy-scoped` stays green, truthfully. What diverges is
+--   the LEDGER, which will then report 289 as pending; the next `apply-all`
+--   re-runs it, declines again, and records it applied. No data is at risk and
+--   no behaviour changes — but do not read `_schema_versions` as evidence that
+--   this fix was reverted. Read the function body, which is what the preflight
+--   check does.
+--
+--   Not repaired here on purpose: making the rollback RAISE instead would abort
+--   the deploy, which is the failure this whole design exists to avoid, and it
+--   would trade a bookkeeping discrepancy for an outage. The honest fix lives in
+--   the runner (it should not delete the ledger row for a rollback that did
+--   nothing), not in one migration's rollback section.
+--
 -- Restores 264's two bodies exactly, with ONE deliberate delta: the
 -- `SECURITY DEFINER` attribute, which 264 did not ship and 268 added by
 -- `ALTER FUNCTION`. Restating it here is not cosmetic -- `CREATE OR REPLACE`

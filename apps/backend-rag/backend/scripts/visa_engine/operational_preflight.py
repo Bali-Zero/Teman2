@@ -45,13 +45,159 @@ SCOPE_BOUND_RETENTION_BINDERS = (
     "bind_visa_decision_retention_policy",
     "bind_visa_evaluate_idempotency_retention_policy",
 )
-# Matches the WHERE-clause predicate 289 installs, tolerating any whitespace
-# and either quoting of the literal. NOT the bare token `policy_scope`, which
-# a comment or an unrelated SELECT list would satisfy without the lookup ever
-# being scoped (scar #3, guard-over-match).
+# Matches the WHERE-clause predicate 289 installs, tolerating any whitespace.
+# Matching this pattern is NECESSARY but NOT SUFFICIENT — see
+# `_active_lookups_are_scoped` for the part that makes it mean something.
 _SCOPE_PREDICATE_RE = re.compile(
     r"policy_scope\s*=\s*'VISA_DECISION'", re.IGNORECASE
 )
+# The active-policy lookup this predicate has to be guarding. `NEW.` excluded:
+# `NEW.effective_period` is a column reference on the row being inserted, not a
+# containment test against the policy table.
+_ACTIVE_LOOKUP_RE = re.compile(r"(?<!NEW\.)(?<!\w)effective_period\s*@>", re.IGNORECASE)
+# How far from a lookup the predicate may sit and still plausibly belong to the
+# same SELECT. Deliberately generous: this is a smoke alarm, not a SQL parser.
+_SCOPE_WINDOW_LINES = 10
+
+
+def _noise_mask(body: str) -> list[bool]:
+    """Mark every character that sits inside a comment or a string literal.
+
+    A MASK, not a deletion — and that distinction is the whole lesson here.
+    The first attempt blanked string literals outright, which looked right and
+    was self-defeating: the predicate being searched for, `policy_scope =
+    'VISA_DECISION'`, ENDS IN A STRING LITERAL, so blanking every literal
+    erased the very thing the probe exists to find. It reported a correctly
+    scoped body as unscoped. Measured, not reasoned about.
+
+    With a mask the question becomes the right one: is the `policy_scope`
+    TOKEN itself real code, or is it text inside a string or a comment? That
+    answers both evasions a cross-family refuter reproduced against the earlier
+    one-line `re.sub(r"--[^\n]*", "", body)`:
+
+      FALSE GREEN — `RAISE NOTICE $msg$policy_scope = 'VISA_DECISION'$msg$;`
+        satisfied the pattern while the real SELECT stayed scope-blind. The
+        dangerous direction: a broken database called healthy.
+      FALSE RED   — a legitimate line carrying `'range x--y'` was truncated at
+        the `--`, taking a real predicate on that line with it. A nightly false
+        CRITICAL, which is how a probe gets ignored.
+
+    An UNTERMINATED dollar quote masks only its own tag, never the rest of the
+    body. PostgreSQL cannot store such a body, so reaching that branch means the
+    input is not what we think it is — and going blind over the remainder would
+    make the probe answer "scoped" precisely when it understands least (scar #2:
+    the condition that breaks the thing must not also silence the alarm).
+    """
+
+    mask = [False] * len(body)
+    i, n = 0, len(body)
+    while i < n:
+        if body.startswith("--", i):
+            while i < n and body[i] != "\n":
+                mask[i] = True
+                i += 1
+        elif body.startswith("/*", i):
+            while i < n and not body.startswith("*/", i):
+                mask[i] = True
+                i += 1
+            for _ in range(min(2, n - i)):
+                mask[i] = True
+                i += 1
+        elif body[i] == "'":
+            mask[i] = True
+            i += 1
+            while i < n:
+                if body.startswith("''", i):
+                    mask[i] = mask[i + 1] = True
+                    i += 2
+                    continue
+                closing = body[i] == "'"
+                mask[i] = True
+                i += 1
+                if closing:
+                    break
+        elif body[i] == "$":
+            tag = re.match(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$", body[i:])
+            if tag:
+                token = tag.group(0)
+                end = body.find(token, i + len(token))
+                if end == -1:
+                    # Unterminated: mask the tag only, keep reading the tail.
+                    for _ in range(len(token)):
+                        mask[i] = True
+                        i += 1
+                else:
+                    stop = end + len(token)
+                    while i < stop:
+                        mask[i] = True
+                        i += 1
+            else:
+                i += 1
+        else:
+            i += 1
+    return mask
+
+
+def _real_code_spans(body: str) -> tuple[str, list[bool]]:
+    return body, _noise_mask(body)
+
+
+def _active_lookups_are_scoped(body: str) -> bool:
+    """True when EVERY active-policy lookup in `body` carries the scope predicate.
+
+    Asserting on the LOOKUPS rather than on the mere presence of the predicate
+    is what closes the false-green: a body whose SELECT resolves by environment
+    alone fails no matter how many times the phrase appears elsewhere. A body
+    with no lookup at all is vacuously fine — it is not the shape 289 repairs.
+
+    Both the lookups and the predicates are counted only where they are real
+    code, per `_noise_mask`.
+    """
+
+    mask = _noise_mask(body)
+    line_start: list[int] = [0]
+    for index, char in enumerate(body):
+        if char == "\n":
+            line_start.append(index + 1)
+
+    def _line_of(offset: int) -> int:
+        low, high = 0, len(line_start) - 1
+        while low < high:
+            mid = (low + high + 1) // 2
+            if line_start[mid] <= offset:
+                low = mid
+            else:
+                high = mid - 1
+        return low
+
+    predicate_offsets = [
+        m.start() for m in _SCOPE_PREDICATE_RE.finditer(body) if not mask[m.start()]
+    ]
+    lookup_offsets = [
+        m.start() for m in _ACTIVE_LOOKUP_RE.finditer(body) if not mask[m.start()]
+    ]
+
+    # Rule 1 — COUNT. One predicate cannot scope two lookups. A line window
+    # alone cannot tell two adjacent SELECTs apart (they sit well inside any
+    # window generous enough for the real bodies, where the predicate is one
+    # line above its lookup), so proximity is paired with a count: N lookups
+    # demand at least N predicates. Both live binders carry exactly one of each.
+    if len(predicate_offsets) < len(lookup_offsets):
+        return False
+
+    # Rule 2 — PROXIMITY. Every lookup must have a predicate near it, so a
+    # predicate parked far away in an unrelated statement cannot vouch for it.
+    predicate_lines = {_line_of(offset) for offset in predicate_offsets}
+    for offset in lookup_offsets:
+        here = _line_of(offset)
+        if not any(
+            abs(candidate - here) <= _SCOPE_WINDOW_LINES
+            for candidate in predicate_lines
+        ):
+            return False
+    return True
+
+
 # Migration 264's three BEFORE INSERT trigger functions that resolve the
 # active Zero-approved retention policy via `SELECT ... FOR SHARE`. Migration
 # 268 made all three `SECURITY DEFINER` + owned by `visa_ledger_owner` (see
@@ -360,11 +506,12 @@ async def collect_preflight_checks(
     # only go green once the predicate is really in place, whoever put it there
     # and by whatever route.
     #
-    # It deliberately does NOT match the bare token `policy_scope` (scar #3,
-    # guard-over-match): the pre-289 bodies could gain that word in a comment,
-    # or in an unrelated SELECT list, without the WHERE clause ever being
-    # scoped. It matches the predicate, on a copy with `--` comments stripped
-    # so a comment can never satisfy it.
+    # It deliberately does NOT ask whether the phrase `policy_scope =
+    # 'VISA_DECISION'` appears anywhere in the body (scar #3, guard-over-match
+    # and its under-match twin). It asks whether EVERY active-policy lookup is
+    # accompanied by it, on a copy with comments AND string literals blanked —
+    # both evasions were reproduced against the earlier one-line version before
+    # `_active_lookups_are_scoped` replaced it.
     scoped_binder_rows = await connection.fetch(
         """
         SELECT proname, prosrc
@@ -380,8 +527,7 @@ async def collect_preflight_checks(
         if body is None:
             unscoped_binders.append(f"{binder}(absent)")
             continue
-        uncommented = re.sub(r"--[^\n]*", "", body)
-        if not _SCOPE_PREDICATE_RE.search(uncommented):
+        if not _active_lookups_are_scoped(body):
             unscoped_binders.append(binder)
     checks.append(
         PreflightCheck(
