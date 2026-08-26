@@ -1050,14 +1050,18 @@ _R9_R11_POST_FLIP = R9_R11_ENFORCEMENT_DATE
         ".claude/skills/modus/PENDING-ARMS.md",
         "apps/mouth/src/i18n/locales/en.json",
         "apps/admin-dashboard/src/i18n/locales/it.json",
-        "scripts/tests/fixtures/sample.json",
-        "packages/research-os-core/fixtures/p04/valid_01.json",
-        "apps/mouth/public/catalog/services.json",
+        "scripts/tests/fixtures/merge_gate_integrity/guilt_3227.json",
+        "packages/research-os-core/fixtures/object_successor_edge/valid_with_actor.json",
+        "apps/mouth/public/catalog/consultant-services-update-data-coretax-activation.jpg",
     ],
 )
 def test_compute_seat_floor_guilt_single_mechanical_file_is_true(path):
-    """GUILT (for the predicate): each real on-disk MECHANICAL_PATH_PATTERNS
-    class, alone, makes the whole (1-file) diff count as 100% mechanical."""
+    """GUILT (for the predicate): each of these six is a REAL, on-disk file
+    (verified 2026-08-27 by refuter round 1, which found 3 of the original
+    6 example paths here were invented/illustrative rather than real —
+    corrected to actual `find`-verified paths) covering every
+    MECHANICAL_PATH_PATTERNS class; each, alone, makes the whole (1-file)
+    diff count as 100% mechanical."""
     assert compute_seat_floor([path]) is True
 
 
@@ -1214,6 +1218,34 @@ def test_council_run_guilt_ok_false_or_wrong_role_does_not_count(tmp_path):
     assert viol and "council_run" in viol[0]
 
 
+def test_council_run_guilt_missing_ts_does_not_count(tmp_path):
+    """GUILT (regression, refuter round 1 2026-08-27): the declared minimal
+    schema is {"seat", "role": "review", "ok": true, "ts"} — a line missing
+    `ts` (or with it empty/non-string) was silently accepted before this
+    fix; now it does not count toward quorum, same as a missing seat."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True},
+        {"seat": "kimi-code/k3", "role": "review", "ok": True, "ts": ""},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and "council_run" in viol[0]
+
+
+def test_council_run_guilt_duplicate_only_postings_below_quorum_rejected(tmp_path):
+    """GUILT (regression, refuter round 1 2026-08-27): the SAME seat
+    posting many times must not be mistaken for multiple distinct seats —
+    5 lines, all from one seat, is still only 1 distinct seat, still below
+    the >=2 quorum."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": f"t{i}"}
+        for i in range(5)
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and "council_run" in viol[0]
+
+
 def test_council_run_innocence_two_distinct_qualifying_seats_passes(tmp_path):
     """INNOCENCE: >=2 distinct COUNCIL_REVIEW_SEATS members, each ok:true
     role:review, clears the rule — a duplicate posting from the same seat
@@ -1261,6 +1293,21 @@ def test_seat_floor_end_to_end_through_lint(tmp_repo):
     else:
         assert rc == 1
         assert any("seat_floor" in v for v in viol)
+
+
+def test_seat_floor_end_to_end_notice_when_no_changed_files(tmp_repo, capsys):
+    """End-to-end regression (refuter round 1 2026-08-27): with no
+    --changed-files-file, R11 is silently unable to fire (compute_seat_floor
+    is False-by-construction on None) — lint() must SAY so on stderr, the
+    same transparency convention rule 6's own skip-notice already has,
+    rather than silently doing nothing."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack(lanes=[{"lane": "D1", "role": "build", "seat": "claude-opus-5"}])
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0 and viol == []
+    err = capsys.readouterr().err
+    assert "seat_floor check (rule 11) skipped" in err
 
 
 def test_council_run_end_to_end_through_lint(tmp_repo):

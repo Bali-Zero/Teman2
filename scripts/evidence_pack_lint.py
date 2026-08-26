@@ -772,17 +772,26 @@ def _r9_r11_verdict(
 
 #: R11 — path classes judged MECHANICAL: translated strings, test fixtures,
 #: the modus PENDING-ARMS ledger (append-only, human-authored prose), and a
-#: mouth catalog data file. `fnmatch`'s `*` crosses `/` so a doubled `**`
-#: here behaves like a single `*` — verified against the real tree
-#: (`apps/mouth/src/i18n/locales/en.json` etc.) 2026-08-26: every real
-#: i18n/locales file on disk sits at least one directory below its
-#: `i18n`/`locales` segment, so the extra `/` the doubled glob demands is
-#: always present; a hypothetical `i18n/foo.json` with no subdirectory
-#: would NOT match — no such file exists in this repo today.
+#: mouth catalog asset (product photo, not source code). CORRECTED
+#: 2026-08-27 by refuter round 1: the original `**/i18n/**/*.json` and
+#: `**/locales/**/*.json` (a DOUBLED `**` with a literal `/` in between)
+#: each demand an EXTRA path segment between the directory name and the
+#: file — verified empirically with `fnmatch.fnmatchcase`, not by regex
+#: reasoning by hand (the reasoning-by-hand version of this comment was
+#: itself wrong and is why this needed correcting): every real on-disk
+#: locale file sits directly at `<i18n-dir>/locales/<lang>.json` with NO
+#: further subdirectory, so `**/locales/**/*.json` matched ZERO real files
+#: (dead code) and `**/i18n/**/*.json` matched only by the incidental luck
+#: of the `locales/` segment supplying that extra required `/` — a locale
+#: file placed directly under `i18n/` with no `locales/` subfolder would
+#: have been missed. Since `fnmatch`'s single `*` already crosses `/`,
+#: the trailing `**` bought nothing: `**/i18n/*.json` and
+#: `**/locales/*.json` (single star before the filename) match every real
+#: file below EITHER nesting depth and are the patterns actually in force.
 MECHANICAL_PATH_PATTERNS: tuple[str, ...] = (
     ".claude/skills/modus/PENDING-ARMS.md",
-    "**/i18n/**/*.json",
-    "**/locales/**/*.json",
+    "**/i18n/*.json",
+    "**/locales/*.json",
     "**/fixtures/**",
     "apps/mouth/**/catalog*/**",
 )
@@ -895,6 +904,9 @@ def _read_council_journal_seats(pack_dir: Path, council_run: Any) -> set[str]:
             continue
         if entry.get("role") != "review" or entry.get("ok") is not True:
             continue
+        ts = entry.get("ts")
+        if not isinstance(ts, str) or not ts.strip():
+            continue  # the declared minimal schema requires "ts" too
         seat = entry.get("seat")
         if isinstance(seat, str) and seat.strip() in COUNCIL_REVIEW_SEATS:
             seats.add(seat.strip())
@@ -979,6 +991,15 @@ def lint(
     if lane_notice:
         print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
 
+    if changed_files is None:
+        # Self-contained notice (not folded into the shared "no
+        # --changed-files-file supplied" message a few lines below, which
+        # #5054/PR-A also extends — two PRs editing that one shared string
+        # is a guaranteed merge collision; see this PR's own body for why
+        # it stays self-contained from #5054 throughout).
+        print("evidence_pack_lint: NOTICE — no --changed-files-file "
+              "supplied, seat_floor check (rule 11) skipped for this run",
+              file=sys.stderr)
     seat_floor_violations, seat_floor_notice = check_cheap_seat_floor(pack, changed_files)
     violations += seat_floor_violations
     if seat_floor_notice:
