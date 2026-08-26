@@ -493,6 +493,16 @@ jobs:
           SOURCE=$(python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
           echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
           echo "deterministic floor source for this diff: $SOURCE"
+          # STEP SUMMARY (S2, 2026-08-27, gate round 2 on PR #5049): the same
+          # floor/source pair also lands on the job summary page, not just in
+          # $GITHUB_OUTPUT and the raw log line above — so a human looking at
+          # the check run (not grepping outputs) can see floor_source without
+          # opening this step's log.
+          {
+            echo "### Harness floor"
+            echo "- floor: \`$FLOOR\`"
+            echo "- floor_source: \`$SOURCE\` (none/path/size/both)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # -----------------------------------------------------------------
       # Step 4 — does THIS PR'S OWN DIFF carry evidence/brief.yml? FAIL
