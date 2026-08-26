@@ -248,60 +248,39 @@ function defaultCoverImage(category: ArticleCategory): string {
   return CATEGORY_COVER_DEFAULTS[category] || "/static/blog/golden-visa.jpg";
 }
 
-const PUBLIC_PATH = path.join(process.cwd(), "public");
-
 /**
- * Resolve an MDX article's cover image to a path that ACTUALLY EXISTS on disk.
+ * An MDX article's cover: what frontmatter states, or the category's cover.
  *
- * The old code was `frontmatter.coverImage || frontmatter.image?.src ||
- * `/static/blog/${folder}/${slug}.jpg`` — a guess that was never checked. Two
- * ways it produced a 400 from `/_next/image`, both measured on 2026-08-27:
+ * What it replaced was `frontmatter.coverImage || frontmatter.image?.src ||
+ * `/static/blog/${folder}/${slug}.jpg`` — a guess nobody verified. Measured
+ * across the corpus on 2026-08-27, 57 articles in six folders emitted a path
+ * with no file behind it, so `/_next/image` answered 400: 30 fell through to
+ * the per-slug guess (their images had been generated into a different tree,
+ * `static/insights/`, which that line never looked at) and 27 named a cover
+ * explicitly that is not in the repo under any path. `/news` showed three of
+ * them because it lists one page.
  *
- *   - the per-slug guess points at `static/blog/<folder>/`, but the images for
- *     these articles were generated into a DIFFERENT tree, `static/insights/`
- *     (57 files under `insights/tax/` alone against 1 under `blog/tax/`), and
- *     this fallback was never updated to look there — 30 articles;
- *   - an explicit frontmatter `coverImage` naming a file that is not in the
- *     repo under any path, usually a localized variant whose filename drifted
- *     from its asset — 27 articles.
+ * The tempting fix — stat the candidates and keep the one that exists — was
+ * built, and is wrong HERE, which is worth recording so it is not rebuilt:
+ * `next.config.ts` excludes `./public/static/**` from serverless tracing
+ * (public/ is 537MB, the function limit is 300MB) while explicitly including
+ * `src/content/articles/**`. In the Vercel function the articles are present
+ * and the images are NOT, so `existsSync` would answer false for every cover
+ * and quietly collapse all ~3,300 articles onto their category default. A
+ * runtime existence check cannot be honest in this deployment.
  *
- * 57 in total, across six folders. `/news` showed only three of them because
- * it lists one page; the defect is corpus-wide.
- *
- * So the rule is not "look in the other directory" — that would just move the
- * guess. The rule is that a path is only emitted once it has been confirmed to
- * exist, and otherwise the article falls back to its category cover, which is
- * a file we ship. An author's explicit choice still wins whenever it resolves;
- * it is overridden only when it would render as a broken image.
- *
- * `exists` is injectable so the ordering can be tested without touching the
- * real asset tree.
+ * So the guess is simply gone. Frontmatter is the authority; when it is silent
+ * the article gets its category cover, a file we ship. The paths frontmatter
+ * DOES state are held true by a corpus test that runs in CI, where public/ is
+ * present — see `resolveCoverImage.test.ts`. That is the right place for the
+ * check: a build-time fact, proven once, instead of a per-request stat that
+ * production cannot answer.
  */
 export function resolveCoverImage(
   explicit: string | null | undefined,
-  folder: string,
-  slug: string,
   category: ArticleCategory,
-  exists: (absolutePath: string) => boolean = fs.existsSync,
 ): string {
-  const candidates = [
-    explicit,
-    `/static/insights/${folder}/${slug}.jpg`,
-    `/static/blog/${folder}/${slug}.jpg`,
-  ];
-
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    // A remote URL cannot be stat'd, and the backend pipeline legitimately
-    // supplies them. Trust it and stop — it is not ours to second-guess.
-    if (!candidate.startsWith("/")) return candidate;
-    if (candidate.includes("..")) continue;
-    if (exists(path.join(PUBLIC_PATH, candidate.split("?")[0]))) {
-      return candidate;
-    }
-  }
-
-  return defaultCoverImage(category);
+  return explicit || defaultCoverImage(category);
 }
 
 /**
@@ -611,8 +590,6 @@ async function getMdxArticleBySlug(
     content: content,
     coverImage: resolveCoverImage(
       frontmatter.coverImage || frontmatter.image?.src,
-      actualFolderCategory,
-      slug,
       normalizeCategory(frontmatter.category || category),
     ),
     cardImage:
@@ -739,8 +716,6 @@ export async function getArticleByLocale(
         content,
         coverImage: resolveCoverImage(
           frontmatter.coverImage || frontmatter.image?.src,
-          folder,
-          slug,
           normalizeCategory(frontmatter.category || category),
         ),
         cardImage:

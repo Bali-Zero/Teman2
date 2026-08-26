@@ -1,23 +1,27 @@
 /**
- * Cover images that do not exist.
+ * Covers that point at nothing.
  *
- * Until 2026-08-27 an MDX article's cover was a guess nobody checked:
- * `frontmatter.coverImage || frontmatter.image?.src ||
- *  `/static/blog/${folder}/${slug}.jpg``. The live sweep of balizero.com found
- * three `_next/image` 400s on `/news`; walking the corpus found 57 articles in
- * the same state, across six folders — 30 from the per-slug guess (the images
- * live under `static/insights/`, a tree the fallback never looked at) and 27
- * from explicit frontmatter naming a file that is not in the repo at all.
+ * The live sweep of balizero.com on 2026-08-27 found three `_next/image` 400s
+ * on `/news`. Walking the corpus found 57 articles in the same state across
+ * six folders: 30 fell through to a per-slug guess, `/static/blog/<folder>/
+ * <slug>.jpg`, whose images had actually been generated into a different tree
+ * (`static/insights/`), and 27 named a cover explicitly that is not in the
+ * repo under any path.
  *
- * The suite is in two halves on purpose:
+ * WHY THERE IS NO `fs.existsSync` HERE, and why re-adding one is a regression:
+ * the first version of this cure stat'd the candidates at request time and
+ * kept the one that existed. `next.config.ts` excludes `./public/static/**`
+ * from serverless tracing (public/ is 537MB against a 300MB function limit)
+ * while explicitly including `src/content/articles/**`. In the Vercel function
+ * the articles are present and the images are not, so that check would answer
+ * false for every cover and silently collapse all ~3,300 articles onto their
+ * category default. Production cannot answer the question at runtime.
  *
- *   - the UNIT half pins the ordering with an injected `exists`, so it states
- *     the rule independently of which assets happen to be checked in today;
- *   - the CORPUS half runs the real resolver over every real article with the
- *     real filesystem, and is the one that actually fails if someone points
- *     the fallback at another wrong directory. It reads frontmatter with
- *     gray-matter — the same parser the code under test uses — so the two
- *     cannot disagree about what an explicit cover is.
+ * So the runtime rule is trivial — frontmatter, else the category cover — and
+ * the real check lives HERE, in CI, where public/ is present. That is what the
+ * corpus block below is: a build-time proof that every path frontmatter states
+ * has a file behind it. It is the half that fails if someone re-introduces a
+ * guess or lets an asset go missing.
  */
 import fs from "fs";
 import path from "path";
@@ -29,106 +33,41 @@ import { resolveCoverImage } from "./articles";
 const PUBLIC = path.join(process.cwd(), "public");
 const ARTICLES = path.join(process.cwd(), "src/content/articles");
 
-// A predicate over a set of site-absolute paths, so a case reads as "these
-// files exist and nothing else does".
-const only =
-  (...present: string[]) =>
-  (absolute: string) =>
-    present.some((rel) => absolute === path.join(PUBLIC, rel));
+describe("resolveCoverImage — the rule", () => {
+  it("returns what frontmatter states, untouched", () => {
+    const explicit = "/static/insights/tax/tax-residency-indonesia.jpg";
+    expect(resolveCoverImage(explicit, "taxes")).toBe(explicit);
+  });
 
-const NOTHING = () => false;
-
-describe("resolveCoverImage — guilt: never emits a path that is not there", () => {
-  it("drops an explicit cover that does not exist, for the category default", () => {
-    const got = resolveCoverImage(
-      "/static/insights/tax/ppn-12-percent.jpg", // real frontmatter, absent file
-      "tax",
-      "ppn-12-percent-increase-2026",
-      "taxes",
-      NOTHING,
+  it("passes a remote cover through", () => {
+    expect(resolveCoverImage("https://cdn.example.com/a.jpg", "trends")).toBe(
+      "https://cdn.example.com/a.jpg",
     );
-    expect(got).toBe("/static/blog/tax-calendar.jpg");
-    expect(got).not.toContain("ppn-12-percent");
   });
 
-  it("finds the image in insights/ when the old blog/ guess was empty", () => {
-    const got = resolveCoverImage(
-      undefined,
-      "tax",
-      "coretax-npwp-problems-2026",
-      "taxes",
-      only("/static/insights/tax/coretax-npwp-problems-2026.jpg"),
+  it("falls back to the category cover when frontmatter is silent", () => {
+    expect(resolveCoverImage(undefined, "taxes")).toBe(
+      "/static/blog/tax-calendar.jpg",
     );
-    expect(got).toBe("/static/insights/tax/coretax-npwp-problems-2026.jpg");
-  });
-
-  it("falls back to the category cover when the slug has no image anywhere", () => {
-    expect(
-      resolveCoverImage(
-        undefined,
-        "tax",
-        "pph-final-umkm-profesi-khusus",
-        "taxes",
-        NOTHING,
-      ),
-    ).toBe("/static/blog/tax-calendar.jpg");
-  });
-
-  it("refuses a candidate that tries to climb out of public/", () => {
-    // The predicate says yes to the traversal target and to nothing else, so
-    // if the resolver ever asked about it, it would return it. Reaching the
-    // category default is the proof that it never asked.
-    expect(
-      resolveCoverImage(
-        "/static/../../etc/passwd",
-        "tax",
-        "x",
-        "taxes",
-        (absolute) => absolute.includes("etc/passwd"),
-      ),
-    ).toBe("/static/blog/tax-calendar.jpg");
-  });
-});
-
-describe("resolveCoverImage — innocence: an author's working choice is untouched", () => {
-  it("returns an explicit cover verbatim when the file is there", () => {
-    const explicit =
-      "/static/insights/tax/indonesia-zero-tax-foreign-income-2026.jpg";
-    expect(
-      resolveCoverImage(
-        explicit,
-        "tax",
-        "whatever-slug",
-        "taxes",
-        only(explicit),
-      ),
-    ).toBe(explicit);
-  });
-
-  it("prefers the explicit cover over both per-slug guesses when all three exist", () => {
-    const explicit = "/static/news/hand-picked.jpg";
-    expect(
-      resolveCoverImage(explicit, "tax", "slug", "taxes", () => true),
-    ).toBe(explicit);
-  });
-
-  it("passes a remote URL straight through without touching the filesystem", () => {
-    let asked = false;
-    const got = resolveCoverImage(
-      "https://cdn.example.com/cover.jpg",
-      "news",
-      "slug",
-      "trends",
-      () => {
-        asked = true;
-        return false;
-      },
+    expect(resolveCoverImage(null, "property")).toBe(
+      "/static/blog/golden-visa.jpg",
     );
-    expect(got).toBe("https://cdn.example.com/cover.jpg");
-    expect(asked).toBe(false);
+    expect(resolveCoverImage("", "living")).toBe("/static/blog/north-bali.jpg");
   });
 
-  it("gives every known category a default that ships in the repo", () => {
+  it("never invents a path when frontmatter is silent", () => {
+    // The defect was a fabricated per-slug path. Whatever the fallback is, it
+    // must come from the fixed set of category covers — never be derived from
+    // an article's own slug or folder. This is what goes red if someone
+    // re-adds a guess.
+    const KNOWN = new Set([
+      "/static/blog/kitas-guide.jpg",
+      "/static/blog/oss-guide.jpg",
+      "/static/blog/tax-calendar.jpg",
+      "/static/blog/golden-visa.jpg",
+      "/static/blog/north-bali.jpg",
+      "/static/blog/nomad-comparison.jpg",
+    ]);
     for (const category of [
       "visas",
       "business",
@@ -137,24 +76,28 @@ describe("resolveCoverImage — innocence: an author's working choice is untouch
       "living",
       "trends",
     ] as const) {
-      const got = resolveCoverImage(undefined, "any", "any", category, NOTHING);
-      expect(fs.existsSync(path.join(PUBLIC, got))).toBe(true);
+      expect(KNOWN.has(resolveCoverImage(undefined, category))).toBe(true);
     }
   });
 
-  it("gives an unrecognised category a default that ships too", () => {
-    const got = resolveCoverImage(
-      undefined,
-      "weird",
-      "slug",
-      "not-a-category" as never,
-      NOTHING,
-    );
-    expect(fs.existsSync(path.join(PUBLIC, got))).toBe(true);
+  it("gives every category — known or not — a default that ships", () => {
+    const categories = [
+      "visas",
+      "business",
+      "taxes",
+      "property",
+      "living",
+      "trends",
+      "not-a-category",
+    ] as const;
+    for (const category of categories) {
+      const got = resolveCoverImage(undefined, category as never);
+      expect(fs.existsSync(path.join(PUBLIC, got))).toBe(true);
+    }
   });
 });
 
-describe("resolveCoverImage — the corpus: every article resolves to a real file", () => {
+describe("resolveCoverImage — the corpus: every cover has a file behind it", () => {
   const articles = fs.existsSync(ARTICLES)
     ? fs
         .readdirSync(ARTICLES, { withFileTypes: true })
@@ -168,28 +111,38 @@ describe("resolveCoverImage — the corpus: every article resolves to a real fil
     : [];
 
   it("has a corpus to check at all", () => {
-    // Without this, an empty read would make the sweep below vacuously green —
-    // which is exactly the shape of proof this repo does not accept.
+    // An empty read would make the sweep below vacuously green — the exact
+    // shape of proof this repo does not accept.
     expect(articles.length).toBeGreaterThan(100);
   });
 
-  it("resolves every MDX cover to a file that exists (or a remote URL)", () => {
+  it("reads real frontmatter — at least one article states its own cover", () => {
+    // Guards the other direction: if the parse silently returned {} for every
+    // file, the sweep would be checking only category defaults and would pass
+    // while telling us nothing about the 27 explicit covers it exists to hold.
+    const stated = articles.filter(({ folder, file }) => {
+      const { data } = matter(
+        fs.readFileSync(path.join(ARTICLES, folder, file), "utf8"),
+      );
+      return Boolean(data.coverImage || data.image?.src);
+    });
+    expect(stated.length).toBeGreaterThan(1000);
+  });
+
+  it("resolves every article to a file that exists (or a remote URL)", () => {
     const broken: string[] = [];
 
     for (const { folder, file } of articles) {
-      const slug = file.replace(/\.mdx$/, "");
       const { data } = matter(
         fs.readFileSync(path.join(ARTICLES, folder, file), "utf8"),
       );
       const resolved = resolveCoverImage(
         data.coverImage || data.image?.src,
-        folder,
-        slug,
         data.category,
       );
-      if (!resolved.startsWith("/")) continue; // remote, cannot be checked here
+      if (/^(https?:)?\/\//.test(resolved)) continue; // remote, not ours to check
       if (!fs.existsSync(path.join(PUBLIC, resolved))) {
-        broken.push(`${folder}/${slug} -> ${resolved}`);
+        broken.push(`${folder}/${file.replace(/\.mdx$/, "")} -> ${resolved}`);
       }
     }
 
