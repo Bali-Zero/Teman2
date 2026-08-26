@@ -157,7 +157,7 @@ the write pair, and it has no reconstruction rule at all.
 read time from successor edges and never stored, or (b) supersession waits for D10/D11. Do not
 let a build lane pick silently.
 
-### B2. The two supersession fixtures encode contradictory conventions
+### B2. The two supersession fixtures encode contradictory conventions — RESOLVED by RULING B1 (2026-08-26)
 
 Re-verified on disk. `bitemporal/01`'s predecessor `claim_v1` keeps `status: "supported"` and
 `valid_to: null`; `supersession/01`'s predecessor `claim_v1_original` carries
@@ -170,8 +170,30 @@ for any instant ≥ 2026-01-15 — verbatim the "FALSE if" condition of that fil
 temporal-exclusion row. The fixtures fail the bundle's own test plan unless the implementation
 mutates the predecessor, i.e. unless B1 is resolved in the direction the doctrine forbids.
 
-Deliberately NOT fixed here: picking one convention IS answering B1. Both fixtures stay as
-delivered so the contradiction is visible to whoever rules.
+**RULED 2026-08-26 (Zero, Legge 5).** Supersession state is derived at read from the successor
+edge and never written onto the predecessor -- *«il vecchio resta intatto»*. Authority: memory
+`decision_research_os_b1_supersession_derived_at_read_2026_08_26.md`, which carries Zero's
+verbatim `ok`. Applied here as a consequence, not as a new decision:
+
+- `supersession/01`'s predecessor is restored to `status: "supported"`, `valid_to: null`, matching
+  `bitemporal/01`. Both writes went, not just the status: the closed `valid_to` was also set as a
+  *consequence of the amendment*, which is the thing the ruling forbids.
+- **The ruling does not rescue the fixtures from the test matrix — it convicts the matrix.** With
+  predecessors left intact, the pure valid-time query `05-test-matrix.md` specified genuinely does
+  return both rows. That was never the fixture's fault: `bitemporal/01`'s own `expected_behavior`
+  already said the *system-time* cutoff must gate the answer. Both temporal rows of `05` are
+  restated so the query under test is the composite one (valid-time AND system-time AND
+  no-successor), and the transition row no longer demands the predecessor "is marked `superseded`"
+  -- wording that required precisely the forbidden write.
+
+**Residual, NOT decided by B1 and deliberately left open:** may a predecessor's `valid_to` ever be
+written when the amending instrument states an explicit cessation date as a fact in its own right?
+B1 forbids writing it *as a consequence of succession*; it is silent on writing it as an
+independently sourced fact. Two coherent answers exist -- (a) never write it, the cessation date
+lives on the successor claim and readers derive the predecessor's end from the edge; (b) write it
+only when a cited source states it, which reintroduces a predecessor write and therefore needs the
+immutability argument redone. This bundle takes (a) by default because it is the one B1's wording
+supports; whoever builds P06 should raise (b) as a real question rather than inherit the default.
 
 ### B3. `bitemporal/03` conflates correction with calendared succession
 
@@ -183,7 +205,7 @@ current queries") would either suppress the correct March answer or mark a still
 scheduled interval", and the edge-reconstruction rule would mechanically mint successor edges for
 mere calendar sequences, poisoning the transition graph the invalidation logic consumes.
 
-### B4. The "100% invented" purity claim is overstated
+### B4. The "100% invented" purity claim is overstated — CORRECTED 2026-08-26 in `04`
 
 `04` says the fixtures are "not 'real data with names changed' — invented from the category
 description." The supersession fixture embeds the **real** IDR 2,500,000,000 PMA paid-up figure
@@ -213,14 +235,14 @@ either (superscar #6). That re-verification made finding 1 **worse** than report
 | 1 | "`persist.py` is the only writer" came from an `INSERT INTO naga_` grep, blind to UPDATE by construction | TRUE, **and worse** | **FIXED** — four UPDATE writers named (`dedup.py:144`, `claim_scorer.py:202`, `expiry.py:58`, `:174`). The gating session also found the cited INSERT grep is *itself* wrong: `dedup.py:155` and `expiry.py:154` insert into `naga_claim_transitions`, one of the same 5 tables, and `persist.py` never writes it. Five writers across three files, not one |
 | 2 | "`quality_score` written once" contradicted by two post-insertion UPDATEs | TRUE | **FIXED** — written *first*, not once |
 | 3 | §2 point 5's open mystery ("what moves a claim out of `active`") is answered in a file it listed but never searched | TRUE | **FIXED** — `expiry.py:58` / `dedup.py:144`. The `review_status` half STANDS: nothing moves a claim out of `auto_extracted`, so the human-review gate has no exit path in code |
-| 4 | Supersession requires two coupled writes on an immutable content-hashed object; D10/D11 forbidden by §7 | TRUE (`object_hash` required, `claim.schema.json:618`) | **NOT FIXED — RAISED AS BLOCKING** (`07` §B1). Patching it means choosing an answer this bundle has no authority to choose |
-| 5 | `bitemporal/01` and `supersession/01` encode contradictory predecessor conventions; `bitemporal/01` trips the test matrix's own "FALSE if" | TRUE | **NOT FIXED — RAISED AS BLOCKING** (`07` §B2). Picking a convention IS answering §B1; both left visible |
+| 4 | Supersession requires two coupled writes on an immutable content-hashed object; D10/D11 forbidden by §7 | TRUE (`object_hash` required, `claim.schema.json:618`) | **RULED 2026-08-26 (Zero, Legge 5)** — supersession derived at read from the successor edge, never written on the predecessor; `object_hash` intact, no D10/D11 needed. Authority: memory `decision_research_os_b1_supersession_derived_at_read_2026_08_26.md` (verbatim `ok`). Originally raised as BLOCKING in `07` §B1. Patching it means choosing an answer this bundle has no authority to choose |
+| 5 | `bitemporal/01` and `supersession/01` encode contradictory predecessor conventions; `bitemporal/01` trips the test matrix's own "FALSE if" | TRUE | **RESOLVED as a consequence of B1** — `supersession/01`'s predecessor restored to `supported`/`valid_to: null`. The ruling did not rescue the fixtures from the matrix, it convicted the matrix: both temporal rows of `05` are restated (composite valid-time AND system-time AND no-successor), and the transition row no longer demands the forbidden write. One residual left OPEN in `07` §B2 |
 | 6 | `bitemporal/03` uses `supersedes_claim_ref` for calendared succession, not correction | TRUE | **RAISED** (`07` §B3) |
 | 7 | `invalidation/01` withdraws evidence `...e7` and asserts it affects claim `...0030` — a citation that exists nowhere in the fixture set | TRUE | **FIXED** — trigger now withdraws `...e2`, which `0030` genuinely cites. A PASS on the original data would have proven nothing |
 | 8 | "one or more per adversarial category" false — case 6 (sanitization boundary) had no fixture | TRUE (14 files, 8 dirs, no sanitization) | **FIXED** — fixture added; 15 files. This was the one category where a missing negative control costs most |
 | 9 | Evidence adapter mapping is four required fields short: `evidence_family_id`, `review_state`, `classification.rights`, `times.recorded_at` | TRUE (0 grep hits each; all four in the schema's required sets) | **FIXED** — §2's completeness claim corrected; closing them is a build precondition |
 | 10 | "Fixtures validate directly against the schemas" — they would fail today (extraneous `note`, most required fields absent, `additionalProperties: false` throughout) | TRUE | **FIXED** — restated as behaviour specs; the old hedge covered "we did not run it", not "it would fail" |
-| 11 | "100% invented, not real-data-renamed" overstated — real PMA capital figures embedded | TRUE | **RAISED** (`07` §B4) — transparent, no PII, but a synthetic-stamped file now carries an unverified real figure |
+| 11 | "100% invented, not real-data-renamed" overstated — real PMA capital figures embedded | TRUE | **CORRECTED 2026-08-26 in `04`** (`07` §B4) — transparent, no PII, but a synthetic-stamped file now carries an unverified real figure |
 | 12 | G5 attributes a URL hash to "the migration" (it is `persist.py:102`), and omits the `[:16]` / `[:32]` truncations | TRUE, low severity | **ACCEPTED AS LIMIT** — substance (hash of URL, not content) is correct |
 
 **Not a finding** (refuter checked, found sound): migration numbering — `273` is WhatsApp-broker,
@@ -229,5 +251,10 @@ head is 287, 282 absent, symbolic name correct; the G7 `ApprovalSubjectKind` clo
 `reasoning.py` attribution (re-exported from `reasoning_utils.py`); and implementation-readiness,
 which is disclaimed consistently throughout.
 
-**Bottom line:** usable as an inventory and a gap list. **Not** to be handed to a build lane until
-§B1 and §B2 in `07-open-questions-and-corrections.md` are ruled on.
+**Bottom line:** usable as an inventory and a gap list. **UPDATED 2026-08-26:** the two conditions
+this line gated on are discharged — §B1 is ruled (supersession derived at read) and §B2 resolved as
+its consequence, with the fixture and both temporal rows of `05` corrected to match. What is still
+NOT discharged, and what a build lane must read first: §B2's residual on writing a predecessor's
+`valid_to` from an independently sourced cessation date, §B3 (`bitemporal/03` conflates correction
+with calendared succession), and §B4's consequence — the fixtures carry real, unverified regulatory
+figures under a SYNTHETIC stamp and must be re-grounded or replaced before they are cited as fact.
