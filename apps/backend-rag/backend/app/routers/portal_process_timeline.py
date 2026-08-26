@@ -48,6 +48,25 @@ STATUS_LABELS = {
 }
 
 
+TERMINAL_STATUSES = frozenset({"completed", "approved", "cancelled"})
+
+
+def _status_label(status: str | None) -> str:
+    """Human label for a status, NULL-safe.
+
+    `practices.status` is NULLABLE in production, and every call site here used
+    to do `STATUS_LABELS.get(status, status.replace(...))` — Python evaluates a
+    `dict.get` default EAGERLY, so a NULL status raised AttributeError before
+    the lookup even happened. That was a LIVE 500 on the fallback path, i.e. on
+    the path production takes today, not something migration 289 introduced;
+    289 only makes a second path reach it. Measured 2026-08-27: both paths
+    raised `'NoneType' object has no attribute 'replace'`.
+    """
+    if not status:
+        return "Unknown"
+    return STATUS_LABELS.get(status, status.replace("_", " ").title())
+
+
 async def _build_timeline(
     pool: asyncpg.Pool,
     practice_id: int,
@@ -122,11 +141,21 @@ async def _build_timeline(
             steps = []
             for i, row in enumerate(history_rows):
                 status = row["new_status"]
-                is_current = status == current_status and i == len(history_rows) - 1
+                is_last = i == len(history_rows) - 1
+                # A TERMINAL status is never "current" even when it is the last
+                # row: `completed`/`approved`/`cancelled` are where the journey
+                # ENDS. Without this the history path answered
+                # {"status": "completed", "completed": False, "is_current": True}
+                # and the client rendered a spinning loader on a finished
+                # practice — while the fallback path, right below, got it right.
+                # The two paths disagreed on the same practice.
+                is_current = (
+                    status == current_status and is_last and status not in TERMINAL_STATUSES
+                )
                 steps.append(
                     {
                         "status": status,
-                        "label": STATUS_LABELS.get(status, status.replace("_", " ").title()),
+                        "label": _status_label(status),
                         "completed": not is_current,
                         "is_current": is_current,
                         "changed_at": str(row["changed_at"]) if row["changed_at"] else None,
@@ -136,11 +165,9 @@ async def _build_timeline(
             steps = [
                 {
                     "status": current_status,
-                    "label": STATUS_LABELS.get(
-                        current_status, current_status.replace("_", " ").title()
-                    ),
+                    "label": _status_label(current_status),
                     "completed": current_status in ("completed", "approved"),
-                    "is_current": current_status not in ("completed", "approved", "cancelled"),
+                    "is_current": current_status not in TERMINAL_STATUSES,
                     "changed_at": str(practice["start_date"]) if practice["start_date"] else None,
                 }
             ]

@@ -150,3 +150,77 @@ dissent:
       `test_the_migration_declares_the_shape_its_execution_cannot_prove` pins both properties in the
       SQL TEXT. M5 and M6 are now killed by it. Disclosed rather than presented as full coverage —
       only a fresh database proves these by execution, and the suite does not control that.
+  - seat: codex-gpt-5.6-sol (round 2, fresh context, on the fixed SHA)
+    objection: >-
+      BLOCKER — making the NULL transition RECORDABLE made it REACHABLE, and the reader crashes on
+      it. `STATUS_LABELS.get(status, status.replace("_", " ").title())` evaluates the dict.get
+      DEFAULT eagerly, so a NULL status raises AttributeError before the lookup ever happens.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed AND RESCOPED by measurement: the FALLBACK path crashes on the same input, and that
+      is the path production takes TODAY — so this is a LIVE 500 on the client tracker for any
+      practice with a NULL status, not a defect 289 introduced. 289 only makes a second path reach
+      it. Fixed here anyway, because shipping 289 without it would widen a live crash: a NULL-safe
+      `_status_label` helper, with tests proving BOTH paths raised before the fix.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      SHOULD-FIX — the source-level convergence guard is satisfied by COMMENTED-OUT ALTERs. Both
+      assertions are bare substring checks, so prefixing the statements with `--` leaves them green,
+      which is exactly the no-op-rollback defect the guard was written to prevent.
+    status: CONFIRMED
+    resolution: >-
+      Correct, and it is this repo's scar family #3 committed by the very guard written to close a
+      neighbouring blind spot. The guard now strips comment lines from the forward SQL before
+      asserting, and BOTH directions are proven: commenting the ALTERs turns it RED (rc=1), the
+      unmutated file passes with 398 green.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      SHOULD-FIX — the history path renders a TERMINAL status as active: after `on_process ->
+      completed` the last step carries `completed=False, is_current=True`, so the client shows a
+      spinning loader on finished work. The fallback path, ten lines below, gets the same practice
+      right — the two paths disagree about the same practice.
+    status: CONFIRMED
+    resolution: >-
+      Fixed — a terminal status is never current, and the two paths now agree. Reachable only
+      because 289 makes the history path run at all, so it belongs to this diff. Guilt AND innocence
+      tested: a non-terminal last step is still current.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      SHOULD-FIX — the fixture applies 289 PERMANENTLY, outside any transaction, and the db-test
+      configuration permits pointing TEST_DATABASE_URL at a tunnel. A mistyped DSN is the whole
+      distance between a test run and unreviewed DDL on a real database.
+    status: CONFIRMED
+    resolution: >-
+      Fixture now refuses when the database name matches nuzantara_rag/prod/production. Guilt
+      proven: with TEST_DATABASE_URL pointed at nuzantara_rag the suite fails with "refusing to
+      apply migration DDL to database 'nuzantara_rag'"; innocence proven on the normal DSN.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      BLOCKER — rollback followed by reapply silently leaves the migration ABSENT while both ledgers
+      report it applied. The runner's rollback deletes from `_schema_versions`
+      (migration_manager.py:257) but `_is_applied` reads `schema_migrations`
+      (migration_base.py:365), so a reapply finds the surviving canonical row, skips the SQL, and
+      recreates only the secondary entry.
+    status: CONFIRMED
+    resolution: >-
+      The two cited lines were re-read this turn and say exactly what the objection claims. NOT
+      FIXED HERE, and deliberately: this is a defect of the migration RUNNER, not of 289, and it
+      would affect every migration in the tree. Curing it inside a migration file would be the wrong
+      layer and a far larger blast radius than this PR's concern. Reported as a separate finding;
+      289's own rollback statements are executable and correctly ordered. An independent seat was
+      asked to establish the precise CONDITION under which the two ledgers actually meet (both
+      paths reachable from the same runner) rather than to agree with the claim.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      BLOCKER — the convergence ALTERs converge only two attributes. A pre-existing table with the
+      right column names but no sequence/default on `id`, or missing the PK or the FK, survives
+      migration 289 unchanged, and the trigger's INSERT then aborts caller transactions — the very
+      failure mode round 1 closed.
+    status: PLAUSIBLE
+    resolution: >-
+      The mechanism is real and the counterexample is sound. NOT FIXED, and the reason is scope
+      rather than disagreement: 289 has never shipped, so no database can hold a partial earlier
+      shape except one a developer hand-built. Full catalog convergence (or a fail-loud shape
+      assertion) is the right long-term answer and is out of scope for the PR that creates the
+      table. DISCLOSED here rather than closed, so the next person meets it as a known limit and not
+      as a surprise.

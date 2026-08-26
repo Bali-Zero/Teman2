@@ -310,3 +310,91 @@ class TestHistoryFailuresAreNotSpelledAsEmptyHistory:
 
         with pytest.raises(TypeError):
             await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+
+class TestTheTimelineSurvivesAStatusProductionActuallyAllows:
+    """`practices.status` is NULLABLE in prod, and the reader assumed a string.
+
+    Measured 2026-08-27 against the code as it stood: BOTH paths raised
+    `AttributeError: 'NoneType' object has no attribute 'replace'` — including
+    the fallback path, which is the one production takes today. This was a LIVE
+    500 on the client tracker for any practice with a NULL status, not a defect
+    migration 289 introduced; 289 only makes a second path reach it.
+
+    The cause is subtle enough to be worth naming: the call was
+    `STATUS_LABELS.get(status, status.replace(...))`, and Python evaluates a
+    `dict.get` DEFAULT eagerly — so it raised before the lookup that would have
+    succeeded.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_null_status_does_not_crash_the_fallback_path(self) -> None:
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row(status=None)
+        mock_conn.fetch.side_effect = asyncpg.UndefinedTableError("no table")
+
+        result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        assert result is not None
+        assert result["steps"][0]["status"] is None
+        assert result["steps"][0]["label"] == "Unknown"
+
+    @pytest.mark.asyncio
+    async def test_a_null_status_does_not_crash_the_history_path(self) -> None:
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row(status=None)
+        mock_conn.fetch.return_value = [
+            {"old_status": "on_process", "new_status": None, "changed_at": "2026-01-01"}
+        ]
+
+        result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        assert result is not None
+        assert result["steps"][-1]["label"] == "Unknown"
+
+
+class TestATerminalStatusIsNeverRenderedAsInProgress:
+    """The two paths used to disagree about a finished practice.
+
+    The history path marked the last row current whenever it matched the
+    practice's status, so a completed practice came back as
+    `{"status": "completed", "completed": False, "is_current": True}` and the
+    client rendered a spinning loader on finished work — while the fallback
+    path, ten lines below, got the same practice right. Caught by an adversarial
+    review, and reachable only because 289 makes the history path run at all.
+    """
+
+    @pytest.mark.asyncio
+    async def test_completed_is_completed_not_current_on_the_history_path(self) -> None:
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row(status="completed")
+        mock_conn.fetch.return_value = [
+            {"old_status": None, "new_status": "on_process", "changed_at": "2026-01-01"},
+            {
+                "old_status": "on_process",
+                "new_status": "completed",
+                "changed_at": "2026-01-02",
+            },
+        ]
+
+        result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        last = result["steps"][-1]
+        assert last["status"] == "completed"
+        assert last["is_current"] is False, "a finished practice is not in progress"
+        assert last["completed"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_non_terminal_last_step_IS_current(self) -> None:
+        """Innocence: the fix must not mark everything finished."""
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row(status="on_process")
+        mock_conn.fetch.return_value = [
+            {"old_status": "inquiry", "new_status": "on_process", "changed_at": "2026-01-02"}
+        ]
+
+        result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        last = result["steps"][-1]
+        assert last["is_current"] is True
+        assert last["completed"] is False

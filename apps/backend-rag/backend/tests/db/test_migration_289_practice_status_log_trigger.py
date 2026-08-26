@@ -86,7 +86,18 @@ def test_the_migration_declares_the_shape_its_execution_cannot_prove() -> None:
     databases where the table does not yet exist, and only this one covers it
     where it does.
     """
-    sql = MIGRATION.read_text()
+    raw = MIGRATION.read_text()
+    forward_raw, _ = split_migration_sql(raw)
+    # Strip comments BEFORE asserting. A bare substring check is satisfied by a
+    # COMMENTED-OUT statement — the exact over-match this repo has a scar family
+    # for, and an adversarial review demonstrated it on this very guard: putting
+    # `--` in front of both ALTERs left both assertions green. A guard that a
+    # comment can satisfy is not a guard.
+    sql = "\n".join(
+        line
+        for line in forward_raw.splitlines()
+        if line.strip() and not line.strip().startswith("--")
+    )
 
     # new_status must be nullable: prod's practices.status is nullable, so a
     # transition TO NULL must be expressible or the trigger aborts the UPDATE.
@@ -106,8 +117,27 @@ def test_the_migration_declares_the_shape_its_execution_cannot_prove() -> None:
     assert "ALTER COLUMN changed_at SET DEFAULT clock_timestamp()" in sql
 
 
+#: Database names that must never receive this file's DDL. The fixture below
+#: APPLIES a migration and its per-test DDL is not what protects you — the
+#: `connection.execute(forward)` happens OUTSIDE any transaction and persists.
+#: The repo's db-test configuration permits pointing TEST_DATABASE_URL at a
+#: tunnel, so a mistyped DSN is the whole distance between a test run and DDL on
+#: a real database. Raised by an adversarial review; the guard is cheap and the
+#: failure it prevents is not recoverable by rerunning.
+_FORBIDDEN_DB_SUBSTRINGS = ("nuzantara_rag", "prod", "production")
+
+
 @pytest.fixture
 async def conn():
+    dbname = (TEST_DSN or "").split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1].lower()
+    for bad in _FORBIDDEN_DB_SUBSTRINGS:
+        if bad in dbname:
+            pytest.fail(
+                f"refusing to apply migration DDL to database {dbname!r} — "
+                f"TEST_DATABASE_URL looks like a real database (matched {bad!r}). "
+                "This fixture applies 289 permanently, outside any transaction."
+            )
+
     connection = await asyncpg.connect(TEST_DSN)
     try:
         forward, _ = split_migration_sql(MIGRATION.read_text())
