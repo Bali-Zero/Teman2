@@ -34,7 +34,16 @@ it is what the extractor achieves when it is fed the delta's *richest* available
 (`citation` + `title_id` + `verbatim_excerpt` + `summary`). Drop the `citation` field — which the
 runner does not in fact prepend when ingesting a fetched document — and the same measurement
 gives **35 of 48 (72.9%)**; on `title_id` alone, **36 of 48 (75.0%)**. The correction is therefore
-conservative in the document's own favour — embedded and vector-searchable, but invisible to any
+conservative in the document's own favour. **Pinned, because an unpinned count rots exactly the way
+the C5 row below describes:** measured at `origin/main` = `b27b46a13ea0`, 58 tracked
+`research/regulatory/*.json` files, 48 delta objects. A cross-family refuter objected that the
+"richest" composition omitted `title_en`, which all 48 deltas carry, so 56.2% might not be the floor
+even over the data at hand — **checked, and NOT UPHELD**: the true five-field composition
+(`citation` + `title_id` + `title_en` + `verbatim_excerpt` + `summary`) returns the *identical*
+27/48. Three limits from that same refuter DO stand and are recorded rather than argued away:
+monotonicity is evidenced by one nested pair only; the 12-row sample corroborates but is a subset,
+not an independent check; and 48 is a census of a moving window (the tracked file count moved 57→58
+within a day), so this is a floor over *this* population, not a prediction about future output — embedded and vector-searchable, but invisible to any
 document_id/citation-exact query, KG entity-linking, or future de-dup pass. That is a quieter
 failure than WIZ-2's "confidently wrong" case, but it is still not something to ship blind.
 
@@ -109,9 +118,16 @@ now-superseded regex scanner missed". It did not. The runner's actual historical
 **plain string literal** `legal_unified_2026`, named directly (docstring lines 6-15). The
 concatenation form was a **refuter-constructed counterexample**, written to break the *lint's*
 first, regex-based implementation (lines 17-27) — never a state the runner's own code passed
-through. Verified this session by `git log --all -S 'legal_unified" + "_2026'` scoped to
+through. Evidenced this session by `git log --all -S 'legal_unified" + "_2026'` scoped to
 `infra/eventbus/regulatory_ingest_runner.py`: **zero** commits, while the same search unscoped
-does return commits, all of them in the lint and its tests. An AST-based lint replaced the regex
+does return commits, all of them in the lint and its tests. **What that establishes, stated
+precisely after a cross-family refuter pushed back on it:** a scoped pickaxe shows only that this
+exact byte sequence never changed occurrence-count in that path's reachable local history. It is
+strong evidence, not proof of absence, and three gaps are real — a differently-spaced, implicit,
+f-string or `PREFIX + suffix` form would not match the needle; pathspec scoping does not follow
+renames; and this repo squash-merges, so a state that lived only on a squashed-away lane is not
+reachable by `--all` in a local clone. The claim is made at that strength. What is load-bearing
+here does not rest on the pickaxe at all: the lint's own docstring separates the two facts. An AST-based lint replaced the regex
 one and the runner is a `DECLARED_ENTRYPOINT` at the correct name today; that conclusion is
 unaffected by the correction.
 This is resolved, not open — noted here because getting it backwards would have wrecked the whole
@@ -322,7 +338,23 @@ independent measurement agreed with the seat on all five.
 | C2 | MINOR | "57 delta files tracked on `origin/main`" — there are now **58**; `2026-08-26-delta.json` landed after the measurement. | **Recorded, not rewritten.** 57 is what was true when measured. Re-measured over all 58 files, every substantive §1.2 number still reproduces exactly: 48 delta objects, 42 unique citations, 45 `new_today`, 12 `partial: true`. The 58th file contributes zero deltas, which is why nothing moved — and it landed at `92ca871e5` ("emit 2026-08-26 delta (0 new)", #4980) AFTER this document's own last commit, so **57 was correct when written**. Its key-shape duplicates 2026-08-25's, so it does not move C3's numbers either: recomputed on both the 57- and 58-file populations, the answer is 21/24 both times. |
 | C3 | MINOR | "23 distinct top-level key-shapes" is not reproducible by either obvious method. | **Corrected to a measured range.** Independently recomputed over the tracked files: **21** distinct shapes treating a shape as the sorted key set, **24** treating it as the ordered key tuple. Neither is 23, for either the 57- or 58-file population, so the document's counting method was unstated and is now unrecoverable. The qualitative claim it supports — drift is additive, the 7 core fields are always present, `core_missing = 0` — verified and unaffected. |
 | C4 | MINOR | "43,440 chars across all 48 deltas" — the true sum is **43,248**. | **Corrected.** The difference is exactly **192 = 48 x 4**, i.e. four one-character separators per delta between the five concatenated fields — an artefact of joining rather than summing. Average is 901 chars/delta, not 905. An independent re-measurement sharpens where the gap is NOT: the two sub-totals this document states separately — `summary` 19,324 and `verbatim_excerpt` 11,298 — reproduce EXACTLY, so the data is sound and the whole 192 sits in the three fields it never states individually (`citation` + `title_id` + `title_en` = 12,626 measured against 12,818 implied). The embedding-cost conclusion is unaffected at any plausible multiplier, which is why this is MINOR. |
-| C5 | **NOT UPHELD** | Reported as line-citation drift: the hash-suffix mechanism cited at `215-228` and `_assert_identity_unclaimed` at `298-374`, against measured values of 288 and 360. | **REJECTED after independent re-measurement, and this row is a correction of a correction.** The finding was first accepted here and the citations "fixed" — wrongly. Both were measured against `HEAD`, while this document's frontmatter declares **`origin/main`, read via `git show`**, as its source. On `origin/main` the citations are right: `build_content_bound_legal_doc_id` spans exactly **215-228** with `source_sha256[:16]` at 227, and `_assert_identity_unclaimed` sits at **298-375** (`@staticmethod` 298, `def` 299, body closing at 375, next method at 377) — the document's `298-374` is off by one line at the tail and nothing else. The drift is real only against the branch, where THIS PR's own WIZ-1 comment block was inserted above both spans. So the original citations stand as written, and the failure was mine: I checked a tree the document never claimed. **The transferable rule: a `file:line` citation is only true relative to a named ref, so verify it against the ref the document declares — checking the wrong tree manufactures a defect that does not exist.** **AMENDED 2026-08-26, and the amendment is this row's own rule biting the row itself:** the campaign has since landed on `origin/main`, so the ref this row appeals to now *contains* the branch content it was contrasting against. Re-measured on today's `origin/main`: `def build_content_bound_legal_doc_id` is at **285** and `async def _assert_identity_unclaimed` at **364** — neither `215-228`/`298-375` nor the reviewer's `288`/`360` reproduce any longer. Both the original citation and its rejection were true of the tree each was measured on, and neither is true of the tree named today. A line citation pinned to a moving ref does not stay true; pin the ref by SHA, or expect to re-measure. |
+| C5 | **NOT UPHELD** | Reported as line-citation drift: the hash-suffix mechanism cited at `215-228` and `_assert_identity_unclaimed` at `298-374`, against measured values of 288 and 360. | **REJECTED after independent re-measurement, and this row is a correction of a correction.** The finding was first accepted here and the citations "fixed" — wrongly. Both were measured against `HEAD`, while this document's frontmatter declares **`origin/main`, read via `git show`**, as its source. On `origin/main` the citations are right: `build_content_bound_legal_doc_id` spans exactly **215-228** with `source_sha256[:16]` at 227, and `_assert_identity_unclaimed` sits at **298-375** (`@staticmethod` 298, `def` 299, body closing at 375, next method at 377) — the document's `298-374` is off by one line at the tail and nothing else. The drift is real only against the branch, where THIS PR's own WIZ-1 comment block was inserted above both spans. So the original citations stand as written, and the failure was mine: I checked a tree the document never claimed. **The transferable rule: a `file:line` citation is only true relative to a named ref, so verify it against the ref the document declares — checking the wrong tree manufactures a defect that does not exist.** **AMENDED 2026-08-26, and the amendment is this row's own rule biting the row itself:** the campaign has since landed on `origin/main`, so the ref this row appeals to now *contains* the branch content it was contrasting against. Re-measured at `origin/main` = `b27b46a13ea0` — the SHA is recorded because a refuter caught the first draft of this very amendment preaching "pin the ref by SHA" while citing "today's `origin/main`", committing the sin it names — giving `def build_content_bound_legal_doc_id` at **285** and `async def _assert_identity_unclaimed` at **364**, which are `def`-line citations rather than the spans the original row used and so are not a like-for-like before/after pair — neither `215-228`/`298-375` nor the reviewer's `288`/`360` reproduce any longer. Both the original citation and its rejection were true of the tree each was measured on, and neither is true of the tree named today. A line citation pinned to a moving ref does not stay true; pin the ref by SHA, or expect to re-measure. |
+
+**Second adversarial round — `kimi` (Kimi K3), 2026-08-26, on the rescue diff only.** Run because
+the R1 gate passes on frontmatter a *previous* round left behind: a stamp inherited by an unreviewed
+change is precisely the "green that certifies nothing" this campaign exists to remove, so the diff
+was refuted on its own. Three claims were attacked; the seat returned REFUTED / REFUTED /
+SURVIVES_WITH_LIMITS. Disposition, in full, including where the refuter was wrong:
+
+| # | Refuter's claim | Disposition |
+|---|---|---|
+| R1 | The 56.2% "floor" is not even a floor over the data at hand, because the "richest" composition omits `title_en`, which all 48 deltas carry. | **NOT UPHELD — by measurement, not by argument.** The true five-field composition returns the identical **27/48**. The objection was concrete, checkable, and wrong; it is recorded rather than dropped, because a refuted finding that vanishes teaches the next reader nothing. |
+| R2 | A negative scoped `git log -S` is evidence, not proof: needle formatting, rename-blindness, and this repo's own squash-merging can all hide a state that existed. | **UPHELD.** §1.3 now states the claim at exactly the strength the search supports and names all three gaps. The conclusion does not rest on the pickaxe. |
+| R3 | The C5 amendment preaches "pin the ref by SHA" while citing "today's `origin/main`" with no SHA — it commits the sin it names; and `def`-line citations are not comparable to the original spans. | **UPHELD, twice.** Both this row and the orphan-rate finding now carry `origin/main` = `b27b46a13ea0`, and the granularity switch is stated. |
+
+**What this round did NOT reach:** no claim here was re-verified against production Qdrant — the
+seat had no read path and neither did the session. The company-J9 resolution in the companion triage
+doc is carried as PLAUSIBLE for that reason, not as measured here.
 
 **Not findings, recorded so they are not mistaken for verified.** The two extraction quirks the
 document flags — the year `2025` extracted from an `SPT 2025` reference, and `KMK -> Kepmen` — are
