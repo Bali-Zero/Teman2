@@ -3,6 +3,7 @@ date: 2026-08-27
 domain: operations
 client_case: none
 sources: 3
+adversarial_review: kimi-k3
 ---
 
 # Retro corrections after dispatch
@@ -82,3 +83,29 @@ similar burst load on other machines in the fleet.
 hardware. Burst higher than that and the loss is not "some agents ran out of quota" and not "the
 pty pool filled up" — it is a race in pty allocation that bites well below the pool's ceiling, and
 the fix is to stagger the dispatch, not to add cascade fallback.
+
+## Adversarial review
+
+Reviewed by Kimi K3 (`kimi -m kimi-code/k3`) against the full PR diff before merge, per the R1
+generator≠grader gate. Findings and outcomes:
+
+- **Confirmed and fixed**: "13 Dependabot PRs #4838–#4851" was internally inconsistent (that range
+  spans 14 PR numbers). Verified via `gh api repos/Bali-Zero/Teman2/pulls/<n>` for all 14: #4846 was
+  opened and closed by `Balizero1987`, not `dependabot[bot]`, two days before the mass-close event —
+  it is not part of it. The PENDING-ARMS row was reworded to state 13-of-14 explicitly.
+- **Confirmed and fixed**: the outage-sweep row's proof-of-armed used an unbounded "9+ PRs"
+  quantifier, which is not falsifiable. Tightened to name the 9 PRs plus an explicit extension rule
+  for later receptor-live PRs hitting the same failure signature.
+- **Confirmed and fixed**: this file's dispatch-burst paragraph originally claimed a "measured" pty
+  pool of 511 while also calling the failure "exhaustion" — self-contradictory, since 14 spawns
+  cannot exhaust a 511-slot pool. Corrected to the actual dispatched figures (31/511 ptys in use)
+  and relabeled the mechanism a pty-allocation race throughout, including the Lesson line.
+- **Checked, no change needed**: the "queue default 90min" figure in the outage-sweep row is sourced
+  — `docs/runbooks/merge-queue-discipline.md:345` documents `check_response_timeout_minutes: 90`.
+- **Noted, not independently re-verified**: a residual gap between the dispatched "21 dirs" figure
+  in correction (1) and this file's own reconciliation (8 tracked + 12 untracked = 20) is called out
+  as declared-unknown in that section rather than silently glossed over.
+- **Out of scope, correctly not touched**: Kimi also flagged infrastructure detail (SSH key path,
+  Tailscale IPs, port) in a *pre-existing* PENDING-ARMS row (the iQOO radar-relay entry) that this PR
+  did not author or modify — left alone, since rewriting another lane's historical ledger entry is
+  outside this PR's scope and its own concern.
