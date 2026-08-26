@@ -32,7 +32,8 @@ objective: |
 
   Gear 3 by PATH: `scripts/evidence_pack_lint.py --print-floor` returns 3 because
   `apps/backend-rag/backend/db/migrations_v2/288_practices_source_idempotency_key.sql` is a
-  hot-zone path. Functional diff: 4 files, +824/-0.
+  hot-zone path. Functional diff at first push was 4 files / +824-0; after two rounds of
+  gate rework it is larger — read `git diff --shortstat origin/main...HEAD`, not this line.
 constraints:
   - "The partial index predicate and the ON CONFLICT predicate must match VERBATIM. Postgres
     infers a partial unique index as an arbiter only when the clause's predicate matches the
@@ -62,6 +63,19 @@ acceptance:
   - "Mutation-proved: deleting the ON CONFLICT clause reddens the two idempotency tests and
     NOTHING else. A green suite with the clause removed would have meant the tests were asserting
     something true regardless of the code."
+  - "The written practice is VISIBLE, not merely present. It carries a resolved
+    `practice_type_id` (and survives the CRM's own INNER join on `practice_types`), and it carries
+    `assigned_to` + `created_by` so the non-admin RBAC predicate
+    `created_by = me OR assigned_to = me` matches for the team member who must act on it. Both were
+    added after a gate found the row invisible for a different reason each round; the column set is
+    now read from the canonical writer (`crm_practices.py::create_practice`) rather than discovered
+    one finding at a time."
+  - "An unknown `practice_type_code` is REFUSED before any write, not written with a NULL type."
+  - "The `IdempotencyRaceLost` refusal fires INSIDE the transaction, so it cannot leave a committed
+    client behind. Pinned STRUCTURALLY (an AST check that the raise is a descendant of the
+    transaction block) and declared as such: the exception is documented-unreachable under READ
+    COMMITTED, so no behavioural test in this suite can drive it, and the defect it guards against
+    was a one-level indentation slip that no runtime assertion would see."
 consumer_map:
   - "apps/backend-rag/backend/services/garuda_ops/ports.py — the two Protocols these adapters
     satisfy. No runtime consumer wires them yet: this diff supplies the implementation, the

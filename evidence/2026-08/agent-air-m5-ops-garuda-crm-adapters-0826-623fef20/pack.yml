@@ -159,7 +159,7 @@ receipts:
     ts: "2026-08-26T11:35:00Z"
     seat: sonnet-5 adversarial grader (fresh context)
 tests:
-  - "backend/tests/services/garuda_ops/test_adapters_pg.py — 18 pass / 0 fail against real
+  - "backend/tests/services/garuda_ops/test_adapters_pg.py — 23 pass / 0 fail against real
     Postgres. Covers: one client + one practice per write; sequential retry returns the SAME
     practice; two concurrent writers on one key produce one practice; two concurrent orders from
     one customer produce one client; email case/whitespace resolve to the same client; a nameless
@@ -354,7 +354,88 @@ dissent:
     resolution: >-
       Reformatted with `prettier --write` and then re-read and re-linted, in that order, exactly
       because of W112.
+  - seat: "opus-5 Gear-3 on-disk gate, round 2 (fresh context, did not write the diff)"
+    objection: >-
+      VERDICT REWORK-BUILD again. The `IdempotencyRaceLost` raise sits OUTSIDE the
+      `async with conn.transaction()` — one indent level out — so the transaction COMMITS the
+      client created moments earlier and only then raises. A committed customer record with no
+      practice, on the one path the exception exists for, three lines beneath a comment promising
+      a refusal "leaves nothing behind at all".
+    status: CONFIRMED
+    resolution: >-
+      Verified independently by reading the indent columns (transaction at 8, the `if` at 8) and
+      fixed. Pinned STRUCTURALLY and labelled as such: an AST check that the raise is a descendant
+      of the transaction block. The exception is documented-unreachable under READ COMMITTED, so
+      no behavioural test here can drive it — and an indentation slip is invisible to every runtime
+      assertion and obvious to a parser, which makes the parser the right instrument rather than a
+      weaker substitute. Mutation-proved: moving the raise back out reddens that test and only it.
+  - seat: "opus-5 Gear-3 on-disk gate, round 2 (fresh context, did not write the diff)"
+    objection: >-
+      The INSERT omits `assigned_to` and `created_by`. `crm_practices.py` gates every non-admin
+      read and write on `created_by = me OR assigned_to = me`, so a GARUDA practice is reachable by
+      the three CRM admins and by nobody else — the team member who must act on the order cannot
+      see it. The same invisibility class as the round-1 lead finding, one column over, named in no
+      artifact.
+    status: CONFIRMED
+    resolution: >-
+      Fixed, and fixed at the level of the CLASS rather than the instance, because this was the
+      second round of discovering a missing column one gate finding at a time. The column set is
+      now read from the canonical writer, `crm_practices.py::create_practice`: `assigned_to`
+      (snapshot value, else the client's owner — its own fallback chain), `created_by`
+      (`CREATED_BY_GARUDA`, a system identity rather than a person's address, since RBAC reads this
+      column) and an explicit `inquiry_date` rather than a DEFAULT that exists only because the CI
+      bootstrap adds it. The test asserts the actual RBAC predicate, not `IS NOT NULL`.
+      Mutation-proved.
+  - seat: "opus-5 Gear-3 on-disk gate, round 2 (fresh context, did not write the diff)"
+    objection: >-
+      `crm_handoff.py:46` sets `GARUDA_VOA_PRACTICE_TYPE_CODE = "garuda_voa"`, the code the only
+      caller passes, and `garuda_voa` is seeded in no migration — 221 seeds `visa_b1_voa` and
+      `ext_b1_voa`. With the new guard every wired handoff raises `UnknownPracticeType`: 100%
+      failure, not a degraded row. Better than round 1's silent NULL, but this PR neither seeds the
+      row, changes the constant, nor records the certainty.
+    status: CONFIRMED
+    resolution: >-
+      Verified (`git grep "'garuda_voa'"` over migrations_v2 returns nothing; the live catalogue
+      holds only the two 221 codes) and deliberately NOT guessed. Which practice type a paid GARUDA
+      order becomes is a business call, and there are two defensible answers with different
+      consequences — seed a dedicated `garuda_voa` type, or derive `visa_b1_voa` / `ext_b1_voa`
+      from the order's `case_type`. Recorded in residual_risks and going to the ledger rather than
+      settled here. The guard means the wiring PR meets a loud refusal instead of a silent
+      invisible row, which is the point of landing it before the wiring.
+  - seat: "opus-5 Gear-3 on-disk gate, round 2 (fresh context, did not write the diff)"
+    objection: >-
+      The INSERT omits `status` and `payment_status`, so a row created FROM a committed
+      `payment.paid` event takes the model defaults and the CRM shows a paid VOA as an unpaid
+      inquiry.
+    status: CONFIRMED
+    resolution: >-
+      Accepted as accurate and NOT fixed here. The canonical writer also omits `payment_status`, so
+      matching it is not obviously wrong — and which status a paid order should enter the ops
+      workflow at is a Legge 5 call, not this adapter's to invent. Recorded in residual_risks.
+      Named rather than quietly defaulted, which is the difference between a known gap and a lie.
+  - seat: "opus-5 Gear-3 on-disk gate, round 2 (fresh context, did not write the diff)"
+    objection: >-
+      The refuted blank-key mechanism survived in a FIFTH place — the docstring of
+      `test_an_empty_idempotency_key_is_refused_before_it_can_duplicate`, three definitions above
+      the test that measures the opposite — while the pack claimed it was "corrected in all four
+      places". Also: `tests:` still said 18, and the brief's "+824/-0" was stale.
+    status: CONFIRMED
+    resolution: >-
+      All three corrected. The fifth statement now names both directions; the count is 23; the
+      brief points at `git diff --shortstat` instead of carrying a number that goes stale every
+      round. The pattern is worth naming: a claim of completeness ("all four places") is itself a
+      claim that needs measuring, and this one was made by counting the places I had edited rather
+      than by searching for the sentence.
 residual_risks:
+  - 'BLOCKING FOR THE WIRING PR, and a business call: `crm_handoff.py:46` passes
+    `practice_type_code="garuda_voa"`, which exists in NO `practice_types` seed. With this PR''s
+    guard, every wired handoff raises `UnknownPracticeType` — certain failure, not an edge case.
+    Two defensible answers, both business: seed a dedicated GARUDA practice type, or derive
+    `visa_b1_voa` / `ext_b1_voa` from the order''s `case_type`. Not guessed here.'
+  - "A paid VOA lands as status `inquiry`, payment_status `unpaid` (the model defaults), on a row
+    created from a committed `payment.paid` event. The canonical writer also omits `payment_status`,
+    so this is not a deviation — but which state the ops workflow wants a paid order to enter at is
+    a Legge 5 call, deliberately not invented."
   - "UNRESOLVED, and named rather than assumed: nothing in this repository settles whether
     PRODUCTION enforces `practices.practice_type_id` NOT NULL. `crm/models.py:116` says it does,
     `scripts/ci_bootstrap_schema.py:567` drops it while claiming to mirror prod, and neither is a

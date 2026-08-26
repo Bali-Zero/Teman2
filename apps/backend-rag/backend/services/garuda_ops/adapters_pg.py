@@ -50,6 +50,13 @@ from backend.services.garuda_ops.ports import OrderSnapshot
 
 logger = logging.getLogger("garuda.ops.adapters_pg")
 
+#: `created_by` on a practice this adapter writes. Not a human address: the
+#: CRM's RBAC reads this column, and attributing an automated write to a person
+#: would put a name on work they did not do while also handing them the row.
+#: It is a real @balizero.com address so the domain-shaped filters elsewhere in
+#: the CRM keep working.
+CREATED_BY_GARUDA = "garuda@balizero.com"
+
 
 class MissingCustomerIdentity(ValueError):
     """The snapshot lacks a field the CRM needs to identify the customer.
@@ -277,12 +284,44 @@ class PostgresCrmWriter:
             # orphan client whose only practice was refused.
             client_id = await self._ensure_client(conn, snapshot)
 
+            # THE COLUMN SET IS NOT A CHOICE — it is read from the canonical
+            # writer, `app/routers/crm_practices.py::create_practice`, which is
+            # what a real CRM practice looks like. Discovering these one gate
+            # finding at a time is how the first version shipped a row that was
+            # invisible for a different reason each round; enumerating them
+            # against the one writer that defines the contract ends that.
+            #
+            # `assigned_to` and `created_by` are the two that matter most, and
+            # their absence was the same defect as the missing type id wearing
+            # a different column: `crm_practices.py` gates every NON-ADMIN read
+            # and write on `created_by = me OR assigned_to = me` (:1225, :1749,
+            # :2259, :2357, :2422, and the list filter at :1834). A practice
+            # with both NULL is reachable by the three CRM admins and by nobody
+            # else — so the team member who has to act on the order cannot see
+            # it. `assigned_to` follows the canonical fallback chain: the
+            # snapshot's own value, else whoever the CLIENT is assigned to.
+            #
+            # `inquiry_date` is set explicitly rather than left to its DEFAULT
+            # now(): that default exists in CI only because
+            # `scripts/ci_bootstrap_schema.py` adds it, so relying on it is
+            # relying on the test harness.
+            #
+            # NOT set here, deliberately, because both are business calls and
+            # not this adapter's to invent — see PENDING-ARMS: `status` (a paid
+            # VOA is not an "inquiry", but which state the ops workflow wants it
+            # to enter at is Zero's call) and `payment_status` (defaults to
+            # 'unpaid' on a row created FROM a committed payment.paid event).
+            assigned_to = snapshot.assigned_to or await conn.fetchval(
+                "SELECT assigned_to FROM clients WHERE id = $1", client_id
+            )
+
             practice_id = await conn.fetchval(
                 """
                 INSERT INTO practices
                     (client_id, practice_type_id, practice_type_code, title,
-                     quoted_price, currency, source_idempotency_key)
-                VALUES ($1, $2, $3, $4, $5, 'IDR', $6)
+                     quoted_price, currency, assigned_to, created_by,
+                     inquiry_date, source_idempotency_key)
+                VALUES ($1, $2, $3, $4, $5, 'IDR', $6, $7, now(), $8)
                 ON CONFLICT (source_idempotency_key)
                     WHERE source_idempotency_key IS NOT NULL
                     DO NOTHING
@@ -293,6 +332,8 @@ class PostgresCrmWriter:
                 practice_type_code,
                 self._title_for(snapshot),
                 snapshot.price_idr,
+                assigned_to,
+                CREATED_BY_GARUDA,
                 source_idempotency_key,
             )
             if practice_id is not None:
@@ -304,13 +345,19 @@ class PostgresCrmWriter:
                 source_idempotency_key,
             )
 
-        if existing is None:
-            raise IdempotencyRaceLost(
-                "INSERT ... ON CONFLICT DO NOTHING skipped the row for "
-                f"source_idempotency_key={source_idempotency_key!r} but the "
-                "conflicting practice is not visible; this adapter requires "
-                "READ COMMITTED isolation"
-            )
+            # This check MUST stay inside the transaction. It sat one indent
+            # level out, which meant the `async with` exited — COMMITTING the
+            # client created above — and only then raised, leaving a committed
+            # client with no practice. An orphan customer record, produced by
+            # the one path this exception exists for, three lines under a
+            # comment promising a refusal "leaves nothing behind at all".
+            if existing is None:
+                raise IdempotencyRaceLost(
+                    "INSERT ... ON CONFLICT DO NOTHING skipped the row for "
+                    f"source_idempotency_key={source_idempotency_key!r} but the "
+                    "conflicting practice is not visible; this adapter requires "
+                    "READ COMMITTED isolation"
+                )
         logger.info(
             "practice %s already existed for this payment event; no duplicate created",
             existing,
@@ -368,6 +415,7 @@ class PostgresCrmWriter:
 
 
 __all__ = [
+    "CREATED_BY_GARUDA",
     "IdempotencyRaceLost",
     "MissingCustomerEmail",
     "MissingCustomerIdentity",

@@ -17,8 +17,11 @@ rather than skips: a skip in a gate is a fail-open.
 
 from __future__ import annotations
 
+import ast
 import asyncio
+import inspect
 import os
+import textwrap
 import uuid
 from datetime import date
 
@@ -27,6 +30,7 @@ import pytest
 asyncpg = pytest.importorskip("asyncpg")
 
 from backend.services.garuda_ops.adapters_pg import (
+    CREATED_BY_GARUDA,
     MissingCustomerEmail,
     MissingCustomerIdentity,
     MissingCustomerName,
@@ -516,12 +520,13 @@ async def test_a_missing_email_raises_its_OWN_exception_not_the_name_one(pool):
 async def test_an_empty_idempotency_key_is_refused_before_it_can_duplicate(pool, bad_key):
     """A blank key defeats the whole point of the adapter, silently.
 
-    The unique index behind the ON CONFLICT is PARTIAL (`WHERE
-    source_idempotency_key IS NOT NULL`), so a NULL or blank key conflicts with
-    nothing: the INSERT succeeds every single time, with no error and no log,
-    and one payment retried three times becomes three CRM practices. The `str`
-    annotation on the parameter cannot catch this — it is a hint, not a check —
-    which is exactly why the guard is a runtime raise and why this test exists.
+    A falsy key fails in TWO directions, and the guard refuses both. NULL is
+    outside the partial index (`WHERE source_idempotency_key IS NOT NULL`), so
+    it arbitrates against nothing and one payment retried three times becomes
+    three CRM practices. A blank STRING is INSIDE that index, so it does
+    arbitrate — and every blank-key order in the system collapses onto one
+    shared practice, which is silent and lossy. The `str` annotation catches
+    neither: it is a hint, not a check.
     """
 
     with pytest.raises(ValueError, match="source_idempotency_key"):
@@ -712,3 +717,109 @@ async def test_an_unknown_practice_type_is_refused_and_writes_nothing(pool):
             )
             == 0
         )
+
+
+async def test_the_practice_is_reachable_by_a_non_admin_team_member(pool):
+    """`assigned_to` and `created_by` are RBAC columns, not metadata.
+
+    `crm_practices.py` gates every non-admin read and write on
+    `created_by = me OR assigned_to = me` (:1225, :1749, :2259, :2357, :2422,
+    plus the list filter at :1834). A practice with both NULL is reachable by
+    the three CRM admins and by nobody else — so the team member who has to act
+    on the paid order cannot see it. That is the same invisibility as a NULL
+    `practice_type_id`, one column over, and it is why this asserts the actual
+    RBAC predicate rather than just `IS NOT NULL`.
+    """
+
+    writer = PostgresCrmWriter(pool)
+    practice_id = await writer.create_client_and_practice(
+        _snapshot(assigned_to="ari@balizero.com"),
+        source_idempotency_key=f"evt_{uuid.uuid4().hex}",
+        practice_type_code=PRACTICE_TYPE,
+    )
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT assigned_to, created_by, inquiry_date FROM practices WHERE id = $1",
+            practice_id,
+        )
+        assert row["assigned_to"] == "ari@balizero.com"
+        assert row["created_by"] == CREATED_BY_GARUDA
+        assert row["inquiry_date"] is not None
+
+        # The predicate a non-admin actually runs.
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM practices "
+                "WHERE id = $1 AND (created_by = $2 OR assigned_to = $2)",
+                practice_id,
+                "ari@balizero.com",
+            )
+            == 1
+        ), "the assigned team member must be able to see their own practice"
+
+
+async def test_an_unassigned_order_inherits_the_clients_owner(pool):
+    """Same fallback the canonical writer uses, so GARUDA rows are not special."""
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO clients (full_name, email, assigned_to) "
+            "VALUES ('SPECIMEN TRAVELLER', 'owned@example.invalid', 'sahira@balizero.com')"
+        )
+
+    practice_id = await PostgresCrmWriter(pool).create_client_and_practice(
+        _snapshot(customer_email="owned@example.invalid", assigned_to=None),
+        source_idempotency_key=f"evt_{uuid.uuid4().hex}",
+        practice_type_code=PRACTICE_TYPE,
+    )
+
+    async with pool.acquire() as conn:
+        assert (
+            await conn.fetchval("SELECT assigned_to FROM practices WHERE id = $1", practice_id)
+            == "sahira@balizero.com"
+        )
+
+
+def test_the_race_refusal_raises_INSIDE_the_transaction():
+    """Structural, and structural ON PURPOSE — say so rather than imply more.
+
+    `IdempotencyRaceLost` is documented-unreachable under READ COMMITTED (the
+    only isolation this adapter supports), so no behavioural test in this file
+    can drive it. That is exactly what let the bug live: the `if existing is
+    None:` sat one indent level OUTSIDE the `async with conn.transaction()`, so
+    the transaction COMMITTED — persisting the client created moments earlier —
+    and only then raised. A committed customer record with no practice, on the
+    one path the exception exists for.
+
+    An indentation regression is invisible to every runtime assertion here and
+    obvious to the parser, so the parser is the right instrument. What this
+    does NOT prove: that the rollback itself works, or that the raise is
+    correct. It proves the raise cannot happen after a commit.
+    """
+
+    src = textwrap.dedent(inspect.getsource(PostgresCrmWriter.create_client_and_practice))
+    tree = ast.parse(src)
+
+    async_withs = [n for n in ast.walk(tree) if isinstance(n, ast.AsyncWith)]
+    assert async_withs, "create_client_and_practice no longer opens a transaction block"
+
+    def raises_race_lost(node):
+        return [
+            r
+            for r in ast.walk(node)
+            if isinstance(r, ast.Raise)
+            and isinstance(r.exc, ast.Call)
+            and isinstance(r.exc.func, ast.Name)
+            and r.exc.func.id == "IdempotencyRaceLost"
+        ]
+
+    in_module = raises_race_lost(tree)
+    assert len(in_module) == 1, f"expected exactly one raise site, found {len(in_module)}"
+
+    inside = [r for w in async_withs for r in raises_race_lost(w)]
+    assert inside, (
+        "the IdempotencyRaceLost raise is OUTSIDE the transaction block — the "
+        "transaction will have committed the client before it fires, leaving "
+        "an orphan customer record"
+    )
