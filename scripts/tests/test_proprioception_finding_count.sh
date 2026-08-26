@@ -180,22 +180,45 @@ fi
 # pre-fix code. A check that cannot go red is not a check. Caught by running
 # this file against the reverted source before shipping it.
 #
-# The cure was structural, not a better regex: the three surfaces that render a
-# DIVERGED probe (this CLI, the SessionStart receptor, the per-host fleet
-# summary) now share one function, `finding_label`, which can simply be called.
-# Fixing the pattern instead of the structure would ALSO have hidden the third
-# site: the grep, once it actually matched, is what revealed that the fleet
-# summary at proprioception.py:~1121 carried the same defect uncured.
+# The cure was structural, not a better regex: the two render sites INSIDE
+# proprioception.py (this CLI and the per-host fleet summary) now call one
+# function, `finding_label`, which can simply be called. Fixing the pattern
+# instead of the structure would ALSO have hidden the second of them: the grep,
+# once it actually matched, is what revealed that the fleet summary at
+# proprioception.py:~1121 carried the same defect uncured.
+#
+# HONEST LIMIT, raised by an adversarial reviewer against the first draft of
+# this file, which claimed all THREE sites "share one function":
+# scripts/hooks/proprioception_sessionstart.sh does NOT import proprioception.py.
+# It is a standalone python heredoc inside a shell hook, run at SessionStart
+# under a latency budget measured in single-digit seconds; importing that module
+# for one six-line function would be the wrong trade. So the rule genuinely lives
+# in TWO places and is kept in sync by hand.
+#
+# That is a defensible design and an indefensible thing to leave unguarded. Case
+# 5 below therefore does not merely observe that they happen to agree on one
+# fixture — it drives BOTH implementations across the same matrix of counts and
+# fails on the first disagreement. Drift is now detectable rather than
+# coincidental, which is what the original comment falsely implied was true by
+# construction.
 # ---------------------------------------------------------------------------
 cli_out="$(python3 - "$REPO_ROOT" <<'PYEOF'
-import importlib.util, sys
+import sys, types
 from pathlib import Path
 
-spec = importlib.util.spec_from_file_location(
-    "proprioception", Path(sys.argv[1]) / "scripts" / "proprioception.py"
-)
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
+# W121 — compile from SOURCE TEXT, never through importlib's bytecode cache.
+# Caught on this very corpus 2026-08-26: mutating the threshold `n > 1` to
+# `n > 4` changes ONE character, so the file's SIZE is unchanged, and the
+# rewrite plus the restore landed inside the same wall-clock second, so the
+# MTIME matched too. Python validates a .pyc on exactly (mtime, size), so
+# `spec.loader.exec_module` happily executed the MUTATED bytecode while
+# `inspect.getsource` printed the RESTORED source — the mutation proof read as
+# a genuine failure of correct code. compile(read_text()) has no cache to
+# poison and makes this corpus immune to its own mutation harness.
+_src_path = Path(sys.argv[1]) / "scripts" / "proprioception.py"
+mod = types.ModuleType("proprioception")
+mod.__file__ = str(_src_path)
+exec(compile(_src_path.read_text(encoding="utf-8"), str(_src_path), "exec"), mod.__dict__)
 fl = mod.finding_label
 
 cases = [
@@ -233,6 +256,65 @@ if printf '%s\n' "$out1" | grep -q "launchagent_canon \[1 of 55\]"; then
   note_pass "cli — the receptor line matches finding_label's exact rendering"
 else
   note_fail "cli — receptor and finding_label disagree on the rendering: $out1"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 5 (DRIFT): the receptor's hand-written copy of the rule and
+# proprioception.py's finding_label must agree across a MATRIX of counts, not
+# on the single n=55 fixture case 1 happens to use.
+#
+# The receptor cannot import the module (standalone heredoc in a SessionStart
+# hook, single-digit-second latency budget), so the rule is duplicated on
+# purpose. This case is the thing that makes the duplication safe: change the
+# threshold in one and this goes red naming the count that diverged.
+# ---------------------------------------------------------------------------
+drift_fail=0
+for n in 0 1 2 5 55 999; do
+  rn="$TMPDIR/drift-$n.json"
+  build_report "$rn" "0.0" "
+report = {
+    \"schema\": 1, \"runner_version\": \"1.0.0\",
+    \"machine\": \"pro\", \"repo_head\": \"abc123\", \"config_source\": \"embedded\",
+    \"config_sha\": \"x\", \"probes_expected\": 1, \"probes_run\": 1,
+    \"unwatched_classes\": [],
+    \"summary\": \"s\",
+    \"probes\": [
+        {\"id\": \"drift_probe\", \"boundary\": \"a<->b\", \"class\": \"a<->b\",
+         \"status\": \"DIVERGED\", \"severity\": \"P1\", \"n_findings\": $n,
+         \"evidence\": [\"e0\"],
+         \"fix_hint\": \"f\", \"duration_ms\": 1},
+    ],
+}
+"
+  # what the receptor actually printed, between "] " and " (as of"
+  # NB: anchored to the FIRST ']' — a greedy 's/^.*] //' eats the "[1 of N]"
+  # marker itself and makes this case fail on a correct receptor. Cost one
+  # false red before shipping; kept as a comment so the next reader does not
+  # re-derive it.
+  recv="$(run_hook "$rn" | grep -m1 '^  !!' | sed -e 's/^  !! \[[^]]*\] //' -e 's/ (as of .*$//')"
+  # what the module says for the identical probe
+  modl="$(python3 - "$REPO_ROOT" "$n" <<'PYEOF'
+import sys, types
+from pathlib import Path
+# same W121 reasoning as the case-4 loader: source text, never bytecode.
+# (No apostrophe in this comment on purpose: a lone quote inside a heredoc
+# nested in $( ) makes the bash lexer lose the closing paren.)
+_p = Path(sys.argv[1]) / "scripts" / "proprioception.py"
+mod = types.ModuleType("proprioception")
+mod.__file__ = str(_p)
+exec(compile(_p.read_text(encoding="utf-8"), str(_p), "exec"), mod.__dict__)
+print(mod.finding_label({"id": "drift_probe", "n_findings": int(sys.argv[2]), "evidence": ["e0"]}))
+PYEOF
+)"
+  if [ "$recv" = "$modl" ]; then
+    :
+  else
+    drift_fail=$((drift_fail + 1))
+    note_fail "drift — n=$n: receptor printed '$recv', finding_label says '$modl'"
+  fi
+done
+if [ "$drift_fail" -eq 0 ]; then
+  note_pass "drift — receptor and finding_label agree on n in {0,1,2,5,55,999}"
 fi
 
 echo
