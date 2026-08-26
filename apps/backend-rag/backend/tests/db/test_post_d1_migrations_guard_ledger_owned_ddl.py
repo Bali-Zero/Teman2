@@ -82,7 +82,11 @@ SQL-level `IF NOT EXISTS`.
 WHY THE RULE STARTS AT 269 AND NOT AT 1
 ----------------------------------------
 Measured over all 169 migration files: 45 top-level `ALTER TABLE` statements
-target a table that production no longer lets the app role own. 37 of them live
+touch a table that production no longer lets the app role own — 44 by ALTERing
+it (an OWNERSHIP problem) and 1 by naming it in a REFERENCES clause (a
+PRIVILEGE problem, cured by a GRANT rather than by a guard). The two are
+reported under different labels because they need different fixes; the single
+REFERENCES case lives inside migration 281 itself. 37 of them live
 in migrations <= 268 and applied without incident, because at the time they ran
 the runtime role still WAS the owner — the D1 repair came afterwards. The
 remaining 8 live in migrations > 268, and they are exactly the two files that
@@ -180,6 +184,15 @@ GRANDFATHERED: dict[int, str] = {
 }
 
 _ALTER_TABLE = re.compile(r"^ALTER\s+TABLE\b", re.IGNORECASE)
+# The table an ALTER actually alters: the first name after the keyword, past
+# the optional IF EXISTS / ONLY modifiers. Needed because a listed table can
+# also appear LATER in the same statement — in a REFERENCES clause — and the
+# two cases fail in production for different reasons and need different cures.
+_ALTER_TARGET = re.compile(
+    r"^ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?"
+    r'(?:public\s*\.\s*)?"?(?P<name>[A-Za-z_][A-Za-z0-9_]*)"?',
+    re.IGNORECASE,
+)
 # `"foo"` and `foo` and `public.foo` and `public . "foo"` all name the same table.
 _TABLE_REF = {
     t: re.compile(rf'(?:\bpublic\s*\.\s*)?"?\b{t}\b"?', re.IGNORECASE)
@@ -309,9 +322,22 @@ def find_unguarded_alters(sql: str) -> list[tuple[int, str, str]]:
         if not collapsed or not _ALTER_TABLE.match(collapsed):
             continue
         lineno = origin[at] if at < len(origin) else (origin[-1] if origin else 1)
+
+        target_match = _ALTER_TARGET.match(collapsed)
+        target = target_match.group("name").lower() if target_match else None
+        if target in NON_APP_OWNED_TABLES:
+            findings.append((lineno, target, "owner", collapsed[:110]))
+            continue
+        # The altered table is fine, but a listed one may still be named in a
+        # REFERENCES clause — which needs the REFERENCES privilege, not
+        # ownership. That is precisely how migration 286 died in production
+        # ("permission denied for table visa_decision_retention_policies"),
+        # and its cure is a GRANT by the owner, NOT a catalog guard. Reporting
+        # it under the ownership label would send the author to fix the wrong
+        # thing — a true finding with a false diagnosis.
         for table, pattern in _TABLE_REF.items():
             if pattern.search(collapsed):
-                findings.append((lineno, table, collapsed[:100]))
+                findings.append((lineno, table, "references", collapsed[:110]))
                 break
     return findings
 
@@ -327,7 +353,17 @@ def test_no_post_d1_migration_alters_a_table_the_app_role_cannot_own() -> None:
         number = _migration_number(path)
         if number <= D1_BOUNDARY or number in GRANDFATHERED:
             continue
-        for lineno, table, statement in find_unguarded_alters(path.read_text()):
+        for lineno, table, kind, statement in find_unguarded_alters(path.read_text()):
+            if kind == "references":
+                offenders.append(
+                    f"{path.name}:{lineno} does not ALTER `{table}`, but NAMES it in a "
+                    f"REFERENCES clause — which needs the REFERENCES privilege that "
+                    f"`backend_rag_v2` does not hold. This is how migration 286 died in "
+                    f"production. A catalog guard does NOT fix it: the cure is a one-time "
+                    f"`GRANT REFERENCES ON public.{table} TO backend_rag_v2;` run by the "
+                    f"table's owner.\n    {statement}"
+                )
+                continue
             offenders.append(
                 f"{path.name}:{lineno} ALTERs `{table}`, which production does not let "
                 f"`backend_rag_v2` own — this fails in prod and passes in CI.\n"
@@ -497,6 +533,10 @@ INNOCENT = [
         id="named-only-inside-a-string-literal",
     ),
     pytest.param(
+        f"ALTER TABLE public.garuda_orders ADD COLUMN src TEXT DEFAULT '{_LEDGER}';\n",
+        id="listed-name-only-inside-a-DEFAULT-literal",
+    ),
+    pytest.param(
         "ALTER TABLE public.visa_decisions_archive ADD COLUMN x TEXT;\n",
         id="a-different-table-whose-name-contains-a-listed-one",
     ),
@@ -511,6 +551,27 @@ def test_detector_convicts(sql: str) -> None:
 @pytest.mark.parametrize("sql", INNOCENT)
 def test_detector_acquits(sql: str) -> None:
     assert not find_unguarded_alters(sql), f"detector produced a false positive on:\n{sql}"
+
+
+def test_an_fk_reference_is_reported_as_a_privilege_problem_not_an_ownership_one() -> None:
+    """A true finding with a false diagnosis sends the author to the wrong fix.
+
+    `ALTER TABLE <app-owned> ... REFERENCES <ledger-owned>` DOES fail in
+    production — that is exactly how migration 286 died — but the cure is a
+    one-time GRANT by the table's owner, not a catalog guard. Reporting it as
+    "ALTERs the ledger table" would be right about there being a problem and
+    wrong about every actionable detail.
+    """
+    owner_case = find_unguarded_alters(
+        f"ALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\n"
+    )
+    assert [(t, k) for _, t, k, _ in owner_case] == [(_LEDGER, "owner")]
+
+    reference_case = find_unguarded_alters(
+        "ALTER TABLE public.garuda_orders ADD CONSTRAINT fk "
+        f"FOREIGN KEY (pid) REFERENCES public.{_LEDGER}(id);\n"
+    )
+    assert [(t, k) for _, t, k, _ in reference_case] == [(_LEDGER, "references")]
 
 
 def test_the_corpus_is_actually_being_scanned() -> None:
