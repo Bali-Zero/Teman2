@@ -201,7 +201,7 @@ def test_fallback_regexes_are_byte_identical_to_the_daemon_detectors() -> None:
     daemon_text = daemon_src.read_text()
     probe_text = _MODULE_PATH.read_text()
 
-    def _extract(text: str, pattern: str, label: str) -> tuple[str, bool]:
+    def _extract(text: str, pattern: str, label: str) -> tuple[str, frozenset[str]]:
         # `^`-anchored + MULTILINE (never DOTALL on the anchor): the naive
         # "name, then anything, then = re.compile(" shape used before this
         # fix matched a COMMENT mentioning the name earlier in the file and
@@ -257,7 +257,22 @@ def test_fallback_regexes_are_byte_identical_to_the_daemon_detectors() -> None:
             f"actually ended), so the compared body is a PARTIAL read, not "
             f"the whole pattern. residual={remainder!r}"
         )
-        return body, "re.IGNORECASE" in literal_group
+        # `"re.IGNORECASE" in literal_group` (independent cross-family
+        # refuter finding on PR #5028, team-lead review 2026-08-26) proves
+        # only that ONE flag name is present, not that the flag SET
+        # matches between daemon and probe: adding `re.ASCII`/
+        # `re.MULTILINE`/`re.VERBOSE` to ONE side changes the compiled
+        # behaviour, and the boolean check still passes because
+        # IGNORECASE itself never moved. Extract every `re.FLAGNAME`
+        # token from `remainder` — the non-literal leftover after every
+        # `r"..."` match was already stripped out above, so this can
+        # never accidentally match text INSIDE the pattern body itself
+        # (there is no legitimate reason a regex alternative here would
+        # contain the literal substring "re." followed by capital
+        # letters) — and return the whole SET for an equality check, not
+        # a single flag's presence.
+        flags = frozenset(_re.findall(r"\bre\.([A-Z_]+)\b", remainder))
+        return body, flags
 
     for daemon_name, probe_name in (
         ("_AUTH_STRUCTURED_RE", "AUTH_STRUCTURED_RE"),
@@ -265,12 +280,12 @@ def test_fallback_regexes_are_byte_identical_to_the_daemon_detectors() -> None:
         ("_QUOTA_STRUCTURED_RE", "QUOTA_STRUCTURED_RE"),
         ("_QUOTA_PROSE_RE", "QUOTA_PROSE_RE"),
     ):
-        daemon_body, daemon_ic = _extract(
+        daemon_body, daemon_flags = _extract(
             daemon_text,
             rf"^{daemon_name}:\s*re\.Pattern\[str\]\s*=\s*re\.compile\((.*?)\n\)",
             f"daemon {daemon_name}",
         )
-        probe_body, probe_ic = _extract(
+        probe_body, probe_flags = _extract(
             probe_text,
             rf"^    {probe_name} = re\.compile\((.*?)\n    \)",
             f"probe fallback {probe_name}",
@@ -279,7 +294,20 @@ def test_fallback_regexes_are_byte_identical_to_the_daemon_detectors() -> None:
             f"the probe's fallback {probe_name} drifted from the daemon's "
             f"{daemon_name} — update the copy in scripts/wa_codex_seat_probe.py"
         )
-        # Flags too (Kimi r1 m9): dropping re.IGNORECASE on either side keeps
-        # the bodies identical while the detectors diverge on case.
-        assert daemon_ic, f"daemon {daemon_name} lost re.IGNORECASE"
-        assert probe_ic, f"probe fallback {probe_name} lost re.IGNORECASE"
+        # Flags too (Kimi r1 m9, ORIGINAL finding): dropping re.IGNORECASE
+        # on either side keeps the bodies identical while the detectors
+        # diverge on case.
+        assert "IGNORECASE" in daemon_flags, f"daemon {daemon_name} lost re.IGNORECASE"
+        assert "IGNORECASE" in probe_flags, f"probe fallback {probe_name} lost re.IGNORECASE"
+        # Flags SET, not just IGNORECASE's presence (independent
+        # cross-family refuter, team-lead review 2026-08-26): the check
+        # above is blind to a flag added to only ONE side — re.ASCII,
+        # re.MULTILINE, re.VERBOSE all change what the compiled pattern
+        # actually matches, and two detectors compiled from
+        # byte-identical pattern TEXT under different flags are not
+        # byte-identical detectors.
+        assert probe_flags == daemon_flags, (
+            f"the probe's fallback {probe_name} flags {sorted(probe_flags)} "
+            f"differ from the daemon's {daemon_name} flags "
+            f"{sorted(daemon_flags)} — a flag was added to only one side"
+        )
