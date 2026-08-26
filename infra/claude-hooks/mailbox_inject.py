@@ -38,17 +38,28 @@ A silently lost message on a broken pipe is preferred over ever re-injecting
 
 STATE-KEYED (S3, 2026-08-27): a message may carry optional front-matter
 lines `key: <string>` and `expires: <ISO8601>` right after `from:`. Both
-collectors now (1) sort NEWEST-first, (2) drop a message whose mtime is
-older than 48h unless `expires:` names a still-future time, (3) keep only
-the newest surviving file per effective key (a keyless message is its own
+collectors now (1) sort NEWEST-first BY MTIME (not filename — a hand-
+delivered or clock-skewed file can lie about its own name), (2) drop a
+message once `expires:` (when present and parseable) says so — it can
+SHORTEN or EXTEND the flat 48h default, never just extend it (refuter
+round 1 caught the extension-only version silently no-op'ing any
+`fleet_mail.sh --ttl` shorter than 48h) — clamped to at most
+mtime+MAX_EXPIRES_EXTENSION_SECONDS so untrusted content can claim a long
+life but never an unbounded one; a message with no (or malformed)
+`expires:` falls back to the flat 48h-by-mtime rule, (3) keep only the
+newest surviving file per effective key (a keyless message is its own
 unique key — never deduped against another). A dropped/superseded file is
 renamed `.expired-<ts>` / `.superseded-<ts>` (same self-cleaning pattern as
 `.skipped-oversize-<ts>`) so it drops out of every future scan for every
 session — this is what stops a broadcast backlog from being replayed into
-every new session forever. Cures the measured disease: 94 undelivered
-broadcasts (2026-08-23..26) replayed at MAX_MESSAGES_PER_FIRE=3/fire into
-every session and every subagent, 45 of them repeat `queue_unstick`
-DIRTY-PR pages (one PR paged 12 times) — see fleet retro
+every new session forever. An oversize broadcast is now pruned the same
+way on first encounter (it was never deliverable to anyone regardless of
+age — matches direct mail's pre-existing oversize handling, closes the gap
+where it used to sit as a live candidate, re-stat'd by every session,
+forever). Cures the measured disease: 94 undelivered broadcasts
+(2026-08-23..26) replayed at MAX_MESSAGES_PER_FIRE=3/fire into every
+session and every subagent, 45 of them repeat `queue_unstick` DIRTY-PR
+pages (one PR paged 12 times) — see fleet retro
 research/operations/2026-08-26-retro-fleet-sessions-25-26.md item S3.
 
 Kill switch: NUZ_MAILBOX_OFF=1. Root override: NUZ_MAILBOX_DIR.
@@ -74,6 +85,7 @@ SENDER_UNSAFE_RE = re.compile(r"[^A-Za-z0-9._:@-]")
 MAX_SENDER_LEN = 64
 # ── S3 state-keyed mailbox (TTL + per-key dedup) ────────────────────────────
 DEFAULT_TTL_SECONDS = 48 * 3600
+MAX_EXPIRES_EXTENSION_SECONDS = 30 * 24 * 3600  # cap on how far expires: may push
 FRONT_MATTER_LINE_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_-]{0,30}):[ \t]*(.*)$")
 MAX_FRONT_MATTER_LINES = 10
 UNKEYED_PREFIX = "__unkeyed__:"
@@ -158,20 +170,38 @@ def _parse_expires_epoch(raw: str):
 
 def _is_expired(f: pathlib.Path, meta: dict, *, now: float, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> bool:
     """True if this message must never be delivered to anyone (new session or
-    repeat fire): older than ttl_seconds by mtime, UNLESS `expires:` names a
-    still-future time (extends it). A stat() failure lets the normal
-    read/skip path handle it; a malformed `expires:` falls back to the plain
-    mtime rule — untrusted content never grants itself immortality just by
-    claiming to."""
+    repeat fire). `expires:` is AUTHORITATIVE when present and parseable —
+    it can SHORTEN or EXTEND the flat default, never just extend it (a round
+    1 refuter finding: extension-only silently no-op'd any
+    `fleet_mail.sh --ttl` shorter than DEFAULT_TTL_SECONDS) — clamped to at
+    most mtime + MAX_EXPIRES_EXTENSION_SECONDS so untrusted content can
+    claim a long life but never an unbounded one. No `expires:` (or a
+    malformed one) falls back to the flat ttl_seconds-by-mtime rule. A
+    stat() failure lets the normal read/skip path handle it."""
     try:
         mtime = f.stat().st_mtime
     except Exception:
         return False
-    if now - mtime <= ttl_seconds:
-        return False
     raw_expires = meta.get("expires", "")
     exp_epoch = _parse_expires_epoch(raw_expires) if raw_expires else None
-    return True if exp_epoch is None else now >= exp_epoch
+    if exp_epoch is not None:
+        exp_epoch = min(exp_epoch, mtime + MAX_EXPIRES_EXTENSION_SECONDS)
+        return now >= exp_epoch
+    return now - mtime > ttl_seconds
+
+def _sorted_newest_first(paths):
+    """Sort candidate files newest-MTIME-first (not filename — a hand-
+    delivered or clock-skewed file can lie about its own name; mtime is
+    already stat()'d for the TTL check right after, so this costs nothing
+    extra in the common case). A stat() failure sorts the file to the very
+    end (oldest) rather than raising — the normal per-file logic right
+    after will read/skip it."""
+    def _mtime_or_min(p: pathlib.Path) -> float:
+        try:
+            return p.stat().st_mtime
+        except Exception:
+            return -1.0
+    return sorted(paths, key=_mtime_or_min, reverse=True)
 
 def _effective_key(f: pathlib.Path, meta: dict) -> str:
     """The key used for newest-wins dedup: the message's own `key:` front
@@ -241,10 +271,9 @@ def _collect_direct(
     now = time.time() if now is None else now
     out: list[tuple[pathlib.Path, str]] = []
     seen_keys: set[str] = set()
-    candidates = sorted(
-        (f for f in session_dir.iterdir()
-         if f.is_file() and not f.is_symlink() and f.suffix == ".md" and ".delivered-" not in f.name),
-        reverse=True,
+    candidates = _sorted_newest_first(
+        f for f in session_dir.iterdir()
+        if f.is_file() and not f.is_symlink() and f.suffix == ".md" and ".delivered-" not in f.name
     )
     for f in candidates:
         if _oversize(f):
@@ -276,13 +305,14 @@ def _collect_broadcast(
     candidate survives ON DISK — an older file sharing a key is superseded
     and renamed away GLOBALLY (safe: a superseded message must never reach
     ANY session, past or future — a newer one already covers it). A message
-    older than DEFAULT_TTL_SECONDS (48h, unless `expires:` extends it) is
-    pruned the same way; this is what stops a stale backlog from being
-    replayed into every new session forever (S3). Same SYMLINK refusal and
-    oversize stat()-before-read as direct mail; an oversize broadcast is
-    still only marked seen (never retried, never injected, never renamed —
-    unchanged from before) since its own size says nothing about whether
-    OTHER sessions still need their own per-session accounting of it."""
+    older than DEFAULT_TTL_SECONDS (48h, unless `expires:` says otherwise —
+    see `_is_expired`) is pruned the same way; this is what stops a stale
+    backlog from being replayed into every new session forever (S3). Same
+    SYMLINK refusal and oversize stat()-before-read as direct mail; an
+    oversize broadcast is pruned GLOBALLY on first encounter, same as
+    direct mail's `.skipped-oversize-` handling — it was never deliverable
+    to anyone regardless of age or session, so there is nothing for another
+    session's per-session accounting to preserve by leaving it live."""
     broadcast_dir = root / "broadcast"
     if budget <= 0 or broadcast_dir.is_symlink() or not broadcast_dir.is_dir():
         return []
@@ -294,14 +324,12 @@ def _collect_broadcast(
         seen = set()
     out: list[tuple[pathlib.Path, str]] = []
     seen_keys: set[str] = set()
-    candidates = sorted(
-        (f for f in broadcast_dir.iterdir() if f.is_file() and not f.is_symlink() and f.suffix == ".md"),
-        reverse=True,
+    candidates = _sorted_newest_first(
+        f for f in broadcast_dir.iterdir() if f.is_file() and not f.is_symlink() and f.suffix == ".md"
     )
     for f in candidates:
         if _oversize(f):
-            if f.name not in seen:
-                _mark_broadcast_seen(marker, session_dir, f.name)  # never retried, never injected
+            _rename_tagged(f, "skipped-oversize")  # never deliverable to anyone; global prune
             continue
         body, meta = _read_and_parse(f)
         if body is None:
