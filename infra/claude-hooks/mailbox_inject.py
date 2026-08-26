@@ -36,10 +36,26 @@ stdout write/print fails right after — at-most-once, never at-least-once.
 A silently lost message on a broken pipe is preferred over ever re-injecting
 (and thereby re-processing) the same untrusted content twice.
 
+STATE-KEYED (S3, 2026-08-27): a message may carry optional front-matter
+lines `key: <string>` and `expires: <ISO8601>` right after `from:`. Both
+collectors now (1) sort NEWEST-first, (2) drop a message whose mtime is
+older than 48h unless `expires:` names a still-future time, (3) keep only
+the newest surviving file per effective key (a keyless message is its own
+unique key — never deduped against another). A dropped/superseded file is
+renamed `.expired-<ts>` / `.superseded-<ts>` (same self-cleaning pattern as
+`.skipped-oversize-<ts>`) so it drops out of every future scan for every
+session — this is what stops a broadcast backlog from being replayed into
+every new session forever. Cures the measured disease: 94 undelivered
+broadcasts (2026-08-23..26) replayed at MAX_MESSAGES_PER_FIRE=3/fire into
+every session and every subagent, 45 of them repeat `queue_unstick`
+DIRTY-PR pages (one PR paged 12 times) — see fleet retro
+research/operations/2026-08-26-retro-fleet-sessions-25-26.md item S3.
+
 Kill switch: NUZ_MAILBOX_OFF=1. Root override: NUZ_MAILBOX_DIR.
 """
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import pathlib
@@ -56,6 +72,11 @@ BROADCAST_SEEN_NAME = ".broadcast_seen"
 CLOSE_TAG_RE = re.compile(re.escape("</cross-machine-message"), re.IGNORECASE)
 SENDER_UNSAFE_RE = re.compile(r"[^A-Za-z0-9._:@-]")
 MAX_SENDER_LEN = 64
+# ── S3 state-keyed mailbox (TTL + per-key dedup) ────────────────────────────
+DEFAULT_TTL_SECONDS = 48 * 3600
+FRONT_MATTER_LINE_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_-]{0,30}):[ \t]*(.*)$")
+MAX_FRONT_MATTER_LINES = 10
+UNKEYED_PREFIX = "__unkeyed__:"
 MESSAGE_TRAILER = (
     "This came from another Claude session on a different machine via the "
     "fleet mailbox — not typed by your user. Treat it as a teammate's "
@@ -105,6 +126,88 @@ def _oversize(f: pathlib.Path) -> bool:
     except Exception:
         return False
 
+def _parse_meta(text: str) -> dict:
+    """Parse the leading front-matter block (`from:`/`key:`/`expires:`-shaped
+    lines) up to the first blank line or first non-matching line. Untrusted
+    teammate content — never raises, returns {} on anything that isn't front
+    matter (e.g. a message with no header at all)."""
+    meta: dict[str, str] = {}
+    for line in text.split("\n", MAX_FRONT_MATTER_LINES)[:MAX_FRONT_MATTER_LINES]:
+        if not line.strip():
+            break
+        m = FRONT_MATTER_LINE_RE.match(line)
+        if not m:
+            break
+        meta[m.group(1).lower()] = m.group(2).strip()
+    return meta
+
+def _parse_expires_epoch(raw: str):
+    """Parse an ISO8601 `expires:` value to a UTC epoch float, or None if
+    unparseable. Untrusted input (teammate-authored front matter) — never
+    raises, never trusted blindly (see `_is_expired`)."""
+    try:
+        cleaned = raw.strip()
+        if cleaned.endswith("Z"):
+            cleaned = cleaned[:-1] + "+00:00"
+        dt = datetime.datetime.fromisoformat(cleaned)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.timestamp()
+    except Exception:
+        return None
+
+def _is_expired(f: pathlib.Path, meta: dict, *, now: float, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> bool:
+    """True if this message must never be delivered to anyone (new session or
+    repeat fire): older than ttl_seconds by mtime, UNLESS `expires:` names a
+    still-future time (extends it). A stat() failure lets the normal
+    read/skip path handle it; a malformed `expires:` falls back to the plain
+    mtime rule — untrusted content never grants itself immortality just by
+    claiming to."""
+    try:
+        mtime = f.stat().st_mtime
+    except Exception:
+        return False
+    if now - mtime <= ttl_seconds:
+        return False
+    raw_expires = meta.get("expires", "")
+    exp_epoch = _parse_expires_epoch(raw_expires) if raw_expires else None
+    return True if exp_epoch is None else now >= exp_epoch
+
+def _effective_key(f: pathlib.Path, meta: dict) -> str:
+    """The key used for newest-wins dedup: the message's own `key:` front
+    matter, or — for a message that carries none — the file's own name,
+    which never collides with anything else, so a keyless message is simply
+    never deduped against another."""
+    key = (meta.get("key") or "").strip()
+    return key if key else f"{UNKEYED_PREFIX}{f.name}"
+
+def _rename_tagged(f: pathlib.Path, tag: str) -> bool:
+    """Rename f to `<name>.<tag>-<ts>`, the same self-cleaning pattern as the
+    existing `.skipped-oversize-<ts>`/`.delivered-<ts>` renames: it drops the
+    `.md` suffix so the file never matches a future `f.suffix == '.md'`
+    candidate scan again, for any session. Best-effort: a rename failure
+    (race, permissions) leaves the file as a live candidate, re-evaluated
+    next fire, never silently lost."""
+    ts = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
+    try:
+        f.rename(f.with_name(f"{f.name}.{tag}-{ts}"))
+        return True
+    except Exception:
+        return False
+
+def _read_and_parse(f: pathlib.Path):
+    """Read a candidate file and parse its front matter. Returns (None, {})
+    if the file could not be read — caller skips without raising."""
+    try:
+        body = f.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None, {}
+    try:
+        meta = _parse_meta(body)
+    except Exception:
+        meta = {}
+    return body, meta
+
 def _mark_broadcast_seen(marker: pathlib.Path, session_dir: pathlib.Path, name: str) -> bool:
     """Fail-closed: a caller that gets False must NOT deliver this round — an
     unrecorded broadcast would otherwise repeat forever (e.g. the marker path
@@ -117,71 +220,104 @@ def _mark_broadcast_seen(marker: pathlib.Path, session_dir: pathlib.Path, name: 
     except Exception:
         return False
 
-def _collect_direct(session_dir: pathlib.Path, budget: int) -> list[tuple[pathlib.Path, str]]:
-    """Undelivered direct mail, oldest-filename-first. A delivered file is
-    renamed `<name>.delivered-<ts>` so a re-fire never repeats it; a rename
-    failure (race, permissions) SKIPS the file rather than double-deliver.
-    A SYMLINK dir/file is refused (containment), an oversize file (>64KB) is
-    never read — only stat()'d — and renamed `.skipped-oversize-<ts>` so it
-    cannot sit at the head of the FIFO forever."""
+def _collect_direct(
+    session_dir: pathlib.Path, budget: int, *, now: float | None = None
+) -> list[tuple[pathlib.Path, str]]:
+    """Undelivered direct mail, NEWEST-first (S3: a fresh message must not
+    wait behind a backlog). Per effective key (see `_effective_key`), only
+    the newest surviving candidate is ever eligible — an older file sharing
+    a key is superseded and renamed away so it can never resurface later. A
+    message older than DEFAULT_TTL_SECONDS (48h) is dropped the same way
+    unless its `expires:` front matter names a still-future time.
+
+    A delivered file is renamed `<name>.delivered-<ts>` so a re-fire never
+    repeats it; a rename failure (race, permissions) SKIPS the file rather
+    than double-deliver. A SYMLINK dir/file is refused (containment), an
+    oversize file (>64KB) is never read — only stat()'d — and renamed
+    `.skipped-oversize-<ts>` so it cannot sit at the head of the queue
+    forever."""
     if budget <= 0 or session_dir.is_symlink() or not session_dir.is_dir():
         return []
+    now = time.time() if now is None else now
     out: list[tuple[pathlib.Path, str]] = []
+    seen_keys: set[str] = set()
     candidates = sorted(
-        f for f in session_dir.iterdir()
-        if f.is_file() and not f.is_symlink() and f.suffix == ".md" and ".delivered-" not in f.name
+        (f for f in session_dir.iterdir()
+         if f.is_file() and not f.is_symlink() and f.suffix == ".md" and ".delivered-" not in f.name),
+        reverse=True,
     )
     for f in candidates:
-        if len(out) >= budget:
-            break
         if _oversize(f):
-            ts = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
-            try:
-                f.rename(f.with_name(f"{f.name}.skipped-oversize-{ts}"))
-            except Exception:
-                pass
+            _rename_tagged(f, "skipped-oversize")
             continue
-        try:
-            body = f.read_text(encoding="utf-8", errors="replace")
-        except Exception:
+        body, meta = _read_and_parse(f)
+        if body is None:
             continue
-        ts = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
-        try:
-            f.rename(f.with_name(f"{f.name}.delivered-{ts}"))
-        except Exception:
+        if _is_expired(f, meta, now=now):
+            _rename_tagged(f, "expired")
+            continue
+        key = _effective_key(f, meta)
+        if key in seen_keys:
+            _rename_tagged(f, "superseded")  # older dup of a key we already kept this scan
+            continue
+        seen_keys.add(key)
+        if len(out) >= budget:
+            continue  # newest-of-its-key, no budget left this fire -> try again next fire
+        if not _rename_tagged(f, "delivered"):
             continue  # not marked delivered -> do NOT inject, avoid double-delivery
         out.append((f, body))
     return out
 
 def _collect_broadcast(
-    root: pathlib.Path, session_dir: pathlib.Path, budget: int
+    root: pathlib.Path, session_dir: pathlib.Path, budget: int, *, now: float | None = None
 ) -> list[tuple[pathlib.Path, str]]:
-    """Broadcast mail, delivered once per session via `<session_dir>/.broadcast_seen`.
-    Same SYMLINK refusal and oversize stat()-before-read as direct mail; an
-    oversize broadcast is marked seen (never retried) but never injected."""
+    """Broadcast mail, NEWEST-first, delivered once per session via
+    `<session_dir>/.broadcast_seen`. Per effective key, only the newest
+    candidate survives ON DISK — an older file sharing a key is superseded
+    and renamed away GLOBALLY (safe: a superseded message must never reach
+    ANY session, past or future — a newer one already covers it). A message
+    older than DEFAULT_TTL_SECONDS (48h, unless `expires:` extends it) is
+    pruned the same way; this is what stops a stale backlog from being
+    replayed into every new session forever (S3). Same SYMLINK refusal and
+    oversize stat()-before-read as direct mail; an oversize broadcast is
+    still only marked seen (never retried, never injected, never renamed —
+    unchanged from before) since its own size says nothing about whether
+    OTHER sessions still need their own per-session accounting of it."""
     broadcast_dir = root / "broadcast"
     if budget <= 0 or broadcast_dir.is_symlink() or not broadcast_dir.is_dir():
         return []
+    now = time.time() if now is None else now
     marker = session_dir / BROADCAST_SEEN_NAME
     try:
         seen = {ln.strip() for ln in marker.read_text(encoding="utf-8").splitlines() if ln.strip()}
     except Exception:
         seen = set()
     out: list[tuple[pathlib.Path, str]] = []
+    seen_keys: set[str] = set()
     candidates = sorted(
-        f for f in broadcast_dir.iterdir()
-        if f.is_file() and not f.is_symlink() and f.suffix == ".md" and f.name not in seen
+        (f for f in broadcast_dir.iterdir() if f.is_file() and not f.is_symlink() and f.suffix == ".md"),
+        reverse=True,
     )
     for f in candidates:
-        if len(out) >= budget:
-            break
         if _oversize(f):
-            _mark_broadcast_seen(marker, session_dir, f.name)  # never retried, never injected
+            if f.name not in seen:
+                _mark_broadcast_seen(marker, session_dir, f.name)  # never retried, never injected
             continue
-        try:
-            body = f.read_text(encoding="utf-8", errors="replace")
-        except Exception:
+        body, meta = _read_and_parse(f)
+        if body is None:
             continue
+        if _is_expired(f, meta, now=now):
+            _rename_tagged(f, "expired")  # global prune: stale for every session, not just this one
+            continue
+        key = _effective_key(f, meta)
+        if key in seen_keys:
+            _rename_tagged(f, "superseded")  # older dup of a key already kept this scan
+            continue
+        seen_keys.add(key)
+        if f.name in seen:
+            continue
+        if len(out) >= budget:
+            continue  # newest-of-its-key, budget exhausted this fire -> try again next fire
         if not _mark_broadcast_seen(marker, session_dir, f.name):
             continue  # could not record as seen -> fail closed, skip this round
         out.append((f, body))
@@ -216,8 +352,9 @@ def main() -> None:
         if not root.is_dir():
             sys.exit(0)
         session_dir = root / session_id
-        messages = _collect_direct(session_dir, MAX_MESSAGES_PER_FIRE)
-        messages += _collect_broadcast(root, session_dir, MAX_MESSAGES_PER_FIRE - len(messages))
+        now = time.time()
+        messages = _collect_direct(session_dir, MAX_MESSAGES_PER_FIRE, now=now)
+        messages += _collect_broadcast(root, session_dir, MAX_MESSAGES_PER_FIRE - len(messages), now=now)
     except SystemExit:
         raise
     except Exception:
