@@ -2,36 +2,50 @@
 
 WHY THIS EXISTS. The P06 (NAGA) preparation bundle maps NAGA's mutable rows onto P04's
 canonical `Evidence`. Its own §2 carries a correction, added by an adversarial review,
-saying the mapping is INCOMPLETE — four fields in `evidence.schema.json`'s required sets
-appear nowhere in it — and that "a build lane following §2 as written would emit
+saying the mapping is INCOMPLETE -- four fields in `evidence.schema.json`'s required sets
+appear nowhere in it -- and that "a build lane following §2 as written would emit
 schema-invalid Evidence objects on day one. Closing these four ... is a precondition for
 the P06 build, not a detail."
 (`research/operations/execution/research-os-v1.0.0/evidence/p06/ros-v1-p06-naga-prep-b01/02-p04-adapter-mapping.md`)
 
-That is a claim in a markdown file. This module re-measures it against the real model and
-the real schema, and leaves the result executable, because a precondition nobody can run
-is a precondition nobody will notice missing. Verified before writing a line of adapter:
-all four are genuinely required —
+That is a claim in a markdown file. This module re-measures it against the real model, the
+real schema, and the real document, and leaves the result executable.
 
-  evidence_family_id       required, top level
-  review_state             required, top level
-  classification.rights    required in EvidenceClassification (Claim's has no `rights`)
-  times.recorded_at        required in EvidenceTimes, alongside `observed_at`
+THREE CORRECTIONS ARE BAKED IN, each from an adversarial round on this file. They are
+recorded rather than smoothed away, because each one describes a way this module was
+already wrong once:
+
+1. THE CORRECTION IS ITSELF INCOMPLETE. The bundle names four fields. Derived here from
+   the schema and the document -- not hand-copied -- the real count is larger: §2 never
+   names FIFTEEN of the schema's thirty-two required paths. The first version of this
+   module hardcoded the bundle's four and called them "the four fields the bundle omits",
+   which restated the document's own undercount as a measurement. The four are now
+   asserted to be a strict SUBSET of a derived set, so the gap is measured and the
+   undercount is itself pinned.
+
+2. THE OBJECT_HASH CONTROL WAS TAUTOLOGICAL. The positive control asserted
+   `evidence.object_hash == payload["object_hash"]`, which only proves the value was
+   copied through -- it holds whether or not the hash was ever recomputed. Measured: with
+   `Evidence.validate_evidence`'s hash comparison disabled, all tests still passed. There
+   is now a GUILT control that corrupts the hash and requires a raise, and the innocence
+   claim no longer says a broken hashing path "fails here first".
+
+3. WHAT THIS DOES NOT OBSERVE, stated so nobody reads more into a green run. No adapter,
+   producer, repository, or persistence path is exercised anywhere in this module. It pins
+   REQUIREDNESS on two enforcement surfaces (the pydantic model and the published JSON
+   Schema) and the SHAPE OF THE GAP in one document. A regression in the code that
+   eventually builds these objects leaves every test here green.
 
 The baseline is the repository's OWN canonical fixture, `fixtures/evidence/valid_minimal.json`,
-not an object this test invents. That matters: an earlier module in this lane proved a
-finding against a hand-built stand-in and a refuter showed the proof was worthless, so the
-rule here is that the thing under test is the thing production uses.
-
-Note for whoever writes the adapter: `Evidence` self-validates `object_hash` against
-`object_hash(self)`, so a mapping that gets the fields right and the hash wrong still
-fails. The positive control below exercises that path deliberately.
+not an object this test invents: an earlier module in this lane proved a finding against a
+hand-built stand-in and a refuter showed the proof was worthless.
 """
 
 from __future__ import annotations
 
 import copy
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -40,25 +54,44 @@ import pytest
 from pydantic import ValidationError
 from research_os.models.evidence import Evidence
 
-_PACKAGE_ROOT = next(
-    p / "packages" / "research-os-core"
-    for p in Path(__file__).resolve().parents
-    if (p / "packages" / "research-os-core").is_dir()
+_REPO_ROOT = next(
+    p for p in Path(__file__).resolve().parents if (p / "packages" / "research-os-core").is_dir()
 )
+_PACKAGE_ROOT = _REPO_ROOT / "packages" / "research-os-core"
 _FIXTURE = _PACKAGE_ROOT / "fixtures" / "evidence" / "valid_minimal.json"
 _SCHEMA = _PACKAGE_ROOT / "research_os" / "schemas" / "evidence.schema.json"
+_BUNDLE = (
+    _REPO_ROOT
+    / "research/operations/execution/research-os-v1.0.0/evidence/p06"
+    / "ros-v1-p06-naga-prep-b01"
+    / "02-p04-adapter-mapping.md"
+)
 
-# Exactly what the bundle's §2 leaves out, expressed as paths into the object.
-_OMITTED_BY_THE_BUNDLE: tuple[tuple[str, ...], ...] = (
+# The four the bundle's own correction names, verbatim from that document.
+_NAMED_BY_THE_CORRECTION: tuple[tuple[str, ...], ...] = (
     ("evidence_family_id",),
     ("review_state",),
     ("classification", "rights"),
     ("times", "recorded_at"),
 )
 
+# Field names §2 demonstrably DOES discuss. Used as the innocence control on the section
+# extractor below: if a heading is renamed and extraction silently yields nothing, every
+# field would look absent and the measured gap would balloon instead of failing.
+_DISCUSSED_IN_SECTION_TWO: tuple[str, ...] = (
+    "document_id",
+    "source_span",
+    "stance",
+    "provenance",
+)
+
 
 def _load() -> dict[str, Any]:
     return json.loads(_FIXTURE.read_text(encoding="utf-8"))
+
+
+def _schema() -> dict[str, Any]:
+    return json.loads(_SCHEMA.read_text(encoding="utf-8"))
 
 
 def _without(payload: dict[str, Any], path: tuple[str, ...]) -> dict[str, Any]:
@@ -70,60 +103,122 @@ def _without(payload: dict[str, Any], path: tuple[str, ...]) -> dict[str, Any]:
     return out
 
 
+def _resolve(schema: dict[str, Any], node: dict[str, Any]) -> dict[str, Any]:
+    while "$ref" in node:
+        node = schema["$defs"][node["$ref"].rsplit("/", 1)[-1]]
+    return node
+
+
+def _required_paths(schema: dict[str, Any]) -> tuple[tuple[str, ...], ...]:
+    """Every required path in the published schema, walked recursively through $refs."""
+
+    found: list[tuple[str, ...]] = []
+
+    def walk(node: dict[str, Any], prefix: tuple[str, ...]) -> None:
+        node = _resolve(schema, node)
+        for name in node.get("required", []):
+            path = (*prefix, name)
+            found.append(path)
+            child = node.get("properties", {}).get(name)
+            if child is None:
+                continue
+            child = _resolve(schema, child)
+            if child.get("type") == "object" and child.get("required"):
+                walk(child, path)
+
+    walk(schema, ())
+    return tuple(found)
+
+
+def _section_two() -> str:
+    """§2 of the bundle -- the Evidence mapping table -- as raw text."""
+
+    text = _BUNDLE.read_text(encoding="utf-8")
+    match = re.search(r"^## 2\..*?(?=^## 3\.)", text, re.MULTILINE | re.DOTALL)
+    assert match is not None, (
+        f"could not locate '## 2.' in {_BUNDLE}. This module measures that section by "
+        "name; if the bundle was restructured, re-read it rather than deleting this test."
+    )
+    return match.group(0)
+
+
+def _never_named_in_section_two() -> set[tuple[str, ...]]:
+    """Required paths whose leaf name never appears in §2.
+
+    Name-absence is a CONSERVATIVE test for 'not mapped': a field §2 never mentions is
+    certainly not mapped by it. The converse does not hold -- §2 names `times.published_at`
+    only to say NAGA cannot supply it -- so presence is deliberately not read as coverage.
+    The error runs one way only, and it is the safe way: this set understates the gap.
+    """
+
+    section = _section_two()
+    return {
+        path
+        for path in _required_paths(_schema())
+        if not re.search(rf"\b{re.escape(path[-1])}\b", section)
+    }
+
+
 def test_the_baseline_fixture_is_genuinely_valid() -> None:
-    """Positive control. Without it every assertion below could pass vacuously.
+    """Innocence control. Without it every assertion below could pass vacuously.
 
-    Exercises the model AND the published schema AND the `object_hash` self-check — the
-    fixture's hash is the real one, so a broken hashing path fails here first.
-
-    Asserts explicitly rather than leaning on "did not raise": a validator that silently
-    stopped validating would keep a raise-only control green forever, and the four fields
-    are read back so this control also proves the fixture is not itself missing them.
+    Asserts explicitly rather than leaning on "did not raise", and reads the four fields
+    back so this also proves the fixture is not itself missing them. It does NOT claim to
+    exercise the hash self-check -- that is the guilt control's job, see correction 2.
     """
 
     payload = _load()
 
     evidence = Evidence.model_validate(payload)
-    assert evidence.object_hash == payload["object_hash"]
     assert evidence.evidence_family_id == payload["evidence_family_id"]
     assert evidence.review_state is not None
     assert evidence.classification.rights == payload["classification"]["rights"]
     assert evidence.times.recorded_at is not None
 
-    schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))
-    assert jsonschema.Draft202012Validator(schema).is_valid(payload)
+    assert jsonschema.Draft202012Validator(_schema()).is_valid(payload)
 
 
-def test_the_bundle_mapping_as_written_produces_an_invalid_evidence() -> None:
-    """The precondition itself: §2 as written does not survive validation.
+def test_a_corrupted_object_hash_is_refused() -> None:
+    """Guilt control for the hash self-check -- the innocence half cannot see it.
 
-    This is the whole claim the bundle makes in prose, executed. It fails on FOUR fields,
-    named — not merely "it fails", which would also be satisfied by a typo.
+    Measured 2026-08-26: with `Evidence.validate_evidence`'s comparison disabled, all
+    other tests in this module stayed green, because asserting that a parsed value equals
+    the raw value it came from is true whether or not anything recomputed it.
     """
 
-    crippled = _load()
-    for path in _OMITTED_BY_THE_BUNDLE:
-        crippled = _without(crippled, path)
+    payload = _load()
+    payload["object_hash"] = "f" * 64
 
     with pytest.raises(ValidationError) as excinfo:
-        Evidence.model_validate(crippled)
+        Evidence.model_validate(payload)
 
-    missing = {
-        tuple(str(part) for part in error["loc"])
-        for error in excinfo.value.errors()
-        if error["type"] == "missing"
-    }
-    assert missing == set(_OMITTED_BY_THE_BUNDLE), (
-        f"expected exactly the four fields the bundle omits, got {sorted(missing)}"
+    assert any(error["type"] == "object_hash_mismatch" for error in excinfo.value.errors()), (
+        f"expected an object_hash_mismatch, got {excinfo.value.errors()}"
     )
 
 
-@pytest.mark.parametrize("path", _OMITTED_BY_THE_BUNDLE, ids=lambda p: ".".join(p))
-def test_each_omitted_field_is_independently_required(path: tuple[str, ...]) -> None:
+def test_the_section_extractor_actually_reads_the_section() -> None:
+    """Innocence control on this module's own measuring instrument.
+
+    A renamed heading would make `_section_two` yield nothing, every field would look
+    unnamed, and the derived gap below would silently inflate to the full required set --
+    a broken probe reporting a catastrophe. Pin the instrument before trusting its number.
+    """
+
+    section = _section_two()
+    assert len(section) > 500
+    for name in _DISCUSSED_IN_SECTION_TWO:
+        assert re.search(rf"\b{name}\b", section), f"§2 no longer discusses {name}"
+
+
+@pytest.mark.parametrize("path", _NAMED_BY_THE_CORRECTION, ids=lambda p: ".".join(p))
+def test_each_field_named_by_the_correction_is_independently_required(
+    path: tuple[str, ...],
+) -> None:
     """Per-field, not per-batch.
 
-    Dropping all four at once and seeing a failure would not tell you WHICH of them is
-    load-bearing — three could be optional and the suite would look just as green.
+    Dropping all four at once and seeing a failure would not tell you WHICH is
+    load-bearing -- three could be optional and the suite would look just as green.
     """
 
     with pytest.raises(ValidationError) as excinfo:
@@ -137,18 +232,66 @@ def test_each_omitted_field_is_independently_required(path: tuple[str, ...]) -> 
     assert missing == {path}
 
 
-@pytest.mark.parametrize("path", _OMITTED_BY_THE_BUNDLE, ids=lambda p: ".".join(p))
+@pytest.mark.parametrize("path", _NAMED_BY_THE_CORRECTION, ids=lambda p: ".".join(p))
 def test_the_published_schema_agrees_with_the_model(path: tuple[str, ...]) -> None:
-    """Two enforcement surfaces, one answer — or the adapter can satisfy one and not both.
+    """Two enforcement surfaces, one answer -- or an adapter can satisfy one and not both.
 
     The pydantic model is what production constructs; the JSON Schema is what an
     independent producer builds against. A field required by one and optional by the other
     is a gap an adapter falls straight through, so the divergence is the thing under test.
     """
 
-    schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))
     with pytest.raises(jsonschema.ValidationError):
-        jsonschema.validate(_without(_load(), path), schema)
+        jsonschema.validate(_without(_load(), path), _schema())
+
+
+def test_the_bundles_own_correction_undercounts_the_gap() -> None:
+    """The finding the first version of this module missed by trusting the document.
+
+    §2 omits far more than the four its correction names. Both numbers are DERIVED here --
+    from the schema's recursive required set and from the section's own text -- so if
+    anyone closes part of the gap, this fails and forces a re-read instead of quietly
+    agreeing with a stale sentence.
+    """
+
+    absent = _never_named_in_section_two()
+    named = set(_NAMED_BY_THE_CORRECTION)
+
+    assert named < absent, (
+        "the bundle's four should be a strict subset of the fields §2 never names; got "
+        f"named={sorted(named)} absent={sorted(absent)}"
+    )
+    assert len(_required_paths(_schema())) == 32
+    assert len(absent) == 15, (
+        "the measured gap in §2 changed. Re-read the bundle and this module's docstring "
+        f"before touching this number; absent={sorted(absent)}"
+    )
+
+
+def test_the_bundle_mapping_as_written_produces_an_invalid_evidence() -> None:
+    """The bundle's prose claim, executed for the four fields it names.
+
+    Scope, stated because an earlier docstring here over-claimed: this removes the four
+    fields the correction names from the canonical fixture. It does not replay §2's
+    mapping -- nothing in this repository executes that document -- so it proves those
+    four are load-bearing, not that §2 as a whole was faithfully reproduced.
+    """
+
+    crippled = _load()
+    for path in _NAMED_BY_THE_CORRECTION:
+        crippled = _without(crippled, path)
+
+    with pytest.raises(ValidationError) as excinfo:
+        Evidence.model_validate(crippled)
+
+    missing = {
+        tuple(str(part) for part in error["loc"])
+        for error in excinfo.value.errors()
+        if error["type"] == "missing"
+    }
+    assert missing == set(_NAMED_BY_THE_CORRECTION), (
+        f"expected exactly the four fields the correction names, got {sorted(missing)}"
+    )
 
 
 def test_evidence_classification_requires_rights_where_claim_does_not() -> None:
