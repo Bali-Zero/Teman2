@@ -626,12 +626,20 @@ def scan_stale_coverage_branches(
                  "--state", "all", "--json", "number"],
                 capture_output=True, text=True, timeout=20,
             )
-            if pr.returncode == 0:
-                try:
-                    if json.loads(pr.stdout or "[]"):
-                        continue  # a PR already exists — the harvester did its job
-                except json.JSONDecodeError:
-                    pass  # unreadable answer — fall through, treat as "no PR" below
+            if pr.returncode != 0:
+                # gh installed but failing (offline/unauthenticated/rate-
+                # limited) is NOT evidence of "no PR" — this docstring's own
+                # fail-OPEN contract requires skipping here, not flagging.
+                # (2026-08-27 refuter finding: this branch previously fell
+                # through to a false RED finding, the exact inverse of what
+                # has_any_pr() in spark_coverage_harvester.py already does
+                # correctly for the same gh-error case.)
+                continue
+            try:
+                if json.loads(pr.stdout or "[]"):
+                    continue  # a PR already exists — the harvester did its job
+            except json.JSONDecodeError:
+                pass  # unreadable answer — fall through, treat as "no PR" below
 
             m = _COVERAGE_BRANCH_RE.match(short)
             module = m.group("module") if m else short

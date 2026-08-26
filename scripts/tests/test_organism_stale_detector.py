@@ -1189,6 +1189,46 @@ def test_scan_stale_coverage_branches_innocence_existing_pr_not_flagged(tmp_path
     assert findings == [], f"a branch with an existing PR must not be flagged: {findings}"
 
 
+def _make_fake_gh_failing(bin_dir):
+    """A `gh` stand-in that always fails, like an offline or unauthenticated
+    machine (gh installed, but `gh pr list` errors) — SYMBIOSIS Law 6:
+    disconnection is not evidence of a stuck branch.
+    """
+    gh_path = os.path.join(bin_dir, "gh")
+    with open(gh_path, "w", encoding="utf-8") as fh:
+        fh.write(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "sys.stderr.write('gh: not logged in to any GitHub hosts\\n')\n"
+            "sys.exit(1)\n"
+        )
+    os.chmod(gh_path, os.stat(gh_path).st_mode | _stat.S_IEXEC | _stat.S_IXGRP | _stat.S_IXOTH)
+
+
+def test_scan_stale_coverage_branches_innocence_gh_error_fails_open(tmp_path, monkeypatch):
+    # 2026-08-27 refuter finding: `gh` installed but failing (offline/
+    # unauthenticated/rate-limited — pr.returncode != 0) fell through to a
+    # false RED finding, directly contradicting this function's own
+    # docstring ("fails OPEN ... on any git/gh error") and the inverse of
+    # what has_any_pr() in spark_coverage_harvester.py already does
+    # correctly for the identical gh-error case. This test would have
+    # failed against the pre-fix code.
+    from organism_stale_detector import scan_stale_coverage_branches
+
+    branch = "codex/coverage-foo_bar-20260825_030000"
+    repo = _make_repo_with_coverage_branch(tmp_path, branch, age_hours=48)
+    bin_dir = tmp_path / "fakebin"
+    bin_dir.mkdir(exist_ok=True)
+    _make_fake_gh_failing(str(bin_dir))
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+    findings = scan_stale_coverage_branches(repo=repo, stale_hours=24.0)
+    assert findings == [], (
+        f"gh failing (offline/unauthenticated) must fail OPEN per this "
+        f"function's own docstring, never a false RED finding: {findings}"
+    )
+
+
 def test_scan_stale_coverage_branches_fails_open_on_unreadable_repo(tmp_path, monkeypatch):
     from organism_stale_detector import scan_stale_coverage_branches
 

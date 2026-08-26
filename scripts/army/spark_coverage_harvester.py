@@ -271,10 +271,22 @@ def harvest(repo: str, remote: str, base: str, repo_slug: str, log_dir: Path,
         pr_url = pr.stdout.strip().splitlines()[-1] if pr.stdout.strip() else ""
         # Arm auto-merge NAKED (no --squash — the merge queue rejects every
         # strategy flag) so it merges only once CI actually goes green on
-        # its own; never a forced/admin merge.
+        # its own; never a forced/admin merge. --repo is required here like
+        # every other gh call in this function: omitting it makes the
+        # command depend on the invoker's cwd (which this harvester's own
+        # --repo flag exists specifically not to assume), and the result
+        # used to be discarded outright — a PR "opened" with exit 0 even if
+        # arming silently failed. (2026-08-27 refuter finding: shipping a
+        # new exit-0-nothing-done path in the very PR that repairs that
+        # class of bug.) Failure is now recorded in detail, not swallowed —
+        # action stays "opened" because the PR itself genuinely was.
         num = pr_url.rstrip("/").rsplit("/", 1)[-1]
-        run(["gh", "pr", "merge", num, "--auto"])
-        results.append(HarvestResult(c.branch, "opened", pr_url=pr_url))
+        merge = run(["gh", "pr", "merge", num, "--auto", "--repo", repo_slug])
+        detail = (
+            "" if merge.returncode == 0
+            else f"opened but auto-merge arm failed: {merge.stderr.strip()[:300]}"
+        )
+        results.append(HarvestResult(c.branch, "opened", pr_url=pr_url, detail=detail))
 
     return results
 
