@@ -20,6 +20,7 @@ shape that no longer exists.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 
@@ -306,6 +307,85 @@ async def test_one_poison_job_does_not_roll_back_a_sibling_that_succeeded(conn):
     assert (await _row(conn, poison_id))["dispatched_at"] is None
     assert (await _row(conn, good_id))["dispatched_at"] is not None
     assert [j.job_type for j in seen] == ["refund_email"]
+
+
+# --------------------------------------------------------------------------
+# cancellation is not a handler failure
+# --------------------------------------------------------------------------
+
+
+async def test_a_raised_cancellation_leaves_the_batch_and_charges_no_attempt(conn):
+    """`except Exception` must not swallow a `CancelledError`.
+
+    Widening that catch to `BaseException` would look harmless in review and be
+    wrong twice over: the interrupted job would be charged an attempt for work
+    nobody asked it to finish, and a worker told to shut down would carry on
+    delivering customer email for the rest of the batch. Both are pinned here.
+
+    This raises the error rather than cancelling the task, so it proves the
+    `except` clause's reach, not the behaviour of a real cancellation while an
+    await is in flight — that is the next test.
+    """
+
+    order_id = await _seed_order(conn)
+    first = await _enqueue(conn, order_id, "payment_paid_email")
+    second = await _enqueue(conn, order_id, "payment_paid_email")
+
+    seen: list[OutboxJob] = []
+
+    async def cancels(job: OutboxJob) -> None:
+        seen.append(job)
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        await drain_once(conn, {"payment_paid_email": cancels})
+
+    assert len(seen) == 1, "the pass must stop at the cancelled job, not continue"
+
+    for row_id in (first, second):
+        row = await _row(conn, row_id)
+        assert row["attempts"] == 0, "a cancelled attempt is rolled back, not spent"
+        assert row["dispatched_at"] is None
+
+
+async def test_a_real_task_cancellation_rolls_the_attempt_back(conn):
+    """The same property under an actual `task.cancel()` mid-await.
+
+    The row is observed from a SECOND connection: the cancelled one is unwinding
+    its own transaction, and asking it about the row would be asking the suspect
+    to describe the crime. A `wait_for` bounds the read so a row left locked
+    fails the test instead of hanging the suite.
+    """
+
+    order_id = await _seed_order(conn)
+    row_id = await _enqueue(conn, order_id, "payment_paid_email")
+
+    entered = asyncio.Event()
+
+    async def blocks(job: OutboxJob) -> None:
+        entered.set()
+        await asyncio.sleep(3600)
+
+    task = asyncio.create_task(drain_once(conn, {"payment_paid_email": blocks}))
+    await asyncio.wait_for(entered.wait(), timeout=10)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    observer = await _connect()
+    try:
+        row = await asyncio.wait_for(
+            observer.fetchrow(
+                "SELECT attempts, dispatched_at FROM garuda_order_outbox WHERE id = $1",
+                row_id,
+            ),
+            timeout=10,
+        )
+    finally:
+        await observer.close()
+
+    assert row["attempts"] == 0, "the interrupted attempt must not be charged"
+    assert row["dispatched_at"] is None
 
 
 # --------------------------------------------------------------------------
