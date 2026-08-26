@@ -1,3 +1,9 @@
+---
+date: 2026-08-26
+domain: operations
+adversarial_review: kimi-k3
+---
+
 # Contract map — Intel Lake + MATA GARUDA topology, mapped onto the P04 frozen contract
 
 All file paths are relative to repo root. All line numbers were read in this session on the
@@ -40,8 +46,15 @@ Trigger: AFTER INSERT ON intel_items -> notify_intel_lake_event() -> events_outb
   (last_seen_at refresh) does not fire.
 ```
 
-Later migrations touching this schema (found via `grep -rl "intel_lake\|IntelLake"
-apps/backend-rag/backend/db/migrations_v2/`):
+Later migrations touching this schema. **CORRECTED 2026-08-26 (adversarial review):** the
+pattern below is a LITERAL-STRING search and therefore cannot match a migration that touches
+this schema by TABLE name. At least one such file exists and is absent from the list —
+`205_cockpit_intents.sql`, which references `intel_items` (comment-only, so the conclusion
+happens to survive; the METHOD does not). The list below is a lower bound, not the footprint.
+A second inconsistency in the same sentence: `171` is listed as found "via" this pattern, but
+re-running the pattern this session returns `168, 174, 175, 187, 192` — not 171. Original
+pattern, kept verbatim so the gap is reproducible: `grep -rl "intel_lake\|IntelLake"
+apps/backend-rag/backend/db/migrations_v2/`:
 `171_intel_item_nb_pushes.sql` (junction table for NB pushes — §3), `174` and `192`
 (`*_jsonb_double_encoding_repair.sql` — two separate double-encoding incidents, one on
 `intel_lake`, one on the bridge outbox; both are repair migrations for a bug class the
@@ -58,7 +71,8 @@ docstring's stated invariant ("Content drift → INSERT new row"); the actual `O
 UPDATE` only touches `last_seen_at`. **This is a live discrepancy between the file's own
 docstring and its own SQL** — flagged, not fixed (out of this lane's mandate; see UNKNOWNS.md).
 
-### 1.3 Producers (found via grep for the two live-cron consumers of the API)
+### 1.3 Producers (found via grep for the two live-cron consumers of the API — note the
+heading says "consumers" because the grep TARGET was the consumers; the section lists producers)
 
 - Pro-local cron `scripts/intel-lake-outbox-drain/` (LaunchAgent
   `com.balizero.intel-lake.outbox-drain.minute`, 60s) — drains a local SQLite outbox
@@ -80,12 +94,21 @@ docstring and its own SQL** — flagged, not fixed (out of this lane's mandate; 
 ### 1.4 Tier-1/Tier-2 routing — confirms the packet's "no working Tier-2" claim
 
 `intel_lake_router.py:12` docstring: `"needs_review: NO rule matched → Tier 2 LLM (weekly)"`.
-Enumerated every function in the file (`grep -n "async def \|^def "`): `_build_press_pattern`,
-`_compile_keyword_pattern`, `_press_content_gate`, `route_event`, `backfill_unrouted`,
-`backfill_needs_review`, `register_intel_lake_router_handlers`. **None calls an LLM.**
+Functions in the file. **CORRECTED after a cross-family adversarial review (Kimi K3,
+2026-08-26):** the pattern this bundle originally ran, `grep -n "async def \|^def "`, is
+anchored at column 0 for the sync case, so it is blind to INDENTED sync methods by
+construction. It returned seven names — `_build_press_pattern`, `_compile_keyword_pattern`,
+`_press_content_gate`, `route_event`, `backfill_unrouted`, `backfill_needs_review`,
+`register_intel_lake_router_handlers` — and MISSED two: `def __init__` (line 267) and
+`def _classify` (line 387), both indented inside `class IntelLakeRouter`. `_classify` is the
+actual rules engine. Re-read directly this session: neither of the two missed methods calls an
+LLM either, so the substantive conclusion survives — but it survives on a re-read, NOT on the
+enumeration, and a sync LLM helper would have escaped the original pattern unseen.
 `backfill_needs_review` (line 458) re-applies the same Tier-1 regex rules to the `needs_review`
 pool — it is a retry of Tier 1, not an implementation of Tier 2. The packet's Live Baseline
-claim ("no working Tier-2 enrichment path") is confirmed by code enumeration, not inference.
+claim ("no working Tier-2 enrichment path") is confirmed by reading all nine functions,
+including the two the first pattern missed. Do not cite it as "confirmed by complete
+enumeration": the enumeration was incomplete and was repaired by hand.
 
 There is also a **second**, Pro-local implementation of Tier-1 routing:
 `scripts/intel-lake-router-a2/intel-lake-router-cron-standalone.py`, whose own docstring states
@@ -144,7 +167,8 @@ prints it — no distinct alert path grepped in this file).
 Module docstring (lines 1-14): converts enriched stream items for 3 domains
 (`immigration_visa`, `tax_fiscal`, `investment_licensing`) into `WR2 research_dossiers`-compatible
 envelopes and publishes to `bridge:outbound`. `WR2_ENVELOPE_TYPE = "intel.research_dossier"`
-(line 34). **`"intel.research_dossier"` is not a key in `PUSH_ROUTING`.**
+(line 36 — an earlier revision of this bundle said 34; re-measured 2026-08-26).
+**`"intel.research_dossier"` is not a key in `PUSH_ROUTING`.**
 
 **This is the packet's Live Baseline claim — "a broken WR2 research-dossier bridge whose
 consumer acknowledges unsupported message types" — confirmed by direct cross-file read, not
@@ -207,7 +231,7 @@ payload, and never routed to a destination this CLAUDE.md's ban list names.
 "*.py" | wc -l` → 26 including `__init__.py`). The two Cohort-B-relevant kinds, read in full
 this session:
 
-### 5.1 `IntelEvent` (`models/intel_event.py`, 306 lines)
+### 5.1 `IntelEvent` (`models/intel_event.py`, 305 lines)
 
 | Frozen field | Intel Lake today | Gap |
 |---|---|---|
@@ -222,9 +246,9 @@ this session:
 | `classification.{language,domain,risk_class,sensitivity,rights}` | `language`, partial `topic_tags` (not `domain`) exist; **`risk_class` and `sensitivity` do not exist anywhere in the Intel Lake schema** | this is the biggest single gap — Intel Lake has no sensitivity boundary in its own schema today; the classification described in §4 (OSINT-blindato) is enforced entirely *outside* Intel Lake, in MATA GARUDA's own code and org boundary, not in the shared table |
 | `lineage.{pipeline_run_id,input_event_refs,parser_version,model_version,prompt_version}` | absent entirely | this is deliverable #1's "lineage" requirement and packet metric "100% producer/run/artifact lineage for the canary window" — currently 0% by construction, nothing tracks a run id |
 | `payload_ref` (discriminated: durable reference vs. inline-public, with content-hash verification on the inline arm) | `raw_payload JSONB` inline always, uncapped by classification (50KB size cap only) | no reference-storage arm exists at all; every payload today is "inline," which the frozen contract only permits when `sensitivity=public` — Intel Lake cannot express "internal"/"confidential"/"restricted_osint"/"client_pii" today, so it cannot express the constraint it would need to obey |
-| `object_hash` (RFC 8785 canonical + sha256, self-verifying) | absent | new, and Intel Lake has no existing canonicalization/hashing utility of its own — would need to import `research_os.hashing` |
+| `object_hash` (RFC 8785 canonical + sha256, self-verifying) | absent | new, and Intel Lake has no existing canonicalization/hashing utility of its own — would need to import `research_os.hashing`. **⚠️ D7 DEPENDENCY, flagged 2026-08-26:** `apps/mata-garuda` cannot import it — its own `CLAUDE.md` caps runtime deps at `pydantic>=2`. So any MATA-side `object_hash`, or the hash reconciliation in IMPLEMENTATION-SCOPE.md §5 step 6, needs the SAME RFC 8785+sha256 digest computed identically in TWO independent implementations — which is deliverable **D7 (deterministic cross-implementation hashing)**, a primitive `contract-pass-001.md` §7 forbids Cohort B from relying on. Do not design that reconciliation until D7 lands. |
 
-### 5.2 `StoryCluster` (`models/story_cluster.py`, 230 lines)
+### 5.2 `StoryCluster` (`models/story_cluster.py`, 229 lines)
 
 No equivalent exists in Intel Lake at all — confirmed by schema read (§1.2): the only grouping
 mechanism today is the `UNIQUE(canonical_url)` constraint, which is exact-URL dedup, not
@@ -249,11 +273,48 @@ promoted by default (see METRICS-AND-GOLDEN-SET.md §3).
 Per `contract-pass-001.md` §7 (re-read this session, not paraphrased): the migration for this
 table is additive, has a real rollback, and its apply→rollback→re-apply cycle passed against a
 throwaway database — but it **is applied in no environment**, confirmed absent from all 89 local
-databases censused that session. `apps/backend-rag/backend/services/research_os/` (7 files:
+databases censused **by that prior session, and NOT re-measured here** — this bundle had no
+live-DB access at all (UNKNOWNS.md §1), so "89" is a carried-over count, not a confirmation.
+It is quoted for provenance only and contradicts this bundle's own "no live counts anywhere"
+rule if read as current. `apps/backend-rag/backend/services/research_os/` (8 files:
 `__init__.py`, `_core_path.py`, `action_intent_adapter.py`, `action_item_adapter.py`,
 `legacy_magazine.py`, `loss_report.py`, `operational_receipt_adapter.py`,
 `synthesis.py` — confirmed by directory listing this session) has adapters for
 `ActionIntent`/`ActionItem`/`OperationalReceipt` — **none for `IntelEvent` or `StoryCluster`**.
-No file in `apps/backend-rag` imports `research_os.models.intel_event` or
-`research_os.models.story_cluster` (not grepped exhaustively this session — flagged as an
+**CORRECTED 2026-08-26:** an earlier revision asserted that no file in `apps/backend-rag`
+imports `research_os.models.intel_event` or `research_os.models.story_cluster`. That is FALSE —
+`apps/backend-rag/backend/tests/unit/research_os/test_models_and_fixtures.py:11,13` imports
+both. The substantive point stands (the importer is a TEST; no adapter exists), but the
+sentence as written was a claim the bundle had not run the search to support (it was hedged as an
 open verification in UNKNOWNS.md, but no adapter file exists to import them from regardless).
+
+
+## Adversarial review
+
+**Seat:** Kimi K3 (`kimi -m kimi-code/k3`), cross-family — neither the model that wrote this
+bundle nor the session that gated it. Run 2026-08-26 against a FROZEN diff (head `2807f50e9`):
+the generator was dead before the refuter was dispatched, so nothing moved under it.
+
+**Verdict: DEFECTIVE on method, sound on its two headline findings.** The bridge ACK-drop and the
+`intel_lake_service.py` docstring-vs-SQL drift both check out on independent re-read. The
+systematic defect is a *class*: single-search results stated with more precision than the search
+supports. Every finding below was re-verified against disk by the gating session before it was
+accepted — the refuter is not trusted either (superscar #6).
+
+| # | Finding | Verified | Disposition |
+|---|---|---|---|
+| 1 | D7 dependency unflagged: `object_hash` + MATA-side hash reconciliation need the same digest in two implementations, but `apps/mata-garuda` caps deps at `pydantic>=2` | TRUE (`grep D7` → 0 hits in bundle) | **FIXED** — §5.1 now flags it as a §7-forbidden primitive; do not design that reconciliation until D7 lands |
+| 2 | "Enumerated every function" used `^def ` — blind to indented sync methods; missed `__init__` (267) and `_classify` (387), the actual rules engine | TRUE | **FIXED** — §1.4 restated; conclusion survives on a re-read, not on the enumeration |
+| 3 | "7 files" while listing 8 names in the same sentence | TRUE (`ls` → 8) | **FIXED** |
+| 4 | Migration list from a literal-string grep, misses `205_cockpit_intents.sql` (`intel_items`); and `171` is listed as found by a pattern that does not return it | TRUE | **FIXED** — list relabelled a lower bound, both gaps named |
+| 5 | Line counts off: 306→305, 230→229, `WR2_ENVELOPE_TYPE` line 34→36 | TRUE | **FIXED** — re-measured |
+| 6 | "No file in `apps/backend-rag` imports `intel_event`/`story_cluster`" — false, a test file imports both | TRUE (hedged in-sentence and in UNKNOWNS §2) | **FIXED** — restated; substantive point (importer is a test, no adapter) stands |
+| 7 | "89 local databases" is a count carried from a prior session, contradicting this bundle's own "no live counts anywhere" | TRUE | **FIXED** — marked carried-over, not a confirmation |
+| 8 | §3.4 arithmetic defeats itself: needs >100, sets the two safety-critical strata to exactly 100; 1/100 = 1.00%, not < 1% | TRUE | **FIXED** — >=101 required, 810 total moves |
+| 9 | README cites §3 (NotebookLM feed) for the ACK-drop finding, which lives in §2.2/§2.3 | TRUE | **FIXED** |
+| 10 | UNKNOWNS §2 "two producer entrypoints" vs §1.3, which says `intel_radar` writes by a SEPARATE path | PARTIAL | **FIXED** — wording corrected, overstatement removed |
+| 11 | "Every dossier envelope has been ACKed-and-dropped since the producer was written" is a live-traffic history claim provable only from code paths | TRUE (overreach) | **ACCEPTED AS LIMIT** — the drop PATH is proven by direct read; whether the producer ever ran with traffic is unknowable without the live stream this bundle could not reach (UNKNOWNS §1) |
+
+**Not a finding** (refuter checked, found sound): migration numbering — head 287, 282 absent,
+`272_wa_broker_package_text.sql` WhatsApp-broker-owned; the bundle correctly refuses to bind an
+integer. Readiness claims — disclaimed consistently across README and UNKNOWNS §5.

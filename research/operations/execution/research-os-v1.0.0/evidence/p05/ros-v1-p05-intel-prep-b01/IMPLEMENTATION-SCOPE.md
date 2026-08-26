@@ -1,3 +1,9 @@
+---
+date: 2026-08-26
+domain: operations
+adversarial_review: kimi-k3
+---
+
 # Exact implementation scope — future file list, lease list, migration note
 
 **Nothing in this document was created or edited outside this bundle.** Every path below is
@@ -186,3 +192,34 @@ lease-check hook, not this lane.
 9. "Emit candidate DecisionPackets only after contract validation" — out of scope for the
    preparation bundle; the `DecisionPacket` frozen model exists in the 25-model list
    (CONTRACT-MAP.md §5) but was not read line-by-line this session (UNKNOWNS.md).
+
+
+## Adversarial review
+
+**Seat:** Kimi K3 (`kimi -m kimi-code/k3`), cross-family — neither the model that wrote this
+bundle nor the session that gated it. Run 2026-08-26 against a FROZEN diff (head `2807f50e9`):
+the generator was dead before the refuter was dispatched, so nothing moved under it.
+
+**Verdict: DEFECTIVE on method, sound on its two headline findings.** The bridge ACK-drop and the
+`intel_lake_service.py` docstring-vs-SQL drift both check out on independent re-read. The
+systematic defect is a *class*: single-search results stated with more precision than the search
+supports. Every finding below was re-verified against disk by the gating session before it was
+accepted — the refuter is not trusted either (superscar #6).
+
+| # | Finding | Verified | Disposition |
+|---|---|---|---|
+| 1 | D7 dependency unflagged: `object_hash` + MATA-side hash reconciliation need the same digest in two implementations, but `apps/mata-garuda` caps deps at `pydantic>=2` | TRUE (`grep D7` → 0 hits in bundle) | **FIXED** — §5.1 now flags it as a §7-forbidden primitive; do not design that reconciliation until D7 lands |
+| 2 | "Enumerated every function" used `^def ` — blind to indented sync methods; missed `__init__` (267) and `_classify` (387), the actual rules engine | TRUE | **FIXED** — §1.4 restated; conclusion survives on a re-read, not on the enumeration |
+| 3 | "7 files" while listing 8 names in the same sentence | TRUE (`ls` → 8) | **FIXED** |
+| 4 | Migration list from a literal-string grep, misses `205_cockpit_intents.sql` (`intel_items`); and `171` is listed as found by a pattern that does not return it | TRUE | **FIXED** — list relabelled a lower bound, both gaps named |
+| 5 | Line counts off: 306→305, 230→229, `WR2_ENVELOPE_TYPE` line 34→36 | TRUE | **FIXED** — re-measured |
+| 6 | "No file in `apps/backend-rag` imports `intel_event`/`story_cluster`" — false, a test file imports both | TRUE (hedged in-sentence and in UNKNOWNS §2) | **FIXED** — restated; substantive point (importer is a test, no adapter) stands |
+| 7 | "89 local databases" is a count carried from a prior session, contradicting this bundle's own "no live counts anywhere" | TRUE | **FIXED** — marked carried-over, not a confirmation |
+| 8 | §3.4 arithmetic defeats itself: needs >100, sets the two safety-critical strata to exactly 100; 1/100 = 1.00%, not < 1% | TRUE | **FIXED** — >=101 required, 810 total moves |
+| 9 | README cites §3 (NotebookLM feed) for the ACK-drop finding, which lives in §2.2/§2.3 | TRUE | **FIXED** |
+| 10 | UNKNOWNS §2 "two producer entrypoints" vs §1.3, which says `intel_radar` writes by a SEPARATE path | PARTIAL | **FIXED** — wording corrected, overstatement removed |
+| 11 | "Every dossier envelope has been ACKed-and-dropped since the producer was written" is a live-traffic history claim provable only from code paths | TRUE (overreach) | **ACCEPTED AS LIMIT** — the drop PATH is proven by direct read; whether the producer ever ran with traffic is unknowable without the live stream this bundle could not reach (UNKNOWNS §1) |
+
+**Not a finding** (refuter checked, found sound): migration numbering — head 287, 282 absent,
+`272_wa_broker_package_text.sql` WhatsApp-broker-owned; the bundle correctly refuses to bind an
+integer. Readiness claims — disclaimed consistently across README and UNKNOWNS §5.
