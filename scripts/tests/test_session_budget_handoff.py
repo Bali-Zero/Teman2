@@ -21,7 +21,13 @@ import tempfile
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOOK = REPO_ROOT / "infra" / "claude-hooks" / "session_budget.py"
-LEAKED_SECRET = "sk-abc123def456ghi789"
+# not a secret: synthetic fixture value, shaped like an sk-... key only so it
+# matches session_budget.py's redaction regex — never a real credential. The
+# sk- shape is required to exercise the real pattern, so it necessarily reads
+# like a credential to a heuristic scanner; suppressed as a known false
+# positive on a fixture, not a live secret.
+# codeql[py/clear-text-storage-sensitive-data]
+FAKE_SECRET_FIXTURE = "sk-FIXTURE-not-a-real-key-000111222"
 
 
 def _init_repo_with_secret_diff(repo: pathlib.Path) -> None:
@@ -32,7 +38,7 @@ def _init_repo_with_secret_diff(repo: pathlib.Path) -> None:
     f.write_text("API_KEY = 'placeholder'\n")
     subprocess.run(["git", "-C", str(repo), "add", "config.py"], check=True)
     subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "init"], check=True)
-    f.write_text(f"API_KEY = '{LEAKED_SECRET}'\n")  # uncommitted — shows up in `git diff`
+    f.write_text(f"API_KEY = '{FAKE_SECRET_FIXTURE}'\n")  # uncommitted — shows up in `git diff`
 
 
 def _run_hook(env_home: pathlib.Path, payload) -> tuple:
@@ -69,7 +75,7 @@ def main() -> int:
         if handoff.exists():
             text = handoff.read_text()
 
-            leaked = LEAKED_SECRET in text
+            leaked = FAKE_SECRET_FIXTURE in text
             ok = not leaked
             fails += 0 if ok else 1
             print(f"  [{'OK ' if ok else 'FAIL'}] secret NOT in handoff (leaked={leaked})")

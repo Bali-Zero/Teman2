@@ -160,8 +160,8 @@ def main() -> int:
             os.makedirs(os.path.dirname(SUMMARY_LOG), exist_ok=True)
             with open(SUMMARY_LOG, "a") as f:
                 f.write(json.dumps(summary) + "\n")
-        except Exception:
-            pass
+        except OSError:
+            pass  # fail-open: summary log write is best-effort telemetry, never worth failing Stop over
     except Exception:
         pass  # reporting hook — never fail Stop over a telemetry bug
 

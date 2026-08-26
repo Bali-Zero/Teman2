@@ -275,6 +275,33 @@
           "scar": ["W80", "wave15-live-reap"],
           "symbols": {},
           "tests": ["infra/claude-hooks/test_subagent_stop_verify.py"]
+        },
+        "infra/claude-hooks/gate_coverage.py": {
+          "scar": ["superscar-2-generalization"],
+          "symbols": {},
+          "tests": [
+            "scripts/tests/test_gate_coverage_record_latency.py",
+            "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
+          ],
+          "note": "K1 (2026-08-27): shared library, not itself a registered hook event — a single record(hook_name, decision, payload) call imported by the four PreToolUse gates (host_boundary, worktree_isolation, orchestrate_gate, model_routing_gate) so a gate-eligible tool call that never produced a decision (fail-open on timeout/crash/fork-failure) is directly visible as a gap, see gate_coverage_report.py. Never blocks, never raises past its own try/except (contract: <5ms, fire-and-forget JSON-line append) — no allow/deny decision of its own to prove guilt/innocence on, so this entry carries file-level tests rather than a guilt+innocence pair: a latency-regression bound (200 calls, generous 20ms/call average — catches gross regressions, not a tight timing assertion) plus the cross-hook garbage-payload fail-open sweep. Kill switch GATE_COVERAGE_OFF=1."
+        },
+        "infra/claude-hooks/gate_coverage_report.py": {
+          "scar": ["superscar-2-generalization"],
+          "symbols": {},
+          "tests": [
+            "scripts/tests/test_gate_coverage_report.py",
+            "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
+          ],
+          "note": "K1 (2026-08-27): Stop hook, reporting only — prints `gate coverage: <hook>: decided X of Y tool calls` per PreToolUse gate by diffing gate_coverage.py's recorded decisions against the transcript's own gate-eligible tool_use count (GATE_MATCHERS, copied verbatim from settings.json matchers). Never blocks Stop: every exception degrades to printing nothing and exiting 0 (module docstring: 'Fail-open everywhere: this is a REPORTING hook, never a gate'). No block/allow contract of its own — the guilt+innocence antidote is expressed here as a trap-table instead: test_gate_coverage_report.py proves guilt (2 of 5 recorded decisions reports '2 of 5', not silently rounding to full coverage) and innocence (5 of 5 recorded reports '5 of 5', and 0 of 5 pure fail-open reports '0 of 5') against a real subprocess invocation, plus garbage/empty-stdin exit-0. Kill switch GATE_COVERAGE_OFF=1 (shared with gate_coverage.py)."
+        },
+        "infra/claude-hooks/session_budget.py": {
+          "scar": ["lesson_a_subagents_idle_is_not_its_report"],
+          "symbols": {},
+          "tests": [
+            "scripts/tests/test_session_budget_handoff.py",
+            "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
+          ],
+          "note": "K3/F7 (2026-08-27): registered on THREE hook events (SubagentStop, SessionEnd, PreCompact — one script, event told apart via payload['hook_event_name'], same precedent as mailbox_inject.py in this directory). Writes an on-death handoff artifact (cwd/branch/git-diff/last-tool-names) so a turn that dies without a final message still leaves a trace. Deliberately NO real budget enforcement (2026-08-26 retro §3bis, Sol's refutation of the original F7 proposal) — visibility only, never a gate: it never blocks, never raises past main(), degrades silently on every failure. No allow/deny decision to prove guilt/innocence on, so this entry carries file-level tests: test_session_budget_handoff.py proves the one real correctness property that IS a guilt/innocence pair — a secret-shaped diff line (`sk-...`) is redacted to `[REDACTED]` (guilt: the secret must never reach the written artifact) while the surrounding non-secret diff --stat filename survives verbatim (innocence: redaction must not eat innocent content) — plus exit-0 on empty/malformed stdin. Kill switch SESSION_BUDGET_OFF=1."
         }
       },
       "exempt": {

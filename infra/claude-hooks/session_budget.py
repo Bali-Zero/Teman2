@@ -148,7 +148,8 @@ def _bump_compaction_counter(session_id: str) -> int:
         n = 0
         if os.path.exists(path):
             try:
-                n = int((open(path).read() or "0").strip() or "0")
+                with open(path) as f:
+                    n = int((f.read() or "0").strip() or "0")
             except Exception:
                 n = 0
         n += 1
@@ -163,9 +164,12 @@ def _read_compaction_counter(session_id: str) -> int:
     try:
         path = os.path.join(COUNTER_DIR, f"{session_id}.compactions")
         if os.path.exists(path):
-            return int((open(path).read() or "0").strip() or "0")
-    except Exception:
-        pass
+            with open(path) as f:
+                return int((f.read() or "0").strip() or "0")
+    except OSError:
+        pass  # fail-open: missing/unreadable counter file — 0 is the honest answer, never crash a hook
+    except ValueError:
+        pass  # fail-open: counter file holds non-numeric garbage — same honest-zero answer
     return 0
 
 
