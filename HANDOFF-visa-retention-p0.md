@@ -68,6 +68,56 @@ PYTHONPATH=. python -m pytest \
 
 `-o addopts=` è **obbligatorio**: senza, `-q` diventa `-qq` e la riga `N passed` sparisce.
 
+## 🛑 SEQUENZA VINCOLATA — leggere prima di mergiare qualunque cosa (2026-08-27)
+
+**Non mergiare #5059 finché Zero non autorizza l'apply superuser della 289. Merge e apply stanno
+nella STESSA finestra.**
+
+Perché, in tre fatti misurati:
+
+1. `.github/workflows/fly-deploy.yml` parte **da solo** sul push a `main` che tocca
+   `apps/backend-rag/**`. Nessun passaggio umano tra il merge e la produzione.
+2. Il `release_command` applica la 289, che **declina** (il runner non possiede i binder) — ma la
+   metà Python della cura (`retention.py`, `retention_worker.py`) **viene rilasciata comunque**.
+3. Con la metà Python sola, `active_policy_available` torna True, il gate si **apre**, e la scrittura
+   raggiunge un trigger ancora cieco allo scope. Il test già in repo lo prova:
+   `test_decision_insert_fails_ambiguous_before_289_when_garuda_check_also_active` — `TOO_MANY_ROWS`.
+
+Oggi l'oracolo si ferma con garbo **prima** di scrivere. Dopo quel merge fallirebbe **durante**.
+_(Non verificato: se l'API lo assorba fail-closed o esca 500. In nessuno dei due casi è un
+miglioramento — non trattarlo come "tanto è già rotto".)_
+
+## 🔴 CANARY PRIMA DI ENFORCE (RULED Zero, 2026-08-27)
+
+Zero ha scelto: **si costruisce prima la leva di rollout, poi si prova ENFORCE.**
+
+Stato misurato oggi: `resolve_evaluate_mode()` (`evaluate_path.py:212`) legge **solo** l'env
+`VISA_ENGINE_EVALUATE_MODE`, globalmente. **Non esiste** canary, percentuale, cookie o header
+per-richiesta. Togliere SHADOW oggi porta i visitatori reali da 0% a 100% in un colpo — che contraddice
+il ruling ASSEMBLY-LINE dello stesso Zero (dark → 5% → 100%).
+
+E in ENFORCE `run_evaluation` **fail-close**: se la scrittura della decisione fallisce risponde
+`TEMPORARILY_UNAVAILABLE` in modalità ENGINE. Col retention gate rotto, ENFORCE oggi mostrerebbe a
+ogni visitatore una pagina di guasto, non l'oracolo.
+
+**Cosa costruire**: un override per-richiesta di `EngineMode`, default OFF, che non cambi nulla per
+chi non lo porta. La forma la decide chi implementa, ma tre vincoli non negoziabili:
+
+- default assente ⇒ comportamento **identico** a oggi (nessun visitatore tocca ENFORCE per sbaglio);
+- non deve poter essere attivato da un parametro pubblico indovinabile;
+- deve essere visibile nel record della decisione, così una riga nata in canary non si confonde con
+  una nata in produzione vera.
+
+**Aspettativa da tarare**: anche col canary, finché la 289 non è applicata la risposta ENFORCE sarà
+`TEMPORARILY_UNAVAILABLE` — il gate è uno stato del DB, non una proprietà della richiesta. Il canary
+permette comunque di provare live **tutto il resto** del percorso ENFORCE (routing, contratto ENGINE,
+rendering, gestione del guasto). La decisione vera resta dietro l'apply.
+
+⚠️ **L'oracolo chiede oggi 3 fatti su 45**: due richiedenti diversi ricevono una risposta
+**byte-identica**. In SHADOW non lo vede nessuno. In ENFORCE diventa il consiglio su cui una persona
+decide il proprio visto. Detto a Zero il 2026-08-27; è una sua chiamata (Legge 5), non da riaprire in
+autonomia — ma nemmeno da dimenticare quando si proporrà il 100%.
+
 ## 🔴 PROVA VIVA SUL SITO — protocollo obbligatorio (RULED Zero, 2026-08-27)
 
 Verbatim: _«e importante che ora faccia test live sul website direttamente e ad ogni tornata prende
