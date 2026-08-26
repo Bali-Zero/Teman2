@@ -448,8 +448,8 @@ defect_classes:
     bot: transport
     title: Epoch rollback rejected at the database, not just the app
     description: >-
-      F9 cross-family refutation finding #7: migration 281's "written ONLY
-      via compare-and-swap" was a comment, not a constraint. Migration 282
+      F9 cross-family refutation finding #7: migration 291's "written ONLY
+      via compare-and-swap" was a comment, not a constraint. Migration 292
       adds a trigger rejecting any UPDATE that decreases leader_epoch,
       independent of whether application code stays correct.
     source: "F9-REFUTATION-2026-08-25.md #7 (mine)"

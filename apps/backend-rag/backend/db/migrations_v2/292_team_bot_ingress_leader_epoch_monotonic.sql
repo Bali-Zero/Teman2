@@ -1,15 +1,16 @@
--- Migration 282: team_bot_ingress_leader_epoch_monotonic
+-- Migration 292: team_bot_ingress_leader_epoch_monotonic
 -- (I DUE BOT, lane B5 -- cross-family refutation finding #7,
 -- F9-CALLBACK-WRITE-FENCE-SPEC.md)
 --
--- INTEGER BOUND PROVISIONALLY -- same LOCAL-FIRST renumbering convention as
--- 281's own header (LEGACY_PROMOTION_README.md). 282 is the correct next
--- integer against `feature/due-bot` at the time this file was written.
--- Renumber at final PR-train landing if another lane has since claimed 282.
+-- Renumbered 282 -> 292 (mig-collision-281 task, 2026-08-26), in lockstep
+-- with 281 -> 291 (this migration's trigger operates on the table 291
+-- creates, so it must stay numerically after it -- see 291's own header
+-- for the collision this resolves and the fresh main/open-PR measurement
+-- behind the new number).
 --
 -- Purpose
 -- -------
--- Migration 281's own COMMENT ON TABLE claims "Written ONLY via
+-- Migration 291's own COMMENT ON TABLE claims "Written ONLY via
 -- compare-and-swap (UPDATE ... WHERE leader_epoch = $expected) -- never a
 -- bare UPDATE" -- a cross-family refuter (gpt-5.6-sol,
 -- F9-REFUTATION-2026-08-25.md finding #7) correctly named this as a
