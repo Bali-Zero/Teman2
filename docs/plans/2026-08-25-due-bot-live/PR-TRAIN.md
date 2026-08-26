@@ -168,6 +168,31 @@ only writes it to the log. So the status file cannot distinguish a healthy probe
 one, and the instruction above asks a future session to prove something against a file that
 cannot say it.
 
+**And `detector_source` alone is NOT proof of health — corrected 2026-08-26, same day it was
+requested.** The field answers WHICH source the probe resolved its detectors from. It does not
+answer whether that source is CURRENT, and those come apart in the direction that matters.
+
+The probe's fallback engages only on `ImportError`, so staleness has two flavours and they behave
+oppositely:
+
+- **a symbol was renamed or removed** — the import raises, the local copies carry the probe, and
+  `detector_source` reads `fallback-copy`. This is the flavour that actually happened (the
+  `_AUTH_DEATH_RE` rename) and the one the probe's own comment was written about.
+- **the same symbol names exist with older pattern bodies** — the import SUCCEEDS, the probe
+  silently uses the stale patterns, the local copies are never consulted, and `detector_source`
+  reads `import`. A **primary import from a stale client is strictly worse than the fallback**,
+  and it is the state that reports the healthier-looking value.
+
+PR #5028 manufactures the second flavour by construction: it rewrites the four detector patterns'
+BODIES and changes none of their NAMES. So after it lands, promoting `wa_codex_seat_probe.py`
+without `codex_exec_client.py` yields the old over-matching regexes while the status file says
+`import`.
+
+Step 4 therefore needs BOTH halves, and the second is the load-bearing one:
+`detector_source == "import"` AND the `cmp -s` / `lint_home_fork.py --check` from step 2 proving
+the deployed `codex_exec_client.py` is byte-identical to the repo twin. Reading the field alone
+would have been a verification that cannot fail for the reason you are verifying.
+
 Until the probe publishes that field, step 4 has to be satisfied out of band: load the deployed
 probe module and read `_AUTH_DEATH_SOURCE` directly, rather than reading the status JSON. The
 field has been requested as part of the PR that carries the probe; when it lands, delete this
