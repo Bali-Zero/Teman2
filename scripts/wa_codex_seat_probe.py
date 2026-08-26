@@ -21,11 +21,26 @@ This organ manufactures a signal independent of job traffic: `codex login
 status` plus a 1-token synthetic `codex exec`, on the plist's own
 StartInterval, regardless of whether the broker has anything to claim.
 
-CLASSIFICATION — declared limit: quota exhaustion (CodexQuotaError-shaped
-failures in backend/llm/codex_exec_client.py) is NOT distinguished from any
-other non-auth, non-invocation failure here — both land in `other_failure`.
-S1.5 owns sharpening that bucket further. This probe answers exactly one
-question: is the seat's LOGIN dead, yes or no.
+CLASSIFICATION (S1.5, 2026-08-26 — sharpens the bucket the paragraph above
+used to describe): quota exhaustion is now its OWN verdict,
+`VERDICT_QUOTA_EXHAUSTED` ("quota_exhausted"), distinct from `auth_death`
+and from the generic `other_failure` bucket it used to fall into — the twin,
+on the probe side, of `wa_codex_daemon.py`'s `CodexExecQuotaError` arm
+(B2b). Detection REUSES the daemon's own quota word class
+(`_QUOTA_STRUCTURED_RE`/`_QUOTA_PROSE_RE` in `backend/llm/codex_exec_client.py`)
+via the same import-with-degraded-fallback pattern as `AUTH_STRUCTURED_RE`/
+`AUTH_PROSE_RE` below — never a second, drifting definition. Priority is a
+FIXED two-step order — auth checked first, quota second — deliberately
+simpler than the daemon's full per-word-class confidence-tier SPEC
+(`_classify_stderr` in that same
+module): this probe's `guilty_texts` are the output of a single synthetic,
+domain-free "ping" prompt (see `_PROBE_PROMPT` below), not a real client
+payload, so the domain-overload ambiguity that SPEC exists to resolve (a
+KITAS sponsor's own "quota", an immigration client's own "unauthorized")
+cannot occur here — there is no real prompt for either word class to
+collide with. This probe still answers only what it can: is the seat's
+LOGIN dead, or its usage quota exhausted, or something else non-zero — never
+a full replay of the daemon's SPEC.
 
 LEAK SURFACE (Law 2 / scar family #4 — secret/PII in the clear): the status
 file carries ONLY the verdict enum, the two raw exit codes, and a UTC
@@ -58,7 +73,8 @@ from typing import Final, Mapping, Sequence
 
 logger = logging.getLogger("wa_codex_seat_probe")
 
-# --- auth-death detection: REUSE the daemon's own detector -----------------
+# --- auth-death + quota-exhaustion detection: REUSE the daemon's own -------
+# --- detectors ---------------------------------------------------------
 # Primary path: scripts/provision_zantara_codex.sh already installs a
 # root-owned copy of backend/llm/codex_exec_client.py under
 # /usr/local/lib/wa-codex-broker/backend/llm/ for the daemon itself, and
@@ -67,28 +83,54 @@ logger = logging.getLogger("wa_codex_seat_probe")
 # the import below resolves against that SAME runtime tree, not a repo
 # checkout the zantara-codex user does not have.
 #
+# S1.5 (2026-08-26) FOUND AND FIXED, adjacent to the quota work: the
+# single combined `_AUTH_DEATH_RE` this block used to import no longer
+# exists in codex_exec_client.py — B2b's confidence-tier SPEC split it into
+# `_AUTH_STRUCTURED_RE`/`_AUTH_PROSE_RE` (the same two-tier shape quota
+# already had) without updating this probe's import, which meant the
+# "primary path" below had been silently dead — ImportError on every run,
+# unconditionally falling to the copy — since B2b landed, undetected because
+# the fallback is functionally byte-identical. Verified live (not assumed):
+# `PYTHONPATH=apps/backend-rag python3 -c "from backend.llm.codex_exec_client
+# import _AUTH_DEATH_RE"` raises ImportError on this branch's HEAD. Now
+# imports the same two symbols the daemon actually exports.
+#
 # If that import ever fails (runtime tree not provisioned, or provisioning
 # drifted from the daemon's), fall back to a LOCAL COPY of the same pattern,
-# marked below. The copy MUST be kept byte-identical to
-# backend/llm/codex_exec_client.py::_AUTH_DEATH_RE or the two detectors will
-# disagree about the same log line — superscar #1 (HOME-fork drift) applied
-# to a regex instead of a whole script. The import is PRIMARY; this copy is
-# a degraded fallback, never the source of truth.
+# marked below. The copies MUST be kept byte-identical to
+# backend/llm/codex_exec_client.py::_AUTH_STRUCTURED_RE /
+# ::_AUTH_PROSE_RE / ::_QUOTA_STRUCTURED_RE / ::_QUOTA_PROSE_RE or the two
+# detectors will disagree about the same log line — superscar #1 (HOME-fork
+# drift) applied to a regex instead of a whole script. The import is
+# PRIMARY; this copy is a degraded fallback, never the source of truth.
+# This fallback is also why promoting THIS file to the runtime tree does
+# not require promoting codex_exec_client.py in lockstep — a stale runtime
+# tree (one that predates the quota word class, or even the current
+# auth-split) still gets correct detection from the local copy; see memory
+# `dark-describes-the-branch-not-the-deployment` for why promoting
+# codex_exec_client.py/wa_codex_daemon.py together is its own, separate,
+# entangled decision this change does not need to make.
 try:
-    from backend.llm.codex_exec_client import _AUTH_DEATH_RE as AUTH_DEATH_RE
+    from backend.llm.codex_exec_client import _AUTH_PROSE_RE as AUTH_PROSE_RE
+    from backend.llm.codex_exec_client import (
+        _AUTH_STRUCTURED_RE as AUTH_STRUCTURED_RE,
+    )
+    from backend.llm.codex_exec_client import _QUOTA_PROSE_RE as QUOTA_PROSE_RE
+    from backend.llm.codex_exec_client import (
+        _QUOTA_STRUCTURED_RE as QUOTA_STRUCTURED_RE,
+    )
 
     _AUTH_DEATH_SOURCE: Final[str] = "import"
 except ImportError:  # pragma: no cover — exercised only when the runtime
     # tree is missing/stale; kept in sync by hand with the primary above.
-    AUTH_DEATH_RE = re.compile(
+    AUTH_STRUCTURED_RE = re.compile(
+        r"\b401\s+unauthorized\b|\berror\s+401\b|\b401\s+error\b|\bhttp\s+401\b|"
+        r"token_revoked|refresh_token(?:_reused|_revoked|_expired)?",
+        re.IGNORECASE,
+    )
+    AUTH_PROSE_RE = re.compile(
         r"\b(?:"
-        r"401\s+unauthorized|"
-        r"error\s+401\b|"
-        r"401\s+error\b|"
-        r"http\s+401\b|"
         r"unauthorized|"
-        r"token_revoked|"
-        r"refresh_token(?:_reused|_revoked|_expired)?|"
         r"token\s+has\s+expired|"
         r"not\s+logged\s+in|"
         r"login\s+required|"
@@ -97,6 +139,22 @@ except ImportError:  # pragma: no cover — exercised only when the runtime
         r"session\s+invalidated|"
         r"auth(?:entication)?\s+(?:failed|error|required|expired)|"
         r"run\s+`?codex\s+login`?"
+        r")(?!\w)",
+        re.IGNORECASE,
+    )
+    QUOTA_STRUCTURED_RE = re.compile(
+        r"\b429\s+too\s+many\s+requests\b|insufficient_quota|rate_limit_exceeded",
+        re.IGNORECASE,
+    )
+    QUOTA_PROSE_RE = re.compile(
+        r"\b(?:"
+        r"rate[- ]limit(?:ed)?\s+exceeded|"
+        r"rate\s+limit\s+reached|"
+        r"usage\s+limit(?:\s+reached)?|"
+        r"exceeded\s+your\s+current\s+quota|"
+        r"monthly\s+credits\s+exhausted|"
+        r"credits\s+exhausted|"
+        r"out\s+of\s+extra\s+usage"
         r")(?!\w)",
         re.IGNORECASE,
     )
@@ -122,6 +180,11 @@ _UNRUN_RC: Final[int] = -1
 
 VERDICT_OK: Final[str] = "ok"
 VERDICT_AUTH_DEATH: Final[str] = "auth_death"
+# S1.5 (2026-08-26): the token name is fixed by
+# scripts/wa_codex_seat_sentinel.py's own forward-compat comment (it names
+# this exact string as the example of a future verdict a reader must not
+# swallow into silence) — do not rename without updating that reader too.
+VERDICT_QUOTA_EXHAUSTED: Final[str] = "quota_exhausted"
 VERDICT_OTHER_FAILURE: Final[str] = "other_failure"
 VERDICT_PROBE_ERROR: Final[str] = "probe_error"
 
@@ -214,6 +277,20 @@ def _run(binary: str, args: Sequence[str], env: Mapping[str, str]) -> tuple[int,
         return _UNRUN_RC, "", ""
 
 
+def _auth_detected(text: str) -> bool:
+    """True if `text` matches either tier of the daemon's auth-death word
+    class (structured token OR prose phrase)."""
+    return bool(AUTH_STRUCTURED_RE.search(text) or AUTH_PROSE_RE.search(text))
+
+
+def _quota_detected(text: str) -> bool:
+    """True if `text` matches either tier of the daemon's quota-exhaustion
+    word class (structured token OR domain-safe prose phrase — see the
+    import block above for why both tiers are safe to OR together here,
+    unlike in the daemon's real-prompt classifier)."""
+    return bool(QUOTA_STRUCTURED_RE.search(text) or QUOTA_PROSE_RE.search(text))
+
+
 def classify(
     login_rc: int,
     login_out: str,
@@ -224,37 +301,42 @@ def classify(
 ) -> str:
     """Pure — no I/O, so this is where a future unit test would live.
 
-    Priority: an auth-death signature on EITHER command outranks a generic
-    nonzero (a `login status` that spawns fine but `exec` correctly reports
-    401 is still auth_death, not other_failure). The regex is searched on
-    EACH text independently — never concatenated — matching the discipline
-    of the upstream `_auth_death_detected`: joining texts with any separator
-    risks the regex's `\\s+` alternatives bridging two innocent fragments
-    across the seam into a false match.
+    Priority (S1.5, 2026-08-26): auth-death outranks quota-exhaustion
+    outranks a generic nonzero. Fixed two-step order, not the daemon's full
+    per-word-class confidence-tier SPEC — see the module docstring's
+    CLASSIFICATION section for why that's a safe simplification here (this
+    probe's guilty_texts come from one synthetic, domain-free "ping", never
+    a real client prompt the two word classes could collide inside). Each
+    regex is searched on EACH text independently — never concatenated —
+    matching the discipline of the upstream `_auth_death_detected`: joining
+    texts with any separator risks a `\\s+` alternative bridging two
+    innocent fragments across the seam into a false match.
 
     Scanning discipline imitates the daemon's R26 rule: only a FAILED
     command's text is scanned — a succeeding command's output is a status
     line or a model answer whose vocabulary is innocent by construction
-    (family #3: "unauthorized"/"login"/"expired" are ordinary visa-domain
-    words in a legitimate answer). Per-command surface: for `login status`
-    BOTH streams (measured 2026-08-20 on the live CLI: the logged-out
-    marker "Not logged in" arrives on STDOUT, rc=1; healthy prints "Logged
-    in using ChatGPT", rc=0, no match); for `exec` STDERR ONLY (the
-    daemon's measured evidence places codex's own diagnostics on stderr,
-    and exec stdout may carry a partial model answer discussing a CLIENT's
-    login/credential).
+    (family #3: "unauthorized"/"login"/"quota"/"expired" are ordinary
+    visa-domain words in a legitimate answer). Per-command surface: for
+    `login status` BOTH streams (measured 2026-08-20 on the live CLI: the
+    logged-out marker "Not logged in" arrives on STDOUT, rc=1; healthy
+    prints "Logged in using ChatGPT", rc=0, no match); for `exec` STDERR
+    ONLY (the daemon's measured evidence places codex's own diagnostics on
+    stderr, and exec stdout may carry a partial model answer discussing a
+    CLIENT's login/credential/quota).
 
     Only if NEITHER command produced a real exit code at all is this a
     probe_error (we could not observe anything, auth-dead or otherwise).
-    Any other nonzero combination is other_failure (declared limit: not
-    further distinguished from quota exhaustion — see module docstring)."""
+    Any other nonzero combination that matches neither word class is
+    other_failure."""
     guilty_texts: list[str] = []
     if login_rc not in (0, _UNRUN_RC):
         guilty_texts.extend((login_out, login_err))
     if exec_rc not in (0, _UNRUN_RC):
         guilty_texts.append(exec_err)
-    if any(AUTH_DEATH_RE.search(t) for t in guilty_texts if t):
+    if any(_auth_detected(t) for t in guilty_texts if t):
         return VERDICT_AUTH_DEATH
+    if any(_quota_detected(t) for t in guilty_texts if t):
+        return VERDICT_QUOTA_EXHAUSTED
     if login_rc == _UNRUN_RC and exec_rc == _UNRUN_RC:
         return VERDICT_PROBE_ERROR
     if login_rc != 0 or exec_rc != 0:

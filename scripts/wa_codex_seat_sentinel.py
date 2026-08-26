@@ -83,6 +83,19 @@ BREAKER_MSG: Final[str] = (
     "sudo grep 'AUTH DEATH' /Users/zantara-codex/logs/wa-codex-broker.err"
 )
 DAEMON_SILENT_MSG: Final[str] = "daemon silent (dead / version-pin pause / host down)"
+# S1.5 (2026-08-26), owner packet item 13 — twin of AUTH_DEATH_MSG for the
+# probe's `quota_exhausted` verdict (scripts/wa_codex_seat_probe.py). The
+# remedy differs (wait, or switch seats — never "re-login"), which is
+# exactly why this is its own message and its own dedup condition rather
+# than reusing AUTH_DEATH_MSG's wording or BREAKER_MSG's sudo-grep hint (the
+# daemon's own AUTH DEATH/QUOTA EXHAUSTED log lines live in the same
+# cron-unreadable file — see wa_codex_daemon.py's B2b arm — so this message
+# does not point there either; the probe's own status file already carries
+# the actionable verdict without needing that file read).
+QUOTA_EXHAUSTED_MSG: Final[str] = (
+    "codex seat QUOTA EXHAUSTED — wait for the usage window to reset, or "
+    "switch seats (this is not an auth failure — do not re-login)"
+)
 
 
 @dataclass(frozen=True)
@@ -115,12 +128,23 @@ def _probe_side(
         probe_verdict = probe_status.get("verdict")
         if probe_verdict == "auth_death":
             verdicts.append(Verdict(RED, "auth_death", AUTH_DEATH_MSG))
+        elif probe_verdict == "quota_exhausted":
+            # S1.5 (2026-08-26): distinct from auth_death (fix = re-login)
+            # and from the generic other_failure bucket below (fix = wait /
+            # switch seats) — twin, on the read side, of the daemon's own
+            # CodexExecQuotaError arm (wa_codex_daemon.py B2b). RED, same
+            # severity as auth_death: either way the OpenAI/Codex leg is
+            # fully blocked for every subsequent job, even though the
+            # remedy differs.
+            verdicts.append(Verdict(RED, "quota_exhausted", QUOTA_EXHAUSTED_MSG))
         elif probe_verdict != "ok":
             # other_failure, probe_error, AND any vocabulary this reader does
-            # not know yet (a future probe adding e.g. "quota_exhausted" must
-            # fall somewhere VISIBLE, never into silence — W116: an unmapped
-            # finale that lands in the healthy bucket is how the next real
-            # signal gets lost).
+            # not know yet (e.g. a future probe adding a POLICY_BLOCKED
+            # verdict) must fall somewhere VISIBLE, never into silence —
+            # W116: an unmapped finale that lands in the healthy bucket is
+            # how the next real signal gets lost. "quota_exhausted" used to
+            # be the example named here; it graduated to its own branch
+            # above (S1.5) and no longer reaches this one.
             verdicts.append(
                 Verdict(
                     WARN,

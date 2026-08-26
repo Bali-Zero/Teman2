@@ -54,6 +54,53 @@ def test_guilt_nonzero_without_auth_signature_is_other_failure() -> None:
     assert verdict == probe.VERDICT_OTHER_FAILURE
 
 
+# ------------------------------------------------------- GUILT (S1.5 quota)
+
+
+def test_guilt_exec_429_structured_on_stderr_is_quota_exhausted() -> None:
+    verdict = probe.classify(
+        0, "Logged in using ChatGPT\n", "", 1, "", "Error: 429 Too Many Requests"
+    )
+    assert verdict == probe.VERDICT_QUOTA_EXHAUSTED
+
+
+def test_guilt_exec_insufficient_quota_structured_token_is_quota_exhausted() -> None:
+    verdict = probe.classify(
+        0, "Logged in using ChatGPT\n", "", 1, "", '{"error":{"code":"insufficient_quota"}}'
+    )
+    assert verdict == probe.VERDICT_QUOTA_EXHAUSTED
+
+
+def test_guilt_exec_prose_usage_limit_reached_is_quota_exhausted() -> None:
+    verdict = probe.classify(
+        0, "Logged in using ChatGPT\n", "", 1, "", "You've hit your usage limit reached for today."
+    )
+    assert verdict == probe.VERDICT_QUOTA_EXHAUSTED
+
+
+def test_guilt_login_status_side_can_also_carry_the_quota_signature() -> None:
+    """Symmetric with the auth-death guilt test above (login status side) —
+    `classify()` scans BOTH login streams when login_rc failed, not just
+    exec's stderr."""
+    verdict = probe.classify(1, "", "rate limit reached, try again later", 0, "pong", "")
+    assert verdict == probe.VERDICT_QUOTA_EXHAUSTED
+
+
+def test_guilt_auth_signature_outranks_a_coexisting_quota_signature() -> None:
+    """Fixed two-step priority (S1.5 docstring): auth checked before quota.
+    A stderr that happens to carry BOTH signatures resolves to auth_death,
+    never to quota_exhausted."""
+    verdict = probe.classify(
+        0,
+        "Logged in using ChatGPT\n",
+        "",
+        1,
+        "",
+        "error 401: unauthorized — also rate limit reached",
+    )
+    assert verdict == probe.VERDICT_AUTH_DEATH
+
+
 # --------------------------------------------------------------- INNOCENCE
 
 
@@ -82,12 +129,65 @@ def test_innocence_healthy_login_status_output_does_not_match() -> None:
     assert probe.classify(0, "Logged in using ChatGPT\n", "", 0, "pong", "") == probe.VERDICT_OK
 
 
-def test_fallback_regex_is_byte_identical_to_the_daemon_detector() -> None:
-    """Superscar #1 applicata a una regex: la copia fallback DEVE restare
-    byte-identica a `_AUTH_DEATH_RE` del daemon, o i due rilevatori
-    divergono sullo stesso testo. Questo test confronta pattern e flag
-    contro la fonte nel repo (il probe sul host importa la copia runtime;
-    qui nel repo le due definizioni devono combaciare)."""
+# ------------------------------------------------- INNOCENCE (S1.5 quota)
+
+
+def test_innocence_healthy_exec_answer_discussing_a_sponsor_quota_is_ok() -> None:
+    """A successful exec (rc=0) whose model answer legitimately discusses a
+    KITAS sponsor's "quota" must never classify quota_exhausted — same
+    family-#3 discipline as the auth innocence test above: a rc=0 command's
+    output is never scanned at all."""
+    answer = "Your sponsor's quota exceeded this year's KITAS allocation."
+    verdict = probe.classify(0, "Logged in using ChatGPT\n", "", 0, answer, "")
+    assert verdict == probe.VERDICT_OK
+
+
+def test_innocence_failed_exec_stdout_quota_prose_is_not_scanned_only_stderr() -> None:
+    """Same R26 discipline as the existing auth innocence test: a FAILED
+    exec's STDOUT (a partial model answer) is never scanned, even if it
+    happens to carry quota-shaped prose — only stderr counts."""
+    partial_answer = "...the client's monthly credits exhausted her visa portal quota"
+    verdict = probe.classify(0, "Logged in using ChatGPT\n", "", 1, partial_answer, "boom")
+    assert verdict == probe.VERDICT_OTHER_FAILURE
+
+
+def test_innocence_bare_quota_word_alone_does_not_fire() -> None:
+    """Bare "quota"/"exhausted"/"limit" are ordinary immigration-consultancy
+    vocabulary (R28-1 in the daemon's own word class) — deliberately
+    excluded as standalone alternatives. A failed exec whose stderr merely
+    contains the bare word must not false-positive quota_exhausted."""
+    verdict = probe.classify(
+        0, "Logged in using ChatGPT\n", "", 1, "", "the client's quota question is unresolved"
+    )
+    assert verdict == probe.VERDICT_OTHER_FAILURE
+
+
+def test_innocence_quota_regex_does_not_bleed_across_command_boundary() -> None:
+    """Mirrors the daemon's per-text (never concatenated) scanning discipline
+    — a quota phrase split across the login-status and exec texts must not
+    combine into a false match; each text is searched independently."""
+    verdict = probe.classify(1, "", "rate limit", 1, "", "reached tomorrow")
+    assert verdict != probe.VERDICT_QUOTA_EXHAUSTED
+
+
+def test_fallback_regexes_are_byte_identical_to_the_daemon_detectors() -> None:
+    """Superscar #1 applicata a una regex: OGNI copia fallback in
+    scripts/wa_codex_seat_probe.py DEVE restare byte-identica al suo gemello
+    nel daemon, o i due rilevatori divergono sullo stesso testo.
+
+    S1.5 (2026-08-26): this test used to check a single `_AUTH_DEATH_RE`.
+    That symbol no longer exists in the daemon — B2b's confidence-tier SPEC
+    split it into `_AUTH_STRUCTURED_RE`/`_AUTH_PROSE_RE` (the daemon's
+    module-level names, both without a leading underscore stripped on
+    import — same shape quota already had) and this test had gone RED,
+    silently, because it could not even find the old name to compare
+    against (verified live on this branch's HEAD before this fix: the old
+    assertion failed at "daemon _AUTH_DEATH_RE definition not found", not
+    at a content mismatch). Now covers all four regexes the probe
+    imports-with-fallback: auth (structured+prose) and quota
+    (structured+prose, S1.5's own addition)."""
+    import re as _re
+
     daemon_src = (
         Path(__file__).parents[2]
         / "apps"
@@ -98,23 +198,47 @@ def test_fallback_regex_is_byte_identical_to_the_daemon_detector() -> None:
     )
     # Textual extraction, not import: the daemon module pulls in backend.*
     # and this comparison is about the SOURCE definitions staying identical.
-    import re as _re
-
-    text = daemon_src.read_text()
-    match = _re.search(r"_AUTH_DEATH_RE[^=]*= re\.compile\((.*?)\n\)", text, _re.DOTALL)
-    assert match is not None, "daemon _AUTH_DEATH_RE definition not found"
-    daemon_body = "".join(_re.findall(r'r"([^"]*)"', match.group(1)))
+    daemon_text = daemon_src.read_text()
     probe_text = _MODULE_PATH.read_text()
-    probe_match = _re.search(
-        r"AUTH_DEATH_RE = re\.compile\((.*?)\n    \)", probe_text, _re.DOTALL
-    )
-    assert probe_match is not None, "probe fallback AUTH_DEATH_RE definition not found"
-    probe_body = "".join(_re.findall(r'r"([^"]*)"', probe_match.group(1)))
-    assert probe_body == daemon_body, (
-        "the probe's fallback regex drifted from the daemon's _AUTH_DEATH_RE — "
-        "update the copy in scripts/wa_codex_seat_probe.py"
-    )
-    # Flags too (Kimi r1 m9): dropping re.IGNORECASE on either side keeps the
-    # bodies identical while the detectors diverge on case.
-    assert "re.IGNORECASE" in match.group(1), "daemon regex lost re.IGNORECASE"
-    assert "re.IGNORECASE" in probe_match.group(1), "probe fallback lost re.IGNORECASE"
+
+    def _extract(text: str, pattern: str, label: str) -> tuple[str, bool]:
+        # `^`-anchored + MULTILINE (never DOTALL on the anchor): the naive
+        # "name, then anything, then = re.compile(" shape used before this
+        # fix matched a COMMENT mentioning the name earlier in the file and
+        # then walked forward across `[^=]*` (which spans newlines) into a
+        # LATER, unrelated regex's own `= re.compile(` — reproduced live:
+        # `_QUOTA_STRUCTURED_RE` was preceded by a same-named mention in a
+        # comment two definitions above it, and the ungoverned search
+        # silently bound to `_AUTH_STRUCTURED_RE`'s body instead. Anchoring
+        # to an actual start-of-line assignment (never inside a comment,
+        # which starts with `#`) makes that mis-bind structurally
+        # impossible instead of merely unlikely.
+        match = _re.search(pattern, text, _re.DOTALL | _re.MULTILINE)
+        assert match is not None, f"{label} definition not found"
+        body = "".join(_re.findall(r'r"([^"]*)"', match.group(1)))
+        return body, "re.IGNORECASE" in match.group(1)
+
+    for daemon_name, probe_name in (
+        ("_AUTH_STRUCTURED_RE", "AUTH_STRUCTURED_RE"),
+        ("_AUTH_PROSE_RE", "AUTH_PROSE_RE"),
+        ("_QUOTA_STRUCTURED_RE", "QUOTA_STRUCTURED_RE"),
+        ("_QUOTA_PROSE_RE", "QUOTA_PROSE_RE"),
+    ):
+        daemon_body, daemon_ic = _extract(
+            daemon_text,
+            rf"^{daemon_name}:\s*re\.Pattern\[str\]\s*=\s*re\.compile\((.*?)\n\)",
+            f"daemon {daemon_name}",
+        )
+        probe_body, probe_ic = _extract(
+            probe_text,
+            rf"^    {probe_name} = re\.compile\((.*?)\n    \)",
+            f"probe fallback {probe_name}",
+        )
+        assert probe_body == daemon_body, (
+            f"the probe's fallback {probe_name} drifted from the daemon's "
+            f"{daemon_name} — update the copy in scripts/wa_codex_seat_probe.py"
+        )
+        # Flags too (Kimi r1 m9): dropping re.IGNORECASE on either side keeps
+        # the bodies identical while the detectors diverge on case.
+        assert daemon_ic, f"daemon {daemon_name} lost re.IGNORECASE"
+        assert probe_ic, f"probe fallback {probe_name} lost re.IGNORECASE"
