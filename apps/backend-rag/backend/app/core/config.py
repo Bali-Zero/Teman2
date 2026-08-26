@@ -737,6 +737,16 @@ class Settings(BaseSettings):
             "POST capability before the route-level dependency runs."
         ),
     )
+    workspace_marketing_api_key: str | None = Field(
+        default=None,
+        repr=False,
+        description=(
+            "Dedicated least-privilege key for GET-only ChatGPT Business marketing "
+            "projections under /api/workspace-marketing/news/*. Set via "
+            "WORKSPACE_MARKETING_API_KEY. It is not part of API_KEYS and is accepted "
+            "only by the route-level marketing dependency."
+        ),
+    )
     whatsapp_personal_contacts: str | None = Field(
         default=None,
         description=(
