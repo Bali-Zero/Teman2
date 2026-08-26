@@ -77,8 +77,13 @@ def test_pending_ruling_is_machine_checkable_not_only_prose(ops_intent_row):
     `risk_class`/`sensitivity` joined the set on 2026-08-26 (D3 residue
     audit). They are placeholders on exactly the same footing -- no legacy
     classification signal exists, so `adapt_ops_intent_to_action_item`
-    hardcodes GREEN/INTERNAL, the LEAST restrictive pair the contract can
-    express -- but they were declared only in prose here, while the SIBLING
+    hardcodes GREEN/INTERNAL -- GREEN is the floor of `RiskClass`, while
+    INTERNAL is NOT the floor of `Sensitivity` (PUBLIC is, and nothing on
+    `ActionItem` excludes it; an earlier revision of this docstring claimed
+    the pair was the contract's least restrictive, and a cross-family refuter
+    read the enums and refuted it). The hazard is the DIRECTION, not the
+    minimum: INTERNAL sits below CONFIDENTIAL, RESTRICTED_OSINT and
+    CLIENT_PII -- but they were declared only in prose here, while the SIBLING
     `action_intent_adapter` (which inherits both values from this object to
     satisfy `verify_action_intent_matches_action_item`) had already declared
     them in ITS `pending_ruling` after a Kimi K3 review on 2026-08-24. That
