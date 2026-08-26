@@ -58,7 +58,7 @@ lanes:
     host: pro
     status: in_flight
     pr: null
-    scope: Q0 — .claude/skills is SSOT; port 08-19 deltas into .agents; CI drift test
+    scope: Q0 — .agents/.claude canonicity CI tripwire (corrected 2026-08-27: the two trees were never divergent on origin/main; no porting needed, see research doc §4/AMENDMENTS 08-26)
   - id: L2   # mailbox-state
     host: pro
     status: in_flight
@@ -149,9 +149,11 @@ of a session hand-editing them later.
 
 ## 3. Gates
 
-- **G-DAY0**: `Q0` (L1) lint (`scripts/tests/test_skills_canonical.py`) is green — `.agents` no
-  longer routes any external seat to Fable. Blocking: every other lane's external-seat calls are
-  reading the wrong doctrine until this closes.
+- **G-DAY0**: `Q0` (L1) lint (`scripts/tests/test_skills_canonical.py`, PR #5041) is green — the
+  `.agents`/`.claude` canonicity tripwire is armed, so a _future_ divergence cannot go unnoticed.
+  Corrected 2026-08-27: nothing was actually routing to Fable on `origin/main` (the original
+  premise measured untracked working-tree junk on Pro/M5, not repo state) — this gate is
+  preventive, not a live-incident close.
 - **G-DAY30**: S3's disposable-session proof passes (≤10 injections); `X2` shows Dependabot PRs
   draining one at a time; `#4733` is merged; `K1`'s undecided-tool-call counter exists and reports a
   real number (not zero-by-construction).

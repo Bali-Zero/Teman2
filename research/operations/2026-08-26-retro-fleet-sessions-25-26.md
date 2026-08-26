@@ -292,8 +292,19 @@ findings, to check whether its premises hold up against fresh eyes and to surfac
   >7 days, 0 merged-but-undetected because of the squash-merge cicatrix.
 - **Everything else the three seats asserted independently checked out true**: missing identifiers,
   a 9-field `TaskMetadata`, lease heartbeats present but no fencing, the `command` hook type
-  failing open under the official docs, 11 `SKILL.md` files diverged between `.agents` and
-  `.claude`, and fleet-spec §3.2 having no automated checker.
+  failing open under the official docs, and fleet-spec §3.2 having no automated checker.
+  **Correction, 2026-08-27**: the remaining claim — "11 `SKILL.md` files diverged between
+  `.agents` and `.claude`, `.agents/skills/modus/SKILL.md:149` still routing external seats to
+  Fable 5" — did not hold on `origin/main`: `.agents/skills/` has 8 dirs (the Tier-A cross-agent
+  store, README from PR #3019), 5 of which `.claude/skills/` symlinks; the other 11 skills live
+  only in `.claude/skills/` **by design** (Claude-Code-only tooling, never meant to exist under
+  `.agents/`). What the blind seat actually read was UNTRACKED working-tree junk — stale copies of
+  `.claude/skills` created 2026-08-19 00:26 on Pro and M5 (Mini was clean), fossils from before
+  Fable left the workflow on 08-20, and the untracked `modus` copy genuinely did still say "Fable 5
+  first" — the seat's read was accurate to the file it opened, just the wrong tree. Cure: PR #5041
+  (`scripts/tests/test_skills_canonical.py` + `check-skills-canonical.yml`); the 11 stale copies
+  are removed on Pro (guilt 11→0), M5 cleanup is one remaining operator line. Full account and the
+  tree-provenance lesson: `AMENDMENTS.md` 2026-08-26 entry.
 
 **Three independent convergences (agreeing blind, from three different families) close three open
 questions on their own:**
@@ -312,7 +323,7 @@ questions on their own:**
 
 | id | from | trick | lands in |
 |---|---|---|---|
-| Q0 | Qwen | **Skill canonicity (prerequisite, blocking, cheap)**: `.claude/skills` is the SSOT; port the 9 newest skills' 08-19 deltas into `.agents`, then generate/symlink `.agents` with a CI drift test | `.agents/skills/**`, `.claude/skills/**`, `scripts/tests/test_skills_canonical.py` |
+| Q0 | Qwen | **Skill canonicity (prerequisite, blocking, cheap)**: proposed on a false premise ("`.agents`/`.claude` have diverged, port 08-19 deltas") — corrected 2026-08-27, the two trees were never divergent on `origin/main` (the divergence read was untracked working-tree junk on Pro/M5); landed instead as a pure CI canonicity tripwire, no porting needed | `.agents/skills/**`, `.claude/skills/**`, `scripts/tests/test_skills_canonical.py` (PR #5041) |
 | K1 | Kimi | **Gate-coverage ratio**: every PreToolUse gate writes an "I decided" marker; a Stop hook prints "N tool-calls with no decision"; audit mixed-unit timeouts in `settings.json` | `infra/claude-hooks/*` + declared HOME pairs |
 | K3 | Kimi | **Artifact-on-death**: SubagentStop/SessionEnd writes worktree `git diff` + last state to `docs/handoff/<session>.md` | `infra/claude-hooks/session_budget.py` (absorbs the visible half of F7) |
 | S-OC | Sol+Qwen | **Objective card** (outcome, non_goals, typed acceptance probe, stage, builder_family, grader_family, blocked_since, receptor, verified_sha), `acceptance_contract_hash` written by an actor ≠ the builder before the first write | `scripts/agent_start.py::TaskMetadata` (+9 fields), `scripts/agent_lease.py`, JSON schema |
@@ -443,7 +454,7 @@ and a shadow period (X3: 7 days NOTICE → FAIL; 0 denials in 30 days → retire
 | R3 | **Kimi k3 / coding / highspeed** | `--tier k3\|coding\|highspeed` mandatory; `role: review` → k3; build → coding; mechanical → highspeed | `kimi -p … -m kimi-code/{k3,kimi-for-coding,kimi-for-coding-highspeed}` | E2 | per-tier histogram; k3 = default refuter for "is this true on disk?" |
 | R4 | **Gemini flash / 3.1 pro** | `--seat agy --tier flash\|pro` mandatory; `pro` only for >200k input tokens or `--role synthesis`; **never** agy as a verdict-refuter (measured 73% permissive) | `agy -p … --model gemini-3.5-flash\|gemini-3.1-pro` | E2 context-check; E3 rejects an agy review lane on Gear 3 | flash/pro split; context-rejection count |
 | R5 | **TP1**: deepseek-v4-pro, deepseek-v4-flash-0731, qwen3.8-max, qwen3.7-max, qwen3.7-plus, qwen3.6-flash, glm-5.2 | 6 sibling route JSONs of `glm-5.2-v1.json` + `--seat tp1 --model <slug>`; qwen3.8-max = mandatory Gear-3 council seat; PROBATION seats never count toward quorum | OpenAI-compatible route | E2 + E5 (X5: roster row with no route → UNREACHABLE); promotion to ARMED = 20 clean seat-reports | TP1 calls: 0 (excl. glm 39) → ≥1 per Gear-3 pack |
-| R6 | **Jules** | chore-queue items: post-Dependabot bumps, `.agents` regeneration (Q0), Spark coverage-gap → test PRs, docs-sync, fleet-wide `lint --fix` | `scripts/jules_dispatch.py new` | E6 scheduled dispatcher + E5 ping | Jules PRs/week: 0 → ≥5 |
+| R6 | **Jules** | chore-queue items: post-Dependabot bumps, `.agents`/`.claude` canonicity upkeep (Q0), Spark coverage-gap → test PRs, docs-sync, fleet-wide `lint --fix` | `scripts/jules_dispatch.py new` | E6 scheduled dispatcher + E5 ping | Jules PRs/week: 0 → ≥5 |
 | R7 | **Codex 5.3 Spark** | nightly `codex/coverage-*` branches → harvester opens the PR within 24h; one branch/module/night | `scripts/army/spark_lane.sh` + `infra/army/spark-queue/` | repair `codex.spark_{loop,harvester,alarm}` (FAILED today) | Spark PRs merged/week: 0 → measured; max branch age |
 | R8 | **NotebookLM** (ground truth) | a diff touching `apps/backend-rag/backend/kb/**`, `visa_engine` rules, KBLI data, pricing tables, `research/regulatory/**` → a pack with `{role: ground_truth, seat: nlm, nb: <id>, query_hash}` | MCP `mcp__notebooklm-mcp__*` (Pro/M5); Mini install = `operator[control-plane]` | E3 path class → red without the lane | ground-truth lane on those paths: ~0 → 100% |
 | R9 | **`Workflow` tool (council)** | a `gear: 3` pack → `council_run: evidence/<pack>/council/journal.jsonl` from `infra/workflows/verify-template.js` with ≥2 distinct non-Anthropic review seats `ok=true` | `Workflow({scriptPath:"infra/workflows/verify-template.js", …})` | E3: missing journal / <2 ok seats / gear≠3 → red | council runs/week: 0 → = number of Gear-3 packs |
@@ -475,9 +486,14 @@ The plan's own §6 ordering (cheapest-leverage first, one PR per concern, naked 
 maps onto the day-scale shadow periods §4 and §7 already carry (S-OC: 0-30 SHADOW, 31-60 ENFORCE;
 A3+: 61-90).
 
-**Day 0 (tonight, 26→27/08):** Q0 skill canonicity — blocking, because until `.agents/modus` stops
-routing to Fable, every external seat arms the wrong gate. This is `receptor-live`'s own lane L1;
-see `docs/plans/2026-08-26-receptor-live/MANDATE.md` for the full 14-lane burst dispatched alongside
+**Day 0 (tonight, 26→27/08):** Q0 skill canonicity — blocking, because a canonicity gap between
+`.agents` and `.claude` is silent by construction and needs a permanent CI tripwire before anything
+else in this list can trust its own doctrine. **Correction, 2026-08-27**: the specific claim that
+originally motivated this — "`.agents/modus` is still routing external seats to Fable 5" — was
+false (§4 above, `AMENDMENTS.md` 2026-08-26); Q0 stayed Day-0 anyway, because PR #5041's tripwire
+is what makes a *future* real divergence impossible to miss, worth having first even though nothing
+was actively broken tonight. This is `receptor-live`'s own lane L1; see
+`docs/plans/2026-08-26-receptor-live/MANDATE.md` for the full 14-lane burst dispatched alongside
 it tonight (§9 below covers what that dispatch itself measured).
 
 **Day 0-30 — silence and closure (no new gates):** S3 mailbox · X2 Dependabot serialization ·
@@ -533,6 +549,18 @@ fleet: **cap concurrent subagent/tmux spawns at ≤3 on Pro** — not for model-
 because the pty pool was full (it measured 6% utilized), but because concurrent pty allocation
 itself collided and lost 13 times out of 14.
 
+**A second, unrelated fact measured the same night**: GitHub Actions entered a MAJOR OUTAGE
+(githubstatus incident opened 16:14Z; in this repo the first `startup_failure` `merge_group` runs
+were 15:06Z, `pull_request` runs from 15:29Z, 99 runs queued with 0 jobs running, no Actions
+check-suite created on PR #5041's head; `#4733` sat in the merge queue AWAITING_CHECKS throughout).
+Lesson, added 2026-08-27: when checks are missing or red fleet-wide, read githubstatus **before**
+diagnosing the repo — a repo-side fix attempted mid-outage is chasing a symptom with no local
+cause. During an outage, never `gh run rerun` / `gh pr update-branch` (there is no stale verdict to
+clear, the run never started, and re-triggering just queues into the same failure). After recovery,
+the sweep is Agent PR Contract rule 3's own case — an external cause on an unchanged head SHA is
+exactly what `gh run rerun` is for. Tracked as a PENDING-ARMS row (below) rather than closed here,
+since the sweep itself had not run as of this writing.
+
 ---
 
 ## 10. Method note
@@ -583,9 +611,12 @@ document's own author (Opus 5).
 
 **Raised but not changed, deliberately:**
 - Kimi noted "11 `SKILL.md` files diverged" (§4) sits next to Q0's "port the 9 newest skills' deltas"
-  without an explicit reconciliation. Left as-is — both numbers are the plan's own, and the plausible
-  reading (11 diverged, 9 need urgent porting) is not something this capture can verify further
-  without re-querying the blind-seat pass.
+  without an explicit reconciliation, and this capture could not verify it further without
+  re-querying the blind-seat pass. **Resolved 2026-08-27** (not by this capture — see the
+  correction in §4 and the `AMENDMENTS.md` 2026-08-26 entry): both numbers were reading the wrong
+  tree. `origin/main` was never divergent; the blind seat was looking at untracked stale copies of
+  `.claude/skills` sitting on Pro/M5 since 2026-08-19. Real cure: PR #5041's canonicity tripwire,
+  no porting needed.
 - Three of the newly-adopted tricks (X4, X3+, P-EXP) appear in §3/§4's tables but not in any Day-band
   of §8 or any lane of the mandate's YAML. This is a real gap by the document's own standard (a rule
   with no enforcer is prose) — left open rather than papered over with an invented landing spot; it
