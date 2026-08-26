@@ -31,7 +31,6 @@ name: hot-zone-enforcement
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  merge_group:
 
 # Concurrency: cancel stale runs on the same PR ref so latest commit wins
 concurrency:
