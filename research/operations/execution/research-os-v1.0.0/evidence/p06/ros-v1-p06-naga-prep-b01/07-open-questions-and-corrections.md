@@ -1,3 +1,9 @@
+---
+date: 2026-08-26
+domain: operations
+adversarial_review: kimi-k3
+---
+
 # Open questions this bundle could not close, and corrections found in frozen documents
 
 ## Corrections found in frozen documents this session (re-measured, not taken on faith)
@@ -115,3 +121,113 @@ forbid a structurally new persistence layer even if additive, not just forbid a
 *parallel-and-uncoordinated* claim system. Both are real risks a build lane should weigh, not
 resolved here. I flag this because a preparation bundle whose central recommendation is wrong and
 un-flagged is worse than one that is honestly uncertain.
+
+---
+
+## BLOCKING — raised by the cross-family adversarial review, 2026-08-26
+
+These were found by Kimi K3 against a frozen head and re-verified on disk by the gating session.
+They are recorded here rather than patched, because patching either one means CHOOSING an answer
+this bundle has no authority to choose.
+
+### B1. Supersession needs two coupled writes, and the atomic primitive is forbidden
+
+`05-test-matrix.md`'s transition row requires that every `ObjectSuccessorEdge` predecessor "is
+marked `superseded` and is excluded from 'current claim' queries." But `02-p04-adapter-mapping.md`
+§0 states the packet's own rule verbatim: canonical versions are immutable and intervals are
+"never closed by mutating a prior object." These cannot both hold.
+
+Verified on disk: `Claim` carries a **required** `object_hash` (`claim.schema.json`, required
+array line 603, `object_hash` at line 618), and every pointer at a claim is a
+`ClaimRef {claim_id, object_hash}` — a pinned revision. So "marking the predecessor superseded"
+changes the predecessor's content, hence its hash, hence invalidates the very `predecessor_ref`
+the successor edge points at. No UPDATE is possible in the immutable model; writing a new
+predecessor revision mints a hash nobody references.
+
+The supersession flow therefore depends on **two objects changing together** — successor written
+AND predecessor re-marked — with no atomicity and no stated crash-between-steps semantics.
+`contract-pass-001.md` §7 forbids Cohort B from relying on **D10** (atomic repo primitive) and
+**D11** (atomic classification-change). This is exactly a design that works only under one.
+
+The "belt and suspenders" argument in §3 does not cover it: that argument covers a *missing edge*
+(reconstructible from `supersedes_claim_ref`). A **stale predecessor status** is the other half of
+the write pair, and it has no reconstruction rule at all.
+
+**Needs a ruling before any P06 build lane starts:** either (a) predecessor state is derived at
+read time from successor edges and never stored, or (b) supersession waits for D10/D11. Do not
+let a build lane pick silently.
+
+### B2. The two supersession fixtures encode contradictory conventions
+
+Re-verified on disk. `bitemporal/01`'s predecessor `claim_v1` keeps `status: "supported"` and
+`valid_to: null`; `supersession/01`'s predecessor `claim_v1_original` carries
+`status: "superseded"` with `valid_to` closed at the successor's boundary. Both objects play the
+identical role — "predecessor of a `supersedes_claim_ref`" — and give consumers no single answer.
+
+Worse, `bitemporal/01`'s two revisions share the same `valid_from` (`2026-01-15`) and both leave
+`valid_to` open, so the pure valid-time query `05-test-matrix.md` specifies returns **both** rows
+for any instant ≥ 2026-01-15 — verbatim the "FALSE if" condition of that file's own
+temporal-exclusion row. The fixtures fail the bundle's own test plan unless the implementation
+mutates the predecessor, i.e. unless B1 is resolved in the direction the doctrine forbids.
+
+Deliberately NOT fixed here: picking one convention IS answering B1. Both fixtures stay as
+delivered so the contradiction is visible to whoever rules.
+
+### B3. `bitemporal/03` conflates correction with calendared succession
+
+Fixture 03 models a rate change (IDR 2.0M valid Jan–Jul, IDR 2.5M valid from Jul) using
+`supersedes_claim_ref`. But revision 1 is not *wrong* — it is the fixture's own expected correct
+answer for 2026-03-15. Applying supersession semantics uniformly ("predecessor excluded from
+current queries") would either suppress the correct March answer or mark a still-true claim
+`superseded`. The bundle never distinguishes "supersede = correction" from "supersede = next
+scheduled interval", and the edge-reconstruction rule would mechanically mint successor edges for
+mere calendar sequences, poisoning the transition graph the invalidation logic consumes.
+
+### B4. The "100% invented" purity claim is overstated
+
+`04` says the fixtures are "not 'real data with names changed' — invented from the category
+description." The supersession fixture embeds the **real** IDR 2,500,000,000 PMA paid-up figure
+and the IDR 10B exception threshold (self-attributed to a repo memory); the scope fixture embeds
+a real "paling lambat 7 hari" finding. The notes are transparent and none of it is client PII, so
+this is not deception — but the blanket claim is false, and the result is the worst of both: a
+file stamped "SYNTHETIC — do not treat as regulatory fact" now carries a real regulatory figure
+that this session did NOT re-verify. Whoever builds the golden set must either strip these to
+invented numbers or re-ground them against the live corpus. Do not cite them as validated.
+
+
+## Adversarial review
+
+**Seat:** Kimi K3 (`kimi -m kimi-code/k3`), cross-family — neither the model that wrote this
+bundle nor the session that gated it. Run 2026-08-26 against a FROZEN diff (head `bb6d9ceb9`):
+the generator was dead before the refuter was dispatched.
+
+**Verdict: DEFECTIVE.** The bundle is unusually honest about what it did not do, and its two
+load-bearing corrections (migration numbering, the G7 `ApprovalSubjectKind` gap) check out
+independently. But its fixture set was internally inconsistent in exactly the D11 area the review
+was aimed at, and its central baseline claim rested on one search pattern. Every finding was
+re-verified against disk by the gating session before acceptance — the refuter is not trusted
+either (superscar #6). That re-verification made finding 1 **worse** than reported.
+
+| # | Finding | Verified | Disposition |
+|---|---|---|---|
+| 1 | "`persist.py` is the only writer" came from an `INSERT INTO naga_` grep, blind to UPDATE by construction | TRUE, **and worse** | **FIXED** — four UPDATE writers named (`dedup.py:144`, `claim_scorer.py:202`, `expiry.py:58`, `:174`). The gating session also found the cited INSERT grep is *itself* wrong: `dedup.py:155` and `expiry.py:154` insert into `naga_claim_transitions`, one of the same 5 tables, and `persist.py` never writes it. Five writers across three files, not one |
+| 2 | "`quality_score` written once" contradicted by two post-insertion UPDATEs | TRUE | **FIXED** — written *first*, not once |
+| 3 | §2 point 5's open mystery ("what moves a claim out of `active`") is answered in a file it listed but never searched | TRUE | **FIXED** — `expiry.py:58` / `dedup.py:144`. The `review_status` half STANDS: nothing moves a claim out of `auto_extracted`, so the human-review gate has no exit path in code |
+| 4 | Supersession requires two coupled writes on an immutable content-hashed object; D10/D11 forbidden by §7 | TRUE (`object_hash` required, `claim.schema.json:618`) | **NOT FIXED — RAISED AS BLOCKING** (`07` §B1). Patching it means choosing an answer this bundle has no authority to choose |
+| 5 | `bitemporal/01` and `supersession/01` encode contradictory predecessor conventions; `bitemporal/01` trips the test matrix's own "FALSE if" | TRUE | **NOT FIXED — RAISED AS BLOCKING** (`07` §B2). Picking a convention IS answering §B1; both left visible |
+| 6 | `bitemporal/03` uses `supersedes_claim_ref` for calendared succession, not correction | TRUE | **RAISED** (`07` §B3) |
+| 7 | `invalidation/01` withdraws evidence `...e7` and asserts it affects claim `...0030` — a citation that exists nowhere in the fixture set | TRUE | **FIXED** — trigger now withdraws `...e2`, which `0030` genuinely cites. A PASS on the original data would have proven nothing |
+| 8 | "one or more per adversarial category" false — case 6 (sanitization boundary) had no fixture | TRUE (14 files, 8 dirs, no sanitization) | **FIXED** — fixture added; 15 files. This was the one category where a missing negative control costs most |
+| 9 | Evidence adapter mapping is four required fields short: `evidence_family_id`, `review_state`, `classification.rights`, `times.recorded_at` | TRUE (0 grep hits each; all four in the schema's required sets) | **FIXED** — §2's completeness claim corrected; closing them is a build precondition |
+| 10 | "Fixtures validate directly against the schemas" — they would fail today (extraneous `note`, most required fields absent, `additionalProperties: false` throughout) | TRUE | **FIXED** — restated as behaviour specs; the old hedge covered "we did not run it", not "it would fail" |
+| 11 | "100% invented, not real-data-renamed" overstated — real PMA capital figures embedded | TRUE | **RAISED** (`07` §B4) — transparent, no PII, but a synthetic-stamped file now carries an unverified real figure |
+| 12 | G5 attributes a URL hash to "the migration" (it is `persist.py:102`), and omits the `[:16]` / `[:32]` truncations | TRUE, low severity | **ACCEPTED AS LIMIT** — substance (hash of URL, not content) is correct |
+
+**Not a finding** (refuter checked, found sound): migration numbering — `273` is WhatsApp-broker,
+head is 287, 282 absent, symbolic name correct; the G7 `ApprovalSubjectKind` closed-enum gap;
+`ObjectSuccessorEdge` and `OperationalReceipt` required-field claims; the abstention fixture's
+`reasoning.py` attribution (re-exported from `reasoning_utils.py`); and implementation-readiness,
+which is disclaimed consistently throughout.
+
+**Bottom line:** usable as an inventory and a gap list. **Not** to be handed to a build lane until
+§B1 and §B2 in `07-open-questions-and-corrections.md` are ruled on.

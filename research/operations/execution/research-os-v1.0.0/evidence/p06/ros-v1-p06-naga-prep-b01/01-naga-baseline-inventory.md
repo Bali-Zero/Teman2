@@ -1,3 +1,9 @@
+---
+date: 2026-08-26
+domain: operations
+adversarial_review: kimi-k3
+---
+
 # NAGA baseline inventory (read-only, measured 2026-08-26)
 
 Measured on `origin/main` from the read-only main checkout, via `find`/`grep`/`Read` — no writes,
@@ -37,8 +43,19 @@ this lane fixes.
 
 ## 2. Write path — `services/naga/persist.py` (241 lines, read in full)
 
-`save_session(pool, state) -> str | None` is the **only** writer found for these 5 tables
-(confirmed by the consumer grep in §3 — no other file matches `INSERT INTO naga_`). One
+`save_session(pool, state) -> str | None` is the only writer of the INITIAL row for these
+tables. **CORRECTED 2026-08-26 after a cross-family adversarial review (Kimi K3): the earlier
+claim that it is the *only* writer, "confirmed by the consumer grep — no other file matches
+`INSERT INTO naga_`", was false twice over.** First, the pattern is INSERT-only and blind to
+UPDATE writers by construction; there are four, re-verified on disk this session:
+`quality/dedup.py:144` (`SET claim_status='duplicate', duplicate_of_id=$2`),
+`quality/claim_scorer.py:202` (`SET quality_score=$1`), `quality/expiry.py:58`
+(`SET claim_status='expired' ... WHERE claim_status='active'`) and `quality/expiry.py:174`
+(`SET quality_score=$2, cross_ref_count=$3`). Second — and worse — even the INSERT-only grep
+the sentence cited as its own confirmation was wrong: `dedup.py:155` and `expiry.py:154` both
+`INSERT INTO naga_claim_transitions`, one of these same 5 tables, and `persist.py` never
+writes that table at all. **`persist.py` is NOT the single write path this packet must
+supersede; the build lane must supersede five writers across three files.** One
 transaction per session:
 
 1. `INSERT naga_sessions` — note the inline comment (lines 76-83) documenting a **past bug**:
@@ -57,6 +74,9 @@ transaction per session:
    `naga/quality/claim_scorer.py` — not read in full this session) and written once into
    `naga_claims.quality_score` (via a later `INSERT`, not by migration 081's own code — the
    column exists from 081, the value is populated by `persist.py`).
+   **CORRECTED 2026-08-26:** "written once" is false as an immutability claim — `quality_score`
+   is mutated post-insertion by `claim_scorer.py:202` (batch rescore) and `expiry.py:174`
+   (dedup-consolidation boost). It is written FIRST here, not once.
 4. `expires_at` is derived with a **hardcoded** domain split: 30 days for
    `domain in ("visa", "immigration")`, 90 days otherwise (lines 154-156) — this exact same rule
    is duplicated as a `CASE` expression inside migration 081's backfill UPDATE (lines 62-66 of
@@ -71,7 +91,12 @@ transaction per session:
    `claim_status` value at creation time. Whatever moves a claim out of `auto_extracted` /
    `active` happens elsewhere (not in this file) or does not happen at all yet — I did not find
    it in the consumer grep (`quality/dedup.py` and `quality/expiry.py` are candidates by name but
-   were not read in full this session).
+   were not read in full this session). **RESOLVED 2026-08-26 — the candidates were right and the
+   grep was the wrong instrument (it searched INSERT only).** `expiry.py:58` moves claims out of
+   `active` (`SET claim_status='expired' ... WHERE claim_status='active'`) and `dedup.py:144`
+   moves them to `duplicate`. The `review_status` half of the uncertainty STANDS: nothing
+   anywhere moves a claim out of `auto_extracted` — `grep -rn review_status` hits only this
+   INSERT and the migration's column default, so the human-review gate has no exit path in code.
 6. `INSERT naga_claim_evidence` links claim→source via a fragile positional convention: source
    refs from the extractor look like `"s0"`, `"s1"` (string index into `search_results`), parsed
    with `int(src_ref.replace("s", ""))` and a bare `except (ValueError, IndexError): pass` — a
@@ -223,3 +248,41 @@ consumer reads).
 - Live row counts for any `naga_*` table. `contract-pass-001.md §7` gives a verified live count
   for `research_os_objects` (0/89 databases) because that document's session queried it; this
   bundle makes no live-count claim for `naga_*` because this lane did not query a database.
+
+
+## Adversarial review
+
+**Seat:** Kimi K3 (`kimi -m kimi-code/k3`), cross-family — neither the model that wrote this
+bundle nor the session that gated it. Run 2026-08-26 against a FROZEN diff (head `bb6d9ceb9`):
+the generator was dead before the refuter was dispatched.
+
+**Verdict: DEFECTIVE.** The bundle is unusually honest about what it did not do, and its two
+load-bearing corrections (migration numbering, the G7 `ApprovalSubjectKind` gap) check out
+independently. But its fixture set was internally inconsistent in exactly the D11 area the review
+was aimed at, and its central baseline claim rested on one search pattern. Every finding was
+re-verified against disk by the gating session before acceptance — the refuter is not trusted
+either (superscar #6). That re-verification made finding 1 **worse** than reported.
+
+| # | Finding | Verified | Disposition |
+|---|---|---|---|
+| 1 | "`persist.py` is the only writer" came from an `INSERT INTO naga_` grep, blind to UPDATE by construction | TRUE, **and worse** | **FIXED** — four UPDATE writers named (`dedup.py:144`, `claim_scorer.py:202`, `expiry.py:58`, `:174`). The gating session also found the cited INSERT grep is *itself* wrong: `dedup.py:155` and `expiry.py:154` insert into `naga_claim_transitions`, one of the same 5 tables, and `persist.py` never writes it. Five writers across three files, not one |
+| 2 | "`quality_score` written once" contradicted by two post-insertion UPDATEs | TRUE | **FIXED** — written *first*, not once |
+| 3 | §2 point 5's open mystery ("what moves a claim out of `active`") is answered in a file it listed but never searched | TRUE | **FIXED** — `expiry.py:58` / `dedup.py:144`. The `review_status` half STANDS: nothing moves a claim out of `auto_extracted`, so the human-review gate has no exit path in code |
+| 4 | Supersession requires two coupled writes on an immutable content-hashed object; D10/D11 forbidden by §7 | TRUE (`object_hash` required, `claim.schema.json:618`) | **NOT FIXED — RAISED AS BLOCKING** (`07` §B1). Patching it means choosing an answer this bundle has no authority to choose |
+| 5 | `bitemporal/01` and `supersession/01` encode contradictory predecessor conventions; `bitemporal/01` trips the test matrix's own "FALSE if" | TRUE | **NOT FIXED — RAISED AS BLOCKING** (`07` §B2). Picking a convention IS answering §B1; both left visible |
+| 6 | `bitemporal/03` uses `supersedes_claim_ref` for calendared succession, not correction | TRUE | **RAISED** (`07` §B3) |
+| 7 | `invalidation/01` withdraws evidence `...e7` and asserts it affects claim `...0030` — a citation that exists nowhere in the fixture set | TRUE | **FIXED** — trigger now withdraws `...e2`, which `0030` genuinely cites. A PASS on the original data would have proven nothing |
+| 8 | "one or more per adversarial category" false — case 6 (sanitization boundary) had no fixture | TRUE (14 files, 8 dirs, no sanitization) | **FIXED** — fixture added; 15 files. This was the one category where a missing negative control costs most |
+| 9 | Evidence adapter mapping is four required fields short: `evidence_family_id`, `review_state`, `classification.rights`, `times.recorded_at` | TRUE (0 grep hits each; all four in the schema's required sets) | **FIXED** — §2's completeness claim corrected; closing them is a build precondition |
+| 10 | "Fixtures validate directly against the schemas" — they would fail today (extraneous `note`, most required fields absent, `additionalProperties: false` throughout) | TRUE | **FIXED** — restated as behaviour specs; the old hedge covered "we did not run it", not "it would fail" |
+| 11 | "100% invented, not real-data-renamed" overstated — real PMA capital figures embedded | TRUE | **RAISED** (`07` §B4) — transparent, no PII, but a synthetic-stamped file now carries an unverified real figure |
+| 12 | G5 attributes a URL hash to "the migration" (it is `persist.py:102`), and omits the `[:16]` / `[:32]` truncations | TRUE, low severity | **ACCEPTED AS LIMIT** — substance (hash of URL, not content) is correct |
+
+**Not a finding** (refuter checked, found sound): migration numbering — `273` is WhatsApp-broker,
+head is 287, 282 absent, symbolic name correct; the G7 `ApprovalSubjectKind` closed-enum gap;
+`ObjectSuccessorEdge` and `OperationalReceipt` required-field claims; the abstention fixture's
+`reasoning.py` attribution (re-exported from `reasoning_utils.py`); and implementation-readiness,
+which is disclaimed consistently throughout.
+
+**Bottom line:** usable as an inventory and a gap list. **Not** to be handed to a build lane until
+§B1 and §B2 in `07-open-questions-and-corrections.md` are ruled on.

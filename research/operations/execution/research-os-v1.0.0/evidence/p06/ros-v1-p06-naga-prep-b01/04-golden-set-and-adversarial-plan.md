@@ -1,3 +1,9 @@
+---
+date: 2026-08-26
+domain: operations
+adversarial_review: kimi-k3
+---
+
 # Golden-set plan and adversarial-case checklist
 
 ## What this bundle does and does not deliver
@@ -5,7 +11,7 @@
 The packet asks for a "200–300 claim golden set with exact source spans, temporal truth,
 contradictions, supersessions, and no-answer cases" (Implementation sequence step 2). **This
 bundle delivers the plan for that set — categories, target counts, sourcing method, labeling
-schema — plus a representative sample of 14 synthetic fixtures, one or more per adversarial
+schema — plus a representative sample of 15 synthetic fixtures, one or more per adversarial
 category from the packet's own list.** It does not deliver 200–300 labeled claims. Producing the
 full set requires either (a) real Indonesian regulatory source documents hand-annotated by
 someone with the domain authority to certify "this is the correct claim/status/span," which is
@@ -56,7 +62,11 @@ several need a *pair* of claims, not one row):
 
 ## Representative sample delivered in `fixtures/`
 
-14 synthetic, clearly-labeled files, one or more per category above. Every fixture:
+15 synthetic, clearly-labeled files, one or more per category above. **CORRECTED 2026-08-26:
+the original set was 14 and claimed "one or more per category" while case 6 (the
+sanitization boundary) had NO fixture — the one category where a missing negative control
+costs the most. `fixtures/sanitization/01_restricted_evidence_sanitized_projection.json`
+was added to close it.** Every fixture:
 
 - Uses a fictional or explicitly-marked-synthetic Indonesian regulation number (e.g.
   `"Permenkumham SYNTH-12/2026"`), a `example.go.id` / `example.org` source domain, and a
@@ -68,7 +78,16 @@ several need a *pair* of claims, not one row):
 - Is shaped as a `{claim, evidence[]}` pair using the field names from
   `02-p04-adapter-mapping.md` (i.e. these are draft canonical objects, not NAGA DB rows) so a
   future adapter-conformance test can validate them directly against `claim.schema.json` /
-  `evidence.schema.json` once real code exists to run that validation — this bundle does not run
+  `evidence.schema.json` once real code exists to run that validation. **CORRECTED 2026-08-26
+  (adversarial review): as delivered they would NOT validate, and the original hedge covered
+  only "we did not run it", not "it would fail." Both schemas are `additionalProperties: false`
+  at every level (14 occurrences in `claim.schema.json`, 9 in `evidence.schema.json`), and the
+  fixtures (a) carry an extraneous `note` key the schema rejects outright and (b) omit most
+  required fields — Claim requires `evidence_refs, classification, review, lineage, retention,
+  object_hash`; Evidence requires `evidence_family_id, source_event_ref, document_version_id,
+  document_content_hash, source_tier, provenance, classification.rights, review_state,
+  retention, object_hash`. These fixtures are BEHAVIOUR SPECS, not schema instances; whoever
+  builds the conformance test must fill the required fields first.** This bundle does not run
   such validation itself (no Python execution was performed in this lane; see README "What I did
   NOT do").
 
@@ -106,3 +125,41 @@ The `expected_behavior` field exists specifically so this bundle answers, per fi
 would make this fixture's use FALSE" — the anti-hallucination discipline's own standing question
 for every verification claim. A fixture with no stated `expected_behavior` is not useful as a
 test input, only as a data sample; every fixture in this bundle has one.
+
+
+## Adversarial review
+
+**Seat:** Kimi K3 (`kimi -m kimi-code/k3`), cross-family — neither the model that wrote this
+bundle nor the session that gated it. Run 2026-08-26 against a FROZEN diff (head `bb6d9ceb9`):
+the generator was dead before the refuter was dispatched.
+
+**Verdict: DEFECTIVE.** The bundle is unusually honest about what it did not do, and its two
+load-bearing corrections (migration numbering, the G7 `ApprovalSubjectKind` gap) check out
+independently. But its fixture set was internally inconsistent in exactly the D11 area the review
+was aimed at, and its central baseline claim rested on one search pattern. Every finding was
+re-verified against disk by the gating session before acceptance — the refuter is not trusted
+either (superscar #6). That re-verification made finding 1 **worse** than reported.
+
+| # | Finding | Verified | Disposition |
+|---|---|---|---|
+| 1 | "`persist.py` is the only writer" came from an `INSERT INTO naga_` grep, blind to UPDATE by construction | TRUE, **and worse** | **FIXED** — four UPDATE writers named (`dedup.py:144`, `claim_scorer.py:202`, `expiry.py:58`, `:174`). The gating session also found the cited INSERT grep is *itself* wrong: `dedup.py:155` and `expiry.py:154` insert into `naga_claim_transitions`, one of the same 5 tables, and `persist.py` never writes it. Five writers across three files, not one |
+| 2 | "`quality_score` written once" contradicted by two post-insertion UPDATEs | TRUE | **FIXED** — written *first*, not once |
+| 3 | §2 point 5's open mystery ("what moves a claim out of `active`") is answered in a file it listed but never searched | TRUE | **FIXED** — `expiry.py:58` / `dedup.py:144`. The `review_status` half STANDS: nothing moves a claim out of `auto_extracted`, so the human-review gate has no exit path in code |
+| 4 | Supersession requires two coupled writes on an immutable content-hashed object; D10/D11 forbidden by §7 | TRUE (`object_hash` required, `claim.schema.json:618`) | **NOT FIXED — RAISED AS BLOCKING** (`07` §B1). Patching it means choosing an answer this bundle has no authority to choose |
+| 5 | `bitemporal/01` and `supersession/01` encode contradictory predecessor conventions; `bitemporal/01` trips the test matrix's own "FALSE if" | TRUE | **NOT FIXED — RAISED AS BLOCKING** (`07` §B2). Picking a convention IS answering §B1; both left visible |
+| 6 | `bitemporal/03` uses `supersedes_claim_ref` for calendared succession, not correction | TRUE | **RAISED** (`07` §B3) |
+| 7 | `invalidation/01` withdraws evidence `...e7` and asserts it affects claim `...0030` — a citation that exists nowhere in the fixture set | TRUE | **FIXED** — trigger now withdraws `...e2`, which `0030` genuinely cites. A PASS on the original data would have proven nothing |
+| 8 | "one or more per adversarial category" false — case 6 (sanitization boundary) had no fixture | TRUE (14 files, 8 dirs, no sanitization) | **FIXED** — fixture added; 15 files. This was the one category where a missing negative control costs most |
+| 9 | Evidence adapter mapping is four required fields short: `evidence_family_id`, `review_state`, `classification.rights`, `times.recorded_at` | TRUE (0 grep hits each; all four in the schema's required sets) | **FIXED** — §2's completeness claim corrected; closing them is a build precondition |
+| 10 | "Fixtures validate directly against the schemas" — they would fail today (extraneous `note`, most required fields absent, `additionalProperties: false` throughout) | TRUE | **FIXED** — restated as behaviour specs; the old hedge covered "we did not run it", not "it would fail" |
+| 11 | "100% invented, not real-data-renamed" overstated — real PMA capital figures embedded | TRUE | **RAISED** (`07` §B4) — transparent, no PII, but a synthetic-stamped file now carries an unverified real figure |
+| 12 | G5 attributes a URL hash to "the migration" (it is `persist.py:102`), and omits the `[:16]` / `[:32]` truncations | TRUE, low severity | **ACCEPTED AS LIMIT** — substance (hash of URL, not content) is correct |
+
+**Not a finding** (refuter checked, found sound): migration numbering — `273` is WhatsApp-broker,
+head is 287, 282 absent, symbolic name correct; the G7 `ApprovalSubjectKind` closed-enum gap;
+`ObjectSuccessorEdge` and `OperationalReceipt` required-field claims; the abstention fixture's
+`reasoning.py` attribution (re-exported from `reasoning_utils.py`); and implementation-readiness,
+which is disclaimed consistently throughout.
+
+**Bottom line:** usable as an inventory and a gap list. **Not** to be handed to a build lane until
+§B1 and §B2 in `07-open-questions-and-corrections.md` are ruled on.

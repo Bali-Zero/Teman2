@@ -2,18 +2,23 @@
   "synthetic": true,
   "fixture_category": "invalidation",
   "adversarial_case_ref": "packet 06-naga-claim-ledger.md, Deliverable #7: 'Invalidation events when evidence is withdrawn, a claim expires, is contradicted, or is superseded'",
-  "expected_behavior": "Withdrawing evidence_id b2f1a000-...-e7 must emit exactly one invalidation event referencing every claim that cited it (here: one claim), using the OperationalReceipt 'queue-only' profile per 02-p04-adapter-mapping.md §3/§4 (chosen over ApprovalReceipt because ApprovalSubjectKind has no 'claim' member -- see gap G7). Per the packet's Shadow/canary section, this event must create a REVIEW ACTION only -- it must NOT automatically withdraw public content or mutate any draft. A test should assert the event is queued and that no downstream ContentObject/draft state changed as a side effect of this fixture alone.",
+  "expected_behavior": "Withdrawing evidence_id b2f1a000-...-e2 must emit exactly one invalidation event referencing every claim that cited it (here: one claim), using the OperationalReceipt 'queue-only' profile per 02-p04-adapter-mapping.md §3/§4 (chosen over ApprovalReceipt because ApprovalSubjectKind has no 'claim' member -- see gap G7). Per the packet's Shadow/canary section, this event must create a REVIEW ACTION only -- it must NOT automatically withdraw public content or mutate any draft. A test should assert the event is queued and that no downstream ContentObject/draft state changed as a side effect of this fixture alone.",
   "trigger": {
     "event": "evidence_withdrawn",
-    "evidence_id": "b2f1a000-0000-4000-8000-0000000000e7",
+    "evidence_id": "b2f1a000-0000-4000-8000-0000000000e2",
     "reason": "SYNTHETIC — the primary source page was taken down / the government retracted the announcement.",
     "withdrawn_at": "2026-07-01T00:00:00Z"
   },
-  "affected_claims": ["b2f1a000-0000-4000-8000-000000000030"],
+  "affected_claims": [
+    "b2f1a000-0000-4000-8000-000000000030"
+  ],
   "expected_operational_receipt": {
     "receipt_type": "naga.invalidation.evidence_withdrawn",
     "subject_refs": [
-      { "object_kind": "claim", "object_id": "b2f1a000-0000-4000-8000-000000000030" }
+      {
+        "object_kind": "claim",
+        "object_id": "b2f1a000-0000-4000-8000-000000000030"
+      }
     ],
     "outcome_code": "naga.review_action_created",
     "note": "SYNTHETIC illustrative shape only -- real object_hash/idempotency_key/producer/lineage/retention fields required by operational_receipt.schema.json are omitted here since this fixture is a behavior spec, not a schema-valid instance."
@@ -22,5 +27,6 @@
     "automatic public-content withdrawal",
     "automatic draft mutation",
     "silent drop with no review action created (this would repeat the exact silent-drop defect already found live in persist.py's evidence-link parsing, documented in 01-naga-baseline-inventory.md §2 point 6)"
-  ]
+  ],
+  "correction_2026_08_26": "CORRECTED after a cross-family adversarial review (Kimi K3): this fixture originally withdrew evidence ...e7 and asserted it affected claim ...0030. That citation exists nowhere in the fixture set -- claim ...0030 is defined in contradiction/01 citing ...e2 and ...e3, while ...e7 is defined in evidence_independence/01 and is attached to no claim at all. A conformance test built on the original data would have encoded a dependency-index fact contradicted by this bundle's own contradiction fixture, so a PASS would have proven nothing about deliverable #7. The trigger now withdraws ...e2, which claim ...0030 genuinely cites."
 }
