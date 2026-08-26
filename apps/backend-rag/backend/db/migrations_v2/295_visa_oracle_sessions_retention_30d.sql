@@ -49,7 +49,7 @@
 --     the ruling and per SWITCHBOARD-2-RETENTION.md, disposing of the
 --     existing backlog is a separate, credentialed, operator act.
 --   - Does NOT create a purge job, a policy table, or any enforcement of
---     the declared date (unlike migration 282's retention machinery for
+--     the declared date (unlike migration 294's retention machinery for
 --     visa_oracle_consultant_requests) — none of that was asked for here,
 --     and building it would be exactly the "purge on a field that might
 --     not need to exist" the switchboard warned against for the sibling
@@ -64,6 +64,63 @@
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
 
+-- ----------------------------------------------------------------------------
+-- PROVENANCE GUARD — why an ALTER migration begins with a CREATE.
+--
+-- `visa_oracle_sessions` predates migrations_v2. It is created by the LEGACY
+-- Python migration system (backend/migrations/migration_080a_visa_oracle_
+-- sessions.py), and `migration_base.py:66` says plainly that the automated
+-- loader "only reads db/migrations_v2/*.sql" — so nothing in CI ever runs
+-- 080a. The table is also not a SQLModel `table=True` class, so it is missed
+-- by scripts/ci_bootstrap_schema.py, the CI-only sweep that exists precisely
+-- to cover tables predating migrations_v2. Net effect: the table exists in
+-- production and has NEVER existed on a fresh CI database, and this file is
+-- the first migrations_v2 member to touch it.
+--
+-- Measured, not assumed: the bare ALTER below failed identically in all three
+-- CI backend shards with `relation "public.visa_oracle_sessions" does not
+-- exist`, during `python -m backend.db.migrate apply-all`, before pytest
+-- collected a single test. 293 and 294 applied fine — they CREATE their own
+-- tables; only this one assumed a table into existence.
+--
+-- The cure is to stop assuming: migrations_v2 now owns the table's existence.
+-- On production every statement below is a no-op (the table and both indexes
+-- are already there); on a fresh database they build it. The column list,
+-- types, nullability and defaults are transcribed from the LIVE production
+-- catalog (information_schema.columns), not from the legacy file, so a fresh
+-- database converges on what production actually has.
+--
+-- THE INDEX NAMES ARE PRODUCTION'S, NOT THE LEGACY FILE'S, AND THE DIFFERENCE
+-- IS LOAD-BEARING. 080a names them `idx_visa_oracle_sessions_{session_id,
+-- created_at}`; production actually carries `idx_vo_sessions_session_id` and
+-- `idx_vo_sessions_created_at` (read out of pg_indexes). Using the legacy
+-- names here would find no existing index on production, so IF NOT EXISTS
+-- would not protect anything — it would BUILD A SECOND, DUPLICATE INDEX on a
+-- live table. Using production's names makes it the intended no-op.
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.visa_oracle_sessions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id          VARCHAR(64) NOT NULL,
+    quiz_answers        JSONB DEFAULT '{}'::jsonb,
+    recommended_visas   JSONB DEFAULT '[]'::jsonb,
+    messages            JSONB DEFAULT '[]'::jsonb,
+    language_detected   VARCHAR(10),
+    handoff_triggered   BOOLEAN DEFAULT FALSE,
+    ip_hash             VARCHAR(64),
+    created_at          TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at          TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '90 days')
+);
+
+CREATE INDEX IF NOT EXISTS idx_vo_sessions_session_id
+    ON public.visa_oracle_sessions (session_id);
+
+CREATE INDEX IF NOT EXISTS idx_vo_sessions_created_at
+    ON public.visa_oracle_sessions (created_at DESC);
+
+-- The declaration this migration actually exists for. It runs identically on
+-- both paths: on production against the table that was already there, on a
+-- fresh database against the one just created above with the 90-day default.
 ALTER TABLE public.visa_oracle_sessions
     ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '30 days');
 
