@@ -421,6 +421,67 @@ tool inherits whatever rule you set, and until it is set that tool stays dark li
 
 ---
 
+## Item 13 — Both engines now go silent the same way, and each one's fallback is the other
+
+**Raised after item 5 was closed, by a measurement taken while gating lane B2.** It does not
+reopen item 5; it reports a fact that was not on the table when you decided it.
+
+**What you decided.** Item 5: no auto-reload, no 80% budget alert on Gemini. The reasoning relayed
+with it was sound — Gemini is being retired as the brain, so paying to protect it is paying for
+the past, and the mitigation in the meantime is the ChatGPT promotion.
+
+**What was not known then.** The ChatGPT leg cannot report its own exhaustion either. Measured at
+code, this turn:
+
+- `CodexExecQuotaError` exists (`backend/llm/codex_exec_client.py:778`) — the client CAN raise it.
+- `wa_codex_daemon.py` **never catches it**. Zero occurrences of the string `Quota` in the whole
+  daemon. It falls into the bare `except Exception` and reaches the wire as `cli_failure` — the
+  same value emitted by a NUL byte in the output, a spawn problem, or an unparseable result.
+- The seat probe declares the identical limit in its own docstring: quota exhaustion "is NOT
+  distinguished from any other non-auth, non-invocation failure here". `S1.5` owns sharpening that
+  bucket and has not.
+
+Note the contrast, because it shows this is an omission and not a design: **auth death IS handled
+specially.** The daemon catches `CodexExecAuthError`, logs "AUTH DEATH" loudly, and a live probe
+manufactures an independent signal for it — verified green today (`verdict=ok`,
+`login_status_rc=0`, `exec_rc=0`). Someone thought carefully about the seat DYING. Nobody thought
+about the seat RUNNING OUT.
+
+**The composition, which is the actual finding.** After the promotion, the documented degradation
+for a struggling Codex leg is "direct to Gemini" (research capture, the
+`codex_broker_heartbeat_age_seconds` and `codex_broker_queue_depth` gauges). Gemini's degradation
+is Codex. So:
+
+- Gemini exhausts, silently (item 5), and falls back to Codex.
+- Codex exhausts, reported as `cli_failure` and indistinguishable from a transient CLI error, and
+  falls back to Gemini.
+
+Each leg's answer to running out is the other leg, and neither can say that running out is what
+happened. Two engines is genuinely better than one — the promotion is still right and this is not
+a reason to pause it. But the promotion does not by itself restore the ability to KNOW. It
+relocates the blindness.
+
+**What is being asked.** Nothing that blocks the ignition ladder; rungs 1 and 2 are unaffected.
+One condition on rung 3: **do not close the promotion to primary while both legs are quota-blind.**
+Three ways to satisfy it, your call:
+
+- **(a) Teach the daemon the exception it already has** — one `except CodexExecQuotaError:` arm
+  with its own log line, mirroring the AUTH DEATH arm already sitting next to it. Smallest diff;
+  puts the signal on the leg being promoted. Needs a broker payload re-promotion to
+  `/usr/local/lib/wa-codex-broker/` to take effect, since that copy is not a git checkout.
+- **(b) Reinstate the Gemini alert only** — no auto-reload, no spend. Restores the warning while
+  keeping the "we are not paying for Gemini" ruling intact in substance, though it will look like
+  a reversal.
+- **(c) Accept it, explicitly** — with the consequence written down: the first time either leg
+  exhausts, WhatsApp degrades and the diagnosis starts from zero, in a log file the cron identity
+  cannot read.
+
+**Recommendation: (a).** A handful of lines against an exception class that already exists, it does
+not touch the billing ruling at all, and it puts the signal on the engine being promoted rather
+than on the one being retired.
+
+---
+
 ## See also
 
 - **Kill criterion**: `MANDATE.md` (new section, this lane's addition) — the measured conditions
