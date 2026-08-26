@@ -25,12 +25,13 @@
 --   the table held no non-VISA_DECISION row.
 --
 --   The first GARUDA policy row was activated in production at
---   2026-08-26 04:40:27Z. From that instant the unscoped predicate matched
+--   2026-08-26 04:40:27Z. From that instant the unscoped predicate matches
 --   2 rows, then 4 (magic-link and order policies activated 06:28:56Z), and:
 --
 --     * `retention.active_policy_available()` (Python, `count(*) == 1`)
---       returned False, so every /api/visa-oracle/evaluate call answered
---       HTTP 200 `TEMPORARILY_UNAVAILABLE / RETENTION_POLICY_UNAVAILABLE`;
+--       returns False, so every /api/visa-oracle/evaluate call answers
+--       HTTP 200 `TEMPORARILY_UNAVAILABLE / RETENTION_POLICY_UNAVAILABLE`
+--       -- reproduced live against balizero.com;
 --     * had that gate been fixed alone, `INTO STRICT` in these two functions
 --       would have raised TOO_MANY_ROWS on the first insert
 --       ('decision retention policy authority is ambiguous'), converting a
@@ -39,6 +40,14 @@
 --   Measured on prod before this migration:
 --       environment='PRODUCTION' AND effective_period @> now()            -> 4
 --       ... AND policy_scope='VISA_DECISION'                              -> 1
+--
+--   What is NOT claimed: that this is when real visitors began being turned
+--   away. `visa_decisions` cannot answer that -- the gate refuses BEFORE any
+--   INSERT, so a blocked call leaves no row, and the table already shows
+--   multi-day gaps (16-18 and 21-22 August) while the gate was healthy. Its
+--   last row predates 04:40:27Z by ~43 hours, which this defect therefore
+--   does NOT explain. Two facts are established and no more: the invariant
+--   broke at 04:40:27Z, and the gate is broken now.
 --
 -- THE FIX
 -- ----------------------------------------------------------------------------
