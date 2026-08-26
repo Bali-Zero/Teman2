@@ -31,9 +31,21 @@ set -euo pipefail
 
 RULESET_NAME="merge-queue-main"
 
+# S5 ARM-half additions (scripts/ci/check_base_protected.py is the CHECK-half).
+# A separate ruleset name/purpose from $RULESET_NAME above: that one governs
+# merge_group queue MECHANICS for main (grouping/batching) and carries no
+# required_status_checks rule at all — main's actual required checks live in
+# CLASSIC branch protection, which cannot glob-match a branch that doesn't
+# exist yet. This ruleset instead protects a *pattern* of integration branch
+# (e.g. refs/heads/feature/*) with a required_status_checks rule, since that's
+# the one mechanism that auto-applies to a branch created after the ruleset.
+INTEGRATION_RULESET_NAME="integration-branch-protection"
+MIN_CONTEXTS_JSON="infra/required.d/integration-branch-minimum-contexts.json"
+
 usage() {
   cat <<'USAGE'
 Usage: setup_merge_queue_ruleset.sh --status | --enable | --disable | --apply
+       setup_merge_queue_ruleset.sh --branch-pattern <pattern> [--apply]
 
   --status    Print the current ruleset (if any) + effective branch rules on
               main (drift check). Read-only, always exits 0 once the repo
@@ -47,6 +59,27 @@ Usage: setup_merge_queue_ruleset.sh --status | --enable | --disable | --apply
               default — activation is a deliberate separate --enable step,
               never a side effect of reconciling drift), else reconcile its
               rule content via PUT while preserving current enforcement.
+
+  --branch-pattern <pattern>
+              S5 ARM-half (scripts/ci/check_base_protected.py is the CHECK-
+              half): create/reconcile a SEPARATE ruleset named
+              "integration-branch-protection", scoped to
+              refs/heads/<pattern> (e.g. 'feature/*'), carrying a
+              required_status_checks rule seeded from
+              infra/required.d/integration-branch-minimum-contexts.json.
+              WITHOUT --apply this only PRINTS the `gh api` body + command it
+              would run — no mutation, safe to call from a CI check or a
+              read-only session. WITH --apply it actually creates it
+              (enforcement=disabled, same "activation is a separate step"
+              posture as --apply above — there is no --branch-pattern
+              --enable in this version; flip enforcement by hand once ready:
+              reconcile with --apply again after editing this script's
+              INTEGRATION_RULESET_NAME lookup, or extend cmd_set_enforcement
+              to take a ruleset name). One pattern per invocation — running
+              it again with a different pattern REPLACES the include list
+              (whole-object PUT, see the canonical_body() comment above).
+              This is a repo-settings mutation: --apply is operator[control-
+              plane], never run by the CI check itself.
 
 Every subcommand resolves the repo slug live via `gh repo view` and never
 echoes a secret. Any real GitHub API error (as opposed to "ruleset not found
@@ -108,6 +141,50 @@ canonical_body() {
   "bypass_actors": []
 }
 JSON
+}
+
+# $1 = branch pattern (e.g. "feature/*"), $2 = enforcement ("active"|"disabled").
+# Builds the S5 ARM-half ruleset body via python3 (not jq — `gh --jq` embeds
+# gojq, no standalone `jq` binary is guaranteed on every runner/machine this
+# script targets, and python3 already is a hard dependency across this repo's
+# scripts/ci/*.py siblings). Reads the pinned minimum contexts from
+# $MIN_CONTEXTS_JSON so this script and check_base_protected.py never drift —
+# one SSOT, not two hand-maintained lists.
+integration_body() {
+  local pattern="$1" enforcement="$2"
+  BRANCH_PATTERN="$pattern" ENFORCEMENT="$enforcement" MIN_CONTEXTS_JSON="$MIN_CONTEXTS_JSON" \
+    python3 - <<'PYEOF'
+import json
+import os
+
+with open(os.environ["MIN_CONTEXTS_JSON"], encoding="utf-8") as fh:
+    minimum_contexts = json.load(fh)["minimum_contexts"]
+
+body = {
+    "name": "integration-branch-protection",
+    "target": "branch",
+    "enforcement": os.environ["ENFORCEMENT"],
+    "conditions": {
+        "ref_name": {
+            "include": [f"refs/heads/{os.environ['BRANCH_PATTERN']}"],
+            "exclude": [],
+        }
+    },
+    "rules": [
+        {
+            "type": "required_status_checks",
+            "parameters": {
+                "strict_required_status_checks_policy": False,
+                "required_status_checks": [
+                    {"context": c, "integration_id": None} for c in minimum_contexts
+                ],
+            },
+        }
+    ],
+    "bypass_actors": [],
+}
+print(json.dumps(body, indent=2))
+PYEOF
 }
 
 # Prints the id of the ruleset named $RULESET_NAME in repo $1, or empty
@@ -188,6 +265,79 @@ cmd_apply() {
 
   print_ruleset "$repo" "$(find_ruleset_id "$repo")"
 }
+
+# $1 = branch pattern, $2 = "true"|"false" (--apply given or not).
+# Print-only by default (no `gh api --method POST/PUT` call at all unless
+# apply="true") — this is what lets check_base_protected.py's failure message
+# safely print the equivalent command line for an operator to run, and what
+# lets THIS script itself be invoked read-only from a CI job without risking
+# a repo-settings mutation from an unattended context.
+cmd_branch_pattern() {
+  local pattern="$1" apply="$2"
+  local repo id enforcement body
+
+  if [[ -z "$pattern" ]]; then
+    echo "ERROR: --branch-pattern requires a value, e.g. --branch-pattern 'feature/*'" >&2
+    exit 1
+  fi
+
+  repo="$(repo_slug)"
+  id="$(gh api "repos/${repo}/rulesets" --jq ".[] | select(.name==\"${INTEGRATION_RULESET_NAME}\") | .id")"
+
+  if [[ "$apply" != "true" ]]; then
+    echo "DRY RUN — nothing executed. Add --apply to actually create/reconcile this ruleset."
+    echo
+    if [[ -z "$id" ]]; then
+      body="$(integration_body "$pattern" "disabled")"
+      echo "Would run (ruleset does not exist yet):"
+      echo "  gh api --method POST repos/${repo}/rulesets --input - <<'JSON'"
+      echo "$body"
+      echo "JSON"
+    else
+      enforcement="$(gh api "repos/${repo}/rulesets/${id}" --jq '.enforcement')"
+      body="$(integration_body "$pattern" "$enforcement")"
+      echo "Ruleset '${INTEGRATION_RULESET_NAME}' already exists (id ${id}, enforcement=${enforcement}). Would run:"
+      echo "  gh api --method PUT repos/${repo}/rulesets/${id} --input - <<'JSON'"
+      echo "$body"
+      echo "JSON"
+    fi
+    return 0
+  fi
+
+  # --apply: mirrors cmd_apply()'s idempotent create-or-reconcile posture —
+  # a NEW ruleset is created with enforcement=disabled (activation stays a
+  # deliberate, separate, manual step: edit the enforcement value by hand and
+  # re-run --apply, or extend cmd_set_enforcement to take a ruleset name —
+  # not built here, out of this PR's scope).
+  if [[ -z "$id" ]]; then
+    echo "Ruleset '${INTEGRATION_RULESET_NAME}' not found in ${repo} — creating (enforcement=disabled by default)..."
+    integration_body "$pattern" "disabled" | gh api --method POST "repos/${repo}/rulesets" --input - >/dev/null
+    echo "OK: created, enforcement=disabled. Flip it active only once ready (deliberate, manual)."
+  else
+    enforcement="$(gh api "repos/${repo}/rulesets/${id}" --jq '.enforcement')"
+    echo "Ruleset '${INTEGRATION_RULESET_NAME}' exists (id ${id}, enforcement=${enforcement}) — reconciling rule content via PUT, enforcement unchanged..."
+    integration_body "$pattern" "$enforcement" | gh api --method PUT "repos/${repo}/rulesets/${id}" --input - >/dev/null
+    echo "OK: reconciled (enforcement unchanged: ${enforcement})."
+  fi
+  id="$(gh api "repos/${repo}/rulesets" --jq ".[] | select(.name==\"${INTEGRATION_RULESET_NAME}\") | .id")"
+  print_ruleset "$repo" "$id"
+}
+
+if [[ "${1:-}" == "--branch-pattern" ]]; then
+  _pattern="${2:-}"
+  _apply="false"
+  case "${3:-}" in
+    --apply) _apply="true" ;;
+    "") ;;
+    *)
+      echo "Unknown argument after --branch-pattern <pattern>: $3" >&2
+      usage
+      exit 1
+      ;;
+  esac
+  cmd_branch_pattern "$_pattern" "$_apply"
+  exit 0
+fi
 
 case "${1:-}" in
   --status)

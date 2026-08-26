@@ -196,6 +196,26 @@ from `main` may be actively harmful on a branch that lacks the machinery `main`
 has.** Inherited rules travel with their enforcement or they travel as their own
 opposite.
 
+**Update 2026-08-27 — CHECK-half shipped, ARM-half still pending.**
+`scripts/ci/check_base_protected.py` + the `base-branch-protected` job in
+`.github/workflows/hot-zone-pr-gate.yml` now fail a PR whenever its base branch
+is not covered by an active ruleset carrying the main-equivalent minimum
+required checks (`infra/required.d/integration-branch-minimum-contexts.json`).
+Verified live at authoring time: exactly 2 rulesets exist, both scoped to
+`main`/`~DEFAULT_BRANCH` — nothing covered `refs/heads/feature/*`, and neither
+of those 2 carries a `required_status_checks` rule at all (main's own required
+checks live in classic branch protection, not in its ruleset — a corrected
+premise from the original design, see the script's own module docstring).
+Still open, and deliberately NOT done by this check (repo-settings mutation is
+an operator[control-plane] action): actually creating the `feature/*` ruleset
+— `scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern 'feature/*'
+--apply` (print-only without `--apply`) — and confirming the CI job's own
+`gh api .../rulesets` call can authenticate at all, since the ambient
+`GITHUB_TOKEN` has no grantable "administration" scope (confirmed via
+actionlint's own valid-permissions list) and will likely report the check as
+BLIND (fail-closed, not a false pass) on every non-default-base PR until an
+admin-scoped PAT is wired in as a secret.
+
 ## Enforcement backlog (not yet armed — tracked, per superscar #2 "esiste ≠ armato")
 
 1. CI rule: PR touching only `docs/`/`research/` requires an explicit owner-initialed label

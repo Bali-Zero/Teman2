@@ -368,3 +368,67 @@ jobs:
             echo ""
             echo "Reference: research/operations/L5.2-phase2-3-4-prompts.md"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------
+  # S5 check-half (ASSEMBLY-LINE.md "The integration branch must be
+  # protected BEFORE the first lane opens a PR"): an integration branch
+  # inherits main's gates or the PR into it goes red. Measured 2026-08-27:
+  # exactly 2 rulesets exist in this repo, both scoped to main/
+  # ~DEFAULT_BRANCH — 52 PRs merged into feature/kb-current, feature/
+  # garuda-voa, feature/due-bot in the 2026-08-25/26 window with ZERO
+  # required checks. This job is independent of hot-zone-gate above (its
+  # own pass/fail, its own name in the Checks tab) so it can later be added
+  # to required_status_checks on its own, without inheriting hot-zone-
+  # gate's unrelated CODEOWNERS/migration concerns.
+  #
+  # ARM-half (repo-settings mutation, NOT done here — operator[control-
+  # plane]): scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern
+  # '<pattern>' --apply, printed verbatim by this check's own failure
+  # message when it fires.
+  # ---------------------------------------------------------------------
+  base-branch-protected:
+    name: Base branch protected
+    runs-on: ubuntu-latest
+    # Floor is the checkout + at most 3 `gh api` calls (list + 2 ruleset
+    # detail GETs) — and ZERO api calls at all when the base IS the default
+    # branch (most PRs), which short-circuits before touching `gh`.
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # CONFIRMED GAP, not a guess (2026-08-27, actionlint against this
+      # exact job): the repository-rulesets API is documented as requiring
+      # "Administration" access, but `administration` is NOT in actionlint's
+      # own list of grantable Actions `permissions:` scopes at all — the
+      # ephemeral GITHUB_TOKEN structurally cannot be scoped to read
+      # rulesets, by GitHub's own token design, regardless of what's written
+      # here. So `${{ github.token }}` below will likely 403 on the ONE `gh
+      # api repos/.../rulesets` call this script makes for a non-default
+      # base — which the script then reports as BLIND (fail-closed, "cannot
+      # verify"), never as a false pass. On the default-branch base (most
+      # PRs), this job never calls that API at all and is unaffected. Un-
+      # blocking the non-default case needs an admin-scoped PAT wired as a
+      # repo secret — operator[secret], a follow-up, not done in this PR.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: An unprotected integration branch must not silently accept PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.event.merge_group.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -u
+          if [[ -z "${BASE_REF:-}" ]]; then
+            echo "::notice::no base ref on this event (${{ github.event_name }}) — nothing to check"
+            exit 0
+          fi
+          python3 scripts/ci/check_base_protected.py \
+            --base-ref "$BASE_REF" \
+            --repo "${{ github.repository }}" \
+            --default-branch "${DEFAULT_BRANCH:-main}"
