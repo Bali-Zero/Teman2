@@ -7,13 +7,26 @@ on:
     types: [opened, synchronize, reopened]
   merge_group:
   schedule:
-    # Daily backstop, 19:17 UTC = 03:17 WITA next day. Prerequisite for a
-    # later PR to remove this workflow's `push: main` trigger (Merge-OS v3
-    # build order step 2 — research/operations/2026-08-14-merge-os-v3-research-council.md
-    # §6): that dedupe only lands after this schedule has produced at least
-    # one green scheduled run, so there is never a window with no confirmed
-    # backstop. The weekly Sunday entry stays until then — two schedules
-    # overlapping is harmless.
+    # Daily backstop, 19:17 UTC = 03:17 WITA next day. Added (#4184,
+    # 2026-08-14) as the prerequisite for removing this workflow's
+    # `push: main` trigger (Merge-OS v3 build order step 2 —
+    # research/operations/2026-08-14-merge-os-v3-research-council.md §6):
+    # that dedupe was gated on this schedule producing at least one green
+    # scheduled run first, so there was never a window with no confirmed
+    # backstop.
+    #
+    # CORRECTED 2026-08-27: the removal already happened — #4218
+    # (2026-08-16) dropped `main` from `on.push.branches` below, once the
+    # first scheduled run came back green. This paragraph used to describe
+    # that as still-pending future work; PENDING-ARMS carried a matching
+    # stale row (opened 2026-08-15, "PR OPEN AS DRAFT") for the same reason
+    # — both were still true the day they were written and neither was
+    # updated after the PR merged. A comment that outlives the state it
+    # describes reads as a standing TODO to the next session (W106: "a cure
+    # anchored to a frozen measurement of the world"), which is what
+    # produced a second Zero GO order to re-run a step already complete.
+    # The weekly Sunday entry stays regardless of any of the above — it is
+    # a second independent sample, not a stand-in for the daily one.
     - cron: "17 19 * * *" # Daily security backstop, 03:17 WITA
     - cron: "0 0 * * 0" # Weekly scan on Sunday
   workflow_dispatch:
