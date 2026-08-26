@@ -23,6 +23,7 @@ from backend.llm.codex_exec_client import (
     CodexExecCommunicationError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
+    CodexExecQuotaError,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
     MatchConfidence,
@@ -471,6 +472,15 @@ class TestErrorMapping:
             # asserts.
             (CodexExecOutputShapeError("o", reason=OutputShapeReason.EMPTY), "cli_failure"),
             (CodexExecAuthError("a", confidence=MatchConfidence.LOW), "cli_failure"),
+            # B2b-daemon-quota (owner packet item 13, 2026-08-26): the daemon
+            # previously had no `except CodexExecQuotaError:` arm at all — it
+            # fell into the bare `except Exception` below and was reported
+            # exactly like a NUL byte or a spawn failure. Same wire value as
+            # AUTH_DEAD ("cli_failure" — wa_broker.ALLOWED_ERROR_CLASSES has
+            # no QUOTA member); what changed is the log line, asserted
+            # separately in test_guilt_quota_exhaustion_logs_distinctly_and_
+            # is_not_swallowed_by_the_catch_all below.
+            (CodexExecQuotaError("q", confidence=MatchConfidence.HIGH), "cli_failure"),
             (RuntimeError("anything unexpected"), "cli_failure"),
         ],
     )
@@ -488,6 +498,42 @@ class TestErrorMapping:
         [body] = _complete_bodies(broker)
         assert body["error_class"] == expected
         assert body["result_text"] is None
+
+    @pytest.mark.asyncio
+    async def test_guilt_quota_exhaustion_logs_distinctly_and_is_not_swallowed_by_the_catch_all(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Proves the `except CodexExecQuotaError:` arm actually RUNS rather
+        than being shadowed by the bare `except Exception as exc:` clause
+        further down the same try block. `CodexExecQuotaError` is not a
+        subclass of any exception type caught by an earlier arm — but if a
+        future edit ever moved this arm to AFTER the catch-all (or the
+        catch-all were ever widened to intercept first), Python tries
+        `except` clauses top to bottom and the first match wins: the
+        catch-all would swallow it silently, `error_class` would still come
+        out "cli_failure" (so the parametrized test above would keep
+        PASSING), and only the LOG LINE would betray the regression — the
+        generic "unexpected exec failure" message instead of the
+        quota-specific one. This test pins the log line, not just the wire
+        value, so that regression cannot hide behind a green
+        test_guilt_exec_failures_map_to_the_vocabulary.
+        """
+        broker = _Broker(claim_results=[_claim_payload()])
+        daemon = _daemon(
+            broker, _StubCodex(raises=CodexExecQuotaError("q", confidence=MatchConfidence.HIGH))
+        )
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        with caplog.at_level("ERROR"):
+            await daemon._execute_and_complete(claim)
+
+        messages = [r.getMessage() for r in caplog.records]
+        assert any("QUOTA EXHAUSTED" in m for m in messages), messages
+        assert not any("unexpected exec failure" in m for m in messages), messages
+
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] == "cli_failure"
 
     @pytest.mark.asyncio
     async def test_guilt_oversized_output_is_reported_never_truncated(self) -> None:

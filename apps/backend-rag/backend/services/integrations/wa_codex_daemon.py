@@ -75,6 +75,7 @@ from backend.llm.codex_exec_client import (
     CodexExecCommunicationError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
+    CodexExecQuotaError,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
 )
@@ -504,6 +505,25 @@ class WaCodexDaemon:
             logger.error(
                 "wa-codex-daemon: codex seat AUTH DEATH detected — operator must re-login "
                 "as zantara-codex (job %s reported as cli_failure)",
+                claim.job_id,
+            )
+            error_class = "cli_failure"
+        except CodexExecQuotaError:
+            # The seat's ChatGPT/Codex quota is exhausted — every subsequent
+            # job will fail the same way until the usage window resets or
+            # the operator switches seats. Twin of the AUTH DEATH arm above
+            # (owner packet item 13, 2026-08-26): distinct from a generic
+            # CLI failure so the operator can tell "seat is out of quota"
+            # from "something broke", even though the wire value is
+            # unchanged — wa_broker.ALLOWED_ERROR_CLASSES (the closed
+            # vocabulary the router validates against) has no QUOTA member
+            # today, only the separate, unwired F3 vocabulary in
+            # codex_broker_wire.py does. Widening ALLOWED_ERROR_CLASSES is
+            # a deliberate, reviewed diff this unit does not make.
+            logger.error(
+                "wa-codex-daemon: codex seat QUOTA EXHAUSTED — operator must wait "
+                "for the usage window to reset or switch seats (job %s reported "
+                "as cli_failure)",
                 claim.job_id,
             )
             error_class = "cli_failure"
