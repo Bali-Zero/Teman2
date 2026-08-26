@@ -1,0 +1,201 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Q0 in /Users/nuzantara/Desktop/2026-08-26-PIANO-SPEC-receptor-live.md §5bis —
+  dispatched as a teammate mandate to correct `.agents/skills/` vs
+  `.claude/skills/` divergence. This pack documents that the dispatched
+  premise was measured false this turn, and ships the corrected, smaller
+  deliverable instead of the originally-specified one.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+  - lane: refute
+    role: review
+    seat: kimi-code/k3
+
+diff:
+  files: 4
+  net_lines: 310
+  measured_at: 63bfa19e
+  note: >-
+    310 = the two functional files (scripts/tests/test_skills_canonical.py 254
+    lines + .github/workflows/check-skills-canonical.yml 56 lines), counted via
+    `wc -l` before this pack's own two files (pack.yml/brief.yml) are added —
+    same convention as the reference pack this shape was copied from. `files: 4`
+    counts all four files this PR adds (test + workflow + pack.yml + brief.yml).
+    measured_at is the merge-base with origin/main at investigation time
+    (`git merge-base HEAD origin/main` in the worktree, before any commit on
+    this branch existed).
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The dispatched premise ("`.agents/skills/` has 21 dirs; 11 SKILL.md
+      DIVERGENT vs `.claude/skills/`, naming modus/workflow;
+      `.agents/skills/modus/SKILL.md:149` still says 'Fable 5 first'") is
+      false on every count.
+    cmd: >-
+      ls -la .claude/skills/ .agents/skills/ && diff -rq .claude/skills
+      .agents/skills && find .agents/skills -type d | wc -l
+    result: >-
+      .agents/skills/ has 8 top-level skill dirs (bot, bz-video-production,
+      google-flow-video, kbli-navigator, secondhome, subhi, visaoracle, wr2)
+      + README.md, not 21 (find -type d incl. root + wr2/_research = 10).
+      .claude/skills/ has 16 entries: 5 are symlinks into .agents/skills/
+      (bot, kbli-navigator, secondhome, visaoracle, wr2— trivially
+      byte-identical) and 11 are real Tier-B dirs with NO .agents/skills/
+      counterpart on either side of the diff (agent-session-discipline,
+      final-gate-discipline, intake, karpathy-discipline, modus,
+      pipeline-ship, reuse-first, skill-catalog, slhs,
+      sota-architecture-loop, workflow). `diff -rq` reports zero "differ"
+      lines — nothing is divergent, the 11 simply do not exist on the
+      .agents side, and never did.
+    exit: 0
+    ts: 2026-08-27T00:15Z
+    seat: session (Pro, implementer lane)
+
+  - claim: "`.agents/skills/modus/SKILL.md` does not exist — line 149 cannot say anything."
+    cmd: >-
+      git log --oneline --diff-filter=D --all -- '.agents/skills/modus*'
+      '.agents/skills/workflow*'
+    result: >-
+      Empty output on both patterns — no commit in the repo's history ever
+      created then deleted such a path. It never existed to diverge from.
+    exit: 0
+    ts: 2026-08-27T00:16Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      `.claude/skills/modus/SKILL.md` (the file that DOES exist) already
+      correctly documents the 2026-08-20 Fable-out ruling as current; every
+      "Fable 5 first" occurrence is explicit past-tense framing, not a live
+      instruction.
+    cmd: grep -n "Fable" .claude/skills/modus/SKILL.md
+    result: >-
+      14 matches, all either "Fable is out of the workflow (RULED
+      2026-08-20 ...)" or "was 'Fable 5 first, degrade to Opus on
+      exhaustion' per the 2026-08-09 ruling; that two-tier degradation is
+      now moot, Opus 5 IS the seat" — the same "was X" framing used by the
+      canonical SSOT `research/operations/2026-08-10-fleet-order-spec.md:314`.
+    exit: 0
+    ts: 2026-08-27T00:17Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The real, deliberate architecture is documented on disk:
+      `.agents/skills/` is the canonical cross-agent store, `.claude/skills/`
+      symlinks shared skills into it, and Claude-Code-specific skills (the
+      README names `workflow` itself) stay real dirs under `.claude/skills/`
+      ONLY, by design — never mirrored.
+    cmd: cat .agents/skills/README.md
+    result: >-
+      Confirmed verbatim: "Edit skills HERE, never in a tool-specific copy
+      ... If you find a real file where a symlink should be, it is drift"
+      and "Tool-specific glue (hooks, slash commands, subagent definitions,
+      orchestration playbooks like `workflow`) stays in the owning tool's
+      directory (Tier B) and is NOT shared." Established 2026-07-23
+      (skill-unification lane, PR #3019, confirmed via
+      `git log --oneline -- .claude/skills/bot`).
+    exit: 0
+    ts: 2026-08-27T00:18Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      `scripts/prepush_classify.py` independently corroborates the same
+      architecture from a different angle (pre-push test-scoping), so the
+      correction is not this session's reading of one file alone.
+    cmd: grep -n "agents/skills" scripts/prepush_classify.py
+    result: >-
+      Lines 587-617: ".agents/skills/README.md (verified on disk) states
+      this tree is the CANONICAL cross-agent skill store ... NOT a
+      duplicate of .claude/skills/. Proof: 4 of the 8 .claude/skills/<name>
+      entries ... are literal symlinks ... verified via git ls-tree mode
+      120000." (Written 2026-07-27; the "4 of 8" is now "5 of 16" —
+      secondhome was unified after that comment was authored — a stale
+      descriptive comment, not a functional bug: the classifier's own
+      matching rule is suffix-scoped, not a hardcoded name list.)
+    exit: 0
+    ts: 2026-08-27T00:19Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      No prior PR or commit already addressed this Q0 mandate — this is not
+      duplicate work.
+    cmd: >-
+      git log --oneline --all --grep="skills canon" -i; gh pr list --search
+      "skills canon" --state all --json number,title,state
+    result: "Zero matches on either search."
+    exit: 0
+    ts: 2026-08-27T00:14Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The new checker actually distinguishes guilt from innocence — proven
+      by running the suite, not asserted. Two fixture bugs were found and
+      fixed by this same red-first run (wrong relative-symlink depth in the
+      innocence fixture; `.resolve()` on a not-yet-unlinked symlink
+      returning the target dir in the drift-replacement fixture).
+    cmd: >-
+      apps/backend-rag/.venv/bin/pytest scripts/tests/test_skills_canonical.py
+      -v
+    result: "collected 10 items; 10 passed in 0.08s. 3 guilt + 3 innocence + 4 real-repo regression tests, all green."
+    exit: 0
+    ts: 2026-08-27T00:32Z
+    seat: session (Pro, implementer lane)
+
+  - claim: "The new CI workflow file is syntactically valid."
+    cmd: actionlint .github/workflows/check-skills-canonical.yml
+    result: "No output, exit 0."
+    exit: 0
+    ts: 2026-08-27T00:34Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The deterministic gear floor recomputed from this PR's real
+      changed-file set is 3 (touches .github/workflows/), matching the
+      declared gear.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <changed-files-list>
+    result: "floor=3, with the 2 real changed files enumerated (test file + workflow file)."
+    exit: 0
+    ts: 2026-08-27T00:36Z
+    seat: session (Pro, implementer lane)
+
+dissent:
+  - seat: session self-refutation (recorded because the dispatching mandate's own author could not have caught it without re-measuring)
+    objection: >-
+      The dispatching Q0 mandate's "measured today" claim was not
+      reproducible: 21 dirs / 11 divergent SKILL.md / a stale Fable-first
+      line at a specific file:line were all checked directly this turn and
+      all three are false. Executing the mandate's literal instructions
+      (port .claude Tier-B content into .agents/skills as byte-identical
+      copies) would have violated the documented 2026-07-23 architecture
+      and polluted the cross-agent canonical store with Claude-Code-only
+      orchestration prose.
+    status: CONFIRMED
+    note: >-
+      Not executed. Scope corrected instead: ship a regression test
+      encoding the REAL contract (including a guilt fixture for exactly
+      the mirroring mistake the original mandate asked for), reported back
+      to the dispatching team-lead via teammate message before opening
+      this PR.
+
+tests:
+  - "scripts/tests/test_skills_canonical.py — 10 collected, 10 passed, rc=0 (backend-rag venv pytest)."
+
+static:
+  - "actionlint .github/workflows/check-skills-canonical.yml — rc=0, no output."
+
+notes:
+  - "This PR ships NO change to any existing skill file — the finding is
+    that the dispatched divergence does not exist. The only artifacts are
+    a new test (regression tripwire) and a new CI workflow (PR-time
+    wiring, since scripts/tests/*.py in this repo runs on PR only via a
+    dedicated workflow naming it — confirmed against ~15 existing
+    precedents, e.g. check-cicatrix-scar-pointers.yml)."
+  - "The 4 skills that exist only under .agents/skills/ (bz-video-production,
+    google-flow-video, subhi, plus README.md) were left untouched, per the
+    original mandate's own instruction — out of scope for this correction."

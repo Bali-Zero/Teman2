@@ -1,0 +1,98 @@
+task_id: skills-canon-0826
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Q0 (skills canonicity) was dispatched with a "measured today" premise:
+  `.agents/skills/` holds 21 dirs, 11 `SKILL.md` files there are DIVERGENT
+  from `.claude/skills/` counterparts (naming modus/workflow), and
+  `.agents/skills/modus/SKILL.md:149` still routes the Gear-3 harness
+  verdict gate to "Fable 5 first" — contradicting the 2026-08-20 ruling.
+
+  This turn re-measured every one of those claims directly (`ls -la`,
+  `find -type d`, `git log --diff-filter=D`, full-text `grep`) and all
+  three are false: `.agents/skills/` has 8 top-level skill dirs, not 21;
+  `.agents/skills/modus/` does not exist at all (no file, no line 149);
+  and `.claude/skills/modus/SKILL.md` (the file that DOES exist) already
+  correctly documents the 2026-08-20 ruling as current, with every
+  "Fable 5 first" occurrence explicitly framed as historical ("was ...
+  per the 2026-08-09 ruling ... now moot").
+
+  `.agents/skills/README.md` (2026-07-23, PR #3019) explains why there is
+  nothing to reconcile: `.agents/skills/` is the canonical CROSS-AGENT
+  (Tier-A) store, symlinked into `.claude/skills/`; Claude-Code-specific
+  orchestration skills ("Tier-B" — the README names `workflow` itself as
+  the example) stay real directories under `.claude/skills/` ONLY, by
+  design, and must never be mirrored into `.agents/skills/`. Executing
+  Q0's originally-specified fix (copy the 11 Tier-B `SKILL.md` files into
+  `.agents/skills/`) would have BEEN the regression: Kimi/Codex/Gemini
+  CLIs treat `.agents/skills/` as tool-agnostic ground truth per that same
+  README, and would start reading Claude-Code-only orchestration prose as
+  shared doctrine.
+
+  Deliverable, corrected in scope: a regression test
+  (`scripts/tests/test_skills_canonical.py`) encoding the REAL contract —
+  whenever a name exists under both trees, `.claude/skills/<name>` must be
+  a symlink resolving to `.agents/skills/<name>` — with guilt fixtures for
+  both drift directions (a shared skill's symlink replaced by a real copy;
+  a Tier-B skill leaked into the canonical store, i.e. exactly Q0's
+  original ask), innocence fixtures, and pinned real-repo assertions. Plus
+  CI wiring (`check-skills-canonical.yml`), because `scripts/tests/*.py`
+  in this repo runs on PR only when a dedicated workflow names it (~15
+  precedents: check-cicatrix-scar-pointers.yml, doc-freshness.yml, etc.) —
+  it is not auto-collected the way Q0's step 4 assumed.
+constraints:
+  - "No content change to any existing skill file. The finding is that
+    nothing needs reconciling; this PR adds only a new test file and a new
+    CI workflow file."
+  - "The 4 skills that exist only under .agents/skills/ (bz-video-production,
+    google-flow-video, subhi, plus README.md) are left untouched, per Q0's
+    own instruction — they are out of scope for this correction."
+  - "No hardcoded hot-take list is the enforcement mechanism: the core
+    checker (`find_canonicity_violations`) is a structural rule (name in
+    both trees => .claude side must be a symlink to .agents side) that
+    needs no Tier-A/Tier-B allowlist to stay correct as skills are added
+    or removed. A small pinned list only regression-locks today's known
+    state on top of that."
+acceptance:
+  - "`scripts/tests/test_skills_canonical.py` collects >0 tests and all
+    pass: `collected 10 items`, `10 passed`."
+  - "Guilt fixtures fail without the checker (i.e. the checker actually
+    detects both drift directions) and innocence fixtures pass — proven by
+    running the suite, not asserted."
+  - "`actionlint` on the new workflow file exits 0."
+  - "The real repo, unmodified, has zero canonicity violations under the
+    new checker (it was never broken — this is a regression tripwire, not
+    a fix)."
+consumer_map:
+  - "scripts/ci/change_map.py, scripts/prepush_classify.py — read
+    `.agents/skills/**` for pre-push test-scoping (`.md`-only innocence
+    class, `prepush_classify.py:800`). Unaffected: this PR adds no file
+    under `.agents/skills/`."
+  - "Kimi/Codex/Gemini CLIs — read `.agents/skills/` as tool-agnostic
+    ground truth per its own README. This is the surface the original,
+    now-corrected Q0 fix would have polluted with Claude-Code-only prose."
+  - "`.github/workflows/check-skills-canonical.yml` — new PR-scoped gate,
+    NON-required by design (same posture as check-cicatrix-scar-pointers.yml),
+    runs only on `.claude/skills/**` / `.agents/skills/**` / its own two
+    files changing."
+risks:
+  - "This PR does not fix any currently-broken state — there was none to
+    fix. Its value is purely preventive (a tripwire against the exact
+    mirroring mistake Q0's original text asked for). If that reads as
+    low-value, the alternative was executing a factually-unsupported
+    instruction against a documented, deliberate architecture."
+  - "The pinned regression lists (KNOWN_SHARED_NAMES,
+    KNOWN_CLAUDE_ONLY_NAMES) will go stale as skills are added — by
+    design they only lock today's specific state; the structural rule
+    they sit on top of does not need updating."
+grader: |
+  Generator != grader: this session (build) authored the correction and
+  the test; the mandatory cross-family refuter (Kimi K3) reviews the diff
+  before merge per the repo's standing PR contract, on a target with only
+  ONE build lane (the non-Anthropic build-lane-diversity rule does not
+  apply below 2 build lanes).
+budget: |
+  Single-lane correction, flat-subscription seats only (Claude session +
+  Kimi K3 refuter). No metered API spend.
+pii: none
