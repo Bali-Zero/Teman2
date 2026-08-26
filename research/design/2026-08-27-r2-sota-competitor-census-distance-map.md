@@ -13,7 +13,7 @@ sources:
   - Atlys, iVisa, VisaHQ, Lets Move Indonesia, Emerhub, Flado — landing/product pages as captured (attribution in census)
   - R0 census — research/design/2026-08-27-r0-censimento-superfici-design-system-di-fatto.md (PR #5058)
   - R1 report — research/design/2026-08-27-r1-psicologia-utente-personas-mappa-emotiva.md (PR #5060)
-adversarial_review: Codex gpt-5.6-sol xhigh (read-only sandbox) — 27 findings over L1+L2+L3, dispositioned by the conductor (26 applied, 1 open — the log ships in the artifact's R2 adversarial section); Kimi K3 refutation of this report (pass 2, 15 findings, all applied — §8)
+adversarial_review: kimi-k3
 mandate: Design Study Loop (Zero, 2026-08-27) — research + doctrine + mockups only; no product code, no deploy, flags stay OFF
 lanes: L1 Kimi K3 (published rationale + official flow, web research) · L2 Gemini 3.1 Pro via agy (distance map) · L3 Qwen 3.8 Max via TP1 (borrow/avoid census table) · red-team Codex gpt-5.6-sol xhigh
 ---
@@ -109,7 +109,9 @@ Of R0's twelve incoherences, eight have an external model in the set (R0.1, R0.2
 
 The full table (14 rows, each with the census fact, the behavioural reason, and the funnel it applies to) ships in the artifact's R2 section. The shape after refutation: 6 borrow-candidates (declared identity, checkable company identifier, price before form, EN/ID switch, static expiry warning, one-question-per-screen), 4 avoid-candidates (bundled price with no fee separation, many-field single-form lead capture, bare framework errors, award claims unverified in capture — checkability was never tested, only absent from the pixels), 4 neutral-until-tested (numbered progress, hero-CTA vs cards, wizard forms, autosave claims). Every verdict is a test candidate with named metrics — none is a design decision.
 
-## §8 Adversarial pass
+## Adversarial review (§8)
+
+Seats: codex gpt-5.6-sol xhigh (read-only sandbox, 27 findings over L1+L2+L3, 26 applied / 1 open) + kimi-k3 (pass 2 on this report — the frontmatter token names this pass); details below.
 
 **Codex gpt-5.6-sol xhigh, read-only, over L1+L2+L3 (27 findings: 10 L1, 9 L2, 8 L3).** RT-codex.md itself carries no applied/open bookkeeping — the disposition log is the conductor's, and it ships row-by-row in the artifact's R2 adversarial section: 26 applied, 1 open (the Peytchev 2006 attribution). The heaviest dispositions: L2's two claimed differentiators deleted (GDS covers both); L2's iVisa pairings for R0.6/R0.8/R0.9 removed or reversed; L1's DWP 41% removed, VisaHQ fee attribution voided, iVisa eVOA price de-verified; L1's double-payment cluster retained only as anecdotal reports (personal walkthrough + comments, no rates inferred); L3's whole verdict table reframed as hypotheses; "0/14" recoded as "zero observed in reached captures". The return-ticket question was dispositioned by DECLARING it unresolved (UNKNOWNS #8); the card surcharge amount is a study UNKNOWN, not a red-team finding.
 
