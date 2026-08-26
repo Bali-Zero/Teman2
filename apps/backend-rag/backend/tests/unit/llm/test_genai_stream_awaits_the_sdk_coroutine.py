@@ -82,6 +82,84 @@ def test_the_sdk_streaming_entrypoint_is_still_a_coroutine_function():
     )
 
 
+def test_the_installed_sdk_matches_the_version_the_lockfile_pins():
+    """The tripwire above measures the INSTALLED SDK. This one measures whether
+    the installed SDK is the one CI and production actually run.
+
+    Raised by a cross-family refuter against the first draft of this file: an
+    SDK-shape assertion reads whatever is in the venv, so a drifted venv makes it
+    green while saying nothing about the pinned version — the assertion silences
+    itself exactly when it matters.
+
+    That is not hypothetical. Measured 2026-08-26 on Pro: the
+    apps/backend-rag/.venv carried google-genai 1.75.0 while
+    requirements.lock.txt pinned 2.18.1. The contract happens to be identical in
+    both, so the fix this file guards is right either way — but that was luck,
+    established only by installing 2.18.1 into a throwaway venv to check. Local
+    test results do not transfer to CI until this passes.
+
+    Green in CI, which installs requirements.lock.txt. Red on a drifted
+    workstation, which is the point: the cure is to reinstall the venv from the
+    lockfile, NEVER to loosen this assertion.
+    """
+    import google.genai
+
+    lock = Path(__file__).parents[4] / "requirements.lock.txt"
+    assert lock.is_file(), f"requirements.lock.txt not found at {lock}"
+
+    pinned = None
+    for line in lock.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("google-genai=="):
+            pinned = stripped.split("==", 1)[1].split()[0].rstrip(" \\")
+            break
+    assert pinned, "requirements.lock.txt does not pin google-genai with '=='"
+
+    installed = google.genai.__version__
+    assert installed == pinned, (
+        f"google-genai drift: this environment has {installed}, "
+        f"requirements.lock.txt pins {pinned}. Every result from this file — and "
+        f"from any other test touching the Gemini SDK — is about a version CI and "
+        f"production do not run. Reinstall the venv from the lockfile. Do not "
+        f"relax this assertion: it exists because a shape tripwire reads whatever "
+        f"is installed and therefore goes quiet on exactly the drifted machine "
+        f"where it was needed."
+    )
+
+
+@pytest.mark.asyncio
+async def test_the_sdk_call_returns_something_awaitable_that_then_iterates():
+    """BEHAVIOURAL form of the shape tripwire, and the stronger of the two.
+
+    Also raised by the refuter: asserting `iscoroutinefunction` on the CLASS
+    ATTRIBUTE is an implementation detail Google may flip in a patch release, and
+    it is not necessarily the object the production call site reaches —
+    instrumentation (openinference-instrumentation-google-genai is installed and
+    wraps this very method) or per-instance patching could diverge from the class.
+
+    What the call site actually depends on is narrower and more stable: the call
+    returns something awaitable, and awaiting it gives something iterable with
+    `async for`. That is asserted here against a REAL client object rather than
+    the class, with no network: the SDK builds the coroutine eagerly and only
+    performs I/O once awaited, so constructing it and checking `isawaitable` is
+    free. The coroutine is closed rather than awaited, so nothing is sent.
+    """
+    from google import genai
+
+    sdk = genai.Client(api_key="not-a-real-key-nothing-is-sent")
+    call = sdk.aio.models.generate_content_stream(
+        model="gemini-2.0-flash-lite", contents="ping"
+    )
+    try:
+        assert inspect.isawaitable(call), (
+            "aio.models.generate_content_stream no longer returns an awaitable. "
+            "genai_client.py awaits it before iterating; that call site must change "
+            "with this contract, and the change must be made there, not here."
+        )
+    finally:
+        call.close()
+
+
 @pytest.fixture
 def client():
     with (
