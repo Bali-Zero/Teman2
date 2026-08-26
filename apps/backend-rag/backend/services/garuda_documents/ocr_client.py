@@ -60,7 +60,12 @@ async def close_ocr_client() -> None:
 @dataclass(frozen=True)
 class OcrPassResult:
     values: dict[str, str | None]
-    self_confidence: dict[str, float]
+    # `None` means THE MODEL DID NOT RATE THIS FIELD — deliberately distinct from
+    # `0.0`, which means "rated, and rated as worthless". Collapsing the two was the
+    # 2026-08-26 calibration's largest single finding: qwen2.5vl emits
+    # `self_confidence` per PASS, wholesale, and omits it for everything except
+    # `full_name` on roughly half the passes.
+    self_confidence: dict[str, float | None]
 
 
 async def is_ocr_available() -> bool:
@@ -95,9 +100,13 @@ async def _run_one_pass(image_base64: str) -> OcrPassResult | None:
         return None
 
     values = {f.value: parsed.get(f.value) for f in PassportReviewFieldName}
-    raw_conf = parsed.get("self_confidence") or {}
+    raw_conf = parsed.get("self_confidence")
+    if not isinstance(raw_conf, dict):
+        # A list, a string, or absent: no per-field ratings exist. NOT zeros —
+        # see the field comment on OcrPassResult.
+        raw_conf = {}
     self_confidence = {
-        f.value: float(raw_conf.get(f.value, 0.0)) if _is_number(raw_conf.get(f.value)) else 0.0
+        f.value: float(raw_conf[f.value]) if _is_number(raw_conf.get(f.value)) else None
         for f in PassportReviewFieldName
     }
     return OcrPassResult(values=values, self_confidence=self_confidence)

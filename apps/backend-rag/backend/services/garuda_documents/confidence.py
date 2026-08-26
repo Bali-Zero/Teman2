@@ -57,8 +57,25 @@ def classify_fields(pass_a: OcrPassResult, pass_b: OcrPassResult) -> list[FieldV
         val_a = _normalize(pass_a.values.get(f.value))
         val_b = _normalize(pass_b.values.get(f.value))
         agrees = val_a is not None and val_a == val_b
-        avg_self_conf = (pass_a.self_confidence.get(f.value, 0.0) + pass_b.self_confidence.get(f.value, 0.0)) / 2
-        confident = agrees and avg_self_conf >= CONFIDENCE_THRESHOLD
+        # Average over the passes that ACTUALLY RATED the field. Averaging a missing
+        # rating in as a zero halves the score and vetoes the field below any
+        # threshold — measured 2026-08-26 on the 20-document corpus: 7 of 12 readable
+        # documents were rejected by this arithmetic alone, none of them for
+        # disagreement, and the sweep gave the same 4/12 at every threshold from 0.60
+        # to 0.85 because the blocking values were exactly 0.0. The threshold was
+        # never the parameter; treating ABSENT as ZERO was the defect.
+        rated = [
+            r
+            for r in (pass_a.self_confidence.get(f.value), pass_b.self_confidence.get(f.value))
+            if r is not None
+        ]
+        # No pass rated it at all: the self-rating carries no information either way.
+        # It is NOT evidence of low confidence, and it is NOT a licence to skip the
+        # gate — that second question (should agreement alone suffice?) is a product
+        # decision and is deliberately NOT taken here: with no rating, the field stays
+        # uncertain, exactly as before.
+        avg_self_conf = sum(rated) / len(rated) if rated else 0.0
+        confident = agrees and bool(rated) and avg_self_conf >= CONFIDENCE_THRESHOLD
         # Prefer pass_a's original (non-normalized) casing for the value we surface.
         surfaced_value = pass_a.values.get(f.value) if agrees else None
         verdicts.append(FieldVerdict(field=f, value=surfaced_value, confident=confident))
