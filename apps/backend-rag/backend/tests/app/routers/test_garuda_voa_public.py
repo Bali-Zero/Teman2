@@ -307,6 +307,99 @@ def test_accept_create_then_get_then_delete_round_trip(monkeypatch) -> None:
     assert "r" * 22 in store.deleted
 
 
+# ============================================================
+# Result-session cookie Secure attribute (CodeQL py/clear-text-storage-
+# sensitive-data, 2026-08-26 — `_result_session_cookie_secure`)
+#
+# Mirrors `test_garuda_portal_auth.py`'s three tests for the sibling
+# `_account_session_cookie_secure` guard, adapted to this router's
+# `garuda_result_session` cookie. The round-trip test above already
+# exercises the HTTPS path (`base_url="https://testserver"`); these three
+# are the guilt/innocence pair the Gear-3 gate found missing — a
+# hardcoded `secure=False` at the `set_cookie` call passed all 21 tests
+# that existed before this addition.
+# ============================================================
+
+
+def test_result_session_cookie_is_secure_on_non_production_non_localhost_host(
+    monkeypatch,
+) -> None:
+    """A non-production environment reached over a non-loopback host (the
+    staging/preview/container shape) must still get `Secure` on the
+    result-session cookie. This is the exact CodeQL
+    `py/clear-text-storage-sensitive-data` regression at
+    `_set_result_session_cookie` — asserting `Secure` is present is what
+    would have caught it."""
+    monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
+    app = _app()
+    _override_store(app, _FakeStore())
+    client = TestClient(app)  # default base_url is http://testserver — non-loopback
+
+    response = client.post(
+        "/api/visa/voa/eligibility-checks",
+        json=VALID_ISSUANCE_BODY,
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+
+    assert response.status_code == 201
+    set_cookie_headers = response.headers.get_list("set-cookie")
+    result_cookie = next(
+        h for h in set_cookie_headers if h.startswith("garuda_result_session=")
+    )
+    assert "Secure" in result_cookie, result_cookie
+
+
+def test_result_session_cookie_ignores_spoofed_host_header(monkeypatch) -> None:
+    """The Host header is client-supplied and must never drive this policy.
+    Posting to a NON-loopback ASGI socket (`example.com`) with a spoofed
+    `Host: localhost` header must still get `Secure` — this is the exact
+    shape a MITM on a staging/preview deploy could exploit against a
+    hostname-based check."""
+    monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
+    app = _app()
+    _override_store(app, _FakeStore())
+    client = TestClient(app)
+
+    response = client.post(
+        "http://example.com/api/visa/voa/eligibility-checks",
+        json=VALID_ISSUANCE_BODY,
+        headers={
+            "Idempotency-Key": VALID_IDEMPOTENCY_KEY,
+            "Host": "localhost",
+        },
+    )
+
+    assert response.status_code == 201
+    set_cookie_headers = response.headers.get_list("set-cookie")
+    result_cookie = next(
+        h for h in set_cookie_headers if h.startswith("garuda_result_session=")
+    )
+    assert "Secure" in result_cookie, result_cookie
+
+
+def test_result_session_cookie_relaxes_only_on_genuine_localhost(monkeypatch) -> None:
+    """The one legitimate relaxation: a request whose ASGI socket is
+    genuinely loopback (real local dev, `uvicorn --host 127.0.0.1`, no TLS)
+    may skip `Secure`."""
+    monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
+    app = _app()
+    _override_store(app, _FakeStore())
+    client = TestClient(app)
+
+    response = client.post(
+        "http://127.0.0.1/api/visa/voa/eligibility-checks",
+        json=VALID_ISSUANCE_BODY,
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+
+    assert response.status_code == 201
+    set_cookie_headers = response.headers.get_list("set-cookie")
+    result_cookie = next(
+        h for h in set_cookie_headers if h.startswith("garuda_result_session=")
+    )
+    assert "Secure" not in result_cookie, result_cookie
+
+
 def test_decline_case_never_carries_a_price_or_deadline(monkeypatch) -> None:
     monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
     body = {**VALID_ISSUANCE_BODY, "nationality": "XXX"}
