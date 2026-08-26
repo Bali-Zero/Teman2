@@ -18,8 +18,10 @@ undispatched` goes red — and that is the whole point of writing it.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import re
 import uuid
 
 import httpx
@@ -34,8 +36,16 @@ from backend.services.garuda_orders.outbox_handlers import (
     EmailSendFailed,
     OrderEmailFacts,
     PaymentPaidEmailHandler,
+    PracticeReleaseHandler,
     build_handlers,
 )
+
+# `_seed_full_case` is imported rather than re-implemented ON PURPOSE. Seeding a
+# usable case means check -> order -> journal -> practice PLUS an active
+# GARUDA_CHECK retention policy, because `garuda_voa_check_results` is
+# fail-closed by trigger. A second copy of that would drift from the first, and
+# this suite would start proving something the adapter suite no longer does.
+from backend.tests.services.garuda_ops.test_adapters_pg import _seed_full_case
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -65,8 +75,22 @@ async def pool():
         async with p.acquire() as conn:
             await conn.execute(
                 "TRUNCATE garuda_practices, garuda_order_outbox, "
-                "garuda_order_journal, garuda_orders CASCADE"
+                "garuda_order_journal, garuda_orders, garuda_voa_check_results "
+                "CASCADE"
             )
+            # The weld tests below write real CRM rows, so this fixture has to
+            # clean the CRM side too. Order matters and the second delete is
+            # not redundant: the first clears what the adapter wrote (every
+            # such row carries a key), the second clears any NULL-key row the
+            # first cannot see, and both must precede the client delete or
+            # `practices_client_id_fkey` rejects it — the same teardown trap
+            # `test_adapters_pg.py`'s fixture documents.
+            await conn.execute("DELETE FROM practices WHERE source_idempotency_key IS NOT NULL")
+            await conn.execute(
+                "DELETE FROM practices WHERE client_id IN "
+                "(SELECT id FROM clients WHERE email LIKE '%@example.invalid')"
+            )
+            await conn.execute("DELETE FROM clients WHERE email LIKE '%@example.invalid'")
         yield p
     finally:
         await p.close()
@@ -393,7 +417,14 @@ async def test_a_retry_after_a_transient_failure_delivers(pool):
 
 
 async def test_unrouted_job_types_are_reported_not_delivered(pool):
-    """`practice_release` has no handler yet. It must show as unroutable."""
+    """A job type with no registered handler must show as unroutable.
+
+    This used to assert on `practice_release`, which acquired a handler when
+    the CRM weld landed. The specimen is now `refund_email` — still enqueued by
+    `repository.py`, still deliberately unrouted. Repointing rather than
+    deleting keeps the property under test: `build_handlers` must report what
+    it cannot route instead of consuming it.
+    """
 
     order_id = await _seed_order(pool)
     async with pool.acquire() as conn, conn.transaction():
@@ -406,7 +437,7 @@ async def test_unrouted_job_types_are_reported_not_delivered(pool):
             customer_visible=True,
         )
         await journal.enqueue_outbox(
-            conn, order_id=order_id, journal_event_id=event_id, job_type="practice_release"
+            conn, order_id=order_id, journal_event_id=event_id, job_type="refund_email"
         )
 
     rec = _Recorder()
@@ -418,8 +449,188 @@ async def test_unrouted_job_types_are_reported_not_delivered(pool):
         await client.aclose()
 
     assert stats.unroutable == 1
-    assert "practice_release" in stats.unroutable_types
+    assert "refund_email" in stats.unroutable_types
     assert rec.requests == []
+
+
+# --------------------------------------------------------------------------
+# the weld: practice_release -> CRM
+# --------------------------------------------------------------------------
+
+
+def test_build_handlers_routes_practice_release() -> None:
+    """RED-if-wrong, and needs no database.
+
+    Until the weld landed, `build_handlers` held exactly one key and
+    `practice_release` — enqueued by the SAME transaction as the confirmation
+    email — was reported `unroutable` on every drain pass forever. The customer
+    got their email and the team got no work item. This asserts the registry
+    itself, so the regression cannot hide behind an unreachable DB fixture.
+    """
+
+    handlers = build_handlers(pool=None, sender=None)  # type: ignore[arg-type]
+    assert set(handlers) == {"payment_paid_email", "practice_release"}
+    assert isinstance(handlers["practice_release"], PracticeReleaseHandler)
+
+
+def test_the_pr01_envelope_digest_is_deterministic_and_contract_shaped() -> None:
+    """The digest is what the DB dedups on, so it must be a pure function of
+    the payment event. RED if anything random, clock-derived or id-derived
+    creeps in: two deliveries of the same payment would mint two practices.
+
+    Shape is checked too — `events.yaml` types `key_digest` as `^[a-f0-9]{64}$`
+    and `PostgresCrmWriter` stores it in a partial UNIQUE index; a value of any
+    other shape would not be caught until production.
+    """
+
+    job_a = _release_job(journal_event_id="evt_paid_1", job_id=1)
+    job_b = _release_job(journal_event_id="evt_paid_1", job_id=999)
+    job_c = _release_job(journal_event_id="evt_paid_2", job_id=1)
+
+    env_a = PracticeReleaseHandler._envelope(job_a, "practice-1")
+    env_b = PracticeReleaseHandler._envelope(job_b, "practice-1")
+    env_c = PracticeReleaseHandler._envelope(job_c, "practice-1")
+
+    assert env_a.idempotency_identity.key_digest == env_b.idempotency_identity.key_digest
+    assert env_a.idempotency_identity.key_digest != env_c.idempotency_identity.key_digest
+    assert re.fullmatch(r"[a-f0-9]{64}", env_a.idempotency_identity.key_digest)
+    assert env_a.transition_id == "PR-01"
+    assert env_a.aggregate_type == "practice"
+    assert env_a.aggregate_id == "practice-1"
+
+
+def test_the_envelope_event_id_is_the_delivery_not_the_payment() -> None:
+    """ports.py gap 1: deduping on the event's own id catches an outbox
+    redelivery but NOT a journal-level retry. Keeping `event_id` distinct from
+    the idempotency digest is what makes that distinction visible instead of
+    accidentally identical."""
+
+    env = PracticeReleaseHandler._envelope(_release_job("evt_paid_1", 7), "practice-1")
+    assert env.event_id == "outbox:7"
+    assert env.event_id != env.idempotency_identity.key_digest
+
+
+async def _order_of(pool, practice_id: str) -> str:
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT order_id FROM garuda_practices WHERE practice_id = $1", practice_id
+        )
+
+
+async def _enqueue_release(pool, order_id: str, event_id: str) -> int:
+    async with pool.acquire() as conn, conn.transaction():
+        await journal.enqueue_outbox(
+            conn, order_id=order_id, journal_event_id=event_id, job_type="practice_release"
+        )
+        return await conn.fetchval(
+            "SELECT id FROM garuda_order_outbox "
+            "WHERE journal_event_id = $1 AND job_type = 'practice_release'",
+            event_id,
+        )
+
+
+async def _drain(pool):
+    rec = _Recorder()
+    sender, client = _sender(rec)
+    try:
+        async with pool.acquire() as conn:
+            return await drain_once(conn, build_handlers(pool, sender))
+    finally:
+        await client.aclose()
+
+
+async def test_a_release_job_creates_the_crm_practice_and_marks_itself_dispatched(pool):
+    """The whole weld, end to end against real Postgres, asserted on the ROW.
+
+    The first version of this test asserted `stats.dispatched == 1` and
+    `stats.unroutable == 0` and was wrong twice, which is why it now reads the
+    database instead. `stats.unroutable == 0` is not a property of a healthy
+    weld at all — `mint_received_practice` enqueues its own
+    `practice_received_email`, which has no handler and is CORRECTLY reported
+    unroutable — and counting dispatches says nothing about whether a usable
+    CRM row exists. What matters is the practice: that it is there, that it
+    carries Zero's ruling, and that it is reachable by the person who has to
+    work it.
+    """
+
+    practice_id, event_id = await _seed_full_case(pool)
+    order_id = await _order_of(pool, practice_id)
+    job_id = await _enqueue_release(pool, order_id, event_id)
+
+    await _drain(pool)
+
+    digest = hashlib.sha256(event_id.encode()).hexdigest()
+    async with pool.acquire() as conn:
+        job = await conn.fetchrow(
+            "SELECT dispatched_at, attempts FROM garuda_order_outbox WHERE id = $1", job_id
+        )
+        row = await conn.fetchrow(
+            """
+            SELECT p.status, p.payment_status, p.practice_type_code,
+                   p.actual_price, p.paid_amount, p.assigned_to, p.created_by
+              FROM practices p
+             WHERE p.source_idempotency_key = $1
+            """,
+            digest,
+        )
+
+    assert job["dispatched_at"] is not None, "the release job must be marked delivered"
+    assert row is not None, "no CRM practice was created for a paid order"
+    assert row["status"] == "on_process"
+    assert row["payment_status"] == "paid"
+    assert row["practice_type_code"] == "visa_b1_voa"  # issuance, per the case_type mapping
+    assert int(row["actual_price"]) == 790000
+    assert int(row["paid_amount"]) == 790000
+    assert row["created_by"] is not None
+
+
+async def test_a_second_delivery_of_the_same_payment_creates_no_second_practice(pool):
+    """Idempotency where it actually has to hold: the DATABASE.
+
+    Two deliveries of the same payment event produce the same digest, and the
+    partial UNIQUE index on `practices.source_idempotency_key` — not this
+    handler — is what refuses the duplicate. RED if the digest ever stops being
+    a pure function of the journal event id."""
+
+    practice_id, event_id = await _seed_full_case(pool)
+    order_id = await _order_of(pool, practice_id)
+
+    await _enqueue_release(pool, order_id, event_id)
+    await _drain(pool)
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE garuda_order_outbox SET dispatched_at = NULL, attempts = 0 "
+            "WHERE job_type = 'practice_release'"
+        )
+    await _drain(pool)
+
+    digest = hashlib.sha256(event_id.encode()).hexdigest()
+    async with pool.acquire() as conn:
+        count = await conn.fetchval(
+            "SELECT count(*) FROM practices WHERE source_idempotency_key = $1", digest
+        )
+    assert count == 1
+
+
+async def test_a_release_job_without_its_practice_row_raises_and_stays_undispatched(pool):
+    """`mint_received_practice` runs in the same transaction that enqueues this
+    job, so a missing row means something deleted a practice out from under a
+    queued release. It must exhaust visibly, never be marked delivered."""
+
+    practice_id, event_id = await _seed_full_case(pool)
+    order_id = await _order_of(pool, practice_id)
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM garuda_practices WHERE practice_id = $1", practice_id)
+    job_id = await _enqueue_release(pool, order_id, event_id)
+
+    stats = await _drain(pool)
+
+    async with pool.acquire() as conn:
+        job = await conn.fetchrow(
+            "SELECT dispatched_at FROM garuda_order_outbox WHERE id = $1", job_id
+        )
+    assert stats.failed == 1
+    assert job["dispatched_at"] is None
 
 
 def _job(order_id: str):
@@ -430,6 +641,19 @@ def _job(order_id: str):
         order_id=order_id,
         journal_event_id="evt_specimen",
         job_type="payment_paid_email",
+        payload={},
+        attempts=1,
+    )
+
+
+def _release_job(journal_event_id: str, job_id: int = 1):
+    from backend.services.garuda_orders.outbox_consumer import OutboxJob
+
+    return OutboxJob(
+        id=job_id,
+        order_id="ord_specimen",
+        journal_event_id=journal_event_id,
+        job_type="practice_release",
         payload={},
         attempts=1,
     )

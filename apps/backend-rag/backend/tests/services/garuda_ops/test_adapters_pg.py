@@ -823,3 +823,68 @@ def test_the_race_refusal_raises_INSIDE_the_transaction():
         "transaction will have committed the client before it fires, leaving "
         "an orphan customer record"
     )
+
+
+# --------------------------------------------------------------------------
+# Zero ruling 2026-08-26: a paid VOA is born paid and in progress
+# --------------------------------------------------------------------------
+
+
+def _practices_insert_sql() -> str:
+    """The INSERT statement text, read out of the real source.
+
+    Structural rather than DB-backed on purpose: this property must hold on a
+    machine with no Postgres, because the failure it guards is a WRONG LITERAL,
+    not a schema violation, and a suite that skips is a suite that never
+    objects.
+    """
+
+    src = textwrap.dedent(inspect.getsource(PostgresCrmWriter.create_client_and_practice))
+    tree = ast.parse(src)
+    statements = [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and "INSERT INTO practices" in node.value
+    ]
+    assert len(statements) == 1, f"expected exactly one practices INSERT, found {len(statements)}"
+    return " ".join(statements[0].split())
+
+
+def test_a_paid_garuda_practice_is_never_born_inquiry_or_unpaid() -> None:
+    """RED-if-wrong. Before this ruling the adapter set neither column, so the
+    row took the table defaults — `status='inquiry'` and
+    `payment_status='unpaid'` — on a practice created FROM a committed
+    payment.paid event. Both statements were false about a customer who had
+    already paid and already uploaded documents."""
+
+    sql = _practices_insert_sql()
+    assert "'on_process'" in sql
+    assert "'paid'" in sql
+    assert "'inquiry'" not in sql
+    assert "'unpaid'" not in sql
+
+
+def test_the_status_values_written_exist_in_the_crm_vocabulary() -> None:
+    """No new state is coined. Reads the router's own sets rather than
+    restating them here, so a future narrowing of either vocabulary reddens
+    this instead of silently permitting an invalid write."""
+
+    from backend.app.routers.crm_practices import PAYMENT_STATUS_VALUES, STATUS_VALUES
+
+    assert "on_process" in STATUS_VALUES
+    assert "paid" in PAYMENT_STATUS_VALUES
+
+
+def test_a_paid_practice_carries_an_amount_the_revenue_report_can_see() -> None:
+    """The consequence the ruling implies but does not state.
+
+    `crm_practices.py`'s revenue query ends `WHERE actual_price IS NOT NULL`,
+    so a practice marked `payment_status='paid'` with a NULL actual price does
+    not merely look inconsistent — it VANISHES from revenue. RED if either
+    column is dropped from the insert while `'paid'` stays."""
+
+    sql = _practices_insert_sql()
+    assert "actual_price" in sql
+    assert "paid_amount" in sql
