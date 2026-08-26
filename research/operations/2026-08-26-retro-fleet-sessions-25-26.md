@@ -26,7 +26,7 @@ tier** — measured against yesterday and today (25-26/08/2026), plus concrete "
 (Codex GPT-5.6 Sol 12,155 chars · Kimi K3 17,402 chars · Gemini agy 6,476 chars) → one synthesis
 (Opus 5, xhigh) that **re-measured every number the four ground readers reported and corrected
 three of them**. A fourth pass — three more seats (Sol Ultra, Kimi K3 Max, Qwen3.8-Max), blind to
-the retrospective itself — checked the plan's own premises and added twelve more tricks (§6).
+the retrospective itself — checked the plan's own premises and added twelve more tricks (§4).
 
 This document is the capture step of that plan's own sequence (§9 below). It is written in English
 per repo convention; the plan it draws on is Italian.
@@ -41,10 +41,14 @@ per repo convention; the plan it draws on is Italian.
 |---|---|
 | Commits on `origin/main` | **119** |
 | PRs merged (all bases) | **170** — 118 on `main`, **52 on `feature/*`** (kb-current 26, garuda-voa 23, due-bot 2, 1 nested) |
-| Commit type | fix **63** (37%) · docs **61** (36%) · feat **35** (21%) · test 6 · chore 4 · ci 1 |
-| Commits touching zero code files | **49/119 (41%)** |
-| Commits touching ONLY ledger/scar files | **26/119 (22%)** |
-| `docs(ledger)` = finding recorded, no cure | 23/170 (13.5%) — M5 14 · Pro 5 · Mini 4 |
+| Merged-PR type (of the 170, not the 119 commits) | fix **63** (37%) · docs **61** (36%) · feat **35** (21%) · test 6 · chore 4 · ci 1 |
+| Commits touching zero code files (of 119) | **49/119 (41%)** |
+| Commits touching ONLY ledger/scar files (of 119) | **26/119 (22%)** |
+| `docs(ledger)` = finding recorded, no cure (of 170) | 23/170 (13.5%) — M5 14 · Pro 5 · Mini 4 |
+
+> ⚠️ This table has two denominators and does not always say which: PR-count rows (170) and
+> commit-count rows (119) sit side by side. Labeled explicitly above after a refuter caught the
+> ambiguity — the source ground-reader tables carry the same mix unlabeled.
 
 A first pass at this window used `git log --since` without checking machine timezone and returned
 169 commits instead of 119 — an 8-hour-wide boundary error on one end. Any `--since` query on this
@@ -65,6 +69,14 @@ repo needs the WITA window stated explicitly.
 Fleet total: 386 sessions, 64 interactive, 587 MB, 845 dispatches. Peak **concurrent** interactive
 sessions: 23/08 → 7, 24/08 → 9, 25/08 → 11, 26/08 → **12**.
 
+> ⚠️ Two sums in this section do not close, and this capture preserves the gap rather than papering
+> over it: the "PRs merged" row above sums to 54+28+84 = **166**, four short of the 170 in §1's
+> throughput table; the "Subagent dispatches" row sums to 329+227+289 = **845**, which does not
+> match the 882 denominator the LLM-tiers table below uses for the by-`model:` split (and that
+> table's own 757+8+12 = 777 leaves 105 dispatches uncategorized). None of the four ground readers'
+> raw output resolved these, and re-deriving them is outside what this capture session can verify
+> without re-querying the source transcripts.
+
 ### Finishing
 
 | Metric | Value |
@@ -84,11 +96,11 @@ sessions: 23/08 → 7, 24/08 → 9, 25/08 → 11, 26/08 → **12**.
 |---|---|
 | Assistant messages per model (fleet) | opus-5 **36,463** · sonnet-5 22,616 · fable-5 2,495 (2,007 on M5, ~13% of its traffic) · haiku 264 |
 | Subagent dispatches by `model:` | sonnet **757/882 = 86%** · haiku **8 = 0.9%** · opus 12 |
-| Shell calls to a non-Anthropic seat | ≈512 (codex 185, seat_build 101, kimi 112, agy 57, glm 39, nlm 12, qwen 5, **ollama 1**) ⇒ **0.58 per Anthropic dispatch — exactly the floor `model_routing_gate` Rule 2 enforces, no more** |
-| `Workflow` tool (council) uses | **0** genuine uses fleet-wide — this retrospective is the only one |
-| Evidence packs landed on main | **⚠️ MEASURED 13** — CORRECTED: one ground reader reported 1/170, looking only at root `evidence/pack.yml`; packs have lived at `evidence/<YYYY-MM>/<slug>/` since 23/08 |
-| Packs with a single build lane | 18/20 → the D3 diversity rule **cannot fire** (`evidence_pack_lint.py:710` early-returns below 2 lanes) |
-| Packs with a cross-family review lane | 5/20 = 25% ⇒ **≈3% of merged PRs** |
+| Shell calls to a non-Anthropic seat | ≈512 (codex 185, seat_build 101, kimi 112, agy 57, glm 39, nlm 12, qwen 5, **ollama 1**) ⇒ **0.58 per Anthropic dispatch — matches the floor `model_routing_gate` Rule 2 enforces** (the ratio itself is measured from an approximate numerator; that it lands so close to the floor is consistent with the gate holding traffic near its minimum, not independently proven as causal) |
+| `Workflow` tool (council) uses | **0** genuine production uses fleet-wide — the only `Workflow` invocation on record at all is this retrospective's own measurement run, which does not count as a production use |
+| Evidence packs landed on main **in this window** | **⚠️ MEASURED 13** — CORRECTED: one ground reader reported 1/170, looking only at root `evidence/pack.yml`; packs have lived at `evidence/<YYYY-MM>/<slug>/` since 23/08 |
+| Packs with a single build lane (of **20** packs that exist on disk, not just the 13 above) | 18/20 → the D3 diversity rule **cannot fire** (`evidence_pack_lint.py:710` early-returns below 2 lanes) |
+| Packs with a cross-family review lane (of the same 20) | 5/20 = 25% ⇒ **≈3% of merged PRs** (5/170) |
 | PR bodies that *name* a non-Anthropic seat | 41/170 (24%) — prose, not an artifact; do not read this as review coverage |
 | Doors (live ping, 26/08) | codex luna PONG · agy PONG · kimi config OK · ollama 5 models (2 new in 18h) · **TP1: 7 live models, zero doors** (`ai-dispatch.sh:1377` "probation-only, not wired"; `seat_build.sh` accepts only `codex\|kimi\|qwen`) |
 | `arsenal_probe.py` | **0 crontab, 0 LaunchAgent** entries; latest board covered 3 of ~15 seats → reported "3 of 3 OK" |
@@ -419,7 +431,7 @@ and a shadow period (X3: 7 days NOTICE → FAIL; 0 denials in 30 days → retire
 | E3 | `scripts/evidence_pack_lint.py` | rules keyed by path class: `compute_seat_floor(changed_files)` alongside `compute_floor`; `ground_truth` lane on KB paths; local-only seats on PII paths; `council_run` on Gear 3; quorum via model-card `eligible_for_quorum` |
 | E4 | CI job `seat-provenance` | `Seat-Report:` trailer mandatory on Gear≥2 and on mechanical-class PRs; log hash verified |
 | E5 | `scripts/seat_mix_report.py` (A7) + `arsenal_probe.py --assert-coverage` (A4) + `lint_roster_dispatch.py` (X5) | daily scoreboard; ping of the *executable* set (incl. Jules, Spark, the 7 TP1 routes); a roster row with no route/door → UNREACHABLE or red |
-| E6 | `infra/army/spark-queue/` (exists) + `infra/army/chore-queue/` (new) + `scripts/jules_dispatch.py new` (exists) + Spark harvester → PR | mechanical work queues and dispatches to the cheap/async seat from a Mini plist, not from an Opus session |
+| E6 | `infra/army/spark-queue/` (exists) + `infra/army/chore-queue/` (new) + the `new` subcommand of `scripts/jules_dispatch.py` (the script already exists) + Spark harvester → PR | mechanical work queues and dispatches to the cheap/async seat from a Mini plist, not from an Opus session |
 | E7 | `docs/factory/ASSEMBLY-LINE.md` §gate lifecycle (X3) | every rule below is born in NOTICE, publishes denial/override counts, retires at 0 denials/30 days |
 
 ### The twelve rules
@@ -492,28 +504,34 @@ fleet memory file — all shipped in the same PR as the Day-0 dispatch, per lane
 
 ## 9. Tonight's dispatch-burst fact
 
-Measured directly by this session, not inferred: **14 implementer lanes were dispatched in one
-parallel burst on Pro** as part of arming the receptor-live mandate's Day-0/30 package. **13 of 14
-tmux pane spawns failed** with `fork failed: Device not configured` (`ENXIO`) — a pty-allocation
-race under a concurrent burst (31 of 511 ptys in use at the time; file descriptors were fine).
-Dispatching sequentially, or 2-3 at a time, worked without a single failure.
+Measured directly by this session: **14 implementer lanes were dispatched in one parallel burst on
+Pro** as part of arming the receptor-live mandate's Day-0/30 package. **13 of 14 tmux pane spawns
+failed** with `fork failed: Device not configured` (`ENXIO`). That failure count is the measurement;
+the explanation is an inference, and the data available points at concurrency, not capacity: only
+31 of 511 ptys were in use at the time and file descriptors were fine, so the pool was **not**
+exhausted — the shape is consistent with a pty-allocation *race* under a concurrent burst, not a
+pty *shortage*. Dispatching sequentially, or 2-3 at a time, worked without a single failure, which
+is itself evidence for the race reading (serializing the requests removes the collision, not the
+resource pressure, since there was none to remove).
 
 This is the same failure class as the Mini `fork failed` incident of 23/08 (recorded in the fleet
-mailbox, not yet promoted to a numbered scar): a resource that looks like it should scale with
-concurrent Claude sessions — pty slots — is a small, shared, machine-wide pool, and a wide parallel
-`Agent`/tmux burst can exhaust it well before CPU, memory, or the model's own rate limits notice
-anything is wrong. It is also a direct, mechanical instance of what K1 (§4 above) exists to
-measure: a hook or spawn path that fails does not always fail *loud* — here the failure was loud
-(`ENXIO` on 13 of 14 attempts), but the lesson generalizes to the hook-type contract Kimi K3 Max
-flagged in the blind-seat pass, that Claude Code's `command` PreToolUse hooks **fail open** under
-load per the official documentation: a gate that times out or crashes does not block, it passes.
-K1's "N tool-calls with no decision" counter is the mechanical receptor for exactly this class of
-silent failure; tonight's burst is the loud sibling of the same underlying resource-contention
-problem.
+mailbox, not yet promoted to a numbered scar): pty slots are a small, shared, machine-wide resource,
+and a wide parallel `Agent`/tmux burst can collide while allocating them even with the pool mostly
+idle — the shape a race condition has, as distinct from a resource genuinely running out. It is also
+a direct, mechanical instance of what K1 (§4 above) exists to measure: a hook or spawn path that
+fails does not always fail *loud* — here the failure was loud (`ENXIO` on 13 of 14 attempts), but
+the lesson generalizes to the hook-type contract Kimi K3 Max flagged in the blind-seat pass, that
+Claude Code's `command` PreToolUse hooks **fail open** under load per the official documentation —
+a claim relayed from that blind seat via the plan's §5bis, not independently checked against the
+docs in this session, and reported here as attributed rather than verified. A gate that times out or
+crashes does not block, it passes. K1's "N tool-calls with no decision" counter is the mechanical
+receptor for exactly this class of silent failure; tonight's burst is the loud sibling of the same
+underlying concurrency problem.
 
 Practical rule this session is applying to its own remaining dispatches, and recording for the
-fleet: **cap concurrent subagent/tmux spawns at ≤3 on Pro**, not because of model quota, but because
-of pty exhaustion under this machine's current `kern.tty.ptmx_max`.
+fleet: **cap concurrent subagent/tmux spawns at ≤3 on Pro** — not for model-quota reasons, and not
+because the pty pool was full (it measured 6% utilized), but because concurrent pty allocation
+itself collided and lost 13 times out of 14.
 
 ---
 

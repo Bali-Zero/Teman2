@@ -32,9 +32,10 @@ observable in `scripts/seat_mix_report.py`'s daily output (A7).**
 
 If, by Day 90, **`seat_mix_report.py` is not running daily with real deltas**, OR **a fresh
 throwaway session still injects more than 10 mailbox broadcasts** (S3's own pass/fail probe), the
-receptor mandate is itself theater — the twenty-second gate built to fix a ceremony problem, adding
-to it. It SUSPENDS under Agent PR Contract rule 8: one PENDING-ARMS line naming the cause, branches
-left alive, escalate to Zero rather than opening a fourth round.
+receptor mandate is itself theater — one more addition to the same 22-gate pile the retrospective
+already measured being proposed as the cure for gate-sprawl (research doc §2), adding to the
+problem instead of closing it. It SUSPENDS under Agent PR Contract rule 8: one PENDING-ARMS line
+naming the cause, branches left alive, escalate to Zero rather than opening a fourth round.
 
 Two falsifiable end-to-end proofs, taken directly from the plan's own §7 (not invented here):
 
@@ -186,7 +187,7 @@ one the blind-seat pass raised:
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | 1   | The topic cap, actually — unit, per-machine vs per-session, is 2 literal                                                                      | any future admission-cap trick (F1/S8 stay PARKED until this is answered) |
 | 2   | Conductor: build (Gear-3 adapter project) or delete the 77 profiles                                                                           | `pkg2`/A6 (already PARKED regardless)                                     |
-| 3   | Fable 5 on M5, 13% of traffic — Zero at the keyboard or drift                                                                                 | nothing here; a compliance question                                       |
+| 3   | Fable 5 on M5, ~13% of M5's own traffic — Zero at the keyboard or drift                                                                       | nothing here; a compliance question                                       |
 | 4   | Research OS — dead, deferred, or superseded                                                                                                   | nothing here; separate program                                            |
 | 5   | Gate budget this quarter (a number, not "some")                                                                                               | how aggressively `pkg2-4` get staffed                                     |
 | 6   | `feature/*` ruleset creation (`operator[control-plane]`)                                                                                      | `pkg2-lying-guards`' S5 arm-half                                          |
