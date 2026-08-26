@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "fixture_category": "abstention",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Include adversarial cases where': 'a high-confidence model has no source span'",
+  "expected_behavior": "This candidate object MUST be REJECTED at canonical-write time, never accepted into canonical storage even with a high raw confidence.score. This is the direct enforcement of exit threshold '100% source-span coverage for critical claims' and gap G2 in 02-p04-adapter-mapping.md. A conformance test should assert: given this exact payload, the write path returns a validation failure / abstention marker, and NOTHING is written to the canonical claim store (not a partial row, not a row with a null source_span -- the schema's own 'required: [source_span]' on Evidence already makes a null span schema-invalid, so this case really tests that the ADAPTER refuses to fabricate a placeholder span just to satisfy the schema, which would be worse than rejecting outright).",
+  "candidate_claim": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000050",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "unknown-synth-regulation", "object_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "predicate": "naga.legal_change.summary",
+      "object_ref_or_value": "SYNTHETIC — model asserts a sweeping rule change with no citation at all"
+    },
+    "confidence": { "score": 0.93, "method": "naga.llm_direct_answer.v1" },
+    "note": "SYNTHETIC — this mirrors a REAL, already-documented failure mode in this repo: reasoning.py's calculate_evidence_score() returns 0.00 when the LLM answers directly without calling tools, precisely because a fluent high-confidence answer with zero grounding is indistinguishable from a hallucination without a source span. This fixture is the NAGA-claim-ledger analogue of that same defect class."
+  },
+  "candidate_evidence": null,
+  "expected_write_outcome": "REJECTED — no Evidence object can be constructed (Evidence.source_span is a required field with no default), and the adapter must not synthesize a fake locator/quote_hash to force acceptance."
+}

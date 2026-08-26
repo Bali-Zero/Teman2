@@ -1,0 +1,25 @@
+{
+  "synthetic": true,
+  "fixture_category": "invalidation",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Include adversarial cases where': 'the same sentence contains two atomic claims' (filed under invalidation/ because a correction to ONE of the two atoms must invalidate only that atom's downstream uses, not both -- this is the concrete reason atomization is required rather than optional, tying directly to gap G-STATEMENT in 02-p04-adapter-mapping.md)",
+  "expected_behavior": "The single sentence below must decompose into exactly two Claim objects, each with its own claim_id and its own evidence_refs pointing at the SAME source_span region (they may share source_span.locator but should carry distinct start/end offsets if the two atoms are textually separable, or an identical span if truly fused). Downstream, if only the fee amount is later found wrong, invalidating claim_a must NOT invalidate claim_b (the deadline), and vice versa. A NAGA extraction that stores this sentence as ONE ClaimRecord (current behavior, per core/claims/models.py's one-claim-per-extracted-unit shape, 01-naga-baseline-inventory.md §4) cannot express this independence -- correcting the fee would force re-verifying the deadline too, which is wasted review effort and a concrete cost of not atomizing.",
+  "source_sentence_synthetic": "Applicants must pay a processing fee of IDR 750,000 no later than 14 days before their permit expires.",
+  "claim_a_fee": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000070",
+    "statement": {
+      "predicate": "naga.fee_change.amount",
+      "object_ref_or_value": 750000,
+      "currency": "IDR"
+    }
+  },
+  "claim_b_deadline": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000071",
+    "statement": {
+      "predicate": "naga.eligibility_rule.filing_deadline_days",
+      "object_ref_or_value": 14,
+      "unit": "days_before_expiry"
+    }
+  },
+  "shared_source_span_locator": "https://example.go.id/synth-fee-and-deadline-notice.pdf#page=1",
+  "independence_test": "correcting claim_a_fee's value (e.g. to IDR 800,000) must produce a new claim_a revision superseding only claim_a, leaving claim_b_deadline's claim_id and current revision untouched."
+}
