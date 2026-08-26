@@ -74,15 +74,69 @@
 --   closed. Both attributes and `SET search_path` are therefore restated
 --   verbatim below, in both directions.
 --
+-- WHY EVERY REPLACEMENT SITS INSIDE A `DO $guardN$` BLOCK
+-- ----------------------------------------------------------------------------
+--   `CREATE OR REPLACE FUNCTION` requires being the function's owner. Both are
+--   owned by `visa_ledger_owner`. Migrations connect with
+--   `settings.database_url` (`migration_manager.py:96`) — the SAME DSN the
+--   runtime uses, with no `SET ROLE` anywhere in the chain — so the applying
+--   role is the runtime role. Measured on production 2026-08-27:
+--
+--     pg_has_role('backend_rag_v2','visa_ledger_owner','USAGE')  ->  false
+--     pg_roles.rolsuper for backend_rag_v2                       ->  false
+--     login roles that ARE members of visa_ledger_owner          ->  flypgadmin,
+--                                                                   postgres,
+--                                                                   repmgr
+--
+--   A bare `CREATE OR REPLACE` here would therefore raise `must be owner of
+--   function` inside Fly's `release_command`, and a failed release command
+--   ABORTS THE DEPLOY — not just this change, every unrelated one riding the
+--   same image. That is not a hypothesis: it happened on 2026-08-26 to
+--   migrations 281/284-287, which is why those are recorded applied only after
+--   an out-of-band superuser apply. See
+--   `backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py`.
+--
+--   So each replacement is attempted only when the current role can actually
+--   perform it (owner, member of the owner, or superuser — `pg_has_role`
+--   covers all three), and otherwise emits a NOTICE and returns.
+--
+--   THE OBJECTION TO THAT SHAPE IS CORRECT, AND IS ANSWERED ELSEWHERE.
+--   A migration that declines is still recorded APPLIED and is never retried,
+--   so on its own this would be scar #2 (esiste != armato): a green deploy over
+--   a database that was never repaired — strictly worse than a failed deploy,
+--   because nothing is visible. The no-op is made loud OUTSIDE the migration,
+--   by `operational_preflight.py`'s `binder:retention-policy-scoped` check,
+--   which reads the LIVE function body from `pg_proc` and fails while either
+--   binder still resolves the policy by environment alone. That check reads the
+--   catalog, not this file, so it cannot be satisfied by having merged 289 —
+--   only by 289 having actually run.
+--
+--   Guilt and innocence are both proven, against a real Postgres reproducing
+--   the ownership split, in
+--   `backend/tests/scripts/visa_engine/test_retention_binder_scope_survives_a_non_owner_runner.py`
+--   — including a third leg showing the SAME statement UNGUARDED really does
+--   raise `must be owner of function` for the same role.
+--
 -- NOTE: `-- === ROLLBACK ===` marker is mandatory (migration_base.py) for
 --   migrations > 111.
 
+DO $guard1$
+BEGIN
+    IF NOT pg_catalog.pg_has_role(
+           current_user,
+           (SELECT proowner FROM pg_catalog.pg_proc WHERE oid = 'public.bind_visa_decision_retention_policy()'::regprocedure),
+           'USAGE') THEN
+        RAISE NOTICE 'visa retention scope (289): cannot replace % -- current_user % is neither its owner nor a member of it. The binder keeps the pre-289 body and STILL resolves the retention policy by environment alone, so a second active policy in any scope makes every visa_decisions/visa_evaluate_idempotency INSERT fail with the INTO STRICT ambiguity. Re-apply 289 as visa_ledger_owner or a superuser. This no-op is NOT silent: operational_preflight.py fails while the live binder lacks the policy_scope predicate.', 'public.bind_visa_decision_retention_policy()', current_user;
+        RETURN;
+    END IF;
+
+    EXECUTE $ddl$
 CREATE OR REPLACE FUNCTION public.bind_visa_decision_retention_policy()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $$
+AS $fn$
 DECLARE
     policy RECORD;
     expected_until TIMESTAMPTZ;
@@ -135,14 +189,28 @@ BEGIN
     NEW.retention_until := expected_until;
     RETURN NEW;
 END;
-$$;
+$fn$;
+    $ddl$;
+END;
+$guard1$;
 
+DO $guard2$
+BEGIN
+    IF NOT pg_catalog.pg_has_role(
+           current_user,
+           (SELECT proowner FROM pg_catalog.pg_proc WHERE oid = 'public.bind_visa_evaluate_idempotency_retention_policy()'::regprocedure),
+           'USAGE') THEN
+        RAISE NOTICE 'visa retention scope (289): cannot replace % -- current_user % is neither its owner nor a member of it. The binder keeps the pre-289 body and STILL resolves the retention policy by environment alone, so a second active policy in any scope makes every visa_decisions/visa_evaluate_idempotency INSERT fail with the INTO STRICT ambiguity. Re-apply 289 as visa_ledger_owner or a superuser. This no-op is NOT silent: operational_preflight.py fails while the live binder lacks the policy_scope predicate.', 'public.bind_visa_evaluate_idempotency_retention_policy()', current_user;
+        RETURN;
+    END IF;
+
+    EXECUTE $ddl$
 CREATE OR REPLACE FUNCTION public.bind_visa_evaluate_idempotency_retention_policy()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $$
+AS $fn$
 DECLARE
     policy RECORD;
     expected_expires_at TIMESTAMPTZ;
@@ -187,7 +255,10 @@ BEGIN
     NEW.expires_at := expected_expires_at;
     RETURN NEW;
 END;
-$$;
+$fn$;
+    $ddl$;
+END;
+$guard2$;
 
 -- === ROLLBACK ===
 
@@ -214,12 +285,23 @@ $$;
 -- database that has applied 281 and activated a GARUDA policy. It is only
 -- meaningful together with rolling back 281.
 
+DO $guard3$
+BEGIN
+    IF NOT pg_catalog.pg_has_role(
+           current_user,
+           (SELECT proowner FROM pg_catalog.pg_proc WHERE oid = 'public.bind_visa_decision_retention_policy()'::regprocedure),
+           'USAGE') THEN
+        RAISE NOTICE 'visa retention scope (289): cannot replace % -- current_user % is neither its owner nor a member of it. The binder keeps the pre-289 body and STILL resolves the retention policy by environment alone, so a second active policy in any scope makes every visa_decisions/visa_evaluate_idempotency INSERT fail with the INTO STRICT ambiguity. Re-apply 289 as visa_ledger_owner or a superuser. This no-op is NOT silent: operational_preflight.py fails while the live binder lacks the policy_scope predicate.', 'public.bind_visa_decision_retention_policy()', current_user;
+        RETURN;
+    END IF;
+
+    EXECUTE $ddl$
 CREATE OR REPLACE FUNCTION public.bind_visa_decision_retention_policy()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $$
+AS $fn$
 DECLARE
     policy RECORD;
     expected_until TIMESTAMPTZ;
@@ -271,14 +353,28 @@ BEGIN
     NEW.retention_until := expected_until;
     RETURN NEW;
 END;
-$$;
+$fn$;
+    $ddl$;
+END;
+$guard3$;
 
+DO $guard4$
+BEGIN
+    IF NOT pg_catalog.pg_has_role(
+           current_user,
+           (SELECT proowner FROM pg_catalog.pg_proc WHERE oid = 'public.bind_visa_evaluate_idempotency_retention_policy()'::regprocedure),
+           'USAGE') THEN
+        RAISE NOTICE 'visa retention scope (289): cannot replace % -- current_user % is neither its owner nor a member of it. The binder keeps the pre-289 body and STILL resolves the retention policy by environment alone, so a second active policy in any scope makes every visa_decisions/visa_evaluate_idempotency INSERT fail with the INTO STRICT ambiguity. Re-apply 289 as visa_ledger_owner or a superuser. This no-op is NOT silent: operational_preflight.py fails while the live binder lacks the policy_scope predicate.', 'public.bind_visa_evaluate_idempotency_retention_policy()', current_user;
+        RETURN;
+    END IF;
+
+    EXECUTE $ddl$
 CREATE OR REPLACE FUNCTION public.bind_visa_evaluate_idempotency_retention_policy()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
-AS $$
+AS $fn$
 DECLARE
     policy RECORD;
     expected_expires_at TIMESTAMPTZ;
@@ -322,4 +418,7 @@ BEGIN
     NEW.expires_at := expected_expires_at;
     RETURN NEW;
 END;
-$$;
+$fn$;
+    $ddl$;
+END;
+$guard4$;

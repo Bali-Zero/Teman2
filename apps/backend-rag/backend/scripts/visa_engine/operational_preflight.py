@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import os
+import re
 import sys
 from dataclasses import dataclass
 
@@ -31,6 +32,25 @@ PRIVACY_FUNCTIONS = (
     "public.erase_visa_decision_for_dsr(uuid,text,text)",
     "public.set_visa_decision_legal_hold(uuid,boolean,text,text,text,text,"
     "timestamp with time zone)",
+)
+# The two binders migration 289 re-scopes. Bare `proname` (not the signature
+# form above) because this pair is looked up in `pg_proc.proname` to read the
+# LIVE body, not passed to `to_regprocedure`.
+#
+# `bind_visa_decision_payload_retention` is deliberately NOT here: it resolves
+# its parent through `visa_decisions.id`, never through
+# `visa_decision_retention_policies`, so no scope predicate belongs in it and
+# demanding one would make this check permanently red.
+SCOPE_BOUND_RETENTION_BINDERS = (
+    "bind_visa_decision_retention_policy",
+    "bind_visa_evaluate_idempotency_retention_policy",
+)
+# Matches the WHERE-clause predicate 289 installs, tolerating any whitespace
+# and either quoting of the literal. NOT the bare token `policy_scope`, which
+# a comment or an unrelated SELECT list would satisfy without the lookup ever
+# being scoped (scar #3, guard-over-match).
+_SCOPE_PREDICATE_RE = re.compile(
+    r"policy_scope\s*=\s*'VISA_DECISION'", re.IGNORECASE
 )
 # Migration 264's three BEFORE INSERT trigger functions that resolve the
 # active Zero-approved retention policy via `SELECT ... FOR SHARE`. Migration
@@ -316,6 +336,68 @@ async def collect_preflight_checks(
             detail="no login combines both capabilities"
             if dual_capability_login is None
             else "one or more logins combine pack-write and activation",
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # binder:retention-policy-scoped
+    # ------------------------------------------------------------------
+    # This is the LOUD half of migration 289's catalog guard, and it is the
+    # only reason that guard is allowed to exist.
+    #
+    # 289 replaces two SECURITY DEFINER binders so they resolve the retention
+    # policy by (environment, policy_scope) instead of environment alone. Both
+    # are owned by `visa_ledger_owner`; the migration runner connects with
+    # `settings.database_url` -- the runtime role -- which owns neither. So 289
+    # wraps each replacement in a `DO $guardN$` block that declines rather than
+    # raising, because a raising migration inside `release_command` aborts the
+    # WHOLE deploy (measured 2026-08-26 on migrations 281/284-287).
+    #
+    # A migration that declines is still recorded APPLIED and is therefore
+    # never retried -- scar #2, esiste != armato, and on its own strictly worse
+    # than a failed deploy because nothing is visible. This check is what makes
+    # it visible: it reads the LIVE function body out of the catalog, so it can
+    # only go green once the predicate is really in place, whoever put it there
+    # and by whatever route.
+    #
+    # It deliberately does NOT match the bare token `policy_scope` (scar #3,
+    # guard-over-match): the pre-289 bodies could gain that word in a comment,
+    # or in an unrelated SELECT list, without the WHERE clause ever being
+    # scoped. It matches the predicate, on a copy with `--` comments stripped
+    # so a comment can never satisfy it.
+    scoped_binder_rows = await connection.fetch(
+        """
+        SELECT proname, prosrc
+          FROM pg_catalog.pg_proc
+         WHERE proname = ANY($1::text[])
+        """,
+        list(SCOPE_BOUND_RETENTION_BINDERS),
+    )
+    found_binders = {row["proname"]: row["prosrc"] for row in scoped_binder_rows}
+    unscoped_binders: list[str] = []
+    for binder in SCOPE_BOUND_RETENTION_BINDERS:
+        body = found_binders.get(binder)
+        if body is None:
+            unscoped_binders.append(f"{binder}(absent)")
+            continue
+        uncommented = re.sub(r"--[^\n]*", "", body)
+        if not _SCOPE_PREDICATE_RE.search(uncommented):
+            unscoped_binders.append(binder)
+    checks.append(
+        PreflightCheck(
+            name="binder:retention-policy-scoped",
+            ok=not unscoped_binders,
+            detail="both retention binders resolve by (environment, policy_scope)"
+            if not unscoped_binders
+            else (
+                "migration 289 is NOT live in this database: "
+                + ", ".join(unscoped_binders)
+                + " still resolve(s) the retention policy by environment alone, so a "
+                "second active policy in ANY scope makes every visa_decisions / "
+                "visa_evaluate_idempotency INSERT fail with the INTO STRICT ambiguity. "
+                "289's catalog guard declined (the runtime role does not own these "
+                "functions) -- re-apply it as visa_ledger_owner or a superuser."
+            ),
         )
     )
     return tuple(checks)

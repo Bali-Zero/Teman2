@@ -75,8 +75,34 @@ class FakePreflightConnection:
         }
         self.memberships: set[tuple[str, str]] = set()
         self.dual_capability_login: str | None = None
+        # Live bodies of the two binders migration 289 re-scopes. Default to
+        # the POST-289 shape so the pre-existing least-privilege tests -- which
+        # are about grants, not about 289 -- keep describing a healthy database.
+        # The 289-specific tests below mutate this dict on purpose.
+        # `fromkeys` shares one value across the keys, which is safe only
+        # because the value is an immutable str and the tests below REBIND a
+        # key rather than mutating what it points at.
+        self.binder_bodies: dict[str, str] = dict.fromkeys(
+            operational_preflight.SCOPE_BOUND_RETENTION_BINDERS,
+            "BEGIN\n"
+            "    SELECT id INTO STRICT policy\n"
+            "      FROM public.visa_decision_retention_policies\n"
+            "     WHERE environment = NEW.environment\n"
+            "       AND policy_scope = 'VISA_DECISION'\n"
+            "       AND effective_period @> NEW.evaluated_at\n"
+            "     FOR SHARE;\n"
+            "    RETURN NEW;\n"
+            "END;",
+        )
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
+        if "FROM pg_catalog.pg_proc" in query and "prosrc" in query:
+            requested = args[0]
+            return [
+                {"proname": name, "prosrc": self.binder_bodies[name]}
+                for name in requested
+                if name in self.binder_bodies
+            ]
         if "FROM pg_roles WHERE rolname = ANY" not in query:
             raise AssertionError(f"unexpected fetch query: {query}")
         requested_roles = args[0]
@@ -246,3 +272,88 @@ async def test_pack_writer_activation_combination_still_fails() -> None:
     )
 
     assert checks["membership:no-pack-writer-activation-combination"].ok is False
+
+
+async def _scoped_binder_check(connection: FakePreflightConnection):
+    checks = _by_name(
+        await operational_preflight.collect_preflight_checks(
+            connection,  # type: ignore[arg-type]
+            runtime_role=RUNTIME_ROLE,
+        )
+    )
+    return checks["binder:retention-policy-scoped"]
+
+
+@pytest.mark.asyncio
+async def test_scoped_binder_check_passes_when_289_is_really_live() -> None:
+    """INNOCENCE. The fake's default bodies carry the predicate 289 installs."""
+
+    assert (await _scoped_binder_check(FakePreflightConnection())).ok is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binder", operational_preflight.SCOPE_BOUND_RETENTION_BINDERS)
+async def test_scoped_binder_check_fails_when_289_declined_for_either_binder(
+    binder: str,
+) -> None:
+    """GUILT. Parameterised per binder: 289's catalog guard skips them one at a
+    time, and a check that only noticed the FIRST unscoped binder would leave
+    the second one silently broken -- which is the whole failure mode."""
+
+    connection = FakePreflightConnection()
+    # The pre-289 body: identical but for the missing scope predicate. This is
+    # what the database really holds when the guard declines.
+    connection.binder_bodies[binder] = (
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;"
+    )
+
+    check = await _scoped_binder_check(connection)
+    assert check.ok is False
+    assert binder in check.detail
+    assert "visa_ledger_owner" in check.detail
+
+
+@pytest.mark.asyncio
+async def test_scoped_binder_check_fails_when_a_binder_is_absent_entirely() -> None:
+    """A missing function must not read as a satisfied predicate. `.get()`
+    returning None is exactly the shape that silently passes if unhandled."""
+
+    connection = FakePreflightConnection()
+    del connection.binder_bodies["bind_visa_decision_retention_policy"]
+
+    check = await _scoped_binder_check(connection)
+    assert check.ok is False
+    assert "bind_visa_decision_retention_policy(absent)" in check.detail
+
+
+@pytest.mark.asyncio
+async def test_scoped_binder_check_is_not_satisfied_by_a_comment() -> None:
+    """Scar #3, guard-over-match, in its UNDER-match twin: a body that merely
+    MENTIONS the predicate in a comment is still scope-blind at runtime, and a
+    bare-substring probe would call it healthy."""
+
+    connection = FakePreflightConnection()
+    connection.binder_bodies["bind_visa_decision_retention_policy"] = (
+        "BEGIN\n"
+        "    -- migration 289 would add: policy_scope = 'VISA_DECISION'\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;"
+    )
+
+    check = await _scoped_binder_check(connection)
+    assert check.ok is False, (
+        "a commented-out predicate satisfied the probe -- the check is matching "
+        "the bare token, not the WHERE clause"
+    )
