@@ -68,6 +68,61 @@ PYTHONPATH=. python -m pytest \
 
 `-o addopts=` è **obbligatorio**: senza, `-q` diventa `-qq` e la riga `N passed` sparisce.
 
+## 🔴 PROVA VIVA SUL SITO — protocollo obbligatorio (RULED Zero, 2026-08-27)
+
+Verbatim: _«e importante che ora faccia test live sul website direttamente e ad ogni tornata prende
+tutti gli errori (non uno alla volta!) e si fixano e si riprova»_.
+
+Questo **sostituisce** il modo di lavorare a rilievo-singolo. Un giro = uno **SWEEP COMPLETO**, poi un
+**BATCH DI CURE**, poi **RI-SWEEP**. Mai curare a metà sweep.
+
+**Fase A — SWEEP (nessuna modifica al codice, per nessun motivo).**
+Passa OGNI superficie viva e registra OGNI errore in una lista prima di toccare qualsiasi cosa. Se
+durante lo sweep ti viene voglia di aggiustare qualcosa: **annotalo e vai avanti**. Curare a metà
+sweep è precisamente ciò che Zero ha vietato — nasconde gli errori a valle di quello che hai appena
+cambiato, e il giro dopo li ritrovi.
+
+Per ogni superficie raccogli tutti e quattro i canali, non solo quello che salta all'occhio:
+
+1. **HTTP** — status, `retry-after`, corpo dell'errore
+2. **Console del browser** — `console.error` e `console.warn`, non solo le eccezioni
+3. **Rete** — richieste 4xx/5xx, CORS, CSP, risorse che non caricano
+4. **Visivo** — testo rotto, placeholder, colori/logo, layout (screenshot **solo dopo** il testo)
+
+Browser: `mcp__claude-in-chrome__*` — **mai** `mcp__playwright__*` se non ordinato. Text-first:
+`get_page_text` / `find` / `javascript_tool` prima di ogni screenshot.
+
+**Non partire da una lista di URL scritta a memoria**: enumerale dal repo (routes di `apps/mouth`,
+`fly.toml`, i domini in CLAUDE.md §11) e scrivi in chiaro quali hai coperto e quali no. Due esempi
+verificati in questa sessione, come punto di partenza non come elenco completo:
+
+```bash
+# API viva (misurata 2026-08-26: HTTP 200 + state TEMPORARILY_UNAVAILABLE)
+curl -sS -X POST 'https://balizero.com/api/visa-oracle/evaluate?traffic_source=real' \
+  -H 'content-type: application/json' -d '{...}' -w '\n[%{http_code}]\n'
+```
+
+Pagina funnel `/visa-oracle` (è `noindex,nofollow`) e il funnel più vecchio `/visa` — **sono due cose
+diverse**, provale entrambe.
+
+**Fase B — TRIAGE del lotto.** Con la lista chiusa, raggruppa per CAUSA, non per sintomo: dieci
+console-error possono essere un solo difetto. Ordina per raggio d'azione (blocca il cliente > sporca i
+dati > cosmetico). Dichiara quanti errori distinti hai, non quanti messaggi.
+
+**Fase C — CURA IN BATCH.** Cura tutto il lotto, poi rideploya. Frontend `apps/mouth` → Vercel
+auto-deploy sul push a `main`. Backend → `fly deploy` **dalla root del monorepo**, mai da
+`apps/backend-rag` (i `COPY` del Dockerfile sono relativi alla root; il wrapper `fly` locale sbaglia
+cwd — bypassalo con `ssh pro`).
+
+**Fase D — RI-SWEEP DA ZERO.** Non ri-provare "solo quello che hai toccato": rifai la Fase A intera.
+Una cura ne rompe un'altra, ed è l'unico modo per accorgersene. Ripeti finché lo sweep è pulito.
+
+⚠️ **Aspettativa da tarare prima di gridare al bug**: la produzione gira in **SHADOW**. Il backend
+risponde `CURATED` e il frontend solleva `NON_ENGINE_MODE` **di proposito** — quello NON è un errore da
+curare, è lo stato voluto finché ENFORCE non viene armato (che dipende dalla decisione qui sotto). Ciò
+che invece è da curare: tutto il resto del funnel, la copy, la rete, la console, il visivo — e ogni
+punto in cui il sito **mente** al visitatore su cosa è successo (è esattamente il caso di #5067).
+
 ## Cosa NON è stato fatto, e perché
 
 1. **Verdetto Gear-3 mai ottenuto.** Tre grader subagente sono andati idle senza consegnare
