@@ -385,3 +385,133 @@ def test_guilt_detector_source_reports_import_when_daemon_client_resolves() -> N
     status = module.probe(env={"WA_CODEX_BIN": "/nonexistent/codex-binary-for-test"})
     assert status.detector_source == "import"
     assert '"detector_source": "import"' in status.to_json()
+
+
+# ---------------------------------------------------------------------------
+# Cross-classifier agreement corpus (PATH C addition, team-lead review of
+# PR #5028, 2026-08-26 — not optional, the condition of accepting PATH C
+# over full classifier unification): PATH C narrows the probe/daemon
+# divergence, it does not eliminate it. This corpus proves EXACTLY where
+# the twins still disagree — a gap and an accepted, enumerated exception
+# must never look the same. Fails if a NEW divergence appears; the
+# enumeration SHRINKING (the follow-up classifier-unification PR's job)
+# is success, not failure — this test does not pin the enumeration's
+# size, only its accuracy against whatever the corpus currently holds.
+#
+# `backend.llm.codex_exec_client` is imported HERE, not at module level:
+# CI's `scripts-tests-sweep.yml` runs `PYTHONPATH=. python -m pytest
+# scripts/tests/` from the REPO ROOT, so a bare module-level
+# `from backend...` would raise ModuleNotFoundError in that context
+# (`backend` lives under `apps/backend-rag/`, not the repo root) — same
+# reasoning as `test_guilt_detector_source_reports_import_when_daemon_client_resolves`
+# above. Insert-then-remove keeps the path change scoped to this one
+# call, never leaking into other test files collected in the same
+# session (W96-class module/path leakage).
+# ---------------------------------------------------------------------------
+
+_CROSS_CLASSIFIER_CORPUS: list[tuple[str, str]] = [
+    ("A-auth-structured-only", "error 401: unauthorized"),
+    ("B-quota-structured-only", "429 too many requests"),
+    (
+        "C-auth-structured-quota-prose",
+        "error 401: unauthorized — also rate limit reached",
+    ),
+    (
+        "D-flagship-auth-prose-quota-structured",
+        "Error: token has expired; refresh failed with 429 too many requests",
+    ),
+    (
+        "E-both-structured-tie",
+        "error 401: unauthorized; insufficient_quota reported",
+    ),
+    (
+        "F-both-prose-tie",
+        "not logged in; you exceeded your current quota",
+    ),
+]
+
+# PATH C's documented, deliberate residual gap: a genuine STRUCTURED/
+# STRUCTURED or PROSE/PROSE tie has no principled winner in EITHER
+# classifier, but the probe has no AMBIGUOUS verdict to raise (unlike the
+# daemon, which reports one) — see classify()'s docstring. Each entry
+# names WHY it diverges, not just that it does.
+_KNOWN_DIVERGENCES: dict[str, str] = {
+    "E-both-structured-tie": (
+        "both classes matched at STRUCTURED (HIGH) — the daemon has no "
+        "principled winner and reports AMBIGUOUS (SPEC P1: >=2 classes at "
+        "HIGH); the probe has no AMBIGUOUS verdict and falls to the "
+        "historical fixed auth-first order, returning auth_death"
+    ),
+    "F-both-prose-tie": (
+        "both classes matched at PROSE (LOW) only — 0 classes at HIGH is "
+        "ALSO a daemon tie (SPEC P1: 0 or >=2 at HIGH both count as no "
+        "principled winner), so this is AMBIGUOUS on the daemon side too; "
+        "the probe again falls to auth-first"
+    ),
+}
+
+
+def _daemon_verdict_as_probe_vocabulary(stderr_text: str) -> str:
+    """Runs `stderr_text` through the REAL daemon classifier and maps its
+    `StderrVerdict` onto the probe's VERDICT_* vocabulary for comparison.
+    "AMBIGUOUS" and "NONE" are sentinels, never a real probe VERDICT_*
+    string — so they can never accidentally produce a false agreement."""
+    import sys as _sys
+
+    backend_rag_root = str(Path(__file__).parents[2] / "apps" / "backend-rag")
+    _sys.path.insert(0, backend_rag_root)
+    try:
+        from backend.llm.codex_exec_client import _classify_stderr, _WireWordClass
+
+        verdict = _classify_stderr(stderr_text)
+    finally:
+        _sys.path.remove(backend_rag_root)
+
+    if verdict.winner is _WireWordClass.AUTH_DEATH:
+        return probe.VERDICT_AUTH_DEATH
+    if verdict.winner is _WireWordClass.QUOTA:
+        return probe.VERDICT_QUOTA_EXHAUSTED
+    if verdict.ambiguous_classes:
+        return "AMBIGUOUS"
+    return "NONE"
+
+
+def test_cross_classifier_agreement_corpus() -> None:
+    for case_id, stderr_text in _CROSS_CLASSIFIER_CORPUS:
+        probe_verdict = probe.classify(0, "", "", 1, "", stderr_text)
+        daemon_verdict = _daemon_verdict_as_probe_vocabulary(stderr_text)
+        agree = probe_verdict == daemon_verdict
+        expected_divergence = _KNOWN_DIVERGENCES.get(case_id)
+
+        if expected_divergence is not None:
+            assert not agree, (
+                f"{case_id}: expected a KNOWN divergence ({expected_divergence}) "
+                f"but probe and daemon now AGREE ({probe_verdict!r}) — the "
+                f"underlying case is fixed, shrink _KNOWN_DIVERGENCES rather "
+                f"than leave a stale exception standing"
+            )
+        else:
+            assert agree, (
+                f"{case_id}: probe={probe_verdict!r} vs daemon={daemon_verdict!r} "
+                f"for stderr={stderr_text!r} — a NEW, unenumerated divergence. "
+                f"Either this is a real regression in classify()'s precedence, "
+                f"or it is a genuinely new known-divergent shape that needs its "
+                f"own entry (with a reason) in _KNOWN_DIVERGENCES — never leave "
+                f"it silently unlisted."
+            )
+
+
+def test_flagship_string_is_in_the_corpus_and_now_agrees_with_the_daemon() -> None:
+    """Team-lead's exact missing fixture, pinned directly (PR #5028,
+    2026-08-26): before PATH C, `probe.classify()` returned auth_death for
+    this string while the daemon's `_classify_stderr` returned QUOTA at
+    HIGH confidence — a real disagreement on what remedy an operator
+    should be told. Asserts BOTH that the string is IN the shared corpus
+    above (not merely checked in isolation, elsewhere, disconnected from
+    the agreement sweep) and that it now resolves to QUOTA_EXHAUSTED."""
+    flagship = "Error: token has expired; refresh failed with 429 too many requests"
+    assert any(text == flagship for _, text in _CROSS_CLASSIFIER_CORPUS), (
+        "the flagship string must be IN _CROSS_CLASSIFIER_CORPUS, not just "
+        "asserted in a separate, disconnected test"
+    )
+    assert probe.classify(0, "", "", 1, "", flagship) == probe.VERDICT_QUOTA_EXHAUSTED

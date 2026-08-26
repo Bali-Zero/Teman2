@@ -22,25 +22,44 @@ status` plus a 1-token synthetic `codex exec`, on the plist's own
 StartInterval, regardless of whether the broker has anything to claim.
 
 CLASSIFICATION (S1.5, 2026-08-26 — sharpens the bucket the paragraph above
-used to describe): quota exhaustion is now its OWN verdict,
-`VERDICT_QUOTA_EXHAUSTED` ("quota_exhausted"), distinct from `auth_death`
-and from the generic `other_failure` bucket it used to fall into — the twin,
-on the probe side, of `wa_codex_daemon.py`'s `CodexExecQuotaError` arm
-(B2b). Detection REUSES the daemon's own quota word class
-(`_QUOTA_STRUCTURED_RE`/`_QUOTA_PROSE_RE` in `backend/llm/codex_exec_client.py`)
-via the same import-with-degraded-fallback pattern as `AUTH_STRUCTURED_RE`/
-`AUTH_PROSE_RE` below — never a second, drifting definition. Priority is a
-FIXED two-step order — auth checked first, quota second — deliberately
-simpler than the daemon's full per-word-class confidence-tier SPEC
-(`_classify_stderr` in that same
-module): this probe's `guilty_texts` are the output of a single synthetic,
-domain-free "ping" prompt (see `_PROBE_PROMPT` below), not a real client
-payload, so the domain-overload ambiguity that SPEC exists to resolve (a
-KITAS sponsor's own "quota", an immigration client's own "unauthorized")
-cannot occur here — there is no real prompt for either word class to
-collide with. This probe still answers only what it can: is the seat's
-LOGIN dead, or its usage quota exhausted, or something else non-zero — never
-a full replay of the daemon's SPEC.
+used to describe; CORRECTED to S1.6, same day, PATH C — see below): quota
+exhaustion is now its OWN verdict, `VERDICT_QUOTA_EXHAUSTED`
+("quota_exhausted"), distinct from `auth_death` and from the generic
+`other_failure` bucket it used to fall into — the twin, on the probe side,
+of `wa_codex_daemon.py`'s `CodexExecQuotaError` arm (B2b). Detection REUSES
+the daemon's own quota word class (`_QUOTA_STRUCTURED_RE`/`_QUOTA_PROSE_RE`
+in `backend/llm/codex_exec_client.py`) via the same import-with-degraded-
+fallback pattern as `AUTH_STRUCTURED_RE`/`AUTH_PROSE_RE` below — never a
+second, drifting definition.
+
+S1.5's original rationale for a FIXED auth-first order was: this probe's
+`guilty_texts` are the output of a single synthetic, domain-free "ping"
+prompt (see `_PROBE_PROMPT` below), not a real client payload, so the
+DOMAIN-OVERLOAD ambiguity the daemon's full SPEC exists to resolve (a KITAS
+sponsor's own "quota", an immigration client's own "unauthorized" inside a
+legitimate answer) cannot occur here. That rationale is still correct as
+far as it goes — but it never addressed a SEPARATE collision source: codex's
+OWN diagnostic chain (token expires -> refresh attempted -> refresh itself
+rate-limited) can emit both word classes in ONE synthetic ping's stderr,
+with DIFFERENT confidence tiers, and a fixed auth-first order picks the
+wrong one whenever quota is the higher-confidence signal. Reproduced live
+(team-lead review of PR #5028, 2026-08-26):
+`"Error: token has expired; refresh failed with 429 too many requests"` —
+auth only PROSE ("token has expired"), quota STRUCTURED ("429 too many
+requests") — pre-S1.6 this probe returned auth_death while the daemon's own
+`_classify_stderr` returns QUOTA at HIGH confidence, suppressing AUTH_DEATH.
+
+S1.6 (PATH C) fixes this: priority is now STRUCTURED-beats-PROSE across
+classes (see `_auth_tier`/`_quota_tier`/`classify()` below), a small,
+LOCAL borrow of the daemon's own P3 precedence rule — not a full replay of
+its SPEC (still deliberately simpler: no POLICY_BLOCKED/OUTPUT_OVERSIZED
+classes here, no AMBIGUOUS verdict, and a genuine STRUCTURED/STRUCTURED or
+PROSE/PROSE tie still falls back to the historical fixed auth-first order —
+a known, enumerated divergence from the daemon, not a claim this probe now
+fully replicates it). A dedicated classifier-unification PR (importing
+`_classify_stderr` itself and retiring this probe's local regex copies
+entirely) is the follow-up that would close that residual gap; PATH C's
+scope is deliberately narrower.
 
 LEAK SURFACE (Law 2 / scar family #4 — secret/PII in the clear): the status
 file carries ONLY the verdict enum, the two raw exit codes, a UTC
@@ -304,18 +323,37 @@ def _run(binary: str, args: Sequence[str], env: Mapping[str, str]) -> tuple[int,
         return _UNRUN_RC, "", ""
 
 
-def _auth_detected(text: str) -> bool:
-    """True if `text` matches either tier of the daemon's auth-death word
-    class (structured token OR prose phrase)."""
-    return bool(AUTH_STRUCTURED_RE.search(text) or AUTH_PROSE_RE.search(text))
+_TIER_NONE: Final[int] = 0
+_TIER_PROSE: Final[int] = 1
+_TIER_STRUCTURED: Final[int] = 2
 
 
-def _quota_detected(text: str) -> bool:
-    """True if `text` matches either tier of the daemon's quota-exhaustion
-    word class (structured token OR domain-safe prose phrase — see the
-    import block above for why both tiers are safe to OR together here,
-    unlike in the daemon's real-prompt classifier)."""
-    return bool(QUOTA_STRUCTURED_RE.search(text) or QUOTA_PROSE_RE.search(text))
+def _auth_tier(text: str) -> int:
+    """PATH C (S1.6, 2026-08-26 — team-lead review of PR #5028, reproduced
+    blocker: probe.classify() disagreed with the daemon's
+    `_classify_stderr` on `"Error: token has expired; refresh failed with
+    429 too many requests"` — probe said auth_death, daemon said QUOTA
+    HIGH). Returns this class's HIGHEST tier found in `text` — STRUCTURED
+    if either `AUTH_STRUCTURED_RE` fires, else PROSE if `AUTH_PROSE_RE`
+    fires, else NONE. Never conflates the two tiers into one bool the way
+    the pre-fix `_auth_detected` did — that conflation IS what let a
+    LOW-confidence prose auth phrase outrank a HIGH-confidence structured
+    quota token, since the fixed auth-first order in `classify()` used to
+    run before either side's confidence was even computed."""
+    if AUTH_STRUCTURED_RE.search(text):
+        return _TIER_STRUCTURED
+    if AUTH_PROSE_RE.search(text):
+        return _TIER_PROSE
+    return _TIER_NONE
+
+
+def _quota_tier(text: str) -> int:
+    """Twin of `_auth_tier` for the quota-exhaustion word class."""
+    if QUOTA_STRUCTURED_RE.search(text):
+        return _TIER_STRUCTURED
+    if QUOTA_PROSE_RE.search(text):
+        return _TIER_PROSE
+    return _TIER_NONE
 
 
 def classify(
@@ -328,16 +366,34 @@ def classify(
 ) -> str:
     """Pure — no I/O, so this is where a future unit test would live.
 
-    Priority (S1.5, 2026-08-26): auth-death outranks quota-exhaustion
-    outranks a generic nonzero. Fixed two-step order, not the daemon's full
-    per-word-class confidence-tier SPEC — see the module docstring's
-    CLASSIFICATION section for why that's a safe simplification here (this
-    probe's guilty_texts come from one synthetic, domain-free "ping", never
-    a real client prompt the two word classes could collide inside). Each
-    regex is searched on EACH text independently — never concatenated —
-    matching the discipline of the upstream `_auth_death_detected`: joining
-    texts with any separator risks a `\\s+` alternative bridging two
-    innocent fragments across the seam into a false match.
+    Priority (S1.6, 2026-08-26 — PATH C, supersedes S1.5's fixed two-step
+    order after a reproduced disagreement with the daemon's classifier —
+    see `_auth_tier`'s docstring): a STRUCTURED-tier match outranks a
+    PROSE-tier match ACROSS classes, borrowing the daemon's own P3
+    precedence rule (`_classify_stderr` in
+    `backend/llm/codex_exec_client.py`) as a small, explicit, LOCAL
+    comparison — not by importing that function. `_auth_tier`/
+    `_quota_tier` are each computed independently per text (never
+    concatenated — joining texts with any separator risks a `\\s+`
+    alternative bridging two innocent fragments across the seam into a
+    false match, same discipline as the daemon's own per-line isolation),
+    then the BEST tier per class is taken across all guilty texts before
+    the two classes are compared.
+
+    When exactly one class matched at all, that one wins outright — same
+    as before PATH C. When BOTH matched: STRUCTURED beats PROSE (this is
+    what makes `"token has expired; refresh failed with 429 too many
+    requests"` now resolve to QUOTA, matching the daemon, instead of the
+    pre-PATH-C AUTH_DEATH). A GENUINE TIE (both STRUCTURED, or both
+    PROSE) has no principled winner here either — the daemon reports this
+    shape as AMBIGUOUS (SPEC P1), but this probe has no AMBIGUOUS verdict
+    to raise, so a tie falls back to the historical fixed auth-first
+    order. This is a KNOWN, DELIBERATE, ENUMERATED divergence from the
+    daemon, not an oversight — see the cross-classifier agreement corpus
+    (`test_cross_classifier_agreement_corpus` in this module's test file)
+    for the exact enumerated exceptions this fallback produces, and why a
+    full classifier-unification PR (deferred, see PATH C discussion on
+    PR #5028) rather than this one is where that residual gap closes.
 
     Scanning discipline imitates the daemon's R26 rule: only a FAILED
     command's text is scanned — a succeeding command's output is a status
@@ -360,10 +416,25 @@ def classify(
         guilty_texts.extend((login_out, login_err))
     if exec_rc not in (0, _UNRUN_RC):
         guilty_texts.append(exec_err)
-    if any(_auth_detected(t) for t in guilty_texts if t):
-        return VERDICT_AUTH_DEATH
-    if any(_quota_detected(t) for t in guilty_texts if t):
+    guilty_texts = [t for t in guilty_texts if t]
+
+    auth_tier = max((_auth_tier(t) for t in guilty_texts), default=_TIER_NONE)
+    quota_tier = max((_quota_tier(t) for t in guilty_texts), default=_TIER_NONE)
+
+    if auth_tier or quota_tier:
+        if auth_tier and not quota_tier:
+            return VERDICT_AUTH_DEATH
+        if quota_tier and not auth_tier:
+            return VERDICT_QUOTA_EXHAUSTED
+        # Both matched: STRUCTURED (2) beats PROSE (1) — P3. A genuine tie
+        # (2==2 or 1==1) falls to the historical fixed auth-first order —
+        # see the docstring above and the cross-classifier corpus for why
+        # that residual case is a documented, enumerated divergence and
+        # not a bug this PR is silently leaving in place.
+        if auth_tier >= quota_tier:
+            return VERDICT_AUTH_DEATH
         return VERDICT_QUOTA_EXHAUSTED
+
     if login_rc == _UNRUN_RC and exec_rc == _UNRUN_RC:
         return VERDICT_PROBE_ERROR
     if login_rc != 0 or exec_rc != 0:

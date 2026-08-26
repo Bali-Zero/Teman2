@@ -69,6 +69,21 @@ from scripts.tg_gateway_verdict import extract_gateway_verdict  # noqa: E402
 # concern in the probe's own docstring is about RUNTIME execution
 # (`codex login status` runs as zantara-codex), not about reading its
 # Final[str] constants, which are plain module attributes with no I/O.
+#
+# Note 2 (team-lead review of PR #5028, 2026-08-26): this import reads
+# the REPO CHECKOUT's copy of wa_codex_seat_probe.py — but the thing that
+# ACTUALLY WRITES `verdict` into seat-status.json at runtime is the
+# DEPLOYED copy at /usr/local/lib/wa-codex-broker/seat_probe.py, a
+# different path under a different user (zantara-codex). This import
+# being SAFE — i.e. these constants matching whatever string the deployed
+# probe actually emits — depends on those two copies not drifting. That
+# dependency is not an accident: `scripts/wa_codex_seat_probe.py` <->
+# `/usr/local/lib/wa-codex-broker/seat_probe.py` IS a declared pair in
+# infra/home-fork/declared-pairs.json (verified: repo="scripts/
+# wa_codex_seat_probe.py", live="/usr/local/lib/wa-codex-broker/
+# seat_probe.py"), so `lint_home_fork.py` DOES watch this specific pair
+# for drift. If that declaration is ever removed, this import stops being
+# safe by construction and starts being safe only by accident.
 from scripts.wa_codex_seat_probe import (  # noqa: E402
     VERDICT_AUTH_DEATH,
     VERDICT_OK,
