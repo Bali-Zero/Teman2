@@ -104,7 +104,20 @@ async def test_find_client_by_email_short_circuits_empty_email() -> None:
 
     assert await resolver.find_client_by_email("") is None
     assert await resolver.find_client_by_email("Client@Example.com") == 789
-    assert conn.fetchval_calls[0][1] == ("Client@Example.com",)
+    assert conn.fetchval_calls[0][1] == ("client@example.com",)
+
+
+@pytest.mark.asyncio
+async def test_find_client_by_email_matches_btrim_normalized_stored_email() -> None:
+    """The lookup must match the BTRIM-based clients email unique index."""
+    conn = FakeConn(fetchvals=[790])
+    resolver = ClientIdentityResolver(FakePool(conn))
+
+    assert await resolver.find_client_by_email(" X@Y.com ") == 790
+
+    query, args = conn.fetchval_calls[0]
+    assert "LOWER(BTRIM(email)) = $1" in query
+    assert args == ("x@y.com",)
 
 
 @pytest.mark.asyncio

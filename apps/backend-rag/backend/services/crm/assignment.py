@@ -134,14 +134,18 @@ class ClientIdentityResolver:
         if not email:
             return None
 
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            return None
+
         async with self.db_pool.acquire() as conn:
             return await conn.fetchval(
                 """
                 SELECT id
                 FROM clients
-                WHERE LOWER(email) = LOWER($1)
+                WHERE LOWER(BTRIM(email)) = $1
             """,
-                email,
+                normalized_email,
             )
 
     @cache_invalidating(
@@ -364,21 +368,24 @@ async def check_duplicates(
     resolver = ClientIdentityResolver(db_pool)
 
     async with db_pool.acquire() as conn:
-        # 1. Check email exact match (case-insensitive)
+        # 1. Check email exact match (case-insensitive, matching the unique index)
         if email := client_data.get("email"):
-            existing = await conn.fetchrow(
-                "SELECT id, assigned_to FROM clients WHERE LOWER(email) = LOWER($1) AND id != $2",
-                email,
-                client_id,
-            )
-            if existing:
-                state["is_duplicate"] = True
-                state["matched_client_id"] = existing["id"]
-                state["assigned_lead"] = existing["assigned_to"]
-                logger.info(
-                    f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (email)",
+            normalized_email = email.strip().lower()
+            if normalized_email:
+                existing = await conn.fetchrow(
+                    "SELECT id, assigned_to FROM clients "
+                    "WHERE LOWER(BTRIM(email)) = $1 AND id != $2",
+                    normalized_email,
+                    client_id,
                 )
-                return state
+                if existing:
+                    state["is_duplicate"] = True
+                    state["matched_client_id"] = existing["id"]
+                    state["assigned_lead"] = existing["assigned_to"]
+                    logger.info(
+                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (email)",
+                    )
+                    return state
 
         # 2. Check phone exact match (normalized - remove spaces, dashes, + prefix)
         if phone := client_data.get("phone"):
