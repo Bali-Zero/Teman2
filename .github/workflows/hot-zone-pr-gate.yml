@@ -392,7 +392,7 @@ jobs:
     # Floor is the checkout + at most 3 `gh api` calls (list + 2 ruleset
     # detail GETs) — and ZERO api calls at all when the base IS the default
     # branch (most PRs), which short-circuits before touching `gh`.
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
       # OPEN QUESTION, not a confident claim either way (corrected 2026-08-27
