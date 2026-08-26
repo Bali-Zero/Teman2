@@ -40,7 +40,7 @@ _MIGRATION_281_PATH = (
     Path(__file__).resolve().parents[3]
     / "db"
     / "migrations_v2"
-    / "281_visa_oracle_consultant_requests.sql"
+    / "293_visa_oracle_consultant_requests.sql"
 )
 _TEARDOWN_281_SQL = """
 DROP TRIGGER IF EXISTS trg_guard_visa_oracle_consultant_requests_append_only

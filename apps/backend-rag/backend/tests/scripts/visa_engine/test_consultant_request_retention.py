@@ -50,9 +50,9 @@ _ADMIN_URL = (
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[3]
 _MIGRATIONS_DIR = _BACKEND_ROOT / "db" / "migrations_v2"
-_MIGRATION_281_PATH = _MIGRATIONS_DIR / "281_visa_oracle_consultant_requests.sql"
+_MIGRATION_281_PATH = _MIGRATIONS_DIR / "293_visa_oracle_consultant_requests.sql"
 _MIGRATION_282_PATH = (
-    _MIGRATIONS_DIR / "282_visa_oracle_consultant_requests_retention_policy.sql"
+    _MIGRATIONS_DIR / "294_visa_oracle_consultant_requests_retention_policy.sql"
 )
 
 

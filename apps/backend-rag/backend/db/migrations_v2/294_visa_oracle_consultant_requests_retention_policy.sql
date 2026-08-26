@@ -1,12 +1,12 @@
 -- ============================================================================
--- 282_visa_oracle_consultant_requests_retention_policy.sql
+-- 294_visa_oracle_consultant_requests_retention_policy.sql
 --
 -- Integer bound at write time (scar W40 -- a reservation in a doc nobody
 -- re-checks decays). Measured fresh this turn:
 --   git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/db/migrations_v2/
 --     -> highest present is 280 (280_research_os_objects_truncate_guard.sql)
 --   git ls-tree -r --name-only HEAD -- apps/backend-rag/backend/db/migrations_v2/
---     -> highest present is 281 (281_visa_oracle_consultant_requests.sql, this
+--     -> highest present is 281 (293_visa_oracle_consultant_requests.sql, this
 --        branch's own merge -- not yet on origin/main)
 --   gh pr list --state open --limit 500 --json number,files | grep migrations_v2
 --     -> exactly one hit: #4854 adds 281_garuda_voa_retention.sql, on

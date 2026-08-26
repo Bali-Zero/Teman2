@@ -1,12 +1,12 @@
 -- ============================================================================
--- 283_visa_oracle_sessions_retention_30d.sql
+-- 295_visa_oracle_sessions_retention_30d.sql
 --
 -- Number bound at write time (scar W40 — a reservation nobody re-checks
 -- decays). Measured fresh this turn:
 --   git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/db/migrations_v2/
 --     -> highest present is 280 (280_research_os_objects_truncate_guard.sql)
 --   git ls-tree -r --name-only HEAD -- apps/backend-rag/backend/db/migrations_v2/
---     -> highest present is 282 (282_visa_oracle_consultant_requests_retention_policy.sql,
+--     -> highest present is 282 (294_visa_oracle_consultant_requests_retention_policy.sql,
 --        this branch's own two migrations — not yet on origin/main)
 --   gh pr list --state open --limit 500 --json number,headRefName,files | grep migrations_v2
 --     -> exactly one hit, unchanged from 282's own check: #4854 adds
