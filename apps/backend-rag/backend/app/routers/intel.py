@@ -5,11 +5,13 @@ Refactored router using service layer architecture.
 """
 
 import base64
+import hmac
 import logging
 import os
 import sys
 from pathlib import Path as PathLib
 from typing import Any, Literal
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -202,6 +204,217 @@ VALID_HOMEPAGE_POSITIONS = {
 # ANALYTICS → intel_analytics.py
 
 # --- STAGING ENDPOINTS ---
+
+
+def require_workspace_marketing_key(request: Request) -> None:
+    """Accept only the dedicated GET-only workspace marketing credential."""
+
+    configured = settings.workspace_marketing_api_key
+    provided = request.headers.get("X-Workspace-Marketing-Key", "")
+    if (
+        not configured
+        or not provided
+        or not hmac.compare_digest(
+            provided.encode("utf-8", "surrogateescape"),
+            configured.encode("utf-8", "surrogateescape"),
+        )
+    ):
+        logger.warning(
+            "Workspace marketing route authentication rejected",
+            extra={"method": request.method},
+        )
+        raise HTTPException(status_code=401, detail="Workspace marketing key required")
+
+
+_WORKSPACE_OMIT = object()
+
+
+def _workspace_text(value: Any, *, max_chars: int = 50_000) -> str | object:
+    """Admit text only; arbitrary nested input is structurally unreachable."""
+
+    return value[:max_chars] if isinstance(value, str) else _WORKSPACE_OMIT
+
+
+def _workspace_text_list(
+    value: Any,
+    *,
+    max_items: int = 25,
+    max_chars: int = 5_000,
+) -> list[str] | object:
+    if not isinstance(value, list):
+        return _WORKSPACE_OMIT
+    return [entry[:max_chars] for entry in value[:max_items] if isinstance(entry, str)]
+
+
+def _workspace_brief(value: Any) -> str | dict[str, str] | object:
+    scalar = _workspace_text(value, max_chars=5_000)
+    if scalar is not _WORKSPACE_OMIT:
+        return scalar
+    if not isinstance(value, dict):
+        return _WORKSPACE_OMIT
+    public: dict[str, str] = {}
+    for field in ("what", "why_it_matters", "who", "risk_level"):
+        safe = _workspace_text(value.get(field), max_chars=2_000)
+        if isinstance(safe, str):
+            public[field] = safe
+    return public
+
+
+def _workspace_faq(value: Any) -> list[dict[str, str]] | object:
+    if not isinstance(value, list):
+        return _WORKSPACE_OMIT
+    public: list[dict[str, str]] = []
+    for entry in value[:10]:
+        if not isinstance(entry, dict):
+            continue
+        question = _workspace_text(entry.get("question", entry.get("q")), max_chars=2_000)
+        answer = _workspace_text(entry.get("answer", entry.get("a")), max_chars=5_000)
+        if isinstance(question, str) and isinstance(answer, str):
+            public.append({"question": question, "answer": answer})
+    return public
+
+
+def _workspace_bali_zero_take(value: Any) -> str | dict[str, str] | object:
+    scalar = _workspace_text(value)
+    if scalar is not _WORKSPACE_OMIT:
+        return scalar
+    if not isinstance(value, dict):
+        return _WORKSPACE_OMIT
+    public: dict[str, str] = {}
+    for field in ("hidden_insight", "our_analysis", "our_advice"):
+        safe = _workspace_text(value.get(field))
+        if isinstance(safe, str):
+            public[field] = safe
+    return public
+
+
+def _workspace_next_steps(value: Any) -> str | dict[str, list[str]] | object:
+    scalar = _workspace_text(value)
+    if scalar is not _WORKSPACE_OMIT:
+        return scalar
+    if not isinstance(value, dict):
+        return _WORKSPACE_OMIT
+    public: dict[str, list[str]] = {}
+    for audience in ("expat", "investor"):
+        safe = _workspace_text_list(value.get(audience), max_items=10)
+        if isinstance(safe, list):
+            public[audience] = safe
+    return public
+
+
+def _workspace_marketing_summary(item: dict[str, Any]) -> dict[str, Any]:
+    fields = (
+        "id",
+        "item_id",
+        "title",
+        "category",
+        "status",
+        "detected_at",
+        "published_at",
+        "source_name",
+    )
+    public: dict[str, Any] = {}
+    for field in fields:
+        if field not in item:
+            continue
+        safe = item[field]
+        if safe is None or isinstance(safe, (str, int, float, bool)):
+            public[field] = safe
+    return public
+
+
+def _workspace_marketing_article(item: dict[str, Any]) -> dict[str, Any]:
+    public = _workspace_marketing_summary(item)
+    if "content" in item:
+        safe_content = _workspace_text(item["content"])
+        if safe_content is not _WORKSPACE_OMIT:
+            public["content"] = safe_content
+    source_url = item.get("source_url")
+    if isinstance(source_url, str):
+        parsed = urlsplit(source_url)
+        if (
+            parsed.scheme == "https"
+            and parsed.hostname
+            and not parsed.username
+            and not parsed.password
+        ):
+            public["source_url"] = urlunsplit(
+                (parsed.scheme, parsed.netloc, parsed.path, "", "")
+            )
+    enrichment = item.get("enrichment")
+    if isinstance(enrichment, dict):
+        projectors = {
+            "headline": lambda value: _workspace_text(value, max_chars=500),
+            "thirty_second_brief": _workspace_brief,
+            "the_facts": _workspace_text,
+            "in_practice": _workspace_text,
+            "next_steps": _workspace_next_steps,
+            "bali_zero_take": _workspace_bali_zero_take,
+            "faq": _workspace_faq,
+        }
+        safe_enrichment: dict[str, Any] = {}
+        for field, projector in projectors.items():
+            if field not in enrichment:
+                continue
+            safe = projector(enrichment[field])
+            if safe is not _WORKSPACE_OMIT:
+                safe_enrichment[field] = safe
+        public["enrichment"] = safe_enrichment
+    return public
+
+
+@router.get(
+    "/api/workspace-marketing/news/pending",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_pending_news(limit: int = 10) -> dict[str, Any]:
+    """Return a bounded News Room projection to the private marketing bridge."""
+
+    bounded_limit = max(1, min(limit, 25))
+    payload = staging_service.list_pending_items(
+        intel_type="news",
+        filter_type=None,
+        sort_type=None,
+        search=None,
+        include_enrichment=False,
+    )
+    raw_items = payload.get("items", []) if isinstance(payload, dict) else []
+    items = raw_items if isinstance(raw_items, list) else []
+    pending_items = [
+        item
+        for item in items
+        if (
+            isinstance(item, dict)
+            and item.get("status", "pending") == "pending"
+            and not item.get("published_url")
+        )
+    ]
+    projected = [
+        _workspace_marketing_summary(item) for item in pending_items[:bounded_limit]
+    ]
+    return {
+        "count": len(projected),
+        "items": projected,
+    }
+
+
+@router.get(
+    "/api/workspace-marketing/news/{item_id}",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_news_article(item_id: str) -> dict[str, Any]:
+    """Return one field-projected News Room article to the private bridge."""
+
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Item not found") from exc
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.get("status", "pending") != "pending" or item.get("published_url"):
+        raise HTTPException(status_code=404, detail="Item not found")
+    return _workspace_marketing_article(item)
 
 
 @router.get("/api/intel/staging/pending")

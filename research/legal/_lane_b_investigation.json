@@ -1,0 +1,761 @@
+{
+  "total_points": 84283,
+  "total_distinct_documents": 388,
+  "targets": {
+    "UU_25_2007": {
+      "points": 65,
+      "chars": 19847,
+      "distinct_pasal_markers": 1,
+      "pasal_markers_sample": [
+        "pasal 33"
+      ],
+      "title_header": "UU - NO 25 - TAHUN 2007 - TENTANG PENANAMAN MODAL"
+    },
+    "UU_40_2007": {
+      "points": 379,
+      "chars": 197404,
+      "distinct_pasal_markers": 54,
+      "pasal_markers_sample": [
+        "pasal 10",
+        "pasal 100",
+        "pasal 104",
+        "pasal 105",
+        "pasal 107",
+        "pasal 108",
+        "pasal 11",
+        "pasal 114",
+        "pasal 115",
+        "pasal 123",
+        "pasal 125",
+        "pasal 138",
+        "pasal 139",
+        "pasal 147",
+        "pasal 149",
+        "pasal 21",
+        "pasal 22",
+        "pasal 23",
+        "pasal 25",
+        "pasal 29",
+        "pasal 30",
+        "pasal 32",
+        "pasal 34",
+        "pasal 36",
+        "pasal 37",
+        "pasal 38",
+        "pasal 44",
+        "pasal 45",
+        "pasal 5",
+        "pasal 50",
+        "pasal 52",
+        "pasal 6",
+        "pasal 62",
+        "pasal 63",
+        "pasal 64",
+        "pasal 66",
+        "pasal 7",
+        "pasal 70",
+        "pasal 76",
+        "pasal 78",
+        "pasal 79",
+        "pasal 8",
+        "pasal 82",
+        "pasal 86",
+        "pasal 87",
+        "pasal 88",
+        "pasal 89",
+        "pasal 9",
+        "pasal 91",
+        "pasal 92",
+        "pasal 93",
+        "pasal 97",
+        "pasal 98",
+        "pasal 99"
+      ],
+      "title_header": null
+    },
+    "Permen_1_2026": {
+      "points": 1506,
+      "chars": 320572,
+      "distinct_pasal_markers": 80,
+      "pasal_markers_sample": [
+        "pasal 1",
+        "pasal 104",
+        "pasal 108",
+        "pasal 11",
+        "pasal 110",
+        "pasal 119",
+        "pasal 12",
+        "pasal 121",
+        "pasal 126",
+        "pasal 129",
+        "pasal 13",
+        "pasal 131",
+        "pasal 138",
+        "pasal 139",
+        "pasal 14",
+        "pasal 142",
+        "pasal 146",
+        "pasal 15",
+        "pasal 155",
+        "pasal 16",
+        "pasal 162",
+        "pasal 167",
+        "pasal 168",
+        "pasal 17",
+        "pasal 170",
+        "pasal 2",
+        "pasal 21",
+        "pasal 22",
+        "pasal 23",
+        "pasal 24",
+        "pasal 25",
+        "pasal 26",
+        "pasal 27",
+        "pasal 29",
+        "pasal 3",
+        "pasal 30",
+        "pasal 30a",
+        "pasal 30b",
+        "pasal 30c",
+        "pasal 30d",
+        "pasal 30e",
+        "pasal 30f",
+        "pasal 31",
+        "pasal 32",
+        "pasal 32a",
+        "pasal 33",
+        "pasal 34",
+        "pasal 35",
+        "pasal 36",
+        "pasal 38",
+        "pasal 392",
+        "pasal 393",
+        "pasal 394",
+        "pasal 395",
+        "pasal 396",
+        "pasal 397",
+        "pasal 398",
+        "pasal 400",
+        "pasal 401",
+        "pasal 405"
+      ],
+      "title_header": "Permen - NO 1 - TAHUN 2026 - TENTANG PERUBAHAN KEEMPAT ATAS PERATURAN MENTERI KEUANGAN NOMOR 81 TAHUN 2024 TENTANG KETENTUAN PERPAJAKAN DALAM RANGKA PELAKSANAAN SISTEM INTI ADMINISTRASI PERPAJAKAN"
+    },
+    "UU_13_2017": {
+      "points": 335,
+      "chars": 173687,
+      "distinct_pasal_markers": 40,
+      "pasal_markers_sample": [
+        "pasal 10",
+        "pasal 100",
+        "pasal 101",
+        "pasal 103",
+        "pasal 105",
+        "pasal 107",
+        "pasal 108",
+        "pasal 11",
+        "pasal 114",
+        "pasal 12",
+        "pasal 24",
+        "pasal 25",
+        "pasal 36",
+        "pasal 4",
+        "pasal 45",
+        "pasal 47",
+        "pasal 48",
+        "pasal 5",
+        "pasal 51",
+        "pasal 53",
+        "pasal 6",
+        "pasal 60",
+        "pasal 61",
+        "pasal 65",
+        "pasal 69",
+        "pasal 7",
+        "pasal 72",
+        "pasal 73",
+        "pasal 74",
+        "pasal 75",
+        "pasal 76",
+        "pasal 77",
+        "pasal 8",
+        "pasal 80",
+        "pasal 85",
+        "pasal 86",
+        "pasal 87",
+        "pasal 89",
+        "pasal 90",
+        "pasal 97"
+      ],
+      "title_header": "UU - NO 13 - TAHUN 2017 - TENTANG PEDOMAN DAN TATA CARA PERIZINAN DAN FASILITAS PENANAMAN MODAL"
+    },
+    "UU_49_2021": {
+      "points": 4,
+      "chars": 7645,
+      "distinct_pasal_markers": 4,
+      "pasal_markers_sample": [
+        "pasal 12",
+        "pasal 2",
+        "pasal 3",
+        "pasal 6"
+      ],
+      "title_header": null
+    },
+    "Permen_5_2025": {
+      "points": 4722,
+      "chars": 827181,
+      "distinct_pasal_markers": 154,
+      "pasal_markers_sample": [
+        "pasal 1",
+        "pasal 100",
+        "pasal 104",
+        "pasal 106",
+        "pasal 108",
+        "pasal 11",
+        "pasal 110",
+        "pasal 111",
+        "pasal 116",
+        "pasal 122",
+        "pasal 125",
+        "pasal 126",
+        "pasal 127",
+        "pasal 13",
+        "pasal 131",
+        "pasal 132",
+        "pasal 133",
+        "pasal 14",
+        "pasal 147",
+        "pasal 148",
+        "pasal 149",
+        "pasal 15",
+        "pasal 16",
+        "pasal 162",
+        "pasal 163",
+        "pasal 164",
+        "pasal 17",
+        "pasal 172",
+        "pasal 173",
+        "pasal 174",
+        "pasal 175",
+        "pasal 178",
+        "pasal 18",
+        "pasal 180",
+        "pasal 19",
+        "pasal 192",
+        "pasal 195",
+        "pasal 196",
+        "pasal 198",
+        "pasal 2",
+        "pasal 20",
+        "pasal 202",
+        "pasal 208",
+        "pasal 216",
+        "pasal 22",
+        "pasal 221",
+        "pasal 23",
+        "pasal 230",
+        "pasal 233",
+        "pasal 24",
+        "pasal 248",
+        "pasal 25",
+        "pasal 252",
+        "pasal 254",
+        "pasal 26",
+        "pasal 267",
+        "pasal 27",
+        "pasal 271",
+        "pasal 273",
+        "pasal 284"
+      ],
+      "title_header": "Permen - NO 5 - TAHUN 2025 - TENTANG PEDOMAN DAN TATA CARA PENYELENGGARAAN PERIZINAN BERUSAHA BERBASIS RISIKO DAN FASILITAS PENANAMAN MODAL MELALUI SISTEM PERIZINAN BERUSAHA TERINTEGRASI SECARA ELEKTRONIK (ONLINE SINGLE SUBMISSION)"
+    }
+  },
+  "UU_25_2007_samples": [
+    {
+      "id": "00b6c711-9430-5c21-a19c-10dc0f602b7b",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "17fceeec-93ee-5d69-9f1a-aa1c8f54af16",
+      "section": null,
+      "text_normalized": ". Hak, kewajiban, dan tanggung jawab penanam modal diatur secara khusus guna memberikan kepastian hukum, mempertegas kewajiban penanam modal terhadap penerapan prinsip tata kelola perusahaan yang sehat, memberikan penghormatan atas tradisi budaya masyarakat, dan melaksanakan tanggung jawab sosial perusahaan."
+    },
+    {
+      "id": "191e8411-c516-5e53-8c47-53a9401e4736",
+      "section": null,
+      "text_normalized": "Undang-Undang ini juga memberikan jaminan perlakuan yang sama dalam rangka penanaman modal."
+    },
+    {
+      "id": "197b6209-9ce2-5a9c-beb9-9b41525c0aad",
+      "section": null,
+      "text_normalized": ". penanam modal."
+    },
+    {
+      "id": "1a21f5d5-f6a1-5a78-87cd-32b046dbe733",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "24cbd67b-526a-53bd-b241-29ea933d35fb",
+      "section": null,
+      "text_normalized": "Ayat (1) Bidang usaha atau jenis usaha yang tertutup dan yang terbuka dengan persyaratan ditetapkan melalui Peraturan Presiden disusun dalam suatu daftar yang berdasarkan standar klasifikasi tentang bidang usaha atau jenis usaha yang berlaku di Indonesia, yaitu klasifikasi berdasarkan Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) dan/atau Internasional Standard for Industrial Classification (ISIC). Ayat (2) Yang dimaksud dengan “alat peledak” adalah alat yang digunakan untuk kepentingan pertahanan dan keamanan. Ayat (3) Cukup jelas. Ayat (4) Cukup jelas. Ayat (5) . . . Ayat (5) Cukup jelas."
+    },
+    {
+      "id": "2ba76572-0817-5834-8061-606d5867253d",
+      "section": null,
+      "text_normalized": "Huruf a Yang dimaksud dengan “kepastian hak” adalah jaminan Pemerintah bagi penanam modal untuk memperoleh hak sepanjang penanam modal telah melaksanakan kewajiban yang ditentukan. Yang dimaksud dengan “kepastian hukum” adalah jaminan Pemerintah untuk menempatkan hukum dan ketentuan peraturan perundang-undangan sebagai landasan utama dalam setiap tindakan dan kebijakan bagi penanam modal. Yang dimaksud dengan “kepastian perlindungan” adalah jaminan Pemerintah bagi penanam modal untuk memperoleh perlindungan dalam melaksanakan kegiatan penanaman modal. Huruf b Cukup jelas. Huruf c Cukup jelas. Huruf d Cukup jelas."
+    },
+    {
+      "id": "2f59c577-493b-5099-9ecb-72177738aab5",
+      "section": null,
+      "text_normalized": "PASAL DEMI PASAL."
+    },
+    {
+      "id": "325933df-f711-5615-82b0-3e559ee46f8e",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "3faa8e15-8435-51ae-966b-b6dadb79cf32",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "47f542c8-0dc3-5b60-b2bc-4a9d9465da01",
+      "section": null,
+      "text_normalized": "Jabaran tugas pokok dan fungsi Badan Koordinasi Penanaman Modal pada dasarnya memperkuat peran badan tersebut guna mengatasi hambatan penanaman modal, meningkatkan kepastian pemberian fasilitas kepada penanam modal, dan memperkuat peran penanam modal."
+    },
+    {
+      "id": "4831fddf-c2b9-5cfc-a609-f5d71e0ef6ae",
+      "section": null,
+      "text_normalized": "Meskipun demikian, pemberian fasilitas penanaman modal tersebut juga diberikan sebagai upaya mendorong penyerapan tenaga kerja, keterkaitan pembangunan ekonomi dengan pelaku ekonomi kerakyatan, orientasi ekspor dan insentif yang lebih menguntungkan kepada penanam modal yang menggunakan barang modal atau mesin atau peralatan produksi dalam negeri, serta fasilitas terkait dengan lokasi penanaman modal di daerah tertinggal dan di daerah dengan infrastruktur terbatas yang akan diatur lebih terperinci dalam ketentuan peraturan perundang-undangan. Dengan memperhatikan hal tersebut, Undang-Undang ini juga memberikan ruang kepada Pemerintah untuk mengambil kebijakan guna mengantisipasi berbagai perjanjian internasional yang terjadi dan sekaligus untuk mendorong kerja sama internasional lainnya guna memperbesar peluang pasar regional dan internasional bagi produk barang dan jasa dari Indonesia."
+    },
+    {
+      "id": "48f894be-c562-5190-9ce0-b5ecc2744a7d",
+      "section": null,
+      "text_normalized": "Ayat (1) Cukup jelas. Ayat (2) Rekomendasi diberikan setelah penanaman modal memenuhi ketentuan penggunaan tenaga kerja asing sesuai dengan ketentuan peraturan perundang-undangan ketenagakerjaan. Ayat (3) Cukup jelas. Ayat (4) . . . Ayat (4) Cukup jelas."
+    },
+    {
+      "id": "4f7e89e1-57c9-5812-a07d-e8754314f3a8",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "4f844995-cee2-513b-b062-5ed84275aa3a",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "52469964-9729-55b8-85ba-5e5b2a40af57",
+      "section": null,
+      "text_normalized": "Yang dimaksud dengan “penanaman modal di semua sektor di wilayah negara Republik Indonesia” adalah penanaman modal langsung dan tidak termasuk penanaman modal tidak langsung atau portofolio."
+    },
+    {
+      "id": "54b4e5da-6541-5eb8-b27a-75a003f89fd3",
+      "section": null,
+      "text_normalized": "H."
+    },
+    {
+      "id": "573282c7-5365-5fd9-9aae-d16a8271628b",
+      "section": null,
+      "text_normalized": "Huruf a Cukup jelas. Huruf b . . . Huruf b Yang dimaksud dengan “tanggung jawab sosial perusahaan” adalah tanggung jawab yang melekat pada setiap perusahaan penanaman modal untuk tetap menciptakan hubungan yang serasi, seimbang, dan sesuai dengan lingkungan, nilai, norma, dan budaya masyarakat setempat. Huruf c Laporan kegiatan penanam modal yang memuat perkembangan penanaman modal dan kendala yang dihadapi penanam modal disampaikan secara berkala kepada Badan Koordinasi Penanaman Modal dan pemerintah daerah yang bertanggung jawab di bidang penanaman modal. Huruf d Cukup jelas. Huruf e Cukup jelas."
+    },
+    {
+      "id": "5d5398b0-df7e-567c-96aa-4f9b58d80d30",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "5fa29ead-cec7-59e6-b998-f086f5a3f5a3",
+      "section": null,
+      "text_normalized": "UMUM Salah satu tujuan pembentukan pemerintahan negara adalah untuk memajukan kesejahteraan umum."
+    },
+    {
+      "id": "603d3d2b-e524-525f-9779-ffefe3ef7fd1",
+      "section": null,
+      "text_normalized": "Ketentuan ini dimaksudkan untuk mengantisipasi kerusakan lingkungan yang disebabkan oleh kegiatan penanaman modal."
+    },
+    {
+      "id": "634b439c-81d5-535f-8980-3c2f594ca61f",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "67abf888-d77f-527a-b066-e8d9ec22cd19",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "71052cbb-c8d3-5719-b584-84322e46023a",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "78a3367b-028a-50a3-b00a-880561cdad19",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "7d7a9568-650f-5a7a-a3d5-5c8b094ec516",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "84e40de5-ef3a-5595-96b4-8d492a961fde",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "86a7bb47-d4d8-57eb-9c54-f85eb3cf616d",
+      "section": null,
+      "text_normalized": "Ayat (1) Cukup jelas. Ayat (2) Cukup jelas. Ayat (3) Huruf a Cukup jelas. Huruf b Cukup jelas. Huruf c Cukup jelas. Huruf d Cukup jelas. Huruf e . . . Huruf e Yang dimaksud dengan “industri pionir” adalah industri yang memiliki keterkaitan yang luas, memberi nilai tambah dan eksternalitas yang tinggi, memperkenalkan teknologi baru, serta memiliki nilai strategis bagi perekonomian nasional. Huruf f Cukup jelas. Huruf g Cukup jelas. Huruf h Cukup jelas. Huruf i Cukup jelas. Huruf j Cukup jelas. Ayat (4) Cukup jelas. Ayat (5) Cukup jelas. Ayat (6) Cukup jelas. Ayat (7) Cukup jelas."
+    },
+    {
+      "id": "87b20aad-4ab8-5287-900d-47229b2ff147",
+      "section": null,
+      "text_normalized": "Ayat (1) Huruf a Hak Guna Usaha (HGU) diperoleh dengan cara dapat diberikan dan diperpanjang di muka sekaligus selama 60 (enam puluh) tahun dan dapat diperbarui selama 35 (tiga puluh lima) tahun. Huruf b . . . Huruf b Hak Guna Bangunan (HGB) diperoleh dengan cara dapat diberikan dan diperpanjang di muka sekaligus selama 50 (lima puluh) tahun dan dapat diperbarui selama 30 (tiga puluh) tahun. Huruf c Hak Pakai (HP) diperoleh dengan cara dapat diberikan dan diperpanjang di muka sekaligus selama 45 (empat puluh lima) tahun dan dapat diperbarui selama 25 (dua puluh lima) tahun. Ayat (2) Huruf a Cukup jelas. Huruf b Cukup jelas. Huruf c Yang dimaksud dengan “area yang luas” adalah luas tanah yang diperlukan untuk kegiatan penanaman modal dengan mempertimbangkan kepadatan penduduk, bidang usaha, atau jenis usaha yang ditentukan dengan peraturan perundang- undangan. Huruf d Cukup jelas. Huruf e Cukup jelas. Ayat (3) Cukup jelas. Ayat (4) Cukup jelas."
+    },
+    {
+      "id": "8fb7e45a-13d7-5a4b-8faf-08d1c8d5570f",
+      "section": null,
+      "text_normalized": "SUSILO BAMBANG YUDHOYONO Diundangkan di Jakarta pada tanggal 26 April 2007 MENTERI HUKUM DAN HAK ASASI MANUSIA REPUBLIK INDONESIA, HAMID AWALUDIN LEMBARAN NEGARA REPUBLIK INDONESIA TAHUN 2007 NOMOR 67 PENJELASAN ATAS UNDANG UNDANG REPUBLIK INDONESIA NOMOR 25 TAHUN 2007 TENTANG PENANAMAN MODAL I."
+    },
+    {
+      "id": "933618b1-676f-52e0-b2eb-64f905debf6b",
+      "section": null,
+      "text_normalized": "Ayat (1) Cukup jelas. Ayat (2) Yang dimaksud dengan “harga pasar” adalah harga yang ditentukan menurut cara yang digunakan secara internasional oleh penilai independen yang ditunjuk oleh para pihak. Ayat (3) Yang dimaksud dengan “arbitrase” adalah cara penyelesaian suatu sengketa perdata di luar pengadilan yang didasarkan pada kesepakatan tertulis oleh para pihak yang bersengketa."
+    },
+    {
+      "id": "95cb70c0-d785-5d06-8a07-0f178096185e",
+      "section": null,
+      "text_normalized": "Ayat (1) Huruf a Yang dimaksud dengan “asas kepastian hukum” adalah asas dalam negara hukum yang meletakkan hukum dan ketentuan peraturan perundang-undangan sebagai dasar dalam setiap kebijakan dan tindakan dalam bidang penanaman modal. Huruf b Yang dimaksud dengan “asas keterbukaan” adalah asas yang terbuka terhadap hak masyarakat untuk memperoleh informasi yang benar, jujur, dan tidak diskriminatif tentang kegiatan penanaman modal. Huruf c Yang dimaksud dengan “asas akuntabilitas” adalah asas yang menentukan bahwa setiap kegiatan dan hasil akhir dari penyelenggaraan penananam modal harus dipertanggungjawabkan kepada masyarakat atau rakyat sebagai pemegang kedaulatan tertinggi negara sesuai dengan ketentuan peraturan perundang-undangan. Huruf d Yang dimaksud dengan “asas perlakuan yang sama dan tidak membedakan asal negara” adalah asas perlakuan pelayanan nondiskriminasi berdasarkan ketentuan peraturan perundang-undangan, baik antara penanam modal dalam negeri dan penanam modal asing maupun antara penanam modal dari satu negara asing dan penanam modal dari negara asing lainnya. Huruf e Yang dimaksud dengan “asas kebersamaan” adalah asas yang mendorong peran seluruh penanam modal secara bersama- sama dalam kegiatan usahanya untuk mewujudkan kesejahteraan rakyat. Huruf f Yang dimaksud dengan “asas efisiensi berkeadilan” adalah asas yang mendasari pelaksanaan penanaman modal dengan mengedepankan efisiensi berkeadilan dalam usaha untuk mewujudkan iklim usaha yang adil, kondusif,"
+    },
+    {
+      "id": "969c18a5-3728-5efa-8be5-0b4807131540",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "9a76e89e-cecf-5160-b0a7-00fde76b8d35",
+      "section": null,
+      "text_normalized": "Badan Koordinasi Penanaman Modal dipimpin oleh seorang kepala yang bertanggung jawab langsung kepada Presiden."
+    },
+    {
+      "id": "9d2d42e7-cc24-54b7-b6db-6c0335b230f8",
+      "section": null,
+      "text_normalized": "Perekonomian dunia juga diwarnai oleh adanya blok perdagangan, pasar bersama, dan perjanjian perdagangan bebas yang didasarkan atas sinergi kepentingan antarpihak atau antarnegara yang mengadakan perjanjian."
+    },
+    {
+      "id": "9fd39e2a-219e-518b-8a6d-fc76cb3f5e19",
+      "section": null,
+      "text_normalized": "Pemerintah daerah bersama-sama dengan instansi atau lembaga, baik swasta maupun Pemerintah, harus lebih diberdayakan lagi, baik dalam pengembangan peluang potensi daerah maupun dalam koordinasi promosi dan pelayanan penanaman modal."
+    },
+    {
+      "id": "a363d6ea-f395-5b52-84b8-091400d7bcb5",
+      "section": null,
+      "text_normalized": "Ayat (1) Cukup jelas. Ayat (2) Huruf a Yang dimaksud dengan “perlakuan yang sama” adalah bahwa Pemerintah tidak membedakan perlakuan terhadap penanam modal yang telah menanamkan modalnya di Indonesia, kecuali ditentukan lain oleh ketentuan peraturan perundang- undangan. Huruf b Cukup Jelas. Huruf c Cukup Jelas. Ayat (3) Cukup Jelas."
+    },
+    {
+      "id": "a4c42488-e3fc-594f-bbe3-779e57b2897f",
+      "section": null,
+      "text_normalized": "Ayat (1) Cukup jelas. Ayat (2) Cukup jelas. Ayat (3) Yang dimaksud dengan bertanggung jawab langsung kepada Presiden adalah bahwa Badan Koordinasi Penanaman Modal dalam melaksanakan tugas, menjalankan fungsi, dan menyampaikan tanggung jawabnya langsung kepada Presiden."
+    },
+    {
+      "id": "a886f7bb-1615-54c5-a35f-2b7446a923b6",
+      "section": null,
+      "text_normalized": "Pentingnya kepastian fasilitas penanaman modal ini mendorong pengaturan secara lebih detail terhadap bentuk fasilitas fiskal, fasilitas hak atas tanah, imigrasi, dan fasilitas perizinan impor."
+    },
+    {
+      "id": "aa1b8388-ae44-5fa8-ac6b-2efd2ecd6b51",
+      "section": null,
+      "text_normalized": "Dengan sistem itu, sangat diharapkan bahwa pelayanan terpadu di pusat dan di daerah dapat menciptakan penyederhanaan perizinan dan percepatan penyelesaiannya. Selain pelayanan penanaman modal di daerah, Badan Koordinasi Penanaman Modal diberi tugas mengoordinasikan pelaksanaan kebijakan penanaman."
+    },
+    {
+      "id": "aa72c3b9-44d7-56da-afbb-8fb8be5b1cd8",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "b452d381-9aea-5b6a-9467-2c6cc4b08dbc",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "b6677584-93e2-5285-b120-00772e795971",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "b7263d11-b29d-5cfc-8bfe-659f43c1cb41",
+      "section": null,
+      "text_normalized": "Konstitusi mengamanatkan agar pembangunan ekonomi nasional harus berdasarkan prinsip demokrasi yang mampu menciptakan terwujudnya kedaulatan ekonomi Indonesia."
+    },
+    {
+      "id": "b87b0d45-edbe-5096-81b6-20e49c75a10b",
+      "section": null,
+      "text_normalized": "Selain itu, Undang-Undang ini juga mengatur hak pengalihan aset dan hak untuk melakukan transfer dan repatriasi dengan tetap memperhatikan tanggung jawab hukum, kewajiban fiskal, dan kewajiban sosial yang harus diselesaikan oleh penanam modal. Kemungkinan timbulnya sengketa antara penanam modal dan Pemerintah juga diantisipasi Undang-Undang ini dengan pengaturan mengenai penyelesaian sengketa. Hak."
+    },
+    {
+      "id": "b8b4b753-7882-5ab5-a0bc-b807f0cadc74",
+      "section": null,
+      "text_normalized": "Selain itu, Undang-Undang ini memerintahkan agar Pemerintah meningkatkan koordinasi antarinstansi Pemerintah, antarinstansi Pemerintah dengan Bank Indonesia, dan antarinstansi Pemerintah dengan pemerintah daerah. Koordinasi dengan pemerintah daerah harus sejalan dengan semangat otonomi daerah."
+    },
+    {
+      "id": "c33f1a0e-efc7-5d0e-8e92-46ef895000a8",
+      "section": null,
+      "text_normalized": "Ayat (1) Cukup jelas. Ayat (2) Yang dimaksud dengan “hak istimewa” adalah antara lain hak istimewa yang berkaitan dengan kesatuan kepabeanan, wilayah perdagangan bebas, pasar bersama ( common market ), kesatuan moneter, kelembagaan yang sejenis, dan perjanjian antara Pemerintah Indonesia dan pemerintah asing yang bersifat bilateral, regional, atau multilateral yang berkaitan dengan hak istimewa tertentu dalam penyelenggaraan penanaman modal."
+    },
+    {
+      "id": "c6c114ba-1162-5b16-89b7-45f3599220f2",
+      "section": null,
+      "text_normalized": "Ayat (1) Tujuan pengaturan ayat ini adalah menghindari terjadinya perseroan yang secara normatif dimiliki seseorang, tetapi secara materi atau substansi pemilik perseroan tersebut adalah orang lain. Ayat (2) Cukup jelas. Ayat (3) Yang dimaksud dengan ”tindak pidana perpajakan” adalah informasi yang tidak benar mengenai laporan yang terkait dengan pemungutan pajak dengan menyampaikan surat pemberitahuan, tetapi yang isinya tidak benar atau tidak lengkap atau melampirkan keterangan yang tidak benar sehingga dapat menimbulkan kerugian pada negara dan kejahatan lain yang diatur dalam undang-undang yang mengatur perpajakan. Yang . . . Yang dimaksud dengan ”penggelembungan biaya pemulihan” adalah biaya yang dikeluarkan di muka oleh penanam modal yang jumlahnya tidak wajar dan kemudian diperhitungkan sebagai biaya pengeluaran kegiatan penanaman modal pada saat penentuan bagi hasil dengan Pemerintah Yang dimaksud dengan ”temuan oleh pihak pejabat yang berwenang” adalah temuan dengan indikasi unsur pidana berdasarkan hasil pemeriksaan yang dilakukan oleh BPK atau pihak lainnya yang memiliki kewenangan untuk memeriksa, yang selanjutnya ditindaklanjuti sesuai dengan peraturan perundang- undangan."
+    },
+    {
+      "id": "cf70af95-07e1-58b2-9c01-6ae0740d8112",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "d39e9e3a-a1c9-5ad2-9d32-ba322b5c6fc9",
+      "section": null,
+      "text_normalized": ". Agar setiap orang mengetahuinya, memerintahkan pengundangan Undang-Undang ini dengan penempatannya dalam Lembaran Negara Republik Indonesia. Disahkan di Jakarta pada tanggal 26 April 2007 PRESIDEN REPUBLIK INDONESIA, DR."
+    },
+    {
+      "id": "dd5980b6-530b-5ede-84fc-ebe6a8807437",
+      "section": null,
+      "text_normalized": ". Suasana kebatinan pembentukan Undang-Undang tentang Penanaman Modal didasarkan pada semangat untuk menciptakan iklim penanaman modal yang kondusif sehingga Undang-Undang tentang Penanaman Modal mengatur hal-hal yang dinilai penting, antara lain yang terkait dengan cakupan undang-undang, kebijakan dasar penanaman modal, bentuk badan usaha, perlakuan terhadap penanaman modal, bidang usaha, serta keterkaitan pembangunan ekonomi dengan pelaku ekonomi kerakyatan yang diwujudkan dalam pengaturan mengenai pengembangan penanaman modal bagi usaha mikro, kecil, menengah, dan koperasi, hak, kewajiban, dan tanggung jawab penanam modal, serta fasilitas penanaman modal, pengesahan dan perizinan, koordinasi dan pelaksanaan kebijakan penanaman modal yang di dalamnya mengatur mengenai kelembagaan, penyelenggaraan urusan penanaman modal, dan ketentuan yang mengatur tentang penyelesaian sengketa. Undang-Undang ini mencakupi semua kegiatan penanaman modal langsung di semua sektor."
+    },
+    {
+      "id": "df0cfcea-8aa8-5304-81a7-18df7805a156",
+      "section": null,
+      "text_normalized": "Oleh karena itu, peningkatan koordinasi kelembagaan tersebut harus dapat diukur dari kecepatan pemberian perizinan dan fasilitas penanaman modal dengan biaya yang berdaya saing."
+    },
+    {
+      "id": "e695081d-a83f-5342-95f9-6f1affd34798",
+      "section": null,
+      "text_normalized": "Ayat (1) Yang dimaksud dengan “bidang usaha yang dicadangkan” adalah bidang usaha yang khusus diperuntukkan bagi usaha mikro, kecil, menengah, dan koperasi agar mampu dan sejajar dengan pelaku ekonomi lainnya. Ayat (2) Cukup jelas."
+    },
+    {
+      "id": "ea32aac8-736f-5848-9d88-f756b0302b6b",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "ee3f6cf4-f66d-5aa5-8014-faa0660d1cf6",
+      "section": null,
+      "text_normalized": "Pengaturan tanggung jawab penanam modal diperlukan untuk mendorong iklim persaingan usaha yang sehat, memperbesar tanggung jawab lingkungan dan pemenuhan hak dan kewajiban tenaga kerja, serta upaya mendorong ketaatan penanam modal terhadap peraturan perundang-undangan. Perekonomian dunia ditandai oleh kompetisi antarbangsa yang semakin ketat sehingga kebijakan penanaman modal harus didorong untuk menciptakan daya saing perekonomian nasional guna mendorong integrasi perekonomian Indonesia menuju perekonomian global."
+    },
+    {
+      "id": "ee8bc017-3fa2-5709-81f9-8eff0bf5af05",
+      "section": null,
+      "text_normalized": "Hal itu juga terjadi dengan keterlibatan Indonesia dalam berbagai kerja sama internasional yang terkait dengan penanaman modal, baik secara bilateral, regional maupun multilateral (World Trade Organization/WTO), menimbulkan berbagai konsekuensi yang harus dihadapi dan ditaati. Berbagai pertimbangan di atas dan mengingat hukum penanaman modal yang telah berlaku selama kurang lebih 40 (empat puluh) tahun semakin mendesak kebutuhan Undang-Undang tentang Penanaman Modal sebagai pengganti Undang-Undang Nomor 1 Tahun 1967 tentang Penanaman Modal Asing sebagaimana telah diubah dengan Undang-Undang Nomor 11 Tahun 1970 tentang Perubahan dan Tambahan Undang-Undang Nomor 1 Tahun 1967 tentang Penanaman Modal Asing dan Undang-Undang Nomor 6 Tahun 1968 tentang Penanaman Modal Dalam Negeri sebagaimana telah diubah dengan Undang-Undang Nomor 12 Tahun 1970 tentang Perubahan dan Tambahan Undang-Undang Nomor 6 Tahun 1968 tentang Penanaman Modal Dalam Negeri yang selama ini merupakan dasar hukum bagi kegiatan penanaman modal di Indonesia perlu diganti karena tidak sesuai lagi dengan tantangan dan kebutuhan untuk mempercepat perkembangan perekonomian nasional melalui konstruksi pembangunan hukum nasional di bidang penanaman modal yang berdaya saing dan berpihak kepada kepentingan nasional. II."
+    },
+    {
+      "id": "ef707d65-552d-5266-8133-3ea124d77423",
+      "section": null,
+      "text_normalized": "Peningkatan peran penanaman modal tersebut harus tetap dalam koridor kebijakan pembangunan nasional yang direncanakan dengan tahap memperhatian kestabilan makroekonomi dan keseimbangan ekonomi antarwilayah, sektor, pelaku usaha, dan kelompok masyarakat, mendukung peran usaha nasional, serta memenuhi kaidah tata kelola perusahaan yang baik (good corporate governance). Fasilitas penanaman modal diberikan dengan mempertimbangkan tingkat daya saing perekonomian dan kondisi keuangan negara dan harus promotif dibandingkan dengan fasilitas yang diberikan negara lain."
+    },
+    {
+      "id": "f2223c11-79ce-507e-bc2d-472694f24675",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "f2a7a32b-88c1-53b1-b6f5-26cbb7598e83",
+      "section": null,
+      "text_normalized": "Cukup jelas."
+    },
+    {
+      "id": "f348eb90-9383-579c-ba2c-991fc62875cc",
+      "section": null,
+      "text_normalized": "Ayat (1) Cukup jelas. Ayat (2) Cukup jelas. Ayat (3) Cukup jelas. Ayat (4) Cukup jelas. Ayat (5) . . . Ayat (5) Huruf a Cukup jelas. Huruf b Cukup jelas. Huruf c Cukup jelas. Huruf d Dalam hal terjadi kerugian negara, Pemerintah dapat melakukan tindakan hukum, antara lain berupa peringatan, pembekuan, pencabutan izin usaha, tuntutan ganti rugi, dan sanksi lain sesuai dengan ketentuan peraturan perundang- undangan."
+    },
+    {
+      "id": "f47d355a-7396-57ff-a2f0-d2d69b4e0832",
+      "section": null,
+      "text_normalized": "Keterkaitan pembangunan ekonomi dengan pelaku ekonomi kerakyatan dimantapkan lagi dengan Ketetapan Majelis Permusyawaratan Rakyat Republik Indonesia Nomor XVI Tahun 1998 tentang Politik Ekonomi Dalam Rangka Demokrasi Ekonomi sebagai sumber hukum materiil."
+    },
+    {
+      "id": "fc5f2e9c-39ec-54de-857f-c1c489f1504c",
+      "section": null,
+      "text_normalized": "Dengan demikian, pengembangan penanaman modal bagi usaha mikro, kecil, menengah, dan koperasi menjadi bagian dari kebijakan dasar penanaman modal. Berkaitan dengan hal tersebut, penanaman modal harus menjadi bagian dari penyelenggaraan perekonomian nasional dan ditempatkan sebagai upaya untuk meningkatkan pertumbuhan ekonomi nasional, menciptakan lapangan kerja, meningkatkan pembangunan ekonomi berkelanjutan, meningkatkan kapasitas dan kemampuan teknologi nasional, mendorong pembangunan ekonomi kerakyatan, serta mewujudkan kesejahteraan masyarakat dalam suatu sistem perekonomian yang berdaya saing. Tujuan penyelenggaraan penanaman modal hanya dapat tercapai apabila faktor penunjang yang menghambat iklim penanaman modal dapat diatasi, antara lain melalui perbaikan koordinasi antarinstansi Pemerintah Pusat dan daerah, penciptaan birokrasi yang efesien, kepastian hukum di bidang penanaman modal, biaya ekonomi yang berdaya saing tinggi, serta iklim usaha yang kondusif di bidang ketenagakerjaan dan keamanan berusaha. Dengan perbaikan berbagai faktor penunjang tersebut, diharapkan realisasi penanaman modal akan membaik secara signifikan. Suasana."
+    },
+    {
+      "id": "fd9e42b2-509e-51cc-a58f-849af1bcbdfc",
+      "section": null,
+      "text_normalized": "Kebijakan pengembangan ekonomi di wilayah tertentu ditempatkan sebagai bagian untuk menarik potensi pasar internasional dan sebagai daya dorong guna meningkatkan daya tarik pertumbuhan suatu kawasan atau wilayah ekonomi khusus yang bersifat strategis bagi pengembangan perekonomian nasional."
+    },
+    {
+      "id": "ff66a415-6a22-5900-971e-5d65a35ada43",
+      "section": null,
+      "text_normalized": "Ayat (1) Huruf a Cukup jelas. Huruf b Cukup jelas. Huruf c Dalam rangka penetapan norma, standar, dan prosedur Badan Koordinasi Penanaman Modal berkoordinasi dengan departemen/instansi terkait. Huruf d Cukup jelas. Huruf e Cukup jelas. Huruf f Cukup jelas. Huruf g . . . Huruf g Cukup jelas. Huruf h Cukup jelas. Huruf i Cukup jelas. Huruf j Cukup jelas. Ayat (2) Cukup jelas."
+    },
+    {
+      "id": "ffe421b0-b816-54d3-bd85-f90ee365bc9f",
+      "section": null,
+      "text_normalized": "Amanat tersebut, antara lain, telah dijabarkan dalam Pasal 33 Undang-Undang Dasar Negara Republik Indonesia Tahun 1945 dan merupakan amanat konstitusi yang mendasari pembentukan seluruh peraturan perundang-undangan di bidang perekonomian."
+    }
+  ],
+  "Permen_1_2026_classification": {
+    "neither": 1456,
+    "permenimipas": 50
+  },
+  "Permen_1_2026_samples": {
+    "neither": [
+      {
+        "id": "00127d1f-dba3-5141-9cb9-1bbfb44d4e05",
+        "header": "Permen - NO 1 - TAHUN 2026 - TENTANG PERUBAHAN KEEMPAT ATAS PERATURAN MENTERI KEUANGAN NOMOR 81 TAHUN 2024 TENTANG KETENTUAN PERPAJAKAN DALAM RANGKA PELAKSANAAN SISTEM INTI ADMINISTRASI PERPAJAKAN",
+        "section": null,
+        "text_normalized": "57."
+      },
+      {
+        "id": "005ba197-9615-5a2d-9460-bd73f87befb1",
+        "header": "",
+        "section": null,
+        "text_normalized": "(1) SPPT SNI sebagaimana dimaksud dalam Pasal 3 1 ayat (3) diberikan kepada: a. Perusahaan Industri; atau b. Perwakilan Resmi. (2) Dalam hal terdapat Kerja Sama Merek atau Maklun, SPPT SNI sebagaimana dimaksud dalam Pasal 31 ayat (3) diberikan kepada: a. Perusahaan Industri pemberi Kerja Sama Merek; b. Perwakilan Resmi dari Produsen di Luar Negeri pemberi Kerja Sama Merek; c. Pelaku Usaha pemberi "
+      },
+      {
+        "id": "00690e1f-ec16-5f16-b39a-cf01604d3366",
+        "header": "Permen - NO 1 - TAHUN 2026 - TENTANG PEMBERLAKUAN STANDAR NASIONAL INDONESIA UNTUK WADAH BERSEKAT DARI BAJA TAHAN KARAT UNTUK MAKANAN SECARA WAJIB",
+        "section": null,
+        "text_normalized": "Untuk Perwakilan Resmi, dokumen akta pendirian perusahaan dan perubahannya serta perizinan berusaha harus diunggah sebanyak 2 (dua) salinan dengan ketentuan: 1) 1 (satu) salinan asli yang dilegalisasi oleh pejabat diplomatik di bidang perindustrian, bidang ekonomi, atau perwakilan konsuler Indonesia di negara setempat; dan 2) 1 (satu) salinan terjemahan dalam bahasa Indonesia yang diterjemahkan ol"
+      }
+    ],
+    "permenimipas": [
+      {
+        "id": "0320299a-c6a0-51aa-b74c-44b15a85d440",
+        "header": "Permen - NO 1 - TAHUN 2026 - TENTANG PERUBAHAN ATAS PERATURAN MENTERI IMIGRASI DAN PEMASYARAKATAN NOMOR 13 TAHUN 2025 TENTANG PELAKSANAAN PENCEGAHAN DAN PENANGKALAN",
+        "section": null,
+        "text_normalized": "Ditetapkan di Jakarta pada tanggal 16 April 2026 MENTERI IMIGRASI DAN PEMASYARAKATAN REPUBLIK INDONESIA, Œ AGUS ANDRIANTO Diundangkan di Jakarta pada tanggal Д DIREKTUR JENDERAL PERATURAN PERUNDANG-UNDANGAN KEMENTERIAN HUKUM REPUBLIK INDONESIA, Ѽ DHAHANA PUTRA BERITA NEGARA REPUBLIK INDONESIA TAHUN 2026 NOMOR Ж."
+      },
+      {
+        "id": "0354102b-7982-59b1-8cd2-1c914417bfbc",
+        "header": "Permen - NO 1 - TAHUN 2026 - TENTANG PERUBAHAN ATAS PERATURAN MENTERI IMIGRASI DAN PEMASYARAKATAN NOMOR 13 TAHUN 2025 TENTANG PELAKSANAAN PENCEGAHAN DAN PENANGKALAN",
+        "section": null,
+        "text_normalized": "Keimigrasian adalah hal ihwal lalu lintas orang yang masuk atau keluar Wilayah Indonesia serta pengawasannya dalam rangka menjaga tegaknya kedaulatan negara."
+      },
+      {
+        "id": "06a2f5c5-0807-5e40-afc9-1d244ff24aed",
+        "header": "Permen - NO 1 - TAHUN 2026 - TENTANG PERUBAHAN ATAS PERATURAN MENTERI IMIGRASI DAN PEMASYARAKATAN NOMOR 13 TAHUN 2025 TENTANG PELAKSANAAN PENCEGAHAN DAN PENANGKALAN",
+        "section": null,
+        "text_normalized": "Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara (Lembaran Negara Republik Indonesia Tahun 2008 Nomor 166, Tambahan Lembaran Negara Republik Indonesia Nomor 4916) sebagaimana telah diubah dengan Undang-Undang Nomor 61 Tahun 2024 tentang Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara (Lembaran Negara Republik Indonesia Tahun 2024 Nomor 225, Tambahan Lembaran"
+      }
+    ]
+  },
+  "Permen_1_2026_total_points": 1506,
+  "other_samples": {
+    "UU_13_2017": [
+      {
+        "id": "003aab6c-0c0a-5bff-a1ff-fc03d508f66b",
+        "section": null,
+        "text_normalized": "Mesin adalah setiap mesin, permesinan, alat perlengkapan instalasi pabrik, peralatan atau perkakas, dalam keadaan terpasang maupun terlepas yang digunakan untuk pe mbangunan atau pengembangan industri."
+      },
+      {
+        "id": "7cea8dce-b20e-5ab9-974f-dbef43d9ab7a",
+        "section": null,
+        "text_normalized": "(1) Perusahaan Modal Ventura (PMV) dapat menjadi pemegang saham pada perusahaan penanaman modal dengan persyaratan sesuai dengan ketentuan peraturan perundang-undangan. (2) Penyertaan modal oleh PMV sebagaimana dimaksud pada ay at (1) yang sahamnya dimiliki oleh Penanam Modal Dalam Negeri maupun yang terdapat unsur modal asing, diklasifikasikan sebagai penyertaan modal nasional. (3) Penyertaan modal PMV bersifat sementara dan tidak boleh melebihi waktu 10 (sepuluh) tahun terhitung se jak penyertaan saham yang telah disetujui oleh Kementerian Hukum dan HAM. (4) Jangka waktu sebagaimana dimaksud pada ayat (3) dapat diperpanjang 2 (dua) kali dengan total perpanjangan seluruhnya paling lama 10 (sepuluh) tahun sesuai dengan ketentuan peraturan perundang- undangan. www.peraturan.go.id 2017, No.1767 -23- (5) Dalam hal jangka waktu penyertaan modal PMV sebagaimana dimaksud pada ayat (3) dan ayat"
+      },
+      {
+        "id": "fee84119-0365-5120-b467-f6f3de0b7f3b",
+        "section": null,
+        "text_normalized": "surat kuasa bila pengajuan permohonan tidak dilakukan secara langsung oleh pimpinan perusahaan; www.peraturan.go.id 2017, No.1767 -40- b."
+      }
+    ],
+    "UU_49_2021": [
+      {
+        "id": "85f20ee2-5131-51fb-85bb-9629705fc935",
+        "section": null,
+        "text_normalized": "1. Ketentuan pelaksanaan Penanaman Modal terhadap Bidang Usaha yang diatur dalam Pasal 2 dan Pasal 6 ayat (1) huruf a, huruf c, dan huruf d, ayat (2), ayat (3), dan ayat (3a) tidak berlaku bagi Penanaman Modal yang te lah disetujui sebelum Peraturan Presiden ini diundangkan sebagaimana tercantum dalam perizinan berusaha. 2. Peraturan Presiden ini mulai berlaku pada tanggal diundangkan. 2021, No.128 -7- Agar setiap orang mengetahuinya, memerintahkan pengundangan Peraturan Presiden ini dengan penempatannya dalam Lembaran Negara Republik Indonesia. Ditetapkan di Jakarta pada tanggal 24 Mei 2021 PRESIDEN REPUBLIK INDONESIA, ttd. JOKO WIDODO Diundangkan di Jakarta pada tanggal 25 Mei 2021 MENTERI HUKUM DAN HAK ASASI MANUSIA REPUBLIK INDONESIA, ttd. YASONNA H. LAOLY 2021, No.128 -8- 2021, No.128 -9- 2021, No.128 -10- 2021, No.128 -11- 2021, No.128 -12- 2021, No.128 -13- 2021, No.128 -14- 2021,"
+      },
+      {
+        "id": "ba2adab2-424a-5208-a1d8-a59574fa4c10",
+        "section": null,
+        "text_normalized": "Beberapa ketentuan dalam Per aturan Presiden Nomor 10 Tahun 2021 tentang Bidang Usaha Penanaman Modal (Lembaran Negara Republik Indonesia Tahun 2021 Nomor 61) diubah sebagai berikut: 1. Ketentuan ayat (2) diubah dan di antara ayat (1) dan ayat (2) Pasal 2 disisipkan 1 (satu) ayat, yakni ayat (1a) sehingga Pasal 2 berbunyi sebagai berikut:"
+      },
+      {
+        "id": "f25c88ad-bf40-5f7c-8183-d3ba9f0625fa",
+        "section": null,
+        "text_normalized": "(1) Bidang Usaha dengan persyaratan tertentu sebagaimana dimaksud dalam Pasal 3 ayat (1) huruf c merupakan Bidan g Usaha yang dapat diusahakan oleh semua Penanam Modal termasuk Koperasi dan UMKM yang memenuhi persyaratan sebagai berikut: a. persyaratan Penanaman Modal untuk Penanam Modal dalam negeri; b. persyaratan Penanaman Modal dengan pembatasan kepemilikan modal asing; 2021, No.128 -4- c. persyaratan Penanaman Modal dengan perizinan khusus; atau d. persyaratan Penanaman Modal lainnya yaitu bidang usaha yang dibatasi dan diawasi secara ketat serta diatur dalam peraturan perundang-undangan tersendiri di bidang pengendalian dan pengawasan mi numan beralkohol. (2) Daftar Bidang Usaha dengan persyaratan tertentu sebagaimana dimaksud pada ayat (1) huruf a, huruf b, dan huruf c yang merinci Bidang Usaha, Klasifikasi Baku Lapangan Usaha Indonesia, dan persyaratan tercantum dalam Lam piran I"
+      }
+    ],
+    "Permen_5_2025": [
+      {
+        "id": "0013286e-062d-5356-9ca1-c979c20eaf36",
+        "section": null,
+        "text_normalized": "Kode Klasifikasi Baku Lapangan : ………………………….."
+      },
+      {
+        "id": "83ced6be-ead1-564e-91eb-8239f0e9ad45",
+        "section": null,
+        "text_normalized": "akta notaris tentang pembubaran badan usaha dan pencatatan pembubaran badan usaha dari sistem yang dikelola oleh kementerian yang menyelenggarakan urusan pemerintahan di bidang hukum untuk pembubaran badan usaha; dan c."
+      },
+      {
+        "id": "fffa75cf-bc9f-5c34-a4fb-79b8c0b91f88",
+        "section": null,
+        "text_normalized": "Gubernur/Bupati/Walikota*) Kepala DPMPTSP … Ditandatangani secara elektronik (Nama Pejabat Penandatangan) *) pilih salah satu LAMPIRAN PERSETUJUAN KESESUAIAN KEGIATAN PEMANFAATAN RUANG UNTUK KEGIATAN BERUSAHA NOMOR: ……………………… Tabel Koordinat yang dimohonkan No."
+      }
+    ]
+  },
+  "keyword_scan_matches": [
+    {
+      "document_id": "Permen_5_2025",
+      "points": 4722,
+      "title_header": "Permen - NO 5 - TAHUN 2025 - TENTANG PEDOMAN DAN TATA CARA PENYELENGGARAAN PERIZINAN BERUSAHA BERBASIS RISIKO DAN FASILITAS PENANAMAN MODAL MELALUI SISTEM PERIZINAN BERUSAHA TERINTEGRASI SECARA ELEKTRONIK (ONLINE SINGLE SUBMISSION)",
+      "matched_keywords": [
+        "penanaman modal",
+        "perizinan berusaha"
+      ]
+    },
+    {
+      "document_id": "PP_7_2025",
+      "points": 3522,
+      "title_header": "PP - NO 7 - TAHUN 2025 - TENTANG KLASIFIKASI BAKU LAPANGAN USAHA INDONESIA",
+      "matched_keywords": [
+        "klasifikasi baku lapangan usaha"
+      ]
+    },
+    {
+      "document_id": "DOC_UNKNOWN_UNKNOWN",
+      "points": 2954,
+      "title_header": "DOC - NO UNKNOWN - TAHUN UNKNOWN - TENTANG asal- SK No 152523 C PRESIDEN REPUBLIK INDONESIA r.c. 131 lVoKode KBLIJudul KBLIRueng LtngkupSLala UsahaTingkat RisikoPerizinan BcrusahaPersyaratan Jangta Wektu PenerbitanKcwqiiban PB UMKTIParameter K",
+      "matched_keywords": [
+        "kbli"
+      ]
+    },
+    {
+      "document_id": "PP_28_2025",
+      "points": 887,
+      "title_header": "PP - NO 28 - TAHUN 2025 - TENTANG PENYELENGGARAAN PERIZINAN BERUSAHA BERBASIS RISIKO",
+      "matched_keywords": [
+        "perizinan berusaha"
+      ]
+    },
+    {
+      "document_id": "UU_13_2017",
+      "points": 335,
+      "title_header": "UU - NO 13 - TAHUN 2017 - TENTANG PEDOMAN DAN TATA CARA PERIZINAN DAN FASILITAS PENANAMAN MODAL",
+      "matched_keywords": [
+        "penanaman modal"
+      ]
+    },
+    {
+      "document_id": "UU_16_2025",
+      "points": 116,
+      "title_header": "UU - NO 16 - TAHUN 2025 - TENTANG PERUBAHAN KEEMPAT ATAS UNDANG-UNDANG NOMOR 19 TAHUN 2OO3 TENTANG BADAN USAHA MILIK NEGARA",
+      "matched_keywords": [
+        "badan usaha"
+      ]
+    },
+    {
+      "document_id": "UU_25_2007",
+      "points": 65,
+      "title_header": "UU - NO 25 - TAHUN 2007 - TENTANG PENANAMAN MODAL",
+      "matched_keywords": [
+        "penanaman modal"
+      ]
+    }
+  ],
+  "keyword_scan_match_count": 7,
+  "distinct_documents_scanned": 203
+}

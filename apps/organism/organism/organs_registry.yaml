@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: e888ff9748e5cea8db11d3a1544a9f17d98938453c97f995c2e4d1bb3ffaabec
+checksum: a64d11324088872cfa252e95f6cdc536be66f31e8cec32c111323d75b1329997
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2608,5 +2608,63 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wa_bot_throughput_sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.iqoo_radar_relay
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 60
+  owner_module: infra/launchagents/wrappers/pro-iqoo-radar-relay.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.iqoo-radar-relay
+  severity_on_silence: warning
+  notes: Relay P0 Incident Capsules to the iQOO RADAR node (born via organ_birth.py,
+    genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.iqoo_radar_relay.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.iqoo_radar_relay
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 60
+  owner_module: infra/launchagents/wrappers/mini-iqoo-radar-relay.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mini-iqoo-radar-relay
+  severity_on_silence: warning
+  notes: Relay P0 Incident Capsules to the iQOO RADAR node (born via organ_birth.py,
+    genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.iqoo_radar_relay.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.kb_probe_history
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/pro-kb-probe-history.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.kb-probe-history.6h
+  severity_on_silence: warning
+  notes: records a kb/ops/probe_history.py snapshot of the legal KB retrieval journeys
+    every 6h so the kb-current-live mandate can point at a scheduled job, not a hand-run
+    probe (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.kb_probe_history.json
     timestamp_field: ts
     status_field: status

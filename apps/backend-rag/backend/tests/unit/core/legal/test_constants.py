@@ -11,6 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+import backend.core.legal.constants as legal_constants
 from backend.core.legal.constants import (
     AYAT_PATTERN,
     BAB_PATTERN,
@@ -25,7 +26,6 @@ from backend.core.legal.constants import (
     PARAGRAF_PATTERN,
     PASAL_PATTERN,
     PENJELASAN_PATTERN,
-    STATUS_PATTERNS,
     TOPIC_PATTERN,
     WHITESPACE_FIXES,
     YEAR_PATTERN,
@@ -72,10 +72,11 @@ class TestLegalConstants:
         match = TOPIC_PATTERN.search(text)
         assert match is not None
 
-    def test_status_patterns(self):
-        """Test status patterns"""
-        assert STATUS_PATTERNS["dicabut"].search("DICABUT")
-        assert STATUS_PATTERNS["berlaku"].search("BERLAKU")
+    def test_status_patterns_retired(self):
+        """STATUS_PATTERNS was retired 2026-08-25 — it must not silently return.
+        A bare regex over chunk text cannot correctly derive a document's current
+        legal status (see the tombstone comment in constants.py)."""
+        assert not hasattr(legal_constants, "STATUS_PATTERNS")
 
     def test_konsiderans_markers(self):
         """Test konsiderans markers"""

@@ -70,7 +70,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from enum import Enum
 
-from backend.services.garuda_flow import operating_calendar
+from backend.services.garuda_flow import freshness, operating_calendar
 from backend.services.garuda_flow.constants import (
     EVOA_USABILITY_WINDOW_DAYS,
     MIN_PASSPORT_VALIDITY_DAYS,
@@ -213,6 +213,13 @@ _MAX_STAY_EXCEEDED_REASON_TEMPLATE = (
     "hand off to the ordinary channel"
 )
 
+_ELIGIBILITY_UNCONFIRMED_REASON_TEMPLATE = (
+    "truth source '{source}' has not been re-verified within its "
+    "{max_age_days}-day window (last stamp: {stamp}, age: {age_days}d) — "
+    "declining to sell on data nobody has looked at recently, hand off to "
+    "the ordinary channel"
+)
+
 
 def _issuance_submission_verdict(
     *, entry_date: date, today: date
@@ -319,6 +326,33 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
     decision = result.decision
     reasons = list(result.decline_reasons)
     codes = list(result.decline_codes)
+
+    # G-FRESHNESS-FAIL-CLOSED (DECISIONS.md Q9, `freshness.py`): the two
+    # truth sources every case shape depends on regardless of
+    # issuance/extension — the decree-sourced nationality list and the D-7/
+    # D-14/eVOA-window/passport-validity rule bundle — must have been
+    # re-verified inside their own window, or this DECLINEs exactly like the
+    # operating calendar's existing fail-closed path (GROUND.md §2). This is
+    # unconditional and checked first, but it does NOT short-circuit the
+    # collection below (house style, per `eligibility.screen`'s own
+    # docstring: never short-circuit, collect every failing reason) — a
+    # decline built on stale data should still show what ELSE was wrong, not
+    # hide it behind the staleness.
+    for report in (
+        freshness.nationality_eligibility_freshness(today=today),
+        freshness.rule_constants_freshness(today=today),
+    ):
+        if report.stale:
+            decision = Decision.DECLINE
+            reasons.append(
+                _ELIGIBILITY_UNCONFIRMED_REASON_TEMPLATE.format(
+                    source=report.source,
+                    max_age_days=report.max_age_days,
+                    stamp=report.stamp,
+                    age_days=report.age_days,
+                )
+            )
+            codes.append(DeclineCode.ELIGIBILITY_UNCONFIRMED.value)
 
     # Computed up front (moved ahead of the layered checks below, 2026-08-23)
     # so the max-total-stay guard can reuse `max_total_days` — the same

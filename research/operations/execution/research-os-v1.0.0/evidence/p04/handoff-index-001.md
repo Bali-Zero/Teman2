@@ -128,24 +128,31 @@ cycle is proven end-to-end (§9 condition 6, "convert the manual proof into a pe
 still open for 279 itself, unaffected by 280's landing). But "no automated test touches this
 migration at all" is no longer an accurate summary: 279's forward SQL is now applied by CI on every
 run of `test_migration_280_...py`, and the `TRUNCATE` gap it left behind (§9 condition 7) now has
-its own closed, automated, guilt-armed proof — a fact this document is recording because
-`contract-pass-001.md` does not yet reflect it.
+its own closed, automated, guilt-armed proof. **As of this file's own PR (#4801, merge commit
+`ed31c38b8`, merged 2026-08-24T10:00:02Z), `contract-pass-001.md` did not yet reflect that — it does
+now**, closed 98 seconds later by a separate PR (#4800, merged 2026-08-24T10:01:40Z, a different
+lane's own mandate, not a reaction to this file). The paragraph below is a historical record of that
+98-second gap, kept because the document argues elsewhere for recording corrections rather than
+silently smoothing them over — it is not a live claim about `contract-pass-001.md`'s current text.
 
-**§9 condition 7 is CLOSED, and `contract-pass-001.md`'s own count of open conditions is now stale
-by one because of it.** Its text still lists condition 7 as open ("The `TRUNCATE` gap on
-`research_os_objects`. ... Closes when: a `BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger exists
-and a `TRUNCATE` attempt ... is proven rejected"). Migration 280 creates exactly that trigger, and
+**Historical note, true as of PR #4801's pin, superseded 98 seconds later by PR #4800 — kept for the
+record, not as a live claim.** At that pin, `contract-pass-001.md` still listed condition 7 with only
+its original text ("The `TRUNCATE` gap on `research_os_objects`. ... Closes when: a
+`BEFORE TRUNCATE ... FOR EACH STATEMENT` trigger exists and a `TRUNCATE` attempt ... is proven
+rejected"), and `origin/main` at that pin had zero occurrences of the literal string `280` and zero
+of `#4780` inside it (`git grep -c`). Migration 280 creates exactly that trigger, and
 `test_migration_280_...py`'s two live-DB tests prove both directions the condition asked for: guilt
 (`test_truncate_guard_blocks_truncate_but_not_insert` — `TRUNCATE` raises `append-only`, `INSERT`
 does not) and innocence (`test_truncate_guard_rollback_restores_truncate_then_reapply_reblocks` —
-remove the trigger and `TRUNCATE` succeeds again, re-add it and it re-blocks). `origin/main` has zero
-occurrences of the literal string `280` and zero of `#4780` inside `contract-pass-001.md`
-(`git grep -c` on the current tip), so this closure landed after the document's own text was last
-written and nothing in it can know about it. **A reader of `contract-pass-001.md` §9 alone counts
-eight open conditions where seven remain live** for a P04 builder — condition 7 is done, just not
-announced there. This index does not edit `contract-pass-001.md` to say so (out of this PR's scope,
-one file one concern) — S9-C0 should treat `contract-pass-001.md`'s condition count as off by one
-until that document is itself refreshed.
+remove the trigger and `TRUNCATE` succeeds again, re-add it and it re-blocks). **`contract-pass-001.md`
+now carries this itself**: its condition 7 reads `CLOSED — post-merge correction, 2026-08-24`, names
+migration 280 and PR #4780, and cites both live-DB tests by name — landed via PR #4800. **This index
+does not track `contract-pass-001.md`'s open/closed condition count as a number, on either side of
+that landing**: any such count goes stale the moment a different condition closes, which is the same
+reason the lane that closed condition 7 there deliberately did not add one either (its own PR body:
+a count "would go stale again the moment any other condition closes"). For current status, read
+`contract-pass-001.md` §9's own inline `CLOSED`/open markers directly — not a count repeated here,
+on either side of a landing this index cannot see coming.
 
 **One-sentence summary for S9-C0, checked to agree with the body above rather than restate a
 shorter, looser version of it**: migration 280 has a dedicated automated test that runs against a
@@ -156,7 +163,9 @@ measured fact, not a hope. Migration 279 has no test of its own: its forward SQL
 incidentally, as fixture setup inside 280's test, with no assertion anywhere checking 279's own
 resulting shape, and its rollback is exercised nowhere. §9 condition 6 ("convert the manual proof
 into a permanent CI test") therefore remains open for 279 itself; §9 condition 7 (`TRUNCATE`) is
-closed, by 280, unannounced in the document that owns that condition.
+closed, by 280 — and, as of PR #4800 (merged 2026-08-24T10:01:40Z), `contract-pass-001.md` itself
+carries that closure inline on condition 7, so this is no longer unannounced in the document that
+owns it.
 
 **3. Artifact 5 (hash specification) remains graded NOT DELIVERED.** `hashing.py` exists and its
 plumbing is real (RFC 8785 canonicalization, `object_hash()` wired into 25+ models), but
@@ -236,3 +245,24 @@ into the fix, for the same reason `contract-pass-001.md` records its own arming-
 failure in its own adversarial-review section: a document that argues for catching this class of
 error and then commits a fresh instance of it one round later does not get to leave that quietly out
 of its own record.
+
+**Reconciliation, post-#4801, found by team-lead, not by any adversarial seat.** This file's own
+refinement PR (#4801) and a separate lane's `contract-pass-001.md` update (#4800) were dispatched
+concurrently, both touching the same §9-condition-7 boundary, and landed 98 seconds apart
+(#4801 first at 10:00:02Z, #4800 at 10:01:40Z, both 2026-08-24). Three sentences in the previous
+revision of this file — all true when written against #4801's pin — went stale the instant #4800
+landed: a bare "`contract-pass-001.md` does not yet reflect it," a claim that its open-condition
+*count* was now stale by one, and "a reader...counts eight open conditions where seven remain
+live." None of the two PRs was defective; only their interleaving needed reconciling. This is that
+reconciliation: the affected paragraphs above now anchor every cross-document claim to the specific
+merge SHA/timestamp that made it true or false, rather than asserting a bare present tense that
+silently expires the moment the other document is independently touched, and the (never-taken)
+"stale count" framing is replaced with a pointer to `contract-pass-001.md` §9's own inline `CLOSED`
+markers — deliberately not a number repeated here, for the same reason the lane that closed
+condition 7 there declined to add one: any such count goes stale again the moment a different
+condition closes. Measured directly against `origin/main` at the time of this reconciliation, not
+inferred: `contract-pass-001.md` §9 condition 7 reads `CLOSED — post-merge correction, 2026-08-24`,
+names migration 280 and PR #4780, cites both live-DB tests, explicitly leaves condition 6 open, and
+preserves the "applied in NO environment" caveat; condition 8/D7's revert-half is separately marked
+done with its ratification-half still open. No numeric "N conditions remain open" line exists
+anywhere in that section, on either side of #4800's landing.

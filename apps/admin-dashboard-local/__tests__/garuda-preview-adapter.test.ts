@@ -38,7 +38,7 @@ const VALID_RESULT = {
   calendar_warning: null,
   warnings: [
     "Internal preliminary pre-screen only; it is not an immigration decision or an approval guarantee.",
-    "Nationality and entry-point eligibility are not yet checked against an authoritative dataset and require manual verification.",
+    "The nationality code is checked against the decree-sourced VOA list; this pre-screen does not collect an entry point, so staff must confirm entry-point eligibility.",
     "Passport type, document authenticity, and prior overstay, refusal, or blacklist history require human review.",
     "The expiry is an estimate; the printed immigration expiry is authoritative and must be verified before action.",
   ],

@@ -20,6 +20,7 @@ from typing import BinaryIO, Literal, TextIO
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from backend.services.garuda_flow.civil_clock import garuda_today
 from backend.services.garuda_flow.constants import (
     FINAL_CHECK_DAYS,
     INTERNAL_ESCALATION_DAYS,
@@ -46,7 +47,7 @@ _INTERNAL_LABELS: tuple[str, ...] = (
 
 _BASE_WARNINGS: tuple[str, ...] = (
     "Internal preliminary pre-screen only; it is not an immigration decision or an approval guarantee.",
-    "Nationality and entry-point eligibility are not yet checked against an authoritative dataset and require manual verification.",
+    "The nationality code is checked against the decree-sourced VOA list; this pre-screen does not collect an entry point, so staff must confirm entry-point eligibility.",
     "Passport type, document authenticity, and prior overstay, refusal, or blacklist history require human review.",
 )
 
@@ -162,7 +163,7 @@ def build_internal_preview(
         extension_already_used=request.extension_already_used,
     )
     verdict = build_verdict(intake, today=today)
-    price_idr, price_source = price_for_case(request.case_type)
+    price_idr, price_source = price_for_case(request.case_type, today=today)
     price_status: Literal["confirmed", "unavailable"] = (
         "confirmed"
         if price_idr is not None and price_source is not None
@@ -269,7 +270,7 @@ def run_cli(stdin: BinaryIO, stdout: TextIO) -> int:
         generated_at = datetime.now(timezone.utc)
         response = build_internal_preview(
             request,
-            today=date.today(),
+            today=garuda_today(),
             generated_at=generated_at,
         )
     except (ValidationError, PreviewInputError):

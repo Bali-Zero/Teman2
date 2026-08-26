@@ -1,0 +1,147 @@
+task_id: garuda-arm-env-0826
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  Fix a live configuration trap in
+  `.github/workflows/garuda-arm.yml`'s `garuda_environment`
+  workflow_dispatch input: it offered `SANDBOX`/`PRODUCTION`
+  (default `SANDBOX`), and wrote that value straight through — no
+  remapping — into the `GARUDA_ENVIRONMENT` Fly secret. That secret
+  is read by `service_initializer.py` and handed to
+  `PostgresMagicLinkStore`/`PostgresCheckStore`/`GarudaOrderRepository`,
+  which persist it verbatim into an `environment TEXT CHECK
+  (environment IN ('TEST','STAGING','PRODUCTION'))` column (migrations
+  285/286). `SANDBOX` is not a member of that set: arming with the
+  workflow's own DEFAULT would violate the CHECK constraint on the
+  very first magic-link insert or eligibility-check write, while the
+  workflow's own post-arm verification only polls `/health` — so the
+  app comes back green and the funnel looks armed right up until the
+  first real write fails. Classic cicatrix-superscar.md family #2
+  ("esiste != armato" — the probe reads something other than the
+  thing that is actually broken).
+
+  Root cause, not just symptom: whoever wrote `SANDBOX` was reaching
+  for the *payment mode*, not the *row tag*. This field tags ROWS
+  with the deployment they belong to; Xendit sandbox-ness is carried
+  entirely by `GARUDA_XENDIT_SECRET_KEY` (the provider itself refuses
+  any key not prefixed `xnd_development_`). A dark launch against the
+  Xendit sandbox still writes real rows for real people on the
+  production database — `PRODUCTION` is the correct tag even while
+  payments are sandboxed.
+
+  Gear 3 by PATH, not by blast radius: this diff touches
+  `.github/workflows/*`, a literal HOTZONE_PATTERNS entry — the floor
+  is the deterministic one computed from the changed-file set, not
+  this session's judgment call (confirmed 3, receipt below).
+constraints:
+  - >-
+    Fix must be the value mapping and the input's own description
+    text — no unrelated behaviour change to the workflow (no touching
+    the Xendit-secret-skip logic, the `stage_only` input, or the
+    `/health` verification step, none of which this defect concerns).
+  - >-
+    The tripwire must parse BOTH sides live, every run — the actual
+    workflow YAML options/default AND the actual `CHECK (environment
+    IN (...))` clauses under `migrations_v2/*.sql` — never hardcode
+    either side as a literal in the test, because the whole failure
+    mode this guards against is the two drifting apart (this repo has
+    a named scar family, #9 "state-schema mutation drift", for
+    exactly that shape).
+  - >-
+    Must not hardcode migration filenames 285/286: at authorship time
+    those files did not exist on `main` (the GARUDA backend wiring
+    landed separately in PR #4959, merged to `main` mid-task as
+    `9ed601a7d`, after this branch's base). A filename-scoped test
+    would either not exist yet or go stale the moment the migration
+    author's own header-comment renumbering warning fires. The test
+    instead globs `migrations_v2/*.sql` and intersects every
+    `CHECK (environment IN (...))` clause found, so it self-applies
+    the instant the real migrations land — which they since have.
+  - >-
+    The new CI wiring must actually run per-PR (not only nightly/
+    report-only): this repo has a measured scar
+    (`discovery_a_test_directory_under_a_new_top_level_dir_is_run_by_
+    nobody_2026_08_25` in the fleet memory, and the `scripts/tests/`
+    sweep documented in `scripts-tests-sweep.yml` as schedule-only,
+    report-only, `continue-on-error: true`) for a test file that
+    exists on disk but nothing in `.github/workflows/` names it. A
+    named, targeted workflow that runs the exact test module directly
+    (mirroring `lint-golden-rule-10.yml` →
+    `test_no_httpx_violators.py`) closes that gap for this test.
+  - >-
+    Any new workflow added must be registered in
+    `main-push-failure-watch.yml`'s `workflows:` list —
+    `scripts/check_watcher_coverage.py` is a required CI check on this
+    exact point and was RED on the first push (see receipts) before
+    this brief/pack were added; fixed in a follow-up commit on the
+    same branch.
+acceptance:
+  - >-
+    `garuda-arm.yml`'s `garuda_environment` options and default are
+    both members of the intersection of every `CHECK (environment IN
+    (...))` clause found under `migrations_v2/*.sql` in this repo,
+    verified by a pytest tripwire that reads both sources live.
+  - >-
+    The tripwire was proven RED (SANDBOX reintroduced into both
+    `options:` and `default:`) before being proven GREEN on the fix —
+    a test never seen failing is not a test.
+  - "`actionlint -shellcheck=` accepts every touched/new workflow file."
+  - >-
+    `scripts/check_watcher_coverage.py` exits 0 — the new
+    `lint-garuda-environment-values.yml` workflow is registered with
+    the meta-watcher, per the independent Gear-3 gate's REWORK-BUILD
+    finding on this PR's first head SHA.
+consumer_map:
+  - >-
+    `garuda-arm.yml`'s `arm` job writes `GARUDA_ENVIRONMENT` as a Fly
+    secret on `nuzantara-rag` via `flyctl secrets set` — the only
+    consumer of the value this PR changes.
+  - >-
+    `apps/backend-rag/backend/app/setup/service_initializer.py` reads
+    `GARUDA_ENVIRONMENT` at process startup (now present on `main` as
+    of PR #4959, absent when this task started — see the dissent
+    entry below) and hands it to the three GARUDA store/repository
+    constructors, which persist it into the `environment` column
+    constrained by migrations 285/286.
+  - >-
+    `main-push-failure-watch.yml` now also watches
+    `lint-garuda-environment-values.yml` for a push/schedule-to-main
+    failure (this PR's own second commit).
+risks:
+  - >-
+    This workflow was NOT run against production — arming
+    `GARUDA_ENVIRONMENT` for real is an `operator[business]`/
+    `workflow_dispatch` action the codeowner or a future dispatch
+    performs; this PR only fixes what value that dispatch is allowed
+    to choose from.
+  - >-
+    The three read-sites the original mandate named
+    (`PostgresMagicLinkStore`/`PostgresCheckStore`/
+    `GarudaOrderRepository` construction) did not exist on `main` when
+    this branch was created (`origin/main` at `92ca871e5`) — confirmed
+    by `grep -in garuda service_initializer.py` returning zero matches
+    at that commit. They landed on `main` mid-task via PR #4959
+    (`9ed601a7d`), on a branch this PR's base does not include. No
+    fail-closed guard was added at those sites in this PR: doing so
+    now would mean editing files this branch has never seen and that
+    are not part of the diff the Gear-3 gate is grading — out of
+    scope for this fix, flagged to the orchestrating session as a
+    follow-up instead of silently expanded into.
+grader: >-
+  Generator != grader. This session authored the fix, the tripwire,
+  and this evidence pack; the Gear-3 on-disk gate (independent seat)
+  grades the diff, and the orchestrating session (team-lead) decides
+  merge timing — neither is this session, per CLAUDE.md §13/Agent PR
+  Contract ("the diff's author never gates its own diff"). The gate's
+  first verdict on this PR (REWORK-BUILD, head `d7b52539`) correctly
+  identified this brief/pack were missing and did NOT dispute the
+  code or the tripwire (six mutations run against it, reported
+  sound) — this pack is the requested completion, not a response to a
+  code defect.
+budget: >-
+  1 build lane (this session), no council, no cross-family dispatch —
+  a workflow-value fix plus one self-contained pytest tripwire whose
+  verification (actionlint + a live RED/GREEN pytest run) is fully
+  reproducible without a Fly credential, a database, or a live run.
+pii: none

@@ -142,10 +142,12 @@ on:
       - Docs Inventory Refresh
       - Docs Sync Check
       - manual - fly api diagnostics
+      - manual - garuda voa arm
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
       - Frontend Live Sentinel
       - Frontend typecheck (apps/mouth)
+      - garuda-contract-parity
       - Guard conformance (superscar
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement
@@ -159,6 +161,7 @@ on:
       - Content lint — reasoning-leak in published MDX
       - Lint Cross-Import
       - Golden Rule
+      - Lint — GARUDA_ENVIRONMENT workflow value matches DB schema
       - Lint i18n providers
       - Migration number uniqueness lint
       - Migration ROLLBACK marker lint

@@ -12,6 +12,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from backend.services.garuda_flow import freshness
 from backend.services.garuda_flow.constants import (
     EVOA_USABILITY_WINDOW_DAYS,
     MIN_PASSPORT_VALIDITY_DAYS,
@@ -525,3 +526,105 @@ class TestPurity:
         assert v1.decision == v2.decision
         assert v1.decline_reasons == v2.decline_reasons
         assert v1.stay_window == v2.stay_window
+
+
+class TestTruthFreshnessGate:
+    """G-FRESHNESS-FAIL-CLOSED (DECISIONS.md Q9, `freshness.py`) at the
+    `build_verdict` integration point. `conftest.py`'s autouse fixture pins
+    both checks to FRESH for every OTHER test in this file — these tests
+    override that pin, on top of it, to exercise the STALE path
+    specifically. Proven to bite both ways: an otherwise-ACCEPT request
+    DECLINEs the moment either dependency goes stale, and reverts to its
+    original verdict the moment freshness is restored.
+    """
+
+    def _stale(self, source: str) -> freshness.FreshnessReport:
+        return freshness.FreshnessReport(
+            source=source,
+            verdict=freshness.FreshnessVerdict.STALE,
+            stamp="2020-01-01",
+            age_days=9999,
+            max_age_days=freshness.MAX_AGE_DAYS[source],
+            detail="test: forced stale",
+        )
+
+    def test_stale_nationality_eligibility_declines_an_otherwise_accepted_case(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        baseline = build_verdict(_issuance(), today=_TODAY)
+        assert baseline.accepted is True  # sanity: this request is a real ACCEPT
+
+        monkeypatch.setattr(
+            freshness,
+            "nationality_eligibility_freshness",
+            lambda *, today: self._stale("nationality_eligibility"),
+        )
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
+
+    def test_stale_rule_constants_declines_an_otherwise_accepted_case(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        baseline = build_verdict(_issuance(), today=_TODAY)
+        assert baseline.accepted is True
+
+        monkeypatch.setattr(
+            freshness,
+            "rule_constants_freshness",
+            lambda *, today: self._stale("rule_constants"),
+        )
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
+
+    def test_restoring_freshness_restores_the_original_verdict(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The other direction of the same guard: once patched back to FRESH
+        # (conftest's own default, reapplied here explicitly for clarity),
+        # the request accepts again exactly as it did before the gate ever
+        # ran — the guard adds a decline path, it does not change the
+        # underlying eligibility computation.
+        monkeypatch.setattr(
+            freshness,
+            "nationality_eligibility_freshness",
+            lambda *, today: self._stale("nationality_eligibility"),
+        )
+        assert build_verdict(_issuance(), today=_TODAY).decision is Decision.DECLINE
+
+        monkeypatch.undo()
+        assert build_verdict(_issuance(), today=_TODAY).accepted is True
+
+    def test_stale_source_does_not_suppress_other_decline_reasons(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # House style: never short-circuit, collect every failing reason.
+        # A request that is ALSO ineligible on nationality must show BOTH
+        # codes when the truth sheet is stale, not just one.
+        monkeypatch.setattr(
+            freshness,
+            "nationality_eligibility_freshness",
+            lambda *, today: self._stale("nationality_eligibility"),
+        )
+        verdict = build_verdict(_issuance(nationality="PRK"), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
+        assert "NATIONALITY_NOT_ELIGIBLE" in verdict.decline_codes
+
+    def test_extension_path_is_also_covered_by_the_gate(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Unconditional per DECISIONS.md Q9 — both case shapes depend on
+        # the rule bundle, not issuance alone.
+        baseline = build_verdict(_extension(), today=_TODAY)
+        assert baseline.accepted is True
+
+        monkeypatch.setattr(
+            freshness,
+            "rule_constants_freshness",
+            lambda *, today: self._stale("rule_constants"),
+        )
+        verdict = build_verdict(_extension(), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes

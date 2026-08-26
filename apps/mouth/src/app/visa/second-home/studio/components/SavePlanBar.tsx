@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import {
@@ -11,6 +11,14 @@ import { relevantPlan } from "@/lib/secondhome-studio/sequence";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 
 const STUDIO_PATH = "/visa/second-home/studio";
+
+// Two-step destructive confirm (P0, 2026-08-24): how long the armed
+// (confirming) state stays up before silently disarming, so the control is
+// never left destructive indefinitely if the user walks away mid-decision.
+// 5s splits the ~4-6s window this needs to sit in — long enough to read the
+// confirming label and re-tap, short enough that a walked-away tab doesn't
+// stay armed.
+const CLEAR_ARM_TIMEOUT_MS = 5000;
 
 const PRINT_STYLES = `
   @page {
@@ -48,7 +56,8 @@ const PRINT_STYLES = `
     .bz-shs-save-plan-bar,
     .bz-shs-option,
     .bz-shs-scenario-toggle-trigger,
-    .bz-shs-scenario-toggle-back {
+    .bz-shs-scenario-toggle-back,
+    .bz-shs-back-to-answers {
       display: none !important;
     }
 
@@ -181,6 +190,75 @@ const CLEAR_BUTTON_STYLES = `
     outline-offset: 3px;
   }
 
+  /* Armed state (two-step confirm, P0 2026-08-24): must be visible with NO
+     hover/focus needed — a touch tap has no hover, and arming is the moment
+     the destructive action becomes real, so the cue can't depend on a
+     pointer state the next tap (the confirm) won't have either.
+     P0 2026-08-24b/c — two rounds on this one, both grounded on the
+     rendered page, not declared CSS:
+     Round b tried var(--accent-funnel): on this page's fixed
+     [data-theme="editorial"][data-funnel="visa"] scope that's #ff3344 —
+     byte-identical to the price panel's border. Fixed by switching to
+     --state-warning (amber) — which turned out to just relocate the
+     collision: VerdictPanel's edge_case band (property route, or ages
+     55-59 — NOT a rare case, the majority of a senior audience hits it)
+     paints its OWN border/fill in --state-warning at the same outline +
+     light-tint structure. Every hue on this page already carries a
+     verdict-band or price-panel meaning (success/info/warning/neutral/
+     funnel-red) — hunting for a free one just finds the next collision.
+     Round c changes the CHANNEL instead of the hue: a solid, opaque FILL
+     block. No verdict band and no price panel ever paints a solid fill —
+     they are all a thin border over --surface-raised (or a light
+     color-mix tint). The one solid-fill precedent already on this exact
+     page is WhatsAppHandoff's CTA (#25D366, WHATSAPP_GREEN) sitting right
+     above this button — proof a solid block already reads as "the other
+     kind of control" here, distinct from every outlined card regardless
+     of which hue it carries. That frees funnel red back up: reused as
+     color-mix(in srgb, var(--accent-funnel) 85%, black), the exact
+     darkening StudioApp.tsx's primaryNavButtonStyle already derives (see
+     its comment above, same file) because flat --accent-funnel under
+     white text measures 3.62:1 on this funnel/theme pairing — verified
+     4.5:1+ after the 85%-black mix, on both known --accent-funnel
+     resolutions. This label is 16px/600 — WCAG "normal text" (no
+     large-text exemption) — so 4.5:1 against the fill is the real floor:
+     measured 4.82:1 on the rendered page. But the fill itself (a DARK red,
+     deliberately mixed toward black so white text clears 4.5:1) only
+     measures 2.78:1 against the navy surface behind it — short of the 3:1
+     non-text/UI-boundary floor (WCAG 1.4.11). Darkening the fill further
+     to help criterion 2 makes criterion 3 worse and vice versa; the two
+     floors can't both be met by tuning ONE color. So the boundary is a
+     SEPARATE color from the fill: border-color and the inset ring both
+     read --text-on-accent (white on this funnel) instead of the fill
+     token — white-on-navy clears 3:1 by a wide margin regardless of what
+     the interior fill measures, and it's the same color already proven
+     for the text. The focus-visible outline below reads the SAME
+     --text-on-accent for the identical reason: an outline drawn in the
+     dark fill color would inherit its 2.78:1 problem. Do not tidy the
+     border/outline back to the fill color, and do not go back to
+     --state-warning or a bare/light --accent-funnel outline — all three
+     are collisions or contrast failures this fixes. Placed after the
+     resting :hover/:focus-visible rule above so equal-specificity source
+     order lets it win whether or not the armed button is also hovered. */
+  .bz-shs-clear-plan.bz-shs-clear-armed {
+    --bz-shs-clear-armed-fill: color-mix(
+      in srgb,
+      var(--accent-funnel) 85%,
+      black
+    );
+    border-color: var(--text-on-accent, #fff);
+    background: var(--bz-shs-clear-armed-fill);
+    box-shadow: inset 0 0 0 1px var(--text-on-accent, #fff);
+    color: var(--text-on-accent, #fff);
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  .bz-shs-clear-plan.bz-shs-clear-armed:focus-visible {
+    outline: 3px solid var(--text-on-accent, #fff);
+    outline-offset: 3px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .bz-shs-clear-plan {
       transition: none;
@@ -262,6 +340,56 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
     window.print();
   }
 
+  // Two-step destructive confirm for "Clear saved plan": the first
+  // activation only arms the control (label + danger treatment change, no
+  // side effect); the second activation actually clears. Works identically
+  // for mouse, touch and keyboard because it never depends on :hover — a
+  // touch tap has none.
+  const [clearArmed, setClearArmed] = useState(false);
+  // `setTimeout`/`clearTimeout` (not `window.setTimeout`) to match this
+  // codebase's existing ref-typing convention — `"node"` is in tsconfig's
+  // `types`, so the bare global resolves to `NodeJS.Timeout`, and
+  // `ReturnType<typeof setTimeout>` tracks whichever one is actually
+  // returned instead of hardcoding the browser's `number`.
+  const clearArmedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  function disarmClear() {
+    setClearArmed(false);
+    if (clearArmedTimeoutRef.current !== null) {
+      clearTimeout(clearArmedTimeoutRef.current);
+      clearArmedTimeoutRef.current = null;
+    }
+  }
+
+  function handleClearActivate() {
+    if (clearArmed) {
+      disarmClear();
+      onClear();
+      return;
+    }
+    setClearArmed(true);
+    clearArmedTimeoutRef.current = setTimeout(() => {
+      clearArmedTimeoutRef.current = null;
+      setClearArmed(false);
+    }, CLEAR_ARM_TIMEOUT_MS);
+  }
+
+  function handleClearKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "Escape" && clearArmed) {
+      disarmClear();
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (clearArmedTimeoutRef.current !== null) {
+        clearTimeout(clearArmedTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <section
       className="bz-shs-save-plan-bar"
@@ -305,12 +433,20 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         </button>
         <button
           type="button"
-          onClick={onClear}
-          className="bz-shs-clear-plan"
+          onClick={handleClearActivate}
+          onBlur={disarmClear}
+          onKeyDown={handleClearKeyDown}
+          className={
+            clearArmed
+              ? "bz-shs-clear-plan bz-shs-clear-armed"
+              : "bz-shs-clear-plan"
+          }
           style={clearButtonLayoutStyle}
         >
           <Trash2 size={16} strokeWidth={1.75} aria-hidden />
-          {getCopy("savePlanBar.clearButton")}
+          {clearArmed
+            ? getCopy("savePlanBar.clearConfirmButton")
+            : getCopy("savePlanBar.clearButton")}
         </button>
       </div>
       <div role="status" aria-live="polite" style={{ minHeight: "1.2em" }}>
@@ -334,6 +470,17 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
             }}
           >
             {getCopy("savePlanBar.copiedConfirmation")}
+          </p>
+        ) : null}
+        {clearArmed ? (
+          <p
+            style={{
+              margin: 0,
+              fontSize: "var(--text-sm, 0.85rem)",
+              color: "var(--text-primary)",
+            }}
+          >
+            {getCopy("savePlanBar.clearArmedStatus")}
           </p>
         ) : null}
       </div>

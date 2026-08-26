@@ -152,14 +152,13 @@ def arsenal_seats() -> tuple[list[str], list[str]]:
 # keys off MODEL names (opus-5, codex-luna, kimi-for-coding...), never off the
 # arsenal_probe.py seat ids (codex-spark, qwen-cloud-code, nlm, jules...) — there
 # is no row in the roster keyed by probe-seat-id at all. What IS machine-
-# extractable, verified 2026-08-22 against the live file, is each PROVIDER
-# section's own "## <Provider> — ... door(s): <text>" header (6 of 7 provider
-# sections carry it; "## Local Ollama" does not — no "door:"/"doors:" substring
-# anywhere in that header, so it is a genuine, reportable gap, not a regex miss).
-# So this renders seat -> provider -> door, sourced live from the file, in place
-# of the seat -> role -> invocation the mandate asked for. Doors are grouped by
-# provider (not simplified). Do not invent a role or a fuller invocation string
-# to plug this gap — see the D4 report for the proposed smallest roster change.
+# extractable, verified 2026-08-26 against the live file, is each PROVIDER
+# section's own "## <Provider> — ... door(s): <text>" header — every provider
+# section now carries one, including "## Local Ollama" (closed the historical
+# gap: PENDING-ARMS "MODEL_ROSTER.md's ## Local Ollama section ... has no door:
+# segment"). So this renders seat -> provider -> door, sourced live from the
+# file, in place of the seat -> role -> invocation the mandate asked for. Doors
+# are grouped by provider (not simplified).
 _ROSTER_DOOR_RE = re.compile(r"^## (?P<provider>[^—\n]+?)\s+—.*?doors?:\s*(?P<door>.+?)\s*$", re.MULTILINE)
 _DOOR_CODE_RE = re.compile(r"`([^`]+)`")
 _DOOR_MAX_CHARS = 56
@@ -665,13 +664,13 @@ def _selftest() -> int:
     real_doors, real_door_errs = _roster_doors(_repo_root())
     expect("roster-drift: MODEL_ROSTER.md was readable for the door extraction",
            not real_door_errs)
-    expected_providers_with_doors = {p for p in _SEAT_PROVIDER.values() if p != "Local Ollama"}
-    expect("roster-drift: every provider _SEAT_PROVIDER names (except the "
-           "known Local-Ollama gap) still has a 'door(s):' header in MODEL_ROSTER.md",
+    expected_providers_with_doors = set(_SEAT_PROVIDER.values())
+    expect("roster-drift: every provider _SEAT_PROVIDER names has a "
+           "'door(s):' header in MODEL_ROSTER.md",
            expected_providers_with_doors <= set(real_doors.keys()))
-    expect("roster-drift: Local Ollama still has no door: line (update this "
-           "test, and the D4 report's proposed fix, the day it gains one)",
-           "Local Ollama" not in real_doors)
+    expect("roster-drift: Local Ollama now HAS a door: line (2026-08-26 "
+           "arming — update this test, and this comment, the day it loses one)",
+           "Local Ollama" in real_doors)
 
     print(f"SELFTEST {'OK' if not failures else 'FAILED'} — "
           f"{total - len(failures)}/{total} checks")

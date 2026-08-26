@@ -1,0 +1,81 @@
+task_id: garuda-voa-train-02-backend
+gear: 3
+l_level: cross-lane
+gate_class: hot-zone-migration
+objective: >
+  Land "train 2/4" of the GARUDA VOA backend: the entire GARUDA VOA
+  backend surface (132 files, +22188/-19) merging to main dark-by-flag.
+  This is the single PR that carries all backend code accumulated across
+  the L1-L7 GARUDA lanes (portal auth, orders, magic-link, check results,
+  practices, public router, payment wiring) plus its own 5 migrations
+  (281/284/285/286/287), landing on main behind GARUDA_PUBLIC_ENABLED so
+  the merge itself changes nothing observable in prod.
+constraints:
+  - The feature MUST stay dark by default. GARUDA_PUBLIC_ENABLED unset (or
+    any falsy value) must leave every public GARUDA route behaving exactly
+    as it did before this PR existed -- no route newly reachable, no
+    schema newly required by an unrelated code path.
+  - The payment surface has its own independent gate
+    (GARUDA_XENDIT_SECRET_KEY) -- it must not be implicitly armed by
+    GARUDA_PUBLIC_ENABLED alone.
+  - All 5 migrations are additive (CREATE TABLE / CREATE INDEX) only --
+    no ALTER/DROP against any table `run-migrations` has already applied
+    on the currently-live schema, so the OLD image stays runnable against
+    the NEW schema through the rolling-deploy window (CLAUDE.md §11).
+  - The 5 public MUTATING routes this PR introduces must each carry a
+    reviewed, handler-checked justification in
+    INTENTIONALLY_PUBLIC_MUTATIONS (test_mutating_routes_are_gated.py) --
+    never a silent gap in that gate.
+acceptance: >
+  (1) `_public_enabled()` in garuda_voa_public.py / garuda_portal_auth.py
+  returns False for every falsy/unset value of GARUDA_PUBLIC_ENABLED and
+  True only for an explicit truthy value; (2) with GARUDA_XENDIT_SECRET_KEY
+  unset, the payment provider is never constructed and the webhook route
+  answers 503, never 200; (3) every GARUDA_* module imports cleanly with
+  zero GARUDA_* env vars set; (4) test_mutating_routes_are_gated.py +
+  test_preview_adapter_parity.py collect and pass in full against this
+  diff; (5) all 5 migrations apply cleanly in sequence against the schema
+  `run-migrations` produces from the OLD (pre-PR) image.
+consumer_map:
+  - Every downstream GARUDA lane already merged to the shared
+    feature/garuda-voa integration branch (L1-L7 -- checkout, portal,
+    documents, practices, magic-link session, control-tower) depends on
+    this PR's routers/migrations/services landing on main intact -- this
+    is the backend half of the assembly-line's "land the whole organ,
+    dark" strategy; the frontend/UI half lands in a separate train.
+  - Any future flip of GARUDA_PUBLIC_ENABLED to true in prod activates
+    every route this PR registers at once -- there is no per-route
+    incremental rollout inside this PR.
+risks:
+  - 132-file / +22188-line diff is far outside the repo's own "~400 net
+    lines per PR" convention (CLAUDE.md Agent PR Contract rule 1) -- this
+    is a deliberate, named exception (assembly-line landing of an entire
+    already-reviewed lane structure, not a single new unit of work), not
+    an oversight; the individual lane PRs that composed this content were
+    reviewed and merged into the integration branch separately before
+    this train PR was cut.
+  - 5 migrations in one PR is a hot-zone-by-construction diff; Squawk lint
+    runs per migration file, but the AGGREGATE ordering (281 before
+    284-287) is verified here by direct sequential apply against a fresh
+    database, not by lint alone.
+  - Dark-by-flag protects against behavior change but not against import-
+    time or migration-time failure -- a broken import or a migration that
+    fails to apply would still break the deploy even with the flag off,
+    which is why acceptance criterion (3) and (5) are both verified
+    independently of the flag's value.
+grader: pr2-preflight session (cross-lane landing session, generator!=
+  grader -- this session did not author the GARUDA lane code, it verifies
+  the aggregate landing)
+budget: 132 files, +22188/-19 net lines -- a train-landing PR by design,
+  not a single-unit-of-work PR; the 5 migrations
+  (281,284,285,286,287_*.sql) are the hot-zone trigger for this gear-3
+  floor. Verification scope for THIS evidence pack -- the isolated slice
+  covering the dark-by-flag contract (flag default, payment gate,
+  zero-env import, public-mutation registry) plus the two test modules
+  that exercise it directly -- not a full-repo re-run of every test the
+  132 files touch, which the required CI checks already cover on their
+  own schedule.
+pii: none -- backend router/service/migration code and test fixtures
+  only; no client data, no OSINT, no credentials touched or transcribed.
+  GARUDA_XENDIT_SECRET_KEY and other secrets are read from env, never
+  hardcoded or logged by this PR's code.

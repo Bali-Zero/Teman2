@@ -1,0 +1,225 @@
+name: manual - garuda voa arm
+
+# Arms the GARUDA VOA product's BACKEND configuration on Fly (nuzantara-rag)
+# by setting a CLOSED, hard-coded allowlist of `GARUDA_*` secrets/env vars.
+#
+# THIS ARMS THE BACKEND ONLY. It does NOT arm the frontend. The public
+# funnel is dark until a human ALSO sets `GARUDA_PUBLIC_ENABLED=true` (the
+# literal lowercase string, case-insensitively matched after trim — see
+# `apps/mouth/src/app/visa/voa/flag.ts`) in Vercel's environment for the
+# project serving balizero.com. That is a separate, GUI-only action; do
+# not read a green run of this workflow as "GARUDA VOA is live".
+#
+# Why CI, not a human laptop: `apps/backend-rag/fly.toml` has an empty
+# `[env]` block — ALL backend configuration on `nuzantara-rag` lives in Fly
+# secrets. No machine in this fleet holds a Fly token scoped to
+# `nuzantara-rag` (M5 has none at all; Pro's token is scoped to
+# `nuzantara-postgres` only). `.github/workflows/fly-deploy.yml`'s
+# `FLY_API_TOKEN` GitHub secret is the one credential in this repo proven
+# to reach `nuzantara-rag` (it already runs `flyctl deploy`/`ssh
+# console`/`machines list` against it) — so CI is the only sanctioned path
+# to set this configuration today.
+#
+# Closed allowlist, on purpose: every key this workflow can ever set begins
+# `GARUDA_` and is a literal string below — there is no free-text key-name
+# input. It is structurally impossible to point this workflow at an
+# unrelated production secret.
+#
+# The value trap (encoded, not just documented): the backend's own
+# `_public_enabled()` (garuda_voa_public.py) accepts `1`/`true`/`yes`
+# case-insensitively, but the FRONTEND flag (flag.ts, see above) accepts
+# ONLY the literal "true". Setting `1` here would open the API while
+# leaving the page dark. `garuda_public_enabled` below is a `type: choice`
+# input restricted to exactly `true` / `false` so that ambiguous value can
+# never be entered.
+#
+# GARUDA_XENDIT_SECRET_KEY / GARUDA_XENDIT_CALLBACK_TOKEN do not exist yet
+# as GitHub Secrets — Zero has not provisioned the Xendit sandbox account.
+# This workflow SKIPS a secret that is empty rather than setting it to an
+# empty string: the service-initializer gates all order/payment wiring on
+# `GARUDA_XENDIT_SECRET_KEY` being non-empty
+# (`apps/backend-rag/backend/app/setup/service_initializer.py`, "5.7"), so
+# an empty-but-PRESENT value is indistinguishable from absent to that
+# check, but could still surprise a future reader grepping `flyctl secrets
+# list` and seeing the name present. Absent is the honest state until the
+# real values exist.
+
+on:
+  workflow_dispatch:
+    inputs:
+      garuda_public_enabled:
+        description: >-
+          GARUDA_PUBLIC_ENABLED (backend gate for /api/visa/voa/*). Choice,
+          not free text — only "true"/"false" are unambiguous across both
+          the backend (1/true/yes) and frontend (literal "true" only)
+          readers. Does NOT arm the frontend Vercel flag — that is separate.
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      garuda_environment:
+        description: >-
+          GARUDA_ENVIRONMENT (domain-vocabulary string read by
+          magic_link_store.py / check_store.py / GarudaOrderRepository and
+          persisted verbatim into an `environment TEXT CHECK (environment
+          IN ('TEST','STAGING','PRODUCTION'))` column). This tags ROWS
+          with the deployment they belong to — it does NOT select payment
+          mode. Xendit sandbox-ness is carried entirely by
+          `GARUDA_XENDIT_SECRET_KEY` (the provider itself refuses any key
+          not prefixed `xnd_development_`), so a dark launch against the
+          Xendit sandbox still writes real rows for real people on the
+          production database, and PRODUCTION is the correct tag for that
+          even while payments are sandboxed. "SANDBOX" is NOT a value the
+          schema accepts — arming with it would violate the CHECK
+          constraint on the very first magic-link/eligibility-check write
+          and break the funnel on first use while /health stays green.
+        required: true
+        default: "PRODUCTION"
+        type: choice
+        options:
+          - "TEST"
+          - "STAGING"
+          - "PRODUCTION"
+      stage_only:
+        description: >-
+          If true, pass --stage to `flyctl secrets set` (secrets land but the
+          app is NOT restarted — they take effect on the next deploy instead
+          of now). Default false: arming is meant to take effect immediately,
+          so the default restarts the app right away. See PR body for the
+          full reasoning.
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: garuda-voa-arm
+  cancel-in-progress: false
+
+jobs:
+  arm:
+    name: Set GARUDA_* secrets on nuzantara-rag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }} # flyctl >=0.3 reads this name
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
+
+      - name: Set GARUDA_* secrets (never echo values)
+        id: set_secrets
+        env:
+          # Non-secret inputs, straight from the workflow_dispatch form.
+          IN_PUBLIC_ENABLED: ${{ inputs.garuda_public_enabled }}
+          IN_ENVIRONMENT: ${{ inputs.garuda_environment }}
+          # Genuinely secret values, from GitHub Secrets. May be empty
+          # today (Xendit sandbox not provisioned yet) — that is expected,
+          # not an error.
+          SECRET_XENDIT_SECRET_KEY: ${{ secrets.GARUDA_XENDIT_SECRET_KEY }}
+          SECRET_XENDIT_CALLBACK_TOKEN: ${{ secrets.GARUDA_XENDIT_CALLBACK_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Build the `flyctl secrets set` argument list in a bash array so
+          # no value is ever interpolated into a string that gets echoed or
+          # logged — only KEY NAMES are ever printed, in the set/skipped
+          # summary below.
+          declare -a SET_ARGS=()
+          declare -a SET_NAMES=()
+          declare -a SKIPPED_NAMES=()
+
+          add_if_nonempty() {
+            local key="$1"
+            local value="$2"
+            if [ -n "$value" ]; then
+              SET_ARGS+=("${key}=${value}")
+              SET_NAMES+=("$key")
+            else
+              SKIPPED_NAMES+=("$key")
+            fi
+          }
+
+          # Always-present, non-secret configuration (values sourced from
+          # workflow inputs or hard-coded defaults measured from the code —
+          # see the workflow header comment and the PR body for citations).
+          add_if_nonempty "GARUDA_PUBLIC_ENABLED" "$IN_PUBLIC_ENABLED"
+          add_if_nonempty "GARUDA_ENVIRONMENT" "$IN_ENVIRONMENT"
+          add_if_nonempty "GARUDA_PUBLIC_BASE_URL" "https://balizero.com"
+          add_if_nonempty "GARUDA_MAGIC_LINK_BASE_URL" "https://balizero.com/visa/voa"
+          add_if_nonempty "GARUDA_XENDIT_FEE_BPS" "0"
+          add_if_nonempty "GARUDA_XENDIT_FEE_FIXED_IDR" "0"
+
+          # Genuinely secret configuration. Skipped (not set to "") when
+          # the corresponding GitHub Secret does not exist yet.
+          add_if_nonempty "GARUDA_XENDIT_SECRET_KEY" "$SECRET_XENDIT_SECRET_KEY"
+          add_if_nonempty "GARUDA_XENDIT_CALLBACK_TOKEN" "$SECRET_XENDIT_CALLBACK_TOKEN"
+
+          STAGE_FLAG=()
+          if [ "${{ inputs.stage_only }}" = "true" ]; then
+            STAGE_FLAG=(--stage)
+          fi
+
+          if [ "${#SET_ARGS[@]}" -eq 0 ]; then
+            echo "::error::Nothing to set — every configured value was empty. Refusing to call flyctl secrets set with zero arguments."
+            exit 1
+          fi
+
+          flyctl secrets set --app nuzantara-rag "${STAGE_FLAG[@]}" "${SET_ARGS[@]}"
+
+          {
+            echo "### GARUDA VOA arm — nuzantara-rag"
+            echo ""
+            echo "**Set (name only — values never printed):**"
+            for n in "${SET_NAMES[@]}"; do echo "- \`$n\`"; done
+            echo ""
+            echo "**Skipped (empty — GitHub Secret not provisioned yet):**"
+            if [ "${#SKIPPED_NAMES[@]}" -eq 0 ]; then
+              echo "- (none)"
+            else
+              for n in "${SKIPPED_NAMES[@]}"; do echo "- \`$n\`"; done
+            fi
+            echo ""
+            if [ "${{ inputs.stage_only }}" = "true" ]; then
+              echo "\`--stage\` was used: secrets are set but the app was NOT restarted. They take effect on the next deploy."
+            else
+              echo "No \`--stage\`: \`flyctl secrets set\` restarted the app immediately."
+            fi
+            echo ""
+            echo "**Frontend flag NOT touched by this workflow.** Set \`GARUDA_PUBLIC_ENABLED=true\` (literal) in Vercel for the balizero.com project separately to open the public funnel page."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify by observation — health endpoint
+        run: |
+          set +e
+          # GARUDA VOA's public router (garuda_voa_public.py) exposes no
+          # unauthenticated status endpoint of its own (its only GET
+          # requires a real result_id + session cookie) — the app-wide
+          # health endpoint is what proves the restart this step triggered
+          # actually brought the service back up.
+          for attempt in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://nuzantara-rag.fly.dev/health)
+            echo "Attempt ${attempt}: HTTP ${STATUS}"
+            if [ "$STATUS" = "200" ]; then
+              echo "::notice::nuzantara-rag /health is 200 after the secrets change."
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::nuzantara-rag /health never returned 200 after 5 attempts (last: ${STATUS})."
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Verify by observation — secrets present (names + digests only)
+        run: |
+          echo "flyctl secrets list --app nuzantara-rag (names + digests only — flyctl never prints values):"
+          flyctl secrets list --app nuzantara-rag
