@@ -304,3 +304,148 @@ class TestListAndParsing:
         f.write_text("no frontmatter here at all\n", encoding="utf-8")
         with pytest.raises(ValueError):
             cd.parse_chore(f)
+
+
+# --------------------------------------------------------------- refuter R1
+# Four findings from the agy (Gemini 3.1 Pro) cross-family refuter pass on
+# PR #5065, all confirmed by the conductor reading the diff. Each test below
+# reproduces the concrete failure scenario before the fix lands.
+class TestHarvestAbandonment:
+    """Finding 1 (CONFIRMED): a running Jules session flips status
+    dispatched -> in-progress (harvest itself writes it), but cmd_harvest
+    only ever polls status=='dispatched'. Once a chore is in-progress it is
+    never looked at again — the session finishes and the chore rots."""
+
+    def test_harvest_polls_in_progress_chores_not_just_dispatched(self, tmp_path, monkeypatch):
+        paths = make_paths(tmp_path, monkeypatch)
+        write_chore(paths, "chore-s", seat="jules", status="in-progress",
+                    extra="session: sessions/still-running\n")
+        fake_jules_status(monkeypatch, "COMPLETED")
+
+        rc = cd.cmd_harvest(paths)
+
+        assert rc == 0
+        fields, _ = cd.parse_chore(paths.queue_dir / "chore-s.md")
+        assert fields["status"] == "completed"  # was stuck at in-progress forever pre-fix
+
+
+class TestDispatchNextHeadOfLineJam:
+    """Finding 2 (CONFIRMED): cmd_dispatch_next always picks the first
+    pending chore by sorted filename. If that chore's seat has no wired
+    dispatcher, cmd_dispatch returns 3 WITHOUT changing status, so every
+    future tick re-picks the same stuck chore forever and nothing behind it
+    ever dispatches."""
+
+    def test_dispatch_next_skips_unwired_seat_and_dispatches_the_next_one(self, tmp_path, monkeypatch):
+        paths = make_paths(tmp_path, monkeypatch)
+        # sorted-filename order puts the unwired-seat chore first
+        write_chore(paths, "chore-t-a-stuck", seat="luna", status="pending")
+        write_chore(paths, "chore-t-b-real", seat="jules", status="pending")
+        calls = fake_jules_new(monkeypatch, session="sessions/unstuck1")
+
+        rc = cd.cmd_dispatch_next(paths, dry_run=False)
+
+        assert rc == 0
+        assert len(calls) == 1  # jules chore reached, dispatched
+        fields_b, _ = cd.parse_chore(paths.queue_dir / "chore-t-b-real.md")
+        assert fields_b["status"] == "dispatched"
+        fields_a, _ = cd.parse_chore(paths.queue_dir / "chore-t-a-stuck.md")
+        assert fields_a["status"] == "pending"  # untouched, never mis-marked
+
+    def test_dispatch_next_all_pending_unwired_is_a_clean_noop(self, tmp_path, monkeypatch):
+        paths = make_paths(tmp_path, monkeypatch)
+        write_chore(paths, "chore-u", seat="haiku", status="pending")
+
+        rc = cd.cmd_dispatch_next(paths, dry_run=False)
+
+        assert rc == 0  # not stuck, not crashed
+        fields, _ = cd.parse_chore(paths.queue_dir / "chore-u.md")
+        assert fields["status"] == "pending"
+
+
+class TestMalformedChoreCrash:
+    """Finding 3 (CONFIRMED): load_chores has no try/except around
+    parse_chore. One malformed file crashes --list/--harvest/--dispatch-next
+    with a raw traceback — the module docstring's exit-code promise
+    ('2 schema error') is currently false for this class of malformation."""
+
+    def test_list_skips_one_malformed_file_and_still_lists_the_rest(self, tmp_path, monkeypatch, capsys):
+        paths = make_paths(tmp_path, monkeypatch)
+        write_chore(paths, "chore-v-good", seat="jules", status="pending")
+        (paths.queue_dir / "chore-v-bad.md").write_text(
+            "no frontmatter here at all\n", encoding="utf-8"
+        )
+
+        rc = cd.cmd_list(paths)  # must not raise
+
+        assert rc == 0
+        out, err = capsys.readouterr()
+        assert "chore-v-good" in out
+        assert "SKIP" in err
+        assert "chore-v-bad.md" in err
+
+    def test_dispatch_next_skips_malformed_file_and_dispatches_the_good_one(self, tmp_path, monkeypatch):
+        paths = make_paths(tmp_path, monkeypatch)
+        (paths.queue_dir / "chore-w-bad.md").write_text(
+            "no frontmatter here at all\n", encoding="utf-8"
+        )
+        write_chore(paths, "chore-w-good", seat="jules", status="pending")
+        calls = fake_jules_new(monkeypatch, session="sessions/survived1")
+
+        rc = cd.cmd_dispatch_next(paths, dry_run=False)  # must not raise
+
+        assert rc == 0
+        assert len(calls) == 1
+
+
+class TestDispatchRaceLock:
+    """Finding 4 (CONFIRMED, low sev): no locking around the mutation paths
+    — a daily plist tick and a manual --dispatch/--harvest can race and
+    double-dispatch (two live Jules sessions for the same chore). Fix is a
+    non-blocking fcntl.flock on a lockfile in the queue dir; busy -> exit 75
+    without touching state. flock() locks the OPEN FILE DESCRIPTION, not the
+    process, so two independent opens of the same path from this same test
+    process genuinely conflict — this is not a threading/subprocess test and
+    is not flaky."""
+
+    def test_dispatch_refuses_when_lock_is_held(self, tmp_path, monkeypatch):
+        import fcntl
+
+        paths = make_paths(tmp_path, monkeypatch)
+        write_chore(paths, "chore-x", seat="jules", status="pending")
+        calls = fake_jules_new(monkeypatch)
+        lock_path = paths.queue_dir / ".chore_dispatch.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        holder = open(lock_path, "w")
+        fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            rc = cd.cmd_dispatch(paths, "chore-x", "jules", dry_run=False)
+
+            assert rc == 75
+            assert calls == []  # never reached the real dispatch call
+            fields, _ = cd.parse_chore(paths.queue_dir / "chore-x.md")
+            assert fields["status"] == "pending"  # untouched
+        finally:
+            fcntl.flock(holder, fcntl.LOCK_UN)
+            holder.close()
+
+    def test_harvest_refuses_when_lock_is_held(self, tmp_path, monkeypatch):
+        import fcntl
+
+        paths = make_paths(tmp_path, monkeypatch)
+        write_chore(paths, "chore-y", seat="jules", status="dispatched",
+                    extra="session: sessions/held\n")
+        fake_jules_status(monkeypatch, "COMPLETED")
+        lock_path = paths.queue_dir / ".chore_dispatch.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        holder = open(lock_path, "w")
+        fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            rc = cd.cmd_harvest(paths)
+
+            assert rc == 75
+            fields, _ = cd.parse_chore(paths.queue_dir / "chore-y.md")
+            assert fields["status"] == "dispatched"  # untouched
+        finally:
+            fcntl.flock(holder, fcntl.LOCK_UN)
+            holder.close()

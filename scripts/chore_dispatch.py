@@ -54,12 +54,14 @@ Usage:
     python3 scripts/chore_dispatch.py --dispatch-next [--dry-run]
 
 Exit codes: 0 ok · 2 schema error · 3 usage/no-such-chore/unwired-seat ·
-4 chore not in a dispatchable state (already dispatched/queued/closed).
+4 chore not in a dispatchable state (already dispatched/queued/closed) ·
+75 lock busy (another dispatch/harvest mutation is in progress — EX_TEMPFAIL).
 """
 
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -76,6 +78,8 @@ REQUIRED_FIELDS = ("id", "title", "seat", "scope", "acceptance", "status")
 
 COMPLETED_RE = re.compile(r"complet", re.IGNORECASE)
 FAILED_RE = re.compile(r"fail|error|cancel", re.IGNORECASE)
+
+EXIT_LOCK_BUSY = 75
 
 
 def _env_path(name: str, default: Path) -> Path:
@@ -153,7 +157,11 @@ def load_chores(paths: Paths) -> list[tuple[Path, dict[str, str], str]]:
     for f in sorted(paths.queue_dir.glob("*.md")):
         if f.name.lower() == "readme.md":
             continue
-        fields, body = parse_chore(f)
+        try:
+            fields, body = parse_chore(f)
+        except ValueError as e:
+            print(f"chore_dispatch: SKIP {f.name}: {e}", file=sys.stderr)
+            continue
         out.append((f, fields, body))
     return out
 
@@ -235,6 +243,48 @@ def dispatch_spark(paths: Paths, path: Path, fields: dict, body: str, dry_run: b
 DISPATCHERS = {"jules": dispatch_jules, "spark": dispatch_spark}
 
 
+# ------------------------------------------------------------------- locking
+def _lockfile_path(paths: Paths) -> Path:
+    return paths.queue_dir / ".chore_dispatch.lock"
+
+
+class ChoreLock:
+    """Non-blocking exclusive flock guarding every mutation path (a real
+    --dispatch, --harvest) — the daily plist tick and a manual invocation
+    can otherwise race and double-dispatch the same chore into two live
+    Jules sessions (refuter R1 finding 4). `with ChoreLock(paths) as ok:` —
+    ok is False if another mutation currently holds the lock.
+
+    Uses BSD flock() semantics (fcntl.flock, not POSIX fcntl record locks):
+    the lock is bound to the OPEN FILE DESCRIPTION, not the owning process,
+    so two independent opens of the same path genuinely conflict even from
+    within the same process — this is what makes the lock test in
+    scripts/tests/test_chore_dispatch.py deterministic without threads."""
+
+    def __init__(self, paths: Paths) -> None:
+        self.path = _lockfile_path(paths)
+        self._fh = None
+
+    def __enter__(self) -> bool:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fh = open(self.path, "w")
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            fh.close()
+            return False
+        self._fh = fh
+        return True
+
+    def __exit__(self, *exc_info) -> None:
+        if self._fh is not None:
+            try:
+                fcntl.flock(self._fh, fcntl.LOCK_UN)
+            finally:
+                self._fh.close()
+                self._fh = None
+
+
 def cmd_dispatch(paths: Paths, chore_id: str, seat: str, dry_run: bool) -> int:
     if seat not in VALID_SEATS:
         print(f"chore_dispatch: --seat {seat!r} not one of {list(VALID_SEATS)}", file=sys.stderr)
@@ -258,16 +308,33 @@ def cmd_dispatch(paths: Paths, chore_id: str, seat: str, dry_run: bool) -> int:
               f"{seat} has no cheap-seat CLI in this repo (see scripts/arsenal_probe.py); "
               f"hand this chore to the matching Agent subagent instead", file=sys.stderr)
         return 3
-    return DISPATCHERS[seat](paths, path, fields, body, dry_run)
+    if dry_run:
+        return DISPATCHERS[seat](paths, path, fields, body, dry_run)
+    with ChoreLock(paths) as locked:
+        if not locked:
+            print(f"chore_dispatch: lock busy ({_lockfile_path(paths)}) — another dispatch/harvest "
+                  f"is in progress, refusing to double-dispatch {chore_id}", file=sys.stderr)
+            return EXIT_LOCK_BUSY
+        return DISPATCHERS[seat](paths, path, fields, body, dry_run)
 
 
 def cmd_dispatch_next(paths: Paths, dry_run: bool) -> int:
+    unwired: list[str] = []
     for _, fields, _ in load_chores(paths):
-        if fields.get("status") == "pending":
-            seat = fields.get("seat", "")
-            print(f"dispatch-next: picking {fields.get('id')} (seat={seat})")
-            return cmd_dispatch(paths, fields.get("id", ""), seat, dry_run)
-    print("dispatch-next: queue empty — no chore with status=pending")
+        if fields.get("status") != "pending":
+            continue
+        seat = fields.get("seat", "")
+        if seat not in DISPATCHERS:
+            unwired.append(f"{fields.get('id', '?')} (seat={seat})")
+            continue
+        print(f"dispatch-next: picking {fields.get('id')} (seat={seat})")
+        return cmd_dispatch(paths, fields.get("id", ""), seat, dry_run)
+    if unwired:
+        print(f"dispatch-next: skipped {len(unwired)} pending chore(s) with no wired dispatcher — "
+              f"{', '.join(unwired)}", file=sys.stderr)
+        print("dispatch-next: queue has only unwired-seat chores pending — nothing dispatched")
+    else:
+        print("dispatch-next: queue empty — no chore with status=pending")
     return 0
 
 
@@ -282,40 +349,52 @@ def cmd_list(paths: Paths) -> int:
     return 0
 
 
+HARVESTABLE_STATUSES = ("dispatched", "in-progress")
+
+
 def cmd_harvest(paths: Paths) -> int:
-    """Polls only seat=jules chores currently status=dispatched — spark
-    chores are owned end-to-end by spark_lane.sh's own read-only report,
-    there is nothing here to harvest for them."""
-    updated = 0
-    for path, fields, body in load_chores(paths):
-        if fields.get("seat") != "jules" or fields.get("status") != "dispatched":
-            continue
-        session = fields.get("session", "")
-        if not session:
-            continue
-        rc, out, err = _jules_status(paths, session)
-        if rc != 0:
-            print(f"chore_dispatch: harvest status-check failed for {fields['id']} "
-                  f"rc={rc}: {err[:200]}", file=sys.stderr)
-            continue
-        try:
-            data = json.loads(out)
-        except json.JSONDecodeError:
-            print(f"chore_dispatch: non-JSON status response for {fields['id']}", file=sys.stderr)
-            continue
-        state = str(data.get("state", ""))
-        if COMPLETED_RE.search(state):
-            fields["status"] = "completed"
-        elif FAILED_RE.search(state):
-            fields["status"] = "failed"
-        else:
-            fields["status"] = "in-progress"
-        write_chore(path, fields, body)
-        updated += 1
-        print(f"harvested {fields['id']}: status={fields['status']} (session {session}, state={state!r})")
-    if not updated:
-        print("harvest: nothing to update")
-    return 0
+    """Polls seat=jules chores currently status in {dispatched, in-progress}
+    — spark chores are owned end-to-end by spark_lane.sh's own read-only
+    report, there is nothing here to harvest for them. `in-progress` is
+    included because harvest itself is what writes that status (a running
+    session polled once): without it, a chore is polled exactly once, flips
+    to in-progress, and is never looked at again for the rest of its run
+    (refuter R1 finding 1)."""
+    with ChoreLock(paths) as locked:
+        if not locked:
+            print(f"chore_dispatch: lock busy ({_lockfile_path(paths)}) — another dispatch/harvest "
+                  f"is in progress, skipping this harvest tick", file=sys.stderr)
+            return EXIT_LOCK_BUSY
+        updated = 0
+        for path, fields, body in load_chores(paths):
+            if fields.get("seat") != "jules" or fields.get("status") not in HARVESTABLE_STATUSES:
+                continue
+            session = fields.get("session", "")
+            if not session:
+                continue
+            rc, out, err = _jules_status(paths, session)
+            if rc != 0:
+                print(f"chore_dispatch: harvest status-check failed for {fields['id']} "
+                      f"rc={rc}: {err[:200]}", file=sys.stderr)
+                continue
+            try:
+                data = json.loads(out)
+            except json.JSONDecodeError:
+                print(f"chore_dispatch: non-JSON status response for {fields['id']}", file=sys.stderr)
+                continue
+            state = str(data.get("state", ""))
+            if COMPLETED_RE.search(state):
+                fields["status"] = "completed"
+            elif FAILED_RE.search(state):
+                fields["status"] = "failed"
+            else:
+                fields["status"] = "in-progress"
+            write_chore(path, fields, body)
+            updated += 1
+            print(f"harvested {fields['id']}: status={fields['status']} (session {session}, state={state!r})")
+        if not updated:
+            print("harvest: nothing to update")
+        return 0
 
 
 # --------------------------------------------------------------------- main
