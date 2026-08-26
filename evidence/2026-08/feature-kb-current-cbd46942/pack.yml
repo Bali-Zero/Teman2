@@ -1,0 +1,247 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #4974 (feature/kb-current -> main) — kb-current-live campaign integration,
+  per docs/plans/2026-08-25-kb-current-live/MANDATE.md and the product procedure
+  in docs/factory/ASSEMBLY-LINE.md. Local-first integration branch: lanes merged
+  by the conducting session only, no per-lane PRs of state.
+
+lanes:
+  - lane: kb-current-orchestration
+    role: build
+    seat:
+      claude-opus-5 (conducting session — integration, the organ rebirth, the
+      merge resolutions, and the evidence in this pack)
+  - lane: kb-topic-artifacts
+    role: build
+    seat:
+      claude-sonnet-5 (four topic lanes (immigration, property, tax, company) —
+      inventories, journeys, probes, contract tests)
+  - lane: kb-topic-artifact-floor
+    role: build
+    seat: kimi-for-coding (Kimi K3, non-Anthropic) — authored the change turning
+      printed coverage into an asserted ratchet in test_kb_topic_contract.py;
+      graded by the conducting session, never by itself
+  - lane: kb-adversarial-review
+    role: review
+    seat: kimi-k3 (cross-family refuter on the integrated diff and on the two
+      research documents)
+  - lane: kb-independent-graders
+    role: review
+    seat: claude-sonnet-5 (fresh-context graders; each re-measured against
+      production rather than reading a predecessor's report)
+
+diff:
+  files: 59
+  net_lines: 17920
+
+pii_scan: clean
+
+receipts:
+  - claim:
+      The deterministic gear floor recomputed from THIS PR's real changed-file
+      set is 3, matching the declared gear. Two files under infra/launchagents/ are
+      hot-zone by path.
+    cmd:
+      bash scripts/ci/hotzone_changed_files.sh origin/main HEAD > /tmp/changed.txt
+      && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed.txt
+    result:
+      "59 files enumerated, floor=3. Cross-checked against `git diff --no-renames
+      --name-only $(git merge-base origin/main HEAD) HEAD | wc -l` = 59 — the two agree,
+      so the floor was NOT computed from an empty enumeration (a bare invocation of that
+      script exits 3 with zero files, which silently yields floor 1)."
+    exit: 0
+    ts: 2026-08-25T23:52Z
+    seat: session (Pro, orchestrator lane)
+
+  - claim:
+      The organ-conformance gate now passes, and the new cron organ carries real
+      genes rather than a grandfather entry.
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py
+    result:
+      "rc=0 — 181 plists scanned, 121 grandfathered (report-only), 0 regressions,
+      0 non-conformant births. Measured without a pipe, because `... | tail` makes $?
+      report tail's exit and not the gate's."
+    exit: 0
+    ts: 2026-08-25T23:47Z
+    seat: session (Pro, orchestrator lane)
+
+  - claim:
+      The organ's genes are LOAD-BEARING, not decorative — each one, removed,
+      turns the gate red, and each mutation actually changed the file.
+    cmd:
+      for each of {kill switch, heartbeat, set -u} — mutate the wrapper, re-run
+      check_organ_conformance.py, compare sha256 before/after, restore
+    result:
+      "kill switch -> rc=1 ROSSO (sha changed); heartbeat -> rc=1 ROSSO (sha
+      changed); set -u -> rc=1 ROSSO (sha changed). Baseline restored, wrapper sha256
+      identical to pristine, gate back to rc=0. The 'did the file actually change'
+      column exists because a no-op mutation produces a green that proves nothing."
+    exit: 0
+    ts: 2026-08-25T23:48Z
+    seat: session (Pro, orchestrator lane)
+
+  - claim:
+      The kb contract suite is green as a whole, and the green is not vacuous —
+      the collection count is asserted, not inferred from the absence of the word FAILED.
+    cmd:
+      apps/backend-rag/.venv/bin/python3 -m pytest apps/backend-rag/backend/tests/unit/kb/
+      -p no:randomly --color=no
+    result:
+      "rc=0 — 428 passed, 90 skipped. Run with the VENV interpreter: the system
+      python3 answers `No module named pytest` and exits 1, which reads as a test failure
+      and is actually a probe that never ran."
+    exit: 0
+    ts: 2026-08-25T23:56Z
+    seat: session (Pro, orchestrator lane)
+
+  - claim:
+      The topic-artifact floor built by the non-Anthropic seat is capable of going
+      RED — proven against real artifacts, not fixtures.
+    cmd: mv kb/topics/property.yaml aside; pytest -k real_file_count; restore; re-run
+    result:
+      "innocence rc=0; guilt rc=1 failing at the intended assertion with the
+      intended message ('kb/topics holds 3 real files, expected at least 4'); after
+      restore rc=0 and `git status kb/topics/` clean. ruff clean on the file."
+    exit: 0
+    ts: 2026-08-25T23:57Z
+    seat: session (Pro, orchestrator lane) — grading the kimi build lane
+
+  - claim:
+      The HOME-fork watch list now covers the new organ, and reports its true state
+      (built, not armed).
+    cmd: python3 scripts/lint_home_fork.py --check --repo-root <worktree> --config <worktree>/infra/home-fork/declared-pairs.json
+    result:
+      "rc=0 — 164 declared pairs, machine=pro; both new pairs reported as 'live copy
+      absent on this machine', which is the honest state of an unarmed organ. NOTE: without
+      an explicit --config the tool resolves the MAIN CHECKOUT's file (162 pairs) and its
+      'clean' verdict says nothing about this worktree's change — a proxy-reads-the-wrong-tree
+      trap (superscar #9/W106b) caught here before it could be quoted as proof."
+    exit: 0
+    ts: 2026-08-25T23:55Z
+    seat: session (Pro, orchestrator lane)
+
+  - claim:
+      The PR's DIRTY/CONFLICTING state was GitHub not honoring `merge=union`, not a
+      real content conflict — and merging origin/main locally resolved it with zero markers.
+    cmd:
+      git merge origin/main --no-edit; git grep -nE '^<<<<<<< |^>>>>>>> |^=======$' | wc -l;
+      git diff --name-only --diff-filter=U; gh pr view 4974 --json mergeable,mergeStateStatus
+    result:
+      "merge rc=0; conflict markers in tree = 0; unmerged paths = none; PR went
+      CONFLICTING/DIRTY -> MERGEABLE. Cause: .gitattributes line 1 declares
+      `.claude/skills/modus/PENDING-ARMS.md merge=union`, which a local merge honors and
+      GitHub's mergeability probe does not."
+    exit: 0
+    ts: 2026-08-25T23:58Z
+    seat: session (Pro, orchestrator lane)
+
+  - claim:
+      The ledger is well-formed after the rows this PR adds and amends, with no
+      phantom operator owner.
+    cmd: python3 scripts/pending_arms_report.py
+    result: "rc=0 — total=560 phantom_operator=0 malformed=0."
+    exit: 0
+    ts: 2026-08-25T23:53Z
+    seat: session (Pro, orchestrator lane)
+
+  - claim: plist and wrapper are structurally valid, and the plist shape is keepalive-sane.
+    cmd: plutil -lint <plist>; bash -n <wrapper>; python3 scripts/lint_plist_keepalive.py
+    result:
+      "plutil OK (rc=0); bash -n rc=0; lint_plist_keepalive rc=0 — 'clean, no
+      KeepAlive=true wrapper shows a one-shot smell'."
+    exit: 0
+    ts: 2026-08-25T23:49Z
+    seat: session (Pro, orchestrator lane)
+
+dissent:
+  - seat: organ-conformance gate (CI, deterministic)
+    objection: >-
+      The scheduled job this campaign built to prove its own 48h-green claim was
+      itself an organ with no genes — a bare `zsh -lc` one-liner with no registry
+      entry, no heartbeat, no kill switch and no fail-visibility. It could only ever
+      have been observed as green, never as working: superscar #2 committed inside
+      the PR whose stated purpose is measurability.
+    status: CONFIRMED
+    note: >-
+      Not waived and not grandfathered (the baseline ratchet forbids grandfathering a
+      new path, and doing so would have been the reward-hacking answer). Rebuilt via
+      scripts/organ_birth.py as pro.kb_probe_history; each gene then proven load-bearing
+      by mutation. A defect in organ_birth.py's own TEMPLATE was found while filling it:
+      it emits `RC=$?` immediately after a COMMENT, capturing the exit status of the
+      preceding log call, so a generated organ heartbeats "ok" however its payload died.
+
+  - seat: independent grader (fresh context)
+    objection: >-
+      This campaign's headline finding was stated as "legal_status is systemically false
+      and nothing reads it". The second half is wrong: the repealed-instrument filter is
+      ALREADY ARMED and runs on every call — it simply tests a different key
+      (`status_vigensi`).
+    status: CONFIRMED
+    note: >-
+      Re-measured, not accepted on report: `status_vigensi` is present on 0 of 84,283
+      points and 0 across all 14 collections of the instance. This inverts the remedy.
+      Populating that key from `legal_status` — the "obvious tidy-up" a future reader
+      proposes on seeing two names for one concept — emits a Qdrant `must_not`, HARD-
+      excluding 42,420 points from queries rather than demoting them. The fence is now
+      an explicit PENDING-ARMS dependency, not a memory.
+
+  - seat: independent grader (fresh context, second pass)
+    objection: >-
+      The correction above was itself partial. `build_search_filter()` builds not one
+      suppression clause but three fields' worth, and the third — `retrieval_scope` —
+      is real, populated, and non-disableable by construction.
+    status: CONFIRMED
+    note: >-
+      Verified by executing build_search_filter on the apply_filters=False path and
+      observing it deliberately rebuild as exclude_historical=True. Distribution over
+      84,283 points: absent 79,584 / current 4,697 / historical_only 2. So a working
+      supersession mechanism exists and has been used on 2 points out of 84,283.
+
+  - seat: session self-refutation (recorded because nothing external caught it)
+    objection: >-
+      "The reader exists" was then used to imply "the cure needs nothing built". False:
+      the only service-side historical write is document-level and all-or-nothing.
+      Applying it to UU_6_2011 would mark all 413 of its points historical — removing
+      the entire immigration base law from current-law answers, the exact catastrophe
+      Decision 5 warned about, reached by a different road.
+    status: CONFIRMED
+    note: >-
+      Third instance of one shape on one surface in a single session: a finding that is
+      TRUE and PARTIAL is worse than one that is wrong, because there is nothing to
+      refute — only something missing, and nobody looks for what they do not know is
+      absent. Transferable rule now recorded: when you find half a mechanism, go find
+      the other half BEFORE recommending anything.
+
+  - seat: kimi-k3 (cross-family refuter)
+    objection: >-
+      Findings against the two research documents carried by this campaign, including a
+      headline that generalised a "two-thirds" rate from a partial population and an
+      arithmetic error in a breakdown that did not sum.
+    status: CONFIRMED
+    note: >-
+      Re-measured on the FULL population (27/48 = 56.2%, refuting the two-thirds
+      headline) and the arithmetic corrected. A causal story in the same document was
+      disproved by `git log -S` rather than by argument.
+
+tests:
+  - "apps/backend-rag/backend/tests/unit/kb/ — 428 passed, 90 skipped, rc=0 (venv python)."
+  - "infra/organ-conformance/ — 169 collected, 169 passed, rc=0."
+
+static:
+  - "ruff check on the modified contract test — All checks passed (rc=0)."
+  - "plutil -lint on the plist — OK; bash -n on the wrapper — rc=0."
+  - "scripts/lint_plist_keepalive.py — rc=0; scripts/lint_home_fork.py --check — rc=0."
+  - "pre-commit hooks passed on both commits (lease-check, anti-reward-hacking test lint,
+    secret scan, python lint, off-limits check, FastAPI import chain)."
+
+notes:
+  - "BUILT IS NOT ARMED. The cron organ is not installed by this PR and must not be until
+    this branch is on main — the plist runs `cd ~/nuzantara`, the MAIN checkout, where
+    kb/journeys/ still holds only .gitkeep. Arming earlier would record `nothing_measured`
+    against the wrong tree four times a day. MANDATE §8's 48h-green clock has therefore
+    NOT started, and nothing in this PR claims it has."
+  - "Zero Qdrant writes and zero deletions across the whole campaign. The probes read
+    production and assert; the one repair identified as necessary is fenced, not performed."
+  - "`gh pr merge --auto` is deliberately NOT armed toward the integration branch: it
+    carries no required contexts, so arming there means 'merge on any green', and green
+    there certifies nothing."
