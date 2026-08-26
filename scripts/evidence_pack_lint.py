@@ -68,13 +68,21 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         "gear classification is the DETERMINISTIC FLOOR
                         computed from the diff ... never the conductor's
                         choice"). The floor is a LOWER BOUND only: this repo's
-                        deterministic signal distinguishes "touches a hot-zone
-                        path" (floor 3) from "everything else" (floor 1) —
-                        the middle "Gear 2 minimo, feature PR standard" bucket
-                        needs human/semantic judgment no diff can carry, so a
-                        non-hotzone PR floors at 1, never asserts 2. The model
-                        may always raise gear above the floor; CI here only
-                        catches a DOWNGRADE below it (harness-v2 §1 monotonia).
+                        deterministic PATH signal distinguishes "touches a
+                        hot-zone path" (floor 3) from "everything else" (floor
+                        1) — the middle "Gear 2 minimo, feature PR standard"
+                        bucket needs human/semantic judgment no diff can
+                        carry, so a non-hotzone PR floors at 1, never asserts
+                        2 ON THE PATH TERM ALONE. compute_floor()'s optional
+                        SIZE term (S1, 2026-08-27) is the one exception: a
+                        diff large enough (measured via --numstat-file) DOES
+                        assert floor 2 regardless of path — a diff already
+                        past the PR contract's own ~400-net-line target needs
+                        at least a session verdict even when it touches
+                        nothing sensitive; see that function's own docstring.
+                        The model may always raise gear above the floor; CI
+                        here only catches a DOWNGRADE below it (harness-v2 §1
+                        monotonia).
                         Reuses the merge-base-anchored file-enumeration
                         semantics of scripts/ci/hotzone_changed_files.sh (never
                         a two-dot diff — that is the exact W102 lie); this
@@ -170,16 +178,26 @@ CLI:
                     rule 7's shape (b). Takes precedence over --numstat-file,
                     which takes precedence over the pack's own self-declared
                     `net_lines:` field. No effect without
-                    --changed-files-file.
+                    --changed-files-file. Does NOT affect the rule-6 floor's
+                    own size term (S1) — that one always reads
+                    --numstat-file directly; see below.
   --numstat-file PATH  raw `git diff --numstat` output (tab-separated
                     added/deleted/path per line, `-`/`-` for binary files
-                    skipped) — this script sums added-deleted itself so
-                    callers don't need the awk one-liner. Ignored if
-                    --net-lines is also given.
+                    skipped). Feeds TWO independent computations: the
+                    CEILING's measured net-lines (this script sums
+                    added-deleted itself so callers don't need the awk
+                    one-liner — ignored there if --net-lines is also given,
+                    which wins outright) and, always when given regardless
+                    of --net-lines, the FLOOR's size term (S1, 2026-08-27 —
+                    see compute_floor()'s docstring), which needs the raw
+                    per-file rows rather than one pre-summed integer.
   --print-floor    given --changed-files-file, print the computed floor int
                     and exit 0 (no pack read) — lets any caller (CI, a human)
                     ask "what floor would this diff impose" without spinning
-                    up a second implementation of HOTZONE_PATTERNS
+                    up a second implementation of HOTZONE_PATTERNS. Also
+                    honors --numstat-file when given (S1's size term) — omit
+                    it for the path-only floor exactly as before that term
+                    existed.
   --effort-for GEAR  print effort_for_gear(GEAR) (medium/xhigh) and exit 0
                     (no pack, no repo-root needed) — lets a wrapper look up
                     "what effort should this gear run at" without importing
@@ -199,7 +217,7 @@ import datetime
 import fnmatch
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import yaml
@@ -270,15 +288,133 @@ def repo_root_default() -> Path:
     return Path(".").resolve()
 
 
-def compute_floor(changed_files: list[str]) -> int:
-    """The deterministic floor (rule 6 docstring): 3 on any hot-zone hit, else
-    1. Pure function — no I/O, no git — so guilt+innocence tests exercise it
-    directly without a filesystem fixture."""
+# ---------------------------------------------------------------------------
+# Floor SIZE TERM (S1, 2026-08-27 — research/operations/2026-08-26-retro-
+# fleet-sessions-25-26.md "S1"): compute_floor() was PATH-ONLY — a diff could
+# rewrite tens of thousands of net lines across dozens of files and still
+# floor at Gear 1 unless it happened to touch a hot-zone path (measured: of
+# PRs >1500 net lines in a 48h window, only 5/12 carried a brief — a
+# 4,979-line rewrite of the public funnel UI and a 1,618-line PII-in-logs
+# cure both got none, neither touched .github/workflows/* or the other
+# hot-zone globs). This is the SIZE half of the floor: a diff large enough
+# gets Gear 2 or Gear 3 regardless of which paths it touches.
+# SIZE_GEAR3_THRESHOLD is pinned at the measured p90 of |additions-deletions|
+# over the 170 most recently merged PRs at ratification time (`gh pr list
+# --state merged --limit 170 --json additions,deletions`), clamped to never
+# go below 1500 — measured 2026-08-27: p90 == 1790. SIZE_GEAR2_THRESHOLD
+# reuses the Agent PR Contract's own ~400-net-line target (CLAUDE.md rule
+# 1): a diff already past the contract's own size guidance floors at Gear 2,
+# never silently at Gear 1.
+# ---------------------------------------------------------------------------
+SIZE_GEAR2_THRESHOLD = 400
+SIZE_GEAR3_THRESHOLD = 1790  # measured p90, 170 merged PRs, 2026-08-27 (floor clamp: never < 1500)
+
+# Paths excluded from the size term: generated output, vendored lockfiles,
+# minified bundles and binary/image assets inflate a numstat without
+# inflating the blast radius a human reviewer actually has to read.
+# Directory-name checks match a real PATH SEGMENT (PurePosixPath parts), not
+# a substring — `not_fixtures/x.py` is NOT excluded, only a genuine
+# `fixtures/` or `generated/` path component is (superscar #3 guard-over-
+# match discipline).
+SIZE_TERM_EXCLUDE_DIR_NAMES: tuple[str, ...] = ("fixtures", "generated")
+SIZE_TERM_EXCLUDE_FILENAMES: tuple[str, ...] = (
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
+    "Cargo.lock", "uv.lock", "Gemfile.lock", "composer.lock",
+)
+SIZE_TERM_EXCLUDE_SUFFIXES: tuple[str, ...] = (
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp",
+    ".pdf", ".zip", ".gz", ".woff", ".woff2", ".ttf", ".otf", ".eot",
+    ".mp4", ".mp3", ".wav", ".mov",
+)
+
+
+def _is_size_term_excluded(path: str) -> bool:
+    """True when `path` should NOT count toward the size term (S1):
+    generated output, vendored lockfiles, minified bundles, and
+    binary/image assets. See the SIZE_TERM_EXCLUDE_* tuples above for what
+    and why."""
+    p = PurePosixPath(path)
+    if any(part in SIZE_TERM_EXCLUDE_DIR_NAMES for part in p.parts[:-1]):
+        return True
+    name = p.name
+    if name in SIZE_TERM_EXCLUDE_FILENAMES or name.endswith(".lock"):
+        return True
+    if ".min." in name.lower():
+        return True
+    return any(name.lower().endswith(suf) for suf in SIZE_TERM_EXCLUDE_SUFFIXES)
+
+
+def _size_term_net_lines(numstat: str) -> int:
+    """Σ|added−deleted| over non-excluded files (S1's size term) — pure
+    function, no I/O, mirrors sum_numstat()'s own parsing but differs from
+    it in the two ways that matter here: (1) it takes the ABSOLUTE VALUE
+    PER FILE before summing, so a diff that deletes 10k lines from one file
+    and adds 10k to another does not cancel to zero — sum_numstat()'s plain
+    global net exists for compute_ceiling()'s "is this diff small" question,
+    where that cancellation is the right behavior; this is the opposite
+    question ("is this diff big"), where cancellation would hide exactly
+    the blast radius S1 exists to catch. (2) it excludes
+    generated/vendored/binary paths (_is_size_term_excluded) that inflate
+    churn without inflating review burden. Binary rows ("-\\t-\\tpath") and
+    malformed lines are skipped, same as sum_numstat()."""
+    net = 0
+    for line in numstat.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        added_s, deleted_s, path = parts[0], parts[1], parts[2]
+        if added_s == "-" or deleted_s == "-":
+            continue  # binary file — numstat can't report a line count
+        if _is_size_term_excluded(path):
+            continue
+        try:
+            net += abs(int(added_s) - int(deleted_s))
+        except ValueError:
+            continue
+    return net
+
+
+def compute_floor(changed_files: list[str], numstat: str | None = None) -> int:
+    """The deterministic floor (rule 6 docstring): the HIGHER of two
+    independent terms.
+
+    PATH TERM (original, unchanged): 3 on any hot-zone hit
+    (HOTZONE_PATTERNS), else 1.
+
+    SIZE TERM (S1, 2026-08-27, optional — only asserted when `numstat` is
+    given): a blast-radius measure over raw `git diff --numstat` text — see
+    _size_term_net_lines()'s own docstring for exactly what it counts and
+    why. >= SIZE_GEAR3_THRESHOLD floors at 3; >= SIZE_GEAR2_THRESHOLD raises
+    the floor to at least 2 — the ONE path by which this function can
+    return 2 at all (the path term alone never does; see the module
+    docstring's rule-6 section). `numstat=None` (the default) skips the
+    size term entirely and returns exactly what this function returned
+    before the term existed — no caller that never passes it is affected.
+
+    Pure function — no I/O, no git — so guilt+innocence tests exercise it
+    directly without a filesystem fixture; the caller is responsible for
+    producing `numstat` (e.g. `git diff --numstat`, merge-base anchored —
+    never a two-dot diff, W102)."""
+    floor = 1
     for f in changed_files:
         for pat in HOTZONE_PATTERNS:
             if fnmatch.fnmatchcase(f, pat):
-                return 3
-    return 1
+                floor = 3
+                break
+        if floor == 3:
+            break
+
+    if numstat is not None:
+        size_net = _size_term_net_lines(numstat)
+        if size_net >= SIZE_GEAR3_THRESHOLD:
+            floor = 3
+        elif size_net >= SIZE_GEAR2_THRESHOLD:
+            floor = max(floor, 2)
+
+    return floor
 
 
 # ---------------------------------------------------------------------------
@@ -576,7 +712,11 @@ def check_brief_ref_exists(
     return ([], brief)
 
 
-def check_gear_floor(brief: dict[str, Any] | None, changed_files: list[str] | None) -> list[str]:
+def check_gear_floor(
+    brief: dict[str, Any] | None,
+    changed_files: list[str] | None,
+    numstat: str | None = None,
+) -> list[str]:
     """GUILT: the brief's declared gear is below the deterministic floor
     computed from the PR's changed files; GUILT: gear is not a genuine int
     (`gear: true` or `gear: 1.0` used to pass — Python's `bool`/`float` are
@@ -588,7 +728,9 @@ def check_gear_floor(brief: dict[str, Any] | None, changed_files: list[str] | No
     changed_files is None the check is explicitly SKIPPED (see module
     docstring) rather than silently treated as passing without evidence —
     the caller prints the NOTICE, this function just declines to add a
-    violation."""
+    violation. `numstat`, when given, feeds compute_floor()'s optional SIZE
+    term (S1) too — omitting it (the default) exercises the path term
+    alone, unchanged from before that term existed."""
     if brief is None:
         return []  # already flagged by check_brief_ref_exists
     gear = brief.get("gear")
@@ -596,10 +738,10 @@ def check_gear_floor(brief: dict[str, Any] | None, changed_files: list[str] | No
         return [f"brief.gear: must be exactly one of {VALID_GEARS} (int), got {gear!r}"]
     if changed_files is None:
         return []
-    floor = compute_floor(changed_files)
+    floor = compute_floor(changed_files, numstat)
     if gear < floor:
         return [f"brief.gear: declared {gear} is BELOW the deterministic floor {floor} "
-                f"computed from the changed-file set (hot-zone hit)"]
+                f"computed from the changed-file set (hot-zone path and/or blast-radius size)"]
     return []
 
 
@@ -734,8 +876,17 @@ def lint(
     repo_root: Path,
     changed_files: list[str] | None,
     measured_net_lines: int | None = None,
+    numstat_text: str | None = None,
 ) -> tuple[int, list[str]]:
-    """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind."""
+    """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind.
+
+    `measured_net_lines` feeds compute_ceiling()'s rule 7 (a single
+    pre-summed int — global net, no path filtering). `numstat_text` is a
+    SEPARATE, raw `git diff --numstat` blob that feeds check_gear_floor()'s
+    rule 6 size term (S1) — the floor needs the raw per-file rows (to
+    exclude generated/vendored paths and take a per-file Σ|added−deleted|),
+    not the ceiling's pre-summed global net, so the two parameters are
+    independent and neither substitutes for the other."""
     if not pack_path.exists():
         return 2, [f"BLIND: evidence pack not found at {pack_path}"]
     try:
@@ -770,7 +921,7 @@ def lint(
     violations += check_pii_scan_clean(pack)
     violations += brief_violations
     violations += check_dissent_nonempty_on_gear3(pack, gear)
-    violations += check_gear_floor(brief, changed_files)
+    violations += check_gear_floor(brief, changed_files, numstat_text)
 
     lane_violations, lane_notice = check_lanes_build_seat_diversity(pack, gear)
     violations += lane_violations
@@ -1298,7 +1449,14 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
             return 3
         changed = _read_changed_files(args.changed_files_file) or []
-        print(compute_floor(changed))
+        numstat_text_for_floor: str | None = None
+        if args.numstat_file:
+            try:
+                numstat_text_for_floor = Path(args.numstat_file).read_text(encoding="utf-8")
+            except OSError as exc:
+                print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
+                return 3
+        print(compute_floor(changed, numstat_text_for_floor))
         return 0
 
     changed_files = _read_changed_files(args.changed_files_file)
@@ -1306,20 +1464,32 @@ def main(argv: list[str] | None = None) -> int:
     if not pack_path.is_absolute():
         pack_path = repo_root / pack_path
 
-    # --net-lines wins outright; --numstat-file is a convenience so callers
-    # don't need to re-derive the awk one-liner themselves; neither given ->
-    # None, and compute_ceiling() falls back to the pack's self-declared
-    # net_lines (with its own NOTICE).
-    measured_net_lines: int | None = args.net_lines
-    if measured_net_lines is None and args.numstat_file:
+    # --numstat-file is read ONCE, unconditionally, because it now feeds two
+    # independent computations (see lint()'s own docstring): the CEILING's
+    # measured net-lines, where --net-lines wins outright and this is only a
+    # convenience so callers don't need to re-derive the awk one-liner
+    # themselves; and the FLOOR's size term (S1), which always consults the
+    # raw numstat text directly when given, regardless of --net-lines — it
+    # needs the per-file rows, not a single pre-summed integer, so
+    # --net-lines does not substitute for it there. Neither flag given ->
+    # None both places, and compute_ceiling()/compute_floor() each fall back
+    # to their own pre-S1 behavior (pack-declared net_lines with a NOTICE,
+    # and path-only, respectively).
+    numstat_text: str | None = None
+    if args.numstat_file:
         try:
             numstat_text = Path(args.numstat_file).read_text(encoding="utf-8")
         except OSError as exc:
             print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
             return 3
+
+    measured_net_lines: int | None = args.net_lines
+    if measured_net_lines is None and numstat_text is not None:
         measured_net_lines = sum_numstat(numstat_text)
 
-    exit_code, violations = lint(pack_path, repo_root, changed_files, measured_net_lines)
+    exit_code, violations = lint(
+        pack_path, repo_root, changed_files, measured_net_lines, numstat_text
+    )
 
     if args.json:
         import json as _json

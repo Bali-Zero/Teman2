@@ -24,7 +24,10 @@ SCRIPTS = REPO / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 from evidence_pack_lint import (  # noqa: E402
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
+    SIZE_GEAR2_THRESHOLD,
+    SIZE_GEAR3_THRESHOLD,
     _is_anthropic_seat,
+    _size_term_net_lines,
     check_brief_ref_exists,
     check_dissent_nonempty_on_gear3,
     check_gear_floor,
@@ -315,6 +318,26 @@ def test_gear_floor_guilt_float_type_rejected():
     assert "int" in violations[0]
 
 
+def test_gear_floor_guilt_size_term_below_floor_rejected():
+    """GUILT (S1): brief declares gear 1 on a diff that touches no hot-zone
+    path but whose numstat clears SIZE_GEAR3_THRESHOLD — the size term
+    alone must reject it, same as a hot-zone hit would."""
+    changed = ["apps/some/plain/module.py"]
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    violations = check_gear_floor({"gear": 1}, changed, numstat)
+    assert violations
+    assert "floor" in violations[0]
+
+
+def test_gear_floor_innocence_size_term_below_threshold_passes():
+    """INNOCENCE (S1): the same non-hot-zone diff with a numstat below
+    SIZE_GEAR2_THRESHOLD passes at gear 1 — the size term does not fire
+    below its own threshold."""
+    changed = ["apps/some/plain/module.py"]
+    numstat = f"{SIZE_GEAR2_THRESHOLD - 1}\t0\tapps/some/plain/module.py\n"
+    assert check_gear_floor({"gear": 1}, changed, numstat) == []
+
+
 # --------------------------------------------------------- compute_ceiling (pure fn)
 
 
@@ -561,6 +584,85 @@ def test_compute_floor_innocence_ordinary_files_return_one():
     assert compute_floor([]) == 1
 
 
+# --------------------------------------------------------- compute_floor size term (S1)
+
+
+def test_compute_floor_guilt_large_plain_diff_floors_three():
+    """GUILT: a diff net >= SIZE_GEAR3_THRESHOLD on ordinary (non-hot-zone)
+    paths floors at Gear 3 on size alone."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 3
+
+
+def test_compute_floor_guilt_medium_plain_diff_floors_two():
+    """GUILT: a diff net >= SIZE_GEAR2_THRESHOLD but below the Gear-3
+    threshold raises the floor to (at least) Gear 2 — the one path by which
+    compute_floor can return 2 at all (the path term alone never does)."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 2
+
+
+def test_compute_floor_innocence_small_diff_stays_one():
+    """INNOCENCE: a diff net below SIZE_GEAR2_THRESHOLD on ordinary paths
+    stays at the path-only floor (1) — the size term does not fire."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD - 1}\t0\tdocs/notes.md\n"
+    assert compute_floor(["docs/notes.md"], numstat) == 1
+
+
+def test_compute_floor_innocence_large_fixtures_only_diff_unchanged():
+    """INNOCENCE: a large diff confined to excluded paths (fixtures/) does
+    NOT inflate the size term — floor stays at whatever the path term alone
+    gives, even though the raw numstat would clear SIZE_GEAR3_THRESHOLD by
+    a wide margin."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD * 2}\t0\ttests/fixtures/huge.json\n"
+    assert compute_floor(["tests/fixtures/huge.json"], numstat) == 1
+
+
+def test_compute_floor_fallback_numstat_none_is_path_only():
+    """FALLBACK: omitting numstat entirely (the default) reproduces the
+    exact pre-S1 path-only behavior, even for a changed-file set that WOULD
+    floor at 3 on size if a numstat were supplied — compute_floor has no
+    way to know the diff is large without one, and must not guess."""
+    assert compute_floor(["apps/some/plain/module.py"]) == 1
+    assert compute_floor(["apps/some/plain/module.py"], numstat=None) == 1
+
+
+def test_compute_floor_hotzone_hit_wins_over_small_size():
+    """Path term and size term are independent — a hot-zone hit still
+    floors at 3 even when the accompanying numstat is tiny."""
+    numstat = "3\t1\tfly.toml\n"
+    assert compute_floor(["fly.toml"], numstat) == 3
+
+
+def test_size_term_net_lines_sums_per_file_absolute_not_global_net():
+    """The size term's Σ|added−deleted| does NOT cancel across files the
+    way sum_numstat()'s plain global net would — two files that individually
+    net +10000/-10000 sum to 20000 here, not 0."""
+    numstat = "10000\t0\ta/big_add.py\n0\t10000\tb/big_del.py\n"
+    assert _size_term_net_lines(numstat) == 20000
+    assert sum_numstat(numstat) == 0  # the pre-existing global-net function, for contrast
+
+
+def test_size_term_net_lines_excludes_generated_vendored_and_binary():
+    numstat = (
+        "9999\t0\tpackage-lock.json\n"
+        "9999\t0\tapps/x/generated/schema.py\n"
+        "9999\t0\tassets/hero.png\n"
+        "9999\t0\tbundle.min.js\n"
+        "-\t-\tapps/x/binary.bin\n"
+        "50\t10\tapps/x/real_code.py\n"
+    )
+    assert _size_term_net_lines(numstat) == 40  # only real_code.py counts
+
+
+def test_size_term_net_lines_innocence_not_fixtures_directory_not_excluded():
+    """INNOCENCE (guard-over-match, superscar #3): a directory whose name
+    merely CONTAINS "fixtures" as a substring (not an exact path segment)
+    is NOT excluded — only a genuine `fixtures/` component is."""
+    numstat = "100\t0\tapps/x/not_fixtures/real.py\n"
+    assert _size_term_net_lines(numstat) == 100
+
+
 # --------------------------------------------------------- end-to-end lint()
 
 
@@ -630,6 +732,27 @@ def test_print_floor_cli_matches_compute_floor(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert int(proc.stdout.strip()) == compute_floor(["fly.toml", "docs/readme.md"]) == 3
+
+
+def test_print_floor_cli_honors_numstat_file_size_term(tmp_path):
+    """--print-floor also accepts --numstat-file (S1) and must agree with
+    compute_floor() called directly with the same numstat text — the size
+    term is reachable through the CLI, not just the Python API."""
+    changed = tmp_path / "changed.txt"
+    changed.write_text("apps/some/plain/module.py\n", encoding="utf-8")
+    numstat_text = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    numstat_file = tmp_path / "numstat.txt"
+    numstat_file.write_text(numstat_text, encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+         "--print-floor", "--changed-files-file", str(changed),
+         "--numstat-file", str(numstat_file)],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert int(proc.stdout.strip()) == compute_floor(
+        ["apps/some/plain/module.py"], numstat_text
+    ) == 3
 
 
 def test_effort_for_cli_matches_effort_for_gear():
