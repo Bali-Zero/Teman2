@@ -236,9 +236,20 @@ class PracticeReleaseHandler:
     `PostgresOrderSnapshotProvider` and `PostgresCrmWriter` have existed since
     the L7 adapters landed. What did not exist was any entry for
     `practice_release` in `build_handlers` — so that job was reported
-    `unroutable` on every drain pass, forever, and a paying customer got a
-    confirmation email and NO work item in the CRM. Superscar #2 exactly: every
-    part built, the last one never armed.
+    `unroutable` on every drain pass, forever, while `payment_paid_email`
+    beside it was routed. Superscar #2 exactly: every part built, the last one
+    never armed.
+
+    STATED PLAINLY, BECAUSE THE OBVIOUS READING OF THE ABOVE IS WRONG: this does
+    NOT yet mean a real customer gets a CRM practice. Measured across the whole
+    repository — every `.py`, `.sh`, `.plist`, `.yml`, `.toml` — the ONLY
+    references to `drain_once` / `build_handlers` are this module,
+    `outbox_consumer.py` and their tests. No cron, no LaunchAgent, no worker and
+    no router invokes the drain, so `garuda_order_outbox` is not consumed in
+    production AT ALL, and the confirmation email is as undelivered as the
+    practice was. Registering this handler removes the last MISSING PART; it
+    does not START the machine. Arming a scheduler is a separate, deliberate
+    act, and `is_consumer_enabled()` fails closed so that act stays explicit.
 
     IDENTITY, AND WHY IT IS NOT THE ORDER ID. `garuda_practices.
     source_paid_journal_event_id` is UNIQUE and holds the very
@@ -323,6 +334,14 @@ class PracticeReleaseHandler:
             idempotency_identity=IdempotencyIdentity(
                 kind="DOMAIN_EVENT",
                 key_digest=digest,
+                # SPEC-CONFORMANCE PLACEHOLDER, not a working conflict detector.
+                # `events.yaml` gives this field the job of distinguishing an
+                # exact replay from a CONFLICT, which it can only do if it
+                # digests the payload. Here it repeats `key_digest`, so it can
+                # never tell those apart. Harmless today — nothing downstream
+                # reads it; `crm_handoff.py` dedups on `key_digest` alone — but
+                # anything that starts reading it must compute it from the
+                # payload first, or it will read equality as agreement.
                 canonical_payload_digest=digest,
             ),
         )
