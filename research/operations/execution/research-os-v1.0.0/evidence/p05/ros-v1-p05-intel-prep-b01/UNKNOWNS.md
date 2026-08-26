@@ -43,14 +43,39 @@ own launch command, reproduced by hand with a full JSON-RPC handshake, also answ
 The failure was in the TOOL, not the data layer — exactly the distinction §1 was right to insist
 on, applied one layer deeper than §1 applied it.
 
-**Correction B — the likely cause is a deprecated dependency, and it is a standing fragility.**
-`@modelcontextprotocol/server-postgres` is flagged by npm as **"Package no longer supported"**
-and is not installed globally, so every `npx -y` invocation re-resolves it against the registry
-before the subprocess can emit its first byte. A handshake-readiness timeout expiring during that
-cold start produces precisely the observed symptom: zero output, no auth error, no SQL error.
-This is not a one-session fluke to shrug off — the dependency is orphaned upstream and will keep
-producing silent, contentless failures. Treat a future "Command failed with no output" as a
-suspected cold-start timeout on an unsupported package, not as evidence about the data.
+**Correction B — RETRACTED 2026-08-26, same day. The root cause is UNKNOWN.**
+An earlier revision of this section stated that the likely cause was an `npx` cold start on a
+deprecated package overrunning the MCP handshake timeout, and called it "a standing fragility"
+that "will keep producing silent, contentless failures." **That was reasoning presented as a
+finding, and measuring it refuted it.** Two measured facts:
+
+- `@modelcontextprotocol/server-postgres` IS npm-flagged **"Package no longer supported"**
+  (registry, v`0.6.2`) and is NOT installed globally. That much stands, and it is a genuine
+  standing fragility: an orphaned upstream dependency on this tool's only read path.
+- But it is **already cached** — two resolved copies under `~/.npm/_npx/` — and the server's
+  time-to-first-JSON-RPC-response measures **~2 s**. That is not a handshake-timeout-scale
+  stall, so the deprecation does **not** explain the observed failure.
+
+What is established: the database, the role, the Keychain entry and a direct `psql` connection
+are all healthy and MEASURED. The MCP failure was **not reproducible** at any layer — the
+launch command reproduced by hand answered, and so did the live registered tool. **Why the
+original three calls returned "Command failed with no output" is unknown**, and it is recorded
+as unknown rather than closed with a plausible story.
+
+*How this correction was reached* is the part worth carrying forward. The wrong cause did not
+come from a bad measurement; it came from a **relay**. The investigating subagent wrote
+"since I could not reproduce the failure now, this points to a **transient** condition ...
+**not a persistent break**." Compressing that into this document dropped both hedges and
+promoted an unreproduced hypothesis into a finding. No adversarial review would have caught it:
+a reviewer reads the artefact, not the subagent's report, so the discrepancy lived on a boundary
+no check crosses. **A cause you have not reproduced is not written as a cause.**
+
+*What a future session can do that this one did not*: capture the MCP subprocess's own stderr at
+the moment of failure instead of reasoning backwards from the client's empty result. That is now
+possible — `scripts/mcp/postgres-local-mcp.sh` (added the same day) tees the server's stderr to
+`~/logs/mcp-postgres-local.log` and turns a failed or empty Keychain lookup into a loud, named
+exit instead of an empty password. The old inline form could not express that failure at all: a
+command substitution in an assignment prefix discards its exit status.
 
 **Measured baseline (aggregates only — no row content, per SYMBIOSIS Law 2):**
 
