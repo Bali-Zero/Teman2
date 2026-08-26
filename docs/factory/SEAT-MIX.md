@@ -69,60 +69,63 @@ is tested directly: `test_pii_in_tool_result_and_command_text_never_leaks` feeds
 transcript containing an email, a phone number and an `sk-...`-shaped secret inside a
 `tool_result` block and asserts none of them appear in the emitted JSON or Markdown.
 
-## Day-0 baseline (Pro, `--since 48`, 2026-08-27 00:24 WITA)
+## Day-0 baseline (Pro, `--since 48`, 2026-08-27 00:38 WITA, post cross-family review)
 
 Scoped to this machine's own `~/.claude/projects` only -- not the fleet-wide hand parse this
 script replaces, which spanned M5+Pro+Mini. A per-machine cron on each node is how the two
-become comparable; nothing here sums them.
+become comparable; nothing here sums them. This is the run taken AFTER the mandatory Kimi K3
+adversarial review of the shipping PR (findings and fixes below), not the first draft.
 
 ```
 # Seat-mix daily report
 
-- generated_at: 2026-08-27 00:24:33 WITA
+- generated_at: 2026-08-27 00:38:00 WITA
 - window_hours: 48.0
-- sessions_scanned: 113
+- sessions_scanned: 118
 - files_skipped (over size cap): 0
 
 ## Agent dispatch mix
 
-Total Agent dispatches: 140
+Total Agent dispatches: 148
 
 | model | count | pct |
 |---|---|---|
-| sonnet | 124 | 88.6% |
-| inherit | 14 | 10.0% |
+| sonnet | 127 | 85.8% |
+| inherit | 18 | 12.2% |
+| haiku | 2 | 1.4% |
 | opus | 1 | 0.7% |
-| haiku | 1 | 0.7% |
 
-cheap_seat_share_pct (haiku share): 0.7%
+cheap_seat_share_pct (haiku share): 1.4%
 
 | subagent_type | count |
 |---|---|
-| general-purpose | 109 |
-| Explore | 13 |
+| general-purpose | 113 |
+| Explore | 14 |
 | backend-verifier | 12 |
-| fork | 3 |
+| fork | 5 |
+| unspecified | 2 |
 | spalla-review | 1 |
 | mcp-health | 1 |
-| unspecified | 1 |
 
 ## Non-Anthropic seat calls (Bash)
 
-Total: 96
-Per Anthropic dispatch: 0.69
+Total: 112
+Per Anthropic dispatch: 0.76
 
 | seat | count |
 |---|---|
-| nlm | 20 |
-| seat_build:default | 16 |
-| kimi:k3 | 15 |
-| agy:default | 15 |
-| kimi:default | 9 |
+| nlm | 23 |
+| kimi:k3 | 16 |
+| seat_build:default | 15 |
+| kimi:default | 15 |
+| agy:default | 10 |
+| codex:sol | 8 |
+| tp1 | 8 |
 | codex:default | 7 |
-| codex:sol | 5 |
-| tp1 | 5 |
+| seat_build:codex/unset | 3 |
 | codex:luna | 3 |
-| jules_dispatch | 1 |
+| jules_dispatch | 3 |
+| kimi:kimi-for-coding | 1 |
 
 ## Workflow tool
 
@@ -130,22 +133,48 @@ workflow_runs: 1
 
 ## Per-PR seat counts (best-effort branch join)
 
-unmapped_sessions_with_activity: 28
+unmapped_sessions_with_activity: 35
 
 | PR | agent_dispatches | seat_calls | sessions |
 |---|---|---|---|
+| 5043 | 1 | 0 | 1 |
 | 5037 | 1 | 0 | 1 |
 | 5039 | 0 | 1 | 1 |
 ```
 
-28 of 30 sessions-with-activity are unmapped, and that is a correct reading of this machine's
+Most sessions-with-activity are unmapped, and that is a correct reading of this machine's
 work that day, not a join failure: a metadata-only branch tally (names only, no message
-content) over the same window shows 45 sessions on `main`, 12 on detached `HEAD`, and 39 on the
-long-lived `feature/visa-oracle` integration branch -- none of which a `head:<branch>` PR search
-can ever match, by construction (no PR has `main`/`HEAD` as its head ref, and this repo's
-integration branches are merged by the conducting session directly, per
-`docs/factory/ASSEMBLY-LINE.md`, not through per-lane PRs). The two PRs it did map (#5037,
-#5039) came from short-lived per-lane `agent/...` branches.
+content) over the same window shows the bulk of sessions on `main`, on detached `HEAD`, and on
+the long-lived `feature/visa-oracle` integration branch -- none of which a `head:<branch>` PR
+search can ever match, by construction (no PR has `main`/`HEAD` as its head ref, and this
+repo's integration branches are merged by the conducting session directly, per
+`docs/factory/ASSEMBLY-LINE.md`, not through per-lane PRs). The mapped PRs came from
+short-lived per-lane `agent/...` branches, this report's own PR (#5047 -> #5043 above) included.
+
+### What the cross-family review changed
+
+The mandatory Kimi K3 (`kimi-code/k3`) adversarial pass on this report's own shipping PR found
+two real issues before merge, both fixed and both re-tested:
+
+1. **A secret/PII leak in free-captured flag values.** `--model`/`--seat`/`--tier`/ollama's
+   model argument are captured from arbitrary command text (unlike the codex/kimi tier labels,
+   which come from a fixed enumeration). The output-safety charset is a _superset_ of common
+   secret shapes -- an `sk-...`-style key or a bare-digit phone number is made entirely of
+   letters/digits/hyphens, so it would have survived the sanitizer intact. Fixed with a
+   `_redact_if_sensitive()` check (secret-key prefixes, or >=7 digits) applied before
+   sanitization, replacing the value with the fixed literal `redacted` rather than propagating
+   it in any form.
+2. **Over-counting when a vocabulary script is read/edited, not run.** `cat scripts/seat_build.sh`,
+   `git log -- scripts/jules_dispatch.py`, `grep review_routes -r .` all matched the vocabulary
+   even though nothing was invoked -- a systematic inflation risk in a repo whose daily work is
+   editing these very scripts. Fixed by splitting each command on shell separators and skipping
+   any segment whose own first word is a read/inspect/edit verb (`cat`, `grep`, `git`, `vim`, ...)
+   before running any vocabulary check on it.
+
+Neither finding was a full PII leak of the kind the original PII fixture already covered (that
+one -- email/phone/key inside a `tool_result` or a non-matching command -- was correct from the
+start); both were narrower gaps the refuter located precisely, and both now have their own
+guilt+innocence test coverage in `scripts/tests/test_seat_mix_report.py`.
 
 ## Cron
 

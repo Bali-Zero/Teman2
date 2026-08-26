@@ -212,6 +212,13 @@ def test_pii_in_tool_result_and_command_text_never_leaks(tmp_path):
         # A matching seat call whose flag value happens to carry the email --
         # only the narrow-charset capture may survive, never the full string.
         _bash_line(f"agy -p 'hi' --model {SECRET_EMAIL}"),
+        # The gap the Kimi K3 refuter found live on this PR's own diff: an
+        # in-charset secret sitting in a MATCHING flag value would otherwise
+        # survive the sanitizer intact (letters/digits/hyphens are all
+        # "safe" characters). _redact_if_sensitive must catch this before
+        # sanitize_str ever sees it.
+        _bash_line(f"ollama run {SECRET_KEY}"),
+        _bash_line(f"scripts/seat_build.sh --seat sk-livefleettoken --tier {SECRET_PHONE.lstrip('+').replace('-', '')}"),
         _agent_line(model="sonnet"),
     ]
     _write_jsonl(fp, records)
@@ -223,18 +230,25 @@ def test_pii_in_tool_result_and_command_text_never_leaks(tmp_path):
     blob_json = json.dumps(report)
     blob_md = smr.render_markdown(report)
 
-    for secret in (SECRET_EMAIL, SECRET_PHONE, SECRET_KEY, leaking_text):
+    for secret in (SECRET_EMAIL, SECRET_PHONE, SECRET_KEY, leaking_text, "livefleettoken"):
         assert secret not in blob_json
         assert secret not in blob_md
 
     # the non-matching echo command contributed nothing to seat_calls
-    assert report["non_anthropic_seat_calls"]["total"] == 1  # only the agy call
-    # the agy call's --model value could not have survived whole (it fails
-    # the safe charset because of '@' and '.') -- confirm it was sanitized,
-    # not silently included verbatim.
-    seat_keys = list(report["non_anthropic_seat_calls"]["by_seat"].keys())
-    assert len(seat_keys) == 1
-    assert SECRET_EMAIL not in seat_keys[0]
+    assert report["non_anthropic_seat_calls"]["total"] == 3  # agy + ollama + seat_build
+    by_seat = report["non_anthropic_seat_calls"]["by_seat"]
+    # None of the three seat labels contain a FULL secret literal. (The agy
+    # capture stops at '@', so a bare fragment like "john.doe" surviving is
+    # a separate, lower-severity, documented residual -- not what this
+    # assertion checks.)
+    for label in by_seat:
+        for secret in (SECRET_EMAIL, SECRET_PHONE, SECRET_KEY):
+            assert secret not in label
+    # The sk-... key and the phone-shaped tier are made entirely of "safe"
+    # characters and would otherwise have survived sanitize_str's charset
+    # check intact -- they must be REDACTED outright, not merely sanitized.
+    assert by_seat.get("ollama:redacted") == 1
+    assert by_seat.get("seat_build:redacted/redacted") == 1
 
 
 def test_guard_rejects_unsafe_strings():
@@ -298,12 +312,42 @@ def test_classify_bash_seat_guilt(command, expected):
         "codexy exec foo",  # word-boundary: not the literal token "codex"
         "echo mykimi -m kimi-code/k3",  # "kimi" must be its own token, not a substring
         "echo my-agy-wrapper --model x",  # "agy" must be its own token
+        # A vocabulary token appearing as an ARGUMENT to a read/inspect/edit
+        # verb is not an invocation of it (found live by the Kimi K3 refuter:
+        # this repo's whole job is editing these very scripts).
+        "cat scripts/seat_build.sh",
+        "git log -- scripts/jules_dispatch.py",
+        "grep review_routes -r .",
+        "vim scripts/tp1_call.py",
+        "less notebooklm_bridge.py",
+        "cat seat_build.sh && echo done",  # the guard applies per-segment too
         "",
         None,
     ],
 )
 def test_classify_bash_seat_innocence(command):
     assert smr.classify_bash_seat(command) is None
+
+
+def test_non_invocation_verb_guard_does_not_blind_other_segments():
+    # A read-only verb in ONE segment of a compound command must not hide a
+    # real invocation living in another segment of the same line.
+    assert smr.classify_bash_seat("cat notes.txt; kimi -p 'x' -m kimi-code/k3") == "kimi:k3"
+    assert smr.classify_bash_seat("git log -1; codex exec -m gpt-5.6-terra ping") == "codex:terra"
+
+
+@pytest.mark.parametrize(
+    "command,expected",
+    [
+        ("agy -p 'hi' --model sk-abc123secretvalue", "agy:redacted"),
+        ("agy -p 'hi' --model 15551234567", "agy:redacted"),  # >=7 digits: phone-shaped
+        ("scripts/seat_build.sh --seat sk-liveTokenHere --tier gold", "seat_build:redacted/gold"),
+        ("scripts/seat_build.sh --seat A2 --tier 5551234567", "seat_build:A2/redacted"),
+        ("ollama run ghp_abcdEFGH12345678", "ollama:redacted"),
+    ],
+)
+def test_secret_shaped_flag_values_are_redacted(command, expected):
+    assert smr.classify_bash_seat(command) == expected
 
 
 # ---------------------------------------------------------------------------

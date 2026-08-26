@@ -62,8 +62,20 @@ WITA = timezone(timedelta(hours=8))
 
 # Deliberately narrow: letters, digits, space, and a small punctuation set
 # that covers paths, ratios, percentages, dates and branch/seat labels. No
-# '@', no '+', no backslash, no quotes -- nothing an email, phone number, or
-# API-key-shaped secret would survive intact.
+# '@', no '+', no backslash, no quotes -- a FULL email or a phone number
+# written with its '+' cannot survive this charset intact.
+#
+# This charset alone is NOT sufficient PII/secret protection by itself, and
+# is not claimed to be: it is a superset of common secret/token shapes
+# (sk-/ghp_-style keys and bare-digit phone numbers are all
+# letters/digits/hyphens, which this class allows). classify_bash_seat's
+# free-form flag captures (--model/--seat/--tier/ollama's model argument)
+# additionally run through _redact_if_sensitive() BEFORE reaching this
+# charset check, specifically because the charset does not catch them (found
+# live by the Kimi K3 refuter on this PR's own diff). The real PII boundary
+# is architectural, not this regex: the scanner never reads tool_result or
+# free-text `text` blocks at all, and codex/kimi tier labels come from a
+# fixed enumeration that can never contain arbitrary captured text.
 SAFE_STRING_RE = re.compile(r"^[A-Za-z0-9 _./:%()\-=,]+$")
 MAX_STRING_LEN = 120
 
@@ -142,6 +154,44 @@ _NLM_RE = re.compile(r"\bnlm\b|\bnotebooklm")
 _JULES_RE = re.compile(r"\bjules_dispatch\.py\b")
 _TP1_RE = re.compile(r"\b(?:tp1_call|review_routes)\b")
 
+# A command segment whose own first word is a read/inspect/edit verb is never
+# an INVOCATION of anything named later in that segment -- "cat seat_build.sh"
+# and "grep review_routes -r ." must not count as seat calls just because a
+# vocabulary token appears as an argument (found live by the Kimi K3 refuter
+# on this PR's own diff: this repo's whole job is editing these very scripts,
+# so this over-match would have been a systematic, not theoretical, inflation
+# source). Interpreters that legitimately RUN a vocabulary script
+# (python3/bash/sh/./) are deliberately NOT on this list.
+_NON_INVOCATION_VERBS = frozenset(
+    {
+        "cat", "grep", "rg", "less", "more", "head", "tail", "vim", "vi",
+        "nano", "code", "open", "git", "find", "wc", "diff", "sed", "awk",
+        "ls", "stat", "file", "cp", "mv", "rm",
+    }
+)
+_SEGMENT_SPLIT_RE = re.compile(r"[;&|]+")
+_FIRST_TOKEN_RE = re.compile(r"^\s*(\S+)")
+
+# Sub-values captured from a free-form flag (--model/--seat/--tier/ollama's
+# model argument) come from ARBITRARY command text, not a fixed enumeration
+# like the codex/kimi tiers above -- so, unlike those, they must be screened
+# for secret/PII shape before they reach the report. A value matching either
+# check is replaced with the fixed literal "redacted" rather than propagated
+# even in sanitized form (found live by the Kimi K3 refuter: the sanitizer's
+# safe charset is a SUPERSET of common secret shapes -- sk-/ghp_-style keys
+# and phone numbers made of digits/hyphens pass the charset check untouched,
+# so the charset guard alone does not close this gap).
+_SECRET_PREFIX_RE = re.compile(
+    r"^(?:sk-|sk_|ghp_|gho_|ghs_|ghr_|github_pat_|akia|xox[a-z]-|eyj)",
+    re.IGNORECASE,
+)
+
+
+def _redact_if_sensitive(raw: str, maxlen: int) -> str:
+    if _SECRET_PREFIX_RE.match(raw) or sum(ch.isdigit() for ch in raw) >= 7:
+        return "redacted"
+    return sanitize_str(raw, maxlen)
+
 
 def classify_bash_seat(command) -> Optional[str]:
     """Classify a Bash ``input.command`` string into a seat-vocabulary label.
@@ -149,46 +199,55 @@ def classify_bash_seat(command) -> Optional[str]:
     Returns ``None`` for anything outside the fixed vocabulary (most Bash
     calls -- ``ls``, ``git``, ``pytest``, ...) -- those are not "seats" and
     are not counted. Entity/intent boundaries throughout (``\\b`` anchors,
-    a required invocation token before any flag is inspected) rather than
-    bare substring matching, per cicatrix family #3: "the codex executable"
-    or "kimi-something-else.py" must NOT match.
+    a required invocation token before any flag is inspected, a first-token
+    invocation-verb check per ``;``/``&&``/``|``-separated segment) rather
+    than bare substring matching, per cicatrix family #3: "the codex
+    executable", "kimi-something-else.py", and "cat seat_build.sh" must NOT
+    match.
     """
     if not command or not isinstance(command, str):
         return None
 
-    if _CODEX_INVOKE_RE.search(command):
-        m = _CODEX_TIER_RE.search(command)
-        return f"codex:{m.group(1)}" if m else "codex:default"
+    for segment in _SEGMENT_SPLIT_RE.split(command):
+        tok = _FIRST_TOKEN_RE.match(segment)
+        if tok:
+            first = tok.group(1).rsplit("/", 1)[-1]
+            if first in _NON_INVOCATION_VERBS:
+                continue  # this segment only READS/EDITS a name, never runs it
 
-    if _KIMI_INVOKE_RE.search(command):
-        m = _KIMI_MODEL_RE.search(command)
-        return f"kimi:{m.group(1)}" if m else "kimi:default"
+        if _CODEX_INVOKE_RE.search(segment):
+            m = _CODEX_TIER_RE.search(segment)
+            return f"codex:{m.group(1)}" if m else "codex:default"
 
-    if _AGY_INVOKE_RE.search(command):
-        m = _AGY_MODEL_RE.search(command)
-        return f"agy:{sanitize_str(m.group(1), 40)}" if m else "agy:default"
+        if _KIMI_INVOKE_RE.search(segment):
+            m = _KIMI_MODEL_RE.search(segment)
+            return f"kimi:{m.group(1)}" if m else "kimi:default"
 
-    if _SEATBUILD_INVOKE_RE.search(command):
-        seat = _SEATBUILD_SEAT_RE.search(command)
-        tier = _SEATBUILD_TIER_RE.search(command)
-        if seat or tier:
-            seat_v = sanitize_str(seat.group(1), 30) if seat else "unset"
-            tier_v = sanitize_str(tier.group(1), 30) if tier else "unset"
-            return f"seat_build:{seat_v}/{tier_v}"
-        return "seat_build:default"
+        if _AGY_INVOKE_RE.search(segment):
+            m = _AGY_MODEL_RE.search(segment)
+            return f"agy:{_redact_if_sensitive(m.group(1), 40)}" if m else "agy:default"
 
-    m = _OLLAMA_RUN_RE.search(command)
-    if m:
-        return f"ollama:{sanitize_str(m.group(1), 40)}"
+        if _SEATBUILD_INVOKE_RE.search(segment):
+            seat = _SEATBUILD_SEAT_RE.search(segment)
+            tier = _SEATBUILD_TIER_RE.search(segment)
+            if seat or tier:
+                seat_v = _redact_if_sensitive(seat.group(1), 30) if seat else "unset"
+                tier_v = _redact_if_sensitive(tier.group(1), 30) if tier else "unset"
+                return f"seat_build:{seat_v}/{tier_v}"
+            return "seat_build:default"
 
-    if _NLM_RE.search(command):
-        return "nlm"
+        m = _OLLAMA_RUN_RE.search(segment)
+        if m:
+            return f"ollama:{_redact_if_sensitive(m.group(1), 40)}"
 
-    if _JULES_RE.search(command):
-        return "jules_dispatch"
+        if _NLM_RE.search(segment):
+            return "nlm"
 
-    if _TP1_RE.search(command):
-        return "tp1"
+        if _JULES_RE.search(segment):
+            return "jules_dispatch"
+
+        if _TP1_RE.search(segment):
+            return "tp1"
 
     return None
 
