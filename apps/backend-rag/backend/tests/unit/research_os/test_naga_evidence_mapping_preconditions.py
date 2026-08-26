@@ -32,9 +32,13 @@ already wrong once:
 
 3. WHAT THIS DOES NOT OBSERVE, stated so nobody reads more into a green run. No adapter,
    producer, repository, or persistence path is exercised anywhere in this module. It pins
-   REQUIREDNESS on two enforcement surfaces (the pydantic model and the published JSON
-   Schema) and the SHAPE OF THE GAP in one document. A regression in the code that
-   eventually builds these objects leaves every test here green.
+   REQUIREDNESS on the pydantic model and on the published JSON Schema -- which are not
+   independent of each other: the schema is a byte-identical regeneration of the model,
+   enforced by `test_schemas.py`. It also pins the SHAPE OF THE GAP in one document. A
+   regression in the code that eventually builds these objects leaves every test here
+   green. The reject direction of the hash check is additionally covered outside this file
+   by `test_models_and_fixtures.py::test_validation_context_cannot_bypass_exact_object_hash`;
+   the guilt control below is this module's own, so its claims stand without that neighbour.
 
 The baseline is the repository's OWN canonical fixture, `fixtures/evidence/valid_minimal.json`,
 not an object this test invents: an earlier module in this lane proved a finding against a
@@ -162,18 +166,27 @@ def _never_named_in_section_two() -> set[tuple[str, ...]]:
 def test_the_baseline_fixture_is_genuinely_valid() -> None:
     """Innocence control. Without it every assertion below could pass vacuously.
 
-    Asserts explicitly rather than leaning on "did not raise", and reads the four fields
-    back so this also proves the fixture is not itself missing them. It does NOT claim to
-    exercise the hash self-check -- that is the guilt control's job, see correction 2.
+    Correction from an adversarial round: this used `is not None` read-backs and claimed
+    they proved the fixture carried the four fields. They proved nothing -- after
+    `model_validate` succeeds a non-Optional field is non-None by construction, so those
+    asserts could not fail. Presence is now asked of the PAYLOAD, before parsing, which is
+    the only place the question can actually be answered. It does NOT claim to exercise
+    the hash self-check -- that is the guilt control's job, see correction 2.
     """
 
     payload = _load()
 
+    # The fixture must actually CARRY the four fields, or every negative test below is
+    # deleting something that was never there.
+    for path in _NAMED_BY_THE_CORRECTION:
+        cursor: Any = payload
+        for key in path:
+            assert key in cursor, f"the canonical fixture is missing {'.'.join(path)}"
+            cursor = cursor[key]
+
     evidence = Evidence.model_validate(payload)
     assert evidence.evidence_family_id == payload["evidence_family_id"]
-    assert evidence.review_state is not None
     assert evidence.classification.rights == payload["classification"]["rights"]
-    assert evidence.times.recorded_at is not None
 
     assert jsonschema.Draft202012Validator(_schema()).is_valid(payload)
 
@@ -234,11 +247,15 @@ def test_each_field_named_by_the_correction_is_independently_required(
 
 @pytest.mark.parametrize("path", _NAMED_BY_THE_CORRECTION, ids=lambda p: ".".join(p))
 def test_the_published_schema_agrees_with_the_model(path: tuple[str, ...]) -> None:
-    """Two enforcement surfaces, one answer -- or an adapter can satisfy one and not both.
+    """The PUBLISHED artifact says the same thing the model does.
 
-    The pydantic model is what production constructs; the JSON Schema is what an
-    independent producer builds against. A field required by one and optional by the other
-    is a gap an adapter falls straight through, so the divergence is the thing under test.
+    Correction, from an adversarial round: this is NOT proof of two independent
+    enforcement surfaces, as an earlier version of this docstring implied. The checked-in
+    schema is a regeneration of the model -- `test_schemas.py`'s
+    `test_checked_in_schemas_are_byte_identical_to_fresh_regeneration` enforces byte
+    identity -- so the two CANNOT diverge while that guard holds, and a mutation to either
+    reddens both. What this pins is the artifact an outside producer actually builds
+    against, which is worth pinning on its own terms; it is not an independence proof.
     """
 
     with pytest.raises(jsonschema.ValidationError):
