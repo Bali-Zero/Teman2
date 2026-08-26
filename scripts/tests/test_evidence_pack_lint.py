@@ -1083,6 +1083,7 @@ def test_seat_rules_shared_phasing_helper_flip_behavior():
         "apps/backend-rag/backend/scripts/visa_engine/tools.py",
         "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
         "apps/mouth/data/kbli-gold-all.json",
+        "apps/mouth/data/KBLI-2025-master.json",
         "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json",
         "apps/mouth/data/bali-zero-prices.json",
         "research/regulatory/2026-08-26-delta.json",
@@ -1355,6 +1356,44 @@ def test_pii_local_innocence_pre_flip_notice_not_fail():
     assert notice is not None and "pii_local" in notice
 
 
+@pytest.mark.parametrize("pack", [{}, {"lanes": []}, {"lanes": None}])
+def test_pii_local_guilt_lanes_absent_or_empty_rejected_post_flip(pack):
+    """GUILT (refuter finding #7, 2026-08-27): a PII-path hit with NO
+    `lanes` declared at all — or an empty list — used to return ([], None)
+    silently: `offending` is only ever populated by iterating `lanes`, so
+    nothing to iterate meant nothing to flag, not even a NOTICE. Since
+    D3/rule-8 already lets a Gear-1 pack omit `lanes` entirely, this was a
+    silent bypass: a Gear-1 PII-touching diff got zero R10 signal. A pack
+    that cannot show ANY seat touched the PII path is now itself the
+    violation."""
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_POST_FLIP
+    )
+    assert viol and "pii_local" in viol[0]
+    assert notice is None
+
+
+def test_pii_local_innocence_lanes_absent_but_cloud_ok_clean_still_passes():
+    """INNOCENCE: the cloud_ok+pii_scan escape does not require `lanes` at
+    all — a pack can assert "reviewed clean, DPA on file" with zero lanes
+    declared, and that still clears the rule."""
+    pack = {"pii_scan": "clean", "cloud_ok": "DPA-2026-08-consent-ref-17"}
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+
+def test_pii_local_innocence_lanes_absent_pre_flip_notice_not_fail():
+    """INNOCENCE: the lanes-absent guilty shape only NOTICEs before the
+    flip, same phasing as every other seat-rule violation."""
+    viol, notice = check_pii_local_seat(
+        {}, ["apps/backend-rag/backend/services/crm/service.py"], today=_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None and "pii_local" in notice
+
+
 # ---- R9 (check_council_run_gear3) lands in a follow-up PR alongside R11,
 # same reasoning as the R11 note above.
 
@@ -1386,3 +1425,25 @@ def test_seat_rules_end_to_end_through_lint(tmp_repo):
     else:
         assert rc == 1
         assert any("ground_truth" in v for v in viol)
+
+
+def test_seat_rules_end_to_end_notice_prints_to_stderr(tmp_repo, capsys):
+    """End-to-end (refuter finding #5, 2026-08-27): every other seat-rule
+    end-to-end test only asserts on lint()'s RETURN value — a NOTICE print
+    statement silently deleted from the source would not be caught by any
+    of them. This one captures real stderr via capsys and proves the
+    ground_truth NOTICE text actually reaches the operator, pre-flip."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=3)
+    write_pack(
+        lanes=[{"lane": "D1", "role": "build", "seat": "codex"}],
+        dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+    )
+    lint(
+        tmp_path / "evidence" / "pack.yml", tmp_path,
+        ["apps/backend-rag/backend/kb/legal/foo.md"],
+    )
+    captured = capsys.readouterr()
+    if datetime.datetime.now(datetime.timezone.utc).date() < SEAT_RULES_ENFORCEMENT_DATE:
+        assert "ground_truth" in captured.err
+        assert "NOTICE" in captured.err

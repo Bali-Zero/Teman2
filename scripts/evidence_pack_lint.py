@@ -988,14 +988,25 @@ def check_pii_local_seat(
     ref>` AND `pii_scan: clean` (reads that existing rule-3 field rather
     than re-deriving PII status — same boundary the module docstring
     states for rule 3). GUILT: hit, >=1 non-`ollama-` seat, no cloud_ok+
-    clean pair -> phased violation naming the offending seats. INNOCENCE:
-    no hit; every seat is `ollama-*`; cloud_ok+clean is present. Known,
-    documented simplification: a lane whose job is not LLM inference over
-    PII (e.g. an `nlm` ground-truth query, or the orchestrating `session`
-    itself) is not exempted by role — a pack mixing a PII hit with a
-    ground-truth hit in the same diff needs `cloud_ok` for its `nlm` lane
-    too. Not fixed here: the spec names no role carve-out, and this rule
-    ships NOTICE-only."""
+    clean pair -> phased violation naming the offending seats. Also GUILT
+    (refuter finding #7, 2026-08-27): hit, `lanes` absent/empty, no
+    cloud_ok+clean pair -> phased violation — a pack with no lanes at all
+    cannot demonstrate ANY seat was local, and D3/rule-8 already lets a
+    Gear-1 pack omit `lanes` entirely, so without this branch a Gear-1
+    diff could touch CRM/WhatsApp/intake code, declare no lanes, and get
+    zero R10 signal (not even a NOTICE) — a silent bypass, not a coverage
+    hole. Mirrors how check_ground_truth_lane already treats a missing/
+    non-list `lanes` as "no matching lane found" by construction; R10 had
+    the asymmetric shortcut because `offending` only ever grew from an
+    actual iteration. INNOCENCE: no hit; every seat is `ollama-*`;
+    cloud_ok+clean is present (still the escape even with zero lanes: a
+    pack can assert "reviewed clean, DPA on file" without a lane list).
+    Known, documented simplification: a lane whose job is not LLM
+    inference over PII (e.g. an `nlm` ground-truth query, or the
+    orchestrating `session` itself) is not exempted by role — a pack
+    mixing a PII hit with a ground-truth hit in the same diff needs
+    `cloud_ok` for its `nlm` lane too. Not fixed here: the spec names no
+    role carve-out, and this rule ships NOTICE-only."""
     if not changed_files or not _any_path_matches(changed_files, PII_PATH_PATTERNS):
         return [], None
     if pack.get("pii_scan") == "clean":
@@ -1003,16 +1014,23 @@ def check_pii_local_seat(
         if isinstance(cloud_ok, str) and cloud_ok.strip():
             return [], None
     lanes = pack.get("lanes")
+    if not isinstance(lanes, list) or not lanes:
+        message = (
+            "diff touches a PII path (intake / CRM / CRM-guardian / "
+            "WhatsApp channel / yield-optimizer) but declares no `lanes` "
+            "at all — cannot confirm any seat that touched it was local, "
+            "and no `cloud_ok: <DPA ref>` + `pii_scan: clean` pair either"
+        )
+        return _seat_rule_verdict("pii_local", True, message, pack, today)
     offending: list[str] = []
-    if isinstance(lanes, list):
-        for entry in lanes:
-            if not isinstance(entry, dict):
-                continue
-            seat = entry.get("seat")
-            if not isinstance(seat, str) or not seat.strip():
-                continue
-            if not seat.strip().lower().startswith("ollama-"):
-                offending.append(seat.strip())
+    for entry in lanes:
+        if not isinstance(entry, dict):
+            continue
+        seat = entry.get("seat")
+        if not isinstance(seat, str) or not seat.strip():
+            continue
+        if not seat.strip().lower().startswith("ollama-"):
+            offending.append(seat.strip())
     message = (
         "diff touches a PII path (intake / CRM / CRM-guardian / WhatsApp "
         f"channel / yield-optimizer) — non-local seat(s) {offending} "
