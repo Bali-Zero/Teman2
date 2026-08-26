@@ -37,13 +37,13 @@ receipts:
     ts: "2026-08-26T14:34Z"
     seat: "session (Pro, Postgres 17.8 Homebrew vs production 17.7)"
   - claim: "All five objects the three files promise are actually created — verified by catalog lookup, not by the absence of an error"
-    cmd: "psql -d visa_full_probe -tA -c \"SELECT to_regclass('public.visa_oracle_consultant_requests') IS NOT NULL\" (and the same for the two retention tables, purge_visa_oracle_consultant_requests(integer,text), visa_oracle_consultant_requests_retention_evidence())"
+    cmd: 'psql -d visa_full_probe -tA -c "SELECT to_regclass(''public.visa_oracle_consultant_requests'') IS NOT NULL" (and the same for the two retention tables, purge_visa_oracle_consultant_requests(integer,text), visa_oracle_consultant_requests_retention_evidence())'
     result: "consultant_requests=true · retention_policies=true · retention_batches=true · purge_fn=true · evidence_fn=true"
     exit: 0
     ts: "2026-08-26T14:34Z"
     seat: "session (Pro)"
   - claim: "295 actually moves the DEFAULT — read back out of information_schema after the apply, not assumed from the SQL text"
-    cmd: "psql -d visa_full_probe -tA -c \"SELECT column_default FROM information_schema.columns WHERE table_name='visa_oracle_sessions' AND column_name='expires_at'\""
+    cmd: 'psql -d visa_full_probe -tA -c "SELECT column_default FROM information_schema.columns WHERE table_name=''visa_oracle_sessions'' AND column_name=''expires_at''"'
     result: "(now() + '30 days'::interval) — was (now() + '90 days'::interval) before the apply, which is also the value production reports today"
     exit: 0
     ts: "2026-08-26T14:34Z"
@@ -55,7 +55,7 @@ receipts:
     ts: "2026-08-26T14:34Z"
     seat: "session (Pro)"
   - claim: "The purge function is not reachable by PUBLIC — the REVOKE at 294:305 is effective, not decorative"
-    cmd: "psql -d visa_full_probe -tAc \"SELECT has_function_privilege('public','public.purge_visa_oracle_consultant_requests(integer,text)','EXECUTE')\""
+    cmd: 'psql -d visa_full_probe -tAc "SELECT has_function_privilege(''public'',''public.purge_visa_oracle_consultant_requests(integer,text)'',''EXECUTE'')"'
     result: "false"
     exit: 0
     ts: "2026-08-26T14:34Z"
@@ -67,13 +67,13 @@ receipts:
     ts: "2026-08-26T14:34Z"
     seat: "session (Pro)"
   - claim: "294's undeclared dependency EXISTS in production — the one thing that could have made a green local probe a lie"
-    cmd: "psql (read-only role, live nuzantara_rag via proxy) -tAc \"SELECT to_regprocedure('public.reject_visa_write_substrate_mutation()') IS NOT NULL\""
+    cmd: 'psql (read-only role, live nuzantara_rag via proxy) -tAc "SELECT to_regprocedure(''public.reject_visa_write_substrate_mutation()'') IS NOT NULL"'
     result: "true — created by 252_visa_engine_write_substrate.sql, already on main. 294 references it and does not create it."
     exit: 0
     ts: "2026-08-26T14:27Z"
     seat: "session (Pro, read-only production role)"
   - claim: "The three tables this slice creates do NOT already exist in production, so `CREATE TABLE` without IF NOT EXISTS cannot collide"
-    cmd: "psql (read-only, live) -tAc \"SELECT to_regclass('public.visa_oracle_consultant_requests') IS NOT NULL\" and the two retention tables; and \"SELECT to_regclass('public.visa_oracle_sessions') IS NOT NULL\""
+    cmd: 'psql (read-only, live) -tAc "SELECT to_regclass(''public.visa_oracle_consultant_requests'') IS NOT NULL" and the two retention tables; and "SELECT to_regclass(''public.visa_oracle_sessions'') IS NOT NULL"'
     result: "consultant_requests=false · retention_policies=false · retention_batches=false · visa_oracle_sessions=TRUE (the one table 295 alters — it exists, so the ALTER has a target)"
     exit: 0
     ts: "2026-08-26T14:15Z"
