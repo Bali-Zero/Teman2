@@ -294,7 +294,11 @@ Allowed:
 
 Forbidden:
 
-- editing Intel/MATA runtime, migration 272, queue consumers, NotebookLM feeders, flags, schedulers, DB rows or streams;
+- editing Intel/MATA runtime, ANY migration, queue consumers, NotebookLM feeders, flags, schedulers, DB rows or streams;
+  (corrected 2026-08-26: this read "migration 272", which is `272_wa_broker_package_text.sql` — the WhatsApp
+  broker's, not this packet's. A prohibition naming the wrong file forbids what nobody would do and leaves the
+  real target unnamed. P05's migration has a symbolic name, `research_os_intel_lake_events`, and no integer
+  until integration time — see `SESSION-BOARD.md` §0 and §5.)
 - copying protected payloads from Pro;
 - disabling the broken bridge or duplicate feed;
 - calling WR2, publishing, or generating content.
@@ -319,12 +323,14 @@ Allowed:
 
 - read-only NAGA schema/writer/reader inventory;
 - synthetic/public bitemporal, contradiction, supersession, abstention, source-span and invalidation fixtures;
-- golden-set plan, adapter mapping, exact future file list, migration 273 design notes, and test matrix.
+- golden-set plan, adapter mapping, exact future file list, `research_os_naga_claims` migration design notes (symbolic name; the integer is bound at integration time from a head re-measured then, never copied from a document), and test matrix.
 
 Forbidden:
 
 - editing NAGA runtime or schema;
-- applying or creating migration 273 in the preparation branch;
+- applying or creating ANY migration in the preparation branch;
+  (corrected 2026-08-26: this read "migration 273", which is `273_wa_broker_completion_digest.sql`. Same defect
+  as B1's above. P06's migration is `research_os_naga_claims`, integer unbound.)
 - external model use with protected data;
 - consumer invalidation, draft mutation, publishing or client action.
 
@@ -336,11 +342,11 @@ Use spare capacity only after the five lanes above are registered and the active
 
 | Order | Packet | Preparation-only outcome | Must not touch |
 |---:|---:|---|---|
-| 1 | 02 | publishing baseline, state vocabulary map, golden set | runtime, migration 271, publisher |
+| 1 | 02 | publishing baseline, state vocabulary map, golden set | runtime, the `research_os_publication_truth` migration, publisher |
 | 2 | 07 | entity-resolution golden set and disposable-clone plan | production NEXUS graph |
 | 3 | 08 | labeled retrieval baseline and evaluation harness design | canonical Qdrant collection/config |
 | 4 | 17 | NotebookLM routing/privacy fixtures and receipt mapping | live feeds or new persistence |
-| 5 | 12 | Action Inbox state/permission fixtures and isolated UI prototype | shared router, schema, migration 275 |
+| 5 | 12 | Action Inbox state/permission fixtures and isolated UI prototype | shared router, schema, the `research_os_action_inbox` migration |
 | 6 | 18 | Conductor handoff/lock interaction prototype | action runtime, execution endpoints |
 | 7 | 14 | evaluator profile and adversarial-set design | blocking gate or shared evaluator registry |
 | 8 | 09–11 | surface fixtures that avoid P03/shared paths | runtime activation, outward action, credits |
@@ -369,7 +375,7 @@ Only I1 integrates reviewed implementation branches. Initial order:
 
 1. P04 and its `research_os_contract_core` migration (integer bound at integration time, not 270 — see the note in §4);
 2. no other schema change until P04's integrated contract suite passes;
-3. P02/migration 271, P05/migration 272, and P06/migration 273 only after their later implementation branches pass;
+3. P02/`research_os_publication_truth`, P05/`research_os_intel_lake_events`, and P06/`research_os_naga_claims` only after their later implementation branches pass — each integer bound at integration time exactly as item 1 requires for P04 (corrected 2026-08-26: this line named `271`/`272`/`273`, all three of which belong to the WhatsApp broker, while the line directly above it already said "not 270" for the same reason);
 4. P03 may integrate independently of the schema train only if the exact diff has no shared-contract collision and its P04 compatibility review passes.
 
 I1 is a distinct interactive Claude/operator-controlled role with a dedicated integration manifest instantiated from the S00-produced `INTEGRATION-MANIFEST.schema.json`; it is never the external builder or reviewer. (Superseded by the 2026-08-23 execution amendment in `README.md` — Amendment A1: S00 was never built, so this is not exercised.) Integration is the GitHub merge queue; none of the manifest binding, expiry, or hash-matching described in the rest of this paragraph happens today. The ordinary frozen Dispatch Manifest remains merge-forbidden. The integration manifest binds the exact source/destination repository, reviewed source SHA and review receipt, current monorepo control checkpoint, repository-specific destination checkpoint, worktree/branch, leases, expected merge-tree/result hashes, expiry, and tests, and permits only one conflict-free merge into the named isolated program integration branch. It forbids `main`, rewriting, conflict repair, deploy, production migration, service control, publication, paid use, and every live effect. I1 reruns affected tests, verifies the migration ledger where applicable, and emits the repository result SHA plus a new immutable control-plane checkpoint and receipt. If a conflict, rebase, source edit, absent/stale manifest, or hash mismatch occurs, I1 stops and issues a successor repair dispatch whose new SHA must be independently reviewed.
