@@ -499,6 +499,102 @@ async def offer_job(
     return OfferResult(OfferOutcome.OFFERED, job_id=job_id)
 
 
+async def offer_client_job(
+    conn: asyncpg.Connection,
+    *,
+    request_id: uuid.UUID,
+    surface: str,
+    package: str,
+    package_hash: str,
+    output_schema_version: str,
+    deadline_s: int | None = None,
+) -> OfferResult:
+    """Offer one client-bot codex-broker job (I DUE BOT F1/F3,
+    ``job_kind='client_answer_v1'``, migration 290).
+
+    Sibling of ``offer_job`` for the WA-outbox leg, sharing the SAME table
+    and the SAME admission/breaker machinery (F1: "do not create a second
+    jobs table" — the broker is single-flight per seat regardless of which
+    job_kind is asking, so depth/breaker accounting must stay unified) —
+    but with NO wa_outbox fencing transaction. A client-bot ``BrainRequest``
+    (``services/client_bot/contracts.py``) has no outbox row to fence
+    against at all, and ``ClientBrainProviderRouter.route()`` calls a
+    provider's ``generate()`` at most ONCE per request (one primary attempt,
+    one fallback attempt, no retry ladder) — the WA leg's
+    ``generation_route`` marker and its SAVEPOINT-guarded unique-violation
+    handling exist ONLY to protect against the outbox WORKER's own retry
+    ladder re-offering after a crash, a failure mode this call site cannot
+    have. Consequently this function needs no savepoint: if the INSERT
+    below raises for any reason, the enclosing ``async with
+    conn.transaction()`` rolls back the WHOLE block automatically —
+    including the breaker's own open->half_open CAS inside
+    ``breaker_admits``, so the canary slot is never spent by a failed offer
+    without a manual revert (contrast ``offer_job``'s explicit
+    ``_revert_canary_cas`` calls, which exist only because ITS early-return
+    paths COMMIT past a successful CAS).
+
+    ``package`` is the caller's own hash-sealed wire envelope (a JSON
+    string) — this function never introspects, logs, or re-serializes it
+    (same discipline as ``offer_job``'s ``package``/``evidence_inputs``).
+    ``deadline_s`` defaults to the shared ``deadline_seconds()`` (T_exec)
+    when omitted; callers with a tighter request deadline (e.g. a
+    ``BrainRequest.deadline_at`` already close) should pass the smaller of
+    the two explicitly — this function does not know about request
+    deadlines, only about the broker's own budget.
+    """
+    t_exec = deadline_s if deadline_s is not None else deadline_seconds()
+    async with conn.transaction():
+        await conn.execute(_ADMISSION_LOCK_SQL)
+
+        gauge = await conn.fetchrow(
+            """
+            SELECT broker_last_seen_at >= now() - ($1 * INTERVAL '1 second')
+                       AS broker_alive
+            FROM wa_broker_gauge WHERE id = 1
+            """,
+            absent_after_seconds(),
+        )
+        if gauge is None or not gauge["broker_alive"]:
+            return OfferResult(OfferOutcome.BROKER_ABSENT)
+
+        depth = await conn.fetchval(
+            "SELECT count(*) FROM broker_jobs WHERE state IN ('offered', 'leased')",
+        )
+        if int(depth or 0) >= MAX_DEPTH:
+            return OfferResult(OfferOutcome.QUEUE_FULL)
+
+        # Breaker LAST, same admission order as offer_job (spec 2.1): a
+        # CAS-consuming canary must never be spent when depth/liveness would
+        # refuse the offer anyway.
+        if not await breaker_admits(conn):
+            return OfferResult(OfferOutcome.BREAKER_OPEN)
+
+        job_id = await conn.fetchval(
+            """
+            INSERT INTO broker_jobs
+                (job_kind, surface, request_id, mode, package,
+                 package_hash, output_schema_version, deadline_at)
+            VALUES ('client_answer_v1', $1, $2, 'serve', $3::text,
+                    $4, $5, now() + ($6 * INTERVAL '1 second'))
+            RETURNING job_id
+            """,
+            surface,
+            request_id,
+            package,
+            package_hash,
+            output_schema_version,
+            t_exec,
+        )
+
+    logger.info(
+        "wa_broker: offered client job %s (surface=%s deadline=%ss)",
+        job_id,
+        surface,
+        t_exec,
+    )
+    return OfferResult(OfferOutcome.OFFERED, job_id=job_id)
+
+
 async def wait_for_job(
     pool: asyncpg.Pool,
     job_id: uuid.UUID,
