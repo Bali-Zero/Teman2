@@ -83,9 +83,8 @@ class PortalProfileService:
                 )
 
                 logger.info(
-                    "Portal profile ensured for client %s (email=%s, member_id=%s)",
+                    "Portal profile ensured for client %s (member_id=%s)",
                     client_id,
-                    email,
                     member_id,
                 )
                 return member_id
