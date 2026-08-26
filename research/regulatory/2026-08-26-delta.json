@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-08-26T07:52:25+08:00",
+  "run_at": "2026-08-26T08:04:20+08:00",
   "today": "2026-08-26",
   "yesterday_seen_count": 22,
   "new_today_count": 0,
@@ -8,59 +8,59 @@
     {
       "url": "https://www.hukumonline.com/berita/",
       "reason": "http_403",
-      "note": "WAF/Cloudflare block (HTTP 403), persisted after 1 retry with Mozilla UA"
-    },
-    {
-      "url": "https://muc.co.id/article",
-      "reason": "http_403",
-      "note": "HTTP 403, persisted after 1 retry with Mozilla UA"
+      "note": "WAF/Cloudflare block (HTTP 403), same as prior runs"
     },
     {
       "url": "https://ortax.org/news",
       "reason": "empty_shell",
-      "note": "HTTP 200 but 'Artikel tidak ditemukan' SPA shell, no extractable content (same as 2026-08-24/25)"
+      "note": "HTTP 200 but 'Artikel tidak ditemukan' SPA shell, no extractable content (persistent since 2026-08-24)"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "HTTP 403 Forbidden on fetch"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "http_403",
+      "note": "HTTP 403 Forbidden on fetch"
     },
     {
       "url": "https://jdih.kemenkeu.go.id/peraturan",
-      "reason": "timeout",
-      "note": "Connection timed out after 30s, persisted after 1 retry"
+      "reason": "empty_shell",
+      "note": "Page returned only nav/footer/org info, no document listing extractable"
     }
   ],
   "sources_checked_no_delta": [
     {
       "url": "https://news.ddtc.co.id/",
       "reason": "checked_no_new",
-      "note": "Freshest dated item 24 Agu 2026 (PMK 44/2026, KPP helpdesk consult procedure) already in seen_citations; PP 20/2026 mention also duplicate; PP 49/2022 cited in an unrelated gold-bullion VAT article, not new"
+      "note": "Newest items are SE-6/PJ/2026 (DJP appeal/litigation circular, 2 min lalu) and SE-5/PJ/2026 (cooperation-agreement governance circular, 24 Aug); Surat Edaran circulars are not a promulgated regulation type per Step 4 filter"
     },
     {
       "url": "https://ikpi.or.id/berita/",
       "reason": "checked_no_new",
-      "note": "Freshest items dated 25/08/2026 are LCC competition coverage + IKPI internal digital-infra/anniversary news, no numbered regulation promulgated"
+      "note": "Recent items are IKPI infrastructure/tax-center/LCC competition/IEU-CEPA news; no numbered regulation promulgated"
     },
     {
       "url": "https://peraturan.go.id",
       "reason": "outside_window",
-      "note": "Newest entries (Permen Pendidikan Dasar Menengah 20/2026, Permen PANRB 15/16/2026, Permen LH 11/2026, Permenag 17/2026) dated 'diundangkan 1 minggu yang lalu' (~14-19 Aug 2026), outside 48h window"
-    },
-    {
-      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
-      "reason": "outside_window",
-      "note": "Newest result PP Nomor 31 Tahun 2026, 'berlaku mulai sebulan yang lalu', outside 48h window"
+      "note": "Newest entries (Permen Hukum 14/2026, Permen Pendidikan Dasar Menengah 20/2026, PermenPANRB 15-16/2026, Permen LH 11/2026) dated 12-20 Aug 2026, outside 48h window"
     },
     {
       "url": "https://www.imigrasi.go.id",
       "reason": "checked_no_new",
-      "note": "Freshest Siaran Pers dated 25 Agu 2026 is an enforcement/deportation press release (Russian national filming KNPB demonstration in Wamena) citing existing UU Nomor 6 Tahun 2011 tentang Keimigrasian Pasal 122 huruf a — no new regulation"
+      "note": "Only content is a 25 Aug 2026 enforcement press release (Russian national detained), no new immigration regulation listed"
     },
     {
       "url": "https://www.pajak.go.id/peraturan",
       "reason": "outside_window",
-      "note": "Newest regulatory entry still PER-8/PJ/2026 dated 2026-07-28 (already in seen_citations); no entries within 48h window"
+      "note": "Newest regulatory entry still PER-8/PJ/2026 dated 2026-07-28 (already in seen_citations); subsequent entries are KMK exchange-rate operational notices"
     },
     {
       "url": "https://jdih.kemnaker.go.id/peraturan",
       "reason": "checked_no_new",
-      "note": "2,567 results, default sort is hierarchy not date; no Permenaker/Permenkes item dated within 48h window found in the visible listing"
+      "note": "2,567 results, default sort is hierarchy not date; newest UU/Permenaker visible (UU 2/2026, dated Apr 2026) predates 48h window, no fresher item found in visible listing"
     }
   ],
   "nb_query_errors": [],
@@ -89,5 +89,5 @@
     "PMK Nomor 61 Tahun 2026",
     "PMK Nomor 57 Tahun 2026"
   ],
-  "note": "All 4 NB-INTEL queries succeeded (auth restored — 2026-08-25's auth_expired is resolved), all returned 'nessuna novità'. Web cross-check ran on all 11 sources (5 primary + 6 backup); zero deltas matching the Step-4 service-line filter found within the 48h window. All web-source freshest items either duplicate seen_citations, fall outside the 48h window, or are non-regulatory content (enforcement press releases, LCC competition news)."
+  "note": "All 4 NB-INTEL queries succeeded (auth restored vs 2026-08-25 auth_expired failure) and all returned 'nessuna novita'. Web cross-check ran on all 11 sources (5 primary + 6 backup); zero deltas matching the Step-4 service-line filter found within the 48h window. Only non-filtered items found: SE-5/PJ/2026 and SE-6/PJ/2026 DJP circulars (Surat Edaran, not in the PMK/PER-DJP/KEP-DJP filter list) and Permen Hukum 14/2026 (outside 48h window)."
 }
