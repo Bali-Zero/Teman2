@@ -589,3 +589,132 @@ async def test_recovery_team_only_payload_still_returns_without_routing(
     # asserting nothing, and a reader deserves the same clarity the linter does.
     process_meta_inbox_mock.assert_not_awaited()
     legacy_route.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Two hardenings a cross-family refuter (Kimi K3) argued for on the frozen
+# diff. One of its findings was REFUTED on its premise and is recorded in the
+# commit, not here — status receipts ride inside a `field == "messages"` change
+# in this codebase (`value["statuses"]`), not as a `field == "statuses"` change,
+# so the message-only counter it attacked was correct today. The counter was
+# still widened to count EVERY surviving change: being wrong there means
+# silently discarding a delivery, and a counter that is only accidentally right
+# is not worth keeping.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_team_change_wearing_the_public_display_number_cannot_drag_the_remainder_into_the_client_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`_change_belongs_to_meta_inbox` has a SECOND signal — the
+    display_phone_number fallback from the 2026-08-25 double-reply scar. So a
+    team-bot change carrying the PUBLIC visible number (a misconfiguration, but
+    a reachable one) would make the payload look meta-inbox even though the
+    part that survives the strip is not. The verdict is therefore computed with
+    team-bot changes excluded, and this pins it: the remainder here is an
+    unrelated number and must go to the legacy route, never to the client
+    pipeline.
+    """
+    monkeypatch.delenv("TEAM_BOT_INGRESS_ENABLED", raising=False)
+    process_meta_inbox_mock = AsyncMock(
+        side_effect=AssertionError("the client pipeline must not receive this remainder")
+    )
+    monkeypatch.setattr(whatsapp_chat, "process_meta_inbox_payload", process_meta_inbox_mock)
+    legacy_route = AsyncMock(return_value=None)
+
+    def _msg_change(pnid: str, display: str, wamid: str) -> dict:
+        return {
+            "field": "messages",
+            "value": {
+                "messaging_product": "whatsapp",
+                "metadata": {"display_phone_number": display, "phone_number_id": pnid},
+                "messages": [
+                    {
+                        "from": "620000000003",
+                        "id": wamid,
+                        "timestamp": "1712000000",
+                        "type": "text",
+                        "text": {"body": "[QA] synthetic display-number probe"},
+                    }
+                ],
+            },
+        }
+
+    payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "SHARED_WABA_ID",
+                "changes": [
+                    # team pnid, but wearing the PUBLIC display number
+                    _msg_change(TEAM_ID, PUBLIC_DISPLAY_NUMBER, "wamid.QA-TEAM-2"),
+                    _msg_change(UNRELATED_ID, "15556151111", "wamid.QA-OTHER-2"),
+                ],
+            }
+        ],
+    }
+
+    await whatsapp_chat.route_whatsapp_recovery(
+        payload, db_pool=MagicMock(), legacy_route=legacy_route
+    )
+
+    legacy_route.assert_awaited_once()
+    process_meta_inbox_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_remainder_that_is_not_a_message_change_is_still_routed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The stripper's "nothing else was in it" test counts EVERY surviving
+    change. A payload whose only remainder is some other change kind must still
+    be routed onward — dropping it would be a silent loss introduced by a cure.
+    """
+    monkeypatch.delenv("TEAM_BOT_INGRESS_ENABLED", raising=False)
+    monkeypatch.setattr(
+        whatsapp_chat,
+        "process_meta_inbox_payload",
+        AsyncMock(side_effect=AssertionError("not meta-inbox traffic")),
+    )
+    legacy_route = AsyncMock(return_value=None)
+
+    payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "SHARED_WABA_ID",
+                "changes": [
+                    {
+                        "field": "messages",
+                        "value": {
+                            "messaging_product": "whatsapp",
+                            "metadata": {
+                                "display_phone_number": "628810383188 96",
+                                "phone_number_id": TEAM_ID,
+                            },
+                            "messages": [
+                                {
+                                    "from": "620000000004",
+                                    "id": "wamid.QA-TEAM-3",
+                                    "timestamp": "1712000000",
+                                    "type": "text",
+                                    "text": {"body": "[QA] synthetic non-message-remainder probe"},
+                                }
+                            ],
+                        },
+                    },
+                    {"field": "account_update", "value": {"event": "PARTNER_ADDED"}},
+                ],
+            }
+        ],
+    }
+
+    await whatsapp_chat.route_whatsapp_recovery(
+        payload, db_pool=MagicMock(), legacy_route=legacy_route
+    )
+
+    legacy_route.assert_awaited_once()
+    routed = legacy_route.await_args.args[0]
+    fields = [c["field"] for e in routed["entry"] for c in e["changes"]]
+    assert fields == ["account_update"]

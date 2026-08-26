@@ -1078,7 +1078,7 @@ async def _handle_team_bot_ingress_payload(change: WhatsAppChange) -> None:
     logger.info(
         "Team-bot webhook message recognised (phone_number_id=%s) — no "
         "ingress handler built yet (lane B3); dropping without processing.",
-        _change_phone_number_id(change),
+        redact_identifier_for_log(_change_phone_number_id(change)),
     )
 
 
@@ -1096,11 +1096,19 @@ def _payload_without_team_bot_changes(payload: dict[str, Any]) -> dict[str, Any]
     paying client's message instead of misrouting a staff one.
 
     Operates on the RAW dict (not the parsed model) because that dict is what
-    the downstream handlers receive verbatim. Non-message changes and entries
-    that end up empty are preserved as-is rather than pruned — the shape the
-    downstream handlers already tolerate is the shape they keep.
+    the downstream handlers receive verbatim. An entry that ends up with no
+    changes is kept (rebuilt with an empty ``changes`` list, not pruned) — the
+    shape the downstream handlers already tolerate is the shape they keep.
+
+    The "nothing else was in it" test counts EVERY surviving change, not only
+    ``messages`` ones. Counting messages alone would drop a payload whose only
+    remainder is some other change kind — and in this codebase status receipts
+    ride INSIDE a ``field == "messages"`` change (``value["statuses"]``, see
+    ``process_meta_inbox_payload``), so a message-only counter reads correctly
+    today and would start lying the moment Meta adds a field. Count broadly:
+    being wrong here means silently discarding a delivery.
     """
-    remaining_messages = 0
+    remaining = 0
     entries: list[Any] = []
     for entry in payload.get("entry") or []:
         if not isinstance(entry, dict):
@@ -1116,10 +1124,9 @@ def _payload_without_team_bot_changes(payload: dict[str, Any]) -> dict[str, Any]
             ):
                 continue
             kept.append(change)
-            if isinstance(change, dict) and change.get("field") == "messages":
-                remaining_messages += 1
+            remaining += 1
         entries.append({**entry, "changes": kept})
-    if remaining_messages == 0:
+    if remaining == 0:
         return None
     return {**payload, "entry": entries}
 
@@ -1552,8 +1559,18 @@ async def route_whatsapp_recovery(
     """
     try:
         webhook = WhatsAppWebhook(**payload)
+        # Team-bot changes are excluded from this verdict rather than argued
+        # away by set-disjointness: `_change_belongs_to_meta_inbox` has a
+        # SECOND signal (the display_phone_number fallback, 2026-08-25
+        # double-reply scar), so a team-bot change carrying the public visible
+        # number — a misconfiguration, but a reachable one — would otherwise
+        # set this True and send a REMAINDER that is not meta-inbox traffic
+        # into the client pipeline. Computing the verdict on the changes that
+        # actually survive removes the class instead of reasoning about it.
         is_meta_inbox = any(
-            change.field == "messages" and _change_belongs_to_meta_inbox(change)
+            change.field == "messages"
+            and not _change_belongs_to_team_bot_ingress(change)
+            and _change_belongs_to_meta_inbox(change)
             for entry in webhook.entry
             for change in entry.changes
         )
@@ -1584,10 +1601,8 @@ async def route_whatsapp_recovery(
         if remainder is None:
             return
         # Mixed payload: the team half is handled (or dropped) above, and the
-        # rest MUST still be routed. `is_meta_inbox` needs no recomputation —
-        # the two id sets are disjoint (pinned by
-        # test_the_two_sets_never_overlap), so stripping team-bot changes can
-        # never turn a meta-inbox payload into a non-meta-inbox one.
+        # rest MUST still be routed. `is_meta_inbox` was already computed with
+        # team-bot changes excluded, so it describes the remainder.
         logger.info(
             "whatsapp recovery: mixed payload — team-bot changes handled, "
             "routing the remaining message change(s) onward."
@@ -1813,7 +1828,7 @@ async def whatsapp_webhook(
                     logger.info(
                         "Team-bot webhook message recognised (phone_number_id=%s) "
                         "but TEAM_BOT_INGRESS_ENABLED is off — dropping.",
-                        _change_phone_number_id(change),
+                        redact_identifier_for_log(_change_phone_number_id(change)),
                     )
                 continue
 
