@@ -184,7 +184,20 @@ def classify_ejection_reason(reason_raw: str | None, infra_hint: bool | None) ->
 
 def _run_has_infra_signature(run: dict[str, Any], jobs: list[dict[str, Any]]) -> bool:
     """Mirrors queue_ejection_attribution.py::_run_is_infra_flavoured (duplicated, not
-    imported — see module docstring). Caller only invokes this for a run that already failed."""
+    imported — see module docstring). Caller only invokes this for a run that already failed.
+
+    CODE wins over cancelled siblings (refuter round, agy pass, 2026-08-27): a matrix workflow
+    with fail-fast cancels every OTHER job the instant one job fails for real. That cancellation
+    is a symptom of the real failure, not an infra signal of its own — so a run containing ANY
+    job that failed for a non-infra reason is CODE, full stop, even if the fail-fast cascade also
+    cancelled its siblings. Only when NO job failed for a real reason do cancelled/timed-out jobs
+    (or the run's own cancelled/timed-out conclusion) count as INFRA."""
+    for job in jobs:
+        if job.get("conclusion") != "failure":
+            continue
+        name = str(job.get("name") or "").lower()
+        if not any(sig in name for sig in INFRA_JOB_NAME_SIGNATURES):
+            return False  # a real (non-infra-flavoured) job failure -> CODE, regardless of siblings
     if run.get("conclusion") in ("cancelled", "timed_out"):
         return True
     for job in jobs:
@@ -224,12 +237,22 @@ def is_rearm_candidate(pr: dict[str, Any]) -> bool:
 
 
 def _parse_iso(ts: str | None) -> _dt.datetime | None:
+    """Returns an AWARE (UTC) datetime, or None. Every real caller compares the result against
+    `_now()` (always tz-aware) — a naive result would raise TypeError at comparison time
+    (uncaught anywhere between here and `tick()`, i.e. a full tick crash), not at parse time,
+    which is why this went unnoticed (refuter round, agy pass, 2026-08-27). GitHub API timestamps
+    always carry a Z/offset in practice, but this function must not depend on that being true
+    forever (a hand-edited state file, a future API shape) — so a parse that comes back naive is
+    coerced to UTC-aware here, once, rather than trusted to every call site."""
     if not ts:
         return None
     try:
-        return _dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        parsed = _dt.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
     except ValueError:
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=_dt.timezone.utc)
+    return parsed
 
 
 def count_recent_infra_rearms(
@@ -511,13 +534,22 @@ def fetch_infra_hint(repo: str, number: int, removed_at: str | None) -> bool | N
     except json.JSONDecodeError:
         return None
     removed_dt = _parse_iso(removed_at)
-    prefix = f"pr-{number}-"
-    candidates = [
-        r
-        for r in runs
-        if str(r.get("head_branch") or "").startswith(prefix)
-        and r.get("conclusion") in ("failure", "cancelled", "timed_out")
-    ]
+    # W111-adjacent fix (refuter round, agy pass, 2026-08-27): a merge_group run's real
+    # head_branch is the full `gh-readonly-queue/main/pr-<n>-<sha>` ref, never a bare
+    # `pr-<n>-<sha>` — a plain .startswith(f"pr-{number}-") NEVER matches it, so this used to
+    # find zero candidates on every call and fall through to the conservative CODE default
+    # unconditionally. PR_SHA_RE (module-level, previously unused) is matched anywhere in the
+    # ref instead of anchored at position 0, and the captured PR number is compared numerically
+    # so it never confuses PR #4 with PR #47.
+    candidates = []
+    for r in runs:
+        match = PR_SHA_RE.search(str(r.get("head_branch") or ""))
+        if (
+            match
+            and int(match.group(1)) == number
+            and r.get("conclusion") in ("failure", "cancelled", "timed_out")
+        ):
+            candidates.append(r)
     if removed_dt is not None:
         candidates = [
             r for r in candidates if (_parse_iso(r.get("created_at")) or removed_dt) <= removed_dt
@@ -577,23 +609,44 @@ def fetch_open_pr_heads(repo: str = REPO) -> set[str]:
 
 
 def fetch_live_queue_branches(repo: str = REPO) -> set[str]:
-    """Fresh set of live `gh-readonly-queue/main/...` ref names. Raises on fetch failure."""
+    """Fresh set of live `gh-readonly-queue/main/...` ref names, paginated. Raises on fetch
+    failure — the caller (run_janitor_pass and the per-run cancel-time recheck) already treats a
+    RuntimeError here as CANNOT-VERIFY and cancels NOTHING that tick, so failing loud here is
+    what keeps the janitor fail-closed rather than fail-open.
+
+    Paginated (refuter round, agy pass, 2026-08-27): `git/matching-refs` defaults to 30 refs per
+    page like every other GitHub REST list endpoint. Un-paginated, a busy merge queue with more
+    than 30 live entries would silently drop the tail — and a branch missing from this set reads
+    to `select_stale_merge_group_runs` as "already ejected", which cancels a run that is still
+    building. Mirrors fetch_queued_runs's page-count loop + safety bound (W97 style)."""
     owner, name = repo.split("/", 1)
-    rc, out, err = _run(
-        ["gh", "api", f"repos/{owner}/{name}/git/matching-refs/heads/gh-readonly-queue"],
-        timeout=30,
-    )
-    if rc != 0:
-        raise RuntimeError(f"gh api matching-refs failed rc={rc}: {err.strip()[:300]}")
-    try:
-        refs = json.loads(out)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"unparseable matching-refs response: {exc!s}") from exc
     branches: set[str] = set()
-    for ref in refs:
-        name_ref = str(ref.get("ref") or "")
-        if name_ref.startswith("refs/heads/"):
-            branches.add(name_ref[len("refs/heads/"):])
+    page = 1
+    while True:
+        rc, out, err = _run(
+            [
+                "gh", "api",
+                f"repos/{owner}/{name}/git/matching-refs/heads/gh-readonly-queue"
+                f"?per_page=100&page={page}",
+            ],
+            timeout=30,
+        )
+        if rc != 0:
+            raise RuntimeError(f"gh api matching-refs failed rc={rc}: {err.strip()[:300]}")
+        try:
+            refs = json.loads(out)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"unparseable matching-refs response: {exc!s}") from exc
+        for ref in refs:
+            name_ref = str(ref.get("ref") or "")
+            if name_ref.startswith("refs/heads/"):
+                branches.add(name_ref[len("refs/heads/"):])
+        if len(refs) < 100:
+            break
+        page += 1
+        if page > 20:  # a 2,000-entry live queue is not a realistic shape; a safety bound
+            logger.warning("fetch_live_queue_branches: hit page safety bound at page=%s", page)
+            break
     return branches
 
 
@@ -659,18 +712,23 @@ def cancel_run(repo: str, run_id: int) -> bool:
     return True
 
 
-def send_telegram(message: str, dedup_key: str = "") -> None:
+def send_telegram(message: str, dedup_key: str = "") -> bool:
     """Delegates to the repo's existing notification gateway (scripts/tg_notify.py — same
     convention scripts/dlq_autopilot.py already uses). The gateway owns token resolution
     (reads TELEGRAM_OWNER_CHAT_ID / bot token from the process env at send time), dedup and
     the daily P0 budget; this function never reads or hardcodes a chat id itself (mandate:
-    the GitHub-secret path is for CI, a local organ reads the env — via the gateway)."""
+    the GitHub-secret path is for CI, a local organ reads the env — via the gateway).
+
+    Returns whether the send actually succeeded (refuter round, agy pass, 2026-08-27): the
+    caller must record `alerted_state` ONLY on a successful send, or a transient gateway/network
+    failure on the FIRST attempt permanently swallows the alert — the dedup key would already be
+    marked "delivered" for a message nobody ever received."""
     gateway = SCRIPTS_DIR / "tg_notify.py"
     if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (superscar #1)
         gateway = REPO_ROOT / "scripts" / "tg_notify.py"
     if not gateway.exists():
         logger.warning("send_telegram: tg_notify.py not found, skipping send")
-        return
+        return False
     cmd = [sys.executable, str(gateway), "--tier", "p0", "--source", "queue-shepherd"]
     if dedup_key:
         cmd += ["--dedup-key", dedup_key]
@@ -678,6 +736,8 @@ def send_telegram(message: str, dedup_key: str = "") -> None:
     rc, _out, err = _run(cmd, timeout=30)
     if rc != 0:
         logger.warning("send_telegram: tg_notify failed rc=%s err=%s", rc, err.strip()[:200])
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -686,15 +746,32 @@ def send_telegram(message: str, dedup_key: str = "") -> None:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
+    """A missing file means "no state yet" -> {} (normal on first run). A file that EXISTS but
+    fails to parse (torn write, disk corruption, hand-edit gone wrong) is a different situation
+    entirely and must never collapse to the same {} — that is precisely the "budget silently
+    resets" bypass the council barred (refuter round, agy pass, 2026-08-27). Raises RuntimeError
+    in that case so the caller can fail closed instead of granting a fresh, unlimited budget."""
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
         return {}
+    except OSError as exc:
+        raise RuntimeError(f"unreadable state file {path}: {exc!s}") from exc
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"corrupt/unparseable state file {path}: {exc!s}") from exc
 
 
 def _save_json(path: Path, data: dict[str, Any]) -> None:
+    """Atomic write: write-then-rename so a crash/kill mid-write never leaves a torn file for the
+    next `_load_json` to trip over (refuter round, agy pass, 2026-08-27 — same finding as above,
+    the other half of the fix). `os.replace` is atomic on the same filesystem, which the tmp file
+    is guaranteed to be since it lives in the same parent directory as the real path."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp_path = path.with_name(f"{path.name}.tmp{os.getpid()}")
+    tmp_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp_path, path)
 
 
 def _now() -> _dt.datetime:
@@ -713,9 +790,19 @@ def _enabled() -> bool:
 
 
 def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> int:
-    """Returns count of PRs re-armed. Loads/saves budget+alerted state unless dry_run."""
-    budget_state = {} if dry_run else _load_json(BUDGET_FILE)
-    alerted_state = {} if dry_run else _load_json(ALERTED_FILE)
+    """Returns count of PRs re-armed. Loads/saves budget+alerted state unless dry_run.
+
+    Fail-closed on state corruption (refuter round, agy pass, 2026-08-27): a torn/corrupt budget
+    file must NEVER be read as "no re-arms recorded yet" — that silently grants a fresh
+    INFRA_BUDGET_MAX allowance, exactly the bypass the council barred. `_load_json` now raises on
+    a parse failure (vs. a simply-missing file, which is normal and returns {}); this pass treats
+    that as CANNOT-VERIFY and re-arms NOTHING this tick, same posture as a `gh` fetch failure."""
+    try:
+        budget_state = {} if dry_run else _load_json(BUDGET_FILE)
+        alerted_state = {} if dry_run else _load_json(ALERTED_FILE)
+    except RuntimeError as exc:
+        logger.error("CANNOT-VERIFY rearm/alert state: %s", exc)
+        return 0
     budget_state = gc_budget_state(budget_state, now)
 
     try:
@@ -750,12 +837,13 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> int:
         alert_key = f"{number}:{head_sha}"
         if not allowed:
             if klass == "UNKNOWN" and not dry_run and not alerted_state.get(alert_key):
-                send_telegram(
+                sent = send_telegram(
                     f"PR #{number} looks disarmed (head {head_sha[:8]}) with no readable "
                     f"ejection reason — fail-closed, no auto-rearm. Needs a human look.",
                     dedup_key=f"queue-shepherd-unknown-{alert_key}",
                 )
-                alerted_state[alert_key] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+                if sent:  # only a DELIVERED alert may be dedup-suppressed on future ticks
+                    alerted_state[alert_key] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
             continue
         if dry_run:
             logger.info("[dry-run] would run: gh pr merge %s --auto", number)
@@ -835,8 +923,18 @@ def tick(dry_run: bool) -> int:
 
 
 def report() -> int:
-    budget_state = _load_json(BUDGET_FILE)
-    alerted_state = _load_json(ALERTED_FILE)
+    try:
+        budget_state = _load_json(BUDGET_FILE)
+    except RuntimeError as exc:
+        logger.error("%s", exc)
+        print(f"budget file: {BUDGET_FILE} — CORRUPT, cannot parse ({exc})")
+        budget_state = {}
+    try:
+        alerted_state = _load_json(ALERTED_FILE)
+    except RuntimeError as exc:
+        logger.error("%s", exc)
+        print(f"alerted file: {ALERTED_FILE} — CORRUPT, cannot parse ({exc})")
+        alerted_state = {}
     print(f"queue_shepherd report — repo={REPO} enabled={_enabled()}")
     print(f"budget file: {BUDGET_FILE} ({'exists' if BUDGET_FILE.exists() else 'missing'})")
     print(f"  tracked (pr,sha) keys: {len(budget_state)}")

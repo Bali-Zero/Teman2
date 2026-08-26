@@ -404,6 +404,7 @@ def test_rearm_pass_unknown_ejection_alerts_once_then_dedups(monkeypatch, tmp_pa
 
     def fake_send_telegram(message, dedup_key=""):
         alerts.append(dedup_key)
+        return True  # simulates a successful delivery
 
     def never_rearm(repo, number):
         raise AssertionError("must never rearm an UNKNOWN ejection")
@@ -461,3 +462,233 @@ def test_rearm_pass_fetch_failure_is_cannot_verify_never_reads_as_nothing_to_do(
     monkeypatch.setattr(qs, "fetch_rearm_candidate_prs", boom)
     rearmed = qs.run_rearm_pass(dry_run=False, now=NOW)
     assert rearmed == 0
+
+
+# ── refuter round (agy pass, 2026-08-27): 6 findings, verified against real code ────────────
+
+
+# 1. _run_has_infra_signature: CODE wins over fail-fast-cancelled siblings.
+
+
+def test_infra_signature_guilt_run_conclusion_cancelled_with_no_jobs_is_infra():
+    # No job data at all (jobs fetch failed) but the run's OWN conclusion is cancelled/timed_out
+    # -> still INFRA, nothing here contradicts it.
+    assert qs._run_has_infra_signature({"conclusion": "cancelled"}, []) is True
+
+
+def test_infra_signature_innocence_a_real_code_failure_wins_even_with_a_cancelled_sibling():
+    # Fail-fast: one job fails for a real reason, the matrix cancels its siblings. The run must
+    # classify as CODE, not INFRA — a cancelled sibling is a SYMPTOM of the real failure here,
+    # not an infra signal of its own.
+    run = {"conclusion": "failure"}
+    jobs = [
+        {"name": "Backend Shard 1", "conclusion": "failure"},  # real code failure
+        {"name": "Backend Shard 2", "conclusion": "cancelled"},  # fail-fast cascade victim
+    ]
+    assert qs._run_has_infra_signature(run, jobs) is False
+
+
+def test_infra_signature_guilt_cancelled_only_with_no_real_failure_stays_infra():
+    run = {"conclusion": "failure"}
+    jobs = [
+        {"name": "Backend Shard 1", "conclusion": "cancelled"},
+        {"name": "Backend Shard 2", "conclusion": "cancelled"},
+    ]
+    assert qs._run_has_infra_signature(run, jobs) is True
+
+
+def test_infra_signature_guilt_infra_named_job_failure_is_still_infra():
+    run = {"conclusion": "failure"}
+    jobs = [{"name": "Set up job", "conclusion": "failure"}]
+    assert qs._run_has_infra_signature(run, jobs) is True
+
+
+# 2. fetch_infra_hint: merge_group head_branch matching (gh-readonly-queue prefix, not bare pr-N-).
+
+
+def test_fetch_infra_hint_matches_full_gh_readonly_queue_branch_name(monkeypatch):
+    sha = "a" * 40
+    runs_payload = {
+        "workflow_runs": [
+            {
+                "id": 999,
+                "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+                "conclusion": "failure",
+                "created_at": _iso(NOW),
+            }
+        ]
+    }
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            return 0, '{"jobs": [{"name": "Backend Shard 1", "conclusion": "failure"}]}', ""
+        return 0, __import__("json").dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    result = qs.fetch_infra_hint("Bali-Zero/Teman2", 501, _iso(NOW))
+    assert result is False  # real code failure, not infra-flavoured -> resolved, not None
+
+
+def test_fetch_infra_hint_innocence_a_different_pr_number_is_not_matched(monkeypatch):
+    sha = "a" * 40
+    runs_payload = {
+        "workflow_runs": [
+            {
+                "id": 999,
+                "head_branch": f"gh-readonly-queue/main/pr-45-{sha}",  # PR #45, not #4 or #451
+                "conclusion": "failure",
+                "created_at": _iso(NOW),
+            }
+        ]
+    }
+
+    def fake_run(cmd, timeout=30):
+        return 0, __import__("json").dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    assert qs.fetch_infra_hint("Bali-Zero/Teman2", 4, _iso(NOW)) is None
+    assert qs.fetch_infra_hint("Bali-Zero/Teman2", 451, _iso(NOW)) is None
+
+
+# 3. _save_json atomic write + _load_json fail-closed on a corrupt (not merely absent) file.
+
+
+def test_save_json_leaves_no_tmp_file_behind_and_content_is_correct(tmp_path):
+    path = tmp_path / "state" / "budget.json"
+    qs._save_json(path, {"a": 1})
+    assert qs._load_json(path) == {"a": 1}
+    leftovers = list(path.parent.glob("*.tmp*"))
+    assert leftovers == []
+
+
+def test_load_json_missing_file_is_empty_dict_normal_first_run(tmp_path):
+    assert qs._load_json(tmp_path / "does-not-exist.json") == {}
+
+
+def test_load_json_corrupt_file_raises_never_silently_returns_empty(tmp_path):
+    path = tmp_path / "budget.json"
+    path.write_text('{"501": {"infra_rearm_timestamps": [', encoding="utf-8")  # torn write
+    import pytest as _pytest
+
+    with _pytest.raises(RuntimeError):
+        qs._load_json(path)
+
+
+def test_rearm_pass_corrupt_budget_file_fails_closed_no_rearm(monkeypatch, tmp_path):
+    budget_path = tmp_path / "budget.json"
+    budget_path.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(qs, "BUDGET_FILE", budget_path)
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+
+    def never_called(*a, **k):
+        raise AssertionError("must never fetch candidates when state is unreadable")
+
+    monkeypatch.setattr(qs, "fetch_rearm_candidate_prs", never_called)
+
+    rearmed = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert rearmed == 0
+    # the corrupt file must be left as-is (never overwritten with a fresh empty state)
+    assert budget_path.read_text(encoding="utf-8") == "{not json"
+
+
+# 4. send_telegram: alerted_state recorded only on a successful send.
+
+
+def test_rearm_pass_unknown_alert_not_recorded_when_send_telegram_fails(monkeypatch, tmp_path):
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    alerted_path = tmp_path / "alerted.json"
+    monkeypatch.setattr(qs, "ALERTED_FILE", alerted_path)
+
+    def fake_candidates(repo=qs.REPO):
+        return [{"number": 601, "head_sha": "shaUNK2", "head_ref_name": "agent/x/y/z"}]
+
+    def fake_ejection(repo, number):
+        return None
+
+    send_attempts = []
+
+    def failing_send_telegram(message, dedup_key=""):
+        send_attempts.append(dedup_key)
+        return False  # transient gateway/network failure
+
+    def never_rearm(repo, number):
+        raise AssertionError("must never rearm an UNKNOWN ejection")
+
+    monkeypatch.setattr(qs, "fetch_rearm_candidate_prs", fake_candidates)
+    monkeypatch.setattr(qs, "fetch_last_ejection", fake_ejection)
+    monkeypatch.setattr(qs, "send_telegram", failing_send_telegram)
+    monkeypatch.setattr(qs, "rearm_pr", never_rearm)
+
+    qs.run_rearm_pass(dry_run=False, now=NOW)
+    qs.run_rearm_pass(dry_run=False, now=NOW + _dt.timedelta(minutes=10))
+
+    # a failed send must NEVER be recorded as delivered -> retried on every subsequent tick,
+    # never permanently swallowed.
+    assert len(send_attempts) == 2
+    saved_alerted = qs._load_json(alerted_path)
+    assert saved_alerted == {}
+
+
+# 5. fetch_live_queue_branches: pagination beyond the API's 30/100-per-page default.
+
+
+def test_fetch_live_queue_branches_paginates_past_first_page(monkeypatch):
+    page1_refs = [{"ref": f"refs/heads/gh-readonly-queue/main/pr-{i}-{'a' * 40}"} for i in range(100)]
+    page2_refs = [{"ref": f"refs/heads/gh-readonly-queue/main/pr-{200 + i}-{'b' * 40}"} for i in range(5)]
+
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        url = cmd[-1]
+        if "page=2" in url:
+            return 0, __import__("json").dumps(page2_refs), ""
+        return 0, __import__("json").dumps(page1_refs), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    branches = qs.fetch_live_queue_branches("Bali-Zero/Teman2")
+
+    assert len(branches) == 105  # 100 from page 1 + 5 from page 2 — nothing dropped past page 1
+    assert len(calls) == 2
+    assert any(b.startswith("gh-readonly-queue/main/pr-204-") for b in branches)  # page-2 survived
+
+
+def test_fetch_live_queue_branches_innocence_single_short_page_makes_one_call(monkeypatch):
+    refs = [{"ref": f"refs/heads/gh-readonly-queue/main/pr-1-{'c' * 40}"}]
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, __import__("json").dumps(refs), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    branches = qs.fetch_live_queue_branches("Bali-Zero/Teman2")
+    assert len(branches) == 1
+    assert len(calls) == 1  # under 100 results -> no second page fetched
+
+
+# 6. _parse_iso: always returns an aware datetime (or None), never a naive one that would crash
+#    on comparison against an aware cutoff.
+
+
+def test_parse_iso_z_suffix_is_aware():
+    parsed = qs._parse_iso("2026-08-27T10:00:00Z")
+    assert parsed.tzinfo is not None
+
+
+def test_parse_iso_naive_input_is_coerced_to_aware_utc_never_crashes_on_compare():
+    parsed = qs._parse_iso("2026-08-27T10:00:00")  # no Z, no offset
+    assert parsed is not None
+    assert parsed.tzinfo is not None
+    # this comparison used to raise TypeError: can't compare offset-naive and offset-aware
+    assert parsed <= NOW
+
+
+def test_parse_iso_invalid_string_is_none_not_a_crash():
+    assert qs._parse_iso("not-a-timestamp") is None
+
+
+def test_parse_iso_none_and_empty_are_none():
+    assert qs._parse_iso(None) is None
+    assert qs._parse_iso("") is None
