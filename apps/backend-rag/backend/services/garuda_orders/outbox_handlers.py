@@ -479,7 +479,11 @@ class PortalInviteHandler:
             email=email,
             created_by=INVITE_CREATED_BY,
         )
-        logger.info("portal invite minted for order %s", job.order_id)
+        # The DIGEST, not `job.order_id`: STATE-MACHINE.md SM-G03 bans opaque
+        # result identifiers from logs regardless of PII status, and
+        # `crm_handoff.py` — same package — already logs only this digest for
+        # exactly that reason. A first draft of this line logged the order id.
+        logger.info("portal invite minted (key=%s)", digest[:12])
 
         await self._send_invite_email(
             to=email,

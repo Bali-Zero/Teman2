@@ -268,7 +268,9 @@ async def test_the_send_is_the_last_statement_in_the_handler():
 async def test_no_log_line_carries_the_token_or_the_address(pool, caplog):
     """The token completes registration through a PUBLIC unauthenticated
     endpoint, so a log line holding it is a credential at rest. The address is
-    PII (SYMBIOSIS Law 2). Only the order id may be logged.
+    PII (SYMBIOSIS Law 2). Not even the ORDER ID may be logged: SM-G03 bans
+    opaque result identifiers from logs regardless of PII status, so the
+    handler emits the idempotency digest, as `crm_handoff.py` does.
 
     SCOPE, STATED SO THIS TEST DOES NOT CLAIM MORE THAN IT PROVES: the sender
     here is a double, so what is asserted is that THIS HANDLER logs neither
@@ -333,3 +335,58 @@ def test_the_paid_transaction_enqueues_portal_invite():
     nxt = paid_branch.split("elif state ==", 1)[0]
     assert 'job_type="practice_release"' in nxt
     assert 'job_type="portal_invite"' in nxt
+
+
+# --------------------------------------------------------------------------
+# the doubles cannot see these — so they are asserted on the SOURCE
+# --------------------------------------------------------------------------
+
+
+def _logged_arg_names(func_or_src) -> set[str]:
+    """Every bare name passed as an argument to a `logger.*(...)` call."""
+    src = func_or_src if isinstance(func_or_src, str) else inspect.getsource(func_or_src)
+    tree = ast.parse(textwrap.dedent(src))
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        fn = node.func
+        if not (isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name)):
+            continue
+        if fn.value.id != "logger":
+            continue
+        for arg in node.args:
+            for sub in ast.walk(arg):
+                if isinstance(sub, ast.Name):
+                    names.add(sub.id)
+                elif isinstance(sub, ast.Attribute):
+                    names.add(sub.attr)
+    return names
+
+
+def test_the_invite_service_does_not_log_the_applicants_address():
+    """The double in this file never logs, so no test above can see this.
+
+    `InviteService.create_invitation` was written for the human-triggered
+    `/api/portal/invite/send` endpoint and logged the address, which was
+    unremarkable while a staff member with the address on screen was the only
+    caller. The outbox made it UNATTENDED and per-paid-order — a steady stream
+    of client PII into a persisted log that no Sentry scrubber touches
+    (`_before_send` filters events, not log sinks). RED if it comes back.
+    """
+
+    from backend.services.portal.invite_service import InviteService
+
+    assert "email" not in _logged_arg_names(InviteService.create_invitation)
+
+
+def test_the_handler_logs_the_digest_and_never_the_order_id():
+    """SM-G03 bans opaque result identifiers from logs regardless of PII
+    status, and `crm_handoff.py` in this same package already complies by
+    logging only the idempotency digest. RED if `job.order_id` returns."""
+
+    from backend.services.garuda_orders.outbox_handlers import PortalInviteHandler
+
+    logged = _logged_arg_names(PortalInviteHandler.__call__)
+    assert "order_id" not in logged
+    assert "digest" in logged
