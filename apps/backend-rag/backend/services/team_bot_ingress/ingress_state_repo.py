@@ -1,4 +1,4 @@
-"""Postgres-backed ``IngressLeaderStore`` (migration 281,
+"""Postgres-backed ``IngressLeaderStore`` (migration 291,
 ``team_bot_ingress_leader``).
 
 Thin adapter, Golden Rule #7: every business rule lives in
@@ -53,7 +53,7 @@ _SELECT_COLUMNS = (
 
 
 class IngressLeaderRecordMissingError(RuntimeError):
-    """The control row does not exist. Migration 281 bootstraps it — this
+    """The control row does not exist. Migration 291 bootstraps it — this
     means the migration has not run, or ``record_id`` is wrong. Never
     auto-create it here: a control record that can spontaneously appear
     mid-request is exactly the kind of implicit state this table exists
@@ -74,7 +74,7 @@ def _row_to_state(row: asyncpg.Record) -> IngressLeaderState:
 
 class PostgresIngressLeaderStore:
     """Implements ``ingress_leader.IngressLeaderStore`` against
-    ``team_bot_ingress_leader`` (migration 281).
+    ``team_bot_ingress_leader`` (migration 291).
     """
 
     def __init__(self, pool: asyncpg.Pool, *, record_id: str = DEFAULT_RECORD_ID) -> None:

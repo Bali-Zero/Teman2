@@ -1,21 +1,30 @@
--- Migration 281: team_bot_ingress_leader
+-- Migration 291: team_bot_ingress_leader
 -- (I DUE BOT, lane B5 -- MANDATE.md F9, the Mini<->Pro failover control record)
 --
--- INTEGER BOUND PROVISIONALLY. This repo's own convention
--- (LEGACY_PROMOTION_README.md / migration 279's header) is: reserve a
--- SYMBOLIC name, bind the integer FRESH at the committing session's
--- integration time, never copy a number from a prompt or an earlier
--- branch. This mandate is explicitly LOCAL-FIRST (MANDATE.md preamble:
--- "no per-commit PR ceremony ... nightly push of the integration branch,
--- final landing as a short PR train") and several duebot lanes may be
--- adding migrations concurrently on their own worktrees against the SAME
--- `feature/due-bot` base. 281 is the correct next integer against
--- `feature/due-bot`@10af71ed7 (the commit this worktree was reset to --
--- `ls backend/db/migrations_v2/*.sql | sed -E 's#.*/([0-9]+)_.*#\1#' |
--- sort -n | tail -1` -> 280) at the time this file was written. Whoever
--- lands the final PR train MUST re-run that measurement against the then-
--- current integration branch tip and renumber this file if another lane's
--- migration has since claimed 281 -- this is expected, not an error.
+-- Renumbered 281 -> 291 (mig-collision-281 task, 2026-08-26): this file's
+-- own convention (LEGACY_PROMOTION_README.md / migration 279's header) says
+-- the integer is bound FRESH at final-PR-train integration time and
+-- explicitly anticipates this exact case -- "renumber this file if another
+-- lane's migration has since claimed 281 -- this is expected, not an
+-- error." That happened: `feature/due-bot`'s own 281 collided with
+-- `origin/main`'s independently-numbered `281_garuda_voa_retention.sql`
+-- (confirmed via `git merge-tree --write-tree origin/main HEAD` producing
+-- BOTH 281 files in the merged tree). Fresh measurement at rename time:
+--   * `git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/
+--     db/migrations_v2/ | sort` -> highest present on main is 287
+--     (287_garuda_practices.sql).
+--   * `gh pr list --state open --limit 300 --json number,files -q '.[] |
+--     .number as $n | .files[]?.path | select(test("migrations_v2/[0-9]+_"))
+--     | "\($n): \(.)"'` -> PR #5020 already claims 288
+--     (288_practices_source_idempotency_key.sql).
+--   * This branch's own 290_broker_jobs_client_bot.sql is unrelated
+--     (different feature, no dependency either direction) and is left
+--     untouched.
+-- 291 clears both: 4 above main's confirmed head, 3 above the open PR's
+-- claim, 1 above this branch's own 290. This migration must stay
+-- numerically BEFORE 292 (team_bot_ingress_leader_epoch_monotonic, also
+-- renumbered from 282 in the same task): 292's trigger operates on the
+-- table this migration creates.
 --
 -- Purpose
 -- -------

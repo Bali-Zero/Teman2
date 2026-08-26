@@ -70,9 +70,9 @@ never mismatches Meta is a wasted epoch bump, not a correctness bug.
 
 ### Declared residual of that choice
 
-*(Written by the orchestrator, not the lane — B5 named this in conversation
+_(Written by the orchestrator, not the lane — B5 named this in conversation
 and agreed to record it, then hit a quota wall before it could. It is here
-so it does not live only in a chat log.)*
+so it does not live only in a chat log.)_
 
 Because promotion is gated on epoch equality and not on the incumbent's
 lease having lapsed, **two failoverd processes on the same node can inflate
@@ -91,9 +91,9 @@ protects.
 
 ## Consequence 2 — DB-level backstop (closes #7)
 
-Migration 281's own `COMMENT ON TABLE` claims "Written ONLY via
+Migration 291's own `COMMENT ON TABLE` claims "Written ONLY via
 compare-and-swap ... never a bare UPDATE" — a comment, not a constraint.
-Migration 282 adds a `BEFORE UPDATE` trigger rejecting any UPDATE that
+Migration 292 adds a `BEFORE UPDATE` trigger rejecting any UPDATE that
 decreases `leader_epoch`, independent of whether the application code
 calling it stays correct — a bare `UPDATE` bypassing `ingress_state_repo.py`
 entirely (an operator fixing something by hand, a future bug) can still
@@ -179,5 +179,5 @@ Every new test proving #1/#3/#4/#7/#8 was written BEFORE its corresponding
 production fix and confirmed to fail (ImportError/AttributeError for the
 not-yet-existing `_fence_write_with_live_epoch`/`_create_pool_with_retry`;
 a passing `UPDATE ... SET leader_epoch = <lower>` for #7 before migration
-282 exists) — then the fix was applied and the same tests confirmed green.
+292 exists) — then the fix was applied and the same tests confirmed green.
 See the commit message for the exact red-then-green transitions observed.
