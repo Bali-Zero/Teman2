@@ -72,9 +72,18 @@ was added to close it.** Every fixture:
   `"Permenkumham SYNTH-12/2026"`), a `example.go.id` / `example.org` source domain, and a
   `SYNTHETIC — do not treat as regulatory fact` field at the top level.
 - Contains **no real client data, no real NAGA claim/evidence row content, no real case
-  identifiers**. This is not "real data with names changed" — it is invented from the category
-  description, matching the packet's forbidden-list line "PII: absolutely no real NAGA
-  claim/evidence rows anywhere — not in a fixture."
+  identifiers**, matching the packet's forbidden-list line "PII: absolutely no real NAGA
+  claim/evidence rows anywhere — not in a fixture." **CORRECTED 2026-08-26 (adversarial
+  review, `07` §B4): the stronger claim that once stood here — "this is not 'real data with
+  names changed' — it is invented from the category description" — was false as a blanket
+  statement.** The PII guarantee above holds and is the one that matters; the purity claim did
+  not. `supersession/01` embeds the real IDR 2,500,000,000 PMA paid-up figure and the IDR 10B
+  exception threshold; `scope_jurisdiction/01` embeds a real "paling lambat 7 hari" finding.
+  None of it is client PII and each is noted in place, so this was never deception — but a file
+  stamped `SYNTHETIC — do not treat as regulatory fact` carries real regulatory figures that
+  this bundle did NOT re-verify, which is the worst of both readings. Whoever builds the golden
+  set must either replace them with invented numbers or re-ground them against the live corpus.
+  Do not cite them as validated.
 - Is shaped as a `{claim, evidence[]}` pair using the field names from
   `02-p04-adapter-mapping.md` (i.e. these are draft canonical objects, not NAGA DB rows) so a
   future adapter-conformance test can validate them directly against `claim.schema.json` /
