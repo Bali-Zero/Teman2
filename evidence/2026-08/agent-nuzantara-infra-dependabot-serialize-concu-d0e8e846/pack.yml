@@ -1,0 +1,180 @@
+brief_ref: evidence/2026-08/agent-nuzantara-infra-dependabot-serialize-concu-d0e8e846/brief.yml
+plan_ref: >-
+  PR #5043 (agent/nuzantara/infra/dependabot-serialize-concurrency -> main) —
+  arms CLAUDE.md Agent PR Contract rule 5. Mandate from the orchestrating
+  session (X2 — Dependabot serialization), spec pointer
+  /Users/nuzantara/Desktop/2026-08-26-PIANO-SPEC-receptor-live.md §3 X2.
+
+lanes:
+  - lane: dependabot-concurrency-build
+    role: build
+    seat: claude-sonnet-5 (this implementer session — scoped the 21-file
+      required-check set from branch protection, wrote/edited the
+      concurrency ternaries, fixed the round-1 adversarial finding)
+  - lane: dependabot-concurrency-refute
+    role: review
+    seat: kimi-code/k3 (Kimi K3, non-Anthropic — cross-family refuter on the
+      actual PR diff via `gh pr diff`)
+
+diff:
+  files: 21
+  net_lines: 236
+  measured_at: 86dc06342
+  note: >-
+    `git diff --stat origin/main -- .github/workflows` at the second (fix) commit reports
+    270 insertions(+), 34 deletions(-) = 304 lines of raw churn across 21 files; net
+    (insertions-deletions) = 236. All 21 files are workflow YAML under .github/workflows/,
+    zero files outside that directory.
+
+pii_scan: clean
+
+receipts:
+  - claim:
+      The deterministic gear floor recomputed from THIS PR's real changed-file set is 3,
+      matching the declared gear.
+    cmd:
+      git -C <worktree> diff --name-only origin/main HEAD > /tmp/L3-changed.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/L3-changed.txt
+    result: "21 files enumerated (all under .github/workflows/), floor=3."
+    exit: 0
+    ts: "2026-08-26T16:24:10Z"
+    seat: session (Pro, implementer lane)
+
+  - claim:
+      All 21 changed workflow files pass actionlint (schema + every ${{ }} expression),
+      both before and after the round-1 adversarial-review fix commit.
+    cmd: actionlint .github/workflows/<21 files>
+    result: "rc=0, zero findings, both runs (pre-fix commit 7eabad767 and post-fix commit 86dc06342)."
+    exit: 0
+    ts: "2026-08-26T16:29:40Z"
+    seat: session (Pro, implementer lane)
+
+  - claim:
+      All 21 changed files parse as valid YAML and every one's concurrency.group
+      expression references dependabot[bot].
+    cmd: >-
+      python3 -c inline script: yaml.safe_load each file, assert 'concurrency' in doc and
+      dependabot[bot] in doc['concurrency']['group']
+    result: "OK 21/21 parsed, all reference dependabot[bot] in concurrency.group."
+    exit: 0
+    ts: "2026-08-26T16:15:05Z"
+    seat: session (Pro, implementer lane)
+
+  - claim:
+      The 21-file target set is exactly (always-trigger pull_request workflow) AND
+      (required status check on main) — not guessed from job/file names.
+    cmd:
+      gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts[]'
+      ; then grep -rl 'E2E Tests (Playwright)|Frontend Tests (Next.js)|MCP Server Tests|guilt AND innocence|organ is born with its genes' .github/workflows/*.yml
+    result: >-
+      27 required contexts enumerated. 3 of them (E2E Tests (Playwright), Frontend Tests
+      (Next.js), MCP Server Tests) turned out to live inside tests.yml alongside Backend
+      Tests (Python) rather than separate files — found by grep, not assumed. guard-conformance.yml
+      and organ-conformance.yml confirmed as the homes of "Every guard proves guilt AND
+      innocence" and "Every organ is born with its genes" respectively. 9 always-trigger
+      workflows confirmed NOT required (docs-guardian, docs-sync, garuda-contract-parity,
+      migration-lint, prettier-changed-files, runbook-section-numbers, token-lint,
+      worker-plane-review-tests, frontend-typecheck) and excluded from scope.
+    exit: 0
+    ts: "2026-08-26T16:05:30Z"
+    seat: session (Pro, implementer lane)
+
+  - claim:
+      GitHub Actions concurrency groups hold at most one RUNNING and one PENDING run per
+      group — the basis for the round-1 adversarial finding and its fix.
+    cmd:
+      WebFetch https://docs.github.com/en/actions/using-jobs/using-concurrency
+      (independent confirmation of the kimi-code/k3 finding, not accepted on the refuter's word alone)
+    result: >-
+      "By default, any existing pending job or workflow in the same concurrency group will
+      be canceled and the new queued job or workflow will take its place." Confirms the
+      refuter's finding; comment text in all 21 files corrected accordingly in commit 86dc06342.
+    exit: 0
+    ts: "2026-08-26T16:31:00Z"
+    seat: session (Pro, implementer lane)
+
+  - claim:
+      Pre-commit and pre-push hooks pass clean on both commits (lease-check, anti-reward-hacking
+      lint, secret scan, prettier, actionlint, off-limits check).
+    cmd: git commit -F <msg> (x2); git push (x2)
+    result: >-
+      Both commits: "All pre-commit checks passed!". Both pushes: "All pre-push checks
+      passed!" — prettier OK, actionlint OK on .github/workflows/, no off-limits files touched.
+    exit: 0
+    ts: "2026-08-26T16:30:50Z"
+    seat: session (Pro, implementer lane)
+
+dissent:
+  - seat: kimi-code/k3 (cross-family refuter, round 1)
+    objection: >-
+      The PR's claim that Dependabot runs "queue and drain serially" overstates GitHub
+      Actions' actual concurrency-group guarantee. GitHub holds at most one RUNNING and one
+      PENDING run per group; cancel-in-progress:false protects only the running job. A 3rd+
+      near-simultaneous Dependabot arrival on the same workflow cancels the pending run
+      rather than queuing behind it — plausible for security.yml (~20 billed minutes) and
+      tests.yml given the 2026-08-24 batch arrived at roughly 1 PR/minute.
+    status: CONFIRMED
+    note: >-
+      Independently re-verified against docs.github.com/en/actions/using-jobs/using-concurrency
+      before accepting (receipt above) rather than taking the refuter's word alone. Fixed in
+      commit 86dc06342: reworded the explanatory comment in all 21 files to state the real,
+      bounded guarantee (<=2 concurrent per workflow) and the documented, visible (checks-tab,
+      not silent), `gh run rerun`-recoverable failure mode beyond that. No group/cancel-in-progress
+      logic changed — cancel-in-progress:false remains correct (the alternative, true, would
+      additionally kill the RUNNING job on every new arrival, which is strictly worse).
+
+  - seat: kimi-code/k3 (cross-family refuter, round 1)
+    objection: >-
+      github.actor is the triggering actor, not the PR author. A human clicking "re-run
+      failed jobs" on a Dependabot run, or a maintainer pushing a commit to a Dependabot
+      branch, flips that one run's actor away from dependabot[bot] — it then uses the
+      per-ref (non-Dependabot) group instead of the shared Dependabot group, silently
+      losing the serialization guarantee for that one run.
+    status: CONFIRMED
+    note: >-
+      Accepted as a documented, low-frequency edge case rather than fixed. It does not
+      cross-cancel any other run (the two groups are distinct), so the failure mode is
+      "one run's guarantee lapses," not "another PR's check breaks." A PR-author-based
+      discriminator (github.event.pull_request.user.login == 'dependabot[bot]', with a
+      head-ref fallback for push events) would close it but adds real complexity for a
+      case that only bites on a manual re-run or a maintainer push — judged not worth it
+      for this PR's scope. Recorded here rather than silently dropped.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 1)
+    objection: >-
+      The shared group name `dependabot-lockfile-{workflow}` says "lockfile" but the group
+      catches ALL Dependabot activity for that workflow, not only lockfile-specific bumps —
+      cosmetic, but surfaces in the Actions UI cancellation messages.
+    status: CONFIRMED
+    note: >-
+      Kept as-is rather than renamed: the exact string was specified by the orchestrating
+      session's mandate, and renaming touches all 21 files again for a purely cosmetic gain.
+      Recorded so the naming choice reads as deliberate, not overlooked.
+
+tests:
+  - "No test suite applies — this PR is pure GitHub Actions workflow YAML (concurrency
+    stanzas + comments), no Python/JS/TS source changed."
+
+static:
+  - "actionlint on all 21 changed files — rc=0, both before and after the fix commit."
+  - "python3 -m yaml (safe_load) on all 21 changed files — rc=0, all parse; every
+    concurrency.group references dependabot[bot]."
+  - "pre-commit hooks (lease-check, anti-reward-hacking test lint, secret scan, python
+    lint, off-limits check) — passed on both commits."
+  - "pre-push hooks (prettier, actionlint, path-aware suite classification) — passed on
+    both pushes."
+
+notes:
+  - "LIVE-DRAIN PROOF NOT EXECUTABLE TODAY. All 13 Dependabot PRs that motivated this
+    mandate (#4838-#4851) were independently closed 2026-08-26T16:17:56Z-16:18:03Z — before
+    this session started, and not by this PR or anything in it (verified via `gh pr view
+    --json state,mergedAt,closedAt` on each of the 13 numbers individually, not inferred
+    from a list query). `.github/dependabot.yml` runs weekly/monday for all 3 ecosystems, so
+    there are zero open Dependabot PRs to test the drain mechanism against; the next batch
+    lands ~2026-08-31 and is the first live test."
+  - "The mandate's step-4 verification ('arm the oldest Dependabot PR only, report its state
+    2 minutes later') has no subject to run against today. Not fabricated, not skipped
+    silently — reported as not-executable in both the PR body and here."
+  - "Zero writes to any external system. This PR changes only .github/workflows/*.yml
+    comments and concurrency keys plus this evidence pack; nothing deploys, nothing mutates
+    production state."
