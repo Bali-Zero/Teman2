@@ -1,6 +1,7 @@
 ---
 date: 2026-08-26
 domain: compliance
+adversarial_review: kimi-k3
 sources:
   - infra/launchagents/wrappers/regulatory-watcher-run.sh (== ~/scripts/regulatory-watcher-run.sh, sha256-identical, verified this session)
   - infra/eventbus/regulatory_ingest_runner.py
@@ -25,7 +26,8 @@ The blocker is identity, and it is a *different* shape of the identity problem t
 framing suggested. It is not "dal nome del file" — that specific failure mode has already been
 partly hardened (a fail-closed collision guard + a content-hash fallback landed 2026-08-25, the
 day before this measurement). What remains, measured directly against the live extractor on 12
-real watcher deltas: roughly two-thirds of the watcher's own short findings would land in the KB
+real watcher deltas: 7 of the 12 rows (58%) — equivalently 7 of the 11 distinct derived
+identities (64%) — of the watcher's own short findings would land in the KB
 **orphaned from citation lookup** — embedded and vector-searchable, but invisible to any
 document_id/citation-exact query, KG entity-linking, or future de-dup pass. That is a quieter
 failure than WIZ-2's "confidently wrong" case, but it is still not something to ship blind.
@@ -229,7 +231,7 @@ obvious way a Route-B implementation would (`title_id + citation + summary + ver
 | `UU 4/2026` | UU/4/2026 | **`UU_4_2026`** (clean) |
 
 **Reading this straight:** 4 distinct regulations (5 of 12 rows, 2 of which correctly collapse onto
-one id) land with a clean, citation-matching identity. The other 8 rows fall into the
+one id) land with a clean, citation-matching identity. The other 7 rows fall into the
 hash-suffixed safety net — **safe from collision, but permanently unreachable by document_id or
 citation lookup**, findable only via vector similarity. None of the 12 reproduced WIZ-2's worst
 case (a clean-looking id that names the *wrong* instrument) — the 2026-08-25 hardening appears to
@@ -254,11 +256,11 @@ title implies — that specific hole has a fresh, real patch. What it still does
 WIZ-2's own stated cure (a title-block extractor with guilt-AND-innocence tests, "plus an
 ingest-time check that refuses a document_id its own title block contradicts") would add, is any
 check that an extracted triple is *plausible* rather than merely non-colliding. On short,
-watcher-shaped text specifically, that gap manifests as a large orphaned fraction (roughly
-two-thirds in this sample) rather than as silent corruption — which is a materially different, and
+watcher-shaped text specifically, that gap manifests as a large orphaned fraction (7 of 12
+rows, 58%, in this sample) rather than as silent corruption — which is a materially different, and
 more tolerable, failure mode than what was measured on full-PDF ingests in the legal_unified_2026
 experiment (11 of 18, ~61%, carrying a *confidently wrong* identity). But "more tolerable" is not
-"acceptable to ship": two-thirds of a compliance-relevant regulatory KB effectively invisible to
+"acceptable to ship": well over half of a compliance-relevant regulatory KB effectively invisible to
 exact lookup, silently, with no alarm, is still a defect a paying client's tax or visa question
 could walk straight into.
 
@@ -287,3 +289,36 @@ Sources for the pricing figure in §4:
 [CloudZero — OpenAI API pricing in 2026](https://www.cloudzero.com/blog/openai-pricing/),
 [EmbeddingCost.com — OpenAI Embedding Pricing 2026](https://embeddingcost.com/openai),
 [TokenMix — OpenAI Embedding Pricing 2026](https://tokenmix.ai/blog/openai-embedding-pricing).
+
+## Adversarial review
+
+Refuted by **Kimi K3** (cross-family seat, not this document's author), 2026-08-26, on a fresh
+context with the repository in front of it, instructed to verify every citation with a command
+rather than by reading and to default to skepticism.
+
+**Verdict: SURVIVES_WITH_LIMITS.** One SUBSTANTIVE finding and four MINOR ones. Every number below
+was RE-MEASURED independently before being accepted — a refuter hallucinates too — and the
+independent measurement agreed with the seat on all five.
+
+| # | severity | finding | disposition |
+|---|---|---|---|
+| C1 | **SUBSTANTIVE** | The headline statistic was wrong, and the document's own table refutes it. §5.2 lists **12** rows of which **5** are clean, which leaves **7** — but the text said "the other **8** rows" (`5 + 8 = 13 != 12`) and generalised it to "roughly **two-thirds**", stated three separate times. The true fraction is **7/12 = 58%** by row, or **7/11 = 64%** counting distinct derived identities (two rows correctly collapse onto one `PP_20_2026`). Neither reading is two-thirds, and the 64% one — the closest — is a denominator the document never stated. | **Corrected in all four places**, and, more importantly, **outside this document too**: the false fraction had already been copied into PRODUCTION CODE. `legal_ingestion_service.py:223` and a test docstring in `test_legal_ingestion_service.py` both said "roughly two-thirds" and both cited this document's §5.2 as their source. Both now carry the measured number and a note naming the correction. A wrong statistic in a code comment is worse than in a research file: nobody re-reads it, and it outlives the document. |
+| C2 | MINOR | "57 delta files tracked on `origin/main`" — there are now **58**; `2026-08-26-delta.json` landed after the measurement. | **Recorded, not rewritten.** 57 is what was true when measured. Re-measured over all 58 files, every substantive §1.2 number still reproduces exactly: 48 delta objects, 42 unique citations, 45 `new_today`, 12 `partial: true`. The 58th file contributes zero deltas, which is why nothing moved. |
+| C3 | MINOR | "23 distinct top-level key-shapes" is not reproducible by either obvious method. | **Corrected to a measured range.** Independently recomputed over the tracked files: **21** distinct shapes treating a shape as the sorted key set, **24** treating it as the ordered key tuple. Neither is 23, for either the 57- or 58-file population, so the document's counting method was unstated and is now unrecoverable. The qualitative claim it supports — drift is additive, the 7 core fields are always present, `core_missing = 0` — verified and unaffected. |
+| C4 | MINOR | "43,440 chars across all 48 deltas" — the true sum is **43,248**. | **Corrected.** The difference is exactly **192 = 48 x 4**, i.e. four one-character separators per delta between the five concatenated fields — an artefact of joining rather than summing. Average is 901 chars/delta, not 905. The embedding-cost conclusion is unaffected at any plausible multiplier, which is why this is MINOR and not SUBSTANTIVE. |
+| C5 | MINOR | Line citations into `legal_ingestion_service.py` have drifted: the hash-suffix mechanism is cited at `215-228` but `source_sha256[:16]` is at **288**; `_assert_identity_unclaimed` is cited at `298-374` but its `def` is at **360**. | **Corrected.** Both mechanisms exist exactly as described — only the coordinates moved. The cause is self-inflicted and worth naming: the WIZ-1 comment block that now occupies `215-228` was inserted *because of* this document, and it cites this document, so the act of recording the finding is what invalidated the finding's own line numbers. |
+
+**Not findings, recorded so they are not mistaken for verified.** The two extraction quirks the
+document flags — the year `2025` extracted from an `SPT 2025` reference, and `KMK -> Kepmen` — are
+the author's readings of a table produced by its own in-process run; re-deriving them would mean
+re-running the live extractor, which the seat did not do. The document hedges both appropriately.
+Everything else the repository could answer was checked and reconciled: the sha256-identical
+wrapper pair, the zero `qdrant|upsert|ingest|embed` matches in the watcher (rc=1, empty), the
+`promote_delta_via_pr` line range, the runner's `collection_name="legal_unified"`, the
+`ingest_target_lint` declared entrypoints, `legal_unified_2026.yaml`'s 15,410 points / 18 documents
+against `legal_unified`'s 84,283 / 388, the "11 of 18, ~61%" cross-reference, both route token
+estimates, the 101-day span, and `48 - 42 = 6` re-mentions.
+
+**The recommendation is unchanged by all of this** — arm neither route; identity is the blocker.
+It holds under the corrected 58% just as it did under the wrong two-thirds, which is the one
+reassuring thing about a headline number being wrong: here it was decorative, not load-bearing.

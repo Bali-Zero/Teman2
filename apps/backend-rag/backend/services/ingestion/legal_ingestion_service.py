@@ -220,7 +220,11 @@ _INCOMPLETE_IDENTITY_TOKENS = frozenset({"DOC", "UNKNOWN", "0", "NONE"})
 # source bytes) but is NOT reachable by a document_id or citation lookup --
 # only by vector similarity. Measured against 12 real regulatory-watcher
 # deltas (research/operations/2026-08-26-wiz1-regulatory-ingest-route.md
-# section 5.2): roughly two-thirds land here. That fraction was previously
+# section 5.2): 7 of the 12 rows land here -- 58% by row, or 64% counting the
+# 11 distinct derived identities. (Corrected 2026-08-26 by cross-family review:
+# this comment and the document both said "roughly two-thirds", which the
+# document's own table refutes -- 5 clean rows of 12 leaves 7, not 8.) That
+# fraction was previously
 # invisible -- the boolean driving it was computed inside
 # build_content_bound_legal_doc_id and discarded once the id string was
 # built. Recording the label lets a census answer "how many documents

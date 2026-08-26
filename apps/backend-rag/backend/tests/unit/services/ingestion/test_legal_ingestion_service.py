@@ -1355,7 +1355,8 @@ class TestIdentitySourcePayloadSignal:
     to `build_content_bound_legal_doc_id`'s hash-fallback suffix.
 
     Measured by lane-R (research/operations/2026-08-26-wiz1-regulatory-ingest-route.md):
-    roughly two-thirds of real regulatory-watcher deltas land on an id whose
+    7 of 12 real regulatory-watcher deltas (58%; 64% by distinct derived
+    identity) land on an id whose
     (type_abbrev, number, year) triple was incomplete -- safe from collision,
     but unreachable by document_id or citation lookup, findable only by
     vector similarity. That fact was computed and thrown away. These tests
