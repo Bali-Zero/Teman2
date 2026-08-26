@@ -1487,10 +1487,10 @@ def _verify_whatsapp_signature(body: bytes, signature_header: str | None) -> boo
     Returns:
         True if the signature is valid, or verification was skipped because
         no app secret is configured (dev mode) AND
-        ``settings.meta_webhook_require_signature`` is False (the default —
-        preserves today's fail-open behavior unconditionally). False on any
+        ``settings.meta_webhook_require_signature`` is False. False on any
         verification failure, including a missing secret when
-        ``meta_webhook_require_signature`` has been explicitly set True.
+        ``meta_webhook_require_signature`` is True (the default since
+        2026-08-26 — fail-closed by default on both WhatsApp and Instagram).
     """
     app_secret = settings.whatsapp_app_secret
     if not app_secret and not settings.meta_webhook_require_signature:
