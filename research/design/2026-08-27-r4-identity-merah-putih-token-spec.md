@@ -10,7 +10,8 @@ sources:
   - R3 autopsy — research/design/2026-08-27-r3-heuristic-autopsy-defect-inventory-axis-gap.md (PR #5074; 27 defects, contrast floor, red-structure risks)
   - Zero's rulings — loop state memory `~/.claude/projects/-Users-nuzantara-nuzantara/memory/project_design_study_loop_garuda_visa_oracle_2026_08_27.md`: the nine of ~03:35 WITA, the three R3 rulings of ~04:55 (Q-R3.1=a, Q-R3.2=a, Q-R3.3=a) and the STANDING pre-confirmation («comermo tue raccomandazioni e anche per le prossime, prosewgui fino alla fine») — this round's declarations are adopted with async veto open
   - WCAG 2.x contrast computations run by the conductor on 2026-08-27 (every ratio in this file computed this session; kimi-k3 independently recomputed all cited pairs — exact)
-adversarial_review: codex gpt-5.6-sol xhigh (30) + kimi-k3 (18, all 37 ratios recomputed exact) + agy gemini-3.1-pro (15) — qwen3.8-max TP1 seat FAILED (timeout ×2, recorded honestly)
+adversarial_review: codex
+adversarial_review_detail: gpt-5.6-sol xhigh (30) + kimi-k3 (18, all 37 ratios recomputed exact) + agy gemini-3.1-pro (15) — qwen3.8-max TP1 seat FAILED (timeout ×2, recorded honestly)
 ---
 
 # R4 — Identity: the Merah Putih token spec
