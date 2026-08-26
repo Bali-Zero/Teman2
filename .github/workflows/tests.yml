@@ -1565,20 +1565,18 @@ jobs:
   frontend-tests:
     name: Frontend Tests (Next.js)
     needs: [changes]
-    # NO job-level `if:` here — deliberately, unlike the other five heavy
-    # jobs (red-team CRITICAL-2, 2026-08-14). `frontend-tests` is the only
-    # MATRIX job among the six, and `jobs.<id>.if` is evaluated BEFORE the
-    # matrix expands: a false job-level `if` means the matrix never
-    # instantiates, so the required check
-    # `Frontend Tests (Next.js) (mouth, true)` (infra/required.d/contexts.json)
-    # never gets CREATED at all — not "skipped" (which GitHub treats as
-    # satisfying a required check), but permanently absent, leaving branch
-    # protection stuck on "Expected — Waiting for status to be reported"
-    # forever on a backend-only or docs-only PR. The fix is a job that ALWAYS
-    # runs (so both matrix legs always get created) with an early-exit DECIDE
-    # step gating every real step below — the check always gets a genuine
-    # conclusion (success, fast, when skipped by design; the real test result
-    # otherwise), never a missing context.
+    # LOAD-BEARING: a job with `needs` and no status-function condition inherits
+    # an implicit `success()` gate. On PR #4706 / run 32866302767, `changes`
+    # concluded `cancelled`, so GitHub skipped this job BEFORE matrix expansion
+    # and never created the required context
+    # `Frontend Tests (Next.js) (mouth, true)` (infra/required.d/contexts.json).
+    # `!cancelled()` replaces that implicit success-only gate: an upstream
+    # failure/cancellation no longer suppresses the matrix, while cancellation
+    # of the workflow run itself still stops work. Do NOT move the path predicate
+    # here: a false job-level condition would again erase the matrix contexts.
+    # The first step below keeps the normal path filter and fails open to RUN
+    # when `changes` is non-successful or its output is missing.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
