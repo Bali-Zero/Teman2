@@ -457,3 +457,135 @@ def test_fast_path_the_public_client_number_still_goes_to_the_meta_inbox(
     assert response.status_code == 200
     legacy.assert_not_called()
     seam.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# MIXED PAYLOADS on the recovery path — found by adversarially re-reading the
+# branch this scope was taken from, not by the branch's own suite.
+#
+# The fast path handles a mixed payload correctly by construction: it
+# `continue`s per change inside the loop. The recovery net does not — it routes
+# the payload as ONE unit, so the original early `return` after handling the
+# team half dropped the client half in silence. Both numbers live on the SAME
+# WABA, so one `entry` can legitimately carry both.
+#
+# Losing a paying client's message is a worse defect than misrouting a staff
+# one, and it would have been introduced BY the cure, on the very path that
+# exists to catch what the fast path missed.
+# ---------------------------------------------------------------------------
+
+
+def _mixed_recovery_payload() -> dict:
+    """One entry (one WABA), two message changes: team-bot and client."""
+
+    def _change_dict(pnid: str, display: str, wamid: str) -> dict:
+        return {
+            "field": "messages",
+            "value": {
+                "messaging_product": "whatsapp",
+                "metadata": {"display_phone_number": display, "phone_number_id": pnid},
+                "messages": [
+                    {
+                        "from": "620000000002",
+                        "id": wamid,
+                        "timestamp": "1712000000",
+                        "type": "text",
+                        "text": {"body": "[QA] synthetic mixed-payload probe"},
+                    }
+                ],
+            },
+        }
+
+    return {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "SHARED_WABA_ID",
+                "changes": [
+                    _change_dict(TEAM_ID, "628810383188 96", "wamid.QA-TEAM-1"),
+                    _change_dict(CLIENT_META_INBOX_ID, PUBLIC_DISPLAY_NUMBER, "wamid.QA-CLIENT-1"),
+                ],
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_recovery_mixed_payload_still_delivers_the_client_half(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """THE GUILT TEST for the drop. A payload carrying BOTH a team-bot change
+    and a client change must still reach the meta-inbox pipeline for the
+    client half. Before the fix, the early `return` swallowed it.
+    """
+    monkeypatch.delenv("TEAM_BOT_INGRESS_ENABLED", raising=False)
+    process_meta_inbox_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(whatsapp_chat, "process_meta_inbox_payload", process_meta_inbox_mock)
+    legacy_route = AsyncMock(
+        side_effect=AssertionError("legacy_route must not run for a meta-inbox remainder")
+    )
+
+    await whatsapp_chat.route_whatsapp_recovery(
+        _mixed_recovery_payload(), db_pool=MagicMock(), legacy_route=legacy_route
+    )
+
+    process_meta_inbox_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_recovery_mixed_payload_strips_the_team_change_before_routing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The remainder handed downstream must NOT still contain the team-bot
+    change — otherwise the mixed case quietly re-creates the very defect this
+    lane cures, just one layer deeper.
+    """
+    monkeypatch.delenv("TEAM_BOT_INGRESS_ENABLED", raising=False)
+    seen: dict[str, Any] = {}
+
+    async def _capture(*, raw_payload: dict, **_kwargs: Any) -> bool:
+        seen["payload"] = raw_payload
+        return True
+
+    monkeypatch.setattr(whatsapp_chat, "process_meta_inbox_payload", _capture)
+
+    await whatsapp_chat.route_whatsapp_recovery(
+        _mixed_recovery_payload(), db_pool=MagicMock(), legacy_route=AsyncMock()
+    )
+
+    pnids = [
+        ((change.get("value") or {}).get("metadata") or {}).get("phone_number_id")
+        for entry in seen["payload"]["entry"]
+        for change in entry["changes"]
+    ]
+    assert TEAM_ID not in pnids
+    assert CLIENT_META_INBOX_ID in pnids
+
+
+@pytest.mark.asyncio
+async def test_recovery_team_only_payload_still_returns_without_routing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE for the fix itself: a payload with ONLY team-bot changes must
+    still stop dead. The stripper returning `None` is what preserves that — a
+    remainder of "an entry with an empty changes list" would have sent an empty
+    shell down the client pipeline instead.
+    """
+    monkeypatch.delenv("TEAM_BOT_INGRESS_ENABLED", raising=False)
+    process_meta_inbox_mock = AsyncMock(
+        side_effect=AssertionError("meta-inbox must not run for a team-only payload")
+    )
+    monkeypatch.setattr(whatsapp_chat, "process_meta_inbox_payload", process_meta_inbox_mock)
+    legacy_route = AsyncMock(
+        side_effect=AssertionError("legacy_route must not run for a team-only payload")
+    )
+
+    await whatsapp_chat.route_whatsapp_recovery(
+        _recovery_payload(TEAM_ID), db_pool=MagicMock(), legacy_route=legacy_route
+    )
+
+    # The AssertionError side-effects above are the real guard, but state it
+    # positively too: a lint that cannot see a side-effect reads this test as
+    # asserting nothing, and a reader deserves the same clarity the linter does.
+    process_meta_inbox_mock.assert_not_awaited()
+    legacy_route.assert_not_awaited()

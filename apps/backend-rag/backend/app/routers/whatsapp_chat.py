@@ -1082,6 +1082,48 @@ async def _handle_team_bot_ingress_payload(change: WhatsAppChange) -> None:
     )
 
 
+def _payload_without_team_bot_changes(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Return ``payload`` with every team-bot *message* change removed, or
+    ``None`` when nothing else was in it.
+
+    Needed because the recovery net routes the payload as ONE unit (meta-inbox
+    pipeline or legacy route), not change by change like the fast path does.
+    Both numbers live on the SAME WABA, so a single ``entry`` can legitimately
+    carry a team-bot change beside a client change — and an unconditional
+    ``return`` after handling the team half would drop the client half in
+    silence, on the very path that exists to catch what the fast path missed.
+    That would be a worse defect than the one this lane cures: it loses a
+    paying client's message instead of misrouting a staff one.
+
+    Operates on the RAW dict (not the parsed model) because that dict is what
+    the downstream handlers receive verbatim. Non-message changes and entries
+    that end up empty are preserved as-is rather than pruned — the shape the
+    downstream handlers already tolerate is the shape they keep.
+    """
+    remaining_messages = 0
+    entries: list[Any] = []
+    for entry in payload.get("entry") or []:
+        if not isinstance(entry, dict):
+            entries.append(entry)
+            continue
+        kept: list[Any] = []
+        for change in entry.get("changes") or []:
+            if (
+                isinstance(change, dict)
+                and change.get("field") == "messages"
+                and (((change.get("value") or {}).get("metadata") or {}).get("phone_number_id"))
+                in TEAM_BOT_PHONE_NUMBER_IDS
+            ):
+                continue
+            kept.append(change)
+            if isinstance(change, dict) and change.get("field") == "messages":
+                remaining_messages += 1
+        entries.append({**entry, "changes": kept})
+    if remaining_messages == 0:
+        return None
+    return {**payload, "entry": entries}
+
+
 async def _apply_status_callback(conn: Any, status_obj: dict[str, Any]) -> None:
     """Apply one Meta status receipt to the ledger (or stage it if orphan).
 
@@ -1538,7 +1580,19 @@ async def route_whatsapp_recovery(
                 "whatsapp recovery: team-bot payload recognised but "
                 "TEAM_BOT_INGRESS_ENABLED is off — dropping."
             )
-        return
+        remainder = _payload_without_team_bot_changes(payload)
+        if remainder is None:
+            return
+        # Mixed payload: the team half is handled (or dropped) above, and the
+        # rest MUST still be routed. `is_meta_inbox` needs no recomputation —
+        # the two id sets are disjoint (pinned by
+        # test_the_two_sets_never_overlap), so stripping team-bot changes can
+        # never turn a meta-inbox payload into a non-meta-inbox one.
+        logger.info(
+            "whatsapp recovery: mixed payload — team-bot changes handled, "
+            "routing the remaining message change(s) onward."
+        )
+        payload = remainder
 
     if is_meta_inbox:
         success = await process_meta_inbox_payload(
