@@ -248,6 +248,62 @@ function defaultCoverImage(category: ArticleCategory): string {
   return CATEGORY_COVER_DEFAULTS[category] || "/static/blog/golden-visa.jpg";
 }
 
+const PUBLIC_PATH = path.join(process.cwd(), "public");
+
+/**
+ * Resolve an MDX article's cover image to a path that ACTUALLY EXISTS on disk.
+ *
+ * The old code was `frontmatter.coverImage || frontmatter.image?.src ||
+ * `/static/blog/${folder}/${slug}.jpg`` — a guess that was never checked. Two
+ * ways it produced a 400 from `/_next/image`, both measured on 2026-08-27:
+ *
+ *   - the per-slug guess points at `static/blog/<folder>/`, but the images for
+ *     these articles were generated into a DIFFERENT tree, `static/insights/`
+ *     (57 files under `insights/tax/` alone against 1 under `blog/tax/`), and
+ *     this fallback was never updated to look there — 30 articles;
+ *   - an explicit frontmatter `coverImage` naming a file that is not in the
+ *     repo under any path, usually a localized variant whose filename drifted
+ *     from its asset — 27 articles.
+ *
+ * 57 in total, across six folders. `/news` showed only three of them because
+ * it lists one page; the defect is corpus-wide.
+ *
+ * So the rule is not "look in the other directory" — that would just move the
+ * guess. The rule is that a path is only emitted once it has been confirmed to
+ * exist, and otherwise the article falls back to its category cover, which is
+ * a file we ship. An author's explicit choice still wins whenever it resolves;
+ * it is overridden only when it would render as a broken image.
+ *
+ * `exists` is injectable so the ordering can be tested without touching the
+ * real asset tree.
+ */
+export function resolveCoverImage(
+  explicit: string | null | undefined,
+  folder: string,
+  slug: string,
+  category: ArticleCategory,
+  exists: (absolutePath: string) => boolean = fs.existsSync,
+): string {
+  const candidates = [
+    explicit,
+    `/static/insights/${folder}/${slug}.jpg`,
+    `/static/blog/${folder}/${slug}.jpg`,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    // A remote URL cannot be stat'd, and the backend pipeline legitimately
+    // supplies them. Trust it and stop — it is not ours to second-guess.
+    if (!candidate.startsWith("/")) return candidate;
+    if (candidate.includes("..")) continue;
+    if (exists(path.join(PUBLIC_PATH, candidate.split("?")[0]))) {
+      return candidate;
+    }
+  }
+
+  return defaultCoverImage(category);
+}
+
 /**
  * Derive the homepage-card (16:10) variant path from a news cover image.
  * The poller writes `/static/news/{slug}.jpg` (hero) + `/static/news/{slug}_card.jpg`
@@ -553,10 +609,12 @@ async function getMdxArticleBySlug(
       ? cleanExcerpt(frontmatter.excerpt)
       : extractBodyExcerpt(content),
     content: content,
-    coverImage:
-      frontmatter.coverImage ||
-      frontmatter.image?.src ||
-      `/static/blog/${actualFolderCategory}/${slug}.jpg`,
+    coverImage: resolveCoverImage(
+      frontmatter.coverImage || frontmatter.image?.src,
+      actualFolderCategory,
+      slug,
+      normalizeCategory(frontmatter.category || category),
+    ),
     cardImage:
       frontmatter.cardImage ||
       deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),
@@ -679,10 +737,12 @@ export async function getArticleByLocale(
           ? cleanExcerpt(frontmatter.excerpt)
           : extractBodyExcerpt(content),
         content,
-        coverImage:
-          frontmatter.coverImage ||
-          frontmatter.image?.src ||
-          `/static/blog/${folder}/${slug}.jpg`,
+        coverImage: resolveCoverImage(
+          frontmatter.coverImage || frontmatter.image?.src,
+          folder,
+          slug,
+          normalizeCategory(frontmatter.category || category),
+        ),
         cardImage:
           frontmatter.cardImage ||
           deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),
