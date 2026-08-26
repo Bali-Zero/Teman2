@@ -63,6 +63,33 @@ def test_guilt_auth_death_is_red_with_the_relogin_command() -> None:
     assert "sudo -u zantara-codex" in v.message
 
 
+def test_guilt_quota_exhausted_is_red_and_distinct_from_auth_death() -> None:
+    """S1.5 (2026-08-26), owner packet item 13: the probe's new
+    `quota_exhausted` verdict must reach the same severity as `auth_death`
+    (the OpenAI/Codex leg is fully blocked either way) but through its own
+    condition and its own message — never collapsed into `auth_death`'s
+    dedup key or its re-login wording, which is actively WRONG advice for
+    a quota-exhausted seat."""
+    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    v = verdicts[0]
+    assert v.level == wa.RED
+    assert v.condition == "quota_exhausted"
+    assert v.condition != "auth_death"
+    assert "QUOTA EXHAUSTED" in v.message
+    assert "codex login" not in v.message
+    assert "do not re-login" in v.message
+
+
+def test_guilt_quota_exhausted_message_names_wait_or_switch_not_relogin() -> None:
+    """The remedy is the whole point of distinguishing this verdict: waiting
+    for the usage window or switching seats, never `codex login` (that IS
+    the auth_death remedy, and applying it to a healthy-but-quota-exhausted
+    seat wastes an operator's time chasing the wrong fix)."""
+    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    assert "wait" in verdicts[0].message.lower() or "switch" in verdicts[0].message.lower()
+
+
 def test_guilt_missing_probe_file_is_red_naming_probe_silent() -> None:
     """`probe_status=None` — il caso "file assente": deve nominare la causa,
     non limitarsi a un generico 'qualcosa non va'."""
@@ -118,11 +145,33 @@ def test_guilt_other_failure_verdict_is_warn_not_red() -> None:
 
 def test_guilt_unrecognized_probe_verdict_falls_visibly_as_warn_never_silent() -> None:
     """W116: un finale non mappato (un probe futuro che scrive p.es.
-    "quota_exhausted") deve cadere VISIBILE, mai nel secchio sano."""
-    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    "policy_blocked", non ancora conosciuto da questo reader) deve cadere
+    VISIBILE, mai nel secchio sano.
+
+    S1.5 (2026-08-26): "quota_exhausted" used to be THIS test's example of
+    an unmapped verdict — it has since graduated to its own explicit branch
+    (see test_guilt_quota_exhausted_is_red_and_distinct_from_auth_death)
+    and no longer exercises this generic fallback path, so the example had
+    to change or this test would silently stop testing the fallback at
+    all and start testing the new specific branch instead — a genuinely
+    unmapped token is required here to prove the FORWARD-compat contract:
+    a status file from a probe newer than this sentinel (naming a verdict
+    this reader has never heard of) must still degrade to a visible WARN,
+    never to silence and never to a crash."""
+    verdicts = wa.evaluate(_probe("policy_blocked", 0, 1), 10.0, _gauge(), NOW)
     assert len(verdicts) == 1
     assert verdicts[0].level == wa.WARN
-    assert "quota_exhausted" in verdicts[0].message
+    assert verdicts[0].condition == "other_failure"
+    assert "policy_blocked" in verdicts[0].message
+
+
+def test_innocence_quota_exhausted_no_longer_reaches_the_generic_fallback() -> None:
+    """Companion to the test above: `quota_exhausted` must NOT also produce
+    a second, generic `other_failure` verdict alongside its own — `evaluate`
+    returns exactly one verdict for it, from the new explicit branch."""
+    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    assert verdicts[0].condition == "quota_exhausted"
 
 
 def test_guilt_never_seen_daemon_null_staleness_parses_to_daemon_silent() -> None:
