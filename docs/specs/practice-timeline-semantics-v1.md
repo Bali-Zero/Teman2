@@ -130,10 +130,37 @@ a property of the runner:
 - rollback deletes from **`_schema_versions`** (`backend/db/migration_manager.py:257`)
 - the applied-check reads **`schema_migrations`** (`backend/db/migration_base.py:365`)
 
-If those two paths are reachable from the same runner, a rollback followed by a reapply skips the
-SQL while both ledgers report success — the objects are absent and nothing says so. This affects
-every one of the 171 migrations in the tree, not migration 289. It needs its own PR against the
-runner, and a test that drives apply → rollback → apply and asserts the objects exist at the end.
+They ARE reachable from the same run, and it is one chain, not two runners that never meet:
+`apply_all_pending()` filters pending work using `_schema_versions`, then constructs a
+`BaseMigration` whose own `apply()` guard consults `schema_migrations`. A successful apply INSERTs
+into **both**. So a rollback deletes the `_schema_versions` row, the next apply finds the surviving
+`schema_migrations` row, **skips the SQL entirely**, and silently re-inserts the row it had
+deleted: the objects are gone and both ledgers report success.
+
+**This is not a new discovery, and that is the part that matters.** The repo already knows:
+
+- `migrations_v2/277_correct_ari_email_typo.sql` documents this defect **verbatim** in its own
+  rollback section — _"a rollback that only clears `_schema_versions` … leaves the runner believing
+  277 is still applied"_ — and closes it with an explicit `DELETE FROM schema_migrations`.
+- `165_reconcile_schema_migrations_duplicates.sql` and `278_reassign_orphaned_clients_setup_team.sql`
+  do the same.
+- `schema_audit.py` was built to detect the two ledgers diverging, and its own header calls them
+  _"two tables in flight … during the migration-runner consolidation"_.
+
+So the workaround exists, is documented, and is applied by **3 migrations out of 171** — which
+means **168 are not re-runnable after a rollback**, and nothing tells you which. Each new migration
+is expected to rediscover this and hand-patch its own rollback.
+
+That is the real finding, and it is bigger than this PR: it wants a fix in the **runner** (one
+ledger, or the rollback clearing both), plus a test that drives apply → rollback → apply and
+asserts the objects exist at the end — never a 171st hand-patched rollback.
+
+**Blocked on M5, recorded not circumvented.** Adding the 277-style two-line workaround to 289 was
+attempted and **refused by the guardrails static fallback** (`SQL destructive introduced in Edit`)
+— the tier-1 daemon is absent on this machine, so the fallback blocks all DML in a migration file
+without being able to judge that these two DELETEs target the migration's own ledger rows inside a
+rollback section. The block is correct behaviour for a machine that cannot make the finer call, and
+was not routed around. Owner: `operator[control-plane]`.
 
 ## What is NOT wrong (recorded so it is not re-litigated)
 
