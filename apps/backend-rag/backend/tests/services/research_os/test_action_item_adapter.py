@@ -73,11 +73,41 @@ def test_pending_ruling_is_machine_checkable_not_only_prose(ops_intent_row):
     question for `priority`/`sla.due_at`/`current_intent_ref` -- it does not
     endorse the values used here. The comment saying so is prose a reader
     could skip; this is the same fact made branch-able in code.
+
+    `risk_class`/`sensitivity` joined the set on 2026-08-26 (D3 residue
+    audit). They are placeholders on exactly the same footing -- no legacy
+    classification signal exists, so `adapt_ops_intent_to_action_item`
+    hardcodes GREEN/INTERNAL -- GREEN is the floor of `RiskClass`, while
+    INTERNAL is NOT the floor of `Sensitivity` (PUBLIC is, and nothing on
+    `ActionItem` excludes it; an earlier revision of this docstring claimed
+    the pair was the contract's least restrictive, and a cross-family refuter
+    read the enums and refuted it). The hazard is the DIRECTION, not the
+    minimum: INTERNAL sits below CONFIDENTIAL, RESTRICTED_OSINT and
+    CLIENT_PII -- but they were declared only in prose here, while the SIBLING
+    `action_intent_adapter` (which inherits both values from this object to
+    satisfy `verify_action_intent_matches_action_item`) had already declared
+    them in ITS `pending_ruling` after a Kimi K3 review on 2026-08-24. That
+    cure landed on the heir and not on the source: for one legacy row, a
+    consumer branching on this channel distrusted the ActionIntent's
+    classification and trusted the ActionItem's, for the two same fields
+    carrying the two same values by invariant.
+
+    The prose that justified the omission asserted a SAFETY property --
+    "inert while the shadow dual-write flag defaults off (see shadow.py)" --
+    resting on a module that has never existed in this package. What makes
+    the defaults inert is the absent write path, not a switch; and an absent
+    write path is not a property a future builder inherits.
     """
 
     item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
     marker = item.extensions["com.balizero.research-os-adapters"]
-    assert set(marker.payload["pending_ruling"]) == {"priority", "sla.due_at", "current_intent_ref"}
+    assert set(marker.payload["pending_ruling"]) == {
+        "priority",
+        "sla.due_at",
+        "current_intent_ref",
+        "risk_class",
+        "sensitivity",
+    }
 
 
 def test_extensions_is_always_explicitly_set_never_omitted(ops_intent_row):
