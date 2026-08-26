@@ -1,0 +1,57 @@
+task_id: ops-tests-yml-cancelled-matrix-evidence
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Supply the missing Evidence Pack for PR #5000 (agent/m5/ops/tests-yml-cancelled-matrix), which
+  was green everywhere except "Harness floor recompute" (no evidence/brief.yml in the diff — the
+  PR's only touched file is `.github/workflows/*`, a declared hot-zone path, so the deterministic
+  floor is 3 regardless of the change being a single-file, +12/-14 fix). No code/workflow edits are
+  made by this task — the fix was already authored and pushed; this task independently re-verifies
+  the incident and the fix, and authors the evidence pack only.
+
+  The underlying bug: `frontend-tests` in `.github/workflows/tests.yml` had `needs: [changes]` with
+  no job-level `if:`, which inherits GitHub's implicit `success()` gate. When the `changes` job
+  concludes `cancelled` (live incident: PR #4706, run 32866302767, attempt 1), GitHub skips
+  `frontend-tests` BEFORE its matrix expands, so the required check
+  "Frontend Tests (Next.js) (mouth, true)" is never CREATED (absent, not merely skipped) — branch
+  protection then blocks the PR forever on "Expected — Waiting for status" until a human reruns.
+  The fix adds `if: ${{ !cancelled() }}` at the job level so the matrix always instantiates; an
+  early per-step DECIDE guard inside the job still short-circuits real work when the path filter or
+  upstream state says so.
+constraints:
+  - "No code/workflow changes made by this evidence-authoring task — the fix is already merged into
+    this PR's own diff; every receipt below independently re-verifies the incident and the fix on
+    the PR's actual head sha."
+  - "The change must not move the job-level condition onto anything but `!cancelled()` — a bare
+    path-filter predicate at job level would reopen the exact same erasure the PR fixes (per the
+    PR's own in-file comment, re-read and confirmed against the diff)."
+acceptance:
+  - "actionlint accepts the modified workflow file."
+  - "The original incident is independently reproducible from GitHub's own job history, not merely
+    quoted from the PR body: attempt 1 of run 32866302767 (PR #4706) shows `Change map` concluding
+    `cancelled` and `Frontend Tests (Next.js)` concluding `skipped` (matrix never expanded) — the
+    exact defect this PR's `if:` fixes."
+  - "The deterministic gear floor recomputed from this PR's actual changed-file set is 3 (single
+    `.github/workflows/*` file), matching the declared gear and the Harness floor recompute check's
+    own FAIL message."
+consumer_map:
+  - ".github/workflows/tests.yml — `frontend-tests` job's job-level `if:` condition; both matrix
+    legs (`mouth, true` / `admin-dashboard, false`) depend on this job actually instantiating."
+  - "Branch protection required_status_checks — `Frontend Tests (Next.js) (mouth, true)` is a
+    required context this fix keeps from silently disappearing whenever an upstream `changes` job
+    is cancelled (queue congestion, concurrency-group supersession, etc.)."
+risks:
+  - "This task authors evidence only — it does not re-review whether `!cancelled()` is the ideal
+    predicate versus some narrower alternative; the PR's own in-file comment already documents why
+    a job-level path filter specifically must not be reintroduced, and this task takes that
+    reasoning as given rather than re-deriving it."
+grader: |
+  Independent verification by this session, generator != grader relative to the PR's diagnosis
+  (fix-4706 lane) and implementation (codex gpt-5.6-sol seat, committed by the conductor session
+  per the PR body) — re-ran actionlint on the actual modified file, and independently queried
+  GitHub's own job-history API for the cited incident run/attempt rather than trusting the PR
+  body's citation verbatim, and recomputed the deterministic floor from the real diff.
+budget:
+  1 evidence-authoring lane (no code change) — a 1-file, +12/-14 CI-wiring diff.
+pii: none
