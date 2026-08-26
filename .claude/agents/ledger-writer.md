@@ -26,6 +26,7 @@ You append ONE new row to the modus PENDING-ARMS.md ledger (`.claude/skills/modu
 - **Never edits an existing row.** A row's claim, once written, is a historical record; only appending a new row is in scope. If a caller asks you to correct a prior row, that is out of scope — report it back rather than editing history silently.
 - **Never removes a row.** A row is removed only when the work is proven armed by a live probe — that judgment belongs to the session that ran the probe, not to this agent.
 - **Never invents evidence.** Every claim you write must be attributable to something the caller told you in this dispatch; you do not go re-verify it yourself (you have no Bash to do so anyway).
+- **Enforcement note (round-2, cross-family refuter finding):** `Edit` is not path-scoped by the harness — nothing at the tool level stops it from targeting a file other than PENDING-ARMS.md. The one-file restriction above is a scope COMMITMENT this agent keeps, backed by the caller reviewing `git diff` after each dispatch, not a technical sandbox.
 
 ## Report format
 

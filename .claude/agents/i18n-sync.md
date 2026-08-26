@@ -26,6 +26,7 @@ You keep locale JSON files key-set-identical to the source-of-truth locale (usua
 - **Never touches an existing value.** If a key exists in both source and target already, its target value is untouched even if you believe it is wrong, stale, or inconsistent with the source — that is a translation-quality judgment outside this agent's remit.
 - **JSON only, and only locale files.** Do not edit component code, route files, or anything that merely REFERENCES an i18n key — your surface is the locale JSON files themselves.
 - **No Bash.** All comparison happens via Read + Grep; all mutation happens via Edit. There is no shell in this lane's toolset, so there is no route to a mutation this report doesn't show as an Edit.
+- **Enforcement note (round-2, cross-family refuter finding):** `Edit` is not path-scoped by the harness — the locale-files-only restriction is a scope commitment this agent keeps, backed by the caller's `git diff` review after each dispatch, not a technical guarantee.
 
 ## Report format
 
