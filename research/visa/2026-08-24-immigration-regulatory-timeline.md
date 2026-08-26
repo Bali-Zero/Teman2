@@ -2,6 +2,7 @@
 date: 2026-08-24
 domain: visa
 client_case: none
+adversarial_review: kimi-k3
 sources:
   - https://peraturan.go.id/id/permenkumham-no-22-tahun-2023
   - https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf
@@ -232,3 +233,25 @@ Primary (fetched by coordinated sub-agents within this same research task, each 
 - `imigrasi.go.id/wna/daftar-visa-indonesia` + individual `/E33`, `/E33A`-`/E33G` pages; `imigrasi.go.id/siaran_pers/*` (multiple 2025 press releases); `kemenimipas.go.id/berita-utama/*`; `depok.imigrasi.go.id`; `jogja.imigrasi.go.id`; `peraturan.go.id/id/{perpres-no-95-tahun-2024, perpres-no-21-tahun-2016, perpres-no-139/142/155/156-tahun-2024}`.
 
 Secondary (used only to locate instrument numbers/dates, then labeled UNVERIFIED where a primary re-check was not achieved): hukumonline.com (mostly paywalled/403), paralegal.id, meridianhukum.com, regulasip.id (404 on the specific page attempted), setkab.go.id, kompas.com, infopublik.id, LMI Consultancy (visa-agent blog).
+
+---
+
+## Adversarial review
+
+**Reviewer**: Kimi K3 (`kimi -m kimi-code/k3`), acting as hostile fact-checker, followed by independent human-session re-verification of Kimi's own claims (per the repo's generator≠grader R1 gate — this document's author never gates its own diff).
+
+**Method**: Kimi re-downloaded the primary PDFs from peraturan.go.id itself, ran its own `pdftotext` extraction, grepped for every dollar figure and Pasal cross-reference, and cross-checked ~25 dated claims against independent secondary sources (Setkab, CNN Indonesia, Hukumonline, paralegal.id, pajakku, Antara). The reviewing session then independently re-verified Kimi's three flagged "errors" via direct web search/fetch against peraturan.go.id and BPK, because Kimi's own memory-based reasoning (visible in its transcript) is not itself a primary source and produced at least one false positive.
+
+**Substantive scholarship — confirmed accurate.** Every Pasal-level claim that carries legal weight for a Bali Zero visa product was independently re-derived by Kimi from the raw PDF text and matched the document verbatim: the "Pasal 60 dihapus" deletion, the 60→55 lansia age change, the Pasal 59 huruf-d→e cross-reference fix, the original Pasal 60 US$25M/US$50M figures and their relocation to Pasal 39(4)/40(4), all US$ figures in Pasal 39/40, the Pasal 184/185 Golden Visa definition, the Permenimipas 3/2025 Pasal 45 repeal list (Pasal 43/45/52-55) and what those repealed articles covered, and the E33C/E33D title/Pasal mapping (independently corroborated against this repo's own `data/kb_sources/visa_imigrasi_list.txt`). Kimi also initially suspected "UU 37/2009" was a hallucinated citation, searched for it, and confirmed it is real (ratification of Perppu 3/2009 amending UU 9/1992) — a genuine near-miss the reviewing session re-checked and agrees is not an error.
+
+**One flagged "error" is a false positive — corrected here.** Kimi's report claimed the document's "eff. 6 May 2025" for Permenimipas 3/2025 (§1 table, §5 item 1) was wrong and should be "7 May 2025," based on Hukumonline's summary sentence. Independent re-verification against `peraturan.go.id/id/permenimipas-no-3-tahun-2025` directly (fetched in this review) shows: ditetapkan 7 Feb 2025, **diundangkan 7 March 2025**. Pasal 46 sets the effective date at 60 days after promulgation. 7 March + 60 days = **6 May 2025** — exactly what the document says. Kimi's own arithmetic used an assumed diundangkan date (~8 March) rather than the actual one and arrived at the wrong day. The document's date stands as correct; Kimi's finding is discarded.
+
+**One flagged date discrepancy is confirmed real but immaterial.** PP 51/2020 (Perubahan Kedua atas PP 31/2013): the document gives "2020-09-09"; independent web verification (corroborating Kimi) shows it was ditetapkan **10 September 2020**, diundangkan 11 September 2020 — a one-to-two-day metadata slip with no effect on any legal conclusion in the document (PP 51/2020's substance is not itself load-bearing for any of the document's two settled questions).
+
+**One flagged discrepancy is not an error, just an undisclosed date-convention choice.** PP 26/2016: the document's "2016-06-28" is not the ditetapkan date (27 June 2016, per Setkab) but matches the diundangkan/effective date (28 June 2016) exactly. The document is internally inconsistent about which convention (ditetapkan vs. diundangkan) it uses per row, but 28 June 2016 is a genuine, correct date for the instrument — not a fabrication.
+
+**Confirmed internal-consistency defect (verified directly against the document's own table, no external source needed): the "Chronological instrument table" is not fully chronological.** Four ordering violations: PP 26/2016 (28 Jun 2016 row) appears before Perpres 21/2016 (2 Mar 2016 row); the 2023-01-04 SE e-VOA row appears after the 2023-08-22 and "~Sep-Oct 2023" rows; the 2025-05-28 row (IMI-417) appears before the 2025-05-27 row (IMI-453); and the 2026-07-07 row (Permenimipas 10/2026) appears before the 2026-04-10 row (SE Menteri 2/2026). None of these affect the document's substantive conclusions (Sec 3/4 settled questions), but a document whose stated purpose is to be a staleness "yardstick" should sort its own table.
+
+**Kimi also surfaced, without asserting as errors:** (a) a possible drafting defect inside Permenkumham 11/2024 itself — Pasal 40(4) huruf b cross-references "Pasal 33(2)(e) angka 2 butir d)" where angka 3 appears to be intended (a regulatory drafting error, not a defect in this document, which quotes the Pasal's substance correctly); (b) coverage gaps for a self-declared "authoritative yardstick" — Permenimipas 2/2025 (Pengawasan/TAK) and Permenimipas 5/2025 (repeal of Permenkumham 36/2021 Penjamin Keimigrasian) are not mentioned, though neither contradicts anything the document does assert.
+
+**Verdict: PASS.** No material factual or legal error was found in the document's substantive claims (Pasal citations, dollar figures, repeal chains, E33 product mapping — the parts a Bali Zero visa consultant would actually rely on). Two peripheral date-metadata issues were found: one is a genuine minor slip (PP 51/2020, immaterial), one is a Kimi false positive that the document actually got right (Permenimipas 3/2025 effective date), and a third is a convention-labeling gap rather than a factual error (PP 26/2016). The chronological table's internal ordering has four cosmetic sort bugs. None of these change the document's stated purpose or its two settled questions about E33C/E33D and the US$25M/50M threshold's fate.
