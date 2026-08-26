@@ -13,6 +13,7 @@ sources:
   - live pytest run of the RC 0→1→0 desync proof, in a scratch worktree of #4802's branch (this session)
   - live vitest run of the full admin-dashboard-local suite (this session)
   - live pytest run of the full garuda_flow + garuda_voa Python suite (this session)
+adversarial_review: kimi-k3
 ---
 
 # GARUDA VOA — the defects were in the joint
@@ -291,3 +292,77 @@ on `origin/main` today.
 - Merge #4802 (open, green, mergeable at last check).
 - No design decision reached here on generated-vs-mirrored contract, per §4 above — only the
   cost/benefit stated. That choice is out of this document's scope.
+
+## Adversarial review
+
+seat: kimi-k3 (Moonshot, cross-family — generator was a Claude session; grader dispatched
+independently via `kimi -m kimi-code/k3`, cross-checked against `origin/main` at
+`0c614ec73` by the coordinating session since Kimi's own tool access defaulted to a stale
+local checkout and produced several false positives that were re-verified before being
+accepted or discarded below).
+
+**Verdict: PASS with two material findings and one cosmetic nit. The document's core thesis
+(the joint between the Python engine and its TypeScript-only consumer is where CI blindness
+lives, not in either side's own test suite) and its supporting architecture description hold
+up against the current repo. Two of its claims about the *current* state of the world have
+since gone stale — the same failure mode the document names in §4 — and should be read with
+that caveat.**
+
+Checked and confirmed accurate against `origin/main`:
+- The nine-mirror table's constants all exist in `garuda-preview-adapter.ts` at the claimed
+  identity (`OFFICIAL_PRICE_KEYS`, `CHECKPOINT_LABELS`, `DECLINE_CODES`, `BASE_WARNINGS`,
+  `ESTIMATED_EXPIRY_WARNING`, `EXTENSION_WARNING`, `CALENDAR_WARNING`, `PRICE_WARNING`,
+  `SUCCESS_KEYS`, `hasExactKeys`); every cited line number is off by exactly +1 (e.g.
+  `hasExactKeys` at 205 not 204, file length 491 not 490) — consistent with one line inserted
+  somewhere above them since this document was authored, not a fabrication.
+- `test_preview_adapter_parity.py` has exactly the six test functions named in §1.3.
+- `apps/admin-dashboard-local/__tests__/` has exactly 13 `.test.ts`/`.tsx` files, including
+  `garuda-preview-process-integration.test.ts` with the sentinel-secret env isolation test
+  described in §3.
+- `grep -rln "admin-dashboard-local" .github/workflows/` returns nothing, confirming §3's
+  central claim.
+- `tests.yml:1597` is `- app: admin-dashboard`, exact line match; the two quoted comment
+  blocks (packages/core, wa-mirror) match verbatim at 1689-1695 and 1715-1721.
+- `nationality_eligibility.py` exists with the exact decree citation
+  (`M.HH-02.GR.01.06/2024`) and the 97-code count claimed in §1.4.
+- `VoaIntakeRequest` has exactly the nine fields listed in §1.4, in the same order.
+- `intake.py`'s `_issuance_submission_verdict` / `_issuance_usability_window_verdict` /
+  `nationality_entry_eligible` all exist with the described logic; their line numbers are each
+  off by +7 from the doc's citations, fully explained by an intervening commit
+  (`9ed601a7d`, "garuda-voa train 2/4") that touched this file after the document's authoring
+  session and before this review.
+- PR states/timestamps for #4784, #4787, #4796 (all MERGED, exact `mergedAt` match).
+
+**Finding 1 (material) — #4802 is no longer open.** The document states in §1.4, §4, and §5
+that #4802 is "OPEN... not yet merged" and lists "Merge #4802" as an open action item. As of
+this review, `gh pr view 4802` returns `state: MERGED`, `mergedAt: 2026-08-24T10:42:37Z`.
+Independently confirmed on content: `internal_preview_cli.py::_BASE_WARNINGS[1]` on
+`origin/main` already reads the *corrected* text ("The nationality code is checked against
+the decree-sourced VOA list; this pre-screen does not collect an entry point...") rather than
+the old text the document quotes as what a staff member currently reads. This does not
+contradict the document's narrative of events (it was accurate for the session in which it
+was written, and #4802 evidently merged shortly after), but a reader landing on this PR today
+should not treat §4/§5's "still open" framing as current — it is the exact "true when
+written, false when read" pattern §4 itself describes, applied to the document about itself.
+
+**Finding 2 (material, but tangential to the document's actual thesis) — the §0 tombstone
+file no longer exists.** `apps/mouth/src/app/visa/voa/route.ts`, cited as a source and quoted
+in §0 as the "deliberate tombstone" returning 404, does not exist on `origin/main`
+(`git cat-file -e origin/main:apps/mouth/src/app/visa/voa/route.ts` fails). Two later,
+unrelated PRs (#4876 "restore /visa/voa on Concept A", #4960 "the public funnel UI, dark by
+flag") rebuilt the public VOA page and removed this exact file as part of separate feature
+work, not because of anything in this document. §0's claim was true when written; it no
+longer describes the current tree. It does not affect the document's actual findings (the
+GARUDA VOA *engine* and its *admin-dashboard-local* consumer), which are a different surface
+from the public marketing route.
+
+**Cosmetic nit** — §1.1's sentence "`price_status`/`price_warning` are two of the nine keys
+`SUCCESS_KEYS` now enumerates" is ambiguous: `SUCCESS_KEYS` on `origin/main` enumerates 20
+keys total, not nine. The "nine" most likely refers back to the separate nine-mirror count
+from §0's table, but as written it reads as a claim about `SUCCESS_KEYS`'s own size, which is
+false. Suggest rewording to "...are two of the keys `SUCCESS_KEYS` now enumerates" on any
+future revision; not blocking.
+
+No objections were raised and not addressed above — both material findings are temporal
+drift the document already has a name for (§4), not defects in its reasoning or its
+verification method.
