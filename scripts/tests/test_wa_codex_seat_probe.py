@@ -311,3 +311,77 @@ def test_fallback_regexes_are_byte_identical_to_the_daemon_detectors() -> None:
             f"differ from the daemon's {daemon_name} flags "
             f"{sorted(daemon_flags)} — a flag was added to only one side"
         )
+
+
+# ---------------------------------------------------------------------------
+# detector_source status field (team-lead ask, PR #5028 round-4, 2026-08-26,
+# live measurement on Pro): seat-status.json could not previously say
+# whether a probe run resolved its detectors by IMPORT or fell back to its
+# own copies — the ONE thing wa_codex_seat_sentinel.py needs to tell a
+# healthy probe from a blind one, per that module's own docstring naming
+# this status file the SOLE channel across the user boundary. These two
+# tests load the module FRESH under each condition and read the field the
+# module itself actually resolved — never a hand-typed expectation.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_detector_source_reports_fallback_copy_when_import_is_blocked() -> None:
+    """`unittest.mock.patch.dict(sys.modules, {...: None})` is the standard
+    trick for forcing `import x` to raise `ImportError` regardless of
+    whether `x` is actually resolvable on `sys.path` — Python's import
+    system treats a `None` value in `sys.modules` as "this import is
+    blocked" (see CPython import system docs). Blocking all three dotted
+    prefixes covers `from backend.llm.codex_exec_client import ...`
+    regardless of which segment Python's import machinery consults first."""
+    import sys as _sys
+    from unittest.mock import patch as _patch
+
+    with _patch.dict(
+        _sys.modules,
+        {"backend.llm.codex_exec_client": None, "backend.llm": None, "backend": None},
+    ):
+        spec = importlib.util.spec_from_file_location(
+            "wa_codex_seat_probe_forced_fallback", _MODULE_PATH
+        )
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        _sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+
+    assert module._AUTH_DEATH_SOURCE == "fallback-copy"
+    # WA_CODEX_BIN points at a path that cannot exist, so `_run()` hits its
+    # OSError/spawn-failure branch deterministically (rc=_UNRUN_RC for both
+    # commands) regardless of whether a real `codex` binary happens to be on
+    # this machine's PATH — the point of this test is `detector_source`,
+    # not a real subprocess round-trip.
+    status = module.probe(env={"WA_CODEX_BIN": "/nonexistent/codex-binary-for-test"})
+    assert status.detector_source == "fallback-copy"
+    assert '"detector_source": "fallback-copy"' in status.to_json()
+
+
+def test_guilt_detector_source_reports_import_when_daemon_client_resolves() -> None:
+    """Mirror case: with `apps/backend-rag` explicitly on `sys.path` — the
+    same PYTHONPATH shape `infra/launchagents/wrappers/
+    wa-codex-seat-probe-wrapper.sh` sets up against the root-owned runtime
+    tree in production — the real
+    `from backend.llm.codex_exec_client import ...` succeeds and
+    `_AUTH_DEATH_SOURCE` must read "import", not "fallback-copy"."""
+    import sys as _sys
+
+    backend_rag_root = str(Path(__file__).parents[2] / "apps" / "backend-rag")
+    _sys.path.insert(0, backend_rag_root)
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "wa_codex_seat_probe_forced_import", _MODULE_PATH
+        )
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        _sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+    finally:
+        _sys.path.remove(backend_rag_root)
+
+    assert module._AUTH_DEATH_SOURCE == "import"
+    status = module.probe(env={"WA_CODEX_BIN": "/nonexistent/codex-binary-for-test"})
+    assert status.detector_source == "import"
+    assert '"detector_source": "import"' in status.to_json()

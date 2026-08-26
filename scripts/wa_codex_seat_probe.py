@@ -43,10 +43,12 @@ LOGIN dead, or its usage quota exhausted, or something else non-zero — never
 a full replay of the daemon's SPEC.
 
 LEAK SURFACE (Law 2 / scar family #4 — secret/PII in the clear): the status
-file carries ONLY the verdict enum, the two raw exit codes, and a UTC
-timestamp. No stdout/stderr from `codex` — which could echo prompt content,
-an operator's local path, or other free text — ever reaches the file,
-stdout, or a log line above WARNING.
+file carries ONLY the verdict enum, the two raw exit codes, a UTC
+timestamp, and (2026-08-26, team-lead ask) the fixed two-value
+`detector_source` enum ("import"/"fallback-copy"). No stdout/stderr from
+`codex` — which could echo prompt content, an operator's local path, or
+other free text — ever reaches the file, stdout, or a log line above
+WARNING.
 
 EXIT: 0 = probed and the status file was written (even verdict=auth_death —
 per scar family #2 "esiste ≠ armato", the FILE existing IS the alarm
@@ -205,12 +207,27 @@ EXIT_CANNOT_VERIFY: Final[int] = 2
 class ProbeStatus:
     """The ENTIRE contents of the status file. No field here may ever carry
     free text from a codex invocation — see module docstring, LEAK SURFACE.
-    """
+
+    `detector_source` (team-lead ask, PR #5028 round-4, 2026-08-26, live
+    measurement on Pro): the module-level `_AUTH_DEATH_SOURCE` ("import" or
+    "fallback-copy"), decided ONCE at import time by whether
+    `from backend.llm.codex_exec_client import ...` succeeded. Before this
+    field, that fact was only ever `logger.info`'d — invisible to
+    wa_codex_seat_sentinel.py, whose own docstring names this status file as
+    the SOLE channel that crosses the zantara-codex/nuzantara user boundary.
+    A probe silently running on drifted fallback regexes (scar family #1,
+    HOME-fork drift) could not be told apart from one on the primary,
+    always-in-sync import — `verdict=ok` looked identical either way. This
+    field carries whatever `_AUTH_DEATH_SOURCE` ALREADY resolved to at
+    import time — it is read here, never re-derived by a second try/except
+    at write time (a second code path could disagree with the first, which
+    would defeat the point)."""
 
     checked_at: str
     verdict: str
     login_status_rc: int
     exec_rc: int
+    detector_source: str
 
     def to_json(self) -> str:
         return json.dumps(
@@ -219,6 +236,7 @@ class ProbeStatus:
                 "verdict": self.verdict,
                 "login_status_rc": self.login_status_rc,
                 "exec_rc": self.exec_rc,
+                "detector_source": self.detector_source,
             }
         )
 
@@ -365,7 +383,9 @@ def probe(env: Mapping[str, str] | None = None) -> ProbeStatus:
         logger.error(
             "wa_codex_seat_probe: codex binary unresolvable (WA_CODEX_BIN unset, not on PATH)"
         )
-        return ProbeStatus(now_iso, VERDICT_PROBE_ERROR, _UNRUN_RC, _UNRUN_RC)
+        return ProbeStatus(
+            now_iso, VERDICT_PROBE_ERROR, _UNRUN_RC, _UNRUN_RC, _AUTH_DEATH_SOURCE
+        )
 
     login_rc, login_out, login_err = _run(binary, ["login", "status"], resolved_env)
     exec_rc, exec_out, exec_err = _run(
@@ -374,7 +394,7 @@ def probe(env: Mapping[str, str] | None = None) -> ProbeStatus:
         resolved_env,
     )
     verdict = classify(login_rc, login_out, login_err, exec_rc, exec_out, exec_err)
-    return ProbeStatus(now_iso, verdict, login_rc, exec_rc)
+    return ProbeStatus(now_iso, verdict, login_rc, exec_rc, _AUTH_DEATH_SOURCE)
 
 
 def write_status_atomic(status: ProbeStatus, path: Path) -> None:
