@@ -165,6 +165,31 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
     }
 
 
+def finding_label(probe: dict) -> str:
+    """`id` plus a "1 of N" marker when the probe carries more findings than the
+    one line about to be printed shows.
+
+    Every surface that renders a DIVERGED probe prints ONE finding: the receptor
+    line, the CLI line, and the per-host fleet summary. `evidence` holds at most
+    5 items (run_wrap's `items[:5]`) and `n_findings` is the true total, which is
+    routinely far larger. Printing `evidence[0]` with nothing naming the total is
+    W97 — a truncated list read downstream as complete.
+
+    MEASURED 2026-08-26 on Pro: launchagent_canon 55 findings, launchd_liveness
+    22, organs_heartbeat 7, worktree_gate_shim 4 — each rendered as a single
+    line. The last one caused real damage: read as "one worktree pushes with no
+    gate", three others kept pushing with no hooks at all until a hand census
+    found them.
+
+    Silent for n <= 1: a "[1 of 1]" on every single-finding line would be noise
+    on a report injected into every session on three machines.
+    """
+    n = probe.get("n_findings")
+    if probe.get("evidence") and isinstance(n, int) and n > 1:
+        return f"{probe.get('id')} [1 of {n}]"
+    return str(probe.get("id"))
+
+
 # ------------------------------------------------------- machine-aware remedy selection
 
 # A registry entry's fix_hint is a STATIC string chosen at authoring time — it cannot
@@ -1118,7 +1143,11 @@ def fleet_probe(hosts: list[str], self_path: Path) -> list[dict]:
                 continue
             remote = json.loads(p.stdout)
             div = [r for r in remote.get("probes", []) if r["status"] == DIVERGED]
-            ev = [f"{r['id']}: {r['evidence'][0] if r['evidence'] else r['n_findings']}" for r in div[:4]]
+            # div[:4] truncates the PROBE list too; say so rather than let four
+            # stand in for forty (same W97 shape, one level up).
+            ev = [f"{finding_label(r)}: {r['evidence'][0] if r['evidence'] else r['n_findings']}" for r in div[:4]]
+            if len(div) > 4:
+                ev.append(f"(+{len(div) - 4} more diverged probes on {host} not listed)")
             results.append(verdict(f"fleet:{host}", f"fleet({host}) <-> origin", "checkout<->origin",
                                    DIVERGED if div else RECONCILED, "P1" if div else "P2",
                                    sum(r["n_findings"] for r in div),
@@ -1327,7 +1356,13 @@ def main() -> int:
     else:
         print(summary)
         for r in diverged:
-            print(f"  !! [{r['severity']}] {r['id']}: {r['evidence'][0] if r['evidence'] else r['n_findings']}")
+            # Same finding-level truncation the SessionStart receptor carries — see
+            # the W97 note in scripts/hooks/proprioception_sessionstart.sh. evidence
+            # holds up to 5 items (run_wrap's items[:5]) and n_findings is the true
+            # total, which can be far larger; printing evidence[0] alone reads as
+            # "one finding" for a probe reporting fifty-five.
+            print(f"  !! [{r['severity']}] {finding_label(r)}: "
+                  f"{r['evidence'][0] if r['evidence'] else r['n_findings']}")
             print(f"     fix: {r['fix_hint']}")
         if unwatched:
             print(f"  (unwatched classes: {', '.join(unwatched)})")
