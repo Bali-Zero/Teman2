@@ -192,6 +192,34 @@ dissent:
       restores the shadow-evidence ledger the go-live gate accumulates, NOT the client
       experience, which is withheld by design in SHADOW. The brief and PR description say so
       explicitly rather than letting the fix read as a restoration of service.
+  - seat: "claude-sonnet-5 (adversarial grader, dispatched on the finished diff)"
+    objection: >-
+      289's ROLLBACK section claimed to restore 264's bodies "verbatim" and did not: the decision
+      binder's rollback body was missing three plpgsql comment lines present in both 264 and 289's
+      own forward half. Behaviourally identical, but a rolled-back database would have held a
+      THIRD textual variant of the function that never existed anywhere -- and the migration's own
+      claim of verbatim restoration was false.
+    status: CONFIRMED
+    resolution: >-
+      Comments restored, and the claim replaced with a checked one: the rollback bodies now differ
+      from 264's by exactly the `SECURITY DEFINER` attribute (268's addition, which MUST be
+      restated or CREATE OR REPLACE demotes both functions to SECURITY INVOKER) and by nothing
+      else -- verified line-by-line against `git show <base>:...264...sql`, not by eye.
+  - seat: "claude-sonnet-5 (adversarial grader)"
+    objection: >-
+      The structural tripwire censused an ALLOWLIST of three directories (`services/`, `scripts/`,
+      `db/migrations_v2/`) and never descended into `backend/app/` -- 287 shipped Python files
+      including 163 routers. A planted unscoped resolver under `app/routers/` or `app/services/`
+      was invisible to it. Latent today (nothing under `app/` touches the table), but a retention-
+      status endpoint is a plausible place for the next reader, and it would sail through.
+    status: CONFIRMED
+    resolution: >-
+      The allowlist WAS the same defect one level up -- a guard that silently stops covering
+      whatever is added next. Replaced with a walk of the whole backend tree minus test/vendor
+      paths, so a new directory cannot fall outside it by omission. Proven rather than asserted:
+      an unscoped reader planted at `backend/app/routers/` is now reported by name
+      (`{'app/routers/_tmp_planted_unscoped_reader.py': [(6, 'AND effective_period @> ...')]}`),
+      and removing it returns the census to green.
   - seat: "session (declared limit, unresolved)"
     objection: >-
       This pack asserts that the outage stops the go-live gate's evidence accumulating, but the

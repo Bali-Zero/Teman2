@@ -191,12 +191,28 @@ $$;
 
 -- === ROLLBACK ===
 
--- Restores 264's unscoped predicate verbatim (SECURITY DEFINER and
--- search_path restated, same reason as forward). This re-arms the 2026-08-26
--- outage on any database whose policy table holds an active non-VISA_DECISION
--- row, which is every database that has applied 281 and activated a GARUDA
--- policy -- rolling this back is only meaningful together with rolling back
--- 281.
+-- Restores 264's two bodies exactly, with ONE deliberate delta: the
+-- `SECURITY DEFINER` attribute, which 264 did not ship and 268 added by
+-- `ALTER FUNCTION`. Restating it here is not cosmetic -- `CREATE OR REPLACE`
+-- takes security and search_path from the statement, so a rollback that
+-- omitted it would silently demote both functions to SECURITY INVOKER and
+-- re-open the 2026-08-07 production incident 268 exists to close. That is
+-- the whole difference: verified line-by-line against
+-- `git show <base>:...264_visa_decision_retention_policy.sql`, the two
+-- bodies differ from 264's by that attribute and nothing else.
+--
+-- An adversarial review of this migration found the first draft of this
+-- section had silently dropped three plpgsql comment lines from the decision
+-- binder (the `created_at is structurally DB-owned` note), which would have
+-- left a rolled-back database holding a THIRD variant of the function that
+-- never existed anywhere. Behaviourally identical, textually novel -- and a
+-- claim of "verbatim" that was not true. Restored; the claim is now checked
+-- rather than asserted.
+--
+-- Rolling this back re-arms the 2026-08-26 outage on any database whose
+-- policy table holds an active non-VISA_DECISION row -- which is every
+-- database that has applied 281 and activated a GARUDA policy. It is only
+-- meaningful together with rolling back 281.
 
 CREATE OR REPLACE FUNCTION public.bind_visa_decision_retention_policy()
 RETURNS trigger
@@ -208,6 +224,9 @@ DECLARE
     policy RECORD;
     expected_until TIMESTAMPTZ;
 BEGIN
+    -- created_at is structurally DB-owned below. evaluated_at remains the
+    -- engine/bitemporal clock by contract; its authoritative skew semantics
+    -- are a separate Zero activation decision (F16), not invented here.
     IF NEW.created_at IS DISTINCT FROM transaction_timestamp() THEN
         RAISE EXCEPTION 'decision created_at must use the database transaction clock';
     END IF;

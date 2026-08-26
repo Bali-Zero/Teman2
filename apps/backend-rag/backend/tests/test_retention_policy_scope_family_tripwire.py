@@ -44,11 +44,18 @@ _SCOPE_PREDICATE = re.compile(r"policy_scope\s*(=|IN\b)", re.IGNORECASE)
 # a neighbouring statement.
 _WINDOW = 12
 
-_SEARCH_ROOTS = (
-    BACKEND_ROOT / "services",
-    BACKEND_ROOT / "scripts",
-    BACKEND_ROOT / "db" / "migrations_v2",
-)
+# The census walks the WHOLE backend tree, not an allowlist of directories.
+# An allowlist is the same defect one level up: it silently stops covering
+# whatever is added next. The first draft here listed `services/`, `scripts/`
+# and `db/migrations_v2/`, and an adversarial reviewer showed it was blind to
+# `backend/app/` -- 287 shipped Python files including 163 routers, exactly
+# where a "retention status" endpoint would plausibly be written. Latent then
+# (nothing under `app/` touched the table yet), guaranteed eventually.
+_SEARCH_ROOT = BACKEND_ROOT
+
+# Test trees are excluded: a fixture that seeds two scopes on purpose is not a
+# defect, and this file's own guilt case would otherwise report itself.
+_EXCLUDED_PARTS = ("/tests/", "/.venv/", "/node_modules/")
 
 # Migrations are append-only history: a file that shipped an unscoped resolver
 # BEFORE 281 introduced scoping is a historical record, not a live defect, and
@@ -87,15 +94,19 @@ def _live_text(path: Path) -> str:
 
 def _candidate_files() -> list[Path]:
     found: list[Path] = []
-    for root in _SEARCH_ROOTS:
-        for suffix in ("*.py", "*.sql"):
-            for path in root.rglob(suffix):
-                if "/tests/" in str(path):
-                    continue
-                if path.name in _HISTORICAL_MIGRATIONS:
-                    continue
-                if POLICY_TABLE in path.read_text(encoding="utf-8"):
-                    found.append(path)
+    for suffix in ("*.py", "*.sql"):
+        for path in _SEARCH_ROOT.rglob(suffix):
+            as_text = str(path)
+            if any(part in as_text for part in _EXCLUDED_PARTS):
+                continue
+            if path.name in _HISTORICAL_MIGRATIONS:
+                continue
+            try:
+                content = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if POLICY_TABLE in content:
+                found.append(path)
     return sorted(found)
 
 
