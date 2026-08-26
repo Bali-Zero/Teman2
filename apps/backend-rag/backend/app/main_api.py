@@ -107,6 +107,97 @@ async def _run_wa_outbox_scheduler(app: FastAPI, worker_id: int = 0) -> None:
             await asyncio.sleep(interval)
 
 
+def _garuda_outbox_poll_seconds() -> float:
+    """Idle back-off between drain passes. Non-numeric or non-positive values
+    fall back to the default rather than crashing startup — the same
+    defensiveness `_wa_outbox_worker_count` applies to its own env."""
+
+    raw = os.getenv("GARUDA_OUTBOX_POLL_SECONDS", "5")
+    try:
+        seconds = float(raw)
+    except ValueError:
+        logger.warning("GARUDA_OUTBOX_POLL_SECONDS=%r is not a number — defaulting to 5", raw)
+        return 5.0
+    if seconds <= 0:
+        logger.warning("GARUDA_OUTBOX_POLL_SECONDS=%s is not positive — defaulting to 5", seconds)
+        return 5.0
+    return seconds
+
+
+async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
+    """Drain `garuda_order_outbox` by calling `drain_once` in a loop.
+
+    THIS IS THE THING THAT WAS MISSING. `outbox_consumer.py` and
+    `outbox_handlers.py` have existed and been tested for a while, and nothing
+    in the repository ever called either of them outside tests — measured across
+    every `.py`, `.sh`, `.plist`, `.yml` and `.toml`. So `garuda_order_outbox`
+    accumulated rows that no code could consume: a customer who paid received no
+    confirmation and produced no CRM practice, not because a handler was wrong
+    but because the machine was never switched on. `outbox_consumer.py`'s own
+    docstring already said as much — "Nothing schedules this module yet ...
+    Built is not armed." This is that act.
+
+    ONE WORKER, DELIBERATELY, unlike the WA scheduler's K. That one needs a
+    per-thread advisory lock to make parallel loops safe because two rows of the
+    same conversation must not be sent out of order. This queue has no such
+    ordering constraint: `drain_once` claims one row at a time under
+    `FOR UPDATE SKIP LOCKED` and holds the lock across the handler, so
+    concurrency is already safe — it is throughput that a second loop would buy,
+    and there is no evidence yet that one is needed. `batch_size` is the knob to
+    reach for first.
+
+    MULTIPLE MACHINES ARE SAFE FOR THE SAME REASON. If the `api` process ever
+    runs on more than one Fly machine, each gets its own copy of this loop.
+    That is the same bet the WA scheduler makes and it holds here too:
+    `SKIP LOCKED` steps over a row another transaction holds rather than waiting
+    on it, so duplicate schedulers contend at the row and never double-dispatch.
+    There is deliberately no leader election, because adding one would be a
+    second, weaker guarantee layered over a structural one.
+
+    THE HTTP CLIENT IS OWNED HERE, VIA `async with`. `BrevoEmailSender` takes an
+    injected `httpx.AsyncClient` precisely so it is not built per call (Golden
+    Rule #10), which means somebody has to own and close it. The first draft did
+    that with an explicit `try/finally`, which is behaviourally identical and
+    still FAILED `test_no_httpx_violators_outside_http_files`: that guard
+    recognises `async with httpx.AsyncClient(...)` and a lazy-singleton
+    `is_closed` getter, and nothing else outside `*_http.py`. Taking the
+    sanctioned shape is better than claiming `# golden-rule-10-exempt` — the
+    exemption would have been true and would still have removed this line from
+    every future audit of the rule.
+    """
+
+    import httpx
+
+    from backend.services.garuda_orders.outbox_consumer import drain_once
+    from backend.services.garuda_orders.outbox_handlers import (
+        BrevoEmailSender,
+        build_handlers,
+    )
+
+    interval = _garuda_outbox_poll_seconds()
+    pool = app.state.db_pool
+    logger.info("✅ GARUDA outbox scheduler started (poll=%ss)", interval)
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        handlers = build_handlers(pool, BrevoEmailSender(client))
+        while True:
+            try:
+                async with pool.acquire() as conn:
+                    stats = await drain_once(conn, handlers)
+                # Keep draining while the last pass did real work; back off once
+                # it did not. `dispatched` and not `claimed` is the right signal:
+                # a pass that only ever claims unroutable or failing rows has
+                # nothing to hurry for, and spinning on it would burn their
+                # attempt budgets in seconds — the very thing `exclude_ids`
+                # exists inside one pass to prevent.
+                await asyncio.sleep(0.1 if stats.dispatched else interval)
+            except asyncio.CancelledError:
+                logger.info("🛑 GARUDA outbox scheduler cancelled")
+                raise
+            except Exception:
+                logger.exception("GARUDA outbox scheduler tick failed; backing off")
+                await asyncio.sleep(interval)
+
+
 @asynccontextmanager
 async def lifespan_light(app: FastAPI):
     """
@@ -171,6 +262,33 @@ async def lifespan_light(app: FastAPI):
                     "⚠️ WA outbox scheduler NOT started — db_pool unavailable",
                 )
 
+            # GARUDA order outbox. Gated by the consumer module's OWN switch
+            # rather than a new one: `is_consumer_enabled()` accepts the literal
+            # string "true" and nothing else, so an unset variable, a typo, "1",
+            # "yes" or "TRUE" all leave this off. That fail-closed default is
+            # what makes the queue deployable-but-dark — the code ships, the
+            # drain does not start until someone sets the variable on purpose.
+            from backend.services.garuda_orders.outbox_consumer import (
+                is_consumer_enabled as _garuda_outbox_enabled,
+            )
+
+            if not _garuda_outbox_enabled():
+                app.state._garuda_outbox_scheduler_task = None
+                logger.info(
+                    "GARUDA outbox scheduler disarmed "
+                    "(GARUDA_OUTBOX_CONSUMER_ENABLED is not the string 'true')",
+                )
+            elif getattr(app.state, "db_pool", None) is not None:
+                app.state._garuda_outbox_scheduler_task = asyncio.create_task(
+                    _run_garuda_outbox_scheduler(app)
+                )
+                logger.info("✅ GARUDA outbox scheduler spawned")
+            else:
+                app.state._garuda_outbox_scheduler_task = None
+                logger.warning(
+                    "⚠️ GARUDA outbox scheduler NOT started — db_pool unavailable",
+                )
+
     init_task = asyncio.create_task(_background_light_init())
     app.state._init_task = init_task
 
@@ -186,6 +304,17 @@ async def lifespan_light(app: FastAPI):
     for wa_task in wa_tasks:
         try:
             await wa_task
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    # Same order and the same reason: cancel the drain BEFORE the pool it holds
+    # a connection from is closed, and await it so its `finally` gets to close
+    # the httpx client it owns.
+    garuda_task = getattr(app.state, "_garuda_outbox_scheduler_task", None)
+    if garuda_task is not None:
+        garuda_task.cancel()
+        try:
+            await garuda_task
         except (asyncio.CancelledError, Exception):
             pass
 
