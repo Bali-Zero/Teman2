@@ -130,9 +130,31 @@ case_qwen_unchanged_ignores_tier() {
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 assert d["rc"] is None
+assert d["tier"] is None, d  # cleared, not just ignored in argv (codex-sol #5044)
 argv=d["argv"]
 assert argv[1] == "-p", argv
 assert "-m" not in argv and "--model" not in argv, argv' <<< "$out"
+}
+
+# ── ctx-check must fail CLOSED, never open, on a broken table (codex-sol #5044) ──
+
+case_ctx_config_missing_is_hard_error() {
+    local saved_script_dir="${SCRIPT_DIR:-}"
+    local rc=0
+    # shellcheck source=/dev/null
+    source "$SEAT_BUILD"
+    SCRIPT_DIR="$FIXTURE/nonexistent-dir-$$"
+    ctx_window_for codex sol >/dev/null 2>/dev/null || rc=$?
+    SCRIPT_DIR="$saved_script_dir"
+    [ "$rc" -eq 2 ]
+}
+
+case_ctx_config_valid_absence_is_exempt() {
+    local rc=0
+    # shellcheck source=/dev/null
+    source "$SEAT_BUILD"
+    ctx_window_for qwen coding >/dev/null 2>/dev/null || rc=$?
+    [ "$rc" -eq 1 ]
 }
 
 # ── R2: codex effort caps by tier ───────────────────────────────────────────
@@ -209,6 +231,7 @@ case_agy_pro_small_input_downgrades_to_flash() {
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 assert d["tier"] == "flash", d
+assert d["tier_downgraded_from"] == "pro", d  # caller must be able to tell (codex-sol #5044)
 argv=d["argv"]
 assert argv[argv.index("--model")+1] == "gemini-3.5-flash", argv' <<< "$out"
 }
@@ -220,6 +243,7 @@ case_agy_pro_large_input_keeps_pro() {
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 assert d["tier"] == "pro", d
+assert d["tier_downgraded_from"] is None, d
 argv=d["argv"]
 assert argv[argv.index("--model")+1] == "gemini-3.1-pro", argv' <<< "$out"
 }
@@ -230,7 +254,8 @@ case_agy_pro_role_synthesis_keeps_pro_on_small_input() {
         --worktree "$LINKED_WT" --task-file "$TASK_FILE" --dry-run 2>/dev/null)" || return 1
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
-assert d["tier"] == "pro", d' <<< "$out"
+assert d["tier"] == "pro", d
+assert d["tier_downgraded_from"] is None, d' <<< "$out"
 }
 
 # ── tier defaulting / SEAT_BUILD_TIER_REQUIRED ───────────────────────────────
@@ -290,6 +315,8 @@ run_case "kimi/k3 argv carries -m kimi-code/k3" case_kimi_tier_k3_argv
 run_case "kimi/highspeed at medium effort is allowed" case_kimi_tier_highspeed_medium_ok
 run_case "agy/flash argv carries --model gemini-3.5-flash" case_agy_tier_flash_argv
 run_case "qwen ignores --tier entirely" case_qwen_unchanged_ignores_tier
+run_case "ctx-check fails CLOSED on a missing/unreadable config" case_ctx_config_missing_is_hard_error
+run_case "ctx-check exempts a legitimately-absent pair (qwen)" case_ctx_config_valid_absence_is_exempt
 run_case "R2: codex/luna capped at medium, xhigh refused (65)" case_codex_luna_xhigh_capped
 run_case "R2: codex/terra capped at high, xhigh refused (65)" case_codex_terra_xhigh_capped
 run_case "R2: codex/sol xhigh without --gear 3 refused (65)" case_codex_sol_xhigh_without_gear_refused

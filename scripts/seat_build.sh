@@ -69,14 +69,14 @@ emit_report() {
     local report_json
     report_json="$(python3 - "$SEAT" "$MODEL" "$EFFORT" "${TIER:-}" "$report_rc" "$DURATION" \
         "$DIFF_STAT" "$UNTRACKED" "$TESTS_CMD" "$TESTS_RC" "$QUOTA_EXHAUSTED" \
-        "$LOG_PATH" "$dry_run" "${INPUT_TOKENS_EST:-0}" \
+        "$LOG_PATH" "$dry_run" "${INPUT_TOKENS_EST:-0}" "${TIER_DOWNGRADED_FROM:-}" \
         ${argv_preview[@]+"${argv_preview[@]}"} <<'PY'
 import json
 import sys
 
 (seat, model, effort, tier, rc, duration, diff_stat, untracked, tests_cmd,
- tests_rc, quota, log_path, dry, input_tokens_est) = sys.argv[1:15]
-argv_preview = sys.argv[15:]
+ tests_rc, quota, log_path, dry, input_tokens_est, downgraded_from) = sys.argv[1:16]
+argv_preview = sys.argv[16:]
 report = {
     "seat": seat,
     "model": model,
@@ -93,6 +93,10 @@ report = {
     "quota_exhausted": quota == "true",
     "log": log_path or None,
     "input_tokens_est": int(input_tokens_est),
+    # R4: non-null only when agy/pro was silently downgraded (e.g. to
+    # "flash") — a caller checking rc==0 alone would otherwise believe it
+    # got the tier it asked for (codex-sol adversarial review, PR #5044).
+    "tier_downgraded_from": downgraded_from or None,
 }
 if dry == "true":
     report["dry_run"] = True
@@ -167,16 +171,24 @@ enforce_effort_cap() {
 }
 
 # ctx_window_for <seat> <tier> — prints the configured context window (tokens)
-# from scripts/seat_ctx.json, or nothing with rc=1 when the pair is absent
-# (this is how qwen, which carries no tiers, is silently exempted).
+# from scripts/seat_ctx.json. Exit 1 means the seat/tier pair is legitimately
+# absent from an otherwise-valid table (this is how qwen, which carries no
+# tiers, is exempted). Exit 2 means the table itself could not be trusted
+# (missing file, unreadable, invalid JSON) — the caller must NOT treat that
+# the same as an intentional exemption, or ctx-check fails open exactly when
+# its own configuration is broken (codex-sol adversarial review, PR #5044).
 ctx_window_for() {
     python3 - "$SCRIPT_DIR/seat_ctx.json" "$1" "$2" <<'PY'
 import json
 import sys
 
 path, seat, tier = sys.argv[1:4]
-with open(path) as f:
-    data = json.load(f)
+try:
+    with open(path) as f:
+        data = json.load(f)
+except (OSError, ValueError) as exc:
+    print(f"seat_build: seat_ctx.json unreadable/invalid: {exc}", file=sys.stderr)
+    sys.exit(2)
 window = data.get(seat, {}).get(tier)
 if not isinstance(window, int):
     sys.exit(1)
@@ -208,8 +220,13 @@ PY
 # (bytes/4, already computed into INPUT_TOKENS_EST) exceeds the requested
 # seat/tier's declared context window.
 enforce_ctx_window() {
-    local window
-    window="$(ctx_window_for "$SEAT" "$TIER")" || return 0
+    local window rc=0
+    window="$(ctx_window_for "$SEAT" "$TIER")" || rc=$?
+    if [ "$rc" -eq 2 ]; then
+        refuse 64 "ctx-check: scripts/seat_ctx.json is missing or invalid — cannot verify $SEAT/$TIER's context window (refusing rather than failing open)"
+    elif [ "$rc" -eq 1 ]; then
+        return 0  # seat/tier has no declared window in a VALID table: exempt, not a config error
+    fi
     [ "$INPUT_TOKENS_EST" -le "$window" ] && return 0
     local eligible
     eligible="$(ctx_eligible_seats "$INPUT_TOKENS_EST")"
@@ -245,6 +262,7 @@ main() {
     GEAR=""
     ROLE=""
     INPUT_TOKENS_EST=0
+    TIER_DOWNGRADED_FROM=""
 
     while [ "$#" -gt 0 ]; do
         case "$1" in
@@ -299,7 +317,14 @@ main() {
             esac
             MODEL="pending"  # finalized below, after the pro/flash ctx+role gate (R4)
             ;;
-        qwen) binary_name="qwen"; MODEL="qwen-default" ;;  # unchanged: no tiers
+        qwen)
+            binary_name="qwen"; MODEL="qwen-default"
+            # unchanged: no tiers. Clear (not just ignore) a --tier the caller
+            # passed anyway, so the report never claims a tier qwen never used
+            # (codex-sol adversarial review, PR #5044: a stray --tier value
+            # would otherwise leak into telemetry/routing downstream).
+            TIER=""
+            ;;
         "") refuse 64 "missing --seat" ;;
         *) refuse 64 "unknown seat: $SEAT" ;;
     esac
@@ -315,6 +340,7 @@ main() {
         if [ "$TIER" = "pro" ] && [ "$INPUT_TOKENS_EST" -le 200000 ] && [ "$ROLE" != "synthesis" ]; then
             printf 'seat_build: R4 — agy/pro needs >200000 estimated input tokens or --role synthesis (got ~%s tokens, role=%s); downgrading to flash\n' \
                 "$INPUT_TOKENS_EST" "${ROLE:-none}" >&2
+            TIER_DOWNGRADED_FROM="pro"
             TIER=flash
         fi
         case "$TIER" in
