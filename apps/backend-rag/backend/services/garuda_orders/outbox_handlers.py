@@ -34,13 +34,21 @@ deliberately no arithmetic anywhere in this file.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import asyncpg
 import httpx
 
+from backend.services.garuda_ops.adapters_pg import (
+    PostgresCrmWriter,
+    PostgresOrderSnapshotProvider,
+)
+from backend.services.garuda_ops.crm_handoff import CrmHandoffService, HandoffOutcome
+from backend.services.garuda_ops.ports import EventEnvelope, IdempotencyIdentity
 from backend.services.garuda_orders.outbox_consumer import OutboxJob
 
 logger = logging.getLogger("garuda.orders.outbox_handlers")
@@ -213,19 +221,139 @@ class PaymentPaidEmailHandler:
         )
 
 
+class PracticeNotMinted(RuntimeError):
+    """No `garuda_practices` row for this payment event. Raised, never swallowed."""
+
+
+class PracticeReleaseHandler:
+    """Routes the `practice_release` outbox job into the CRM.
+
+    THIS IS THE WELD, and until it existed the chain stopped one link short.
+    `repository.py` already does everything up to here in the SAME transaction
+    as `payment.paid` (OP-02): it appends the journal event, enqueues BOTH
+    `payment_paid_email` and `practice_release`, and calls
+    `mint_received_practice` so the `garuda_practices` row exists eagerly.
+    `PostgresOrderSnapshotProvider` and `PostgresCrmWriter` have existed since
+    the L7 adapters landed. What did not exist was any entry for
+    `practice_release` in `build_handlers` — so that job was reported
+    `unroutable` on every drain pass, forever, and a paying customer got a
+    confirmation email and NO work item in the CRM. Superscar #2 exactly: every
+    part built, the last one never armed.
+
+    IDENTITY, AND WHY IT IS NOT THE ORDER ID. `garuda_practices.
+    source_paid_journal_event_id` is UNIQUE and holds the very
+    `journal_event_id` this job carries, so the practice aggregate is looked up
+    by the payment event itself — no order->practice correlation is invented,
+    and the lookup cannot drift from the thing that authorized the practice.
+
+    THE DIGEST IS DETERMINISTIC ON PURPOSE. `events.yaml` types
+    `IdempotencyIdentity.key_digest` as a SHA-256 of the scoped key and never
+    the raw key, and `PostgresCrmWriter` stores exactly that digest in
+    `practices.source_idempotency_key` under a partial UNIQUE index. Hashing
+    the same journal event id always yields the same digest, so a redelivered
+    job dedups AT THE DATABASE rather than in this handler's head. Anything
+    random or clock-derived here would mint a second practice per retry.
+    """
+
+    def __init__(self, pool: asyncpg.Pool, handoff: CrmHandoffService) -> None:
+        self._pool = pool
+        self._handoff = handoff
+
+    async def __call__(self, job: OutboxJob) -> None:
+        practice_id = await self._practice_id_for(job.journal_event_id)
+        if practice_id is None:
+            # `mint_received_practice` runs in the SAME transaction that
+            # enqueued this job, so the row is committed or the job does not
+            # exist. Its absence means something deleted a practice out from
+            # under a queued release. Raise: it must exhaust and show up under
+            # `count_undrained`, never be marked delivered.
+            raise PracticeNotMinted(
+                f"no garuda_practices row for journal event {job.journal_event_id}"
+            )
+
+        result = await self._handoff.handle_practice_received(
+            self._envelope(job, practice_id)
+        )
+
+        if result.outcome is HandoffOutcome.ORDER_SNAPSHOT_MISSING:
+            # The provider already logged WHY (missing order, or an eligibility
+            # check lost to retention). Returning would mark this delivered and
+            # the order would never reach the CRM at all, so this raises even
+            # though a retry may not help: an unworked paid order has to stay
+            # countable.
+            raise PracticeNotMinted(
+                f"no order snapshot behind practice for journal event {job.journal_event_id}"
+            )
+
+        # practice id only — never the applicant, the address or the passport.
+        logger.info(
+            "outbox practice_release %s for order %s (crm practice %s)",
+            result.outcome.value,
+            job.order_id,
+            result.crm_practice_id,
+        )
+
+    async def _practice_id_for(self, journal_event_id: str) -> str | None:
+        async with self._pool.acquire() as conn:
+            return await conn.fetchval(
+                """
+                SELECT practice_id
+                  FROM garuda_practices
+                 WHERE source_paid_journal_event_id = $1
+                """,
+                journal_event_id,
+            )
+
+    @staticmethod
+    def _envelope(job: OutboxJob, practice_id: str) -> EventEnvelope:
+        digest = hashlib.sha256(job.journal_event_id.encode()).hexdigest()
+        return EventEnvelope(
+            schema_version="1.0.0",
+            event_name="practice.received",
+            # The outbox row is not the journal event; it is the delivery of
+            # one. `event_id` therefore names THIS delivery, while the
+            # idempotency identity below names the payment that authorized the
+            # practice — which is the distinction ports.py gap 1 exists for.
+            event_id=f"outbox:{job.id}",
+            occurred_at=datetime.now(tz=timezone.utc),
+            aggregate_type="practice",
+            aggregate_id=practice_id,
+            transition_id="PR-01",
+            customer_visible=True,
+            idempotency_identity=IdempotencyIdentity(
+                kind="DOMAIN_EVENT",
+                key_digest=digest,
+                canonical_payload_digest=digest,
+            ),
+        )
+
+
 def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, object]:
     """The registry `drain_once` consumes.
 
-    Only `payment_paid_email` is routed today. Every other job_type the
-    repository enqueues — `practice_release`, `refund_email`,
-    `payment_failed_email`, `checkout_ready_email` and the five `staff_page_*`
-    — deliberately has NO entry, so the consumer reports them as `unroutable`
-    and logs them by name rather than pretending they were delivered. That is
-    the intended state, not an oversight: an unrouted job keeps its full
-    attempt budget and is picked up unharmed when its handler is written.
+    Two job types are routed: `payment_paid_email` (what the customer sees) and
+    `practice_release` (what the team sees). Both are enqueued by the SAME
+    transaction in `repository.py` when a payment is confirmed, and routing
+    only the first is what produced a paying customer with a confirmation email
+    and no work item.
+
+    Every other job_type the repository enqueues — `refund_email`,
+    `payment_failed_email`, `checkout_ready_email`, `payment_expired_email` and
+    the five `staff_page_*` — deliberately has NO entry, so the consumer
+    reports them as `unroutable` and logs them by name rather than pretending
+    they were delivered. That is the intended state, not an oversight: an
+    unrouted job keeps its full attempt budget and is picked up unharmed when
+    its handler is written.
     """
 
-    return {"payment_paid_email": PaymentPaidEmailHandler(pool, sender)}
+    handoff = CrmHandoffService(
+        order_snapshots=PostgresOrderSnapshotProvider(pool),
+        crm_writer=PostgresCrmWriter(pool),
+    )
+    return {
+        "payment_paid_email": PaymentPaidEmailHandler(pool, sender),
+        "practice_release": PracticeReleaseHandler(pool, handoff),
+    }
 
 
 __all__ = [
@@ -233,5 +361,7 @@ __all__ = [
     "EmailSendFailed",
     "OrderEmailFacts",
     "PaymentPaidEmailHandler",
+    "PracticeNotMinted",
+    "PracticeReleaseHandler",
     "build_handlers",
 ]
