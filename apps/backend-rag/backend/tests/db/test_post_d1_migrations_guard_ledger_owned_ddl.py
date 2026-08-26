@@ -193,18 +193,89 @@ _TABLE_REF = {
 _DOLLAR_TAG = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$")
 
 
-def _strip_line_comment(line: str) -> str:
-    """Drop a trailing ``--`` comment.
+def _executable_text(sql: str) -> tuple[list[str], list[int]]:
+    """Reduce SQL to the characters PostgreSQL would actually execute.
 
-    This runs BEFORE dollar-delimiters are counted, and that ordering is the
-    whole point: a comment containing an odd number of ``$$`` would otherwise
-    flip the parity and make every statement after it look as though it lived
-    inside a function body. Measured — the earlier version of this scanner
-    missed a real unguarded ALTER placed under the single line
-    ``-- a comment containing $$ once``.
+    A single left-to-right lexer, written once, instead of a pile of regex
+    patches — because every patch so far uncovered another case the previous
+    one had not considered. It tracks the five states that matter and emits
+    only what is in the NORMAL one:
+
+    ``--`` line comment · ``/* */`` block comment · ``'...'`` string literal
+    (with the ``''`` escape) · ``$tag$...$tag$`` dollar-quoted body · normal.
+
+    Every one of these can contain the others' delimiters, which is exactly
+    why order-of-stripping cannot work and a state machine can. Measured
+    failures of the regex versions this replaces, each now a fixture:
+
+    * ``-- a comment containing $$ once`` flipped dollar parity and hid every
+      statement after it;
+    * ``INSERT INTO t(c) VALUES ('a -- x');`` had its statement terminator
+      eaten by naive comment stripping, swallowing the next statement;
+    * ``/* ... */`` on its own line pushed the ALTER off the start of the
+      statement;
+    * a ``$func$`` body was not recognised as a body at all.
+
+    Dollar-quoted bodies are dropped because that is where a catalog guard
+    lives; string and comment contents are dropped because they are not
+    executed. Returns (characters, line-number-per-character) so a finding can
+    name the line it came from.
     """
-    idx = line.find("--")
-    return line if idx == -1 else line[:idx]
+    chars: list[str] = []
+    origin: list[int] = []
+    i, lineno, n = 0, 1, len(sql)
+    while i < n:
+        ch = sql[i]
+        if ch == "\n":
+            chars.append("\n")
+            origin.append(lineno)
+            lineno += 1
+            i += 1
+        elif sql.startswith("--", i):
+            while i < n and sql[i] != "\n":
+                i += 1
+        elif sql.startswith("/*", i):
+            i += 2
+            while i < n and not sql.startswith("*/", i):
+                lineno += sql[i] == "\n"
+                i += 1
+            i += 2
+        elif ch == "'":
+            i += 1
+            while i < n:
+                if sql[i] == "'" and sql.startswith("''", i):
+                    i += 2
+                    continue
+                if sql[i] == "'":
+                    i += 1
+                    break
+                lineno += sql[i] == "\n"
+                i += 1
+            # A consumed literal still separates tokens.
+            chars.append(" ")
+            origin.append(lineno)
+        elif (m := _DOLLAR_TAG.match(sql, i)) is not None:
+            tag = m.group(0)
+            j = sql.find(tag, m.end())
+            if j == -1:
+                # UNTERMINATED body. Suppressing the rest of the file would
+                # blind the guard from here on — measured: an unclosed
+                # `DO $blk$` hid a real unguarded ALTER two lines below. Treat
+                # the delimiter as ordinary text so the tail stays visible.
+                # A guard that goes quiet on malformed input is worse than none.
+                chars.extend(tag)
+                origin.extend([lineno] * len(tag))
+                i = m.end()
+                continue
+            lineno += sql.count("\n", i, j + len(tag))
+            i = j + len(tag)
+            chars.append(" ")
+            origin.append(lineno)
+        else:
+            chars.append(ch)
+            origin.append(lineno)
+            i += 1
+    return chars, origin
 
 
 def find_unguarded_alters(sql: str) -> list[tuple[int, str, str]]:
@@ -216,54 +287,31 @@ def find_unguarded_alters(sql: str) -> list[tuple[int, str, str]]:
     ALTER at all, which is the only construction that survives the ownership
     check.
 
-    Dollar-quoting is tracked by matching delimiters properly rather than by
-    counting ``$$`` occurrences: an opening ``$tag$`` is closed only by the
-    SAME ``$tag$``, which is what lets a ``$$`` sit harmlessly inside a
-    ``$func$`` body. Comments are stripped first (see ``_strip_line_comment``).
-
-    The statement is accumulated to its terminating semicolon rather than read
-    through a fixed line window, so an ALTER whose table name sits an arbitrary
-    number of lines below the keyword is still matched. Migration headers in
-    this repository legitimately DISCUSS statements like
-    ``ALTER TABLE public.visa_decision_retention_policies`` in prose — this
-    file's own docstring does it repeatedly — and comment stripping is what
-    keeps the scanner from convicting the documentation instead of the code.
+    Statements are split on ``;`` over the lexer's output rather than read
+    line-by-line: anchoring on ``^ALTER TABLE`` missed
+    ``SELECT 1; ALTER TABLE ...`` written on one line, and a fixed line window
+    missed an ALTER whose table name sat further below the keyword. Comment
+    contents never reach here, so the scanner cannot convict documentation —
+    migration headers legitimately DISCUSS statements like
+    ``ALTER TABLE public.visa_decision_retention_policies`` in prose, as this
+    file's own docstring does repeatedly.
     """
+    chars, origin = _executable_text(sql)
     findings: list[tuple[int, str, str]] = []
-    lines = sql.splitlines()
 
-    open_tag: str | None = None
-    # (line_no, code) for every line that is genuinely top-level SQL
-    top_level: list[tuple[int, str]] = []
-    for lineno, raw in enumerate(lines, start=1):
-        code = _strip_line_comment(raw)
-        pos = 0
-        emit = ""
-        for m in _DOLLAR_TAG.finditer(code):
-            if open_tag is None:
-                emit += code[pos : m.start()]
-                open_tag = m.group(0)
-            elif m.group(0) == open_tag:
-                open_tag = None
-            pos = m.end()
-        if open_tag is None:
-            emit += code[pos:]
-        if emit.strip():
-            top_level.append((lineno, emit))
-
-    for idx, (lineno, code) in enumerate(top_level):
-        stripped = code.strip()
-        if not _ALTER_TABLE.match(stripped):
+    start = 0
+    for end in [idx for idx, c in enumerate(chars) if c == ";"] + [len(chars)]:
+        segment = "".join(chars[start:end])
+        head = len(segment) - len(segment.lstrip())
+        collapsed = " ".join(segment.split())
+        at = start + head
+        start = end + 1
+        if not collapsed or not _ALTER_TABLE.match(collapsed):
             continue
-        # Accumulate to the terminating semicolon — no fixed window.
-        statement = stripped
-        for _, more in top_level[idx + 1 :]:
-            if ";" in statement:
-                break
-            statement += " " + more.strip()
+        lineno = origin[at] if at < len(origin) else (origin[-1] if origin else 1)
         for table, pattern in _TABLE_REF.items():
-            if pattern.search(statement):
-                findings.append((lineno, table, stripped[:100]))
+            if pattern.search(collapsed):
+                findings.append((lineno, table, collapsed[:100]))
                 break
     return findings
 
@@ -363,6 +411,44 @@ GUILTY = [
         f"    ADD CONSTRAINT c CHECK (true);\n",
         id="real-statement-below-a-comment-that-mentions-it",
     ),
+    pytest.param(
+        f"DO $blk$ BEGIN NULL;\nALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\n",
+        id="unterminated-body-must-not-blind-the-tail",
+    ),
+    pytest.param(
+        f"SELECT 1; ALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\n",
+        id="two-statements-on-one-line",
+    ),
+    pytest.param(
+        f"INSERT INTO t(c) VALUES ('a -- x');\nALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\n",
+        id="double-dash-inside-a-string-literal-is-not-a-comment",
+    ),
+    pytest.param(
+        f"INSERT INTO t VALUES ('it''s -- fine');\nALTER TABLE public.{_LEDGER} ADD COLUMN x;\n",
+        id="escaped-quote-inside-a-literal",
+    ),
+    pytest.param(
+        f"/* line one\n   ALTER TABLE public.{_LEDGER} in prose\n*/\n"
+        f"ALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\n",
+        id="multi-line-block-comment-then-a-real-alter",
+    ),
+    pytest.param(
+        f"ALTER TABLE public.{_LEDGER}\n    ADD COLUMN x TEXT\n",
+        id="no-terminating-semicolon-at-eof",
+    ),
+    pytest.param(
+        f"ALTER TABLE IF EXISTS public.{_LEDGER} DROP CONSTRAINT c;\n",
+        id="alter-table-if-exists",
+    ),
+    pytest.param(
+        f"ALTER TABLE ONLY public.{_LEDGER} ADD COLUMN x TEXT;\n",
+        id="alter-table-only",
+    ),
+    pytest.param(
+        f"DO $a$ BEGIN NULL; END $a$;\nDO $b$ BEGIN NULL; END $b$;\n"
+        f"ALTER TABLE public.{_LEDGER} ADD COLUMN x;\n",
+        id="consecutive-tagged-blocks-then-a-real-alter",
+    ),
 ]
 
 INNOCENT = [
@@ -395,6 +481,24 @@ INNOCENT = [
     pytest.param(
         f"CREATE TRIGGER t AFTER INSERT ON public.{_LEDGER} EXECUTE FUNCTION f();\n",
         id="create-trigger-is-out-of-scope-on-purpose",
+    ),
+    pytest.param(
+        f"DO $blk$ BEGIN\nALTER TABLE public.{_LEDGER} ADD COLUMN x TEXT;\nEND\n$blk$;\n",
+        id="bare-alter-inside-a-TAGGED-do-block",
+    ),
+    pytest.param(
+        f"CREATE FUNCTION g() RETURNS void AS $func$\nBEGIN\n"
+        f"  EXECUTE 'ALTER TABLE public.{_LEDGER} ADD COLUMN x';\nEND;\n"
+        f"$func$ LANGUAGE plpgsql;\n",
+        id="inside-a-TAGGED-function-body",
+    ),
+    pytest.param(
+        f"SELECT 'ALTER TABLE public.{_LEDGER} ADD COLUMN x';\n",
+        id="named-only-inside-a-string-literal",
+    ),
+    pytest.param(
+        "ALTER TABLE public.visa_decisions_archive ADD COLUMN x TEXT;\n",
+        id="a-different-table-whose-name-contains-a-listed-one",
     ),
 ]
 
