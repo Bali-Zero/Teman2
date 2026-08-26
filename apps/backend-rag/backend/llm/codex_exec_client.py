@@ -536,14 +536,48 @@ class _WireWordClass(StrEnum):
 # STRUCTURED (HIGH): HTTP-status-shaped phrases and `snake_case`
 # error-code identifiers. The digit-anchored alternatives keep `\b`/
 # `(?!\w)` word boundaries (a stray "3401" must not match); the underscored
-# identifiers do NOT require a boundary at either edge — a namespaced/
-# suffixed compound identifier like `token_revoked` carries essentially
-# zero over-match risk in ordinary prose regardless of what precedes or
-# follows it (see `_QUOTA_STRUCTURED_RE`'s comment below for the reproduced
-# finding that makes this concrete for the sibling quota token).
+# identifiers do NOT require a WORD boundary at either edge — a namespaced/
+# suffixed compound identifier like `token_revoked` needs to survive both
+# `openai_insufficient_quota` (leading `_`) and `insufficient_quota_error`
+# (trailing `_`), and `\b` fails on both since `_` is a word character
+# (see `_QUOTA_STRUCTURED_RE`'s comment below for the reproduced finding
+# that makes this concrete for the sibling quota token).
+#
+# CORRECTED (team-lead review of PR #5028, 2026-08-26, by direct
+# execution, not by reading the pattern): "carries essentially zero
+# over-match risk ... regardless of what precedes or follows it" — the
+# claim this paragraph used to make — was FALSE. Compiling this exact
+# pattern and running it live found real false positives with no boundary
+# involved at all:
+#   'refresh_tokenizer'        -> MATCH (an ordinary English word contains
+#                                 "refresh_token" as a substring)
+#   'token_revoked_at=false'   -> MATCH
+#   '"token_revoked": false'   -> MATCH (a JSON diagnostic explicitly
+#                                 reporting the token is NOT revoked)
+# A missing WORD boundary is not the same claim as "no over-match risk at
+# all" — the token can still collide with a longer English word, or be
+# quoted as a FIELD NAME whose VALUE negates it. Two trailing, zero-width
+# lookaheads close both without reintroducing the `\b`/`(?!\w)` under-match
+# R28-1 fixed: `(?![A-Za-z])` blocks a continuing letter run (the
+# `tokenizer` collision — underscore is still allowed, so
+# `insufficient_quota_error` is unaffected); the second lookahead blocks
+# an immediate JSON/log-style negated-value assignment (`: false`,
+# `=false`, an optional `_suffix` and/or quote before the separator, then
+# `false`/`null`/`none`/`ok`) without requiring a WORD boundary either, so
+# `openai_insufficient_quota` and `insufficient_quota_error` (both already
+# pinned as GUILT fixtures) still match. `\x22` is `"` written as a regex
+# hex-escape rather than a literal quote character INSIDE an `r"..."`
+# literal on purpose: `scripts/tests/test_wa_codex_seat_probe.py`'s
+# byte-identity guard (fixed the same round, PR #5028) deliberately flags
+# an embedded `"` as a possible truncated-extraction defect — see that
+# test's own comment for why a raw string CAN legally carry one but this
+# guard cannot tell a legitimate one from a truncation, so the guard
+# treats any embedded quote as suspicious by design.
 _AUTH_STRUCTURED_RE: re.Pattern[str] = re.compile(
-    r"\b401\s+unauthorized\b|\berror\s+401\b|\b401\s+error\b|\bhttp\s+401\b|"
-    r"token_revoked|refresh_token(?:_reused|_revoked|_expired)?",
+    r"(?:\b401\s+unauthorized\b|\berror\s+401\b|\b401\s+error\b|\bhttp\s+401\b|"
+    r"token_revoked|refresh_token(?:_reused|_revoked|_expired)?)"
+    r"(?![A-Za-z])"
+    r"(?![\w]*\x22?[:=\s]+(?:false|null|none|ok)\b)",
     re.IGNORECASE,
 )
 
@@ -626,8 +660,30 @@ _AUTH_PROSE_RE: re.Pattern[str] = re.compile(
 # Bare "exhausted"/"limit" remain deliberately excluded as standalone
 # alternatives — both are plausible ordinary WA-immigration vocabulary (a
 # KITAS sponsor "quota limit", "I am exhausted from the process").
+#
+# CORRECTED (team-lead review of PR #5028, 2026-08-26, by direct
+# execution): the boundary-free `insufficient_quota`/`rate_limit_exceeded`
+# this R28-1 note describes has the SAME over-match class as
+# `_AUTH_STRUCTURED_RE` above (see its comment for the full account) —
+# reproduced live:
+#   '"insufficient_quota": false'   -> MATCH (negated JSON field)
+#   'insufficient_quota_check ok'   -> MATCH (a health-check field name
+#                                      reporting the check PASSED, i.e.
+#                                      quota is NOT insufficient)
+# Same two trailing lookaheads as the auth pattern, same reasoning: a
+# continuing-letter guard (harmless here — no bare English word contains
+# "insufficient_quota" or "rate_limit_exceeded" as a substring the way
+# "tokenizer" contains "token", but applied for symmetry/defense-in-depth
+# against the identical failure class) and a negated-value guard that adds
+# `ok`/`okay` to the false/null/none vocabulary specifically for the
+# "_check ok"-style self-report shape. `\x22` is `"` as a regex hex-escape,
+# not a literal quote character inside an `r"..."` literal — same reason
+# as `_AUTH_STRUCTURED_RE`'s comment: the probe's byte-identity guard
+# treats an embedded `"` as a possible truncated-extraction defect.
 _QUOTA_STRUCTURED_RE: re.Pattern[str] = re.compile(
-    r"\b429\s+too\s+many\s+requests\b|insufficient_quota|rate_limit_exceeded",
+    r"(?:\b429\s+too\s+many\s+requests\b|insufficient_quota|rate_limit_exceeded)"
+    r"(?![A-Za-z])"
+    r"(?![\w]*\x22?[:=\s]+(?:false|null|none|ok)\b)",
     re.IGNORECASE,
 )
 _QUOTA_PROSE_RE: re.Pattern[str] = re.compile(

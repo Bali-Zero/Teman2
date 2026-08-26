@@ -124,8 +124,10 @@ try:
 except ImportError:  # pragma: no cover — exercised only when the runtime
     # tree is missing/stale; kept in sync by hand with the primary above.
     AUTH_STRUCTURED_RE = re.compile(
-        r"\b401\s+unauthorized\b|\berror\s+401\b|\b401\s+error\b|\bhttp\s+401\b|"
-        r"token_revoked|refresh_token(?:_reused|_revoked|_expired)?",
+        r"(?:\b401\s+unauthorized\b|\berror\s+401\b|\b401\s+error\b|\bhttp\s+401\b|"
+        r"token_revoked|refresh_token(?:_reused|_revoked|_expired)?)"
+        r"(?![A-Za-z])"
+        r"(?![\w]*\x22?[:=\s]+(?:false|null|none|ok)\b)",
         re.IGNORECASE,
     )
     AUTH_PROSE_RE = re.compile(
@@ -143,7 +145,9 @@ except ImportError:  # pragma: no cover — exercised only when the runtime
         re.IGNORECASE,
     )
     QUOTA_STRUCTURED_RE = re.compile(
-        r"\b429\s+too\s+many\s+requests\b|insufficient_quota|rate_limit_exceeded",
+        r"(?:\b429\s+too\s+many\s+requests\b|insufficient_quota|rate_limit_exceeded)"
+        r"(?![A-Za-z])"
+        r"(?![\w]*\x22?[:=\s]+(?:false|null|none|ok)\b)",
         re.IGNORECASE,
     )
     QUOTA_PROSE_RE = re.compile(
@@ -180,10 +184,15 @@ _UNRUN_RC: Final[int] = -1
 
 VERDICT_OK: Final[str] = "ok"
 VERDICT_AUTH_DEATH: Final[str] = "auth_death"
-# S1.5 (2026-08-26): the token name is fixed by
-# scripts/wa_codex_seat_sentinel.py's own forward-compat comment (it names
-# this exact string as the example of a future verdict a reader must not
-# swallow into silence) — do not rename without updating that reader too.
+# S1.5 (2026-08-26). Round-4 addendum (team-lead review of PR #5028,
+# 2026-08-26): scripts/wa_codex_seat_sentinel.py used to compare against a
+# bare string literal here instead of importing this constant — a rename
+# would have silently stopped matching (RED degrades to WARN, no error, no
+# test failure). It now does `from scripts.wa_codex_seat_probe import
+# VERDICT_AUTH_DEATH, VERDICT_OK, VERDICT_QUOTA_EXHAUSTED`, so a rename here
+# is a Python import error in that reader, not a silent drift — but a
+# rename is still a live-verdict-vocabulary change, review the sentinel
+# anyway.
 VERDICT_QUOTA_EXHAUSTED: Final[str] = "quota_exhausted"
 VERDICT_OTHER_FAILURE: Final[str] = "other_failure"
 VERDICT_PROBE_ERROR: Final[str] = "probe_error"

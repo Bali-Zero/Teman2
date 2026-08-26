@@ -1533,6 +1533,68 @@ class TestMultilingualInnocence:
         assert verdict.ambiguous_classes == frozenset()
 
 
+class TestNegationGuard:
+    """Cross-family refuter finding (independent, PR #5028 round-4
+    addendum, team-lead review 2026-08-26, reproduced here by direct
+    execution): `_AUTH_STRUCTURED_RE`/`_QUOTA_STRUCTURED_RE` matched on
+    the WORD alone, so a NEGATED structured field — `"token_revoked":
+    false`, the literal shape a healthy `codex login status --json` or a
+    verbose SDK debug log can legitimately emit — false-positived into
+    AUTH_DEATH/QUOTA. A false RED on the seat alarm is not cosmetic: it
+    is how the next real signal gets ignored (cicatrix-superscar #3,
+    guard-over-match).
+
+    Fix: two trailing negative lookaheads appended to both structured
+    regexes — `(?![A-Za-z])` (blocks letter-continuation collisions
+    without blocking the underscore-adjacency R28-1 deliberately kept
+    boundary-free) and `(?![\\w]*\\x22?[:=\\s]+(?:false|null|none|ok)\\b)`
+    (blocks the JSON/log negated-field shape specifically). INNOCENCE
+    corpus below is >= 5 strings as required; CONTRAST guilty cases
+    prove the same fix does not overcorrect into a new under-match on
+    the truthy/plain form of the exact same fields."""
+
+    @pytest.mark.parametrize(
+        "stderr_text",
+        [
+            '{"token_revoked": false}',
+            '{"token_revoked":false}',
+            '{"insufficient_quota": false}',
+            '{"rate_limit_exceeded": null}',
+            '{"refresh_token_expired": none}',
+            "status=ok token_revoked=false",
+        ],
+    )
+    def test_innocence_negated_structured_field_matches_nothing(
+        self, stderr_text: str
+    ) -> None:
+        verdict = client_module._classify_stderr(stderr_text)
+        assert verdict.winner is None, (
+            f"negated field {stderr_text!r} false-positived to "
+            f"{verdict.winner!r} — the negation-value lookahead regressed"
+        )
+        assert verdict.ambiguous_classes == frozenset()
+
+    @pytest.mark.parametrize(
+        ("stderr_text", "expected_class"),
+        [
+            ('{"token_revoked": true}', client_module._WireWordClass.AUTH_DEATH),
+            ('{"insufficient_quota": true}', client_module._WireWordClass.QUOTA),
+        ],
+    )
+    def test_guilt_truthy_structured_field_still_matches(
+        self, stderr_text: str, expected_class
+    ) -> None:
+        """CONTRAST: the negation guard must not blind the detector to
+        the exact same field when it carries the real (non-negated)
+        signal — only `false`/`null`/`none`/`ok` are excluded, `true`
+        is not in the guard's alternation and must still fire."""
+        verdict = client_module._classify_stderr(stderr_text)
+        assert verdict.winner is expected_class, (
+            f"{stderr_text!r} should still classify as {expected_class!r}, "
+            f"got {verdict.winner!r} — the negation guard over-corrected"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Timeout — wall-clock kill + reap (F26-6 fix, R26 GLM addendum,
 # 2026-08-15: this is a deadline/output-shape behavior, NOT one of the
