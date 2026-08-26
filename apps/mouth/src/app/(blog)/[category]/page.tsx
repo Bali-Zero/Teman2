@@ -27,6 +27,25 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { category } = await params;
+  // `[category]` sits at the ROOT of the route tree, so it matches every
+  // unknown single-segment URL on the domain. `generateMetadata` runs before
+  // the component's `notFound()` guard, so without this check the title was
+  // minted from whatever the caller put in the path: measured live on
+  // 2026-08-27, `/nope-single-segment` answered 200 with
+  // `<title>Nope-single-segment Insights | Bali Zero</title>` over a body that
+  // renders "Article not found". Guard the metadata with the SAME list the
+  // component guards with, so an unknown segment can never place
+  // attacker-chosen text in a Bali Zero title.
+  //
+  // The string is deliberately bare: the root layout sets the title template
+  // `%s | Bali Zero`, so it renders as "Page not found | Bali Zero". Writing
+  // the suffix here would produce it twice. It matches `layout.tsx` verbatim.
+  if (!VALID_CATEGORIES.includes(category as ArticleCategory)) {
+    return {
+      title: "Page not found",
+      robots: { index: false, follow: false },
+    };
+  }
   return generateCategoryMetadata(category);
 }
 
