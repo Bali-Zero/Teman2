@@ -20,6 +20,18 @@
 # resolve hostname". An alias that works from one peer and not the other is a
 # lane that fails on exactly one machine — the shape this repo already has a
 # scar family for.
+#
+# CORRECTION 2026-08-26: the paragraph above records a measurement that has
+# since DECAYED. `ssh air` points at `Air-M5.local` (mDNS) and from Pro it now
+# dies with "Could not resolve hostname air-m5.local" — so `fleet_mail.sh air`
+# was dead from Pro, silently, while its own comment asserted the opposite.
+# mDNS does not survive a peer moving off the LAN, and this repo already
+# documents that exact shape for Mini ("LAN/mDNS Mini-Pro2.local often
+# NXDOMAIN; this alias is the verified-working Tailscale path" — the
+# `mini-remote` stanza in ~/.ssh/config). The cure is not a new hardcoded
+# hostname: it is to stop trusting ONE route. ssh_target() below probes the
+# primary alias and falls back to the Tailscale one, so the tool works from
+# whichever side of the network the peer happens to be on.
 set -uo pipefail
 die() { echo "fleet_mail.sh: $*" >&2; exit 1; }
 HOST="${1:-}"
@@ -28,6 +40,33 @@ case "$HOST" in
     *) die "unknown host '$HOST' (want local|pro|mini|air)" ;;
 esac
 shift || die "missing <host>"
+
+# Resolve <host> to an ssh target that actually answers. The primary alias may
+# be mDNS-backed and unresolvable when the peer is off-LAN (see CORRECTION
+# above); each host therefore declares a Tailscale-backed fallback alias that
+# already exists in ~/.ssh/config. Probing costs one cheap `true` round-trip
+# and ONLY on the primary — the fallback is tried only after the primary fails,
+# so the common (on-LAN) path is unchanged. Judged by the probe's RETURN CODE,
+# never by its output: a resolver failure prints to stderr and would otherwise
+# look like success to a stdout-reading caller.
+ssh_fallback_for() {
+    case "$1" in
+        air)  echo "air-ts" ;;
+        mini) echo "mini-remote" ;;
+        *)    echo "" ;;
+    esac
+}
+ssh_target() {
+    local host="$1" fb
+    if ssh -o BatchMode=yes -o ConnectTimeout=6 "$host" true 2>/dev/null; then
+        echo "$host"; return 0
+    fi
+    fb="$(ssh_fallback_for "$host")"
+    if [ -n "$fb" ] && ssh -o BatchMode=yes -o ConnectTimeout=6 "$fb" true 2>/dev/null; then
+        echo "$fb"; return 0
+    fi
+    return 1
+}
 SESSION_ID_RE='^([A-Za-z0-9_-]{8,80}|broadcast)$'
 # ---- read-only session lister (executes on the target, local or remote) ----
 read -r -d '' LIST_SCRIPT <<'REMOTE' || true
@@ -84,8 +123,10 @@ if [ "${1:-}" = "--list" ]; then
     if [ "$HOST" = "local" ]; then
         bash -c "$LIST_SCRIPT" || die "local list failed"
     else
-        ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOST" bash -s <<< "$LIST_SCRIPT" \
-            || die "ssh list on $HOST failed"
+        SSH_HOST="$(ssh_target "$HOST")" \
+            || die "no reachable ssh route for '$HOST' (tried '$HOST' and '$(ssh_fallback_for "$HOST")')"
+        ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" bash -s <<< "$LIST_SCRIPT" \
+            || die "ssh list on $HOST (via $SSH_HOST) failed"
     fi
     exit 0
 fi
@@ -154,7 +195,9 @@ else
     B64="$(printf '%s' "$PY_SEND" | base64 | tr -d '\n')"
     POP_AND_EXEC='import base64,sys;b=sys.argv.pop(1);exec(base64.b64decode(b).decode())'
     REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL'"
-    printf '%s' "$BODY" | ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOST" "$REMOTE_CMD" \
-        || die "ssh delivery to $HOST:$SESSION failed"
+    SSH_HOST="$(ssh_target "$HOST")" \
+        || die "no reachable ssh route for '$HOST' (tried '$HOST' and '$(ssh_fallback_for "$HOST")')"
+    printf '%s' "$BODY" | ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" "$REMOTE_CMD" \
+        || die "ssh delivery to $HOST:$SESSION (via $SSH_HOST) failed"
 fi
-echo "delivered to $HOST:$SESSION ($FILENAME)"
+echo "delivered to $HOST:$SESSION ($FILENAME)${SSH_HOST:+ via $SSH_HOST}"
