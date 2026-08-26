@@ -1363,6 +1363,54 @@ class TestMultiMatchPrecedence:
         assert exc_info.value.suppressed == frozenset()
 
 
+class TestZeroHighTieAndMultiLine:
+    """Two coverage gaps named directly (team-lead review of PR #5028,
+    2026-08-26): `TestMultiMatchPrecedence` above only pins the 2-HIGH tie
+    shape (`test_guilt_true_tie_between_two_high_confidence_classes_is_ambiguous`
+    uses `token_revoked` + `insufficient_quota`, both STRUCTURED/HIGH);
+    SPEC P1's OTHER tie shape — 0 classes at HIGH, 2+ at LOW — had no
+    fixture at all. Separately, `_classify_stderr` splits per line (SPEC
+    P2) but no POSITIVE fixture proved a realistic multi-line diagnostic
+    still classifies correctly with the signal embedded mid-blob (the
+    existing newline-bridging tests in `TestReproducedRefuterFindings` are
+    all NEGATIVE — they prove a match does NOT happen across a seam, never
+    that a real match still fires inside a longer transcript)."""
+
+    def test_guilt_zero_high_two_low_tie_is_ambiguous_not_a_silent_pick(self) -> None:
+        """Both AUTH and QUOTA match, but only at PROSE/LOW tier ("not
+        logged in" / "exceeded your current quota") — no STRUCTURED token
+        on either side, so P3's HIGH-beats-LOW rule has nothing to break
+        the tie with. This is the OTHER half of SPEC P1's ambiguity
+        condition ("0, or more than one, class matched at HIGH") — the
+        2-HIGH tie above tests ">1 at HIGH"; this tests "0 at HIGH"."""
+        stderr_text = "Error: not logged in; also you have exceeded your current quota"
+        verdict = client_module._classify_stderr(stderr_text)
+        assert verdict.winner is None
+        assert verdict.confidence is None
+        assert verdict.ambiguous_classes == frozenset(
+            {client_module._WireWordClass.AUTH_DEATH, client_module._WireWordClass.QUOTA}
+        )
+
+    def test_guilt_quota_structured_token_mid_blob_still_classifies_across_lines(
+        self,
+    ) -> None:
+        """A realistic multi-line `codex exec` diagnostic — unrelated
+        context before AND after the one line that actually carries the
+        structured QUOTA token — must still classify HIGH/QUOTA. P2 (never
+        cross-blob) protects against FALSE matches bridging a seam; it must
+        not also suppress a REAL match that happens to sit on line 2 of 3."""
+        stderr_text = (
+            "Fetching model list...\n"
+            "Error: 429 too many requests\n"
+            "Retrying in 30s...\n"
+        )
+        verdict = client_module._classify_stderr(stderr_text)
+        assert verdict.winner is client_module._WireWordClass.QUOTA
+        assert verdict.confidence is MatchConfidence.HIGH
+        assert verdict.suppressed == frozenset()
+        assert verdict.ambiguous_classes == frozenset()
+
+
 class TestReproducedRefuterFindings:
     """The 12 findings a fenced cross-family refuter (gpt-5.6-sol, xhigh)
     reproduced against B2a's compiled patterns, pinned as PERMANENT
@@ -1448,6 +1496,20 @@ class TestReproducedRefuterFindings:
             f"finding {finding_id!r}: expected winner={expected_winner!r}, "
             f"got {verdict.winner!r} (stderr={stderr_text!r})"
         )
+        if expected_winner is None:
+            # Coverage gap (team-lead review of PR #5028, 2026-08-26):
+            # `winner is None` alone cannot distinguish "matched nothing at
+            # all" from "matched, but a genuine AMBIGUOUS tie" — both
+            # produce `winner is None`. Every finding in this parametrize
+            # with `expected_winner=None` is meant to be the FIRST shape
+            # (residual/unknown, SPEC P5), never the second — assert that
+            # explicitly instead of leaving it merely implied.
+            assert verdict.ambiguous_classes == frozenset(), (
+                f"finding {finding_id!r}: winner is None but "
+                f"ambiguous_classes={verdict.ambiguous_classes!r} is "
+                f"non-empty — this is a silently-mis-checked AMBIGUOUS tie, "
+                f"not 'matched nothing' (stderr={stderr_text!r})"
+            )
 
 
 class TestVendorPhraseCoverage:
