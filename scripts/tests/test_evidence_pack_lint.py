@@ -23,6 +23,10 @@ SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
 from evidence_pack_lint import (  # noqa: E402
+    FLOOR_SOURCE_BOTH,
+    FLOOR_SOURCE_NONE,
+    FLOOR_SOURCE_PATH,
+    FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
     SIZE_GEAR2_THRESHOLD,
     SIZE_GEAR3_THRESHOLD,
@@ -37,6 +41,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_size_budget,
     compute_ceiling,
     compute_floor,
+    compute_floor_source,
     effort_for_gear,
     lint,
     sum_numstat,
@@ -634,6 +639,98 @@ def test_compute_floor_hotzone_hit_wins_over_small_size():
     assert compute_floor(["fly.toml"], numstat) == 3
 
 
+# --------------------------------------------------------- compute_floor_source (S2)
+# S2, 2026-08-27 (Gear-3 gate review round 2, PR #5049): compute_floor_source()
+# exposes WHY the floor is what it is, so harness-floor.yml's Step 5b can grant
+# the SIZE_GEAR2_ENFORCEMENT_DATE grace period ONLY to a floor==2 diff that got
+# there via the size term. See _compute_floor_with_source()'s docstring for the
+# full contract and the "both means both INDEPENDENTLY sufficient, not merely
+# both present" tie-break rule the two subtle cases below exercise.
+
+
+def test_compute_floor_source_innocence_hotzone_only_is_path():
+    """INNOCENCE: a hot-zone hit with no numstat at all -> source == 'path'."""
+    assert compute_floor_source(["fly.toml"], None) == FLOOR_SOURCE_PATH
+    assert compute_floor(["fly.toml"], None) == 3
+
+
+def test_compute_floor_source_innocence_size_gear3_only_is_size():
+    """INNOCENCE: no hot-zone hit, size term alone clears SIZE_GEAR3_THRESHOLD
+    -> source == 'size', floor == 3 (source distinguishes THIS from a hot-zone
+    floor==3, both read floor==3 but only one is 'path')."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor_source(["apps/some/plain/module.py"], numstat) == FLOOR_SOURCE_SIZE
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 3
+
+
+def test_compute_floor_source_innocence_size_gear2_only_is_size():
+    """INNOCENCE: no hot-zone hit, size term clears SIZE_GEAR2_THRESHOLD but
+    NOT SIZE_GEAR3_THRESHOLD -> source == 'size', floor == 2. This is the
+    ONLY way floor==2 is reachable — see the invariant test below."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor_source(["apps/some/plain/module.py"], numstat) == FLOOR_SOURCE_SIZE
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 2
+
+
+def test_compute_floor_source_innocence_neither_term_is_none():
+    """INNOCENCE: no hot-zone hit, numstat=None entirely -> source == 'none',
+    floor == 1 (mirrors compute_floor()'s own fallback behavior)."""
+    assert compute_floor_source(["docs/notes.md"], None) == FLOOR_SOURCE_NONE
+    assert compute_floor(["docs/notes.md"], None) == 1
+
+
+def test_compute_floor_source_innocence_neither_term_below_thresholds_is_none():
+    """INNOCENCE: no hot-zone hit, numstat present but below even
+    SIZE_GEAR2_THRESHOLD -> source == 'none', not 'size' (the size term never
+    fired at all, it isn't that it fired weakly)."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD - 1}\t0\tdocs/notes.md\n"
+    assert compute_floor_source(["docs/notes.md"], numstat) == FLOOR_SOURCE_NONE
+    assert compute_floor(["docs/notes.md"], numstat) == 1
+
+
+def test_compute_floor_source_guilt_both_terms_independently_sufficient_is_both():
+    """GUILT-shaped (the subtle case): a hot-zone hit AND churn that
+    INDEPENDENTLY clears SIZE_GEAR3_THRESHOLD -> source == 'both'. Removing
+    either term alone would still leave the diff at floor 3 on the other."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tfly.toml\n"
+    assert compute_floor_source(["fly.toml"], numstat) == FLOOR_SOURCE_BOTH
+    assert compute_floor(["fly.toml"], numstat) == 3
+
+
+def test_compute_floor_source_guilt_hotzone_plus_gear2_only_size_is_path_not_both():
+    """GUILT-shaped (the tie-break rule, the one non-obvious part of the
+    'both' semantics): a hot-zone hit alongside churn that clears
+    SIZE_GEAR2_THRESHOLD but NOT SIZE_GEAR3_THRESHOLD is source == 'path',
+    NOT 'both' — the path term is doing all the real work here (floor stays
+    3 with or without the size signal, which never independently cleared the
+    Gear-3 bar on its own). 'both' means both terms are independently
+    SUFFICIENT for floor==3, not merely both present."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tfly.toml\n"
+    assert compute_floor_source(["fly.toml"], numstat) == FLOOR_SOURCE_PATH
+    assert compute_floor(["fly.toml"], numstat) == 3
+
+
+def test_compute_floor_source_invariant_floor_two_implies_source_size():
+    """PROVABLE INVARIANT (see _compute_floor_with_source()'s docstring):
+    floor==2 is reachable ONLY via source=='size' — swept across a small
+    grid of hot-zone/no-hot-zone x below/at/above-each-threshold cases,
+    every single one that lands on floor==2 must report source=='size', and
+    none of the hot-zone cases ever lands on floor==2 at all (they jump
+    straight to 3, per compute_floor()'s own docstring)."""
+    hotzone_files = ["fly.toml"]
+    plain_files = ["apps/some/plain/module.py"]
+    churns = [0, SIZE_GEAR2_THRESHOLD - 1, SIZE_GEAR2_THRESHOLD, SIZE_GEAR3_THRESHOLD - 1, SIZE_GEAR3_THRESHOLD]
+    for files in (hotzone_files, plain_files):
+        for churn in churns:
+            numstat = f"{churn}\t0\t{files[0]}\n"
+            floor = compute_floor(files, numstat)
+            source = compute_floor_source(files, numstat)
+            if floor == 2:
+                assert source == FLOOR_SOURCE_SIZE, (files, churn, floor, source)
+            if files is hotzone_files:
+                assert floor != 2, (files, churn, floor, source)  # hot-zone never lands on exactly 2
+
+
 def test_size_term_net_lines_sums_churn_not_global_net():
     """The size term's Σ(added+deleted) CHURN does NOT cancel across files
     the way sum_numstat()'s plain global net would — two files that
@@ -789,6 +886,38 @@ def test_print_floor_cli_honors_numstat_file_size_term(tmp_path):
     assert int(proc.stdout.strip()) == compute_floor(
         ["apps/some/plain/module.py"], numstat_text
     ) == 3
+
+
+def test_print_floor_source_cli_matches_compute_floor_source(tmp_path):
+    """--print-floor-source (S2) and the pure compute_floor_source() function
+    must agree — harness-floor.yml's Step 5b consumes this exact CLI mode to
+    decide whether the SIZE_GEAR2_ENFORCEMENT_DATE grace period applies."""
+    changed = tmp_path / "changed.txt"
+    changed.write_text("apps/some/plain/module.py\n", encoding="utf-8")
+    numstat_text = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    numstat_file = tmp_path / "numstat.txt"
+    numstat_file.write_text(numstat_text, encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+         "--print-floor-source", "--changed-files-file", str(changed),
+         "--numstat-file", str(numstat_file)],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert proc.stdout.strip() == compute_floor_source(
+        ["apps/some/plain/module.py"], numstat_text
+    ) == FLOOR_SOURCE_SIZE
+
+
+def test_print_floor_source_cli_requires_changed_files_file(tmp_path):
+    """GUILT: --print-floor-source without --changed-files-file is a usage
+    error (exit 3), mirroring --print-floor's own guard — never silently
+    prints a source computed from an empty/undefined changed-files set."""
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"), "--print-floor-source"],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 3, proc.stdout + proc.stderr
 
 
 def test_effort_for_cli_matches_effort_for_gear():

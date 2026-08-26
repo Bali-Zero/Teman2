@@ -480,6 +480,19 @@ jobs:
           FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
           echo "deterministic floor for this diff: $FLOOR"
+          # SOURCE (S2, 2026-08-27, gate round 2 on PR #5049): WHY the floor
+          # is what it is, not just the number — "none"/"path"/"size"/"both".
+          # Same EXTRA_ARGS as the floor call above, so it reads the exact
+          # same inputs; the two calls can never disagree about what they
+          # were computed from. Consumed by Step 5b to grant the
+          # SIZE_GEAR2_ENFORCEMENT_DATE grace period ONLY to a floor==2 diff
+          # that got there via the size term, never to a hypothetical
+          # path-sourced floor==2 (compute_floor_source()'s docstring proves
+          # today's floor==2 can only be source=="size", but the explicit
+          # check stays correct even if that ever changes).
+          SOURCE=$(python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
+          echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
+          echo "deterministic floor source for this diff: $SOURCE"
 
       # -----------------------------------------------------------------
       # Step 4 — does THIS PR'S OWN DIFF carry evidence/brief.yml? FAIL
@@ -613,7 +626,7 @@ jobs:
       # task" — the exact bypass a bare non-hot-zone size-only diff would
       # take to dodge Gear-2. floor==1 is the ONLY value that means
       # genuinely-small; floor==2 and floor==3 both mean "the deterministic
-      # floor requires a brief" and both belong in Step 5b below.
+      # floor requires a brief" and both belong in Step 5b/5c below.
       # -----------------------------------------------------------------
       - name: Not a harness task (no brief, floor == 1 — not applicable)
         if: |
@@ -623,25 +636,78 @@ jobs:
         run: echo "::notice::not a harness task (no evidence/brief.yml, floor == 1) — passing"
 
       # -----------------------------------------------------------------
-      # Step 5b — no brief, but the diff DOES meet a deterministic floor
-      # >= 2 (hot-zone path and/or blast-radius size, per
-      # evidence_pack_lint.py's compute_floor()): this is the
-      # downgrade-below-floor case. FAIL — do not default to success just
-      # because no brief exists to compare against (adversarial-review
-      # finding 2026-08-10; widened from floor==3-only to floor>=2 on
-      # 2026-08-27, same review as Step 5a above — a floor==2 diff needs
-      # at minimum a brief declaring gear>=2 just as much as a floor==3
-      # diff needs one declaring gear>=3).
+      # Step 5b — GRACE PERIOD (S2, 2026-08-27, gate round 2 on PR #5049):
+      # no brief, floor==2, and that floor came from the SIZE term ALONE
+      # (steps.detfloor.outputs.source == 'size' — never 'path'/'both',
+      # which get no grace and fall through to Step 5c below unconditionally).
+      #
+      # WHY this exists at all (finding from the Gear-3 gate review of the
+      # round-1 fix, not the codex-sol adversarial round): Step 5c below
+      # used to FAIL every floor==2 diff outright the moment it merged.
+      # Measured baseline (170 merged PRs, same sample S1 itself was
+      # calibrated on): only 10/29 (34%) of PRs >400 net lines historically
+      # carried a brief — so an immediate hard-FAIL would turn a required
+      # check red on ~2 of every 3 mid-size PRs fleet-wide (every lane, every
+      # machine), none of them ever warned this was coming. That violates
+      # this mandate's own gate lifecycle (E7: a new gate starts as NOTICE
+      # for a grace window, THEN FAIL) and is exactly the "spring a new hard
+      # gate on the fleet with zero warning" pattern the 2026-08-26 retro
+      # flagged. SIZE_GEAR2_ENFORCEMENT_DATE is the flip point, lives in
+      # code (not a ledger) so it is enforced mechanically, same pattern as
+      # LANES_NON_ANTHROPIC_ENFORCEMENT_DATE in evidence_pack_lint.py.
+      #
+      # Floor==3 gets NO such grace, from either source (path OR
+      # size>=1828): that floor value already existed before this PR (the
+      # hot-zone/path case) and the fleet has long since adapted to it, so
+      # there is nothing new to warn about there — only the SIZE term's
+      # NEW floor==2 bucket is a genuinely new gate.
       # -----------------------------------------------------------------
-      - name: FAIL — floor >= 2 diff with no evidence/brief.yml
+      - name: "NOTICE (grace period) then FAIL — floor==2 via the SIZE term alone, no evidence/brief.yml"
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present != 'true' &&
-          steps.detfloor.outputs.floor != '1'
+          steps.detfloor.outputs.floor == '2' &&
+          steps.detfloor.outputs.source == 'size'
+        env:
+          SIZE_GEAR2_ENFORCEMENT_DATE: "2026-09-02"
+        run: |
+          set -u
+          TODAY="$(date -u +%F)"
+          # ISO-8601 (YYYY-MM-DD) strings compare lexicographically in the
+          # same order as chronologically — safe as a plain bash string
+          # comparison inside [[ ]], no date-arithmetic library needed.
+          if [[ "$TODAY" < "$SIZE_GEAR2_ENFORCEMENT_DATE" ]]; then
+            echo "::warning::this diff's deterministic floor is 2, reached via the SIZE term ALONE (churn >= 400 net lines on non-hot-zone paths — see evidence_pack_lint.py's compute_floor()/compute_floor_source()), and carries no evidence/brief.yml. NOTICE ONLY until $SIZE_GEAR2_ENFORCEMENT_DATE (today: $TODAY — E7 gate lifecycle: a new gate starts as NOTICE, then FAIL) — starting that date this becomes a required-check FAIL. Baseline measured 2026-08-27: only 10/29 (34%) of PRs >400 net lines historically carried a brief; this grace period gives the fleet — every lane, every machine — time to adapt before the check goes hard."
+            exit 0
+          fi
+          echo "::error::this diff's deterministic floor is 2, reached via the SIZE term alone, and carries no evidence/brief.yml — the SIZE_GEAR2_ENFORCEMENT_DATE grace period ($SIZE_GEAR2_ENFORCEMENT_DATE) has passed (today: $TODAY) — a floor==2 diff now requires at minimum a brief declaring gear>=2"
+          exit 1
+
+      # -----------------------------------------------------------------
+      # Step 5c — no brief, and the diff meets a deterministic floor that
+      # gets NO grace period: floor==3 from any source (path and/or size
+      # >=1828), or the currently-unreachable-but-structurally-possible
+      # case of a path-sourced/both-sourced floor==2 (see
+      # compute_floor_source()'s docstring — today's floor==2 can only be
+      # source=='size', but this condition stays correct even if a future
+      # HOTZONE_PATTERNS change ever made another floor==2 source
+      # possible). FAIL — do not default to success just because no brief
+      # exists to compare against (adversarial-review finding 2026-08-10;
+      # widened from floor==3-only to floor>=2 on 2026-08-27, then carved
+      # out the size-only-floor==2 grace period into Step 5b above,
+      # 2026-08-27 gate round 2).
+      # -----------------------------------------------------------------
+      - name: FAIL — floor >= 2 diff with no evidence/brief.yml (no grace period applies)
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present != 'true' &&
+          steps.detfloor.outputs.floor != '1' &&
+          !(steps.detfloor.outputs.floor == '2' && steps.detfloor.outputs.source == 'size')
         env:
           FLOOR: ${{ steps.detfloor.outputs.floor }}
+          SOURCE: ${{ steps.detfloor.outputs.source }}
         run: |
-          echo "::error::this diff's deterministic floor is $FLOOR (>=2 — hot-zone path and/or blast-radius size, see evidence_pack_lint.py's compute_floor()) but carries no evidence/brief.yml — a floor>=2 diff requires at minimum a brief declaring gear>=$FLOOR (Gear 3 additionally requires a pack + gate verdict, Step 7b/7c below); it cannot silently pass as 'not a harness task'"
+          echo "::error::this diff's deterministic floor is $FLOOR (source: $SOURCE — hot-zone path and/or blast-radius size, see evidence_pack_lint.py's compute_floor()) but carries no evidence/brief.yml — a floor>=2 diff requires at minimum a brief declaring gear>=$FLOOR (Gear 3 additionally requires a pack + gate verdict, Step 7b/7c below); it cannot silently pass as 'not a harness task'"
           exit 1
 
       # -----------------------------------------------------------------

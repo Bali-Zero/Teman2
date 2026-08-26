@@ -165,7 +165,8 @@ a lint that scanned nothing must not report clean):
 CLI:
   python3 scripts/evidence_pack_lint.py [PACK_PATH] [--repo-root DIR]
       [--changed-files-file PATH] [--net-lines INT] [--numstat-file PATH]
-      [--print-floor] [--effort-for GEAR] [--json] [--selftest]
+      [--print-floor] [--print-floor-source] [--effort-for GEAR] [--json]
+      [--selftest]
 
   PACK_PATH        defaults to evidence/pack.yml (relative to --repo-root)
   --repo-root      defaults to the git top-level, else cwd
@@ -198,6 +199,15 @@ CLI:
                     honors --numstat-file when given (S1's size term) — omit
                     it for the path-only floor exactly as before that term
                     existed.
+  --print-floor-source  given --changed-files-file, print WHY the floor is
+                    what it is (S2, 2026-08-27) — one of "none"/"path"/
+                    "size"/"both" (see compute_floor_source()'s docstring)
+                    and exit 0. Same --numstat-file handling as
+                    --print-floor. Lets harness-floor.yml distinguish a
+                    floor==2 diff reached via the SIZE term (grace period,
+                    SIZE_GEAR2_ENFORCEMENT_DATE) from a hypothetical
+                    path-sourced floor==2 (no grace) — see that constant's
+                    own comment in harness-floor.yml for the full contract.
   --effort-for GEAR  print effort_for_gear(GEAR) (medium/xhigh) and exit 0
                     (no pack, no repo-root needed) — lets a wrapper look up
                     "what effort should this gear run at" without importing
@@ -402,6 +412,93 @@ def _size_term_net_lines(numstat: str) -> int:
     return net
 
 
+FLOOR_SOURCE_NONE = "none"
+FLOOR_SOURCE_PATH = "path"
+FLOOR_SOURCE_SIZE = "size"
+FLOOR_SOURCE_BOTH = "both"
+FLOOR_SOURCES = (FLOOR_SOURCE_NONE, FLOOR_SOURCE_PATH, FLOOR_SOURCE_SIZE, FLOOR_SOURCE_BOTH)
+
+
+def _compute_floor_with_source(
+    changed_files: list[str], numstat: str | None = None
+) -> tuple[int, str]:
+    """Single source of truth for compute_floor()/compute_floor_source() — the
+    two public entry points are thin wrappers over this so they can never
+    drift apart (S2, 2026-08-27, gate round 2 on PR #5049: the workflow needs
+    to know WHY a floor is what it is, not just the number, to grant the
+    SIZE_GEAR2_ENFORCEMENT_DATE grace period ONLY to floor==2 diffs that got
+    there via the size term — never to a hypothetical future path-based
+    floor==2, which would get no grace).
+
+    Returns (floor, source). `source` in FLOOR_SOURCES:
+      - "none": neither term fired (floor == 1).
+      - "path": a hot-zone hit alone explains the floor (floor == 3).
+      - "size": the size term alone explains the floor (floor == 2, i.e.
+        SIZE_GEAR2_THRESHOLD <= churn < SIZE_GEAR3_THRESHOLD with no
+        hot-zone hit; OR floor == 3 via churn >= SIZE_GEAR3_THRESHOLD with
+        no hot-zone hit).
+      - "both": a hot-zone hit AND churn >= SIZE_GEAR3_THRESHOLD are BOTH
+        present — i.e. removing EITHER term alone would still leave the
+        other one flooring at 3 on its own. Deliberately NOT triggered by a
+        hot-zone hit alongside a merely SIZE_GEAR2_THRESHOLD-level churn:
+        in that case the path term is doing all the real work (floor stays
+        3 with or without the size signal, which never independently
+        cleared the Gear-3 bar), so source is "path", not "both" — "both"
+        means both terms are independently sufficient, not merely both
+        present.
+
+    PROVABLE INVARIANT, not just an empirical fact about today's
+    HOTZONE_PATTERNS: floor == 2 implies source == "size", always. A
+    hot-zone hit sets floor = 3 BEFORE the size term ever runs, and nothing
+    in the size term's branches can lower a floor already at 3 (`max(3, 2)
+    == 3`) — so the only way this function returns exactly 2 is the size
+    term's own `elif` branch firing with the path term never having fired
+    at all. The workflow can therefore gate the SIZE_GEAR2_ENFORCEMENT_DATE
+    grace period on `floor == 2` alone with identical behavior to also
+    checking `source == "size"` — the explicit source check is kept anyway,
+    both to self-document the condition for a reader who doesn't know this
+    invariant, and so the grace-period gating stays correct even if a
+    future HOTZONE_PATTERNS change ever made a path-sourced floor==2
+    reachable (it would then correctly get NO grace, unlike a bare
+    `floor == 2` check).
+
+    Pure function — no I/O, no git — so guilt+innocence tests exercise it
+    directly without a filesystem fixture; the caller is responsible for
+    producing `numstat` (e.g. `git diff --numstat`, merge-base anchored —
+    never a two-dot diff, W102)."""
+    path_hit = False
+    for f in changed_files:
+        for pat in HOTZONE_PATTERNS:
+            if fnmatch.fnmatchcase(f, pat):
+                path_hit = True
+                break
+        if path_hit:
+            break
+
+    floor = 3 if path_hit else 1
+    size_hit_gear3 = False
+    size_hit_gear2 = False
+    if numstat is not None:
+        size_net = _size_term_net_lines(numstat)
+        if size_net >= SIZE_GEAR3_THRESHOLD:
+            size_hit_gear3 = True
+            floor = 3
+        elif size_net >= SIZE_GEAR2_THRESHOLD:
+            size_hit_gear2 = True
+            floor = max(floor, 2)
+
+    if path_hit and size_hit_gear3:
+        source = FLOOR_SOURCE_BOTH
+    elif path_hit:
+        source = FLOOR_SOURCE_PATH
+    elif size_hit_gear3 or size_hit_gear2:
+        source = FLOOR_SOURCE_SIZE
+    else:
+        source = FLOOR_SOURCE_NONE
+
+    return floor, source
+
+
 def compute_floor(changed_files: list[str], numstat: str | None = None) -> int:
     """The deterministic floor (rule 6 docstring): the HIGHER of two
     independent terms.
@@ -419,27 +516,26 @@ def compute_floor(changed_files: list[str], numstat: str | None = None) -> int:
     size term entirely and returns exactly what this function returned
     before the term existed — no caller that never passes it is affected.
 
-    Pure function — no I/O, no git — so guilt+innocence tests exercise it
-    directly without a filesystem fixture; the caller is responsible for
-    producing `numstat` (e.g. `git diff --numstat`, merge-base anchored —
-    never a two-dot diff, W102)."""
-    floor = 1
-    for f in changed_files:
-        for pat in HOTZONE_PATTERNS:
-            if fnmatch.fnmatchcase(f, pat):
-                floor = 3
-                break
-        if floor == 3:
-            break
+    Thin wrapper over _compute_floor_with_source() — see that function for
+    the shared implementation and compute_floor_source() for the sibling
+    entry point that returns WHY, not just the number (S2, 2026-08-27)."""
+    return _compute_floor_with_source(changed_files, numstat)[0]
 
-    if numstat is not None:
-        size_net = _size_term_net_lines(numstat)
-        if size_net >= SIZE_GEAR3_THRESHOLD:
-            floor = 3
-        elif size_net >= SIZE_GEAR2_THRESHOLD:
-            floor = max(floor, 2)
 
-    return floor
+def compute_floor_source(changed_files: list[str], numstat: str | None = None) -> str:
+    """Sibling of compute_floor(), same inputs, returns WHY the floor is
+    what it is instead of the floor itself — one of FLOOR_SOURCES
+    ("none"/"path"/"size"/"both"). Added S2 (2026-08-27, gate round 2 on PR
+    #5049): harness-floor.yml's Step 5b needs to distinguish a floor==2 diff
+    that got there via the SIZE term (grace period applies,
+    SIZE_GEAR2_ENFORCEMENT_DATE) from a hypothetical path-sourced floor==2
+    (would get none) — see _compute_floor_with_source()'s docstring for the
+    full semantics and the proof that floor==2 implies source=="size" under
+    the CURRENT HOTZONE_PATTERNS, and why the explicit check is kept anyway.
+
+    Thin wrapper over _compute_floor_with_source() — never duplicates its
+    logic, so the two can never drift apart."""
+    return _compute_floor_with_source(changed_files, numstat)[1]
 
 
 # ---------------------------------------------------------------------------
@@ -909,9 +1005,11 @@ def lint(
     pre-summed int — global net, no path filtering). `numstat_text` is a
     SEPARATE, raw `git diff --numstat` blob that feeds check_gear_floor()'s
     rule 6 size term (S1) — the floor needs the raw per-file rows (to
-    exclude generated/vendored paths and take a per-file Σ|added−deleted|),
-    not the ceiling's pre-summed global net, so the two parameters are
-    independent and neither substitutes for the other."""
+    exclude generated/vendored paths and sum CHURN, added+deleted per file —
+    corrected 2026-08-27, was a cancelable per-file Σ|added−deleted| before
+    the round-2 refuter fix), not the ceiling's pre-summed global net, so
+    the two parameters are independent and neither substitutes for the
+    other."""
     if not pack_path.exists():
         return 2, [f"BLIND: evidence pack not found at {pack_path}"]
     try:
@@ -1450,6 +1548,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--net-lines", type=int, default=None, metavar="INT")
     parser.add_argument("--numstat-file", default=None, metavar="PATH")
     parser.add_argument("--print-floor", action="store_true")
+    parser.add_argument("--print-floor-source", action="store_true")
     parser.add_argument("--effort-for", type=int, default=None, metavar="GEAR")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--selftest", action="store_true")
@@ -1482,6 +1581,22 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
                 return 3
         print(compute_floor(changed, numstat_text_for_floor))
+        return 0
+
+    if args.print_floor_source:
+        if not args.changed_files_file:
+            print("evidence_pack_lint: --print-floor-source requires --changed-files-file",
+                  file=sys.stderr)
+            return 3
+        changed = _read_changed_files(args.changed_files_file) or []
+        numstat_text_for_source: str | None = None
+        if args.numstat_file:
+            try:
+                numstat_text_for_source = Path(args.numstat_file).read_text(encoding="utf-8")
+            except OSError as exc:
+                print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
+                return 3
+        print(compute_floor_source(changed, numstat_text_for_source))
         return 0
 
     changed_files = _read_changed_files(args.changed_files_file)
