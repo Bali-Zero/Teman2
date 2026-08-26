@@ -582,3 +582,89 @@ nessuno l'ha fatta. Finché non avviene, la produzione continua a servire il pac
 
 Suite: 2001 passed, 0 failed, 179 errori — tutti `OSError` di connessione a Postgres su 5432, che su
 questa macchina non gira; nessun altro tipo di eccezione fra gli errori.
+
+---
+
+## 🔗 La firma era valida ma il pack non era attivabile — la catena, letta dal DB (2026-08-26)
+
+La sezione precedente chiudeva su «firmato su disco non è attivo in produzione», e trattava
+l'attivazione come un semplice passo rimasto. Non lo era: **seq-16 non poteva essere attivato
+affatto**, e nemmeno seq-15.
+
+### Cosa serve davvero la produzione
+
+Letto in sola lettura da `nuzantara_rag` attraverso il tunnel (`visa_ruleset_activations` ⋈
+`visa_rule_packs`, ruolo `nuzantara_readonly`):
+
+```
+ATTIVO ADESSO : seq 13 · b9edb809930ab486… · legal_from 2026-07-25 · opus5-session-m5
+registro DB   : 1,2,3,4,5,6,7,9,10,11,12,13     ← si ferma a 13; seq-8 assente da sempre
+```
+
+I documenti dicevano seq-13 ma erano vecchi di due giorni e non erano una prova. **seq-14 e seq-15
+non sono mai stati registrati.** seq-14, per di più, esiste solo come _source_: nessuna firma.
+
+### Il gate rifiuta — eseguito, non dedotto
+
+Chiamando la stessa `bundle.validate_activation` che usa `activate_pack.py`, contro lo stato vivo:
+
+```
+seq-15  firma ✅  →  anti-rollback su seq-13: ❌ RIFIUTATO
+seq-16  firma ✅  →  anti-rollback su seq-13: ❌ RIFIUTATO
+   "candidate previous_payload_sha256 does not match the current production
+    bundle's payload_sha256 — rejecting to preserve the anti-rollback chain"
+```
+
+L'anello mancante è aritmetico: lo sha canonico del _source_ di seq-14 è `04894a24…`, ed è
+esattamente ciò che seq-15 dichiara come predecessore. La catena su disco era ancorata a un pack
+che la produzione non ha mai visto e non può vedere, perché non è firmato.
+
+### Re-agganciare non perde nulla — misurato su tutte e 18 le chiavi
+
+|             | cosa fa                                                                      |
+| ----------- | ---------------------------------------------------------------------------- |
+| 13 → 14     | **ritira** `review.e23u.requested-product` e `review.e23v.requested-product` |
+| 14 → 15     | **rimette le stesse due**, byte-identiche                                    |
+| **13 → 16** | **solo le tre modifiche di questo fold**: 2 regole E23 + prodotto E23        |
+
+Le due tacche intermedie sono un andata-e-ritorno che netta a zero. `ignition_signatures.json`
+aveva già registrato lo stesso fatto («rules byte-identical to active seq-13») prima che questa
+sessione lo ri-misurasse.
+
+> Nota di metodo, perché è la parte che poteva andare male: il **primo** confronto guardava tre
+> chiavi su diciotto e interrogava `pack_version`, che in questo schema **non esiste** — il campo è
+> `version`. Taceva a vuoto su una differenza che sapevo esserci. La tabella qui sopra viene dal
+> secondo confronto, su tutte le chiavi. Una sonda che non sa dire cosa la renderebbe rossa non è
+> una prova.
+
+### La cura: una cerimonia invece di tre
+
+`fold_pack_seq16.py` ora piega da **seq-13**. Il `sequence` resta **16** — il gate pretende solo
+`sequence > current`, e il registro tollera già i buchi (seq-8). L'alternativa era firmare e
+attivare 14 e 15 per spingere in produzione un ritiro-e-ripristino che non cambia nulla.
+
+Il nuovo sorgente differisce da quello che Zero aveva firmato **in una sola chiave**,
+`previous_payload_sha256` — regole, prodotti, source_record e ogni altro campo sono byte-identici.
+Tutta la verifica di contenuto già fatta regge quindi invariata; si è spostata solo l'ancora.
+
+```
+nuovo payload_sha256 : ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100
+predecessore         : b9edb809930ab486…  (= seq-13, il pack VIVO)
+```
+
+`rulepack-prod-016.signed.json` (che firmava `938513db…`) è stato **rimosso**: un bundle firmato
+che contraddice il proprio sorgente è una trappola, e `select_highest_repository_pack` l'avrebbe
+raccolto. Resta recuperabile da git.
+
+### Il tripwire ha fatto il suo lavoro
+
+Tolta la firma stantia, `test_the_file_is_bound_to_the_pack_the_engine_actually_serves` è andato
+rosso da solo:
+
+```
+assert 16 == 15
+"this file is bound to seq 16 but the engine serves seq 15; every explanation would detach"
+```
+
+È la condizione che quel test è stato scritto per prendere. Torna verde con la nuova firma, dopo
+aver rigenerato `gold-accepted-explanations.json` attraverso il driver.

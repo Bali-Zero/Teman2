@@ -5,7 +5,7 @@ writes. The cure is one regulatory widening: Keputusan Menteri Imigrasi dan
 Pemasyarakatan No. M.IP-08.GR.01.01 Tahun 2025 (*Klasifikasi Visa*), Lampiran,
 row **E23**, column **Hak**, item **4**, grants an E23 holder tourism activity
 verbatim ("Melakukan kegiatan yang berhubungan dengan wisata, melakukan
-pembelian barang, serta mengunjungi keluarga dan teman"). seq-15 declared E23
+pembelian barang, serta mengunjungi keluarga dan teman"). seq-13 declared E23
 as ``["EMPLOYMENT"]`` only, so a person who works in Indonesia AND intends to
 see the island fell out of the funnel with ``NEEDS_INPUT``.
 
@@ -49,8 +49,8 @@ from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[3]
 _PACKS_DIR = _BACKEND_ROOT / "services" / "visa_engine" / "contracts" / "packs"
-_SEQ15_SOURCE = _PACKS_DIR / "rulepack-prod-015.source.json"
-_SEQ15_SIGNED = _PACKS_DIR / "rulepack-prod-015.signed.json"
+_SEQ13_SOURCE = _PACKS_DIR / "rulepack-prod-013.source.json"
+_SEQ13_SIGNED = _PACKS_DIR / "rulepack-prod-013.signed.json"
 _SEQ16_SOURCE = _PACKS_DIR / "rulepack-prod-016.source.json"
 
 #: The one persona this cure exists for: declares TOURISM + EMPLOYMENT, wants
@@ -69,8 +69,8 @@ def _canon(obj: Any) -> str:
 
 
 @pytest.fixture(scope="module")
-def seq15() -> dict[str, Any]:
-    return _read(_SEQ15_SOURCE)
+def seq13() -> dict[str, Any]:
+    return _read(_SEQ13_SOURCE)
 
 
 @pytest.fixture(scope="module")
@@ -147,52 +147,64 @@ def test_fold_output_matches_the_artifact_on_disk(seq16: dict[str, Any]) -> None
     assert assemble_payload() == seq16
 
 
-def test_seq16_chains_to_the_signed_seq15(seq15: dict[str, Any], seq16: dict[str, Any]) -> None:
-    """The predecessor hash is the SIGNED seq-15's own declaration, not a
-    hash of whatever source file happens to be on disk."""
-    recomputed = hashlib.sha256(canonicalize_json(seq15)).hexdigest()
+def test_seq16_chains_to_the_signed_seq13(seq13: dict[str, Any], seq16: dict[str, Any]) -> None:
+    """The predecessor hash is the SIGNED seq-13's own declaration, not a
+    hash of whatever source file happens to be on disk.
+
+    seq-13 — not seq-15 — because seq-13 is the pack PRODUCTION actually
+    serves (read from ``visa_ruleset_activations`` on 2026-08-26; the registry
+    stops there, seq-14 and seq-15 were never registered and seq-14 was never
+    even signed). ``bundle.validate_activation`` refuses any candidate whose
+    ``previous_payload_sha256`` differs from the live pack's, so chaining
+    anywhere else produces an artifact that cannot be activated."""
+    recomputed = hashlib.sha256(canonicalize_json(seq13)).hexdigest()
     assert seq16["previous_payload_sha256"] == recomputed
-    assert _read(_SEQ15_SIGNED)["payload_sha256"] == recomputed
-    assert seq16["sequence"] == 15 + 1
+    assert _read(_SEQ13_SIGNED)["payload_sha256"] == recomputed
+
+    # The gate requires only sequence > current; the NUMBER stays 16 rather
+    # than dropping to 14, because 14/15 are burnt on disk. Assert the real
+    # constraint, not "predecessor + 1" — that arithmetic is false here.
+    assert seq16["sequence"] > seq13["sequence"]
+    assert seq16["sequence"] == 16
 
 
-def test_membership_is_unchanged(seq15: dict[str, Any], seq16: dict[str, Any]) -> None:
+def test_membership_is_unchanged(seq13: dict[str, Any], seq16: dict[str, Any]) -> None:
     """111 rules and 38 products in, the same 111 and 38 out."""
-    assert set(_rules(seq16)) == set(_rules(seq15))
-    assert set(_products(seq16)) == set(_products(seq15))
-    assert len(seq16["rules"]) == len(seq15["rules"])
-    assert len(seq16["source_records"]) == len(seq15["source_records"])
+    assert set(_rules(seq16)) == set(_rules(seq13))
+    assert set(_products(seq16)) == set(_products(seq13))
+    assert len(seq16["rules"]) == len(seq13["rules"])
+    assert len(seq16["source_records"]) == len(seq13["source_records"])
 
 
 def test_exactly_two_rules_and_one_product_changed(
-    seq15: dict[str, Any], seq16: dict[str, Any]
+    seq13: dict[str, Any], seq16: dict[str, Any]
 ) -> None:
     changed_rules = {
-        rid for rid, rule in _rules(seq16).items() if _canon(rule) != _canon(_rules(seq15)[rid])
+        rid for rid, rule in _rules(seq16).items() if _canon(rule) != _canon(_rules(seq13)[rid])
     }
     changed_products = {
         code
         for code, product in _products(seq16).items()
-        if _canon(product) != _canon(_products(seq15)[code])
+        if _canon(product) != _canon(_products(seq13)[code])
     }
     assert changed_rules == set(_EDITED_RULE_IDS)
     assert changed_products == {_EDITED_PRODUCT_CODE}
 
 
 def test_the_only_changed_key_is_covered_purposes(
-    seq15: dict[str, Any], seq16: dict[str, Any]
+    seq13: dict[str, Any], seq16: dict[str, Any]
 ) -> None:
     """A widened ``when``, a changed reason_code, a different pricing_key would
     all be regulatory changes this fold does not declare."""
     for rid in _EDITED_RULE_IDS:
-        before, after = copy.deepcopy(_rules(seq15)[rid]), copy.deepcopy(_rules(seq16)[rid])
+        before, after = copy.deepcopy(_rules(seq13)[rid]), copy.deepcopy(_rules(seq16)[rid])
         assert before["effect"]["covered_purposes"] == _BEFORE
         assert after["effect"]["covered_purposes"] == _AFTER
         before["effect"]["covered_purposes"] = None
         after["effect"]["covered_purposes"] = None
         assert _canon(before) == _canon(after)
 
-    before = copy.deepcopy(_products(seq15)[_EDITED_PRODUCT_CODE])
+    before = copy.deepcopy(_products(seq13)[_EDITED_PRODUCT_CODE])
     after = copy.deepcopy(_products(seq16)[_EDITED_PRODUCT_CODE])
     assert before["covered_purposes"] == _BEFORE
     assert after["covered_purposes"] == _AFTER
@@ -252,7 +264,7 @@ def test_persona_15_flips_from_needs_input_to_supported_e23() -> None:
     """THE falsifiable acceptance GOLD-DIVERGENCE-TRIAGE.md set for this cure:
     "it must flip from NEEDS_INPUT to SUPPORTED_CANDIDATES [E23] when the cure
     lands, and that flip is the falsifiable acceptance"."""
-    before = _replay(_compiled("rulepack-prod-015.source.json"))[_CURED_PERSONA - 1]
+    before = _replay(_compiled("rulepack-prod-013.source.json"))[_CURED_PERSONA - 1]
     after = _replay(_compiled("rulepack-prod-016.source.json"))[_CURED_PERSONA - 1]
     assert _summary(before)[:3] == (
         "NEEDS_INPUT",
@@ -269,7 +281,7 @@ def test_no_other_persona_moved() -> None:
     """Collateral guard: a purpose widening is a regulatory assertion about who
     gets a "yes". Exactly one of the 20 canonical personas may move — measured
     over ALL SIX fields of the decision, not just its state."""
-    before = _replay(_compiled("rulepack-prod-015.source.json"))
+    before = _replay(_compiled("rulepack-prod-013.source.json"))
     after = _replay(_compiled("rulepack-prod-016.source.json"))
     moved = [
         index + 1

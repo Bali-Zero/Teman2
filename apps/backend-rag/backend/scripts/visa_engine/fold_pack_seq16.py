@@ -1,4 +1,4 @@
-"""fold_pack_seq16.py — assemble ``rulepack-prod-016.source.json`` from seq-15
+"""fold_pack_seq16.py — assemble ``rulepack-prod-016.source.json`` from seq-13
 by adding ``TOURISM`` to E23's two ELIGIBILITY rules. Nothing else changes.
 
 V1/E23-purpose-coverage lane (2026-08-26), owner GO. Cures gold persona #15 —
@@ -57,7 +57,7 @@ right on the substance.
 
 The pack's OWN convention already does this everywhere else: ``el.e33g
 .remote-work`` declares ``["REMOTE_WORK", "TOURISM", "FAMILY"]``, and four more
-rules pair ``SECOND_HOME`` with ``TOURISM``. Measured on seq-15, the bare
+rules pair ``SECOND_HOME`` with ``TOURISM``. Measured on seq-13, the bare
 ``["EMPLOYMENT"]`` appears exactly TWICE — and both are E23's.
 
 DO NOT read that as "the Kepmen singles out E23". It does the opposite: the
@@ -110,6 +110,32 @@ it — item 4 is unconditional on its own terms — but the FAMILY case did, and
 does not survive the full text. Left to the owner (Legge 5) with the reading
 above rather than silently dropped.
 
+WHY THIS FOLDS ONTO seq-13 AND NOT seq-15 — the chain, read from the DB
+
+An earlier revision of this fold chained to seq-15. That pack can never be
+activated, and neither could anything built on it. Read from PRODUCTION on
+2026-08-26 (``visa_ruleset_activations`` JOIN ``visa_rule_packs``, read-only
+role): the live pack is **seq-13** (``b9edb809...``), and the registry STOPS
+there — seq-14 and seq-15 were never registered. seq-14 exists as a source with
+NO signature, and seq-15 chains to it (``04894a24...``, confirmed by re-hashing
+seq-14's source), so the on-disk chain is anchored to something PRODUCTION has
+never seen and never can: ``bundle.validate_activation`` refuses both seq-15 and
+seq-16 against the live seq-13 with "candidate previous_payload_sha256 does not
+match the current production bundle's payload_sha256". Executed, not inferred.
+
+Re-parenting loses nothing, and that is measured over ALL 18 payload keys rather
+than the three an earlier probe happened to look at: seq-14 RETIRES
+``review.e23u.requested-product`` and ``review.e23v.requested-product``, and
+seq-15 RESTORES both byte-identically. The pair nets to zero, so seq-13 -> seq-16
+carries exactly this fold's three edits and nothing else. (``ignition_signatures
+.json`` independently recorded the same fact — "rules byte-identical to active
+seq-13" — before this session re-measured it.)
+
+The alternative was three operator signing ceremonies to push a retire-then-
+restore round trip through production. This is one ceremony. The sequence
+NUMBER stays 16: the gate requires only ``sequence > current``, and the registry
+already tolerates gaps — seq-8 is absent from PRODUCTION for the same reason.
+
     PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq16
 """
 
@@ -136,8 +162,8 @@ _BACKEND_ROOT = _THIS_FILE.parents[2]
 _REPO_ROOT = _THIS_FILE.parents[5]
 
 _PACKS_DIR = _BACKEND_ROOT / "services" / "visa_engine" / "contracts" / "packs"
-_SEQ15_SOURCE = _PACKS_DIR / "rulepack-prod-015.source.json"
-_SEQ15_SIGNED = _PACKS_DIR / "rulepack-prod-015.signed.json"
+_SEQ13_SOURCE = _PACKS_DIR / "rulepack-prod-013.source.json"
+_SEQ13_SIGNED = _PACKS_DIR / "rulepack-prod-013.signed.json"
 _SEQ16_OUT = _PACKS_DIR / "rulepack-prod-016.source.json"
 
 _PRETTIER_BIN = _REPO_ROOT / "node_modules" / ".bin" / "prettier"
@@ -155,13 +181,13 @@ _IDENTITY_KEYS = frozenset(
 )
 
 # fmt: off
-_EXPECTED_SEQ15_PAYLOAD_SHA256 = (
-    "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd"
+_EXPECTED_SEQ13_PAYLOAD_SHA256 = (
+    "b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"
 )
 # fmt: on
 
 #: The two rules this fold edits. Both are E23 ELIGIBILITY SUPPORT rules; both
-#: declare ``covered_purposes: ["EMPLOYMENT"]`` on seq-15.
+#: declare ``covered_purposes: ["EMPLOYMENT"]`` on seq-13.
 _EDITED_RULE_IDS = (
     "el.e23-employment-support",
     "el.e23-operational-work-boundary",
@@ -179,7 +205,7 @@ _EDITED_PRODUCT_CODE = "E23"
 #: each carries exactly ONE rule and it is ``REQUIRE_REVIEW`` at HUMAN_REVIEW,
 #: never ``SUPPORT`` — so neither the compiler bound nor ``evaluator``'s
 #: purpose-coverage requirement (which reads TRUE *ELIGIBILITY* rules) ever
-#: engages for them. Verified on seq-15 before writing this line.
+#: engages for them. Verified on seq-13 before writing this line.
 #:
 #: BE PRECISE ABOUT WHY, because the normative half points the other way: the
 #: independent reader confirmed E23U's Hak item 4 is VERBATIM IDENTICAL to
@@ -210,25 +236,25 @@ def _verify_rule_pack_id() -> uuid.UUID:
     return uuid.uuid5(uuid.NAMESPACE_URL, _SEQ16_RULE_PACK_ID_URL)
 
 
-def _verify_chain(seq15_source: dict[str, Any]) -> str:
-    """seq-15 IS signed — verify against the signature's own declaration, not
+def _verify_chain(seq13_source: dict[str, Any]) -> str:
+    """seq-13 IS signed — verify against the signature's own declaration, not
     just against the source bytes."""
-    recomputed = hashlib.sha256(canonicalize_json(seq15_source)).hexdigest()
-    if recomputed != _EXPECTED_SEQ15_PAYLOAD_SHA256:
+    recomputed = hashlib.sha256(canonicalize_json(seq13_source)).hexdigest()
+    if recomputed != _EXPECTED_SEQ13_PAYLOAD_SHA256:
         raise FoldPackError(
-            f"seq-15 SOURCE re-hashes to {recomputed}, expected "
-            f"{_EXPECTED_SEQ15_PAYLOAD_SHA256} — not the pack this fold was authored against"
+            f"seq-13 SOURCE re-hashes to {recomputed}, expected "
+            f"{_EXPECTED_SEQ13_PAYLOAD_SHA256} — not the pack this fold was authored against"
         )
-    if _SEQ15_SIGNED.exists():
-        declared = _load_json(_SEQ15_SIGNED).get("payload_sha256")
+    if _SEQ13_SIGNED.exists():
+        declared = _load_json(_SEQ13_SIGNED).get("payload_sha256")
         if declared != recomputed:
             raise FoldPackError(
-                f"{_SEQ15_SIGNED} declares payload_sha256={declared!r} but the source "
+                f"{_SEQ13_SIGNED} declares payload_sha256={declared!r} but the source "
                 f"hashes to {recomputed} — signed/source mismatch, refusing to chain"
             )
     else:
         raise FoldPackError(
-            f"{_SEQ15_SIGNED} is missing — seq-16 chains to a SIGNED predecessor by "
+            f"{_SEQ13_SIGNED} is missing — seq-16 chains to a SIGNED predecessor by "
             "design; refusing to chain to an unverifiable one"
         )
     return recomputed
@@ -238,7 +264,7 @@ def _apply_edits(payload: dict[str, Any]) -> None:
     products = [p for p in payload["products"] if p["product_code"] == _EDITED_PRODUCT_CODE]
     if len(products) != 1:
         raise FoldPackError(
-            f"expected exactly 1 product {_EDITED_PRODUCT_CODE!r} in seq-15, found {len(products)}"
+            f"expected exactly 1 product {_EDITED_PRODUCT_CODE!r} in seq-13, found {len(products)}"
         )
     product = products[0]
     if product.get("covered_purposes") != _BEFORE:
@@ -252,7 +278,7 @@ def _apply_edits(payload: dict[str, Any]) -> None:
     for rule_id in _EDITED_RULE_IDS:
         rule = by_id.get(rule_id)
         if rule is None:
-            raise FoldPackError(f"rule {rule_id!r} not found in seq-15 — cannot edit")
+            raise FoldPackError(f"rule {rule_id!r} not found in seq-13 — cannot edit")
         effect = rule.get("effect") or {}
         if effect.get("type") != "SUPPORT":
             raise FoldPackError(
@@ -263,44 +289,44 @@ def _apply_edits(payload: dict[str, Any]) -> None:
         if current != _BEFORE:
             raise FoldPackError(
                 f"{rule_id!r} declares covered_purposes={current!r}, expected {_BEFORE!r} "
-                "— seq-15 is not in the state this fold was authored against"
+                "— seq-13 is not in the state this fold was authored against"
             )
         effect["covered_purposes"] = list(_AFTER)
 
 
-def _assert_untouched(payload: dict[str, Any], seq15: dict[str, Any]) -> None:
-    for key in set(seq15) | set(payload):
+def _assert_untouched(payload: dict[str, Any], seq13: dict[str, Any]) -> None:
+    for key in set(seq13) | set(payload):
         if key in _IDENTITY_KEYS or key in {"rules", "products"}:
             continue
-        if _canon(payload.get(key)) != _canon(seq15.get(key)):
+        if _canon(payload.get(key)) != _canon(seq13.get(key)):
             raise FoldPackError(
-                f"top-level payload key {key!r} drifted from seq-15 — this fold declares "
+                f"top-level payload key {key!r} drifted from seq-13 — this fold declares "
                 "no edit there (products/source_records untouched)"
             )
 
-    seq15_rules = {r["rule_id"]: r for r in seq15["rules"]}
+    seq13_rules = {r["rule_id"]: r for r in seq13["rules"]}
     new_rules = {r["rule_id"]: r for r in payload["rules"]}
-    if set(new_rules) != set(seq15_rules):
-        added = sorted(set(new_rules) - set(seq15_rules))
-        removed = sorted(set(seq15_rules) - set(new_rules))
+    if set(new_rules) != set(seq13_rules):
+        added = sorted(set(new_rules) - set(seq13_rules))
+        removed = sorted(set(seq13_rules) - set(new_rules))
         raise FoldPackError(f"membership changed — added={added} removed={removed}")
-    if len(payload["rules"]) != len(seq15["rules"]):
+    if len(payload["rules"]) != len(seq13["rules"]):
         raise FoldPackError("rule count changed; this fold adds and removes nothing")
 
     for rid, rule in new_rules.items():
         if rid in _EDITED_RULE_IDS:
             continue
-        if _canon(rule) != _canon(seq15_rules[rid]):
+        if _canon(rule) != _canon(seq13_rules[rid]):
             raise FoldPackError(f"rule {rid!r} drifted — this fold edits exactly two rules")
 
-    seq15_products = {p["product_code"]: p for p in seq15["products"]}
+    seq13_products = {p["product_code"]: p for p in seq13["products"]}
     new_products = {p["product_code"]: p for p in payload["products"]}
-    if set(new_products) != set(seq15_products):
+    if set(new_products) != set(seq13_products):
         raise FoldPackError("product membership changed; this fold adds and removes no product")
     for code, product in new_products.items():
         if code == _EDITED_PRODUCT_CODE:
             continue
-        if _canon(product) != _canon(seq15_products[code]):
+        if _canon(product) != _canon(seq13_products[code]):
             raise FoldPackError(f"product {code!r} drifted — this fold edits exactly one product")
     for code in _UNTOUCHED_SIBLING_PRODUCTS:
         if new_products[code].get("covered_purposes") != _BEFORE:
@@ -310,14 +336,14 @@ def _assert_untouched(payload: dict[str, Any], seq15: dict[str, Any]) -> None:
             )
 
 
-def _assert_edit_is_only_the_purpose_list(payload: dict[str, Any], seq15: dict[str, Any]) -> None:
-    """The two edited rules must differ from seq-15 in ONE key and no other:
+def _assert_edit_is_only_the_purpose_list(payload: dict[str, Any], seq13: dict[str, Any]) -> None:
+    """The two edited rules must differ from seq-13 in ONE key and no other:
     ``effect.covered_purposes``. A widened ``when``, a changed reason_code or a
     new stage would all be regulatory changes this fold does not declare."""
-    seq15_rules = {r["rule_id"]: r for r in seq15["rules"]}
+    seq13_rules = {r["rule_id"]: r for r in seq13["rules"]}
     new_rules = {r["rule_id"]: r for r in payload["rules"]}
     for rid in _EDITED_RULE_IDS:
-        before, after = copy.deepcopy(seq15_rules[rid]), copy.deepcopy(new_rules[rid])
+        before, after = copy.deepcopy(seq13_rules[rid]), copy.deepcopy(new_rules[rid])
         if after["effect"].get("covered_purposes") != _AFTER:
             raise FoldPackError(f"{rid!r} did not receive {_AFTER!r}")
         before["effect"]["covered_purposes"] = None
@@ -328,9 +354,9 @@ def _assert_edit_is_only_the_purpose_list(payload: dict[str, Any], seq15: dict[s
                 "this fold declares exactly one edited key per rule"
             )
 
-    seq15_products = {p["product_code"]: p for p in seq15["products"]}
+    seq13_products = {p["product_code"]: p for p in seq13["products"]}
     new_products = {p["product_code"]: p for p in payload["products"]}
-    before = copy.deepcopy(seq15_products[_EDITED_PRODUCT_CODE])
+    before = copy.deepcopy(seq13_products[_EDITED_PRODUCT_CODE])
     after = copy.deepcopy(new_products[_EDITED_PRODUCT_CODE])
     if after.get("covered_purposes") != _AFTER:
         raise FoldPackError(f"product {_EDITED_PRODUCT_CODE!r} did not receive {_AFTER!r}")
@@ -373,9 +399,9 @@ def _write_pack(payload: dict[str, Any], out_path: Path) -> None:
 
 
 def assemble_payload() -> dict[str, Any]:
-    seq15 = _load_json(_SEQ15_SOURCE)
-    previous_sha = _verify_chain(seq15)
-    payload = copy.deepcopy(seq15)
+    seq13 = _load_json(_SEQ13_SOURCE)
+    previous_sha = _verify_chain(seq13)
+    payload = copy.deepcopy(seq13)
 
     _apply_edits(payload)
 
@@ -386,8 +412,8 @@ def assemble_payload() -> dict[str, Any]:
     payload["created_at"] = _SEQ16_CREATED_AT
     payload["created_by"] = _SEQ16_CREATED_BY
 
-    _assert_untouched(payload, seq15)
-    _assert_edit_is_only_the_purpose_list(payload, seq15)
+    _assert_untouched(payload, seq13)
+    _assert_edit_is_only_the_purpose_list(payload, seq13)
 
     try:
         validated = RulePackPayload.model_validate(payload)

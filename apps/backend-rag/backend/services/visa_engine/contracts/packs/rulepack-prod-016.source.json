@@ -13,7 +13,7 @@
     "ranking": "SUM_TRUE_INTEGER_WEIGHTS"
   },
   "jurisdiction": "ID",
-  "previous_payload_sha256": "08ba8b09729590ccbabc111c6fa9126dd8c22d8b58e7be799ff2a329e488bdbd",
+  "previous_payload_sha256": "b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8",
   "rollback_of_payload_sha256": null,
   "products": [
     {
