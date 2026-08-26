@@ -335,6 +335,63 @@ Recompute the launch queue whenever:
 
 Replanning changes the coordinator board or creates a successor Dispatch Manifest. It never edits an accepted immutable manifest in place.
 
+## 12. Cohort B outcome — preparation landed, BUILD GATED (2026-08-26)
+
+> **Provenance of this section.** The `adversarial_review: codex` stamp in this file's
+> frontmatter belongs to the 2026-08-23 review of §0-§11 and does NOT cover §12. This section
+> was written by the gating session on 2026-08-26 and is a RECORD of two reviews that did
+> happen — Kimi K3 against P05 and P06, each dispatched on a frozen head, each finding
+> re-verified on disk before acceptance. The reviews themselves live in the per-file
+> `## Adversarial review` sections of the two bundles; nothing here is a new unreviewed claim.
+
+P05 (Intel Lake / MATA GARUDA) and P06 (NAGA claim ledger) were dispatched one lane per packet
+on the frozen contracts and inside the §7 limits of `evidence/p04/contract-pass-001.md`. Both
+delivered PREPARATION bundles only; neither claims implementation readiness, and both say so in
+their own README.
+
+- P05 → `evidence/p05/ros-v1-p05-intel-prep-b01/` (PR #4996, merged 2026-08-26)
+- P06 → `evidence/p06/ros-v1-p06-naga-prep-b01/` (PR #4997)
+
+Each bundle was reviewed by a cross-family seat (Kimi K3) dispatched against a FROZEN head — the
+generator was dead before the refuter ran, so nothing moved under it — and every finding was
+then re-verified against disk by the gating session before it was accepted or rejected. The
+per-finding disposition is recorded in each file's own `## Adversarial review` section.
+
+**A build lane must NOT consume the P06 bundle until these are ruled on.** They are recorded in
+full in `evidence/p06/ros-v1-p06-naga-prep-b01/07-open-questions-and-corrections.md` §B1-B4 and
+deliberately NOT patched, because answering them is a contract decision this packet has no
+authority to make:
+
+| # | Blocking condition | Why it cannot be patched inside the packet |
+|---|---|---|
+| B1 | Supersession requires two coupled writes: the successor is written AND the predecessor is re-marked. But `Claim` carries a required `object_hash` (`claim.schema.json:618`) and every pointer is a `ClaimRef{claim_id, object_hash}` — a pinned revision — so re-marking the predecessor changes its hash and invalidates the reference the successor uses to point at it. | Needs atomicity. §7 forbids Cohort B from relying on **D10** (atomic repo primitive) and **D11** (atomic classification-change). The ruling is: predecessor state derived at read time from successor edges and never stored, OR supersession waits for D10/D11. |
+| B2 | The two supersession fixtures encode opposite conventions for the same role: `bitemporal/01` leaves the predecessor `supported` with `valid_to: null`; `supersession/01` flips it to `superseded` with `valid_to` closed. `bitemporal/01`'s shape trips the "FALSE if" condition of this bundle's own temporal-exclusion test row. | Picking one convention IS answering B1. Both left visible on purpose. |
+| B3 | `bitemporal/03` uses `supersedes_claim_ref` for calendared succession (a scheduled rate change) rather than correction — the predecessor is not wrong, it is the fixture's own expected answer for an earlier instant. | The packet never distinguishes "supersede = correction" from "supersede = next interval". |
+| B4 | Fixtures are stamped "100% invented" but embed real regulatory figures (PMA paid-up capital, a per-kanim deadline) that this session did NOT re-verify. | Either strip to invented numbers or re-ground against the live corpus. Do not cite as validated. |
+
+**Two further conditions carried out of P05**, recorded in that bundle:
+
+- The `object_hash` plan and the MATA-side hash reconciliation need the same RFC 8785+sha256
+  digest in **two independent implementations** — `apps/mata-garuda` caps runtime dependencies at
+  `pydantic>=2` and cannot import `research_os.hashing`. That is **D7**, which §7 also forbids
+  relying on. Do not design that reconciliation until D7 lands.
+- P05 had NO live-database access at all (`UNKNOWNS.md` §1: the local Postgres MCP failed on a
+  bare `SELECT 1`). Every quantitative statement in that bundle is a static code or schema fact.
+  The producer registry and health baseline the packet asks for remain unmeasured — this is the
+  next session's first job, and "unknown" here is not "zero".
+
+**Baseline correction that outlived its PR.** Six frozen work-packets under
+`research/operations/specs/evidence-to-action-freeze-2026-08-15/work-packets/` still carry
+migration-integer reservations that belong to other lanes (the WhatsApp-broker block). They were
+NOT edited — frozen artifacts are not amended in place, and each packet already routes this case
+to a versioned ledger revision. Whoever integrates binds `max+1` re-measured from
+`apps/backend-rag/backend/db/migrations_v2/` at integration time, never a number copied from any
+document, this board included. The sequence is not dense.
+
 ## Adversarial review
+
+Scope note: this review covers §0-§11. §12 (Cohort B outcome, added 2026-08-26) carries its
+own provenance block and is a record of the two Kimi K3 bundle reviews, not new unreviewed
+material.
 
 Seat: **Codex** (`codex exec --sandbox read-only`, high effort), 2026-08-23 — generator ≠ grader, a different model family from the Sonnet 5 drafter and the Opus 5 Conductor. Verdict: DEFECTIVE, 15 findings, all disposed of before landing. Findings against this file specifically were unsuperseded S00 sentences and a builder-count arithmetic error, all corrected here. The full review record, including the four findings re-verified against the source files, is in [`README.md`](README.md#adversarial-review).
