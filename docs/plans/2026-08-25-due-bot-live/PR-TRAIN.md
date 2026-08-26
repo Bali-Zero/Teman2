@@ -216,3 +216,36 @@ not useful. The probe imports its private symbols from the client and swallows a
 `except ImportError`, so a probe promoted ahead of the client silently runs on fallback copies
 and reports green. Promoting it first buys observability that is not actually observing. What
 matters is only that **everything is on disk before the daemon restarts**.
+
+---
+
+## State at close of the 2026-08-26 session
+
+Written at close-out so the next session inherits facts instead of reconstructing them. Nothing
+below is a plan; it is what is true on disk and on origin right now.
+
+**Everything is durable on origin.** All lane worktrees were removed after verifying it. The
+integration branch `feature/due-bot` sits at `14371987d`, local == remote.
+
+**One lane's work is pushed but NOT integrated.** `agent/mini-pro2/duebot/tp1brain`
+(`ed7756fb4`) carries the B4-tp1 TP1 brain adapter — 2,807 lines across eight source modules
+(`tp1_client`, `router`, `circuit_breaker`, `depletion_probe`, `errors`, `local_readonly`,
+`settings`, `flags`) and seven test modules, plus `scripts/duebot/tp1_pin_smoketest.py`. It is
+**two commits ahead of the integration branch and was never gated by this session** — it is
+pushed for durability, which is not an endorsement of its state. Whoever resumes must gate it
+before merging, not assume the push implied review. `agent/mini-pro2/duebot/membermem`
+(`0032a0d0c`) is likewise ahead by one commit, carrying only the F6/F9 gap doc.
+
+**PR #5028 is DRAFT and deliberately unarmed.** Three verified defects were open at close, all
+on the error-classification surface, all specified in
+`SPEC-codex-error-classification.md` properties P8 and P9 (`14371987d`). The spec exists
+precisely because the fix was attempted twice and was wrong twice: per Agent PR Contract rule 8,
+the surface was under-specified and the correct next move is to satisfy the spec, not to open a
+third corrective PR. Note that P8's generator must range over the pattern's ALTERNATIVES and not
+only over input forms — a vocabulary × separator × quoting matrix is structurally blind to P9,
+which lives in the regex's shape rather than in the input.
+
+**Not done, and deliberately so:** the promotion of the three payloads described above (the
+`operator[secret]` row in the modus ledger names why), and the DIRTY-conflict resolution on
+PR #4803 requested by the M5 peer — a peer request is not a mandate, and it was out of scope for
+a close-out.
