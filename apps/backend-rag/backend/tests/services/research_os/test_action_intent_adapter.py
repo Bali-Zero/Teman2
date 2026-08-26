@@ -134,7 +134,8 @@ def test_a_field_shared_by_invariant_is_declared_pending_by_both_siblings_or_nei
     `pending_ruling` tuple and this goes red. INNOCENCE: it passes when both
     declare them, and equally when NEITHER does -- it forbids divergence,
     not any particular resolution, because the resolution is a ruling that
-    is genuinely still open (`contract-pass-001.md` §9).
+    is genuinely still open (`contract-pass-001.md` §9, under
+    `research/operations/execution/research-os-v1.0.0/evidence/p04/`).
     """
 
     item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
