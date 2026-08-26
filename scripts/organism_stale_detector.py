@@ -550,6 +550,106 @@ def scan_sidecars_status(
     return findings
 
 
+_COVERAGE_BRANCH_RE = re.compile(r"^codex/coverage-(?P<module>.+)-(?P<ts>\d{8}_\d{6})$")
+
+
+def scan_stale_coverage_branches(
+    repo: str = ".",
+    remote: str = "origin",
+    base: str = "main",
+    stale_hours: float = 24.0,
+    now: float | None = None,
+    repo_slug: str = "Balizero1987/Teman2",
+) -> list[StaleFinding]:
+    """R7 proprioception (2026-08-27): a `codex/coverage-*` branch older than
+    `stale_hours`, with commits ahead of the base and no PR anywhere, is a RED
+    finding — scripts/army/spark_coverage_harvester.py runs far more often
+    than once a day and should have opened a PR for it well before this.
+
+    Born from the measured 2026-08-27 root cause: a pipefail bug in
+    scripts/codex/codex-nightly-coverage-improver.sh silently killed 9 of the
+    last 10 nightly runs one line after "Codex completed" was logged — real
+    commits landed on a real branch, and nothing ever surfaced it. This check
+    is the structural antidote (cicatrix family #2: monitor the real outcome,
+    not the exit code) so a FUTURE regression of that class — in either the
+    generator or the harvester — cannot go silent again for 10 days unnoticed.
+
+    Best-effort and fails OPEN (returns no finding, never raises) on any
+    git/gh error: this machine may legitimately be offline (SYMBIOSIS Law 6 —
+    disconnection is not a fault) or `gh` may not be installed here, and
+    neither is on its own evidence of a stuck branch.
+    """
+    now = time.time() if now is None else now
+    findings: list[StaleFinding] = []
+    try:
+        refs = subprocess.run(
+            ["git", "-C", repo, "for-each-ref",
+             "--format=%(refname:short) %(committerdate:unix)",
+             "refs/heads/codex/coverage-*", f"refs/remotes/{remote}/codex/coverage-*"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if refs.returncode != 0:
+            return []
+
+        newest_commit_epoch: dict[str, float] = {}
+        for line in refs.stdout.splitlines():
+            parts = line.strip().rsplit(" ", 1)
+            if len(parts) != 2:
+                continue
+            name, committed_raw = parts
+            short = name[len(f"{remote}/"):] if name.startswith(f"{remote}/") else name
+            if not _COVERAGE_BRANCH_RE.match(short):
+                continue
+            try:
+                committed = float(committed_raw)
+            except ValueError:
+                continue
+            newest_commit_epoch[short] = max(newest_commit_epoch.get(short, 0.0), committed)
+
+        for short, committed in sorted(newest_commit_epoch.items()):
+            age_hours = (now - committed) / 3600.0
+            if age_hours < stale_hours:
+                continue
+            ahead = subprocess.run(
+                ["git", "-C", repo, "rev-list", "--count", f"{remote}/{base}..{short}"],
+                capture_output=True, text=True, timeout=15,
+            )
+            try:
+                commits_ahead = int(ahead.stdout.strip() or "0")
+            except ValueError:
+                commits_ahead = 0
+            if commits_ahead <= 0:
+                continue  # fully merged, or the generator aborted before committing
+
+            pr = subprocess.run(
+                ["gh", "pr", "list", "--repo", repo_slug, "--head", short,
+                 "--state", "all", "--json", "number"],
+                capture_output=True, text=True, timeout=20,
+            )
+            if pr.returncode == 0:
+                try:
+                    if json.loads(pr.stdout or "[]"):
+                        continue  # a PR already exists — the harvester did its job
+                except json.JSONDecodeError:
+                    pass  # unreadable answer — fall through, treat as "no PR" below
+
+            m = _COVERAGE_BRANCH_RE.match(short)
+            module = m.group("module") if m else short
+            findings.append(StaleFinding(
+                organ_id=f"codex.coverage_branch.{module}",
+                kind="stale_branch",
+                age_days=age_hours / 24.0,
+                status="no PR",
+                detail=(
+                    f"{commits_ahead} commit(s) ahead of {base}, {age_hours:.1f}h old, "
+                    f"no PR for `{short}` — the R7 harvester should have opened one"
+                ),
+            ))
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return findings
+
+
 def emit_alerts(findings: list[StaleFinding], alerts_file: str = DEFAULT_ALERTS_FILE) -> str:
     """Overwrite the open-alerts file with current findings (idempotent snapshot).
 
@@ -617,12 +717,31 @@ def main(argv: list[str] | None = None) -> int:
             "network-isolated run"
         ),
     )
+    ap.add_argument(
+        "--no-coverage-branch-scan",
+        action="store_true",
+        help=(
+            "skip the R7 proprioception check for stale codex/coverage-* "
+            "branches (shells out to git + gh) — for tests/determinism, or "
+            "a network-isolated run"
+        ),
+    )
+    ap.add_argument("--repo", default=".", help="repo path for the coverage-branch scan")
+    ap.add_argument("--repo-slug", default="Balizero1987/Teman2",
+                     help="GitHub repo slug for the coverage-branch scan's `gh pr list`")
+    ap.add_argument("--coverage-branch-stale-hours", type=float, default=24.0)
     args = ap.parse_args(argv)
 
     if not args.no_cross_host_sync:
         sync_cross_host_sidecars(args.dir)
 
     findings = scan_sidecars_status(args.dir, stale_days=args.stale_days)
+
+    if not args.no_coverage_branch_scan:
+        findings = findings + scan_stale_coverage_branches(
+            repo=args.repo, repo_slug=args.repo_slug,
+            stale_hours=args.coverage_branch_stale_hours,
+        )
 
     if args.emit:
         path = emit_alerts(findings)
@@ -634,8 +753,9 @@ def main(argv: list[str] | None = None) -> int:
     elif not args.emit:
         print(_human_report(findings))
 
-    # exit 1 if any core guardian has a dead channel — that is actionable now.
-    return 1 if any(f.kind == "dead_channel" for f in findings) else 0
+    # exit 1 if any core guardian has a dead channel, or a coverage branch is
+    # stuck without a PR — both are actionable now, not just advisory.
+    return 1 if any(f.kind in ("dead_channel", "stale_branch") for f in findings) else 0
 
 
 if __name__ == "__main__":
