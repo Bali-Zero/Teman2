@@ -1,138 +1,160 @@
 brief_ref: evidence/brief.yml
-plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
+plan_ref: "PR #5037 (agent/pro/visa-oracle/slice0-migrations) — slice 0 of 4 for the visa-oracle landing, 2026-08-26. Governing mandate: docs/plans/2026-08-24-visa-oracle-live/MANDATE.md."
 lanes:
-  - lane: wr3-spend-gate-enforce
+  - lane: visa-oracle-slice0
     role: build
-    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
-  - lane: wr3-spend-gate-enforce-evidence
+    seat: "claude-opus-5 (conducting session — renumbered the three migrations, sliced them out of the 94-commit branch, authored this pack)"
+  - lane: visa-oracle-slice0-refute
     role: review
-    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
+    seat: "claude-sonnet-5 (adversarial subagent, dispatched WITHOUT this brief; told to find reasons the migrations are unsafe, not to bless them)"
 seat_diversity: not_applicable
 seat_diversity_note: >-
-  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
-  one non-Anthropic) does not fire. Both lanes present here are Anthropic
-  seats by construction (this is a narrow evidence-authoring task, not a
-  cross-family council dispatch); declared rather than left to read as
-  satisfied.
+  Both lanes are Anthropic seats. Declared rather than left to read as satisfied: a 3-file DDL
+  diff whose safety question is settled by an actual apply/rollback against a real schema does
+  not gain from cross-family breadth — the probe is the arbiter, not a seat's opinion.
 diff:
   net_lines: >-
-    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
-    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
-    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
-    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
-    the runtime gate itself is pre-existing, unmodified production code.
+    3 files, +570/-0 measured by `git diff --stat origin/main...HEAD`. All three are new .sql
+    files under `apps/backend-rag/backend/db/migrations_v2/`. Zero Python, zero workflow, zero
+    frontend. The renaming from 281/282/283 is not visible in this diff because the old names
+    never reached main — they existed only on the unlanded feature branch.
   behaviour_change: >-
-    No runtime behaviour change to any shipped code path. The workflow now also runs
-    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
-    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
-    `_generate_video` helpers the pre-existing tests already covered.
+    Three new tables plus two functions and four triggers are created. One pre-existing production
+    table is altered, in its catalog only: `visa_oracle_sessions.expires_at`'s DEFAULT moves from
+    `now() + '90 days'` to `now() + '30 days'`. SET DEFAULT rewrites no rows, takes no long lock,
+    and does not change the expiry of sessions already issued. No row is deleted.
 receipts:
-  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
-    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
-    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3 — matching the declared gear and the `Harness floor recompute` FAIL message that demanded this pack"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/slice0-changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/slice0-changed.txt"
+    result: "3 (migrations_v2/** is hot-zone by path)"
     exit: 0
-    ts: "2026-08-23T23:05Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
+    ts: "2026-08-26T14:20Z"
+    seat: "session (Pro)"
+  - claim: "THE CENTRAL RECEIPT — forward halves apply cleanly, in order, on top of the REAL main migration chain (all 170 numbered files from origin/main replayed first), not on an empty database"
+    cmd: "createdb visa_full_probe; for f in $(git ls-tree origin/main --name-only .../migrations_v2/ | grep -E '/[0-9]{3}_.*\\.sql$' | sort -V); do git show origin/main:$f | awk '/=== ROLLBACK ===/{exit}{print}' | psql -d visa_full_probe -v ON_ERROR_STOP=1; done; then the same for 293, 294, 295"
+    result: "293 rc=0 · 294 rc=0 · 295 rc=0 — FORWARD PULITO. (The main chain itself reports 43/170 failures on a from-empty replay: migrations_v2 is not a from-scratch schema, its base tables come from the pre-v2 Python migration system. Those failures are pre-existing and unrelated — the prerequisite this slice actually needs, reject_visa_write_substrate_mutation(), IS present after the chain: to_regprocedure -> true.)"
     exit: 0
-    ts: "2026-08-23T23:07Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
-    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro, Postgres 17.8 Homebrew vs production 17.7)"
+  - claim: "All five objects the three files promise are actually created — verified by catalog lookup, not by the absence of an error"
+    cmd: "psql -d visa_full_probe -tA -c \"SELECT to_regclass('public.visa_oracle_consultant_requests') IS NOT NULL\" (and the same for the two retention tables, purge_visa_oracle_consultant_requests(integer,text), visa_oracle_consultant_requests_retention_evidence())"
+    result: "consultant_requests=true · retention_policies=true · retention_batches=true · purge_fn=true · evidence_fn=true"
     exit: 0
-    ts: "2026-08-23T23:09Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
-    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
-    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
-    exit: 1
-    ts: "2026-08-23T23:11Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
-    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "295 actually moves the DEFAULT — read back out of information_schema after the apply, not assumed from the SQL text"
+    cmd: "psql -d visa_full_probe -tA -c \"SELECT column_default FROM information_schema.columns WHERE table_name='visa_oracle_sessions' AND column_name='expires_at'\""
+    result: "(now() + '30 days'::interval) — was (now() + '90 days'::interval) before the apply, which is also the value production reports today"
     exit: 0
-    ts: "2026-08-23T23:13Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "actionlint accepts the modified workflow"
-    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
-    result: "no output (clean)"
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "NOTHING IS DELETED AT APPLY TIME — the destructive-surface question, answered two independent ways"
+    cmd: "grep -nE '(SELECT|PERFORM).*purge_visa_oracle|cron\\.schedule' migrations_v2/29[345]_*.sql ; and after the apply: psql -tAc 'SELECT count(*) FROM public.visa_oracle_consultant_request_retention_batches'"
+    result: "grep: no match — the only DELETE in the diff (294:281) lives inside the purge function's body, and nothing calls it; no pg_cron job is scheduled. Batches table after apply: 0 rows, i.e. no purge ever ran (the function records every batch it deletes)."
     exit: 0
-    ts: "2026-08-23T23:14Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
-    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
-    result: "exit 0, no output"
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "The purge function is not reachable by PUBLIC — the REVOKE at 294:305 is effective, not decorative"
+    cmd: "psql -d visa_full_probe -tAc \"SELECT has_function_privilege('public','public.purge_visa_oracle_consultant_requests(integer,text)','EXECUTE')\""
+    result: "false"
     exit: 0
-    ts: "2026-08-23T23:14Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
-    cmd: "python3 scripts/check_watcher_coverage.py"
-    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "ROLLBACK halves apply cleanly in reverse order AND are symmetric — the schema returns to its prior state, including restoring the 90-day default rather than dropping it"
+    cmd: "for n in 295 294 293; do awk 'f{print} /=== ROLLBACK ===/{f=1}' <file> | psql -d visa_full_probe -v ON_ERROR_STOP=1; done; then re-read the catalog"
+    result: "295 rc=0 · 294 rc=0 · 293 rc=0 — ROLLBACK PULITO. After: consultant_requests=false, retention_batches=false, expires_at default back to (now() + '90 days'::interval)."
     exit: 0
-    ts: "2026-08-23T23:15Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
-    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
-    result: >-
-      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
-      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
-      same position relative to its own HTTP call. Both call sites precede any network code in
-      their respective functions.
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "294's undeclared dependency EXISTS in production — the one thing that could have made a green local probe a lie"
+    cmd: "psql (read-only role, live nuzantara_rag via proxy) -tAc \"SELECT to_regprocedure('public.reject_visa_write_substrate_mutation()') IS NOT NULL\""
+    result: "true — created by 252_visa_engine_write_substrate.sql, already on main. 294 references it and does not create it."
     exit: 0
-    ts: "2026-08-23T23:16Z"
-    seat: "session (M5, evidence-pack task)"
+    ts: "2026-08-26T14:27Z"
+    seat: "session (Pro, read-only production role)"
+  - claim: "The three tables this slice creates do NOT already exist in production, so `CREATE TABLE` without IF NOT EXISTS cannot collide"
+    cmd: "psql (read-only, live) -tAc \"SELECT to_regclass('public.visa_oracle_consultant_requests') IS NOT NULL\" and the two retention tables; and \"SELECT to_regclass('public.visa_oracle_sessions') IS NOT NULL\""
+    result: "consultant_requests=false · retention_policies=false · retention_batches=false · visa_oracle_sessions=TRUE (the one table 295 alters — it exists, so the ALTER has a target)"
+    exit: 0
+    ts: "2026-08-26T14:15Z"
+    seat: "session (Pro, read-only production role)"
+  - claim: "W40 IS REAL, not a tidy-up — the runner refuses duplicate prefixes by raising, and its own comment names the failure mode"
+    cmd: "sed -n '45,62p' apps/backend-rag/backend/db/migration_manager.py"
+    result: "raise MigrationError('Duplicate migration numbers in migrations_v2/: ... Two files cannot share a prefix — the runner applies one and silently skips the other.') Both `Detect duplicate prefixes` and `Detect missing ROLLBACK markers` are SUCCESS on this PR."
+    exit: 0
+    ts: "2026-08-26T14:12Z"
+    seat: "session (Pro)"
+  - claim: "Nothing already on main names the old 281/282/283 visa filenames, and the three test modules that DO name the new numbers are not on main — so the renumbering cannot break anything that is currently green"
+    cmd: "git grep -l -E '28[123]_visa_oracle' origin/main ; git cat-file -e origin/main:<each of the 3 test files>"
+    result: "grep: no matches on main. All three test modules absent from main (they land in slice 1)."
+    exit: 0
+    ts: "2026-08-26T14:19Z"
+    seat: "session (Pro)"
 pii_scan: clean
+pii_note: >-
+  The consultant-requests table stores `client_id` and an evaluation reference, not names,
+  passports or contact details. No production data was read, copied or transcribed while
+  producing this pack — every production query above returns a boolean or a column default.
 dissent:
   - seat: "Harness floor recompute (CI, deterministic)"
     objection: >-
-      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
-      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
-      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
-      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
-      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
+      PR #5037 touches migrations_v2/**, hot-zone by path, floors at Gear 3 regardless of being
+      3 files and +570/-0, and shipped with no evidence/brief.yml — so the check FAILED with
+      "hot-zone diff with no evidence/brief.yml".
     status: CONFIRMED
     note: >-
-      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
-      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
-      matching the check. Answered here by supplying both files, never by editing the check
-      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
-      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
-      complied-with).
-  - seat: "session (this evidence-authoring task), against its own first instinct"
+      Verified independently rather than accepted on the message alone: recomputed the floor from
+      the actual changed-file list and got 3. Answered by supplying brief+pack, never by touching
+      the gate.
+  - seat: "session (Pro), against its own first reading"
     objection: >-
-      The mandate offered the PR body's own self-reported mutation-test result (comment out
-      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
-      verbatim without re-running it would have been citing a tool output this turn never
-      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
-      prevent, applied to a prior session's claim rather than to memory.
+      An early grep reported ZERO ROLLBACK markers across all three files and was one step away
+      from being written up as a blocker.
     status: RETRACTED
     note: >-
-      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
-      receipt above) rather than trusting the PR body's report. Result matched: both tests went
-      red with the identical `AssertionError: network path reached`, file restored clean.
-      Retracted because the concern was real but the independent re-run resolved it — the
-      PR body's claim held up under a fresh execution, it was not merely repeated.
+      The grep pattern was `^-- ROLLBACK`. The marker the W42 lint actually requires — read out of
+      `scripts/lint_migration_rollback.py:41` rather than from memory — is `-- === ROLLBACK ===`,
+      and all three files carry it (293:80, 294:372, 295:70). The files were right; the probe was
+      wrong. CI's own `Detect missing ROLLBACK markers` agrees: SUCCESS.
+  - seat: "session (Pro), against its own second reading"
+    objection: >-
+      The first apply probe printed "FORWARD ROTTO" for all three migrations, which read as the
+      migrations being broken.
+    status: RETRACTED
+    note: >-
+      rc=127, "command not found" — zsh does not word-split an unquoted parameter, so `$PSQL`
+      holding a command line was treated as a single command NAME. The harness was broken, not the
+      migrations. Re-run with a shell function: rc=0 on all three. This is why the receipts above
+      capture rc directly rather than judging by a pipeline's exit status.
 tests:
-  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
-  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
+  - "No pytest in this slice — it is three .sql files. The three test modules that exercise these
+    tables (test_consultant_request_retention.py, test_consultant_assignment_router.py,
+    test_consultant_assignment_service.py) land in slice 1; they were run during the renumbering
+    and reported 25 passed, 0 failed, 1 error (a DependentObjectsStillExistError teardown against
+    the local test database, pre-existing and unrelated). Declared rather than omitted: this slice
+    ships DDL whose Python consumers are not in it."
+  - "The apply/rollback probe above IS this slice's test, and it is stronger than a unit test would
+    be: it runs the real SQL against a real Postgres carrying main's real schema."
 static:
-  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
-  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
-  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
+  - "Detect duplicate prefixes -> SUCCESS"
+  - "Detect missing ROLLBACK markers -> SUCCESS"
+  - "Squawk lint runs automatically on migrations_v2/*.sql (PR #306)"
+  - "prepush-guards, Lint, P3 static validation -> SUCCESS on the same head"
 notes:
   - >-
-    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
-    was already committed and pushed by a prior session/task. No production code, no test
-    content, and no workflow logic was authored or edited as part of writing this pack — every
-    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
-    a first-time authoring of the underlying fix.
+    This slice exists BECAUSE of an ordering constraint, not for tidiness: the consultant
+    assignment service in slice 1 reads tables these files create. Landing them together would
+    have made a green slice-1 CI depend on migrations that had not run yet.
   - >-
-    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
-    same `Harness floor recompute` shape first and its own evidence pack documents the identical
-    resolution — supply brief+pack, never edit the gate. That pack (`git show
-    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
-    content is specific to this PR's diff.
+    Migrations are auto-merge-OFF per CLAUDE.md §2 / feedback_arm_automerge_default_not_leave_to_operator.
+    This PR is therefore NOT armed with `--auto`; the session merges it once its gates are green
+    and the refuter verdict is in. That is not a hand-off to the codeowner.
+  - >-
+    ADVERSARIAL LANE, VERDICT OUTSTANDING AT WRITE TIME: the refuter subagent was dispatched
+    against these three files on six axes (rollback markers, Squawk locking hazards, idempotency,
+    destructive surface, dependencies, PII) with no sight of this brief, and had not returned when
+    this pack was first written. It is deliberately NOT recorded as a `dissent` entry, because that
+    field's status is a closed vocabulary (CONFIRMED/PLAUSIBLE/RETRACTED) with no token for "not
+    yet answered" — writing a prose stand-in there would have detached the lint rule rather than
+    satisfied it. This PR is auto-merge-OFF class and is not merged before the verdict lands and is
+    appended here as a real dissent entry with a real status.
