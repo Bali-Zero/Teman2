@@ -37,6 +37,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -50,6 +51,8 @@ from backend.services.garuda_ops.adapters_pg import (
 from backend.services.garuda_ops.crm_handoff import CrmHandoffService, HandoffOutcome
 from backend.services.garuda_ops.ports import EventEnvelope, IdempotencyIdentity
 from backend.services.garuda_orders.outbox_consumer import OutboxJob
+from backend.services.portal.invite_service import InviteService
+from backend.services.portal.portal_profile_service import PortalProfileService
 
 logger = logging.getLogger("garuda.orders.outbox_handlers")
 
@@ -347,14 +350,164 @@ class PracticeReleaseHandler:
         )
 
 
+#: `created_by` on the invitation row. A human email would be a lie — no team
+#: member sent this — and the column is audited, so it names the machine path.
+INVITE_CREATED_BY = "garuda-voa-outbox"
+
+
+class CrmPracticeNotWrittenYet(RuntimeError):
+    """No `practices` row carries this payment's digest yet."""
+
+
+class PortalProfileNotCreated(RuntimeError):
+    """`ensure_portal_profile` reported failure the only way it can: None."""
+
+
+class PortalInviteUndeliverable(RuntimeError):
+    """The CRM client for this payment has no address to invite."""
+
+
+class PortalInviteHandler:
+    """Routes `portal_invite`: turns a paid order into a portal ACCOUNT.
+
+    THE GAP THIS CLOSES. After `practice_release`, a paying customer has a
+    `clients` row (`adapters_pg.py::_ensure_client` upserts it on
+    `LOWER(BTRIM(email))`) and a CRM practice. What they did NOT have is any way
+    in: measured across the repository, nothing in the GARUDA chain called
+    `ensure_portal_profile`, so no `my.balizero.com` account was ever born from
+    a payment. The invite machinery itself already existed and is reused whole —
+    `InviteService.create_invitation` mints the token, `send_portal_invite_email`
+    sends it through the canonical Brevo adapter.
+
+    WHY IT KEYS ON THE PRACTICE AND NOT THE ORDER. The lookup is
+    `practices.source_idempotency_key = sha256(journal_event_id)` — the same
+    identity chain `PracticeReleaseHandler` writes. That is deliberate: it makes
+    the ordering dependency STRUCTURAL instead of hoped-for. Both jobs are
+    enqueued by the one `payment.paid` transaction and `drain_once` claims rows
+    with `SKIP LOCKED`, so this one can be claimed FIRST. When it is, the row is
+    absent and this raises — the job keeps its budget (`DEFAULT_MAX_ATTEMPTS`
+    is 5, and `exclude_ids` spreads attempts over passes rather than burning
+    them in one) and succeeds on a later pass, after the release landed.
+
+    THE TRAP THAT SHAPED THIS HANDLER. `PortalProfileService.
+    ensure_portal_profile` documents itself as "Non-blocking: DB errors are
+    caught and logged, never raised" and returns `None` on failure. Behind the
+    outbox that behaviour inverts its meaning: `drain_once` reads a plain return
+    as delivery, so calling it and returning would stamp `dispatched_at` on a
+    job that created NOTHING, and the customer would be permanently accountless
+    with a green log line. Hence the explicit `None` check below. Note also its
+    `ON CONFLICT (email) DO UPDATE ... WHERE team_members.role = 'client'`: an
+    address already present as STAFF matches nothing, returns `None`, and lands
+    here as a raise rather than a silent skip — which is the honest outcome,
+    because a staff mailbox must not be converted into a client login.
+
+    THE SEND IS LAST, AND NOTHING MAY BE ADDED AFTER IT. `create_invitation` is
+    NOT idempotent: it expires any live unused invitation and mints a fresh
+    token every call. That is correct while the previous token was never
+    delivered, and harmful once it was — a retry would invalidate a link the
+    customer already holds. Keeping the send as the final statement bounds that
+    window to a failure of the send itself.
+
+    WHAT IS NEVER LOGGED HERE. The invitation token and any URL embedding it are
+    the credential that completes registration through a PUBLIC, unauthenticated
+    endpoint. They travel to the Brevo email and nowhere else — not a log line,
+    not an exception message. The address and the applicant name stay out of
+    THIS class's logs too, per the module's standing rule.
+
+    ONE HONEST LIMIT. The canonical transport does not keep that bargain:
+    `app/services/internal_email.py:133` logs `"Internal email sent: to=%s ..."`
+    on every successful send. So the applicant's address DOES reach a persisted
+    log once the email goes out — as it already does for every other caller of
+    that helper. Reusing the canonical sender was still the right call over
+    re-implementing it, but the property is weaker than this docstring would
+    otherwise imply, and it is not this handler's to fix.
+    """
+
+    def __init__(
+        self,
+        pool: asyncpg.Pool,
+        *,
+        profiles: PortalProfileService,
+        invites: InviteService,
+        send_invite_email: Callable[..., Awaitable[None]],
+        portal_base_url: str,
+    ) -> None:
+        self._pool = pool
+        self._profiles = profiles
+        self._invites = invites
+        self._send_invite_email = send_invite_email
+        self._portal_base_url = portal_base_url
+
+    async def __call__(self, job: OutboxJob) -> None:
+        digest = hashlib.sha256(job.journal_event_id.encode()).hexdigest()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT c.id AS client_id, c.full_name, c.email
+                  FROM practices p
+                  JOIN clients c ON c.id = p.client_id
+                 WHERE p.source_idempotency_key = $1
+                """,
+                digest,
+            )
+
+        if row is None:
+            raise CrmPracticeNotWrittenYet(
+                f"no practices row for the payment behind outbox job {job.id}; "
+                "practice_release has not drained yet"
+            )
+
+        client_id = int(row["client_id"])
+        email = (row["email"] or "").strip()
+        if not email:
+            raise PortalInviteUndeliverable(
+                f"clients row {client_id} has no email; cannot invite"
+            )
+
+        member_id = await self._profiles.ensure_portal_profile(
+            client_id=client_id,
+            email=email,
+            full_name=row["full_name"],
+        )
+        if member_id is None:
+            raise PortalProfileNotCreated(
+                f"ensure_portal_profile returned None for client {client_id}"
+            )
+
+        invitation = await self._invites.create_invitation(
+            client_id=client_id,
+            email=email,
+            created_by=INVITE_CREATED_BY,
+        )
+        # The DIGEST, not `job.order_id`: STATE-MACHINE.md SM-G03 bans opaque
+        # result identifiers from logs regardless of PII status, and
+        # `crm_handoff.py` — same package — already logs only this digest for
+        # exactly that reason. A first draft of this line logged the order id.
+        logger.info("portal invite minted (key=%s)", digest[:12])
+
+        await self._send_invite_email(
+            to=email,
+            client_name=invitation["client_name"],
+            invite_url=f"{self._portal_base_url}{invitation['invite_url']}",
+            db_pool=self._pool,
+            client_id=client_id,
+        )
+
+
 def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, object]:
     """The registry `drain_once` consumes.
 
-    Two job types are routed: `payment_paid_email` (what the customer sees) and
-    `practice_release` (what the team sees). Both are enqueued by the SAME
-    transaction in `repository.py` when a payment is confirmed, and routing
-    only the first is what produced a paying customer with a confirmation email
-    and no work item.
+    Three job types are routed: `payment_paid_email` (what the customer sees),
+    `practice_release` (what the team sees) and `portal_invite` (how the
+    customer gets IN). All three are enqueued by the SAME transaction in
+    `repository.py` when a payment is confirmed, and routing only the first is
+    what produced a paying customer with a confirmation email and no work item.
+
+    THE ROUTER IMPORT IS LAZY ON PURPOSE. `send_portal_invite_email` lives in
+    `app/routers/portal_invite.py` — the canonical sender, reused whole rather
+    than re-implemented — but a service module importing a router at load time
+    invites an import cycle through the router package. Binding it here, inside
+    the function, keeps the dependency at call time where it is harmless.
 
     Every other job_type the repository enqueues — `refund_email`,
     `payment_failed_email`, `checkout_ready_email`, `payment_expired_email` and
@@ -365,6 +518,9 @@ def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, ob
     its handler is written.
     """
 
+    from backend.app.core.config import settings
+    from backend.app.routers.portal_invite import send_portal_invite_email
+
     handoff = CrmHandoffService(
         order_snapshots=PostgresOrderSnapshotProvider(pool),
         crm_writer=PostgresCrmWriter(pool),
@@ -372,14 +528,26 @@ def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, ob
     return {
         "payment_paid_email": PaymentPaidEmailHandler(pool, sender),
         "practice_release": PracticeReleaseHandler(pool, handoff),
+        "portal_invite": PortalInviteHandler(
+            pool,
+            profiles=PortalProfileService(pool),
+            invites=InviteService(pool),
+            send_invite_email=send_portal_invite_email,
+            portal_base_url=settings.frontend_portal_url,
+        ),
     }
 
 
 __all__ = [
+    "INVITE_CREATED_BY",
     "BrevoEmailSender",
+    "CrmPracticeNotWrittenYet",
     "EmailSendFailed",
     "OrderEmailFacts",
     "PaymentPaidEmailHandler",
+    "PortalInviteHandler",
+    "PortalInviteUndeliverable",
+    "PortalProfileNotCreated",
     "PracticeNotMinted",
     "PracticeReleaseHandler",
     "build_handlers",

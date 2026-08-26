@@ -469,7 +469,11 @@ def test_build_handlers_routes_practice_release() -> None:
     """
 
     handlers = build_handlers(pool=None, sender=None)  # type: ignore[arg-type]
-    assert set(handlers) == {"payment_paid_email", "practice_release"}
+    # The set is EXACT on purpose: adding a route must be a deliberate edit
+    # here, and removing one can never pass unnoticed. `portal_invite` joined
+    # it when a paid order started producing a portal account as well as a
+    # practice.
+    assert set(handlers) == {"payment_paid_email", "practice_release", "portal_invite"}
     assert isinstance(handlers["practice_release"], PracticeReleaseHandler)
 
 
