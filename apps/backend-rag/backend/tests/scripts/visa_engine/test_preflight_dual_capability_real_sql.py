@@ -71,7 +71,6 @@ async def dual_capability_sandbox():
     suffix = uuid.uuid4().hex[:12]
     db_name = f"nuzantara_test_preflight_{suffix}"
     granted = f"vo_granted_{suffix}"
-    superuser = f"vo_super_{suffix}"
     pack_writer = f"visa_pack_writer_{suffix}"
     activation = f"visa_activation_executor_{suffix}"
 
@@ -82,16 +81,40 @@ async def dual_capability_sandbox():
         await admin.execute(f'CREATE ROLE "{activation}" NOLOGIN')
         await admin.execute(f'CREATE ROLE "{granted}" LOGIN')
         await admin.execute(f'GRANT "{pack_writer}", "{activation}" TO "{granted}"')
-        await admin.execute(f'CREATE ROLE "{superuser}" LOGIN SUPERUSER')
+        # The innocence case uses the CONNECTING role rather than a
+        # freshly-created `LOGIN SUPERUSER`. Two reasons, both load-bearing:
+        # this test then needs no CREATEROLE-superuser privilege of its own
+        # (so it cannot go red on a permission difference between CI and a
+        # laptop, which would make a required check fail for a reason that has
+        # nothing to do with the code), and it exercises the EXACT real-world
+        # shape -- the pre-existing superuser that always exists, which is
+        # precisely what `postgres` is on production.
+        superuser_name = await admin.fetchval("SELECT current_user")
+        is_superuser = await admin.fetchval(
+            "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"
+        )
+        can_login = await admin.fetchval(
+            "SELECT rolcanlogin FROM pg_roles WHERE rolname = current_user"
+        )
     finally:
         await admin.close()
+
+    # Asserted, never assumed: if the connecting role were not a
+    # login-capable superuser, the innocence half would pass vacuously --
+    # the query would exclude it for the wrong reason and this test would
+    # certify a fix it never exercised.
+    assert is_superuser is True, (
+        f"the connecting role {superuser_name!r} is not a superuser, so the "
+        "innocence case cannot be exercised at all"
+    )
+    assert can_login is True, superuser_name
 
     dsn = _ADMIN_URL.rsplit("/", 1)[0] + f"/{db_name}"
     try:
         yield {
             "dsn": dsn,
             "granted": granted,
-            "superuser": superuser,
+            "superuser": superuser_name,
             "pack_writer": pack_writer,
             "activation": activation,
         }
@@ -104,7 +127,9 @@ async def dual_capability_sandbox():
                 db_name,
             )
             await admin.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
-            for role in (granted, superuser, pack_writer, activation):
+            # `superuser_name` is the connecting role -- never created here,
+            # never dropped here.
+            for role in (granted, pack_writer, activation):
                 await admin.execute(f'DROP ROLE IF EXISTS "{role}"')
         finally:
             await admin.close()
