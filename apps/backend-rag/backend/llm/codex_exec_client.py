@@ -1,4 +1,8 @@
-"""Codex-exec subscription provider — OFFLINE, standalone provider adapter.
+"""Codex-exec subscription provider — OFFLINE relative to
+`backend/services/rag/agentic/` (the live request-serving RAG path never
+reaches it), but see the CORRECTED, B2b note below for what IS live:
+`wa_codex_daemon.py` is a real, in-repo importer and instantiator of
+`CodexExecClient`.
 
 Owner credential-path ruling recorded by this client (2026-08-15, Zero,
 direct, Legge 5 — see
@@ -22,10 +26,14 @@ installed on Pro (login-less `zantara-codex` user, `KeepAlive`) and RUNNING
 as of 2026-08-25. It executes from a root-owned deployed copy at
 `/usr/local/lib/wa-codex-broker/`, NOT from a git checkout — so a change
 here is inert until that copy is re-promoted, and live from the moment it
-is. That copy's `backend/**` tree is NOT in
-`infra/home-fork/declared-pairs.json`, so `lint_home_fork.py` does not
-watch it for drift (the wrapper and seat probe are declared; the payload
-is not). Its exception-type coupling to this module is real either way: a
+is. CORRECTED (team-lead review of PR #5028, 2026-08-26, by direct
+`grep` against this branch's `infra/home-fork/declared-pairs.json`): this
+paragraph used to claim that copy's `backend/**` tree was NOT declared
+there. That was false. Both `wa_codex_daemon.py` and this module ARE
+declared (entries dated 2026-08-25, sha256-verified at declaration time),
+alongside the wrapper and seat probe already covered — `lint_home_fork.py`
+does watch the whole payload for drift. Its exception-type coupling to
+this module is real either way: a
 constructor-signature change here (this round: `CodexExecAuthError`/
 `CodexExecQuotaError`/`CodexExecPolicyBlockedError` now require
 `confidence=`; `CodexExecOutputShapeError` now requires `reason=`) breaks
@@ -471,9 +479,20 @@ _STDIN_SENTINEL = "-"
 #        (`_classify_stderr`).
 #   P4 — confidence (`MatchConfidence.HIGH` for a structured-tier hit,
 #        `.LOW` for a prose-tier-only hit) travels with the result, all the
-#        way onto the raised exception (`confidence=` kwarg) and into
-#        `codex_broker_wire.py`'s detail field. An unmeasured prose guess
-#        and a matched error code are never presented as the same fact.
+#        way onto the raised exception (`confidence=` kwarg). CORRECTED
+#        (team-lead review of PR #5028, 2026-08-26): this used to cite a
+#        "`codex_broker_wire.py`'s detail field" that does not exist
+#        anywhere in this repo (`find` returns nothing). Confidence does
+#        NOT reach a wire-level detail field today — `wa_codex_daemon.py`
+#        maps every one of these exceptions onto the coarse,
+#        confidence-blind `wa_broker.ALLOWED_ERROR_CLASSES` (the real
+#        closed 7-member vocabulary the router validates against, in
+#        `apps/backend-rag/backend/services/integrations/wa_broker.py`) —
+#        mostly `"cli_failure"` regardless of confidence, per that daemon
+#        module's own error-mapping arms. An unmeasured prose guess and a
+#        matched error code are never presented as the same fact WITHIN
+#        this module — that claim stands; the wire-transmission clause
+#        did not.
 #
 # P5 ("unknown stays unknown") and P6 (guilt AND innocence per class) are
 # enforced by the pattern content itself and by
@@ -510,14 +529,27 @@ class MatchConfidence(StrEnum):
 
 
 class _WireWordClass(StrEnum):
-    """The stderr word classes this module recognises — a strict SUBSET of
-    F3's closed wire vocabulary (`codex_broker_wire.py`): F3's
-    `TIMEOUT`/`HOST_OFFLINE` never come from stderr-pattern matching at all
-    (a wall-clock deadline, a missing binary — both determined
-    structurally), so neither has a member here. `OUTPUT_OVERSIZED` maps
-    onto the PRE-EXISTING F3 member `OUTPUT_INVALID` alongside the
-    empty-stdout-on-exit-0 path (Ruling A — see `OutputShapeReason`); it is
-    not itself a new F3 member."""
+    """The stderr word classes this module recognises. CORRECTED (team-lead
+    review of PR #5028, 2026-08-26): this used to describe these as "a
+    strict SUBSET of F3's closed wire vocabulary (`codex_broker_wire.py`)"
+    — that file does not exist anywhere in this repo (`find` returns
+    nothing), and the claim was not a literal subset-by-name even under the
+    real closed vocabulary that DOES exist,
+    `wa_broker.ALLOWED_ERROR_CLASSES` (7 members:
+    `exec_timeout`/`cli_failure`/`cli_version_mismatch`/`spawn_failure`/
+    `oversized_output`/`empty_output`/`policy_refusal`, in
+    `apps/backend-rag/backend/services/integrations/wa_broker.py`) — none
+    of `_WireWordClass`'s own members share a name with any of those seven.
+    What IS true, verified against `wa_codex_daemon.py`'s actual exception
+    mapping: every exception this module raises from one of these word
+    classes gets COLLAPSED by the daemon onto that coarser 7-member
+    vocabulary (mostly the generic `"cli_failure"` bucket), never passed
+    through by name. `TIMEOUT`/`HOST_OFFLINE`-shaped failures (a wall-clock
+    deadline, a missing binary) are determined structurally and never come
+    from stderr-pattern matching at all, so neither has a member here;
+    `OUTPUT_OVERSIZED` is this module's own name for the empty-stdout/
+    oversized-output shapes (Ruling A — see `OutputShapeReason`), not a
+    borrowed name from elsewhere."""
 
     AUTH_DEATH = "AUTH_DEATH"
     QUOTA = "QUOTA"
@@ -898,10 +930,19 @@ class CodexExecAmbiguousError(RuntimeError):
     its `.suppressed`) and never reaches this exception.
 
     `candidates` carries `_WireWordClass` string values only — never raw
-    stderr content (point 6). Maps onto F3's `INTERNAL` in
-    `codex_broker_wire.py` (F3's frozen 7-member vocabulary has no
-    AMBIGUOUS slot) with a detail field naming the candidates, rather than
-    guessing one.
+    stderr content (point 6). CORRECTED (team-lead review of PR #5028,
+    2026-08-26): this used to say it "Maps onto F3's `INTERNAL` in
+    `codex_broker_wire.py`" — that file does not exist anywhere in this
+    repo, and the real closed wire vocabulary
+    (`wa_broker.ALLOWED_ERROR_CLASSES`, 7 members) has no `INTERNAL`
+    member either. Verified against `wa_codex_daemon.py`'s actual
+    exception handling: this exception is not caught by any of its
+    type-specific `except` clauses, so it falls to the generic
+    `except Exception:` catch-all like every other unnamed type and maps
+    to the same `"cli_failure"` bucket — no dedicated AMBIGUOUS slot
+    exists anywhere on the wire today; this module's own `candidates`
+    field (naming the classes rather than guessing one) is where that
+    detail actually lives.
     """
 
     def __init__(self, message: str, *, candidates: frozenset[str]) -> None:
@@ -1291,8 +1332,15 @@ def _classify_stderr(stderr: str) -> StderrVerdict:
 class CodexExecClient:
     """Thin async wrapper spawning `codex exec` as a subprocess.
 
-    OFFLINE, NO-WIRING (see module docstring). There is no live caller of
-    this class in this repo today. Never instantiate this expecting a
+    OFFLINE relative to `backend/services/rag/agentic/` (see module
+    docstring) — but NOT uncalled. CORRECTED (team-lead review of PR
+    #5028, 2026-08-26): this used to say "there is no live caller of this
+    class in this repo today", contradicting the module docstring's own
+    B2b note two paragraphs above it. `wa_codex_daemon.py` imports and
+    instantiates this class directly (`self._codex = codex_client or
+    CodexExecClient(...)`), promoted as a deployed copy at
+    `/usr/local/lib/wa-codex-broker/` outside this repo checkout — a real,
+    in-repo caller either way. Never instantiate this expecting a
     persistent resource to manage — unlike `OpenAIResponsesClient`, there is
     no persistent connection object; every `generate()` call spawns and
     reaps its own subprocess and its own temp `cwd`.

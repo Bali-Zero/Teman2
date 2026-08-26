@@ -515,11 +515,18 @@ class WaCodexDaemon:
             # (owner packet item 13, 2026-08-26): distinct from a generic
             # CLI failure so the operator can tell "seat is out of quota"
             # from "something broke", even though the wire value is
-            # unchanged — wa_broker.ALLOWED_ERROR_CLASSES (the closed
-            # vocabulary the router validates against) has no QUOTA member
-            # today, only the separate, unwired F3 vocabulary in
-            # codex_broker_wire.py does. Widening ALLOWED_ERROR_CLASSES is
-            # a deliberate, reviewed diff this unit does not make.
+            # unchanged — wa_broker.ALLOWED_ERROR_CLASSES (the closed,
+            # 7-member vocabulary the router validates against) has no
+            # QUOTA-specific member today, only the generic "cli_failure"
+            # bucket every non-timeout/spawn CLI failure already falls
+            # into. CORRECTED (team-lead review of PR #5028, 2026-08-26):
+            # this comment used to point at a second, "unwired F3
+            # vocabulary" in a file named `codex_broker_wire.py` — that
+            # file does not exist anywhere in this repo (`find` returns
+            # nothing), and no second vocabulary with a QUOTA member
+            # exists either; the closed wire vocabulary genuinely has none
+            # today. Widening ALLOWED_ERROR_CLASSES is a deliberate,
+            # reviewed diff this unit does not make.
             logger.error(
                 "wa-codex-daemon: codex seat QUOTA EXHAUSTED — operator must wait "
                 "for the usage window to reset or switch seats (job %s reported "
