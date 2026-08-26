@@ -1,0 +1,66 @@
+{
+  "tool_used": "playwright-python (chromium) | rerun 2+3 post-fix",
+  "results": [
+    {
+      "n": 1,
+      "name": "BOOT",
+      "status": "PASS",
+      "detail": "qTitle='Who is filling this in?', progressZone.hidden=True"
+    },
+    {
+      "n": 2,
+      "name": "TOURISM path (counter/announce/review/shadow) [RERUN post-fix]",
+      "status": "PASS",
+      "detail": "country-list after 'ita'=['Italy'] | counterText='Question 6 of 9' announce_full='Your path is confirmed: 9 questions \u2014 the tourism path is the shortest.' | review_title='Check your answers' rows_count=8 | counter_ok=True announce_ok=True (expected='Your path is confirmed: 9 questions \u2014 the tourism path is the shortest.') review_ok=True shadow_ok=True"
+    },
+    {
+      "n": 4,
+      "name": "FOCUS (h2#qTitle or #cs after each answer, tourism run)",
+      "status": "PASS",
+      "detail": "[{\"step\": \"after who_answers\", \"active\": {\"tag\": \"H2\", \"id\": \"qTitle\", \"cls\": \"\"}, \"ok\": true}, {\"step\": \"after in_indonesia\", \"active\": {\"tag\": \"H2\", \"id\": \"qTitle\", \"cls\": \"\"}, \"ok\": true}, {\"step\": \"after holds_stay_permit\", \"active\": {\"tag\": \"H2\", \"id\": \"qTitle\", \"cls\": \"\"}, \"ok\": true}, {\"step\": \"after nationalities\", \"active\": {\"tag\": \"H2\", \"id\": \"qTitle\", \"cls\": \"\"}, \"ok\": true}, {\"step\": \"after birth_date\", \"active\": {\"tag\": \"H2\", \"id\": \"qTitle\", \"cls\": \"\"}, \"ok\": true}, {\"step\": \"after category\", \"active\": {\"tag\": \"H2\", \"id\": \"qTitle\", \"cls\": \"\"}, \"ok\": true}]"
+    },
+    {
+      "n": 3,
+      "name": "CONTATORE (in_indonesia=Yes -> 10 or more) [RERUN post-fix]",
+      "status": "PASS",
+      "detail": "counterText='Question 2 of 10 or more' announce_full='Your path is now 10 questions \u2014 one more about immigration history.' (expected='Your path is now 10 questions \u2014 one more about immigration history.') counter_ok=True announce_ok=True no_plus_ok=True"
+    },
+    {
+      "n": 5,
+      "name": "RADIO roving tabindex + ArrowDown",
+      "status": "PASS",
+      "detail": "tabindexes=[0, -1] zero_count=1 active_before='\u2713I'm the traveller' active_after='\u2713I'm helping someone else' second_opt='\u2713I'm helping someone else'"
+    },
+    {
+      "n": 6,
+      "name": "DARK theme (attr + .cta bg + .notsure color)",
+      "status": "PASS",
+      "detail": "data-oracle-theme='dark' cta_background='rgb(208, 16, 51)' (expect rgb(208, 16, 51)) notsure_button_color='rgb(255, 95, 116)'"
+    },
+    {
+      "n": 7,
+      "name": "SPONSOR badge + branch note",
+      "status": "PASS",
+      "detail": "branch_note='Your sponsor \u2014 6 questions' family_relation_title='Who are you joining?' sponsor_nat_title='Your sponsor's nationality' now_title='Your sponsor's status in Indonesia' badge='Sponsor 4 of 6'"
+    },
+    {
+      "n": 8,
+      "name": "DELEGATE flow",
+      "status": "PASS",
+      "detail": "delegate_confirm_title='Answering for the traveller' banner_hidden=False in_indonesia_title='Is the traveller in Indonesia right now?'"
+    },
+    {
+      "n": 9,
+      "name": "RESUME (Save & continue later, reload)",
+      "status": "PASS",
+      "detail": "pre_reload_title='Do you currently hold an Indonesian stay permit?' post_reload_title='Do you currently hold an Indonesian stay permit?' save_msg='Saved. Case BZ-7Q4K resumes where you left it.' state_v=2 state_after_present=True"
+    },
+    {
+      "n": 10,
+      "name": "OVERFLOW (scrollWidth==360)",
+      "status": "PASS",
+      "detail": "document.documentElement.scrollWidth=360"
+    }
+  ],
+  "fails": []
+}
