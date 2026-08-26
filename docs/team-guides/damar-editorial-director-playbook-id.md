@@ -2,9 +2,9 @@
 
 ## Editorial Director Bali Zero — Artikel, Carousel, dan Video Zantara
 
-**Versi:** 2.0  
-**Tanggal:** 27 Agustus 2026  
-**Zona waktu:** WITA  
+**Versi:** 2.0
+**Tanggal:** 27 Agustus 2026
+**Zona waktu:** WITA
 **Status:** Panduan internal Bali Zero
 
 ---
@@ -566,15 +566,15 @@ Agent boleh menulis prompt ImageGen yang detail di belakang layar. Damar harus m
 
 ### Contoh route yang diterima
 
-**Headline:** `BALI VILLAS FACE A NEW CHECK`  
-**Anchor:** tanggal pemeriksaan atau nama keputusan yang benar-benar ada di sumber  
-**Scene:** satu villa nyata dilihat dari gerbang saat petugas memeriksa satu dokumen; ruang headline jelas; tidak ada collage  
+**Headline:** `BALI VILLAS FACE A NEW CHECK`
+**Anchor:** tanggal pemeriksaan atau nama keputusan yang benar-benar ada di sumber
+**Scene:** satu villa nyata dilihat dari gerbang saat petugas memeriksa satu dokumen; ruang headline jelas; tidak ada collage
 **Mengapa bekerja:** viewer langsung memahami tempat, tindakan, dan konsekuensi. Visual tidak mengklaim penutupan bila sumber hanya menyebut pemeriksaan.
 
 ### Contoh route yang ditolak karena samar
 
-**Headline:** `THE DOOR IS CLOSING`  
-**Scene:** siluet memegang kunci di depan matahari terbenam  
+**Headline:** `THE DOOR IS CLOSING`
+**Scene:** siluet memegang kunci di depan matahari terbenam
 **Mengapa gagal:** tidak menjelaskan pintu apa, siapa yang terdampak, fakta baru apa, atau mengapa terjadi sekarang. Gambar dapat dipakai untuk puluhan topik dan bukan bukti pemahaman.
 
 ### Test satu detik
@@ -1078,32 +1078,32 @@ Referensi kebijakan: [TikTok — Konten yang dihasilkan AI](https://support.tikt
 
 Agent membuat folder kanonik untuk hari itu dengan format `YYYY-MM-DD_topic-slug/`, menaruh semua file final di dalamnya, dan memberi nomor versi. Damar mengirim satu link dan satu pesan ringkas:
 
-> **DAILY EDITORIAL PACKAGE — [TANGGAL]**  
-> **Carousel topic:** [judul]  
-> **Mengapa dipilih:** [satu kalimat]  
-> **Audience:** [audience]  
-> **Canva:** [link]  
-> **Final export:** [link/folder]  
-> **Caption:** [link/text]  
-> **Sources/claim sheet:** [link]  
-> **Video:** [EN link] / [ID link] / N/A  
-> **Open issue:** none / [jelaskan]  
+> **DAILY EDITORIAL PACKAGE — [TANGGAL]**
+> **Carousel topic:** [judul]
+> **Mengapa dipilih:** [satu kalimat]
+> **Audience:** [audience]
+> **Canva:** [link]
+> **Final export:** [link/folder]
+> **Caption:** [link/text]
+> **Sources/claim sheet:** [link]
+> **Video:** [EN link] / [ID link] / N/A
+> **Open issue:** none / [jelaskan]
 > **Requested action:** APPROVE / REVISE / REJECT
 
 Jangan mengirim draft melalui banyak chat tanpa satu paket final.
 
 Contoh yang sudah diisi:
 
-> **DAILY EDITORIAL PACKAGE — 27 AUG 2026**  
-> **Carousel topic:** What Bali Villa Owners Must Verify Now  
-> **Mengapa dipilih:** ada perkembangan resmi baru, konsekuensinya konkret, dan audiens dapat mengambil tindakan hari ini  
-> **Audiens:** villa owners dan hospitality operators  
-> **Canva:** [satu link editable]  
-> **Final export:** [satu folder versi v03]  
-> **Caption:** `caption_v03.txt`  
-> **Sources/claim sheet:** `sources_v03.md` — LEGAL CHECK PASS  
-> **Video:** `master_social_en_v02.mp4` / `master_tiktok_id_v02.mp4`  
-> **Open issue:** none  
+> **DAILY EDITORIAL PACKAGE — 27 AUG 2026**
+> **Carousel topic:** What Bali Villa Owners Must Verify Now
+> **Mengapa dipilih:** ada perkembangan resmi baru, konsekuensinya konkret, dan audiens dapat mengambil tindakan hari ini
+> **Audiens:** villa owners dan hospitality operators
+> **Canva:** [satu link editable]
+> **Final export:** [satu folder versi v03]
+> **Caption:** `caption_v03.txt`
+> **Sources/claim sheet:** `sources_v03.md` — LEGAL CHECK PASS
+> **Video:** `master_social_en_v02.mp4` / `master_tiktok_id_v02.mp4`
+> **Open issue:** none
 > **Requested action:** APPROVE CAROUSEL / APPROVE VIDEO EN / APPROVE VIDEO ID
 
 Setelah approval, file menjadi immutable. Perubahan apa pun membuat versi baru dan memerlukan approval baru.

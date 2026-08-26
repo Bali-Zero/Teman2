@@ -2,9 +2,9 @@
 
 ## Kokpit Harian Bali Zero
 
-**Versi:** 1.0  
-**Tanggal:** 27 Agustus 2026  
-**Zona waktu:** WITA  
+**Versi:** 1.0
+**Tanggal:** 27 Agustus 2026
+**Zona waktu:** WITA
 **Manual lengkap:** `damar-editorial-director-playbook-id.md`
 
 ---
@@ -226,15 +226,15 @@ Referensi resmi: [TikTok AI-generated content](https://support.tiktok.com/id/usi
 
 Agent membuat satu folder versi final. Damar mengirim satu link dan satu pesan:
 
-> **DAILY EDITORIAL PACKAGE — [TANGGAL]**  
-> **Carousel:** [judul]  
-> **Mengapa dipilih:** [satu kalimat]  
-> **Audiens:** [audiens]  
-> **Canva/export:** [link folder]  
-> **Caption:** [file/link]  
-> **Sources:** [file/link] — LEGAL CHECK PASS  
-> **Video:** [EN] / [ID] / DEFERRED / N/A  
-> **Open issue:** none / [jelaskan]  
+> **DAILY EDITORIAL PACKAGE — [TANGGAL]**
+> **Carousel:** [judul]
+> **Mengapa dipilih:** [satu kalimat]
+> **Audiens:** [audiens]
+> **Canva/export:** [link folder]
+> **Caption:** [file/link]
+> **Sources:** [file/link] — LEGAL CHECK PASS
+> **Video:** [EN] / [ID] / DEFERRED / N/A
+> **Open issue:** none / [jelaskan]
 > **Requested action:** APPROVE CAROUSEL / APPROVE VIDEO EN / APPROVE VIDEO ID
 
 Approval berlaku per deliverable. Tanpa `APPROVE` eksplisit, statusnya `WAITING APPROVAL`. Revisi yang tidak sempat melewati QA penuh menjadwalkan ulang publikasi.
