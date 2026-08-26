@@ -1,4 +1,8 @@
-brief_ref: evidence/2026-08/agent-nuzantara-ops-proprioception-finding-count-c1da6fda/brief.yml
+# brief_ref is the LITERAL 'evidence/brief.yml' even though this pack lives in a per-PR
+# directory: harness-floor.yml stages both files FLAT into /tmp/evidence-check/evidence/
+# and lints with --repo-root /tmp/evidence-check, so the real per-PR path does not resolve
+# there. Linting the pack IN PLACE passes and tells you nothing - reproduce the staging.
+brief_ref: evidence/brief.yml
 plan_ref:
   "PR #5010 (agent/nuzantara/ops/proprioception-finding-count-0826) — a proprioception probe line
   reports 1 of N findings as 1, and the corpus guarding the previous fix on that same file has
