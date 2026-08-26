@@ -215,8 +215,49 @@ def test_fallback_regexes_are_byte_identical_to_the_daemon_detectors() -> None:
         # impossible instead of merely unlikely.
         match = _re.search(pattern, text, _re.DOTALL | _re.MULTILINE)
         assert match is not None, f"{label} definition not found"
-        body = "".join(_re.findall(r'r"([^"]*)"', match.group(1)))
-        return body, "re.IGNORECASE" in match.group(1)
+        literal_group = match.group(1)
+        # `r"([^"]*)"` only understands adjacent double-quoted raw-string
+        # literals. That is a real gap, not a hypothetical one (caught in
+        # team-lead review of PR #5028, 2026-08-26, by direct execution
+        # against synthetic drift, not by reasoning about the code): a
+        # same-shape source on both sides can drift and still compare
+        # equal, three separate ways —
+        #   1. either side switches to single-quoted `r'...'`      -> both
+        #      extract to "" and "" == "" passes on real drift.
+        #   2. either side builds the pattern via `"|".join([...])` instead
+        #      of adjacent literals                                -> same
+        #      "" == "" false-pass.
+        #   3. a literal contains an embedded `"` (a raw string CAN carry
+        #      one, `r"a[\"]b"` is valid Python) -> the naive extraction
+        #      TRUNCATES at that quote and returns a non-empty but PARTIAL
+        #      body; any difference placed after the embedded quote is
+        #      invisible to the equality check below.
+        # "assert body is non-empty" alone closes cases 1-2 but leaves 3
+        # open (its body IS non-empty). The fix proves the extraction
+        # consumed the WHOLE literal-argument text, not just SOME of it:
+        # strip every `r"..."` match out of literal_group and demand the
+        # remainder carry no leftover quote character. A single-quoted
+        # literal, a join()-built pattern, or a truncated double-quoted
+        # literal all leave a tell-tale `"`/`'` behind in what's left.
+        literal_re = r'r"([^"]*)"'
+        body = "".join(_re.findall(literal_re, literal_group))
+        assert body, (
+            f"{label}: no r\"...\" literal captured at all — the pattern may "
+            f"have switched quote style (r'...') or moved to a non-literal "
+            f'construction (e.g. "|".join(...)); this extractor only '
+            f'understands adjacent r"..." raw-string concatenation, and a '
+            f"silent empty-vs-empty compare would hide real drift"
+        )
+        remainder = _re.sub(literal_re, "", literal_group)
+        assert '"' not in remainder and "'" not in remainder, (
+            f"{label}: a quote character survives after removing every "
+            f'r"..." literal this extractor found — the extraction is '
+            f"INCOMPLETE (a literal was skipped, or an embedded quote inside "
+            f'one r"..." literal truncated the capture before the literal '
+            f"actually ended), so the compared body is a PARTIAL read, not "
+            f"the whole pattern. residual={remainder!r}"
+        )
+        return body, "re.IGNORECASE" in literal_group
 
     for daemon_name, probe_name in (
         ("_AUTH_STRUCTURED_RE", "AUTH_STRUCTURED_RE"),
