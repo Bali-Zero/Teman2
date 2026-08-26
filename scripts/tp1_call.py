@@ -59,6 +59,24 @@ from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring
 
 TP1_LIVE_SLUGS = frozenset(TP1_SEAT_MODELS.values())
 
+# Empirically confirmed live (2026-08-27, HTTP 400 on the rejected value):
+# the TP1-OAI gateway's `reasoning_effort` field accepts exactly
+# 'none'|'minimal'|'low'|'medium'|'high'|'xhigh' — NOT 'max'. seat_build.sh
+# (PR #5044) validates --effort globally against low|medium|high|xhigh|max,
+# a set shared across all seats, so 'max' is a value this script's CLI must
+# accept without erroring — it just cannot be forwarded to the provider
+# field literally. 'max' in MODEL_ROSTER.md's TP1 effort notes was always an
+# orchestration-routing recommendation ("route the hardest tasks here"), not
+# a claim about the literal API parameter value — this mapping is what makes
+# that distinction operationally real instead of just a docstring caveat.
+EFFORT_TO_REASONING_EFFORT = {
+    "low": "low",
+    "medium": "medium",
+    "high": "high",
+    "xhigh": "xhigh",
+    "max": "xhigh",  # clamp: the provider's ceiling, not a distinct level
+}
+
 
 def build_body(model: str, prompt: str, max_tokens: int, effort: Optional[str]) -> dict:
     body: dict = {
@@ -67,7 +85,7 @@ def build_body(model: str, prompt: str, max_tokens: int, effort: Optional[str]) 
         "messages": [{"role": "user", "content": prompt}],
     }
     if effort:
-        body["reasoning_effort"] = effort
+        body["reasoning_effort"] = EFFORT_TO_REASONING_EFFORT.get(effort, effort)
     return body
 
 
@@ -118,9 +136,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--task-file", help="read task text from this file")
     ap.add_argument(
         "--effort",
-        choices=["low", "medium", "high", "xhigh"],
+        choices=["low", "medium", "high", "xhigh", "max"],
         default=None,
-        help="opt-in reasoning_effort passthrough — unverified provider behavior, see module docstring",
+        help="opt-in reasoning_effort passthrough to the TP1 gateway, mapped through "
+        "EFFORT_TO_REASONING_EFFORT ('max' clamps to 'xhigh' — the gateway rejects 'max' "
+        "literally with HTTP 400, confirmed live 2026-08-27). Accepted here so seat_build.sh's "
+        "global --effort set (low|medium|high|xhigh|max, PR #5044) never breaks this seat.",
     )
     ap.add_argument("--max-tokens", type=int, default=4096)
     ap.add_argument("--timeout", type=float, default=180.0)

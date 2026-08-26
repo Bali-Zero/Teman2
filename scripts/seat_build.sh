@@ -136,7 +136,15 @@ main() {
         codex) binary_name="codex"; MODEL="codex-default" ;;
         kimi) binary_name="kimi"; MODEL="kimi-code/kimi-for-coding" ;;
         qwen) binary_name="qwen"; MODEL="qwen-default" ;;
-        tp1) binary_name="$(tp1_binary_path)"; MODEL="${TP1_MODEL:-$TP1_DEFAULT_MODEL}" ;;
+        tp1)
+            binary_name="$(tp1_binary_path)"; MODEL="${TP1_MODEL:-$TP1_DEFAULT_MODEL}"
+            # Forward-compatible with PR #5044's tier system (codex/kimi/agy
+            # sol/terra/luna-style tiers): tp1 has no tiers of its own — one
+            # OpenAI-compatible door per model slug — so clear (not just
+            # ignore) a stray --tier the same way qwen's arm does, so the
+            # report never claims a tier tp1 never used.
+            TIER=""
+            ;;
         "") refuse 64 "missing --seat" ;;
         *) refuse 64 "unknown seat: $SEAT" ;;
     esac
