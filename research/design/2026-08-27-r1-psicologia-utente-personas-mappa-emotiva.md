@@ -22,7 +22,7 @@ sources:
   - CSA Research 2020 — Can't Read, Won't Buy (B2C, n=8,709); EF EPI 2025 Indonesia
   - Kivetz, Urminsky & Zheng 2006, JMR — goal-gradient; Nunes & Drèze 2006, JCR — endowed progress
   - BPS Bali 2026-02-02 — 2025 foreign arrivals; Ditjen Imigrasi 2025 stay-permit total; Ditjen Imigrasi visa reclassification press release (June 2025)
-adversarial_review: codex (gpt-5.6-sol xhigh, two passes on the lane inputs) + kimi (K3, one pass on this file) — dispositions in §8
+adversarial_review: kimi-k3
 mandate: Zero 2026-08-27 — design study, no product code, flags OFF, research before opinion, multi-LLM per heavy round, generator≠grader
 lanes: L1 Kimi K3 (web research, 2 independent runs) · L2 Gemini 3.1 Pro via agy (personas, Fogg×trust) · L3 Qwen 3.8 Max via TP1 (emotion map) · local recapture + R2 capture via Sonnet subagents · conductor Opus 5
 ---
@@ -173,7 +173,9 @@ Only findings the two Codex passes could not refute, each with its strongest cit
 | Oracle onshore lane beyond its first nodes | only the offshore lane was driven | one more local run |
 | Official e-Visa form (evisa.imigrasi.go.id) | WAF 400 / NXDOMAIN / TLS timeout | `operator[gui]` browser session or archived capture |
 
-## 8. Adversarial review
+## Adversarial review (§8)
+
+Seats: codex gpt-5.6-sol xhigh (two passes on the lane inputs) + kimi-k3 (one pass on this file — the frontmatter token names this pass); dispositions below.
 
 **Pass 1 — Codex gpt-5.6-sol xhigh on L2 + L3 (27 findings: 10 high, 15 med, 2 low).** Applied 22, rejected 2, open 3. The high findings and their dispositions: the four unsourced L2 numbers («65% via agents», «68% smartphone», «1.36M by May», «Industry Reports») removed or corrected to official figures; B211A vocabulary replaced by B1/C1 + E-codes; every downstream GARUDA moment relabelled hypothesis and given its capture state on the card; personas rebuilt behaviour-first with a status chip on every grounding line; L3's «recall» diagnosis on B3 reframed as a vocabulary (real-world match) failure; risk scores kept but labelled hypotheses in the legend; the felt-trust comparison restricted to captured facts; Hick's law dropped everywhere except the ten-tile screen; Kivetz et al. redated to 2006 and the living-tree inference paired with GDS's counter-evidence. Rejected (kept as labelled hypotheses in the artifact's emotion-map cards — Fogg 2003 and Kurosu & Kashimura on B1, Sweller on B8 — and not cited in this file): source-credibility on the missing logo; cognitive-load / mental-model lenses. Open: abandonment rankings without analytics (true until the Oracle is instrumented); a sourced device split; a taxonomy source for the seven-state legend.
 
