@@ -31,8 +31,18 @@ lanes:
       production rather than reading a predecessor's report)
 
 diff:
-  files: 59
-  net_lines: 17920
+  files: 61
+  net_lines: 18339
+  measured_at: e99d5d5eb
+  note: >-
+    Measured at the commit named above, BEFORE this pack's own edit lands (which moves net_lines by
+    a few lines and leaves the file count unchanged, since pack.yml is already counted). CI supplies
+    the authoritative numstat via --numstat-file and prefers it over this self-declared value, per
+    the linter's ceiling rule — a pack that under-reports its size must not escape the ceiling.
+    Recorded here because the earlier value (59 files) was measured three commits ago and had gone
+    stale. A trap worth naming: reading the enumeration with `> file 2>&1` folds the script's own
+    stderr log line INTO the list and inflates the count by one (62, not 61). Keep the streams
+    separate, and cross-check against `git diff --no-renames --name-only \$(git merge-base ...)`.
 
 pii_scan: clean
 
