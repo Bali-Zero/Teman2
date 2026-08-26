@@ -41,12 +41,24 @@ truth (per that same README) would start reading Claude-Code-only
 orchestration prose as if it were shared doctrine.
 
 This guard therefore protects the real invariant in both directions with
-one structural rule, so it needs no hardcoded Tier-A/Tier-B allowlist to
-stay correct as skills are added or removed: whenever a name exists under
-BOTH trees, `.claude/skills/<name>` must be a symlink whose target
-resolves to exactly `.agents/skills/<name>`. A small pinned regression list
-(today's known-good state) additionally asserts the specific drift/leak
-this turn's investigation was dispatched to prevent stays fixed.
+one structural rule that needs no hardcoded Tier-A/Tier-B allowlist for
+the COPY case: whenever a name exists under BOTH trees,
+`.claude/skills/<name>` must be a symlink whose target resolves to exactly
+`.agents/skills/<name>`. A small pinned regression list (today's
+known-good state) additionally asserts the specific drift/leak this
+turn's investigation was dispatched to prevent stays fixed.
+
+DISCLOSED GAP (Kimi K3 refuter round, 2026-08-27): the structural rule
+only fires when a name exists on both sides, so it cannot see a Tier-B
+skill that gets MOVED — not copied — into `.agents/skills/` (deleted from
+`.claude/skills/` in the same change that adds it under
+`.agents/skills/`). For skills that exist today, `KNOWN_CLAUDE_ONLY_NAMES`
+closes that gap by pinning their names to stay real `.claude`-only
+directories; for a Tier-B skill authored AFTER this file, nothing here
+catches a move into the canonical store. Closing that fully would require
+judging whether new content is tool-agnostic, which a directory-shape
+check cannot do — a known, disclosed limit, not a claim of complete
+coverage.
 """
 from __future__ import annotations
 
@@ -204,11 +216,23 @@ def test_guilt_symlink_replaced_by_real_copy_is_drift(tmp_path: Path) -> None:
 
 
 def test_guilt_symlink_pointing_at_wrong_target_is_drift(tmp_path: Path) -> None:
+    """Must resolve to a REAL, different directory inside the same store —
+    not merely dangle — or this proves nothing beyond the dangling case
+    `test_guilt_symlink_replaced_by_real_copy_is_drift` already covers via
+    a different mechanism (Kimi K3 refuter round, 2026-08-27: the first
+    version of this fixture used `../..`, which — since claude_skills/ and
+    agents_skills/ are direct siblings under tmp_path, same as the
+    innocence fixture's own `..` — escapes tmp_path entirely and points at
+    a nonexistent path, so the violation it caught was "dangling symlink",
+    not "resolves to the wrong real target" as the test name claims)."""
     claude_skills, agents_skills = _make_symlinked_pair(tmp_path, "shared-skill")
     (agents_skills / "decoy").mkdir()
     (agents_skills / "decoy" / "SKILL.md").write_text("# decoy\n")
     (claude_skills / "shared-skill").unlink()
-    (claude_skills / "shared-skill").symlink_to(Path("..") / ".." / "agents_skills" / "decoy", target_is_directory=True)
+    (claude_skills / "shared-skill").symlink_to(Path("..") / "agents_skills" / "decoy", target_is_directory=True)
+    assert (claude_skills / "shared-skill").resolve() == (agents_skills / "decoy").resolve(), (
+        "fixture bug: symlink must resolve to the real decoy dir, not dangle"
+    )
 
     violations = find_canonicity_violations(claude_skills, agents_skills)
     assert len(violations) == 1
@@ -216,6 +240,16 @@ def test_guilt_symlink_pointing_at_wrong_target_is_drift(tmp_path: Path) -> None
 
 
 # ------------------------------------------------------------- real repo
+
+
+def test_real_repo_both_skill_trees_exist() -> None:
+    """`find_canonicity_violations` silently returns `[]` when either tree
+    is missing (Kimi K3 refuter round, 2026-08-27) — a whole-architecture
+    disappearance would otherwise pass `test_real_repo_has_zero_canonicity_violations`
+    vacuously. Make the precondition explicit instead of relying on the
+    pinned-name tests to catch it as a side effect."""
+    assert CLAUDE_SKILLS.is_dir(), f"{CLAUDE_SKILLS} missing"
+    assert AGENTS_SKILLS.is_dir(), f"{AGENTS_SKILLS} missing"
 
 
 def test_real_repo_has_zero_canonicity_violations() -> None:

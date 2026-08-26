@@ -16,17 +16,17 @@ lanes:
 
 diff:
   files: 4
-  net_lines: 310
+  net_lines: 344
   measured_at: 63bfa19e
   note: >-
-    310 = the two functional files (scripts/tests/test_skills_canonical.py 254
-    lines + .github/workflows/check-skills-canonical.yml 56 lines), counted via
-    `wc -l` before this pack's own two files (pack.yml/brief.yml) are added —
-    same convention as the reference pack this shape was copied from. `files: 4`
-    counts all four files this PR adds (test + workflow + pack.yml + brief.yml).
-    measured_at is the merge-base with origin/main at investigation time
-    (`git merge-base HEAD origin/main` in the worktree, before any commit on
-    this branch existed).
+    344 = the two functional files (scripts/tests/test_skills_canonical.py 288
+    lines after the post-refuter fixes + .github/workflows/check-skills-canonical.yml
+    56 lines), counted via `wc -l` before this pack's own two files
+    (pack.yml/brief.yml) are added — same convention as the reference pack this
+    shape was copied from. `files: 4` counts all four files this PR adds (test +
+    workflow + pack.yml + brief.yml). measured_at is the merge-base with
+    origin/main at investigation time (`git merge-base HEAD origin/main` in the
+    worktree, before any commit on this branch existed).
 
 pii_scan: clean
 
@@ -165,6 +165,39 @@ receipts:
     seat: session (Pro, implementer lane)
 
 dissent:
+  - seat: kimi-code/k3 (cross-family refuter)
+    objection: >-
+      Three findings on the diff as first opened. (1) The "wrong target"
+      guilt fixture used `../..` where claude_skills/ and agents_skills/
+      are direct siblings under tmp_path (the innocence fixture's own `..`
+      proves the correct depth) — the symlink dangled outside tmp_path
+      instead of resolving to the `decoy` dir the test built, so the test
+      passed for "dangling symlink" reasons, not "resolves to a real wrong
+      target" as its name claims. (2) The docstring's claim that the
+      structural rule "needs no allowlist to stay correct as skills are
+      added or removed" is overstated: a Tier-B skill MOVED (not copied)
+      into `.agents/skills/` — deleted from `.claude/skills/` in the same
+      change — never appears on both sides, so the structural rule cannot
+      see it; only the pinned KNOWN_CLAUDE_ONLY_NAMES list catches this for
+      skills that exist today, and it goes stale for skills authored later.
+      (3) `find_canonicity_violations` returns `[]` vacuously if either
+      tree is missing entirely, so a whole-architecture disappearance would
+      pass `test_real_repo_has_zero_canonicity_violations` with no real
+      protection (mitigated only as a side effect of the pinned-name
+      tests' own assertions).
+    status: CONFIRMED
+    note: >-
+      (1) and (3) fixed: the wrong-target fixture now uses the correct `..`
+      depth plus a self-checking assertion that would catch this exact
+      class of fixture bug on its own; a new
+      test_real_repo_both_skill_trees_exist makes the existence
+      precondition explicit rather than incidental. (2) disclosed, not
+      fixed: closing it fully would require judging whether new content is
+      tool-agnostic, which a directory-shape check cannot do — the
+      docstring and this pack now say so plainly instead of overclaiming
+      coverage. Re-ran full suite after the fixes: collected 11, 11 passed
+      (was 10 — the new existence test).
+
   - seat: session self-refutation (recorded because the dispatching mandate's own author could not have caught it without re-measuring)
     objection: >-
       The dispatching Q0 mandate's "measured today" claim was not
@@ -184,7 +217,7 @@ dissent:
       this PR.
 
 tests:
-  - "scripts/tests/test_skills_canonical.py — 10 collected, 10 passed, rc=0 (backend-rag venv pytest)."
+  - "scripts/tests/test_skills_canonical.py — 11 collected, 11 passed, rc=0 (backend-rag venv pytest), after the refuter-driven fixture fix + new existence test (was 10/10 pre-refuter)."
 
 static:
   - "actionlint .github/workflows/check-skills-canonical.yml — rc=0, no output."
