@@ -32,7 +32,7 @@ receipts:
     seat: "session (Pro)"
   - claim: "THE CENTRAL RECEIPT — forward halves apply cleanly, in order, on top of the REAL main migration chain (all 170 numbered files from origin/main replayed first), not on an empty database"
     cmd: "createdb visa_full_probe; for f in $(git ls-tree origin/main --name-only .../migrations_v2/ | grep -E '/[0-9]{3}_.*\\.sql$' | sort -V); do git show origin/main:$f | awk '/=== ROLLBACK ===/{exit}{print}' | psql -d visa_full_probe -v ON_ERROR_STOP=1; done; then the same for 293, 294, 295"
-    result: "293 rc=0 · 294 rc=0 · 295 rc=0 — FORWARD PULITO. (The main chain itself reports 43/170 failures on a from-empty replay: migrations_v2 is not a from-scratch schema, its base tables come from the pre-v2 Python migration system. Those failures are pre-existing and unrelated — the prerequisite this slice actually needs, reject_visa_write_substrate_mutation(), IS present after the chain: to_regprocedure -> true.)"
+    result: "293 rc=0 · 294 rc=0 · 295 rc=0 — but SEE THE CORRECTION RECEIPT BELOW: this probe hand-created a stand-in for `visa_oracle_sessions`, so it proved 295 works GIVEN a precondition CI does not have, and it missed the defect that turned all three CI shards red. Superseded by the CI-shaped probe. (The main chain itself reports 43/170 failures on a from-empty replay: migrations_v2 is not a from-scratch schema, its base tables come from the pre-v2 Python migration system. Those failures are pre-existing and unrelated — the prerequisite this slice actually needs, reject_visa_write_substrate_mutation(), IS present after the chain: to_regprocedure -> true.)"
     exit: 0
     ts: "2026-08-26T14:34Z"
     seat: "session (Pro, Postgres 17.8 Homebrew vs production 17.7)"
@@ -114,6 +114,42 @@ receipts:
     exit: 0
     ts: "2026-08-26T14:47Z"
     seat: "session (Pro, read-only production role)"
+  - claim: 'CORRECTION TO THE CENTRAL RECEIPT — the first probe was weaker than this pack presented it, and CI proved it. It hand-created a stand-in for `visa_oracle_sessions` and then verified 295 against that fabricated precondition. All three CI backend shards died at `python -m backend.db.migrate apply-all`, before pytest collected anything: `relation "public.visa_oracle_sessions" does not exist`. The evidence was already in the pack — the word "stand-in" — and the consequence was not drawn: if the probe had to create the table by hand, so does CI.'
+    cmd: "gh run view --job <shard job> --log (run 32980900718, head 4d6da4e39); identical failure line in Shard 1, 2 and 3"
+    result: 'Failed to apply migration 295: SQL execution failed: relation "public.visa_oracle_sessions" does not exist. 293 applied in 9ms and 294 in 12ms — they CREATE their own tables; only 295 assumed one. Root cause: the table is created by the LEGACY Python system (backend/migrations/migration_080a_visa_oracle_sessions.py) and `migration_base.py:66` states the automated loader "only reads db/migrations_v2/*.sql"; it is also not a SQLModel table=True class, so scripts/ci_bootstrap_schema.py misses it too.'
+    exit: 1
+    ts: "2026-08-26T14:44Z"
+    seat: "CI (GitHub Actions) — found what the local probe structurally could not"
+  - claim: "THE REPLACEMENT CENTRAL RECEIPT — 293/294/295 apply cleanly on a CI-SHAPED database: main's full chain replayed and NO hand-made stand-in, with the table's absence asserted before the run rather than assumed"
+    cmd: "createdb visa_ci_shape; replay every numbered migration from origin/main; assert to_regclass('public.visa_oracle_sessions') IS NULL; then apply the three forward halves"
+    result: "precondition check: false (table absent, exactly as in CI) · 293 rc=0 · 294 rc=0 · 295 rc=0 — FORWARD PULITO"
+    exit: 0
+    ts: "2026-08-26T14:57Z"
+    seat: "session (Pro)"
+  - claim: "The table 295 now creates converges on PRODUCTION, not on the legacy file — diffed column-by-column including varchar lengths, nullability and defaults"
+    cmd: "identical information_schema.columns query run against live nuzantara_rag and against visa_ci_shape after the forward apply; `diff` of the two outputs"
+    result: "exactly ONE differing line out of ten: `expires_at ... (now() + '90 days')` on production vs `(now() + '30 days')` on the probe — which is the single change this migration exists to make. Every other column matches on name, type, length, nullability and default."
+    exit: 0
+    ts: "2026-08-26T14:58Z"
+    seat: "session (Pro, read-only production role + local probe)"
+  - claim: "NO DUPLICATE INDEX IS BUILT ON A LIVE TABLE — the trap this fix had to avoid, because production's index names do NOT match the legacy migration's"
+    cmd: "SELECT indexname FROM pg_indexes WHERE tablename='visa_oracle_sessions' — run against production and against the probe, then diffed"
+    result: "identical: idx_vo_sessions_created_at, idx_vo_sessions_session_id, visa_oracle_sessions_pkey. Note the legacy file 080a names them `idx_visa_oracle_sessions_*` — had 295 used THOSE names, IF NOT EXISTS would have matched nothing on production and built a second, duplicate index on a live table."
+    exit: 0
+    ts: "2026-08-26T14:58Z"
+    seat: "session (Pro)"
+  - claim: "The rollback still does NOT drop `visa_oracle_sessions`, deliberately — the table predates this migration in production and a rollback that removed it would destroy live data this file never created"
+    cmd: "apply the three rollback halves in reverse order against visa_ci_shape, then re-check the table and its default"
+    result: "295 rc=0 · 294 rc=0 · 293 rc=0 · table still present (true) · expires_at default back to (now() + '90 days'::interval)"
+    exit: 0
+    ts: "2026-08-26T14:58Z"
+    seat: "session (Pro)"
+  - claim: "The local test reproduction was structurally incapable of catching this, and is recorded so the next session does not mistake it for coverage"
+    cmd: "PYTHONPATH=. pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ backend/tests/db/ against the slice-0 tree"
+    result: "exit 0 — green. The failing step (`migrate apply-all` against a fresh database) is a CI job step, not a pytest test, so no local pytest invocation could ever have reached it. A green local suite said nothing about this defect."
+    exit: 0
+    ts: "2026-08-26T14:52Z"
+    seat: "session (Pro)"
 pii_scan: clean
 pii_note: >-
   The consultant-requests table stores `client_id` and an evaluation reference, not names,
@@ -172,6 +208,19 @@ dissent:
       (to_regclass -> true) with expires_at defaulting to (now() + '90 days'::interval), which is
       exactly the value 080a sets — that is the evidence 080a did run. Retracted because both
       objections were legitimate from a read-only vantage and both are now answered.
+  - seat: "CI (GitHub Actions, tests.yml Backend Shards 1/2/3)"
+    objection: >-
+      Migration 295 could not be applied to a fresh database at all: `relation
+      "public.visa_oracle_sessions" does not exist`, killing the job before pytest
+      collected a test. The pack's central receipt had reported the forward apply as clean.
+    status: CONFIRMED
+    note: >-
+      Confirmed and CURED, not argued away. The receipt was true of the probe and false of the
+      world: the probe fabricated the missing precondition by hand. 295 now creates the table it
+      alters (production-faithful DDL, production's index names) so migrations_v2 owns its
+      existence; re-proven on a CI-shaped database with the table's absence asserted first. This
+      is the pack's own retracted-dissent discipline applied to the strongest claim it made: the
+      first probe was believed because it was green, and green only meant probe and object agreed.
 tests:
   - "No pytest in this slice — it is three .sql files. The three test modules that exercise these
     tables (test_consultant_request_retention.py, test_consultant_assignment_router.py,
