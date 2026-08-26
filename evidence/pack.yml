@@ -1,138 +1,152 @@
 brief_ref: evidence/brief.yml
-plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
-lanes:
-  - lane: wr3-spend-gate-enforce
-    role: build
-    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
-  - lane: wr3-spend-gate-enforce-evidence
-    role: review
-    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
-seat_diversity: not_applicable
-seat_diversity_note: >-
-  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
-  one non-Anthropic) does not fire. Both lanes present here are Anthropic
-  seats by construction (this is a narrow evidence-authoring task, not a
-  cross-family council dispatch); declared rather than left to read as
-  satisfied.
+plan_ref: "the portal tracker reads a table no migration ever created (2026-08-27)"
 diff:
   net_lines: >-
-    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
-    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
-    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
-    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
-    the runtime gate itself is pre-existing, unmodified production code.
+    +459/-6 (net +453) across 4 files, measured at SHA 5b790247b by
+    `git diff --shortstat 10c1a1729 5b790247b`. Base is the MERGE-BASE, so main's own landings are
+    not counted as this PR's. The SHA is the load-bearing part: this line lives inside its own diff,
+    so re-running the command at whatever the head is NOW returns a larger number, and a bare figure
+    with no SHA would be false the moment the next commit lands.
   behaviour_change: >-
-    No runtime behaviour change to any shipped code path. The workflow now also runs
-    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
-    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
-    `_generate_video` helpers the pre-existing tests already covered.
+    New table + trigger (not applied to any running database by this diff). One behaviour change in
+    the reader: a non-Postgres exception in the history query now PROPAGATES where it was previously
+    swallowed, and the two degraded paths now log.
 receipts:
-  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
-    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
-    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
-    exit: 0
-    ts: "2026-08-23T23:05Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
-    exit: 0
-    ts: "2026-08-23T23:07Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
-    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
-    exit: 0
-    ts: "2026-08-23T23:09Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
-    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
-    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
+  - claim: "practice_status_log DOES NOT EXIST in prod, while four surfaces reference it"
+    cmd: "scripts/pg.sh -c 'SELECT count(*) FROM practice_status_log' -> ERROR relation does not exist; then information_schema.columns for that table -> 0 rows; then `git grep -ln practice_status_log origin/main` -> 6 files (router, its test, portal.types.ts, schemas/process.ts, a schemas test, a 2026-03-30 plan)"
     exit: 1
-    ts: "2026-08-23T23:11Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
-    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "NO migration anywhere in the repo creates it — the table was designed, typed end-to-end, and never built"
+    cmd: "grep -rn practice_status_log apps/backend-rag/backend/db/migrations_v2/ apps/backend-rag/backend/migrations/ -> 0 matches (count of matching files: 0)"
+    exit: 1
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The reader swallowed the failure with a bare except, which is why five months passed with nothing red"
+    cmd: "sed -n on portal_process_timeline.py -> `except Exception:` / `# Table may not exist yet — fallback to single-step` / `pass` at lines 96-98"
     exit: 0
-    ts: "2026-08-23T23:13Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "actionlint accepts the modified workflow"
-    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
-    result: "no output (clean)"
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The trigger works on real Postgres: 7 behaviours driven through actual UPDATEs, not inferred from the SQL"
+    cmd: "createdb throwaway; apply 289 (NOTICE: trigger does not exist, skipping — expected on first apply); then INSERT/UPDATE sequence -> after_insert_rows=0; after_change=inquiry->on_process by=<null>; after_noop_update_rows=1 (unchanged); after_same_value_rows=1 (unchanged); null_transition old=<null> new=completed; with_guc by=ops@balizero.com; TOTAL_ROWS=3"
     exit: 0
-    ts: "2026-08-23T23:14Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
-    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
-    result: "exit 0, no output"
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "IS DISTINCT FROM is load-bearing, and the proof is the DELTA between two runs, not a single green"
+    cmd: "sed the migration to `OLD.status <> NEW.status`, apply to a second throwaway db, replay the same two inserts -> MUTANT null_transition_rows=0 (the NULL->completed transition VANISHES) while MUTANT normal_transition_rows=1 (an ordinary transition still logs)"
     exit: 0
-    ts: "2026-08-23T23:14Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
-    cmd: "python3 scripts/check_watcher_coverage.py"
-    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "CORRECTION to the receipt above, found by the test suite and recorded rather than quietly fixed. That mutation ran against a table the session had created ITSELF, without the NOT NULL constraint — a probe demonstrating a difference the real schema under test could not produce"
+    cmd: 'the live-PG test then failed with `null value in column "status" of relation "practices" violates not-null constraint`; re-measured properly on BOTH databases: prod status is_nullable=YES default ''inquiry'' and client_id is_nullable=YES; the migrated test db has status NOT NULL, client_id NOT NULL, and a practice_type column prod does not have'
+    exit: 1
+    ts: "2026-08-27T04:00"
+    seat: "session (m5), on its own earlier claim. IS DISTINCT FROM remains correct and load-bearing FOR PROD, where the NULL path is reachable; the test now branches on the live constraint and asserts the constraint itself in the arm where the case cannot occur"
+  - claim: "A schema probe run to diagnose that failure read a DIFFERENT database than the suite connects to, and reported client_id as nullable while the suite was rejecting NULLs on it"
+    cmd: "asyncpg connect to the guessed default DSN -> current_database()='test', client_id is_nullable=YES; the suite's own error simultaneously said NotNullViolation on client_id. conftest rewrites TEST_DATABASE_URL to a per-worker clone at import time"
     exit: 0
-    ts: "2026-08-23T23:15Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
-    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
-    result: >-
-      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
-      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
-      same position relative to its own HTTP call. Both call sites precede any network code in
-      their respective functions.
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5). Cure: the fixture now asks the catalog THROUGH THE SAME CONNECTION the test uses, so the column list cannot be guessed wrong"
+  - claim: "Three mutations of the migration each turn the live-PG suite RED, each caught by the intended test — the suite constrains the migration, not merely the file's text"
+    cmd: "M1 `AFTER UPDATE OF status` -> `AFTER INSERT OR UPDATE` : rc=1, 3 failed/4 passed, caught by test_insert_alone_writes_no_history + test_rewriting_the_same_status_records_nothing + test_the_actor_guc_is_recorded_when_the_caller_sets_one. M2 drop missing_ok : rc=1, 1 failed/6 passed, caught by test_a_status_change_records_old_and_new. M3 guard -> `IF TRUE` : rc=1, 1 failed/6 passed, caught by test_rewriting_the_same_status_records_nothing. BASELINE restored -> rc=0, 7 passed, git status shows no residual mutation"
     exit: 0
-    ts: "2026-08-23T23:16Z"
-    seat: "session (M5, evidence-pack task)"
+    ts: "2026-08-27T04:0x"
+    seat: "session (m5)"
+  - claim: "The migration number was WRONG on the first attempt and the error came from reading a stale checkout — superscar #1 / W106b, the checkout itself as the lying proxy"
+    cmd: "`ls migrations_v2 | tail -8` in the M5 MAIN checkout (deliberately held hundreds of commits back) showed a max of 278, so the file was written as 279 — which already exists as 279_research_os_contract_core.sql. `ls | sort -n | tail` in the FRESH worktree shows the real max is 288. Renumbered to 289; the pre-commit W41 lint then independently confirmed 171 files with all-unique prefixes"
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The narrowed except changed the meaning of two pre-existing tests, which were repointed rather than left passing for the wrong reason"
+    cmd: 'both raised a bare `Exception("relation practice_status_log does not exist")`, which `except asyncpg.UndefinedTableError` does not catch; repointed to asyncpg.UndefinedTableError -> 8 passed on backend/tests/unit/routers/test_portal_process_timeline.py'
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The migration contract and ROLLBACK-marker suites accept 289"
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/routers/test_portal_process_timeline.py backend/tests/db/ -> 386 passed, 15 skipped; pre-commit W42 lint -> 166 post-cutoff migrations, all have ROLLBACK marker"
+    exit: 0
+    ts: "2026-08-27T04:0x"
+    seat: "session (m5)"
+  - claim: "This diff cannot be taken live from this session: prod mutation is refused here"
+    cmd: "flyctl secrets import --stage / flyctl secrets set --stage / flyctl deploy -> all three refused by the auto-mode classifier. Not routed to a subagent (that would be permission laundering); surfaced to the owner instead"
+    exit: 1
+    ts: "2026-08-26T19:4x"
+    seat: "session (m5)"
+
 pii_scan: clean
+
+lanes:
+  - lane: D1
+    role: build
+    seat: opus-5
+  - lane: D2
+    role: review
+    seat: codex-gpt-5.6-sol
+
 dissent:
-  - seat: "Harness floor recompute (CI, deterministic)"
+  - seat: codex-gpt-5.6-sol
     objection: >-
-      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
-      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
-      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
-      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
-      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
+      BLOCKER — the trigger aborts the caller's UPDATE. `new_status` was declared NOT NULL while
+      PROD's `practices.status` is nullable, so `UPDATE practices SET status = NULL` entered the
+      trigger, violated the constraint, and rolled back the whole transaction — including migration
+      075's trigger effects. This contradicted the migration's own comment, three lines above, that
+      "history must never be able to block the transition it records".
     status: CONFIRMED
-    note: >-
-      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
-      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
-      matching the check. Answered here by supplying both files, never by editing the check
-      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
-      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
-      complied-with).
-  - seat: "session (this evidence-authoring task), against its own first instinct"
+    resolution: >-
+      Reproduced before accepting, on a prod-shaped throwaway database: after `UPDATE ... SET
+      status = NULL`, the row still read `status=inquiry` — the transition was vetoed. `new_status`
+      is now nullable, a convergence ALTER carries that to databases holding an earlier shape, and
+      the live test drives BOTH NULL directions and asserts the UPDATE commits.
+  - seat: codex-gpt-5.6-sol
     objection: >-
-      The mandate offered the PR body's own self-reported mutation-test result (comment out
-      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
-      verbatim without re-running it would have been citing a tool output this turn never
-      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
-      prevent, applied to a prior session's claim rather than to memory.
-    status: RETRACTED
-    note: >-
-      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
-      receipt above) rather than trusting the PR body's report. Result matched: both tests went
-      red with the identical `AssertionError: network path reached`, file restored clean.
-      Retracted because the concern was real but the independent re-run resolved it — the
-      PR body's claim held up under a fresh execution, it was not merely repeated.
-tests:
-  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
-  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
-static:
-  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
-  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
-  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
-notes:
-  - >-
-    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
-    was already committed and pushed by a prior session/task. No production code, no test
-    content, and no workflow logic was authored or edited as part of writing this pack — every
-    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
-    a first-time authoring of the underlying fix.
-  - >-
-    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
-    same `Harness floor recompute` shape first and its own evidence pack documents the identical
-    resolution — supply brief+pack, never edit the gate. That pack (`git show
-    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
-    content is specific to this PR's diff.
+      BLOCKER — the ROLLBACK section is a no-op the runner reports as success. All three DROP
+      statements were commented out, so the runner executes a comments-only string, deletes the
+      version row, and leaves table, function and trigger installed. The accompanying assertion
+      `assert rollback is not None` passes on that string, so the suite could never catch it.
+    status: CONFIRMED
+    resolution: >-
+      Verified via the repo's own `split_migration_sql`: the section returned 165 characters and
+      ZERO executable lines. Statements uncommented; the test now asserts executable statements and
+      names DROP TRIGGER / DROP FUNCTION / DROP TABLE specifically.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      SHOULD-FIX — `DEFAULT NOW()` is TRANSACTION-START time while the reader does
+      `ORDER BY changed_at ASC` and treats the last row as current. Two concurrent transitions on
+      one practice can therefore be recorded in the reverse of their commit order, showing the
+      timeline out of sequence and marking the wrong step current.
+    status: CONFIRMED
+    resolution: "Changed to clock_timestamp() in both the CREATE and a convergence ALTER."
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      SHOULD-FIX — the NULL test does not constrain what it names. On a database where the column
+      is NOT NULL it always took the `pytest.raises` arm and returned, so the trigger was never
+      driven with `OLD.status IS NULL`; replacing IS DISTINCT FROM with `<>` would leave it green.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed by mutation, not by agreement. The test now makes the database prod-shaped inside
+      its own transaction (`ALTER TABLE ... DROP NOT NULL`, transactional in Postgres, undone by the
+      rollback) instead of branching, and the `<>` mutation is now KILLED by that test.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      SHOULD-FIX — the test named "..._is_logged_not_swallowed" asserts `len(steps) == 1`, i.e. it
+      asserts the swallowing. `asyncpg.PostgresError` also covers QueryCanceledError and
+      UndefinedColumnError, so a timeout or a schema drift still renders as a synthetic one-step 200.
+    status: CONFIRMED
+    resolution: >-
+      The name overclaimed and is corrected to `..._still_degrades_but_is_no_longer_SILENT`. The
+      degradation is deliberate and unchanged — a client asking about their own practice should not
+      get a 500 because history is unavailable — and the docstring now names the classes that share
+      that path. Surfacing any of them to the client is a product decision, not made here.
+  - seat: session (self, on its own mutation battery)
+    objection: >-
+      The mutation battery had a BLIND SPOT the refuter's findings exposed: `CREATE TABLE IF NOT
+      EXISTS` is a no-op against a database that already holds the table, so mutating the CREATE
+      clause changes the FILE without changing the SCHEMA and every executing test stays green.
+      Restoring the NOT NULL blocker and removing the convergence ALTER left the live suite at
+      7 passed — a real defect, invisible to execution.
+    status: CONFIRMED
+    resolution: >-
+      Closed with a deliberately weaker instrument that names its own weakness:
+      `test_the_migration_declares_the_shape_its_execution_cannot_prove` pins both properties in the
+      SQL TEXT. M5 and M6 are now killed by it. Disclosed rather than presented as full coverage —
+      only a fresh database proves these by execution, and the suite does not control that.

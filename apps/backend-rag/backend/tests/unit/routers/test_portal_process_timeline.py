@@ -259,8 +259,23 @@ class TestHistoryFailuresAreNotSpelledAsEmptyHistory:
         assert "289" in joined, "the log line must name the migration that fixes it"
 
     @pytest.mark.asyncio
-    async def test_a_real_db_error_is_logged_not_swallowed(self, caplog) -> None:
-        """A permissions/connection fault is a fault, not an empty history."""
+    async def test_a_real_db_error_still_degrades_but_is_no_longer_SILENT(self, caplog) -> None:
+        """A fault still yields a one-step timeline — it is no longer unlogged.
+
+        The name matters and an earlier one overclaimed: this test was called
+        "..._is_logged_not_swallowed" while asserting `len(steps) == 1`, i.e.
+        asserting the swallowing. An adversarial review caught the mismatch.
+
+        The DEGRADATION is deliberate and unchanged: a client asking about their
+        own practice should not get a 500 because history is unavailable. What
+        changed is only that the fault is now on the record at ERROR with a
+        traceback, instead of vanishing into `except Exception: pass`. Note the
+        scope this leaves: `asyncpg.PostgresError` also covers a query timeout
+        and a schema drift (`QueryCanceledError`, `UndefinedColumnError`), and
+        each of those likewise renders as a one-step timeline. Logged, not
+        surfaced. Turning any of them into a client-visible failure is a
+        product decision, not a bug fix, and is not made here.
+        """
         mock_conn = AsyncMock()
         mock_conn.fetchrow.return_value = _practice_row()
         mock_conn.fetch.side_effect = asyncpg.InsufficientPrivilegeError(

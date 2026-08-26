@@ -10,12 +10,17 @@ reproduce exactly that failure mode one level up — an artifact that looks
 correct and was never run. So this file runs the DDL and then drives the
 trigger through real UPDATEs.
 
-The migration is idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE
-FUNCTION`, `DROP TRIGGER IF EXISTS`), so applying it here is safe whether or
-not the test database has already seen it. That is deliberate: the obvious
-alternative — skipping when the table is absent — would make this test vacuous
-on precisely the databases where 289 has not landed, which are the only ones
-where it matters.
+The migration converges rather than merely creating: `CREATE TABLE IF NOT
+EXISTS` silently accepts a pre-existing table of a DIFFERENT shape, so 289
+follows it with explicit ALTERs. This is not theory -- an earlier draft of
+this file claimed to be "safe whether or not the test database has already
+seen it" and that claim was false: a database holding the draft's
+`new_status NOT NULL` kept failing this suite after the CREATE was corrected,
+because the CREATE never ran.
+
+Applying it here rather than skipping is deliberate: skipping when the table
+is absent would make this test vacuous on precisely the databases where 289
+has not landed, which are the only ones where it matters.
 """
 
 from __future__ import annotations
@@ -45,6 +50,60 @@ def test_the_migration_file_exists_and_declares_a_rollback() -> None:
     forward, rollback = split_migration_sql(MIGRATION.read_text())
     assert "practice_status_log" in forward
     assert rollback is not None, "migration runner requires the ROLLBACK marker"
+
+    # `is not None` alone is VACUOUS and shipped a real defect: an earlier draft
+    # had all three DROP statements commented out, so the runner executed a
+    # comments-only string, called the rollback a success, and dropped the
+    # version row while the objects stayed installed. Assert EXECUTABLE
+    # statements, not the marker's presence.
+    executable = [
+        line for line in rollback.splitlines() if line.strip() and not line.strip().startswith("--")
+    ]
+    assert executable, "the ROLLBACK section contains no executable statement"
+    joined = " ".join(executable).upper()
+    assert "DROP TRIGGER" in joined
+    assert "DROP FUNCTION" in joined
+    assert "DROP TABLE" in joined
+
+
+def test_the_migration_declares_the_shape_its_execution_cannot_prove() -> None:
+    """Source-level guard for the two properties the live suite CANNOT catch.
+
+    This is a deliberately weaker instrument than the executing tests below,
+    and it exists because of a measured blind spot in them. `CREATE TABLE IF
+    NOT EXISTS` is a no-op against a database that already holds the table, so
+    on any such database a mutation of the CREATE clause changes the FILE
+    without changing the SCHEMA — and every executing test stays green.
+
+    Measured, not reasoned: restoring `new_status NOT NULL` (the defect that
+    aborted the caller's UPDATE) and removing the convergence ALTER left the
+    live suite at 7 passed. The mutation was real in the SQL and invisible to
+    execution. Only a fresh database would have caught it, and the suite does
+    not control whether the database is fresh.
+
+    So the two properties are pinned in the TEXT as well. If this ever feels
+    redundant with the executing tests, it is not: they cover the same claim on
+    databases where the table does not yet exist, and only this one covers it
+    where it does.
+    """
+    sql = MIGRATION.read_text()
+
+    # new_status must be nullable: prod's practices.status is nullable, so a
+    # transition TO NULL must be expressible or the trigger aborts the UPDATE.
+    assert "new_status  VARCHAR(64) NOT NULL" not in sql, (
+        "new_status must be NULLABLE — a NOT NULL here makes the trigger abort "
+        "any UPDATE that sets practices.status to NULL"
+    )
+    assert "ALTER COLUMN new_status DROP NOT NULL" in sql, (
+        "the convergence ALTER is required: CREATE TABLE IF NOT EXISTS will not "
+        "fix a database that already holds an earlier shape"
+    )
+
+    # changed_at must be statement time, not transaction-start time, or two
+    # concurrent transitions can be recorded out of commit order.
+    assert "DEFAULT clock_timestamp()" in sql
+    assert "DEFAULT NOW()" not in sql.upper().replace("CLOCK_TIMESTAMP()", "")
+    assert "ALTER COLUMN changed_at SET DEFAULT clock_timestamp()" in sql
 
 
 @pytest.fixture
@@ -164,23 +223,21 @@ class TestTheTriggerRecordsExactlyTheStatusTransitions:
         the case is unreachable, and naming it keeps this test from being
         quietly vacuous on exactly the databases where it cannot run.
         """
-        nullable = await conn.fetchval(
-            """
-            SELECT is_nullable = 'YES'
-              FROM information_schema.columns
-             WHERE table_name = 'practices' AND column_name = 'status'
-            """
-        )
-
         tx = conn.transaction()
         await tx.start()
         try:
-            if not nullable:
-                # Innocence arm: the case is impossible here, and this asserts
-                # the constraint that makes it impossible rather than skipping.
-                with pytest.raises(asyncpg.NotNullViolationError):
-                    await _one_practice(conn, None)
-                return
+            # Make this database PROD-SHAPED for the duration of the
+            # transaction. An earlier draft branched instead: where the local
+            # column was NOT NULL it asserted the constraint and returned, so
+            # the trigger was NEVER driven with OLD.status IS NULL — and an
+            # adversarial review pointed out the consequence, which the
+            # mutation battery then confirmed: swapping IS DISTINCT FROM for
+            # `<>` left that test passing. A test whose subject is unreachable
+            # is not innocence, it is absence.
+            #
+            # DDL is transactional in Postgres, so this constraint change is
+            # undone by the rollback below along with the rows.
+            await conn.execute("ALTER TABLE practices ALTER COLUMN status DROP NOT NULL")
 
             pid = await _one_practice(conn, None)
             await conn.execute("UPDATE practices SET status = 'completed' WHERE id = $1", pid)
@@ -191,6 +248,25 @@ class TestTheTriggerRecordsExactlyTheStatusTransitions:
             assert row is not None, "a NULL -> value transition must be recorded"
             assert row["old_status"] is None
             assert row["new_status"] == "completed"
+
+            # The OTHER direction, and the one that aborted the caller's UPDATE
+            # until new_status was made nullable: writing NULL over a value.
+            # Measured before the fix on a prod-shaped database, the practice
+            # row stayed at 'completed' — the trigger vetoed the transition it
+            # exists to record.
+            await conn.execute("UPDATE practices SET status = NULL WHERE id = $1", pid)
+            live = await conn.fetchval("SELECT status FROM practices WHERE id = $1", pid)
+            assert live is None, (
+                "the UPDATE to NULL must COMMIT — the history table must never "
+                "be able to abort the transition it records"
+            )
+            back = await conn.fetchrow(
+                "SELECT old_status, new_status FROM practice_status_log "
+                "WHERE practice_id = $1 ORDER BY id DESC LIMIT 1",
+                pid,
+            )
+            assert back["old_status"] == "completed"
+            assert back["new_status"] is None
         finally:
             await tx.rollback()
 

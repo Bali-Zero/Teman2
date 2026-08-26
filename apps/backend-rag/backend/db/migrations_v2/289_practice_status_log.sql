@@ -34,10 +34,35 @@ CREATE TABLE IF NOT EXISTS practice_status_log (
     id          BIGSERIAL PRIMARY KEY,
     practice_id INTEGER     NOT NULL REFERENCES practices(id) ON DELETE CASCADE,
     old_status  VARCHAR(64),
-    new_status  VARCHAR(64) NOT NULL,
-    changed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- NULLABLE, deliberately, and this was a real defect caught by an
+    -- adversarial review before merge: it was `NOT NULL`, and since PROD's
+    -- practices.status is nullable, `UPDATE practices SET status = NULL`
+    -- entered the trigger, violated that constraint, and ABORTED THE CALLER'S
+    -- UPDATE -- measured, the row stayed at its old value. The history table
+    -- vetoed the transition it exists to observe, which is precisely what the
+    -- comment on current_setting below forbids. A history row must be able to
+    -- express whatever the source column can hold.
+    new_status  VARCHAR(64),
+    -- clock_timestamp(), NOT now(): now() returns TRANSACTION START time, so
+    -- two concurrent transitions on the same practice can be recorded in the
+    -- reverse of the order they committed, and the reader's ORDER BY
+    -- changed_at ASC would then show the timeline out of sequence -- and pick
+    -- the wrong row as current, since it treats the last row as current.
+    changed_at  TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     changed_by  TEXT
 );
+
+-- CONVERGENCE, not decoration. `CREATE TABLE IF NOT EXISTS` silently ACCEPTS a
+-- pre-existing table whose shape differs -- so on any database that already
+-- holds an earlier draft of this table, the CREATE above is a no-op and the
+-- column keeps its old constraint. That is not hypothetical: it happened during
+-- this migration's own development, where a database carrying the draft's
+-- `new_status NOT NULL` kept aborting the caller's UPDATE even after the CREATE
+-- was fixed, because the CREATE never ran. These ALTERs make the file converge
+-- to the intended shape whatever the database started from, which is also what
+-- makes it honestly idempotent rather than idempotent-only-for-creation.
+ALTER TABLE practice_status_log ALTER COLUMN new_status DROP NOT NULL;
+ALTER TABLE practice_status_log ALTER COLUMN changed_at SET DEFAULT clock_timestamp();
 
 -- The reader's only access path: WHERE practice_id = $1 ORDER BY changed_at ASC.
 CREATE INDEX IF NOT EXISTS idx_practice_status_log_practice_at
@@ -86,6 +111,11 @@ CREATE TRIGGER trg_practice_status_log
     EXECUTE FUNCTION log_practice_status_change();
 
 -- === ROLLBACK ===
--- DROP TRIGGER IF EXISTS trg_practice_status_log ON practices;
--- DROP FUNCTION IF EXISTS log_practice_status_change();
--- DROP TABLE IF EXISTS practice_status_log;
+-- These statements are EXECUTABLE on purpose. An earlier draft had all three
+-- commented out: the runner then executed a comments-only string, reported the
+-- rollback as successful, and dropped the version row while table, function and
+-- trigger stayed installed. Caught by an adversarial review, not by the suite,
+-- whose `assert rollback is not None` passed on that string too.
+DROP TRIGGER IF EXISTS trg_practice_status_log ON practices;
+DROP FUNCTION IF EXISTS log_practice_status_change();
+DROP TABLE IF EXISTS practice_status_log;
