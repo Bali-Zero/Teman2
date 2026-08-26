@@ -543,3 +543,63 @@ alone. Where a number is an estimate (the mailbox's ~6M-token/48h re-read tax, t
 shell calls), the source table already says so. The three corrected numbers this document exists to
 prevent from re-circulating: **live worktrees 33/35 → 4**, **evidence packs on main 1/170 → 13**,
 **the ledger's 81.2% is the combined figure, not `tech_debt_overdue`'s 52.4%.**
+
+---
+
+## Adversarial review
+
+Kimi K3 reviewed the full PR diff (this document, the mandate, the `AMENDMENTS.md` entry, and the
+`ASSEMBLY-LINE.md` edit) for claims stated as measured that are actually inferred, numbers that
+disagree between sections, and any PII or credential reference — one round, cross-family from this
+document's own author (Opus 5).
+
+**Findings fixed (real, confirmed against source):**
+- The dispatch-burst section (§9) explained a `≤3`-concurrency rule as caused by "pty exhaustion"
+  one paragraph after stating the pty pool was 94% free — a direct self-contradiction. Reworded to
+  keep the race framing (concurrent allocation collision) consistent with the measurement throughout,
+  and the "hooks fail open per the official docs" claim is now explicitly marked as relayed from a
+  blind seat, not independently checked against Anthropic's documentation.
+- Two different ordinals for "which gate number the mandate itself would be" (MANDATE's "twenty-second
+  gate" vs. the AMENDMENTS entry's "23rd theater gate") — neither was derived from anything measured.
+  Both now read as "one more addition to the same 22-gate pile," tying the language to the one number
+  that is actually grounded (the 22 tricks the three refuters reviewed), rather than inventing an
+  increment.
+- The throughput table's "Commit type" row is computed on 170 (merged PRs) while the adjacent rows
+  use 119 (commits on main) — a mixed denominator inside one table, the exact failure class §1
+  already warns against for the ledger. Relabeled and annotated explicitly.
+- Two sums in the source ground-reader data do not close: per-machine PRs (166) vs. the throughput
+  total (170); dispatch-by-model (777, or 882 as a stated denominator) vs. the per-machine dispatch
+  total (845). Neither is resolvable from what this capture has access to — flagged in place rather
+  than silently reconciled or hidden.
+- The evidence-pack rows switched from a 13-pack (in-window) denominator to a 20-pack (all-time)
+  denominator without saying so at the table; now labeled at each row.
+- MANDATE §5 dropped the "of M5's own traffic" qualifier from the Fable-5 usage figure, changing its
+  reading against the fleet-wide table; restored.
+- "`Workflow` tool uses: 0 genuine uses fleet-wide — this retrospective is the only one" read as
+  self-contradictory (0 vs. 1); reworded to "0 genuine *production* uses — the only invocation on
+  record is this retrospective's own run, which does not count as one."
+- A stray cross-reference (the blind seats' twelve new tricks live in §4, not §6) and an ambiguous
+  `scripts/jules_dispatch.py new (exists)` phrase (read as new-vs-existing) were both corrected.
+
+**Raised but not changed, deliberately:**
+- Kimi noted "11 `SKILL.md` files diverged" (§4) sits next to Q0's "port the 9 newest skills' deltas"
+  without an explicit reconciliation. Left as-is — both numbers are the plan's own, and the plausible
+  reading (11 diverged, 9 need urgent porting) is not something this capture can verify further
+  without re-querying the blind-seat pass.
+- Three of the newly-adopted tricks (X4, X3+, P-EXP) appear in §3/§4's tables but not in any Day-band
+  of §8 or any lane of the mandate's YAML. This is a real gap by the document's own standard (a rule
+  with no enforcer is prose) — left open rather than papered over with an invented landing spot; it
+  belongs in `pkg2-4`'s eventual staffing, not in tonight's capture.
+- "TP1: 7 live models, zero doors" sits next to 39 measured `glm` shell calls and an existing
+  `glm-5.2-v1.json` route file. Read charitably, "door" means wired into `seat_build.sh`/
+  `ai-dispatch.sh`'s dispatch path specifically, which glm's ad-hoc calls did not go through — but
+  this capture did not re-verify that distinction against the dispatcher source, so it stands as the
+  plan's own framing, not independently confirmed.
+- R2's target ("sol ≤30% of codex calls") has no stated current-day baseline in a table whose header
+  promises "today → measured target" for every other row — a real gap, left for whoever staffs that
+  lane to measure at dispatch time rather than backfilled here with a number this capture cannot
+  re-derive.
+
+**PII / credentials**: none found. No secrets, tokens, client names, emails, or phone numbers in
+either file. Local machine-username paths and session UUIDs appear in citations (matching existing
+repo convention for research captures) — not credentials, not client data.
