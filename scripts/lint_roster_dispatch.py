@@ -25,11 +25,14 @@ why each rule exists:
   1. `claude-*`                       -> the `claude` CLI (any alias resolves).
   2. one of the 7 live TP1 text slugs -> scripts/review_routes/<id>-v1.json
                                           must exist on disk (mechanical).
-  3. `sol` / `terra` / `luna`         -> NO automatic door: MODEL_ROSTER.md's own
-                                          OpenAI section says these slugs "went
-                                          DEAD 2026-07-21" — a row for one of
-                                          them must self-declare UNREACHABLE
-                                          rather than be silently re-legitimized.
+  3. `sol` / `terra` / `luna`         -> the codex CLI via PR #5044's `--seat
+                                          codex --tier <id>` (-> `-m
+                                          gpt-5.6-<id>`). The BARE `-m <id>`
+                                          slug went dead 2026-07-21 (MODEL_
+                                          ROSTER.md's OpenAI section) but the
+                                          versioned door is live — verified
+                                          2026-08-27 (see MODEL_ROSTER.md's
+                                          row-level evidence per slug).
   4. `$imagegen`                      -> the `codex` CLI ($imagegen shortcut).
   5. an id containing "gemini"        -> the `agy` CLI.
   6. `k3` or an id starting `kimi-`   -> the `kimi` CLI.
@@ -68,14 +71,18 @@ from arsenal_probe import TP1_SEAT_MODELS  # noqa: E402  (single source of truth
 
 TP1_LIVE_SLUGS = frozenset(TP1_SEAT_MODELS.values())
 
-# MODEL_ROSTER.md's OpenAI section, dated: these slugs stopped resolving via
-# `-m` after a 2026-07-21 account rotation. A hand-maintained "known-dead" set
-# is the honest choice here — the alternative (assuming any bare word is
-# reachable because the `codex` SEAT is alive) would silently re-legitimize
-# exactly the claim this script exists to falsify. If a live probe ever proves
-# one of these names again, remove it here in the same PR that removes its
-# UNREACHABLE marker from MODEL_ROSTER.md — the two must move together.
-KNOWN_DEAD_CODEX_SLUGS = frozenset({"sol", "terra", "luna"})
+# MODEL_ROSTER.md's OpenAI section: the BARE `-m sol`/`-m terra`/`-m luna`
+# slugs stopped resolving after a 2026-07-21 account rotation, but the
+# versioned door `-m gpt-5.6-<id>` is live (verified 2026-08-27: PR #5044's
+# own refuter round for sol, plus independent live 1-token probes for all
+# three in this PR — see MODEL_ROSTER.md's row-level evidence). PR #5044
+# ships `seat_build.sh --seat codex --tier sol|terra|luna` -> `-m
+# gpt-5.6-<tier>`, so these roster ids resolve through the SAME `codex` door
+# as `$imagegen` below, one tier level down. A hand-maintained set stays the
+# honest choice over pattern-matching any bare word to the codex seat: if one
+# of these tiers ever goes dead again, remove it here in the same PR that
+# adds its UNREACHABLE marker back to MODEL_ROSTER.md — the two move together.
+CODEX_TIER_SLUGS = frozenset({"sol", "terra", "luna"})
 
 UNREACHABLE_MARKER = "UNREACHABLE"
 
@@ -128,8 +135,8 @@ def resolve_door(
         return "claude CLI alias"
     if model_id in TP1_LIVE_SLUGS:
         return f"scripts/review_routes/{model_id}-v1.json" if tp1_route_exists(model_id) else None
-    if model_id in KNOWN_DEAD_CODEX_SLUGS:
-        return None
+    if model_id in CODEX_TIER_SLUGS:
+        return "codex CLI (--seat codex --tier <id> -> -m gpt-5.6-<id>, PR #5044)"
     if model_id == "$imagegen":
         return "codex CLI ($imagegen)"
     if "gemini" in model_id:

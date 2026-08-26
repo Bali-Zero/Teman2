@@ -72,8 +72,16 @@ def test_ollama_role_value_has_a_door(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
-def test_dead_codex_slug_marked_unreachable_is_clean(tmp_path):
-    fixture = {"roster": roster_row("sol", "Red-team seat. UNREACHABLE (dead 2026-07-21).")}
+def test_codex_tier_slugs_resolve_without_marker(tmp_path):
+    """sol/terra/luna resolve via the codex door (PR #5044's `--seat codex
+    --tier <id>`) and need no UNREACHABLE marker — corrected 2026-08-27: an
+    earlier version of this lint (and of MODEL_ROSTER.md) treated the BARE
+    `-m sol` slug's 2026-07-21 death as proof the versioned `-m gpt-5.6-sol`
+    door was dead too. It was live all along; live 1-token probes of all
+    three tiers in this PR (plus PR #5044's own refuter run for sol) proved
+    it, so this test replaces the old dead-slug fixture rather than keep
+    asserting a defect that no longer exists."""
+    fixture = {"roster": "\n".join([roster_row("sol"), roster_row("terra"), roster_row("luna")])}
     result = run_lint(fixture, tmp_path)
     assert result.returncode == 0, result.stderr
 
@@ -85,14 +93,6 @@ def test_any_doorless_row_marked_unreachable_is_clean(tmp_path):
 
 
 # ---------------------------------------------------------------- guilt
-
-def test_dead_codex_slug_without_marker_is_an_offender(tmp_path):
-    """The exact defect MODEL_ROSTER.md carried before this PR's fix: `sol`
-    documented with strengths and effort notes, no working `-m` door, no
-    honest label saying so."""
-    result = run_lint({"roster": roster_row("sol")}, tmp_path)
-    assert result.returncode == 1
-    assert "`sol`" in result.stderr
 
 
 def test_tp1_slug_without_route_file_is_an_offender(tmp_path):
@@ -110,11 +110,11 @@ def test_unknown_id_without_marker_is_an_offender(tmp_path):
 
 def test_offender_and_clean_row_together_reports_only_the_offender(tmp_path):
     fixture = {
-        "roster": "\n".join([roster_row("claude-sonnet-5"), roster_row("terra")]),
+        "roster": "\n".join([roster_row("claude-sonnet-5"), roster_row("unmapped-model-zzz")]),
     }
     result = run_lint(fixture, tmp_path)
     assert result.returncode == 1
-    assert "`terra`" in result.stderr
+    assert "`unmapped-model-zzz`" in result.stderr
     assert "`claude-sonnet-5`" not in result.stderr
 
 
