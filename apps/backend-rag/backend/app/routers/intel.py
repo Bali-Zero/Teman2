@@ -188,6 +188,12 @@ class PublishToSiteRequest(BaseModel):
     )
 
 
+class WorkspaceNewsPublishRequest(BaseModel):
+    """Explicit authorization carried by the Damar workspace agent."""
+
+    confirmation: Literal["DAMAR_CONFIRMED"]
+
+
 VALID_HOMEPAGE_POSITIONS = {
     "hero_main",
     "hero_2",
@@ -207,7 +213,7 @@ VALID_HOMEPAGE_POSITIONS = {
 
 
 def require_workspace_marketing_key(request: Request) -> None:
-    """Accept only the dedicated GET-only workspace marketing credential."""
+    """Accept only the dedicated, route-scoped workspace credential."""
 
     configured = settings.workspace_marketing_api_key
     provided = request.headers.get("X-Workspace-Marketing-Key", "")
@@ -338,9 +344,7 @@ def _workspace_marketing_article(item: dict[str, Any]) -> dict[str, Any]:
             and not parsed.username
             and not parsed.password
         ):
-            public["source_url"] = urlunsplit(
-                (parsed.scheme, parsed.netloc, parsed.path, "", "")
-            )
+            public["source_url"] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
     enrichment = item.get("enrichment")
     if isinstance(enrichment, dict):
         projectors = {
@@ -389,9 +393,7 @@ async def workspace_marketing_pending_news(limit: int = 10) -> dict[str, Any]:
             and not item.get("published_url")
         )
     ]
-    projected = [
-        _workspace_marketing_summary(item) for item in pending_items[:bounded_limit]
-    ]
+    projected = [_workspace_marketing_summary(item) for item in pending_items[:bounded_limit]]
     return {
         "count": len(projected),
         "items": projected,
@@ -415,6 +417,88 @@ async def workspace_marketing_news_article(item_id: str) -> dict[str, Any]:
     if item.get("status", "pending") != "pending" or item.get("published_url"):
         raise HTTPException(status_code=404, detail="Item not found")
     return _workspace_marketing_article(item)
+
+
+def _workspace_publish_blockers(item: dict[str, Any]) -> list[str]:
+    """Return public editorial requirements that are still missing."""
+
+    blockers: list[str] = []
+    required_text = {
+        "title": 8,
+        "content": 200,
+        "category": 2,
+    }
+    for field, minimum in required_text.items():
+        value = item.get(field)
+        if not isinstance(value, str) or len(value.strip()) < minimum:
+            blockers.append(field)
+
+    source_url = item.get("source_url")
+    try:
+        source = urlsplit(source_url.strip()) if isinstance(source_url, str) else None
+    except ValueError:
+        source = None
+    if (
+        source is None
+        or source.scheme != "https"
+        or not source.hostname
+        or source.username
+        or source.password
+    ):
+        blockers.append("source_url")
+
+    cover_reference = item.get("image_drive_file_id") or item.get("cover_image")
+    if not isinstance(cover_reference, str) or not cover_reference.strip():
+        blockers.append("cover_image")
+    return blockers
+
+
+@router.post(
+    "/api/workspace-marketing/news/{item_id}/publish",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_publish_news(
+    item_id: str,
+    body: WorkspaceNewsPublishRequest,
+) -> dict[str, Any]:
+    """Publish one ready News Room item after Damar explicitly confirms."""
+
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Item not found") from exc
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.get("status", "pending") != "pending" or item.get("published_url"):
+        raise HTTPException(status_code=409, detail="Article is not pending publication")
+    blockers = _workspace_publish_blockers(item)
+    if blockers:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Article is not ready for publication",
+                "missing": blockers,
+            },
+        )
+
+    from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+    result = await publish_staging_item_internal(
+        "news",
+        item_id,
+        actor="workspace-agent:damar",
+        allow_generated_cover=False,
+    )
+    return {
+        "success": result.get("success") is True,
+        "github_published": result.get("github_published") is True,
+        "item_id": item_id,
+        "title": result.get("title"),
+        "published_url": result.get("published_url"),
+        "published_at": result.get("published_at"),
+        "message": result.get("message"),
+    }
 
 
 @router.get("/api/intel/staging/pending")

@@ -99,10 +99,7 @@ def _queue_path() -> Path:
     configured = os.getenv("WR2_QUEUE_PATH", "").strip()
     if configured:
         return Path(configured).expanduser()
-    return (
-        Path.home()
-        / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
-    )
+    return Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 
 
 def _clean_text(value: Any, *, limit: int = MAX_PUBLIC_TEXT) -> str:
@@ -308,7 +305,9 @@ def _ref_code(item_id: str) -> str:
     return f"WR2-{digest[:6].upper()}"
 
 
-def _public_review_item(item: dict[str, Any], *, detail: bool = False) -> dict[str, Any]:
+def _public_review_item(
+    item: dict[str, Any], *, detail: bool = False
+) -> dict[str, Any]:
     item_id = _queue_item_id(item)
     public: dict[str, Any] = {
         "item_id": _clean_text(item_id, limit=200),
@@ -317,9 +316,7 @@ def _public_review_item(item: dict[str, Any], *, detail: bool = False) -> dict[s
         "state": _clean_text(
             item.get("state") or item.get("critic_overall_verdict"), limit=100
         ),
-        "critic_verdict": _clean_text(
-            item.get("critic_overall_verdict"), limit=100
-        ),
+        "critic_verdict": _clean_text(item.get("critic_overall_verdict"), limit=100),
         "slide_count": _bounded_public_int(
             item.get("slide_count") or item.get("intended_slide_count"),
             minimum=0,
@@ -388,7 +385,9 @@ def _operation_path(kind: str, request_key: str) -> Path:
 
 
 def _operation_fingerprint(payload: dict[str, Any]) -> str:
-    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -593,8 +592,7 @@ def _worker_env() -> dict[str, str]:
     allowed = {"HOME", "LANG", "LC_ALL", "PATH", "TMPDIR", "CODEX_HOME"}
     env = {key: value for key, value in os.environ.items() if key in allowed}
     standard_path = (
-        "/opt/homebrew/bin:/Users/nuzantara/.local/bin:"
-        "/usr/local/bin:/usr/bin:/bin"
+        "/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin"
     )
     current_path = env.get("PATH", "")
     env["PATH"] = f"{standard_path}:{current_path}" if current_path else standard_path
@@ -631,9 +629,7 @@ def _safe_flow_result(payload: dict[str, Any]) -> dict[str, Any]:
         "error_kind",
     )
     result = {
-        key: _clean_public_value(payload[key])
-        for key in allowed
-        if key in payload
+        key: _clean_public_value(payload[key]) for key in allowed if key in payload
     }
     result["executed_on"] = "Pro"
     if not bool(result.get("ok", False)):
@@ -662,7 +658,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             "news_room": "available",
             "wr2_queue": "available" if queue.is_file() else "unavailable",
             "sol_model": "gpt-5.6-sol",
-            "publication": "manual_only",
+            "publication": "damar_explicit_request_only",
             "write_actions_armed": _writes_enabled(),
             "forbidden_domains": [
                 "client_pii",
@@ -720,6 +716,95 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
 
     @mcp.tool(
         annotations={
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+    )
+    async def newsroom_publish(
+        item_id: str,
+        request_key: str,
+        confirmation: str,
+    ) -> dict[str, Any]:
+        """Publish one ready News Room article after Damar explicitly confirms."""
+
+        _require_write_confirmation(confirmation)
+        safe_id = _validated_item_id(item_id)
+        safe_request_key = _validated_request_key(request_key)
+        operation_path, operation, created = _claim_operation(
+            "newsroom-publish",
+            safe_request_key,
+            {"item_id": safe_id},
+            {"item_id": safe_id},
+        )
+        if not created:
+            result = operation.get("result")
+            return (
+                result
+                if isinstance(result, dict)
+                else {"ok": False, "status": "pending", "item_id": safe_id}
+            )
+
+        try:
+            payload = await backend_call(
+                f"/api/workspace-marketing/news/{quote(safe_id, safe='')}/publish",
+                method="POST",
+                json={"confirmation": "DAMAR_CONFIRMED"},
+            )
+        except asyncio.CancelledError:
+            operation.update(
+                {
+                    "status": "cancelled",
+                    "result": {
+                        "ok": False,
+                        "status": "cancelled",
+                        "item_id": safe_id,
+                    },
+                }
+            )
+            _write_json_atomic(operation_path, operation)
+            raise
+        except Exception as exc:
+            operation.update(
+                {
+                    "status": "failed",
+                    "result": {
+                        "ok": False,
+                        "status": "failed",
+                        "item_id": safe_id,
+                    },
+                }
+            )
+            _write_json_atomic(operation_path, operation)
+            raise RuntimeError("News Room publication failed") from exc
+
+        published_url = _public_source_url(payload.get("published_url"))
+        ok = (
+            payload.get("success") is True
+            and payload.get("github_published") is True
+            and bool(published_url)
+        )
+        result = {
+            "ok": ok,
+            "status": "published" if ok else "failed",
+            "item_id": safe_id,
+            "title": _clean_text(payload.get("title"), limit=500),
+            "published_url": published_url,
+            "published_at": _clean_text(payload.get("published_at"), limit=80),
+            "message": _clean_text(payload.get("message"), limit=500),
+        }
+        operation.update(
+            {
+                "status": "completed" if ok else "failed",
+                "result": result,
+            }
+        )
+        _write_json_atomic(operation_path, operation)
+        return result
+
+    @mcp.tool(
+        annotations={
             "readOnlyHint": True,
             "destructiveHint": False,
             "idempotentHint": True,
@@ -754,7 +839,9 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         safe_id = _clean_text(item_id, limit=200)
         if not safe_id:
             raise ValueError("WR2 item id is required")
-        matches = [item for item in _load_review_queue() if _queue_item_id(item) == safe_id]
+        matches = [
+            item for item in _load_review_queue() if _queue_item_id(item) == safe_id
+        ]
         if len(matches) != 1:
             raise ValueError("WR2 item id was not found or is ambiguous")
         return _public_review_item(matches[0], detail=True)
@@ -916,9 +1003,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             "publication",
         )
         return {
-            key: _clean_public_value(payload[key])
-            for key in allowed
-            if key in payload
+            key: _clean_public_value(payload[key]) for key in allowed if key in payload
         }
 
     @mcp.tool(
@@ -973,7 +1058,11 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         )
         if existing is not None:
             result = existing.get("result")
-            return result if isinstance(result, dict) else {"ok": False, "status": "pending"}
+            return (
+                result
+                if isinstance(result, dict)
+                else {"ok": False, "status": "pending"}
+            )
         preflight_failure = await _flow_preflight()
         if preflight_failure is not None:
             return preflight_failure
@@ -984,7 +1073,11 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         )
         if not created:
             result = operation.get("result")
-            return result if isinstance(result, dict) else {"ok": False, "status": "pending"}
+            return (
+                result
+                if isinstance(result, dict)
+                else {"ok": False, "status": "pending"}
+            )
         try:
             payload = await _run_flowkit_cli(
                 [
@@ -1073,7 +1166,11 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         )
         if existing is not None:
             result = existing.get("result")
-            return result if isinstance(result, dict) else {"ok": False, "status": "pending"}
+            return (
+                result
+                if isinstance(result, dict)
+                else {"ok": False, "status": "pending"}
+            )
         preflight_failure = await _flow_preflight()
         if preflight_failure is not None:
             return preflight_failure
@@ -1084,7 +1181,11 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         )
         if not created:
             result = operation.get("result")
-            return result if isinstance(result, dict) else {"ok": False, "status": "pending"}
+            return (
+                result
+                if isinstance(result, dict)
+                else {"ok": False, "status": "pending"}
+            )
         args = [
             "generate-video",
             "--prompt",

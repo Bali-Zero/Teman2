@@ -65,7 +65,50 @@ async def test_workspace_backend_rejects_non_read_or_non_newsroom_endpoint() -> 
             method="POST",
         )
     with pytest.raises(RuntimeError, match="endpoint is not allowed"):
+        await workspace_backend.call(
+            "/api/workspace-marketing/news/news_1/publish",
+            method="GET",
+        )
+    with pytest.raises(RuntimeError, match="endpoint is not allowed"):
         await workspace_backend.call("/api/clients", method="GET")
+
+
+@pytest.mark.asyncio
+async def test_workspace_backend_allows_only_scoped_publish_post(monkeypatch) -> None:
+    monkeypatch.setenv("NUZANTARA_WORKSPACE_MARKETING_API_KEY", "workspace-route-key")
+    request = httpx.Request(
+        "POST",
+        "https://nuzantara-rag.fly.dev/api/workspace-marketing/news/news_1/publish",
+    )
+    response = httpx.Response(
+        200,
+        request=request,
+        json={"success": True},
+    )
+
+    class FakeClient:
+        is_closed = False
+
+        def __init__(self) -> None:
+            self.request_kwargs = None
+
+        async def request(self, **kwargs):
+            self.request_kwargs = kwargs
+            return response
+
+    client = FakeClient()
+    monkeypatch.setattr(workspace_backend, "_get_client", lambda: client)
+
+    result = await workspace_backend.call(
+        "/api/workspace-marketing/news/news_1/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED"},
+    )
+
+    assert result == {"success": True}
+    assert client.request_kwargs["method"] == "POST"
+    assert client.request_kwargs["url"].endswith("/news/news_1/publish")
+    assert client.request_kwargs["json"] == {"confirmation": "DAMAR_CONFIRMED"}
 
 
 @pytest.mark.asyncio
@@ -96,7 +139,9 @@ async def test_backend_error_never_echoes_response_body(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_backend_invalid_json_is_normalized_without_body_leak(monkeypatch) -> None:
+async def test_backend_invalid_json_is_normalized_without_body_leak(
+    monkeypatch,
+) -> None:
     monkeypatch.setenv("NUZANTARA_WORKSPACE_MARKETING_API_KEY", "workspace-route-key")
     request = httpx.Request("GET", "https://example.invalid/private")
     response = httpx.Response(

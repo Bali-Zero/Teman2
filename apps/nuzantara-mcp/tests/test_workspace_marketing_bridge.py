@@ -30,6 +30,7 @@ EXPECTED_TOOLS = {
     "workspace_health",
     "newsroom_list_pending",
     "newsroom_get_article",
+    "newsroom_publish",
     "wr2_list_review_queue",
     "wr2_get_review_item",
     "wr2_prepare_with_sol",
@@ -44,7 +45,6 @@ FORBIDDEN_TOOL_TERMS = {
     "crm",
     "document",
     "admin",
-    "publish",
     "email",
     "whatsapp",
     "federation",
@@ -87,9 +87,13 @@ async def test_server_is_exact_fail_closed_allowlist() -> None:
 
     by_name = {tool.name: tool for tool in tools}
     assert by_name["workspace_health"].annotations.readOnlyHint is True
+    assert by_name["newsroom_publish"].annotations.readOnlyHint is False
+    assert by_name["newsroom_publish"].annotations.destructiveHint is True
+    assert by_name["newsroom_publish"].annotations.idempotentHint is True
     assert by_name["wr2_prepare_with_sol"].annotations.readOnlyHint is False
     assert by_name["wr2_prepare_with_sol"].annotations.destructiveHint is True
     assert by_name["flow_generate_video"].annotations.openWorldHint is True
+    assert {name for name in names if "publish" in name} == {"newsroom_publish"}
     assert mcp._mask_error_details is True
 
 
@@ -190,6 +194,97 @@ async def test_newsroom_rejects_dot_segment_item_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_newsroom_publish_requires_confirmation_and_is_replay_safe(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    backend_call = AsyncMock(
+        return_value={
+            "success": True,
+            "github_published": True,
+            "title": "A complete public article",
+            "published_url": "https://balizero.com/business/complete-article?draft=no#live",
+            "published_at": "2026-08-27T01:00:00+00:00",
+            "message": "Published",
+        }
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    with pytest.raises(ValueError, match="explicitly confirm"):
+        await tools["newsroom_publish"]("news_123", "publish-news-0001", "yes")
+
+    result = await tools["newsroom_publish"](
+        "news_123",
+        "publish-news-0001",
+        "SETUJU",
+    )
+    replay = await tools["newsroom_publish"](
+        "news_123",
+        "publish-news-0001",
+        "SETUJU",
+    )
+
+    assert result == replay
+    assert result == {
+        "ok": True,
+        "status": "published",
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "published_url": "https://balizero.com/business/complete-article",
+        "published_at": "2026-08-27T01:00:00+00:00",
+        "message": "Published",
+    }
+    backend_call.assert_awaited_once_with(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED"},
+    )
+
+    with pytest.raises(ValueError, match="different inputs"):
+        await tools["newsroom_publish"](
+            "news_456",
+            "publish-news-0001",
+            "SETUJU",
+        )
+
+
+@pytest.mark.asyncio
+async def test_newsroom_publish_masks_backend_failure(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    backend_call = AsyncMock(
+        side_effect=RuntimeError("client@example.com passport ABC123456 internal body")
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await tools["newsroom_publish"](
+            "news_123",
+            "publish-news-fail-1",
+            "SETUJU",
+        )
+
+    assert str(exc_info.value) == "News Room publication failed"
+    operation = json.loads(
+        marketing._operation_path(
+            "newsroom-publish",
+            "publish-news-fail-1",
+        ).read_text(encoding="utf-8")
+    )
+    assert operation["result"] == {
+        "ok": False,
+        "status": "failed",
+        "item_id": "news_123",
+    }
+    assert "client@example.com" not in json.dumps(operation)
+
+
+@pytest.mark.asyncio
 async def test_wr2_queue_never_returns_local_paths(tmp_path: Path, monkeypatch) -> None:
     queue_path = tmp_path / "human-review-queue.json"
     queue_path.write_text(
@@ -254,6 +349,7 @@ async def test_write_tools_are_fail_closed_until_armed(monkeypatch) -> None:
             "SETUJU",
         )
 
+
 @pytest.mark.asyncio
 async def test_flow_generation_has_fixed_tier_no_paths_and_idempotency(
     tmp_path: Path,
@@ -299,7 +395,9 @@ async def test_flow_generation_has_fixed_tier_no_paths_and_idempotency(
 
 
 @pytest.mark.asyncio
-async def test_flow_health_error_never_returns_raw_path_or_diagnostic(monkeypatch) -> None:
+async def test_flow_health_error_never_returns_raw_path_or_diagnostic(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         marketing,
         "_run_flowkit_cli",

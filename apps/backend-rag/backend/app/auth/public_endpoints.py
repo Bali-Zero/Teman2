@@ -149,6 +149,13 @@ _INFRA = (
         match="template",
         requires_route_auth=True,
     ),
+    PublicEndpoint(
+        "/api/workspace-marketing/news/{item_id}/publish",
+        Category.BRIDGE,
+        "Damar workspace agent News Room publish - dedicated route key enforced in-router",
+        match="template",
+        requires_route_auth=True,
+    ),
     # Intel Lake Wave 1 (2026-05-12, mig 168): unified intel pipeline ingest
     # endpoint. Public to bypass HybridAuthMiddleware — but enforces its own
     # X-Producer-Token header auth in the router (env INTEL_LAKE_PRODUCER_TOKEN).

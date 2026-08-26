@@ -497,9 +497,9 @@ async def submit_from_scraper(
             "detected_at": datetime.now(timezone.utc).isoformat(),
             "live_news_score": _live_news_score,
             "liveness_tier": _liveness_tier,
-            "live_news_reasons": [
-                r.strip()[:200] for r in (submission.live_news_reasons or [])
-            ][:3],
+            "live_news_reasons": [r.strip()[:200] for r in (submission.live_news_reasons or [])][
+                :3
+            ],
             # WR2 enrichment passthrough (scar family #9): carry the full
             # structured enricher object into staging so it survives to
             # wr2_topic_selector via list_pending_items' projection. Default
@@ -704,6 +704,7 @@ async def publish_staging_item(
         body=body,
         request=request,
         actor=(current_user.get("email") or "unknown"),
+        allow_generated_cover=True,
     )
 
 
@@ -711,6 +712,7 @@ async def publish_staging_item_internal(
     intel_type: str,
     item_id: str,
     actor: str,
+    allow_generated_cover: bool = True,
 ) -> dict[str, Any]:
     """Publish path for internal callers that carry their own authorization.
 
@@ -725,6 +727,7 @@ async def publish_staging_item_internal(
         body=None,
         request=None,
         actor=actor,
+        allow_generated_cover=allow_generated_cover,
     )
 
 
@@ -734,6 +737,7 @@ async def _publish_staging_item(
     body: PublishToSiteRequest | None,
     request: Request | None,
     actor: str,
+    allow_generated_cover: bool = True,
 ) -> dict[str, Any]:
     """Publish implementation. Callers are responsible for authorization."""
     # Single funnel-in for both callers (the admin HTTP endpoint and the Telegram
@@ -939,9 +943,15 @@ async def _publish_staging_item(
                         },
                     )
 
-            # Priority 3: Generate on-demand via Fireworks.ai Flux.1 Dev
-            # Triggered at approval time — only for articles without a pre-generated cover
-            if not cover_image_base64:
+            # Priority 3: Generate on-demand via Fireworks.ai Flux.1 Dev.
+            # The Damar workspace route disables this fallback so its static images
+            # remain native-ImageGen assets prepared before publication.
+            if not cover_image_base64 and not allow_generated_cover:
+                raise HTTPException(
+                    status_code=409,
+                    detail="A readable pre-generated cover image is required",
+                )
+            if not cover_image_base64 and allow_generated_cover:
                 fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
                 if fireworks_key:
                     try:
@@ -1096,6 +1106,8 @@ async def _publish_staging_item(
                 # Don't block publication if GitHub fails
                 # Article is already in Qdrant
 
+        except HTTPException:
+            raise
         except ImportError as e:
             logger.warning(
                 "⚠️ Article composer not available - skipping GitHub publish: %s",
