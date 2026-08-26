@@ -212,18 +212,83 @@ def validate_legal_retrieval_scope(retrieval_scope: str) -> str:
     return normalized
 
 
-def build_content_bound_legal_doc_id(
-    metadata: dict[str, Any],
-    source_sha256: str,
-) -> str:
-    """Build a stable legal identity, binding incomplete metadata to source bytes."""
+_INCOMPLETE_IDENTITY_TOKENS = frozenset({"DOC", "UNKNOWN", "0", "NONE"})
+
+# WIZ-1/WIZ-2 (kb-current-live, 2026-08-26): the identity_source values this
+# module records on every ingested chunk's payload. A "hash_fallback" id is
+# safe from collision (build_content_bound_legal_doc_id already binds it to
+# source bytes) but is NOT reachable by a document_id or citation lookup --
+# only by vector similarity. Measured against 12 real regulatory-watcher
+# deltas (research/operations/2026-08-26-wiz1-regulatory-ingest-route.md
+# section 5.2): 7 of the 12 rows land here -- 58% by row, or 64% counting the
+# 11 distinct derived identities. (Corrected 2026-08-26 by cross-family review:
+# this comment and the document both said "roughly two-thirds", which the
+# document's own table refutes -- 5 clean rows of 12 leaves 7, not 8.) That
+# fraction was previously
+# invisible -- the boolean driving it was computed inside
+# build_content_bound_legal_doc_id and discarded once the id string was
+# built. Recording the label lets a census answer "how many documents
+# entered without a citable identity" with a number, not a guess.
+IDENTITY_SOURCE_DECLARED = "declared"
+IDENTITY_SOURCE_EXTRACTED = "extracted"
+IDENTITY_SOURCE_HASH_FALLBACK = "hash_fallback"
+
+
+def _normalize_identity_triple(metadata: dict[str, Any]) -> list[str]:
+    """The three raw identity fields, normalized once so every caller that
+    reasons about the (type_abbrev, number, year) triple -- id-building and
+    citability alike -- agrees on the same normalization."""
     identity = [
         str(metadata.get("type_abbrev") or "DOC"),
         str(metadata.get("number") or "UNKNOWN"),
         str(metadata.get("year") or "UNKNOWN"),
     ]
-    normalized = [part.replace(" ", "_").replace("/", "_") for part in identity]
-    if any(part.upper() in {"DOC", "UNKNOWN", "0", "NONE"} for part in normalized):
+    return [part.replace(" ", "_").replace("/", "_") for part in identity]
+
+
+def identity_triple_is_incomplete(metadata: dict[str, Any]) -> bool:
+    """True when the extracted (type_abbrev, number, year) triple has a
+    missing or placeholder field.
+
+    This is the exact condition `build_content_bound_legal_doc_id` already
+    evaluates to decide whether to bind the identity to source bytes instead
+    of content -- extracted into its own function so a caller can record WHY
+    an id took the hash-fallback shape, rather than only ever seeing the
+    opaque hash suffix in the id string.
+    """
+    return any(
+        part.upper() in _INCOMPLETE_IDENTITY_TOKENS
+        for part in _normalize_identity_triple(metadata)
+    )
+
+
+def classify_identity_source(
+    metadata: dict[str, Any],
+    declared_storage_id: str | None,
+) -> str:
+    """Which of the three shapes produced this document's stored identity.
+
+    A DECLARED id is the curated corpus explicitly stating which instrument a
+    file is (CLAUDE.md/legal_ingestion_service.py comment on `doc_id`) -- it
+    is citable by construction, whatever the extractor found. Everything
+    derived falls to EXTRACTED (a clean, citation-matching triple) or
+    HASH_FALLBACK (the triple was incomplete, so the id is bound to source
+    bytes and cannot be looked up by citation).
+    """
+    if declared_storage_id:
+        return IDENTITY_SOURCE_DECLARED
+    if identity_triple_is_incomplete(metadata):
+        return IDENTITY_SOURCE_HASH_FALLBACK
+    return IDENTITY_SOURCE_EXTRACTED
+
+
+def build_content_bound_legal_doc_id(
+    metadata: dict[str, Any],
+    source_sha256: str,
+) -> str:
+    """Build a stable legal identity, binding incomplete metadata to source bytes."""
+    normalized = _normalize_identity_triple(metadata)
+    if identity_triple_is_incomplete(metadata):
         normalized.append(source_sha256[:16])
     return "_".join(normalized)
 
@@ -490,6 +555,16 @@ class LegalIngestionService:
             # that path earlier.
             await request_vector_db.ensure_keyword_payload_index("document_id")
             await request_vector_db.ensure_keyword_payload_index("metadata.document_id")
+            # WIZ-1/WIZ-2: the flat `identity_source` key written below must be
+            # indexed for the same reason `document_id` is -- on this Qdrant
+            # deployment an unindexed filter key does not return "0 results",
+            # it errors. Without this, a census asking "how many documents
+            # have identity_source=hash_fallback" would fail at query time,
+            # which is exactly the kind of silent-signal failure this change
+            # exists to avoid. No `metadata.identity_source` twin: this field
+            # is new and only ever written flat, never in the legacy nested
+            # payload shape.
+            await request_vector_db.ensure_keyword_payload_index("identity_source")
 
             # Historical instruments must only enter a collection once the
             # executable retrieval guard's payload indexes exist.
@@ -896,6 +971,7 @@ Return ONLY valid JSON, no markdown."""
             # Declaring the identity is how a curated corpus states which
             # instrument a file is; derivation stays the fallback for ingests
             # that declare nothing.
+            identity_source = classify_identity_source(metadata, declared_storage_id)
             current_doc_id = declared_storage_id or build_content_bound_legal_doc_id(
                 metadata, source_sha256
             )
@@ -923,8 +999,24 @@ Return ONLY valid JSON, no markdown."""
                 "legal_number": metadata.get("number"),
                 "legal_year": metadata.get("year"),
                 "legal_topic": metadata.get("topic"),
-                "legal_status": metadata.get("status"),
+                # `legal_status` write RETIRED 2026-08-25 (Lane P,
+                # kb-p2-status-retire-0825) — see
+                # backend/core/legal/constants.py's tombstone comment above
+                # `# Status indicators`. The key is now genuinely absent from
+                # every new point, not present-and-None: `metadata` no longer
+                # carries a "status" entry at all, so there is nothing here to
+                # write. scripts/ci/legal_status_read_lint.py enforces that
+                # nothing reads the field this line used to populate.
                 "retrieval_scope": retrieval_scope,
+                # WIZ-1/WIZ-2 (2026-08-26): declared / extracted / hash_fallback.
+                # "hash_fallback" means this document's identity is safe from
+                # collision but NOT reachable by document_id or citation
+                # lookup -- only by vector similarity. See
+                # classify_identity_source() above for the full rationale.
+                # Flat top-level key (this field never existed in the legacy
+                # nested `{metadata: {...}}` shape, so there is no
+                # `metadata.identity_source` twin to also index).
+                "identity_source": identity_source,
                 # CRITICAL: Keep original keys for LegalChunker context injection
                 "type_abbrev": metadata.get("type_abbrev"),
                 "number": metadata.get("number"),

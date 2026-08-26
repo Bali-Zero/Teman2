@@ -1,0 +1,2 @@
+# Topic scope files land here — one per topic, gated by
+# apps/backend-rag/backend/tests/unit/kb/test_kb_topic_contract.py::check_topic

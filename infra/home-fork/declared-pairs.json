@@ -924,6 +924,18 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.mini-iqoo-radar-relay.plist",
       "repo": "infra/launchagents/com.nuzantara.mini-iqoo-radar-relay.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-kb-probe-history.sh",
+      "repo": "infra/launchagents/wrappers/pro-kb-probe-history.sh",
+      "machines": ["pro"],
+      "_note": "Born with pro.kb_probe_history via scripts/organ_birth.py (2026-08-26). Pro-resident: the probe reads the legal KB from the Pro checkout, so the live pair exists on Pro only — declaring 'all' would make --check chase a pair that is not there on M5/Mini, the exact mistake the fly_pg_tunnel_supervisor entry above already records."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.kb-probe-history.6h.plist",
+      "repo": "infra/launchagents/com.nuzantara.kb-probe-history.6h.plist",
+      "machines": ["pro"],
+      "_note": "The plist twin of the pair above; installed on Pro only."
     }
   ],
   "allow": [

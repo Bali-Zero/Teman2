@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: cba698c30d771a942e0db3142c52eb077582444543cd4b4d1614880cec2ed745
+checksum: a64d11324088872cfa252e95f6cdc536be66f31e8cec32c111323d75b1329997
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2646,5 +2646,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.iqoo_radar_relay.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.kb_probe_history
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/pro-kb-probe-history.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.kb-probe-history.6h
+  severity_on_silence: warning
+  notes: records a kb/ops/probe_history.py snapshot of the legal KB retrieval journeys
+    every 6h so the kb-current-live mandate can point at a scheduled job, not a hand-run
+    probe (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.kb_probe_history.json
     timestamp_field: ts
     status_field: status

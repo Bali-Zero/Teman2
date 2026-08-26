@@ -1,0 +1,264 @@
+# kb/topics/company.yaml — Lane B (company & investment), KB current-live campaign.
+#
+# MANDATE §2/§3 G0: who asks, the questions this topic must never get wrong, primary
+# metric, guardrails, kill criterion. Nothing here blocks build — it is a prepared
+# proposal; Zero's signature is collected at the end (MANDATE §7 row 1).
+#
+# All `instruments` below are MEASURED against production `legal_unified`
+# (physically `legal_unified_hybrid_hybrid`, 84,283 pts / 388 docs) on 2026-08-25 by a
+# full scroll of the collection (not a sample), independently re-read fragment by
+# fragment — see kb/inventory/company.yaml for the point-level measurement and the
+# UU_25_2007 containment proof this topic's opening decision (OWNER-SWITCHBOARD.md
+# decision 2) required before any write.
+
+schema_version: 1
+lane: B
+topic: company
+
+asker: >
+  A foreigner (or their agent) asking Bali Zero how to found, hold, or restructure a
+  PT/PT PMA in Indonesia — capital rules, which KBLI code covers their activity,
+  OSS/BKPM licensing, and whether a numbered instrument they were told about is the
+  real, current law or a mislabeled fragment of something else.
+
+must_never_get_wrong:
+  - "What is the minimum paid-up capital for a PT PMA, and has BKPM 5/2025 changed it?"
+  - "Can a PT PMA be converted into a local PT (PT PMDN), or sold/transferred to new owners?"
+  - "Which KBLI code covers a given business activity (e.g. real estate leasing,
+    short-stay rental, management services), and can it be changed after formation?"
+  - "What form can paid-up share capital take besides cash?"
+  - "What does UU 25/2007 (the Investment Law) actually say about investor rights and
+    obligations — and is what the corpus returns under that number the whole law?"
+  - "Is a cited BKPM/OSS regulation still in force, or has a later one replaced it
+    (e.g. Perka BKPM 13/2017, PP 5/2021 vs PP 28/2025)?"
+  - "Does my existing NIB/business license cover a KBLI activity I never actually
+    started (e.g. licensed for real estate + retail, only opened one)?"
+  - "What is the fast-track licensing threshold (investment value / labour absorption)
+    for large PMA/PMDN projects, and is that rule still current?"
+  - "Which business fields are open vs closed to foreign investment, and what is the
+    default rule when a field is not explicitly listed?"
+  - "Does a merger, consolidation, acquisition or spin-off of a PT require specific
+    protections for minority shareholders, employees and creditors?"
+
+primary_metric: >
+  Of the journeys in kb/journeys/company.yaml, the fraction whose verbatim_phrase is
+  found in RETRIEVED CONTEXT from production `legal_unified` (probe_state: green),
+  measured by kb/ops/probe_retrieval.py --collection legal_unified.
+
+guardrails:
+  - Never let a document restarting its own numbering under a national-statute prefix
+    (UU_/PP_/Permen_) answer as if it carried that standing — UU_13_2017, UU_49_2021
+    and PP_7_2025 below are all live examples of a BKPM/Presidential/BPS regulation
+    stored under the wrong instrument-type prefix.
+  - Never treat UU_25_2007 as a complete statute without flagging that production
+    holds only its Penjelasan (elucidation) — see instrument row and containment
+    proof in kb/inventory/company.yaml. An absent law abstains; this one must not be
+    allowed to answer from commentary as if it were the operative text.
+  - Never report "missing" or "superseded" from a single lookup (MANDATE §4.2) —
+    three distinct methods, or it is not a finding. Every status claim below carries
+    a live peraturan.go.id fetch, not an inherited assumption.
+  - Never merge two ministries' regulations sharing one document_id (Permen_1_2026 is
+    a measured 7+-way collision — PMK tax, Permenimipas immigration, Kemenperin SNI
+    standards, Kemenko Pangan, Kemenpora, health-crisis, KUR credit — none of which is
+    lane B's own instrument; recorded, not chased, not scoped into this topic).
+
+kill_criterion: >
+  If, after G4 build, UU 25/2007 still answers a client's investment-law question from
+  its Penjelasan alone with no signal that the operative articles are absent, this
+  topic does not ship as "current" — an investor being told the law "says" something
+  when the corpus only holds the commentary is a client-harm class of error, not a
+  coverage gap.
+
+owner_decisions_log:
+  - date: "2026-08-25"
+    note: >
+      Decision 2 (OWNER-SWITCHBOARD.md) signed by Zero: re-acquire UU 25/2007 whole
+      under the containment order. This topic file records step 1 of that order
+      (prove what the 65 points contain) with a fragment-by-fragment categorisation —
+      see kb/inventory/company.yaml. Steps 2-3 (retire the fragment, ingest the whole
+      instrument via the production legal-ingestion pipeline) are NOT executed in this
+      pass — they require a production write against `legal_full_ingestion_worker.py`
+      / `legal_ingestion_service.py` with a fetched official PDF, which this session
+      stopped short of to avoid an unreviewed production mutation. Recorded as the
+      explicit next unit of work, not silently deferred.
+
+instruments:
+  # ── Consistent identity, in force, already repaired by an earlier lane ──────────
+  - id: UU_40_2007
+    declared_identity: "Undang-Undang Republik Indonesia Nomor 40 Tahun 2007 tentang Perseroan Terbatas"
+    verified_identity: "Undang-Undang Republik Indonesia Nomor 40 Tahun 2007 tentang Perseroan Terbatas"
+    identity_evidence: >
+      declared_identity == verified_identity (identity_verdict: consistent requires
+      byte-identical strings). Confirmed live via peraturan.go.id (fetched
+      2026-08-25): exact title "Undang-undang Nomor 40 Tahun 2007 Tentang Perseroan
+      Terbatas", enacted 16 August 2007, status "Berlaku" (amended in places by Perpu
+      2/2022 / Cipta Kerja, not repealed). Independently re-measured in production
+      (2026-08-25, full scroll): 379 points, 197,404 normalized chars, 54 distinct
+      Pasal markers (5-149), `section` populated (`batang_tubuh`/`penjelasan`) — this
+      is the repaired shape from the 2026-08-25 parser fixes (#4883/#4888/#4891).
+      Zero points match the §6 damage signal (0/379) — confirmed clean, independently
+      re-checked by this lane, not merely inherited from the repair commits.
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-40-tahun-2007"
+    source_verified: true
+
+  # ── Consistent identity, present, but content is HOLLOW — MANDATE §7 decision 2 ──
+  - id: UU_25_2007
+    declared_identity: "Undang-Undang Republik Indonesia Nomor 25 Tahun 2007 tentang Penanaman Modal"
+    verified_identity: "Undang-Undang Republik Indonesia Nomor 25 Tahun 2007 tentang Penanaman Modal"
+    identity_evidence: >
+      declared_identity == verified_identity — the STORED IDENTITY IS CORRECT, which
+      is what makes this worse than absence. Confirmed live via peraturan.go.id
+      (fetched 2026-08-25): exact title match, enacted 26 April 2007, status
+      "Berlaku" (amended by Perpu 2/2022 / Cipta Kerja). Independently re-measured in
+      production (2026-08-25, full scroll of all 84,283 points, all 65 points read
+      fragment-by-fragment — see kb/inventory/company.yaml for the categorised
+      breakdown): every one of the 65 points is either literal "Cukup jelas."
+      boilerplate (36), other elucidation-register narrative (26, e.g. "UMUM Salah
+      satu tujuan pembentukan pemerintahan negara..."), or administrative/enactment
+      boilerplate (2, e.g. the promulgation signature block, which itself contains
+      the phrase "PENJELASAN ATAS UNDANG UNDANG REPUBLIK INDONESIA NOMOR 25 TAHUN
+      2007 TENTANG PENANAMAN MODAL" — confirming these are the law's own Penjelasan,
+      not a different document). ZERO points contain the operative body (batang
+      tubuh) of the law: no chunk carries a direct normative provision ("Pasal N:
+      Every investor shall..."). The sole "Pasal 33" marker found anywhere in the 65
+      points is a CITATION, not the law's own article — it appears inside elucidation
+      prose citing "Pasal 33 Undang-Undang Dasar Negara Republik Indonesia Tahun
+      1945" (the 1945 Constitution's Article 33 on the economy), not UU 25/2007's
+      own Pasal 33. So the correct count of UU 25/2007's own operative articles
+      present in production is not "1 of ~40" as first measured — it is 0 of ~40.
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-25-tahun-2007"
+    source_verified: true
+
+  # ── Contradictory: a BKPM Head Regulation, filed under a UU (national-statute) id ─
+  - id: UU_13_2017
+    declared_identity: >
+      "UU No 13 Tahun 2017" — the document's own production payload [CONTEXT] header
+      reads verbatim "UU - NO 13 - TAHUN 2017 - TENTANG PEDOMAN DAN TATA CARA
+      PERIZINAN DAN FASILITAS PENANAMAN MODAL".
+    verified_identity: >
+      Peraturan Badan Koordinasi Penanaman Modal (BKPM) Nomor 13 Tahun 2017 tentang
+      Pedoman dan Tata Cara Perizinan dan Fasilitas Penanaman Modal — a BKPM HEAD
+      REGULATION, not a national Undang-Undang. Confirmed live via peraturan.go.id
+      (fetched 2026-08-25): exact title match, enacted 4 December 2017, published
+      Berita Negara 11 Dec 2017 No. 1767 — which matches the production chunk text
+      itself verbatim ("www.peraturan.go.id 2017, No.1767"), independent
+      cross-validation between the live source and the stored content. Status: "Tidak
+      Berlaku" (revoked), superseded by TWO successor regulations: Peraturan BKPM No.
+      5 Tahun 2018 (pioneer-industry tax facility procedure) and Peraturan BKPM No. 6
+      Tahun 2018 (licensing/facility guidelines, the direct successor of this
+      document's own subject matter).
+    identity_verdict: contradictory
+    status: superseded
+    superseded_by: "Peraturan BKPM Nomor 6 Tahun 2018 (licensing/facility guidelines); Peraturan BKPM Nomor 5 Tahun 2018 (pioneer-industry tax facilities)"
+    source_url: "https://peraturan.go.id/id/peraturan-bkpm-no-13-tahun-2017"
+    source_verified: true
+
+  # ── Contradictory: a Perpres amending another Perpres, filed under a UU id ──────
+  - id: UU_49_2021
+    declared_identity: >
+      "UU No 49 Tahun 2021" — no [CONTEXT] header survives on this document's stored
+      points (legacy/partial shape); identity as recorded upstream (MANDATE §6 /
+      OWNER-SWITCHBOARD.md) is "a title announcing an amendment to a Presidential
+      Regulation".
+    verified_identity: >
+      Peraturan Presiden Republik Indonesia Nomor 49 Tahun 2021 tentang Perubahan
+      Atas Peraturan Presiden Nomor 10 Tahun 2021 tentang Bidang Usaha Penanaman
+      Modal — a PRESIDENTIAL REGULATION (Perpres) amending the Positive Investment
+      List regulation, not a national Undang-Undang. Confirmed live via
+      peraturan.go.id (fetched 2026-08-25): exact title match, enacted 24 May 2021,
+      promulgated 25 May 2021, Lembaran Negara 2021 No. 128 — which matches the
+      production chunk text itself verbatim ("2021, No.128", "Ditetapkan di Jakarta
+      pada tanggal 24 Mei 2021 ... Diundangkan ... pada tanggal 25 Mei 2021").
+      Status "Berlaku". Only 4 points in production — plausibly a near-complete
+      short amending regulation (it is a brief amendment, not a full statute), but
+      completeness was not independently verified against an article count within
+      this lane's budget (see kb/inventory/company.yaml).
+    identity_verdict: contradictory
+    status: in_force
+    source_url: "https://peraturan.go.id/id/perpres-no-49-tahun-2021"
+    source_verified: true
+
+  # ── Contradictory: a BPS regulation, filed under a PP (Peraturan Pemerintah) id ──
+  # NEW FINDING, not inherited from the mandate/switchboard — found by this lane.
+  - id: PP_7_2025
+    declared_identity: >
+      "PP No 7 Tahun 2025" — the document's own production payload [CONTEXT] header
+      reads verbatim "PP - NO 7 - TAHUN 2025 - TENTANG KLASIFIKASI BAKU LAPANGAN
+      USAHA INDONESIA".
+    verified_identity: >
+      Peraturan Kepala Badan Pusat Statistik (BPS) Nomor 7 Tahun 2025 tentang
+      Klasifikasi Baku Lapangan Usaha Indonesia (KBLI 2025) — a BPS regulation, NOT a
+      Peraturan Pemerintah. The REAL national "PP Nomor 7 Tahun 2025" is an entirely
+      unrelated regulation on workplace-accident-insurance contribution adjustment
+      for labour-intensive industries (confirmed live at peraturan.go.id/id/pp-no-7-
+      tahun-2025, fetched 2026-08-25: exact different title, "Penyesuaian Iuran
+      Jaminan Kecelakaan Kerja Bagi Perusahaan Industri Padat Karya Tertentu Tahun
+      2025"). Peraturan BPS carries its OWN separate numbering series from the
+      national PP series, so "Nomor 7 Tahun 2025" collides across two entirely
+      different instrument types — this is the same defect class as UU_13_2017 and
+      UU_49_2021 above, one level further: not just the wrong issuing body, but a
+      genuine cross-type number collision. Confirmed live via peraturan.go.id (fetched
+      2026-08-25, https://www.peraturan.go.id/id/peraturan-bps-no-7-tahun-2025):
+      exact title match, enacted 17 December 2025, gazetted 18 December 2025 No.
+      1091, status "Berlaku". Independently cross-checked against production content:
+      the stored points are genuine KBLI code definitions (e.g. "6811 AKTIVITAS REAL
+      ESTAT (BANGUNAN DAN LAHAN) HUNIAN MILIK SENDIRI ATAU SEWA") and "1.559 Kode
+      KBLI 5 Digit" per the BPS announcement — matching this repo's own known-good
+      fact (CLAUDE.md/MEMORY.md: "KBLI=1.559 mai 1.563").
+    identity_verdict: contradictory
+    status: in_force
+    source_url: "https://www.peraturan.go.id/id/peraturan-bps-no-7-tahun-2025"
+    source_verified: true
+
+  # ── Consistent identity, in force, but carries the §6 commentary-as-law defect ──
+  - id: PP_28_2025
+    declared_identity: "Peraturan Pemerintah Republik Indonesia Nomor 28 Tahun 2025 tentang Penyelenggaraan Perizinan Berusaha Berbasis Risiko"
+    verified_identity: "Peraturan Pemerintah Republik Indonesia Nomor 28 Tahun 2025 tentang Penyelenggaraan Perizinan Berusaha Berbasis Risiko"
+    identity_evidence: >
+      declared_identity == verified_identity. Confirmed live via peraturan.go.id
+      (fetched 2026-08-25): exact title match, established 5 June 2025, gazetted
+      Lembaran Negara 2025 No. 98, status "Berlaku", explicitly supersedes PP Nomor 5
+      Tahun 2021 on the same subject (the national OSS-RBA implementing regulation).
+      Production content confirmed consistent (887 points, sector-by-sector
+      administrative-sanction and licensing-procedure text covering all OSS-RBA
+      sectors — telecom, energy, maritime, spatial-planning suitability/KKPR, etc).
+      MANDATE §6 damage signal measured directly by this lane: 32 of 887 points match
+      (section is not `penjelasan` AND text contains "Cukup jelas") — e.g. point
+      027d5a10: "Pasal 282 Cukup jelas Pasal SK No 194488 A". Not independently
+      re-classified by category the way UU_25_2007 was (887 points exceeds this
+      lane's per-instrument budget); flagged incomplete rather than assumed clean.
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/pp-no-28-tahun-2025"
+    source_verified: true
+
+  # ── Contradictory: a BKPM Board regulation, filed under a Permen (ministerial) id ─
+  - id: Permen_5_2025
+    declared_identity: >
+      "Permen No 5 Tahun 2025" — the document's own production payload [CONTEXT]
+      header reads verbatim "Permen - NO 5 - TAHUN 2025 - TENTANG PEDOMAN DAN TATA
+      CARA PENYELENGGARAAN PERIZINAN BERUSAHA BERBASIS RISIKO DAN FASILITAS
+      PENANAMAN MODAL MELALUI SISTEM PERIZINAN BERUSAHA TERINTEGRASI SECARA
+      ELEKTRONIK (ONLINE SINGLE SUBMISSION)".
+    verified_identity: >
+      Peraturan Badan Koordinasi Penanaman Modal (BKPM) Nomor 5 Tahun 2025 tentang
+      Pedoman dan Tata Cara Penyelenggaraan Perizinan Berusaha Berbasis Risiko dan
+      Fasilitas Penanaman Modal melalui OSS — a BKPM Board regulation (Peraturan
+      Badan), not a Peraturan Menteri. Confirmed live via peraturan.go.id (fetched
+      2026-08-25): title matches word-for-word (case/punctuation only), enacted
+      1 October 2025, gazetted 2 October 2025 No. 738, enacted by Rosan Perkasa
+      Roeslani (Menteri Investasi/Kepala BKPM — the same office holds both titles
+      since the 2021 reorganisation, which is plausibly the source of the
+      Permen-vs-PerBKPM prefix confusion in the ingester). Status "Berlaku".
+      Production content confirmed consistent: OSS/KKPR procedural text, company
+      dissolution filing procedure ("akta notaris tentang pembubaran badan usaha"),
+      KBLI code fields on application forms — matches the declared subject exactly.
+      MANDATE §6 damage signal measured directly: 0 of 4,722 points match — clean.
+    identity_verdict: contradictory
+    status: in_force
+    source_url: "https://peraturan.go.id/id/peraturan-bkpm-no-5-tahun-2025"
+    source_verified: true
