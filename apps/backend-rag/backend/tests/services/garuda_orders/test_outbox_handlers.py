@@ -18,6 +18,7 @@ undispatched` goes red — and that is the whole point of writing it.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -38,7 +39,13 @@ from backend.services.garuda_orders.outbox_handlers import (
     PracticeReleaseHandler,
     build_handlers,
 )
-from backend.services.garuda_portal.practice import mint_received_practice
+
+# `_seed_full_case` is imported rather than re-implemented ON PURPOSE. Seeding a
+# usable case means check -> order -> journal -> practice PLUS an active
+# GARUDA_CHECK retention policy, because `garuda_voa_check_results` is
+# fail-closed by trigger. A second copy of that would drift from the first, and
+# this suite would start proving something the adapter suite no longer does.
+from backend.tests.services.garuda_ops.test_adapters_pg import _seed_full_case
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -68,8 +75,22 @@ async def pool():
         async with p.acquire() as conn:
             await conn.execute(
                 "TRUNCATE garuda_practices, garuda_order_outbox, "
-                "garuda_order_journal, garuda_orders CASCADE"
+                "garuda_order_journal, garuda_orders, garuda_voa_check_results "
+                "CASCADE"
             )
+            # The weld tests below write real CRM rows, so this fixture has to
+            # clean the CRM side too. Order matters and the second delete is
+            # not redundant: the first clears what the adapter wrote (every
+            # such row carries a key), the second clears any NULL-key row the
+            # first cannot see, and both must precede the client delete or
+            # `practices_client_id_fkey` rejects it — the same teardown trap
+            # `test_adapters_pg.py`'s fixture documents.
+            await conn.execute("DELETE FROM practices WHERE source_idempotency_key IS NOT NULL")
+            await conn.execute(
+                "DELETE FROM practices WHERE client_id IN "
+                "(SELECT id FROM clients WHERE email LIKE '%@example.invalid')"
+            )
+            await conn.execute("DELETE FROM clients WHERE email LIKE '%@example.invalid'")
         yield p
     finally:
         await p.close()
@@ -489,34 +510,106 @@ def test_the_envelope_event_id_is_the_delivery_not_the_payment() -> None:
     assert env.event_id != env.idempotency_identity.key_digest
 
 
-async def test_a_release_job_creates_the_crm_practice_and_marks_itself_dispatched(pool):
-    """The whole weld, end to end against real Postgres."""
-
-    order_id = await _seed_order(pool)
-    async with pool.acquire() as conn, conn.transaction():
-        event_id = await journal.append_event(
-            conn,
-            event_name="payment.paid",
-            aggregate_type="order",
-            aggregate_id=order_id,
-            transition_id="OP-02",
-            customer_visible=True,
+async def _order_of(pool, practice_id: str) -> str:
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT order_id FROM garuda_practices WHERE practice_id = $1", practice_id
         )
+
+
+async def _enqueue_release(pool, order_id: str, event_id: str) -> int:
+    async with pool.acquire() as conn, conn.transaction():
         await journal.enqueue_outbox(
             conn, order_id=order_id, journal_event_id=event_id, job_type="practice_release"
         )
-        await mint_received_practice(conn, order_id=order_id, paid_journal_event_id=event_id)
+        return await conn.fetchval(
+            "SELECT id FROM garuda_order_outbox "
+            "WHERE journal_event_id = $1 AND job_type = 'practice_release'",
+            event_id,
+        )
 
+
+async def _drain(pool):
     rec = _Recorder()
     sender, client = _sender(rec)
     try:
         async with pool.acquire() as conn:
-            stats = await drain_once(conn, build_handlers(pool, sender))
+            return await drain_once(conn, build_handlers(pool, sender))
     finally:
         await client.aclose()
 
-    assert stats.unroutable == 0, "practice_release must be routed, not reported"
-    assert stats.dispatched == 1
+
+async def test_a_release_job_creates_the_crm_practice_and_marks_itself_dispatched(pool):
+    """The whole weld, end to end against real Postgres, asserted on the ROW.
+
+    The first version of this test asserted `stats.dispatched == 1` and
+    `stats.unroutable == 0` and was wrong twice, which is why it now reads the
+    database instead. `stats.unroutable == 0` is not a property of a healthy
+    weld at all — `mint_received_practice` enqueues its own
+    `practice_received_email`, which has no handler and is CORRECTLY reported
+    unroutable — and counting dispatches says nothing about whether a usable
+    CRM row exists. What matters is the practice: that it is there, that it
+    carries Zero's ruling, and that it is reachable by the person who has to
+    work it.
+    """
+
+    practice_id, event_id = await _seed_full_case(pool)
+    order_id = await _order_of(pool, practice_id)
+    job_id = await _enqueue_release(pool, order_id, event_id)
+
+    await _drain(pool)
+
+    digest = hashlib.sha256(event_id.encode()).hexdigest()
+    async with pool.acquire() as conn:
+        job = await conn.fetchrow(
+            "SELECT dispatched_at, attempts FROM garuda_order_outbox WHERE id = $1", job_id
+        )
+        row = await conn.fetchrow(
+            """
+            SELECT p.status, p.payment_status, p.practice_type_code,
+                   p.actual_price, p.paid_amount, p.assigned_to, p.created_by
+              FROM practices p
+             WHERE p.source_idempotency_key = $1
+            """,
+            digest,
+        )
+
+    assert job["dispatched_at"] is not None, "the release job must be marked delivered"
+    assert row is not None, "no CRM practice was created for a paid order"
+    assert row["status"] == "on_process"
+    assert row["payment_status"] == "paid"
+    assert row["practice_type_code"] == "visa_b1_voa"  # issuance, per the case_type mapping
+    assert int(row["actual_price"]) == 790000
+    assert int(row["paid_amount"]) == 790000
+    assert row["created_by"] is not None
+
+
+async def test_a_second_delivery_of_the_same_payment_creates_no_second_practice(pool):
+    """Idempotency where it actually has to hold: the DATABASE.
+
+    Two deliveries of the same payment event produce the same digest, and the
+    partial UNIQUE index on `practices.source_idempotency_key` — not this
+    handler — is what refuses the duplicate. RED if the digest ever stops being
+    a pure function of the journal event id."""
+
+    practice_id, event_id = await _seed_full_case(pool)
+    order_id = await _order_of(pool, practice_id)
+
+    await _enqueue_release(pool, order_id, event_id)
+    await _drain(pool)
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE garuda_order_outbox SET dispatched_at = NULL, attempts = 0 "
+            "WHERE job_type = 'practice_release'"
+        )
+    await _drain(pool)
+
+    digest = hashlib.sha256(event_id.encode()).hexdigest()
+    async with pool.acquire() as conn:
+        count = await conn.fetchval(
+            "SELECT count(*) FROM practices WHERE source_idempotency_key = $1", digest
+        )
+    assert count == 1
 
 
 async def test_a_release_job_without_its_practice_row_raises_and_stays_undispatched(pool):
@@ -524,36 +617,20 @@ async def test_a_release_job_without_its_practice_row_raises_and_stays_undispatc
     job, so a missing row means something deleted a practice out from under a
     queued release. It must exhaust visibly, never be marked delivered."""
 
-    order_id = await _seed_order(pool)
-    async with pool.acquire() as conn, conn.transaction():
-        event_id = await journal.append_event(
-            conn,
-            event_name="payment.paid",
-            aggregate_type="order",
-            aggregate_id=order_id,
-            transition_id="OP-02",
-            customer_visible=True,
-        )
-        await journal.enqueue_outbox(
-            conn, order_id=order_id, journal_event_id=event_id, job_type="practice_release"
-        )
-        # deliberately NO mint_received_practice
+    practice_id, event_id = await _seed_full_case(pool)
+    order_id = await _order_of(pool, practice_id)
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM garuda_practices WHERE practice_id = $1", practice_id)
+    job_id = await _enqueue_release(pool, order_id, event_id)
 
-    rec = _Recorder()
-    sender, client = _sender(rec)
-    try:
-        async with pool.acquire() as conn:
-            stats = await drain_once(conn, build_handlers(pool, sender))
-            undispatched = await conn.fetchval(
-                "SELECT count(*) FROM garuda_order_outbox "
-                "WHERE job_type = 'practice_release' AND dispatched_at IS NULL"
-            )
-    finally:
-        await client.aclose()
+    stats = await _drain(pool)
 
+    async with pool.acquire() as conn:
+        job = await conn.fetchrow(
+            "SELECT dispatched_at FROM garuda_order_outbox WHERE id = $1", job_id
+        )
     assert stats.failed == 1
-    assert stats.dispatched == 0
-    assert undispatched == 1
+    assert job["dispatched_at"] is None
 
 
 def _job(order_id: str):
