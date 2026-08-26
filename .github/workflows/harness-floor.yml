@@ -405,7 +405,21 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git diff --no-renames --numstat "$MERGE_BASE" "$HEAD_SHA" > /tmp/net-lines-numstat.txt
+          # CORRECTED 2026-08-27 (adversarial review, codex-sol, PR #5049):
+          # this line used to run unguarded under `set -u` only (no `-e`
+          # override needed in THIS repo's default shell — GH Actions'
+          # bash runs -eo pipefail already — but relying on that implicit
+          # default for a security-relevant guarantee is exactly the kind
+          # of thing a future shell/runner change silently breaks). Made
+          # explicit: a failed `git diff` must degrade to available=false,
+          # never fall through to "available=true" over a truncated/empty
+          # file — an empty numstat reads as net_lines=0, a false SMALL
+          # shape signal on what could be the largest diff in the run.
+          if ! git diff --no-renames --numstat "$MERGE_BASE" "$HEAD_SHA" > /tmp/net-lines-numstat.txt; then
+            echo "::notice::git diff --numstat failed (merge-base $MERGE_BASE) — net-lines measurement skipped for this run"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "available=true" >> "$GITHUB_OUTPUT"
           echo "measured net-lines numstat (merge-base $MERGE_BASE):"
           cat /tmp/net-lines-numstat.txt
@@ -586,31 +600,48 @@ jobs:
           esac
 
       # -----------------------------------------------------------------
-      # Step 5a — no brief, and the diff does NOT hit the floor: genuinely
-      # not a harness task. Nothing to publish any more (see redesign note
-      # in the file header) — this job's own `exit 0` here IS the passing
-      # check-run, on whatever SHA it is running against.
+      # Step 5a — no brief, and the diff does NOT hit ANY floor (floor==1,
+      # plain Gear-1 shape): genuinely not a harness task. Nothing to
+      # publish any more (see redesign note in the file header) — this
+      # job's own `exit 0` here IS the passing check-run, on whatever SHA
+      # it is running against.
+      #
+      # CORRECTED 2026-08-27 (adversarial review, codex-sol, PR #5049,
+      # finding 1 HIGH): this condition used to be `floor != '3'`, which
+      # silently passed a floor==2 diff (400-1827 net lines on plain
+      # paths, S1's own size term) straight through as "not a harness
+      # task" — the exact bypass a bare non-hot-zone size-only diff would
+      # take to dodge Gear-2. floor==1 is the ONLY value that means
+      # genuinely-small; floor==2 and floor==3 both mean "the deterministic
+      # floor requires a brief" and both belong in Step 5b below.
       # -----------------------------------------------------------------
-      - name: Not a harness task (no brief, floor < 3 — not applicable)
+      - name: Not a harness task (no brief, floor == 1 — not applicable)
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present != 'true' &&
-          steps.detfloor.outputs.floor != '3'
-        run: echo "::notice::not a harness task (no evidence/brief.yml, floor below Gear-3) — passing"
+          steps.detfloor.outputs.floor == '1'
+        run: echo "::notice::not a harness task (no evidence/brief.yml, floor == 1) — passing"
 
       # -----------------------------------------------------------------
-      # Step 5b — no brief, but the diff DOES hit the deterministic floor
-      # (hot-zone path touched): this is the downgrade-below-floor case.
-      # FAIL — do not default to success just because no brief exists to
-      # compare against (adversarial-review finding 2026-08-10).
+      # Step 5b — no brief, but the diff DOES meet a deterministic floor
+      # >= 2 (hot-zone path and/or blast-radius size, per
+      # evidence_pack_lint.py's compute_floor()): this is the
+      # downgrade-below-floor case. FAIL — do not default to success just
+      # because no brief exists to compare against (adversarial-review
+      # finding 2026-08-10; widened from floor==3-only to floor>=2 on
+      # 2026-08-27, same review as Step 5a above — a floor==2 diff needs
+      # at minimum a brief declaring gear>=2 just as much as a floor==3
+      # diff needs one declaring gear>=3).
       # -----------------------------------------------------------------
-      - name: FAIL — hot-zone diff with no evidence/brief.yml
+      - name: FAIL — floor >= 2 diff with no evidence/brief.yml
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present != 'true' &&
-          steps.detfloor.outputs.floor == '3'
+          steps.detfloor.outputs.floor != '1'
+        env:
+          FLOOR: ${{ steps.detfloor.outputs.floor }}
         run: |
-          echo "::error::this diff meets the deterministic Gear-3 floor (hot-zone path and/or blast-radius size — see evidence_pack_lint.py's compute_floor()) but carries no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack (harness-v2-teman2.md §1/§5), it cannot silently pass as 'not a harness task'"
+          echo "::error::this diff's deterministic floor is $FLOOR (>=2 — hot-zone path and/or blast-radius size, see evidence_pack_lint.py's compute_floor()) but carries no evidence/brief.yml — a floor>=2 diff requires at minimum a brief declaring gear>=$FLOOR (Gear 3 additionally requires a pack + gate verdict, Step 7b/7c below); it cannot silently pass as 'not a harness task'"
           exit 1
 
       # -----------------------------------------------------------------

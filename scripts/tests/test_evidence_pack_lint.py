@@ -634,16 +634,28 @@ def test_compute_floor_hotzone_hit_wins_over_small_size():
     assert compute_floor(["fly.toml"], numstat) == 3
 
 
-def test_size_term_net_lines_sums_per_file_absolute_not_global_net():
-    """The size term's Σ|added−deleted| does NOT cancel across files the
-    way sum_numstat()'s plain global net would — two files that individually
-    net +10000/-10000 sum to 20000 here, not 0."""
+def test_size_term_net_lines_sums_churn_not_global_net():
+    """The size term's Σ(added+deleted) CHURN does NOT cancel across files
+    the way sum_numstat()'s plain global net would — two files that
+    individually net +10000/-10000 sum to 20000 here, not 0."""
     numstat = "10000\t0\ta/big_add.py\n0\t10000\tb/big_del.py\n"
     assert _size_term_net_lines(numstat) == 20000
     assert sum_numstat(numstat) == 0  # the pre-existing global-net function, for contrast
 
 
-def test_size_term_net_lines_excludes_generated_vendored_and_binary():
+def test_size_term_net_lines_balanced_same_file_rewrite_does_not_cancel():
+    """REGRESSION (adversarial review, codex-sol, PR #5049, finding 2 HIGH):
+    an earlier cut of _size_term_net_lines() summed the PER-FILE ABSOLUTE
+    net (`abs(added-deleted)`), which a balanced in-place rewrite of a
+    SINGLE file could cancel to (near) zero — 2000 added + 2000 deleted in
+    the same file netted to 0, hiding a full-file rewrite from the floor
+    entirely. CHURN (added+deleted) cannot cancel this way: it must report
+    4000, not 0."""
+    numstat = "2000\t2000\tapps/x/rewritten_module.py\n"
+    assert _size_term_net_lines(numstat) == 4000
+
+
+def test_size_term_net_lines_excludes_generated_lockfile_minified_and_binary():
     numstat = (
         "9999\t0\tpackage-lock.json\n"
         "9999\t0\tapps/x/generated/schema.py\n"
@@ -652,7 +664,31 @@ def test_size_term_net_lines_excludes_generated_vendored_and_binary():
         "-\t-\tapps/x/binary.bin\n"
         "50\t10\tapps/x/real_code.py\n"
     )
-    assert _size_term_net_lines(numstat) == 40  # only real_code.py counts
+    assert _size_term_net_lines(numstat) == 60  # only real_code.py counts (churn: 50+10)
+
+
+def test_size_term_net_lines_excludes_vendored_directories():
+    """A real vendored tree exists in this repo (vendor/evoskill) — a
+    routine vendor bump must not false-floor at Gear 2/3 on churn volume
+    alone (adversarial review, codex-sol, PR #5049, finding 4 MEDIUM)."""
+    numstat = (
+        "9999\t9999\tvendor/evoskill/lib.js\n"
+        "9999\t9999\tnode_modules/left-pad/index.js\n"
+        "9999\t9999\tapps/web/dist/bundle.js\n"
+        "50\t10\tapps/x/real_code.py\n"
+    )
+    assert _size_term_net_lines(numstat) == 60  # only real_code.py counts (churn: 50+10)
+
+
+def test_size_term_net_lines_named_lockfile_excluded_but_other_dot_lock_counts():
+    """The lockfile exclusion is a NAMED list of well-known package-manager
+    lockfiles, deliberately NOT a blanket `*.lock` suffix match (adversarial
+    review, codex-sol, PR #5049, finding 4 MEDIUM): this repo's own
+    coordination primitives use `.lock`-suffixed names for real hand-written
+    state (CLAUDE.md's `agent_lock:<resource>` pattern) — a blanket suffix
+    match would exempt a diff touching real lock-coordination code."""
+    numstat = "9999\t0\tpackage-lock.json\n50\t10\tinfra/coordination/custom.lock\n"
+    assert _size_term_net_lines(numstat) == 60  # custom.lock counts (churn: 50+10), package-lock.json excluded
 
 
 def test_size_term_net_lines_innocence_not_fixtures_directory_not_excluded():

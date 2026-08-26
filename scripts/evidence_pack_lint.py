@@ -291,32 +291,44 @@ def repo_root_default() -> Path:
 # ---------------------------------------------------------------------------
 # Floor SIZE TERM (S1, 2026-08-27 — research/operations/2026-08-26-retro-
 # fleet-sessions-25-26.md "S1"): compute_floor() was PATH-ONLY — a diff could
-# rewrite tens of thousands of net lines across dozens of files and still
-# floor at Gear 1 unless it happened to touch a hot-zone path (measured: of
-# PRs >1500 net lines in a 48h window, only 5/12 carried a brief — a
-# 4,979-line rewrite of the public funnel UI and a 1,618-line PII-in-logs
-# cure both got none, neither touched .github/workflows/* or the other
-# hot-zone globs). This is the SIZE half of the floor: a diff large enough
-# gets Gear 2 or Gear 3 regardless of which paths it touches.
-# SIZE_GEAR3_THRESHOLD is pinned at the measured p90 of |additions-deletions|
-# over the 170 most recently merged PRs at ratification time (`gh pr list
-# --state merged --limit 170 --json additions,deletions`), clamped to never
-# go below 1500 — measured 2026-08-27: p90 == 1790. SIZE_GEAR2_THRESHOLD
-# reuses the Agent PR Contract's own ~400-net-line target (CLAUDE.md rule
-# 1): a diff already past the contract's own size guidance floors at Gear 2,
-# never silently at Gear 1.
+# rewrite tens of thousands of lines across dozens of files and still floor
+# at Gear 1 unless it happened to touch a hot-zone path (measured: of PRs
+# >1500 net lines in a 48h window, only 5/12 carried a brief — a 4,979-line
+# rewrite of the public funnel UI and a 1,618-line PII-in-logs cure both got
+# none, neither touched .github/workflows/* or the other hot-zone globs).
+# This is the SIZE half of the floor: a diff large enough gets Gear 2 or
+# Gear 3 regardless of which paths it touches.
+# SIZE_GEAR3_THRESHOLD is pinned at the measured p90 of CHURN
+# (additions+deletions) over the 170 most recently merged PRs at
+# ratification time (`gh pr list --state merged --limit 170 --json
+# additions,deletions`), clamped to never go below 1500 — measured
+# 2026-08-27: p90 == 1828. CHURN, not a plain add-minus-delete net: an
+# earlier draft of this constant was calibrated on |additions-deletions|,
+# matching what _size_term_net_lines() computed at the time — cross-family
+# adversarial review (codex-sol, PR #5049) found that pairing gameable by a
+# balanced in-place rewrite (2,000 added + 2,000 deleted in the SAME file
+# nets to zero), so both the runtime formula below and this threshold's
+# calibration moved to churn together, keeping them measuring the same
+# distribution. SIZE_GEAR2_THRESHOLD reuses the Agent PR Contract's own
+# ~400-net-line target (CLAUDE.md rule 1): a diff already past the
+# contract's own size guidance floors at Gear 2, never silently at Gear 1.
 # ---------------------------------------------------------------------------
 SIZE_GEAR2_THRESHOLD = 400
-SIZE_GEAR3_THRESHOLD = 1790  # measured p90, 170 merged PRs, 2026-08-27 (floor clamp: never < 1500)
+SIZE_GEAR3_THRESHOLD = 1828  # measured churn p90, 170 merged PRs, 2026-08-27 (floor clamp: never < 1500)
 
-# Paths excluded from the size term: generated output, vendored lockfiles,
-# minified bundles and binary/image assets inflate a numstat without
-# inflating the blast radius a human reviewer actually has to read.
+# Paths excluded from the size term: generated output, vendored trees,
+# lockfiles, minified bundles and binary/image assets inflate a numstat
+# without inflating the blast radius a human reviewer actually has to read.
 # Directory-name checks match a real PATH SEGMENT (PurePosixPath parts), not
 # a substring — `not_fixtures/x.py` is NOT excluded, only a genuine
-# `fixtures/` or `generated/` path component is (superscar #3 guard-over-
-# match discipline).
-SIZE_TERM_EXCLUDE_DIR_NAMES: tuple[str, ...] = ("fixtures", "generated")
+# `fixtures/`/`generated/`/vendored-tree path component is (superscar #3
+# guard-over-match discipline). `vendor`/`node_modules`/`dist`/`build` added
+# after the same review found `vendor/evoskill` (a real vendored tree in
+# this repo) had no exclusion at all — a routine vendor bump would have
+# false-floored at Gear 3 on volume alone.
+SIZE_TERM_EXCLUDE_DIR_NAMES: tuple[str, ...] = (
+    "fixtures", "generated", "vendor", "vendored", "node_modules", "dist", "build",
+)
 SIZE_TERM_EXCLUDE_FILENAMES: tuple[str, ...] = (
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
     "Cargo.lock", "uv.lock", "Gemfile.lock", "composer.lock",
@@ -330,14 +342,20 @@ SIZE_TERM_EXCLUDE_SUFFIXES: tuple[str, ...] = (
 
 def _is_size_term_excluded(path: str) -> bool:
     """True when `path` should NOT count toward the size term (S1):
-    generated output, vendored lockfiles, minified bundles, and
+    generated/vendored output, well-known lockfiles, minified bundles, and
     binary/image assets. See the SIZE_TERM_EXCLUDE_* tuples above for what
-    and why."""
+    and why. Deliberately NOT a blanket `*.lock` suffix match (adversarial
+    review, PR #5049): the mandate's "lockfiles" meant the well-known
+    package-manager ones enumerated above, not every file a script happens
+    to name `*.lock` — this repo's own coordination primitives use that
+    suffix for real hand-written state (CLAUDE.md's `agent_lock:<resource>`
+    Redis keys), and a blanket suffix match would have let a diff touching
+    real lock-coordination code hide behind the same exemption."""
     p = PurePosixPath(path)
     if any(part in SIZE_TERM_EXCLUDE_DIR_NAMES for part in p.parts[:-1]):
         return True
     name = p.name
-    if name in SIZE_TERM_EXCLUDE_FILENAMES or name.endswith(".lock"):
+    if name in SIZE_TERM_EXCLUDE_FILENAMES:
         return True
     if ".min." in name.lower():
         return True
@@ -345,18 +363,25 @@ def _is_size_term_excluded(path: str) -> bool:
 
 
 def _size_term_net_lines(numstat: str) -> int:
-    """Σ|added−deleted| over non-excluded files (S1's size term) — pure
-    function, no I/O, mirrors sum_numstat()'s own parsing but differs from
-    it in the two ways that matter here: (1) it takes the ABSOLUTE VALUE
-    PER FILE before summing, so a diff that deletes 10k lines from one file
-    and adds 10k to another does not cancel to zero — sum_numstat()'s plain
+    """Σ(added+deleted) — CHURN, not a plain add-minus-delete net — over
+    non-excluded files (S1's size term). Pure function, no I/O, mirrors
+    sum_numstat()'s own parsing but differs from it in the two ways that
+    matter here: (1) it sums BOTH added and deleted lines PER FILE rather
+    than netting them, so a diff that deletes 10k lines from one file and
+    adds 10k to another does not cancel to zero — sum_numstat()'s plain
     global net exists for compute_ceiling()'s "is this diff small" question,
     where that cancellation is the right behavior; this is the opposite
     question ("is this diff big"), where cancellation would hide exactly
-    the blast radius S1 exists to catch. (2) it excludes
-    generated/vendored/binary paths (_is_size_term_excluded) that inflate
-    churn without inflating review burden. Binary rows ("-\\t-\\tpath") and
-    malformed lines are skipped, same as sum_numstat()."""
+    the blast radius S1 exists to catch. CORRECTED 2026-08-27 (adversarial
+    review, codex-sol, PR #5049): the first cut summed the PER-FILE
+    ABSOLUTE net (`abs(added-deleted)`) instead, which is gameable by a
+    balanced in-place rewrite — 2,000 added + 2,000 deleted in the SAME
+    file summed to zero, hiding a genuinely full rewrite from the floor
+    entirely; churn cannot cancel that way, by construction. (2) it
+    excludes generated/vendored/binary paths (_is_size_term_excluded) that
+    inflate churn without inflating review burden. Binary rows
+    ("-\\t-\\tpath") and malformed lines are skipped, same as
+    sum_numstat()."""
     net = 0
     for line in numstat.splitlines():
         line = line.strip()
@@ -371,7 +396,7 @@ def _size_term_net_lines(numstat: str) -> int:
         if _is_size_term_excluded(path):
             continue
         try:
-            net += abs(int(added_s) - int(deleted_s))
+            net += int(added_s) + int(deleted_s)
         except ValueError:
             continue
     return net
