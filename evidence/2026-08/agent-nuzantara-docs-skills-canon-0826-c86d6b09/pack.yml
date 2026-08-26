@@ -15,18 +15,25 @@ lanes:
     seat: kimi-code/k3
 
 diff:
-  files: 4
-  net_lines: 344
+  files: 6
+  net_lines: 754
   measured_at: 63bfa19e
   note: >-
-    344 = the two functional files (scripts/tests/test_skills_canonical.py 288
-    lines after the post-refuter fixes + .github/workflows/check-skills-canonical.yml
-    56 lines), counted via `wc -l` before this pack's own two files
-    (pack.yml/brief.yml) are added — same convention as the reference pack this
-    shape was copied from. `files: 4` counts all four files this PR adds (test +
-    workflow + pack.yml + brief.yml). measured_at is the merge-base with
-    origin/main at investigation time (`git merge-base HEAD origin/main` in the
-    worktree, before any commit on this branch existed).
+    Round 2 (team-lead's three asks, post-first-push): `git diff --stat
+    $(git merge-base HEAD origin/main)` — 6 files changed, 754 insertions(+),
+    0 deletions. The 4 files from the first push (test 288 lines,
+    check-skills-canonical.yml 56 lines, pack.yml, brief.yml) plus 2 more this
+    round: scripts/quickcheck.sh (+58, new run_skills_canonical_check
+    function) and .claude/skills/modus/PENDING-ARMS.md (+2, new
+    source-command-resume ledger line). test_skills_canonical.py itself grew
+    288->306 (+18 net) for the NUZ_SKILLS_ROOT override + docstring addendum.
+    This exceeds the repo's ~400-net-line PR soft target
+    (CLAUDE.md "Agent PR Contract" rule 1: "when the nature of the work
+    permits it") — flagged, not trimmed: team-lead's explicit instruction was
+    to land all three asks on this SAME PR/branch rather than open a new one,
+    and a large share of the total (332 lines) is evidence-pack YAML, not
+    production code. measured_at is unchanged from the first push (merge-base
+    with origin/main at investigation time).
 
 pii_scan: clean
 
@@ -164,6 +171,96 @@ receipts:
     ts: 2026-08-27T00:36Z
     seat: session (Pro, implementer lane)
 
+  - claim: >-
+      Team-lead's independent finding on the Pro MAIN checkout (not this
+      worktree) is real: 12 untracked dirs under .agents/skills/ (the 11
+      Tier-B names + source-command-resume), all mtime 2026-08-19 00:26 —
+      the drift IS present, just as UNTRACKED working-tree state rather than
+      tracked files. CI cannot see this class of drift because CI only ever
+      clones a specific commit; untracked files by construction never travel
+      with one.
+    cmd: git -C /Users/nuzantara/nuzantara status --porcelain -- .agents/skills
+    result: >-
+      12 "??" (untracked) lines: agent-session-discipline,
+      final-gate-discipline, intake, karpathy-discipline, modus,
+      pipeline-ship, reuse-first, skill-catalog, slhs,
+      sota-architecture-loop, source-command-resume, workflow. Zero tracked
+      ("M "/"A ") lines under .agents/skills — confirms this is 100%
+      untracked cruft, not a committed regression.
+    exit: 0
+    ts: 2026-08-27T02:05Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      test_skills_canonical.py, pointed at the Pro main checkout via the new
+      NUZ_SKILLS_ROOT override, actually goes RED against that untracked
+      drift — with the exact 11 Tier-B names named in the failure output —
+      proving the tripwire works on the tree where the copies actually live,
+      not just in a clean worktree that could never reproduce the bug.
+    cmd: >-
+      NUZ_SKILLS_ROOT=/Users/nuzantara/nuzantara
+      apps/backend-rag/.venv/bin/pytest scripts/tests/test_skills_canonical.py -v
+    result: >-
+      2 failed, 9 passed. Both failures
+      (test_real_repo_has_zero_canonicity_violations,
+      test_real_repo_claude_only_names_never_leak_into_agents_skills) list
+      all 11 Tier-B names as LEAK/DRIFT. (source-command-resume correctly
+      does NOT appear — it has no .claude/skills twin, so the structural
+      rule has nothing to compare it against; see the new PENDING-ARMS entry
+      for that name instead.) Same-tree control run without the override
+      (this worktree): 11 passed, 0 failed — the override is what changes
+      the verdict, not a different pytest invocation.
+    exit: 1
+    ts: 2026-08-27T02:07Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      scripts/quickcheck.sh (already wired into .husky/pre-push, advisory/
+      non-blocking) now runs this same check unconditionally on every push —
+      not gated on the diff touching .claude/skills or .agents/skills,
+      because the failure mode it exists to catch is BY DEFINITION untracked
+      and would never appear in quickcheck's own changed-file list.
+    cmd: >-
+      bash -n scripts/quickcheck.sh; grep -n "run_skills_canonical_check"
+      scripts/quickcheck.sh
+    result: >-
+      bash -n exit 0 (no syntax error). Function defined at line 304, called
+      unconditionally in main() at line 406 (after run_actionlint_if_touched,
+      before run_r1_check). Verified behavior: clean worktree -> "[skills-canon]
+      OK"; branch without the test file yet -> graceful "not on this branch
+      yet — skipping" (rc 0, never blocks). NOTE (caveat, not a bug):
+      quickcheck.sh's own main() has an earlier unrelated early-return
+      ("no committed changes vs origin/main") that short-circuits before
+      reaching this call when HEAD == origin/main with nothing staged — not
+      a real gap for the production pre-push trigger, since git only invokes
+      .husky/pre-push when there is something to push (changed_all is
+      non-empty in any real firing).
+    exit: 0
+    ts: 2026-08-27T02:12Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      source-command-resume (also untracked, mtime 2026-08-19 00:26) is a
+      different case from the 11 Tier-B leaks: it has NO .claude/skills twin
+      at all, so the canonicity checker correctly does not — and structurally
+      cannot — flag it. Recorded as an open decision, not auto-deleted, per
+      team-lead's explicit instruction.
+    cmd: >-
+      cat .agents/skills/source-command-resume/SKILL.md; find
+      /Users/nuzantara/nuzantara -maxdepth 4 -iname resume
+    result: >-
+      description field is VERBATIM IDENTICAL to the already-catalogued
+      "resume" skill's description ("Re-inject Mnemos handoff JSON
+      post-compact. Reads precompact-handoff state files."). No tracked
+      `resume` skill directory exists anywhere in the repo. Body references
+      `.Codex/` (capital C) as its vendored source; only lowercase `.codex/`
+      exists on disk today. Ledger entry appended:
+      .claude/skills/modus/PENDING-ARMS.md (opened 2026-08-27, "needs a
+      decision: adopt into .claude/skills OR delete").
+    exit: 0
+    ts: 2026-08-27T02:20Z
+    seat: session (Pro, implementer lane)
+
 dissent:
   - seat: kimi-code/k3 (cross-family refuter)
     objection: >-
@@ -217,7 +314,8 @@ dissent:
       this PR.
 
 tests:
-  - "scripts/tests/test_skills_canonical.py — 11 collected, 11 passed, rc=0 (backend-rag venv pytest), after the refuter-driven fixture fix + new existence test (was 10/10 pre-refuter)."
+  - "scripts/tests/test_skills_canonical.py — 11 collected, 11 passed, rc=0 (backend-rag venv pytest, this worktree, no override), after the refuter-driven fixture fix + new existence test (was 10/10 pre-refuter)."
+  - "Same file, NUZ_SKILLS_ROOT=/Users/nuzantara/nuzantara (Pro main checkout, read-only inspection) — 11 collected, 2 failed / 9 passed. Both failures name all 11 leaked Tier-B dirs. This is the intended, demonstrated RED against real untracked drift — proof the tripwire fires on the tree where the bug actually lives, not just a synthetic fixture."
 
 static:
   - "actionlint .github/workflows/check-skills-canonical.yml — rc=0, no output."
@@ -232,3 +330,19 @@ notes:
   - "The 4 skills that exist only under .agents/skills/ (bz-video-production,
     google-flow-video, subhi, plus README.md) were left untouched, per the
     original mandate's own instruction — out of scope for this correction."
+  - "Round 2 (team-lead's 3 asks): the untracked-drift removal on Pro
+    (.agents/skills/{agent-session-discipline,final-gate-discipline,intake,
+    karpathy-discipline,modus,pipeline-ship,reuse-first,skill-catalog,slhs,
+    sota-architecture-loop,workflow} — 11 dirs, NOT source-command-resume) is
+    an operator[control-plane] gesture, not something this session can run:
+    the main checkout is agent-read-only by design (CLAUDE.md Agent Worktree
+    Discipline). One-liner for Pro, verbatim:
+    `git -C ~/nuzantara clean -fd -- .agents/skills/agent-session-discipline
+    .agents/skills/final-gate-discipline .agents/skills/intake
+    .agents/skills/karpathy-discipline .agents/skills/modus
+    .agents/skills/pipeline-ship .agents/skills/reuse-first
+    .agents/skills/skill-catalog .agents/skills/slhs
+    .agents/skills/sota-architecture-loop .agents/skills/workflow`.
+    Team-lead additionally reported (not independently re-verified by this
+    session — different machine) the same class of drift on M5, 21 entries;
+    same one-liner shape applies there against that machine's own file list."

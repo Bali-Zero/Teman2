@@ -62,9 +62,27 @@ coverage.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# NUZ_SKILLS_ROOT (added 2026-08-27, team-lead finding): the real-repo tests
+# below only ever inspected the checkout THIS file lives in — a clean git
+# worktree/checkout never has untracked cruft, so it could never reproduce
+# the actual failure mode. Measured independently on the Pro MAIN checkout
+# (~/nuzantara, not a worktree): `git status --porcelain -- .agents/skills`
+# shows 12 UNTRACKED dirs (11 exact Tier-B names + `source-command-resume`),
+# all mtime 2026-08-19 00:26 — a one-shot manual/tool copy that git never
+# saw. `.agents/skills/modus/SKILL.md` there is a genuinely stale 271-line
+# copy (271 vs the tracked file's 280) whose Gear-3 row still reads "Fable 5
+# first, rotating AZ->A2->A3->A1" — the exact text the original Q0 mandate
+# described, just on the untracked file, not the tracked one this test
+# suite was built against. No CI check can ever see this class of drift
+# (CI only ever clones a specific commit; untracked files by construction
+# never travel with it) — the override below lets this same suite be
+# pointed at an arbitrary on-disk tree, so a LOCAL pre-push hook can run it
+# against the real working directory instead.
+_root_override = os.environ.get("NUZ_SKILLS_ROOT")
+REPO_ROOT = Path(_root_override).resolve() if _root_override else Path(__file__).resolve().parents[2]
 CLAUDE_SKILLS = REPO_ROOT / ".claude" / "skills"
 AGENTS_SKILLS = REPO_ROOT / ".agents" / "skills"
 

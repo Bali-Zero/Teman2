@@ -56,7 +56,7 @@ constraints:
     state on top of that."
 acceptance:
   - "`scripts/tests/test_skills_canonical.py` collects >0 tests and all
-    pass: `collected 10 items`, `10 passed`."
+    pass: `collected 11 items`, `11 passed` (this worktree, no override)."
   - "Guilt fixtures fail without the checker (i.e. the checker actually
     detects both drift directions) and innocence fixtures pass — proven by
     running the suite, not asserted."
@@ -64,6 +64,15 @@ acceptance:
   - "The real repo, unmodified, has zero canonicity violations under the
     new checker (it was never broken — this is a regression tripwire, not
     a fix)."
+  - "ROUND 2 (team-lead finding): pointed at a tree that actually HAS the
+    untracked drift (`NUZ_SKILLS_ROOT=/Users/nuzantara/nuzantara`, the Pro
+    main checkout), the same suite goes RED — 2 failed / 9 passed, all 11
+    Tier-B names enumerated in the failure output. Proves the tripwire
+    detects the real-world failure mode, not just its own synthetic
+    fixtures."
+  - "scripts/quickcheck.sh (already wired into .husky/pre-push) runs this
+    check unconditionally on every local push, `bash -n` clean, verified
+    both OK (clean tree) and graceful-skip (file not on branch yet) paths."
 consumer_map:
   - "scripts/ci/change_map.py, scripts/prepush_classify.py — read
     `.agents/skills/**` for pre-push test-scoping (`.md`-only innocence
@@ -76,6 +85,11 @@ consumer_map:
     NON-required by design (same posture as check-cicatrix-scar-pointers.yml),
     runs only on `.claude/skills/**` / `.agents/skills/**` / its own two
     files changing."
+  - "ROUND 2: `scripts/quickcheck.sh` / `.husky/pre-push` — new LOCAL
+    consuming surface, added specifically because CI (the check above)
+    structurally cannot see untracked working-tree drift. Runs
+    unconditionally (not diff-gated) on every local push attempt on any
+    machine that has this branch's commit checked out."
 risks:
   - "This PR does not fix any currently-broken state — there was none to
     fix. Its value is purely preventive (a tripwire against the exact
@@ -86,6 +100,22 @@ risks:
     KNOWN_CLAUDE_ONLY_NAMES) will go stale as skills are added — by
     design they only lock today's specific state; the structural rule
     they sit on top of does not need updating."
+  - "ROUND 2: the actual untracked drift this PR was dispatched to catch
+    (11 stray dirs on Pro, 21 reported on M5, team-lead measurement) is
+    STILL PRESENT on both machines as of this pack's last update — this PR
+    ships detection, not remediation. Removal is an operator[control-plane]
+    gesture (main checkout is agent-read-only); the exact `git clean -fd`
+    one-liner for both machines is in this pack's `notes:` and in the PR
+    body. `source-command-resume` is deliberately excluded from that
+    one-liner and left as an open PENDING-ARMS decision (adopt vs delete),
+    per team-lead's explicit instruction not to delete it unilaterally."
+  - "ROUND 2: quickcheck.sh is advisory (never blocks a push) by the
+    existing convention of every other check in that file — a developer
+    who ignores its warning still pushes. The CI workflow above is the
+    only actually-blocking-capable surface, and it only sees committed
+    state. There is no enforcement path that would have prevented the
+    original 2026-08-19 one-shot copy from happening in the first place;
+    this closes the visibility gap, not the write path."
 grader: |
   Generator != grader: this session (build) authored the correction and
   the test; the mandatory cross-family refuter (Kimi K3) reviews the diff
