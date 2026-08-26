@@ -78,7 +78,19 @@ async def _build_timeline(
         if not practice:
             return None
 
-        # Fetch status history from practice_status_log (if table exists)
+        # Status history. Migration 289 creates practice_status_log and the
+        # trigger that fills it; before that migration this query raised
+        # UndefinedTableError on every request and the old code swallowed it
+        # with a bare `except Exception: pass`, so the tracker answered 200
+        # with a one-step timeline and no surface anywhere went red. Prod was
+        # measured in exactly that state on 2026-08-27.
+        #
+        # The narrow except stays, because a database that has not run 289 yet
+        # must still serve the practice's current status rather than 500 — but
+        # it now catches ONLY "the table is absent" and says so out loud. Every
+        # other failure (permissions, a dropped connection, a bad plan) is a
+        # real fault and is logged as one instead of being spelled as an empty
+        # history, which is indistinguishable from a practice that never moved.
         history_rows: list[dict] = []
         try:
             history_rows = [
@@ -93,9 +105,16 @@ async def _build_timeline(
                     practice_id,
                 )
             ]
-        except Exception:
-            # Table may not exist yet — fallback to single-step
-            pass
+        except asyncpg.UndefinedTableError:
+            logger.warning(
+                "practice_status_log is absent — serving a single-step timeline. "
+                "Migration 289 has not been applied to this database."
+            )
+        except asyncpg.PostgresError:
+            logger.exception(
+                "practice_status_log query failed for practice %s; serving a single-step timeline",
+                practice_id,
+            )
 
         current_status = practice["status"]
 

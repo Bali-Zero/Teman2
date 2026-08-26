@@ -1,7 +1,9 @@
 """Tests for portal process timeline endpoint."""
 
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
+import asyncpg
 import pytest
 
 from backend.app.routers.portal_process_timeline import _build_timeline
@@ -102,7 +104,9 @@ async def test_timeline_fallback_when_no_status_log() -> None:
     }
 
     # Simulate table not existing
-    mock_conn.fetch.side_effect = Exception("relation practice_status_log does not exist")
+    mock_conn.fetch.side_effect = asyncpg.UndefinedTableError(
+        "relation practice_status_log does not exist"
+    )
 
     mock_pool = MagicMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -188,7 +192,9 @@ async def test_timeline_fallback_response_never_carries_staff_identity() -> None
         "practice_category": "company",
         "assigned_to": "staff@example.com",
     }
-    mock_conn.fetch.side_effect = Exception("relation practice_status_log does not exist")
+    mock_conn.fetch.side_effect = asyncpg.UndefinedTableError(
+        "relation practice_status_log does not exist"
+    )
 
     mock_pool = MagicMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -200,3 +206,92 @@ async def test_timeline_fallback_response_never_carries_staff_identity() -> None
     assert "assigned_to" not in result
     assert len(result["steps"]) == 1
     assert "changed_by" not in result["steps"][0]
+
+
+def _practice_row(status: str = "waiting_documents") -> dict:
+    return {
+        "id": 5,
+        "client_id": 1,
+        "status": status,
+        "start_date": "2026-02-01",
+        "completion_date": None,
+        "expiry_date": None,
+        "notes": None,
+        "practice_name": "PT PMA Setup",
+        "practice_category": "company",
+        "assigned_to": "damar@balizero.com",
+    }
+
+
+def _pool_for(mock_conn) -> MagicMock:
+    pool = MagicMock()
+    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    return pool
+
+
+class TestHistoryFailuresAreNotSpelledAsEmptyHistory:
+    """A missing table and a broken query must not look the same.
+
+    Until migration 289 the history query was wrapped in a bare
+    `except Exception: pass`, so BOTH cases produced a one-step timeline and a
+    200 — and an empty history is indistinguishable from a practice that never
+    moved. Prod was measured in that state on 2026-08-27: the table did not
+    exist at all, so every tracker request took the silent path.
+    """
+
+    @pytest.mark.asyncio
+    async def test_absent_table_degrades_but_says_so(self, caplog) -> None:
+        """The pre-289 database still serves a timeline, and logs a warning."""
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row()
+        mock_conn.fetch.side_effect = asyncpg.UndefinedTableError(
+            "relation practice_status_log does not exist"
+        )
+
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.portal_process_timeline"):
+            result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        assert result is not None
+        assert len(result["steps"]) == 1
+        joined = " ".join(r.getMessage() for r in caplog.records)
+        assert "practice_status_log is absent" in joined
+        assert "289" in joined, "the log line must name the migration that fixes it"
+
+    @pytest.mark.asyncio
+    async def test_a_real_db_error_is_logged_not_swallowed(self, caplog) -> None:
+        """A permissions/connection fault is a fault, not an empty history."""
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row()
+        mock_conn.fetch.side_effect = asyncpg.InsufficientPrivilegeError(
+            "permission denied for table practice_status_log"
+        )
+
+        with caplog.at_level(logging.ERROR, logger="backend.app.routers.portal_process_timeline"):
+            result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        # Still serves the current status — a client asking about their own
+        # practice should not get a 500 because history is unavailable.
+        assert result is not None
+        assert len(result["steps"]) == 1
+        # …but the fault is on the record, at ERROR, with a traceback.
+        assert any(r.levelno >= logging.ERROR for r in caplog.records)
+        assert any(r.exc_info for r in caplog.records), "must log the traceback"
+        assert "practice_status_log query failed" in " ".join(
+            r.getMessage() for r in caplog.records
+        )
+
+    @pytest.mark.asyncio
+    async def test_a_non_database_error_still_propagates(self) -> None:
+        """The narrowed except must not become a new catch-all.
+
+        A bug in this function (a TypeError, an attribute error on a row) is
+        not a degraded-history condition and must reach the caller instead of
+        being rendered as a practice that never moved.
+        """
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row()
+        mock_conn.fetch.side_effect = TypeError("not a postgres problem")
+
+        with pytest.raises(TypeError):
+            await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
