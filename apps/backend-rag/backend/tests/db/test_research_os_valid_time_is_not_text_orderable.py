@@ -49,10 +49,25 @@ caller of the Research OS adapters. No stored row can be mis-ordered today becau
 stored row exists. This is a defect waiting at the entrance of the lane that will write
 the first one, which is exactly when it is cheapest to fix.
 
-These tests assert a CURRENT LIMITATION, deliberately: when the limitation is lifted — by
-pinning the sub-second width on write, or by giving the substrate an IMMUTABLE-safe
-normalised representation — they go red and must be deleted in the same change that lifts
-it. A red here is GOOD NEWS. See the PENDING-ARMS row "Research OS valid-time is not
+**Third (round 2, and it narrows the promise rather than widening the code).** An earlier
+version of this paragraph promised that these tests go red whenever the limitation is
+lifted, by either of the two cures the PENDING-ARMS row proposes. That is FALSE for cure
+(b). Giving the substrate a normalised/generated column or an IMMUTABLE parse helper lifts
+the limitation by routing AROUND the text expression, which stays exactly as defective as
+it is today — so every assertion here correctly stays GREEN. The same refuter noted three
+further blind spots, recorded rather than chased: a cure at the storage/adapter boundary
+(this module inserts `_claim_time_payload()` output directly, so an adapter that
+normalised on write would be bypassed), a cure on the outer `Claim` model rather than
+`ClaimTime`, and `valid_to`, which no test here exercises. Closing those means testing the
+real end-to-end write path, and there is no writer to test yet — it is the spec the
+PENDING-ARMS row owes, not a fourth correction of this file.
+
+So, scoped honestly: these tests assert a CURRENT LIMITATION and go red for a cure applied
+to CANONICAL SERIALISATION — the (a)-shaped cure, pinning the sub-second width on write.
+For that cure a red here is GOOD NEWS and they must be deleted in the same change. For a
+(b)-shaped cure they stay green, and a GREEN suite is therefore compatible with the
+limitation having been lifted: confirm the arming from the migration or adapter that lifts
+it, never from this module alone. See the PENDING-ARMS row "Research OS valid-time is not
 text-orderable".
 
 The decision itself is deliberately NOT taken here: `research_os_objects` and
@@ -129,6 +144,12 @@ def test_the_compliant_write_path_canonicalises_the_three_spellings() -> None:
 
     If this goes red, `UtcDateTime` has stopped normalising and the original (weaker, but
     then LIVE) three-spelling framing applies again on top of everything below.
+
+    The expected value is DERIVED, not the literal `...T00:00:00Z`. A round-2 refuter
+    caught the literal form failing under a fixed-width cure — canonicalisation still
+    worked, the hardcoded expectation was simply coupled to the old representation, and it
+    was counted as a fifth "red" when it was collateral. This assertion is about COLLAPSE,
+    so it must survive any cure that keeps collapsing.
     """
 
     canonical = {
@@ -139,7 +160,8 @@ def test_the_compliant_write_path_canonicalises_the_three_spellings() -> None:
         )
         for raw in (_RAW_Z, _RAW_OFFSET, _RAW_FRACTIONAL)
     }
-    assert canonical == {_RAW_Z}
+    assert len(canonical) == 1, f"the three spellings no longer collapse: {canonical}"
+    assert canonical == {_at(0)}, "collapsed, but not onto the model's own zero-microsecond form"
 
 
 def test_the_real_canonical_models_omit_the_fraction_at_microsecond_zero() -> None:
@@ -197,7 +219,19 @@ def test_the_published_schema_permits_both_terminators_and_is_silent_on_width() 
 
     schema = ClaimTime.model_json_schema()
 
-    for text in (_RAW_Z, _RAW_OFFSET, _RAW_FRACTIONAL, _HALF):
+    # Both terminators, and sub-second widths from none to nine digits. The width range is
+    # deliberate: an earlier version tested only 0, 3 and 6 digits while the docstring
+    # claimed "any width", which a round-2 refuter correctly called an over-claim — a
+    # pattern admitting exactly those three would have kept it green.
+    for text in (
+        _RAW_Z,
+        _RAW_OFFSET,
+        _RAW_FRACTIONAL,
+        _HALF,
+        "2026-01-15T00:00:00.1Z",
+        "2026-01-15T00:00:00.123456789Z",
+        "2026-01-15T00:00:00.5+00:00",
+    ):
         jsonschema.validate({"valid_from": text, "recorded_at": _RAW_Z}, schema)
 
     # Guilt control: without it the loop above would pass just as happily against a schema
@@ -235,12 +269,13 @@ async def test_postgres_returns_stored_rows_in_the_wrong_order(
     )
     got = [r["vf"] for r in rows]
 
-    assert got != [_ZERO_US, _QUARTER, _HALF], (
-        "the text index expression returned chronological order — if this passes, the "
-        "sub-second width may now be fixed and this whole module should be deleted"
-    )
+    # One assertion, not two: `got != chronological` is implied by the equality below, and
+    # a round-2 refuter correctly called the pair redundant. The message carries what the
+    # weaker assertion used to say, so a future reader still learns what a red means here.
     assert got == [_QUARTER, _HALF, _ZERO_US], (
-        f"expected the earliest row to sort LAST, got {got!r}"
+        f"expected the earliest row ({_ZERO_US}) to sort LAST, got {got!r}. If this now "
+        "returns chronological order, the sub-second width may have been pinned on write "
+        "and this whole module should be deleted."
     )
 
     # The same defect as the predicate a bitemporal read actually runs. By the clock two
