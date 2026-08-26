@@ -442,6 +442,32 @@
             "test_is_anthropic_seat_innocence_non_anthropic_token_matches",
             "test_lanes_gear3_opus5_sonnet5_flip_behavior"
           ]
+        },
+        "check_ground_truth_lane": {
+          "scar": ["E3-R8"],
+          "guilt": [
+            "test_ground_truth_guilt_hit_no_lane_rejected_post_flip",
+            "test_ground_truth_guilt_incomplete_lane_rejected"
+          ],
+          "innocence": [
+            "test_ground_truth_innocence_no_hit_skipped",
+            "test_ground_truth_innocence_well_formed_lane_passes",
+            "test_ground_truth_innocence_seat_override_reports_not_fails",
+            "test_ground_truth_innocence_pre_flip_notice_not_fail"
+          ]
+        },
+        "check_pii_local_seat": {
+          "scar": ["E3-R10"],
+          "guilt": [
+            "test_pii_local_guilt_cloud_seat_on_pii_path_rejected_post_flip",
+            "test_pii_local_guilt_cloud_ok_without_clean_still_rejected"
+          ],
+          "innocence": [
+            "test_pii_local_innocence_no_hit_skipped",
+            "test_pii_local_innocence_all_ollama_seats_passes",
+            "test_pii_local_innocence_cloud_ok_and_clean_passes",
+            "test_pii_local_innocence_pre_flip_notice_not_fail"
+          ]
         }
       }
     },
