@@ -52,6 +52,5 @@ grader: |
   per the PR body) — re-ran actionlint on the actual modified file, and independently queried
   GitHub's own job-history API for the cited incident run/attempt rather than trusting the PR
   body's citation verbatim, and recomputed the deterministic floor from the real diff.
-budget:
-  1 evidence-authoring lane (no code change) — a 1-file, +12/-14 CI-wiring diff.
+budget: 1 evidence-authoring lane (no code change) — a 1-file, +12/-14 CI-wiring diff.
 pii: none
