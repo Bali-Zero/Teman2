@@ -12,7 +12,6 @@ from __future__ import annotations
 import datetime
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -28,11 +27,14 @@ from evidence_pack_lint import (  # noqa: E402
     FLOOR_SOURCE_PATH,
     FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
+    R9_R11_ENFORCEMENT_DATE,
     SIZE_GEAR2_THRESHOLD,
     SIZE_GEAR3_THRESHOLD,
     _is_anthropic_seat,
     _size_term_net_lines,
     check_brief_ref_exists,
+    check_cheap_seat_floor,
+    check_council_run_gear3,
     check_dissent_nonempty_on_gear3,
     check_gear_floor,
     check_lanes_build_seat_diversity,
@@ -42,6 +44,7 @@ from evidence_pack_lint import (  # noqa: E402
     compute_ceiling,
     compute_floor,
     compute_floor_source,
+    compute_seat_floor,
     effort_for_gear,
     lint,
     sum_numstat,
@@ -1311,3 +1314,301 @@ def test_lanes_gear3_opus5_sonnet5_flip_behavior():
     )
     assert violations
     assert notice is None
+
+
+# ============================================================================
+# PR-B: R11 cheap-seat floor for mechanical diffs + R9 Gear-3 council_run
+# (2026-08-26-PIANO-SPEC-receptor-live.md §8). Self-contained on this branch
+# (created before #5054/R8-R10 merged) — R9_R11_ENFORCEMENT_DATE is its own
+# constant, not SEAT_RULES_ENFORCEMENT_DATE, precisely so this module never
+# ends up with two same-named top-level definitions regardless of merge
+# order between the two PRs.
+# ============================================================================
+
+_R9_R11_PRE_FLIP = R9_R11_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+_R9_R11_POST_FLIP = R9_R11_ENFORCEMENT_DATE
+
+
+# ---- R11: compute_seat_floor (pure predicate) ------------------------------
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".claude/skills/modus/PENDING-ARMS.md",
+        "apps/mouth/src/i18n/locales/en.json",
+        "apps/admin-dashboard/src/i18n/locales/it.json",
+        "scripts/tests/fixtures/merge_gate_integrity/guilt_3227.json",
+        "packages/research-os-core/fixtures/object_successor_edge/valid_with_actor.json",
+        "apps/mouth/public/catalog/consultant-services-update-data-coretax-activation.jpg",
+    ],
+)
+def test_compute_seat_floor_guilt_single_mechanical_file_is_true(path):
+    """GUILT (for the predicate): each of these six is a REAL, on-disk file
+    (verified 2026-08-27 by refuter round 1, which found 3 of the original
+    6 example paths here were invented/illustrative rather than real —
+    corrected to actual `find`-verified paths) covering every
+    MECHANICAL_PATH_PATTERNS class; each, alone, makes the whole (1-file)
+    diff count as 100% mechanical."""
+    assert compute_seat_floor([path]) is True
+
+
+def test_compute_seat_floor_innocence_one_non_mechanical_file_flips_to_false():
+    """INNOCENCE: a diff that is mostly mechanical but touches even ONE
+    real code file is NOT 100% mechanical — the rule is all-or-nothing."""
+    assert compute_seat_floor([
+        "apps/mouth/src/i18n/locales/en.json",
+        "apps/backend-rag/backend/app/main.py",
+    ]) is False
+
+
+def test_compute_seat_floor_innocence_empty_or_none_is_false():
+    """INNOCENCE: no changed files is not evidence of "100% mechanical" —
+    same convention as compute_floor's own empty-diff handling."""
+    assert compute_seat_floor([]) is False
+    assert compute_seat_floor(None) is False
+
+
+# ---- R11: check_cheap_seat_floor -------------------------------------------
+
+
+_MECHANICAL_DIFF = ["apps/mouth/src/i18n/locales/en.json", ".claude/skills/modus/PENDING-ARMS.md"]
+
+
+def test_cheap_seat_floor_guilt_no_cheap_lane_rejected_post_flip():
+    """GUILT: a 100%-mechanical diff with only a frontier-tier build seat
+    and no override is a violation on/after the flip."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "claude-opus-5"}]}
+    viol, notice = check_cheap_seat_floor(pack, _MECHANICAL_DIFF, today=_R9_R11_POST_FLIP)
+    assert viol and "seat_floor" in viol[0]
+    assert notice is None
+
+
+def test_cheap_seat_floor_innocence_not_100pct_mechanical_skipped():
+    """INNOCENCE: a diff that is not 100% mechanical is not this rule's
+    problem, regardless of seats."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "claude-opus-5"}]}
+    viol, notice = check_cheap_seat_floor(
+        pack, ["apps/backend-rag/backend/app/main.py"], today=_R9_R11_POST_FLIP
+    )
+    assert viol == [] and notice is None
+    viol, notice = check_cheap_seat_floor(pack, None, today=_R9_R11_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+@pytest.mark.parametrize(
+    "seat",
+    [
+        "claude-haiku-4-5",
+        "claude-haiku-4-5-20251001",
+        "codex-gpt-5.6-luna",
+        "kimi-code/kimi-for-coding-highspeed",
+        "tp1-qwen3.6-flash",
+        "tp1-deepseek-v4-flash-0731",
+    ],
+)
+def test_cheap_seat_floor_innocence_cheap_build_lane_passes(seat):
+    """INNOCENCE: any CHEAP_SEATS-prefixed build-lane seat clears the rule,
+    even with a trailing version suffix (prefix match, not exact)."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": seat}]}
+    viol, notice = check_cheap_seat_floor(pack, _MECHANICAL_DIFF, today=_R9_R11_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_cheap_seat_floor_guilt_non_build_lane_does_not_count():
+    """GUILT (for the role filter): a cheap seat on a REVIEW lane does not
+    satisfy R11 — the requirement is specifically a build lane."""
+    pack = {"lanes": [{"lane": "D1", "role": "review", "seat": "claude-haiku-4-5"},
+                       {"lane": "D2", "role": "build", "seat": "claude-opus-5"}]}
+    viol, notice = check_cheap_seat_floor(pack, _MECHANICAL_DIFF, today=_R9_R11_POST_FLIP)
+    assert viol and "seat_floor" in viol[0]
+
+
+def test_cheap_seat_floor_innocence_seat_override_reports_not_fails():
+    """INNOCENCE: `seat_override` clears the violation and is reported."""
+    pack = {
+        "lanes": [{"lane": "D1", "role": "build", "seat": "claude-opus-5"}],
+        "seat_override": "mechanical-looking diff also touched generated code, verified by hand",
+    }
+    viol, notice = check_cheap_seat_floor(pack, _MECHANICAL_DIFF, today=_R9_R11_POST_FLIP)
+    assert viol == []
+    assert notice is not None and "(overridden)" in notice
+
+
+def test_cheap_seat_floor_innocence_pre_flip_notice_not_fail():
+    """INNOCENCE: the same guilty shape only NOTICEs before the flip."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "claude-opus-5"}]}
+    viol, notice = check_cheap_seat_floor(pack, _MECHANICAL_DIFF, today=_R9_R11_PRE_FLIP)
+    assert viol == []
+    assert notice is not None and "seat_floor" in notice
+
+
+# ---- R9: check_council_run_gear3 -------------------------------------------
+
+
+def _write_journal(tmp_path: Path, name: str, lines: list[dict]) -> Path:
+    import json as _json
+
+    p = tmp_path / name
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("\n".join(_json.dumps(line) for line in lines) + "\n", encoding="utf-8")
+    return p
+
+
+def test_council_run_innocence_gear_not_3_skipped(tmp_path):
+    """INNOCENCE: this rule is Gear-3-only — Gear 1/2 (or unknown gear)
+    is not its problem, regardless of council_run."""
+    for gear in (None, 1, 2):
+        viol, notice = check_council_run_gear3({}, tmp_path, gear, today=_R9_R11_POST_FLIP)
+        assert viol == [] and notice is None
+
+
+def test_council_run_guilt_no_council_run_field_rejected_post_flip(tmp_path):
+    """GUILT: a Gear-3 pack with no `council_run` field at all is a
+    violation on/after the flip."""
+    viol, notice = check_council_run_gear3({}, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and "council_run" in viol[0]
+    assert notice is None
+
+
+def test_council_run_guilt_dangling_or_escaping_path_rejected(tmp_path):
+    """GUILT: council_run pointing nowhere, or escaping pack_dir via `..`,
+    or an absolute path, all count as zero qualifying seats — none of them
+    raise."""
+    for bad in ("journal.jsonl", "../../etc/passwd", "/etc/passwd"):
+        pack = {"council_run": bad}
+        viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+        assert viol and "council_run" in viol[0]
+
+
+def test_council_run_guilt_single_seat_below_quorum_rejected(tmp_path):
+    """GUILT: exactly one distinct qualifying review seat is below the
+    >=2 quorum."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "2026-08-26T00:00:00Z"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and "council_run" in viol[0]
+    assert notice is None
+
+
+def test_council_run_guilt_ok_false_or_wrong_role_does_not_count(tmp_path):
+    """GUILT (for the line filter): a line with ok:false, or role != review,
+    does not count toward quorum even from a real COUNCIL_REVIEW_SEATS
+    member — 2 such lines still leaves zero qualifying seats."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": False, "ts": "x"},
+        {"seat": "kimi-code/k3", "role": "build", "ok": True, "ts": "x"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and "council_run" in viol[0]
+
+
+def test_council_run_guilt_missing_ts_does_not_count(tmp_path):
+    """GUILT (regression, refuter round 1 2026-08-27): the declared minimal
+    schema is {"seat", "role": "review", "ok": true, "ts"} — a line missing
+    `ts` (or with it empty/non-string) was silently accepted before this
+    fix; now it does not count toward quorum, same as a missing seat."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True},
+        {"seat": "kimi-code/k3", "role": "review", "ok": True, "ts": ""},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and "council_run" in viol[0]
+
+
+def test_council_run_guilt_duplicate_only_postings_below_quorum_rejected(tmp_path):
+    """GUILT (regression, refuter round 1 2026-08-27): the SAME seat
+    posting many times must not be mistaken for multiple distinct seats —
+    5 lines, all from one seat, is still only 1 distinct seat, still below
+    the >=2 quorum."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": f"t{i}"}
+        for i in range(5)
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and "council_run" in viol[0]
+
+
+def test_council_run_innocence_two_distinct_qualifying_seats_passes(tmp_path):
+    """INNOCENCE: >=2 distinct COUNCIL_REVIEW_SEATS members, each ok:true
+    role:review, clears the rule — a duplicate posting from the same seat
+    does not inflate the distinct count (mirrors the guilt case above)."""
+    _write_journal(tmp_path, "council/journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "b"},
+        {"seat": "kimi-code/k3", "role": "review", "ok": True, "ts": "c"},
+        {"seat": "not-a-council-seat", "role": "review", "ok": True, "ts": "d"},
+    ])
+    pack = {"council_run": "council/journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_council_run_innocence_seat_override_reports_not_fails(tmp_path):
+    """INNOCENCE: `seat_override` clears the violation and is reported."""
+    pack = {"seat_override": "solo emergency hotfix, verified live under active incident"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol == []
+    assert notice is not None and "(overridden)" in notice
+
+
+def test_council_run_innocence_pre_flip_notice_not_fail(tmp_path):
+    """INNOCENCE: the same guilty shape only NOTICEs before the flip —
+    and this is the day-0 measure the PR body declares: every EXISTING
+    Gear-3 pack predates council_run entirely."""
+    viol, notice = check_council_run_gear3({}, tmp_path, gear=3, today=_R9_R11_PRE_FLIP)
+    assert viol == []
+    assert notice is not None and "council_run" in notice
+
+
+# ---- end-to-end: lint() wires both R11 and R9 through one call site -------
+
+
+def test_seat_floor_end_to_end_through_lint(tmp_repo):
+    """End-to-end: lint() surfaces an R11 seat_floor violation for a real
+    pack+brief tree via the public entry point."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack(lanes=[{"lane": "D1", "role": "build", "seat": "claude-opus-5"}])
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, _MECHANICAL_DIFF)
+    if datetime.datetime.now(datetime.timezone.utc).date() < R9_R11_ENFORCEMENT_DATE:
+        assert rc == 0
+    else:
+        assert rc == 1
+        assert any("seat_floor" in v for v in viol)
+
+
+def test_seat_floor_end_to_end_notice_when_no_changed_files(tmp_repo, capsys):
+    """End-to-end regression (refuter round 1 2026-08-27): with no
+    --changed-files-file, R11 is silently unable to fire (compute_seat_floor
+    is False-by-construction on None) — lint() must SAY so on stderr, the
+    same transparency convention rule 6's own skip-notice already has,
+    rather than silently doing nothing."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack(lanes=[{"lane": "D1", "role": "build", "seat": "claude-opus-5"}])
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0 and viol == []
+    err = capsys.readouterr().err
+    assert "seat_floor check (rule 11) skipped" in err
+
+
+def test_council_run_end_to_end_through_lint(tmp_repo):
+    """End-to-end: lint() surfaces an R9 council_run violation for a real
+    Gear-3 pack+brief tree via the public entry point (pack_dir resolution
+    comes from pack_path.parent inside lint(), not a parameter the caller
+    threads through)."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=3)
+    write_pack(dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}])
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    if datetime.datetime.now(datetime.timezone.utc).date() < R9_R11_ENFORCEMENT_DATE:
+        assert rc == 0
+    else:
+        assert rc == 1
+        assert any("council_run" in v for v in viol)
