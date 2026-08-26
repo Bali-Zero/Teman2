@@ -461,8 +461,35 @@ ASSIGNABLE_ROLES = {
     "Tax Manager",
 }
 
-# Map practice types to departments for specialty routing
+# Map practice types to departments for specialty routing.
+#
+# MEASURED 2026-08-26, and the lookup below is EXACT (`.get(practice_type_code)`,
+# no prefix or substring match): NONE of the twelve legacy keys under this
+# comment — `kitas`, `kitap`, `pt_pma`, `investor_visa`, `work_permit`,
+# `company_setup`, `visa`, `immigration`, `tax`, `tax_reporting`,
+# `tax_registration`, `npwp` — is seeded as a `practice_types.code` by ANY
+# migration in `db/migrations_v2/`. The real catalogue codes are shaped
+# `visa_*` / `ext_*` / `tax_*` / `other_*` / `merp_*` (e.g. `visa_bridging`,
+# `ext_c1_tourism`, `tax_annual_pkg_a`). So for every catalogue practice the
+# department branch below has been dead and assignment has silently fallen
+# through to the round-robin least-workload fallback — which draws from ALL
+# assignable roles, tax included.
+#
+# Stated narrowly on purpose: this says no MIGRATION seeds those keys. Whether
+# prod holds out-of-band rows with those codes is a separate question this
+# lane did not measure, and the twelve keys are therefore left in place rather
+# than deleted. Curing the other ~51 codes is a CRM-lane job with a real
+# business call behind it (which department owns `other_lapor_lahir_under`?),
+# tracked in `.claude/skills/modus/PENDING-ARMS.md`; do NOT "fix" it here with
+# a prefix match — `visa_*`->setup and `tax_*`->tax would look right and
+# `other_*` would still be a guess.
+#
+# The two GARUDA VOA entries below are this lane's own obligation and are
+# catalogue-real: both are seeded by
+# `db/migrations_v2/221_practice_types_b1_voa.sql`.
 PRACTICE_DEPARTMENT_MAP: dict[str, str] = {
+    "visa_b1_voa": "setup",
+    "ext_b1_voa": "setup",
     "kitas": "setup",
     "kitap": "setup",
     "pt_pma": "setup",
