@@ -18,12 +18,27 @@ the exact divergence they accept (the driver re-checks `expected`/`actual`/
 `pack`/`differences` verbatim), so an explanation cannot outlive the outcome it
 was written for.
 
-Persona #15 is deliberately LEFT UNEXPLAINED. It is the one real dead end, its
-root is purpose coverage (the signed pack declares
-`E23.covered_purposes = ["EMPLOYMENT"]` while Kepmen M.IP-08.GR.01.01/2025
-Lampiran B.1 grants an E23 holder an explicit tourism right), and curing it is a
-seq-16 fold. Explaining it away here would turn the gate green over a live
-defect, which is the precise failure this file exists to prevent.
+UPDATED 2026-08-26 — THE DEAD END WAS CURED, NOT EXPLAINED AWAY. Persona #15
+used to be deliberately left unexplained: it was the one real dead end, rooted in
+purpose coverage (the signed pack declared `E23.covered_purposes = ["EMPLOYMENT"]`
+while Kepmen M.IP-08.GR.01.01/2025, Lampiran, row E23, column Hak, item 4 — read
+on the PDF at page 35 — grants an E23 holder an explicit tourism right). seq-16
+folded that right into the pack and Zero signed it; persona #15 now MATCHES with
+`SUPPORTED_CANDIDATES ["E23"]`. The tests below flipped accordingly: what was
+"#15 must stay unexplained" is now "#15 must not be divergent at all", so a
+regression that re-opens the dead end goes red just as loudly as an explanation
+that papered over it would have.
+
+WHAT BIT US RE-BINDING IT, and is now guarded: the driver requires the accepted
+explanation's `pack` to match the CURRENT pack EXACTLY. seq-16 changed all four
+identity fields, so every explanation silently detached and a run that had read
+`explained 15 / unexplained 1` suddenly read `explained 0 / unexplained 15`. That
+is the anti-staleness guard working as designed — an explanation accepted against
+one pack is not automatically valid against the next. Re-binding was justified
+only because all 15 divergences were measured byte-identical under seq-16 (same
+`expected`/`actual`/`differences`; only the pack identity moved).
+`test_the_file_is_bound_to_the_pack_the_engine_actually_serves` keeps that from
+rotting in silence.
 """
 
 from __future__ import annotations
@@ -35,13 +50,12 @@ import pytest
 
 from backend.scripts.visa_engine.gold_replay_driver import _load_accepted_explanations
 
-_CONTRACTS = (
-    Path(__file__).resolve().parents[3] / "services" / "visa_engine" / "contracts"
-)
+_CONTRACTS = Path(__file__).resolve().parents[3] / "services" / "visa_engine" / "contracts"
 _FILE = _CONTRACTS / "gold-accepted-explanations.json"
 
-#: The one divergence that must NOT carry an explanation until seq-16 lands.
-_DEAD_END = 15
+#: The persona seq-16 cured. It must NOT be divergent any more — and it must be
+#: cured for the right reason (E23 supported), not by some other drift.
+_CURED = 15
 
 
 @pytest.fixture(scope="module")
@@ -55,10 +69,12 @@ def test_the_file_is_a_valid_driver_input(report: dict) -> None:
     real consumer rejects is a document, not a gate."""
     loaded = _load_accepted_explanations(_FILE)
     assert loaded, "loader returned nothing — the file would explain zero divergences"
-    assert _DEAD_END not in loaded
+    assert _CURED not in loaded, (
+        "persona #15 no longer diverges, so it must carry no explanation at all"
+    )
 
 
-def test_every_divergence_except_the_dead_end_is_explained(report: dict) -> None:
+def test_every_divergence_is_explained(report: dict) -> None:
     divergent = {p["persona_id"] for p in report["personas"] if p.get("divergence")}
     explained = {
         p["persona_id"]
@@ -66,26 +82,56 @@ def test_every_divergence_except_the_dead_end_is_explained(report: dict) -> None
         if p.get("divergence") and (p.get("explanation") or "").strip()
     }
     # Anti-vacuity: a parse that found nothing would make the rest trivially true.
-    assert len(divergent) >= 16, f"only {len(divergent)} divergences parsed"
-    assert divergent - explained == {_DEAD_END}, (
+    assert len(divergent) >= 15, f"only {len(divergent)} divergences parsed"
+    assert divergent - explained == set(), (
         "the signed criterion is 'every divergence explained, and none of them a "
         f"dead end'; unexplained = {sorted(divergent - explained)}"
     )
+    assert report["summary"]["unexplained_divergences"] == 0
+    assert report["overall_pass"] is True
 
 
-def test_the_dead_end_is_not_explained_away(report: dict) -> None:
-    row = next(p for p in report["personas"] if p["persona_id"] == _DEAD_END)
-    assert row.get("divergence") is True
-    assert not (row.get("explanation") or "").strip(), (
-        "persona #15 is the live dead end; giving it an explanation turns the gate "
-        "green over the defect it exists to hold open. Cure it with seq-16 instead."
+def test_the_cured_persona_is_no_longer_a_dead_end(report: dict) -> None:
+    """seq-16 had one falsifiable acceptance: #15 flips from NEEDS_INPUT to
+    SUPPORTED_CANDIDATES ['E23']. This is that acceptance, kept armed — if the
+    purpose coverage regresses, this goes red instead of quietly returning the
+    applicant to the dead end."""
+    row = next(p for p in report["personas"] if p["persona_id"] == _CURED)
+    assert not row.get("divergence"), (
+        "persona #15 diverges again — seq-16's cure regressed; do NOT paper over it "
+        "with an explanation, re-check E23.covered_purposes"
     )
-    # And it must still be the SAME dead end, not some other divergence that
-    # drifted into the slot.
+    assert not (row.get("explanation") or "").strip()
+    # Cured for the RIGHT reason: expected and actual agree ON E23 being supported.
     assert row["expected"]["state"] == "SUPPORTED_CANDIDATES"
     assert row["expected"]["candidate_products"] == ["E23"]
-    assert row["actual"]["state"] == "NEEDS_INPUT"
-    assert "intent.requested_product_code" in row["actual"]["missing_facts"]
+    assert row["actual"]["state"] == "SUPPORTED_CANDIDATES"
+    assert row["actual"]["candidate_products"] == ["E23"]
+    assert row["actual"]["missing_facts"] == []
+
+
+def test_the_file_is_bound_to_the_pack_the_engine_actually_serves(report: dict) -> None:
+    """The driver matches an accepted explanation only when its `pack` equals the
+    CURRENT pack exactly. If this file still names an older pack, every
+    explanation detaches and the gate silently reports `explained 0` — which is
+    what happened the moment seq-16 was signed. Bind the file to the highest
+    SIGNED pack on disk, or this goes red."""
+    packs_dir = _CONTRACTS / "packs"
+    signed = []
+    for path in packs_dir.glob("rulepack-prod-*.signed.json"):
+        env = json.loads(path.read_text(encoding="utf-8"))
+        if env.get("payload", {}).get("environment") == "PRODUCTION":
+            signed.append((env["payload"]["sequence"], env["payload_sha256"]))
+    assert signed, "no signed PRODUCTION pack on disk — cannot bind anything"
+    highest_seq, highest_sha = max(signed)
+    assert report["pack"]["sequence"] == highest_seq, (
+        f"this file is bound to seq {report['pack']['sequence']} but the engine "
+        f"serves seq {highest_seq}; every explanation would detach"
+    )
+    assert report["pack"]["payload_sha256"] == highest_sha
+    for row in report["personas"]:
+        if (row.get("explanation") or "").strip():
+            assert row["pack"]["payload_sha256"] == highest_sha
 
 
 def test_no_explanation_is_a_placeholder(report: dict) -> None:

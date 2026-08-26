@@ -516,3 +516,69 @@ esistono nel nostro pack; `E23A`/`D14`/`D17`/`E23X`/`E23Y` no. Per tutti gli alt
 **nessuno ha letto la riga**: allargarli per analogia sarebbe esattamente il passo che ho rifiutato
 di fare sul `FAMILY`. Ogni prodotto vuole la **sua** riga letta alla fonte prima che qualcuno tocchi
 il suo `covered_purposes`. Aperto come lane nel ledger `modus`, non sanato di soppiatto qui.
+
+---
+
+## ✅ FIRMATO — il gate passa, e la firma ha staccato tutte le spiegazioni (2026-08-26)
+
+Zero ha eseguito la cerimonia su M5 (la chiave privata vive solo lì, `~/.config/nuzantara/visa-signing/`,
+modo `0600`). Il bundle è arrivato sul Pro byte-identico: `sha256 4d6e9ea5…` alle due estremità.
+
+**Verificato in modo indipendente, non preso per buono.** Il payload firmato è byte-uguale al sorgente
+committato; `payload_sha256 938513db…` si ricalcola; la catena punta al `08ba8b09…` dichiarato dal
+bundle **firmato** di seq-15; `verify_rule_pack` restituisce un `VerifiedRulePack` (111 regole, 38
+prodotti, `E23 = ['EMPLOYMENT','TOURISM']`). E quattro manomissioni distinte — regola rimossa, TOURISM
+ritolto, `sequence` alterata, `kid` inventato — sono **tutte** respinte.
+
+> Nota di metodo: il primo test d'innocenza è fallito per colpa della **sonda**, non del pack — avevo
+> fissato `observed_at` a mezzanotte mentre la firma è delle 01:27, quindi risultava «nel futuro».
+> Rifatto con l'ora reale, passa. Quando una verifica fallisce, il primo sospettato è lo strumento.
+
+### Il risultato
+
+```
+pack raccolto  : seq 16 · 938513db973806ca…     (il driver lo sceglie DA SOLO)
+packs_observed : 1
+gate           : G-b
+overall_pass   : True
+summary        : explained 15 · unexplained 0 · match 5/20 · divergenti 15
+```
+
+### La trappola che vale la pena registrare: firmare STACCA tutte le spiegazioni
+
+Subito dopo la firma il driver ha letto `explained 0 · unexplained 15` — peggio di prima. Non è un
+difetto: `_matching_explanation` pretende che il campo `pack` della spiegazione accettata combaci
+**esattamente** con il pack corrente, e seq-16 ha cambiato tutti e quattro i campi d'identità
+(`rule_pack_id`, `sequence`, `version`, `payload_sha256`). È la guardia anti-stantio che fa il suo
+lavoro: **una spiegazione accettata contro un pack non vale automaticamente contro il successivo.**
+
+Il ri-aggancio è stato legittimo solo perché misurato: tutte e 15 le divergenze hanno
+`expected`/`actual`/`differences` **byte-identici** sotto seq-16 — zero cambiate nella sostanza, si è
+mossa solo l'identità del pack. Lo script che ha ri-agganciato **rifiuta** di copiare una spiegazione
+il cui nucleo sia cambiato: quella andrebbe ri-esaminata nel merito, non ri-legata meccanicamente.
+
+Il file è stato poi **rigenerato passando dal driver**, perché la mia iniezione a mano lo aveva reso
+incoerente con sé stesso (le righe portavano le spiegazioni, il blocco `summary` i numeri della corsa
+che le aveva generate senza). Ora è un punto fisso: rigirarlo dà gli stessi numeri.
+
+Guardia nuova: `test_the_file_is_bound_to_the_pack_the_engine_actually_serves` va rossa nel momento in
+cui quel file nomina un pack più vecchio del più alto firmato su disco — cioè esattamente la
+condizione in cui il gate direbbe `explained 0` in silenzio.
+
+### E i due test che dovevano rompersi, si sono rotti
+
+`test_every_divergence_except_the_dead_end_is_explained` e `test_the_dead_end_is_not_explained_away`
+codificavano «la #15 è un vicolo cieco aperto». Sono andati rossi appena la cura è atterrata — che è
+il loro lavoro. Riscritti sulla verità nuova invece che cancellati: ora `test_the_cured_persona_is_no
+_longer_a_dead_end` pretende che la #15 **non** diverga e che combaci **per la ragione giusta**
+(`SUPPORTED_CANDIDATES ['E23']` da entrambe le parti), così una regressione della copertura-scopi va
+rossa invece di riportare in silenzio il richiedente nel vicolo cieco.
+
+### Cosa NON è ancora vero
+
+**Firmato su disco non è attivo in produzione.** L'attivazione è una scrittura separata su Postgres
+(`visa_ruleset_activations` ⋈ `visa_rule_packs`, ciò che legge `_resolve_active_pack_binding`), e
+nessuno l'ha fatta. Finché non avviene, la produzione continua a servire il pack precedente.
+
+Suite: 2001 passed, 0 failed, 179 errori — tutti `OSError` di connessione a Postgres su 5432, che su
+questa macchina non gira; nessun altro tipo di eccezione fra gli errori.
