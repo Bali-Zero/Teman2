@@ -1143,6 +1143,39 @@ def test_ground_truth_innocence_page_own_test_file_skipped():
     assert viol == [] and notice is None
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "apps/mouth/src/app/kbli-explorer/loading.tsx",
+        "apps/mouth/src/app/kbli-explorer/error.tsx",
+    ],
+)
+def test_ground_truth_innocence_nextjs_framework_files_skipped(path):
+    """INNOCENCE (regression, refuter round 2 2026-08-26): loading.tsx and
+    error.tsx are Next.js App-Router-reserved special filenames — always
+    framework scaffolding (loading skeleton / error boundary), never page
+    content, by the framework's own naming contract. `_is_test_path`
+    excludes them via _NEXTJS_FRAMEWORK_BASENAMES."""
+    viol, notice = check_ground_truth_lane({"lanes": []}, [path], today=_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_ground_truth_guilt_claim_page_components_not_excluded_by_nextjs_fix():
+    """GUILT (proving the Next.js fix didn't over-reach): layout.tsx and a
+    real claim-rendering component under the same claim-page directory
+    are NOT excluded — only the 4 exact reserved framework basenames are.
+    RiskGauge.tsx renders the actual regulatory risk category; excluding
+    it would trade the loading.tsx/error.tsx over-match for a worse
+    under-match."""
+    for path in (
+        "apps/mouth/src/app/kbli-explorer/layout.tsx",
+        "apps/mouth/src/app/kbli-explorer/components/RiskGauge.tsx",
+    ):
+        viol, notice = check_ground_truth_lane({"lanes": []}, [path], today=_POST_FLIP)
+        assert viol and "ground_truth" in viol[0], path
+        assert notice is None
+
+
 def test_ground_truth_innocence_well_formed_lane_passes():
     """INNOCENCE: a {role: ground_truth, seat, nb, query_hash} lane with
     all three fields non-empty clears the rule."""
@@ -1237,7 +1270,7 @@ def test_pii_local_innocence_no_hit_skipped():
         "apps/backend-rag/backend/app/routers/whatsapp_conversations.py",
         "apps/backend-rag/backend/app/routers/admin_crm_kg.py",
         "apps/backend-rag/backend/app/routers/admin_pii.py",
-        "apps/backend-rag/backend/app/routers/guardian.py",
+        "apps/backend-rag/backend/app/routers/crm_guardian_drive.py",
         "apps/backend-rag/backend/app/routers/intake_gate.py",
     ],
 )
@@ -1251,6 +1284,21 @@ def test_pii_local_guilt_router_layer_rejected_post_flip(path):
     viol, notice = check_pii_local_seat(pack, [path], today=_POST_FLIP)
     assert viol and "pii_local" in viol[0]
     assert notice is None
+
+
+def test_pii_local_innocence_core_guardian_router_not_crm_guardian():
+    """INNOCENCE (regression, refuter round 2 2026-08-26): a bare
+    `app/routers/guardian.py` is Core Guardian (decision audit trail +
+    risk scores — an unrelated system-health/monitoring API, per its own
+    module docstring), NOT the CRM-Guardian feature. It was briefly a
+    false-positive PII_PATH_PATTERNS entry; removed. The real CRM-Guardian
+    router, crm_guardian_drive.py, stays covered via the crm_*.py glob
+    (see test_pii_local_guilt_router_layer_rejected_post_flip)."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}]}
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/app/routers/guardian.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
 
 
 def test_pii_local_innocence_all_ollama_seats_passes():

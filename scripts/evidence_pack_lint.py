@@ -816,7 +816,7 @@ GROUND_TRUTH_PATH_PATTERNS: tuple[str, ...] = (
 
 #: R8/R10 shared guard — `fnmatch`'s `*` crosses `/`, so every
 #: `.../<claim-page-dir>/*` pattern above also matches that page's own test
-#: scaffolding (found live 2026-08-26 by the R8/R10 refuter round: the
+#: scaffolding (found live 2026-08-26 by the R8/R10 refuter round 1: the
 #: `apps/mouth/src/app/kbli-explorer/*` pattern matches
 #: `apps/mouth/src/app/kbli-explorer/hooks/__tests__/useTypewriter.test.ts`,
 #: an innocuous UI test with no regulatory claim of its own). A test file
@@ -825,16 +825,41 @@ GROUND_TRUTH_PATH_PATTERNS: tuple[str, ...] = (
 #: narrow the trigger to entities/intent, never leave a bare glob to decide.
 _TEST_PATH_MARKERS: tuple[str, ...] = ("__tests__/", "/tests/", ".test.", ".spec.")
 
+#: R8 only (folded into the same exclusion helper — harmless for R10's
+#: Python-only patterns, which never look like a `.tsx` filename) — the
+#: exact, Next.js-App-Router-reserved special filenames that are ALWAYS
+#: framework scaffolding, never page content, by the framework's own
+#: naming contract (found live 2026-08-26 by refuter round 2:
+#: `.../kbli-explorer/loading.tsx` and `.../error.tsx` also matched the
+#: claim-page glob, and neither can ever render a regulatory claim — Next
+#: invokes them only for the loading-skeleton / error-boundary slot).
+#: Deliberately NOT excluded: `layout.tsx` (can carry a persistent
+#: claim-adjacent banner) and every component/hook under the page
+#: directory (KBLIInspector.tsx, RiskGauge.tsx, ComparisonModal.tsx etc.
+#: DO render the substantive claim data) — narrowing further would trade
+#: this over-match for a worse under-match, the failure mode family #3
+#: warns against preferring one direction's cure over the other's.
+_NEXTJS_FRAMEWORK_BASENAMES: frozenset[str] = frozenset({
+    "loading.tsx", "error.tsx", "not-found.tsx", "global-error.tsx",
+})
+
 
 def _is_test_path(path: str) -> bool:
-    """True for test scaffolding nested under a matched directory — see
-    _TEST_PATH_MARKERS above. Matches on the lowercased full path (path
-    separators are always `/` in git-diff-style changed-files lists) plus
-    a `test_`-prefixed basename (pytest convention)."""
+    """True for test scaffolding nested under a matched directory (see
+    _TEST_PATH_MARKERS) or a reserved Next.js framework special file (see
+    _NEXTJS_FRAMEWORK_BASENAMES) — both make no claim/carry no PII of
+    their own, whatever directory they sit in. Matches on the lowercased
+    full path (path separators are always `/` in git-diff-style
+    changed-files lists) plus a `test_`-prefixed basename (pytest
+    convention). Name kept as `_is_test_path` (not renamed to something
+    broader) since the Next.js exception is a second, narrow addition to
+    the same "this file itself carries no claim" exclusion, not a second
+    concept."""
     lowered = path.lower()
     if any(marker in lowered for marker in _TEST_PATH_MARKERS):
         return True
-    return lowered.rsplit("/", 1)[-1].startswith("test_")
+    basename = lowered.rsplit("/", 1)[-1]
+    return basename.startswith("test_") or basename in _NEXTJS_FRAMEWORK_BASENAMES
 
 #: R8 — the lane role this rule requires; a member of VALID_LANE_ROLES
 #: (above) so it coexists with rule 8's own lane-shape check on the same
@@ -853,6 +878,13 @@ GROUND_TRUTH_LANE_REQUIRED_FIELDS = ("seat", "nb", "query_hash")
 #: — both read/serve client phone numbers and names — matched neither
 #: pattern). Router filenames verified on disk against the real tree
 #: (`ls apps/backend-rag/backend/app/routers/`), not guessed.
+#: NOTE (refuter round 2, 2026-08-26): the router layer does NOT include a
+#: standalone `guardian.py` entry — that file is Core Guardian (decision
+#: audit trail + risk scores, `app/routers/guardian.py`'s own docstring),
+#: an unrelated system-health/monitoring API, not the CRM-Guardian
+#: feature. The real CRM-Guardian router is `crm_guardian_drive.py`,
+#: already covered by the `crm_*.py` glob below — adding bare
+#: `guardian.py` would have been a false-positive AND redundant.
 PII_PATH_PATTERNS: tuple[str, ...] = (
     "apps/backend-rag/backend/services/intake/*",
     "apps/backend-rag/backend/services/crm/*",
@@ -861,7 +893,6 @@ PII_PATH_PATTERNS: tuple[str, ...] = (
     "apps/backend-rag/backend/app/routers/crm_*.py",
     "apps/backend-rag/backend/app/routers/admin_crm_kg.py",
     "apps/backend-rag/backend/app/routers/admin_pii.py",
-    "apps/backend-rag/backend/app/routers/guardian.py",
     "apps/backend-rag/backend/app/routers/intake_*.py",
     "apps/backend-rag/backend/app/routers/whatsapp_*.py",
     "scripts/yield_optimizer_pitch_gate.py",
