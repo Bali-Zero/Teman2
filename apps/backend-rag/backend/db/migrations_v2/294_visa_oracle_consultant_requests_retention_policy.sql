@@ -190,6 +190,43 @@ BEGIN
 END;
 $$;
 
+-- ----------------------------------------------------------------------------
+-- OWN blanket-reject guard, deliberately NOT borrowed from migration 252.
+--
+-- The three TRUNCATE/UPDATE-DELETE guards below originally pointed at
+-- `public.reject_visa_write_substrate_mutation()`, which belongs to migration
+-- 252's visa_engine write-substrate stack (250-266). Reusing it looked free —
+-- the body is four generic lines — but it made THIS migration a dependent of
+-- another stack's function, and Postgres enforces that dependency: a fixture
+-- that rolls 252 back gets
+--
+--     DependentObjectsStillExistError: cannot drop function
+--     reject_visa_write_substrate_mutation() ... trigger
+--     visa_oracle_consultant_request_retention_policies_no_wipe ... depends on it
+--
+-- Measured, not theorised: that is verbatim what CI reported from
+-- test_evaluate_endpoint.py::test_retention_policy_is_unseeded_and_new_
+-- decision_insert_fails_closed[SHADOW], naming all three of this file's
+-- triggers.
+--
+-- This repo has already been bitten by the same SHAPE on a different axis:
+-- `_GARUDA_VOA_RETENTION_FK_DEPENDENTS` in the visa_engine conftest exists
+-- because migrations outside the 250-266 stack added FKs onto 264's table and
+-- the teardown had to be taught to unwind each one. Registering a fourth
+-- dependent on a SECOND axis would deepen that coupling. Owning a four-line
+-- function removes it: nothing outside 250-266 depends on 252 any more, and no
+-- fixture needs teaching.
+-- ----------------------------------------------------------------------------
+CREATE FUNCTION public.reject_visa_oracle_consultant_retention_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+    RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;
+END;
+$$;
+
 CREATE TRIGGER visa_oracle_consultant_request_retention_policies_guard
 BEFORE UPDATE OR DELETE ON public.visa_oracle_consultant_request_retention_policies
 FOR EACH ROW
@@ -197,7 +234,7 @@ EXECUTE FUNCTION public.guard_visa_oracle_consultant_request_retention_policy_mu
 
 CREATE TRIGGER visa_oracle_consultant_request_retention_policies_no_wipe
 BEFORE TRUNCATE ON public.visa_oracle_consultant_request_retention_policies
-FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_oracle_consultant_retention_mutation();
 
 CREATE TABLE public.visa_oracle_consultant_request_retention_batches (
     id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -215,11 +252,11 @@ COMMENT ON TABLE public.visa_oracle_consultant_request_retention_batches IS
 
 CREATE TRIGGER visa_oracle_consultant_request_retention_batches_immutable
 BEFORE UPDATE OR DELETE ON public.visa_oracle_consultant_request_retention_batches
-FOR EACH ROW EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+FOR EACH ROW EXECUTE FUNCTION public.reject_visa_oracle_consultant_retention_mutation();
 
 CREATE TRIGGER visa_oracle_consultant_request_retention_batches_no_wipe
 BEFORE TRUNCATE ON public.visa_oracle_consultant_request_retention_batches
-FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_write_substrate_mutation();
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_visa_oracle_consultant_retention_mutation();
 
 -- Bounded, policy-driven purge. Candidates are resolved dynamically: a row
 -- is governed by the policy whose effective_period covers its anchor
@@ -376,8 +413,8 @@ SET statement_timeout = '60s';
 DROP FUNCTION IF EXISTS public.visa_oracle_consultant_requests_retention_evidence();
 DROP FUNCTION IF EXISTS public.purge_visa_oracle_consultant_requests(INTEGER, TEXT);
 
--- Restores 281's original blanket-reject body verbatim (trigger
--- trg_guard_visa_oracle_consultant_requests_append_only, created by 281,
+-- Restores 293's original blanket-reject body verbatim (trigger
+-- trg_guard_visa_oracle_consultant_requests_append_only, created by 293,
 -- keeps pointing at this same function name/OID).
 CREATE OR REPLACE FUNCTION public.guard_visa_oracle_consultant_requests_append_only()
 RETURNS trigger
@@ -404,3 +441,4 @@ DROP TRIGGER IF EXISTS visa_oracle_consultant_request_retention_policies_guard
 DROP TABLE IF EXISTS public.visa_oracle_consultant_request_retention_policies;
 DROP FUNCTION IF EXISTS
     public.guard_visa_oracle_consultant_request_retention_policy_mutation();
+DROP FUNCTION IF EXISTS public.reject_visa_oracle_consultant_retention_mutation();
