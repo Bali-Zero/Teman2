@@ -1,138 +1,53 @@
 brief_ref: evidence/brief.yml
-plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
+plan_ref: "Zero order 2026-08-27 (queue acceleration): advisory workflows off merge_group; queue waits only on the 11 required contexts. Conductor's independent deadlock verification + Gear-3 PWC published on 0c0ba49b1 before this pack (harness/fable-gate commit status)."
 lanes:
-  - lane: wr3-spend-gate-enforce
+  - lane: queue-slim
     role: build
-    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
-  - lane: wr3-spend-gate-enforce-evidence
+    seat: "claude-sonnet-5 (L17 subagent in .worktrees/ci-queue-slim — PyYAML trigger analysis, 24 slims, tripwire test)"
+  - lane: queue-slim-verify
     role: review
-    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
+    seat: "claude-opus-5 (conducting session) — independent deadlock check: fetched all 24 slimmed files at head 0c0ba49b1 (none emits a required context) and all 8 kept files (merge_group present in each); cross-family refuters unreachable (codex+kimi TIMEOUT), declared in the PR body and in the published PASS-WITH-CONDITIONS verdict"
 seat_diversity: not_applicable
 seat_diversity_note: >-
-  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
-  one non-Anthropic) does not fire. Both lanes present here are Anthropic
-  seats by construction (this is a narrow evidence-authoring task, not a
-  cross-family council dispatch); declared rather than left to read as
-  satisfied.
+  Single build lane; review lane is same-family by necessity tonight
+  (codex/kimi TIMEOUT during the Actions outage recovery) — declared, not
+  hidden: the published gate verdict on 0c0ba49b1 is PASS-WITH-CONDITIONS
+  with the condition that the first post-merge queue entry must show all 11
+  required contexts reporting before the change is declared live.
 diff:
-  net_lines: >-
-    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
-    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
-    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
-    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
-    the runtime gate itself is pre-existing, unmodified production code.
+  net_lines: "26 files: 24 workflow on:-block edits (merge_group trigger removed, no job logic), infra/required.d/contexts.json regenerated to the live 11, scripts/tests/test_advisory_workflows_no_merge_group.py new, 2-test relaxation in test_probe_merge_gate_integrity.py (>=20 -> >=5 truncation tripwire, same fix #5063 carries)."
   behaviour_change: >-
-    No runtime behaviour change to any shipped code path. The workflow now also runs
-    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
-    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
-    `_generate_video` helpers the pre-existing tests already covered.
+    Advisory workflows stop running on merge-queue merge commits; they still
+    run on pull_request. The 11 required contexts keep reporting on both
+    events. No required check is weakened; no job logic changes.
 receipts:
-  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
-    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
-    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
+  - claim: "None of the 24 slimmed workflows emits any of the 11 required contexts (deadlock invariant, slim side)"
+    cmd: "for f in <24 slimmed>: gh api contents/<f>?ref=0c0ba49b1 | grep -E 'name:' | grep -iE '<11 required context names>'"
+    result: "0 hits across all 24 files"
     exit: 0
-    ts: "2026-08-23T23:05Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
-    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
+    ts: "2026-08-26T19:2xZ"
+    seat: "conducting session (independent, not the build lane)"
+  - claim: "All 8 KEEP workflows still carry merge_group at head 0c0ba49b1 (deadlock invariant, keep side)"
+    cmd: "for f in tests security harness-floor adversarial-review-gate organ-conformance immune-enforcement actionlint guard-conformance: gh api contents/.github/workflows/<f>.yml?ref=0c0ba49b1 | grep -c '^\\s*merge_group:'"
+    result: "merge_group=1 for all 8"
     exit: 0
-    ts: "2026-08-23T23:07Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
-    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
+    ts: "2026-08-26T19:2xZ"
+    seat: "conducting session"
+  - claim: "Required-workflow conformance green against the regenerated 11-context snapshot"
+    cmd: "python3 scripts/ci/check_required_workflow_conformance.py"
+    result: "11 required context(s) checked, 0 violations"
     exit: 0
-    ts: "2026-08-23T23:09Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
-    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
-    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
-    exit: 1
-    ts: "2026-08-23T23:11Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
-    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
-    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
+    ts: "2026-08-26T19:2xZ"
+    seat: "L17 build lane"
+  - claim: "Deadlock tripwire + suite green"
+    cmd: "pytest scripts/tests/test_advisory_workflows_no_merge_group.py scripts/ci/test_check_required_workflow_conformance.py scripts/ci/test_required_context_map.py scripts/tests/test_probe_merge_gate_integrity.py -q"
+    result: "55 passed"
     exit: 0
-    ts: "2026-08-23T23:13Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "actionlint accepts the modified workflow"
-    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
-    result: "no output (clean)"
-    exit: 0
-    ts: "2026-08-23T23:14Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
-    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
-    result: "exit 0, no output"
-    exit: 0
-    ts: "2026-08-23T23:14Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
-    cmd: "python3 scripts/check_watcher_coverage.py"
-    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
-    exit: 0
-    ts: "2026-08-23T23:15Z"
-    seat: "session (M5, evidence-pack task)"
-  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
-    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
-    result: >-
-      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
-      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
-      same position relative to its own HTTP call. Both call sites precede any network code in
-      their respective functions.
-    exit: 0
-    ts: "2026-08-23T23:16Z"
-    seat: "session (M5, evidence-pack task)"
+    ts: "2026-08-26T19:2xZ"
+    seat: "L17 build lane"
 pii_scan: clean
 dissent:
-  - seat: "Harness floor recompute (CI, deterministic)"
-    objection: >-
-      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
-      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
-      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
-      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
-      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
-    status: CONFIRMED
-    note: >-
-      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
-      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
-      matching the check. Answered here by supplying both files, never by editing the check
-      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
-      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
-      complied-with).
-  - seat: "session (this evidence-authoring task), against its own first instinct"
-    objection: >-
-      The mandate offered the PR body's own self-reported mutation-test result (comment out
-      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
-      verbatim without re-running it would have been citing a tool output this turn never
-      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
-      prevent, applied to a prior session's claim rather than to memory.
-    status: RETRACTED
-    note: >-
-      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
-      receipt above) rather than trusting the PR body's report. Result matched: both tests went
-      red with the identical `AssertionError: network path reached`, file restored clean.
-      Retracted because the concern was real but the independent re-run resolved it — the
-      PR body's claim held up under a fresh execution, it was not merely repeated.
-tests:
-  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
-  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
-static:
-  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
-  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
-  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
-notes:
-  - >-
-    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
-    was already committed and pushed by a prior session/task. No production code, no test
-    content, and no workflow logic was authored or edited as part of writing this pack — every
-    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
-    a first-time authoring of the underlying fix.
-  - >-
-    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
-    same `Harness floor recompute` shape first and its own evidence pack documents the identical
-    resolution — supply brief+pack, never edit the gate. That pack (`git show
-    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
-    content is specific to this PR's diff.
+  - seat: "conducting session (self-declared gap, claude-opus-5)"
+    objection: "No cross-family refuter pass ran on this diff (codex+kimi TIMEOUT all night); same-family review only."
+    status: "CONFIRMED"
+    mitigation: "conductor's independent two-sided deadlock check (receipts above) + PASS-WITH-CONDITIONS verdict on 0c0ba49b1: the first post-merge queue entry must show all 11 required contexts reporting before the change is declared live"
