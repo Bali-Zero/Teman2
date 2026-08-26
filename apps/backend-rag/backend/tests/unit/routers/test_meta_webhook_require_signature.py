@@ -227,11 +227,17 @@ def ig_client() -> TestClient:
 
 
 def test_ig_knob_true_without_secret_rejects(ig_client):
-    """GUILT, Instagram side — the knob is shared, so its guarantee must be too."""
+    """GUILT, Instagram side — the knob is shared, so its guarantee must be too.
+
+    Sets ``effective_instagram_app_secret`` (not the raw ``instagram_app_secret``
+    field) because that's what the router reads since the WhatsApp-fallback
+    change — see ``test_ig_falls_back_to_whatsapp_secret_*`` below for the
+    fallback wiring itself.
+    """
     with patch(
         "backend.app.routers.instagram_chat.settings", new_callable=_seeded_settings_mock
     ) as mock_settings:
-        mock_settings.instagram_app_secret = None
+        mock_settings.effective_instagram_app_secret = None
         mock_settings.meta_webhook_require_signature = True
         resp = ig_client.post(
             "/webhook/instagram",
@@ -247,7 +253,7 @@ def test_ig_knob_true_still_accepts_a_valid_signature(ig_client):
     with patch(
         "backend.app.routers.instagram_chat.settings", new_callable=_seeded_settings_mock
     ) as mock_settings:
-        mock_settings.instagram_app_secret = _TEST_APP_SECRET
+        mock_settings.effective_instagram_app_secret = _TEST_APP_SECRET
         mock_settings.meta_webhook_require_signature = True
         resp = ig_client.post(
             "/webhook/instagram",
@@ -270,7 +276,7 @@ def test_ig_wrong_signature_is_rejected(ig_client):
     with patch(
         "backend.app.routers.instagram_chat.settings", new_callable=_seeded_settings_mock
     ) as mock_settings:
-        mock_settings.instagram_app_secret = _TEST_APP_SECRET
+        mock_settings.effective_instagram_app_secret = _TEST_APP_SECRET
         mock_settings.meta_webhook_require_signature = False
         resp = ig_client.post(
             "/webhook/instagram",
@@ -288,7 +294,135 @@ def test_ig_default_posture_without_secret_is_still_fail_open(ig_client):
     with patch(
         "backend.app.routers.instagram_chat.settings", new_callable=_seeded_settings_mock
     ) as mock_settings:
-        mock_settings.instagram_app_secret = None
+        mock_settings.effective_instagram_app_secret = None
         mock_settings.meta_webhook_require_signature = False
         resp = ig_client.post("/webhook/instagram", json=_ig_payload())
     assert resp.status_code == 200
+
+
+# --------------------------------------------------------------------------
+# Instagram inherits the shared Meta app secret (2026-08-26) — real Settings,
+# not the MagicMock double, so the fallback property is exercised for real
+# through the router rather than merely asserted attribute-by-attribute.
+# --------------------------------------------------------------------------
+
+
+def test_ig_falls_back_to_whatsapp_secret_rejects_unsigned(ig_client):
+    """GUILT — with INSTAGRAM_APP_SECRET unset, an unsigned POST still 401s
+    (the fallback resolves a secret from WHATSAPP_APP_SECRET, so the request
+    isn't silently waved through fail-open)."""
+    test_settings = real_settings.model_copy(
+        update={
+            "instagram_app_secret": None,
+            "whatsapp_app_secret": _TEST_APP_SECRET,
+            "meta_webhook_require_signature": True,
+        }
+    )
+    with patch("backend.app.routers.instagram_chat.settings", test_settings):
+        resp = ig_client.post(
+            "/webhook/instagram",
+            content=json.dumps(_ig_payload()),
+            headers={"Content-Type": "application/json"},
+        )
+    assert resp.status_code == 401
+
+
+def test_ig_falls_back_to_whatsapp_secret_accepts_signed_with_wa_secret(ig_client):
+    """Proves the fallback: a payload signed with the WhatsApp secret value is
+    ACCEPTED on the Instagram webhook when INSTAGRAM_APP_SECRET is unset —
+    exactly what "same Meta app" (Zero, 2026-08-26) means operationally."""
+    body = json.dumps(_ig_payload()).encode("utf-8")
+    test_settings = real_settings.model_copy(
+        update={
+            "instagram_app_secret": None,
+            "whatsapp_app_secret": _TEST_APP_SECRET,
+            "meta_webhook_require_signature": True,
+        }
+    )
+    with patch("backend.app.routers.instagram_chat.settings", test_settings):
+        resp = ig_client.post(
+            "/webhook/instagram",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": _sign(body, _TEST_APP_SECRET),
+            },
+        )
+    assert resp.status_code == 200
+
+
+def test_ig_explicit_secret_wins_over_whatsapp_fallback(ig_client):
+    """INNOCENCE — an explicit INSTAGRAM_APP_SECRET must override the fallback,
+    so a future app split just sets it without touching this code again."""
+    body = json.dumps(_ig_payload()).encode("utf-8")
+    ig_only_secret = "instagram_only_secret"  # noqa: S105 - test fixture value
+    test_settings = real_settings.model_copy(
+        update={
+            "instagram_app_secret": ig_only_secret,
+            "whatsapp_app_secret": _TEST_APP_SECRET,
+            "meta_webhook_require_signature": True,
+        }
+    )
+    with patch("backend.app.routers.instagram_chat.settings", test_settings):
+        # Signed with the WhatsApp secret must now be REJECTED: with an
+        # explicit Instagram secret present, the fallback no longer applies.
+        resp_wa_signed = ig_client.post(
+            "/webhook/instagram",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": _sign(body, _TEST_APP_SECRET),
+            },
+        )
+        assert resp_wa_signed.status_code == 401
+
+        resp_ig_signed = ig_client.post(
+            "/webhook/instagram",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": _sign(body, ig_only_secret),
+            },
+        )
+    assert resp_ig_signed.status_code == 200
+
+
+def test_meta_webhook_require_signature_default_is_true():
+    """(d) — the shared knob's default flips to fail-closed as of 2026-08-26.
+
+    Was False; flipping it back would be a deliberate change to describe
+    out loud, not something to trip over silently (same rationale as the
+    fail-open default pin above, in the opposite direction).
+    """
+    from backend.app.core.config import Settings
+
+    assert Settings.model_fields["meta_webhook_require_signature"].default is True
+
+
+def test_effective_instagram_app_secret_property_directly():
+    """Unit-level pin on the property itself, independent of the router.
+
+    Exercises ``Settings.effective_instagram_app_secret.fget`` against small
+    stand-ins rather than a fully-constructed ``Settings()`` (which would
+    require satisfying every other required field) — this is the "does the
+    fallback formula itself do the right thing" check; the router-level
+    tests above are the "is it actually wired in" check.
+    """
+    from backend.app.core.config import Settings
+
+    class _NoInstagramSecret:
+        instagram_app_secret = None
+        whatsapp_app_secret = "wa_secret_value"
+
+    class _ExplicitInstagramSecret:
+        instagram_app_secret = "ig_secret_value"
+        whatsapp_app_secret = "wa_secret_value"
+
+    class _NeitherSecret:
+        instagram_app_secret = None
+        whatsapp_app_secret = None
+
+    prop = Settings.effective_instagram_app_secret.fget
+    assert prop(_NoInstagramSecret()) == "wa_secret_value"
+    assert prop(_ExplicitInstagramSecret()) == "ig_secret_value"
+    assert prop(_NeitherSecret()) is None
