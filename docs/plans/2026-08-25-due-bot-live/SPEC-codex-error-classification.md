@@ -26,7 +26,7 @@ with a real string:
    prevents bridging BETWEEN arguments, not WITHIN one multi-line string.
 
 3. **Prose cannot be classified by vocabulary.** `RESOURCE_EXHAUSTED: received
-   message larger than max (4194304 vs. 1048576)` is a payload-size failure read
+message larger than max (4194304 vs. 1048576)` is a payload-size failure read
    as account quota — the caller switches seats, which cannot help. And the
    sponsor-quota / cannot-assist-with / refused-to-answer over-matches are
    ordinary immigration-consultancy sentences.
@@ -89,6 +89,68 @@ classes not overlapping, a test must assert it on realistic COMPOSITE payloads,
 not on each vocabulary's own alternatives in isolation. That weaker test is
 exactly what let this through: it measured the vocabularies and was read as
 settling a claim about payloads.
+
+**P8 — Negation suppression is SPECIFIED before it is patterned.** A token that is
+present but negated must not classify. This was patched twice and was wrong both
+times, so the rule is written here before a third pattern is touched.
+
+Measured on `5f889df9d` by executing the compiled patterns (2026-08-26), all
+producing a full RED alarm today:
+
+| input                             | class | why it slips through                                                                                                                           |
+| --------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{"token_revoked": "false"}`      | AUTH  | the round-4 lookahead has ONE optional-quote slot and it sits BEFORE the separator, so it can close a quoted KEY but never open a quoted VALUE |
+| `{"insufficient_quota": "false"}` | QUOTA | same                                                                                                                                           |
+| `authentication error: none`      | AUTH  | the PROSE patterns received no guard at all — never a decision, simply never extended                                                          |
+| `usage limit reached: false`      | QUOTA | same                                                                                                                                           |
+| `rate limit reached: no`          | QUOTA | `no` is not in the negation vocabulary                                                                                                         |
+| `{"token_revoked": "okay"}`       | AUTH  | a code comment promises `ok`/`okay`; `\b` structurally cannot match inside `okay`, so it never delivered                                       |
+
+The spec must answer, and the answers belong in the code: which value forms count
+as negation (with the REJECTED ones named — `0` is a plausible member and a bad
+one); what separates a name from its value, with optional quoting on EITHER side;
+whether PROSE is in scope (it is not today, and nobody decided that); and the
+guilty set that must keep firing — a guard that silences a real dead credential is
+worse than the over-match it replaced.
+
+The corpus is DERIVED from that matrix — value forms x separators x quoted/unquoted
+x structured/prose, generated — never hand-picked. Two independent hand-built
+corpora (five strings and six) both missed the quoted-value form and the entire
+prose surface, because each was enumerated by someone who had just read the
+pattern, and the pattern IS its author's model of the input space. Generation is
+what removes the author from the enumeration; a bigger hand-written corpus is not.
+
+**P9 — No alternative may end in an optional sub-group when a suffix-sensitive
+lookahead follows it.** A negation lookahead attached after an alternation is
+defeated by backtracking whenever an alternative ends in `(?:...)?`: the engine
+drops the optional, the match ends early, and the lookahead's own `[:=\s]+`
+aligns against the leftover text instead of the real value.
+
+Reproduced by construction on 2026-08-26 (`_QUOTA_PROSE_RE` carries exactly this
+shape in `usage\s+limit(?:\s+reached)?`), python 3.11.15:
+
+| input                        | trailing optional          | no trailing optional | possessive `?+` |
+| ---------------------------- | -------------------------- | -------------------- | --------------- |
+| `usage limit reached: false` | **MATCH** (guard bypassed) | no                   | no              |
+| `usage limit reached: true`  | MATCH                      | MATCH                | MATCH           |
+
+Row 1 is the defect; row 2 is what makes any cure acceptable — the genuine
+positive must survive it. Either the optionality is made possessive or the
+alternative is split into two explicit ones.
+
+The consequence for P8's corpus is the part that is easy to miss: **the generator
+must range over the ALTERNATIVES, not only over the input forms.** A matrix of
+vocabulary x separator x quoting is still blind here, because this hazard lives in
+the pattern's own structure rather than in the input's. For every alternative
+carrying a trailing optional, the corpus needs its negated form.
+
+A note on method, recorded because it cost three attempts: this property was first
+checked STRUCTURALLY, by parsing alternatives out of the pattern and looking for
+ones ending in `)?`. That reported "none" — the splitter did not handle nested
+groups and the display truncated at 200 characters, while
+`usage\s+limit(?:\s+reached)?` sat inside the truncated tail. Only executing the
+two variants settled it. On this surface, parse-and-reason has now produced a
+false negative every single time it was tried.
 
 ## Arming condition
 
