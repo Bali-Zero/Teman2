@@ -129,7 +129,15 @@ async def _build_timeline(
                 "practice_status_log is absent — serving a single-step timeline. "
                 "Migration 289 has not been applied to this database."
             )
-        except asyncpg.PostgresError:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError):
+            # InterfaceError is listed EXPLICITLY because it is NOT a subclass of
+            # PostgresError — verified: its MRO is InterfaceError -> InterfaceMessage
+            # -> Exception. A connection dropped between the two queries therefore
+            # escaped the narrowed handler and reached the client as a 500, where the
+            # bare `except Exception` this replaced degraded to a 200. That was a
+            # regression introduced by narrowing, and this restores the prior
+            # behaviour: a client asking about their own practice must not get a 500
+            # because the history table is unreachable.
             logger.exception(
                 "practice_status_log query failed for practice %s; serving a single-step timeline",
                 practice_id,

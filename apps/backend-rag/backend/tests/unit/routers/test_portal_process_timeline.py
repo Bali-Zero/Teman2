@@ -297,6 +297,46 @@ class TestHistoryFailuresAreNotSpelledAsEmptyHistory:
         )
 
     @pytest.mark.asyncio
+    async def test_a_dropped_connection_degrades_it_does_not_become_a_500(self, caplog) -> None:
+        """`asyncpg.InterfaceError` is NOT a `PostgresError` — measured, not assumed.
+
+        Its MRO is `InterfaceError -> InterfaceMessage -> Exception`; it does not
+        descend from `PostgresError` at all. So narrowing the original
+        `except Exception` to the two Postgres classes silently created a NEW
+        failure mode: a connection dropped between `fetchrow()` and `fetch()`
+        escaped both handlers and reached the client as a 500, where the bare
+        handler this replaced degraded to a 200.
+
+        That is a regression introduced by the narrowing itself, found by a third
+        adversarial round, and this test is the guilt proof: remove
+        `asyncpg.InterfaceError` from the handler tuple in the router and this
+        goes RED with the InterfaceError propagating, while the
+        `InsufficientPrivilegeError` test above stays green — the two are
+        genuinely different classes, not one assertion wearing two names.
+        """
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = _practice_row()
+        mock_conn.fetch.side_effect = asyncpg.InterfaceError("connection is closed")
+
+        with caplog.at_level(logging.ERROR, logger="backend.app.routers.portal_process_timeline"):
+            result = await _build_timeline(_pool_for(mock_conn), practice_id=5, client_id=1)
+
+        assert result is not None, "a dropped connection must not become a client-facing 500"
+        assert len(result["steps"]) == 1
+        assert any(r.exc_info for r in caplog.records), "must log the traceback"
+
+    def test_interface_error_is_not_a_postgres_error(self) -> None:
+        """Pins the fact the handler depends on, so a future tidy cannot undo it.
+
+        If someone collapses the tuple back to `except asyncpg.PostgresError`
+        reasoning that "InterfaceError is surely a PostgresError", this states
+        plainly that it is not. The assertion is about the library, not our code,
+        which is exactly why it is worth writing down.
+        """
+        assert not issubclass(asyncpg.InterfaceError, asyncpg.PostgresError)
+        assert issubclass(asyncpg.UndefinedTableError, asyncpg.PostgresError)
+
+    @pytest.mark.asyncio
     async def test_a_non_database_error_still_propagates(self) -> None:
         """The narrowed except must not become a new catch-all.
 

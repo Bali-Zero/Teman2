@@ -224,3 +224,85 @@ dissent:
       assertion) is the right long-term answer and is out of scope for the PR that creates the
       table. DISCLOSED here rather than closed, so the next person meets it as a known limit and not
       as a surprise.
+  - seat: codex-gpt-5.6-sol (round 3, fresh context, xhigh, on the round-2 fixes)
+    objection: >-
+      BLOCKER — the round-2 NULL fix is at the WRONG LAYER. `ProcessStepState` in
+      apps/mouth/src/lib/schemas/process.ts is a CLOSED `z.enum`, and both `ProcessStep.status` and
+      `ProcessTimelineData.current_status` are non-nullable members of it. A NULL (or any
+      out-of-enum) status makes Zod reject the ENTIRE response, so the portal shows "Unable to load
+      the timeline". Making `_status_label` NULL-safe only moves the failure from a 500 to a schema
+      rejection; the user sees the same broken screen.
+    status: CONFIRMED
+    resolution: >-
+      Verified by reading the schema this turn, not by agreeing: `ProcessStepState` is a `z.enum`
+      of 12 members and neither field is `.nullable()`. The round-2 correction is therefore
+      insufficient rather than wrong. This is the finding that triggers Agent PR Contract rule 8 —
+      a fix-of-a-fix that is itself incomplete means the surface is under-specified. PR SUSPENDED;
+      spec written at docs/specs/practice-timeline-semantics-v1.md, Q1.
+  - seat: codex-gpt-5.6-sol (round 3)
+    objection: >-
+      BLOCKER — no baseline. The trigger is `AFTER UPDATE OF status` only, so a practice's FIRST
+      status is never recorded; after the first transition the timeline shows only the destination
+      and the starting point is gone. The reader SELECTs `old_status` and then ignores it.
+    status: CONFIRMED
+    resolution: >-
+      Verified: `grep -n old_status` on the router returns exactly ONE line (:119, the SELECT) — the
+      column is written, fetched, and discarded. Also correct that the SQL comment at
+      289_practice_status_log.sql:75 is false as written: for a pre-existing practice the trigger
+      records OLD.status, not NULL. Not fixed — whether the timeline should show where a practice
+      STARTED is a modelling decision. Spec Q3.
+  - seat: codex-gpt-5.6-sol (round 3)
+    objection: >-
+      SHOULD-FIX — a REGRESSION the narrowing itself introduced: `asyncpg.InterfaceError` does not
+      descend from `PostgresError`, so a connection dropped between `fetchrow()` and `fetch()`
+      escapes both handlers and reaches the client as a 500, where the bare `except Exception` this
+      replaced degraded to a 200.
+    status: CONFIRMED
+    resolution: >-
+      Measured, not assumed — `issubclass(asyncpg.InterfaceError, asyncpg.PostgresError)` is False
+      and its MRO is InterfaceError -> InterfaceMessage -> Exception. This one is FIXED here even
+      though the PR is suspended, because it needs no product decision: it restores behaviour the
+      diff had removed. Guilt proven (dropping InterfaceError from the handler tuple turns exactly
+      the new test RED, the neighbouring PostgresError test stays green); innocence proven
+      (415 collected, 400 passed, 15 skipped, rc=0).
+  - seat: codex-gpt-5.6-sol (round 3)
+    objection: >-
+      SHOULD-FIX ×3 — (a) `ORDER BY changed_at ASC` alone is non-deterministic on ties, needs
+      `, id`; (b) the current status and the history are read in two separate statements with no
+      shared snapshot, so a concurrent commit yields a payload whose current_status matches no step;
+      (c) `cancelled` renders `completed=true` on the history path and `completed=false` on the
+      fallback — the same practice, two answers, depending only on whether the table exists.
+    status: CONFIRMED
+    resolution: >-
+      All three confirmed by reading both paths. (c) is the one that touches real rows: production
+      holds 124 cancelled practices out of 893, so applying 289 would silently flip 124
+      client-visible practices from a grey circle to a green checkmark. Which of the two is CORRECT
+      is not a bug question — a cancelled practice is finished but not achieved, and the step model
+      has only two booleans. Spec Q2 and Q4.
+  - seat: session (m5), REFUTING a round-3 finding rather than accepting it
+    objection: >-
+      The reviewer graded SHOULD-FIX that `VARCHAR(64)` on the audit columns can still abort the
+      observed UPDATE — the R1 mechanism surviving via a second domain mismatch — citing
+      scripts/qa/portal_qa_schema.sql:102, which permits 100 characters.
+    status: RETRACTED
+    resolution: >-
+      REFUTED against production. `information_schema.columns` reports `practices.status` as
+      `character varying(50)` — NARROWER than the audit columns' 64 — so any value that fits the
+      source always fits the audit and the trigger cannot abort on width. The reviewer had measured
+      a QA FIXTURE, not the live schema, and said plainly that it could not reach production; the
+      honest disclosure is what made the gap cheap to close. Residual, non-blocking: the audit width
+      is wider by coincidence rather than derived from the source width. Recorded in the spec under
+      "What is NOT wrong" so it is not re-litigated in round 4.
+  - seat: session (m5), correcting its OWN earlier report to the owner
+    objection: >-
+      This session told the owner "the crash is already live in production today" about the NULL
+      status path. That claim was never measured.
+    status: RETRACTED
+    resolution: >-
+      FALSE, and corrected in the same turn it was checked. Production holds 893 practices and
+      `count(*) FILTER (WHERE status IS NULL)` is ZERO; the six statuses actually present
+      (completed 669, cancelled 124, on_process 68, sending_invoice 17, inquiry 8,
+      waiting_documents 7) are all inside the frontend enum. The NULL path is REACHABLE — the column
+      is nullable with no CHECK — but nothing exercises it. It is latent, not live, which moves it
+      from incident to hygiene. Recorded rather than quietly dropped because the owner acted on the
+      stronger claim.
