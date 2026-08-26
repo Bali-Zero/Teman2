@@ -25,10 +25,16 @@ Qdrant, nothing deleted, no LaunchAgent touched. Worktree: `backend-rag-wiz1-rou
 The blocker is identity, and it is a *different* shape of the identity problem than WIZ-2's own
 framing suggested. It is not "dal nome del file" — that specific failure mode has already been
 partly hardened (a fail-closed collision guard + a content-hash fallback landed 2026-08-25, the
-day before this measurement). What remains, measured directly against the live extractor on 12
-real watcher deltas: 7 of the 12 rows (58%) — equivalently 7 of the 11 distinct derived
-identities (64%) — of the watcher's own short findings would land in the KB
-**orphaned from citation lookup** — embedded and vector-searchable, but invisible to any
+day before this measurement). What remains, measured directly against the live extractor over the
+**whole 48-delta population** (**CORRECTED 2026-08-26** — this line previously cited a 12-delta
+sample's rate, 7 of 12 = 58%, as if it were the population rate; the sample figure is kept below
+only as a corroborating spot-check): **27 of 48 = 56.2%** of the watcher's own short findings
+would land in the KB **orphaned from citation lookup**. That 56.2% is a **floor, not a midpoint**:
+it is what the extractor achieves when it is fed the delta's *richest* available text
+(`citation` + `title_id` + `verbatim_excerpt` + `summary`). Drop the `citation` field — which the
+runner does not in fact prepend when ingesting a fetched document — and the same measurement
+gives **35 of 48 (72.9%)**; on `title_id` alone, **36 of 48 (75.0%)**. The correction is therefore
+conservative in the document's own favour — embedded and vector-searchable, but invisible to any
 document_id/citation-exact query, KG entity-linking, or future de-dup pass. That is a quieter
 failure than WIZ-2's "confidently wrong" case, but it is still not something to ship blind.
 
@@ -96,9 +102,18 @@ reads** — 84,283 points, 388 documents. `legal_unified_2026` is a **frozen, un
 artifact from 2026-05-16** that this same work item's decision record retires as a target
 (`decision.choice: retire_as_target`). `regulatory_ingest_runner.py:425` already targets
 `"legal_unified"` literally — the correct one. `scripts/ci/ingest_target_lint.py`'s own docstring
-(lines 6, 25-26) documents that this runner *did* once resolve to the wrong name via a string
-concatenation (`"legal_unified" + "_2026"`) that a now-superseded regex scanner missed; an
-AST-based lint replaced it and the runner is a `DECLARED_ENTRYPOINT` at the correct name today.
+documents the runner's historical mis-target — but **CORRECTED 2026-08-26**: this paragraph
+previously fused two separate, real facts into one false history, and said the runner "did once
+resolve to the wrong name via a string concatenation (`"legal_unified" + "_2026"`) that a
+now-superseded regex scanner missed". It did not. The runner's actual historical bug was the
+**plain string literal** `legal_unified_2026`, named directly (docstring lines 6-15). The
+concatenation form was a **refuter-constructed counterexample**, written to break the *lint's*
+first, regex-based implementation (lines 17-27) — never a state the runner's own code passed
+through. Verified this session by `git log --all -S 'legal_unified" + "_2026'` scoped to
+`infra/eventbus/regulatory_ingest_runner.py`: **zero** commits, while the same search unscoped
+does return commits, all of them in the lint and its tests. An AST-based lint replaced the regex
+one and the runner is a `DECLARED_ENTRYPOINT` at the correct name today; that conclusion is
+unaffected by the correction.
 This is resolved, not open — noted here because getting it backwards would have wrecked the whole
 analysis.
 
@@ -256,8 +271,9 @@ title implies — that specific hole has a fresh, real patch. What it still does
 WIZ-2's own stated cure (a title-block extractor with guilt-AND-innocence tests, "plus an
 ingest-time check that refuses a document_id its own title block contradicts") would add, is any
 check that an extracted triple is *plausible* rather than merely non-colliding. On short,
-watcher-shaped text specifically, that gap manifests as a large orphaned fraction (7 of 12
-rows, 58%, in this sample) rather than as silent corruption — which is a materially different, and
+watcher-shaped text specifically, that gap manifests as a large orphaned fraction (**CORRECTED
+2026-08-26** to the full-population measurement: **27 of 48, 56.2%**, of which the 12-row sample's
+58% was a close but non-authoritative spot-check) rather than as silent corruption — which is a materially different, and
 more tolerable, failure mode than what was measured on full-PDF ingests in the legal_unified_2026
 experiment (11 of 18, ~61%, carrying a *confidently wrong* identity). But "more tolerable" is not
 "acceptable to ship": well over half of a compliance-relevant regulatory KB effectively invisible to
@@ -306,7 +322,7 @@ independent measurement agreed with the seat on all five.
 | C2 | MINOR | "57 delta files tracked on `origin/main`" — there are now **58**; `2026-08-26-delta.json` landed after the measurement. | **Recorded, not rewritten.** 57 is what was true when measured. Re-measured over all 58 files, every substantive §1.2 number still reproduces exactly: 48 delta objects, 42 unique citations, 45 `new_today`, 12 `partial: true`. The 58th file contributes zero deltas, which is why nothing moved — and it landed at `92ca871e5` ("emit 2026-08-26 delta (0 new)", #4980) AFTER this document's own last commit, so **57 was correct when written**. Its key-shape duplicates 2026-08-25's, so it does not move C3's numbers either: recomputed on both the 57- and 58-file populations, the answer is 21/24 both times. |
 | C3 | MINOR | "23 distinct top-level key-shapes" is not reproducible by either obvious method. | **Corrected to a measured range.** Independently recomputed over the tracked files: **21** distinct shapes treating a shape as the sorted key set, **24** treating it as the ordered key tuple. Neither is 23, for either the 57- or 58-file population, so the document's counting method was unstated and is now unrecoverable. The qualitative claim it supports — drift is additive, the 7 core fields are always present, `core_missing = 0` — verified and unaffected. |
 | C4 | MINOR | "43,440 chars across all 48 deltas" — the true sum is **43,248**. | **Corrected.** The difference is exactly **192 = 48 x 4**, i.e. four one-character separators per delta between the five concatenated fields — an artefact of joining rather than summing. Average is 901 chars/delta, not 905. An independent re-measurement sharpens where the gap is NOT: the two sub-totals this document states separately — `summary` 19,324 and `verbatim_excerpt` 11,298 — reproduce EXACTLY, so the data is sound and the whole 192 sits in the three fields it never states individually (`citation` + `title_id` + `title_en` = 12,626 measured against 12,818 implied). The embedding-cost conclusion is unaffected at any plausible multiplier, which is why this is MINOR. |
-| C5 | **NOT UPHELD** | Reported as line-citation drift: the hash-suffix mechanism cited at `215-228` and `_assert_identity_unclaimed` at `298-374`, against measured values of 288 and 360. | **REJECTED after independent re-measurement, and this row is a correction of a correction.** The finding was first accepted here and the citations "fixed" — wrongly. Both were measured against `HEAD`, while this document's frontmatter declares **`origin/main`, read via `git show`**, as its source. On `origin/main` the citations are right: `build_content_bound_legal_doc_id` spans exactly **215-228** with `source_sha256[:16]` at 227, and `_assert_identity_unclaimed` sits at **298-375** (`@staticmethod` 298, `def` 299, body closing at 375, next method at 377) — the document's `298-374` is off by one line at the tail and nothing else. The drift is real only against the branch, where THIS PR's own WIZ-1 comment block was inserted above both spans. So the original citations stand as written, and the failure was mine: I checked a tree the document never claimed. **The transferable rule: a `file:line` citation is only true relative to a named ref, so verify it against the ref the document declares — checking the wrong tree manufactures a defect that does not exist.** |
+| C5 | **NOT UPHELD** | Reported as line-citation drift: the hash-suffix mechanism cited at `215-228` and `_assert_identity_unclaimed` at `298-374`, against measured values of 288 and 360. | **REJECTED after independent re-measurement, and this row is a correction of a correction.** The finding was first accepted here and the citations "fixed" — wrongly. Both were measured against `HEAD`, while this document's frontmatter declares **`origin/main`, read via `git show`**, as its source. On `origin/main` the citations are right: `build_content_bound_legal_doc_id` spans exactly **215-228** with `source_sha256[:16]` at 227, and `_assert_identity_unclaimed` sits at **298-375** (`@staticmethod` 298, `def` 299, body closing at 375, next method at 377) — the document's `298-374` is off by one line at the tail and nothing else. The drift is real only against the branch, where THIS PR's own WIZ-1 comment block was inserted above both spans. So the original citations stand as written, and the failure was mine: I checked a tree the document never claimed. **The transferable rule: a `file:line` citation is only true relative to a named ref, so verify it against the ref the document declares — checking the wrong tree manufactures a defect that does not exist.** **AMENDED 2026-08-26, and the amendment is this row's own rule biting the row itself:** the campaign has since landed on `origin/main`, so the ref this row appeals to now *contains* the branch content it was contrasting against. Re-measured on today's `origin/main`: `def build_content_bound_legal_doc_id` is at **285** and `async def _assert_identity_unclaimed` at **364** — neither `215-228`/`298-375` nor the reviewer's `288`/`360` reproduce any longer. Both the original citation and its rejection were true of the tree each was measured on, and neither is true of the tree named today. A line citation pinned to a moving ref does not stay true; pin the ref by SHA, or expect to re-measure. |
 
 **Not findings, recorded so they are not mistaken for verified.** The two extraction quirks the
 document flags — the year `2025` extracted from an `SPT 2025` reference, and `KMK -> Kepmen` — are

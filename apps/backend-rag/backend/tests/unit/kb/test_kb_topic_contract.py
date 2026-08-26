@@ -1414,6 +1414,20 @@ def _real_topic_inventories() -> list[Path]:
     return [p for p in _real(INVENTORY_DIR) if _load(p).get("kind") == OWNED_KIND]
 
 
+def _real_containment_proofs() -> list[tuple[str, dict]]:
+    """Every (filename, containment_proof dict) pair found across every REAL
+    kind=topic inventory. Factored out so the informational printer and the
+    anti-vacuity assertion below read the exact same scan — two independent
+    counts of "the same thing" that could silently diverge is the family #6/#9
+    shape this whole interlock exists to avoid, and it applies just as much to
+    this module's own test helpers as to the inventories they check."""
+    return [
+        (p.name, proof)
+        for p in _real_topic_inventories()
+        for proof in _find_containment_proofs(_load(p))
+    ]
+
+
 @pytest.mark.parametrize("path", _real(TOPICS_DIR), ids=lambda p: p.stem)
 def test_real_topic_files_obey_the_contract(path):
     assert check_topic(_load(path)) == [], path.name
@@ -1427,6 +1441,46 @@ def test_real_journey_files_obey_the_contract(path):
 @pytest.mark.parametrize("path", _real_topic_inventories(), ids=lambda p: p.stem)
 def test_real_topic_inventories_obey_the_contract(path):
     assert check_topic_inventory(_load(path)) == [], path.name
+
+
+def test_the_containment_interlock_is_not_examining_zero_real_proofs():
+    """Anti-vacuity for the §4.6 interlock: a print is not coverage.
+
+    When the interlock rule was first added, zero real kind=topic inventories
+    carried a containment_proof anywhere, so a hard non-zero assertion here would
+    have gone red for a reason unrelated to the rule itself — the same reasoning
+    this module's docstring gives for real topic artifacts being legal to be
+    absent before their lanes land. It was deliberately left informational for
+    that reason.
+
+    The kb-current campaign has since landed the UU_25_2007 containment lane on
+    `main` (kb/inventory/company.yaml's
+    uu_25_2007_fragment_categorisation.containment_proof), so that real coverage
+    now exists and asserting it is honest rather than premature. Leaving it
+    unasserted past this point would be the SOFT version of the disease this
+    interlock exists to cure — a count that reads as coverage without being
+    enforced as coverage: if that block were ever removed from the real file,
+    this rule would silently fall back to being exercised by the synthetic
+    guilt/innocence cases alone, with nothing here to say so.
+
+    Deliberately asserts the count of real containment_proof INSTANCES
+    (_real_containment_proofs()), not the count of real topic inventory FILES —
+    those are different facts, and file-count would stay green even if every
+    containment_proof were stripped out of every real file's content.
+
+    Rescued 2026-08-26 from the kb-topic-interlock-antivacuity-0826 lane, whose
+    branch the campaign's squash orphaned before it could land.
+    """
+    real_proofs = _real_containment_proofs()
+    assert real_proofs, (
+        "no real kb/inventory/*.yaml with kind=topic carries a containment_proof "
+        "anywhere in its structure, so the §4.6 interlock in check_topic_inventory "
+        "is exercised only by synthetic fixtures and never by a real file. Either "
+        "kb/inventory/company.yaml's uu_25_2007_fragment_categorisation."
+        "containment_proof has been removed — restore it, or say explicitly that "
+        "real coverage is intentionally gone and loosen this back to a print — "
+        "or this assertion has been pointed at the wrong directory"
+    )
 
 
 @pytest.mark.parametrize("path", _real(TOPICS_DIR), ids=lambda p: p.stem)
