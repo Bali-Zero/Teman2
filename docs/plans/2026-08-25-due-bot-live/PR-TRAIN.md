@@ -152,9 +152,13 @@ observability signal that works end-to-end while trying to add the one that is m
 3. Only then restart the daemon (`bootout` + `bootstrap`, not `kickstart -k`: the installer's
    own log at line ~246 records that `kickstart -k` does **not** re-read the plist).
 4. Re-run the seat probe and confirm it is still green AND that it reports its primary import,
-   not its fallback. A probe on fallback copies can still print `verdict=ok` while being blind —
-   that is the failure this whole PR exists to remove, so accepting `ok` alone would close the
-   loop on nothing.
+   not its fallback. A probe on fallback copies cannot fabricate a false `ok` — `VERDICT_OK`
+   requires `login_rc == 0 AND exec_rc == 0`, and any nonzero rc falls to `other_failure`
+   whether or not a pattern matched. What drifted fallback copies actually do is DOWNGRADE a
+   real `auth_death` or `quota_exhausted` into the weaker `other_failure` bucket: the alarm
+   still fires, with the wrong diagnosis, so the sentinel prescribes the wrong remedy. Accepting
+   `ok` alone is therefore not "closing the loop on nothing" — it is accepting an unknown
+   diagnosis quality, which is the thing to close.
 
 **Step 4 is not executable today — measured 2026-08-26.** Read live from Pro,
 `/usr/local/var/wa-codex-broker/seat-status.json` carries exactly four keys — `verdict`,
@@ -168,6 +172,14 @@ Until the probe publishes that field, step 4 has to be satisfied out of band: lo
 probe module and read `_AUTH_DEATH_SOURCE` directly, rather than reading the status JSON. The
 field has been requested as part of the PR that carries the probe; when it lands, delete this
 paragraph and step 4 becomes a one-line check again.
+
+A worry raised while writing this and then measured away, recorded so nobody re-raises it: a
+daemon left import-dead by a botched promotion does NOT hide behind the probe's `ok`. The seat
+probe watches the SEAT; daemon liveness is watched separately, and `scripts/wa_codex_seat_sentinel.py`
+lines 257-258 already read `broker_last_seen_at`, `breaker_state` and `consecutive_failures` off
+`wa_broker_gauge`, with line 294 handling the NULL "daemon never seen" case. The import that
+would fail is at module level (`wa_codex_daemon.py` lines 70-81), so the daemon dies before it
+can ever refresh the gauge, the row goes stale, and the sentinel sees it. Nothing needs building.
 
 For the record, the same read confirmed the promotion constraint against the LIVE tree rather
 than against `origin/main`: `grep -c "class CodexExecQuotaError"` on
