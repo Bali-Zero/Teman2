@@ -668,3 +668,71 @@ assert 16 == 15
 
 È la condizione che quel test è stato scritto per prendere. Torna verde con la nuova firma, dopo
 aver rigenerato `gold-accepted-explanations.json` attraverso il driver.
+
+---
+
+## ✅ seq-16 FIRMATO sulla catena giusta — il gate passa (2026-08-26)
+
+Zero ha rieseguito la cerimonia su M5. `payload_sha256 = ef17dc12…`, esattamente il valore che il
+fold aveva previsto. Trasferito sul Pro byte-identico: `sha256 18a5856f…` a entrambe le estremità.
+
+> **Perché la prima esecuzione non aveva prodotto nulla.** Il comando era stato consegnato spezzato
+> su nove righe con barre rovesciate; all'incollaggio si è rotto e zsh ne ha registrato i frammenti
+> come comandi separati. Nessuno dei quali firma. La diagnosi NON è venuta dalla cronologia — che può
+> non essere ancora scaricata da una shell aperta — ma dal filesystem: **nessun file creato nel
+> worktree di firma nelle 4 ore precedenti**. Consegnato di nuovo su riga singola, ha funzionato al
+> primo colpo. La forma della consegna era il difetto, non l'esecuzione.
+
+### Verifica indipendente (generator ≠ grader)
+
+Rieseguita da questa sessione e **rifatta da un secondo lettore** incaricato di refutare, non di
+confermare. Entrambi concordi:
+
+|                                                                  |                                                                   |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| payload firmato == sorgente committato (JCS)                     | ✅ 164.015 byte identici                                          |
+| `payload_sha256` si ricalcola                                    | ✅ `ef17dc12…`                                                    |
+| catena → `b9edb809…` = seq-13 **firmato**                        | ✅ e ricalcolato dal sorgente di seq-13                           |
+| firma Ed25519 contro la chiave pinnata                           | ✅ `verify_rule_pack` OK, `unsigned_dev: False`                   |
+| 111 regole · 38 prodotti · `E23 = [EMPLOYMENT, TOURISM]`         | ✅                                                                |
+| 4 manomissioni (regola tolta / TOURISM ritolto / sequence / kid) | ✅ tutte respinte                                                 |
+| **anti-rollback contro il seq-13 VIVO**                          | ✅ **ACCETTATO** — rifiutava due volte prima del ri-aggancio      |
+| diff 13→16 su tutte le chiavi                                    | ✅ solo E23 + le 2 regole; 37 prodotti e 109 regole byte-identici |
+| replay indipendente delle 20 persona                             | ✅ **una sola si muove: la #15**                                  |
+
+### Il file gold, rigenerato attraverso il driver
+
+```
+pack        : seq 16 · ef17dc122380d1e5…
+divergenti  : 15 · spiegate 15 · non spiegate 0
+overall_pass: True
+persona #15 : non diverge più — SUPPORTED_CANDIDATES ['E23']
+```
+
+Nuovo strumento: `backend/scripts/visa_engine/rebind_accepted_explanations.py`. Porta avanti una
+spiegazione accettata **solo** se la divergenza che spiega è byte-identica sotto il nuovo pack, e
+rifiuta ad alta voce qualunque nucleo si sia mosso. Serviva perché firmare stacca tutte le
+spiegazioni in blocco (anti-staleness voluto), e la cura sbagliata — riscrivere l'hash — riattaccherebbe
+un giudizio umano a qualcosa che nessuno ha riletto.
+
+> **Due difetti trovati nello strumento mentre lo scrivevo, entrambi silenziosi.**
+> **(1)** La prima versione timbrava ogni persona col blocco `pack` TOP-LEVEL, che porta una chiave in
+> più (`consistent_across_personas`). `_matching_explanation` confronta quel blocco per uguaglianza
+> esatta di dizionario ⇒ tutte e 15 le spiegazioni venivano scartate **senza sollevare nulla**, e il
+> file rigenerato leggeva `explained 0` — indistinguibile da un distacco vero. Cura: non toccare quel
+> blocco affatto.
+> **(2)** Il test end-to-end che avrebbe dovuto prenderlo **non lo prendeva**: leggeva il blocco `pack`
+> _dalla riga già riscritta_ e lo confrontava con sé stesso — un tripwire che confronta due output
+> dello stesso generatore. Scoperto solo re-iniettando il bug apposta. Ora entrambi i test vanno rossi
+> quando il difetto c'è; provato, non dedotto.
+
+Suite: **2147 passed · 0 failed · 87 error** — gli errori sono tutti `DependentObjectsStillExistError`
+di teardown sul database di test **locale** (`localhost:5432/nuzantara_test`, verificato: non la
+produzione), nessuno nei file toccati, e non confrontati con una baseline pulita.
+
+### Cosa resta
+
+**Firmato non è attivo.** L'attivazione è una scrittura separata su Postgres. Adesso il gate
+l'accetta, e i valori veri da passare sono `--current-sequence 13` e
+`--current-payload-sha256 b9edb809…`, letti dal DB — da rileggere comunque immediatamente prima, non
+da copiare da qui.

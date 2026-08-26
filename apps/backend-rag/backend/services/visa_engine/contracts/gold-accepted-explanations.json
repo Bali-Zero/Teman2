@@ -1,11 +1,11 @@
 {
   "gate": "G-b",
-  "generated_at": "2026-08-26T01:31:08.045660+00:00",
+  "generated_at": "2026-08-26T08:09:51.131112+00:00",
   "mode": "offline",
   "overall_pass": true,
   "pack": {
     "consistent_across_personas": true,
-    "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+    "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
     "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
     "sequence": 16,
     "version": "2026.8.26"
@@ -33,7 +33,7 @@
   },
   "packs_observed": [
     {
-      "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+      "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
       "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
       "sequence": 16,
       "version": "2026.8.26"
@@ -79,10 +79,10 @@
         "review_reason_codes": [],
         "state": "NO_SUPPORTED_PATH"
       },
-      "explanation": "CLASS 2 (GOLD-DIVERGENCE-TRIAGE.md, named row) — a later safety rule firing, not a defect. The corpus expected a flat NO_SUPPORTED_PATH with APPLICANT_IS_INDONESIAN_CITIZEN; the engine instead raises CITIZENSHIP_LIST_DIVERGENCE and escalates to a human. Escalating beats refusing outright: a citizenship list can be wrong about a real person, and a human can see that. Divergence in the conservative direction, costing a consultant's time, never a wrong visa.",
+      "explanation": "CLASS 2 (GOLD-DIVERGENCE-TRIAGE.md, named row) \u2014 a later safety rule firing, not a defect. The corpus expected a flat NO_SUPPORTED_PATH with APPLICANT_IS_INDONESIAN_CITIZEN; the engine instead raises CITIZENSHIP_LIST_DIVERGENCE and escalates to a human. Escalating beats refusing outright: a citizenship list can be wrong about a real person, and a human can see that. Divergence in the conservative direction, costing a consultant's time, never a wrong visa.",
       "label": "ID citizen excluded outright",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -118,10 +118,10 @@
         "review_reason_codes": ["CITIZENSHIP_EVIDENCE_CONFLICT"],
         "state": "HUMAN_REVIEW_REQUIRED"
       },
-      "explanation": "CLASS 3 (triage, named row) — the engine asks a different question first and still arrives. Same state (HUMAN_REVIEW_REQUIRED); the engine returns CALLING_VISA_REVIEW + CITIZENSHIP_LIST_DIVERGENCE where the corpus expected CITIZENSHIP_EVIDENCE_CONFLICT. Richer reasons for the same outcome — the consultant receives more context, not less.",
+      "explanation": "CLASS 3 (triage, named row) \u2014 the engine asks a different question first and still arrives. Same state (HUMAN_REVIEW_REQUIRED); the engine returns CALLING_VISA_REVIEW + CITIZENSHIP_LIST_DIVERGENCE where the corpus expected CITIZENSHIP_EVIDENCE_CONFLICT. Richer reasons for the same outcome \u2014 the consultant receives more context, not less.",
       "label": "conflicting nationality evidence -> human review",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -150,7 +150,7 @@
       "explanation": null,
       "label": "calling-visa nationality -> human review",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -179,7 +179,7 @@
       "explanation": null,
       "label": "active overstay -> human review",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -218,10 +218,10 @@
         "review_reason_codes": ["MINOR_WITHOUT_CONFIRMED_GUARDIAN"],
         "state": "HUMAN_REVIEW_REQUIRED"
       },
-      "explanation": "CLASS 2 — classified by the session on 2026-08-26, not by a ruling: this persona was the 16th divergence and was missing from the triage's taxonomy (which summed to 15). Identical shape to persona #6 and the same rule: same state, same (empty) candidates, the engine adds MINOR_GUARDIAN_PRIVACY_REVIEW alongside the expected MINOR_WITHOUT_CONFIRMED_GUARDIAN. Strictly more protective for a minor.",
+      "explanation": "CLASS 2 \u2014 classified by the session on 2026-08-26, not by a ruling: this persona was the 16th divergence and was missing from the triage's taxonomy (which summed to 15). Identical shape to persona #6 and the same rule: same state, same (empty) candidates, the engine adds MINOR_GUARDIAN_PRIVACY_REVIEW alongside the expected MINOR_WITHOUT_CONFIRMED_GUARDIAN. Strictly more protective for a minor.",
       "label": "minor without confirmed guardian -> human review",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -266,10 +266,10 @@
         "review_reason_codes": [],
         "state": "SUPPORTED_CANDIDATES"
       },
-      "explanation": "CLASS 2 (triage, named row) — MINOR_GUARDIAN_PRIVACY_REVIEW, a safety rule added after the corpus was written. The corpus expected SUPPORTED_CANDIDATES [E31]; the engine routes the minor to a human instead. For an applicant under 18 that is the intended behaviour, not a regression.",
+      "explanation": "CLASS 2 (triage, named row) \u2014 MINOR_GUARDIAN_PRIVACY_REVIEW, a safety rule added after the corpus was written. The corpus expected SUPPORTED_CANDIDATES [E31]; the engine routes the minor to a human instead. For an applicant under 18 that is the intended behaviour, not a regression.",
       "label": "minor child with confirmed family sponsor -> E31",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -302,10 +302,10 @@
         "review_reason_codes": [],
         "state": "SUPPORTED_CANDIDATES"
       },
-      "explanation": "CLASS 1 (triage) — the corpus tests five product codes (E28A, E31, E23, E33G, C1); the engine's catalogue has 38. Same state (SUPPORTED_CANDIDATES); the engine answers C1/E31A/E31B/E31D where the corpus knew only the generic E31. The family route was subdivided after the corpus was written; the expectation is a smaller catalogue, not a wrong answer.",
+      "explanation": "CLASS 1 (triage) \u2014 the corpus tests five product codes (E28A, E31, E23, E33G, C1); the engine's catalogue has 38. Same state (SUPPORTED_CANDIDATES); the engine answers C1/E31A/E31B/E31D where the corpus knew only the generic E31. The family route was subdivided after the corpus was written; the expectation is a smaller catalogue, not a wrong answer.",
       "label": "adult spouse, registered marriage, confirmed sponsor -> E31",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -350,10 +350,10 @@
         "review_reason_codes": [],
         "state": "NEEDS_INPUT"
       },
-      "explanation": "CLASS 1 (triage) — same cause as #7. The corpus expected NEEDS_INPUT because its ONLY family product (E31) requires family.marriage_registered. The engine has products that do not need that fact at all (C1, a tourist visa, and E31D), so it can answer without it. The missing fact did not go unanswered: it stopped being required by the products actually offered.",
+      "explanation": "CLASS 1 (triage) \u2014 same cause as #7. The corpus expected NEEDS_INPUT because its ONLY family product (E31) requires family.marriage_registered. The engine has products that do not need that fact at all (C1, a tourist visa, and E31D), so it can answer without it. The missing fact did not go unanswered: it stopped being required by the products actually offered.",
       "label": "same as #7 but marriage_registered unverified -> needs input",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -398,10 +398,10 @@
         "review_reason_codes": [],
         "state": "NO_SUPPORTED_PATH"
       },
-      "explanation": "CLASS 1 (triage, explained at length there) — the corpus's NO_SUPPORTED_PATH means 'none of these five fits', not 'no visa in Indonesia fits'. The engine answers D12, the PRE-investment multiple-entry visit visa, which has carried six ELIGIBILITY rules since pack 009 and simply does not exist in the corpus's world. DIRECT_ONSHORE_CONVERSION_UNSUPPORTED remains true about the conversion; it is not true about the applicant's options.",
+      "explanation": "CLASS 1 (triage, explained at length there) \u2014 the corpus's NO_SUPPORTED_PATH means 'none of these five fits', not 'no visa in Indonesia fits'. The engine answers D12, the PRE-investment multiple-entry visit visa, which has carried six ELIGIBILITY rules since pack 009 and simply does not exist in the corpus's world. DIRECT_ONSHORE_CONVERSION_UNSUPPORTED remains true about the conversion; it is not true about the applicant's options.",
       "label": "investor direct onshore conversion -> unsupported",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -446,10 +446,10 @@
         "review_reason_codes": ["STATUS_BRIDGING_REVIEW"],
         "state": "HUMAN_REVIEW_REQUIRED"
       },
-      "explanation": "CLASS 1 (triage, which lists this persona in that class) — the engine answers D12, a product the corpus has never heard of. RESIDUAL, recorded rather than hidden: this is the one Class-1 row where the engine also DROPS a reason the corpus expected (STATUS_BRIDGING_REVIEW) rather than merely adding products. Whether a status-bridging review should still fire when the answer is an offshore D12 is not settled by the triage's general reason, and persona #20 shows the engine does enforce bridging prohibitions elsewhere. Transcribed on the triage's authority; flagged for re-check before ENFORCE.",
+      "explanation": "CLASS 1 (triage, which lists this persona in that class) \u2014 the engine answers D12, a product the corpus has never heard of. RESIDUAL, recorded rather than hidden: this is the one Class-1 row where the engine also DROPS a reason the corpus expected (STATUS_BRIDGING_REVIEW) rather than merely adding products. Whether a status-bridging review should still fire when the answer is an offshore D12 is not settled by the triage's general reason, and persona #20 shows the engine does enforce bridging prohibitions elsewhere. Transcribed on the triage's authority; flagged for re-check before ENFORCE.",
       "label": "same investor facts via status bridging -> human review",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -494,10 +494,10 @@
         "review_reason_codes": [],
         "state": "SUPPORTED_CANDIDATES"
       },
-      "explanation": "CLASS 2 (triage, named row) — E33G_INCOME_EVIDENCE_REVIEW, a safety rule added after the corpus was written. The corpus expected SUPPORTED_CANDIDATES [E33G]; the engine asks a human to see the income evidence first. Conservative direction: costs a consultant's time, never a wrong visa.",
+      "explanation": "CLASS 2 (triage, named row) \u2014 E33G_INCOME_EVIDENCE_REVIEW, a safety rule added after the corpus was written. The corpus expected SUPPORTED_CANDIDATES [E33G]; the engine asks a human to see the income evidence first. Conservative direction: costs a consultant's time, never a wrong visa.",
       "label": "clean remote worker, no local footprint -> E33G",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -526,7 +526,7 @@
       "explanation": null,
       "label": "remote worker serving Indonesian clients -> human review",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -559,10 +559,10 @@
         "review_reason_codes": [],
         "state": "NEEDS_INPUT"
       },
-      "explanation": "CLASS 3 (triage, named row) — same state (NEEDS_INPUT); the engine asks for sponsor.type where the corpus expected work.serves_indonesian_clients. Both are real, askable facts, so the interview still terminates. A different first question, not a dead end.",
+      "explanation": "CLASS 3 (triage, named row) \u2014 same state (NEEDS_INPUT); the engine asks for sponsor.type where the corpus expected work.serves_indonesian_clients. Both are real, askable facts, so the interview still terminates. A different first question, not a dead end.",
       "label": "remote worker, local-clients fact unprovided -> needs input",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -607,10 +607,10 @@
         "review_reason_codes": [],
         "state": "SUPPORTED_CANDIDATES"
       },
-      "explanation": "CLASS 2 (triage, named row) — the same E33G_INCOME_EVIDENCE_REVIEW as #11, on the tourism+remote-work shape. Conservative direction.",
+      "explanation": "CLASS 2 (triage, named row) \u2014 the same E33G_INCOME_EVIDENCE_REVIEW as #11, on the tourism+remote-work shape. Conservative direction.",
       "label": "tourism + remote-work purposes -> E33G only, never C1",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -639,7 +639,7 @@
       "explanation": null,
       "label": "tourism + employment purposes -> E23 only, never C1",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -684,10 +684,10 @@
         "review_reason_codes": [],
         "state": "NO_SUPPORTED_PATH"
       },
-      "explanation": "CLASS 1 (triage, named there as 'the one most likely to be misread as a scandal') — the reason code says it itself: INVESTMENT_CAPITAL_BELOW_FIXTURE_MINIMUM describes the SYNTHETIC fixture's threshold, not Indonesian law. The engine offers D12, the pre-investment visit visa: telling an investor who falls just under the KITAS threshold to come and look around first is plausibly the commercially correct answer. The corpus could not say that because D12 does not exist in its world.",
+      "explanation": "CLASS 1 (triage, named there as 'the one most likely to be misread as a scandal') \u2014 the reason code says it itself: INVESTMENT_CAPITAL_BELOW_FIXTURE_MINIMUM describes the SYNTHETIC fixture's threshold, not Indonesian law. The engine offers D12, the pre-investment visit visa: telling an investor who falls just under the KITAS threshold to come and look around first is plausibly the commercially correct answer. The corpus could not say that because D12 does not exist in its world.",
       "label": "investor capital 1 IDR below minimum -> no supported path",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -720,10 +720,10 @@
         "review_reason_codes": [],
         "state": "SUPPORTED_CANDIDATES"
       },
-      "explanation": "CLASS 1 (triage) — the corpus expected E28A (its own fixture minimum); the engine answers D12. RESIDUAL, recorded rather than hidden: unlike #9/#16 the applicant here MEETS the fixture's threshold, so the engine offering only the pre-investment visit visa rather than the investor route is a narrowing, and the triage's general 'wider catalogue' reason does not by itself account for a narrowing. Transcribed on the triage's authority; flagged for re-check before ENFORCE.",
+      "explanation": "CLASS 1 (triage) \u2014 the corpus expected E28A (its own fixture minimum); the engine answers D12. RESIDUAL, recorded rather than hidden: unlike #9/#16 the applicant here MEETS the fixture's threshold, so the engine offering only the pre-investment visit visa rather than the investor route is a narrowing, and the triage's general 'wider catalogue' reason does not by itself account for a narrowing. Transcribed on the triage's authority; flagged for re-check before ENFORCE.",
       "label": "investor at fixture minimum, low budget never filters -> E28A",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -752,7 +752,7 @@
       "explanation": null,
       "label": "obsolete code requested, purposes not provided -> needs input + notice",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -785,10 +785,10 @@
         "review_reason_codes": [],
         "state": "SUPPORTED_CANDIDATES"
       },
-      "explanation": "CLASS 1 (triage) — same state (SUPPORTED_CANDIDATES [C1] expected); the engine additionally offers B1, a product outside the corpus's five. A superset of the expected answer, not a different one.",
+      "explanation": "CLASS 1 (triage) \u2014 same state (SUPPORTED_CANDIDATES [C1] expected); the engine additionally offers B1, a product outside the corpus's five. A superset of the expected answer, not a different one.",
       "label": "obsolete code requested, complete tourism facts -> C1 + notice",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
@@ -845,10 +845,10 @@
         "review_reason_codes": [],
         "state": "NEEDS_INPUT"
       },
-      "explanation": "CLASS 2 (triage, named row, and singled out there) — this is Zero's bridging ruling of 2026-08-23 being enforced. The corpus expected the engine to ask for more facts; the engine instead recognises a prohibited bridging transition (BRIDGING_FROM_VISIT_ITK_PROHIBITED, BRIDGING_TO_BRIDGING_PROHIBITED) and stops. The ruling working, showing up as a 'failure'.",
+      "explanation": "CLASS 2 (triage, named row, and singled out there) \u2014 this is Zero's bridging ruling of 2026-08-23 being enforced. The corpus expected the engine to ask for more facts; the engine instead recognises a prohibited bridging transition (BRIDGING_FROM_VISIT_ITK_PROHIBITED, BRIDGING_TO_BRIDGING_PROHIBITED) and stops. The ruling working, showing up as a 'failure'.",
       "label": "onshore conversion wanted, status+overstay both unprovided",
       "pack": {
-        "payload_sha256": "938513db973806ca8038d220528f5b2c7b5b7d73b0f6769f03241f1b200f7b78",
+        "payload_sha256": "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100",
         "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
         "sequence": 16,
         "version": "2026.8.26"
