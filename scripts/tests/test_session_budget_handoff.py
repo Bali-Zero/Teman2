@@ -82,9 +82,6 @@ def main() -> int:
             fails += 0 if ok else 1
             print(f"  [{'OK ' if ok else 'FAIL'}] diff --stat filename survived redaction")
 
-            ok = "session-redact-cccc" not in text.replace(session_id, "")  # sanity: no crash-junk
-            # (weak self-check, real assertions are above)
-
         # --- empty stdin: still exits 0, never raises past main() ---
         out2, rc2 = _run_hook(home, None)
         ok = rc2 == 0

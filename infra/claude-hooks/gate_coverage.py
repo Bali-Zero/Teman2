@@ -22,10 +22,28 @@ Stop hook that computes that gap per hook).
   - "allow"  the gate evaluated the call and let it through
   - "exempt" the gate looked and had nothing to say for THIS call (kill
              switch on, unparseable payload, tool outside its own matcher,
-             cannot-verify) — it still counts as "ran to completion", which
-             is the point: a fail-open TIMEOUT/CRASH/fork-failure never
-             reaches this function at all, so it shows up only as a GAP in
-             the Stop-hook report, never as a decision here.
+             cannot-verify, OR an in-process exception the gate's own
+             try/except caught and chose to degrade from) — it still counts
+             as "ran to completion", because the gate's Python code did run
+             and did reach a decision point.
+
+TWO DIFFERENT KINDS OF "the gate had nothing to say", and only one of them
+is invisible to this file (2026-08-27, refuter finding — see PR #5045):
+  1. An in-process Python exception caught by the gate's own try/except
+     (e.g. model_routing_gate.py's `_apply_routing_floor` raising) IS
+     recorded here as "exempt" — correctly: the gate's code executed, hit a
+     bug, and chose to fail open rather than crash. This is a REAL decision,
+     just a degraded one. A Stop-hook report showing full coverage for such
+     a gate does NOT mean every call was fully evaluated — it means the gate
+     ran to completion every time, which can include "ran to completion and
+     gave up." That is weaker than it sounds; treat repeated "exempt" from
+     one hook as a prompt to go read WHY, not as ipso facto proof of health.
+  2. A process-level failure — the hook's OWN interpreter never got far
+     enough to run this try/except at all (harness-level timeout kill,
+     OOM/SIGKILL, `fork failed`) — genuinely never reaches this function.
+     THIS is the class the module exists to expose: it shows up only as a
+     GAP between the transcript's gate-eligible tool-call count and the
+     decisions recorded here, never as a decision of any kind.
 
 Contract (non-negotiable): NEVER raises, NEVER blocks, NEVER slows the
 caller down — every exception is swallowed, target <5ms (one small JSON-line
