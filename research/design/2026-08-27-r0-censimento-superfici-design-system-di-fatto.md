@@ -20,7 +20,7 @@ mandate: DESIGN STUDY LOOP — R0 (Zero, 2026-08-27)
 
 ## UNKNOWNS (dichiarati in testa, non in coda)
 
-1. **Schermate non raggiunte** al momento della stesura: checkout / upload / tracking di GARUDA e il Verdetto finale di Visa Oracle. Una lane di cattura locale è in corso (build da `origin/main`, flag accesi solo in locale, dati sintetici); il documento sarà aggiornato con l'esito o con la dichiarazione di irraggiungibilità e la causa esatta.
+1. **Schermate non raggiunte** al momento della stesura: checkout / upload / tracking di GARUDA e il Verdetto finale di Visa Oracle. Una lane di cattura locale è in corso (build da `origin/main`, flag accesi solo in locale, dati sintetici); l'esito — schermate o dichiarazione di irraggiungibilità con la causa esatta — entra nel capture di R1 (che annota le schermate), non in una revisione di questo file.
 2. **Email Brevo**: su disco esiste solo la *spec* (`skills/bali-zero-brand/surfaces/email-template.md`, «pending first production email»). Nessun template HTML effettivamente inviato è stato trovato nel repo (`find … -iname '*.html' -path '*email*'` = 0). Cosa riceve oggi un cliente per email **non è misurato**.
 3. **Carousel IG WR2 recenti**: `apps/war-room/output/carousel` è vuoto sul Pro; l'unico corpus su disco sono i 64 carousel importati il 2026-05-08 (`skills/bali-zero-brand/past/`). L'identità IG è quindi misurata dai token del brand-skill + 3 copertine di maggio, non dalle uscite delle ultime settimane.
 4. **Taglio esatto del serif**: il token dichiara `"Cormorant Garamond"` (primitives.css:62) ma `next/font` carica una famiglia risolta come `cormorant` (DOM). Quale cut sia effettivamente servito (Cormorant vs Cormorant Garamond) non è stato verificato sul file font.
