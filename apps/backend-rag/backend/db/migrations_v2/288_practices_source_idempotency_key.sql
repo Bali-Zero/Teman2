@@ -12,12 +12,18 @@
 --      RETURNING id, so the DB — not this two-step dance — is the single
 --      idempotency authority."
 --
--- Measured before writing this file: `practices` has NO unique constraint of
--- any kind and no idempotency column, so today the only implementations of
--- that port are in-memory test fakes, and an adapter written against the
--- table as it stands would reproduce the exact race the port warns about
--- while passing every existing single-threaded test. This migration supplies
--- the missing authority; the adapter that uses it lands in the same PR.
+-- Measured before writing this file — and stated narrowly, because the first
+-- draft of this comment said `practices` had "NO unique constraint of any
+-- kind" and that is FALSE. It has two: `practices_pkey` (the integer
+-- surrogate PK) and `ix_practices_uuid` (a generated UUID). What it has none
+-- of is a unique constraint on any key the CALLER supplies: both existing
+-- ones are produced BY the insert, so neither can arbitrate an ON CONFLICT
+-- against an identity the caller already knows. That is the gap, and it is
+-- enough of a gap — today the only implementations of the port are in-memory
+-- test fakes, and an adapter written against the table as it stands would
+-- reproduce the exact race the port warns about while passing every existing
+-- single-threaded test. This migration supplies the missing authority; the
+-- adapter that uses it lands in the same PR.
 --
 -- WHY NULLABLE, AND WHY A PARTIAL INDEX. Every practice row that already
 -- exists was created by a human through the CRM, not by a GARUDA order, and

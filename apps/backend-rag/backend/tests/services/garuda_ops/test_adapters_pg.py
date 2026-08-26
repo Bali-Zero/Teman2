@@ -32,6 +32,7 @@ from backend.services.garuda_ops.adapters_pg import (
     MissingCustomerName,
     PostgresCrmWriter,
     PostgresOrderSnapshotProvider,
+    UnknownPracticeType,
 )
 from backend.services.garuda_ops.ports import OrderSnapshot
 
@@ -43,7 +44,11 @@ _DSN = (
 
 pytestmark = pytest.mark.asyncio
 
-PRACTICE_TYPE = "VOA"
+#: A code that is really in the `practice_types` catalogue (migration 221).
+#: It used to be the string "VOA", which matches NO row — so every test wrote a
+#: practice whose type could not be resolved, and the suite could not have
+#: noticed that the adapter left `practice_type_id` NULL.
+PRACTICE_TYPE = "visa_b1_voa"
 
 
 @pytest.fixture
@@ -494,6 +499,17 @@ async def test_a_missing_email_raises_its_OWN_exception_not_the_name_one(pool):
             )
             == 0
         ), "a refused snapshot must leave no half-written practice"
+        # The CLIENT assertion is the one that carries weight here, and it was
+        # missing: unlike the name and key guards, the email guard raises INSIDE
+        # the open transaction, so this is the only refusal path where a client
+        # row could survive a rollback that did not happen.
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM clients WHERE email LIKE $1",
+                "%@example.invalid",
+            )
+            == 0
+        ), "a refusal inside the transaction must roll the client back too"
 
 
 @pytest.mark.parametrize("bad_key", ["", "   "])
@@ -516,12 +532,20 @@ async def test_an_empty_idempotency_key_is_refused_before_it_can_duplicate(pool,
         )
 
 
-async def test_a_blank_key_would_otherwise_duplicate_which_is_why_it_is_refused(pool):
-    """The damage the guard above prevents, demonstrated against the real index.
+async def test_only_a_NULL_key_escapes_the_index_a_blank_STRING_collides(pool):
+    """What a falsy key actually does — measured, because the first version of
+    this test asserted the opposite and was wrong.
 
-    Written directly in SQL rather than through the adapter, because the adapter
-    now refuses. If a future change relaxes that guard, this test still states
-    the consequence: the partial index does NOT deduplicate blank keys.
+    The guard's original rationale said a blank key "inserts every single time"
+    and duplicates. False for a blank STRING: `''` satisfies `IS NOT NULL`, so
+    it is INSIDE the partial index and IS arbitrated — two blank-string keys
+    collapse onto ONE practice. Only NULL escapes the index and duplicates.
+
+    So the hazard has two faces and the guard is right for both: NULL
+    duplicates (one payment, many practices), a blank string COLLIDES (many
+    different payments, one shared practice, which is worse because it is
+    silent and lossy). This test pins both directions, in raw SQL, because the
+    adapter now refuses to produce either.
     """
 
     async with pool.acquire() as conn:
@@ -530,17 +554,21 @@ async def test_a_blank_key_would_otherwise_duplicate_which_is_why_it_is_refused(
             "SPECIMEN TRAVELLER",
             f"blank-key-{uuid.uuid4().hex}@example.invalid",
         )
+        type_id = await conn.fetchval(
+            "SELECT id FROM practice_types WHERE code = $1", PRACTICE_TYPE
+        )
+        insert = """
+            INSERT INTO practices
+                (client_id, practice_type_id, practice_type_code, title,
+                 quoted_price, currency, source_idempotency_key)
+            VALUES ($1, $2, $3, 'falsy key probe', 1, 'IDR', $4)
+            ON CONFLICT (source_idempotency_key)
+                WHERE source_idempotency_key IS NOT NULL
+                DO NOTHING
+        """
+
         for _ in range(2):
-            await conn.execute(
-                """
-                INSERT INTO practices
-                    (client_id, practice_type_code, title, quoted_price, currency,
-                     source_idempotency_key)
-                VALUES ($1, $2, 'duplicate probe', 1, 'IDR', NULL)
-                """,
-                client_id,
-                PRACTICE_TYPE,
-            )
+            await conn.execute(insert, client_id, type_id, PRACTICE_TYPE, None)
         assert (
             await conn.fetchval(
                 "SELECT count(*) FROM practices "
@@ -548,7 +576,18 @@ async def test_a_blank_key_would_otherwise_duplicate_which_is_why_it_is_refused(
                 client_id,
             )
             == 2
-        ), "the partial index deliberately does not constrain NULL keys"
+        ), "NULL is outside the partial index, so it DUPLICATES"
+
+        for _ in range(2):
+            await conn.execute(insert, client_id, type_id, PRACTICE_TYPE, "")
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM practices "
+                "WHERE client_id = $1 AND source_idempotency_key = ''",
+                client_id,
+            )
+            == 1
+        ), "a blank STRING is inside the index, so it COLLIDES onto one row"
 
 
 async def test_find_returns_none_for_an_unknown_key(pool):
@@ -571,13 +610,105 @@ async def test_pre_existing_human_created_practices_are_untouched_by_the_index(p
             "INSERT INTO clients (full_name, email) VALUES "
             "('HUMAN ENTERED', 'human@example.invalid') RETURNING id"
         )
+        # `practice_type_id` is supplied because a real human-created practice
+        # has one: `crm/models.py` declares the column NOT NULL and every live
+        # writer passes it. Omitting it here worked only because
+        # `scripts/ci_bootstrap_schema.py` drops that constraint for CI — this
+        # test was the SECOND place in the file resting on a constraint CI
+        # removes, and it failed the moment the constraint was restored.
+        type_id = await conn.fetchval(
+            "SELECT id FROM practice_types WHERE code = $1", PRACTICE_TYPE
+        )
         first = await conn.fetchval(
-            "INSERT INTO practices (client_id, title) VALUES ($1, 'manual A') RETURNING id",
+            "INSERT INTO practices (client_id, practice_type_id, title) "
+            "VALUES ($1, $2, 'manual A') RETURNING id",
             client_id,
+            type_id,
         )
         second = await conn.fetchval(
-            "INSERT INTO practices (client_id, title) VALUES ($1, 'manual B') RETURNING id",
+            "INSERT INTO practices (client_id, practice_type_id, title) "
+            "VALUES ($1, $2, 'manual B') RETURNING id",
             client_id,
+            type_id,
         )
         assert first != second
         await conn.execute("DELETE FROM practices WHERE id = ANY($1::int[])", [first, second])
+
+
+# --------------------------------------------------------------------------
+# the practice must be VISIBLE, not merely present
+# --------------------------------------------------------------------------
+
+
+async def test_the_practice_carries_a_resolved_practice_type_id(pool):
+    """A NULL `practice_type_id` makes the row invisible, not merely incomplete.
+
+    The CRM joins `practice_types` on `p.practice_type_id = pt.id` with an INNER
+    join in its list, analytics, dashboard and shared-memory queries
+    (crm_practices, crm_clients, crm_analytics, crm_enhanced, crm_interactions,
+    crm_shared_memory). A practice with NULL there is silently dropped from all
+    of them: the customer paid, the row exists, and no surface shows it.
+
+    The first draft of this adapter wrote only `practice_type_code`. No test in
+    this file could have caught it, because `scripts/ci_bootstrap_schema.py`
+    runs `ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL`
+    while `crm/models.py` declares the column NOT NULL — so the green suite was
+    resting on a constraint CI removes.
+    """
+
+    key = f"evt_{uuid.uuid4().hex}"
+    practice_id = await PostgresCrmWriter(pool).create_client_and_practice(
+        _snapshot(), source_idempotency_key=key, practice_type_code=PRACTICE_TYPE
+    )
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT practice_type_id, practice_type_code FROM practices WHERE id = $1",
+            practice_id,
+        )
+        assert row["practice_type_id"] is not None, (
+            "a NULL practice_type_id drops this row out of every CRM inner join"
+        )
+        expected = await conn.fetchval(
+            "SELECT id FROM practice_types WHERE code = $1", PRACTICE_TYPE
+        )
+        assert row["practice_type_id"] == expected
+        assert row["practice_type_code"] == PRACTICE_TYPE
+
+        # The assertion that actually proves visibility: the row survives the
+        # same INNER join the CRM's own list query uses.
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM practices p "
+                "JOIN practice_types pt ON p.practice_type_id = pt.id "
+                "WHERE p.id = $1",
+                practice_id,
+            )
+            == 1
+        ), "the practice must survive the CRM's inner join, not just exist"
+
+
+async def test_an_unknown_practice_type_is_refused_and_writes_nothing(pool):
+    """Refusing beats writing an invisible row.
+
+    A code absent from the catalogue used to be accepted (the suite's own
+    constant was "VOA", which matches no row in migration 221), producing a
+    practice that no CRM surface could display. It now raises before any INSERT.
+    """
+
+    key = f"evt_{uuid.uuid4().hex}"
+
+    with pytest.raises(UnknownPracticeType, match="practice_types catalogue"):
+        await PostgresCrmWriter(pool).create_client_and_practice(
+            _snapshot(),
+            source_idempotency_key=key,
+            practice_type_code="definitely_not_a_real_code",
+        )
+
+    async with pool.acquire() as conn:
+        assert (
+            await conn.fetchval(
+                "SELECT count(*) FROM practices WHERE source_idempotency_key = $1", key
+            )
+            == 0
+        )

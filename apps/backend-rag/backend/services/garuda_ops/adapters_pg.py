@@ -77,6 +77,21 @@ class MissingCustomerEmail(MissingCustomerIdentity):
     """
 
 
+class UnknownPracticeType(ValueError):
+    """`practice_type_code` matches no row in the `practice_types` catalogue.
+
+    Refused rather than written with a NULL `practice_type_id`, because a
+    practice with no type id is not a degraded CRM row — it is an INVISIBLE
+    one. Fifteen-odd CRM list, analytics and dashboard queries join
+    `practice_types` on `p.practice_type_id = pt.id` with an INNER join
+    (crm_practices, crm_clients, crm_analytics, crm_enhanced,
+    crm_interactions, crm_shared_memory, ...), so such a row is silently
+    dropped from every one of them. The customer would have paid, the row
+    would exist, and no surface in the product would show it — the exact
+    failure this adapter was written to end.
+    """
+
+
 class IdempotencyRaceLost(RuntimeError):
     """`ON CONFLICT DO NOTHING` skipped the insert and the winner is invisible.
 
@@ -209,18 +224,27 @@ class PostgresCrmWriter:
         source_idempotency_key: str,
         practice_type_code: str,
     ) -> int:
-        # `source_idempotency_key: str` is a HINT, not a check, and this one
-        # cannot be left to the type checker: the unique index behind the
-        # ON CONFLICT below is PARTIAL (`WHERE source_idempotency_key IS NOT
-        # NULL`), so a falsy key does not conflict with anything — it inserts,
-        # every single time, silently defeating the exact-once guarantee this
-        # whole adapter exists to provide. It would not raise, would not log,
-        # and would look identical to success.
+        # `source_idempotency_key: str` is a HINT, not a check, and a falsy key
+        # is wrong in TWO different directions — which is why this is a runtime
+        # raise and not a comment. Measured against the real partial index
+        # (`WHERE source_idempotency_key IS NOT NULL`):
+        #
+        #   NULL  -> outside the index, arbitrates against nothing, so one
+        #            payment retried N times becomes N practices.
+        #   ""    -> INSIDE the index (a blank string is NOT NULL), so it DOES
+        #            arbitrate — and every blank-key order in the system
+        #            collapses onto ONE shared practice.
+        #
+        # An earlier version of this comment asserted only the first and
+        # claimed a blank string "inserts every single time". That is false,
+        # and the collision case it missed is the worse of the two: it is
+        # silent AND lossy. Neither is acceptable, so both are refused here.
         if not source_idempotency_key or not source_idempotency_key.strip():
             raise ValueError(
                 f"order {snapshot.order_aggregate_id}: source_idempotency_key is "
-                "empty; the partial unique index cannot arbitrate a NULL/blank "
-                "key, so this write would duplicate on every retry"
+                "empty; a NULL key escapes the partial unique index and duplicates, "
+                "a blank string sits inside it and collides with every other blank "
+                "key — refusing before either can happen"
             )
 
         if not snapshot.customer_full_name or not snapshot.customer_full_name.strip():
@@ -230,20 +254,42 @@ class PostgresCrmWriter:
             )
 
         async with self._pool.acquire() as conn, conn.transaction():
+            # BOTH columns, resolved the same way `crm_practices.py` resolves
+            # them for a human-created practice. Writing only the CODE and
+            # leaving `practice_type_id` NULL was the first draft, and it was
+            # wrong twice over: `crm/models.py` declares the column NOT NULL
+            # (only `scripts/ci_bootstrap_schema.py` drops that for CI, so no
+            # test in this suite could ever have seen the violation), and even
+            # where it is nullable the row would be invisible — see
+            # `UnknownPracticeType` for the INNER-join census.
+            practice_type_id = await conn.fetchval(
+                "SELECT id FROM practice_types WHERE code = $1", practice_type_code
+            )
+            if practice_type_id is None:
+                raise UnknownPracticeType(
+                    f"practice_type_code={practice_type_code!r} is not in the "
+                    "practice_types catalogue; refusing to write a practice that "
+                    "every CRM list query would silently drop"
+                )
+
+            # The type lookup runs BEFORE the client is created, deliberately:
+            # an unknown code then leaves nothing behind at all, not even an
+            # orphan client whose only practice was refused.
             client_id = await self._ensure_client(conn, snapshot)
 
             practice_id = await conn.fetchval(
                 """
                 INSERT INTO practices
-                    (client_id, practice_type_code, title, quoted_price,
-                     currency, source_idempotency_key)
-                VALUES ($1, $2, $3, $4, 'IDR', $5)
+                    (client_id, practice_type_id, practice_type_code, title,
+                     quoted_price, currency, source_idempotency_key)
+                VALUES ($1, $2, $3, $4, $5, 'IDR', $6)
                 ON CONFLICT (source_idempotency_key)
                     WHERE source_idempotency_key IS NOT NULL
                     DO NOTHING
                 RETURNING id
                 """,
                 client_id,
+                practice_type_id,
                 practice_type_code,
                 self._title_for(snapshot),
                 snapshot.price_idr,
@@ -327,5 +373,6 @@ __all__ = [
     "MissingCustomerIdentity",
     "MissingCustomerName",
     "PostgresCrmWriter",
+    "UnknownPracticeType",
     "PostgresOrderSnapshotProvider",
 ]
