@@ -189,6 +189,32 @@ async def drain_once(
     not dispatched, and its attempt bump rolled back, so registering the handler
     later picks it up with a full attempt budget rather than one already spent
     down by passes that never even tried to deliver it.
+
+    `batch_size` costs more than linear WHEN JOBS FAIL, and this is worth
+    stating precisely because the obvious reading is wrong. The per-pass
+    exclusion list (see `_claim_one`) is an unindexable `NOT (id = ANY(...))`,
+    but a job that DISPATCHES gets `dispatched_at` set and thereby leaves
+    `idx_garuda_order_outbox_undispatched` — a partial index on `(created_at)
+    WHERE dispatched_at IS NULL` — so the happy path stays linear and the
+    exclusion list never has to be walked for it. What the list actually pays
+    for are the rows this pass touched and LEFT undispatched (failed and
+    unroutable ones): each remains in the index, so every later claim in the
+    same pass scans past all of them. The cost is therefore
+    O(batch_size * undispatched_touched), i.e. quadratic only in a pass that
+    is failing wholesale. At the default of 20 even the worst case is a few
+    hundred comparisons; a caller passing thousands into a failing queue is
+    the one shape where this bites, and should call `drain_once` repeatedly
+    instead. No ceiling is enforced because the right one depends on the
+    deployment.
+
+    CANCELLATION IS NOT A HANDLER FAILURE. The `except Exception` around the
+    handler deliberately does not catch `BaseException`, so an
+    `asyncio.CancelledError` (worker shutdown, task cancellation) propagates
+    out of the transaction — rolling back that job's attempt bump — and then
+    out of `drain_once` itself, abandoning the rest of the batch. That is the
+    intended behaviour: a cancelled worker must stop, not quietly continue
+    delivering customer email, and the interrupted job must not be charged an
+    attempt for work nobody asked it to finish.
     """
 
     if not is_consumer_enabled():
@@ -290,7 +316,16 @@ async def count_undrained(
         """,
         max_attempts,
     )
-    assert row is not None  # a bare aggregate SELECT always returns one row
+    if row is None:
+        # A bare aggregate SELECT always returns exactly one row, so this is
+        # unreachable — which is precisely why it must not be an `assert`.
+        # `python -O` strips asserts, and the stripped version would fall
+        # through to `dict(None)` and raise a bare TypeError instead of saying
+        # what happened. An explicit raise survives every invocation mode.
+        raise RuntimeError(
+            f"aggregate SELECT over {OUTBOX_TABLE} returned no row; "
+            "the database did not answer a query that cannot be empty"
+        )
     return {k: int(v) for k, v in dict(row).items()}
 
 
