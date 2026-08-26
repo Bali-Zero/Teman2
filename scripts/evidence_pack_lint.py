@@ -197,6 +197,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import fnmatch
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -726,6 +727,207 @@ def check_lanes_build_seat_diversity(
     return [message], None
 
 
+# --------------------------------------------------------------------------
+# R11/R9 — cheap-seat floor for mechanical diffs + Gear-3 council_run.
+#
+# PR-B of the seat-rules program (spec: 2026-08-26-PIANO-SPEC-receptor-live.md
+# §8; PR-A landed R8 ground-truth-lane + R10 PII-local-seat as #5054). This
+# branch was created from origin/main BEFORE #5054 merged, so it does not
+# have that PR's `SEAT_RULES_ENFORCEMENT_DATE` / `_seat_rule_verdict` shared
+# helper to reuse — self-contained here by design (mandate's own fallback
+# for this ordering), under a distinct name (`R9_R11_ENFORCEMENT_DATE` /
+# `_r9_r11_verdict`) specifically so this file never carries two same-named
+# top-level definitions regardless of which PR's merge lands first. Same
+# enforcement date (2026-09-02) and same `seat_override: <reason>` escape
+# convention as R8/R10 — a human call, always reported, never silently
+# dropped.
+# --------------------------------------------------------------------------
+
+R9_R11_ENFORCEMENT_DATE = datetime.date(2026, 9, 2)
+
+
+def _r9_r11_verdict(
+    rule: str,
+    is_violation: bool,
+    message: str,
+    pack: dict[str, Any],
+    today: datetime.date | None,
+) -> tuple[list[str], str | None]:
+    """Shared phasing+override plumbing for R9/R11 — not a violation ->
+    clean; else an explicit pack-level `seat_override: <non-empty reason>`
+    wins outright (reported, never failed — a human call, not a rollout
+    clock); else NOTICE before R9_R11_ENFORCEMENT_DATE, hard violation
+    on/after. `today` overridable for tests."""
+    if not is_violation:
+        return [], None
+    override = pack.get("seat_override")
+    if isinstance(override, str) and override.strip():
+        return [], f"{rule} (overridden): {message} — {override.strip()}"
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < R9_R11_ENFORCEMENT_DATE:
+        return [], f"{rule}: {message}"
+    return [f"{rule}: {message}"], None
+
+
+#: R11 — path classes judged MECHANICAL: translated strings, test fixtures,
+#: the modus PENDING-ARMS ledger (append-only, human-authored prose), and a
+#: mouth catalog data file. `fnmatch`'s `*` crosses `/` so a doubled `**`
+#: here behaves like a single `*` — verified against the real tree
+#: (`apps/mouth/src/i18n/locales/en.json` etc.) 2026-08-26: every real
+#: i18n/locales file on disk sits at least one directory below its
+#: `i18n`/`locales` segment, so the extra `/` the doubled glob demands is
+#: always present; a hypothetical `i18n/foo.json` with no subdirectory
+#: would NOT match — no such file exists in this repo today.
+MECHANICAL_PATH_PATTERNS: tuple[str, ...] = (
+    ".claude/skills/modus/PENDING-ARMS.md",
+    "**/i18n/**/*.json",
+    "**/locales/**/*.json",
+    "**/fixtures/**",
+    "apps/mouth/**/catalog*/**",
+)
+
+#: R11 — a build-lane seat token starting with one of these is "cheap"
+#: (low-cost/high-speed tier), per the mandate's exact roster.
+CHEAP_SEATS: tuple[str, ...] = (
+    "claude-haiku-4-5",
+    "codex-gpt-5.6-luna",
+    "kimi-code/kimi-for-coding-highspeed",
+    "tp1-qwen3.6-flash",
+    "tp1-deepseek-v4-flash-0731",
+)
+
+
+def compute_seat_floor(changed_files: list[str] | None) -> bool:
+    """R11 pure predicate (mirrors compute_floor's shape): True only when
+    changed_files is non-empty AND every single file matches at least one
+    MECHANICAL_PATH_PATTERNS entry. False on None/empty — "zero files are
+    all mechanical" is not evidence of anything, same convention
+    compute_floor uses for its own hotzone check on an empty diff."""
+    if not changed_files:
+        return False
+    return all(
+        any(fnmatch.fnmatchcase(f, pat) for pat in MECHANICAL_PATH_PATTERNS)
+        for f in changed_files
+    )
+
+
+def check_cheap_seat_floor(
+    pack: dict[str, Any],
+    changed_files: list[str] | None,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """R11: when compute_seat_floor(changed_files) is True (100% of the
+    diff is mechanical), the pack must declare at least one `role: build`
+    lane whose `seat` starts with a CHEAP_SEATS entry, or carry a non-empty
+    `seat_override: <reason>` naming why a frontier seat was used anyway.
+    GUILT: 100% mechanical, no cheap build lane, no override -> phased
+    violation. INNOCENCE: not 100% mechanical (skipped outright); >=1 cheap
+    build lane present; seat_override present."""
+    if not compute_seat_floor(changed_files):
+        return [], None
+    lanes = pack.get("lanes")
+    has_cheap_build_lane = False
+    if isinstance(lanes, list):
+        for entry in lanes:
+            if not isinstance(entry, dict):
+                continue
+            if str(entry.get("role", "")).strip().lower() != "build":
+                continue
+            seat = entry.get("seat")
+            if isinstance(seat, str) and any(
+                seat.strip().lower().startswith(cheap) for cheap in CHEAP_SEATS
+            ):
+                has_cheap_build_lane = True
+                break
+    message = (
+        "diff is 100% mechanical (i18n/locales strings, test fixtures, "
+        "PENDING-ARMS.md, or a mouth catalog data file) but declares no "
+        f"build lane on a cheap seat ({', '.join(CHEAP_SEATS)})"
+    )
+    return _r9_r11_verdict("seat_floor", not has_cheap_build_lane, message, pack, today)
+
+
+#: R9 — review seats that count toward Gear-3 council quorum.
+COUNCIL_REVIEW_SEATS: tuple[str, ...] = (
+    "codex-gpt-5.6-sol",
+    "kimi-code/k3",
+    "tp1-qwen3.8-max",
+)
+
+
+def _read_council_journal_seats(pack_dir: Path, council_run: Any) -> set[str]:
+    """Resolves `council_run` (declared as a path relative to the pack's
+    OWN directory — mirrors check_brief_ref_exists's repo-confinement
+    shape, scoped to pack_dir instead of repo_root) to a journal.jsonl and
+    returns the set of COUNCIL_REVIEW_SEATS values seen on lines shaped
+    {"seat": str, "role": "review", "ok": true, "ts": str}. A line with
+    extra/missing/wrong-typed keys just doesn't count (skipped, never
+    raises) — same "degrade, don't crash" convention as sum_numstat().
+    Returns the empty set (never raises) on: council_run missing/not a
+    string, an absolute path, a path escaping pack_dir via `..`, a path
+    that doesn't resolve to a file, or unreadable/non-JSON-Lines content —
+    the caller treats that exactly like "found zero qualifying seats"."""
+    if not isinstance(council_run, str) or not council_run.strip():
+        return set()
+    if Path(council_run).is_absolute():
+        return set()
+    pack_dir_resolved = pack_dir.resolve()
+    journal_path = (pack_dir / council_run).resolve()
+    if pack_dir_resolved not in (journal_path, *journal_path.parents):
+        return set()
+    if not journal_path.is_file():
+        return set()
+    try:
+        text = journal_path.read_text(encoding="utf-8")
+    except OSError:
+        return set()
+    seats: set[str] = set()
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("role") != "review" or entry.get("ok") is not True:
+            continue
+        seat = entry.get("seat")
+        if isinstance(seat, str) and seat.strip() in COUNCIL_REVIEW_SEATS:
+            seats.add(seat.strip())
+    return seats
+
+
+def check_council_run_gear3(
+    pack: dict[str, Any],
+    pack_dir: Path,
+    gear: int | None,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """R9: a Gear-3 pack must declare `council_run: <path relative to the
+    pack dir>` resolving to a journal.jsonl (inside the pack dir) carrying
+    >=2 DISTINCT seats from COUNCIL_REVIEW_SEATS, each posting a line
+    shaped {"seat": "...", "role": "review", "ok": true, "ts": "..."}.
+    GUILT: gear==3, <2 distinct qualifying seats, no override -> phased
+    violation. INNOCENCE: gear != 3 (skipped outright — Gear-3-only, same
+    convention as check_dissent_nonempty_on_gear3); >=2 distinct seats
+    found; seat_override present. Known day-0 measure, declared in this
+    PR's body and NOT a bug: every EXISTING Gear-3 pack predates
+    `council_run` entirely and will NOTICE (not FAIL) until 2026-09-02."""
+    if gear != 3:
+        return [], None
+    seats = _read_council_journal_seats(pack_dir, pack.get("council_run"))
+    has_quorum = len(seats) >= 2
+    message = (
+        "gear:3 pack declares no council_run journal with >=2 distinct "
+        f"review seats from {COUNCIL_REVIEW_SEATS} marked ok:true"
+    )
+    return _r9_r11_verdict("council_run", not has_quorum, message, pack, today)
+
+
 # ------------------------------------------------------------------- lint()
 
 
@@ -776,6 +978,16 @@ def lint(
     violations += lane_violations
     if lane_notice:
         print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
+
+    seat_floor_violations, seat_floor_notice = check_cheap_seat_floor(pack, changed_files)
+    violations += seat_floor_violations
+    if seat_floor_notice:
+        print(f"evidence_pack_lint: NOTICE — {seat_floor_notice}", file=sys.stderr)
+
+    council_violations, council_notice = check_council_run_gear3(pack, pack_path.parent, gear)
+    violations += council_violations
+    if council_notice:
+        print(f"evidence_pack_lint: NOTICE — {council_notice}", file=sys.stderr)
 
     if changed_files is None:
         print("evidence_pack_lint: NOTICE — no --changed-files-file supplied, "

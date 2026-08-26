@@ -442,6 +442,45 @@
             "test_is_anthropic_seat_innocence_non_anthropic_token_matches",
             "test_lanes_gear3_opus5_sonnet5_flip_behavior"
           ]
+        },
+        "check_cheap_seat_floor": {
+          "scar": [
+            "#3-substring-trapping",
+            "2026-08-26-piano-spec-receptor-live-8"
+          ],
+          "guilt": [
+            "test_cheap_seat_floor_guilt_no_cheap_lane_rejected_post_flip",
+            "test_cheap_seat_floor_guilt_non_build_lane_does_not_count"
+          ],
+          "innocence": [
+            "test_cheap_seat_floor_innocence_not_100pct_mechanical_skipped",
+            "test_cheap_seat_floor_innocence_cheap_build_lane_passes",
+            "test_cheap_seat_floor_innocence_seat_override_reports_not_fails",
+            "test_cheap_seat_floor_innocence_pre_flip_notice_not_fail",
+            "test_compute_seat_floor_guilt_single_mechanical_file_is_true",
+            "test_compute_seat_floor_innocence_one_non_mechanical_file_flips_to_false",
+            "test_compute_seat_floor_innocence_empty_or_none_is_false",
+            "test_seat_floor_end_to_end_through_lint"
+          ]
+        },
+        "check_council_run_gear3": {
+          "scar": [
+            "#2-esiste-non-armato",
+            "2026-08-26-piano-spec-receptor-live-8"
+          ],
+          "guilt": [
+            "test_council_run_guilt_no_council_run_field_rejected_post_flip",
+            "test_council_run_guilt_dangling_or_escaping_path_rejected",
+            "test_council_run_guilt_single_seat_below_quorum_rejected",
+            "test_council_run_guilt_ok_false_or_wrong_role_does_not_count"
+          ],
+          "innocence": [
+            "test_council_run_innocence_gear_not_3_skipped",
+            "test_council_run_innocence_two_distinct_qualifying_seats_passes",
+            "test_council_run_innocence_seat_override_reports_not_fails",
+            "test_council_run_innocence_pre_flip_notice_not_fail",
+            "test_council_run_end_to_end_through_lint"
+          ]
         }
       }
     },
