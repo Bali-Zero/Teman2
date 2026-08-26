@@ -81,16 +81,16 @@ SQL-level `IF NOT EXISTS`.
 
 WHY THE RULE STARTS AT 269 AND NOT AT 1
 ----------------------------------------
-Measured over all 169 migration files: 47 top-level `ALTER TABLE` statements
+Measured over all 169 migration files: 45 top-level `ALTER TABLE` statements
 target a table that production no longer lets the app role own. 37 of them live
 in migrations <= 268 and applied without incident, because at the time they ran
 the runtime role still WAS the owner — the D1 repair came afterwards. The
-remaining 10 live in migrations > 268, and they are exactly the two files that
+remaining 8 live in migrations > 268, and they are exactly the two files that
 failed in production. The boundary at 268 separates "applied fine, forever
 frozen" from "the live hazard" with zero false positives and zero false
 negatives against the observed incident, which is why it is drawn there rather
 than at some rounder number. Retro-fitting the 37 historical statements would
-change nothing in any database and would bury the ten that matter.
+change nothing in any database and would bury the eight that matter.
 
 SCOPE, DELIBERATELY NARROW
 ---------------------------
@@ -180,43 +180,89 @@ GRANDFATHERED: dict[int, str] = {
 }
 
 _ALTER_TABLE = re.compile(r"^ALTER\s+TABLE\b", re.IGNORECASE)
-_TABLE_REF = {t: re.compile(rf"\b(?:public\.)?{t}\b") for t in NON_APP_OWNED_TABLES}
+# `"foo"` and `foo` and `public.foo` and `public . "foo"` all name the same table.
+_TABLE_REF = {
+    t: re.compile(rf'(?:\bpublic\s*\.\s*)?"?\b{t}\b"?', re.IGNORECASE)
+    for t in NON_APP_OWNED_TABLES
+}
+# Every dollar-quote delimiter form PostgreSQL accepts: bare `$$` and tagged
+# `$tag$`. The corpus uses tagged ones heavily — $func$ (18), $grant_block$
+# (18), $revoke_block$ (14), $function$, $visa_268_owner_transfer$ and more —
+# so a scanner that counted only `$$` would treat the inside of a $func$ body
+# as top level and convict statements that are already guarded.
+_DOLLAR_TAG = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$")
+
+
+def _strip_line_comment(line: str) -> str:
+    """Drop a trailing ``--`` comment.
+
+    This runs BEFORE dollar-delimiters are counted, and that ordering is the
+    whole point: a comment containing an odd number of ``$$`` would otherwise
+    flip the parity and make every statement after it look as though it lived
+    inside a function body. Measured — the earlier version of this scanner
+    missed a real unguarded ALTER placed under the single line
+    ``-- a comment containing $$ once``.
+    """
+    idx = line.find("--")
+    return line if idx == -1 else line[:idx]
 
 
 def find_unguarded_alters(sql: str) -> list[tuple[int, str, str]]:
     """Return (line_no, table, statement) for each top-level ALTER TABLE.
 
-    "Top-level" means: not inside a dollar-quoted body. A line is inside one
-    when an odd number of ``$$`` tokens has been seen before it — which covers
-    both ``DO $$ ... $$;`` blocks and ``CREATE FUNCTION ... $$ ... $$;`` bodies.
-    Statements inside such a body are exempt because that is where a catalog
-    guard lives: the block can inspect ``information_schema`` and decline to
-    ``EXECUTE`` the ALTER at all, which is the only construction that survives
-    the ownership check.
+    "Top-level" means: not inside a dollar-quoted body. Statements inside such
+    a body are exempt because that is exactly where a catalog guard lives — the
+    block can inspect ``information_schema`` and decline to ``EXECUTE`` the
+    ALTER at all, which is the only construction that survives the ownership
+    check.
 
-    Comment-only lines are skipped before matching. Migration headers in this
-    repository legitimately DISCUSS statements like
+    Dollar-quoting is tracked by matching delimiters properly rather than by
+    counting ``$$`` occurrences: an opening ``$tag$`` is closed only by the
+    SAME ``$tag$``, which is what lets a ``$$`` sit harmlessly inside a
+    ``$func$`` body. Comments are stripped first (see ``_strip_line_comment``).
+
+    The statement is accumulated to its terminating semicolon rather than read
+    through a fixed line window, so an ALTER whose table name sits an arbitrary
+    number of lines below the keyword is still matched. Migration headers in
+    this repository legitimately DISCUSS statements like
     ``ALTER TABLE public.visa_decision_retention_policies`` in prose — this
-    file's own docstring does it repeatedly — and a scanner that matched raw
-    text would convict the documentation instead of the code.
+    file's own docstring does it repeatedly — and comment stripping is what
+    keeps the scanner from convicting the documentation instead of the code.
     """
     findings: list[tuple[int, str, str]] = []
     lines = sql.splitlines()
-    dollars = 0
+
+    open_tag: str | None = None
+    # (line_no, code) for every line that is genuinely top-level SQL
+    top_level: list[tuple[int, str]] = []
     for lineno, raw in enumerate(lines, start=1):
-        inside_body = (dollars % 2) == 1
-        dollars += raw.count("$$")
+        code = _strip_line_comment(raw)
+        pos = 0
+        emit = ""
+        for m in _DOLLAR_TAG.finditer(code):
+            if open_tag is None:
+                emit += code[pos : m.start()]
+                open_tag = m.group(0)
+            elif m.group(0) == open_tag:
+                open_tag = None
+            pos = m.end()
+        if open_tag is None:
+            emit += code[pos:]
+        if emit.strip():
+            top_level.append((lineno, emit))
 
-        stripped = raw.strip()
-        if not stripped or stripped.startswith("--"):
+    for idx, (lineno, code) in enumerate(top_level):
+        stripped = code.strip()
+        if not _ALTER_TABLE.match(stripped):
             continue
-        if inside_body or not _ALTER_TABLE.match(stripped):
-            continue
-
-        # The target table may trail onto the next lines of a multi-line ALTER.
-        window = " ".join(lines[lineno - 1 : lineno + 2])
+        # Accumulate to the terminating semicolon — no fixed window.
+        statement = stripped
+        for _, more in top_level[idx + 1 :]:
+            if ";" in statement:
+                break
+            statement += " " + more.strip()
         for table, pattern in _TABLE_REF.items():
-            if pattern.search(window):
+            if pattern.search(statement):
                 findings.append((lineno, table, stripped[:100]))
                 break
     return findings
