@@ -9,6 +9,39 @@
 > first-class. Everything else in this file stands frozen. Where this file and the directive
 > disagree, the directive wins — do not reconcile by editing the frozen decisions below.
 
+> ⚡ **AMENDED 2026-08-26 by owner rulings** (Zero, relayed via the M5 conductor session; all
+> twelve OWNER-DECISION-PACKET items answered, plus two rulings taken outside it). This banner
+> overrides the staged-brain paragraph below; per this file's own protocol the frozen text is
+> NOT rewritten.
+>
+> **1. The destination brain is ChatGPT, not Gemini.** Verbatim: _"ma chatgpt e il bot!!! perche
+> sempre gemini????"_, re-affirming the 2026-08-21 ruling. The ChatGPT-subscription leg (codex
+> broker) is the **primary**; Gemini is **fallback**, not a destination. Every doc describing
+> Gemini as the primary brain of the client bot reads "fallback" from this date forward. Dated
+> research captures under `research/operations/` are NOT rewritten — they record what was true
+> when written, and falsifying them to match a later ruling would corrupt the record.
+>
+> **2. The parenthetical "(with cured auto-reload billing)" in the staged-brain paragraph below
+> is now FALSE, and it is the dangerous kind of false.** Packet item 5 was closed as
+> **NO-ACTION** — verbatim: _"billing Gemini bastaaaa nn lo usiamo piu'"_. There is no
+> auto-reload and no 80% budget alert on Gemini. Anyone reading that line as written would
+> believe an exhaustion is protected against; it is not. See **packet item 13** for the measured
+> consequence: the ChatGPT leg cannot report its own exhaustion either
+> (`wa_codex_daemon.py` never catches `CodexExecQuotaError`), so after the promotion each leg's
+> fallback is the other and neither can say it ran out. Item 13 puts one condition on rung 3 of
+> the client ladder; rungs 1-2 are unaffected.
+>
+> **3. Promotion starts now, not "when possible".** The ignition ladders of Item 7 are approved
+> **as written** and the no-rung-skipping rule stands — but there is no pause between rungs once
+> a rung's proof is green.
+>
+> **4. Other rulings that change the plan**: no paid `qwen3.7-flash` key (packet item 8) — the
+> team bot stays on `qwen3.7-plus` via TP1. `create_reminder` is **out of v1** (item 11). Staff
+> may open a practice for a client that is not theirs, **with mandatory audit log** (item 12).
+> The ratified PII sentence (item 9), binding on the memory layer: _"La memoria episodica può
+> persistere solo client_id, riferimento pratica e tipo di servizio — mai nome, documento o
+> contatto in chiaro."_
+
 > Home machine: **Mini** (H24, office). Integration branch: **`feature/due-bot`** — LOCAL-FIRST per
 > `docs/factory/ASSEMBLY-LINE.md`: no per-commit PR ceremony, tests local, nightly push of the
 > integration branch, final landing as a short PR train. PRs to main mid-race ONLY for: live
@@ -146,8 +179,8 @@ The two lines that change how this mandate is executed:
 
 - **F5's wire-level detail is a sketch, not a description.** The registry's ID vocabulary
   (`CL-`/`PR-`/`USR-`) exists nowhere in the backend, and its `PracticeStatus` and
-  `PracticeType` enums share ZERO values with the ones the backend enforces. F5's *design
-  principles* stand — enums over free text, IDs over names, one mutation per tool — and are
+  `PracticeType` enums share ZERO values with the ones the backend enforces. F5's _design
+  principles_ stand — enums over free text, IDs over names, one mutation per tool — and are
   the reason the mismatch was findable. Its literal values do not. Ruling: the registry moves
   toward the backend.
 - **F7's boundary does not exist for three of the four mutation paths.** F7 states
