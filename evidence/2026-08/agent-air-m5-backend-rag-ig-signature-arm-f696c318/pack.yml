@@ -1,0 +1,91 @@
+brief_ref: evidence/brief.yml
+plan_ref: "PR #5013 (agent/air-m5/backend-rag/ig-signature-arm) — Instagram inherits the shared Meta app secret; META_WEBHOOK_REQUIRE_SIGNATURE default flips to fail-closed. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
+lanes:
+  - lane: backend-rag-ig-signature-arm
+    role: build
+    seat: "ig-signature-arm session (authored config.py fallback property + default flip + the 5-file test diff)"
+  - lane: backend-rag-ig-signature-arm-evidence
+    role: review
+    seat: "session (this task — evidence pack authored + every claim independently re-verified against the actual diff on the PR's real head sha, generator != grader relative to the build lane)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least one non-Anthropic)
+  does not fire. Narrow evidence-authoring task, not a cross-family council dispatch.
+diff:
+  net_lines: >-
+    6 files, +203/-25 measured by `git diff --stat origin/main...HEAD` on the PR's own head sha
+    e23686f0a3f1c8ed691c0cf451ed4ee42d4103bb.
+  behaviour_change: >-
+    `Settings.effective_instagram_app_secret` (new property) falls back from `instagram_app_secret`
+    to `whatsapp_app_secret`. `meta_webhook_require_signature` default flips False -> True.
+receipts:
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the Harness floor recompute check's own FAIL message"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/changed-5013.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-5013.txt"
+    exit: 0
+    ts: "2026-08-26T09:05:00Z"
+    seat: "session (evidence-pack task)"
+  - claim: "The PR's own declared 5-file test set (78 tests) passes clean on a fresh dedicated worktree checked out at the PR's real head sha, independent of the PR author's own worktree"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py backend/tests/unit/routers/test_whatsapp_chat_coverage.py backend/tests/channels/test_instagram_ack_first.py backend/tests/channels/test_whatsapp_ack_first.py backend/tests/security/test_webhook_verifier.py -p no:randomly -o addopts=\"\" --color=no -q"
+    exit: 0
+    ts: "2026-08-26T09:07:00Z"
+    seat: "session (evidence-pack task)"
+  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: reverting meta_webhook_require_signature's default back to False turns test_meta_webhook_require_signature_default_is_true RED, proving the pinning test actually guards the fail-closed default"
+    cmd: "python3 one-liner replacing 'default=True,' with 'default=False,' in config.py; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py -p no:randomly -o addopts=\"\" --color=no -q"
+    result: "1 failed (test_meta_webhook_require_signature_default_is_true), 12 passed"
+    exit: 1
+    ts: "2026-08-26T09:09:00Z"
+    seat: "session (evidence-pack task)"
+  - claim: "File restored byte-identical after the mutation probe, and the same test file is clean+green again — no residual diff from the probe"
+    cmd: "cp <backup> backend/app/core/config.py && git status --porcelain -- backend/app/core/config.py && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest backend/tests/unit/routers/test_meta_webhook_require_signature.py -p no:randomly -o addopts=\"\" --color=no -q"
+    result: "git status --porcelain: empty (clean). 13 passed"
+    exit: 0
+    ts: "2026-08-26T09:10:00Z"
+    seat: "session (evidence-pack task)"
+  - claim: "ruff check is clean on every file this diff touches"
+    cmd: "apps/backend-rag/.venv/bin/python -m ruff check backend/app/core/config.py backend/app/routers/instagram_chat.py backend/app/routers/whatsapp_chat.py backend/tests/channels/test_instagram_ack_first.py backend/tests/unit/routers/test_meta_webhook_require_signature.py backend/tests/unit/routers/test_whatsapp_chat_coverage.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-08-26T09:11:00Z"
+    seat: "session (evidence-pack task)"
+pii_scan: clean
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #5013 touches `apps/backend-rag/backend/app/core/config.py`, which is hot-zone by path —
+      floors at Gear 3 regardless of the diff's small size (6 files, +203/-25) — and the PR shipped
+      with no `evidence/brief.yml`/`evidence/pack.yml` in its own diff, so the check correctly
+      FAILED with "this diff touches a hot-zone path (deterministic floor 3) but carries no
+      evidence/brief.yml".
+    status: CONFIRMED
+    note: >-
+      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
+      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
+      matching the check. Answered here by supplying both files, never by editing the check
+      (CLAUDE.md Agent PR Contract rule 3 precedent).
+  - seat: "session (this evidence-authoring task), against its own first instinct"
+    objection: >-
+      The PR body already reports "Mutation check (see above)" — quoting that verbatim without
+      re-running it would have been citing a tool output this turn never actually executed, the
+      anti-hallucination failure mode CLAUDE.md §6 exists to prevent, applied to a prior session's
+      claim rather than to memory.
+    status: RETRACTED
+    note: >-
+      Re-ran the mutation probe independently in this task's own turn (receipts above) rather than
+      trusting the PR body's report. Result matched: the pinning test went red with the expected
+      failure, file restored clean. Retracted because the PR body's claim held up under a fresh,
+      independent execution.
+tests:
+  - "backend/tests/unit/routers/test_meta_webhook_require_signature.py — 13 tests, including the
+    new default-is-true pin. PASS clean; RED under the mutation probe (receipts above)."
+  - "Full 5-file declared set (78 tests) — re-run twice (before and after the mutation probe on the
+    signature file specifically) to prove the probe left no residue on the broader suite."
+static:
+  - "ruff check on all 6 touched files -> clean"
+notes:
+  - >-
+    This PR is deliberately narrow in this task's own scope: it is the evidence pack ONLY, for a PR
+    whose code+test diff was already committed and pushed by the ig-signature-arm session. No
+    production code, no test content was authored or edited as part of writing this pack — every
+    receipt above is this task independently RE-VERIFYING claims the PR body already made, on the
+    PR's actual head sha, in a fresh dedicated worktree (never the PR-author's own worktree, per
+    sibling-race discipline — cicatrix-superscar.md family #5).
