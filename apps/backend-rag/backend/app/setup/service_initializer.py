@@ -1274,8 +1274,12 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             # (TEST/STAGING/PRODUCTION, migration 285's CHECK constraint),
             # distinct from `settings.environment` ("production"/"staging"/
             # "development"), never derived from it by string-casing alone.
-            garuda_environment = os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
-            garuda_magic_link_store = PostgresMagicLinkStore(db_pool, environment=garuda_environment)
+            garuda_environment = (
+                os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+            )
+            garuda_magic_link_store = PostgresMagicLinkStore(
+                db_pool, environment=garuda_environment
+            )
 
             # `garuda_orders_router._require_magic_session_actor` reads this
             # directly off app.state (L3's file, LANES.md file-ownership —
@@ -1331,9 +1335,7 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
                 "⚠️ GARUDA VOA magic-link wiring failed (non-critical, L3/L4 fail closed): %s", e
             )
     else:
-        logger.warning(
-            "⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)"
-        )
+        logger.warning("⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)")
 
     # 5.6 GARUDA VOA — CheckStore wiring (L2). Unconditional, unlike the
     # order/payment wiring below: `PostgresCheckStore.create()` runs its
@@ -1379,11 +1381,24 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     # which is `get_repository()`/the webhook route's existing fail-closed
     # 503 — the exact same shape as before this PR. The moment Zero
     # provisions a sandbox account and sets the four env vars below, this
-    # starts working with no further code change. A persistent
-    # `httpx.AsyncClient` (Golden Rule #10 — never per-request) is stored
-    # under `garuda_payment_http_client` so `app_factory.py`'s generic
-    # "close anything with `client`/`service` in its attribute name"
-    # shutdown loop closes it — no new cleanup plumbing needed.
+    # starts working with no further code change — but ONLY because this
+    # block now runs on the `api` process too. Until this PR it lived solely
+    # in `initialize_services`, which the process that mounts these routers
+    # never runs, so setting the env vars alone would have changed nothing.
+    # A persistent `httpx.AsyncClient` (Golden Rule #10 — never per-request)
+    # is stored under `garuda_payment_http_client`.
+    #
+    # NOT closed on shutdown, and deliberately so — measured 2026-08-27, this
+    # comment used to claim the opposite. `app_factory.py`'s generic "close
+    # anything with `client`/`service` in its name" loop cannot reach ANY
+    # client, ours included, for two independent reasons: `httpx.AsyncClient`
+    # exposes `aclose()` and not `close()`, and the loop iterates
+    # `app.state.__dict__`, which for a Starlette `State` is the single key
+    # `_state` wrapping the real dict. That loop is dead code for every client
+    # in this app — a pre-existing, repo-wide defect that is NOT this PR's
+    # concern and is ledgered separately. The practical exposure here is one
+    # client per process lifetime, reclaimed at process exit; do not "fix" it
+    # by adding a bespoke close here while the generic loop still lies.
     #
     # `GARUDA_PUBLIC_BASE_URL` (single base, no success/failure split —
     # Dissent #3, 2026-08-25 review of PR #4920): the return route lives on
@@ -1407,7 +1422,24 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     # success/failure split anyway (browser return is an OBSERVATION, not a
     # truth).
     garuda_xendit_secret_key = os.environ.get("GARUDA_XENDIT_SECRET_KEY", "").strip()
-    if db_pool is not None and garuda_xendit_secret_key:
+    garuda_xendit_callback_token = os.environ.get("GARUDA_XENDIT_CALLBACK_TOKEN", "").strip()
+    if garuda_xendit_secret_key and not garuda_xendit_callback_token:
+        # Named out loud, because this pair used to be armable by halves. The
+        # gate below required only the secret key while the callback token
+        # defaulted to `""` — which opens checkout and then makes EVERY Xendit
+        # callback answer 401 (`xendit.py::verify_signature`; measured
+        # 2026-08-27). The customer is really charged and the order never
+        # leaves `awaiting_payment`. `XenditPaymentProvider.__init__` now
+        # refuses that construction outright, so without this branch the whole
+        # order lane would fail closed with a ValueError swallowed by the
+        # `except Exception` below and one generic "wiring failed" line. This
+        # says WHICH half is missing instead.
+        logger.error(
+            "⛔ GARUDA VOA order lane NOT wired: GARUDA_XENDIT_SECRET_KEY is set but "
+            "GARUDA_XENDIT_CALLBACK_TOKEN is empty. Arming the key alone would open "
+            "checkout while rejecting every payment callback — set both or neither."
+        )
+    if db_pool is not None and garuda_xendit_secret_key and garuda_xendit_callback_token:
         try:
             import httpx as _garuda_httpx
 
@@ -1420,9 +1452,7 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             garuda_payment_http_client = _garuda_httpx.AsyncClient(timeout=30.0)
             garuda_payment_provider = XenditPaymentProvider(
                 secret_key=garuda_xendit_secret_key,
-                callback_verification_token=os.environ.get(
-                    "GARUDA_XENDIT_CALLBACK_TOKEN", ""
-                ).strip(),
+                callback_verification_token=garuda_xendit_callback_token,
                 public_base_url=os.environ.get(
                     "GARUDA_PUBLIC_BASE_URL", "https://balizero.com"
                 ).strip(),
@@ -1451,10 +1481,12 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             )
     else:
         logger.info(
-            "ℹ️ GARUDA VOA order/payment wiring skipped: GARUDA_XENDIT_SECRET_KEY not set "
-            "(expected until Zero provisions a Xendit sandbox account — L3 fail closed)"
+            "ℹ️ GARUDA VOA order/payment wiring skipped (L3 fail closed): db_pool=%s "
+            "xendit_secret_key_set=%s. Naming BOTH because this line used to blame "
+            "the missing key unconditionally, and a missing pool reads identically.",
+            db_pool is not None,
+            bool(garuda_xendit_secret_key),
         )
-
 
 
 async def initialize_services(app: FastAPI) -> None:
@@ -1679,9 +1711,7 @@ async def initialize_services(app: FastAPI) -> None:
             app.state.self_healing_task = asyncio.create_task(
                 healing_agent.monitoring_loop(), name="self_healing"
             )
-            service_registry.register(
-                "self_healing", ServiceStatus.HEALTHY, critical=False
-            )
+            service_registry.register("self_healing", ServiceStatus.HEALTHY, critical=False)
             logger.info("✅ Reduced self-healing agent: Active (GC-only, 5min, per-machine)")
         except Exception as e:
             service_registry.register(
@@ -1862,8 +1892,27 @@ async def initialize_services_light(app: FastAPI) -> None:
             discount_log: rows landed as '"{\"discount_log\":[...]}"' instead
             of '{"discount_log":[...]}', breaking `metadata ? 'discount_log'`
             and any jsonb_path_* query). With the codec active the
-            application-level json.dumps() becomes redundant and the
-            existing `$N::jsonb` casts are harmless.
+            application-level json.dumps() becomes WRONG, not merely redundant:
+            asyncpg serializes a SECOND time and the value lands as a JSONB
+            scalar string. Any caller that still pre-serializes is broken by
+            this codec, not protected by it.
+
+            CORRECTED 2026-08-27 — this docstring used to say "the existing
+            `$N::jsonb` casts are harmless". They are not, and nothing had ever
+            checked. Measured with a real INSERT against a real Postgres, with
+            this codec registered: `VALUES ($1)` and `VALUES ($1::jsonb)` given
+            the same pre-serialized string BOTH store `jsonb_typeof = string`.
+            The cast does not route around the codec, so it cannot be used as
+            an escape hatch. Cost of the false claim: `check_store.py` kept its
+            `json.dumps` on the strength of it, and GARUDA VOA's first customer
+            action answered HTTP 500 on every request in production until
+            2026-08-27 (migration 286's CHECK calls `jsonb_array_length` on the
+            value, which raises SQLSTATE 22023 on a scalar).
+
+            Still-unfixed callers of the same anti-pattern are ledgered in
+            `.claude/skills/modus/PENDING-ARMS.md`; they are NOT one-line fixes,
+            because this encoder is bare `json.dumps` with no `default=str`
+            while `garuda_orders/journal.py` relies on `default=str`.
 
             Aligns the api pool with the existing full-init pool
             (`init_db_connection` ~line 459) which has always used the same
@@ -1898,6 +1947,19 @@ async def initialize_services_light(app: FastAPI) -> None:
             pool_kwargs["ssl"] = ssl_ctx
         db_pool = await asyncpg.create_pool(**pool_kwargs)
         app.state.db_pool = db_pool
+        # 4c. GARUDA VOA — wired HERE, on the very next statement after the pool
+        # is published, and NOT later with the background workers. `/health/ready`
+        # declares this process ready the moment `app.state.db_pool` exists
+        # (health.py, light branch) and `fly.toml`'s `[[http_service.checks]]`
+        # routes traffic on exactly that path — so every `await` between the pool
+        # assignment and this call is a window in which Fly sends a real customer
+        # to a process that reports ready and still answers 503. Placed after
+        # Timesheet/Olympus/DLQ (the first draft) that window was three awaits
+        # wide. `initialize_garuda_services` contains ZERO awaits, so from here
+        # the event loop cannot interleave a readiness probe at all: the window
+        # is not narrowed, it is closed.
+        # `test_no_await_separates_the_pool_from_the_garuda_wiring` pins this.
+        await initialize_garuda_services(app, db_pool)
         service_registry.register("database", ServiceStatus.HEALTHY)
         logger.info("✅ DB pool initialized (light)")
     except Exception as e:
@@ -2025,11 +2087,6 @@ async def initialize_services_light(app: FastAPI) -> None:
                 )
         except Exception as e:
             logger.warning("⚠️ DLQ retry loop failed (light, non-critical): %s", e)
-
-    # 4c. GARUDA VOA — the SAME wiring the rag process does. This process is
-    # the one that actually mounts the GARUDA routers (`process_groups=_API`),
-    # so without this call every one of them fail-closes 503 by construction.
-    await initialize_garuda_services(app, db_pool)
 
     # 5. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None

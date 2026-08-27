@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- A7/R12 daily seat-mix telemetry. NOT installed by this PR (Agent PR Contract:
+     an agent-produced PR ships the artifact, the operator/H24 node installs the
+     cron; see the PR body for the exact install command per machine). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.nuzantara.seat-mix.daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/nuzantara/nuzantara/scripts/seat_mix_report.py</string>
+    <string>--since</string>
+    <string>24</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>6</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>KeepAlive</key><false/>
+  <key>StandardOutPath</key><string>/Users/nuzantara/logs/seat-mix-daily.log</string>
+  <key>StandardErrorPath</key><string>/Users/nuzantara/logs/seat-mix-daily.err.log</string>
+</dict>
+</plist>

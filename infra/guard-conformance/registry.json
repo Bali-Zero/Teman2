@@ -481,6 +481,26 @@
             "test_council_run_innocence_pre_flip_notice_not_fail",
             "test_council_run_end_to_end_through_lint"
           ]
+        },
+        "check_pack_not_at_deprecated_root": {
+          "scar": ["#9-state-schema-mutation-drift", "S12/C6-2026-08-23"],
+          "guilt": [
+            "test_evidence_root_guilt_root_path_post_flip_rejected",
+            "test_evidence_root_guilt_absolute_root_path_post_flip_rejected",
+            "test_evidence_root_guilt_dot_segments_normalize_to_root_post_flip"
+          ],
+          "innocence": [
+            "test_evidence_root_innocence_pre_flip_notice_not_fail",
+            "test_evidence_root_innocence_per_task_dir_clean_both_sides",
+            "test_evidence_root_innocence_no_source_path_skipped",
+            "test_evidence_root_innocence_empty_source_path_skipped",
+            "test_evidence_root_innocence_dot_segments_normalize_to_per_task_clean",
+            "test_evidence_root_end_to_end_notice_pre_flip_does_not_fail",
+            "test_evidence_root_end_to_end_per_task_source_path_clean",
+            "test_evidence_root_end_to_end_no_source_path_default_clean",
+            "test_evidence_root_cli_source_path_defaults_to_pack_path_argument",
+            "test_evidence_root_cli_explicit_source_path_overrides_default"
+          ]
         }
       }
     },
