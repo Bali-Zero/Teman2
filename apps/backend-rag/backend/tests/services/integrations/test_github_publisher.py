@@ -155,7 +155,8 @@ class TestClose:
     async def test_close_safe_when_no_client(self):
         pub = _make_publisher()
         pub._client = None
-        await pub.close()  # must not raise
+        await pub.close()
+        assert pub._client is None
 
 
 # ---------------------------------------------------------------------------
