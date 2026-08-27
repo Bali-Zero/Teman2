@@ -22,6 +22,7 @@ SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
 from evidence_pack_lint import (  # noqa: E402
+    EVIDENCE_ROOT_DEPRECATION_DATE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
     R9_R11_ENFORCEMENT_DATE,
     _is_anthropic_seat,
@@ -31,6 +32,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_dissent_nonempty_on_gear3,
     check_gear_floor,
     check_lanes_build_seat_diversity,
+    check_pack_not_at_deprecated_root,
     check_pii_scan_clean,
     check_receipts_have_provenance,
     check_size_budget,
@@ -1324,3 +1326,203 @@ def test_council_run_end_to_end_through_lint(tmp_repo):
     else:
         assert rc == 1
         assert any("council_run" in v for v in viol)
+
+
+# ---- rule 9: check_pack_not_at_deprecated_root -----------------------------
+
+_ROOT_PRE_FLIP = EVIDENCE_ROOT_DEPRECATION_DATE - datetime.timedelta(days=1)
+_ROOT_POST_FLIP = EVIDENCE_ROOT_DEPRECATION_DATE
+
+
+def test_evidence_root_guilt_root_path_post_flip_rejected(tmp_path):
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/pack.yml", tmp_path, today=_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_deprecated" in v for v in viol)
+    assert any("evidence/pack.yml is deprecated" in v for v in viol)
+
+
+def test_evidence_root_guilt_absolute_root_path_post_flip_rejected(tmp_path):
+    """An absolute path resolving to repo_root/evidence/pack.yml is judged
+    the same as its repo-relative form — the resolution helper, not just a
+    literal-string match, must catch it."""
+    absolute = tmp_path / "evidence" / "pack.yml"
+    viol, notice = check_pack_not_at_deprecated_root(
+        str(absolute), tmp_path, today=_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_innocence_pre_flip_notice_not_fail(tmp_path):
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/pack.yml", tmp_path, today=_ROOT_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None
+    assert "evidence_root_deprecated" in notice
+
+
+def test_evidence_root_innocence_per_task_dir_clean_both_sides():
+    """A per-task directory pack is clean on EITHER side of the flip date —
+    this rule only ever judges the literal root path, never the per-task
+    shape (that belongs to scripts/ci/evidence_paths.py)."""
+    for today in (_ROOT_PRE_FLIP, _ROOT_POST_FLIP):
+        viol, notice = check_pack_not_at_deprecated_root(
+            "evidence/2026-08/ops-evidence-pertask-a0adff64/pack.yml",
+            Path("/repo"),
+            today=today,
+        )
+        assert viol == [] and notice is None
+
+
+def test_evidence_root_innocence_no_source_path_skipped(tmp_path):
+    """source_path=None (no --source-path supplied) skips the rule outright
+    — same 'skip, don't guess' shape as rules 6/7 without
+    --changed-files-file, never presumed guilt or innocence."""
+    viol, notice = check_pack_not_at_deprecated_root(None, tmp_path, today=_ROOT_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_evidence_root_innocence_empty_source_path_skipped(tmp_path):
+    """source_path="" is treated the same as None — an empty string is
+    'no info', not a path that resolves to '.' and slips past the literal
+    comparison as clean-by-accident (regression: agy cross-family review,
+    2026-08-27, on this PR's own diff)."""
+    viol, notice = check_pack_not_at_deprecated_root("", tmp_path, today=_ROOT_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_evidence_root_guilt_dot_segments_normalize_to_root_post_flip(tmp_path):
+    """A relative source_path with dot-segments that textually collapses to
+    the literal root path IS caught — not left to slip through unnormalized
+    (regression: agy cross-family review, 2026-08-27, on this PR's own
+    diff: 'evidence/x/../pack.yml' never equalled 'evidence/pack.yml' by
+    bare string comparison even though it names the exact same file)."""
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/x/../pack.yml", tmp_path, today=_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_innocence_dot_segments_normalize_to_per_task_clean():
+    """The same normalization must not FALSE-POSITIVE a per-task path whose
+    dot-segments happen to collapse to itself — only a collapse to the
+    literal root path is guilty."""
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/./2026-08/some-task-a0adff64/pack.yml",
+        Path("/repo"),
+        today=_ROOT_POST_FLIP,
+    )
+    assert viol == [] and notice is None
+
+
+# ---- end-to-end: lint() wires rule 9 through --source-path -----------------
+
+
+def test_evidence_root_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
+    """End-to-end: lint() wires rule 9 through the public entry point's
+    `source_path` parameter, using the REAL current date (2026-08-27, before
+    EVIDENCE_ROOT_DEPRECATION_DATE) — lint() never threads a `today`
+    override through any phased check, matching rules 8/9/11's existing
+    convention, so this exercises the notice branch without pinning it."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    rc, viol = lint(
+        tmp_path / "evidence" / "pack.yml",
+        tmp_path,
+        None,
+        source_path="evidence/pack.yml",
+    )
+    if datetime.datetime.now(datetime.timezone.utc).date() < EVIDENCE_ROOT_DEPRECATION_DATE:
+        assert rc == 0
+        assert not any("evidence_root_deprecated" in v for v in viol)
+    else:
+        assert rc == 1
+        assert any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_end_to_end_per_task_source_path_clean(tmp_repo):
+    """End-to-end innocence: a per-task --source-path never trips rule 9,
+    regardless of where lint() actually READ the staged pack from — this is
+    the CI staging shape (harness-floor.yml's Gear-3 step lints a copy
+    staged at the canonical evidence/pack.yml name, but passes the real
+    per-task PACK_PATH as --source-path)."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    rc, viol = lint(
+        tmp_path / "evidence" / "pack.yml",
+        tmp_path,
+        None,
+        source_path="evidence/2026-08/some-task-a0adff64/pack.yml",
+    )
+    assert rc == 0
+    assert not any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_end_to_end_no_source_path_default_clean(tmp_repo):
+    """lint() called with no source_path at all (the pre-existing call
+    shape every other test in this file uses) never trips rule 9 — this is
+    the backward-compatibility guarantee: adding rule 9 must not change the
+    verdict of any caller that doesn't opt in via --source-path."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0
+    assert not any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_cli_source_path_defaults_to_pack_path_argument(tmp_repo):
+    """CLI contract: with no --source-path flag, main() defaults source_path
+    to the PACK_PATH positional argument itself — the correct default for a
+    direct/local invocation, where the path you point the linter at IS the
+    real path. Exercised via subprocess so this pins the actual CLI wiring,
+    not just the Python-level default."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path), "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    if datetime.datetime.now(datetime.timezone.utc).date() < EVIDENCE_ROOT_DEPRECATION_DATE:
+        assert payload["exit"] == 0
+    else:
+        assert payload["exit"] == 1
+        assert any("evidence_root_deprecated" in v for v in payload["violations"])
+
+
+def test_evidence_root_cli_explicit_source_path_overrides_default(tmp_repo):
+    """CLI contract: an explicit --source-path PER-TASK value overrides the
+    positional-argument default even though the positional PACK_PATH itself
+    is the root literal — this is exactly the CI staging shape (the staged
+    file always lives at the canonical evidence/pack.yml name, but
+    --source-path names the real per-task path)."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path),
+            "--source-path", "evidence/2026-08/some-task-a0adff64/pack.yml",
+            "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    assert payload["exit"] == 0
+    assert not any("evidence_root_deprecated" in v for v in payload["violations"])
