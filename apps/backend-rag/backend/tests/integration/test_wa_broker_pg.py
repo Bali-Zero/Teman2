@@ -225,12 +225,21 @@ async def test_retry_after_terminal_prior_leg_admits_a_new_job(
     outbox_id, thread_id, claim = await _outbox_row(conn)
     first = await _offer(conn, outbox_id, thread_id, claim)
     assert first.outcome is OfferOutcome.OFFERED
+    # deadline_at moves to the PAST alongside the state, simulating an
+    # actually-elapsed budget window (not just a manually-forced state) —
+    # required for the daemon-occupancy ambiguity gate (S2 cross-family
+    # review round 2, "budget drain" fix) to resolve in this retry's
+    # favor: it needs proof the daemon polled AFTER this leg's own
+    # deadline, which _seed_alive_gauge below supplies by re-stamping
+    # broker_last_seen_at to now() (after the past deadline_at).
     await conn.execute(
         "UPDATE broker_jobs SET state = 'expired', package = NULL, "
-        "evidence_inputs = NULL, result_text = NULL, outcome = 'expired_leased' "
+        "evidence_inputs = NULL, result_text = NULL, outcome = 'expired_leased', "
+        "deadline_at = now() - interval '1 second' "
         "WHERE job_id = $1",
         first.job_id,
     )
+    await _seed_alive_gauge(conn)
 
     second = await _offer(conn, outbox_id, thread_id, claim)
 
@@ -252,6 +261,50 @@ async def test_retry_after_terminal_prior_leg_admits_a_new_job(
         await conn.fetchval("SELECT generation_route FROM wa_outbox WHERE id = $1", outbox_id)
         == "codex"
     )
+
+
+async def test_retry_blocked_while_daemon_not_proven_free_after_expiry(
+    conn: asyncpg.Connection,
+) -> None:
+    """MAJOR fix, real-DB proof (S2 cross-family review round 2, "budget
+    drain"): an expired-by-deadline prior leg must NOT admit a new one
+    while the gauge cannot prove the single-flight daemon has cycled back
+    to /claim since that leg's own deadline_at — otherwise a genuinely
+    slow-but-healthy exec (documented, pre-existing, wa_codex_daemon.py's
+    compute_budget_s docstring) would let every subsequent retry sit
+    unclaimed until it ALSO expires, burning the whole MAX_CODEX_LEGS
+    budget on one slow exec. Here broker_last_seen_at is stamped BEFORE
+    the expired leg's own deadline_at — unproven — QUEUE_FULL, and (the
+    real-DB guarantee a mock cannot give) no second row is created."""
+    outbox_id, thread_id, claim = await _outbox_row(conn)
+    await conn.execute(
+        """
+        INSERT INTO wa_broker_gauge (id, broker_last_seen_at, updated_at)
+        VALUES (1, now() - interval '20 seconds', now())
+        ON CONFLICT (id) DO UPDATE
+        SET broker_last_seen_at = now() - interval '20 seconds', updated_at = now()
+        """
+    )
+    first = await _offer(conn, outbox_id, thread_id, claim)
+    assert first.outcome is OfferOutcome.OFFERED
+    await conn.execute(
+        "UPDATE broker_jobs SET state = 'expired', package = NULL, "
+        "evidence_inputs = NULL, result_text = NULL, outcome = 'expired_leased', "
+        "deadline_at = now() - interval '5 seconds' "
+        "WHERE job_id = $1",
+        first.job_id,
+    )
+    # broker_last_seen_at (20s in the past) still predates the expired
+    # leg's own deadline_at (5s in the past) — never re-seeded since.
+
+    second = await _offer(conn, outbox_id, thread_id, claim)
+
+    assert second.outcome is OfferOutcome.QUEUE_FULL
+    assert second.job_id is None
+    count = await conn.fetchval(
+        "SELECT count(*) FROM broker_jobs WHERE outbox_id = $1", outbox_id
+    )
+    assert count == 1  # no second row was created
 
 
 async def test_retry_while_prior_leg_still_alive_reattaches(

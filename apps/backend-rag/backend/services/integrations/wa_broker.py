@@ -457,9 +457,14 @@ async def offer_job(
     async with conn.transaction():
         await conn.execute(_ADMISSION_LOCK_SQL)
 
+        # broker_last_seen_at travels alongside the liveness boolean —
+        # reused below (no extra query) to resolve the daemon-still-busy
+        # ambiguity on a retry whose prior leg expired by deadline (S2
+        # cross-family review round 2, "budget-drain" finding).
         gauge = await conn.fetchrow(
             """
-            SELECT broker_last_seen_at >= now() - ($1 * INTERVAL '1 second')
+            SELECT broker_last_seen_at,
+                   broker_last_seen_at >= now() - ($1 * INTERVAL '1 second')
                        AS broker_alive
             FROM wa_broker_gauge WHERE id = 1
             """,
@@ -536,26 +541,74 @@ async def offer_job(
             # Gemini fall-off; with Gemini's removal that becomes a mute
             # customer instead. New rule: reattach to a still-alive leg,
             # or admit a fresh one while the row has budget left.
+            # deadline_open is DB-computed (never a Python/DB clock
+            # comparison) — same discipline as the gauge's broker_alive
+            # boolean and wait_for_job's deadline_passed. thread_epoch is
+            # NOT NULL at the schema (migration 270) — no broker_jobs row
+            # can ever exist without it, so no defensive cast guard here.
             prior = await conn.fetchrow(
                 """
-                SELECT job_id, state, thread_epoch FROM broker_jobs
+                SELECT job_id, state, thread_epoch, deadline_at,
+                       deadline_at > now() AS deadline_open
+                FROM broker_jobs
                 WHERE outbox_id = $1 AND mode = 'serve'
                 ORDER BY created_at DESC
                 LIMIT 1
                 """,
                 outbox_id,
             )
-            if prior is not None and prior["state"] not in _TERMINAL_STATES:
-                # Still alive (offered/leased/completed_pending_consume) —
-                # hand its job_id back instead of losing it. No new job is
-                # created, so the canary CAS (if this call won one) is
-                # reverted, same as every other non-creating exit.
+            if (
+                prior is not None
+                and prior["state"] not in _TERMINAL_STATES
+                and prior["deadline_open"]
+            ):
+                # Still alive (offered/leased/completed_pending_consume)
+                # AND its own deadline has not yet elapsed — hand its
+                # job_id back instead of losing it. A live-state row PAST
+                # its own deadline (not yet reaped) is deliberately NOT
+                # reattached here (S2 cross-family review round 2, minor
+                # 2): the caller would just wait_for_job it straight into
+                # an immediate deadline-CAS — a wasted round trip for a
+                # leg that is, for every practical purpose, already done.
+                # It falls through to the terminal-budget path below
+                # exactly like a formally 'expired' row would.
                 await _revert_canary_cas(conn)
                 return OfferResult(
                     OfferOutcome.REATTACHED,
                     job_id=prior["job_id"],
                     thread_epoch=int(prior["thread_epoch"]),
                 )
+
+            if prior is not None and prior["state"] not in ("consumed", "failed"):
+                # AMBIGUOUS: the prior leg is not reattachable (terminal,
+                # or live but past its own deadline) AND the daemon never
+                # explicitly told us it is done with it — 'consumed' and
+                # 'failed' are the only two states that follow an actual
+                # /complete report; 'expired' (and "live but deadline_open
+                # false") both mean nobody has confirmed the daemon has
+                # moved on. The daemon is single-flight and strictly
+                # sequential (claim -> exec -> complete -> claim again,
+                # never polling mid-exec — verified against
+                # wa_codex_daemon.py's run_forever, not its docstring), so
+                # broker_last_seen_at moving to AFTER this leg's own
+                # deadline_at is proof positive it has cycled back to idle
+                # since. Without that proof, admitting a new leg risks the
+                # "budget drain" race (S2 cross-family review round 2,
+                # MAJOR): the daemon is still busy on the leg that just
+                # expired under it, so a second (third, fourth...) leg
+                # would sit unclaimed until IT ALSO expires, burning the
+                # whole retry budget and multiple breaker-failure folds on
+                # one slow-but-healthy exec instead of one. QUEUE_FULL is
+                # deliberately reused here, not a new outcome: the shape
+                # is identical (same-claim Gemini fall-off, zero
+                # retry-ladder involvement) and semantically apt — there
+                # genuinely is no CONFIRMED capacity right now.
+                if (
+                    gauge["broker_last_seen_at"] is None
+                    or gauge["broker_last_seen_at"] <= prior["deadline_at"]
+                ):
+                    await _revert_canary_cas(conn)
+                    return OfferResult(OfferOutcome.QUEUE_FULL)
 
             leg_count = await conn.fetchval(
                 "SELECT count(*) FROM broker_jobs WHERE outbox_id = $1 AND mode = 'serve'",
@@ -567,8 +620,9 @@ async def offer_job(
                 # 3 — no silent fall-off for this case either).
                 await _revert_canary_cas(conn)
                 return OfferResult(OfferOutcome.LEGS_EXHAUSTED)
-            # else: the prior leg is terminal and the budget has room —
-            # fall through to the SAME savepoint-protected INSERT a fresh
+            # else: the prior leg is terminal (or confirmed/proven not to
+            # be occupying the daemon) and the budget has room — fall
+            # through to the SAME savepoint-protected INSERT a fresh
             # (first-ever) offer uses below. uq_broker_jobs_serve_outbox_live
             # (migration 296) only forbids a SECOND live row, so this INSERT
             # is expected to succeed; the advisory xact lock already

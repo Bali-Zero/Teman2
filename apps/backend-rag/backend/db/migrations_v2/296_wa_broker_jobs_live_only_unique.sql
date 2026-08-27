@@ -57,6 +57,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_broker_jobs_serve_outbox_live
       AND state IN ('offered', 'leased', 'completed_pending_consume');
 
 -- === ROLLBACK ===
+--
+-- NOT ALWAYS REVERSIBLE (documented, not fixed — Kimi K3 cross-family
+-- review round 2): once this migration has been live long enough for a
+-- single outbox_id to accumulate MORE THAN ONE broker_jobs row (mode=
+-- 'serve') — the entire point of this change — the CREATE UNIQUE INDEX
+-- below fails outright with a duplicate-key error, because a row set
+-- unique on bare outbox_id can no longer be built over data that already
+-- violates it. There is no forward-compatible down-migration for that
+-- state: reverting the SCHEMA requires first reverting the DATA (deleting
+-- every non-latest broker_jobs row per outbox_id, which throws away the
+-- audit trail the multi-row design exists to keep) or accepting the
+-- rollback cannot run until the offending rows have aged out via the
+-- normal 7-day retention sweep. A rollback that fails loudly here is the
+-- INTENDED behavior — silently succeeding on an index that doesn't
+-- actually hold the caller's assumed invariant would be worse.
 
 DROP INDEX IF EXISTS uq_broker_jobs_serve_outbox_live;
 

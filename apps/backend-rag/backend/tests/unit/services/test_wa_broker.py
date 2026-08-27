@@ -46,6 +46,7 @@ from __future__ import annotations
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -210,7 +211,7 @@ async def test_offer_job_happy_path_offers_fences_and_inserts() -> None:
     assert update_args == (OUTBOX_ID, CLAIM_TOKEN, EXPECTED_STATUS)
 
     # no broker_jobs history lookup on a first-ever offer.
-    assert not conn.sql_contains("SELECT job_id, state, thread_epoch FROM broker_jobs")
+    assert not conn.sql_contains("SELECT job_id, state, thread_epoch, deadline_at")
     assert not conn.sql_contains("SELECT count(*) FROM broker_jobs WHERE outbox_id")
 
     insert_calls = conn.sql_with_args("INSERT INTO broker_jobs")
@@ -362,7 +363,7 @@ async def test_offer_job_fence_lost_when_update_matches_no_row() -> None:
     # SAFETY: a lost fence must never trigger a broker_jobs lookup — a
     # caller that no longer owns the row must learn NOTHING about another
     # owner's leg, let alone reattach to or extend it.
-    assert not conn.sql_contains("SELECT job_id, state, thread_epoch FROM broker_jobs")
+    assert not conn.sql_contains("SELECT job_id, state, thread_epoch, deadline_at")
     assert not conn.sql_contains("SELECT count(*) FROM broker_jobs WHERE outbox_id")
     assert conn.sql_with_args(_REVERT_CANARY_WHERE)
 
@@ -418,7 +419,12 @@ async def test_offer_job_retry_reattaches_to_still_alive_prior_leg() -> None:
             {"broker_alive": True},
             {"breaker_state": "closed"},
             {"id": OUTBOX_ID, "route_before": "codex"},  # retry
-            {"job_id": prior_job_id, "state": "leased", "thread_epoch": THREAD_EPOCH - 1},
+            {
+                "job_id": prior_job_id,
+                "state": "leased",
+                "thread_epoch": THREAD_EPOCH - 1,
+                "deadline_open": True,  # still inside its own budget
+            },
         ],
         fetchval_results=[0],  # depth only — no INSERT, no leg_count query
     )
@@ -474,12 +480,20 @@ async def test_offer_job_retry_legs_exhausted_when_prior_terminal_and_budget_spe
     — spec gradino 2/5, point 3: never a silent fall-off conflated with
     another cause."""
     prior_job_id = uuid.uuid4()
+    prior_deadline = datetime.now(timezone.utc) - timedelta(seconds=5)
+    daemon_polled_after = prior_deadline + timedelta(seconds=1)
     conn = ScriptedConn(
         fetchrow_results=[
-            {"broker_alive": True},
+            {"broker_alive": True, "broker_last_seen_at": daemon_polled_after},
             {"breaker_state": "closed"},
             {"id": OUTBOX_ID, "route_before": "codex"},
-            {"job_id": prior_job_id, "state": "expired", "thread_epoch": THREAD_EPOCH},
+            {
+                "job_id": prior_job_id,
+                "state": "expired",
+                "thread_epoch": THREAD_EPOCH,
+                "deadline_at": prior_deadline,
+                "deadline_open": False,
+            },
         ],
         fetchval_results=[
             0,  # depth
@@ -493,6 +507,186 @@ async def test_offer_job_retry_legs_exhausted_when_prior_terminal_and_budget_spe
     assert result.job_id is None
     assert not conn.sql_contains("INSERT INTO broker_jobs")
     assert conn.sql_with_args(_REVERT_CANARY_WHERE)
+
+
+@pytest.mark.asyncio
+async def test_offer_job_retry_blocked_when_daemon_not_proven_free_after_expiry() -> None:
+    """MAJOR fix (S2 cross-family review round 2, "budget drain"): a
+    healthy-but-slow exec can outlive its own deadline_at (documented in
+    wa_codex_daemon.py's compute_budget_s — a slow claim leg means "the
+    exec can outlive the lease... just wasted work", pre-existing and
+    accepted for a SINGLE leg under the old ever-scoped invariant). With
+    retries now possible, admitting a fresh leg while the single-flight
+    daemon MIGHT still be grinding on the one that just expired would let
+    every subsequent leg sit unclaimed until it also expires — burning
+    the whole MAX_CODEX_LEGS budget and multiple breaker folds on one slow
+    exec. Proof required: broker_last_seen_at must be AFTER the expired
+    leg's own deadline_at (daemon proven to have cycled back to /claim
+    since). Here it is NOT (still <= deadline_at) — QUEUE_FULL, no
+    leg_count query, no INSERT, canary reverted (same shape as every
+    other non-creating exit — this is a same-claim Gemini fall-off, zero
+    retry-ladder involvement)."""
+    prior_job_id = uuid.uuid4()
+    prior_deadline = datetime.now(timezone.utc) - timedelta(seconds=5)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            # daemon's last known poll predates the expired leg's own
+            # deadline — cannot prove it is no longer busy on it.
+            {"broker_alive": True, "broker_last_seen_at": prior_deadline - timedelta(seconds=1)},
+            {"breaker_state": "closed"},
+            {"id": OUTBOX_ID, "route_before": "codex"},
+            {
+                "job_id": prior_job_id,
+                "state": "expired",
+                "thread_epoch": THREAD_EPOCH,
+                "deadline_at": prior_deadline,
+                "deadline_open": False,
+            },
+        ],
+        fetchval_results=[0],  # depth only — leg_count/INSERT never reached
+    )
+
+    result = await wa_broker.offer_job(conn, **_offer_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.QUEUE_FULL
+    assert result.job_id is None
+    assert not conn.sql_contains("SELECT count(*) FROM broker_jobs WHERE outbox_id")
+    assert not conn.sql_contains("INSERT INTO broker_jobs")
+    assert conn.sql_with_args(_REVERT_CANARY_WHERE)
+
+
+@pytest.mark.asyncio
+async def test_offer_job_retry_blocked_when_gauge_has_no_broker_last_seen_at() -> None:
+    """INNOCENCE-adjacent: a NULL broker_last_seen_at (gauge row seeded
+    but never actually polled — should not coexist with broker_alive=True
+    in practice, but the code must fail closed, not raise, if it does)
+    must also block admission, same as a too-early one."""
+    prior_job_id = uuid.uuid4()
+    prior_deadline = datetime.now(timezone.utc) - timedelta(seconds=5)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"broker_alive": True, "broker_last_seen_at": None},
+            {"breaker_state": "closed"},
+            {"id": OUTBOX_ID, "route_before": "codex"},
+            {
+                "job_id": prior_job_id,
+                "state": "expired",
+                "thread_epoch": THREAD_EPOCH,
+                "deadline_at": prior_deadline,
+                "deadline_open": False,
+            },
+        ],
+        fetchval_results=[0],
+    )
+
+    result = await wa_broker.offer_job(conn, **_offer_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.QUEUE_FULL
+
+
+@pytest.mark.asyncio
+async def test_offer_job_retry_admits_when_daemon_proven_free_after_expiry() -> None:
+    """INNOCENCE for the budget-drain fix: once broker_last_seen_at is
+    genuinely AFTER the expired leg's own deadline_at (the daemon proved
+    it cycled back to /claim since), a fresh leg is admitted normally —
+    the fix narrows WHEN a retry is admitted, it does not disable
+    retries."""
+    prior_job_id = uuid.uuid4()
+    new_job_id = uuid.uuid4()
+    prior_deadline = datetime.now(timezone.utc) - timedelta(seconds=5)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"broker_alive": True, "broker_last_seen_at": prior_deadline + timedelta(seconds=1)},
+            {"breaker_state": "closed"},
+            {"id": OUTBOX_ID, "route_before": "codex"},
+            {
+                "job_id": prior_job_id,
+                "state": "expired",
+                "thread_epoch": THREAD_EPOCH,
+                "deadline_at": prior_deadline,
+                "deadline_open": False,
+            },
+        ],
+        fetchval_results=[
+            0,  # depth
+            wa_broker.MAX_CODEX_LEGS - 1,  # leg_count: room for one more
+            new_job_id,  # INSERT ... RETURNING job_id
+        ],
+    )
+
+    result = await wa_broker.offer_job(conn, **_offer_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.OFFERED
+    assert result.job_id == new_job_id
+    assert conn.sql_contains("INSERT INTO broker_jobs")
+
+
+@pytest.mark.asyncio
+async def test_offer_job_retry_live_but_deadline_passed_does_not_reattach() -> None:
+    """Minor fix (S2 cross-family review round 2, minor 2): a row that is
+    still formally 'leased'/'offered' (the reaper has not run yet) but
+    whose OWN deadline_at has already elapsed must NOT be reattached —
+    reattaching would send the caller straight into wait_for_job's own
+    immediate deadline-CAS, a wasted round trip for a leg that is, for
+    every practical purpose, already done. It falls through to the same
+    ambiguity gate a formally 'expired' row would, and — once the daemon
+    is proven free — a fresh leg is admitted instead."""
+    prior_job_id = uuid.uuid4()
+    new_job_id = uuid.uuid4()
+    prior_deadline = datetime.now(timezone.utc) - timedelta(seconds=5)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"broker_alive": True, "broker_last_seen_at": prior_deadline + timedelta(seconds=1)},
+            {"breaker_state": "closed"},
+            {"id": OUTBOX_ID, "route_before": "codex"},
+            {
+                "job_id": prior_job_id,
+                "state": "leased",  # still formally live...
+                "thread_epoch": THREAD_EPOCH,
+                "deadline_at": prior_deadline,
+                "deadline_open": False,  # ...but its own budget is spent
+            },
+        ],
+        fetchval_results=[0, wa_broker.MAX_CODEX_LEGS - 1, new_job_id],
+    )
+
+    result = await wa_broker.offer_job(conn, **_offer_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.OFFERED
+    assert result.job_id == new_job_id
+    assert result.job_id != prior_job_id
+
+
+@pytest.mark.asyncio
+async def test_offer_job_retry_consumed_prior_skips_ambiguity_check() -> None:
+    """'consumed' is a CONFIRMED-done state (the worker's own consume_result
+    CAS, following a real completion) — no daemon-occupancy ambiguity is
+    possible, so the ambiguity gate must never even read
+    gauge['broker_last_seen_at']. Deliberately OMITTED from the gauge dict
+    here: if the code touched it, this test would raise KeyError instead
+    of asserting — the crash IS the proof of "never touched"."""
+    prior_job_id = uuid.uuid4()
+    new_job_id = uuid.uuid4()
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"broker_alive": True},  # no broker_last_seen_at key at all
+            {"breaker_state": "closed"},
+            {"id": OUTBOX_ID, "route_before": "codex"},
+            {
+                "job_id": prior_job_id,
+                "state": "consumed",
+                "thread_epoch": THREAD_EPOCH,
+                "deadline_at": datetime.now(timezone.utc) - timedelta(seconds=5),
+                "deadline_open": False,
+            },
+        ],
+        fetchval_results=[0, wa_broker.MAX_CODEX_LEGS - 1, new_job_id],
+    )
+
+    result = await wa_broker.offer_job(conn, **_offer_kwargs())
+
+    assert result.outcome is wa_broker.OfferOutcome.OFFERED
+    assert result.job_id == new_job_id
 
 
 @pytest.mark.asyncio
