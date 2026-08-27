@@ -368,3 +368,82 @@ jobs:
             echo ""
             echo "Reference: research/operations/L5.2-phase2-3-4-prompts.md"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------
+  # S5 check-half (ASSEMBLY-LINE.md "The integration branch must be
+  # protected BEFORE the first lane opens a PR"): an integration branch
+  # inherits main's gates or the PR into it goes red. Measured 2026-08-27:
+  # exactly 2 rulesets exist in this repo, both scoped to main/
+  # ~DEFAULT_BRANCH — 52 PRs merged into feature/kb-current, feature/
+  # garuda-voa, feature/due-bot in the 2026-08-25/26 window with ZERO
+  # required checks. This job is independent of hot-zone-gate above (its
+  # own pass/fail, its own name in the Checks tab) so it can later be added
+  # to required_status_checks on its own, without inheriting hot-zone-
+  # gate's unrelated CODEOWNERS/migration concerns.
+  #
+  # ARM-half (repo-settings mutation, NOT done here — operator[control-
+  # plane]): scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern
+  # '<pattern>' --apply, printed verbatim by this check's own failure
+  # message when it fires.
+  # ---------------------------------------------------------------------
+  base-branch-protected:
+    name: Base branch protected
+    runs-on: ubuntu-latest
+    # Floor is the checkout + at most 3 `gh api` calls (list + 2 ruleset
+    # detail GETs) — and ZERO api calls at all when the base IS the default
+    # branch (most PRs), which short-circuits before touching `gh`.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # OPEN QUESTION, not a confident claim either way (corrected 2026-08-27
+      # — a cross-family refuter disputed this job's original framing, which
+      # asserted `administration` scope was needed and would 403; that claim
+      # is itself unverified, not confirmed-correct). What IS empirically
+      # confirmed (actionlint against this exact job): neither "administration"
+      # nor "metadata" appears in actionlint's own list of grantable Actions
+      # `permissions:` scopes — so no permission NAME expressible here can
+      # settle the question either way. Whether `${{ github.token }}` below
+      # (with only `contents: read`, the workflow's own default) can actually
+      # read this PUBLIC repo's rulesets is UNTESTED by this PR: the base==
+      # default-branch case (this PR's own CI run) never calls that API at
+      # all, so it can't be observed here. If it 403s, the script reports
+      # BLIND (fail-closed, "cannot verify") on a non-default base, never a
+      # false pass — the first real feature/* PR after the arm-half lands
+      # will settle this empirically; do not assume either outcome until then.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: An unprotected integration branch must not silently accept PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Kept as TWO separate fields, never OR-merged into one ambiguous
+          # string — a cross-family refuter found the real bypass that shape
+          # enabled (2026-08-27): whichever of the two is non-empty tells the
+          # script, by construction, whether it's a full ref (merge_group,
+          # always full by GitHub's own contract) or a short name
+          # (pull_request, always short) — never guessed downstream from the
+          # string's own content, which is what let a branch literally named
+          # `refs/heads/main` bypass this check entirely.
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          MERGE_GROUP_BASE_REF: ${{ github.event.merge_group.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -u
+          if [[ -n "${PR_BASE_REF:-}" ]]; then
+            ARGS=(--base-ref "$PR_BASE_REF")
+          elif [[ -n "${MERGE_GROUP_BASE_REF:-}" ]]; then
+            ARGS=(--base-ref "$MERGE_GROUP_BASE_REF" --base-ref-full)
+          else
+            echo "::notice::no base ref on this event (${{ github.event_name }}) — nothing to check"
+            exit 0
+          fi
+          python3 scripts/ci/check_base_protected.py \
+            "${ARGS[@]}" \
+            --repo "${{ github.repository }}" \
+            --default-branch "${DEFAULT_BRANCH:-main}"
