@@ -749,10 +749,18 @@ jobs:
           if [[ "$NETLINES_AVAILABLE" == "true" ]]; then
             EXTRA_ARGS+=(--numstat-file /tmp/net-lines-numstat.txt)
           fi
+          # --source-path is THIS PR's own real pack path (evpaths' PACK_PATH,
+          # resolved above BEFORE staging) — not the staged file we just
+          # wrote it to. Rule 9 (evidence root deprecation) judges THAT
+          # path; without this flag it would default to the staged
+          # positional argument, which is always the canonical
+          # evidence/pack.yml regardless of where the real file lives, and
+          # every PR — migrated or not — would misjudge as root.
           python3 scripts/evidence_pack_lint.py \
             /tmp/evidence-check/evidence/pack.yml \
             --repo-root /tmp/evidence-check \
             --changed-files-file /tmp/changed-files.txt \
+            --source-path "$PACK_PATH" \
             "${EXTRA_ARGS[@]}"
 
       # -----------------------------------------------------------------
