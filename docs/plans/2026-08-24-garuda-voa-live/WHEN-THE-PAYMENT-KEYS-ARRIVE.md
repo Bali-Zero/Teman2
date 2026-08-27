@@ -189,22 +189,46 @@ and _watched_, rather than declared once the key is set.
 
 ## ⛔ The pre-arm blocker this document was missing — read before setting the keys
 
-**Ten of the thirteen `job_type` values this product enqueues have no handler.** Measured
-2026-08-27: production code enqueues **13** distinct types — twelve from
-`garuda_orders/repository.py`, plus `practice_received_email` from
-`garuda_portal/practice.py::mint_received_practice`, which is the one people miss because it is
-enqueued by the function that mints the practice rather than by the repository. `outbox_handlers.py`
-registers **3**: `payment_paid_email`, `practice_release`, `portal_invite`.
+> ### ✅ Corrected 2026-08-28 — eight of the thirteen are now routed, and the alarm design below was wrong
+>
+> The section as written said **ten of thirteen** `job_type` values had no handler. Measured on
+> `origin/main` this turn, `build_handlers` registers **8**: `checkout_ready_email`,
+> `payment_paid_email`, `payment_failed_email`, `payment_expired_email`, `refund_email`,
+> `practice_release`, `practice_received_email`, `portal_invite`. The five customer emails landed
+> in **PR #5128** (`53efc00fab`). What is still unrouted is exactly the five `staff_page_*` money
+> anomalies, and they are in **PR #5129** — open and armed at the time of writing, not merged.
+>
+> **The alarm design in the last paragraph is retired, and its retirement is the point.** It asked
+> for an `unroutable` alarm _scoped to a declared-unbuilt allowlist_, because an unscoped
+> `unroutable > 0` would have fired forever for ten known-missing types. Once #5129 lands there is
+> no such category left: the allowlist is EMPTY, so the scoping mechanism has nothing to hold and
+> plain **`unroutable > 0`** becomes a true signal. A scoped alarm shipped now would be a mute
+> switch with no reason to exist — exactly the shape that silences a real signal (superscar #2).
+> The alarm itself is still UNBUILT; it belongs in the same `_run_garuda_outbox_scheduler` block
+> #5129 touches, so it is the change that follows it, tracked in the `modus` PENDING-ARMS outbox
+> row (#5132).
+>
+> **What did NOT change:** every word about why this is latent today and live the instant you arm.
+> None of these thirteen jobs is produced while `GARUDA_XENDIT_SECRET_KEY` is unset, so **not one
+> of the eight routed handlers has ever delivered anything in production**. Routed is not armed.
+> The proof is a real sandbox purchase, not this table.
+
+**Historical record — the state on 2026-08-27, when this section was written:** production code
+enqueues **13** distinct types — twelve from `garuda_orders/repository.py`, plus
+`practice_received_email` from `garuda_portal/practice.py::mint_received_practice`, which is the one
+people miss because it is enqueued by the function that mints the practice rather than by the
+repository. `outbox_handlers.py` registered **3**: `payment_paid_email`, `practice_release`,
+`portal_invite`.
 
 The consumer handles the gap correctly — an unroutable type is counted, logged once per pass, and
 its attempt bump is rolled back so it never marches toward exhaustion. **Nothing pages on it**, and
-that is the exposure. The ten without a handler include:
+that is the exposure. The ten without a handler were:
 
-| Unhandled                                                                               | What it means the moment a real card is used                                                                                                                                                                                  |
-| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payment_failed_email`, `payment_expired_email`, `refund_email`, `checkout_ready_email` | a customer whose card is declined, whose invoice expires, or who is refunded is told nothing                                                                                                                                  |
-| the five `staff_page_*` jobs                                                            | duplicate charge, late-paid-after-refund, late-paid-after-terminal, payment failure, refund-out-of-order — **every money anomaly page reaches nobody**                                                                        |
-| `practice_received_email`                                                               | the practice-received notice. Not silence: `payment_paid_email` IS handled, so a customer who pays successfully does get their payment confirmation — this is a missing second notice, which is why it sits last in this list |
+| Then unhandled                                                                          | What it means the moment a real card is used                                                                                                                                                                                  | Now                  |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `payment_failed_email`, `payment_expired_email`, `refund_email`, `checkout_ready_email` | a customer whose card is declined, whose invoice expires, or who is refunded is told nothing                                                                                                                                  | routed — PR #5128    |
+| the five `staff_page_*` jobs                                                            | duplicate charge, late-paid-after-refund, late-paid-after-terminal, payment failure, refund-out-of-order — **every money anomaly page reaches nobody**                                                                        | PR #5129, not merged |
+| `practice_received_email`                                                               | the practice-received notice. Not silence: `payment_paid_email` IS handled, so a customer who pays successfully does get their payment confirmation — this is a missing second notice, which is why it sits last in this list | routed — PR #5128    |
 
 **Why this is latent today and live the instant you arm.** The whole order lane answers 503 while
 `GARUDA_XENDIT_SECRET_KEY` is unset, so none of these jobs is ever produced. Setting the key is
@@ -213,10 +237,10 @@ the staff pages for money anomalies are the ones that matter most, because they 
 which a human finds out something went wrong with someone's money.
 
 Full detail, owners and the proof-of-armed criterion are in the `modus` PENDING-ARMS ledger. The
-minimum before a real (not sandbox) purchase: handlers for the four customer emails, a decided
-destination for the five staff pages, and an `unroutable` alarm scoped to types OUTSIDE a
-declared-unbuilt allowlist — an unscoped `unroutable > 0` would fire forever for ten known types,
-which is how a real signal gets muted.
+minimum before a real (not sandbox) purchase, restated 2026-08-28: **PR #5129 landed** (the five
+staff pages, with `TELEGRAM_OWNER_CHAT_ID` as their decided destination) and a plain
+**`unroutable > 0`** alarm on the drain pass. The four customer emails and the practice-received
+notice are already done.
 
 ## The one test purchase that closes all of it
 
